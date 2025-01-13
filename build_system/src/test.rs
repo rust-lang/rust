@@ -848,9 +848,17 @@ fn contains_ui_error_patterns(file_path: &Path, keep_lto_tests: bool) -> Result<
         if line.is_empty() {
             continue;
         }
-        if ["//@ error-pattern:", "//@ build-fail", "//@ run-fail", "-Cllvm-args", "//~", "thread"]
-            .iter()
-            .any(|check| line.contains(check))
+        if [
+            "//@ error-pattern:",
+            "//@ build-fail",
+            "//@ run-fail",
+            "//@ known-bug",
+            "-Cllvm-args",
+            "//~",
+            "thread",
+        ]
+        .iter()
+        .any(|check| line.contains(check))
         {
             return Ok(true);
         }
@@ -868,8 +876,13 @@ fn contains_ui_error_patterns(file_path: &Path, keep_lto_tests: bool) -> Result<
             return Ok(true);
         }
     }
-    if file_path.display().to_string().contains("ambiguous-4-extern.rs") {
+    let file_path = file_path.display().to_string();
+    if file_path.contains("ambiguous-4-extern.rs") {
         eprintln!("nothing found for {file_path:?}");
+    }
+    // The files in this directory contain errors.
+    if file_path.contains("/error-emitter/") {
+        return Ok(true);
     }
     Ok(false)
 }

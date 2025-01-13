@@ -54,6 +54,7 @@ jobs:
       run: |
         ./y.sh prepare --only-libcore
         EMBED_LTO_BITCODE=1 ./y.sh build --sysroot --release --release-sysroot
+        ./y.sh test --mini-tests
         cargo test
         ./y.sh clean all
 

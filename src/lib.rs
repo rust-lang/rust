@@ -37,7 +37,7 @@ extern crate tracing;
 extern crate rustc_abi;
 extern crate rustc_apfloat;
 extern crate rustc_ast;
-extern crate rustc_attr;
+extern crate rustc_attr_parsing;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
@@ -94,6 +94,7 @@ use gccjit::{CType, Context, OptimizationLevel};
 #[cfg(feature = "master")]
 use gccjit::{TargetInfo, Version};
 use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryFn,
@@ -258,8 +259,8 @@ impl CodegenBackend for GccCodegenBackend {
             .join(sess)
     }
 
-    fn target_features(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
-        target_features(sess, allow_unstable, &self.target_info)
+    fn target_features_cfg(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
+        target_features_cfg(sess, allow_unstable, &self.target_info)
     }
 }
 
@@ -441,6 +442,15 @@ impl WriteBackendMethods for GccCodegenBackend {
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::write::link(cgcx, dcx, modules)
     }
+    fn autodiff(
+        _cgcx: &CodegenContext<Self>,
+        _tcx: TyCtxt<'_>,
+        _module: &ModuleCodegen<Self::Module>,
+        _diff_fncs: Vec<AutoDiffItem>,
+        _config: &ModuleConfig,
+    ) -> Result<(), FatalError> {
+        unimplemented!()
+    }
 }
 
 /// This is the entrypoint for a hot plugged rustc_codegen_gccjit
@@ -474,7 +484,8 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
     }
 }
 
-pub fn target_features(
+/// Returns the features that should be set in `cfg(target_feature)`.
+fn target_features_cfg(
     sess: &Session,
     allow_unstable: bool,
     target_info: &LockedTargetInfo,
@@ -483,9 +494,9 @@ pub fn target_features(
     sess.target
         .rust_target_features()
         .iter()
-        .filter(|&&(_, gate, _)| gate.is_supported())
+        .filter(|&&(_, gate, _)| gate.in_cfg())
         .filter_map(|&(feature, gate, _)| {
-            if sess.is_nightly_build() || allow_unstable || gate.is_stable() {
+            if sess.is_nightly_build() || allow_unstable || gate.requires_nightly().is_none() {
                 Some(feature)
             } else {
                 None
