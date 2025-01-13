@@ -7,6 +7,7 @@ default-run = "bootstrap"
 
 [features]
 build-metrics = ["sysinfo"]
+tracing = ["dep:tracing", "dep:tracing-subscriber", "dep:tracing-tree"]
 
 [lib]
 path = "src/lib.rs"
@@ -63,6 +64,11 @@ xz2 = "0.1"
 
 # Dependencies needed by the build-metrics feature
 sysinfo = { version = "0.33.0", default-features = false, optional = true, features = ["system"] }
+
+# Dependencies needed by the `logging` feature
+tracing = { version = "0.1", optional = true, features = ["attributes"] }
+tracing-subscriber = { version = "0.3", optional = true, features = ["env-filter", "fmt", "registry", "std"] }
+tracing-tree = { version = "0.4.0", optional = true }
 
 [target.'cfg(windows)'.dependencies.junction]
 version = "1.0.0"

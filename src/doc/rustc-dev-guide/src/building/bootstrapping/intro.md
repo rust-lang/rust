@@ -17,5 +17,8 @@ In this section, we give a high-level overview of
 [what Bootstrap does](./what-bootstrapping-does.md), followed by a high-level
 introduction to [how Bootstrap does it](./how-bootstrap-does-it.md).
 
+Additionally, see [debugging bootstrap](./debugging-bootstrap.md) to learn
+about debugging methods.
+
 [boot]: https://en.wikipedia.org/wiki/Bootstrapping_(compilers)
 [ocaml-compiler]: https://github.com/rust-lang/rust/tree/ef75860a0a72f79f97216f8aaa5b388d98da6480/src/boot
