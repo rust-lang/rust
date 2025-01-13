@@ -368,7 +368,7 @@ This flag controls the optimization level.
 * `s`: optimize for binary size.
 * `z`: optimize for binary size, but also turn off loop vectorization.
 
-Note: The [`-O` flag][option-o-optimize] is an alias for `-C opt-level=2`.
+Note: The [`-O` flag][option-o-optimize] is an alias for `-C opt-level=3`.
 
 The default is `0`.
 
