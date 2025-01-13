@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::hash::Hash;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock as OnceCell};
@@ -479,7 +478,7 @@ impl Item {
             name,
             kind,
             Attributes::from_hir(hir_attrs),
-            extract_cfg_from_attrs(hir_attrs, cx.tcx, &cx.cache.hidden_cfg),
+            extract_cfg_from_attrs(hir_attrs.iter(), cx.tcx, &cx.cache.hidden_cfg),
         )
     }
 
@@ -979,27 +978,19 @@ pub(crate) struct Module {
     pub(crate) span: Span,
 }
 
-pub(crate) trait AttributesExt {
-    type Attributes<'a>: Iterator<Item = &'a hir::Attribute>
-    where
-        Self: 'a;
-
-    fn iter(&self) -> Self::Attributes<'_>;
-}
-
-pub fn hir_attr_lists<A: AttributesExt + ?Sized>(
-    attrs: &A,
+pub(crate) fn hir_attr_lists<'a, I: IntoIterator<Item = &'a hir::Attribute>>(
+    attrs: I,
     name: Symbol,
-) -> impl Iterator<Item = ast::MetaItemInner> + use<'_, A> {
+) -> impl Iterator<Item = ast::MetaItemInner> + use<'a, I> {
     attrs
-        .iter()
+        .into_iter()
         .filter(move |attr| attr.has_name(name))
         .filter_map(ast::attr::AttributeExt::meta_item_list)
         .flatten()
 }
 
-pub fn extract_cfg_from_attrs<A: AttributesExt + ?Sized>(
-    attrs: &A,
+pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> + Clone>(
+    attrs: I,
     tcx: TyCtxt<'_>,
     hidden_cfg: &FxHashSet<Cfg>,
 ) -> Option<Arc<Cfg>> {
@@ -1018,7 +1009,7 @@ pub fn extract_cfg_from_attrs<A: AttributesExt + ?Sized>(
 
     let mut cfg = if doc_cfg_active || doc_auto_cfg_active {
         let mut doc_cfg = attrs
-            .iter()
+            .clone()
             .filter(|attr| attr.has_name(sym::doc))
             .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
             .filter(|attr| attr.has_name(sym::cfg))
@@ -1031,7 +1022,7 @@ pub fn extract_cfg_from_attrs<A: AttributesExt + ?Sized>(
             // If there is no `doc(cfg())`, then we retrieve the `cfg()` attributes (because
             // `doc(cfg())` overrides `cfg()`).
             attrs
-                .iter()
+                .clone()
                 .filter(|attr| attr.has_name(sym::cfg))
                 .filter_map(|attr| single(attr.meta_item_list()?))
                 .filter_map(|attr| Cfg::parse_without(attr.meta_item()?, hidden_cfg).ok().flatten())
@@ -1043,7 +1034,7 @@ pub fn extract_cfg_from_attrs<A: AttributesExt + ?Sized>(
         Cfg::True
     };
 
-    for attr in attrs.iter() {
+    for attr in attrs.clone() {
         // #[doc]
         if attr.doc_str().is_none() && attr.has_name(sym::doc) {
             // #[doc(...)]
@@ -1088,28 +1079,6 @@ pub fn extract_cfg_from_attrs<A: AttributesExt + ?Sized>(
     }
 
     if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) }
-}
-
-impl AttributesExt for [hir::Attribute] {
-    type Attributes<'a> = impl Iterator<Item = &'a hir::Attribute> + 'a;
-
-    fn iter(&self) -> Self::Attributes<'_> {
-        self.iter()
-    }
-}
-
-impl AttributesExt for [(Cow<'_, hir::Attribute>, Option<DefId>)] {
-    type Attributes<'a>
-        = impl Iterator<Item = &'a hir::Attribute> + 'a
-    where
-        Self: 'a;
-
-    fn iter(&self) -> Self::Attributes<'_> {
-        self.iter().map(move |(attr, _)| match attr {
-            Cow::Borrowed(attr) => *attr,
-            Cow::Owned(attr) => attr,
-        })
-    }
 }
 
 pub(crate) trait NestedAttributesExt {

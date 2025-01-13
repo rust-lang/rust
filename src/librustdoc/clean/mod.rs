@@ -198,8 +198,14 @@ fn generate_item_with_correct_attrs(
         // We only keep the item's attributes.
         target_attrs.iter().map(|attr| (Cow::Borrowed(attr), None)).collect()
     };
-
-    let cfg = extract_cfg_from_attrs(&attrs[..], cx.tcx, &cx.cache.hidden_cfg);
+    let cfg = extract_cfg_from_attrs(
+        attrs.iter().map(move |(attr, _)| match attr {
+            Cow::Borrowed(attr) => *attr,
+            Cow::Owned(attr) => attr,
+        }),
+        cx.tcx,
+        &cx.cache.hidden_cfg,
+    );
     let attrs = Attributes::from_hir_iter(attrs.iter().map(|(attr, did)| (&**attr, *did)), false);
 
     let name = renamed.or(Some(name));
