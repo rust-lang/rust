@@ -848,9 +848,17 @@ fn contains_ui_error_patterns(file_path: &Path, keep_lto_tests: bool) -> Result<
         if line.is_empty() {
             continue;
         }
-        if ["//@ error-pattern:", "//@ build-fail", "//@ run-fail", "-Cllvm-args", "//~", "thread"]
-            .iter()
-            .any(|check| line.contains(check))
+        if [
+            "//@ error-pattern:",
+            "//@ build-fail",
+            "//@ run-fail",
+            "//@ known-bug",
+            "-Cllvm-args",
+            "//~",
+            "thread",
+        ]
+        .iter()
+        .any(|check| line.contains(check))
         {
             return Ok(true);
         }
