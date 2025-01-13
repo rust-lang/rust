@@ -7,7 +7,7 @@ fname=musl-1.2.5.tar.gz
 sha=a9a118bbe84d8764da0ea0d28b3ab3fae8477fc7e4085d90102b8596fc7c75e4
 
 mkdir musl
-curl "https://musl.libc.org/releases/$fname" -O
+curl -L "https://musl.libc.org/releases/$fname" -O
 
 case "$(uname -s)" in
     MINGW*)

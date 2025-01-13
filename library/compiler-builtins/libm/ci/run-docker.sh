@@ -24,12 +24,14 @@ run() {
     # will be owned by root
     mkdir -p target
 
-    docker build -t "$target" "ci/docker/$target"
+    set_env="HOME=/tmp PATH=\$PATH:/rust/bin:/cargo/bin"
+    docker build -t "libm-$target" "ci/docker/$target"
     docker run \
         --rm \
         --user "$(id -u):$(id -g)" \
         -e CI \
         -e RUSTFLAGS \
+        -e CARGO_TERM_COLOR \
         -e CARGO_HOME=/cargo \
         -e CARGO_TARGET_DIR=/target \
         -e "EMULATED=$emulated" \
@@ -39,8 +41,8 @@ run() {
         -v "$(rustc --print sysroot):/rust:ro" \
         --init \
         -w /checkout \
-        "$target" \
-        sh -c "HOME=/tmp PATH=\$PATH:/rust/bin exec ci/run.sh $target"
+        "libm-$target" \
+        sh -c "$set_env exec ci/run.sh $target"
 }
 
 if [ -z "$1" ]; then

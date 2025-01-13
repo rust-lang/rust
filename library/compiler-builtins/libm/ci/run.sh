@@ -3,8 +3,10 @@
 set -eux
 
 export RUST_BACKTRACE="${RUST_BACKTRACE:-full}"
+export NEXTEST_STATUS_LEVEL=all
 
 target="${1:-}"
+flags=""
 
 if [ -z "$target" ]; then
     host_target=$(rustc -vV | awk '/^host/ { print $2 }')
@@ -13,22 +15,22 @@ if [ -z "$target" ]; then
 fi
 
 # We enumerate features manually.
-extra_flags="--no-default-features"
+flags="$flags --no-default-features"
 
 # Enable arch-specific routines when available.
-extra_flags="$extra_flags --features arch"
+flags="$flags --features arch"
 
 # Always enable `unstable-float` since it expands available API but does not
 # change any implementations.
-extra_flags="$extra_flags --features unstable-float"
+flags="$flags --features unstable-float"
 
 # We need to specifically skip tests for musl-math-sys on systems that can't
 # build musl since otherwise `--all` will activate it.
 case "$target" in
     # Can't build at all on MSVC, WASM, or thumb
-    *windows-msvc*) extra_flags="$extra_flags --exclude musl-math-sys" ;;
-    *wasm*) extra_flags="$extra_flags --exclude musl-math-sys" ;;
-    *thumb*) extra_flags="$extra_flags --exclude musl-math-sys" ;;
+    *windows-msvc*) flags="$flags --exclude musl-math-sys" ;;
+    *wasm*) flags="$flags --exclude musl-math-sys" ;;
+    *thumb*) flags="$flags --exclude musl-math-sys" ;;
 
     # We can build musl on MinGW but running tests gets a stack overflow
     *windows-gnu*) ;;
@@ -38,7 +40,7 @@ case "$target" in
     *powerpc64le*) ;;
 
     # Everything else gets musl enabled
-    *) extra_flags="$extra_flags --features libm-test/build-musl" ;;
+    *) flags="$flags --features libm-test/build-musl" ;;
 esac
 
 # Configure which targets test against MPFR
@@ -50,17 +52,17 @@ case "$target" in
     # Targets that aren't cross compiled work fine
     # FIXME(ci): we should be able to enable aarch64 Linux here once GHA
     # support rolls out.
-    x86_64*) extra_flags="$extra_flags --features libm-test/build-mpfr" ;;
-    i686*) extra_flags="$extra_flags --features libm-test/build-mpfr" ;;
-    i586*) extra_flags="$extra_flags --features libm-test/build-mpfr --features gmp-mpfr-sys/force-cross" ;;
+    x86_64*) flags="$flags --features libm-test/build-mpfr" ;;
+    i686*) flags="$flags --features libm-test/build-mpfr" ;;
+    i586*) flags="$flags --features libm-test/build-mpfr --features gmp-mpfr-sys/force-cross" ;;
     # Apple aarch64 is native
-    aarch64*apple*) extra_flags="$extra_flags --features libm-test/build-mpfr" ;;
+    aarch64*apple*) flags="$flags --features libm-test/build-mpfr" ;;
 esac
 
 # FIXME: `STATUS_DLL_NOT_FOUND` testing macros on CI.
 # <https://github.com/rust-lang/rust/issues/128944>
 case "$target" in
-    *windows-gnu) extra_flags="$extra_flags --exclude libm-macros" ;;
+    *windows-gnu) flags="$flags --exclude libm-macros" ;;
 esac
 
 # Make sure we can build with overriding features.
@@ -76,12 +78,30 @@ if [ "${BUILD_ONLY:-}" = "1" ]; then
     exit
 fi
 
-# Otherwise, run the test suite.
+flags="$flags --all --target $target"
+cmd="cargo test $flags"
+profile="--profile"
 
-cmd="cargo test --all --target $target $extra_flags"
+# If nextest is available, use that
+command -v cargo-nextest && nextest=1 || nextest=0
+if [ "$nextest" = "1" ]; then
+    # Workaround for https://github.com/nextest-rs/nextest/issues/2066
+    if [ -f /.dockerenv ]; then
+        cfg_file="/tmp/nextest-config.toml"
+        echo "[store]" >> "$cfg_file"
+        echo "dir = \"$CARGO_TARGET_DIR/nextest\"" >> "$cfg_file"
+        cfg_flag="--config-file $cfg_file"
+    fi
+    
+    cmd="cargo nextest run ${cfg_flag:-} $flags"
+    profile="--cargo-profile"
+fi
 
 # Test once without intrinsics
 $cmd
+
+# Run doctests if they were excluded by nextest
+[ "$nextest" = "1" ] && cargo test --doc $flags
 
 # Exclude the macros and utile crates from the rest of the tests to save CI
 # runtime, they shouldn't have anything feature- or opt-level-dependent.
@@ -93,10 +113,10 @@ $cmd --features unstable-intrinsics --benches
 
 # Test the same in release mode, which also increases coverage. Also ensure
 # the soft float routines are checked.
-$cmd --profile release-checked 
-$cmd --profile release-checked --features force-soft-floats
-$cmd --profile release-checked --features unstable-intrinsics
-$cmd --profile release-checked --features unstable-intrinsics --benches
+$cmd "$profile" release-checked 
+$cmd "$profile" release-checked --features force-soft-floats
+$cmd "$profile" release-checked --features unstable-intrinsics
+$cmd "$profile" release-checked --features unstable-intrinsics --benches
 
 # Ensure that the routines do not panic.
 ENSURE_NO_PANIC=1 cargo build -p libm --target "$target" --no-default-features --release

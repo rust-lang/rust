@@ -6,6 +6,7 @@ on:
   pull_request:
 
 env:
+  CARGO_TERM_COLOR: always
   CARGO_TERM_VERBOSE: true
   RUSTDOCFLAGS: -Dwarnings
   RUSTFLAGS: -Dwarnings
@@ -88,6 +89,7 @@ jobs:
         rustup default "$channel"
         rustup target add "${{ matrix.target }}"
         rustup component add clippy llvm-tools-preview
+    - uses: taiki-e/install-action@nextest
     - uses: Swatinem/rust-cache@v2
       with:
         key: ${{ matrix.target }}
