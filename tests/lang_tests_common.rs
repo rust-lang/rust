@@ -1,10 +1,8 @@
 //! The common code for `tests/lang_tests_*.rs`
 
-use std::{
-    env::{self, current_dir},
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::env::{self, current_dir};
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use boml::Toml;
 use lang_tester::LangTester;

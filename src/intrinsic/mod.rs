@@ -13,11 +13,11 @@ use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
-use rustc_codegen_ssa::traits::BaseTypeCodegenMethods;
 #[cfg(feature = "master")]
 use rustc_codegen_ssa::traits::MiscCodegenMethods;
 use rustc_codegen_ssa::traits::{
-    ArgAbiBuilderMethods, BuilderMethods, ConstCodegenMethods, IntrinsicCallBuilderMethods,
+    ArgAbiBuilderMethods, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods,
+    IntrinsicCallBuilderMethods,
 };
 use rustc_middle::bug;
 #[cfg(feature = "master")]
