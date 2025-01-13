@@ -61,14 +61,15 @@ exclude = [
 [dev-dependencies]
 no-panic = "0.1.30"
 
-
-# This is needed for no-panic to correctly detect the lack of panics
 [profile.release]
+# Options for no-panic to correctly detect the lack of panics
+codegen-units = 1
 lto = "fat"
 
 # Release mode with debug assertions
 [profile.release-checked]
-inherits = "release"
+codegen-units = 1
 debug-assertions = true
+inherits = "release"
 lto = "fat"
 overflow-checks = true
