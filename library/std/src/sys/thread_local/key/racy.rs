@@ -17,9 +17,6 @@ pub struct LazyKey {
     key: AtomicUsize,
     /// Destructor for the TLS value.
     dtor: Option<unsafe extern "C" fn(*mut u8)>,
-    /// Next element of process-wide destructor list.
-    #[cfg(not(target_thread_local))]
-    next: atomic::AtomicPtr<LazyKey>,
 }
 
 // Define a sentinel value that is likely not to be returned
@@ -34,12 +31,7 @@ const KEY_SENTVAL: usize = libc::PTHREAD_KEYS_MAX + 1;
 
 impl LazyKey {
     pub const fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> LazyKey {
-        LazyKey {
-            key: atomic::AtomicUsize::new(KEY_SENTVAL),
-            dtor,
-            #[cfg(not(target_thread_local))]
-            next: atomic::AtomicPtr::new(crate::ptr::null_mut()),
-        }
+        LazyKey { key: atomic::AtomicUsize::new(KEY_SENTVAL), dtor }
     }
 
     #[inline]
@@ -71,50 +63,79 @@ impl LazyKey {
             key2
         };
         rtassert!(key as usize != KEY_SENTVAL);
-        match self.key.compare_exchange(
+
+        let final_key = match self.key.compare_exchange(
             KEY_SENTVAL,
             key as usize,
             Ordering::Release,
             Ordering::Acquire,
         ) {
             // The CAS succeeded, so we've created the actual key
-            Ok(_) => {
-                #[cfg(not(target_thread_local))]
-                if self.dtor.is_some() {
-                    unsafe { register_dtor(self) };
-                }
-                key as usize
-            }
+            Ok(_) => key as usize,
             // If someone beat us to the punch, use their key instead
             Err(n) => unsafe {
                 super::destroy(key);
                 n
             },
+        };
+
+        #[cfg(not(target_thread_local))]
+        if self.dtor.is_some() {
+            unsafe { register_dtor(self) };
         }
+
+        final_key
     }
 }
 
 /// POSIX does not run TLS destructors on process exit.
-/// Thus we keep our own global list for that purpose.
+/// Thus we keep our own thread-local list for that purpose.
 #[cfg(not(target_thread_local))]
-static DTORS: atomic::AtomicPtr<LazyKey> = atomic::AtomicPtr::new(crate::ptr::null_mut());
+fn lazy_keys() -> &'static crate::cell::RefCell<Vec<&'static LazyKey>> {
+    static KEY: atomic::AtomicUsize = atomic::AtomicUsize::new(KEY_SENTVAL);
+
+    unsafe extern "C" fn drop_lazy_keys(ptr: *mut u8) {
+        let ptr = ptr as *mut crate::cell::RefCell<Vec<&'static LazyKey>>;
+        if !ptr.is_null() {
+            drop(unsafe { Box::from_raw(ptr) });
+        }
+    }
+
+    // Allocate a TLS key to store the thread local destructor list.
+    let mut key = KEY.load(Ordering::Acquire) as super::Key;
+    if key == KEY_SENTVAL as _ {
+        let new_key = super::create(Some(drop_lazy_keys));
+        match KEY.compare_exchange_weak(
+            KEY_SENTVAL,
+            new_key as _,
+            Ordering::Release,
+            Ordering::Acquire,
+        ) {
+            Ok(_) => key = new_key,
+            Err(other_key) => {
+                unsafe { super::destroy(new_key) };
+                key = other_key as _;
+            }
+        }
+    }
+
+    // And allocate the list for this thread if necessary.
+    let mut ptr = unsafe { super::get(key) as *const crate::cell::RefCell<Vec<&'static LazyKey>> };
+    if ptr.is_null() {
+        let list = Box::new(crate::cell::RefCell::new(Vec::new()));
+        ptr = Box::into_raw(list);
+        unsafe { super::set(key, ptr as _) };
+    }
+
+    unsafe { &*ptr }
+}
 
 /// Registers destructor to run at process exit.
 #[cfg(not(target_thread_local))]
-unsafe fn register_dtor(key: &'static LazyKey) {
+unsafe fn register_dtor(lazy_key: &'static LazyKey) {
     crate::sys::thread_local::guard::enable();
 
-    let this = <*const LazyKey>::cast_mut(key);
-    // Use acquire ordering to pass along the changes done by the previously
-    // registered keys when we store the new head with release ordering.
-    let mut head = DTORS.load(Ordering::Acquire);
-    loop {
-        key.next.store(head, Ordering::Relaxed);
-        match DTORS.compare_exchange_weak(head, this, Ordering::Release, Ordering::Acquire) {
-            Ok(_) => break,
-            Err(new) => head = new,
-        }
-    }
+    lazy_keys().borrow_mut().push(lazy_key);
 }
 
 /// Run destructors at process exit.
@@ -122,28 +143,29 @@ unsafe fn register_dtor(key: &'static LazyKey) {
 /// SAFETY: This will and must only be run by the destructor callback in [`guard`].
 #[cfg(not(target_thread_local))]
 pub unsafe fn run_dtors() {
+    let lazy_keys_cell = lazy_keys();
+    let mut lazy_keys = lazy_keys_cell.take();
+
     for _ in 0..5 {
         let mut any_run = false;
-
-        // Use acquire ordering to observe key initialization.
-        let mut cur = DTORS.load(Ordering::Acquire);
-        while !cur.is_null() {
-            let key = unsafe { (*cur).key.load(Ordering::Acquire) };
-            let dtor = unsafe { (*cur).dtor.unwrap() };
-            cur = unsafe { (*cur).next.load(Ordering::Relaxed) };
-
-            let ptr = unsafe { super::get(key as _) };
-            if !ptr.is_null() {
-                unsafe {
-                    super::set(key as _, crate::ptr::null_mut());
-                    dtor(ptr as *mut _);
+        for lazy_key in &lazy_keys {
+            if let Some(dtor) = &lazy_key.dtor {
+                let key = lazy_key.force();
+                let ptr = unsafe { super::get(key) };
+                if !ptr.is_null() {
+                    unsafe { dtor(ptr) };
+                    unsafe { super::set(key, crate::ptr::null_mut()) };
                     any_run = true;
                 }
             }
         }
 
-        if !any_run {
+        let mut new_lazy_keys = lazy_keys_cell.borrow_mut();
+
+        if !any_run && new_lazy_keys.is_empty() {
             break;
         }
+
+        lazy_keys.extend(new_lazy_keys.drain(..));
     }
 }
