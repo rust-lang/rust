@@ -289,13 +289,15 @@
     "fdim": {
         "sources": [
             "src/libm_helper.rs",
-            "src/math/fdim.rs"
+            "src/math/fdim.rs",
+            "src/math/generic/fdim.rs"
         ],
         "type": "f64"
     },
     "fdimf": {
         "sources": [
-            "src/math/fdimf.rs"
+            "src/math/fdimf.rs",
+            "src/math/generic/fdim.rs"
         ],
         "type": "f32"
     },
