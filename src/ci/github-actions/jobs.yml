@@ -47,6 +47,7 @@ runners:
     os: ubuntu-22.04-arm64-8core-32gb
 
   - &job-linux-8c-codebuild
+    free_disk: true
     os: codebuild-ubuntu-22-8c-${{ github.run_id }}-${{ github.run_attempt }}
     <<: *base-job
 
