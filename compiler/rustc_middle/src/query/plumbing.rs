@@ -548,7 +548,6 @@ macro_rules! define_feedable {
                         let dep_node_index = tcx.dep_graph.with_feed_task(
                             dep_node,
                             tcx,
-                            key,
                             &value,
                             hash_result!([$($modifiers)*]),
                         );
