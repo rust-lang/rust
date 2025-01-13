@@ -52,9 +52,10 @@ methods on the allocator or free functions.
 
 [`Layout`]: ../../alloc/index.html?search=Layout&filter-crate=alloc
 
-## Searching By Type Signature for functions
+## Searching By Type Signature
 
 If you know more specifically what the function you want to look at does,
+or you want to know how to get from one type to another,
 Rustdoc can search by more than one type at once in the parameters and return
 value. Multiple parameters are separated by `,` commas, and the return value
 is written with after a `->` arrow.
@@ -85,6 +86,17 @@ the standard library and functions that are included in the results list:
 [stdoutu8]: ../../std/vec/struct.Vec.html?search=stdout%2C%20[u8]&filter-crate=std
 [iterasslice]: ../../std/vec/struct.Vec.html?search=vec%3A%3Aintoiter<T>%20->%20[T]&filter-crate=std
 [iterreduce]: ../../std/index.html?search=iterator<T>%2C%20fnmut%20->%20T&filter-crate=std
+
+### Non-functions in type-based search
+Certain items that are not functions are treated as though they
+were a semantically equivelent function.
+
+For example, struct fields are treated as though they were getter methods.
+This means that a search for `CpuidResult -> u32` will show
+the `CpuidResult::eax` field in the results.
+
+Additionally, `const` and `static` items are treated as nullary functions,
+so `-> u32` will match `u32::MAX`.
 
 ### How type-based search works
 
