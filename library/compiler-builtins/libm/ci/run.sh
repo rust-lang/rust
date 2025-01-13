@@ -77,8 +77,14 @@ if [ "${BUILD_ONLY:-}" = "1" ]; then
 else
     cmd="cargo test --all --target $target $extra_flags"
 
-    # Test once without intrinsics, once with intrinsics enabled
+    # Test once without intrinsics
     $cmd
+
+    # Exclude the macros and utile crates from the rest of the tests to save CI
+    # runtime, they shouldn't have anything feature- or opt-level-dependent.
+    cmd="$cmd --exclude util --exclude libm-macros"
+
+    # Test once with intrinsics enabled
     $cmd --features unstable-intrinsics
     $cmd --features unstable-intrinsics --benches
     
