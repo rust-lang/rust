@@ -176,6 +176,7 @@ libm_helper! {
     funcs: {
         (fn copysign(x: f16, y: f16) -> (f16);      => copysignf16);
         (fn fabs(x: f16) -> (f16);                  => fabsf16);
+        (fn fdim(x: f16, y: f16) -> (f16);          => fdimf16);
     }
 }
 
@@ -185,5 +186,6 @@ libm_helper! {
     funcs: {
         (fn copysign(x: f128, y: f128) -> (f128);   => copysignf128);
         (fn fabs(x: f128) -> (f128);                => fabsf128);
+        (fn fdim(x: f128, y: f128) -> (f128);       => fdimf128);
     }
 }

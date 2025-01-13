@@ -93,6 +93,8 @@ no_mangle! {
     fabsf16(x: f16) -> f16;
     fdim(x: f64, y: f64) -> f64;
     fdimf(x: f32, y: f32) -> f32;
+    fdimf128(x: f128, y: f128) -> f128;
+    fdimf16(x: f16, y: f16) -> f16;
     floor(x: f64) -> f64;
     floorf(x: f32) -> f32;
     fma(x: f64, y: f64, z: f64) -> f64;

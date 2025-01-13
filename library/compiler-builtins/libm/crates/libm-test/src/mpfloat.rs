@@ -181,7 +181,7 @@ libm_macros::for_each_function! {
         // Remap function names that are different between mpfr and libm
         expm1 | expm1f => exp_m1,
         fabs | fabsf => abs,
-        fdim | fdimf => positive_diff,
+        fdim | fdimf | fdimf16 | fdimf128  => positive_diff,
         fma | fmaf => mul_add,
         fmax | fmaxf => max,
         fmin | fminf => min,
