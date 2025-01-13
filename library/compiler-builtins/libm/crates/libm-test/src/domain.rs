@@ -199,3 +199,13 @@ impl HasDomain<f16> for crate::op::fabsf16::Routine {
 impl HasDomain<f128> for crate::op::fabsf128::Routine {
     const DOMAIN: Domain<f128> = Domain::<f128>::UNBOUNDED;
 }
+
+#[cfg(f16_enabled)]
+impl HasDomain<f16> for crate::op::truncf16::Routine {
+    const DOMAIN: Domain<f16> = Domain::<f16>::UNBOUNDED;
+}
+
+#[cfg(f128_enabled)]
+impl HasDomain<f128> for crate::op::truncf128::Routine {
+    const DOMAIN: Domain<f128> = Domain::<f128>::UNBOUNDED;
+}

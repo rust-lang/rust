@@ -743,6 +743,7 @@
         "sources": [
             "src/libm_helper.rs",
             "src/math/arch/wasm32.rs",
+            "src/math/generic/trunc.rs",
             "src/math/trunc.rs"
         ],
         "type": "f64"
@@ -750,9 +751,24 @@
     "truncf": {
         "sources": [
             "src/math/arch/wasm32.rs",
+            "src/math/generic/trunc.rs",
             "src/math/truncf.rs"
         ],
         "type": "f32"
+    },
+    "truncf128": {
+        "sources": [
+            "src/math/generic/trunc.rs",
+            "src/math/truncf128.rs"
+        ],
+        "type": "f128"
+    },
+    "truncf16": {
+        "sources": [
+            "src/math/generic/trunc.rs",
+            "src/math/truncf16.rs"
+        ],
+        "type": "f16"
     },
     "y0": {
         "sources": [
