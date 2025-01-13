@@ -5015,7 +5015,7 @@ impl Methods {
                     option_map_or_none::check(cx, expr, recv, def, map);
                     manual_ok_or::check(cx, expr, recv, def, map);
                     option_map_or_err_ok::check(cx, expr, recv, def, map);
-                    unnecessary_map_or::check(cx, expr, recv, def, map, &self.msrv);
+                    unnecessary_map_or::check(cx, expr, recv, def, map, span, &self.msrv);
                 },
                 ("map_or_else", [def, map]) => {
                     result_map_or_else_none::check(cx, expr, recv, def, map);
