@@ -11,6 +11,7 @@ use rustc_index::bit_set::BitMatrix;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::{Span, Symbol};
+use rustc_type_ir::fold::TypeFoldable;
 use smallvec::SmallVec;
 
 use super::{ConstValue, SourceInfo};
@@ -291,31 +292,29 @@ pub enum ClosureOutlivesSubject<'tcx> {
     /// Subject is a type, typically a type parameter, but could also
     /// be a projection. Indicates a requirement like `T: 'a` being
     /// passed to the caller, where the type here is `T`.
-    Ty(ClosureOutlivesSubjectTy<'tcx>),
+    Ty(InClosureRequirement<Ty<'tcx>>),
 
     /// Subject is a free region from the closure. Indicates a requirement
     /// like `'a: 'b` being passed to the caller; the region here is `'a`.
     Region(ty::RegionVid),
 }
 
-/// Represents a `ty::Ty` for use in [`ClosureOutlivesSubject`].
-///
-/// This abstraction is necessary because the type may include `ReVar` regions,
-/// which is what we use internally within NLL code, and they can't be used in
-/// a query response.
+/// Used for types in `ClosureOutlivesRequirements` which may refer to external
+/// regions. This is necessary as they are represented using `ReVar` which must
+/// not be used in a query response.
 ///
 /// DO NOT implement `TypeVisitable` or `TypeFoldable` traits, because this
 /// type is not recognized as a binder for late-bound region.
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
-pub struct ClosureOutlivesSubjectTy<'tcx> {
-    inner: Ty<'tcx>,
+pub struct InClosureRequirement<T> {
+    inner: T,
 }
 
-impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
+impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> InClosureRequirement<T> {
     /// All regions of `ty` must be of kind `ReVar` and must represent
     /// universal regions *external* to the closure.
-    pub fn bind(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
-        let inner = fold_regions(tcx, ty, |r, depth| match r.kind() {
+    pub fn bind(tcx: TyCtxt<'tcx>, value: T) -> Self {
+        let inner = fold_regions(tcx, value, |r, depth| match r.kind() {
             ty::ReVar(vid) => {
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::new(vid.index()),
@@ -323,7 +322,7 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
                 };
                 ty::Region::new_bound(tcx, depth, br)
             }
-            _ => bug!("unexpected region in ClosureOutlivesSubjectTy: {r:?}"),
+            _ => bug!("unexpected region in closure requirement: {r:?}"),
         });
 
         Self { inner }
@@ -333,7 +332,7 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         mut map: impl FnMut(ty::RegionVid) -> ty::Region<'tcx>,
-    ) -> Ty<'tcx> {
+    ) -> T {
         fold_regions(tcx, self.inner, |r, depth| match r.kind() {
             ty::ReBound(debruijn, br) => {
                 debug_assert_eq!(debruijn, depth);

@@ -14,7 +14,7 @@ use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, RegionVariableOrigi
 use rustc_middle::bug;
 use rustc_middle::mir::{
     AnnotationSource, BasicBlock, Body, ClosureOutlivesRequirement, ClosureOutlivesSubject,
-    ClosureOutlivesSubjectTy, ClosureRegionRequirements, ConstraintCategory, Local, Location,
+    ClosureRegionRequirements, ConstraintCategory, InClosureRequirement, Local, Location,
     ReturnConstraint, TerminatorKind,
 };
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
@@ -1087,7 +1087,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return None;
         }
 
-        Some(ClosureOutlivesSubject::Ty(ClosureOutlivesSubjectTy::bind(tcx, ty)))
+        Some(ClosureOutlivesSubject::Ty(InClosureRequirement::bind(tcx, ty)))
     }
 
     /// Like `universal_upper_bound`, but returns an approximation more suitable
