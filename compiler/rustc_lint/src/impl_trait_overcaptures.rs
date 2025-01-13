@@ -99,7 +99,7 @@ declare_lint! {
     /// To fix this, remove the `use<'a>`, since the lifetime is already captured
     /// since it is in scope.
     pub IMPL_TRAIT_REDUNDANT_CAPTURES,
-    Warn,
+    Allow,
     "redundant precise-capturing `use<...>` syntax on an `impl Trait`",
 }
 
