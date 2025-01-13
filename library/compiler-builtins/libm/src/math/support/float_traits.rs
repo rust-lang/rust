@@ -93,8 +93,13 @@ pub trait Float:
     /// Returns true if the value is +inf or -inf.
     fn is_infinite(self) -> bool;
 
-    /// Returns true if the sign is negative.
+    /// Returns true if the sign is negative. Extracts the sign bit regardless of zero or NaN.
     fn is_sign_negative(self) -> bool;
+
+    /// Returns true if the sign is positive. Extracts the sign bit regardless of zero or NaN.
+    fn is_sign_positive(self) -> bool {
+        !self.is_sign_negative()
+    }
 
     /// Returns if `self` is subnormal
     fn is_subnormal(self) -> bool {

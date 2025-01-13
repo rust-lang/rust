@@ -102,6 +102,15 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         }
     }
 
+    if cfg!(target_arch = "x86") {
+        match ctx.fn_ident {
+            // Input `fma(0.999999999999999, 1.0000000000000013, 0.0) = 1.0000000000000002` is
+            // incorrect on i586 and i686.
+            Id::Fma => ulp = 1,
+            _ => (),
+        }
+    }
+
     // In some cases, our implementation is less accurate than musl on i586.
     if cfg!(x86_no_sse) {
         match ctx.fn_ident {
@@ -370,59 +379,129 @@ fn maybe_check_nan_bits<F: Float>(actual: F, expected: F, ctx: &CheckCtx) -> Opt
 impl MaybeOverride<(f16, f16)> for SpecialCase {
     fn check_float<F: Float>(
         input: (f16, f16),
-        _actual: F,
+        actual: F,
         expected: F,
         _ulp: &mut u32,
         ctx: &CheckCtx,
     ) -> Option<TestResult> {
-        maybe_skip_binop_nan(input, expected, ctx)
+        binop_common(input, actual, expected, ctx)
     }
 }
 
 impl MaybeOverride<(f32, f32)> for SpecialCase {
     fn check_float<F: Float>(
         input: (f32, f32),
-        _actual: F,
+        actual: F,
         expected: F,
         _ulp: &mut u32,
         ctx: &CheckCtx,
     ) -> Option<TestResult> {
-        maybe_skip_binop_nan(input, expected, ctx)
+        if ctx.base_name == BaseName::Fmin
+            && input.0.biteq(f32::NEG_ZERO)
+            && input.1.biteq(f32::ZERO)
+            && expected.biteq(F::NEG_ZERO)
+            && actual.biteq(F::ZERO)
+        {
+            return XFAIL;
+        }
+
+        binop_common(input, actual, expected, ctx)
+    }
+
+    fn check_int<I: Int>(
+        _input: (f32, f32),
+        actual: I,
+        expected: I,
+        ctx: &CheckCtx,
+    ) -> Option<TestResult> {
+        remquo_common(actual, expected, ctx)
     }
 }
 
 impl MaybeOverride<(f64, f64)> for SpecialCase {
     fn check_float<F: Float>(
         input: (f64, f64),
-        _actual: F,
+        actual: F,
         expected: F,
         _ulp: &mut u32,
         ctx: &CheckCtx,
     ) -> Option<TestResult> {
-        maybe_skip_binop_nan(input, expected, ctx)
+        if ctx.base_name == BaseName::Fmin
+            && input.0.biteq(f64::NEG_ZERO)
+            && input.1.biteq(f64::ZERO)
+            && expected.biteq(F::ZERO)
+            && actual.biteq(F::NEG_ZERO)
+        {
+            return XFAIL;
+        }
+
+        binop_common(input, actual, expected, ctx)
     }
+
+    fn check_int<I: Int>(
+        _input: (f64, f64),
+        actual: I,
+        expected: I,
+        ctx: &CheckCtx,
+    ) -> Option<TestResult> {
+        remquo_common(actual, expected, ctx)
+    }
+}
+
+fn remquo_common<I: Int>(actual: I, expected: I, ctx: &CheckCtx) -> Option<TestResult> {
+    // FIXME: Our MPFR implementation disagrees with musl and may need to be updated.
+    if ctx.basis == CheckBasis::Mpfr
+        && ctx.base_name == BaseName::Remquo
+        && expected == I::MIN
+        && actual == I::ZERO
+    {
+        return XFAIL;
+    }
+
+    None
 }
 
 #[cfg(f128_enabled)]
 impl MaybeOverride<(f128, f128)> for SpecialCase {
     fn check_float<F: Float>(
         input: (f128, f128),
-        _actual: F,
+        actual: F,
         expected: F,
         _ulp: &mut u32,
         ctx: &CheckCtx,
     ) -> Option<TestResult> {
-        maybe_skip_binop_nan(input, expected, ctx)
+        binop_common(input, actual, expected, ctx)
     }
 }
 
-/// Musl propagates NaNs if one is provided as the input, but we return the other input.
 // F1 and F2 are always the same type, this is just to please generics
-fn maybe_skip_binop_nan<F1: Float, F2: Float>(
+fn binop_common<F1: Float, F2: Float>(
     input: (F1, F1),
+    actual: F2,
     expected: F2,
     ctx: &CheckCtx,
 ) -> Option<TestResult> {
+    /* FIXME(#439): we do not compare signed zeros */
+
+    if ctx.base_name == BaseName::Fmin
+        && input.0.biteq(F1::NEG_ZERO)
+        && input.1.biteq(F1::ZERO)
+        && expected.biteq(F2::NEG_ZERO)
+        && actual.biteq(F2::ZERO)
+    {
+        return XFAIL;
+    }
+
+    if ctx.base_name == BaseName::Fmax
+        && input.0.biteq(F1::NEG_ZERO)
+        && input.1.biteq(F1::ZERO)
+        && expected.biteq(F2::ZERO)
+        && actual.biteq(F2::NEG_ZERO)
+    {
+        return XFAIL;
+    }
+
+    // Musl propagates NaNs if one is provided as the input, but we return the other input.
     match (&ctx.basis, ctx.base_name) {
         (Musl, BaseName::Fmin | BaseName::Fmax)
             if (input.0.is_nan() || input.1.is_nan()) && expected.is_nan() =>
@@ -509,7 +588,53 @@ fn bessel_prec_dropoff<F: Float>(
     None
 }
 
-impl MaybeOverride<(f32, f32, f32)> for SpecialCase {}
-impl MaybeOverride<(f64, f64, f64)> for SpecialCase {}
 impl MaybeOverride<(f32, i32)> for SpecialCase {}
 impl MaybeOverride<(f64, i32)> for SpecialCase {}
+
+impl MaybeOverride<(f32, f32, f32)> for SpecialCase {
+    fn check_float<F: Float>(
+        input: (f32, f32, f32),
+        actual: F,
+        expected: F,
+        _ulp: &mut u32,
+        ctx: &CheckCtx,
+    ) -> Option<TestResult> {
+        ternop_common(input, actual, expected, ctx)
+    }
+}
+impl MaybeOverride<(f64, f64, f64)> for SpecialCase {
+    fn check_float<F: Float>(
+        input: (f64, f64, f64),
+        actual: F,
+        expected: F,
+        _ulp: &mut u32,
+        ctx: &CheckCtx,
+    ) -> Option<TestResult> {
+        ternop_common(input, actual, expected, ctx)
+    }
+}
+
+// F1 and F2 are always the same type, this is just to please generics
+fn ternop_common<F1: Float, F2: Float>(
+    input: (F1, F1, F1),
+    actual: F2,
+    expected: F2,
+    ctx: &CheckCtx,
+) -> Option<TestResult> {
+    // FIXME(fma): 754-2020 says "When the exact result of (a × b) + c is non-zero yet the result
+    // of fusedMultiplyAdd is zero because of rounding, the zero result takes the sign of the
+    // exact result". Our implementation returns the wrong sign:
+    //     fma(5e-324, -5e-324, 0.0) = 0.0 (should be -0.0)
+    if ctx.base_name == BaseName::Fma
+        && (input.0.is_sign_negative() ^ input.1.is_sign_negative())
+        && input.0 != F1::ZERO
+        && input.1 != F1::ZERO
+        && input.2.biteq(F1::ZERO)
+        && expected.biteq(F2::NEG_ZERO)
+        && actual.biteq(F2::ZERO)
+    {
+        return XFAIL;
+    }
+
+    None
+}
