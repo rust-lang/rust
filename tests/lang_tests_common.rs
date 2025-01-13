@@ -89,6 +89,8 @@ pub fn main_inner(profile: Profile) {
                 &format!("{}/build/build_sysroot/sysroot/", current_dir),
                 "-C",
                 "link-arg=-lc",
+                "--extern",
+                "mini_core=target/out/libmini_core.rlib",
                 "-o",
                 exe.to_str().expect("to_str"),
                 path.to_str().expect("to_str"),
