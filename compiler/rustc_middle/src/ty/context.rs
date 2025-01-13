@@ -1794,6 +1794,47 @@ impl<'tcx> TyCtxtAt<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    /// Returns all reachable symbols (DefIds) for the given crate.
+    pub fn reachable_symbols(self, crate_num: CrateNum) -> &'tcx [DefId] {
+        // Vector to store the DefIds of reachable items
+        let mut reachable_def_ids = Vec::new();
+        let mut visited = FxHashSet::default();
+
+        // Recursive function to traverse reachable items
+        fn collect_reachable_items<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            module_def_id: DefId,
+            reachable_def_ids: &mut Vec<DefId>,
+            visited: &mut FxHashSet<DefId>,
+        ) {
+            // Avoid revisiting modules
+            if !visited.insert(module_def_id) {
+                return;
+            }
+
+            // Add the current module to the list
+            reachable_def_ids.push(module_def_id);
+
+            // Fetch module children that are not reexports
+            if let Some(children) = tcx.module_children_non_reexports(module_def_id) {
+                for child in children {
+                    // Recursively collect items for each child
+                    collect_reachable_items(tcx, child.def_id, reachable_def_ids, visited);
+                }
+            }
+        }
+
+        // Start traversal from the root module of the given crate
+        let root_def_id = self.crate_root(crate_num);
+        collect_reachable_items(self, root_def_id, &mut reachable_def_ids, &mut visited);
+
+        // Cache the results using the query system
+        self.alloc_slice(reachable_def_ids)
+    }
+}
+
+
+impl<'tcx> TyCtxt<'tcx> {
     /// `tcx`-dependent operations performed for every created definition.
     pub fn create_def(
         self,

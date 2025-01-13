@@ -666,3 +666,11 @@ pub(crate) fn default_extern_query(name: &str, key: &dyn std::fmt::Debug) -> ! {
          perhaps the `{name}` query was never assigned a provider function",
     )
 }
+
+pub(crate) fn reachable_symbols<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    crate_num: CrateNum,
+) -> &'tcx [DefId] {
+    // Call the implementation defined in `context.rs`
+    tcx.reachable_symbols(crate_num)
+}
