@@ -2,7 +2,7 @@ error: implementation of `FnMut` is not general enough
   --> $DIR/higher-ranked-lifetime-error.rs:12:5
    |
 LL |     assert_all::<_, &String>(id);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnMut` is not general enough
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnMut` is not general enough
    |
    = note: `for<'a> fn(&'a String) -> &'a String {id}` must implement `FnMut<(&String,)>`
    = note: ...but it actually implements `FnMut<(&'0 String,)>`, for some specific lifetime `'0`
