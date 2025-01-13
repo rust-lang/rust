@@ -439,6 +439,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         outlives_suggestion: &mut OutlivesSuggestionBuilder,
     ) {
         debug!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
+        assert!(self.regioncx.universal_regions().is_universal_region(fr));
+        assert!(self.regioncx.universal_regions().is_universal_region(outlived_fr));
 
         let (blame_constraint, path) = self.regioncx.best_blame_constraint(fr, fr_origin, |r| {
             self.regioncx.provides_universal_region(r, fr, outlived_fr)

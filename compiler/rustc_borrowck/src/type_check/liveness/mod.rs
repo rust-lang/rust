@@ -45,11 +45,11 @@ pub(super) fn generate<'a, 'tcx>(
     let free_regions = if !typeck.tcx().sess.opts.unstable_opts.polonius.is_next_enabled() {
         regions_that_outlive_free_regions(
             typeck.infcx.num_region_vars(),
-            &typeck.universal_regions,
+            &typeck.universal_region_relations.universal_regions,
             &typeck.constraints.outlives_constraints,
         )
     } else {
-        typeck.universal_regions.universal_regions_iter().collect()
+        typeck.universal_region_relations.universal_regions.universal_regions_iter().collect()
     };
     let (relevant_live_locals, boring_locals) =
         compute_relevant_live_locals(typeck.tcx(), &free_regions, body);
@@ -69,7 +69,7 @@ pub(super) fn generate<'a, 'tcx>(
     record_regular_live_regions(
         typeck.tcx(),
         &mut typeck.constraints.liveness_constraints,
-        &typeck.universal_regions,
+        &typeck.universal_region_relations.universal_regions,
         &mut typeck.polonius_context,
         body,
     );

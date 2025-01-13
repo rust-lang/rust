@@ -1,6 +1,7 @@
 use std::iter;
 
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::span_bug;
 use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{
@@ -9,30 +10,19 @@ use rustc_middle::ty::{
 };
 use tracing::{debug, trace};
 
-use super::{MemberConstraintSet, TypeChecker};
+use super::{Locations, TypeChecker, constraint_conversion};
 
 /// Once we're done with typechecking the body, we take all the opaque types
 /// defined by this function and add their 'member constraints'.
-pub(super) fn take_opaques_and_register_member_constraints<'tcx>(
+pub(super) fn take_opaque_types<'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
 ) -> FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>> {
     let infcx = typeck.infcx;
-    // Annoying: to invoke `typeck.to_region_vid`, we need access to
-    // `typeck.constraints`, but we also want to be mutating
-    // `typeck.member_constraints`. For now, just swap out the value
-    // we want and replace at the end.
-    let mut member_constraints = std::mem::take(&mut typeck.constraints.member_constraints);
-    let opaque_types = infcx
+    infcx
         .take_opaque_types()
         .into_iter()
         .map(|(opaque_type_key, hidden_type)| {
             let hidden_type = infcx.resolve_vars_if_possible(hidden_type);
-            register_member_constraints(
-                typeck,
-                &mut member_constraints,
-                opaque_type_key,
-                hidden_type,
-            );
             trace!("finalized opaque type {:?} to {:#?}", opaque_type_key, hidden_type.ty.kind());
             if hidden_type.has_non_region_infer() {
                 span_bug!(hidden_type.span, "could not resolve {:?}", hidden_type.ty);
@@ -46,10 +36,59 @@ pub(super) fn take_opaques_and_register_member_constraints<'tcx>(
 
             (opaque_type_key, hidden_type)
         })
-        .collect();
-    assert!(typeck.constraints.member_constraints.is_empty());
-    typeck.constraints.member_constraints = member_constraints;
-    opaque_types
+        .collect()
+}
+
+pub(super) fn force_regions_to_existential_externals<'tcx>(
+    typeck: &mut TypeChecker<'_, 'tcx>,
+    opaque_types: &FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
+) {
+    let infcx = typeck.infcx;
+    let fr_fn_body = ty::Region::new_var(
+        infcx.tcx,
+        typeck.universal_region_relations.universal_regions.fr_fn_body,
+    );
+    let mut existential_external_region_map = FxHashSet::default();
+    for (&key, &hidden_ty) in opaque_types {
+        fold_regions(infcx.tcx, (key, hidden_ty), |r, _| {
+            if existential_external_region_map.insert(r) {
+                let external_reg =
+                    typeck.universal_region_relations.add_existential_external_region(infcx);
+
+                let external_vid = typeck.to_region_vid(external_reg);
+                typeck
+                    .universal_region_relations
+                    .universal_regions
+                    .existential_external_regions
+                    .insert(external_vid);
+                let mut constraint_conversion = constraint_conversion::ConstraintConversion::new(
+                    infcx,
+                    &typeck.universal_region_relations.universal_regions,
+                    &typeck.region_bound_pairs,
+                    typeck.implicit_region_bound,
+                    infcx.param_env,
+                    &typeck.known_type_outlives_obligations,
+                    Locations::All(hidden_ty.span),
+                    hidden_ty.span,
+                    ConstraintCategory::OpaqueType,
+                    typeck.constraints,
+                );
+                constraint_conversion.convert(
+                    ty::OutlivesPredicate(external_reg.into(), fr_fn_body),
+                    ConstraintCategory::OpaqueType,
+                );
+                constraint_conversion.convert(
+                    ty::OutlivesPredicate(external_reg.into(), r),
+                    ConstraintCategory::OpaqueType,
+                );
+                constraint_conversion.convert(
+                    ty::OutlivesPredicate(r.into(), external_reg),
+                    ConstraintCategory::OpaqueType,
+                );
+            }
+            r
+        });
+    }
 }
 
 /// Given the map `opaque_types` containing the opaque
@@ -192,56 +231,63 @@ pub(super) fn take_opaques_and_register_member_constraints<'tcx>(
 /// but this is not necessary, because the opaque type we
 /// create will be allowed to reference `T`. So we only generate a
 /// constraint that `'0: 'a`.
-fn register_member_constraints<'tcx>(
+pub(super) fn register_member_constraints<'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
-    member_constraints: &mut MemberConstraintSet<'tcx, ty::RegionVid>,
-    opaque_type_key: OpaqueTypeKey<'tcx>,
-    OpaqueHiddenType { span, ty: hidden_ty }: OpaqueHiddenType<'tcx>,
+    opaque_types: &FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
 ) {
+    // Annoying: to invoke `typeck.to_region_vid`, we need access to
+    // `typeck.constraints`, but we also want to be mutating
+    // `typeck.member_constraints`. For now, just swap out the value
+    // we want and replace at the end.
+    let mut member_constraints = std::mem::take(&mut typeck.constraints.member_constraints);
     let tcx = typeck.tcx();
-    let hidden_ty = typeck.infcx.resolve_vars_if_possible(hidden_ty);
-    debug!(?hidden_ty);
+    for (&opaque_type_key, &ty::OpaqueHiddenType { span, ty: hidden_ty }) in opaque_types {
+        let hidden_ty = typeck.infcx.resolve_vars_if_possible(hidden_ty);
+        debug!(?hidden_ty);
 
-    let variances = tcx.variances_of(opaque_type_key.def_id);
-    debug!(?variances);
+        let variances = tcx.variances_of(opaque_type_key.def_id);
+        debug!(?variances);
 
-    // For a case like `impl Foo<'a, 'b>`, we would generate a constraint
-    // `'r in ['a, 'b, 'static]` for each region `'r` that appears in the
-    // hidden type (i.e., it must be equal to `'a`, `'b`, or `'static`).
-    //
-    // `conflict1` and `conflict2` are the two region bounds that we
-    // detected which were unrelated. They are used for diagnostics.
+        // For a case like `impl Foo<'a, 'b>`, we would generate a constraint
+        // `'r in ['a, 'b, 'static]` for each region `'r` that appears in the
+        // hidden type (i.e., it must be equal to `'a`, `'b`, or `'static`).
+        //
+        // `conflict1` and `conflict2` are the two region bounds that we
+        // detected which were unrelated. They are used for diagnostics.
 
-    // Create the set of choice regions: each region in the hidden
-    // type can be equal to any of the region parameters of the
-    // opaque type definition.
-    let fr_static = typeck.universal_regions.fr_static;
-    let choice_regions: Vec<_> = opaque_type_key
-        .args
-        .iter()
-        .enumerate()
-        .filter(|(i, _)| variances[*i] == ty::Invariant)
-        .filter_map(|(_, arg)| match arg.unpack() {
-            GenericArgKind::Lifetime(r) => Some(typeck.to_region_vid(r)),
-            GenericArgKind::Type(_) | GenericArgKind::Const(_) => None,
-        })
-        .chain(iter::once(fr_static))
-        .collect();
+        // Create the set of choice regions: each region in the hidden
+        // type can be equal to any of the region parameters of the
+        // opaque type definition.
+        let fr_static = typeck.universal_region_relations.universal_regions.fr_static;
+        let choice_regions: Vec<_> = opaque_type_key
+            .args
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| variances[*i] == ty::Invariant)
+            .filter_map(|(_, arg)| match arg.unpack() {
+                GenericArgKind::Lifetime(r) => Some(typeck.to_region_vid(r)),
+                GenericArgKind::Type(_) | GenericArgKind::Const(_) => None,
+            })
+            .chain(iter::once(fr_static))
+            .collect();
 
-    // FIXME(#42940): This should use the `FreeRegionsVisitor`, but that's
-    // not currently sound until we have existential regions.
-    hidden_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
-        tcx,
-        op: |r| {
-            member_constraints.add_member_constraint(
-                opaque_type_key,
-                hidden_ty,
-                span,
-                typeck.to_region_vid(r),
-                &choice_regions,
-            )
-        },
-    });
+        // FIXME(#42940): This should use the `FreeRegionsVisitor`, but that's
+        // not currently sound until we have existential regions.
+        hidden_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
+            tcx,
+            op: |r| {
+                member_constraints.add_member_constraint(
+                    opaque_type_key,
+                    hidden_ty,
+                    span,
+                    typeck.to_region_vid(r),
+                    &choice_regions,
+                )
+            },
+        });
+    }
+    assert!(typeck.constraints.member_constraints.is_empty());
+    typeck.constraints.member_constraints = member_constraints;
 }
 
 /// Visitor that requires that (almost) all regions in the type visited outlive

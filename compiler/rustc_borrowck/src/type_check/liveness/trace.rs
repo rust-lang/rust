@@ -551,7 +551,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
                 self.typeck.tcx(),
                 dropped_local,
                 &kind,
-                self.typeck.universal_regions,
+                &self.typeck.universal_region_relations.universal_regions,
                 self.typeck.polonius_facts,
             );
         }
@@ -573,7 +573,8 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
             tcx: typeck.tcx(),
             param_env: typeck.infcx.param_env,
             op: |r| {
-                let live_region_vid = typeck.universal_regions.to_region_vid(r);
+                let live_region_vid =
+                    typeck.universal_region_relations.universal_regions.to_region_vid(r);
 
                 typeck.constraints.liveness_constraints.add_points(live_region_vid, live_at);
             },
@@ -583,7 +584,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         if let Some(polonius_context) = typeck.polonius_context {
             polonius_context.record_live_region_variance(
                 typeck.infcx.tcx,
-                typeck.universal_regions,
+                &typeck.universal_region_relations.universal_regions,
                 value,
             );
         }

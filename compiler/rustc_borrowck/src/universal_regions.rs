@@ -18,13 +18,13 @@
 use std::cell::Cell;
 use std::iter;
 
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::Diag;
 use rustc_hir::BodyOwnerKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::IndexVec;
-use rustc_infer::infer::NllRegionVariableOrigin;
+use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_macros::extension;
 use rustc_middle::ty::fold::{TypeFoldable, fold_regions};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -64,6 +64,8 @@ pub(crate) struct UniversalRegions<'tcx> {
 
     /// The total number of universal region variables instantiated.
     num_universals: usize,
+
+    pub existential_external_regions: FxIndexSet<RegionVid>,
 
     /// The "defining" type for this function, with all universal
     /// regions instantiated. For a closure or coroutine, this is the
@@ -223,7 +225,7 @@ pub(crate) enum RegionClassification {
     ///
     /// If we are not analyzing a closure/coroutine/inline-const,
     /// there are no external lifetimes.
-    External,
+    External { is_existential: bool },
 
     /// A **local** lifetime is one about which we know the full set
     /// of relevant constraints (that is, relationships to other named
@@ -254,19 +256,22 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// Given a reference to a closure type, extracts all the values
     /// from its free regions and returns a vector with them. This is
     /// used when the closure's creator checks that the
-    /// `ClosureRegionRequirements` are met. The requirements from
-    /// `ClosureRegionRequirements` are expressed in terms of
+    /// `ClosureRequirements` are met. The requirements from
+    /// `ClosureRequirements` are expressed in terms of
     /// `RegionVid` entries that map into the returned vector `V`: so
-    /// if the `ClosureRegionRequirements` contains something like
+    /// if the `ClosureRequirements` contains something like
     /// `'1: '2`, then the caller would impose the constraint that
     /// `V[1]: V[2]`.
     pub(crate) fn closure_mapping(
-        tcx: TyCtxt<'tcx>,
+        infcx: &InferCtxt<'tcx>,
         closure_args: GenericArgsRef<'tcx>,
         expected_num_vars: usize,
+        num_existential_external_vars: usize,
         closure_def_id: LocalDefId,
     ) -> IndexVec<RegionVid, ty::Region<'tcx>> {
-        let mut region_mapping = IndexVec::with_capacity(expected_num_vars);
+        let tcx = infcx.tcx;
+        let mut region_mapping =
+            IndexVec::with_capacity(expected_num_vars + num_existential_external_vars);
         region_mapping.push(tcx.lifetimes.re_static);
         tcx.for_each_free_region(&closure_args, |fr| {
             region_mapping.push(fr);
@@ -282,12 +287,27 @@ impl<'tcx> UniversalRegions<'tcx> {
             "index vec had unexpected number of variables"
         );
 
+        for _ in 0..num_existential_external_vars {
+            region_mapping.push(
+                infcx.next_nll_region_var(NllRegionVariableOrigin::Existential {
+                    from_forall: false,
+                }),
+            );
+        }
+
         region_mapping
     }
 
     /// Returns `true` if `r` is a member of this set of universal regions.
     pub(crate) fn is_universal_region(&self, r: RegionVid) -> bool {
-        (FIRST_GLOBAL_INDEX..self.num_universals).contains(&r.index())
+        if (FIRST_GLOBAL_INDEX..self.num_universals).contains(&r.index())
+            || self.existential_external_regions.contains(&r)
+        {
+            true
+        } else {
+            // println!("{r:?} not contained in {self:?}"); TODO
+            false
+        }
     }
 
     /// Classifies `r` as a universal region, returning `None` if this
@@ -297,9 +317,11 @@ impl<'tcx> UniversalRegions<'tcx> {
         if (FIRST_GLOBAL_INDEX..self.first_extern_index).contains(&index) {
             Some(RegionClassification::Global)
         } else if (self.first_extern_index..self.first_local_index).contains(&index) {
-            Some(RegionClassification::External)
+            Some(RegionClassification::External { is_existential: false })
         } else if (self.first_local_index..self.num_universals).contains(&index) {
             Some(RegionClassification::Local)
+        } else if self.existential_external_regions.contains(&r) {
+            Some(RegionClassification::External { is_existential: true })
         } else {
             None
         }
@@ -307,8 +329,10 @@ impl<'tcx> UniversalRegions<'tcx> {
 
     /// Returns an iterator over all the RegionVids corresponding to
     /// universally quantified free regions.
-    pub(crate) fn universal_regions_iter(&self) -> impl Iterator<Item = RegionVid> {
-        (FIRST_GLOBAL_INDEX..self.num_universals).map(RegionVid::from_usize)
+    pub(crate) fn universal_regions_iter(&self) -> impl Iterator<Item = RegionVid> + '_ {
+        (FIRST_GLOBAL_INDEX..self.num_universals)
+            .map(RegionVid::from_usize)
+            .chain(self.existential_external_regions.iter().copied())
     }
 
     /// Returns `true` if `r` is classified as a local region.
@@ -562,6 +586,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             first_extern_index,
             first_local_index,
             num_universals,
+            existential_external_regions: Default::default(),
             defining_ty,
             unnormalized_output_ty: *unnormalized_output_ty,
             unnormalized_input_tys,

@@ -3,6 +3,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, TyCtxtInferExt as _};
 use rustc_macros::extension;
+use rustc_middle::mir::InClosureRequirement;
 use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
@@ -18,6 +19,53 @@ use crate::session_diagnostics::{LifetimeMismatchOpaqueParam, NonGenericOpaqueTy
 use crate::universal_regions::RegionClassification;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
+    pub(crate) fn propagate_opaque_types(
+        &self,
+        infcx: &InferCtxt<'tcx>,
+        opaque_ty_decls: FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
+    ) -> Vec<InClosureRequirement<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)>> {
+        let mut propagated_decls = Vec::new();
+        for (opaque_type_key, concrete_type) in opaque_ty_decls {
+            let mut guar = None;
+            let propagated = fold_regions(infcx.tcx, (opaque_type_key, concrete_type), |r, _| {
+                // Use the SCC representative instead of directly using `region`.
+                // See [rustc-dev-guide chapter] § "Strict lifetime equality".
+                let scc = self.constraint_sccs.scc(r.as_var());
+                let vid = self.scc_representative(scc);
+                self.universal_regions()
+                    .universal_regions_iter()
+                    .filter(|&ur| {
+                        match self.universal_regions().region_classification(ur).unwrap() {
+                            RegionClassification::Global | RegionClassification::External { .. } => true,
+                            RegionClassification::Local => false,
+                        }
+                    })
+                    .find(|&ur| self.universal_region_relations.equal(vid, ur))
+                    .or_else(|| self.universal_regions().existential_external_regions.contains(&vid).then(|| vid))
+                    .map(|ur| ty::Region::new_var(infcx.tcx, ur))
+                    .unwrap_or_else(|| {
+                        ty::Region::new_error(
+                            infcx.tcx,
+                            *guar.get_or_insert_with(|| {
+                                infcx.tcx.dcx().span_err(
+                                    concrete_type.span,
+                                    format!("defining opaque type with local region in closure: {opaque_type_key:?} {concrete_type:?}"),
+                                )
+                            }),
+                        )
+                    })
+            });
+
+            propagated_decls.push(InClosureRequirement::bind(
+                infcx.tcx,
+                self.universal_regions().num_global_and_external_regions(),
+                &self.universal_regions().existential_external_regions,
+                propagated,
+            ));
+        }
+        propagated_decls
+    }
+
     /// Resolve any opaque types that were encountered while borrow checking
     /// this item. This is then used to get the type in the `type_of` query.
     ///
@@ -91,13 +139,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         NllRegionVariableOrigin::FreeRegion => self
                             .universal_regions()
                             .universal_regions_iter()
-                            .filter(|&ur| {
-                                // See [rustc-dev-guide chapter] § "Closure restrictions".
-                                !matches!(
-                                    self.universal_regions().region_classification(ur),
-                                    Some(RegionClassification::External)
-                                )
-                            })
                             .find(|&ur| self.universal_region_relations.equal(vid, ur))
                             .map(|ur| self.definitions[ur].external_name.unwrap()),
                         NllRegionVariableOrigin::Placeholder(placeholder) => {

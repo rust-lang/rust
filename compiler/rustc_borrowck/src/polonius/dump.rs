@@ -1,7 +1,7 @@
 use std::io;
 
 use rustc_middle::mir::pretty::{PrettyPrintMirOptions, dump_mir_with_options};
-use rustc_middle::mir::{Body, ClosureRegionRequirements, PassWhere};
+use rustc_middle::mir::{Body, ClosureRequirements, PassWhere};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::MirIncludeSpans;
 
@@ -19,7 +19,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
     regioncx: &RegionInferenceContext<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     localized_outlives_constraints: Option<LocalizedOutlivesConstraintSet>,
-    closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
+    closure_requirements: &Option<ClosureRequirements<'tcx>>,
 ) {
     let tcx = infcx.tcx;
     if !tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
@@ -49,7 +49,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
             emit_polonius_mir(
                 tcx,
                 regioncx,
-                closure_region_requirements,
+                closure_requirements,
                 borrow_set,
                 &localized_outlives_constraints,
                 pass_where,
@@ -64,7 +64,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 fn emit_polonius_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
-    closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
+    closure_requirements: &Option<ClosureRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
     localized_outlives_constraints: &LocalizedOutlivesConstraintSet,
     pass_where: PassWhere,
@@ -74,7 +74,7 @@ fn emit_polonius_mir<'tcx>(
     crate::nll::emit_nll_mir(
         tcx,
         regioncx,
-        closure_region_requirements,
+        closure_requirements,
         borrow_set,
         pass_where.clone(),
         out,
