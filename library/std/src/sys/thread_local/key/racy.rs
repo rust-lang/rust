@@ -79,6 +79,7 @@ impl LazyKey {
             },
         };
 
+        // TODO: This must be called for every thread that uses this LazyKey once!
         #[cfg(not(target_thread_local))]
         if self.dtor.is_some() {
             unsafe { register_dtor(self) };
