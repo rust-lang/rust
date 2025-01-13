@@ -2189,7 +2189,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let required_trait_path = self.tcx.def_path_str(trait_ref.def_id());
         let traits_with_same_path: UnordSet<_> = self
             .tcx
-            .all_traits()
+            .visible_traits()
             .filter(|trait_def_id| *trait_def_id != trait_ref.def_id())
             .map(|trait_def_id| (self.tcx.def_path_str(trait_def_id), trait_def_id))
             .filter(|(p, _)| *p == required_trait_path)

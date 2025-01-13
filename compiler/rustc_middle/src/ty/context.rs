@@ -2078,9 +2078,20 @@ impl<'tcx> TyCtxt<'tcx> {
         self.limits(()).move_size_limit
     }
 
+    /// All traits in the crate graph, including those not visible to the user.
     pub fn all_traits(self) -> impl Iterator<Item = DefId> + 'tcx {
         iter::once(LOCAL_CRATE)
             .chain(self.crates(()).iter().copied())
+            .flat_map(move |cnum| self.traits(cnum).iter().copied())
+    }
+
+    /// All traits that are visible within the crate graph (i.e. excluding private dependencies).
+    pub fn visible_traits(self) -> impl Iterator<Item = DefId> + 'tcx {
+        let visible_crates =
+            self.crates(()).iter().copied().filter(move |cnum| self.is_user_visible_dep(*cnum));
+
+        iter::once(LOCAL_CRATE)
+            .chain(visible_crates)
             .flat_map(move |cnum| self.traits(cnum).iter().copied())
     }
 
