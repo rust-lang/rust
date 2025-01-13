@@ -14,7 +14,15 @@ if [ -z "$target" ]; then
     target="$host_target"
 fi
 
-extra_flags=""
+# We enumerate features manually.
+extra_flags="--no-default-features"
+
+# Enable arch-specific routines when available.
+extra_flags="$extra_flags --features arch"
+
+# Always enable `unstable-float` since it expands available API but does not
+# change any implementations.
+extra_flags="$extra_flags --features unstable-float"
 
 # We need to specifically skip tests for musl-math-sys on systems that can't
 # build musl since otherwise `--all` will activate it.
@@ -44,11 +52,11 @@ case "$target" in
     # Targets that aren't cross compiled work fine
     # FIXME(ci): we should be able to enable aarch64 Linux here once GHA
     # support rolls out.
-    x86_64*) extra_flags="$extra_flags --features libm-test/test-multiprecision" ;;
-    i686*) extra_flags="$extra_flags --features libm-test/test-multiprecision" ;;
-    i586*) extra_flags="$extra_flags --features libm-test/test-multiprecision --features gmp-mpfr-sys/force-cross" ;;
+    x86_64*) extra_flags="$extra_flags --features libm-test/build-mpfr" ;;
+    i686*) extra_flags="$extra_flags --features libm-test/build-mpfr" ;;
+    i586*) extra_flags="$extra_flags --features libm-test/build-mpfr --features gmp-mpfr-sys/force-cross" ;;
     # Apple aarch64 is native
-    aarch64*apple*) extra_flags="$extra_flags --features libm-test/test-multiprecision" ;;
+    aarch64*apple*) extra_flags="$extra_flags --features libm-test/build-mpfr" ;;
 esac
 
 # FIXME: `STATUS_DLL_NOT_FOUND` testing macros on CI.
@@ -57,14 +65,8 @@ case "$target" in
     *windows-gnu) extra_flags="$extra_flags --exclude libm-macros" ;;
 esac
 
-# Make sure we can build with overriding features. We test the indibidual
-# features it controls separately.
-cargo check --no-default-features
-cargo check --features "force-soft-floats"
-
-# Always enable `unstable-float` since it expands available API but does not
-# change any implementations.
-extra_flags="$extra_flags --features unstable-float"
+# Make sure we can build with overriding features.
+cargo check -p libm --no-default-features
 
 if [ "${BUILD_ONLY:-}" = "1" ]; then
     cmd="cargo build --target $target --package libm"
@@ -80,11 +82,14 @@ else
     $cmd --features unstable-intrinsics
     $cmd --features unstable-intrinsics --benches
     
-    # Test the same in release mode, which also increases coverage.
+    # Test the same in release mode, which also increases coverage. Also ensure
+    # the soft float routines are checked.
     $cmd --profile release-checked 
+    $cmd --profile release-checked --features force-soft-floats
     $cmd --profile release-checked --features unstable-intrinsics
     $cmd --profile release-checked --features unstable-intrinsics --benches
 
-    ENSURE_NO_PANIC=1 cargo build --target "$target" --release
+    # Ensure that the routines do not panic.
+    ENSURE_NO_PANIC=1 cargo build -p libm --target "$target" --no-default-features --release
 fi
 

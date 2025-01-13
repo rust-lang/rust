@@ -126,7 +126,7 @@ impl TestEnv {
         let id = ctx.fn_ident;
         let op = id.math_op();
 
-        let will_run_mp = cfg!(feature = "test-multiprecision");
+        let will_run_mp = cfg!(feature = "build-mpfr");
 
         // Tests are pretty slow on non-64-bit targets, x86 MacOS, and targets that run in QEMU. Start
         // with a reduced number on these platforms.

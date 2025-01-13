@@ -1,6 +1,6 @@
 //! Test with "infinite precision"
 
-#![cfg(feature = "test-multiprecision")]
+#![cfg(feature = "build-mpfr")]
 
 use libm_test::domain::HasDomain;
 use libm_test::gen::random::RandomInput;

@@ -1,14 +1,14 @@
 //! `main` is just a wrapper to handle configuration.
 
-#[cfg(not(feature = "test-multiprecision"))]
+#[cfg(not(feature = "build-mpfr"))]
 fn main() {
     eprintln!("multiprecision not enabled; skipping extensive tests");
 }
 
-#[cfg(feature = "test-multiprecision")]
+#[cfg(feature = "build-mpfr")]
 mod run;
 
-#[cfg(feature = "test-multiprecision")]
+#[cfg(feature = "build-mpfr")]
 fn main() {
     run::run();
 }

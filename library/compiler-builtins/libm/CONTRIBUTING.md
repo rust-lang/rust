@@ -62,15 +62,12 @@ Check [PR #65] for an example.
 Normal tests can be executed with:
 
 ```sh
-cargo test
+# `--release` ables more test cases
+cargo test --release
 ```
 
-If you'd like to run tests with randomized inputs that get compared against
-infinite-precision results, run:
-
-```sh
-cargo test --features libm-test/test-multiprecision,libm-test/build-musl --release
-```
+If you are on a system that cannot build musl or MPFR, passing
+`--no-default-features` will run some limited tests.
 
 The multiprecision tests use the [`rug`] crate for bindings to MPFR. MPFR can
 be difficult to build on non-Unix systems, refer to [`gmp_mpfr_sys`] for help.

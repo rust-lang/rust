@@ -5,7 +5,7 @@
 pub mod domain;
 mod f8_impl;
 pub mod gen;
-#[cfg(feature = "test-multiprecision")]
+#[cfg(feature = "build-mpfr")]
 pub mod mpfloat;
 mod num;
 pub mod op;
