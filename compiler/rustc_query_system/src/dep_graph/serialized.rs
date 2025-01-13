@@ -462,7 +462,6 @@ impl NodeInfo {
 }
 
 struct Stat {
-    kind: DepKind,
     node_counter: u64,
     edge_counter: u64,
 }
@@ -524,8 +523,7 @@ impl<D: Deps> EncoderState<D> {
 
             // Outline the stats code as it's typically disabled and cold.
             outline(move || {
-                let stat =
-                    stats.entry(kind).or_insert(Stat { kind, node_counter: 0, edge_counter: 0 });
+                let stat = stats.entry(kind).or_insert(Stat { node_counter: 0, edge_counter: 0 });
                 stat.node_counter += 1;
                 stat.edge_counter += edge_count as u64;
             });
@@ -651,8 +649,8 @@ impl<D: Deps> GraphEncoder<D> {
         let mut status = self.status.lock();
         let status = status.as_mut().unwrap();
         if let Some(record_stats) = &status.stats {
-            let mut stats: Vec<_> = record_stats.values().collect();
-            stats.sort_by_key(|s| -(s.node_counter as i64));
+            let mut stats: Vec<_> = record_stats.iter().collect();
+            stats.sort_by_key(|(_, s)| -(s.node_counter as i64));
 
             const SEPARATOR: &str = "[incremental] --------------------------------\
                                      ----------------------------------------------\
@@ -677,14 +675,14 @@ impl<D: Deps> GraphEncoder<D> {
             );
             eprintln!("{SEPARATOR}");
 
-            for stat in stats {
+            for (kind, stat) in stats {
                 let node_kind_ratio =
                     (100.0 * (stat.node_counter as f64)) / (status.total_node_count as f64);
                 let node_kind_avg_edges = (stat.edge_counter as f64) / (stat.node_counter as f64);
 
                 eprintln!(
                     "[incremental]  {:<36}|{:>16.1}% |{:>12} |{:>17.1} |",
-                    format!("{:?}", stat.kind),
+                    format!("{:?}", kind),
                     node_kind_ratio,
                     stat.node_counter,
                     node_kind_avg_edges,

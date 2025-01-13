@@ -11,7 +11,9 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{QueryInvocationId, SelfProfilerRef};
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc};
+#[cfg(debug_assertions)]
+use rustc_data_structures::sync::AtomicU64;
+use rustc_data_structures::sync::{AtomicU32, Lock, Lrc};
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
@@ -484,9 +486,8 @@ impl<D: Deps> DepGraph<D> {
                 };
                 let task_deps = &mut *task_deps;
 
-                if cfg!(debug_assertions) {
-                    data.current.total_read_count.fetch_add(1, Ordering::Relaxed);
-                }
+                #[cfg(debug_assertions)]
+                data.current.total_read_count.fetch_add(1, Ordering::Relaxed);
 
                 // As long as we only have a low number of reads we can avoid doing a hash
                 // insert and potentially allocating/reallocating the hashmap
@@ -514,7 +515,8 @@ impl<D: Deps> DepGraph<D> {
                             }
                         }
                     }
-                } else if cfg!(debug_assertions) {
+                } else {
+                    #[cfg(debug_assertions)]
                     data.current.total_duplicate_read_count.fetch_add(1, Ordering::Relaxed);
                 }
             })
@@ -962,10 +964,13 @@ impl<D: Deps> DepGraph<D> {
 
     pub fn print_incremental_info(&self) {
         if let Some(data) = &self.data {
+            #[cfg(debug_assertions)]
             data.current.encoder.print_incremental_info(
                 data.current.total_read_count.load(Ordering::Relaxed),
                 data.current.total_duplicate_read_count.load(Ordering::Relaxed),
-            )
+            );
+            #[cfg(not(debug_assertions))]
+            data.current.encoder.print_incremental_info(0, 0)
         }
     }
 
@@ -1082,7 +1087,10 @@ pub(super) struct CurrentDepGraph<D: Deps> {
 
     /// These are simple counters that are for profiling and
     /// debugging and only active with `debug_assertions`.
+    #[cfg(debug_assertions)]
     total_read_count: AtomicU64,
+
+    #[cfg(debug_assertions)]
     total_duplicate_read_count: AtomicU64,
 }
 
@@ -1135,7 +1143,9 @@ impl<D: Deps> CurrentDepGraph<D> {
             forbidden_edge,
             #[cfg(debug_assertions)]
             fingerprints: Lock::new(IndexVec::from_elem_n(None, new_node_count_estimate)),
+            #[cfg(debug_assertions)]
             total_read_count: AtomicU64::new(0),
+            #[cfg(debug_assertions)]
             total_duplicate_read_count: AtomicU64::new(0),
         }
     }
