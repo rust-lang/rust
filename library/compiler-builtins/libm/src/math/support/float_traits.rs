@@ -1,6 +1,6 @@
 use core::{fmt, mem, ops};
 
-use super::int_traits::{CastFrom, CastInto, Int, MinInt};
+use super::int_traits::{CastFrom, Int, MinInt};
 
 /// Trait for some basic operations on floats
 #[allow(dead_code)]
@@ -108,7 +108,7 @@ pub trait Float:
 
     /// Returns the exponent, not adjusting for bias, not accounting for subnormals or zero.
     fn exp(self) -> i32 {
-        ((self.to_bits() & Self::EXP_MASK) >> Self::SIG_BITS).cast()
+        (u32::cast_from(self.to_bits() >> Self::SIG_BITS) & Self::EXP_MAX).signed()
     }
 
     /// Extract the exponent and adjust it for bias, not accounting for subnormals or zero.
