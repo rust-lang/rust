@@ -8,7 +8,6 @@
 //! not be used external to this module.
 
 use std::borrow::Cow;
-use std::cell::Cell;
 use std::cmp::Ordering;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
@@ -146,22 +145,6 @@ impl Buffer {
     }
 }
 
-pub(crate) fn comma_sep<T: Display>(
-    items: impl Iterator<Item = T>,
-    space_after_comma: bool,
-) -> impl Display {
-    let items = Cell::new(Some(items));
-    fmt::from_fn(move |f| {
-        for (i, item) in items.take().unwrap().enumerate() {
-            if i != 0 {
-                write!(f, ",{}", if space_after_comma { " " } else { "" })?;
-            }
-            item.fmt(f)?;
-        }
-        Ok(())
-    })
-}
-
 pub(crate) fn print_generic_bounds<'a, 'tcx: 'a>(
     bounds: &'a [clean::GenericBound],
     cx: &'a Context<'tcx>,
@@ -169,13 +152,12 @@ pub(crate) fn print_generic_bounds<'a, 'tcx: 'a>(
     fmt::from_fn(move |f| {
         let mut bounds_dup = FxHashSet::default();
 
-        for (i, bound) in bounds.iter().filter(|b| bounds_dup.insert(*b)).enumerate() {
-            if i > 0 {
-                f.write_str(" + ")?;
-            }
-            bound.print(cx).fmt(f)?;
-        }
-        Ok(())
+        bounds
+            .iter()
+            .filter(|b| bounds_dup.insert(*b))
+            .map(|bound| bound.print(cx))
+            .format(" + ")
+            .fmt(f)
     })
 }
 
@@ -190,12 +172,7 @@ impl clean::GenericParamDef {
 
                 if !outlives.is_empty() {
                     f.write_str(": ")?;
-                    for (i, lt) in outlives.iter().enumerate() {
-                        if i != 0 {
-                            f.write_str(" + ")?;
-                        }
-                        write!(f, "{}", lt.print())?;
-                    }
+                    outlives.iter().map(|lt| lt.print()).format(" + ").fmt(f)?;
                 }
 
                 Ok(())
@@ -246,9 +223,9 @@ impl clean::Generics {
             }
 
             if f.alternate() {
-                write!(f, "<{:#}>", comma_sep(real_params.map(|g| g.print(cx)), true))
+                write!(f, "<{:#}>", real_params.map(|g| g.print(cx)).format(", "))
             } else {
-                write!(f, "&lt;{}&gt;", comma_sep(real_params.map(|g| g.print(cx)), true))
+                write!(f, "&lt;{}&gt;", real_params.map(|g| g.print(cx)).format(", "))
             }
         })
     }
@@ -318,7 +295,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             return Ok(());
         }
 
-        let where_preds = comma_sep(where_predicates, false);
+        let where_preds = where_predicates.format(",");
         let clause = if f.alternate() {
             if ending == Ending::Newline {
                 format!(" where{where_preds},")
@@ -415,12 +392,7 @@ impl clean::GenericBound {
                 } else {
                     f.write_str("use&lt;")?;
                 }
-                for (i, arg) in args.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
-                    }
-                    arg.fmt(f)?;
-                }
+                args.iter().format(", ").fmt(f)?;
                 if f.alternate() { f.write_str(">") } else { f.write_str("&gt;") }
             }
         })
@@ -524,11 +496,7 @@ pub(crate) enum HrefError {
 // Panics if `syms` is empty.
 pub(crate) fn join_with_double_colon(syms: &[Symbol]) -> String {
     let mut s = String::with_capacity(estimate_item_path_byte_length(syms.len()));
-    s.push_str(syms[0].as_str());
-    for sym in &syms[1..] {
-        s.push_str("::");
-        s.push_str(sym.as_str());
-    }
+    write!(s, "{}", syms.iter().format("::")).unwrap();
     s
 }
 
@@ -572,20 +540,20 @@ fn generate_macro_def_id_path(
     }
 
     if let Some(last) = path.last_mut() {
-        *last = Symbol::intern(&format!("macro.{}.html", last.as_str()));
+        *last = Symbol::intern(&format!("macro.{last}.html"));
     }
 
     let url = match cache.extern_locations[&def_id.krate] {
         ExternalLocation::Remote(ref s) => {
             // `ExternalLocation::Remote` always end with a `/`.
-            format!("{s}{path}", path = path.iter().map(|p| p.as_str()).join("/"))
+            format!("{s}{path}", path = path.iter().format("/"))
         }
         ExternalLocation::Local => {
             // `root_path` always end with a `/`.
             format!(
                 "{root_path}{path}",
                 root_path = root_path.unwrap_or(""),
-                path = path.iter().map(|p| p.as_str()).join("/")
+                path = path.iter().format("/")
             )
         }
         ExternalLocation::Unknown => {
@@ -682,9 +650,8 @@ fn make_href(
             url_parts.push("index.html");
         }
         _ => {
-            let prefix = shortty.as_str();
             let last = fqp.last().unwrap();
-            url_parts.push_fmt(format_args!("{prefix}.{last}.html"));
+            url_parts.push_fmt(format_args!("{shortty}.{last}.html"));
         }
     }
     Ok((url_parts.finish(), shortty, fqp.to_vec()))
@@ -950,12 +917,7 @@ fn tybounds<'a, 'tcx: 'a>(
     cx: &'a Context<'tcx>,
 ) -> impl Display + 'a + Captures<'tcx> {
     fmt::from_fn(move |f| {
-        for (i, bound) in bounds.iter().enumerate() {
-            if i > 0 {
-                write!(f, " + ")?;
-            }
-            bound.print(cx).fmt(f)?;
-        }
+        bounds.iter().map(|bound| bound.print(cx)).format(" + ").fmt(f)?;
         if let Some(lt) = lt {
             // We don't need to check `alternate` since we can be certain that
             // the lifetime doesn't contain any characters which need escaping.
@@ -974,7 +936,7 @@ fn print_higher_ranked_params_with_space<'a, 'tcx: 'a>(
         if !params.is_empty() {
             f.write_str(keyword)?;
             f.write_str(if f.alternate() { "<" } else { "&lt;" })?;
-            comma_sep(params.iter().map(|lt| lt.print(cx)), true).fmt(f)?;
+            params.iter().map(|lt| lt.print(cx)).format(", ").fmt(f)?;
             f.write_str(if f.alternate() { "> " } else { "&gt; " })?;
         }
         Ok(())
@@ -1025,9 +987,7 @@ fn fmt_type(
         clean::Primitive(clean::PrimitiveType::Never) => {
             primitive_link(f, PrimitiveType::Never, format_args!("!"), cx)
         }
-        clean::Primitive(prim) => {
-            primitive_link(f, prim, format_args!("{}", prim.as_sym().as_str()), cx)
-        }
+        clean::Primitive(prim) => primitive_link(f, prim, format_args!("{}", prim.as_sym()), cx),
         clean::BareFunction(ref decl) => {
             print_higher_ranked_params_with_space(&decl.generic_params, cx, "for").fmt(f)?;
             decl.safety.print_with_space().fmt(f)?;
@@ -1067,18 +1027,13 @@ fn fmt_type(
                     primitive_link(
                         f,
                         PrimitiveType::Tuple,
-                        format_args!("({})", generic_names.iter().map(|s| s.as_str()).join(", ")),
+                        format_args!("({})", generic_names.iter().format(", ")),
                         cx,
                     )
                 } else {
-                    write!(f, "(")?;
-                    for (i, item) in many.iter().enumerate() {
-                        if i != 0 {
-                            write!(f, ", ")?;
-                        }
-                        item.print(cx).fmt(f)?;
-                    }
-                    write!(f, ")")
+                    f.write_str("(")?;
+                    many.iter().map(|item| item.print(cx)).format(", ").fmt(f)?;
+                    f.write_str(")")
                 }
             }
         },
@@ -1407,14 +1362,16 @@ impl clean::Arguments {
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
         fmt::from_fn(move |f| {
-            for (i, input) in self.values.iter().enumerate() {
-                write!(f, "{}: ", input.name)?;
-                input.type_.print(cx).fmt(f)?;
-                if i + 1 < self.values.len() {
-                    write!(f, ", ")?;
-                }
-            }
-            Ok(())
+            self.values
+                .iter()
+                .map(|input| {
+                    fmt::from_fn(|f| {
+                        write!(f, "{}: ", input.name)?;
+                        input.type_.print(cx).fmt(f)
+                    })
+                })
+                .format(", ")
+                .fmt(f)
         })
     }
 }
@@ -1714,12 +1671,7 @@ impl clean::ImportSource {
                 }
                 let name = self.path.last();
                 if let hir::def::Res::PrimTy(p) = self.path.res {
-                    primitive_link(
-                        f,
-                        PrimitiveType::from(p),
-                        format_args!("{}", name.as_str()),
-                        cx,
-                    )?;
+                    primitive_link(f, PrimitiveType::from(p), format_args!("{name}"), cx)?;
                 } else {
                     f.write_str(name.as_str())?;
                 }
