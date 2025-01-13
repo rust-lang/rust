@@ -471,6 +471,32 @@ impl MpOp for crate::op::lgammaf_r::Routine {
     }
 }
 
+/* stub implementations so we don't need to special case them */
+
+impl MpOp for crate::op::nextafter::Routine {
+    type MpTy = MpFloat;
+
+    fn new_mp() -> Self::MpTy {
+        unimplemented!("nextafter does not yet have a MPFR operation");
+    }
+
+    fn run(_this: &mut Self::MpTy, _input: Self::RustArgs) -> Self::RustRet {
+        unimplemented!("nextafter does not yet have a MPFR operation");
+    }
+}
+
+impl MpOp for crate::op::nextafterf::Routine {
+    type MpTy = MpFloat;
+
+    fn new_mp() -> Self::MpTy {
+        unimplemented!("nextafter does not yet have a MPFR operation");
+    }
+
+    fn run(_this: &mut Self::MpTy, _input: Self::RustArgs) -> Self::RustRet {
+        unimplemented!("nextafter does not yet have a MPFR operation");
+    }
+}
+
 /// `rug` does not provide `remquo` so this exposes `mpfr_remquo`. See rug#76.
 fn mpfr_remquo(r: &mut MpFloat, x: &MpFloat, y: &MpFloat, round: Round) -> (Ordering, c_long) {
     let r = r.as_raw_mut();
