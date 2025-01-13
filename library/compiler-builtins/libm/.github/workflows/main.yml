@@ -131,10 +131,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
     - name: Download musl source
       run: ./ci/download-musl.sh
-    - run: |
-        cargo clippy --all \
-          --features libm-test/build-musl,libm-test/build-mpfr \
-          --all-targets
+    - run: cargo clippy --all --all-features --all-targets
 
   builtins:
     name: Check use with compiler-builtins

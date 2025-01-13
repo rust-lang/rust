@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [features]
-default = ["unstable-float"]
+default = ["build-mpfr", "build-musl", "unstable-float"]
 
 # Propagated from libm because this affects which functions we test.
 unstable-float = ["libm/unstable-float", "rug?/nightly-float"]
