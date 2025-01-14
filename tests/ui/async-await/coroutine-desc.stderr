@@ -30,7 +30,6 @@ LL |     fun(one(), two());
    |     |   expected all arguments to be this future type because they need to match the type of this parameter
    |     arguments to this function are incorrect
    |
-   = help: consider `await`ing on both `Future`s
    = note: distinct uses of `impl Trait` result in different opaque types
 note: function defined here
   --> $DIR/coroutine-desc.rs:7:4
