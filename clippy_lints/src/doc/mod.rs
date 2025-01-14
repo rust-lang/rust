@@ -430,6 +430,39 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    ///
+    /// Detects overindented list items in doc comments where the continuation
+    /// lines are indented more than necessary.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Overindented list items in doc comments can lead to inconsistent and
+    /// poorly formatted documentation when rendered. Excessive indentation may
+    /// cause the text to be misinterpreted as a nested list item or code block,
+    /// affecting readability and the overall structure of the documentation.
+    ///
+    /// ### Example
+    ///
+    /// ```no_run
+    /// /// - This is the first item in a list
+    /// ///      and this line is overindented.
+    /// # fn foo() {}
+    /// ```
+    ///
+    /// Fixes this into:
+    /// ```no_run
+    /// /// - This is the first item in a list
+    /// ///   and this line is overindented.
+    /// # fn foo() {}
+    /// ```
+    #[clippy::version = "1.80.0"]
+    pub DOC_OVERINDENTED_LIST_ITEMS,
+    style,
+    "ensure list items are not overindented"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks if the first paragraph in the documentation of items listed in the module page is too long.
     ///
     /// ### Why is this bad?
@@ -617,6 +650,7 @@ impl_lint_pass!(Documentation => [
     SUSPICIOUS_DOC_COMMENTS,
     EMPTY_DOCS,
     DOC_LAZY_CONTINUATION,
+    DOC_OVERINDENTED_LIST_ITEMS,
     EMPTY_LINE_AFTER_OUTER_ATTR,
     EMPTY_LINE_AFTER_DOC_COMMENTS,
     TOO_LONG_FIRST_DOC_PARAGRAPH,
