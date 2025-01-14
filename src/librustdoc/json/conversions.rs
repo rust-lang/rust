@@ -622,7 +622,7 @@ impl FromClean<clean::Type> for Type {
 impl FromClean<clean::Path> for Path {
     fn from_clean(path: clean::Path, renderer: &JsonRenderer<'_>) -> Path {
         Path {
-            name: path.whole_name(),
+            name: path.last_opt().map_or(String::from(""), |s| String::from(s.as_str())),
             id: renderer.id_from_item_default(path.def_id().into()),
             args: path.segments.last().map(|args| Box::new(args.clone().args.into_json(renderer))),
         }

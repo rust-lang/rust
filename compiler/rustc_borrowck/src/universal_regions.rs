@@ -467,15 +467,13 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 self.infcx.tcx.local_parent(self.mir_def),
                 |r| {
                     debug!(?r);
-                    if !indices.indices.contains_key(&r) {
-                        let region_vid = {
-                            let name = r.get_name_or_anon();
-                            self.infcx.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
-                        };
+                    let region_vid = {
+                        let name = r.get_name_or_anon();
+                        self.infcx.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
+                    };
 
-                        debug!(?region_vid);
-                        indices.insert_late_bound_region(r, region_vid.as_var());
-                    }
+                    debug!(?region_vid);
+                    indices.insert_late_bound_region(r, region_vid.as_var());
                 },
             );
 
@@ -484,21 +482,17 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             self.infcx.num_region_vars()
         };
 
-        // "Liberate" the late-bound regions. These correspond to
-        // "local" free regions.
+        // Converse of above, if this is a function/closure then the late-bound regions declared
+        // on its signature are local.
+        //
+        // We manually loop over `bound_inputs_and_output` instead of using
+        // `for_each_late_bound_region_in_item` as we may need to add the otherwise
+        // implicit `ClosureEnv` region.
         let bound_inputs_and_output = self.compute_inputs_and_output(&indices, defining_ty);
-
-        let inputs_and_output = self.infcx.replace_bound_regions_with_nll_infer_vars(
-            FR,
-            self.mir_def,
-            bound_inputs_and_output,
-            &mut indices,
-        );
-        // Converse of above, if this is a function/closure then the late-bound regions declared on its
-        // signature are local.
-        for_each_late_bound_region_in_item(self.infcx.tcx, self.mir_def, |r| {
-            debug!(?r);
-            if !indices.indices.contains_key(&r) {
+        for (idx, bound_var) in bound_inputs_and_output.bound_vars().iter().enumerate() {
+            if let ty::BoundVariableKind::Region(kind) = bound_var {
+                let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);
+                let r = ty::Region::new_late_param(self.infcx.tcx, self.mir_def.to_def_id(), kind);
                 let region_vid = {
                     let name = r.get_name_or_anon();
                     self.infcx.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
@@ -507,7 +501,12 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 debug!(?region_vid);
                 indices.insert_late_bound_region(r, region_vid.as_var());
             }
-        });
+        }
+        let inputs_and_output = self.infcx.replace_bound_regions_with_nll_infer_vars(
+            self.mir_def,
+            bound_inputs_and_output,
+            &indices,
+        );
 
         let (unnormalized_output_ty, mut unnormalized_input_tys) =
             inputs_and_output.split_last().unwrap();
@@ -832,10 +831,9 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
     #[instrument(level = "debug", skip(self, indices))]
     fn replace_bound_regions_with_nll_infer_vars<T>(
         &self,
-        origin: NllRegionVariableOrigin,
         all_outlive_scope: LocalDefId,
         value: ty::Binder<'tcx, T>,
-        indices: &mut UniversalRegionIndices<'tcx>,
+        indices: &UniversalRegionIndices<'tcx>,
     ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
@@ -845,18 +843,7 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
             let kind = ty::LateParamRegionKind::from_bound(br.var, br.kind);
             let liberated_region =
                 ty::Region::new_late_param(self.tcx, all_outlive_scope.to_def_id(), kind);
-            let region_vid = {
-                let name = match br.kind.get_name() {
-                    Some(name) => name,
-                    _ => sym::anon,
-                };
-
-                self.next_nll_region_var(origin, || RegionCtxt::Bound(name))
-            };
-
-            indices.insert_late_bound_region(liberated_region, region_vid.as_var());
-            debug!(?liberated_region, ?region_vid);
-            region_vid
+            ty::Region::new_var(self.tcx, indices.to_region_vid(liberated_region))
         });
         value
     }
@@ -870,7 +857,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     /// well. These are used for error reporting.
     fn insert_late_bound_region(&mut self, r: ty::Region<'tcx>, vid: ty::RegionVid) {
         debug!("insert_late_bound_region({:?}, {:?})", r, vid);
-        self.indices.insert(r, vid);
+        assert_eq!(self.indices.insert(r, vid), None);
     }
 
     /// Converts `r` into a local inference variable: `r` can either

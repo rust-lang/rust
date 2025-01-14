@@ -9,7 +9,7 @@ LL |     for<'a> || -> () { for<'c> |_: &'a ()| -> () {}; };
                extern "rust-call" fn((&(),)),
                (),
            ]
-   = note: late-bound region is '?4
+   = note: late-bound region is '?3
    = note: late-bound region is '?2
    = note: number of external vids: 3
    = note: where '?1: '?2
@@ -26,7 +26,7 @@ LL |     for<'a> || -> () { for<'c> |_: &'a ()| -> () {}; };
                extern "rust-call" fn(()),
                (),
            ]
-   = note: late-bound region is '?2
+   = note: late-bound region is '?1
 
 note: no external requirements
   --> $DIR/nested-closures-regions.rs:7:1
