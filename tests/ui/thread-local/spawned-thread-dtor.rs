@@ -15,6 +15,8 @@ impl Drop for Foo {
 thread_local!(static FOO: Foo = Foo);
 
 fn main() {
+    FOO.with(|_| {});
+
     std::thread::spawn(|| {
         FOO.with(|_| {});
         std::process::exit(0);
