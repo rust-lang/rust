@@ -90,6 +90,7 @@ ENV HOST_TARGET x86_64-unknown-linux-gnu
 #ENV FORCE_CI_RUSTC 1
 
 COPY scripts/shared.sh /scripts/
+COPY scripts/libgccjit.version /scripts/
 COPY scripts/build-gccjit.sh /scripts/
 
 RUN /scripts/build-gccjit.sh /scripts

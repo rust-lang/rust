@@ -56,6 +56,7 @@ no_llvm_build
 /src/tools/x/target
 # Created by default with `src/ci/docker/run.sh`
 /obj/
+/src/ci/docker/scripts/libgccjit.version
 # Created by nix dev shell / .envrc
 src/tools/nix-dev-shell/flake.lock
 

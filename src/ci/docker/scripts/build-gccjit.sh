@@ -2,12 +2,12 @@
 
 GIT_REPO="https://github.com/rust-lang/gcc"
 
-# This commit hash needs to be updated to use a more recent gcc fork version.
-GIT_COMMIT="45648c2edd4ecd862d9f08196d3d6c6ccba79f07"
-
 set -ex
 
 cd $1
+
+# This is the forked git commit hash used by the GCC backend.
+GIT_COMMIT="$(head -n 1 libgccjit.version)"
 
 source shared.sh
 

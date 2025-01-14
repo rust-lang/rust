@@ -324,6 +324,7 @@ SUMMARY_FILE=github-summary.md
 touch $objdir/${SUMMARY_FILE}
 
 extra_env=""
+cp /checkout/compiler/rustc_codegen_gcc/libgccjit.version /checkout/src/ci/docker/scripts/libgccjit.version
 if [ "$ENABLE_GCC_CODEGEN" = "1" ]; then
   extra_env="$extra_env --env ENABLE_GCC_CODEGEN=1"
   # Fix rustc_codegen_gcc lto issues.

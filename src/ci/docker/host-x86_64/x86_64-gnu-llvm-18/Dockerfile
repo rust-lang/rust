@@ -55,6 +55,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set rust.thin-lto-import-instr-limit=10
 
 COPY scripts/shared.sh /scripts/
+COPY scripts/libgccjit.version /scripts/
 COPY scripts/build-gccjit.sh /scripts/
 
 RUN /scripts/build-gccjit.sh /scripts
