@@ -19,11 +19,9 @@ use crate::sys_common::{AsInner, IntoInner};
 use crate::{fs, io};
 
 /// Raw file descriptors.
-#[rustc_allowed_through_unstable_modules]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(target_os = "hermit"))]
 pub type RawFd = raw::c_int;
-#[rustc_allowed_through_unstable_modules]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(target_os = "hermit")]
 pub type RawFd = i32;
@@ -33,7 +31,6 @@ pub type RawFd = i32;
 /// This is only available on unix and WASI platforms and must be imported in
 /// order to call the method. Windows platforms have a corresponding
 /// `AsRawHandle` and `AsRawSocket` set of traits.
-#[rustc_allowed_through_unstable_modules]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsRawFd {
     /// Extracts the raw file descriptor.
@@ -67,7 +64,6 @@ pub trait AsRawFd {
 
 /// A trait to express the ability to construct an object from a raw file
 /// descriptor.
-#[rustc_allowed_through_unstable_modules]
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 pub trait FromRawFd {
     /// Constructs a new instance of `Self` from the given raw file
@@ -112,7 +108,6 @@ pub trait FromRawFd {
 
 /// A trait to express the ability to consume an object and acquire ownership of
 /// its raw file descriptor.
-#[rustc_allowed_through_unstable_modules]
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 pub trait IntoRawFd {
     /// Consumes this object, returning the raw underlying file descriptor.
