@@ -1032,6 +1032,37 @@ fn check_impl_items_against_trait<'tcx>(
 
     let trait_def = tcx.trait_def(trait_ref.def_id);
 
+    let infcx = tcx
+        .infer_ctxt()
+        // typeck writeback gives us predicates with their regions erased.
+        // As borrowck already has checked lifetimes, we do not need to do it again.
+        .ignoring_regions()
+        .build(TypingMode::non_body_analysis());
+
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+    let cause = ObligationCause::misc(tcx.def_span(impl_id), impl_id);
+    let param_env = tcx.param_env(impl_id);
+
+    let self_is_guaranteed_unsized = match tcx
+        .struct_tail_raw(
+            trait_ref.self_ty(),
+            |ty| {
+                ocx.structurally_normalize_ty(&cause, param_env, ty).unwrap_or_else(|_| {
+                    Ty::new_error_with_message(
+                        tcx,
+                        tcx.def_span(impl_id),
+                        "struct tail should be computable",
+                    )
+                })
+            },
+            || (),
+        )
+        .kind()
+    {
+        ty::Dynamic(_, _, ty::DynKind::Dyn) | ty::Slice(_) | ty::Str => true,
+        _ => false,
+    };
+
     for &impl_item in impl_item_refs {
         let ty_impl_item = tcx.associated_item(impl_item);
         let ty_trait_item = if let Some(trait_item_id) = ty_impl_item.trait_item_def_id {
@@ -1061,6 +1092,15 @@ fn check_impl_items_against_trait<'tcx>(
             }
         }
 
+        if self_is_guaranteed_unsized && tcx.generics_require_sized_self(ty_trait_item.def_id) {
+            tcx.emit_node_span_lint(
+                rustc_lint_defs::builtin::DEAD_CODE,
+                tcx.local_def_id_to_hir_id(ty_impl_item.def_id.expect_local()),
+                tcx.def_span(ty_impl_item.def_id),
+                errors::UselessImplItem,
+            )
+        }
+
         check_specialization_validity(
             tcx,
             trait_def,
@@ -1084,7 +1124,11 @@ fn check_impl_items_against_trait<'tcx>(
                 .as_ref()
                 .is_some_and(|node_item| node_item.item.defaultness(tcx).has_value());
 
-            if !is_implemented && tcx.defaultness(impl_id).is_final() {
+            if !is_implemented
+                && tcx.defaultness(impl_id).is_final()
+                // unsized types don't need to implement methods that have `Self: Sized` bounds.
+                && !(self_is_guaranteed_unsized && tcx.generics_require_sized_self(trait_item_id))
+            {
                 missing_items.push(tcx.associated_item(trait_item_id));
             }
 

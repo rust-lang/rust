@@ -1,3 +1,7 @@
+error: reached the recursion limit finding the struct tail for `K`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "20"]`
+
 error: reached the recursion limit finding the struct tail for `Bottom`
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "20"]`
@@ -21,7 +25,7 @@ LL |     let x: &Bottom = &t;
    = note: expected reference `&Bottom`
               found reference `&Top`
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0055, E0308.
 For more information about an error, try `rustc --explain E0055`.
