@@ -34,7 +34,8 @@ Previously, due to a [rustc bug], stable items inside unstable modules were
 available to stable code in that location.
 As of <!-- date-check --> September 2024, items with [accidentally stabilized
 paths] are marked with the `#[rustc_allowed_through_unstable_modules]` attribute
-to prevent code dependent on those paths from breaking.
+to prevent code dependent on those paths from breaking. Do *not* add this attribute
+to any more items unless that is needed to avoid breaking changes.
 
 The `unstable` attribute may also have the `soft` value, which makes it a
 future-incompatible deny-by-default lint instead of a hard error. This is used
