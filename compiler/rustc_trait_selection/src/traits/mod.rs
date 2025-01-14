@@ -714,9 +714,18 @@ pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause
     }
     let errors = ocx.select_all_or_error();
 
-    let result = !errors.is_empty();
-    debug!("impossible_predicates = {:?}", result);
-    result
+    if !errors.is_empty() {
+        return true;
+    }
+
+    // Leak check for any higher-ranked trait mismatches.
+    // We only need to do this in the old solver, since the new solver already
+    // leak-checks.
+    if !infcx.next_trait_solver() && infcx.leak_check(ty::UniverseIndex::ROOT, None).is_err() {
+        return true;
+    }
+
+    false
 }
 
 fn instantiate_and_check_impossible_predicates<'tcx>(
