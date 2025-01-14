@@ -145,7 +145,7 @@ fn current_dll_path() -> Result<PathBuf, String> {
     .map_err(|e| e.to_string())?;
 
     let mut filename = vec![0; 1024];
-    let n = unsafe { GetModuleFileNameW(module, &mut filename) } as usize;
+    let n = unsafe { GetModuleFileNameW(Some(module), &mut filename) } as usize;
     if n == 0 {
         return Err(format!("GetModuleFileNameW failed: {}", io::Error::last_os_error()));
     }
