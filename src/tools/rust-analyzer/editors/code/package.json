@@ -366,7 +366,7 @@
                     },
                     "rust-analyzer.showSyntaxTree": {
                         "markdownDescription": "Whether to show the syntax tree view.",
-                        "default": true,
+                        "default": false,
                         "type": "boolean"
                     },
                     "rust-analyzer.testExplorer": {
