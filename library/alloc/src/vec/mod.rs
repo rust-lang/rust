@@ -2518,8 +2518,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_pop_if)]
-    ///
     /// let mut vec = vec![1, 2, 3, 4];
     /// let pred = |x: &mut i32| *x % 2 == 0;
     ///
@@ -2527,7 +2525,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, [1, 2, 3]);
     /// assert_eq!(vec.pop_if(pred), None);
     /// ```
-    #[unstable(feature = "vec_pop_if", issue = "122741")]
+    #[stable(feature = "vec_pop_if", since = "CURRENT_RUSTC_VERSION")]
     pub fn pop_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
         let last = self.last_mut()?;
         if predicate(last) { self.pop() } else { None }
