@@ -107,6 +107,10 @@ enum BlockFrame {
         /// If true, then statement discards result from evaluating
         /// the expression (such as examples 1 and 2 above).
         ignores_expr_result: bool,
+
+        /// If true, then statement was originally written with a trailing
+        /// semicolon.
+        semi: bool,
     },
 
     /// Evaluation is currently within the tail expression of a block.
@@ -117,7 +121,7 @@ enum BlockFrame {
         /// the result of evaluating the block's tail expression.
         ///
         /// Example: `let _ = { STMT_1; EXPR };`
-        tail_result_is_ignored: bool,
+        tail_result_is_ignored: TailResultIgnored,
 
         /// `Span` of the tail expression.
         span: Span,
@@ -287,24 +291,31 @@ impl BlockContext {
     }
 
     /// Looks at the topmost frame on the BlockContext and reports
-    /// whether its one that would discard a block tail result.
+    /// whether it's one that would discard a block tail result.
     ///
     /// Unlike `currently_within_ignored_tail_expression`, this does
     /// *not* skip over `SubExpr` frames: here, we want to know
     /// whether the block result itself is discarded.
-    fn currently_ignores_tail_results(&self) -> bool {
+    fn currently_ignores_tail_results(&self) -> TailResultIgnored {
         match self.0.last() {
             // no context: conservatively assume result is read
-            None => false,
+            None => TailResultIgnored::False,
 
             // sub-expression: block result feeds into some computation
-            Some(BlockFrame::SubExpr) => false,
+            Some(BlockFrame::SubExpr) => TailResultIgnored::False,
 
             // otherwise: use accumulated is_ignored state.
-            Some(
-                BlockFrame::TailExpr { tail_result_is_ignored: ignored, .. }
-                | BlockFrame::Statement { ignores_expr_result: ignored },
-            ) => *ignored,
+            Some(BlockFrame::TailExpr { tail_result_is_ignored: ignored, .. }) => *ignored,
+
+            Some(BlockFrame::Statement { ignores_expr_result: ignored, semi }) => {
+                if !ignored {
+                    TailResultIgnored::False
+                } else if *semi {
+                    TailResultIgnored::TrueWithSemi
+                } else {
+                    TailResultIgnored::TrueNoSemi
+                }
+            }
         }
     }
 }

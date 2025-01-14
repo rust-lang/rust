@@ -128,11 +128,12 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         print_indented!(self, "Stmt {", depth_lvl);
 
         match kind {
-            StmtKind::Expr { scope, expr } => {
+            StmtKind::Expr { scope, expr, semi } => {
                 print_indented!(self, "kind: Expr {", depth_lvl + 1);
                 print_indented!(self, format!("scope: {:?}", scope), depth_lvl + 2);
                 print_indented!(self, "expr:", depth_lvl + 2);
                 self.print_expr(*expr, depth_lvl + 3);
+                print_indented!(self, format!("semi: {}", semi), depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
             StmtKind::Let {

@@ -187,7 +187,7 @@ pub fn walk_stmt<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     stmt: &'thir Stmt<'tcx>,
 ) {
     match &stmt.kind {
-        StmtKind::Expr { expr, scope: _ } => visitor.visit_expr(&visitor.thir()[*expr]),
+        StmtKind::Expr { expr, scope: _, semi: _ } => visitor.visit_expr(&visitor.thir()[*expr]),
         StmtKind::Let {
             initializer,
             remainder_scope: _,

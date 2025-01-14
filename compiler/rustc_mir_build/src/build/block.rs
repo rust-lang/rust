@@ -69,8 +69,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         for stmt in stmts {
             let Stmt { ref kind } = this.thir[*stmt];
             match kind {
-                StmtKind::Expr { scope, expr } => {
-                    this.block_context.push(BlockFrame::Statement { ignores_expr_result: true });
+                StmtKind::Expr { scope, expr, semi } => {
+                    this.block_context
+                        .push(BlockFrame::Statement { ignores_expr_result: true, semi: *semi });
                     let si = (*scope, source_info);
                     block = this
                         .in_scope(si, LintLevel::Inherited, |this| {
@@ -156,7 +157,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // └────────────────┘
 
                     let ignores_expr_result = matches!(pattern.kind, PatKind::Wild);
-                    this.block_context.push(BlockFrame::Statement { ignores_expr_result });
+                    this.block_context
+                        .push(BlockFrame::Statement { ignores_expr_result, semi: true });
 
                     // Lower the `else` block first because its parent scope is actually
                     // enclosing the rest of the `let .. else ..` parts.
@@ -251,7 +253,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     span: _,
                 } => {
                     let ignores_expr_result = matches!(pattern.kind, PatKind::Wild);
-                    this.block_context.push(BlockFrame::Statement { ignores_expr_result });
+                    this.block_context
+                        .push(BlockFrame::Statement { ignores_expr_result, semi: true });
 
                     // Enter the remainder scope, i.e., the bindings' destruction scope.
                     this.push_scope((*remainder_scope, source_info));
@@ -329,8 +332,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let destination_ty = destination.ty(&this.local_decls, tcx).ty;
         if let Some(expr_id) = expr {
             let expr = &this.thir[expr_id];
-            let tail_result_is_ignored =
-                destination_ty.is_unit() || this.block_context.currently_ignores_tail_results();
+            let tail_result_is_ignored = match this.block_context.currently_ignores_tail_results() {
+                TailResultIgnored::TrueWithSemi => TailResultIgnored::TrueWithSemi,
+                TailResultIgnored::TrueNoSemi => TailResultIgnored::TrueNoSemi,
+                TailResultIgnored::False => {
+                    if destination_ty.is_unit() {
+                        TailResultIgnored::TrueNoSemi
+                    } else {
+                        TailResultIgnored::False
+                    }
+                }
+            };
             this.block_context
                 .push(BlockFrame::TailExpr { tail_result_is_ignored, span: expr.span });
 

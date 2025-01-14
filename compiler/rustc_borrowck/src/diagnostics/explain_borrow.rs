@@ -10,11 +10,10 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_index::IndexSlice;
 use rustc_infer::infer::NllRegionVariableOrigin;
-use rustc_middle::dep_graph::DepContext;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::mir::{
     Body, CallSource, CastKind, ConstraintCategory, FakeReadCause, Local, LocalInfo, Location,
-    Operand, Place, Rvalue, Statement, StatementKind, TerminatorKind,
+    Operand, Place, Rvalue, Statement, StatementKind, TailResultIgnored, TerminatorKind,
 };
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
@@ -248,28 +247,13 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         err.span_label(body.source_info(drop_loc).span, message);
 
                         if let LocalInfo::BlockTailTemp(info) = local_decl.local_info() {
-                            if info.tail_result_is_ignored {
-                                // #133941: Don't suggest adding a semicolon if we can
-                                // confirm the expression already ends with one.
-                                let suggest_semicolon = {
-                                    let source_map = tcx.sess().source_map();
-
-                                    let hi = info.span.hi();
-                                    let span =
-                                        info.span.with_lo(hi).with_hi(hi + rustc_span::BytePos(1));
-
-                                    match source_map.span_to_snippet(span) {
-                                        Ok(span_str) => !span_str.contains(';'),
-                                        Err(_) => true,
-                                    }
-                                };
+                            // #133941: Don't suggest adding a semicolon if one already exists.
+                            if info.tail_result_is_ignored == TailResultIgnored::TrueNoSemi {
                                 // #85581: If the first mutable borrow's scope contains
                                 // the second borrow, this suggestion isn't helpful.
-                                if suggest_semicolon
-                                    && !multiple_borrow_span.is_some_and(|(old, new)| {
-                                        old.to(info.span.shrink_to_hi()).contains(new)
-                                    })
-                                {
+                                if !multiple_borrow_span.is_some_and(|(old, new)| {
+                                    old.to(info.span.shrink_to_hi()).contains(new)
+                                }) {
                                     err.span_suggestion_verbose(
                                         info.span.shrink_to_hi(),
                                         "consider adding semicolon after the expression so its \

@@ -163,10 +163,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             _ => break,
                         }
                     }
-                    this.block_context.push(BlockFrame::TailExpr {
-                        tail_result_is_ignored: true,
-                        span: expr.span,
-                    });
+
+                    let tail_result_is_ignored =
+                        this.block_context.currently_ignores_tail_results();
+
+                    this.block_context
+                        .push(BlockFrame::TailExpr { tail_result_is_ignored, span: expr.span });
                     Some(expr.span)
                 } else {
                     None

@@ -944,6 +944,20 @@ mod binding_form_impl {
     }
 }
 
+/// Describes whether the value of a block's tail expression is
+/// ignored by the block's expression context, e.g. `let _ = { ...; tail }`,
+/// as well as whether the block was followed by a trailing semicolon; this
+/// is used to provide context for writing diagnostics.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
+pub enum TailResultIgnored {
+    /// The result is ignored, and the block has a trailing semicolon.
+    TrueWithSemi,
+    /// The result is ignored, and the block doesn't have a trailing semicolon.
+    TrueNoSemi,
+    /// The result is not ignored.
+    False,
+}
+
 /// `BlockTailInfo` is attached to the `LocalDecl` for temporaries
 /// created during evaluation of expressions in a block tail
 /// expression; that is, a block like `{ STMT_1; STMT_2; EXPR }`.
@@ -954,12 +968,8 @@ mod binding_form_impl {
 /// one might revise the code to satisfy the borrow checker's rules.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct BlockTailInfo {
-    /// If `true`, then the value resulting from evaluating this tail
-    /// expression is ignored by the block's expression context.
-    ///
-    /// Examples include `{ ...; tail };` and `let _ = { ...; tail };`
-    /// but not e.g., `let _x = { ...; tail };`
-    pub tail_result_is_ignored: bool,
+    /// Whether the result of the tail expression is ignored.
+    pub tail_result_is_ignored: TailResultIgnored,
 
     /// `Span` of the tail expression.
     pub span: Span,

@@ -216,6 +216,10 @@ pub enum StmtKind<'tcx> {
 
         /// The expression being evaluated in this statement.
         expr: ExprId,
+
+        /// Whether the statement originally ended with a semicolon in the source
+        /// code, e.g. `while let ... = ... {};` vs `while let ... = ... {}`.
+        semi: bool,
     },
 
     /// A `let` binding.

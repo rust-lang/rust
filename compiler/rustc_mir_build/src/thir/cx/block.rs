@@ -47,7 +47,7 @@ impl<'tcx> Cx<'tcx> {
             .filter_map(|(index, stmt)| {
                 let hir_id = stmt.hir_id;
                 match stmt.kind {
-                    hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr) => {
+                    hir::StmtKind::Expr(expr) => {
                         let stmt = Stmt {
                             kind: StmtKind::Expr {
                                 scope: region::Scope {
@@ -55,6 +55,20 @@ impl<'tcx> Cx<'tcx> {
                                     data: region::ScopeData::Node,
                                 },
                                 expr: self.mirror_expr(expr),
+                                semi: false,
+                            },
+                        };
+                        Some(self.thir.stmts.push(stmt))
+                    }
+                    hir::StmtKind::Semi(expr) => {
+                        let stmt = Stmt {
+                            kind: StmtKind::Expr {
+                                scope: region::Scope {
+                                    id: hir_id.local_id,
+                                    data: region::ScopeData::Node,
+                                },
+                                expr: self.mirror_expr(expr),
+                                semi: true,
                             },
                         };
                         Some(self.thir.stmts.push(stmt))
