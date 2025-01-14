@@ -1,4 +1,4 @@
-//@only-target: linux android
+//@only-target: linux android illumos
 
 use std::convert::TryInto;
 

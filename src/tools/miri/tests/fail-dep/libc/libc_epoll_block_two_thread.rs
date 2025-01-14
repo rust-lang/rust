@@ -1,7 +1,7 @@
 //@compile-flags: -Zmiri-preemption-rate=0
 //~^ERROR: deadlocked
 //~^^ERROR: deadlocked
-//@only-target: linux
+//@only-target: linux android illumos
 //@error-in-other-file: deadlock
 
 use std::convert::TryInto;
