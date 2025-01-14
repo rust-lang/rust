@@ -1090,7 +1090,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             )?
             .expect("did not expect ambiguity during confirmation");
 
-        Ok(ImplSource::Builtin(BuiltinImplSource::TraitUpcasting, nested))
+        Ok(ImplSource::Builtin(BuiltinImplSource::TraitUpcasting(idx), nested))
     }
 
     fn confirm_builtin_unsize_candidate(
