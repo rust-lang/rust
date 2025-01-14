@@ -3094,7 +3094,7 @@ struct B;
 
 impl From<A> for B {
     fn from(value: A) -> Self {
-     //^^^^  
+     //^^^^
         B
     }
 }
