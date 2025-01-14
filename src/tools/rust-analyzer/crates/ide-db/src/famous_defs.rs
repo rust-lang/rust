@@ -50,6 +50,14 @@ impl FamousDefs<'_, '_> {
         self.find_trait("core:convert:From")
     }
 
+    pub fn core_convert_TryFrom(&self) -> Option<Trait> {
+        self.find_trait("core:convert:TryFrom")
+    }
+
+    pub fn core_str_FromStr(&self) -> Option<Trait> {
+        self.find_trait("core:str:FromStr")
+    }
+
     pub fn core_convert_Into(&self) -> Option<Trait> {
         self.find_trait("core:convert:Into")
     }

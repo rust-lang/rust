@@ -5,10 +5,11 @@ use crate::{
     navigation_target::{self, ToNav},
     FilePosition, NavigationTarget, RangeInfo, TryToNav, UpmappingResult,
 };
-use hir::{AsAssocItem, AssocItem, FileRange, InFile, MacroFileIdExt, ModuleDef, Semantics};
+use hir::{AsAssocItem, AssocItem, FileRange, Impl, InFile, MacroFileIdExt, ModuleDef, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileLoader, SourceDatabase},
     defs::{Definition, IdentClass},
+    famous_defs::FamousDefs,
     helpers::pick_best_token,
     RootDatabase, SymbolKind,
 };
@@ -81,6 +82,10 @@ pub(crate) fn goto_definition(
         return Some(RangeInfo::new(original_token.text_range(), navs));
     }
 
+    if let Some(navs) = find_from_definition(file_id, &original_token, sema) {
+        return Some(RangeInfo::new(original_token.text_range(), navs));
+    }
+
     let navs = sema
         .descend_into_macros_no_opaque(original_token.clone())
         .into_iter()
@@ -123,6 +128,62 @@ pub(crate) fn goto_definition(
         .collect::<Vec<NavigationTarget>>();
 
     Some(RangeInfo::new(original_token.text_range(), navs))
+}
+
+// If the token is into(), try_into(), parse(), search the definition of From, TryFrom, FromStr.
+fn find_from_definition(
+    file_id: FileId,
+    original_token: &SyntaxToken,
+    sema: &Semantics<'_, RootDatabase>,
+) -> Option<Vec<NavigationTarget>> {
+    let db = sema.db;
+    let krate = sema.file_to_module_def(file_id)?.krate();
+
+    // e.g. if the method call is let b = a.into(),
+    // - receiver_type is A (type of a)
+    // - return_type is B (type of b)
+    // We will find the definition of B::from(a: A).
+    let method_call = ast::MethodCallExpr::cast(original_token.parent()?.parent()?)?;
+    let receiver_type = sema.type_of_expr(&method_call.receiver()?)?.original();
+    let return_type = sema.type_of_expr(&method_call.clone().into())?.original();
+
+    let (search_method, search_trait, return_type) = match method_call.name_ref()?.text().as_str() {
+        "into" => ("from", FamousDefs(sema, krate).core_convert_From()?, return_type),
+        // If the mthod is try_into() or parse(), return_type is Result<T, Error>.
+        // Get T from type arguments of Result<T, Error>.
+        "try_into" => (
+            "try_from",
+            FamousDefs(sema, krate).core_convert_TryFrom()?,
+            return_type.type_arguments().next()?,
+        ),
+        "parse" => (
+            "from_str",
+            FamousDefs(sema, krate).core_str_FromStr()?,
+            return_type.type_arguments().next()?,
+        ),
+        _ => return None,
+    };
+
+    let from_impls = Impl::all_for_type(db, return_type)
+        .into_iter()
+        .filter(|impl_| impl_.trait_(db).is_some_and(|trait_| trait_ == search_trait));
+    let from_methods = from_impls.flat_map(|impl_| impl_.items(db)).filter_map(|item| match item {
+        AssocItem::Function(function) if function.name(db).as_str() == search_method => {
+            Some(function)
+        }
+        _ => None,
+    });
+    let target_method = from_methods.into_iter().find(|method| {
+        let args = method.assoc_fn_params(db);
+
+        // FIXME: This condition does not work for complicated cases such as
+        // receiver_type: Vec<i64>
+        // arg.ty(): T: IntoIterator<Item = i64>
+        args.get(0).is_some_and(|arg| receiver_type.could_coerce_to(db, arg.ty()))
+    })?;
+
+    let def = Definition::from(target_method);
+    Some(def_to_nav(db, def))
 }
 
 fn try_lookup_include_path(
@@ -3020,6 +3081,29 @@ fn foo() {
     }
 }
 "#,
+        );
+    }
+    #[test]
+    fn into_call_to_from_definition() {
+        check(
+            r#"
+//- minicore: from
+struct A;
+
+struct B;
+
+impl From<A> for B {
+    fn from(value: A) -> Self {
+     //^^^^  
+        B
+    }
+}
+
+fn f() {
+    let a = A;
+    let b: B = a.into$0();
+}
+        "#,
         );
     }
 }
