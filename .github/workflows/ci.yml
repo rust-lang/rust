@@ -125,8 +125,6 @@ jobs:
             'gcc-11'                     \
             'libicu-dev'                 \
             '^vim.*'                     \
-            'perl'                       \
-            'perl-base'                  \
             'python3-breezy'             \
           && rm -rf /var/lib/apt/lists/*
 
