@@ -179,7 +179,7 @@ fn find_from_definition(
         // FIXME: This condition does not work for complicated cases such as
         // receiver_type: Vec<i64>
         // arg.ty(): T: IntoIterator<Item = i64>
-        args.get(0).is_some_and(|arg| receiver_type.could_coerce_to(db, arg.ty()))
+        args.first().is_some_and(|arg| receiver_type.could_coerce_to(db, arg.ty()))
     })?;
 
     let def = Definition::from(target_method);
