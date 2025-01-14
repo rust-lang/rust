@@ -2,7 +2,7 @@
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
-
+// Regression test for #135462.
 #![allow(coherence_leak_check)]
 
 type A = fn(&'static ());
