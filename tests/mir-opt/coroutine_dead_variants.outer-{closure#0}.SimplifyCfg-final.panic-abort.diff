@@ -1,0 +1,158 @@
+- // MIR for `outer::{closure#0}` before SimplifyCfg-final
++ // MIR for `outer::{closure#0}` after SimplifyCfg-final
+  /* coroutine_layout = CoroutineLayout {
+      field_tys: {
+          _0: CoroutineSavedTy {
+              ty: Coroutine(
+                  DefId(0:5 ~ coroutine_dead_variants[61c4]::inner::{closure#0}),
+                  [
+                      (),
+                      std::future::ResumeTy,
+                      (),
+                      (),
+                      CoroutineWitness(
+                          DefId(0:5 ~ coroutine_dead_variants[61c4]::inner::{closure#0}),
+                          [],
+                      ),
+                      (),
+                  ],
+              ),
+              source_info: SourceInfo {
+                  span: $DIR/coroutine_dead_variants.rs:13:9: 13:22 (#16),
+                  scope: scope[0],
+              },
+              ignore_for_traits: false,
+          },
+      },
+      variant_fields: {
+          Unresumed(0): [],
+          Returned (1): [],
+          Panicked (2): [],
+          Suspend0 (3): [_0],
+      },
+      storage_conflicts: BitMatrix(1x1) {
+          (_0, _0),
+      },
+  } */
+  
+  fn outer::{closure#0}(_1: Pin<&mut {async fn body of outer()}>, _2: &mut Context<'_>) -> Poll<()> {
+      debug _task_context => _2;
+      let mut _0: std::task::Poll<()>;
+      let mut _3: {async fn body of inner()};
+      let mut _4: {async fn body of inner()};
+      let mut _5: std::task::Poll<()>;
+      let mut _6: std::pin::Pin<&mut {async fn body of inner()}>;
+      let mut _7: &mut {async fn body of inner()};
+      let mut _8: &mut std::task::Context<'_>;
+      let mut _9: isize;
+      let mut _11: ();
+      let mut _12: &mut std::task::Context<'_>;
+      let mut _13: u32;
+      let mut _14: &mut {async fn body of outer()};
+      scope 1 {
+          debug __awaitee => (((*(_1.0: &mut {async fn body of outer()})) as variant#3).0: {async fn body of inner()});
+          let _10: ();
+          scope 2 {
+              debug result => const ();
+          }
+      }
+  
+      bb0: {
+          _14 = copy (_1.0: &mut {async fn body of outer()});
+          _13 = discriminant((*_14));
+-         switchInt(move _13) -> [0: bb1, 1: bb15, 3: bb14, otherwise: bb8];
++         switchInt(move _13) -> [0: bb2, 1: bb4, otherwise: bb1];
+      }
+  
+      bb1: {
+-         nop;
+-         goto -> bb12;
+-     }
+- 
+-     bb2: {
+-         StorageLive(_3);
+-         StorageLive(_4);
+-         _4 = inner() -> [return: bb3, unwind unreachable];
+-     }
+- 
+-     bb3: {
+-         _3 = <{async fn body of inner()} as IntoFuture>::into_future(move _4) -> [return: bb4, unwind unreachable];
+-     }
+- 
+-     bb4: {
+-         StorageDead(_4);
+-         (((*_14) as variant#3).0: {async fn body of inner()}) = move _3;
+-         goto -> bb5;
+-     }
+- 
+-     bb5: {
+-         StorageLive(_5);
+-         StorageLive(_6);
+-         _7 = &mut (((*_14) as variant#3).0: {async fn body of inner()});
+-         _6 = Pin::<&mut {async fn body of inner()}>::new_unchecked(copy _7) -> [return: bb6, unwind unreachable];
+-     }
+- 
+-     bb6: {
+-         nop;
+-         _5 = <{async fn body of inner()} as Future>::poll(move _6, copy _2) -> [return: bb7, unwind unreachable];
+-     }
+- 
+-     bb7: {
+-         StorageDead(_6);
+-         _9 = discriminant(_5);
+-         switchInt(move _9) -> [0: bb10, 1: bb9, otherwise: bb8];
+-     }
+- 
+-     bb8: {
+          unreachable;
+      }
+  
+-     bb9: {
+-         StorageDead(_5);
+-         _0 = const Poll::<()>::Pending;
+-         StorageDead(_3);
+-         discriminant((*_14)) = 3;
+-         return;
+-     }
+- 
+-     bb10: {
+-         StorageLive(_10);
+-         nop;
+-         StorageDead(_10);
+-         StorageDead(_5);
+-         drop((((*_14) as variant#3).0: {async fn body of inner()})) -> [return: bb11, unwind unreachable];
+-     }
+- 
+-     bb11: {
+-         StorageDead(_3);
++     bb2: {
+          _11 = const ();
+-         goto -> bb13;
++         goto -> bb3;
+      }
+  
+-     bb12: {
+-         _11 = const ();
+-         goto -> bb13;
+-     }
+- 
+-     bb13: {
++     bb3: {
+          _0 = Poll::<()>::Ready(const ());
+          discriminant((*_14)) = 1;
+          return;
+      }
+  
+-     bb14: {
+-         StorageLive(_3);
+-         nop;
+-         goto -> bb5;
+-     }
+- 
+-     bb15: {
+-         assert(const false, "`async fn` resumed after completion") -> [success: bb15, unwind unreachable];
++     bb4: {
++         assert(const false, "`async fn` resumed after completion") -> [success: bb4, unwind unreachable];
+      }
+  }
+  
