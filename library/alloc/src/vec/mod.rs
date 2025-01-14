@@ -3587,7 +3587,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// with the given `replace_with` iterator and yields the removed items.
     /// `replace_with` does not need to be the same length as `range`.
     ///
-    /// `range` is removed even if the iterator is not consumed until the end.
+    /// `range` is removed even if the `Splice` iterator is not consumed before it is dropped.
     ///
     /// It is unspecified how many elements are removed from the vector
     /// if the `Splice` value is leaked.
@@ -3613,8 +3613,18 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let mut v = vec![1, 2, 3, 4];
     /// let new = [7, 8, 9];
     /// let u: Vec<_> = v.splice(1..3, new).collect();
-    /// assert_eq!(v, &[1, 7, 8, 9, 4]);
-    /// assert_eq!(u, &[2, 3]);
+    /// assert_eq!(v, [1, 7, 8, 9, 4]);
+    /// assert_eq!(u, [2, 3]);
+    /// ```
+    ///
+    /// Using `splice` to insert new items into a vector efficiently at a specific position
+    /// indicated by an empty range:
+    ///
+    /// ```
+    /// let mut v = vec![1, 5];
+    /// let new = [2, 3, 4];
+    /// v.splice(1..1, new);
+    /// assert_eq!(v, [1, 2, 3, 4, 5]);
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
