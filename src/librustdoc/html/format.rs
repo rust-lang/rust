@@ -150,8 +150,9 @@ pub(crate) fn comma_sep<T: Display>(
     items: impl Iterator<Item = T>,
     space_after_comma: bool,
 ) -> impl Display {
-    display_fn(move |f| {
-        for (i, item) in items.enumerate() {
+    let items = Cell::new(Some(items));
+    fmt::from_fn(move |f| {
+        for (i, item) in items.take().unwrap().enumerate() {
             if i != 0 {
                 write!(f, ",{}", if space_after_comma { " " } else { "" })?;
             }
@@ -165,7 +166,7 @@ pub(crate) fn print_generic_bounds<'a, 'tcx: 'a>(
     bounds: &'a [clean::GenericBound],
     cx: &'a Context<'tcx>,
 ) -> impl Display + 'a + Captures<'tcx> {
-    display_fn(move |f| {
+    fmt::from_fn(move |f| {
         let mut bounds_dup = FxHashSet::default();
 
         for (i, bound) in bounds.iter().filter(|b| bounds_dup.insert(*b)).enumerate() {
@@ -183,7 +184,7 @@ impl clean::GenericParamDef {
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
-        display_fn(move |f| match &self.kind {
+        fmt::from_fn(move |f| match &self.kind {
             clean::GenericParamDefKind::Lifetime { outlives } => {
                 write!(f, "{}", self.name)?;
 
@@ -238,7 +239,7 @@ impl clean::Generics {
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
-        display_fn(move |f| {
+        fmt::from_fn(move |f| {
             let mut real_params = self.params.iter().filter(|p| !p.is_synthetic_param()).peekable();
             if real_params.peek().is_none() {
                 return Ok(());
@@ -268,12 +269,12 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
     indent: usize,
     ending: Ending,
 ) -> impl Display + 'a + Captures<'tcx> {
-    display_fn(move |f| {
+    fmt::from_fn(move |f| {
         let mut where_predicates = gens
             .where_predicates
             .iter()
             .map(|pred| {
-                display_fn(move |f| {
+                fmt::from_fn(move |f| {
                     if f.alternate() {
                         f.write_str(" ")?;
                     } else {
@@ -376,17 +377,15 @@ impl clean::Lifetime {
 impl clean::ConstantKind {
     pub(crate) fn print(&self, tcx: TyCtxt<'_>) -> impl Display + '_ {
         let expr = self.expr(tcx);
-        display_fn(
-            move |f| {
-                if f.alternate() { f.write_str(&expr) } else { write!(f, "{}", Escape(&expr)) }
-            },
-        )
+        fmt::from_fn(move |f| {
+            if f.alternate() { f.write_str(&expr) } else { write!(f, "{}", Escape(&expr)) }
+        })
     }
 }
 
 impl clean::PolyTrait {
     fn print<'a, 'tcx: 'a>(&'a self, cx: &'a Context<'tcx>) -> impl Display + 'a + Captures<'tcx> {
-        display_fn(move |f| {
+        fmt::from_fn(move |f| {
             print_higher_ranked_params_with_space(&self.generic_params, cx, "for").fmt(f)?;
             self.trait_.print(cx).fmt(f)
         })
@@ -398,7 +397,7 @@ impl clean::GenericBound {
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
-        display_fn(move |f| match self {
+        fmt::from_fn(move |f| match self {
             clean::GenericBound::Outlives(lt) => write!(f, "{}", lt.print()),
             clean::GenericBound::TraitBound(ty, modifiers) => {
                 // `const` and `~const` trait bounds are experimental; don't render them.
@@ -430,7 +429,7 @@ impl clean::GenericBound {
 
 impl clean::GenericArgs {
     fn print<'a, 'tcx: 'a>(&'a self, cx: &'a Context<'tcx>) -> impl Display + 'a + Captures<'tcx> {
-        display_fn(move |f| {
+        fmt::from_fn(move |f| {
             match self {
                 clean::GenericArgs::AngleBracketed { args, constraints } => {
                     if !args.is_empty() || !constraints.is_empty() {
@@ -950,7 +949,7 @@ fn tybounds<'a, 'tcx: 'a>(
     lt: &'a Option<clean::Lifetime>,
     cx: &'a Context<'tcx>,
 ) -> impl Display + 'a + Captures<'tcx> {
-    display_fn(move |f| {
+    fmt::from_fn(move |f| {
         for (i, bound) in bounds.iter().enumerate() {
             if i > 0 {
                 write!(f, " + ")?;
@@ -971,7 +970,7 @@ fn print_higher_ranked_params_with_space<'a, 'tcx: 'a>(
     cx: &'a Context<'tcx>,
     keyword: &'static str,
 ) -> impl Display + 'a + Captures<'tcx> {
-    display_fn(move |f| {
+    fmt::from_fn(move |f| {
         if !params.is_empty() {
             f.write_str(keyword)?;
             f.write_str(if f.alternate() { "<" } else { "&lt;" })?;
@@ -982,13 +981,13 @@ fn print_higher_ranked_params_with_space<'a, 'tcx: 'a>(
     })
 }
 
-pub(crate) fn anchor<'a, 'cx: 'a>(
+pub(crate) fn anchor<'a: 'cx, 'cx>(
     did: DefId,
     text: Symbol,
-    cx: &'cx Context<'_>,
-) -> impl Display + 'a {
-    let parts = href(did, cx);
-    display_fn(move |f| {
+    cx: &'cx Context<'a>,
+) -> impl Display + Captures<'a> + 'cx {
+    fmt::from_fn(move |f| {
+        let parts = href(did, cx);
         if let Ok((url, short_ty, fqp)) = parts {
             write!(
                 f,
@@ -1150,7 +1149,7 @@ fn fmt_type(
             }
         }
         clean::BorrowedRef { lifetime: ref l, mutability, type_: ref ty } => {
-            let lt = display_fn(|f| match l {
+            let lt = fmt::from_fn(|f| match l {
                 Some(l) => write!(f, "{} ", l.print()),
                 _ => Ok(()),
             });
@@ -1270,7 +1269,7 @@ impl clean::Type {
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'b + Captures<'tcx> {
-        display_fn(move |f| fmt_type(self, f, false, cx))
+        fmt::from_fn(move |f| fmt_type(self, f, false, cx))
     }
 }
 
@@ -1279,7 +1278,7 @@ impl clean::Path {
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'b + Captures<'tcx> {
-        display_fn(move |f| resolved_path(f, self.def_id(), self, false, false, cx))
+        fmt::from_fn(move |f| resolved_path(f, self.def_id(), self, false, false, cx))
     }
 }
 
@@ -1289,7 +1288,7 @@ impl clean::Impl {
         use_absolute: bool,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
-        display_fn(move |f| {
+        fmt::from_fn(move |f| {
             f.write_str("impl")?;
             self.generics.print(cx).fmt(f)?;
             f.write_str(" ")?;
@@ -1407,7 +1406,7 @@ impl clean::Arguments {
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
-        display_fn(move |f| {
+        fmt::from_fn(move |f| {
             for (i, input) in self.values.iter().enumerate() {
                 write!(f, "{}: ", input.name)?;
                 input.type_.print(cx).fmt(f)?;
@@ -1447,7 +1446,7 @@ impl clean::FnDecl {
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'b + Captures<'tcx> {
-        display_fn(move |f| {
+        fmt::from_fn(move |f| {
             let ellipsis = if self.c_variadic { ", ..." } else { "" };
             if f.alternate() {
                 write!(
@@ -1481,10 +1480,10 @@ impl clean::FnDecl {
         indent: usize,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
-        display_fn(move |f| {
+        fmt::from_fn(move |f| {
             // First, generate the text form of the declaration, with no line wrapping, and count the bytes.
             let mut counter = WriteCounter(0);
-            write!(&mut counter, "{:#}", display_fn(|f| { self.inner_full_print(None, f, cx) }))
+            write!(&mut counter, "{:#}", fmt::from_fn(|f| { self.inner_full_print(None, f, cx) }))
                 .unwrap();
             // If the text form was over 80 characters wide, we will line-wrap our output.
             let line_wrapping_indent =
@@ -1566,7 +1565,7 @@ impl clean::FnDecl {
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
-        display_fn(move |f| match &self.output {
+        fmt::from_fn(move |f| match &self.output {
             clean::Tuple(tys) if tys.is_empty() => Ok(()),
             ty if f.alternate() => {
                 write!(f, " -> {:#}", ty.print(cx))
@@ -1618,7 +1617,7 @@ pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a>(
     };
 
     let is_doc_hidden = item.is_doc_hidden();
-    display_fn(move |f| {
+    fmt::from_fn(move |f| {
         if is_doc_hidden {
             f.write_str("#[doc(hidden)] ")?;
         }
@@ -1692,7 +1691,7 @@ impl clean::Import {
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
-        display_fn(move |f| match self.kind {
+        fmt::from_fn(move |f| match self.kind {
             clean::ImportKind::Simple(name) => {
                 if name == self.source.path.last() {
                     write!(f, "use {};", self.source.print(cx))
@@ -1716,7 +1715,7 @@ impl clean::ImportSource {
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
-        display_fn(move |f| match self.did {
+        fmt::from_fn(move |f| match self.did {
             Some(did) => resolved_path(f, did, &self.path, true, false, cx),
             _ => {
                 for seg in &self.path.segments[..self.path.segments.len() - 1] {
@@ -1744,7 +1743,7 @@ impl clean::AssocItemConstraint {
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
-        display_fn(move |f| {
+        fmt::from_fn(move |f| {
             f.write_str(self.assoc.name.as_str())?;
             self.assoc.args.print(cx).fmt(f)?;
             match self.kind {
@@ -1765,7 +1764,7 @@ impl clean::AssocItemConstraint {
 }
 
 pub(crate) fn print_abi_with_space(abi: ExternAbi) -> impl Display {
-    display_fn(move |f| {
+    fmt::from_fn(move |f| {
         let quot = if f.alternate() { "\"" } else { "&quot;" };
         match abi {
             ExternAbi::Rust => Ok(()),
@@ -1783,7 +1782,7 @@ impl clean::GenericArg {
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
-        display_fn(move |f| match self {
+        fmt::from_fn(move |f| match self {
             clean::GenericArg::Lifetime(lt) => lt.print().fmt(f),
             clean::GenericArg::Type(ty) => ty.print(cx).fmt(f),
             clean::GenericArg::Const(ct) => ct.print(cx.tcx()).fmt(f),
@@ -1797,24 +1796,9 @@ impl clean::Term {
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
-        display_fn(move |f| match self {
+        fmt::from_fn(move |f| match self {
             clean::Term::Type(ty) => ty.print(cx).fmt(f),
             clean::Term::Constant(ct) => ct.print(cx.tcx()).fmt(f),
         })
     }
-}
-
-pub(crate) fn display_fn(f: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result) -> impl Display {
-    struct WithFormatter<F>(Cell<Option<F>>);
-
-    impl<F> Display for WithFormatter<F>
-    where
-        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
-    {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            (self.0.take()).unwrap()(f)
-        }
-    }
-
-    WithFormatter(Cell::new(Some(f)))
 }
