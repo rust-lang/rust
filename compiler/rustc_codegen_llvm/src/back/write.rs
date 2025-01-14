@@ -328,13 +328,17 @@ pub(crate) fn save_temp_bitcode(
     if !cgcx.save_temps {
         return;
     }
+    let ext = format!("{name}.bc");
+    let cgu = Some(&module.name[..]);
+    let path = cgcx.output_filenames.temp_path_ext(&ext, cgu);
+    write_bitcode_to_file(module, &path)
+}
+
+fn write_bitcode_to_file(module: &ModuleCodegen<ModuleLlvm>, path: &Path) {
     unsafe {
-        let ext = format!("{name}.bc");
-        let cgu = Some(&module.name[..]);
-        let path = cgcx.output_filenames.temp_path_ext(&ext, cgu);
-        let cstr = path_to_c_string(&path);
+        let path = path_to_c_string(&path);
         let llmod = module.module_llvm.llmod();
-        llvm::LLVMWriteBitcodeToFile(llmod, cstr.as_ptr());
+        llvm::LLVMWriteBitcodeToFile(llmod, path.as_ptr());
     }
 }
 
@@ -664,7 +668,6 @@ pub(crate) unsafe fn optimize(
 ) -> Result<(), FatalError> {
     let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_optimize", &*module.name);
 
-    let llmod = module.module_llvm.llmod();
     let llcx = &*module.module_llvm.llcx;
     let _handlers = DiagnosticHandlers::new(cgcx, dcx, llcx, module, CodegenDiagnosticsStage::Opt);
 
@@ -673,8 +676,7 @@ pub(crate) unsafe fn optimize(
 
     if config.emit_no_opt_bc {
         let out = cgcx.output_filenames.temp_path_ext("no-opt.bc", module_name);
-        let out = path_to_c_string(&out);
-        unsafe { llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr()) };
+        write_bitcode_to_file(module, &out)
     }
 
     // FIXME(ZuseZ4): support SanitizeHWAddress and prevent illegal/unsupported opts
