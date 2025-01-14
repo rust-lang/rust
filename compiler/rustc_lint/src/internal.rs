@@ -10,15 +10,15 @@ use rustc_hir::{
 };
 use rustc_middle::ty::{self, GenericArgsRef, Ty as MiddleTy};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Span;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Span, sym};
 use tracing::debug;
 
 use crate::lints::{
-    BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand, NonExistentDocKeyword,
-    NonGlobImportTypeIrInherent, QueryInstability, QueryUntracked, SpanUseEqCtxtDiag, TyQualified,
-    TykindDiag, TykindKind, TypeIrInherentUsage, UntranslatableDiag,
+    BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand,
+    NonGlobImportTypeIrInherent, QueryInstability, QueryUntracked, SpanUseEqCtxtDiag,
+    SymbolInternStringLiteralDiag, TyQualified, TykindDiag, TykindKind, TypeIrInherentUsage,
+    UntranslatableDiag,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -170,27 +170,11 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                                 | PatKind::TupleStruct(qpath, ..)
                                 | PatKind::Struct(qpath, ..),
                             ..
-                        }) => {
-                            if let QPath::TypeRelative(qpath_ty, ..) = qpath
-                                && qpath_ty.hir_id == ty.hir_id
-                            {
-                                Some(path.span)
-                            } else {
-                                None
-                            }
-                        }
-                        Node::Expr(Expr { kind: ExprKind::Path(qpath), .. }) => {
-                            if let QPath::TypeRelative(qpath_ty, ..) = qpath
-                                && qpath_ty.hir_id == ty.hir_id
-                            {
-                                Some(path.span)
-                            } else {
-                                None
-                            }
-                        }
-                        // Can't unify these two branches because qpath below is `&&` and above is `&`
-                        // and `A | B` paths don't play well together with adjustments, apparently.
-                        Node::Expr(Expr { kind: ExprKind::Struct(qpath, ..), .. }) => {
+                        })
+                        | Node::Expr(
+                            Expr { kind: ExprKind::Path(qpath), .. }
+                            | &Expr { kind: ExprKind::Struct(qpath, ..), .. },
+                        ) => {
                             if let QPath::TypeRelative(qpath_ty, ..) = qpath
                                 && qpath_ty.hir_id == ty.hir_id
                             {
@@ -242,17 +226,10 @@ fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, path: &Path<'_>) -> Option<String> {
         }
         // Only lint on `&Ty` and `&TyCtxt` if it is used outside of a trait.
         Res::SelfTyAlias { alias_to: did, is_trait_impl: false, .. } => {
-            if let ty::Adt(adt, args) = cx.tcx.type_of(did).instantiate_identity().kind() {
-                if let Some(name @ (sym::Ty | sym::TyCtxt)) = cx.tcx.get_diagnostic_name(adt.did())
-                {
-                    // NOTE: This path is currently unreachable as `Ty<'tcx>` is
-                    // defined as a type alias meaning that `impl<'tcx> Ty<'tcx>`
-                    // is not actually allowed.
-                    //
-                    // I(@lcnr) still kept this branch in so we don't miss this
-                    // if we ever change it in the future.
-                    return Some(format!("{}<{}>", name, args[0]));
-                }
+            if let ty::Adt(adt, args) = cx.tcx.type_of(did).instantiate_identity().kind()
+                && let Some(name @ (sym::Ty | sym::TyCtxt)) = cx.tcx.get_diagnostic_name(adt.did())
+            {
+                return Some(format!("{}<{}>", name, args[0]));
             }
         }
         _ => (),
@@ -374,46 +351,6 @@ impl EarlyLintPass for LintPassImpl {
                             lint_pass.path.span,
                             LintPassByHand,
                         );
-                    }
-                }
-            }
-        }
-    }
-}
-
-declare_tool_lint! {
-    /// The `existing_doc_keyword` lint detects use `#[doc()]` keywords
-    /// that don't exist, e.g. `#[doc(keyword = "..")]`.
-    pub rustc::EXISTING_DOC_KEYWORD,
-    Allow,
-    "Check that documented keywords in std and core actually exist",
-    report_in_external_macro: true
-}
-
-declare_lint_pass!(ExistingDocKeyword => [EXISTING_DOC_KEYWORD]);
-
-fn is_doc_keyword(s: Symbol) -> bool {
-    s <= kw::Union
-}
-
-impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
-    fn check_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::Item<'_>) {
-        for attr in cx.tcx.hir().attrs(item.hir_id()) {
-            if !attr.has_name(sym::doc) {
-                continue;
-            }
-            if let Some(list) = attr.meta_item_list() {
-                for nested in list {
-                    if nested.has_name(sym::keyword) {
-                        let keyword = nested
-                            .value_str()
-                            .expect("#[doc(keyword = \"...\")] expected a value!");
-                        if is_doc_keyword(keyword) {
-                            return;
-                        }
-                        cx.emit_span_lint(EXISTING_DOC_KEYWORD, attr.span, NonExistentDocKeyword {
-                            keyword,
-                        });
                     }
                 }
             }
@@ -655,5 +592,35 @@ fn is_span_ctxt_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             .is_some_and(|call_did| cx.tcx.is_diagnostic_item(sym::SpanCtxt, call_did)),
 
         _ => false,
+    }
+}
+
+declare_tool_lint! {
+    /// The `symbol_intern_string_literal` detects `Symbol::intern` being called on a string literal
+    pub rustc::SYMBOL_INTERN_STRING_LITERAL,
+    // rustc_driver crates out of the compiler can't/shouldn't add preinterned symbols;
+    // bootstrap will deny this manually
+    Allow,
+    "Forbid uses of string literals in `Symbol::intern`, suggesting preinterning instead",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(SymbolInternStringLiteral => [SYMBOL_INTERN_STRING_LITERAL]);
+
+impl<'tcx> LateLintPass<'tcx> for SymbolInternStringLiteral {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
+        if let ExprKind::Call(path, [arg]) = expr.kind
+            && let ExprKind::Path(ref qpath) = path.kind
+            && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
+            && cx.tcx.is_diagnostic_item(sym::SymbolIntern, def_id)
+            && let ExprKind::Lit(kind) = arg.kind
+            && let rustc_ast::LitKind::Str(_, _) = kind.node
+        {
+            cx.emit_span_lint(
+                SYMBOL_INTERN_STRING_LITERAL,
+                kind.span,
+                SymbolInternStringLiteralDiag,
+            );
+        }
     }
 }

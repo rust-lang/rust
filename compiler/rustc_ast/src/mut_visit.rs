@@ -13,9 +13,8 @@ use std::panic;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
-use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Ident;
+use rustc_span::{Ident, Span};
 use smallvec::{Array, SmallVec, smallvec};
 use thin_vec::ThinVec;
 
@@ -451,12 +450,9 @@ fn visit_attr_args<T: MutVisitor>(vis: &mut T, args: &mut AttrArgs) {
     match args {
         AttrArgs::Empty => {}
         AttrArgs::Delimited(args) => visit_delim_args(vis, args),
-        AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => {
+        AttrArgs::Eq { eq_span, expr } => {
             vis.visit_expr(expr);
             vis.visit_span(eq_span);
-        }
-        AttrArgs::Eq(_eq_span, AttrArgsEq::Hir(lit)) => {
-            unreachable!("in literal form when visiting mac args eq: {:?}", lit)
         }
     }
 }
@@ -560,6 +556,11 @@ pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut P<Ty>) {
             generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
             vis.visit_fn_decl(decl);
             vis.visit_span(decl_span);
+        }
+        TyKind::UnsafeBinder(binder) => {
+            let UnsafeBinderTy { generic_params, inner_ty } = binder.deref_mut();
+            generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
+            vis.visit_ty(inner_ty);
         }
         TyKind::Tup(tys) => visit_thin_vec(tys, |ty| vis.visit_ty(ty)),
         TyKind::Paren(ty) => vis.visit_ty(ty),
@@ -1123,13 +1124,14 @@ fn walk_poly_trait_ref<T: MutVisitor>(vis: &mut T, p: &mut PolyTraitRef) {
 }
 
 pub fn walk_field_def<T: MutVisitor>(visitor: &mut T, fd: &mut FieldDef) {
-    let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _, safety } = fd;
+    let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _, safety, default } = fd;
     visitor.visit_id(id);
     visit_attrs(visitor, attrs);
     visitor.visit_vis(vis);
     visit_safety(visitor, safety);
     visit_opt(ident, |ident| visitor.visit_ident(ident));
     visitor.visit_ty(ty);
+    visit_opt(default, |default| visitor.visit_anon_const(default));
     visitor.visit_span(span);
 }
 
@@ -1214,7 +1216,12 @@ impl WalkItemKind for ItemKind {
             ItemKind::Mod(safety, mod_kind) => {
                 visit_safety(vis, safety);
                 match mod_kind {
-                    ModKind::Loaded(items, _inline, ModSpans { inner_span, inject_use_span }) => {
+                    ModKind::Loaded(
+                        items,
+                        _inline,
+                        ModSpans { inner_span, inject_use_span },
+                        _,
+                    ) => {
                         items.flat_map_in_place(|item| vis.flat_map_item(item));
                         vis.visit_span(inner_span);
                         vis.visit_span(inject_use_span);
@@ -1505,7 +1512,7 @@ pub fn walk_pat<T: MutVisitor>(vis: &mut T, pat: &mut P<Pat>) {
             vis.visit_ident(ident);
             visit_opt(sub, |sub| vis.visit_pat(sub));
         }
-        PatKind::Lit(e) => vis.visit_expr(e),
+        PatKind::Expr(e) => vis.visit_expr(e),
         PatKind::TupleStruct(qself, path, elems) => {
             vis.visit_qself(qself);
             vis.visit_path(path);
@@ -1527,6 +1534,10 @@ pub fn walk_pat<T: MutVisitor>(vis: &mut T, pat: &mut P<Pat>) {
             visit_opt(e1, |e| vis.visit_expr(e));
             visit_opt(e2, |e| vis.visit_expr(e));
             vis.visit_span(span);
+        }
+        PatKind::Guard(p, e) => {
+            vis.visit_pat(p);
+            vis.visit_expr(e);
         }
         PatKind::Tuple(elems) | PatKind::Slice(elems) | PatKind::Or(elems) => {
             visit_thin_vec(elems, |elem| vis.visit_pat(elem))
@@ -1585,7 +1596,7 @@ fn walk_inline_asm_sym<T: MutVisitor>(
 
 fn walk_format_args<T: MutVisitor>(vis: &mut T, fmt: &mut FormatArgs) {
     // FIXME: visit the template exhaustively.
-    let FormatArgs { span, template: _, arguments } = fmt;
+    let FormatArgs { span, template: _, arguments, uncooked_fmt_str: _ } = fmt;
     for FormatArgument { kind, expr } in arguments.all_args_mut() {
         match kind {
             FormatArgumentKind::Named(ident) | FormatArgumentKind::Captured(ident) => {
@@ -1628,9 +1639,10 @@ pub fn walk_expr<T: MutVisitor>(vis: &mut T, Expr { kind, id, span, attrs, token
             visit_thin_exprs(vis, call_args);
             vis.visit_span(span);
         }
-        ExprKind::Binary(_binop, lhs, rhs) => {
+        ExprKind::Binary(binop, lhs, rhs) => {
             vis.visit_expr(lhs);
             vis.visit_expr(rhs);
+            vis.visit_span(&mut binop.span);
         }
         ExprKind::Unary(_unop, ohs) => vis.visit_expr(ohs),
         ExprKind::Cast(expr, ty) => {
@@ -1772,6 +1784,12 @@ pub fn walk_expr<T: MutVisitor>(vis: &mut T, Expr { kind, id, span, attrs, token
         ExprKind::TryBlock(body) => vis.visit_block(body),
         ExprKind::Lit(_token) => {}
         ExprKind::IncludedBytes(_bytes) => {}
+        ExprKind::UnsafeBinderCast(_kind, expr, ty) => {
+            vis.visit_expr(expr);
+            if let Some(ty) = ty {
+                vis.visit_ty(ty);
+            }
+        }
         ExprKind::Err(_guar) => {}
         ExprKind::Dummy => {}
     }
@@ -1788,20 +1806,21 @@ pub fn noop_filter_map_expr<T: MutVisitor>(vis: &mut T, mut e: P<Expr>) -> Optio
 
 pub fn walk_flat_map_stmt<T: MutVisitor>(
     vis: &mut T,
-    Stmt { kind, mut span, mut id }: Stmt,
+    Stmt { kind, span, mut id }: Stmt,
 ) -> SmallVec<[Stmt; 1]> {
     vis.visit_id(&mut id);
-    let stmts: SmallVec<_> = walk_flat_map_stmt_kind(vis, kind)
+    let mut stmts: SmallVec<[Stmt; 1]> = walk_flat_map_stmt_kind(vis, kind)
         .into_iter()
         .map(|kind| Stmt { id, kind, span })
         .collect();
-    if stmts.len() > 1 {
-        panic!(
+    match stmts.len() {
+        0 => {}
+        1 => vis.visit_span(&mut stmts[0].span),
+        2.. => panic!(
             "cloning statement `NodeId`s is prohibited by default, \
              the visitor should implement custom statement visiting"
-        );
+        ),
     }
-    vis.visit_span(&mut span);
     stmts
 }
 

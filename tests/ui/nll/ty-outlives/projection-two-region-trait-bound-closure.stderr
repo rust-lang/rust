@@ -182,7 +182,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
-   = note: requirement occurs because of the type `Cell<&'?8 ()>`, which makes the generic argument `&'?8 ()` invariant
+   = note: requirement occurs because of the type `Cell<&'?6 ()>`, which makes the generic argument `&'?6 ()` invariant
    = note: the struct `Cell<T>` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 

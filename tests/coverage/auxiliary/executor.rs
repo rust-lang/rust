@@ -1,4 +1,4 @@
-#![feature(coverage_attribute, noop_waker)]
+#![feature(coverage_attribute)]
 //@ edition: 2021
 
 use core::future::Future;

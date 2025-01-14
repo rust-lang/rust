@@ -447,7 +447,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // This works fairly well because trait matching does not actually care about param-env
     // TypeOutlives predicates - these are normally used by regionck.
     let outlives_predicates: Vec<_> = predicates
-        .extract_if(|predicate| {
+        .extract_if(.., |predicate| {
             matches!(predicate.kind().skip_binder(), ty::ClauseKind::TypeOutlives(..))
         })
         .collect();
@@ -599,7 +599,7 @@ pub fn try_evaluate_const<'tcx>(
                 // even though it is not something we should ever actually encounter.
                 //
                 // Array repeat expr counts are allowed to syntactically use generic parameters
-                // but must not actually depend on them in order to evalaute succesfully. This means
+                // but must not actually depend on them in order to evalaute successfully. This means
                 // that it is actually fine to evalaute them in their own environment rather than with
                 // the actually provided generic arguments.
                 tcx.dcx().delayed_bug(

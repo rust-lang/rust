@@ -41,6 +41,7 @@ mod async_fn_in_trait;
 pub mod builtin;
 mod context;
 mod dangling;
+mod default_could_be_derived;
 mod deref_into_dyn_supertrait;
 mod drop_forget_useless;
 mod early;
@@ -85,6 +86,7 @@ use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;
 use builtin::*;
 use dangling::*;
+use default_could_be_derived::DefaultCouldBeDerived;
 use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
@@ -189,6 +191,7 @@ late_lint_methods!(
         BuiltinCombinedModuleLateLintPass,
         [
             ForLoopsOverFallibles: ForLoopsOverFallibles,
+            DefaultCouldBeDerived: DefaultCouldBeDerived::default(),
             DerefIntoDynSupertrait: DerefIntoDynSupertrait,
             DropForgetUseless: DropForgetUseless,
             ImproperCTypesDeclarations: ImproperCTypesDeclarations,
@@ -600,8 +603,6 @@ fn register_internals(store: &mut LintStore) {
     store.register_late_mod_pass(|_| Box::new(DefaultHashTypes));
     store.register_lints(&QueryStability::lint_vec());
     store.register_late_mod_pass(|_| Box::new(QueryStability));
-    store.register_lints(&ExistingDocKeyword::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(ExistingDocKeyword));
     store.register_lints(&TyTyKind::lint_vec());
     store.register_late_mod_pass(|_| Box::new(TyTyKind));
     store.register_lints(&TypeIr::lint_vec());
@@ -614,6 +615,8 @@ fn register_internals(store: &mut LintStore) {
     store.register_late_mod_pass(|_| Box::new(PassByValue));
     store.register_lints(&SpanUseEqCtxt::lint_vec());
     store.register_late_mod_pass(|_| Box::new(SpanUseEqCtxt));
+    store.register_lints(&SymbolInternStringLiteral::lint_vec());
+    store.register_late_mod_pass(|_| Box::new(SymbolInternStringLiteral));
     // FIXME(davidtwco): deliberately do not include `UNTRANSLATABLE_DIAGNOSTIC` and
     // `DIAGNOSTIC_OUTSIDE_OF_IMPL` here because `-Wrustc::internal` is provided to every crate and
     // these lints will trigger all of the time - change this once migration to diagnostic structs
@@ -627,7 +630,6 @@ fn register_internals(store: &mut LintStore) {
         LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
         LintId::of(USAGE_OF_QUALIFIED_TY),
         LintId::of(NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT),
-        LintId::of(EXISTING_DOC_KEYWORD),
         LintId::of(BAD_OPT_ACCESS),
         LintId::of(SPAN_USE_EQ_CTXT),
     ]);

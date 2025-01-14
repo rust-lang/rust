@@ -14,7 +14,7 @@ fn id<T>(x: T) -> T {
 
 impl<T> Struct<T> {
     fn new(x: T) -> Struct<T> {
-        Struct { x: x, f: id }
+        Struct { x, f: id }
     }
 
     fn get<T2>(self, x: T2) -> (T, T2) {

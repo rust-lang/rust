@@ -67,7 +67,7 @@ codegen_ssa_failed_to_write = failed to write {$path}: {$error}
 codegen_ssa_field_associated_value_expected = associated value expected for `{$name}`
 
 codegen_ssa_forbidden_target_feature_attr =
-    target feature `{$feature}` cannot be toggled with `#[target_feature]`: {$reason}
+    target feature `{$feature}` cannot be enabled with `#[target_feature]`: {$reason}
 
 codegen_ssa_ignoring_emit_path = ignoring emit path because multiple .{$extension} files were produced
 
@@ -200,6 +200,11 @@ codegen_ssa_missing_memory_ordering = Atomic intrinsic missing memory ordering
 
 codegen_ssa_missing_query_depgraph =
     found CGU-reuse attribute but `-Zquery-dep-graph` was not specified
+
+codegen_ssa_mixed_export_name_and_no_mangle = `{$no_mangle_attr}` attribute may not be used in combination with `#[export_name]`
+    .label = `{$no_mangle_attr}` is ignored
+    .note = `#[export_name]` takes precedence
+    .suggestion = remove the `{$no_mangle_attr}` attribute
 
 codegen_ssa_msvc_missing_linker = the msvc targets depend on the msvc linker but `link.exe` was not found
 

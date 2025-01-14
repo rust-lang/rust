@@ -1,3 +1,119 @@
+Version 1.84.0 (2025-01-09)
+==========================
+
+<a id="
+Language"></a>
+
+Language
+--------
+- [Allow `#[deny]` inside `#[forbid]` as a no-op](https://github.com/rust-lang/rust/pull/121560/)
+- [Show a warning when `-Ctarget-feature` is used to toggle features that can lead to unsoundness due to ABI mismatches](https://github.com/rust-lang/rust/pull/129884)
+- [Use the next-generation trait solver in coherence](https://github.com/rust-lang/rust/pull/130654)
+- [Allow coercions to drop the principal of trait objects](https://github.com/rust-lang/rust/pull/131857)
+- [Support `/` as the path separator for `include!()` in all cases on Windows](https://github.com/rust-lang/rust/pull/125205)
+- [Taking a raw ref (`raw (const|mut)`) of a deref of a pointer (`*ptr`) is now safe](https://github.com/rust-lang/rust/pull/129248)
+- [Stabilize s390x inline assembly](https://github.com/rust-lang/rust/pull/131258)
+- [Stabilize Arm64EC inline assembly](https://github.com/rust-lang/rust/pull/131781)
+- [Lint against creating pointers to immediately dropped temporaries](https://github.com/rust-lang/rust/pull/128985)
+- [Execute drop glue when unwinding in an `extern "C"` function](https://github.com/rust-lang/rust/pull/129582)
+
+<a id="1.84.0-Compiler"></a>
+
+Compiler
+--------
+- [Add `--print host-tuple` flag to print the host target tuple and affirm the "target tuple" terminology over "target triple"](https://github.com/rust-lang/rust/pull/125579)
+- [Declaring functions with a calling convention not supported on the current target now triggers a hard error](https://github.com/rust-lang/rust/pull/129935)
+- [Set up indirect access to external data for `loongarch64-unknown-linux-{musl,ohos}`](https://github.com/rust-lang/rust/pull/131583)
+- [Enable XRay instrumentation for LoongArch Linux targets](https://github.com/rust-lang/rust/pull/131818)
+- [Extend the `unexpected_cfgs` lint to also warn in external macros](https://github.com/rust-lang/rust/pull/132577)
+- [Stabilize WebAssembly `multivalue`, `reference-types`, and `tail-call` target features](https://github.com/rust-lang/rust/pull/131080)
+- [Added Tier 2 support for the `wasm32v1-none` target](https://github.com/rust-lang/rust/pull/131487)
+
+<a id="1.84.0-Libraries"></a>
+
+Libraries
+---------
+- [Implement `From<&mut {slice}>` for `Box/Rc/Arc<{slice}>`](https://github.com/rust-lang/rust/pull/129329)
+- [Move `<float>::copysign`, `<float>::abs`, `<float>::signum` to `core`](https://github.com/rust-lang/rust/pull/131304)
+- [Add `LowerExp` and `UpperExp` implementations to `NonZero`](https://github.com/rust-lang/rust/pull/131377)
+- [Implement `FromStr` for `CString` and `TryFrom<CString>` for `String`](https://github.com/rust-lang/rust/pull/130608)
+- [`std::os::darwin` has been made public](https://github.com/rust-lang/rust/pull/123723)
+
+<a id="1.84.0-Stabilized-APIs"></a>
+
+Stabilized APIs
+---------------
+
+- [`Ipv6Addr::is_unique_local`](https://doc.rust-lang.org/stable/core/net/struct.Ipv6Addr.html#method.is_unique_local)
+- [`Ipv6Addr::is_unicast_link_local`](https://doc.rust-lang.org/stable/core/net/struct.Ipv6Addr.html#method.is_unicast_link_local)
+- [`core::ptr::with_exposed_provenance`](https://doc.rust-lang.org/stable/core/ptr/fn.with_exposed_provenance.html)
+- [`core::ptr::with_exposed_provenance_mut`](https://doc.rust-lang.org/stable/core/ptr/fn.with_exposed_provenance_mut.html)
+- [`<ptr>::addr`](https://doc.rust-lang.org/stable/core/primitive.pointer.html#method.addr)
+- [`<ptr>::expose_provenance`](https://doc.rust-lang.org/stable/core/primitive.pointer.html#method.expose_provenance)
+- [`<ptr>::with_addr`](https://doc.rust-lang.org/stable/core/primitive.pointer.html#method.with_addr)
+- [`<ptr>::map_addr`](https://doc.rust-lang.org/stable/core/primitive.pointer.html#method.map_addr)
+- [`<int>::isqrt`](https://doc.rust-lang.org/stable/core/primitive.i32.html#method.isqrt)
+- [`<int>::checked_isqrt`](https://doc.rust-lang.org/stable/core/primitive.i32.html#method.checked_isqrt)
+- [`<uint>::isqrt`](https://doc.rust-lang.org/stable/core/primitive.u32.html#method.isqrt)
+- [`NonZero::isqrt`](https://doc.rust-lang.org/stable/core/num/struct.NonZero.html#impl-NonZero%3Cu128%3E/method.isqrt)
+- [`core::ptr::without_provenance`](https://doc.rust-lang.org/stable/core/ptr/fn.without_provenance.html)
+- [`core::ptr::without_provenance_mut`](https://doc.rust-lang.org/stable/core/ptr/fn.without_provenance_mut.html)
+- [`core::ptr::dangling`](https://doc.rust-lang.org/stable/core/ptr/fn.dangling.html)
+- [`core::ptr::dangling_mut`](https://doc.rust-lang.org/stable/core/ptr/fn.dangling_mut.html)
+- [`Pin::as_deref_mut`](https://doc.rust-lang.org/stable/core/pin/struct.Pin.html#method.as_deref_mut)
+
+These APIs are now stable in const contexts
+
+- [`AtomicBool::from_ptr`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicBool.html#method.from_ptr)
+- [`AtomicPtr::from_ptr`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicPtr.html#method.from_ptr)
+- [`AtomicU8::from_ptr`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicU8.html#method.from_ptr)
+- [`AtomicU16::from_ptr`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicU16.html#method.from_ptr)
+- [`AtomicU32::from_ptr`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicU32.html#method.from_ptr)
+- [`AtomicU64::from_ptr`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicU64.html#method.from_ptr)
+- [`AtomicUsize::from_ptr`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicUsize.html#method.from_ptr)
+- [`AtomicI8::from_ptr`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicI8.html#method.from_ptr)
+- [`AtomicI16::from_ptr`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicI16.html#method.from_ptr)
+- [`AtomicI32::from_ptr`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicI32.html#method.from_ptr)
+- [`AtomicI64::from_ptr`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicI64.html#method.from_ptr)
+- [`AtomicIsize::from_ptr`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicIsize.html#method.from_ptr)
+- [`<ptr>::is_null`](https://doc.rust-lang.org/stable/core/primitive.pointer.html#method.is_null-1)
+- [`<ptr>::as_ref`](https://doc.rust-lang.org/stable/core/primitive.pointer.html#method.as_ref-1)
+- [`<ptr>::as_mut`](https://doc.rust-lang.org/stable/core/primitive.pointer.html#method.as_mut)
+- [`Pin::new`](https://doc.rust-lang.org/stable/core/pin/struct.Pin.html#method.new)
+- [`Pin::new_unchecked`](https://doc.rust-lang.org/stable/core/pin/struct.Pin.html#method.new_unchecked)
+- [`Pin::get_ref`](https://doc.rust-lang.org/stable/core/pin/struct.Pin.html#method.get_ref)
+- [`Pin::into_ref`](https://doc.rust-lang.org/stable/core/pin/struct.Pin.html#method.into_ref)
+- [`Pin::get_mut`](https://doc.rust-lang.org/stable/core/pin/struct.Pin.html#method.get_mut)
+- [`Pin::get_unchecked_mut`](https://doc.rust-lang.org/stable/core/pin/struct.Pin.html#method.get_unchecked_mut)
+- [`Pin::static_ref`](https://doc.rust-lang.org/stable/core/pin/struct.Pin.html#method.static_ref)
+- [`Pin::static_mut`](https://doc.rust-lang.org/stable/core/pin/struct.Pin.html#method.static_mut)
+
+<a id="1.84.0-Cargo"></a>
+
+Cargo
+-----
+- [Stabilize MSRV-aware resolver config](https://github.com/rust-lang/cargo/pull/14639/)
+- [Stabilize resolver v3](https://github.com/rust-lang/cargo/pull/14754/)
+
+<a id="1.84-Rustdoc"></a>
+
+Rustdoc
+-------
+
+- [rustdoc-search: improve type-driven search](https://github.com/rust-lang/rust/pull/127589)
+
+<a id="1.84.0-Compatibility-Notes"></a>
+
+Compatibility Notes
+-------------------
+- [Enable by default the `LSX` target feature for LoongArch Linux targets](https://github.com/rust-lang/rust/pull/132140)
+- [The unstable `-Zprofile` flag (“gcov-style” coverage instrumentation) has been removed.](https://github.com/rust-lang/rust/pull/131829) This does not affect the stable flags for coverage instrumentation (`-Cinstrument-coverage`) and profile-guided optimization (`-Cprofile-generate`, `-Cprofile-use`), which are unrelated and remain available.
+- Support for the target named `wasm32-wasi` has been removed as the target is now named `wasm32-wasip1`. This completes the [transition](https://github.com/rust-lang/compiler-team/issues/607) [plan](https://github.com/rust-lang/compiler-team/issues/695) for this target following [the introduction of `wasm32-wasip1`](https://github.com/rust-lang/rust/pull/120468) in Rust 1.78. Compiler warnings on [use of `wasm32-wasi`](https://github.com/rust-lang/rust/pull/126662) introduced in Rust 1.81 are now gone as well as the target is removed.
+- [The syntax `&pin (mut|const) T` is now parsed as a type which in theory could affect macro expansion results in some edge cases](https://github.com/rust-lang/rust/pull/130635#issuecomment-2375462821)
+- [Legacy syntax for calling `std::arch` functions is no longer permitted to declare items or bodies (such as closures, inline consts, or async blocks).](https://github.com/rust-lang/rust/pull/130443#issuecomment-2445678945)
+- [Declaring functions with a calling convention not supported on the current target now triggers a hard error](https://github.com/rust-lang/rust/pull/129935)
+- [The next-generation trait solver is now enabled for coherence, fixing multiple soundness issues](https://github.com/rust-lang/rust/pull/130654)
+
 Version 1.83.0 (2024-11-28)
 ==========================
 
@@ -503,7 +619,7 @@ Compatibility Notes
 * We have renamed `std::panic::PanicInfo` to `std::panic::PanicHookInfo`. The old name will continue to work as an alias, but will result in a deprecation warning starting in Rust 1.82.0.
 
   `core::panic::PanicInfo` will remain unchanged, however, as this is now a *different type*.
- 
+
   The reason is that these types have different roles: `std::panic::PanicHookInfo` is the argument to the [panic hook](https://doc.rust-lang.org/stable/std/panic/fn.set_hook.html) in std context (where panics can have an arbitrary payload), while `core::panic::PanicInfo` is the argument to the [`#[panic_handler]`](https://doc.rust-lang.org/nomicon/panic-handler.html) in no_std context (where panics always carry a formatted *message*). Separating these types allows us to add more useful methods to these types, such as `std::panic::PanicHookInfo::payload_as_str()` and `core::panic::PanicInfo::message()`.
 
 * The new sort implementations may panic if a type's implementation of [`Ord`](https://doc.rust-lang.org/std/cmp/trait.Ord.html) (or the given comparison function) does not implement a [total order](https://en.wikipedia.org/wiki/Total_order) as the trait requires. `Ord`'s supertraits (`PartialOrd`, `Eq`, and `PartialEq`) must also be consistent. The previous implementations would not "notice" any problem, but the new implementations have a good chance of detecting inconsistencies, throwing a panic rather than returning knowingly unsorted data.
@@ -584,7 +700,7 @@ Stabilized APIs
 - [`impl Default for Arc<CStr>`](https://doc.rust-lang.org/beta/alloc/sync/struct.Arc.html#impl-Default-for-Arc%3CCStr%3E)
 - [`impl Default for Arc<[T]>`](https://doc.rust-lang.org/beta/alloc/sync/struct.Arc.html#impl-Default-for-Arc%3C%5BT%5D%3E)
 - [`impl IntoIterator for Box<[T]>`](https://doc.rust-lang.org/beta/alloc/boxed/struct.Box.html#impl-IntoIterator-for-Box%3C%5BI%5D,+A%3E)
-- [`impl FromIterator<String> for Box<str>`](https://doc.rust-lang.org/beta/alloc/boxed/struct.Box.html#impl-FromIterator%3CString%3E-for-Box%3Cstr%3E) 
+- [`impl FromIterator<String> for Box<str>`](https://doc.rust-lang.org/beta/alloc/boxed/struct.Box.html#impl-FromIterator%3CString%3E-for-Box%3Cstr%3E)
 - [`impl FromIterator<char> for Box<str>`](https://doc.rust-lang.org/beta/alloc/boxed/struct.Box.html#impl-FromIterator%3Cchar%3E-for-Box%3Cstr%3E)
 - [`LazyCell`](https://doc.rust-lang.org/beta/core/cell/struct.LazyCell.html)
 - [`LazyLock`](https://doc.rust-lang.org/beta/std/sync/struct.LazyLock.html)
@@ -1816,7 +1932,7 @@ Compiler
 - [Detect uninhabited types early in const eval](https://github.com/rust-lang/rust/pull/109435/)
 - [Switch to LLD as default linker for {arm,thumb}v4t-none-eabi](https://github.com/rust-lang/rust/pull/109721/)
 - [Add tier 3 target `loongarch64-unknown-linux-gnu`](https://github.com/rust-lang/rust/pull/96971)
-- [Add tier 3 target for `i586-pc-nto-qnx700` (QNX Neutrino RTOS, version 7.0)](https://github.com/rust-lang/rust/pull/109173/), 
+- [Add tier 3 target for `i586-pc-nto-qnx700` (QNX Neutrino RTOS, version 7.0)](https://github.com/rust-lang/rust/pull/109173/),
 - [Insert alignment checks for pointer dereferences as debug assertions](https://github.com/rust-lang/rust/pull/98112)
   This catches undefined behavior at runtime, and may cause existing code to fail.
 
@@ -2023,7 +2139,7 @@ Compatibility Notes
   If `tools = [...]` is set in config.toml, we will respect a missing rustdoc in that list. By
   default rustdoc remains included. To retain the prior behavior explicitly add `"rustdoc"` to the
   list.
-  
+
 <a id="1.69.0-Internal-Changes"></a>
 
 Internal Changes
@@ -2067,7 +2183,7 @@ Language
 --------
 
 - [Stabilize default_alloc_error_handler](https://github.com/rust-lang/rust/pull/102318/)
-  This allows usage of `alloc` on stable without requiring the 
+  This allows usage of `alloc` on stable without requiring the
   definition of a handler for allocation failure. Defining custom handlers is still unstable.
 - [Stabilize `efiapi` calling convention.](https://github.com/rust-lang/rust/pull/105795/)
 - [Remove implicit promotion for types with drop glue](https://github.com/rust-lang/rust/pull/105085/)

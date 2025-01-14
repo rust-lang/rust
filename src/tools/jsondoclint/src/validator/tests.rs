@@ -1,5 +1,5 @@
 use rustc_hash::FxHashMap;
-use rustdoc_json_types::{FORMAT_VERSION, Item, ItemKind, Visibility};
+use rustdoc_json_types::{Abi, FORMAT_VERSION, FunctionHeader, Item, ItemKind, Visibility};
 
 use super::*;
 use crate::json_find::SelectorPart;
@@ -99,6 +99,101 @@ fn errors_on_local_in_paths_and_not_index() {
     check(&krate, &[Error {
         id: Id(2),
         kind: ErrorKind::Custom("Id for local item in `paths` but not in `index`".to_owned()),
+    }]);
+}
+
+#[test]
+fn errors_on_missing_path() {
+    // crate-name=foo
+    // ```
+    // pub struct Bar;
+    // pub fn mk_bar() -> Bar { ... }
+    // ```
+
+    let generics = Generics { params: vec![], where_predicates: vec![] };
+
+    let krate = Crate {
+        root: Id(0),
+        crate_version: None,
+        includes_private: false,
+        index: FxHashMap::from_iter([
+            (Id(0), Item {
+                id: Id(0),
+                crate_id: 0,
+                name: Some("foo".to_owned()),
+                span: None,
+                visibility: Visibility::Public,
+                docs: None,
+                links: FxHashMap::default(),
+                attrs: Vec::new(),
+                deprecation: None,
+                inner: ItemEnum::Module(Module {
+                    is_crate: true,
+                    items: vec![Id(1), Id(2)],
+                    is_stripped: false,
+                }),
+            }),
+            (Id(1), Item {
+                id: Id(0),
+                crate_id: 0,
+                name: Some("Bar".to_owned()),
+                span: None,
+                visibility: Visibility::Public,
+                docs: None,
+                links: FxHashMap::default(),
+                attrs: Vec::new(),
+                deprecation: None,
+                inner: ItemEnum::Struct(Struct {
+                    kind: StructKind::Unit,
+                    generics: generics.clone(),
+                    impls: vec![],
+                }),
+            }),
+            (Id(2), Item {
+                id: Id(0),
+                crate_id: 0,
+                name: Some("mk_bar".to_owned()),
+                span: None,
+                visibility: Visibility::Public,
+                docs: None,
+                links: FxHashMap::default(),
+                attrs: Vec::new(),
+                deprecation: None,
+                inner: ItemEnum::Function(Function {
+                    sig: FunctionSignature {
+                        inputs: vec![],
+                        output: Some(Type::ResolvedPath(Path {
+                            name: "Bar".to_owned(),
+                            id: Id(1),
+                            args: None,
+                        })),
+                        is_c_variadic: false,
+                    },
+                    generics,
+                    header: FunctionHeader {
+                        is_const: false,
+                        is_unsafe: false,
+                        is_async: false,
+                        abi: Abi::Rust,
+                    },
+                    has_body: true,
+                }),
+            }),
+        ]),
+        paths: FxHashMap::from_iter([(Id(0), ItemSummary {
+            crate_id: 0,
+            path: vec!["foo".to_owned()],
+            kind: ItemKind::Module,
+        })]),
+        external_crates: FxHashMap::default(),
+        format_version: rustdoc_json_types::FORMAT_VERSION,
+    };
+
+    check(&krate, &[Error {
+        kind: ErrorKind::Custom(
+            r#"No entry in '$.paths' for Path { name: "Bar", id: Id(1), args: None }"#.to_owned(),
+        ),
+        id: Id(1),
     }]);
 }
 

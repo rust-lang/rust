@@ -7,7 +7,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::Subdiagnostic;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_index::bit_set::ChunkedBitSet;
+use rustc_index::bit_set::MixedBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::bug;
@@ -49,24 +49,24 @@ struct DropsReachable<'a, 'mir, 'tcx> {
     move_data: &'a MoveData<'tcx>,
     maybe_init: &'a mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
     block_drop_value_info: &'a mut IndexSlice<BasicBlock, MovePathIndexAtBlock>,
-    collected_drops: &'a mut ChunkedBitSet<MovePathIndex>,
-    visited: FxHashMap<BasicBlock, Rc<RefCell<ChunkedBitSet<MovePathIndex>>>>,
+    collected_drops: &'a mut MixedBitSet<MovePathIndex>,
+    visited: FxHashMap<BasicBlock, Rc<RefCell<MixedBitSet<MovePathIndex>>>>,
 }
 
 impl<'a, 'mir, 'tcx> DropsReachable<'a, 'mir, 'tcx> {
     fn visit(&mut self, block: BasicBlock) {
         let move_set_size = self.move_data.move_paths.len();
-        let make_new_path_set = || Rc::new(RefCell::new(ChunkedBitSet::new_empty(move_set_size)));
+        let make_new_path_set = || Rc::new(RefCell::new(MixedBitSet::new_empty(move_set_size)));
 
         let data = &self.body.basic_blocks[block];
         let Some(terminator) = &data.terminator else { return };
-        // Given that we observe these dropped locals here at `block` so far,
-        // we will try to update the successor blocks.
-        // An occupied entry at `block` in `self.visited` signals that we have visited `block` before.
+        // Given that we observe these dropped locals here at `block` so far, we will try to update
+        // the successor blocks. An occupied entry at `block` in `self.visited` signals that we
+        // have visited `block` before.
         let dropped_local_here =
             Rc::clone(self.visited.entry(block).or_insert_with(make_new_path_set));
-        // We could have invoked reverse lookup for a `MovePathIndex` every time, but unfortunately it is expensive.
-        // Let's cache them in `self.block_drop_value_info`.
+        // We could have invoked reverse lookup for a `MovePathIndex` every time, but unfortunately
+        // it is expensive. Let's cache them in `self.block_drop_value_info`.
         match self.block_drop_value_info[block] {
             MovePathIndexAtBlock::Some(dropped) => {
                 dropped_local_here.borrow_mut().insert(dropped);
@@ -76,23 +76,24 @@ impl<'a, 'mir, 'tcx> DropsReachable<'a, 'mir, 'tcx> {
                     && let LookupResult::Exact(idx) | LookupResult::Parent(Some(idx)) =
                         self.move_data.rev_lookup.find(place.as_ref())
                 {
-                    // Since we are working with MIRs at a very early stage,
-                    // observing a `drop` terminator is not indicative enough that
-                    // the drop will definitely happen.
-                    // That is decided in the drop elaboration pass instead.
-                    // Therefore, we need to consult with the maybe-initialization information.
+                    // Since we are working with MIRs at a very early stage, observing a `drop`
+                    // terminator is not indicative enough that the drop will definitely happen.
+                    // That is decided in the drop elaboration pass instead. Therefore, we need to
+                    // consult with the maybe-initialization information.
                     self.maybe_init.seek_before_primary_effect(Location {
                         block,
                         statement_index: data.statements.len(),
                     });
 
-                    // Check if the drop of `place` under inspection is really in effect.
-                    // This is true only when `place` may have been initialized along a control flow path from a BID to the drop program point today.
-                    // In other words, this is where the drop of `place` will happen in the future instead.
+                    // Check if the drop of `place` under inspection is really in effect. This is
+                    // true only when `place` may have been initialized along a control flow path
+                    // from a BID to the drop program point today. In other words, this is where
+                    // the drop of `place` will happen in the future instead.
                     if let MaybeReachable::Reachable(maybe_init) = self.maybe_init.get()
                         && maybe_init.contains(idx)
                     {
-                        // We also cache the drop information, so that we do not need to check on data-flow cursor again
+                        // We also cache the drop information, so that we do not need to check on
+                        // data-flow cursor again.
                         self.block_drop_value_info[block] = MovePathIndexAtBlock::Some(idx);
                         dropped_local_here.borrow_mut().insert(idx);
                     } else {
@@ -139,8 +140,9 @@ impl<'a, 'mir, 'tcx> DropsReachable<'a, 'mir, 'tcx> {
                 // Let's check the observed dropped places in.
                 self.collected_drops.union(&*dropped_local_there.borrow());
                 if self.drop_span.is_none() {
-                    // FIXME(@dingxiangfei2009): it turns out that `self.body.source_scopes` are still a bit wonky.
-                    // There is a high chance that this span still points to a block rather than a statement semicolon.
+                    // FIXME(@dingxiangfei2009): it turns out that `self.body.source_scopes` are
+                    // still a bit wonky. There is a high chance that this span still points to a
+                    // block rather than a statement semicolon.
                     *self.drop_span = Some(terminator.source_info.span);
                 }
                 // Now we have discovered a simple control flow path from a future drop point
@@ -283,7 +285,9 @@ fn ty_dtor_span<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Span> {
         | ty::Placeholder(_)
         | ty::Infer(_)
         | ty::Slice(_)
-        | ty::Array(_, _) => None,
+        | ty::Array(_, _)
+        | ty::UnsafeBinder(_) => None,
+
         ty::Adt(adt_def, _) => {
             let did = adt_def.did();
             let try_local_did_span = |did: DefId| {
@@ -347,6 +351,11 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
     {
         return;
     }
+
+    // FIXME(typing_env): This should be able to reveal the opaques local to the
+    // body using the typeck results.
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, def_id);
+
     // ## About BIDs in blocks ##
     // Track the set of blocks that contain a backwards-incompatible drop (BID)
     // and, for each block, the vector of locations.
@@ -354,7 +363,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
     // We group them per-block because they tend to scheduled in the same drop ladder block.
     let mut bid_per_block = IndexMap::default();
     let mut bid_places = UnordSet::new();
-    let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
+
     let mut ty_dropped_components = UnordMap::default();
     for (block, data) in body.basic_blocks.iter_enumerated() {
         for (statement_index, stmt) in data.statements.iter().enumerate() {
@@ -394,10 +403,10 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
     for (&block, candidates) in &bid_per_block {
         // We will collect drops on locals on paths between BID points to their actual drop locations
         // into `all_locals_dropped`.
-        let mut all_locals_dropped = ChunkedBitSet::new_empty(move_data.move_paths.len());
+        let mut all_locals_dropped = MixedBitSet::new_empty(move_data.move_paths.len());
         let mut drop_span = None;
         for &(_, place) in candidates.iter() {
-            let mut collected_drops = ChunkedBitSet::new_empty(move_data.move_paths.len());
+            let mut collected_drops = MixedBitSet::new_empty(move_data.move_paths.len());
             // ## On detecting change in relative drop order ##
             // Iterate through each BID-containing block `block`.
             // If the place `P` targeted by the BID is "maybe initialized",
@@ -425,8 +434,9 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
 
         // We shall now exclude some local bindings for the following cases.
         {
-            let mut to_exclude = ChunkedBitSet::new_empty(all_locals_dropped.domain_size());
-            // We will now do subtraction from the candidate dropped locals, because of the following reasons.
+            let mut to_exclude = MixedBitSet::new_empty(all_locals_dropped.domain_size());
+            // We will now do subtraction from the candidate dropped locals, because of the
+            // following reasons.
             for path_idx in all_locals_dropped.iter() {
                 let move_path = &move_data.move_paths[path_idx];
                 let dropped_local = move_path.place.local;
@@ -681,7 +691,7 @@ impl Subdiagnostic for LocalLabel<'_> {
         for dtor in self.destructors {
             dtor.add_to_diag_with(diag, f);
         }
-        let msg = f(diag, crate::fluent_generated::mir_transform_label_local_epilogue.into());
+        let msg = f(diag, crate::fluent_generated::mir_transform_label_local_epilogue);
         diag.span_label(self.span, msg);
     }
 }

@@ -23,5 +23,27 @@ LL |     println!("I am dead");
    |
    = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 2 previous errors
+error: unreachable expression
+  --> $DIR/expr_match.rs:25:25
+   |
+LL |         () if return => (),
+   |               ------    ^^ unreachable expression
+   |               |
+   |               any code following this expression is unreachable
+
+error: unreachable statement
+  --> $DIR/expr_match.rs:29:5
+   |
+LL | /     match () {
+LL | |         () if return => (),
+LL | |
+LL | |         () => return,
+LL | |     }
+   | |_____- any code following this `match` expression is unreachable, as all arms diverge
+LL |       println!("I am dead");
+   |       ^^^^^^^^^^^^^^^^^^^^^ unreachable statement
+   |
+   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
 

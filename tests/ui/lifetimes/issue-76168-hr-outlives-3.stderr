@@ -2,9 +2,6 @@ error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `i32`
   --> $DIR/issue-76168-hr-outlives-3.rs:6:1
    |
 LL | / async fn wrapper<F>(f: F)
-LL | |
-LL | |
-LL | |
 ...  |
 LL | | F:,
 LL | | for<'a> <i32 as FnOnce<(&'a mut i32,)>>::Output: Future<Output = ()> + 'a,
@@ -24,9 +21,6 @@ error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `i32`
   --> $DIR/issue-76168-hr-outlives-3.rs:6:1
    |
 LL | / async fn wrapper<F>(f: F)
-LL | |
-LL | |
-LL | |
 ...  |
 LL | | F:,
 LL | | for<'a> <i32 as FnOnce<(&'a mut i32,)>>::Output: Future<Output = ()> + 'a,
@@ -38,9 +32,6 @@ error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `i32`
   --> $DIR/issue-76168-hr-outlives-3.rs:6:1
    |
 LL | / async fn wrapper<F>(f: F)
-LL | |
-LL | |
-LL | |
 ...  |
 LL | | F:,
 LL | | for<'a> <i32 as FnOnce<(&'a mut i32,)>>::Output: Future<Output = ()> + 'a,

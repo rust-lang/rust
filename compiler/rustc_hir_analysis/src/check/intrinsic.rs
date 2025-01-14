@@ -8,8 +8,7 @@ use rustc_middle::bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 
 use crate::check::check_function_signature;
 use crate::errors::{
@@ -27,7 +26,7 @@ fn equate_intrinsic_type<'tcx>(
     sig: ty::PolyFnSig<'tcx>,
 ) {
     let (generics, span) = match tcx.hir_node_by_def_id(def_id) {
-        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { generics, .. }, .. })
         | hir::Node::ForeignItem(hir::ForeignItem {
             kind: hir::ForeignItemKind::Fn(_, _, generics),
             ..
@@ -87,6 +86,8 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::assert_inhabited
         | sym::assert_zero_valid
         | sym::assert_mem_uninitialized_valid
+        | sym::box_new
+        | sym::breakpoint
         | sym::size_of
         | sym::min_align_of
         | sym::needs_drop
@@ -94,6 +95,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::add_with_overflow
         | sym::sub_with_overflow
         | sym::mul_with_overflow
+        | sym::carrying_mul_add
         | sym::wrapping_add
         | sym::wrapping_sub
         | sym::wrapping_mul
@@ -436,6 +438,10 @@ pub fn check_intrinsic_type(
                 (1, 0, vec![param(0), param(0)], Ty::new_tup(tcx, &[param(0), tcx.types.bool]))
             }
 
+            sym::carrying_mul_add => {
+                (2, 0, vec![param(0); 4], Ty::new_tup(tcx, &[param(1), param(0)]))
+            }
+
             sym::ptr_guaranteed_cmp => (
                 1,
                 0,
@@ -496,7 +502,9 @@ pub fn check_intrinsic_type(
                 (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit)
             }
 
-            sym::typed_swap => (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)); 2], tcx.types.unit),
+            sym::typed_swap_nonoverlapping => {
+                (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)); 2], tcx.types.unit)
+            }
 
             sym::discriminant_value => {
                 let assoc_items = tcx.associated_item_def_ids(
@@ -599,6 +607,8 @@ pub fn check_intrinsic_type(
 
             sym::ub_checks => (0, 0, Vec::new(), tcx.types.bool),
 
+            sym::box_new => (1, 0, vec![param(0)], Ty::new_box(tcx, param(0))),
+
             sym::simd_eq
             | sym::simd_ne
             | sym::simd_lt
@@ -641,7 +651,9 @@ pub fn check_intrinsic_type(
             | sym::simd_round
             | sym::simd_trunc => (1, 0, vec![param(0)], param(0)),
             sym::simd_fpowi => (1, 0, vec![param(0), tcx.types.i32], param(0)),
-            sym::simd_fma => (1, 0, vec![param(0), param(0), param(0)], param(0)),
+            sym::simd_fma | sym::simd_relaxed_fma => {
+                (1, 0, vec![param(0), param(0), param(0)], param(0))
+            }
             sym::simd_gather => (3, 0, vec![param(0), param(1), param(2)], param(0)),
             sym::simd_masked_load => (3, 0, vec![param(0), param(1), param(2)], param(2)),
             sym::simd_masked_store => (3, 0, vec![param(0), param(1), param(2)], tcx.types.unit),

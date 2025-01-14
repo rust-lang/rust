@@ -1,7 +1,7 @@
 //@ revisions: ascii unicode
 //@[ascii] compile-flags: --diagnostic-width=40
 //@[unicode] compile-flags: -Zunstable-options --error-format=human-unicode --diagnostic-width=40
-//@ normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
+//@ normalize-stderr: "long-type-\d+" -> "long-type-hash"
 trait Future {
     type Error;
 }

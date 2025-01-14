@@ -24,6 +24,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diag, FatalError, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
+pub use unicode_normalization::UNICODE_VERSION as UNICODE_NORMALIZATION_VERSION;
 
 pub const MACRO_ARGUMENTS: Option<&str> = Some("macro arguments");
 

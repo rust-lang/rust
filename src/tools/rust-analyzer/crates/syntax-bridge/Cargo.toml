@@ -21,7 +21,8 @@ syntax.workspace = true
 parser.workspace = true
 tt.workspace = true
 stdx.workspace = true
-span.workspace = true
+# span = {workspace = true, default-features = false} does not work
+span = { path = "../span", version = "0.0.0", default-features = false}
 intern.workspace = true
 
 [dev-dependencies]

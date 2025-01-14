@@ -46,7 +46,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .unresolved_reference    { color: #FC5555; text-decoration: wavy underline; }
 </style>
 <pre><code><span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">foo</span> <span class="brace">{</span>
-    <span class="parenthesis">(</span><span class="punctuation">$</span>foo<span class="colon">:</span>ident<span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span>
+    <span class="parenthesis">(</span><span class="punctuation">$</span>foo<span class="colon">:</span>ident<span class="parenthesis">)</span> <span class="operator">=</span><span class="operator">&gt;</span> <span class="brace">{</span>
         <span class="keyword">mod</span> y <span class="brace">{</span>
             <span class="keyword">pub</span> <span class="keyword">struct</span> <span class="punctuation">$</span>foo<span class="semicolon">;</span>
         <span class="brace">}</span>

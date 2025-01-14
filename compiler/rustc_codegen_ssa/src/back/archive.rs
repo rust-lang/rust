@@ -2,7 +2,7 @@ use std::env;
 use std::error::Error;
 use std::ffi::OsString;
 use std::fs::{self, File};
-use std::io::{self, Write};
+use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use ar_archive_writer::{
@@ -14,7 +14,7 @@ use object::read::macho::FatArch;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::Mmap;
 use rustc_session::Session;
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 use tempfile::Builder as TempFileBuilder;
 use tracing::trace;
 
@@ -509,9 +509,10 @@ impl<'a> ArArchiveBuilder<'a> {
                 io_error_context("couldn't create a directory for the temp file", err)
             })?;
         let archive_tmpfile_path = archive_tmpdir.path().join("tmp.a");
-        let mut archive_tmpfile = File::create_new(&archive_tmpfile_path)
+        let archive_tmpfile = File::create_new(&archive_tmpfile_path)
             .map_err(|err| io_error_context("couldn't create the temp file", err))?;
 
+        let mut archive_tmpfile = BufWriter::new(archive_tmpfile);
         write_archive_to_stream(
             &mut archive_tmpfile,
             &entries,
@@ -519,6 +520,8 @@ impl<'a> ArArchiveBuilder<'a> {
             false,
             /* is_ec = */ self.sess.target.arch == "arm64ec",
         )?;
+        archive_tmpfile.flush()?;
+        drop(archive_tmpfile);
 
         let any_entries = !entries.is_empty();
         drop(entries);

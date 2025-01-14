@@ -1,0 +1,13 @@
+- // MIR for `const_items` before InstSimplify-after-simplifycfg
++ // MIR for `const_items` after InstSimplify-after-simplifycfg
+  
+  fn const_items() -> [u8; 5] {
+      let mut _0: [u8; 5];
+  
+      bb0: {
+-         _0 = [const const_items::A, const const_items::B, const const_items::C, const const_items::D, const const_items::E];
++         _0 = [const const_items::A; 5];
+          return;
+      }
+  }
+  

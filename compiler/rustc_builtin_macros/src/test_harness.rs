@@ -16,8 +16,7 @@ use rustc_lint_defs::BuiltinLintDiag;
 use rustc_session::Session;
 use rustc_session::lint::builtin::UNNAMEABLE_TEST_ITEMS;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
-use rustc_span::symbol::{Ident, Symbol, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_target::spec::PanicStrategy;
 use smallvec::smallvec;
 use thin_vec::{ThinVec, thin_vec};
@@ -141,8 +140,10 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
 
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
-        if let ast::ItemKind::Mod(_, ModKind::Loaded(.., ast::ModSpans { inner_span: span, .. })) =
-            item.kind
+        if let ast::ItemKind::Mod(
+            _,
+            ModKind::Loaded(.., ast::ModSpans { inner_span: span, .. }, _),
+        ) = item.kind
         {
             let prev_tests = mem::take(&mut self.tests);
             walk_item_kind(

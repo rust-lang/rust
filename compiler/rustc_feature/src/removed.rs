@@ -1,6 +1,6 @@
 //! List of the removed feature gates.
 
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use super::{Feature, to_nonzero};
 
@@ -119,9 +119,13 @@ declare_features! (
     (removed, generator_clone, "1.65.0", Some(95360), Some("renamed to `coroutine_clone`")),
     /// Allows defining generators.
     (removed, generators, "1.21.0", Some(43122), Some("renamed to `coroutines`")),
-    /// Allows `impl Trait` in bindings (`let`, `const`, `static`).
-    (removed, impl_trait_in_bindings, "1.55.0", Some(63065),
-     Some("the implementation was not maintainable, the feature may get reintroduced once the current refactorings are done")),
+    /// An extension to the `generic_associated_types` feature, allowing incomplete features.
+    (removed, generic_associated_types_extended, "1.85.0", Some(95451),
+        Some(
+            "feature needs overhaul and reimplementation pending \
+            better implied higher-ranked implied bounds support"
+        )
+    ),
     (removed, import_shadowing, "1.0.0", None, None),
     /// Allows in-band quantification of lifetime bindings (e.g., `fn foo(x: &'a u8) -> &'a u8`).
     (removed, in_band_lifetimes, "1.23.0", Some(44524),

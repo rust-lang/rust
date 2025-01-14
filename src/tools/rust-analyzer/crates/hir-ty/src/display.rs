@@ -474,7 +474,9 @@ impl HirDisplay for ProjectionTy {
 
         let trait_ref = self.trait_ref(f.db);
         write!(f, "<")?;
-        fmt_trait_ref(f, &trait_ref, true)?;
+        trait_ref.self_type_parameter(Interner).hir_fmt(f)?;
+        write!(f, " as ")?;
+        trait_ref.hir_fmt(f)?;
         write!(
             f,
             ">::{}",
@@ -1047,10 +1049,27 @@ impl HirDisplay for Ty {
                     );
                     // We print all params except implicit impl Trait params. Still a bit weird; should we leave out parent and self?
                     if parameters.len() - impl_ > 0 {
+                        let params_len = parameters.len();
                         // `parameters` are in the order of fn's params (including impl traits), fn's lifetimes
                         let parameters =
                             generic_args_sans_defaults(f, Some(generic_def_id), parameters);
-                        let without_impl = self_param as usize + type_ + const_ + lifetime;
+                        assert!(params_len >= parameters.len());
+                        let defaults = params_len - parameters.len();
+
+                        // Normally, functions cannot have default parameters, but they can,
+                        // for function-like things such as struct names or enum variants.
+                        // The former cannot have defaults but parents, and the later cannot have
+                        // parents but defaults.
+                        // So, if `parent_len` > 0, it have a parent and thus it doesn't have any
+                        // default. Therefore, we shouldn't subtract defaults because those defaults
+                        // are from their parents.
+                        // And if `parent_len` == 0, either parents don't exists or they don't have
+                        // any defaults. Thus, we can - and should - subtract defaults.
+                        let without_impl = if parent_len > 0 {
+                            params_len - parent_len - impl_
+                        } else {
+                            params_len - parent_len - impl_ - defaults
+                        };
                         // parent's params (those from enclosing impl or trait, if any).
                         let (fn_params, parent_params) = parameters.split_at(without_impl + impl_);
 
@@ -1758,32 +1777,14 @@ fn write_bounds_like_dyn_trait(
     Ok(())
 }
 
-fn fmt_trait_ref(
-    f: &mut HirFormatter<'_>,
-    tr: &TraitRef,
-    use_as: bool,
-) -> Result<(), HirDisplayError> {
-    if f.should_truncate() {
-        return write!(f, "{TYPE_HINT_TRUNCATION}");
-    }
-
-    tr.self_type_parameter(Interner).hir_fmt(f)?;
-    if use_as {
-        write!(f, " as ")?;
-    } else {
-        write!(f, ": ")?;
-    }
-    let trait_ = tr.hir_trait_id();
-    f.start_location_link(trait_.into());
-    write!(f, "{}", f.db.trait_data(trait_).name.display(f.db.upcast(), f.edition()))?;
-    f.end_location_link();
-    let substs = tr.substitution.as_slice(Interner);
-    hir_fmt_generics(f, &substs[1..], None, substs[0].ty(Interner))
-}
-
 impl HirDisplay for TraitRef {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
-        fmt_trait_ref(f, self, false)
+        let trait_ = self.hir_trait_id();
+        f.start_location_link(trait_.into());
+        write!(f, "{}", f.db.trait_data(trait_).name.display(f.db.upcast(), f.edition()))?;
+        f.end_location_link();
+        let substs = self.substitution.as_slice(Interner);
+        hir_fmt_generics(f, &substs[1..], None, substs[0].ty(Interner))
     }
 }
 
@@ -1794,10 +1795,17 @@ impl HirDisplay for WhereClause {
         }
 
         match self {
-            WhereClause::Implemented(trait_ref) => trait_ref.hir_fmt(f)?,
+            WhereClause::Implemented(trait_ref) => {
+                trait_ref.self_type_parameter(Interner).hir_fmt(f)?;
+                write!(f, ": ")?;
+                trait_ref.hir_fmt(f)?;
+            }
             WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
                 write!(f, "<")?;
-                fmt_trait_ref(f, &projection_ty.trait_ref(f.db), true)?;
+                let trait_ref = &projection_ty.trait_ref(f.db);
+                trait_ref.self_type_parameter(Interner).hir_fmt(f)?;
+                write!(f, " as ")?;
+                trait_ref.hir_fmt(f)?;
                 write!(f, ">::",)?;
                 let type_alias = from_assoc_type_id(projection_ty.associated_ty_id);
                 f.start_location_link(type_alias.into());
@@ -2062,12 +2070,12 @@ impl HirDisplayWithTypesMap for TypeBound {
         types_map: &TypesMap,
     ) -> Result<(), HirDisplayError> {
         match self {
-            TypeBound::Path(path, modifier) => {
+            &TypeBound::Path(path, modifier) => {
                 match modifier {
                     TraitBoundModifier::None => (),
                     TraitBoundModifier::Maybe => write!(f, "?")?,
                 }
-                path.hir_fmt(f, types_map)
+                types_map[path].hir_fmt(f, types_map)
             }
             TypeBound::Lifetime(lifetime) => {
                 write!(f, "{}", lifetime.name.display(f.db.upcast(), f.edition()))
@@ -2079,7 +2087,7 @@ impl HirDisplayWithTypesMap for TypeBound {
                     "for<{}> ",
                     lifetimes.iter().map(|it| it.display(f.db.upcast(), edition)).format(", ")
                 )?;
-                path.hir_fmt(f, types_map)
+                types_map[*path].hir_fmt(f, types_map)
             }
             TypeBound::Use(args) => {
                 let edition = f.edition();

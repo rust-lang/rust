@@ -135,7 +135,7 @@ fn lint_slice(cx: &LateContext<'_>, slice: &SliceLintInformation) {
         .map(|(index, _)| *index)
         .collect::<FxIndexSet<_>>();
 
-    let value_name = |index| format!("{}_{index}", slice.ident.name);
+    let value_name = |index| format!("{}_{}", slice.ident.name, index);
 
     if let Some(max_index) = used_indices.iter().max() {
         let opt_ref = if slice.needs_ref { "ref " } else { "" };
@@ -150,6 +150,18 @@ fn lint_slice(cx: &LateContext<'_>, slice: &SliceLintInformation) {
             .collect::<Vec<_>>();
         let pat_sugg = format!("[{}, ..]", pat_sugg_idents.join(", "));
 
+        let mut suggestions = Vec::new();
+
+        // Add the binding pattern suggestion
+        if !slice.pattern_spans.is_empty() {
+            suggestions.extend(slice.pattern_spans.iter().map(|span| (*span, pat_sugg.clone())));
+        }
+
+        // Add the index replacement suggestions
+        if !slice.index_use.is_empty() {
+            suggestions.extend(slice.index_use.iter().map(|(index, span)| (*span, value_name(*index))));
+        }
+
         span_lint_and_then(
             cx,
             INDEX_REFUTABLE_SLICE,
@@ -157,28 +169,10 @@ fn lint_slice(cx: &LateContext<'_>, slice: &SliceLintInformation) {
             "this binding can be a slice pattern to avoid indexing",
             |diag| {
                 diag.multipart_suggestion(
-                    "try using a slice pattern here",
-                    slice
-                        .pattern_spans
-                        .iter()
-                        .map(|span| (*span, pat_sugg.clone()))
-                        .collect(),
+                    "replace the binding and indexed access with a slice pattern",
+                    suggestions,
                     Applicability::MaybeIncorrect,
                 );
-
-                diag.multipart_suggestion(
-                    "and replace the index expressions here",
-                    slice
-                        .index_use
-                        .iter()
-                        .map(|(index, span)| (*span, value_name(*index)))
-                        .collect(),
-                    Applicability::MaybeIncorrect,
-                );
-
-                // The lint message doesn't contain a warning about the removed index expression,
-                // since `filter_lintable_slices` will only return slices where all access indices
-                // are known at compile time. Therefore, they can be removed without side effects.
             },
         );
     }

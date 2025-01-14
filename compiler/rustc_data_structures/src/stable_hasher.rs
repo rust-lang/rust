@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZero;
 
-use rustc_index::bit_set::{self, BitSet};
+use rustc_index::bit_set::{self, DenseBitSet};
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use smallvec::SmallVec;
 
@@ -544,7 +544,7 @@ where
     }
 }
 
-impl<I: Idx, CTX> HashStable<CTX> for BitSet<I> {
+impl<I: Idx, CTX> HashStable<CTX> for DenseBitSet<I> {
     fn hash_stable(&self, _ctx: &mut CTX, hasher: &mut StableHasher) {
         ::std::hash::Hash::hash(self, hasher);
     }

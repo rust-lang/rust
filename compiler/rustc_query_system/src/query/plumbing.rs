@@ -520,9 +520,11 @@ where
     let (result, dep_node_index) =
         qcx.start_query(job_id, query.depth_limit(), Some(&diagnostics), || {
             if query.anon() {
-                return dep_graph_data.with_anon_task(*qcx.dep_context(), query.dep_kind(), || {
-                    query.compute(qcx, key)
-                });
+                return dep_graph_data.with_anon_task_inner(
+                    *qcx.dep_context(),
+                    query.dep_kind(),
+                    || query.compute(qcx, key),
+                );
             }
 
             // `to_dep_node` is expensive for some `DepKind`s.

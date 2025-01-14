@@ -31,7 +31,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         diag: &mut Diag<'_>,
     ) {
         // We look at all the locals. Why locals? Because it's the best thing
-        // I could think of that's correlated with the *instantiated* higer-ranked
+        // I could think of that's correlated with the *instantiated* higher-ranked
         // binder for calls, since we don't really store those anywhere else.
         for ty in self.body.local_decls.iter().map(|local| local.ty) {
             if !ty.has_opaque_types() {

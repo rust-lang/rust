@@ -3,8 +3,8 @@
 //@ ignore-stage1 (requires matching sysroot built with in-tree compiler)
 
 //@ aux-codegen-backend: the_backend.rs
-//@ normalize-stdout-test: "libthe_backend.dylib" -> "libthe_backend.so"
-//@ normalize-stdout-test: "the_backend.dll" -> "libthe_backend.so"
+//@ normalize-stdout: "libthe_backend.dylib" -> "libthe_backend.so"
+//@ normalize-stdout: "the_backend.dll" -> "libthe_backend.so"
 
 //@ revisions: normal dep bindep
 //@ compile-flags: --crate-type=lib

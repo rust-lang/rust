@@ -1,8 +1,7 @@
 //@ check-pass
 
 #![feature(pattern_types)]
-#![feature(core_pattern_types)]
-#![feature(core_pattern_type)]
+#![feature(pattern_type_macro)]
 
 use std::pat::pattern_type;
 

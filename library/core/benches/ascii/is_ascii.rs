@@ -10,9 +10,12 @@ macro_rules! benches {
         // Ensure we benchmark cases where the functions are called with strings
         // that are not perfectly aligned or have a length which is not a
         // multiple of size_of::<usize>() (or both)
-        benches!(mod unaligned_head MEDIUM[1..] $($name $arg $body)+);
-        benches!(mod unaligned_tail MEDIUM[..(MEDIUM.len() - 1)] $($name $arg $body)+);
-        benches!(mod unaligned_both MEDIUM[1..(MEDIUM.len() - 1)] $($name $arg $body)+);
+        benches!(mod unaligned_head_medium MEDIUM[1..] $($name $arg $body)+);
+        benches!(mod unaligned_tail_medium MEDIUM[..(MEDIUM.len() - 1)] $($name $arg $body)+);
+        benches!(mod unaligned_both_medium MEDIUM[1..(MEDIUM.len() - 1)] $($name $arg $body)+);
+        benches!(mod unaligned_head_long LONG[1..] $($name $arg $body)+);
+        benches!(mod unaligned_tail_long LONG[..(LONG.len() - 1)] $($name $arg $body)+);
+        benches!(mod unaligned_both_long LONG[1..(LONG.len() - 1)] $($name $arg $body)+);
     };
 
     (mod $mod_name: ident $input: ident [$range: expr] $($name: ident $arg: ident $body: block)+) => {
@@ -48,6 +51,44 @@ benches! {
 
     fn case03_align_to_unrolled(bytes: &[u8]) {
         is_ascii_align_to_unrolled(bytes)
+    }
+
+    fn case04_while_loop(bytes: &[u8]) {
+        // Process chunks of 32 bytes at a time in the fast path to enable
+        // auto-vectorization and use of `pmovmskb`. Two 128-bit vector registers
+        // can be OR'd together and then the resulting vector can be tested for
+        // non-ASCII bytes.
+        const CHUNK_SIZE: usize = 32;
+
+        let mut i = 0;
+
+        while i + CHUNK_SIZE <= bytes.len() {
+            let chunk_end = i + CHUNK_SIZE;
+
+            // Get LLVM to produce a `pmovmskb` instruction on x86-64 which
+            // creates a mask from the most significant bit of each byte.
+            // ASCII bytes are less than 128 (0x80), so their most significant
+            // bit is unset.
+            let mut count = 0;
+            while i < chunk_end {
+                count += bytes[i].is_ascii() as u8;
+                i += 1;
+            }
+
+            // All bytes should be <= 127 so count is equal to chunk size.
+            if count != CHUNK_SIZE as u8 {
+                return false;
+            }
+        }
+
+        // Process the remaining `bytes.len() % N` bytes.
+        let mut is_ascii = true;
+        while i < bytes.len() {
+            is_ascii &= bytes[i].is_ascii();
+            i += 1;
+        }
+
+        is_ascii
     }
 }
 

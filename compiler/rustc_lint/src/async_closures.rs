@@ -12,7 +12,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(async_closure)]
     /// #![warn(closure_returning_async_block)]
     /// let c = |x: &str| async {};
     /// ```
@@ -40,8 +39,6 @@ declare_lint! {
     /// But it does work with async closures:
     ///
     /// ```rust
-    /// #![feature(async_closure)]
-    ///
     /// async fn callback(x: &str) {}
     ///
     /// let captured_str = String::new();
@@ -52,7 +49,6 @@ declare_lint! {
     pub CLOSURE_RETURNING_ASYNC_BLOCK,
     Allow,
     "closure that returns `async {}` could be rewritten as an async closure",
-    @feature_gate = async_closure;
 }
 
 declare_lint_pass!(

@@ -1,0 +1,74 @@
+- // MIR for `transmute_then_transmute_again` before GVN
++ // MIR for `transmute_then_transmute_again` after GVN
+  
+  fn transmute_then_transmute_again(_1: u32, _2: char) -> () {
+      debug a => _1;
+      debug c => _2;
+      let mut _0: ();
+      let _3: char;
+      let mut _4: u32;
+      let _5: ();
+      let mut _6: i32;
+      let mut _7: char;
+      let mut _9: char;
+      let _10: ();
+      let mut _11: i32;
+      let mut _12: u32;
+      scope 1 {
+          debug x => _3;
+          let _8: u32;
+          scope 2 {
+              debug x => _8;
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_3);
++         nop;
+          StorageLive(_4);
+          _4 = copy _1;
+-         _3 = move _4 as char (Transmute);
++         _3 = copy _1 as char (Transmute);
+          StorageDead(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = copy _3;
+-         _6 = move _7 as i32 (Transmute);
++         _6 = copy _3 as i32 (Transmute);
+          StorageDead(_7);
+          _5 = opaque::<i32>(move _6) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_6);
+          StorageDead(_5);
+-         StorageLive(_8);
++         nop;
+          StorageLive(_9);
+          _9 = copy _2;
+-         _8 = move _9 as u32 (Transmute);
++         _8 = copy _2 as u32 (Transmute);
+          StorageDead(_9);
+          StorageLive(_10);
+          StorageLive(_11);
+          StorageLive(_12);
+          _12 = copy _8;
+-         _11 = move _12 as i32 (Transmute);
++         _11 = copy _2 as i32 (Transmute);
+          StorageDead(_12);
+          _10 = opaque::<i32>(move _11) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_11);
+          StorageDead(_10);
+          _0 = const ();
+-         StorageDead(_8);
+-         StorageDead(_3);
++         nop;
++         nop;
+          return;
+      }
+  }
+  

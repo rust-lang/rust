@@ -18,7 +18,7 @@ export RUSTFLAGS="-D warnings"
 export CARGO_INCREMENTAL=0
 export CARGO_EXTRA_FLAGS="--locked"
 
-# Determine configuration for installed build (used by test-cargo-miri).
+# Determine configuration for installed build (used by test-cargo-miri and `./miri bench`).
 echo "Installing release version of Miri"
 time ./miri install
 
@@ -66,14 +66,14 @@ function run_tests {
     time MIRIFLAGS="${MIRIFLAGS-} -O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 ./miri test $TARGET_FLAG tests/{pass,panic}
   fi
   if [ -n "${MANY_SEEDS-}" ]; then
-    # Also run some many-seeds tests. (Also tests `./miri run`.)
+    # Run many-seeds tests. (Also tests `./miri run`.)
     time for FILE in tests/many-seeds/*.rs; do
-      ./miri run "--many-seeds=0..$MANY_SEEDS" $TARGET_FLAG "$FILE"
+      ./miri run "-Zmiri-many-seeds=0..$MANY_SEEDS" $TARGET_FLAG "$FILE"
     done
   fi
   if [ -n "${TEST_BENCH-}" ]; then
     # Check that the benchmarks build and run, but only once.
-    time HYPERFINE="hyperfine -w0 -r1" ./miri bench $TARGET_FLAG
+    time HYPERFINE="hyperfine -w0 -r1 --show-output" ./miri bench $TARGET_FLAG --no-install
   fi
   # Smoke-test `./miri run --dep`.
   ./miri run $TARGET_FLAG --dep tests/pass-dep/getrandom.rs
@@ -152,9 +152,9 @@ case $HOST_TARGET in
     UNIX="hello panic/panic panic/unwind concurrency/simple atomic libc-mem libc-misc libc-random env num_cpus" # the things that are very similar across all Unixes, and hence easily supported there
     TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal $BASIC $UNIX time hashmap random threadname pthread fs libc-pipe
     TEST_TARGET=i686-unknown-freebsd   run_tests_minimal $BASIC $UNIX time hashmap random threadname pthread fs libc-pipe
-    TEST_TARGET=x86_64-unknown-illumos run_tests_minimal $BASIC $UNIX time hashmap random thread sync available-parallelism tls libc-pipe
-    TEST_TARGET=x86_64-pc-solaris      run_tests_minimal $BASIC $UNIX time hashmap random thread sync available-parallelism tls libc-pipe
-    TEST_TARGET=aarch64-linux-android  run_tests_minimal $BASIC $UNIX time hashmap random sync threadname pthread
+    TEST_TARGET=x86_64-unknown-illumos run_tests_minimal $BASIC $UNIX time hashmap random thread sync available-parallelism tls libc-pipe fs
+    TEST_TARGET=x86_64-pc-solaris      run_tests_minimal $BASIC $UNIX time hashmap random thread sync available-parallelism tls libc-pipe fs
+    TEST_TARGET=aarch64-linux-android  run_tests_minimal $BASIC $UNIX time hashmap random sync threadname pthread epoll eventfd
     TEST_TARGET=wasm32-wasip2          run_tests_minimal $BASIC wasm
     TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std empty_main wasm # this target doesn't really have std
     TEST_TARGET=thumbv7em-none-eabihf  run_tests_minimal no_std

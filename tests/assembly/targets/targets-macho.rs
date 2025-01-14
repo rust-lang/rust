@@ -83,6 +83,8 @@
 #[lang = "sized"]
 trait Sized {}
 
+// Force linkage to ensure code is actually generated
+#[no_mangle]
 pub fn test() -> u8 {
     42
 }

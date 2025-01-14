@@ -6,11 +6,11 @@ use std::mem;
 use std::num::NonZero;
 use std::ops::Deref;
 
-use rustc_attr::{ConstStability, StabilityLevel};
+use rustc_attr_parsing::{ConstStability, StabilityLevel};
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -172,7 +172,7 @@ pub struct Checker<'mir, 'tcx> {
 
     /// A set that stores for each local whether it is "transient", i.e. guaranteed to be dead
     /// when this MIR body returns.
-    transient_locals: Option<BitSet<Local>>,
+    transient_locals: Option<DenseBitSet<Local>>,
 
     error_emitted: Option<ErrorGuaranteed>,
     secondary_errors: Vec<Diag<'tcx>>,
@@ -242,7 +242,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
                 // And then check all `Return` in the MIR, and if a local is "maybe live" at a
                 // `Return` then it is definitely not transient.
-                let mut transient = BitSet::new_filled(ccx.body.local_decls.len());
+                let mut transient = DenseBitSet::new_filled(ccx.body.local_decls.len());
                 // Make sure to only visit reachable blocks, the dataflow engine can ICE otherwise.
                 for (bb, data) in traversal::reachable(&ccx.body) {
                     if matches!(data.terminator().kind, TerminatorKind::Return) {
@@ -488,8 +488,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::Use(_)
             | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
-            | Rvalue::Discriminant(..)
-            | Rvalue::Len(_) => {}
+            | Rvalue::Discriminant(..) => {}
 
             Rvalue::Aggregate(kind, ..) => {
                 if let AggregateKind::Coroutine(def_id, ..) = kind.as_ref()
@@ -573,12 +572,27 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             ) => {}
             Rvalue::ShallowInitBox(_, _) => {}
 
-            Rvalue::UnaryOp(_, operand) => {
+            Rvalue::UnaryOp(op, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
-                if is_int_bool_float_or_char(ty) {
-                    // Int, bool, float, and char operations are fine.
-                } else {
-                    span_bug!(self.span, "non-primitive type in `Rvalue::UnaryOp`: {:?}", ty);
+                match op {
+                    UnOp::Not | UnOp::Neg => {
+                        if is_int_bool_float_or_char(ty) {
+                            // Int, bool, float, and char operations are fine.
+                        } else {
+                            span_bug!(
+                                self.span,
+                                "non-primitive type in `Rvalue::UnaryOp{op:?}`: {ty:?}",
+                            );
+                        }
+                    }
+                    UnOp::PtrMetadata => {
+                        if !ty.is_ref() && !ty.is_unsafe_ptr() {
+                            span_bug!(
+                                self.span,
+                                "non-pointer type in `Rvalue::UnaryOp({op:?})`: {ty:?}",
+                            );
+                        }
+                    }
                 }
             }
 
@@ -694,7 +708,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                     if trait_is_const {
                         // Trait calls are always conditionally-const.
-                        self.check_op(ops::ConditionallyConstCall { callee, args: fn_args });
+                        self.check_op(ops::ConditionallyConstCall {
+                            callee,
+                            args: fn_args,
+                            span: *fn_span,
+                            call_source,
+                        });
                         // FIXME(const_trait_impl): do a more fine-grained check whether this
                         // particular trait can be const-stably called.
                     } else {
@@ -712,7 +731,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // Even if we know the callee, ensure we can use conditionally-const calls.
                 if has_const_conditions {
-                    self.check_op(ops::ConditionallyConstCall { callee, args: fn_args });
+                    self.check_op(ops::ConditionallyConstCall {
+                        callee,
+                        args: fn_args,
+                        span: *fn_span,
+                        call_source,
+                    });
                 }
 
                 // At this point, we are calling a function, `callee`, whose `DefId` is known...

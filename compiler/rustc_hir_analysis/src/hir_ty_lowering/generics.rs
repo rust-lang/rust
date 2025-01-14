@@ -9,7 +9,7 @@ use rustc_middle::ty::{
     self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty,
 };
 use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::{kw, sym};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -104,7 +104,7 @@ fn generic_arg_mismatch_err(
             GenericArg::Type(hir::Ty { kind: hir::TyKind::Array(_, len), .. }),
             GenericParamDefKind::Const { .. },
         ) if tcx.type_of(param.def_id).skip_binder() == tcx.types.usize => {
-            let snippet = sess.source_map().span_to_snippet(tcx.hir().span(len.hir_id()));
+            let snippet = sess.source_map().span_to_snippet(tcx.hir().span(len.hir_id));
             if let Ok(snippet) = snippet {
                 err.span_suggestion(
                     arg.span(),

@@ -51,7 +51,7 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     let candidate = import_assets.import_candidate();
     let qualify_candidate = match syntax_under_caret.clone() {
         NodeOrToken::Node(syntax_under_caret) => match candidate {
-            ImportCandidate::Path(candidate) if candidate.qualifier.is_some() => {
+            ImportCandidate::Path(candidate) if !candidate.qualifier.is_empty() => {
                 cov_mark::hit!(qualify_path_qualifier_start);
                 let path = ast::Path::cast(syntax_under_caret)?;
                 let (prev_segment, segment) = (path.qualifier()?.segment()?, path.segment()?);
@@ -219,11 +219,9 @@ fn find_trait_method(
 }
 
 fn item_as_trait(db: &RootDatabase, item: hir::ItemInNs) -> Option<hir::Trait> {
-    let item_module_def = item.as_module_def()?;
-
-    match item_module_def {
+    match item.into_module_def() {
         hir::ModuleDef::Trait(trait_) => Some(trait_),
-        _ => item_module_def.as_assoc_item(db)?.container_trait(db),
+        item_module_def => item_module_def.as_assoc_item(db)?.container_trait(db),
     }
 }
 
@@ -247,7 +245,7 @@ fn label(
     let import_path = &import.import_path;
 
     match candidate {
-        ImportCandidate::Path(candidate) if candidate.qualifier.is_none() => {
+        ImportCandidate::Path(candidate) if candidate.qualifier.is_empty() => {
             format!("Qualify as `{}`", import_path.display(db, edition))
         }
         _ => format!("Qualify with `{}`", import_path.display(db, edition)),

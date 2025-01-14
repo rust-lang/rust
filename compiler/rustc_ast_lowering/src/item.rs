@@ -10,14 +10,16 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{DesugaringKind, Span, Symbol};
+use rustc_span::{DesugaringKind, Ident, Span, Symbol, kw, sym};
 use rustc_target::spec::abi;
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::instrument;
 
-use super::errors::{InvalidAbi, InvalidAbiReason, InvalidAbiSuggestion, MisplacedRelaxTraitBound};
+use super::errors::{
+    InvalidAbi, InvalidAbiReason, InvalidAbiSuggestion, MisplacedRelaxTraitBound,
+    TupleStructWithDefault,
+};
 use super::{
     AstOwner, FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
     ResolverAstLoweringExt,
@@ -173,7 +175,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         hir_id: hir::HirId,
         ident: &mut Ident,
-        attrs: &'hir [Attribute],
+        attrs: &'hir [hir::Attribute],
         vis_span: Span,
         i: &ItemKind,
     ) -> hir::ItemKind<'hir> {
@@ -220,6 +222,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         decl,
                         coroutine_kind,
                         body.as_deref(),
+                        attrs,
                     );
 
                     let itctx = ImplTraitContext::Universal;
@@ -231,11 +234,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         header: this.lower_fn_header(*header, hir::Safety::Safe),
                         span: this.lower_span(*fn_sig_span),
                     };
-                    hir::ItemKind::Fn(sig, generics, body_id)
+                    hir::ItemKind::Fn { sig, generics, body: body_id, has_body: body.is_some() }
                 })
             }
             ItemKind::Mod(_, mod_kind) => match mod_kind {
-                ModKind::Loaded(items, _, spans) => {
+                ModKind::Loaded(items, _, spans, _) => {
                     hir::ItemKind::Mod(self.lower_mod(items, spans))
                 }
                 ModKind::Unloaded => panic!("`mod` items should have been loaded by now"),
@@ -433,11 +436,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::Delegation(box delegation) => {
                 let delegation_results = self.lower_delegation(delegation, id);
-                hir::ItemKind::Fn(
-                    delegation_results.sig,
-                    delegation_results.generics,
-                    delegation_results.body_id,
-                )
+                hir::ItemKind::Fn {
+                    sig: delegation_results.sig,
+                    generics: delegation_results.generics,
+                    body: delegation_results.body_id,
+                    has_body: true,
+                }
             }
             ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
                 panic!("macros should have been expanded by now")
@@ -464,7 +468,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         vis_span: Span,
         ident: &mut Ident,
-        attrs: &'hir [Attribute],
+        attrs: &'hir [hir::Attribute],
     ) -> hir::ItemKind<'hir> {
         let path = &tree.prefix;
         let segments = prefix.segments.iter().chain(path.segments.iter()).cloned().collect();
@@ -690,13 +694,27 @@ impl<'hir> LoweringContext<'_, 'hir> {
             VariantData::Tuple(fields, id) => {
                 let ctor_id = self.lower_node_id(*id);
                 self.alias_attrs(ctor_id, parent_id);
-                hir::VariantData::Tuple(
-                    self.arena.alloc_from_iter(
-                        fields.iter().enumerate().map(|f| self.lower_field_def(f)),
-                    ),
-                    ctor_id,
-                    self.local_def_id(*id),
-                )
+                let fields = self
+                    .arena
+                    .alloc_from_iter(fields.iter().enumerate().map(|f| self.lower_field_def(f)));
+                for field in &fields[..] {
+                    if let Some(default) = field.default {
+                        // Default values in tuple struct and tuple variants are not allowed by the
+                        // RFC due to concerns about the syntax, both in the item definition and the
+                        // expression. We could in the future allow `struct S(i32 = 0);` and force
+                        // users to construct the value with `let _ = S { .. };`.
+                        if self.tcx.features().default_field_values() {
+                            self.dcx().emit_err(TupleStructWithDefault { span: default.span });
+                        } else {
+                            let _ = self.dcx().span_delayed_bug(
+                                default.span,
+                                "expected `default values on `struct` fields aren't supported` \
+                                 feature-gate error but none was produced",
+                            );
+                        }
+                    }
+                }
+                hir::VariantData::Tuple(fields, ctor_id, self.local_def_id(*id))
             }
             VariantData::Unit(id) => {
                 let ctor_id = self.lower_node_id(*id);
@@ -723,6 +741,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 None => Ident::new(sym::integer(index), self.lower_span(f.span)),
             },
             vis_span: self.lower_span(f.vis.span),
+            default: f.default.as_ref().map(|v| self.lower_anon_const_to_anon_const(v)),
             ty,
             safety: self.lower_safety(f.safety, hir::Safety::Safe),
         }
@@ -730,7 +749,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_trait_item(&mut self, i: &AssocItem) -> &'hir hir::TraitItem<'hir> {
         let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
-        self.lower_attrs(hir_id, &i.attrs);
+        let attrs = self.lower_attrs(hir_id, &i.attrs);
         let trait_item_def_id = hir_id.expect_owner();
 
         let (generics, kind, has_default) = match &i.kind {
@@ -768,6 +787,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &sig.decl,
                     sig.header.coroutine_kind,
                     Some(body),
+                    attrs,
                 );
                 let (generics, sig) = self.lower_method_sig(
                     generics,
@@ -860,7 +880,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
         let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
-        self.lower_attrs(hir_id, &i.attrs);
+        let attrs = self.lower_attrs(hir_id, &i.attrs);
 
         let (generics, kind) = match &i.kind {
             AssocItemKind::Const(box ConstItem { generics, ty, expr, .. }) => self.lower_generics(
@@ -883,6 +903,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &sig.decl,
                     sig.header.coroutine_kind,
                     body.as_deref(),
+                    attrs,
                 );
                 let (generics, sig) = self.lower_method_sig(
                     generics,
@@ -1037,20 +1058,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         })
     }
 
-    fn lower_fn_body_block(
-        &mut self,
-        span: Span,
-        decl: &FnDecl,
-        body: Option<&Block>,
-    ) -> hir::BodyId {
-        self.lower_fn_body(decl, |this| this.lower_block_expr_opt(span, body))
-    }
-
-    fn lower_block_expr_opt(&mut self, span: Span, block: Option<&Block>) -> hir::Expr<'hir> {
-        match block {
-            Some(block) => self.lower_block_expr(block),
-            None => self.expr_err(span, self.dcx().has_errors().unwrap()),
-        }
+    fn lower_fn_body_block(&mut self, decl: &FnDecl, body: &Block) -> hir::BodyId {
+        self.lower_fn_body(decl, |this| this.lower_block_expr(body))
     }
 
     pub(super) fn lower_const_body(&mut self, span: Span, expr: Option<&Expr>) -> hir::BodyId {
@@ -1072,9 +1081,37 @@ impl<'hir> LoweringContext<'_, 'hir> {
         decl: &FnDecl,
         coroutine_kind: Option<CoroutineKind>,
         body: Option<&Block>,
+        attrs: &'hir [hir::Attribute],
     ) -> hir::BodyId {
-        let (Some(coroutine_kind), Some(body)) = (coroutine_kind, body) else {
-            return self.lower_fn_body_block(span, decl, body);
+        let Some(body) = body else {
+            // Functions without a body are an error, except if this is an intrinsic. For those we
+            // create a fake body so that the entire rest of the compiler doesn't have to deal with
+            // this as a special case.
+            return self.lower_fn_body(decl, |this| {
+                if attrs.iter().any(|a| a.name_or_empty() == sym::rustc_intrinsic) {
+                    let empty_block = hir::Block {
+                        hir_id: this.next_id(),
+                        stmts: &[],
+                        expr: None,
+                        rules: hir::BlockCheckMode::DefaultBlock,
+                        span,
+                        targeted_by_break: false,
+                    };
+                    let loop_ = hir::ExprKind::Loop(
+                        this.arena.alloc(empty_block),
+                        None,
+                        hir::LoopSource::Loop,
+                        span,
+                    );
+                    hir::Expr { hir_id: this.next_id(), kind: loop_, span }
+                } else {
+                    this.expr_err(span, this.dcx().has_errors().unwrap())
+                }
+            });
+        };
+        let Some(coroutine_kind) = coroutine_kind else {
+            // Typical case: not a coroutine.
+            return self.lower_fn_body_block(decl, body);
         };
         self.lower_body(|this| {
             let (parameters, expr) = this.lower_coroutine_body_with_moved_arguments(
@@ -1154,9 +1191,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // we can keep the same name for the parameter.
                 // This lets rustdoc render it correctly in documentation.
                 hir::PatKind::Binding(_, _, ident, _) => (ident, false),
-                hir::PatKind::Wild => {
-                    (Ident::with_dummy_span(rustc_span::symbol::kw::Underscore), false)
-                }
+                hir::PatKind::Wild => (Ident::with_dummy_span(rustc_span::kw::Underscore), false),
                 _ => {
                     // Replace the ident for bindings that aren't simple.
                     let name = format!("__arg{index}");
@@ -1374,7 +1409,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    pub(super) fn lower_safety(&mut self, s: Safety, default: hir::Safety) -> hir::Safety {
+    pub(super) fn lower_safety(&self, s: Safety, default: hir::Safety) -> hir::Safety {
         match s {
             Safety::Unsafe(_) => hir::Safety::Unsafe,
             Safety::Default => default,

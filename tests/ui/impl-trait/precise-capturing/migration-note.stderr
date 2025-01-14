@@ -42,11 +42,11 @@ LL |     let x = vec![1];
    |         - binding `x` declared here
 LL |
 LL |     let a = display_len(&x);
-   |             ------------^^-
-   |             |           |
-   |             |           borrowed value does not live long enough
-   |             argument requires that `x` is borrowed for `'static`
+   |                         ^^ borrowed value does not live long enough
 ...
+LL |     needs_static(a);
+   |     --------------- argument requires that `x` is borrowed for `'static`
+LL |
 LL | }
    | - `x` dropped here while still borrowed
    |
@@ -118,11 +118,11 @@ LL |     let mut x = vec![1];
    |         ----- binding `x` declared here
 LL |
 LL |     let a = display_len_mut(&mut x);
-   |             ----------------^^^^^^-
-   |             |               |
-   |             |               borrowed value does not live long enough
-   |             argument requires that `x` is borrowed for `'static`
+   |                             ^^^^^^ borrowed value does not live long enough
 ...
+LL |     needs_static(a);
+   |     --------------- argument requires that `x` is borrowed for `'static`
+LL |
 LL | }
    | - `x` dropped here while still borrowed
    |

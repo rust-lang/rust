@@ -1,7 +1,7 @@
 use std::iter;
 
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::{UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
@@ -20,6 +20,7 @@ mod coverageinfo;
 pub mod debuginfo;
 mod intrinsic;
 mod locals;
+mod naked_asm;
 pub mod operand;
 pub mod place;
 mod rvalue;
@@ -176,6 +177,11 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
 
+    if cx.tcx().codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED) {
+        crate::mir::naked_asm::codegen_naked_asm::<Bx>(cx, &mir, instance);
+        return;
+    }
+
     let debug_context = cx.create_function_debug_context(instance, fn_abi, llfn, mir);
 
     let start_llbb = Bx::append_block(cx, llfn, "start");
@@ -287,7 +293,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // So drop the builder of `start_llbb` to avoid having two at the same time.
     drop(start_bx);
 
-    let mut unreached_blocks = BitSet::new_filled(mir.basic_blocks.len());
+    let mut unreached_blocks = DenseBitSet::new_filled(mir.basic_blocks.len());
     // Codegen the body of each reachable block using our reverse postorder list.
     for bb in traversal_order {
         fx.codegen_block(bb);
@@ -310,7 +316,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     fx: &mut FunctionCx<'a, 'tcx, Bx>,
-    memory_locals: &BitSet<mir::Local>,
+    memory_locals: &DenseBitSet<mir::Local>,
 ) -> Vec<LocalRef<'tcx, Bx::Value>> {
     let mir = fx.mir;
     let mut idx = 0;

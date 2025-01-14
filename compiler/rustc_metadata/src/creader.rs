@@ -17,6 +17,7 @@ use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
 use rustc_errors::DiagCtxtHandle;
 use rustc_expand::base::SyntaxExtension;
 use rustc_fs_util::try_canonicalize;
+use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE, LocalDefId, StableCrateId};
 use rustc_hir::definitions::Definitions;
 use rustc_index::IndexVec;
@@ -28,8 +29,7 @@ use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::{Ident, Symbol, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_target::spec::{PanicStrategy, Target, TargetTuple};
 use tracing::{debug, info, trace};
 
@@ -97,7 +97,13 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
 }
 
 pub enum LoadedMacro {
-    MacroDef { def: MacroDef, ident: Ident, attrs: AttrVec, span: Span, edition: Edition },
+    MacroDef {
+        def: MacroDef,
+        ident: Ident,
+        attrs: Vec<hir::Attribute>,
+        span: Span,
+        edition: Edition,
+    },
     ProcMacro(SyntaxExtension),
 }
 
@@ -861,8 +867,10 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // First up we check for global allocators. Look at the crate graph here
         // and see what's a global allocator, including if we ourselves are a
         // global allocator.
-        let mut global_allocator =
-            self.cstore.has_global_allocator.then(|| Symbol::intern("this crate"));
+        #[allow(rustc::symbol_intern_string_literal)]
+        let this_crate = Symbol::intern("this crate");
+
+        let mut global_allocator = self.cstore.has_global_allocator.then_some(this_crate);
         for (_, data) in self.cstore.iter_crate_data() {
             if data.has_global_allocator() {
                 match global_allocator {
@@ -876,8 +884,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 }
             }
         }
-        let mut alloc_error_handler =
-            self.cstore.has_alloc_error_handler.then(|| Symbol::intern("this crate"));
+        let mut alloc_error_handler = self.cstore.has_alloc_error_handler.then_some(this_crate);
         for (_, data) in self.cstore.iter_crate_data() {
             if data.has_alloc_error_handler() {
                 match alloc_error_handler {

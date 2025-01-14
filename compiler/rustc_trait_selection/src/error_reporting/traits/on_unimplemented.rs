@@ -1,21 +1,21 @@
 use std::iter;
 use std::path::PathBuf;
 
-use rustc_ast::{AttrArgs, AttrArgsEq, AttrKind, Attribute, MetaItemInner};
+use rustc_ast::MetaItemInner;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{AttrArgs, AttrKind, Attribute};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::bug;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{self, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, TyCtxt};
 use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Span, Symbol, kw, sym};
 use tracing::{debug, info};
-use {rustc_attr as attr, rustc_hir as hir};
+use {rustc_attr_parsing as attr, rustc_hir as hir};
 
 use super::{ObligationCauseCode, PredicateObligation};
 use crate::error_reporting::TypeErrCtxt;
@@ -91,7 +91,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// to be the enclosing (async) block/function/closure
     fn describe_enclosure(&self, def_id: LocalDefId) -> Option<&'static str> {
         match self.tcx.hir_node_by_def_id(def_id) {
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. }) => Some("a function"),
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { .. }, .. }) => Some("a function"),
             hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(..), .. }) => {
                 Some("a trait method")
             }
@@ -639,8 +639,7 @@ impl<'tcx> OnUnimplementedDirective {
                 let report_span = match &item.args {
                     AttrArgs::Empty => item.path.span,
                     AttrArgs::Delimited(args) => args.dspan.entire(),
-                    AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => eq_span.to(expr.span),
-                    AttrArgs::Eq(span, AttrArgsEq::Hir(expr)) => span.to(expr.span),
+                    AttrArgs::Eq { eq_span, expr } => eq_span.to(expr.span),
                 };
 
                 if let Some(item_def_id) = item_def_id.as_local() {
@@ -655,7 +654,7 @@ impl<'tcx> OnUnimplementedDirective {
             }
         } else if is_diagnostic_namespace_variant {
             match &attr.kind {
-                AttrKind::Normal(p) if !matches!(p.item.args, AttrArgs::Empty) => {
+                AttrKind::Normal(p) if !matches!(p.args, AttrArgs::Empty) => {
                     if let Some(item_def_id) = item_def_id.as_local() {
                         tcx.emit_node_span_lint(
                             UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,

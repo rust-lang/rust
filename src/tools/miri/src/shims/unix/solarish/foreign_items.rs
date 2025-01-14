@@ -1,6 +1,8 @@
-use rustc_abi::ExternAbi;
+use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
+use rustc_target::callconv::{Conv, FnAbi};
 
+use crate::shims::unix::foreign_items::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -13,7 +15,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
-        abi: ExternAbi,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -21,8 +23,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match link_name.as_str() {
             // Threading
             "pthread_setname_np" => {
-                let [thread, name] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let [thread, name] = this.check_shim(abi, Conv::C, link_name, args)?;
                 // THREAD_NAME_MAX allows a thread name of 31+1 length
                 // https://github.com/illumos/illumos-gate/blob/7671517e13b8123748eda4ef1ee165c6d9dba7fe/usr/src/uts/common/sys/thread.h#L613
                 let max_len = 32;
@@ -40,8 +41,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "pthread_getname_np" => {
-                let [thread, name, len] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let [thread, name, len] = this.check_shim(abi, Conv::C, link_name, args)?;
                 // See https://illumos.org/man/3C/pthread_getname_np for the error codes.
                 let res = match this.pthread_getname_np(
                     this.read_scalar(thread)?,
@@ -56,16 +56,37 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
 
+            // File related shims
+            "stat" | "stat64" => {
+                let [path, buf] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let result = this.macos_fbsd_solaris_stat(path, buf)?;
+                this.write_scalar(result, dest)?;
+            }
+            "lstat" | "lstat64" => {
+                let [path, buf] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let result = this.macos_fbsd_solaris_lstat(path, buf)?;
+                this.write_scalar(result, dest)?;
+            }
+            "fstat" | "fstat64" => {
+                let [fd, buf] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let result = this.macos_fbsd_solaris_fstat(fd, buf)?;
+                this.write_scalar(result, dest)?;
+            }
+            "readdir" => {
+                let [dirp] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let result = this.linux_solarish_readdir64("dirent", dirp)?;
+                this.write_scalar(result, dest)?;
+            }
+
             // Miscellaneous
             "___errno" => {
-                let [] = this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let [] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
             }
 
             "stack_getbounds" => {
-                let [stack] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let [stack] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let stack = this.deref_pointer_as(stack, this.libc_ty_layout("stack_t"))?;
 
                 this.write_int_fields_named(
@@ -83,8 +104,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "pset_info" => {
-                let [pset, tpe, cpus, list] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let [pset, tpe, cpus, list] = this.check_shim(abi, Conv::C, link_name, args)?;
                 // We do not need to handle the current process cpu mask, available_parallelism
                 // implementation pass null anyway. We only care for the number of
                 // cpus.
@@ -110,6 +130,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let cpus = this.deref_pointer(cpus)?;
                 this.write_scalar(Scalar::from_u32(this.machine.num_cpus), &cpus)?;
                 this.write_null(dest)?;
+            }
+
+            "__sysconf_xpg7" => {
+                let [val] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let result = this.sysconf(val)?;
+                this.write_scalar(result, dest)?;
             }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),

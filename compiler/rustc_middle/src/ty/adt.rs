@@ -17,7 +17,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 use rustc_type_ir::solve::AdtDestructorKind;
 use tracing::{debug, info, trace};
 
@@ -249,9 +249,9 @@ pub enum AdtKind {
     Enum,
 }
 
-impl Into<DataTypeKind> for AdtKind {
-    fn into(self) -> DataTypeKind {
-        match self {
+impl From<AdtKind> for DataTypeKind {
+    fn from(val: AdtKind) -> Self {
+        match val {
             AdtKind::Struct => DataTypeKind::Struct,
             AdtKind::Union => DataTypeKind::Union,
             AdtKind::Enum => DataTypeKind::Enum,

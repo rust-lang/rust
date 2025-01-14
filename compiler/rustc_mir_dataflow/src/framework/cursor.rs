@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 use std::ops::{Deref, DerefMut};
 
 #[cfg(debug_assertions)]
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{self, BasicBlock, Location};
 
 use super::{Analysis, Direction, Effect, EffectIndex, Results};
@@ -15,7 +15,6 @@ pub enum ResultsHandle<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    Borrowed(&'a Results<'tcx, A>),
     BorrowedMut(&'a mut Results<'tcx, A>),
     Owned(Results<'tcx, A>),
 }
@@ -28,7 +27,6 @@ where
 
     fn deref(&self) -> &Results<'tcx, A> {
         match self {
-            ResultsHandle::Borrowed(borrowed) => borrowed,
             ResultsHandle::BorrowedMut(borrowed) => borrowed,
             ResultsHandle::Owned(owned) => owned,
         }
@@ -41,9 +39,6 @@ where
 {
     fn deref_mut(&mut self) -> &mut Results<'tcx, A> {
         match self {
-            ResultsHandle::Borrowed(_borrowed) => {
-                panic!("tried to deref_mut a `ResultsHandle::Borrowed")
-            }
             ResultsHandle::BorrowedMut(borrowed) => borrowed,
             ResultsHandle::Owned(owned) => owned,
         }
@@ -76,7 +71,7 @@ where
     state_needs_reset: bool,
 
     #[cfg(debug_assertions)]
-    reachable_blocks: BitSet<BasicBlock>,
+    reachable_blocks: DenseBitSet<BasicBlock>,
 }
 
 impl<'mir, 'tcx, A> ResultsCursor<'mir, 'tcx, A>
@@ -184,15 +179,15 @@ where
     /// Advances the cursor to hold the dataflow state at `target` before its "primary" effect is
     /// applied.
     ///
-    /// The "before" effect at the target location *will be* applied.
+    /// The "early" effect at the target location *will be* applied.
     pub fn seek_before_primary_effect(&mut self, target: Location) {
-        self.seek_after(target, Effect::Before)
+        self.seek_after(target, Effect::Early)
     }
 
     /// Advances the cursor to hold the dataflow state at `target` after its "primary" effect is
     /// applied.
     ///
-    /// The "before" effect at the target location will be applied as well.
+    /// The "early" effect at the target location will be applied as well.
     pub fn seek_after_primary_effect(&mut self, target: Location) {
         self.seek_after(target, Effect::Primary)
     }
@@ -227,12 +222,12 @@ where
         #[rustfmt::skip]
         let next_effect = if A::Direction::IS_FORWARD {
             self.pos.curr_effect_index.map_or_else(
-                || Effect::Before.at_index(0),
+                || Effect::Early.at_index(0),
                 EffectIndex::next_in_forward_order,
             )
         } else {
             self.pos.curr_effect_index.map_or_else(
-                || Effect::Before.at_index(block_data.statements.len()),
+                || Effect::Early.at_index(block_data.statements.len()),
                 EffectIndex::next_in_backward_order,
             )
         };

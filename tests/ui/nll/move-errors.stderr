@@ -209,10 +209,11 @@ LL |         (D(s), &t) => (),
    |                 data moved here
    |                 move occurs because `t` has type `String`, which does not implement the `Copy` trait
    |
-help: consider borrowing the pattern binding
+help: consider removing the borrow
    |
-LL |         (D(s), &ref t) => (),
-   |                 +++
+LL -         (D(s), &t) => (),
+LL +         (D(s), t) => (),
+   |
 
 error[E0509]: cannot move out of type `F`, which implements the `Drop` trait
   --> $DIR/move-errors.rs:102:11

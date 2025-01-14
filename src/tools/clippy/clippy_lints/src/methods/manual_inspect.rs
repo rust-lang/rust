@@ -148,7 +148,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
                                 _ => {},
                             }
                         }
-                        requires_copy |= !ty.is_copy_modulo_regions(cx.tcx, cx.typing_env());
+                        requires_copy |= !cx.type_is_copy_modulo_regions(ty);
                         break;
                     }
                 },
@@ -158,7 +158,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
         }
 
         if can_lint
-            && (!requires_copy || arg_ty.is_copy_modulo_regions(cx.tcx, cx.typing_env()))
+            && (!requires_copy || cx.type_is_copy_modulo_regions(arg_ty))
             // This case could be handled, but a fair bit of care would need to be taken.
             && (!requires_deref || arg_ty.is_freeze(cx.tcx, cx.typing_env()))
         {

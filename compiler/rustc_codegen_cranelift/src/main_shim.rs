@@ -2,8 +2,7 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use rustc_hir::LangItem;
 use rustc_middle::ty::{AssocKind, GenericArg};
 use rustc_session::config::{EntryFnType, sigpipe};
-use rustc_span::DUMMY_SP;
-use rustc_span::symbol::Ident;
+use rustc_span::{DUMMY_SP, Ident};
 
 use crate::prelude::*;
 
@@ -24,7 +23,7 @@ pub(crate) fn maybe_create_entry_wrapper(
     };
 
     if main_def_id.is_local() {
-        let instance = Instance::mono(tcx, main_def_id).polymorphize(tcx);
+        let instance = Instance::mono(tcx, main_def_id);
         if module.get_name(tcx.symbol_name(instance).name).is_none() {
             return;
         }
@@ -75,7 +74,7 @@ pub(crate) fn maybe_create_entry_wrapper(
             }
         };
 
-        let instance = Instance::mono(tcx, rust_main_def_id).polymorphize(tcx);
+        let instance = Instance::mono(tcx, rust_main_def_id);
 
         let main_name = tcx.symbol_name(instance).name;
         let main_sig = get_function_sig(tcx, m.target_config().default_call_conv, instance);
@@ -117,8 +116,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                     report.def_id,
                     tcx.mk_args(&[GenericArg::from(main_ret_ty)]),
                     DUMMY_SP,
-                )
-                .polymorphize(tcx);
+                );
 
                 let report_name = tcx.symbol_name(report).name;
                 let report_sig = get_function_sig(tcx, m.target_config().default_call_conv, report);
@@ -143,8 +141,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                     start_def_id,
                     tcx.mk_args(&[main_ret_ty.into()]),
                     DUMMY_SP,
-                )
-                .polymorphize(tcx);
+                );
                 let start_func_id = import_function(tcx, m, start_instance);
 
                 let main_val = bcx.ins().func_addr(m.target_config().pointer_type(), main_func_ref);

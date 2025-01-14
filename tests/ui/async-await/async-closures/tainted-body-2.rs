@@ -1,7 +1,5 @@
 //@ edition: 2021
 
-#![feature(async_closure)]
-
 // Ensure that building a by-ref async closure body doesn't ICE when the parent
 // body is tainted.
 

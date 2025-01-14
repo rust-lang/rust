@@ -204,6 +204,25 @@ use crate::ops::Index;
 ///     println!("{viking:?} has {health} hp");
 /// }
 /// ```
+///
+/// # Usage in `const` and `static`
+///
+/// As explained above, `HashMap` is randomly seeded: each `HashMap` instance uses a different seed,
+/// which means that `HashMap::new` cannot be used in const context. To construct a `HashMap` in the
+/// initializer of a `const` or `static` item, you will have to use a different hasher that does not
+/// involve a random seed, as demonstrated in the following example. **A `HashMap` constructed this
+/// way is not resistant against HashDoS!**
+///
+/// ```rust
+/// use std::collections::HashMap;
+/// use std::hash::{BuildHasherDefault, DefaultHasher};
+/// use std::sync::Mutex;
+///
+/// const EMPTY_MAP: HashMap<String, Vec<i32>, BuildHasherDefault<DefaultHasher>> =
+///     HashMap::with_hasher(BuildHasherDefault::new());
+/// static MAP: Mutex<HashMap<String, Vec<i32>, BuildHasherDefault<DefaultHasher>>> =
+///     Mutex::new(HashMap::with_hasher(BuildHasherDefault::new()));
+/// ```
 
 #[cfg_attr(not(test), rustc_diagnostic_item = "HashMap")]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -277,7 +296,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
-    #[rustc_const_unstable(feature = "const_collections_with_hasher", issue = "102575")]
+    #[rustc_const_stable(feature = "const_collections_with_hasher", since = "1.85.0")]
     pub const fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
         HashMap { base: base::HashMap::with_hasher(hash_builder) }
     }
@@ -1424,6 +1443,11 @@ impl<K, V, const N: usize> From<[(K, V); N]> for HashMap<K, V, RandomState>
 where
     K: Eq + Hash,
 {
+    /// Converts a `[(K, V); N]` into a `HashMap<K, V>`.
+    ///
+    /// If any entries in the array have equal keys,
+    /// all but one of the corresponding values will be dropped.
+    ///
     /// # Examples
     ///
     /// ```
@@ -3197,6 +3221,10 @@ where
     K: Eq + Hash,
     S: BuildHasher + Default,
 {
+    /// Constructs a `HashMap<K, V>` from an iterator of key-value pairs.
+    ///
+    /// If the iterator produces any pairs with equal keys,
+    /// all but one of the corresponding values will be dropped.
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> HashMap<K, V, S> {
         let mut map = HashMap::with_hasher(Default::default());
         map.extend(iter);

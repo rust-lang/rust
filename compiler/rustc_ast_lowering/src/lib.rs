@@ -35,13 +35,13 @@
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use rustc_ast::node_id::NodeMap;
-use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -59,8 +59,7 @@ use rustc_macros::extension;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, DesugaringKind, Span};
+use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
@@ -96,7 +95,7 @@ struct LoweringContext<'a, 'hir> {
     /// Bodies inside the owner being lowered.
     bodies: Vec<(hir::ItemLocalId, &'hir hir::Body<'hir>)>,
     /// Attributes inside the owner being lowered.
-    attrs: SortedMap<hir::ItemLocalId, &'hir [Attribute]>,
+    attrs: SortedMap<hir::ItemLocalId, &'hir [hir::Attribute]>,
     /// Collect items that were created by lowering the current owner.
     children: Vec<(LocalDefId, hir::MaybeOwner<'hir>)>,
 
@@ -260,6 +259,13 @@ enum ImplTraitContext {
     /// equivalent to a new opaque type like `type T = impl Debug; fn foo() -> T`.
     ///
     OpaqueTy { origin: hir::OpaqueTyOrigin<LocalDefId> },
+
+    /// Treat `impl Trait` as a "trait ascription", which is like a type
+    /// variable but that also enforces that a set of trait goals hold.
+    ///
+    /// This is useful to guide inference for unnameable types.
+    InBinding,
+
     /// `impl Trait` is unstably accepted in this position.
     FeatureGated(ImplTraitPosition, Symbol),
     /// `impl Trait` is not accepted in this position.
@@ -840,7 +846,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ret
     }
 
-    fn lower_attrs(&mut self, id: HirId, attrs: &[Attribute]) -> &'hir [Attribute] {
+    fn lower_attrs(&mut self, id: HirId, attrs: &[Attribute]) -> &'hir [hir::Attribute] {
         if attrs.is_empty() {
             &[]
         } else {
@@ -852,25 +858,33 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_attr(&self, attr: &Attribute) -> Attribute {
+    fn lower_attr(&self, attr: &Attribute) -> hir::Attribute {
         // Note that we explicitly do not walk the path. Since we don't really
         // lower attributes (we use the AST version) there is nowhere to keep
         // the `HirId`s. We don't actually need HIR version of attributes anyway.
         // Tokens are also not needed after macro expansion and parsing.
         let kind = match attr.kind {
-            AttrKind::Normal(ref normal) => AttrKind::Normal(P(NormalAttr {
-                item: AttrItem {
-                    unsafety: normal.item.unsafety,
-                    path: normal.item.path.clone(),
-                    args: self.lower_attr_args(&normal.item.args),
-                    tokens: None,
+            AttrKind::Normal(ref normal) => hir::AttrKind::Normal(Box::new(hir::AttrItem {
+                unsafety: self.lower_safety(normal.item.unsafety, hir::Safety::Safe),
+                path: hir::AttrPath {
+                    segments: normal
+                        .item
+                        .path
+                        .segments
+                        .iter()
+                        .map(|i| i.ident)
+                        .collect::<Vec<_>>()
+                        .into_boxed_slice(),
+                    span: normal.item.path.span,
                 },
-                tokens: None,
+                args: self.lower_attr_args(&normal.item.args),
             })),
-            AttrKind::DocComment(comment_kind, data) => AttrKind::DocComment(comment_kind, data),
+            AttrKind::DocComment(comment_kind, data) => {
+                hir::AttrKind::DocComment(comment_kind, data)
+            }
         };
 
-        Attribute { kind, id: attr.id, style: attr.style, span: self.lower_span(attr.span) }
+        hir::Attribute { kind, id: attr.id, style: attr.style, span: self.lower_span(attr.span) }
     }
 
     fn alias_attrs(&mut self, id: HirId, target_id: HirId) {
@@ -882,14 +896,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_attr_args(&self, args: &AttrArgs) -> AttrArgs {
+    fn lower_attr_args(&self, args: &AttrArgs) -> hir::AttrArgs {
         match args {
-            AttrArgs::Empty => AttrArgs::Empty,
-            AttrArgs::Delimited(args) => AttrArgs::Delimited(self.lower_delim_args(args)),
+            AttrArgs::Empty => hir::AttrArgs::Empty,
+            AttrArgs::Delimited(args) => hir::AttrArgs::Delimited(self.lower_delim_args(args)),
             // This is an inert key-value attribute - it will never be visible to macros
             // after it gets lowered to HIR. Therefore, we can extract literals to handle
             // nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
-            AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => {
+            &AttrArgs::Eq { eq_span, ref expr } => {
                 // In valid code the value always ends up as a single literal. Otherwise, a dummy
                 // literal suffices because the error is handled elsewhere.
                 let lit = if let ExprKind::Lit(token_lit) = expr.kind
@@ -905,10 +919,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         span: DUMMY_SP,
                     }
                 };
-                AttrArgs::Eq(*eq_span, AttrArgsEq::Hir(lit))
-            }
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
-                unreachable!("in literal form when lowering mac args eq: {:?}", lit)
+                hir::AttrArgs::Eq { eq_span, expr: lit }
             }
         }
     }
@@ -1230,6 +1241,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     param_names: self.lower_fn_params_to_names(&f.decl),
                 }))
             }
+            TyKind::UnsafeBinder(f) => {
+                let generic_params = self.lower_lifetime_binder(t.id, &f.generic_params);
+                hir::TyKind::UnsafeBinder(self.arena.alloc(hir::UnsafeBinderTy {
+                    generic_params,
+                    inner_ty: self.lower_ty(&f.inner_ty, itctx),
+                }))
+            }
             TyKind::Never => hir::TyKind::Never,
             TyKind::Tup(tys) => hir::TyKind::Tup(
                 self.arena.alloc_from_iter(tys.iter().map(|ty| self.lower_ty_direct(ty, itctx))),
@@ -1257,9 +1275,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }),
                 ))
             }
-            TyKind::Array(ty, length) => {
-                hir::TyKind::Array(self.lower_ty(ty, itctx), self.lower_array_length(length))
-            }
+            TyKind::Array(ty, length) => hir::TyKind::Array(
+                self.lower_ty(ty, itctx),
+                self.lower_array_length_to_const_arg(length),
+            ),
             TyKind::Typeof(expr) => hir::TyKind::Typeof(self.lower_anon_const_to_anon_const(expr)),
             TyKind::TraitObject(bounds, kind) => {
                 let mut lifetime_bound = None;
@@ -1320,6 +1339,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             self.impl_trait_bounds.push(bounds);
                         }
                         path
+                    }
+                    ImplTraitContext::InBinding => {
+                        hir::TyKind::TraitAscription(self.lower_param_bounds(bounds, itctx))
                     }
                     ImplTraitContext::FeatureGated(position, feature) => {
                         let guar = self
@@ -1824,11 +1846,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             GenericParamKind::Lifetime => {
                 // AST resolution emitted an error on those parameters, so we lower them using
                 // `ParamName::Error`.
+                let ident = self.lower_ident(param.ident);
                 let param_name =
                     if let Some(LifetimeRes::Error) = self.resolver.get_lifetime_res(param.id) {
-                        ParamName::Error
+                        ParamName::Error(ident)
                     } else {
-                        let ident = self.lower_ident(param.ident);
                         ParamName::Plain(ident)
                     };
                 let kind =
@@ -2007,15 +2029,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.expr_block(block)
     }
 
-    fn lower_array_length(&mut self, c: &AnonConst) -> hir::ArrayLen<'hir> {
+    fn lower_array_length_to_const_arg(&mut self, c: &AnonConst) -> &'hir hir::ConstArg<'hir> {
         match c.value.kind {
             ExprKind::Underscore => {
-                if self.tcx.features().generic_arg_infer() {
-                    hir::ArrayLen::Infer(hir::InferArg {
-                        hir_id: self.lower_node_id(c.id),
-                        span: self.lower_span(c.value.span),
-                    })
-                } else {
+                if !self.tcx.features().generic_arg_infer() {
                     feature_err(
                         &self.tcx.sess,
                         sym::generic_arg_infer,
@@ -2023,10 +2040,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         fluent_generated::ast_lowering_underscore_array_length_unstable,
                     )
                     .stash(c.value.span, StashKey::UnderscoreForArrayLengths);
-                    hir::ArrayLen::Body(self.lower_anon_const_to_const_arg(c))
                 }
+                let ct_kind = hir::ConstArgKind::Infer(self.lower_span(c.value.span));
+                self.arena.alloc(hir::ConstArg { hir_id: self.lower_node_id(c.id), kind: ct_kind })
             }
-            _ => hir::ArrayLen::Body(self.lower_anon_const_to_const_arg(c)),
+            _ => self.lower_anon_const_to_const_arg(c),
         }
     }
 
@@ -2186,7 +2204,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn stmt_let_pat(
         &mut self,
-        attrs: Option<&'hir [Attribute]>,
+        attrs: Option<&'hir [hir::Attribute]>,
         span: Span,
         init: Option<&'hir hir::Expr<'hir>>,
         pat: &'hir hir::Pat<'hir>,

@@ -2,13 +2,11 @@
 //@ edition:2021
 //@ run-pass
 
-#![feature(async_closure)]
-
 extern crate block_on;
 
 fn main() {
     block_on::block_on(async {
-        async fn needs_async_fn_once(x: impl async FnOnce()) {
+        async fn needs_async_fn_once(x: impl AsyncFnOnce()) {
             x().await;
         }
 

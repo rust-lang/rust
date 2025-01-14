@@ -17,8 +17,7 @@ extern crate rustc_span;
 
 use std::path::{Path, PathBuf};
 
-use rustc_interface::Linker;
-use rustc_interface::interface;
+use rustc_interface::{Linker, interface};
 use rustc_session::config::{Input, Options, OutFileName, OutputType, OutputTypes};
 use rustc_span::FileName;
 
@@ -78,12 +77,11 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf, linker: Option<&Path
     };
 
     interface::run_compiler(config, |compiler| {
-        let linker = compiler.enter(|queries| {
-            queries.global_ctxt()?.enter(|tcx| {
-                tcx.analysis(())?;
-                Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend)
-            })
+        let krate = rustc_interface::passes::parse(&compiler.sess);
+        let linker = rustc_interface::create_and_enter_global_ctxt(&compiler, krate, |tcx| {
+            let _ = tcx.analysis(());
+            Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend)
         });
-        linker.unwrap().link(&compiler.sess, &*compiler.codegen_backend).unwrap();
+        linker.link(&compiler.sess, &*compiler.codegen_backend);
     });
 }

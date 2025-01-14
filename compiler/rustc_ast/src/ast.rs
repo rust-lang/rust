@@ -19,7 +19,7 @@
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
 use std::borrow::Cow;
-use std::{cmp, fmt, mem};
+use std::{cmp, fmt};
 
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
@@ -31,17 +31,14 @@ use rustc_data_structures::sync::Lrc;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 pub use rustc_span::AttrId;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 pub use crate::format::*;
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter};
 use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
-use crate::util::parser::{
-    AssocOp, PREC_CLOSURE, PREC_JUMP, PREC_PREFIX, PREC_RANGE, PREC_UNAMBIGUOUS,
-};
+use crate::util::parser::{AssocOp, ExprPrecedence};
 
 /// A "Label" is an identifier of some point in sources,
 /// e.g. in the following code:
@@ -244,15 +241,15 @@ impl AngleBracketedArg {
     }
 }
 
-impl Into<P<GenericArgs>> for AngleBracketedArgs {
-    fn into(self) -> P<GenericArgs> {
-        P(GenericArgs::AngleBracketed(self))
+impl From<AngleBracketedArgs> for P<GenericArgs> {
+    fn from(val: AngleBracketedArgs) -> Self {
+        P(GenericArgs::AngleBracketed(val))
     }
 }
 
-impl Into<P<GenericArgs>> for ParenthesizedArgs {
-    fn into(self) -> P<GenericArgs> {
-        P(GenericArgs::Parenthesized(self))
+impl From<ParenthesizedArgs> for P<GenericArgs> {
+    fn from(val: ParenthesizedArgs) -> Self {
+        P(GenericArgs::Parenthesized(val))
     }
 }
 
@@ -390,22 +387,15 @@ impl GenericParam {
 
 /// Represents lifetime, type and const parameters attached to a declaration of
 /// a function, enum, trait, etc.
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, Default)]
 pub struct Generics {
     pub params: ThinVec<GenericParam>,
     pub where_clause: WhereClause,
     pub span: Span,
 }
 
-impl Default for Generics {
-    /// Creates an instance of `Generics`.
-    fn default() -> Generics {
-        Generics { params: ThinVec::new(), where_clause: Default::default(), span: DUMMY_SP }
-    }
-}
-
 /// A where-clause in a definition.
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, Default)]
 pub struct WhereClause {
     /// `true` if we ate a `where` token.
     ///
@@ -419,12 +409,6 @@ pub struct WhereClause {
 impl WhereClause {
     pub fn is_empty(&self) -> bool {
         !self.has_where_token && self.predicates.is_empty()
-    }
-}
-
-impl Default for WhereClause {
-    fn default() -> WhereClause {
-        WhereClause { has_where_token: false, predicates: ThinVec::new(), span: DUMMY_SP }
     }
 }
 
@@ -629,15 +613,17 @@ impl Pat {
             | PatKind::Or(s) => s.iter().for_each(|p| p.walk(it)),
 
             // Trivial wrappers over inner patterns.
-            PatKind::Box(s) | PatKind::Deref(s) | PatKind::Ref(s, _) | PatKind::Paren(s) => {
-                s.walk(it)
-            }
+            PatKind::Box(s)
+            | PatKind::Deref(s)
+            | PatKind::Ref(s, _)
+            | PatKind::Paren(s)
+            | PatKind::Guard(s, _) => s.walk(it),
 
             // These patterns do not contain subpatterns, skip.
             PatKind::Wild
             | PatKind::Rest
             | PatKind::Never
-            | PatKind::Lit(_)
+            | PatKind::Expr(_)
             | PatKind::Range(..)
             | PatKind::Ident(..)
             | PatKind::Path(..)
@@ -815,8 +801,8 @@ pub enum PatKind {
     /// A reference pattern (e.g., `&mut (a, b)`).
     Ref(P<Pat>, Mutability),
 
-    /// A literal.
-    Lit(P<Expr>),
+    /// A literal, const block or path.
+    Expr(P<Expr>),
 
     /// A range pattern (e.g., `1...2`, `1..2`, `1..`, `..2`, `1..=2`, `..=2`).
     Range(Option<P<Expr>>, Option<P<Expr>>, Spanned<RangeEnd>),
@@ -841,6 +827,9 @@ pub enum PatKind {
     // A never pattern `!`.
     Never,
 
+    /// A guard pattern (e.g., `x if guard(x)`).
+    Guard(P<Pat>, P<Expr>),
+
     /// Parentheses in patterns used for grouping (i.e., `(PAT)`).
     Paren(P<Pat>),
 
@@ -856,6 +845,8 @@ pub enum PatKind {
 pub enum PatFieldsRest {
     /// `module::StructName { field, ..}`
     Rest,
+    /// `module::StructName { field, syntax error }`
+    Recovered(ErrorGuaranteed),
     /// `module::StructName { field }`
     None,
 }
@@ -1317,29 +1308,33 @@ impl Expr {
         Some(P(Ty { kind, id: self.id, span: self.span, tokens: None }))
     }
 
-    pub fn precedence(&self) -> i8 {
-        match self.kind {
-            ExprKind::Closure(..) => PREC_CLOSURE,
+    pub fn precedence(&self) -> ExprPrecedence {
+        match &self.kind {
+            ExprKind::Closure(closure) => {
+                match closure.fn_decl.output {
+                    FnRetTy::Default(_) => ExprPrecedence::Jump,
+                    FnRetTy::Ty(_) => ExprPrecedence::Unambiguous,
+                }
+            }
 
             ExprKind::Break(..)
-            | ExprKind::Continue(..)
             | ExprKind::Ret(..)
             | ExprKind::Yield(..)
             | ExprKind::Yeet(..)
-            | ExprKind::Become(..) => PREC_JUMP,
+            | ExprKind::Become(..) => ExprPrecedence::Jump,
 
             // `Range` claims to have higher precedence than `Assign`, but `x .. x = x` fails to
             // parse, instead of parsing as `(x .. x) = x`. Giving `Range` a lower precedence
             // ensures that `pprust` will add parentheses in the right places to get the desired
             // parse.
-            ExprKind::Range(..) => PREC_RANGE,
+            ExprKind::Range(..) => ExprPrecedence::Range,
 
             // Binop-like expr kinds, handled by `AssocOp`.
-            ExprKind::Binary(op, ..) => AssocOp::from_ast_binop(op.node).precedence() as i8,
-            ExprKind::Cast(..) => AssocOp::As.precedence() as i8,
+            ExprKind::Binary(op, ..) => AssocOp::from_ast_binop(op.node).precedence(),
+            ExprKind::Cast(..) => ExprPrecedence::Cast,
 
             ExprKind::Assign(..) |
-            ExprKind::AssignOp(..) => AssocOp::Assign.precedence() as i8,
+            ExprKind::AssignOp(..) => ExprPrecedence::Assign,
 
             // Unary, prefix
             ExprKind::AddrOf(..)
@@ -1348,7 +1343,7 @@ impl Expr {
             // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
             // but we need to print `(let _ = a) < b` as-is with parens.
             | ExprKind::Let(..)
-            | ExprKind::Unary(..) => PREC_PREFIX,
+            | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
             // Never need parens
             ExprKind::Array(_)
@@ -1356,6 +1351,7 @@ impl Expr {
             | ExprKind::Block(..)
             | ExprKind::Call(..)
             | ExprKind::ConstBlock(_)
+            | ExprKind::Continue(..)
             | ExprKind::Field(..)
             | ExprKind::ForLoop { .. }
             | ExprKind::FormatArgs(..)
@@ -1379,9 +1375,10 @@ impl Expr {
             | ExprKind::Tup(_)
             | ExprKind::Type(..)
             | ExprKind::Underscore
+            | ExprKind::UnsafeBinderCast(..)
             | ExprKind::While(..)
             | ExprKind::Err(_)
-            | ExprKind::Dummy => PREC_UNAMBIGUOUS,
+            | ExprKind::Dummy => ExprPrecedence::Unambiguous,
         }
     }
 
@@ -1506,7 +1503,13 @@ pub enum ExprKind {
     /// `'label: for await? pat in iter { block }`
     ///
     /// This is desugared to a combination of `loop` and `match` expressions.
-    ForLoop { pat: P<Pat>, iter: P<Expr>, body: P<Block>, label: Option<Label>, kind: ForLoopKind },
+    ForLoop {
+        pat: P<Pat>,
+        iter: P<Expr>,
+        body: P<Block>,
+        label: Option<Label>,
+        kind: ForLoopKind,
+    },
     /// Conditionless loop (can be exited with `break`, `continue`, or `return`).
     ///
     /// `'label: loop { block }`
@@ -1611,6 +1614,8 @@ pub enum ExprKind {
     /// A `format_args!()` expression.
     FormatArgs(P<FormatArgs>),
 
+    UnsafeBinderCast(UnsafeBinderCastKind, P<Expr>, Option<P<Ty>>),
+
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
     Err(ErrorGuaranteed),
 
@@ -1647,6 +1652,16 @@ impl GenBlockKind {
             GenBlockKind::AsyncGen => "async gen",
         }
     }
+}
+
+/// Whether we're unwrapping or wrapping an unsafe binder
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+pub enum UnsafeBinderCastKind {
+    // e.g. `&i32` -> `unsafe<'a> &'a i32`
+    Wrap,
+    // e.g. `unsafe<'a> &'a i32` -> `&i32`
+    Unwrap,
 }
 
 /// The explicit `Self` type in a "qualified path". The actual
@@ -1733,21 +1748,11 @@ pub enum AttrArgs {
     /// Delimited arguments: `#[attr()/[]/{}]`.
     Delimited(DelimArgs),
     /// Arguments of a key-value attribute: `#[attr = "value"]`.
-    Eq(
+    Eq {
         /// Span of the `=` token.
-        Span,
-        /// The "value".
-        AttrArgsEq,
-    ),
-}
-
-// The RHS of an `AttrArgs::Eq` starts out as an expression. Once macro
-// expansion is completed, all cases end up either as a meta item literal,
-// which is the form used after lowering to HIR, or as an error.
-#[derive(Clone, Encodable, Decodable, Debug)]
-pub enum AttrArgsEq {
-    Ast(P<Expr>),
-    Hir(MetaItemLit),
+        eq_span: Span,
+        expr: P<Expr>,
+    },
 }
 
 impl AttrArgs {
@@ -1755,10 +1760,7 @@ impl AttrArgs {
         match self {
             AttrArgs::Empty => None,
             AttrArgs::Delimited(args) => Some(args.dspan.entire()),
-            AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => Some(eq_span.to(expr.span)),
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
-                unreachable!("in literal form when getting span: {:?}", lit);
-            }
+            AttrArgs::Eq { eq_span, expr } => Some(eq_span.to(expr.span)),
         }
     }
 
@@ -1768,30 +1770,7 @@ impl AttrArgs {
         match self {
             AttrArgs::Empty => TokenStream::default(),
             AttrArgs::Delimited(args) => args.tokens.clone(),
-            AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => TokenStream::from_ast(expr),
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
-                unreachable!("in literal form when getting inner tokens: {:?}", lit)
-            }
-        }
-    }
-}
-
-impl<CTX> HashStable<CTX> for AttrArgs
-where
-    CTX: crate::HashStableContext,
-{
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(ctx, hasher);
-        match self {
-            AttrArgs::Empty => {}
-            AttrArgs::Delimited(args) => args.hash_stable(ctx, hasher),
-            AttrArgs::Eq(_eq_span, AttrArgsEq::Ast(expr)) => {
-                unreachable!("hash_stable {:?}", expr);
-            }
-            AttrArgs::Eq(eq_span, AttrArgsEq::Hir(lit)) => {
-                eq_span.hash_stable(ctx, hasher);
-                lit.hash_stable(ctx, hasher);
-            }
+            AttrArgs::Eq { expr, .. } => TokenStream::from_ast(expr),
         }
     }
 }
@@ -2199,6 +2178,12 @@ pub struct BareFnTy {
     pub decl_span: Span,
 }
 
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct UnsafeBinderTy {
+    pub generic_params: ThinVec<GenericParam>,
+    pub inner_ty: P<Ty>,
+}
+
 /// The various kinds of type recognized by the compiler.
 //
 // Adding a new variant? Please update `test_ty` in `tests/ui/macros/stringify.rs`.
@@ -2218,6 +2203,8 @@ pub enum TyKind {
     PinnedRef(Option<Lifetime>, MutTy),
     /// A bare function (e.g., `fn(usize) -> bool`).
     BareFn(P<BareFnTy>),
+    /// An unsafe existential lifetime binder (e.g., `unsafe<'a> &'a ()`).
+    UnsafeBinder(P<UnsafeBinderTy>),
     /// The never type (`!`).
     Never,
     /// A tuple (`(A, B, C, D,...)`).
@@ -2547,6 +2534,18 @@ pub enum SelfKind {
     Explicit(P<Ty>, Mutability),
 }
 
+impl SelfKind {
+    pub fn to_ref_suggestion(&self) -> String {
+        match self {
+            SelfKind::Region(None, mutbl) => mutbl.ref_prefix_str().to_string(),
+            SelfKind::Region(Some(lt), mutbl) => format!("&{lt} {}", mutbl.prefix_str()),
+            SelfKind::Value(_) | SelfKind::Explicit(_, _) => {
+                unreachable!("if we had an explicit self, we wouldn't be here")
+            }
+        }
+    }
+}
+
 pub type ExplicitSelf = Spanned<SelfKind>;
 
 impl Param {
@@ -2841,7 +2840,7 @@ pub enum ModKind {
     /// or with definition outlined to a separate file `mod foo;` and already loaded from it.
     /// The inner span is from the first token past `{` to the last token until `}`,
     /// or from the first to the last token in the loaded file.
-    Loaded(ThinVec<P<Item>>, Inline, ModSpans),
+    Loaded(ThinVec<P<Item>>, Inline, ModSpans, Result<(), ErrorGuaranteed>),
     /// Module with definition outlined to a separate file `mod foo;` but not yet loaded from it.
     Unloaded,
 }
@@ -2988,7 +2987,7 @@ impl NormalAttr {
     }
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub struct AttrItem {
     pub unsafety: Safety,
     pub path: Path,
@@ -3083,6 +3082,7 @@ pub struct FieldDef {
     pub ident: Option<Ident>,
 
     pub ty: P<Ty>,
+    pub default: Option<AnonConst>,
     pub is_placeholder: bool,
 }
 

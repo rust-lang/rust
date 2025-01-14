@@ -16,8 +16,7 @@ use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::Symbol;
-use rustc_span::{Pos, Span};
+use rustc_span::{Pos, Span, Symbol};
 use smallvec::SmallVec;
 
 use crate::errors;

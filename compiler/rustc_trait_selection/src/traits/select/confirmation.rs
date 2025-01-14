@@ -16,11 +16,10 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{DefineOpaqueTypes, HigherRankedType, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
-use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, Ty, TyCtxt, Upcast,
-};
+use rustc_middle::ty::{self, GenericArgsRef, ToPolyTraitRef, Ty, TyCtxt, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
+use rustc_type_ir::elaborate;
 use tracing::{debug, instrument};
 
 use super::SelectionCandidate::{self, *};
@@ -626,7 +625,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         for assoc_type in assoc_types {
             let defs: &ty::Generics = tcx.generics_of(assoc_type);
 
-            if !defs.own_params.is_empty() && !tcx.features().generic_associated_types_extended() {
+            // When `async_fn_in_dyn_trait` is enabled, we don't need to check the
+            // RPITIT for compatibility, since it's not provided by the user.
+            if tcx.features().async_fn_in_dyn_trait() && tcx.is_impl_trait_in_trait(assoc_type) {
+                continue;
+            }
+
+            if !defs.own_params.is_empty() {
                 tcx.dcx().span_delayed_bug(
                     obligation.cause.span,
                     "GATs in trait object shouldn't have been considered",
@@ -638,60 +643,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // higher-ranked things.
             // Prevent, e.g., `dyn Iterator<Item = str>`.
             for bound in self.tcx().item_bounds(assoc_type).transpose_iter() {
-                let arg_bound = if defs.is_empty() {
-                    bound.instantiate(tcx, trait_predicate.trait_ref.args)
-                } else {
-                    let mut args = smallvec::SmallVec::with_capacity(defs.count());
-                    args.extend(trait_predicate.trait_ref.args.iter());
-                    let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
-                        smallvec::SmallVec::with_capacity(
-                            bound.skip_binder().kind().bound_vars().len() + defs.count(),
-                        );
-                    bound_vars.extend(bound.skip_binder().kind().bound_vars().into_iter());
-                    GenericArgs::fill_single(&mut args, defs, &mut |param, _| match param.kind {
-                        GenericParamDefKind::Type { .. } => {
-                            let kind = ty::BoundTyKind::Param(param.def_id, param.name);
-                            let bound_var = ty::BoundVariableKind::Ty(kind);
-                            bound_vars.push(bound_var);
-                            Ty::new_bound(tcx, ty::INNERMOST, ty::BoundTy {
-                                var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                                kind,
-                            })
-                            .into()
-                        }
-                        GenericParamDefKind::Lifetime => {
-                            let kind = ty::BoundRegionKind::Named(param.def_id, param.name);
-                            let bound_var = ty::BoundVariableKind::Region(kind);
-                            bound_vars.push(bound_var);
-                            ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
-                                var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                                kind,
-                            })
-                            .into()
-                        }
-                        GenericParamDefKind::Const { .. } => {
-                            let bound_var = ty::BoundVariableKind::Const;
-                            bound_vars.push(bound_var);
-                            ty::Const::new_bound(
-                                tcx,
-                                ty::INNERMOST,
-                                ty::BoundVar::from_usize(bound_vars.len() - 1),
-                            )
-                            .into()
-                        }
-                    });
-                    let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);
-                    let assoc_ty_args = tcx.mk_args(&args);
-                    let bound =
-                        bound.map_bound(|b| b.kind().skip_binder()).instantiate(tcx, assoc_ty_args);
-                    ty::Binder::bind_with_vars(bound, bound_vars).upcast(tcx)
-                };
                 let normalized_bound = normalize_with_depth_to(
                     self,
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    arg_bound,
+                    bound.instantiate(tcx, trait_predicate.trait_ref.args),
                     &mut nested,
                 );
                 nested.push(obligation.with(tcx, normalized_bound));
@@ -939,6 +896,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         sig.tupled_inputs_ty,
                     ])
                 });
+
+                // Note that unlike below, we don't need to check `Future + Sized` for
+                // the output coroutine because they are `Future + Sized` by construction.
+
                 (trait_ref, args.kind_ty())
             }
             ty::FnDef(..) | ty::FnPtr(..) => {
@@ -950,12 +911,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ])
                 });
 
-                // We must additionally check that the return type impls `Future`.
+                // We must additionally check that the return type impls `Future + Sized`.
                 let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
                 nested.push(obligation.with(
                     tcx,
                     sig.output().map_bound(|output_ty| {
                         ty::TraitRef::new(tcx, future_trait_def_id, [output_ty])
+                    }),
+                ));
+                let sized_trait_def_id = tcx.require_lang_item(LangItem::Sized, None);
+                nested.push(obligation.with(
+                    tcx,
+                    sig.output().map_bound(|output_ty| {
+                        ty::TraitRef::new(tcx, sized_trait_def_id, [output_ty])
                     }),
                 ));
 
@@ -971,13 +939,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ])
                 });
 
-                // We must additionally check that the return type impls `Future`.
-                // See FIXME in last branch for why we instantiate the binder eagerly.
+                // We must additionally check that the return type impls `Future + Sized`.
                 let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
                 let placeholder_output_ty = self.infcx.enter_forall_and_leak_universe(sig.output());
                 nested.push(obligation.with(
                     tcx,
                     ty::TraitRef::new(tcx, future_trait_def_id, [placeholder_output_ty]),
+                ));
+                let sized_trait_def_id = tcx.require_lang_item(LangItem::Sized, None);
+                nested.push(obligation.with(
+                    tcx,
+                    sig.output().map_bound(|output_ty| {
+                        ty::TraitRef::new(tcx, sized_trait_def_id, [output_ty])
+                    }),
                 ));
 
                 (trait_ref, args.kind_ty())
@@ -1225,6 +1199,38 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty::ClauseKind::TypeOutlives(outlives).upcast(tcx),
                 ));
 
+                // Require that all AFIT will return something that can be coerced into `dyn*`
+                // -- a shim will be responsible for doing the actual coercion to `dyn*`.
+                if let Some(principal) = data.principal() {
+                    for supertrait in
+                        elaborate::supertraits(tcx, principal.with_self_ty(tcx, source))
+                    {
+                        if tcx.is_trait_alias(supertrait.def_id()) {
+                            continue;
+                        }
+
+                        for &assoc_item in tcx.associated_item_def_ids(supertrait.def_id()) {
+                            if !tcx.is_impl_trait_in_trait(assoc_item) {
+                                continue;
+                            }
+
+                            // RPITITs with `Self: Sized` don't need to be checked.
+                            if tcx.generics_require_sized_self(assoc_item) {
+                                continue;
+                            }
+
+                            let pointer_like_goal = pointer_like_goal_for_rpitit(
+                                tcx,
+                                supertrait,
+                                assoc_item,
+                                &obligation.cause,
+                            );
+
+                            nested.push(predicate_to_obligation(pointer_like_goal.upcast(tcx)));
+                        }
+                    }
+                }
+
                 ImplSource::Builtin(BuiltinImplSource::Misc, nested)
             }
 
@@ -1329,4 +1335,44 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => bug!("source: {source}, target: {target}"),
         })
     }
+}
+
+/// Compute a goal that some RPITIT (right now, only RPITITs corresponding to Futures)
+/// implements the `PointerLike` trait, which is a requirement for the RPITIT to be
+/// coercible to `dyn* Future`, which is itself a requirement for the RPITIT's parent
+/// trait to be coercible to `dyn Trait`.
+///
+/// We do this given a supertrait's substitutions, and then augment the substitutions
+/// with bound variables to compute the goal universally. Given that `PointerLike` has
+/// no region requirements (at least for the built-in pointer types), this shouldn't
+/// *really* matter, but it is the best choice for soundness.
+fn pointer_like_goal_for_rpitit<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    supertrait: ty::PolyTraitRef<'tcx>,
+    rpitit_item: DefId,
+    cause: &ObligationCause<'tcx>,
+) -> ty::PolyTraitRef<'tcx> {
+    let mut bound_vars = supertrait.bound_vars().to_vec();
+
+    let args = supertrait.skip_binder().args.extend_to(tcx, rpitit_item, |arg, _| match arg.kind {
+        ty::GenericParamDefKind::Lifetime => {
+            let kind = ty::BoundRegionKind::Named(arg.def_id, tcx.item_name(arg.def_id));
+            bound_vars.push(ty::BoundVariableKind::Region(kind));
+            ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
+                var: ty::BoundVar::from_usize(bound_vars.len() - 1),
+                kind,
+            })
+            .into()
+        }
+        ty::GenericParamDefKind::Type { .. } | ty::GenericParamDefKind::Const { .. } => {
+            unreachable!()
+        }
+    });
+
+    ty::Binder::bind_with_vars(
+        ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::PointerLike, Some(cause.span)), [
+            Ty::new_projection_from_args(tcx, rpitit_item, args),
+        ]),
+        tcx.mk_bound_variable_kinds(&bound_vars),
+    )
 }

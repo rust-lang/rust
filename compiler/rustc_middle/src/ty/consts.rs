@@ -2,15 +2,11 @@ use std::borrow::Cow;
 
 use rustc_data_structures::intern::Interned;
 use rustc_error_messages::MultiSpan;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{self as hir};
 use rustc_macros::HashStable;
 use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
-use tracing::{debug, instrument};
 
-use crate::mir::interpret::{LitToConstInput, Scalar};
-use crate::ty::{self, GenericArgs, Ty, TyCtxt, TypeVisitableExt};
+use crate::mir::interpret::Scalar;
+use crate::ty::{self, Ty, TyCtxt};
 
 mod int;
 mod kind;
@@ -181,82 +177,6 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
 }
 
 impl<'tcx> Const<'tcx> {
-    // FIXME: move this and try_from_lit to hir_ty_lowering like lower_const_arg/from_const_arg
-    /// Literals and const generic parameters are eagerly converted to a constant, everything else
-    /// becomes `Unevaluated`.
-    #[instrument(skip(tcx), level = "debug")]
-    pub fn from_anon_const(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Self {
-        let body_id = match tcx.hir_node_by_def_id(def) {
-            hir::Node::AnonConst(ac) => ac.body,
-            node => span_bug!(
-                tcx.def_span(def.to_def_id()),
-                "from_anon_const can only process anonymous constants, not {node:?}"
-            ),
-        };
-
-        let expr = &tcx.hir().body(body_id).value;
-        debug!(?expr);
-
-        let ty = tcx.type_of(def).no_bound_vars().expect("const parameter types cannot be generic");
-
-        match Self::try_from_lit(tcx, ty, expr) {
-            Some(v) => v,
-            None => ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst {
-                def: def.to_def_id(),
-                args: GenericArgs::identity_for_item(tcx, def.to_def_id()),
-            }),
-        }
-    }
-
-    #[instrument(skip(tcx), level = "debug")]
-    fn try_from_lit(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, expr: &'tcx hir::Expr<'tcx>) -> Option<Self> {
-        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
-        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
-        let expr = match &expr.kind {
-            hir::ExprKind::Block(block, _) if block.stmts.is_empty() && block.expr.is_some() => {
-                block.expr.as_ref().unwrap()
-            }
-            _ => expr,
-        };
-
-        if let hir::ExprKind::Path(hir::QPath::Resolved(
-            _,
-            &hir::Path { res: Res::Def(DefKind::ConstParam, _), .. },
-        )) = expr.kind
-        {
-            span_bug!(expr.span, "try_from_lit: received const param which shouldn't be possible");
-        };
-
-        let lit_input = match expr.kind {
-            hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
-            hir::ExprKind::Unary(hir::UnOp::Neg, expr) => match expr.kind {
-                hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: true }),
-                _ => None,
-            },
-            _ => None,
-        };
-
-        if let Some(lit_input) = lit_input {
-            // If an error occurred, ignore that it's a literal and leave reporting the error up to
-            // mir.
-            match tcx.at(expr.span).lit_to_const(lit_input) {
-                Ok(c) => return Some(c),
-                Err(_) if lit_input.ty.has_aliases() => {
-                    // allow the `ty` to be an alias type, though we cannot handle it here
-                    return None;
-                }
-                Err(e) => {
-                    tcx.dcx().span_delayed_bug(
-                        expr.span,
-                        format!("Const::try_from_lit: couldn't lit_to_const {e:?}"),
-                    );
-                }
-            }
-        }
-
-        None
-    }
-
     /// Creates a constant with the given integer value and interns it.
     #[inline]
     pub fn from_bits(

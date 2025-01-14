@@ -16,7 +16,8 @@ extend-ignore-re = [
     "raison d'être",
     "inout",
     "INOUT",
-    "optin"
+    "optin",
+    "=Pn",
 ]
 
 [default.extend-words]
@@ -26,8 +27,12 @@ fo = "fo"
 ket = "ket"
 makro = "makro"
 trivias = "trivias"
+thir = "thir"
+jod = "jod"
 
 [default.extend-identifiers]
+anc = "anc"
 datas = "datas"
 impl_froms = "impl_froms"
 selfs = "selfs"
+taits = "taits"

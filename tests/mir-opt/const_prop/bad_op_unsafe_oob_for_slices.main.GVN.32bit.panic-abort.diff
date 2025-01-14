@@ -30,19 +30,22 @@
           StorageDead(_2);
           StorageDead(_3);
           StorageLive(_5);
-          StorageLive(_6);
+-         StorageLive(_6);
++         nop;
           _6 = const 3_usize;
-          _7 = Len((*_1));
+-         _7 = PtrMetadata(copy _1);
 -         _8 = Lt(copy _6, copy _7);
 -         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, copy _6) -> [success: bb1, unwind unreachable];
-+         _8 = Lt(const 3_usize, copy _7);
-+         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, const 3_usize) -> [success: bb1, unwind unreachable];
++         _7 = const 3_usize;
++         _8 = const false;
++         assert(const false, "index out of bounds: the length is {} but the index is {}", const 3_usize, const 3_usize) -> [success: bb1, unwind unreachable];
       }
   
       bb1: {
 -         _5 = copy (*_1)[_6];
+-         StorageDead(_6);
 +         _5 = copy (*_1)[3 of 4];
-          StorageDead(_6);
++         nop;
           _0 = const ();
           StorageDead(_5);
           StorageDead(_1);

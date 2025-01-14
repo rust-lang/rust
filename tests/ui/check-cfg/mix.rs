@@ -29,7 +29,7 @@ fn use_bar() {}
 //~^ WARNING unexpected `cfg` condition value
 fn use_zebra() {}
 
-#[cfg_attr(uu, test)]
+#[cfg_attr(uu, unix)]
 //~^ WARNING unexpected `cfg` condition name
 fn do_test() {}
 
@@ -75,8 +75,6 @@ fn test_cfg_macro() {
     //~^ WARNING unexpected `cfg` condition value
     //~| WARNING unexpected `cfg` condition value
     //~| WARNING unexpected `cfg` condition value
-    cfg!(target_feature = "zebra");
-    //~^ WARNING unexpected `cfg` condition value
 }
 
 fn main() {}

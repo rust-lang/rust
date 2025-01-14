@@ -3,7 +3,7 @@
 
 use std::any::Any;
 use std::borrow::Cow;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::hash_map::Entry;
 use std::path::Path;
 use std::{fmt, process};
@@ -11,7 +11,7 @@ use std::{fmt, process};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rustc_abi::{Align, ExternAbi, Size};
-use rustc_attr::InlineAttr;
+use rustc_attr_parsing::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
@@ -24,6 +24,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::InliningThreshold;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{Span, SpanData, Symbol};
+use rustc_target::callconv::FnAbi;
 
 use crate::concurrency::cpu_affinity::{self, CpuAffinityMask};
 use crate::concurrency::data_race::{self, NaReadType, NaWriteType};
@@ -269,6 +270,9 @@ impl fmt::Debug for Provenance {
 impl interpret::Provenance for Provenance {
     /// We use absolute addresses in the `offset` of a `StrictPointer`.
     const OFFSET_IS_ADDR: bool = true;
+
+    /// Miri implements wildcard provenance.
+    const WILDCARD: Option<Self> = Some(Provenance::Wildcard);
 
     fn get_alloc_id(self) -> Option<AllocId> {
         match self {
@@ -591,6 +595,21 @@ pub struct MiriMachine<'tcx> {
 
     /// A cache of "data range" computations for unions (i.e., the offsets of non-padding bytes).
     union_data_ranges: FxHashMap<Ty<'tcx>, RangeSet>,
+
+    /// Caches the sanity-checks for various pthread primitives.
+    pub(crate) pthread_mutex_sanity: Cell<bool>,
+    pub(crate) pthread_rwlock_sanity: Cell<bool>,
+    pub(crate) pthread_condvar_sanity: Cell<bool>,
+
+    /// Remembers whether we already warned about an extern type with Stacked Borrows.
+    pub(crate) sb_extern_type_warned: Cell<bool>,
+    /// Remember whether we already warned about sharing memory with a native call.
+    #[cfg(unix)]
+    pub(crate) native_call_mem_warned: Cell<bool>,
+    /// Remembers which shims have already shown the warning about erroring in isolation.
+    pub(crate) reject_in_isolation_warned: RefCell<FxHashSet<String>>,
+    /// Remembers which int2ptr casts we have already warned about.
+    pub(crate) int2ptr_warned: RefCell<FxHashSet<Span>>,
 }
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -728,6 +747,14 @@ impl<'tcx> MiriMachine<'tcx> {
             const_cache: RefCell::new(FxHashMap::default()),
             symbolic_alignment: RefCell::new(FxHashMap::default()),
             union_data_ranges: FxHashMap::default(),
+            pthread_mutex_sanity: Cell::new(false),
+            pthread_rwlock_sanity: Cell::new(false),
+            pthread_condvar_sanity: Cell::new(false),
+            sb_extern_type_warned: Cell::new(false),
+            #[cfg(unix)]
+            native_call_mem_warned: Cell::new(false),
+            reject_in_isolation_warned: Default::default(),
+            int2ptr_warned: Default::default(),
         }
     }
 
@@ -840,6 +867,14 @@ impl VisitProvenance for MiriMachine<'_> {
             const_cache: _,
             symbolic_alignment: _,
             union_data_ranges: _,
+            pthread_mutex_sanity: _,
+            pthread_rwlock_sanity: _,
+            pthread_condvar_sanity: _,
+            sb_extern_type_warned: _,
+            #[cfg(unix)]
+            native_call_mem_warned: _,
+            reject_in_isolation_warned: _,
+            int2ptr_warned: _,
         } = self;
 
         threads.visit_provenance(visit);
@@ -1007,7 +1042,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn find_mir_or_eval_fn(
         ecx: &mut MiriInterpCx<'tcx>,
         instance: ty::Instance<'tcx>,
-        abi: ExternAbi,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[FnArg<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
@@ -1034,7 +1069,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn call_extra_fn(
         ecx: &mut MiriInterpCx<'tcx>,
         fn_val: DynSym,
-        abi: ExternAbi,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[FnArg<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
@@ -1242,8 +1277,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     /// Called on `ptr as usize` casts.
     /// (Actually computing the resulting `usize` doesn't need machine help,
     /// that's just `Scalar::try_to_int`.)
-    fn expose_ptr(ecx: &mut InterpCx<'tcx, Self>, ptr: StrictPointer) -> InterpResult<'tcx> {
-        match ptr.provenance {
+    fn expose_provenance(
+        ecx: &InterpCx<'tcx, Self>,
+        provenance: Self::Provenance,
+    ) -> InterpResult<'tcx> {
+        match provenance {
             Provenance::Concrete { alloc_id, tag } => ecx.expose_ptr(alloc_id, tag),
             Provenance::Wildcard => {
                 // No need to do anything for wildcard pointers as
@@ -1565,8 +1603,12 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         res
     }
 
-    fn after_local_read(ecx: &InterpCx<'tcx, Self>, local: mir::Local) -> InterpResult<'tcx> {
-        if let Some(data_race) = &ecx.frame().extra.data_race {
+    fn after_local_read(
+        ecx: &InterpCx<'tcx, Self>,
+        frame: &Frame<'tcx, Provenance, FrameExtra<'tcx>>,
+        local: mir::Local,
+    ) -> InterpResult<'tcx> {
+        if let Some(data_race) = &frame.extra.data_race {
             data_race.local_read(local, &ecx.machine);
         }
         interp_ok(())

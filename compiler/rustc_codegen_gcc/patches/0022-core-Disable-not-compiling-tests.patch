@@ -1,7 +1,7 @@
-From 18793c6109890493ceb3ff36549849a36e3d8022 Mon Sep 17 00:00:00 2001
+From af0e237f056fa838c77463381a19b0dc993c0a35 Mon Sep 17 00:00:00 2001
 From: None <none@example.com>
 Date: Sun, 1 Sep 2024 11:42:17 -0400
-Subject: [PATCH] [core] Disable not compiling tests
+Subject: [PATCH] Disable not compiling tests
 
 ---
  library/core/tests/Cargo.toml | 14 ++++++++++++++
@@ -30,14 +30,15 @@ index 0000000..ca326ac
 +rand = { version = "0.8.5", default-features = false }
 +rand_xorshift = { version = "0.3.0", default-features = false }
 diff --git a/library/core/tests/lib.rs b/library/core/tests/lib.rs
-index 1e336bf..5800ebb 100644
+index a4a7946..ecfe43f 100644
 --- a/library/core/tests/lib.rs
 +++ b/library/core/tests/lib.rs
 @@ -1,4 +1,5 @@
  // tidy-alphabetical-start
 +#![cfg(test)]
- #![cfg_attr(bootstrap, feature(offset_of_nested))]
  #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
  #![cfg_attr(test, feature(cfg_match))]
---
-2.46.0
+ #![feature(alloc_layout_extra)]
+-- 
+2.47.1
+

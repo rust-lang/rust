@@ -201,7 +201,7 @@ pub(crate) fn build_index(
                             // exported from this same module). It's also likely to Do
                             // What I Mean, since if a re-export changes the name, it might
                             // also be a change in semantic meaning.
-                            .filter(|fqp| fqp.last() == fqp.last());
+                            .filter(|this_fqp| this_fqp.last() == fqp.last());
                         Some(insert_into_map(
                             itemid_to_pathid,
                             ItemId::DefId(defid),
@@ -423,6 +423,14 @@ pub(crate) fn build_index(
                     }
                     Some(path)
                 });
+            } else if let Some(parent_idx) = item.parent_idx {
+                let i = <isize as TryInto<usize>>::try_into(parent_idx).unwrap();
+                item.path = {
+                    let p = &crate_paths[i].1;
+                    join_with_double_colon(&p[..p.len() - 1])
+                };
+                item.exact_path =
+                    crate_paths[i].2.as_ref().map(|xp| join_with_double_colon(&xp[..xp.len() - 1]));
             }
 
             // Omit the parent path if it is same to that of the prior item.
@@ -829,7 +837,7 @@ pub(crate) fn get_function_type_for_search(
         clean::ForeignFunctionItem(ref f, _)
         | clean::FunctionItem(ref f)
         | clean::MethodItem(ref f, _)
-        | clean::TyMethodItem(ref f) => {
+        | clean::RequiredMethodItem(ref f) => {
             get_fn_inputs_and_outputs(f, tcx, impl_or_trait_generics, cache)
         }
         _ => return None,
@@ -892,7 +900,8 @@ fn get_index_type_id(
         | clean::Generic(_)
         | clean::SelfTy
         | clean::ImplTrait(_)
-        | clean::Infer => None,
+        | clean::Infer
+        | clean::UnsafeBinder(_) => None,
     }
 }
 
@@ -1199,10 +1208,11 @@ fn simplify_fn_type<'a, 'tcx>(
                 && let Type::Path { path } = arg
                 && let def_id = path.def_id()
                 && let Some(trait_) = cache.traits.get(&def_id)
-                && trait_.items.iter().any(|at| at.is_ty_associated_type())
+                && trait_.items.iter().any(|at| at.is_required_associated_type())
             {
                 for assoc_ty in &trait_.items {
-                    if let clean::ItemKind::TyAssocTypeItem(_generics, bounds) = &assoc_ty.kind
+                    if let clean::ItemKind::RequiredAssocTypeItem(_generics, bounds) =
+                        &assoc_ty.kind
                         && let Some(name) = assoc_ty.name
                     {
                         let idx = -isize::try_from(rgen.len() + 1).unwrap();

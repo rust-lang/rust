@@ -5,12 +5,12 @@ use std::{io, mem};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
+use rustc_errors::TerminalUrl;
 use rustc_errors::codes::*;
 use rustc_errors::emitter::{
     DynEmitter, HumanEmitter, HumanReadableErrorType, OutputTheme, stderr_destination,
 };
 use rustc_errors::json::JsonEmitter;
-use rustc_errors::{ErrorGuaranteed, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
@@ -326,7 +326,7 @@ pub(crate) fn run_global_ctxt(
     show_coverage: bool,
     render_options: RenderOptions,
     output_format: OutputFormat,
-) -> Result<(clean::Crate, RenderOptions, Cache), ErrorGuaranteed> {
+) -> (clean::Crate, RenderOptions, Cache) {
     // Certain queries assume that some checks were run elsewhere
     // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
     // so type-check everything other than function bodies in this crate before running lints.
@@ -340,9 +340,7 @@ pub(crate) fn run_global_ctxt(
         tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
     });
 
-    if let Some(guar) = tcx.dcx().has_errors() {
-        return Err(guar);
-    }
+    tcx.dcx().abort_if_errors();
 
     tcx.sess.time("missing_docs", || rustc_lint::check_crate(tcx));
     tcx.sess.time("check_mod_attrs", || {
@@ -446,11 +444,9 @@ pub(crate) fn run_global_ctxt(
         LinkCollector { cx: &mut ctxt, visited_links: visited, ambiguous_links: ambiguous };
     collector.resolve_ambiguities();
 
-    if let Some(guar) = tcx.dcx().has_errors() {
-        return Err(guar);
-    }
+    tcx.dcx().abort_if_errors();
 
-    Ok((krate, ctxt.render_options, ctxt.cache))
+    (krate, ctxt.render_options, ctxt.cache)
 }
 
 /// Due to <https://github.com/rust-lang/rust/pull/73566>,

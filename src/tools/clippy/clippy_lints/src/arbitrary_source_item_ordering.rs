@@ -126,7 +126,7 @@ declare_clippy_lint! {
     ///
     /// [cargo-pgo]: https://github.com/Kobzol/cargo-pgo/blob/main/README.md
     ///
-    #[clippy::version = "1.82.0"]
+    #[clippy::version = "1.84.0"]
     pub ARBITRARY_SOURCE_ITEM_ORDERING,
     restriction,
     "arbitrary source item ordering"
@@ -428,8 +428,8 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
 
             // Makes a note of the current item for comparison with the next.
             cur_t = Some(CurItem {
-                order: module_level_order,
                 item,
+                order: module_level_order,
                 name: get_item_name(item),
             });
         }
@@ -464,7 +464,7 @@ fn convert_module_item_kind(value: &ItemKind<'_>) -> SourceItemOrderingModuleIte
         ItemKind::Use(..) => Use,
         ItemKind::Static(..) => Static,
         ItemKind::Const(..) => Const,
-        ItemKind::Fn(..) => Fn,
+        ItemKind::Fn { .. } => Fn,
         ItemKind::Macro(..) => Macro,
         ItemKind::Mod(..) => Mod,
         ItemKind::ForeignMod { .. } => ForeignMod,

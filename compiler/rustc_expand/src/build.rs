@@ -4,8 +4,7 @@ use rustc_ast::{
     self as ast, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind, UnOp, attr, token,
 };
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::base::ExtCtxt;
@@ -487,7 +486,7 @@ impl<'a> ExtCtxt<'a> {
         self.pat(span, PatKind::Wild)
     }
     pub fn pat_lit(&self, span: Span, expr: P<ast::Expr>) -> P<ast::Pat> {
-        self.pat(span, PatKind::Lit(expr))
+        self.pat(span, PatKind::Expr(expr))
     }
     pub fn pat_ident(&self, span: Span, ident: Ident) -> P<ast::Pat> {
         self.pat_ident_binding_mode(span, ident, ast::BindingMode::NONE)

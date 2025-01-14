@@ -57,6 +57,7 @@ rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't 
 rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
 rm tests/ui/simd/simd-bitmask-notpow2.rs # non-pow-of-2 simd vector sizes
 rm -r tests/run-make/embed-source-dwarf # embedding sources in debuginfo
+rm tests/ui/simd-abi-checks.rs # vector types >128bits not yet supported
 
 # requires LTO
 rm -r tests/run-make/cdylib
@@ -75,6 +76,8 @@ rm -r tests/ui/instrument-coverage/
 rm tests/ui/half-open-range-patterns/half-open-range-pats-semantics.rs
 rm tests/ui/asm/aarch64/type-f16.rs
 rm tests/ui/float/conv-bits-runtime-const.rs
+rm tests/ui/consts/const-eval/float_methods.rs
+rm tests/ui/match/match-float.rs
 
 # optimization tests
 # ==================
@@ -125,7 +128,11 @@ rm tests/ui/abi/large-byval-align.rs # exceeds implementation limit of Cranelift
 # should work when using ./x.py test the way it is intended
 # ============================================================
 rm -r tests/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
+rm -r tests/run-make/strip # same
 rm -r tests/run-make/compiler-builtins # Expects lib/rustlib/src/rust to contains the standard library source
+rm -r tests/run-make/missing-unstable-trait-bound # This disables support for unstable features, but running cg_clif needs some unstable features
+rm -r tests/run-make/const-trait-stable-toolchain # same
+rm -r tests/run-make/incr-add-rust-src-component
 
 # genuine bugs
 # ============
@@ -193,5 +200,5 @@ index e7ae773ffa1d3..04bc2d7787da7 100644
 EOF
 
 echo "[TEST] rustc test suite"
-COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 --test-args=--nocapture tests/{codegen-units,run-make,ui,incremental}
+COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 --test-args=--no-capture tests/{codegen-units,run-make,ui,incremental}
 popd

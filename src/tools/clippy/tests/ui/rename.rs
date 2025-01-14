@@ -15,6 +15,7 @@
 #![allow(clippy::mixed_read_write_in_expression)]
 #![allow(clippy::manual_find_map)]
 #![allow(clippy::manual_filter_map)]
+#![allow(unpredictable_function_pointer_comparisons)]
 #![allow(clippy::useless_conversion)]
 #![allow(clippy::redundant_pattern_matching)]
 #![allow(clippy::match_result_ok)]
@@ -59,6 +60,7 @@
 #![allow(unknown_lints)]
 #![allow(unused_labels)]
 #![allow(ambiguous_wide_pointer_comparisons)]
+#![allow(unpredictable_function_pointer_comparisons)]
 #![allow(clippy::reversed_empty_ranges)]
 #![warn(clippy::almost_complete_letter_range)] //~ ERROR: lint `clippy::almost_complete_letter_range`
 #![warn(clippy::blacklisted_name)] //~ ERROR: lint `clippy::blacklisted_name`
@@ -74,6 +76,7 @@
 #![warn(clippy::eval_order_dependence)] //~ ERROR: lint `clippy::eval_order_dependence`
 #![warn(clippy::find_map)] //~ ERROR: lint `clippy::find_map`
 #![warn(clippy::filter_map)] //~ ERROR: lint `clippy::filter_map`
+#![warn(clippy::fn_address_comparisons)] //~ ERROR: lint `clippy::fn_address_comparisons`
 #![warn(clippy::identity_conversion)] //~ ERROR: lint `clippy::identity_conversion`
 #![warn(clippy::if_let_redundant_pattern_matching)] //~ ERROR: lint `clippy::if_let_redundant_pattern_matching`
 #![warn(clippy::if_let_some_result)] //~ ERROR: lint `clippy::if_let_some_result`

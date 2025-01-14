@@ -2,9 +2,11 @@
 use std::{
     iter::once,
     mem,
+    ops::Not as _,
     sync::atomic::{AtomicU32, Ordering},
 };
 
+use base64::{prelude::BASE64_STANDARD, Engine};
 use ide::{
     Annotation, AnnotationKind, Assist, AssistKind, Cancellable, CompletionFieldsToResolve,
     CompletionItem, CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange,
@@ -18,9 +20,11 @@ use itertools::Itertools;
 use paths::{Utf8Component, Utf8Prefix};
 use semver::VersionReq;
 use serde_json::to_value;
+use syntax::SmolStr;
 use vfs::AbsPath;
 
 use crate::{
+    completion_item_hash,
     config::{CallInfoConfig, Config},
     global_state::GlobalStateSnapshot,
     line_index::{LineEndings, LineIndex, PositionEncoding},
@@ -295,7 +299,7 @@ fn completion_item(
         // non-trivial mapping here.
         let mut text_edit = None;
         let source_range = item.source_range;
-        for indel in item.text_edit {
+        for indel in &item.text_edit {
             if indel.delete.contains_range(source_range) {
                 // Extract this indel as the main edit
                 text_edit = Some(if indel.delete == source_range {
@@ -347,18 +351,21 @@ fn completion_item(
         something_to_resolve |= item.documentation.is_some();
         None
     } else {
-        item.documentation.map(documentation)
+        item.documentation.clone().map(documentation)
     };
 
     let mut lsp_item = lsp_types::CompletionItem {
-        label: item.label.to_string(),
+        label: item.label.primary.to_string(),
         detail,
         filter_text,
         kind: Some(completion_item_kind(item.kind)),
         text_edit,
-        additional_text_edits: Some(additional_text_edits),
+        additional_text_edits: additional_text_edits
+            .is_empty()
+            .not()
+            .then_some(additional_text_edits),
         documentation,
-        deprecated: Some(item.deprecated),
+        deprecated: item.deprecated.then_some(item.deprecated),
         tags,
         command,
         insert_text_format,
@@ -366,15 +373,17 @@ fn completion_item(
     };
 
     if config.completion_label_details_support() {
+        let has_label_details =
+            item.label.detail_left.is_some() || item.label.detail_right.is_some();
         if fields_to_resolve.resolve_label_details {
-            something_to_resolve |= true;
-        } else {
+            something_to_resolve |= has_label_details;
+        } else if has_label_details {
             lsp_item.label_details = Some(lsp_types::CompletionItemLabelDetails {
-                detail: item.label_detail.as_ref().map(ToString::to_string),
-                description: item.detail,
+                detail: item.label.detail_left.clone(),
+                description: item.label.detail_right.clone(),
             });
         }
-    } else if let Some(label_detail) = item.label_detail {
+    } else if let Some(label_detail) = &item.label.detail_left {
         lsp_item.label.push_str(label_detail.as_str());
     }
 
@@ -383,6 +392,7 @@ fn completion_item(
     let imports =
         if config.completion(None).enable_imports_on_the_fly && !item.import_to_add.is_empty() {
             item.import_to_add
+                .clone()
                 .into_iter()
                 .map(|(import_path, import_name)| lsp_ext::CompletionImport {
                     full_import_path: import_path,
@@ -393,16 +403,15 @@ fn completion_item(
             Vec::new()
         };
     let (ref_resolve_data, resolve_data) = if something_to_resolve || !imports.is_empty() {
-        let mut item_index = acc.len();
         let ref_resolve_data = if ref_match.is_some() {
             let ref_resolve_data = lsp_ext::CompletionResolveData {
                 position: tdpp.clone(),
                 imports: Vec::new(),
                 version,
                 trigger_character: completion_trigger_character,
-                completion_item_index: item_index,
+                for_ref: true,
+                hash: BASE64_STANDARD.encode(completion_item_hash(&item, true)),
             };
-            item_index += 1;
             Some(to_value(ref_resolve_data).unwrap())
         } else {
             None
@@ -412,7 +421,8 @@ fn completion_item(
             imports,
             version,
             trigger_character: completion_trigger_character,
-            completion_item_index: item_index,
+            for_ref: false,
+            hash: BASE64_STANDARD.encode(completion_item_hash(&item, false)),
         };
         (ref_resolve_data, Some(to_value(resolve_data).unwrap()))
     } else {
@@ -551,8 +561,7 @@ pub(crate) fn inlay_hint(
     let text_edits = if snap
         .config
         .visual_studio_code_version()
-        // https://github.com/microsoft/vscode/issues/193124
-        .map_or(true, |version| VersionReq::parse(">=1.86.0").unwrap().matches(version))
+        .is_none_or(|version| VersionReq::parse(">=1.86.0").unwrap().matches(version))
         && resolve_range_and_hash.is_some()
         && fields_to_resolve.resolve_text_edits
     {
@@ -1558,6 +1567,7 @@ pub(crate) fn code_lens(
             let line_index = snap.file_line_index(run.nav.file_id)?;
             let annotation_range = range(&line_index, annotation.range);
 
+            let update_test = run.update_test;
             let title = run.title();
             let can_debug = match run.kind {
                 ide::RunnableKind::DocTest { .. } => false,
@@ -1575,22 +1585,38 @@ pub(crate) fn code_lens(
                 };
 
                 let lens_config = snap.config.lens();
-                if lens_config.run && client_commands_config.run_single && has_root {
-                    let command = command::run_single(&r, &title);
-                    acc.push(lsp_types::CodeLens {
-                        range: annotation_range,
-                        command: Some(command),
-                        data: None,
-                    })
+
+                if has_root {
+                    if lens_config.run && client_commands_config.run_single {
+                        let command = command::run_single(&r, &title);
+                        acc.push(lsp_types::CodeLens {
+                            range: annotation_range,
+                            command: Some(command),
+                            data: None,
+                        })
+                    }
+                    if lens_config.debug && can_debug && client_commands_config.debug_single {
+                        let command = command::debug_single(&r);
+                        acc.push(lsp_types::CodeLens {
+                            range: annotation_range,
+                            command: Some(command),
+                            data: None,
+                        })
+                    }
+                    if lens_config.update_test && client_commands_config.run_single {
+                        let label = update_test.label();
+                        let env = update_test.env();
+                        if let Some(r) = make_update_runnable(&r, &label, &env) {
+                            let command = command::run_single(&r, label.unwrap().as_str());
+                            acc.push(lsp_types::CodeLens {
+                                range: annotation_range,
+                                command: Some(command),
+                                data: None,
+                            })
+                        }
+                    }
                 }
-                if lens_config.debug && can_debug && client_commands_config.debug_single {
-                    let command = command::debug_single(&r);
-                    acc.push(lsp_types::CodeLens {
-                        range: annotation_range,
-                        command: Some(command),
-                        data: None,
-                    })
-                }
+
                 if lens_config.interpret {
                     let command = command::interpret_single(&r);
                     acc.push(lsp_types::CodeLens {
@@ -1773,7 +1799,7 @@ pub(crate) mod command {
 
     pub(crate) fn debug_single(runnable: &lsp_ext::Runnable) -> lsp_types::Command {
         lsp_types::Command {
-            title: "Debug".into(),
+            title: "⚙\u{fe0e} Debug".into(),
             command: "rust-analyzer.debugSingle".into(),
             arguments: Some(vec![to_value(runnable).unwrap()]),
         }
@@ -1823,6 +1849,28 @@ pub(crate) mod command {
             arguments: None,
         }
     }
+}
+
+pub(crate) fn make_update_runnable(
+    runnable: &lsp_ext::Runnable,
+    label: &Option<SmolStr>,
+    env: &[(&str, &str)],
+) -> Option<lsp_ext::Runnable> {
+    if !matches!(runnable.args, lsp_ext::RunnableArgs::Cargo(_)) {
+        return None;
+    }
+    let label = label.as_ref()?;
+
+    let mut runnable = runnable.clone();
+    runnable.label = format!("{} + {}", runnable.label, label);
+
+    let lsp_ext::RunnableArgs::Cargo(r) = &mut runnable.args else {
+        unreachable!();
+    };
+
+    r.environment.extend(env.iter().map(|(k, v)| (k.to_string(), v.to_string())));
+
+    Some(runnable)
 }
 
 pub(crate) fn implementation_title(count: usize) -> String {

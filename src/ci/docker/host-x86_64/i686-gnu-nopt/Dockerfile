@@ -27,5 +27,7 @@ RUN echo "[rust]" > /config/nopt-std-config.toml
 RUN echo "optimize = false" >> /config/nopt-std-config.toml
 
 ENV RUST_CONFIGURE_ARGS --build=i686-unknown-linux-gnu --disable-optimize-tests
-ENV SCRIPT python3 ../x.py test --stage 0 --config /config/nopt-std-config.toml library/std \
-  && python3 ../x.py --stage 2 test
+ARG SCRIPT_ARG
+COPY scripts/stage_2_test_set1.sh /scripts/
+COPY scripts/stage_2_test_set2.sh /scripts/
+ENV SCRIPT ${SCRIPT_ARG}

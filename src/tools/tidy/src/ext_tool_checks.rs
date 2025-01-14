@@ -1,6 +1,6 @@
 //! Optional checks for file types other than Rust source
 //!
-//! Handles python tool version managment via a virtual environment in
+//! Handles python tool version management via a virtual environment in
 //! `build/venv`.
 //!
 //! # Functional outline
@@ -32,9 +32,8 @@ const REL_PY_PATH: &[&str] = &["Scripts", "python3.exe"];
 const REL_PY_PATH: &[&str] = &["bin", "python3"];
 
 const RUFF_CONFIG_PATH: &[&str] = &["src", "tools", "tidy", "config", "ruff.toml"];
-const BLACK_CONFIG_PATH: &[&str] = &["src", "tools", "tidy", "config", "black.toml"];
 /// Location within build directory
-const RUFF_CACH_PATH: &[&str] = &["cache", "ruff_cache"];
+const RUFF_CACHE_PATH: &[&str] = &["cache", "ruff_cache"];
 const PIP_REQ_PATH: &[&str] = &["src", "tools", "tidy", "config", "requirements.txt"];
 
 pub fn check(
@@ -96,7 +95,7 @@ fn check_impl(
         let mut cfg_path = root_path.to_owned();
         cfg_path.extend(RUFF_CONFIG_PATH);
         let mut cache_dir = outdir.to_owned();
-        cache_dir.extend(RUFF_CACH_PATH);
+        cache_dir.extend(RUFF_CACHE_PATH);
 
         cfg_args_ruff.extend([
             "--config".as_ref(),
@@ -124,33 +123,39 @@ fn check_impl(
     }
 
     if python_fmt {
-        let mut cfg_args_black = cfg_args.clone();
-        let mut file_args_black = file_args.clone();
+        let mut cfg_args_ruff = cfg_args.clone();
+        let mut file_args_ruff = file_args.clone();
 
         if bless {
             eprintln!("formatting python files");
         } else {
             eprintln!("checking python file formatting");
-            cfg_args_black.push("--check".as_ref());
+            cfg_args_ruff.push("--check".as_ref());
         }
 
         let mut cfg_path = root_path.to_owned();
-        cfg_path.extend(BLACK_CONFIG_PATH);
+        cfg_path.extend(RUFF_CONFIG_PATH);
+        let mut cache_dir = outdir.to_owned();
+        cache_dir.extend(RUFF_CACHE_PATH);
 
-        cfg_args_black.extend(["--config".as_ref(), cfg_path.as_os_str()]);
+        cfg_args_ruff.extend(["--config".as_ref(), cfg_path.as_os_str()]);
 
-        if file_args_black.is_empty() {
-            file_args_black.push(root_path.as_os_str());
+        if file_args_ruff.is_empty() {
+            file_args_ruff.push(root_path.as_os_str());
         }
 
-        let mut args = merge_args(&cfg_args_black, &file_args_black);
-        let res = py_runner(py_path.as_ref().unwrap(), true, None, "black", &args);
+        let mut args = merge_args(&cfg_args_ruff, &file_args_ruff);
+        args.insert(0, "format".as_ref());
+        let res = py_runner(py_path.as_ref().unwrap(), true, None, "ruff", &args);
 
         if res.is_err() && show_diff {
             eprintln!("\npython formatting does not match! Printing diff:");
 
             args.insert(0, "--diff".as_ref());
-            let _ = py_runner(py_path.as_ref().unwrap(), true, None, "black", &args);
+            let _ = py_runner(py_path.as_ref().unwrap(), true, None, "ruff", &args);
+        }
+        if res.is_err() && !bless {
+            eprintln!("rerun tidy with `--extra-checks=py:fmt --bless` to reformat Python code");
         }
         // Rethrow error
         let _ = res?;
@@ -445,7 +450,7 @@ fn shellcheck_runner(args: &[&OsStr]) -> Result<(), Error> {
     }
 
     let status = Command::new("shellcheck").args(args).status()?;
-    if status.success() { Ok(()) } else { Err(Error::FailedCheck("black")) }
+    if status.success() { Ok(()) } else { Err(Error::FailedCheck("shellcheck")) }
 }
 
 /// Check git for tracked files matching an extension

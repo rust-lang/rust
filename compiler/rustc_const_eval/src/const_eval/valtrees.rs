@@ -1,6 +1,6 @@
 use rustc_abi::{BackendRepr, VariantIdx};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
+use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId, ReportedErrorInfo};
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
@@ -178,7 +178,8 @@ fn const_to_valtree_inner<'tcx>(
         | ty::Closure(..)
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
-        | ty::CoroutineWitness(..) => Err(ValTreeCreationError::NonSupportedType(ty)),
+        | ty::CoroutineWitness(..)
+        | ty::UnsafeBinder(_) => Err(ValTreeCreationError::NonSupportedType(ty)),
     }
 }
 
@@ -261,7 +262,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
                 ValTreeCreationError::NodesOverflow => {
                     let handled =
                         tcx.dcx().emit_err(MaxNumNodesInConstErr { span, global_const_id });
-                    Err(handled.into())
+                    Err(ReportedErrorInfo::allowed_in_infallible(handled).into())
                 }
                 ValTreeCreationError::NonSupportedType(ty) => Ok(Err(ty)),
             }
@@ -358,7 +359,10 @@ pub fn valtree_to_const_value<'tcx>(
         | ty::FnPtr(..)
         | ty::Str
         | ty::Slice(_)
-        | ty::Dynamic(..) => bug!("no ValTree should have been created for type {:?}", ty.kind()),
+        | ty::Dynamic(..)
+        | ty::UnsafeBinder(_) => {
+            bug!("no ValTree should have been created for type {:?}", ty.kind())
+        }
     }
 }
 

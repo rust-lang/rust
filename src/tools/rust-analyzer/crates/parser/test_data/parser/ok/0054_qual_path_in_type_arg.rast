@@ -58,9 +58,9 @@ SOURCE_FILE
                   PATH_SEGMENT
                     NAME_REF
                       IDENT "FnMut"
-                    PARAM_LIST
+                    PARENTHESIZED_ARG_LIST
                       L_PAREN "("
-                      PARAM
+                      TYPE_ARG
                         PATH_TYPE
                           PATH
                             PATH
@@ -101,9 +101,9 @@ SOURCE_FILE
                   PATH_SEGMENT
                     NAME_REF
                       IDENT "FnMut"
-                    PARAM_LIST
+                    PARENTHESIZED_ARG_LIST
                       L_PAREN "("
-                      PARAM
+                      TYPE_ARG
                         REF_TYPE
                           AMP "&"
                           PATH_TYPE

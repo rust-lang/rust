@@ -109,27 +109,11 @@
 // tidy-alphabetical-start
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
-#![feature(const_align_of_val)]
-#![feature(const_align_of_val_raw)]
-#![feature(const_alloc_layout)]
-#![feature(const_black_box)]
-#![feature(const_eq_ignore_ascii_case)]
+#![feature(bigint_helper_methods)]
+#![feature(const_carrying_mul_add)]
 #![feature(const_eval_select)]
-#![feature(const_heap)]
-#![feature(const_nonnull_new)]
-#![feature(const_ptr_sub_ptr)]
-#![feature(const_raw_ptr_comparison)]
-#![feature(const_size_of_val)]
-#![feature(const_size_of_val_raw)]
-#![feature(const_sockaddr_setters)]
-#![feature(const_swap)]
-#![feature(const_try)]
-#![feature(const_type_id)]
-#![feature(const_type_name)]
-#![feature(const_typed_swap)]
 #![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
-#![feature(do_not_recommend)]
 #![feature(internal_impls_macro)]
 #![feature(ip)]
 #![feature(is_ascii_octdigit)]
@@ -165,10 +149,7 @@
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(cfg_ub_checks)]
-#![feature(const_for)]
-#![feature(const_is_char_boundary)]
 #![feature(const_precise_live_drops)]
-#![feature(const_str_split_at)]
 #![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
@@ -364,7 +345,7 @@ pub mod net;
 pub mod option;
 pub mod panic;
 pub mod panicking;
-#[unstable(feature = "core_pattern_types", issue = "123646")]
+#[unstable(feature = "pattern_type_macro", issue = "123646")]
 pub mod pat;
 pub mod pin;
 #[unstable(feature = "random", issue = "130703")]
@@ -373,6 +354,8 @@ pub mod random;
 pub mod range;
 pub mod result;
 pub mod sync;
+#[unstable(feature = "unsafe_binders", issue = "130516")]
+pub mod unsafe_binder;
 
 pub mod fmt;
 pub mod hash;

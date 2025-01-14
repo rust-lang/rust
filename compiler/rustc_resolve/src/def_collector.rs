@@ -7,9 +7,8 @@ use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
-use rustc_span::Span;
 use rustc_span::hygiene::LocalExpnId;
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Span, Symbol, kw, sym};
 use tracing::debug;
 
 use crate::{ImplTraitContext, InvocationParent, Resolver};
@@ -356,6 +355,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 let kind = match self.impl_trait_context {
                     ImplTraitContext::Universal => DefKind::TyParam,
                     ImplTraitContext::Existential => DefKind::OpaqueTy,
+                    ImplTraitContext::InBinding => return visit::walk_ty(self, ty),
                 };
                 let id = self.create_def(*id, name, kind, ty.span);
                 match self.impl_trait_context {
@@ -365,6 +365,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     ImplTraitContext::Existential => {
                         self.with_parent(id, |this| visit::walk_ty(this, ty))
                     }
+                    ImplTraitContext::InBinding => unreachable!(),
                 };
             }
             _ => visit::walk_ty(self, ty),
@@ -374,6 +375,13 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     fn visit_stmt(&mut self, stmt: &'a Stmt) {
         match stmt.kind {
             StmtKind::MacCall(..) => self.visit_macro_invoc(stmt.id),
+            // FIXME(impl_trait_in_bindings): We don't really have a good way of
+            // introducing the right `ImplTraitContext` here for all the cases we
+            // care about, in case we want to introduce ITIB to other positions
+            // such as turbofishes (e.g. `foo::<impl Fn()>(|| {})`).
+            StmtKind::Let(ref local) => self.with_impl_trait(ImplTraitContext::InBinding, |this| {
+                visit::walk_local(this, local)
+            }),
             _ => visit::walk_stmt(self, stmt),
         }
     }

@@ -65,7 +65,7 @@ where
                 }
 
                 match &layout.variants {
-                    abi::Variants::Single { .. } => {}
+                    abi::Variants::Single { .. } | abi::Variants::Empty => {}
                     abi::Variants::Multiple { variants, .. } => {
                         // Treat enum variants like union members.
                         for variant_idx in variants.indices() {

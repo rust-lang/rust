@@ -1,15 +1,15 @@
 //@ edition:2018
 //@ check-pass
 
-#![feature(async_closure, type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
 
-type Tait = impl async Fn();
+type Tait = impl AsyncFn();
 fn tait() -> Tait {
     || async {}
 }
 
-fn foo(x: impl async Fn()) -> impl async Fn() { x }
+fn foo(x: impl AsyncFn()) -> impl AsyncFn() { x }
 
-fn param<T: async Fn()>() {}
+fn param<T: AsyncFn()>() {}
 
 fn main() {}

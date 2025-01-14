@@ -54,7 +54,7 @@ where
     fn on_event(&self, _event: &Event<'_>, _ctx: Context<'_, S>) {}
 
     fn on_close(&self, id: Id, ctx: Context<'_, S>) {
-        #[derive(serde::Serialize)]
+        #[derive(serde_derive::Serialize)]
         struct JsonDataInner {
             name: &'static str,
             elapsed_ms: u128,

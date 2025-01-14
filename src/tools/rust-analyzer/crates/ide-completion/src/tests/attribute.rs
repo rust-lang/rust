@@ -9,6 +9,70 @@ fn check(ra_fixture: &str, expect: Expect) {
 }
 
 #[test]
+fn derive_helpers() {
+    check(
+        r#"
+//- /mac.rs crate:mac
+#![crate_type = "proc-macro"]
+
+#[proc_macro_derive(MyDerive, attributes(my_cool_helper_attribute))]
+pub fn my_derive() {}
+
+//- /lib.rs crate:lib deps:mac
+#[rustc_builtin_macro]
+pub macro derive($item:item) {}
+
+#[derive(mac::MyDerive)]
+pub struct Foo(#[m$0] i32);
+"#,
+        expect![[r#"
+            at allow(…)
+            at automatically_derived
+            at cfg(…)
+            at cfg_attr(…)
+            at cold
+            at deny(…)
+            at deprecated
+            at derive                                  macro derive
+            at derive(…)
+            at doc = "…"
+            at doc(alias = "…")
+            at doc(hidden)
+            at expect(…)
+            at export_name = "…"
+            at forbid(…)
+            at global_allocator
+            at ignore = "…"
+            at inline
+            at link
+            at link_name = "…"
+            at link_section = "…"
+            at macro_export
+            at macro_use
+            at must_use
+            at my_cool_helper_attribute derive helper of `MyDerive`
+            at no_mangle
+            at non_exhaustive
+            at panic_handler
+            at path = "…"
+            at proc_macro
+            at proc_macro_attribute
+            at proc_macro_derive(…)
+            at repr(…)
+            at should_panic
+            at target_feature(enable = "…")
+            at test
+            at track_caller
+            at used
+            at warn(…)
+            md mac
+            kw crate::
+            kw self::
+        "#]],
+    )
+}
+
+#[test]
 fn proc_macros() {
     check(
         r#"
@@ -303,9 +367,9 @@ struct Foo;
             at cfg_attr(…)
             at deny(…)
             at deprecated
-            at derive           macro derive
+            at derive             macro derive
             at derive(…)
-            at derive_const     macro derive_const
+            at derive_const macro derive_const
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
@@ -649,6 +713,28 @@ struct Foo;
     );
 }
 
+#[test]
+fn issue_17479() {
+    check(
+        r#"
+//- proc_macros: issue_17479
+fn main() {
+    proc_macros::issue_17479!("te$0");
+}
+"#,
+        expect![""],
+    );
+    check(
+        r#"
+//- proc_macros: issue_17479
+fn main() {
+    proc_macros::issue_17479!("$0");
+}
+"#,
+        expect![""],
+    )
+}
+
 mod cfg {
     use super::*;
 
@@ -726,10 +812,10 @@ mod derive {
 #[derive($0)] struct Test;
 "#,
             expect![[r#"
-                de Clone                  macro Clone
+                de Clone              macro Clone
                 de Clone, Copy
-                de Default                macro Default
-                de PartialEq              macro PartialEq
+                de Default          macro Default
+                de PartialEq      macro PartialEq
                 de PartialEq, Eq
                 de PartialEq, Eq, PartialOrd, Ord
                 de PartialEq, PartialOrd
@@ -748,9 +834,9 @@ mod derive {
 #[derive(serde::Serialize, PartialEq, $0)] struct Test;
 "#,
             expect![[r#"
-                de Clone               macro Clone
+                de Clone     macro Clone
                 de Clone, Copy
-                de Default             macro Default
+                de Default macro Default
                 de Eq
                 de Eq, PartialOrd, Ord
                 de PartialOrd
@@ -769,9 +855,9 @@ mod derive {
 #[derive($0 serde::Serialize, PartialEq)] struct Test;
 "#,
             expect![[r#"
-                de Clone               macro Clone
+                de Clone     macro Clone
                 de Clone, Copy
-                de Default             macro Default
+                de Default macro Default
                 de Eq
                 de Eq, PartialOrd, Ord
                 de PartialOrd
@@ -790,9 +876,9 @@ mod derive {
 #[derive(PartialEq, Eq, Or$0)] struct Test;
 "#,
             expect![[r#"
-                de Clone           macro Clone
+                de Clone     macro Clone
                 de Clone, Copy
-                de Default         macro Default
+                de Default macro Default
                 de PartialOrd
                 de PartialOrd, Ord
                 md core

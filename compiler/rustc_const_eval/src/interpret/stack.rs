@@ -505,6 +505,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // We don't want to do any queries, so there is not much we can do with ADTs.
                 ty::Adt(..) => false,
 
+                ty::UnsafeBinder(ty) => is_very_trivially_sized(ty.skip_binder()),
+
                 ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => false,
 
                 ty::Infer(ty::TyVar(_)) => false,
@@ -584,8 +586,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(())
     }
 
+    /// This is public because it is used by [Aquascope](https://github.com/cognitive-engineering-lab/aquascope/)
+    /// to analyze all the locals in a stack frame.
     #[inline(always)]
-    pub(super) fn layout_of_local(
+    pub fn layout_of_local(
         &self,
         frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
         local: mir::Local,

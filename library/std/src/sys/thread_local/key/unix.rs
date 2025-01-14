@@ -1,5 +1,25 @@
 use crate::mem;
 
+// For WASI add a few symbols not in upstream `libc` just yet.
+#[cfg(all(target_os = "wasi", target_env = "p1", target_feature = "atomics"))]
+mod libc {
+    use crate::ffi;
+
+    #[allow(non_camel_case_types)]
+    pub type pthread_key_t = ffi::c_uint;
+
+    extern "C" {
+        pub fn pthread_key_create(
+            key: *mut pthread_key_t,
+            destructor: unsafe extern "C" fn(*mut ffi::c_void),
+        ) -> ffi::c_int;
+        #[allow(dead_code)]
+        pub fn pthread_getspecific(key: pthread_key_t) -> *mut ffi::c_void;
+        pub fn pthread_setspecific(key: pthread_key_t, value: *const ffi::c_void) -> ffi::c_int;
+        pub fn pthread_key_delete(key: pthread_key_t) -> ffi::c_int;
+    }
+}
+
 pub type Key = libc::pthread_key_t;
 
 #[inline]

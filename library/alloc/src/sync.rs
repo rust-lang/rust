@@ -18,6 +18,7 @@ use core::intrinsics::abort;
 use core::iter;
 use core::marker::{PhantomData, Unsize};
 use core::mem::{self, ManuallyDrop, align_of_val_raw};
+use core::num::NonZeroUsize;
 use core::ops::{CoerceUnsized, Deref, DerefPure, DispatchFromDyn, LegacyReceiver};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use core::pin::{Pin, PinCoerceUnsized};
@@ -38,9 +39,6 @@ use crate::rc::is_dangling;
 use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
-
-#[cfg(test)]
-mod tests;
 
 /// A soft limit on the amount of references that may be made to an `Arc`.
 ///
@@ -787,7 +785,7 @@ impl<T, A: Allocator> Arc<T, A> {
         let uninit_ptr: NonNull<_> = (unsafe { &mut *uninit_raw_ptr }).into();
         let init_ptr: NonNull<ArcInner<T>> = uninit_ptr.cast();
 
-        let weak = Weak { ptr: init_ptr, alloc: alloc };
+        let weak = Weak { ptr: init_ptr, alloc };
 
         // It's important we don't give up ownership of the weak pointer, or
         // else the memory might be freed by the time `data_fn` returns. If
@@ -1204,6 +1202,26 @@ impl<T> Arc<[T]> {
                         as *mut ArcInner<[mem::MaybeUninit<T>]>
                 },
             ))
+        }
+    }
+
+    /// Converts the reference-counted slice into a reference-counted array.
+    ///
+    /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
+    ///
+    /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
+    #[unstable(feature = "slice_as_array", issue = "133508")]
+    #[inline]
+    #[must_use]
+    pub fn into_array<const N: usize>(self) -> Option<Arc<[T; N]>> {
+        if self.len() == N {
+            let ptr = Self::into_raw(self) as *const [T; N];
+
+            // SAFETY: The underlying array of a slice has the exact same layout as an actual array `[T; N]` if `N` is equal to the slice's length.
+            let me = unsafe { Arc::from_raw(ptr) };
+            Some(me)
+        } else {
+            None
         }
     }
 }
@@ -2451,7 +2469,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// let x: Arc<&str> = Arc::new("Hello, world!");
     /// {
     ///     let s = String::from("Oh, no!");
-    ///     let mut y: Arc<&str> = x.clone().into();
+    ///     let mut y: Arc<&str> = x.clone();
     ///     unsafe {
     ///         // this is Undefined Behavior, because x's inner type
     ///         // is &'long str, not &'short str
@@ -2670,12 +2688,7 @@ impl<T> Weak<T> {
     #[rustc_const_stable(feature = "const_weak_new", since = "1.73.0")]
     #[must_use]
     pub const fn new() -> Weak<T> {
-        Weak {
-            ptr: unsafe {
-                NonNull::new_unchecked(ptr::without_provenance_mut::<ArcInner<T>>(usize::MAX))
-            },
-            alloc: Global,
-        }
+        Weak { ptr: NonNull::without_provenance(NonZeroUsize::MAX), alloc: Global }
     }
 }
 
@@ -2700,12 +2713,7 @@ impl<T, A: Allocator> Weak<T, A> {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn new_in(alloc: A) -> Weak<T, A> {
-        Weak {
-            ptr: unsafe {
-                NonNull::new_unchecked(ptr::without_provenance_mut::<ArcInner<T>>(usize::MAX))
-            },
-            alloc,
-        }
+        Weak { ptr: NonNull::without_provenance(NonZeroUsize::MAX), alloc }
     }
 }
 

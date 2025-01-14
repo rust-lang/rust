@@ -1,13 +1,15 @@
 error[E0282]: type annotations needed
-  --> $DIR/slice-pattern-refutable.rs:14:9
+  --> $DIR/slice-pattern-refutable.rs:14:28
    |
 LL |     let [a, b, c] = Zeroes.into() else {
-   |         ^^^^^^^^^
+   |         ---------          ^^^^
+   |         |
+   |         type must be known at this point
    |
-help: consider giving this pattern a type
+help: try using a fully qualified path to specify the expected types
    |
-LL |     let [a, b, c]: /* Type */ = Zeroes.into() else {
-   |                  ++++++++++++
+LL |     let [a, b, c] = <Zeroes as Into<T>>::into(Zeroes) else {
+   |                     ++++++++++++++++++++++++++      ~
 
 error[E0282]: type annotations needed
   --> $DIR/slice-pattern-refutable.rs:21:31

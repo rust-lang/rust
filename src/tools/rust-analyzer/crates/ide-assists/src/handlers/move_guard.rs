@@ -36,7 +36,7 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext<'_>)
     let match_arm = ctx.find_node_at_offset::<MatchArm>()?;
     let guard = match_arm.guard()?;
     if ctx.offset() > guard.syntax().text_range().end() {
-        cov_mark::hit!(move_guard_unapplicable_in_arm_body);
+        cov_mark::hit!(move_guard_inapplicable_in_arm_body);
         return None;
     }
     let space_before_guard = guard.syntax().prev_sibling_or_token();
@@ -219,7 +219,7 @@ mod tests {
 
     #[test]
     fn move_guard_to_arm_body_range() {
-        cov_mark::check!(move_guard_unapplicable_in_arm_body);
+        cov_mark::check!(move_guard_inapplicable_in_arm_body);
         check_assist_not_applicable(
             move_guard_to_arm_body,
             r#"

@@ -5,8 +5,7 @@ use chalk_ir::{
     visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
     DebruijnIndex,
 };
-use hir_def::{visibility::Visibility, AdtId, EnumVariantId, HasModule, ModuleId, VariantId};
-use intern::sym;
+use hir_def::{visibility::Visibility, AdtId, EnumVariantId, ModuleId, VariantId};
 use rustc_hash::FxHashSet;
 
 use crate::{
@@ -118,11 +117,6 @@ impl UninhabitedFrom<'_> {
         variant: VariantId,
         subst: &Substitution,
     ) -> ControlFlow<VisiblyUninhabited> {
-        let is_local = variant.krate(self.db.upcast()) == self.target_mod.krate();
-        if !is_local && self.db.attrs(variant.into()).by_key(&sym::non_exhaustive).exists() {
-            return CONTINUE_OPAQUELY_INHABITED;
-        }
-
         let variant_data = self.db.variant_data(variant);
         let fields = variant_data.fields();
         if fields.is_empty() {
@@ -145,7 +139,7 @@ impl UninhabitedFrom<'_> {
         ty: &Binders<Ty>,
         subst: &Substitution,
     ) -> ControlFlow<VisiblyUninhabited> {
-        if vis.map_or(true, |it| it.is_visible_from(self.db.upcast(), self.target_mod)) {
+        if vis.is_none_or(|it| it.is_visible_from(self.db.upcast(), self.target_mod)) {
             let ty = ty.clone().substitute(Interner, subst);
             ty.visit_with(self, DebruijnIndex::INNERMOST)
         } else {

@@ -363,6 +363,13 @@ where
             return;
         }
 
+        if alias_ty.has_non_region_infer() {
+            self.tcx
+                .dcx()
+                .span_delayed_bug(origin.span(), "an alias has infers during region solving");
+            return;
+        }
+
         // This case is thorny for inference. The fundamental problem is
         // that there are many cases where we have choice, and inference
         // doesn't like choice (the current region inference in
@@ -388,25 +395,8 @@ where
         // Compute the bounds we can derive from the environment. This
         // is an "approximate" match -- in some cases, these bounds
         // may not apply.
-        let mut approx_env_bounds = self.verify_bound.approx_declared_bounds_from_env(alias_ty);
+        let approx_env_bounds = self.verify_bound.approx_declared_bounds_from_env(alias_ty);
         debug!(?approx_env_bounds);
-
-        // Remove outlives bounds that we get from the environment but
-        // which are also deducible from the trait. This arises (cc
-        // #55756) in cases where you have e.g., `<T as Foo<'a>>::Item:
-        // 'a` in the environment but `trait Foo<'b> { type Item: 'b
-        // }` in the trait definition.
-        approx_env_bounds.retain(|bound_outlives| {
-            // OK to skip binder because we only manipulate and compare against other values from
-            // the same binder. e.g. if we have (e.g.) `for<'a> <T as Trait<'a>>::Item: 'a` in
-            // `bound`, the `'a` will be a `^1` (bound, debruijn index == innermost) region. If the
-            // declaration is `trait Trait<'b> { type Item: 'b; }`, then
-            // `projection_declared_bounds_from_trait` will be invoked with `['b => ^1]` and so we
-            // will get `^1` returned.
-            let bound = bound_outlives.skip_binder();
-            let ty::Alias(_, alias_ty) = bound.0.kind() else { bug!("expected AliasTy") };
-            self.verify_bound.declared_bounds_from_definition(*alias_ty).all(|r| r != bound.1)
-        });
 
         // If declared bounds list is empty, the only applicable rule is
         // OutlivesProjectionComponent. If there are inference variables,
@@ -425,7 +415,7 @@ where
         let is_opaque = alias_ty.kind(self.tcx) == ty::Opaque;
         if approx_env_bounds.is_empty()
             && trait_bounds.is_empty()
-            && (alias_ty.has_infer() || is_opaque)
+            && (alias_ty.has_infer_regions() || is_opaque)
         {
             debug!("no declared bounds");
             let opt_variances = is_opaque.then(|| self.tcx.variances_of(alias_ty.def_id));

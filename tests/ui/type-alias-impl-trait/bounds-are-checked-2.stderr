@@ -14,7 +14,7 @@ note: this definition site has more where clauses than the opaque type
    |
 LL |     fn f<T: Clone>(t: T) -> X<T> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Clone`
    |
 LL |     pub type X<T: std::clone::Clone> = impl Clone;
    |                 +++++++++++++++++++

@@ -19,7 +19,6 @@ use rustc_middle::query::Providers;
 
 pub mod abi_test;
 mod check_attr;
-mod check_const;
 pub mod dead;
 mod debugger_visualizer;
 mod diagnostic_items;
@@ -43,7 +42,6 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     check_attr::provide(providers);
-    check_const::provide(providers);
     dead::provide(providers);
     debugger_visualizer::provide(providers);
     diagnostic_items::provide(providers);

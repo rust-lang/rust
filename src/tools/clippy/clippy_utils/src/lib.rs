@@ -31,7 +31,7 @@
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
-extern crate rustc_attr;
+extern crate rustc_attr_parsing;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 // The `rustc_driver` crate seems to be required in order to use the `rust_ast` crate.
@@ -103,7 +103,7 @@ use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{
-    self as hir, Arm, ArrayLen, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, ConstContext,
+    self as hir, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, ConstContext,
     Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind,
     ImplItemRef, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat,
     PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef,
@@ -135,13 +135,24 @@ use rustc_middle::hir::nested_filter;
 
 #[macro_export]
 macro_rules! extract_msrv_attr {
-    ($context:ident) => {
-        fn check_attributes(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
+    (LateContext) => {
+        fn check_attributes(&mut self, cx: &rustc_lint::LateContext<'_>, attrs: &[rustc_hir::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
             self.msrv.check_attributes(sess, attrs);
         }
 
-        fn check_attributes_post(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
+        fn check_attributes_post(&mut self, cx: &rustc_lint::LateContext<'_>, attrs: &[rustc_hir::Attribute]) {
+            let sess = rustc_lint::LintContext::sess(cx);
+            self.msrv.check_attributes_post(sess, attrs);
+        }
+    };
+    (EarlyContext) => {
+        fn check_attributes(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::Attribute]) {
+            let sess = rustc_lint::LintContext::sess(cx);
+            self.msrv.check_attributes(sess, attrs);
+        }
+
+        fn check_attributes_post(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
             self.msrv.check_attributes_post(sess, attrs);
         }
@@ -910,7 +921,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             _ => false,
         },
         ExprKind::Tup(items) | ExprKind::Array(items) => items.iter().all(|x| is_default_equivalent(cx, x)),
-        ExprKind::Repeat(x, ArrayLen::Body(len)) => {
+        ExprKind::Repeat(x, len) => {
             if let ConstArgKind::Anon(anon_const) = len.kind
                 && let ExprKind::Lit(const_lit) = cx.tcx.hir().body(anon_const.body).value.kind
                 && let LitKind::Int(v, _) = const_lit.node
@@ -940,7 +951,7 @@ fn is_default_equivalent_from(cx: &LateContext<'_>, from_func: &Expr<'_>, arg: &
                 ..
             }) => return sym.is_empty() && is_path_lang_item(cx, ty, LangItem::String),
             ExprKind::Array([]) => return is_path_diagnostic_item(cx, ty, sym::Vec),
-            ExprKind::Repeat(_, ArrayLen::Body(len)) => {
+            ExprKind::Repeat(_, len) => {
                 if let ConstArgKind::Anon(anon_const) = len.kind
                     && let ExprKind::Lit(const_lit) = cx.tcx.hir().body(anon_const.body).value.kind
                     && let LitKind::Int(v, _) = const_lit.node
@@ -1232,9 +1243,9 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
 
     let mut v = V {
         cx,
-        allow_closure: true,
         loops: Vec::new(),
         locals: HirIdSet::default(),
+        allow_closure: true,
         captures: HirIdMap::default(),
     };
     v.visit_expr(expr);
@@ -1386,7 +1397,7 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
     enclosing_node.and_then(|node| match node {
         Node::Block(block) => Some(block),
         Node::Item(&Item {
-            kind: ItemKind::Fn(_, _, eid),
+            kind: ItemKind::Fn { body: eid, .. },
             ..
         })
         | Node::ImplItem(&ImplItem {
@@ -1766,7 +1777,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
                 },
             }
         },
-        PatKind::Lit(..) | PatKind::Range(..) | PatKind::Err(_) | PatKind::Deref(_) => true,
+        PatKind::Expr(..) | PatKind::Range(..) | PatKind::Err(_) | PatKind::Deref(_) | PatKind::Guard(..) => true,
     }
 }
 
@@ -1912,7 +1923,7 @@ pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: UintTy) -> u128 {
     (u << amt) >> amt
 }
 
-pub fn has_attr(attrs: &[ast::Attribute], symbol: Symbol) -> bool {
+pub fn has_attr(attrs: &[hir::Attribute], symbol: Symbol) -> bool {
     attrs.iter().any(|attr| attr.has_name(symbol))
 }
 
@@ -1947,43 +1958,6 @@ pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
                 sym::automatically_derived,
             )
         })
-}
-
-/// Matches a function call with the given path and returns the arguments.
-///
-/// Usage:
-///
-/// ```rust,ignore
-/// if let Some(args) = match_function_call(cx, cmp_max_call, &paths::CMP_MAX);
-/// ```
-/// This function is deprecated. Use [`match_function_call_with_def_id`].
-pub fn match_function_call<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'_>,
-    path: &[&str],
-) -> Option<&'tcx [Expr<'tcx>]> {
-    if let ExprKind::Call(fun, args) = expr.kind
-        && let ExprKind::Path(ref qpath) = fun.kind
-        && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
-        && match_def_path(cx, fun_def_id, path)
-    {
-        return Some(args);
-    };
-    None
-}
-
-pub fn match_function_call_with_def_id<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'_>,
-    fun_def_id: DefId,
-) -> Option<&'tcx [Expr<'tcx>]> {
-    if let ExprKind::Call(fun, args) = expr.kind
-        && let ExprKind::Path(ref qpath) = fun.kind
-        && cx.qpath_res(qpath, fun.hir_id).opt_def_id() == Some(fun_def_id)
-    {
-        return Some(args);
-    };
-    None
 }
 
 /// Checks if the given `DefId` matches any of the paths. Returns the index of matching path, if
@@ -2262,23 +2236,19 @@ pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
 }
 
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
-        if let ast::AttrKind::Normal(ref normal) = attr.kind {
-            normal.item.path == sym::no_std
-        } else {
-            false
-        }
-    })
+    cx.tcx
+        .hir()
+        .attrs(hir::CRATE_HIR_ID)
+        .iter()
+        .any(|attr| attr.name_or_empty() == sym::no_std)
 }
 
 pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
-        if let ast::AttrKind::Normal(ref normal) = attr.kind {
-            normal.item.path == sym::no_core
-        } else {
-            false
-        }
-    })
+    cx.tcx
+        .hir()
+        .attrs(hir::CRATE_HIR_ID)
+        .iter()
+        .any(|attr| attr.name_or_empty() == sym::no_core)
 }
 
 /// Check if parent of a hir node is a trait implementation block.
@@ -2595,7 +2565,7 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
             // function scope
             .any(|(_id, node)| {
                 if let Node::Item(item) = node {
-                    if let ItemKind::Fn(_, _, _) = item.kind {
+                    if let ItemKind::Fn { .. } = item.kind {
                         // Note that we have sorted the item names in the visitor,
                         // so the binary_search gets the same as `contains`, but faster.
                         return names.binary_search(&item.ident.name).is_ok();
@@ -2752,7 +2722,7 @@ impl<'tcx> ExprUseCtxt<'tcx> {
             }) => ExprUseNode::ConstStatic(owner_id),
 
             Node::Item(&Item {
-                kind: ItemKind::Fn(..),
+                kind: ItemKind::Fn { .. },
                 owner_id,
                 ..
             })
@@ -2977,12 +2947,18 @@ pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
 ///
 /// Comments are returned wrapped with their relevant delimiters
 pub fn span_extract_comment(sm: &SourceMap, span: Span) -> String {
+    span_extract_comments(sm, span).join("\n")
+}
+
+/// Returns all the comments a given span contains.
+///
+/// Comments are returned wrapped with their relevant delimiters.
+pub fn span_extract_comments(sm: &SourceMap, span: Span) -> Vec<String> {
     let snippet = sm.span_to_snippet(span).unwrap_or_default();
-    let res = tokenize_with_text(&snippet)
+    tokenize_with_text(&snippet)
         .filter(|(t, ..)| matches!(t, TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }))
-        .map(|(_, s, _)| s)
-        .join("\n");
-    res
+        .map(|(_, s, _)| s.to_string())
+        .collect::<Vec<_>>()
 }
 
 pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {

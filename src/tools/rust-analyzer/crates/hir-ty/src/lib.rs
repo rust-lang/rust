@@ -24,7 +24,6 @@ extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
 mod builder;
 mod chalk_db;
 mod chalk_ext;
-mod generics;
 mod infer;
 mod inhabitedness;
 mod interner;
@@ -39,6 +38,7 @@ pub mod db;
 pub mod diagnostics;
 pub mod display;
 pub mod dyn_compatibility;
+pub mod generics;
 pub mod lang_items;
 pub mod layout;
 pub mod method_resolution;
@@ -50,6 +50,7 @@ pub mod traits;
 mod test_db;
 #[cfg(test)]
 mod tests;
+mod variance;
 
 use std::hash::Hash;
 
@@ -84,12 +85,13 @@ pub use infer::{
     cast::CastError,
     closure::{CaptureKind, CapturedItem},
     could_coerce, could_unify, could_unify_deeply, Adjust, Adjustment, AutoBorrow, BindingMode,
-    InferenceDiagnostic, InferenceResult, OverloadedDeref, PointerCast,
+    InferenceDiagnostic, InferenceResult, InferenceTyDiagnosticSource, OverloadedDeref,
+    PointerCast,
 };
 pub use interner::Interner;
 pub use lower::{
-    associated_type_shorthand_candidates, ImplTraitLoweringMode, ParamLoweringMode, TyDefId,
-    TyLoweringContext, ValueTyDefId,
+    associated_type_shorthand_candidates, diagnostics::*, ImplTraitLoweringMode, ParamLoweringMode,
+    TyDefId, TyLoweringContext, ValueTyDefId,
 };
 pub use mapping::{
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
@@ -99,6 +101,7 @@ pub use mapping::{
 pub use method_resolution::check_orphan_rules;
 pub use traits::TraitEnvironment;
 pub use utils::{all_super_traits, direct_super_traits, is_fn_unsafe_to_call};
+pub use variance::Variance;
 
 pub use chalk_ir::{
     cast::Cast,
@@ -385,7 +388,6 @@ pub enum FnAbi {
     Fastcall,
     FastcallUnwind,
     Msp430Interrupt,
-    PlatformIntrinsic,
     PtxKernel,
     RiscvInterruptM,
     RiscvInterruptS,
@@ -444,7 +446,6 @@ impl FnAbi {
             s if *s == sym::fastcall_dash_unwind => FnAbi::FastcallUnwind,
             s if *s == sym::fastcall => FnAbi::Fastcall,
             s if *s == sym::msp430_dash_interrupt => FnAbi::Msp430Interrupt,
-            s if *s == sym::platform_dash_intrinsic => FnAbi::PlatformIntrinsic,
             s if *s == sym::ptx_dash_kernel => FnAbi::PtxKernel,
             s if *s == sym::riscv_dash_interrupt_dash_m => FnAbi::RiscvInterruptM,
             s if *s == sym::riscv_dash_interrupt_dash_s => FnAbi::RiscvInterruptS,
@@ -487,7 +488,6 @@ impl FnAbi {
             FnAbi::Fastcall => "fastcall",
             FnAbi::FastcallUnwind => "fastcall-unwind",
             FnAbi::Msp430Interrupt => "msp430-interrupt",
-            FnAbi::PlatformIntrinsic => "platform-intrinsic",
             FnAbi::PtxKernel => "ptx-kernel",
             FnAbi::RiscvInterruptM => "riscv-interrupt-m",
             FnAbi::RiscvInterruptS => "riscv-interrupt-s",
@@ -646,7 +646,7 @@ pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<
             F2: FnMut(Ty, BoundVar, DebruijnIndex) -> Const,
         > TypeFolder<Interner> for FreeVarFolder<F1, F2>
     {
-        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
+        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner> {
             self
         }
 
@@ -697,7 +697,7 @@ pub(crate) fn fold_tys_and_consts<T: HasInterner<Interner = Interner> + TypeFold
     impl<F: FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const>> TypeFolder<Interner>
         for TyFolder<F>
     {
-        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
+        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner> {
             self
         }
 

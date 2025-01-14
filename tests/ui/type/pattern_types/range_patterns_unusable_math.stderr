@@ -1,5 +1,5 @@
 error[E0369]: cannot add `u32` to `(u32) is 1..=`
-  --> $DIR/range_patterns_unusable_math.rs:15:15
+  --> $DIR/range_patterns_unusable_math.rs:14:15
    |
 LL |     let x = x + 1_u32;
    |             - ^ ----- u32

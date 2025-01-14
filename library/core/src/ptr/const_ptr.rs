@@ -12,14 +12,17 @@ impl<T: ?Sized> *const T {
     /// Therefore, two pointers that are null may still not compare equal to
     /// each other.
     ///
-    /// ## Behavior during const evaluation
+    /// # Panics during const evaluation
     ///
-    /// When this function is used during const evaluation, it may return `false` for pointers
-    /// that turn out to be null at runtime. Specifically, when a pointer to some memory
-    /// is offset beyond its bounds in such a way that the resulting pointer is null,
-    /// the function will still return `false`. There is no way for CTFE to know
-    /// the absolute position of that memory, so we cannot tell if the pointer is
-    /// null or not.
+    /// If this method is used during const evaluation, and `self` is a pointer
+    /// that is offset beyond the bounds of the memory it initially pointed to,
+    /// then there might not be enough information to determine whether the
+    /// pointer is null. This is because the absolute address in memory is not
+    /// known at compile time. If the nullness of the pointer cannot be
+    /// determined, this method will panic.
+    ///
+    /// In-bounds pointers are never null, so the method will never panic for
+    /// such pointers.
     ///
     /// # Examples
     ///
@@ -254,6 +257,13 @@ impl<T: ?Sized> *const T {
     /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: #method.is_null
+    ///
     /// # Examples
     ///
     /// ```
@@ -331,6 +341,13 @@ impl<T: ?Sized> *const T {
     /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: #method.is_null
+    ///
     /// # Examples
     ///
     /// ```
@@ -346,7 +363,6 @@ impl<T: ?Sized> *const T {
     /// ```
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_ref<'a>(self) -> Option<&'a MaybeUninit<T>>
     where
         T: Sized,
@@ -503,11 +519,12 @@ impl<T: ?Sized> *const T {
     /// let mut out = String::new();
     /// while ptr != end_rounded_up {
     ///     unsafe {
-    ///         write!(&mut out, "{}, ", *ptr).unwrap();
+    ///         write!(&mut out, "{}, ", *ptr)?;
     ///     }
     ///     ptr = ptr.wrapping_offset(step);
     /// }
     /// assert_eq!(out.as_str(), "1, 3, 5, ");
+    /// # std::fmt::Result::Ok(())
     /// ```
     #[stable(feature = "ptr_wrapping_offset", since = "1.16.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
@@ -1126,11 +1143,12 @@ impl<T: ?Sized> *const T {
     /// let mut out = String::new();
     /// while ptr != end_rounded_up {
     ///     unsafe {
-    ///         write!(&mut out, "{}, ", *ptr).unwrap();
+    ///         write!(&mut out, "{}, ", *ptr)?;
     ///     }
     ///     ptr = ptr.wrapping_add(step);
     /// }
     /// assert_eq!(out, "1, 3, 5, ");
+    /// # std::fmt::Result::Ok(())
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
@@ -1204,11 +1222,12 @@ impl<T: ?Sized> *const T {
     /// let mut out = String::new();
     /// while ptr != start_rounded_down {
     ///     unsafe {
-    ///         write!(&mut out, "{}, ", *ptr).unwrap();
+    ///         write!(&mut out, "{}, ", *ptr)?;
     ///     }
     ///     ptr = ptr.wrapping_sub(step);
     /// }
     /// assert_eq!(out, "5, 3, 1, ");
+    /// # std::fmt::Result::Ok(())
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
@@ -1528,7 +1547,6 @@ impl<T> *const [T] {
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
     #[unstable(feature = "slice_as_array", issue = "133508")]
-    #[rustc_const_unstable(feature = "slice_as_array", issue = "133508")]
     #[inline]
     #[must_use]
     pub const fn as_array<const N: usize>(self) -> Option<*const [T; N]> {
@@ -1606,9 +1624,15 @@ impl<T> *const [T] {
     ///
     /// [valid]: crate::ptr#safety
     /// [allocated object]: crate::ptr#allocated-object
+    ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: #method.is_null
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_slice<'a>(self) -> Option<&'a [MaybeUninit<T>]> {
         if self.is_null() {
             None

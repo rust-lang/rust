@@ -440,7 +440,7 @@ where
         if let Some(kind) = kind.no_bound_vars() {
             match kind {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
-                    self.compute_trait_goal(Goal { param_env, predicate })
+                    self.compute_trait_goal(Goal { param_env, predicate }).map(|(r, _via)| r)
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
                     self.compute_host_effect_goal(Goal { param_env, predicate })
@@ -950,7 +950,7 @@ where
         goal_trait_ref: ty::TraitRef<I>,
         trait_assoc_def_id: I::DefId,
         impl_def_id: I::DefId,
-    ) -> Result<Option<I::DefId>, NoSolution> {
+    ) -> Result<Option<I::DefId>, I::ErrorGuaranteed> {
         self.delegate.fetch_eligible_assoc_item(goal_trait_ref, trait_assoc_def_id, impl_def_id)
     }
 

@@ -20,7 +20,7 @@ fn b(_1: &mut Box<T>) -> &mut T {
         StorageLive(_5);
         StorageLive(_6);
         _5 = copy (*_4);
-        _6 = copy (((_5.0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>).0: *const T);
+        _6 = copy ((_5.0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>) as *const T (Transmute);
         _3 = &mut (*_6);
         StorageDead(_6);
         StorageDead(_5);

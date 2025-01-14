@@ -20,7 +20,6 @@ use rust_analyzer::{
     config::{Config, ConfigChange, ConfigErrors},
     from_json,
 };
-use semver::Version;
 use tracing_subscriber::fmt::writer::BoxMakeWriter;
 use vfs::AbsPathBuf;
 
@@ -45,14 +44,12 @@ fn actual_main() -> anyhow::Result<ExitCode> {
 
     #[cfg(debug_assertions)]
     if flags.wait_dbg || env::var("RA_WAIT_DBG").is_ok() {
-        #[allow(unused_mut)]
-        let mut d = 4;
-        while d == 4 {
-            d = 4;
-        }
+        wait_for_debugger();
     }
 
-    setup_logging(flags.log_file.clone())?;
+    if let Err(e) = setup_logging(flags.log_file.clone()) {
+        eprintln!("Failed to setup logging: {e:#}");
+    }
 
     let verbosity = flags.verbosity();
 
@@ -93,6 +90,28 @@ fn actual_main() -> anyhow::Result<ExitCode> {
         flags::RustAnalyzerCmd::RustcTests(cmd) => cmd.run()?,
     }
     Ok(ExitCode::SUCCESS)
+}
+
+#[cfg(debug_assertions)]
+fn wait_for_debugger() {
+    #[cfg(target_os = "windows")]
+    {
+        use windows_sys::Win32::System::Diagnostics::Debug::IsDebuggerPresent;
+        // SAFETY: WinAPI generated code that is defensively marked `unsafe` but
+        // in practice can not be used in an unsafe way.
+        while unsafe { IsDebuggerPresent() } == 0 {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        #[allow(unused_mut)]
+        let mut d = 4;
+        while d == 4 {
+            d = 4;
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+    }
 }
 
 fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
@@ -204,18 +223,12 @@ fn run_server() -> anyhow::Result<()> {
         }
     };
 
-    let mut visual_studio_code_version = None;
-    if let Some(client_info) = client_info {
+    if let Some(client_info) = &client_info {
         tracing::info!(
             "Client '{}' {}",
             client_info.name,
             client_info.version.as_deref().unwrap_or_default()
         );
-        visual_studio_code_version = client_info
-            .name
-            .starts_with("Visual Studio Code")
-            .then(|| client_info.version.as_deref().map(Version::parse).and_then(Result::ok))
-            .flatten();
     }
 
     let workspace_roots = workspace_folders
@@ -230,8 +243,7 @@ fn run_server() -> anyhow::Result<()> {
         })
         .filter(|workspaces| !workspaces.is_empty())
         .unwrap_or_else(|| vec![root_path.clone()]);
-    let mut config =
-        Config::new(root_path, capabilities, workspace_roots, visual_studio_code_version);
+    let mut config = Config::new(root_path, capabilities, workspace_roots, client_info);
     if let Some(json) = initialization_options {
         let mut change = ConfigChange::default();
         change.change_client_config(json);

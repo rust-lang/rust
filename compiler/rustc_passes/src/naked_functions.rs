@@ -10,8 +10,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::UNDEFINED_NAKED_FUNCTION_ABI;
-use rustc_span::Span;
-use rustc_span::symbol::sym;
+use rustc_span::{Span, sym};
 use rustc_target::spec::abi::Abi;
 
 use crate::errors::{
@@ -31,7 +30,10 @@ fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
         }
 
         let (fn_header, body_id) = match tcx.hir_node_by_def_id(def_id) {
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. })
+            hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Fn { sig, body: body_id, .. },
+                ..
+            })
             | hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)),
                 ..
@@ -186,6 +188,7 @@ impl CheckInlineAssembly {
             | ExprKind::Lit(..)
             | ExprKind::Cast(..)
             | ExprKind::Type(..)
+            | ExprKind::UnsafeBinderCast(..)
             | ExprKind::Loop(..)
             | ExprKind::Match(..)
             | ExprKind::If(..)

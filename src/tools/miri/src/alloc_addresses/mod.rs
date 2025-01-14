@@ -9,7 +9,6 @@ use std::cmp::max;
 use rand::Rng;
 use rustc_abi::{Align, Size};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_span::Span;
 
 use self::reuse_pool::ReusePool;
 use crate::concurrency::VClock;
@@ -286,9 +285,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn expose_ptr(&mut self, alloc_id: AllocId, tag: BorTag) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let global_state = this.machine.alloc_addresses.get_mut();
+    fn expose_ptr(&self, alloc_id: AllocId, tag: BorTag) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
+        let mut global_state = this.machine.alloc_addresses.borrow_mut();
         // In strict mode, we don't need this, so we can save some cycles by not tracking it.
         if global_state.provenance_mode == ProvenanceMode::Strict {
             return interp_ok(());
@@ -299,8 +298,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(());
         }
         trace!("Exposing allocation id {alloc_id:?}");
-        let global_state = this.machine.alloc_addresses.get_mut();
         global_state.exposed.insert(alloc_id);
+        // Release the global state before we call `expose_tag`, which may call `get_alloc_info_extra`,
+        // which may need access to the global state.
+        drop(global_state);
         if this.machine.borrow_tracker.is_some() {
             this.expose_tag(alloc_id, tag)?;
         }
@@ -317,17 +318,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match global_state.provenance_mode {
             ProvenanceMode::Default => {
                 // The first time this happens at a particular location, print a warning.
-                thread_local! {
-                    // `Span` is non-`Send`, so we use a thread-local instead.
-                    static PAST_WARNINGS: RefCell<FxHashSet<Span>> = RefCell::default();
+                let mut int2ptr_warned = this.machine.int2ptr_warned.borrow_mut();
+                let first = int2ptr_warned.is_empty();
+                if int2ptr_warned.insert(this.cur_span()) {
+                    // Newly inserted, so first time we see this span.
+                    this.emit_diagnostic(NonHaltingDiagnostic::Int2Ptr { details: first });
                 }
-                PAST_WARNINGS.with_borrow_mut(|past_warnings| {
-                    let first = past_warnings.is_empty();
-                    if past_warnings.insert(this.cur_span()) {
-                        // Newly inserted, so first time we see this span.
-                        this.emit_diagnostic(NonHaltingDiagnostic::Int2Ptr { details: first });
-                    }
-                });
             }
             ProvenanceMode::Strict => {
                 throw_machine_stop!(TerminationInfo::Int2PtrWithStrictProvenance);

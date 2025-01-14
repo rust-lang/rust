@@ -91,3 +91,19 @@ fn distant_void() {
     assert::is_maybe_transmutable::<DistantVoid, &'static Void>();
     assert::is_maybe_transmutable::<u128, DistantVoid>(); //~ ERROR: cannot be safely transmuted
 }
+
+fn issue_126267() {
+    pub enum ApiError {}
+    pub struct TokioError {
+        b: bool,
+    }
+    pub enum Error {
+        Api { source: ApiError }, // this variant is uninhabited
+        Ethereum,
+        Tokio { source: TokioError },
+    }
+
+    struct Src;
+    type Dst = Error;
+    assert::is_maybe_transmutable::<Src, Dst>(); //~ERROR: cannot be safely transmuted
+}

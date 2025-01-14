@@ -72,8 +72,19 @@ pub(super) fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool, is_in_ext
     // macro_rules! ()
     // macro_rules! []
     if paths::is_use_path_start(p) {
-        macro_call(p, m);
-        return;
+        paths::use_path(p);
+        // Do not create a MACRO_CALL node here if this isn't a macro call, this causes problems with completion.
+
+        // test_err path_item_without_excl
+        // foo
+        if p.at(T![!]) {
+            macro_call(p, m);
+            return;
+        } else {
+            m.complete(p, ERROR);
+            p.error("expected an item");
+            return;
+        }
     }
 
     m.abandon(p);
@@ -254,22 +265,16 @@ fn opt_item_without_modifiers(p: &mut Parser<'_>, m: Marker) -> Result<(), Marke
 
 // test extern_crate
 // extern crate foo;
+// extern crate self;
 fn extern_crate(p: &mut Parser<'_>, m: Marker) {
     p.bump(T![extern]);
     p.bump(T![crate]);
 
-    if p.at(T![self]) {
-        // test extern_crate_self
-        // extern crate self;
-        let m = p.start();
-        p.bump(T![self]);
-        m.complete(p, NAME_REF);
-    } else {
-        name_ref(p);
-    }
+    name_ref_or_self(p);
 
     // test extern_crate_rename
     // extern crate foo as bar;
+    // extern crate self as bar;
     opt_rename(p);
     p.expect(T![;]);
     m.complete(p, EXTERN_CRATE);
@@ -416,8 +421,7 @@ fn fn_(p: &mut Parser<'_>, m: Marker) {
 }
 
 fn macro_call(p: &mut Parser<'_>, m: Marker) {
-    assert!(paths::is_use_path_start(p));
-    paths::use_path(p);
+    assert!(p.at(T![!]));
     match macro_call_after_excl(p) {
         BlockLike::Block => (),
         BlockLike::NotBlock => {

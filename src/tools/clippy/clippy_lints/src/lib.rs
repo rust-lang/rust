@@ -9,6 +9,7 @@
 #![feature(iter_partition_in_place)]
 #![feature(let_chains)]
 #![feature(never_type)]
+#![feature(round_char_boundary)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
 #![feature(unwrap_infallible)]
@@ -17,7 +18,8 @@
     clippy::missing_docs_in_private_items,
     clippy::must_use_candidate,
     rustc::diagnostic_outside_of_impl,
-    rustc::untranslatable_diagnostic
+    rustc::untranslatable_diagnostic,
+    clippy::literal_string_with_formatting_args
 )]
 #![warn(
     trivial_casts,
@@ -35,7 +37,7 @@ extern crate rustc_abi;
 extern crate rustc_arena;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
-extern crate rustc_attr;
+extern crate rustc_attr_parsing;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_errors;
@@ -49,6 +51,7 @@ extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_middle;
 extern crate rustc_parse;
+extern crate rustc_parse_format;
 extern crate rustc_resolve;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -196,6 +199,7 @@ mod let_with_type_underscore;
 mod lifetimes;
 mod lines_filter_map_ok;
 mod literal_representation;
+mod literal_string_with_formatting_args;
 mod loops;
 mod macro_metavars_in_unsafe;
 mod macro_use;
@@ -363,7 +367,6 @@ mod uninhabited_references;
 mod uninit_vec;
 mod unit_return_expecting_ord;
 mod unit_types;
-mod unnamed_address;
 mod unnecessary_box_returns;
 mod unnecessary_literal_bound;
 mod unnecessary_map_on_constructor;
@@ -646,7 +649,11 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(implicit_return::ImplicitReturn));
     store.register_late_pass(move |_| Box::new(implicit_saturating_sub::ImplicitSaturatingSub::new(conf)));
     store.register_late_pass(|_| Box::new(default_numeric_fallback::DefaultNumericFallback));
-    store.register_late_pass(|_| Box::new(inconsistent_struct_constructor::InconsistentStructConstructor));
+    store.register_late_pass(move |_| {
+        Box::new(inconsistent_struct_constructor::InconsistentStructConstructor::new(
+            conf,
+        ))
+    });
     store.register_late_pass(|_| Box::new(non_octal_unix_permissions::NonOctalUnixPermissions));
     store.register_early_pass(|| Box::new(unnecessary_self_imports::UnnecessarySelfImports));
     store.register_late_pass(move |_| Box::new(approx_const::ApproxConstant::new(conf)));
@@ -786,7 +793,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_early_pass(|| Box::new(option_env_unwrap::OptionEnvUnwrap));
     store.register_late_pass(move |_| Box::new(wildcard_imports::WildcardImports::new(conf)));
     store.register_late_pass(|_| Box::<redundant_pub_crate::RedundantPubCrate>::default());
-    store.register_late_pass(|_| Box::new(unnamed_address::UnnamedAddress));
     store.register_late_pass(|_| Box::<dereference::Dereferencing<'_>>::default());
     store.register_late_pass(|_| Box::new(option_if_let_else::OptionIfLetElse));
     store.register_late_pass(|_| Box::new(future_not_send::FutureNotSend));
@@ -959,6 +965,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(manual_div_ceil::ManualDivCeil::new(conf)));
     store.register_late_pass(|_| Box::new(manual_is_power_of_two::ManualIsPowerOfTwo));
     store.register_late_pass(|_| Box::new(non_zero_suggestions::NonZeroSuggestions));
+    store.register_late_pass(|_| Box::new(literal_string_with_formatting_args::LiteralStringWithFormattingArg));
     store.register_late_pass(move |_| Box::new(unused_trait_names::UnusedTraitNames::new(conf)));
     store.register_late_pass(|_| Box::new(manual_ignore_case_cmp::ManualIgnoreCaseCmp));
     store.register_late_pass(|_| Box::new(unnecessary_literal_bound::UnnecessaryLiteralBound));

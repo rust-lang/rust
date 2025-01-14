@@ -14,7 +14,7 @@ note: this definition site has more where clauses than the opaque type
    |
 LL | fn two<T: Debug, U>(t: T, _: U) -> Two<T, U> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Debug`
    |
 LL | type Two<T: std::fmt::Debug, U> = impl Debug;
    |           +++++++++++++++++

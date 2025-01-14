@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: sparc sparcv8plus sparc64
 //@[sparc] compile-flags: --target sparc-unknown-none-elf
 //@[sparc] needs-llvm-components: sparc
@@ -7,16 +8,11 @@
 //@[sparc64] needs-llvm-components: sparc
 
 #![crate_type = "rlib"]
-#![feature(no_core, rustc_attrs, lang_items, asm_experimental_arch)]
+#![feature(no_core, asm_experimental_arch)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
+extern crate minicore;
+use minicore::*;
 
 // CHECK-LABEL: @cc_clobber
 // CHECK: call void asm sideeffect "", "~{icc},~{fcc0},~{fcc1},~{fcc2},~{fcc3}"()

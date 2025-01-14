@@ -2,6 +2,7 @@
 //@ revisions: feat nofeat
 //@ compile-flags: -Cinstrument-coverage
 //@ needs-profiler-runtime
+//@ reference: attributes.coverage.syntax
 
 // Malformed `#[coverage(..)]` attributes should not cause an ICE when built
 // with `-Cinstrument-coverage`.

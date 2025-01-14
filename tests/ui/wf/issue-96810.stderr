@@ -9,7 +9,7 @@ note: required by a bound in `S`
    |
 LL | struct S<T: Tr>(T::Assoc);
    |             ^^ required by this bound in `S`
-help: consider restricting type parameter `K`
+help: consider restricting type parameter `K` with trait `Tr`
    |
 LL | struct Hoge<K: Tr> {
    |              ++++

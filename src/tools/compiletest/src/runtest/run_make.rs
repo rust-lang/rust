@@ -2,6 +2,8 @@ use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use std::{env, fs};
 
+use build_helper::fs::{ignore_not_found, recursive_remove};
+
 use super::{ProcRes, TestCx, disable_error_reporting};
 use crate::util::{copy_dir_all, dylib_env_var};
 
@@ -27,9 +29,8 @@ impl TestCx<'_> {
         // are hopefully going away, it seems safer to leave this perilous code
         // as-is until it can all be deleted.
         let tmpdir = cwd.join(self.output_base_name());
-        if tmpdir.exists() {
-            self.aggressive_rm_rf(&tmpdir).unwrap();
-        }
+        ignore_not_found(|| recursive_remove(&tmpdir)).unwrap();
+
         fs::create_dir_all(&tmpdir).unwrap();
 
         let host = &self.config.host;
@@ -218,9 +219,8 @@ impl TestCx<'_> {
         //
         // This setup intentionally diverges from legacy Makefile run-make tests.
         let base_dir = self.output_base_dir();
-        if base_dir.exists() {
-            self.aggressive_rm_rf(&base_dir).unwrap();
-        }
+        ignore_not_found(|| recursive_remove(&base_dir)).unwrap();
+
         let rmake_out_dir = base_dir.join("rmake_out");
         fs::create_dir_all(&rmake_out_dir).unwrap();
 
@@ -353,8 +353,8 @@ impl TestCx<'_> {
         // to work correctly.
         //
         // See <https://github.com/rust-lang/rust/pull/122248> for more background.
+        let stage0_sysroot = build_root.join("stage0-sysroot");
         if std::env::var_os("COMPILETEST_FORCE_STAGE0").is_some() {
-            let stage0_sysroot = build_root.join("stage0-sysroot");
             rustc.arg("--sysroot").arg(&stage0_sysroot);
         }
 
@@ -373,6 +373,15 @@ impl TestCx<'_> {
         // Compute dynamic library search paths for recipes.
         let recipe_dylib_search_paths = {
             let mut paths = base_dylib_search_paths.clone();
+
+            // For stage 0, we need to explicitly include the stage0-sysroot libstd dylib.
+            // See <https://github.com/rust-lang/rust/issues/135373>.
+            if std::env::var_os("COMPILETEST_FORCE_STAGE0").is_some() {
+                paths.push(
+                    stage0_sysroot.join("lib").join("rustlib").join(&self.config.host).join("lib"),
+                );
+            }
+
             paths.push(support_lib_path.parent().unwrap().to_path_buf());
             paths.push(stage_std_path.join("rustlib").join(&self.config.host).join("lib"));
             paths
@@ -517,14 +526,13 @@ impl TestCx<'_> {
 
         let proc = disable_error_reporting(|| cmd.spawn().expect("failed to spawn `rmake`"));
         let (Output { stdout, stderr, status }, truncated) = self.read2_abbreviated(proc);
+        let stdout = String::from_utf8_lossy(&stdout).into_owned();
+        let stderr = String::from_utf8_lossy(&stderr).into_owned();
+        // This conditions on `status.success()` so we don't print output twice on error.
+        // NOTE: this code is called from a libtest thread, so it's hidden by default unless --nocapture is passed.
+        self.dump_output(status.success(), &cmd.get_program().to_string_lossy(), &stdout, &stderr);
         if !status.success() {
-            let res = ProcRes {
-                status,
-                stdout: String::from_utf8_lossy(&stdout).into_owned(),
-                stderr: String::from_utf8_lossy(&stderr).into_owned(),
-                truncated,
-                cmdline: format!("{:?}", cmd),
-            };
+            let res = ProcRes { status, stdout, stderr, truncated, cmdline: format!("{:?}", cmd) };
             self.fatal_proc_rec("rmake recipe failed to complete", &res);
         }
     }

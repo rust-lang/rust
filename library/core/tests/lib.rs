@@ -13,14 +13,12 @@
 #![feature(bigint_helper_methods)]
 #![feature(cell_update)]
 #![feature(clone_to_uninit)]
-#![feature(const_align_of_val_raw)]
 #![feature(const_black_box)]
 #![feature(const_eval_select)]
-#![feature(const_heap)]
-#![feature(const_nonnull_new)]
-#![feature(const_swap)]
+#![feature(const_swap_nonoverlapping)]
 #![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
+#![feature(core_intrinsics_fallbacks)]
 #![feature(core_io_borrowed_buf)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
@@ -33,6 +31,7 @@
 #![feature(float_minimum_maximum)]
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
+#![feature(formatting_options)]
 #![feature(freeze)]
 #![feature(future_join)]
 #![feature(generic_assert_internals)]
@@ -63,7 +62,6 @@
 #![feature(maybe_uninit_write_slice)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(noop_waker)]
 #![feature(num_midpoint_signed)]
 #![feature(numfmt)]
 #![feature(pattern)]
@@ -100,10 +98,13 @@
 
 /// Version of `assert_matches` that ignores fancy runtime printing in const context and uses structural equality.
 macro_rules! assert_eq_const_safe {
+    ($left:expr, $right:expr) => {
+        assert_eq_const_safe!($left, $right, concat!(stringify!($left), " == ", stringify!($right)));
+    };
     ($left:expr, $right:expr$(, $($arg:tt)+)?) => {
         {
             fn runtime() {
-                assert_eq!($left, $right, $($arg)*);
+                assert_eq!($left, $right, $($($arg)*),*);
             }
             const fn compiletime() {
                 assert!(matches!($left, const { $right }));

@@ -1,5 +1,6 @@
 #include "LLVMWrapper.h"
 
+#include "llvm-c/Analysis.h"
 #include "llvm-c/Core.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
@@ -52,6 +53,10 @@
 using namespace llvm;
 using namespace llvm::sys;
 using namespace llvm::object;
+
+// This opcode is an LLVM detail that could hypothetically change (?), so
+// verify that the hard-coded value in `dwarf_const.rs` still agrees with LLVM.
+static_assert(dwarf::DW_OP_LLVM_fragment == 0x1000);
 
 // LLVMAtomicOrdering is already an enum - don't create another
 // one.
@@ -163,6 +168,30 @@ extern "C" void LLVMRustPrintStatistics(RustStringRef OutBuf) {
 extern "C" LLVMValueRef LLVMRustGetNamedValue(LLVMModuleRef M, const char *Name,
                                               size_t NameLen) {
   return wrap(unwrap(M)->getNamedValue(StringRef(Name, NameLen)));
+}
+
+enum class LLVMRustVerifierFailureAction {
+  AbortProcessAction = 0,
+  PrintMessageAction = 1,
+  ReturnStatusAction = 2,
+};
+
+static LLVMVerifierFailureAction
+fromRust(LLVMRustVerifierFailureAction Action) {
+  switch (Action) {
+  case LLVMRustVerifierFailureAction::AbortProcessAction:
+    return LLVMAbortProcessAction;
+  case LLVMRustVerifierFailureAction::PrintMessageAction:
+    return LLVMPrintMessageAction;
+  case LLVMRustVerifierFailureAction::ReturnStatusAction:
+    return LLVMReturnStatusAction;
+  }
+  report_fatal_error("Invalid LLVMVerifierFailureAction value!");
+}
+
+extern "C" LLVMBool
+LLVMRustVerifyFunction(LLVMValueRef Fn, LLVMRustVerifierFailureAction Action) {
+  return LLVMVerifyFunction(Fn, fromRust(Action));
 }
 
 enum class LLVMRustTailCallKind {
@@ -386,6 +415,17 @@ extern "C" void LLVMRustAddCallSiteAttributes(LLVMValueRef Instr,
                                               size_t AttrsLen) {
   CallBase *Call = unwrap<CallBase>(Instr);
   AddAttributes(Call, Index, Attrs, AttrsLen);
+}
+
+extern "C" LLVMValueRef LLVMRustGetTerminator(LLVMBasicBlockRef BB) {
+  Instruction *ret = unwrap(BB)->getTerminator();
+  return wrap(ret);
+}
+
+extern "C" void LLVMRustEraseInstFromParent(LLVMValueRef Instr) {
+  if (auto I = dyn_cast<Instruction>(unwrap<Value>(Instr))) {
+    I->eraseFromParent();
+  }
 }
 
 extern "C" LLVMAttributeRef
@@ -954,6 +994,47 @@ extern "C" void LLVMRustAddModuleFlagString(
       MDString::get(unwrap(M)->getContext(), StringRef(Value, ValueLen)));
 }
 
+extern "C" LLVMValueRef LLVMRustGetLastInstruction(LLVMBasicBlockRef BB) {
+  auto Point = unwrap(BB)->rbegin();
+  if (Point != unwrap(BB)->rend())
+    return wrap(&*Point);
+  return nullptr;
+}
+
+extern "C" void LLVMRustEraseInstBefore(LLVMBasicBlockRef bb, LLVMValueRef I) {
+  auto &BB = *unwrap(bb);
+  auto &Inst = *unwrap<Instruction>(I);
+  auto It = BB.begin();
+  while (&*It != &Inst)
+    ++It;
+  // Make sure we found the Instruction.
+  assert(It != BB.end());
+  // We don't want to erase the instruction itself.
+  It--;
+  // Delete in rev order to ensure no dangling references.
+  while (It != BB.begin()) {
+    auto Prev = std::prev(It);
+    It->eraseFromParent();
+    It = Prev;
+  }
+  It->eraseFromParent();
+}
+
+extern "C" bool LLVMRustHasMetadata(LLVMValueRef inst, unsigned kindID) {
+  if (auto *I = dyn_cast<Instruction>(unwrap<Value>(inst))) {
+    return I->hasMetadata(kindID);
+  }
+  return false;
+}
+
+extern "C" LLVMMetadataRef LLVMRustDIGetInstMetadata(LLVMValueRef x) {
+  if (auto *I = dyn_cast<Instruction>(unwrap<Value>(x))) {
+    auto *MD = I->getDebugLoc().getAsMDNode();
+    return wrap(MD);
+  }
+  return nullptr;
+}
+
 extern "C" void LLVMRustGlobalAddMetadata(LLVMValueRef Global, unsigned Kind,
                                           LLVMMetadataRef MD) {
   unwrap<GlobalObject>(Global)->addMetadata(Kind, *unwrap<MDNode>(MD));
@@ -1141,6 +1222,13 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticMemberType(
 }
 
 extern "C" LLVMMetadataRef
+LLVMRustDIBuilderCreateQualifiedType(LLVMDIBuilderRef Builder, unsigned Tag,
+                                     LLVMMetadataRef Type) {
+  return wrap(
+      unwrap(Builder)->createQualifiedType(Tag, unwrapDI<DIType>(Type)));
+}
+
+extern "C" LLVMMetadataRef
 LLVMRustDIBuilderCreateLexicalBlock(LLVMRustDIBuilderRef Builder,
                                     LLVMMetadataRef Scope, LLVMMetadataRef File,
                                     unsigned Line, unsigned Col) {
@@ -1311,18 +1399,6 @@ LLVMRustDILocationCloneWithBaseDiscriminator(LLVMMetadataRef Location,
   DILocation *Loc = unwrapDIPtr<DILocation>(Location);
   auto NewLoc = Loc->cloneWithBaseDiscriminator(BD);
   return wrap(NewLoc.has_value() ? NewLoc.value() : nullptr);
-}
-
-extern "C" uint64_t LLVMRustDIBuilderCreateOpDeref() {
-  return dwarf::DW_OP_deref;
-}
-
-extern "C" uint64_t LLVMRustDIBuilderCreateOpPlusUconst() {
-  return dwarf::DW_OP_plus_uconst;
-}
-
-extern "C" uint64_t LLVMRustDIBuilderCreateOpLLVMFragment() {
-  return dwarf::DW_OP_LLVM_fragment;
 }
 
 extern "C" void LLVMRustWriteTypeToString(LLVMTypeRef Ty, RustStringRef Str) {
@@ -1535,7 +1611,7 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(SMDiagnostic, LLVMSMDiagnosticRef)
 
 extern "C" LLVMSMDiagnosticRef LLVMRustGetSMDiagnostic(LLVMDiagnosticInfoRef DI,
-                                                       unsigned *Cookie) {
+                                                       uint64_t *Cookie) {
   llvm::DiagnosticInfoSrcMgr *SM =
       static_cast<llvm::DiagnosticInfoSrcMgr *>(unwrap(DI));
   *Cookie = SM->getLocCookie();
@@ -1794,56 +1870,6 @@ extern "C" LLVMValueRef LLVMRustBuildMinNum(LLVMBuilderRef B, LLVMValueRef LHS,
 extern "C" LLVMValueRef LLVMRustBuildMaxNum(LLVMBuilderRef B, LLVMValueRef LHS,
                                             LLVMValueRef RHS) {
   return wrap(unwrap(B)->CreateMaxNum(unwrap(LHS), unwrap(RHS)));
-}
-
-// This struct contains all necessary info about a symbol exported from a DLL.
-struct LLVMRustCOFFShortExport {
-  const char *name;
-  bool ordinal_present;
-  // The value of `ordinal` is only meaningful if `ordinal_present` is true.
-  uint16_t ordinal;
-};
-
-// Machine must be a COFF machine type, as defined in PE specs.
-extern "C" LLVMRustResult
-LLVMRustWriteImportLibrary(const char *ImportName, const char *Path,
-                           const LLVMRustCOFFShortExport *Exports,
-                           size_t NumExports, uint16_t Machine, bool MinGW) {
-  std::vector<llvm::object::COFFShortExport> ConvertedExports;
-  ConvertedExports.reserve(NumExports);
-
-  for (size_t i = 0; i < NumExports; ++i) {
-    bool ordinal_present = Exports[i].ordinal_present;
-    uint16_t ordinal = ordinal_present ? Exports[i].ordinal : 0;
-    ConvertedExports.push_back(llvm::object::COFFShortExport{
-        Exports[i].name, // Name
-        std::string{},   // ExtName
-        std::string{},   // SymbolName
-        std::string{},   // AliasTarget
-#if LLVM_VERSION_GE(19, 0)
-        std::string{}, // ExportAs
-#endif
-        ordinal,         // Ordinal
-        ordinal_present, // Noname
-        false,           // Data
-        false,           // Private
-        false            // Constant
-    });
-  }
-
-  auto Error = llvm::object::writeImportLibrary(
-      ImportName, Path, ConvertedExports,
-      static_cast<llvm::COFF::MachineTypes>(Machine), MinGW);
-  if (Error) {
-    std::string errorString;
-    auto stream = llvm::raw_string_ostream(errorString);
-    stream << Error;
-    stream.flush();
-    LLVMRustSetLastError(errorString.c_str());
-    return LLVMRustResult::Failure;
-  } else {
-    return LLVMRustResult::Success;
-  }
 }
 
 // Transfers ownership of DiagnosticHandler unique_ptr to the caller.

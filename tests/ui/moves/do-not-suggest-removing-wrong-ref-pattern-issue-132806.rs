@@ -1,0 +1,10 @@
+//@ run-rustfix
+//! diagnostic test for #132806: make sure the suggestion to bind by-reference in patterns doesn't
+//! erroneously remove the wrong `&`
+
+use std::collections::HashMap;
+
+fn main() {
+    let _ = HashMap::<String, i32>::new().iter().filter(|&(&_k, &_v)| { true });
+    //~^ ERROR cannot move out of a shared reference
+}

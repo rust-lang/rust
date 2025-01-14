@@ -19,7 +19,7 @@ use ide_db::{
     },
     items_locator,
     syntax_helpers::tree_diff::diff,
-    FilePosition, RootDatabase,
+    FilePosition, FxHashSet, RootDatabase,
 };
 
 use crate::{
@@ -31,9 +31,10 @@ use crate::{
 };
 
 pub use crate::{
-    config::{CallableSnippets, CompletionConfig},
+    config::{AutoImportExclusionType, CallableSnippets, CompletionConfig},
     item::{
         CompletionItem, CompletionItemKind, CompletionRelevance, CompletionRelevancePostfixMatch,
+        CompletionRelevanceReturnType, CompletionRelevanceTypeMatch,
     },
     snippet::{Snippet, SnippetScope},
 };
@@ -50,6 +51,18 @@ pub struct CompletionFieldsToResolve {
 }
 
 impl CompletionFieldsToResolve {
+    pub fn from_client_capabilities(client_capability_fields: &FxHashSet<&str>) -> Self {
+        Self {
+            resolve_label_details: client_capability_fields.contains("labelDetails"),
+            resolve_tags: client_capability_fields.contains("tags"),
+            resolve_detail: client_capability_fields.contains("detail"),
+            resolve_documentation: client_capability_fields.contains("documentation"),
+            resolve_filter_text: client_capability_fields.contains("filterText"),
+            resolve_text_edit: client_capability_fields.contains("textEdit"),
+            resolve_command: client_capability_fields.contains("command"),
+        }
+    }
+
     pub const fn empty() -> Self {
         Self {
             resolve_label_details: false,
@@ -171,7 +184,7 @@ impl CompletionFieldsToResolve {
 /// analysis.
 pub fn completions(
     db: &RootDatabase,
-    config: &CompletionConfig,
+    config: &CompletionConfig<'_>,
     position: FilePosition,
     trigger_character: Option<char>,
 ) -> Option<Vec<CompletionItem>> {
@@ -256,7 +269,7 @@ pub fn completions(
 /// This is used for import insertion done via completions like flyimport and custom user snippets.
 pub fn resolve_completion_edits(
     db: &RootDatabase,
-    config: &CompletionConfig,
+    config: &CompletionConfig<'_>,
     FilePosition { file_id, offset }: FilePosition,
     imports: impl IntoIterator<Item = (String, String)>,
 ) -> Option<Vec<TextEdit>> {

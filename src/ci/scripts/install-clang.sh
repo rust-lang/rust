@@ -15,7 +15,7 @@ LLVM_VERSION="18.1.4"
 
 if isMacOS; then
     # FIXME: This is the latest pre-built version of LLVM that's available for
-    # x86_64 MacOS. We may want to consider bulding our own LLVM binaries
+    # x86_64 MacOS. We may want to consider building our own LLVM binaries
     # instead, or set `USE_XCODE_CLANG` like AArch64 does.
     LLVM_VERSION="15.0.7"
 

@@ -415,6 +415,10 @@ impl<O: ForestObligation> ObligationForest<O> {
             .collect()
     }
 
+    pub fn has_pending_obligations(&self) -> bool {
+        self.nodes.iter().any(|node| node.state.get() == NodeState::Pending)
+    }
+
     fn insert_into_error_cache(&mut self, index: usize) {
         let node = &self.nodes[index];
         self.error_cache

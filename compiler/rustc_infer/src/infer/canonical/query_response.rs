@@ -155,12 +155,12 @@ impl<'tcx> InferCtxt<'tcx> {
             .opaque_type_storage
             .opaque_types
             .iter()
-            .map(|(k, v)| (*k, v.hidden_type.ty))
+            .map(|(k, v)| (*k, v.ty))
             .collect()
     }
 
     fn take_opaque_types_for_query_response(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
-        self.take_opaque_types().into_iter().map(|(k, v)| (k, v.hidden_type.ty)).collect()
+        self.take_opaque_types().into_iter().map(|(k, v)| (k, v.ty)).collect()
     }
 
     /// Given the (canonicalized) result to a canonical query,
@@ -314,16 +314,6 @@ impl<'tcx> InferCtxt<'tcx> {
                 let ty::OutlivesPredicate(k1, r2) = r_c.0;
                 if k1 != r2.into() { Some(r_c) } else { None }
             }),
-        );
-
-        // ...also include the query member constraints.
-        output_query_region_constraints.member_constraints.extend(
-            query_response
-                .value
-                .region_constraints
-                .member_constraints
-                .iter()
-                .map(|p_c| instantiate_value(self.tcx, &result_args, p_c.clone())),
         );
 
         let user_result: R =
@@ -643,7 +633,7 @@ pub fn make_query_region_constraints<'tcx>(
     outlives_obligations: impl Iterator<Item = (Ty<'tcx>, ty::Region<'tcx>, ConstraintCategory<'tcx>)>,
     region_constraints: &RegionConstraintData<'tcx>,
 ) -> QueryRegionConstraints<'tcx> {
-    let RegionConstraintData { constraints, verifys, member_constraints } = region_constraints;
+    let RegionConstraintData { constraints, verifys } = region_constraints;
 
     assert!(verifys.is_empty());
 
@@ -674,5 +664,5 @@ pub fn make_query_region_constraints<'tcx>(
         }))
         .collect();
 
-    QueryRegionConstraints { outlives, member_constraints: member_constraints.clone() }
+    QueryRegionConstraints { outlives }
 }

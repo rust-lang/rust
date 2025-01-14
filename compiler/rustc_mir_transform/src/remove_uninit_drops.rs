@@ -1,5 +1,5 @@
 use rustc_abi::FieldIdx;
-use rustc_index::bit_set::ChunkedBitSet;
+use rustc_index::bit_set::MixedBitSet;
 use rustc_middle::mir::{Body, TerminatorKind};
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, VariantDef};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
@@ -67,7 +67,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUninitDrops {
 fn is_needs_drop_and_init<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
-    maybe_inits: &ChunkedBitSet<MovePathIndex>,
+    maybe_inits: &MixedBitSet<MovePathIndex>,
     move_data: &MoveData<'tcx>,
     ty: Ty<'tcx>,
     mpi: MovePathIndex,

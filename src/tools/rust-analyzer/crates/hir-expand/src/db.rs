@@ -28,7 +28,7 @@ use crate::{
     MacroDefId, MacroDefKind, MacroFileId,
 };
 /// This is just to ensure the types of smart_macro_arg and macro_arg are the same
-type MacroArgResult = (Arc<tt::Subtree>, SyntaxFixupUndoInfo, Span);
+type MacroArgResult = (Arc<tt::TopSubtree>, SyntaxFixupUndoInfo, Span);
 /// Total limit on the number of tokens produced by any macro invocation.
 ///
 /// If an invocation produces more tokens than this limit, it will not be stored in the database and
@@ -123,7 +123,7 @@ pub trait ExpandDatabase: SourceDatabase {
     /// proc macros, since they are not deterministic in general, and
     /// non-determinism breaks salsa in a very, very, very bad way.
     /// @edwin0cheng heroically debugged this once! See #4315 for details
-    fn expand_proc_macro(&self, call: MacroCallId) -> ExpandResult<Arc<tt::Subtree>>;
+    fn expand_proc_macro(&self, call: MacroCallId) -> ExpandResult<Arc<tt::TopSubtree>>;
     /// Retrieves the span to be used for a proc-macro expansions spans.
     /// This is a firewall query as it requires parsing the file, which we don't want proc-macros to
     /// directly depend on as that would cause to frequent invalidations, mainly because of the
@@ -153,13 +153,13 @@ fn syntax_context(db: &dyn ExpandDatabase, file: HirFileId) -> SyntaxContextId {
 /// This expands the given macro call, but with different arguments. This is
 /// used for completion, where we want to see what 'would happen' if we insert a
 /// token. The `token_to_map` mapped down into the expansion, with the mapped
-/// token returned.
+/// token(s) returned with their priority.
 pub fn expand_speculative(
     db: &dyn ExpandDatabase,
     actual_macro_call: MacroCallId,
     speculative_args: &SyntaxNode,
     token_to_map: SyntaxToken,
-) -> Option<(SyntaxNode, SyntaxToken)> {
+) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
     let loc = db.lookup_intern_macro_call(actual_macro_call);
     let (_, _, span) = db.macro_arg_considering_derives(actual_macro_call, &loc.kind);
 
@@ -251,7 +251,7 @@ pub fn expand_speculative(
                         span,
                         DocCommentDesugarMode::ProcMacro,
                     );
-                    tree.delimiter = tt::Delimiter::invisible_spanned(span);
+                    *tree.top_subtree_delimiter_mut() = tt::Delimiter::invisible_spanned(span);
 
                     Some(tree)
                 }
@@ -266,7 +266,7 @@ pub fn expand_speculative(
     let mut speculative_expansion = match loc.def.kind {
         MacroDefKind::ProcMacro(ast, expander, _) => {
             let span = db.proc_macro_span(ast);
-            tt.delimiter = tt::Delimiter::invisible_spanned(span);
+            *tt.top_subtree_delimiter_mut() = tt::Delimiter::invisible_spanned(span);
             expander.expand(
                 db,
                 loc.def.krate,
@@ -303,17 +303,19 @@ pub fn expand_speculative(
         token_tree_to_syntax_node(&speculative_expansion.value, expand_to, loc.def.edition);
 
     let syntax_node = node.syntax_node();
-    let (token, _) = rev_tmap
+    let token = rev_tmap
         .ranges_with_span(span_map.span_for_range(token_to_map.text_range()))
         .filter_map(|(range, ctx)| syntax_node.covering_element(range).into_token().zip(Some(ctx)))
-        .min_by_key(|(t, ctx)| {
+        .map(|(t, ctx)| {
             // prefer tokens of the same kind and text, as well as non opaque marked ones
             // Note the inversion of the score here, as we want to prefer the first token in case
             // of all tokens having the same score
-            ctx.is_opaque(db) as u8
+            let ranking = ctx.is_opaque(db) as u8
                 + 2 * (t.kind() != token_to_map.kind()) as u8
-                + 4 * ((t.text() != token_to_map.text()) as u8)
-        })?;
+                + 4 * ((t.text() != token_to_map.text()) as u8);
+            (t, ranking)
+        })
+        .collect();
     Some((node.syntax_node(), token))
 }
 
@@ -427,10 +429,10 @@ fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
 
             let dummy_tt = |kind| {
                 (
-                    Arc::new(tt::Subtree {
-                        delimiter: tt::Delimiter { open: span, close: span, kind },
-                        token_trees: Box::default(),
-                    }),
+                    Arc::new(tt::TopSubtree::from_token_trees(
+                        tt::Delimiter { open: span, close: span, kind },
+                        tt::TokenTreesView::new(&[]),
+                    )),
                     SyntaxFixupUndoInfo::default(),
                     span,
                 )
@@ -477,7 +479,7 @@ fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
             );
             if loc.def.is_proc_macro() {
                 // proc macros expect their inputs without parentheses, MBEs expect it with them included
-                tt.delimiter.kind = tt::DelimiterKind::Invisible;
+                tt.top_subtree_delimiter_mut().kind = tt::DelimiterKind::Invisible;
             }
             return (Arc::new(tt), SyntaxFixupUndoInfo::NONE, span);
         }
@@ -535,7 +537,7 @@ fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
 
     if loc.def.is_proc_macro() {
         // proc macros expect their inputs without parentheses, MBEs expect it with them included
-        tt.delimiter.kind = tt::DelimiterKind::Invisible;
+        tt.top_subtree_delimiter_mut().kind = tt::DelimiterKind::Invisible;
     }
 
     (Arc::new(tt), undo_info, span)
@@ -590,7 +592,7 @@ fn macro_expand(
     db: &dyn ExpandDatabase,
     macro_call_id: MacroCallId,
     loc: MacroCallLoc,
-) -> ExpandResult<(CowArc<tt::Subtree>, MatchedArmIndex)> {
+) -> ExpandResult<(CowArc<tt::TopSubtree>, MatchedArmIndex)> {
     let _p = tracing::info_span!("macro_expand").entered();
 
     let (ExpandResult { value: (tt, matched_arm), err }, span) = match loc.def.kind {
@@ -653,12 +655,7 @@ fn macro_expand(
         // Set a hard limit for the expanded tt
         if let Err(value) = check_tt_count(&tt) {
             return value
-                .map(|()| {
-                    CowArc::Owned(tt::Subtree {
-                        delimiter: tt::Delimiter::invisible_spanned(span),
-                        token_trees: Box::new([]),
-                    })
-                })
+                .map(|()| CowArc::Owned(tt::TopSubtree::empty(tt::DelimSpan::from_single(span))))
                 .zip_val(matched_arm);
         }
     }
@@ -677,7 +674,10 @@ fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
     span_map.span_for_range(range)
 }
 
-fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt::Subtree>> {
+fn expand_proc_macro(
+    db: &dyn ExpandDatabase,
+    id: MacroCallId,
+) -> ExpandResult<Arc<tt::TopSubtree>> {
     let loc = db.lookup_intern_macro_call(id);
     let (macro_arg, undo_info, span) = db.macro_arg_considering_derives(id, &loc.kind);
 
@@ -707,12 +707,7 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
 
     // Set a hard limit for the expanded tt
     if let Err(value) = check_tt_count(&tt) {
-        return value.map(|()| {
-            Arc::new(tt::Subtree {
-                delimiter: tt::Delimiter::invisible_spanned(span),
-                token_trees: Box::new([]),
-            })
-        });
+        return value.map(|()| Arc::new(tt::TopSubtree::empty(tt::DelimSpan::from_single(span))));
     }
 
     fixup::reverse_fixups(&mut tt, &undo_info);
@@ -721,7 +716,7 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
 }
 
 fn token_tree_to_syntax_node(
-    tt: &tt::Subtree,
+    tt: &tt::TopSubtree,
     expand_to: ExpandTo,
     edition: parser::Edition,
 ) -> (Parse<SyntaxNode>, ExpansionSpanMap) {
@@ -735,7 +730,8 @@ fn token_tree_to_syntax_node(
     syntax_bridge::token_tree_to_syntax_node(tt, entry_point, edition)
 }
 
-fn check_tt_count(tt: &tt::Subtree) -> Result<(), ExpandResult<()>> {
+fn check_tt_count(tt: &tt::TopSubtree) -> Result<(), ExpandResult<()>> {
+    let tt = tt.top_subtree();
     let count = tt.count();
     if TOKEN_LIMIT.check(count).is_err() {
         Err(ExpandResult {

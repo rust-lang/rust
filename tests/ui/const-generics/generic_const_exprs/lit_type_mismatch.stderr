@@ -1,0 +1,21 @@
+error: generic parameters with a default must be trailing
+  --> $DIR/lit_type_mismatch.rs:11:16
+   |
+LL | struct A<const B: () = 1, C>(C);
+   |                ^
+
+error[E0308]: mismatched types
+  --> $DIR/lit_type_mismatch.rs:11:24
+   |
+LL | struct A<const B: () = 1, C>(C);
+   |                        ^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/lit_type_mismatch.rs:17:23
+   |
+LL | struct Thing<T = Cond<0>>(T);
+   |                       ^ expected `bool`, found integer
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

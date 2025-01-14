@@ -10,8 +10,7 @@ use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
 use rustc_middle::{bug, mir, ty};
 use rustc_session::config::DebugInfo;
-use rustc_span::symbol::{Symbol, kw};
-use rustc_span::{BytePos, Span, hygiene};
+use rustc_span::{BytePos, Span, Symbol, hygiene, kw};
 
 use super::operand::{OperandRef, OperandValue};
 use super::place::{PlaceRef, PlaceValue};

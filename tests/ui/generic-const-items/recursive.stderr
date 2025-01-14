@@ -1,0 +1,11 @@
+error: queries overflow the depth limit!
+  --> $DIR/recursive.rs:10:13
+   |
+LL |     let _ = RECUR::<()>;
+   |             ^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "30"]` attribute to your crate (`recursive`)
+   = note: query depth increased by 17 when simplifying constant for the type system `RECUR`
+
+error: aborting due to 1 previous error
+

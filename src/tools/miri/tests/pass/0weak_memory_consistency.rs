@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-ignore-leaks -Zmiri-disable-stacked-borrows -Zmiri-provenance-gc=10000
+//@compile-flags: -Zmiri-ignore-leaks -Zmiri-disable-stacked-borrows -Zmiri-disable-validation -Zmiri-provenance-gc=10000
 // This test's runtime explodes if the GC interval is set to 1 (which we do in CI), so we
 // override it internally back to the default frequency.
 
@@ -22,7 +22,7 @@
 // Available: https://ss265.host.cs.st-andrews.ac.uk/papers/n3132.pdf.
 
 use std::sync::atomic::Ordering::*;
-use std::sync::atomic::{AtomicBool, AtomicI32, fence};
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering, fence};
 use std::thread::spawn;
 
 #[derive(Copy, Clone)]
@@ -34,19 +34,15 @@ unsafe impl<T> Sync for EvilSend<T> {}
 // We can't create static items because we need to run each test
 // multiple times
 fn static_atomic(val: i32) -> &'static AtomicI32 {
-    let ret = Box::leak(Box::new(AtomicI32::new(val)));
-    ret.store(val, Relaxed); // work around https://github.com/rust-lang/miri/issues/2164
-    ret
+    Box::leak(Box::new(AtomicI32::new(val)))
 }
 fn static_atomic_bool(val: bool) -> &'static AtomicBool {
-    let ret = Box::leak(Box::new(AtomicBool::new(val)));
-    ret.store(val, Relaxed); // work around https://github.com/rust-lang/miri/issues/2164
-    ret
+    Box::leak(Box::new(AtomicBool::new(val)))
 }
 
-// Spins until it acquires a pre-determined value.
-fn acquires_value(loc: &AtomicI32, val: i32) -> i32 {
-    while loc.load(Acquire) != val {
+/// Spins until it acquires a pre-determined value.
+fn loads_value(loc: &AtomicI32, ord: Ordering, val: i32) -> i32 {
+    while loc.load(ord) != val {
         std::hint::spin_loop();
     }
     val
@@ -69,7 +65,7 @@ fn test_corr() {
     }); //                                           |                    |
     #[rustfmt::skip] //                              |synchronizes-with   |happens-before
     let j3 = spawn(move || { //                      |                    |
-        acquires_value(&y, 1); // <------------------+                    |
+        loads_value(&y, Acquire, 1); // <------------+                    |
         x.load(Relaxed) // <----------------------------------------------+
         // The two reads on x are ordered by hb, so they cannot observe values
         // differently from the modification order. If the first read observed
@@ -94,12 +90,12 @@ fn test_wrc() {
     }); //                                           |                     |
     #[rustfmt::skip] //                              |synchronizes-with    |
     let j2 = spawn(move || { //                      |                     |
-        acquires_value(&x, 1); // <------------------+                     |
+        loads_value(&x, Acquire, 1); // <------------+                     |
         y.store(1, Release); // ---------------------+                     |happens-before
     }); //                                           |                     |
     #[rustfmt::skip] //                              |synchronizes-with    |
     let j3 = spawn(move || { //                      |                     |
-        acquires_value(&y, 1); // <------------------+                     |
+        loads_value(&y, Acquire, 1); // <------------+                     |
         x.load(Relaxed) // <-----------------------------------------------+
     });
 
@@ -125,7 +121,7 @@ fn test_message_passing() {
     #[rustfmt::skip] //                              |synchronizes-with  | happens-before
     let j2 = spawn(move || { //                      |                   |
         let x = x; // avoid field capturing          |                   |
-        acquires_value(&y, 1); // <------------------+                   |
+        loads_value(&y, Acquire, 1); // <------------+                   |
         unsafe { *x.0 } // <---------------------------------------------+
     });
 
@@ -190,31 +186,6 @@ fn test_mixed_access() {
     assert_eq!(r2, 2);
 }
 
-// The following two tests are taken from Repairing Sequential Consistency in C/C++11
-// by Lahav et al.
-// https://plv.mpi-sws.org/scfix/paper.pdf
-
-// Test case SB
-fn test_sc_store_buffering() {
-    let x = static_atomic(0);
-    let y = static_atomic(0);
-
-    let j1 = spawn(move || {
-        x.store(1, SeqCst);
-        y.load(SeqCst)
-    });
-
-    let j2 = spawn(move || {
-        y.store(1, SeqCst);
-        x.load(SeqCst)
-    });
-
-    let a = j1.join().unwrap();
-    let b = j2.join().unwrap();
-
-    assert_ne!((a, b), (0, 0));
-}
-
 fn test_single_thread() {
     let x = AtomicI32::new(42);
 
@@ -261,35 +232,6 @@ fn test_sync_through_rmw_and_fences() {
     assert_ne!((a, b), (0, 0));
 }
 
-// Test case by @SabrinaJewson
-// https://github.com/rust-lang/miri/issues/2301#issuecomment-1221502757
-// Demonstrating C++20 SC access changes
-fn test_iriw_sc_rlx() {
-    let x = static_atomic_bool(false);
-    let y = static_atomic_bool(false);
-
-    x.store(false, Relaxed);
-    y.store(false, Relaxed);
-
-    let a = spawn(move || x.store(true, Relaxed));
-    let b = spawn(move || y.store(true, Relaxed));
-    let c = spawn(move || {
-        while !x.load(SeqCst) {}
-        y.load(SeqCst)
-    });
-    let d = spawn(move || {
-        while !y.load(SeqCst) {}
-        x.load(SeqCst)
-    });
-
-    a.join().unwrap();
-    b.join().unwrap();
-    let c = c.join().unwrap();
-    let d = d.join().unwrap();
-
-    assert!(c || d);
-}
-
 pub fn main() {
     for _ in 0..50 {
         test_single_thread();
@@ -298,8 +240,6 @@ pub fn main() {
         test_message_passing();
         test_wrc();
         test_corr();
-        test_sc_store_buffering();
         test_sync_through_rmw_and_fences();
-        test_iriw_sc_rlx();
     }
 }

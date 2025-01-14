@@ -22,15 +22,16 @@ master = ["gccjit/master"]
 default = ["master"]
 
 [dependencies]
-gccjit = "2.2"
+gccjit = "2.4"
 #gccjit = { git = "https://github.com/rust-lang/gccjit.rs" }
 
 # Local copy.
 #gccjit = { path = "../gccjit.rs" }
 
 [dev-dependencies]
-lang_tester = "0.8.0"
 boml = "0.3.1"
+lang_tester = "0.8.0"
+tempfile = "3.7.1"
 
 [profile.dev]
 # By compiling dependencies with optimizations, performing tests gets much faster.

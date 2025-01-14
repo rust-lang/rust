@@ -9,7 +9,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::{FileName, sym};
+use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, sym};
 use tracing::info;
 
 use crate::clean;
@@ -50,8 +50,14 @@ struct LocalSourcesCollector<'a, 'tcx> {
     src_root: &'a Path,
 }
 
-fn is_real_and_local(span: clean::Span, sess: &Session) -> bool {
-    span.cnum(sess) == LOCAL_CRATE && span.filename(sess).is_real()
+fn filename_real_and_local(span: clean::Span, sess: &Session) -> Option<RealFileName> {
+    if span.cnum(sess) == LOCAL_CRATE
+        && let FileName::Real(file) = span.filename(sess)
+    {
+        Some(file)
+    } else {
+        None
+    }
 }
 
 impl LocalSourcesCollector<'_, '_> {
@@ -60,16 +66,8 @@ impl LocalSourcesCollector<'_, '_> {
         let span = item.span(self.tcx);
         let Some(span) = span else { return };
         // skip all synthetic "files"
-        if !is_real_and_local(span, sess) {
-            return;
-        }
-        let filename = span.filename(sess);
-        let p = if let FileName::Real(file) = filename {
-            match file.into_local_path() {
-                Some(p) => p,
-                None => return,
-            }
-        } else {
+        let Some(p) = filename_real_and_local(span, sess).and_then(|file| file.into_local_path())
+        else {
             return;
         };
         if self.local_sources.contains_key(&*p) {
@@ -135,8 +133,7 @@ impl DocVisitor<'_> for SourceCollector<'_, '_> {
         // If we're not rendering sources, there's nothing to do.
         // If we're including source files, and we haven't seen this file yet,
         // then we need to render it out to the filesystem.
-        if is_real_and_local(span, sess) {
-            let filename = span.filename(sess);
+        if let Some(filename) = filename_real_and_local(span, sess) {
             let span = span.inner();
             let pos = sess.source_map().lookup_source_file(span.lo());
             let file_span = span.with_lo(pos.start_pos).with_hi(pos.end_position());
@@ -152,7 +149,7 @@ impl DocVisitor<'_> for SourceCollector<'_, '_> {
                         span,
                         format!(
                             "failed to render source code for `{filename}`: {e}",
-                            filename = filename.prefer_local(),
+                            filename = filename.to_string_lossy(FileNameDisplayPreference::Local),
                         ),
                     );
                     false
@@ -168,18 +165,13 @@ impl SourceCollector<'_, '_> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(
         &mut self,
-        filename: &FileName,
+        file: &RealFileName,
         file_span: rustc_span::Span,
     ) -> Result<(), Error> {
-        let p = match *filename {
-            FileName::Real(ref file) => {
-                if let Some(local_path) = file.local_path() {
-                    local_path.to_path_buf()
-                } else {
-                    unreachable!("only the current crate should have sources emitted");
-                }
-            }
-            _ => return Ok(()),
+        let p = if let Some(local_path) = file.local_path() {
+            local_path.to_path_buf()
+        } else {
+            unreachable!("only the current crate should have sources emitted");
         };
         if self.emitted_local_sources.contains(&*p) {
             // We've already emitted this source
@@ -233,8 +225,10 @@ impl SourceCollector<'_, '_> {
         cur.push(&fname);
 
         let title = format!("{} - source", src_fname.to_string_lossy());
-        let desc =
-            format!("Source of the Rust file `{}`.", filename.prefer_remapped_unconditionaly());
+        let desc = format!(
+            "Source of the Rust file `{}`.",
+            file.to_string_lossy(FileNameDisplayPreference::Remapped)
+        );
         let page = layout::Page {
             title: &title,
             css_class: "src",

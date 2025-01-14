@@ -1,4 +1,4 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions, cvs};
+use crate::spec::{Cc, FloatAbi, LinkerFlavor, Lld, RelocModel, Target, TargetOptions, cvs};
 
 /// A base target for Nintendo 3DS devices using the devkitARM toolchain.
 ///
@@ -28,8 +28,9 @@ pub(crate) fn target() -> Target {
             os: "horizon".into(),
             env: "newlib".into(),
             vendor: "nintendo".into(),
-            abi: "eabihf".into(),
             cpu: "mpcore".into(),
+            abi: "eabihf".into(),
+            llvm_floatabi: Some(FloatAbi::Hard),
             families: cvs!["unix"],
             linker: Some("arm-none-eabi-gcc".into()),
             relocation_model: RelocModel::Static,

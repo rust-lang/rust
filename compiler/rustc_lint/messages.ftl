@@ -536,9 +536,6 @@ lint_non_camel_case_type = {$sort} `{$name}` should have an upper camel case nam
     .suggestion = convert the identifier to upper camel case
     .label = should have an UpperCamelCase name
 
-lint_non_existent_doc_keyword = found non-existing keyword `{$keyword}` used in `#[doc(keyword = "...")]`
-    .help = only existing keywords are allowed in core/std
-
 lint_non_fmt_panic = panic message is not a string literal
     .note = this usage of `{$name}!()` is deprecated; it will be a hard error in Rust 2021
     .more_info_note = for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
@@ -775,6 +772,9 @@ lint_suspicious_double_ref_clone =
 lint_suspicious_double_ref_deref =
     using `.deref()` on a double reference, which returns `{$ty}` instead of dereferencing the inner type
 
+lint_symbol_intern_string_literal = using `Symbol::intern` on a string literal
+    .help = consider adding the symbol to `compiler/rustc_span/src/symbol.rs`
+
 lint_trailing_semi_macro = trailing semicolon in macro used in expression position
     .note1 = macro invocations at the end of a block are treated as expressions
     .note2 = to ignore the value produced by the macro, add a semicolon after the invocation of `{$name}`
@@ -803,10 +803,14 @@ lint_unexpected_cfg_add_build_rs_println = or consider adding `{$build_rs_printl
 lint_unexpected_cfg_add_cargo_feature = consider using a Cargo feature instead
 lint_unexpected_cfg_add_cargo_toml_lint_cfg = or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:{$cargo_toml_lint_cfg}
 lint_unexpected_cfg_add_cmdline_arg = to expect this configuration use `{$cmdline_arg}`
+lint_unexpected_cfg_cargo_update = the {$macro_kind} `{$macro_name}` may come from an old version of the `{$crate_name}` crate, try updating your dependency with `cargo update -p {$crate_name}`
+
 lint_unexpected_cfg_define_features = consider defining some features in `Cargo.toml`
 lint_unexpected_cfg_doc_cargo = see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
 lint_unexpected_cfg_doc_rustc = see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
+lint_unexpected_cfg_from_external_macro_origin = using a cfg inside a {$macro_kind} will use the cfgs from the destination crate and not the ones from the defining crate
+lint_unexpected_cfg_from_external_macro_refer = try referring to `{$macro_name}` crate for guidance on how handle this unexpected cfg
 lint_unexpected_cfg_name = unexpected `cfg` condition name: `{$name}`
 lint_unexpected_cfg_name_expected_names = expected names are: {$possibilities}{$and_more ->
         [0] {""}
@@ -881,6 +885,12 @@ lint_unnameable_test_items = cannot test inner items
 
 lint_unnecessary_qualification = unnecessary qualification
     .suggestion = remove the unnecessary path segments
+
+lint_unpredictable_fn_pointer_comparisons = function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
+    .note_duplicated_fn = the address of the same function can vary between different codegen units
+    .note_deduplicated_fn = furthermore, different functions could have the same address after being merged together
+    .note_visit_fn_addr_eq = for more information visit <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
+    .fn_addr_eq_suggestion = refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint
 
 lint_unqualified_local_imports = `use` of a local item without leading `self::`, `super::`, or `crate::`
 

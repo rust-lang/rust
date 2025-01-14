@@ -511,7 +511,6 @@ pub enum StyleEdition {
     Edition2021,
     #[value = "2024"]
     #[doc_hint = "2024"]
-    #[unstable_variant]
     /// [Edition 2024]().
     Edition2024,
 }

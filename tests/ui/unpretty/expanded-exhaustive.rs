@@ -2,15 +2,14 @@
 //@ edition:2024
 //@ check-pass
 
-#![feature(async_closure)]
 #![feature(auto_traits)]
 #![feature(box_patterns)]
 #![feature(builtin_syntax)]
 #![feature(concat_idents)]
 #![feature(const_trait_impl)]
-#![feature(core_pattern_type)]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
+#![feature(dyn_star)]
 #![feature(explicit_tail_calls)]
 #![feature(gen_blocks)]
 #![feature(let_chains)]
@@ -18,6 +17,7 @@
 #![feature(never_patterns)]
 #![feature(never_type)]
 #![feature(pattern_types)]
+#![feature(pattern_type_macro)]
 #![feature(prelude_import)]
 #![feature(specialization)]
 #![feature(trace_macros)]
@@ -651,8 +651,8 @@ mod patterns {
         let &mut pat;
     }
 
-    /// PatKind::Lit
-    fn pat_lit() {
+    /// PatKind::Expr
+    fn pat_expr() {
         let 1_000_i8;
         let -"";
     }
@@ -801,6 +801,7 @@ mod types {
         let _: dyn Send + 'static;
         let _: dyn 'static + Send;
         let _: dyn for<'a> Send;
+        let _: dyn* Send;
     }
 
     /// TyKind::ImplTrait

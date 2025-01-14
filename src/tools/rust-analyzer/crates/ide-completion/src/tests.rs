@@ -61,7 +61,7 @@ fn function() {}
 union Union { field: i32 }
 "#;
 
-pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
+pub(crate) const TEST_CONFIG: CompletionConfig<'_> = CompletionConfig {
     enable_postfix_completions: true,
     enable_imports_on_the_fly: true,
     enable_self_on_the_fly: true,
@@ -85,6 +85,8 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     snippets: Vec::new(),
     limit: None,
     fields_to_resolve: CompletionFieldsToResolve::empty(),
+    exclude_flyimport: vec![],
+    exclude_traits: &[],
 };
 
 pub(crate) fn completion_list(ra_fixture: &str) -> String {
@@ -109,7 +111,7 @@ pub(crate) fn completion_list_with_trigger_character(
 }
 
 fn completion_list_with_config_raw(
-    config: CompletionConfig,
+    config: CompletionConfig<'_>,
     ra_fixture: &str,
     include_keywords: bool,
     trigger_character: Option<char>,
@@ -118,15 +120,21 @@ fn completion_list_with_config_raw(
     let items = get_all_items(config, ra_fixture, trigger_character);
     items
         .into_iter()
-        .filter(|it| it.kind != CompletionItemKind::BuiltinType || it.label == "u32")
+        .filter(|it| it.kind != CompletionItemKind::BuiltinType || it.label.primary == "u32")
         .filter(|it| include_keywords || it.kind != CompletionItemKind::Keyword)
         .filter(|it| include_keywords || it.kind != CompletionItemKind::Snippet)
-        .sorted_by_key(|it| (it.kind, it.label.clone(), it.detail.as_ref().map(ToOwned::to_owned)))
+        .sorted_by_key(|it| {
+            (
+                it.kind,
+                it.label.primary.clone(),
+                it.label.detail_left.as_ref().map(ToOwned::to_owned),
+            )
+        })
         .collect()
 }
 
 fn completion_list_with_config(
-    config: CompletionConfig,
+    config: CompletionConfig<'_>,
     ra_fixture: &str,
     include_keywords: bool,
     trigger_character: Option<char>,
@@ -155,7 +163,7 @@ pub(crate) fn do_completion(code: &str, kind: CompletionItemKind) -> Vec<Complet
 }
 
 pub(crate) fn do_completion_with_config(
-    config: CompletionConfig,
+    config: CompletionConfig<'_>,
     code: &str,
     kind: CompletionItemKind,
 ) -> Vec<CompletionItem> {
@@ -173,27 +181,30 @@ fn render_completion_list(completions: Vec<CompletionItem>) -> String {
     let label_width = completions
         .iter()
         .map(|it| {
-            monospace_width(&it.label)
-                + monospace_width(it.label_detail.as_deref().unwrap_or_default())
+            monospace_width(&it.label.primary)
+                + monospace_width(it.label.detail_left.as_deref().unwrap_or_default())
+                + monospace_width(it.label.detail_right.as_deref().unwrap_or_default())
+                + it.label.detail_left.is_some() as usize
+                + it.label.detail_right.is_some() as usize
         })
         .max()
-        .unwrap_or_default()
-        .min(22);
+        .unwrap_or_default();
     completions
         .into_iter()
         .map(|it| {
             let tag = it.kind.tag();
-            let var_name = format!("{tag} {}", it.label);
-            let mut buf = var_name;
-            if let Some(ref label_detail) = it.label_detail {
-                format_to!(buf, "{label_detail}");
+            let mut buf = format!("{tag} {}", it.label.primary);
+            if let Some(label_detail) = &it.label.detail_left {
+                format_to!(buf, " {label_detail}");
             }
-            if let Some(detail) = it.detail {
-                let width = label_width.saturating_sub(
-                    monospace_width(&it.label)
-                        + monospace_width(&it.label_detail.unwrap_or_default()),
+            if let Some(detail_right) = it.label.detail_right {
+                let pad_with = label_width.saturating_sub(
+                    monospace_width(&it.label.primary)
+                        + monospace_width(it.label.detail_left.as_deref().unwrap_or_default())
+                        + monospace_width(&detail_right)
+                        + it.label.detail_left.is_some() as usize,
                 );
-                format_to!(buf, "{:width$} {}", "", detail, width = width);
+                format_to!(buf, "{:pad_with$}{detail_right}", "",);
             }
             if it.deprecated {
                 format_to!(buf, " DEPRECATED");
@@ -211,7 +222,7 @@ pub(crate) fn check_edit(what: &str, ra_fixture_before: &str, ra_fixture_after: 
 
 #[track_caller]
 pub(crate) fn check_edit_with_config(
-    config: CompletionConfig,
+    config: CompletionConfig<'_>,
     what: &str,
     ra_fixture_before: &str,
     ra_fixture_after: &str,
@@ -248,7 +259,7 @@ fn check_empty(ra_fixture: &str, expect: Expect) {
 }
 
 pub(crate) fn get_all_items(
-    config: CompletionConfig,
+    config: CompletionConfig<'_>,
     code: &str,
     trigger_character: Option<char>,
 ) -> Vec<CompletionItem> {

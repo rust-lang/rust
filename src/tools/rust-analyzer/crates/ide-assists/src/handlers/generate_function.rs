@@ -1077,7 +1077,7 @@ fn fn_arg_name(sema: &Semantics<'_, RootDatabase>, arg_expr: &ast::Expr) -> Stri
                 .filter_map(ast::NameRef::cast)
                 .filter(|name| name.ident_token().is_some())
                 .last()?;
-            if let Some(NameRefClass::Definition(Definition::Const(_) | Definition::Static(_))) =
+            if let Some(NameRefClass::Definition(Definition::Const(_) | Definition::Static(_), _)) =
                 NameRefClass::classify(sema, &name_ref)
             {
                 return Some(name_ref.to_string().to_lowercase());
@@ -2055,7 +2055,7 @@ fn bar(closure: impl Fn(i64) -> i64) {
     }
 
     #[test]
-    fn unresolveable_types_default_to_placeholder() {
+    fn unresolvable_types_default_to_placeholder() {
         check_assist(
             generate_function,
             r"

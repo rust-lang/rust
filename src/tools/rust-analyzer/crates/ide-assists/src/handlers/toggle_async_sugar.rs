@@ -127,7 +127,7 @@ pub(crate) fn desugar_async_into_impl_future(
 
     let rparen = function.param_list()?.r_paren_token()?;
     let return_type = match function.ret_type() {
-        // unable to get a `ty` makes the action unapplicable
+        // unable to get a `ty` makes the action inapplicable
         Some(ret_type) => Some(ret_type.ty()?),
         // No type means `-> ()`
         None => None,

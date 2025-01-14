@@ -1,10 +1,10 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_macros::{Decodable, Encodable};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 use crate::Expr;
 use crate::ptr::P;
+use crate::token::LitKind;
 
 // Definitions:
 //
@@ -46,6 +46,10 @@ pub struct FormatArgs {
     pub span: Span,
     pub template: Vec<FormatArgsPiece>,
     pub arguments: FormatArguments,
+    /// The raw, un-split format string literal, with no escaping or processing.
+    ///
+    /// Generally only useful for lints that care about the raw bytes the user wrote.
+    pub uncooked_fmt_str: (LitKind, Symbol),
 }
 
 /// A piece of a format template string.

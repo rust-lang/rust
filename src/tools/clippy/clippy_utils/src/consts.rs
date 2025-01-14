@@ -4,7 +4,6 @@
 //! executable MIR bodies, so we have to do this instead.
 #![allow(clippy::float_cmp)]
 
-use crate::macros::HirNode;
 use crate::source::{SpanRangeExt, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, sext, unsext};
 
@@ -13,7 +12,7 @@ use rustc_apfloat::ieee::{Half, Quad};
 use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{BinOp, BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, Item, ItemKind, Node, QPath, UnOp};
+use rustc_hir::{BinOp, BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, Item, ItemKind, Node, QPath, UnOp, PatExpr, PatExprKind};
 use rustc_lexer::tokenize;
 use rustc_lint::LateContext;
 use rustc_middle::mir::ConstValue;
@@ -442,30 +441,48 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
         }
     }
 
+    pub fn eval_pat_expr(&self, pat_expr: &PatExpr<'_>) -> Option<Constant<'tcx>> {
+        match &pat_expr.kind {
+            PatExprKind::Lit { lit, negated } => {
+                let ty = self.typeck.node_type_opt(pat_expr.hir_id);
+                let val = lit_to_mir_constant(&lit.node, ty);
+                if *negated {
+                    self.constant_negate(&val, ty?)
+                } else {
+                    Some(val)
+                }
+            }
+            PatExprKind::ConstBlock(ConstBlock { body, ..}) => self.expr(self.tcx.hir().body(*body).value),
+            PatExprKind::Path(qpath) => self.qpath(qpath, pat_expr.hir_id),
+        }
+    }
+
+    fn qpath(&self, qpath: &QPath<'_>, hir_id: HirId) -> Option<Constant<'tcx>> {
+        let is_core_crate = if let Some(def_id) = self.typeck.qpath_res(qpath, hir_id).opt_def_id() {
+            self.tcx.crate_name(def_id.krate) == sym::core
+        } else {
+            false
+        };
+        self.fetch_path_and_apply(qpath, hir_id, self.typeck.node_type(hir_id), |self_, result| {
+            let result = mir_to_const(self_.tcx, result)?;
+            // If source is already Constant we wouldn't want to override it with CoreConstant
+            self_.source.set(
+                if is_core_crate && !matches!(self_.source.get(), ConstantSource::Constant) {
+                    ConstantSource::CoreConstant
+                } else {
+                    ConstantSource::Constant
+                },
+            );
+            Some(result)
+        })
+    }
+
     /// Simple constant folding: Insert an expression, get a constant or none.
     fn expr(&self, e: &Expr<'_>) -> Option<Constant<'tcx>> {
         match e.kind {
             ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir().body(body).value),
             ExprKind::DropTemps(e) => self.expr(e),
-            ExprKind::Path(ref qpath) => {
-                let is_core_crate = if let Some(def_id) = self.typeck.qpath_res(qpath, e.hir_id()).opt_def_id() {
-                    self.tcx.crate_name(def_id.krate) == sym::core
-                } else {
-                    false
-                };
-                self.fetch_path_and_apply(qpath, e.hir_id, self.typeck.expr_ty(e), |self_, result| {
-                    let result = mir_to_const(self_.tcx, result)?;
-                    // If source is already Constant we wouldn't want to override it with CoreConstant
-                    self_.source.set(
-                        if is_core_crate && !matches!(self_.source.get(), ConstantSource::Constant) {
-                            ConstantSource::CoreConstant
-                        } else {
-                            ConstantSource::Constant
-                        },
-                    );
-                    Some(result)
-                })
-            },
+            ExprKind::Path(ref qpath) => self.qpath(qpath, e.hir_id),
             ExprKind::Block(block, _) => self.block(block),
             ExprKind::Lit(lit) => {
                 if is_direct_expn_of(e.span, "cfg").is_some() {

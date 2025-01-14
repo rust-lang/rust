@@ -423,21 +423,21 @@ fn main() {
 }
 "#,
             expect![[r#"
-                sn box    Box::new(expr)
-                sn call   function(expr)
-                sn dbg    dbg!(expr)
-                sn dbgr   dbg!(&expr)
-                sn deref  *expr
-                sn if     if expr {}
-                sn let    let
-                sn letm   let mut
-                sn match  match expr {}
-                sn not    !expr
-                sn ref    &expr
-                sn refm   &mut expr
-                sn return return expr
-                sn unsafe unsafe {}
-                sn while  while expr {}
+                sn box  Box::new(expr)
+                sn call function(expr)
+                sn dbg      dbg!(expr)
+                sn dbgr    dbg!(&expr)
+                sn deref         *expr
+                sn if       if expr {}
+                sn let             let
+                sn letm        let mut
+                sn match match expr {}
+                sn not           !expr
+                sn ref           &expr
+                sn refm      &mut expr
+                sn return  return expr
+                sn unsafe    unsafe {}
+                sn while while expr {}
             "#]],
         );
     }
@@ -456,19 +456,19 @@ fn main() {
 }
 "#,
             expect![[r#"
-                sn box    Box::new(expr)
-                sn call   function(expr)
-                sn dbg    dbg!(expr)
-                sn dbgr   dbg!(&expr)
-                sn deref  *expr
-                sn if     if expr {}
-                sn match  match expr {}
-                sn not    !expr
-                sn ref    &expr
-                sn refm   &mut expr
-                sn return return expr
-                sn unsafe unsafe {}
-                sn while  while expr {}
+                sn box  Box::new(expr)
+                sn call function(expr)
+                sn dbg      dbg!(expr)
+                sn dbgr    dbg!(&expr)
+                sn deref         *expr
+                sn if       if expr {}
+                sn match match expr {}
+                sn not           !expr
+                sn ref           &expr
+                sn refm      &mut expr
+                sn return  return expr
+                sn unsafe    unsafe {}
+                sn while while expr {}
             "#]],
         );
     }
@@ -483,18 +483,18 @@ fn main() {
 }
 "#,
             expect![[r#"
-                sn box    Box::new(expr)
-                sn call   function(expr)
-                sn dbg    dbg!(expr)
-                sn dbgr   dbg!(&expr)
-                sn deref  *expr
-                sn let    let
-                sn letm   let mut
-                sn match  match expr {}
-                sn ref    &expr
-                sn refm   &mut expr
-                sn return return expr
-                sn unsafe unsafe {}
+                sn box  Box::new(expr)
+                sn call function(expr)
+                sn dbg      dbg!(expr)
+                sn dbgr    dbg!(&expr)
+                sn deref         *expr
+                sn let             let
+                sn letm        let mut
+                sn match match expr {}
+                sn ref           &expr
+                sn refm      &mut expr
+                sn return  return expr
+                sn unsafe    unsafe {}
             "#]],
         )
     }
@@ -509,21 +509,21 @@ fn main() {
 }
 "#,
             expect![[r#"
-                sn box    Box::new(expr)
-                sn call   function(expr)
-                sn dbg    dbg!(expr)
-                sn dbgr   dbg!(&expr)
-                sn deref  *expr
-                sn if     if expr {}
-                sn let    let
-                sn letm   let mut
-                sn match  match expr {}
-                sn not    !expr
-                sn ref    &expr
-                sn refm   &mut expr
-                sn return return expr
-                sn unsafe unsafe {}
-                sn while  while expr {}
+                sn box  Box::new(expr)
+                sn call function(expr)
+                sn dbg      dbg!(expr)
+                sn dbgr    dbg!(&expr)
+                sn deref         *expr
+                sn if       if expr {}
+                sn let             let
+                sn letm        let mut
+                sn match match expr {}
+                sn not           !expr
+                sn ref           &expr
+                sn refm      &mut expr
+                sn return  return expr
+                sn unsafe    unsafe {}
+                sn while while expr {}
             "#]],
         );
     }

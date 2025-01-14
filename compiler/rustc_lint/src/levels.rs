@@ -1,3 +1,4 @@
+use rustc_ast::attr::AttributeExt;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
@@ -19,8 +20,7 @@ use rustc_session::lint::builtin::{
     UNFULFILLED_LINT_EXPECTATIONS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES,
 };
 use rustc_session::lint::{Level, Lint, LintExpectationId, LintId};
-use rustc_span::symbol::{Symbol, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use tracing::{debug, instrument};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -371,7 +371,7 @@ impl<'tcx> Visitor<'tcx> for LintLevelMaximum<'tcx> {
 
     /// FIXME(blyxyas): In a future revision, we should also graph #![allow]s,
     /// but that is handled with more care
-    fn visit_attribute(&mut self, attribute: &'tcx ast::Attribute) {
+    fn visit_attribute(&mut self, attribute: &'tcx hir::Attribute) {
         if matches!(
             Level::from_attr(attribute),
             Some(
@@ -383,10 +383,9 @@ impl<'tcx> Visitor<'tcx> for LintLevelMaximum<'tcx> {
             )
         ) {
             let store = unerased_lint_store(self.tcx.sess);
-            let Some(meta) = attribute.meta() else { return };
             // Lint attributes are always a metalist inside a
             // metalist (even with just one lint).
-            let Some(meta_item_list) = meta.meta_item_list() else { return };
+            let Some(meta_item_list) = attribute.meta_item_list() else { return };
 
             for meta_list in meta_item_list {
                 // Convert Path to String
@@ -686,7 +685,12 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         };
     }
 
-    fn add(&mut self, attrs: &[ast::Attribute], is_crate_node: bool, source_hir_id: Option<HirId>) {
+    fn add(
+        &mut self,
+        attrs: &[impl AttributeExt],
+        is_crate_node: bool,
+        source_hir_id: Option<HirId>,
+    ) {
         let sess = self.sess;
         for (attr_index, attr) in attrs.iter().enumerate() {
             if attr.has_name(sym::automatically_derived) {
@@ -910,7 +914,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
                 let src = LintLevelSource::Node { name, span: sp, reason };
                 for &id in ids {
-                    if self.check_gated_lint(id, attr.span, false) {
+                    if self.check_gated_lint(id, sp, false) {
                         self.insert_spec(id, (level, src));
                     }
                 }

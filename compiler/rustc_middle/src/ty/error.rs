@@ -109,6 +109,9 @@ impl<'tcx> TypeError<'tcx> {
             TypeError::ConstMismatch(ref values) => {
                 format!("expected `{}`, found `{}`", values.expected, values.found).into()
             }
+            TypeError::ForceInlineCast => {
+                "cannot coerce functions which must be inlined to function pointers".into()
+            }
             TypeError::IntrinsicCast => "cannot coerce intrinsics to function pointers".into(),
             TypeError::TargetFeatureCast(_) => {
                 "cannot coerce functions with `#[target_feature]` to safe function pointers".into()
@@ -191,6 +194,7 @@ impl<'tcx> Ty<'tcx> {
                 _ => "fn item".into(),
             },
             ty::FnPtr(..) => "fn pointer".into(),
+            ty::UnsafeBinder(_) => "unsafe binder".into(),
             ty::Dynamic(..) => "trait object".into(),
             ty::Closure(..) | ty::CoroutineClosure(..) => "closure".into(),
             ty::Coroutine(def_id, ..) => {

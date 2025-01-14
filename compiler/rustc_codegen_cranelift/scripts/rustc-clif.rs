@@ -11,7 +11,7 @@ fn main() {
         sysroot = sysroot.parent().unwrap();
     }
 
-    let cg_clif_dylib_path = sysroot.join(if cfg!(windows) { "bin" } else { "lib" }).join(
+    let cg_clif_dylib_path = sysroot.join("lib").join(
         env::consts::DLL_PREFIX.to_string() + "rustc_codegen_cranelift" + env::consts::DLL_SUFFIX,
     );
 
@@ -32,6 +32,11 @@ fn main() {
     {
         args.push(OsString::from("--sysroot"));
         args.push(OsString::from(sysroot.to_str().unwrap()));
+    }
+    if passed_args.is_empty() {
+        // Don't pass any arguments when the user didn't pass any arguments
+        // either to ensure the help message is shown.
+        args.clear();
     }
     args.extend(passed_args);
 

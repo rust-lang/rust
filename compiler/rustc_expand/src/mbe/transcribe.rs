@@ -11,8 +11,9 @@ use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parser::ParseNtResult;
 use rustc_session::parse::{ParseSess, SymbolGallery};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, sym};
-use rustc_span::{Span, Symbol, SyntaxContext, with_metavar_spans};
+use rustc_span::{
+    Ident, MacroRulesNormalizedIdent, Span, Symbol, SyntaxContext, sym, with_metavar_spans,
+};
 use smallvec::{SmallVec, smallvec};
 
 use crate::errors::{
@@ -696,8 +697,10 @@ fn transcribe_metavar_expr<'a>(
                     MetaVarExprConcatElem::Var(ident) => {
                         match matched_from_ident(dcx, *ident, interp)? {
                             NamedMatch::MatchedSeq(named_matches) => {
-                                let curr_idx = repeats.last().unwrap().0;
-                                match &named_matches[curr_idx] {
+                                let Some((curr_idx, _)) = repeats.last() else {
+                                    return Err(dcx.struct_span_err(sp.entire(), "invalid syntax"));
+                                };
+                                match &named_matches[*curr_idx] {
                                     // FIXME(c410-f3r) Nested repetitions are unimplemented
                                     MatchedSeq(_) => unimplemented!(),
                                     MatchedSingle(pnr) => {

@@ -24,7 +24,7 @@ impl Trait for () {
 
 const fn foo() {
     ().foo();
-    //~^ ERROR cannot call non-const fn `<() as Trait>::foo` in constant functions
+    //~^ ERROR cannot call non-const method `<() as Trait>::foo` in constant functions
 }
 
 const UWU: () = foo();

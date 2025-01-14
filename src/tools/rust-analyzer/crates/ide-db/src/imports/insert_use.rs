@@ -72,9 +72,7 @@ impl ImportScope {
     fn from(syntax: SyntaxNode) -> Option<Self> {
         use syntax::match_ast;
         fn contains_cfg_attr(attrs: &dyn HasAttrs) -> bool {
-            attrs
-                .attrs()
-                .any(|attr| attr.as_simple_call().map_or(false, |(ident, _)| ident == "cfg"))
+            attrs.attrs().any(|attr| attr.as_simple_call().is_some_and(|(ident, _)| ident == "cfg"))
         }
         match_ast! {
             match syntax {
@@ -102,9 +100,7 @@ impl ImportScope {
         sema: &Semantics<'_, RootDatabase>,
     ) -> Option<Self> {
         fn contains_cfg_attr(attrs: &dyn HasAttrs) -> bool {
-            attrs
-                .attrs()
-                .any(|attr| attr.as_simple_call().map_or(false, |(ident, _)| ident == "cfg"))
+            attrs.attrs().any(|attr| attr.as_simple_call().is_some_and(|(ident, _)| ident == "cfg"))
         }
 
         // Walk up the ancestor tree searching for a suitable node to do insertions on
@@ -487,7 +483,7 @@ fn insert_use_(scope: &ImportScope, use_item: ast::Use, group_imports: bool) {
                     .contains(&token.kind())
             }
         })
-        .filter(|child| child.as_token().map_or(true, |t| t.kind() != SyntaxKind::WHITESPACE))
+        .filter(|child| child.as_token().is_none_or(|t| t.kind() != SyntaxKind::WHITESPACE))
         .last()
     {
         cov_mark::hit!(insert_empty_inner_attr);

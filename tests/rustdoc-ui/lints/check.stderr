@@ -6,7 +6,6 @@ LL | |
 LL | |
 LL | | #![warn(missing_docs)]
 ...  |
-LL | |
 LL | | pub fn foo() {}
    | |_______________^
    |

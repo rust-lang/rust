@@ -214,7 +214,7 @@ impl<T, const N: usize> IntoIter<T, N> {
         // SAFETY: We know that all elements within `alive` are properly initialized.
         unsafe {
             let slice = self.data.get_unchecked(self.alive.clone());
-            MaybeUninit::slice_assume_init_ref(slice)
+            slice.assume_init_ref()
         }
     }
 
@@ -224,7 +224,7 @@ impl<T, const N: usize> IntoIter<T, N> {
         // SAFETY: We know that all elements within `alive` are properly initialized.
         unsafe {
             let slice = self.data.get_unchecked_mut(self.alive.clone());
-            MaybeUninit::slice_assume_init_mut(slice)
+            slice.assume_init_mut()
         }
     }
 }
@@ -285,7 +285,7 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
         // SAFETY: These elements are currently initialized, so it's fine to drop them.
         unsafe {
             let slice = self.data.get_unchecked_mut(range_to_drop);
-            ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(slice));
+            slice.assume_init_drop();
         }
 
         NonZero::new(remaining).map_or(Ok(()), Err)
@@ -340,7 +340,7 @@ impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
         // SAFETY: These elements are currently initialized, so it's fine to drop them.
         unsafe {
             let slice = self.data.get_unchecked_mut(range_to_drop);
-            ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(slice));
+            slice.assume_init_drop();
         }
 
         NonZero::new(remaining).map_or(Ok(()), Err)

@@ -1,0 +1,14 @@
+[package]
+name = "edition"
+version = "0.0.0"
+description = "Rust edition support crate for rust-analyzer."
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

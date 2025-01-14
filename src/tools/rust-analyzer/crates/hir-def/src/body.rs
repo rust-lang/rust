@@ -18,6 +18,7 @@ use smallvec::SmallVec;
 use span::{Edition, MacroFileId};
 use syntax::{ast, AstPtr, SyntaxNodePtr};
 use triomphe::Arc;
+use tt::TextRange;
 
 use crate::{
     db::DefDatabase,
@@ -31,7 +32,7 @@ use crate::{
     path::{ModPath, Path},
     src::HasSource,
     type_ref::{TypeRef, TypeRefId, TypesMap, TypesSourceMap},
-    BlockId, DefWithBodyId, HasModule, Lookup,
+    BlockId, DefWithBodyId, HasModule, Lookup, SyntheticSyntax,
 };
 
 /// A wrapper around [`span::SyntaxContextId`] that is intended only for comparisons.
@@ -141,17 +142,9 @@ pub struct BodySourceMap {
     field_map_back: FxHashMap<ExprId, FieldSource>,
     pat_field_map_back: FxHashMap<PatId, PatFieldSource>,
 
-    types: TypesSourceMap,
+    pub types: TypesSourceMap,
 
-    // FIXME: Make this a sane struct.
-    template_map: Option<
-        Box<(
-            // format_args!
-            FxHashMap<ExprId, (HygieneId, Vec<(syntax::TextRange, Name)>)>,
-            // asm!
-            FxHashMap<ExprId, Vec<Vec<(syntax::TextRange, usize)>>>,
-        )>,
-    >,
+    template_map: Option<Box<FormatTemplate>>,
 
     expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, MacroFileId>,
 
@@ -160,8 +153,19 @@ pub struct BodySourceMap {
     diagnostics: Vec<BodyDiagnostic>,
 }
 
-#[derive(Default, Debug, Eq, PartialEq, Clone, Copy)]
-pub struct SyntheticSyntax;
+#[derive(Default, Debug, Eq, PartialEq)]
+struct FormatTemplate {
+    /// A map from `format_args!()` expressions to their captures.
+    format_args_to_captures: FxHashMap<ExprId, (HygieneId, Vec<(syntax::TextRange, Name)>)>,
+    /// A map from `asm!()` expressions to their captures.
+    asm_to_captures: FxHashMap<ExprId, Vec<Vec<(syntax::TextRange, usize)>>>,
+    /// A map from desugared expressions of implicit captures to their source.
+    ///
+    /// The value stored for each capture is its template literal and offset inside it. The template literal
+    /// is from the `format_args[_nl]!()` macro and so needs to be mapped up once to go to the user-written
+    /// template.
+    implicit_capture_to_source: FxHashMap<ExprId, InFile<(AstPtr<ast::Expr>, TextRange)>>,
+}
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum BodyDiagnostic {
@@ -408,7 +412,8 @@ impl Body {
                     f(else_branch);
                 }
             }
-            Expr::Let { expr, .. } => {
+            Expr::Let { expr, pat } => {
+                self.walk_exprs_in_pat(*pat, &mut f);
                 f(*expr);
             }
             Expr::Block { statements, tail, .. }
@@ -424,6 +429,137 @@ impl Body {
                                 f(expr);
                             }
                             self.walk_exprs_in_pat(*pat, &mut f);
+                        }
+                        Statement::Expr { expr: expression, .. } => f(*expression),
+                        Statement::Item(_) => (),
+                    }
+                }
+                if let &Some(expr) = tail {
+                    f(expr);
+                }
+            }
+            Expr::Loop { body, .. } => f(*body),
+            Expr::Call { callee, args, .. } => {
+                f(*callee);
+                args.iter().copied().for_each(f);
+            }
+            Expr::MethodCall { receiver, args, .. } => {
+                f(*receiver);
+                args.iter().copied().for_each(f);
+            }
+            Expr::Match { expr, arms } => {
+                f(*expr);
+                arms.iter().for_each(|arm| {
+                    f(arm.expr);
+                    self.walk_exprs_in_pat(arm.pat, &mut f);
+                });
+            }
+            Expr::Break { expr, .. }
+            | Expr::Return { expr }
+            | Expr::Yield { expr }
+            | Expr::Yeet { expr } => {
+                if let &Some(expr) = expr {
+                    f(expr);
+                }
+            }
+            Expr::Become { expr } => f(*expr),
+            Expr::RecordLit { fields, spread, .. } => {
+                for field in fields.iter() {
+                    f(field.expr);
+                }
+                if let &Some(expr) = spread {
+                    f(expr);
+                }
+            }
+            Expr::Closure { body, .. } => {
+                f(*body);
+            }
+            Expr::BinaryOp { lhs, rhs, .. } => {
+                f(*lhs);
+                f(*rhs);
+            }
+            Expr::Range { lhs, rhs, .. } => {
+                if let &Some(lhs) = rhs {
+                    f(lhs);
+                }
+                if let &Some(rhs) = lhs {
+                    f(rhs);
+                }
+            }
+            Expr::Index { base, index, .. } => {
+                f(*base);
+                f(*index);
+            }
+            Expr::Field { expr, .. }
+            | Expr::Await { expr }
+            | Expr::Cast { expr, .. }
+            | Expr::Ref { expr, .. }
+            | Expr::UnaryOp { expr, .. }
+            | Expr::Box { expr } => {
+                f(*expr);
+            }
+            Expr::Tuple { exprs, .. } => exprs.iter().copied().for_each(f),
+            Expr::Array(a) => match a {
+                Array::ElementList { elements, .. } => elements.iter().copied().for_each(f),
+                Array::Repeat { initializer, repeat } => {
+                    f(*initializer);
+                    f(*repeat)
+                }
+            },
+            &Expr::Assignment { target, value } => {
+                self.walk_exprs_in_pat(target, &mut f);
+                f(value);
+            }
+        }
+    }
+
+    pub fn walk_child_exprs_without_pats(&self, expr_id: ExprId, mut f: impl FnMut(ExprId)) {
+        let expr = &self[expr_id];
+        match expr {
+            Expr::Continue { .. }
+            | Expr::Const(_)
+            | Expr::Missing
+            | Expr::Path(_)
+            | Expr::OffsetOf(_)
+            | Expr::Literal(_)
+            | Expr::Underscore => {}
+            Expr::InlineAsm(it) => it.operands.iter().for_each(|(_, op)| match op {
+                AsmOperand::In { expr, .. }
+                | AsmOperand::Out { expr: Some(expr), .. }
+                | AsmOperand::InOut { expr, .. } => f(*expr),
+                AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                    f(*in_expr);
+                    if let Some(out_expr) = out_expr {
+                        f(*out_expr);
+                    }
+                }
+                AsmOperand::Out { expr: None, .. }
+                | AsmOperand::Const(_)
+                | AsmOperand::Label(_)
+                | AsmOperand::Sym(_) => (),
+            }),
+            Expr::If { condition, then_branch, else_branch } => {
+                f(*condition);
+                f(*then_branch);
+                if let &Some(else_branch) = else_branch {
+                    f(else_branch);
+                }
+            }
+            Expr::Let { expr, .. } => {
+                f(*expr);
+            }
+            Expr::Block { statements, tail, .. }
+            | Expr::Unsafe { statements, tail, .. }
+            | Expr::Async { statements, tail, .. } => {
+                for stmt in statements.iter() {
+                    match stmt {
+                        Statement::Let { initializer, else_branch, .. } => {
+                            if let &Some(expr) = initializer {
+                                f(expr);
+                            }
+                            if let &Some(expr) = else_branch {
+                                f(expr);
+                            }
                         }
                         Statement::Expr { expr: expression, .. } => f(*expression),
                         Statement::Item(_) => (),
@@ -498,10 +634,7 @@ impl Body {
                     f(*repeat)
                 }
             },
-            &Expr::Assignment { target, value } => {
-                self.walk_exprs_in_pat(target, &mut f);
-                f(value);
-            }
+            &Expr::Assignment { target: _, value } => f(value),
         }
     }
 
@@ -672,9 +805,19 @@ impl BodySourceMap {
         node: InFile<&ast::FormatArgsExpr>,
     ) -> Option<(HygieneId, &[(syntax::TextRange, Name)])> {
         let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::Expr>);
-        let (hygiene, names) =
-            self.template_map.as_ref()?.0.get(&self.expr_map.get(&src)?.as_expr()?)?;
+        let (hygiene, names) = self
+            .template_map
+            .as_ref()?
+            .format_args_to_captures
+            .get(&self.expr_map.get(&src)?.as_expr()?)?;
         Some((*hygiene, &**names))
+    }
+
+    pub fn format_args_implicit_capture(
+        &self,
+        capture_expr: ExprId,
+    ) -> Option<InFile<(AstPtr<ast::Expr>, TextRange)>> {
+        self.template_map.as_ref()?.implicit_capture_to_source.get(&capture_expr).copied()
     }
 
     pub fn asm_template_args(
@@ -683,7 +826,8 @@ impl BodySourceMap {
     ) -> Option<(ExprId, &[Vec<(syntax::TextRange, usize)>])> {
         let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::Expr>);
         let expr = self.expr_map.get(&src)?.as_expr()?;
-        Some(expr).zip(self.template_map.as_ref()?.1.get(&expr).map(std::ops::Deref::deref))
+        Some(expr)
+            .zip(self.template_map.as_ref()?.asm_to_captures.get(&expr).map(std::ops::Deref::deref))
     }
 
     /// Get a reference to the body source map's diagnostics.
@@ -709,8 +853,14 @@ impl BodySourceMap {
             types,
         } = self;
         if let Some(template_map) = template_map {
-            template_map.0.shrink_to_fit();
-            template_map.1.shrink_to_fit();
+            let FormatTemplate {
+                format_args_to_captures,
+                asm_to_captures,
+                implicit_capture_to_source,
+            } = &mut **template_map;
+            format_args_to_captures.shrink_to_fit();
+            asm_to_captures.shrink_to_fit();
+            implicit_capture_to_source.shrink_to_fit();
         }
         expr_map.shrink_to_fit();
         expr_map_back.shrink_to_fit();

@@ -548,7 +548,7 @@ macro_rules! impl_arena_copy_decoder {
 
 impl_arena_copy_decoder! {<'tcx>
     Span,
-    rustc_span::symbol::Ident,
+    rustc_span::Ident,
     ty::Variance,
     rustc_span::def_id::DefId,
     rustc_span::def_id::LocalDefId,

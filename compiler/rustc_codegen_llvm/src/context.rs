@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
-use std::ffi::{CStr, c_uint};
+use std::ffi::{CStr, c_char, c_uint};
 use std::str;
 
 use rustc_abi::{HasDataLayout, TargetDataLayout, VariantIdx};
@@ -157,6 +157,16 @@ pub(crate) unsafe fn create_module<'ll>(
         if sess.target.arch.starts_with("mips64") {
             // LLVM 20 updates the mips64 layout to correctly align 128 bit integers to 128 bit.
             // See https://github.com/llvm/llvm-project/pull/112084
+            target_data_layout = target_data_layout.replace("-i128:128", "");
+        }
+        if sess.target.arch.starts_with("powerpc64") {
+            // LLVM 20 updates the powerpc64 layout to correctly align 128 bit integers to 128 bit.
+            // See https://github.com/llvm/llvm-project/pull/118004
+            target_data_layout = target_data_layout.replace("-i128:128", "");
+        }
+        if sess.target.arch.starts_with("wasm32") || sess.target.arch.starts_with("wasm64") {
+            // LLVM 20 updates the wasm(32|64) layout to correctly align 128 bit integers to 128 bit.
+            // See https://github.com/llvm/llvm-project/pull/119204
             target_data_layout = target_data_layout.replace("-i128:128", "");
         }
     }
@@ -589,6 +599,31 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             llvm::set_linkage(g, llvm::Linkage::AppendingLinkage);
             llvm::set_section(g, c"llvm.metadata");
         }
+    }
+
+    pub(crate) fn get_metadata_value(&self, metadata: &'ll Metadata) -> &'ll Value {
+        unsafe { llvm::LLVMMetadataAsValue(self.llcx, metadata) }
+    }
+
+    pub(crate) fn get_function(&self, name: &str) -> Option<&'ll Value> {
+        let name = SmallCStr::new(name);
+        unsafe { llvm::LLVMGetNamedFunction(self.llmod, name.as_ptr()) }
+    }
+
+    pub(crate) fn get_md_kind_id(&self, name: &str) -> u32 {
+        unsafe {
+            llvm::LLVMGetMDKindIDInContext(
+                self.llcx,
+                name.as_ptr() as *const c_char,
+                name.len() as c_uint,
+            )
+        }
+    }
+
+    pub(crate) fn create_metadata(&self, name: String) -> Option<&'ll Metadata> {
+        Some(unsafe {
+            llvm::LLVMMDStringInContext2(self.llcx, name.as_ptr() as *const c_char, name.len())
+        })
     }
 }
 

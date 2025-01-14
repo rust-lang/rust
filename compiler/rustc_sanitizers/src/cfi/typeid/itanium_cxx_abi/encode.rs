@@ -448,10 +448,9 @@ pub(crate) fn encode_ty<'tcx>(
             if let Some(cfi_encoding) = tcx.get_attr(def_id, sym::cfi_encoding) {
                 // Use user-defined CFI encoding for type
                 if let Some(value_str) = cfi_encoding.value_str() {
-                    let value_str = value_str.to_string();
-                    let str = value_str.trim();
-                    if !str.is_empty() {
-                        s.push_str(str);
+                    let value_str = value_str.as_str().trim();
+                    if !value_str.is_empty() {
+                        s.push_str(value_str);
                         // Don't compress user-defined builtin types (see
                         // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-builtin and
                         // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-compression).
@@ -459,7 +458,7 @@ pub(crate) fn encode_ty<'tcx>(
                             "v", "w", "b", "c", "a", "h", "s", "t", "i", "j", "l", "m", "x", "y",
                             "n", "o", "f", "d", "e", "g", "z", "Dh",
                         ];
-                        if !builtin_types.contains(&str) {
+                        if !builtin_types.contains(&value_str) {
                             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
                         }
                     } else {
@@ -621,6 +620,11 @@ pub(crate) fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
+        // FIXME(unsafe_binders): Implement this.
+        ty::UnsafeBinder(_) => {
+            todo!()
+        }
+
         // Trait types
         ty::Dynamic(predicates, region, kind) => {
             // u3dynI<element-type1[..element-typeN]>E, where <element-type> is <predicate>, as
@@ -716,8 +720,7 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
             | hir::definitions::DefPathData::Use
             | hir::definitions::DefPathData::GlobalAsm
             | hir::definitions::DefPathData::MacroNs(..)
-            | hir::definitions::DefPathData::LifetimeNs(..)
-            | hir::definitions::DefPathData::AnonAdt => {
+            | hir::definitions::DefPathData::LifetimeNs(..) => {
                 bug!("encode_ty_name: unexpected `{:?}`", disambiguated_data.data);
             }
         });

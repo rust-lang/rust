@@ -1,6 +1,6 @@
 use std::{
     cell::{Cell, RefCell},
-    fs,
+    env, fs,
     sync::Once,
     time::Duration,
 };
@@ -127,7 +127,34 @@ impl Project<'_> {
     }
 
     pub(crate) fn server(self) -> Server {
+        Project::server_with_lock(self, false)
+    }
+
+    /// `prelock` : Forcefully acquire a lock that will maintain the path to the config dir throughout the whole test.
+    ///
+    /// When testing we set the user config dir by setting an envvar `__TEST_RA_USER_CONFIG_DIR`.
+    /// This value must be maintained until the end of a test case. When tests run in parallel
+    /// this value may change thus making the tests flaky. As such, we use a `MutexGuard` that locks
+    /// the process until `Server` is dropped. To optimize parallelization we use a lock only when it is
+    /// needed, that is when a test uses config directory to do stuff. Our naive approach is to use a lock
+    /// if there is a path to config dir in the test fixture. However, in certain cases we create a
+    /// file in the config dir after server is run, something where our naive approach comes short.
+    /// Using a `prelock` allows us to force a lock when we know we need it.
+    pub(crate) fn server_with_lock(self, config_lock: bool) -> Server {
         static CONFIG_DIR_LOCK: Mutex<()> = Mutex::new(());
+
+        let config_dir_guard = if config_lock {
+            Some({
+                let guard = CONFIG_DIR_LOCK.lock();
+                let test_dir = TestDir::new();
+                let value = test_dir.path().to_owned();
+                env::set_var("__TEST_RA_USER_CONFIG_DIR", &value);
+                (guard, test_dir)
+            })
+        } else {
+            None
+        };
+
         let tmp_dir = self.tmp_dir.unwrap_or_else(|| {
             if self.root_dir_contains_symlink {
                 TestDir::new_symlink()
@@ -160,13 +187,9 @@ impl Project<'_> {
         assert!(mini_core.is_none());
         assert!(toolchain.is_none());
 
-        let mut config_dir_guard = None;
         for entry in fixture {
             if let Some(pth) = entry.path.strip_prefix("/$$CONFIG_DIR$$") {
-                if config_dir_guard.is_none() {
-                    config_dir_guard = Some(CONFIG_DIR_LOCK.lock());
-                }
-                let path = Config::user_config_path().unwrap().join(&pth['/'.len_utf8()..]);
+                let path = Config::user_config_dir_path().unwrap().join(&pth['/'.len_utf8()..]);
                 fs::create_dir_all(path.parent().unwrap()).unwrap();
                 fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
             } else {
@@ -269,12 +292,12 @@ pub(crate) struct Server {
     client: Connection,
     /// XXX: remove the tempdir last
     dir: TestDir,
-    _config_dir_guard: Option<MutexGuard<'static, ()>>,
+    _config_dir_guard: Option<(MutexGuard<'static, ()>, TestDir)>,
 }
 
 impl Server {
     fn new(
-        config_dir_guard: Option<MutexGuard<'static, ()>>,
+        config_dir_guard: Option<(MutexGuard<'static, ()>, TestDir)>,
         dir: TestDir,
         config: Config,
     ) -> Server {

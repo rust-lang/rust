@@ -3,7 +3,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{Decodable, Encodable, HashStable};
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::{Ident, Symbol};
 
 use super::{TyCtxt, Visibility};
 use crate::ty;

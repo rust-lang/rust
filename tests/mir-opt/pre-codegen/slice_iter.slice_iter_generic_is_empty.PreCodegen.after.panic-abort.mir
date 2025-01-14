@@ -15,11 +15,11 @@ fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
             scope 4 {
                 scope 8 (inlined <NonNull<T> as PartialEq>::eq) {
                     let mut _5: std::ptr::NonNull<T>;
+                    let mut _6: *mut T;
+                    let mut _7: *mut T;
                     scope 9 (inlined NonNull::<T>::as_ptr) {
-                        let mut _6: *const T;
                     }
                     scope 10 (inlined NonNull::<T>::as_ptr) {
-                        let mut _7: *const T;
                     }
                 }
             }
@@ -48,13 +48,13 @@ fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
         _4 = copy (*_3);
         StorageDead(_3);
         StorageLive(_6);
-        StorageLive(_7);
         StorageLive(_5);
         _5 = copy ((*_1).0: std::ptr::NonNull<T>);
-        _6 = copy (_5.0: *const T);
+        _6 = copy _5 as *mut T (Transmute);
         StorageDead(_5);
-        _7 = copy (_4.0: *const T);
-        _0 = Eq(copy _6, copy _7);
+        StorageLive(_7);
+        _7 = copy _4 as *mut T (Transmute);
+        _0 = Eq(move _6, move _7);
         StorageDead(_7);
         StorageDead(_6);
         goto -> bb3;

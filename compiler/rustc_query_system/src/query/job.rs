@@ -15,7 +15,7 @@ use rustc_span::{DUMMY_SP, Span};
 use crate::dep_graph::DepContext;
 use crate::error::CycleStack;
 use crate::query::plumbing::CycleError;
-use crate::query::{DepKind, QueryContext, QueryStackFrame};
+use crate::query::{QueryContext, QueryStackFrame};
 
 /// Represents a span and a query key.
 #[derive(Clone, Debug)]
@@ -136,20 +136,18 @@ impl QueryJobId {
 
     #[cold]
     #[inline(never)]
-    pub fn try_find_layout_root(
-        &self,
-        query_map: QueryMap,
-        layout_of_kind: DepKind,
-    ) -> Option<(QueryJobInfo, usize)> {
-        let mut last_layout = None;
-        let mut current_id = Some(*self);
-        let mut depth = 0;
+    pub fn find_dep_kind_root(&self, query_map: QueryMap) -> (QueryJobInfo, usize) {
+        let mut depth = 1;
+        let info = query_map.get(&self).unwrap();
+        let dep_kind = info.query.dep_kind;
+        let mut current_id = info.job.parent;
+        let mut last_layout = (info.clone(), depth);
 
         while let Some(id) = current_id {
             let info = query_map.get(&id).unwrap();
-            if info.query.dep_kind == layout_of_kind {
+            if info.query.dep_kind == dep_kind {
                 depth += 1;
-                last_layout = Some((info.clone(), depth));
+                last_layout = (info.clone(), depth);
             }
             current_id = info.job.parent;
         }

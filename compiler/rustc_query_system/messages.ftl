@@ -21,7 +21,7 @@ query_system_increment_compilation = internal compiler error: encountered increm
 query_system_increment_compilation_note1 = Please follow the instructions below to create a bug report with the provided information
 query_system_increment_compilation_note2 = See <https://github.com/rust-lang/rust/issues/84970> for more information
 
-query_system_layout_of_depth = query depth increased by {$depth} when {$desc}
+query_system_overflow_note = query depth increased by {$depth} when {$desc}
 
 query_system_query_overflow = queries overflow the depth limit!
     .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]` attribute to your crate (`{$crate_name}`)

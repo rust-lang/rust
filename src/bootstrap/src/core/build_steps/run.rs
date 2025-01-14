@@ -270,7 +270,11 @@ impl Step for GenerateCompletions {
             (Bash, builder.src.join("src/etc/completions/x.py.sh")),
             (Zsh, builder.src.join("src/etc/completions/x.py.zsh")),
             (Fish, builder.src.join("src/etc/completions/x.py.fish")),
-            (PowerShell, builder.src.join("src/etc/completions/x.py.ps1"))
+            (PowerShell, builder.src.join("src/etc/completions/x.py.ps1")),
+            (Bash, builder.src.join("src/etc/completions/x.sh")),
+            (Zsh, builder.src.join("src/etc/completions/x.zsh")),
+            (Fish, builder.src.join("src/etc/completions/x.fish")),
+            (PowerShell, builder.src.join("src/etc/completions/x.ps1"))
         );
     }
 

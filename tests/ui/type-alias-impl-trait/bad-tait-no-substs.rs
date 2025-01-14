@@ -3,7 +3,6 @@
 #![feature(type_alias_impl_trait)]
 trait Trait<T> {}
 type Alias<'a, U> = impl Trait<U>;
-//~^ ERROR unconstrained opaque type
 
 pub enum UninhabitedVariants {
     Tuple(Alias),

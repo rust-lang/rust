@@ -62,15 +62,13 @@ fn memusage_linux() -> MemoryUsage {
     // mallinfo2 is very recent, so its presence needs to be detected at runtime.
     // Both are abysmally slow.
 
-    use std::ffi::CStr;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     static MALLINFO2: AtomicUsize = AtomicUsize::new(1);
 
     let mut mallinfo2 = MALLINFO2.load(Ordering::Relaxed);
     if mallinfo2 == 1 {
-        let cstr = CStr::from_bytes_with_nul(b"mallinfo2\0").unwrap();
-        mallinfo2 = unsafe { libc::dlsym(libc::RTLD_DEFAULT, cstr.as_ptr()) } as usize;
+        mallinfo2 = unsafe { libc::dlsym(libc::RTLD_DEFAULT, c"mallinfo2".as_ptr()) } as usize;
         // NB: races don't matter here, since they'll always store the same value
         MALLINFO2.store(mallinfo2, Ordering::Relaxed);
     }

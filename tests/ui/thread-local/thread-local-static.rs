@@ -1,7 +1,6 @@
 //@ edition:2018
 
 #![feature(thread_local)]
-#![feature(const_swap)]
 #![allow(static_mut_refs)]
 
 #[thread_local]

@@ -10,11 +10,11 @@ note: ...which requires computing candidate for `<LazyUpdim<'_, T, <T as TensorD
 LL | trait TensorDimension {
    | ^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires resolving instance `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>::DIM`, completing the cycle
-note: cycle used when computing candidate for `<LazyUpdim<'_, T, { T::DIM }, DIM> as TensorDimension>`
-  --> $DIR/issue-83765.rs:4:1
+note: cycle used when checking assoc item `<impl at $DIR/issue-83765.rs:50:1: 50:94>::size` is compatible with trait definition
+  --> $DIR/issue-83765.rs:51:5
    |
-LL | trait TensorDimension {
-   | ^^^^^^^^^^^^^^^^^^^^^
+LL |     fn size(&self) -> [usize; DIM] {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error[E0391]: cycle detected when resolving instance `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>::DIM`

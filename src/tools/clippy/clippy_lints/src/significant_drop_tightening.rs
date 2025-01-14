@@ -99,16 +99,10 @@ impl<'tcx> LateLintPass<'tcx> for SignificantDropTightening<'tcx> {
                                     snippet(cx, apa.last_bind_ident.span, ".."),
                                 )
                             };
-                            diag.span_suggestion_verbose(
-                                apa.first_stmt_span,
+
+                            diag.multipart_suggestion_verbose(
                                 "merge the temporary construction with its single usage",
-                                stmt,
-                                Applicability::MaybeIncorrect,
-                            );
-                            diag.span_suggestion(
-                                apa.last_stmt_span,
-                                "remove separated single usage",
-                                "",
+                                vec![(apa.first_stmt_span, stmt), (apa.last_stmt_span, String::new())],
                                 Applicability::MaybeIncorrect,
                             );
                         },
@@ -288,9 +282,9 @@ impl<'tcx> Visitor<'tcx> for StmtsChecker<'_, '_, '_, '_, 'tcx> {
                 }
             {
                 let mut apa = AuxParamsAttr {
-                    first_bind_ident: ident,
                     first_block_hir_id: self.ap.curr_block_hir_id,
                     first_block_span: self.ap.curr_block_span,
+                    first_bind_ident: ident,
                     first_method_span: {
                         let expr_or_init = expr_or_init(self.cx, expr);
                         if let hir::ExprKind::MethodCall(_, local_expr, _, span) = expr_or_init.kind {
@@ -401,8 +395,8 @@ impl Default for AuxParamsAttr {
             counter: 0,
             has_expensive_expr_after_last_attr: false,
             first_block_hir_id: HirId::INVALID,
-            first_bind_ident: Ident::empty(),
             first_block_span: DUMMY_SP,
+            first_bind_ident: Ident::empty(),
             first_method_span: DUMMY_SP,
             first_stmt_span: DUMMY_SP,
             last_bind_ident: Ident::empty(),

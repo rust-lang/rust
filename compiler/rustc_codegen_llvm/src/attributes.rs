@@ -1,6 +1,6 @@
 //! Set and unset common attributes on LLVM values.
 
-use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_attr_parsing::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, PatchableFunctionEntry};
@@ -37,7 +37,9 @@ fn inline_attr<'ll>(cx: &CodegenCx<'ll, '_>, inline: InlineAttr) -> Option<&'ll 
     }
     match inline {
         InlineAttr::Hint => Some(AttributeKind::InlineHint.create_attr(cx.llcx)),
-        InlineAttr::Always => Some(AttributeKind::AlwaysInline.create_attr(cx.llcx)),
+        InlineAttr::Always | InlineAttr::Force { .. } => {
+            Some(AttributeKind::AlwaysInline.create_attr(cx.llcx))
+        }
         InlineAttr::Never => {
             if cx.sess().target.arch != "amdgpu" {
                 Some(AttributeKind::NoInline.create_attr(cx.llcx))
@@ -395,17 +397,9 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         to_add.push(MemoryEffects::None.create_attr(cx.llcx));
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
-        to_add.push(AttributeKind::Naked.create_attr(cx.llcx));
-        // HACK(jubilee): "indirect branch tracking" works by attaching prologues to functions.
-        // And it is a module-level attribute, so the alternative is pulling naked functions into
-        // new LLVM modules. Otherwise LLVM's "naked" functions come with endbr prefixes per
-        // https://github.com/rust-lang/rust/issues/98768
-        to_add.push(AttributeKind::NoCfCheck.create_attr(cx.llcx));
-        if llvm_util::get_version() < (19, 0, 0) {
-            // Prior to LLVM 19, branch-target-enforcement was disabled by setting the attribute to
-            // the string "false". Now it is disabled by absence of the attribute.
-            to_add.push(llvm::CreateAttrStringValue(cx.llcx, "branch-target-enforcement", "false"));
-        }
+        // do nothing; a naked function is converted into an extern function
+        // and a global assembly block. LLVM's support for naked functions is
+        // not used.
     } else {
         // Do not set sanitizer attributes for naked functions.
         to_add.extend(sanitize_attrs(cx, codegen_fn_attrs.no_sanitize));
@@ -480,7 +474,11 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         let allocated_pointer = AttributeKind::AllocatedPointer.create_attr(cx.llcx);
         attributes::apply_to_llfn(llfn, AttributePlace::Argument(0), &[allocated_pointer]);
     }
-    if let Some(align) = codegen_fn_attrs.alignment {
+    // function alignment can be set globally with the `-Zmin-function-alignment=<n>` flag;
+    // the alignment from a `#[repr(align(<n>))]` is used if it specifies a higher alignment.
+    if let Some(align) =
+        Ord::max(cx.tcx.sess.opts.unstable_opts.min_function_alignment, codegen_fn_attrs.alignment)
+    {
         llvm::set_alignment(llfn, align);
     }
     if let Some(backchain) = backchain_attr(cx) {

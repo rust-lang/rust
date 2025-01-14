@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use rustc_ast::token::{BinOpToken, Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{RefTokenTreeCursor, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{TokenStream, TokenStreamIter, TokenTree};
 use rustc_ast::{ast, ptr};
 use rustc_ast_pretty::pprust;
 use rustc_span::{
@@ -443,7 +443,7 @@ pub(crate) fn rewrite_macro_def(
     }
 
     let ts = def.body.tokens.clone();
-    let mut parser = MacroParser::new(ts.trees());
+    let mut parser = MacroParser::new(ts.iter());
     let parsed_def = match parser.parse() {
         Some(def) => def,
         None => return snippet,
@@ -794,7 +794,7 @@ impl MacroArgParser {
         self.buf.clear();
     }
 
-    fn add_meta_variable(&mut self, iter: &mut RefTokenTreeCursor<'_>) -> Option<()> {
+    fn add_meta_variable(&mut self, iter: &mut TokenStreamIter<'_>) -> Option<()> {
         match iter.next() {
             Some(&TokenTree::Token(
                 Token {
@@ -826,7 +826,7 @@ impl MacroArgParser {
         &mut self,
         inner: Vec<ParsedMacroArg>,
         delim: Delimiter,
-        iter: &mut RefTokenTreeCursor<'_>,
+        iter: &mut TokenStreamIter<'_>,
     ) -> Option<()> {
         let mut buffer = String::new();
         let mut first = true;
@@ -926,7 +926,7 @@ impl MacroArgParser {
 
     /// Returns a collection of parsed macro def's arguments.
     fn parse(mut self, tokens: TokenStream) -> Option<Vec<ParsedMacroArg>> {
-        let mut iter = tokens.trees();
+        let mut iter = tokens.iter();
 
         while let Some(tok) = iter.next() {
             match tok {
@@ -1063,7 +1063,7 @@ fn format_macro_args(
 }
 
 fn span_for_token_stream(token_stream: &TokenStream) -> Option<Span> {
-    token_stream.trees().next().map(|tt| tt.span())
+    token_stream.iter().next().map(|tt| tt.span())
 }
 
 // We should insert a space if the next token is a:
@@ -1179,18 +1179,18 @@ pub(crate) fn macro_style(mac: &ast::MacCall, context: &RewriteContext<'_>) -> D
 // A very simple parser that just parses a macros 2.0 definition into its branches.
 // Currently we do not attempt to parse any further than that.
 struct MacroParser<'a> {
-    toks: RefTokenTreeCursor<'a>,
+    iter: TokenStreamIter<'a>,
 }
 
 impl<'a> MacroParser<'a> {
-    const fn new(toks: RefTokenTreeCursor<'a>) -> Self {
-        Self { toks }
+    const fn new(iter: TokenStreamIter<'a>) -> Self {
+        Self { iter }
     }
 
     // (`(` ... `)` `=>` `{` ... `}`)*
     fn parse(&mut self) -> Option<Macro> {
         let mut branches = vec![];
-        while self.toks.look_ahead(1).is_some() {
+        while self.iter.peek().is_some() {
             branches.push(self.parse_branch()?);
         }
 
@@ -1199,13 +1199,13 @@ impl<'a> MacroParser<'a> {
 
     // `(` ... `)` `=>` `{` ... `}`
     fn parse_branch(&mut self) -> Option<MacroBranch> {
-        let tok = self.toks.next()?;
+        let tok = self.iter.next()?;
         let (lo, args_paren_kind) = match tok {
             TokenTree::Token(..) => return None,
             &TokenTree::Delimited(delimited_span, _, d, _) => (delimited_span.open.lo(), d),
         };
         let args = TokenStream::new(vec![tok.clone()]);
-        match self.toks.next()? {
+        match self.iter.next()? {
             TokenTree::Token(
                 Token {
                     kind: TokenKind::FatArrow,
@@ -1215,7 +1215,7 @@ impl<'a> MacroParser<'a> {
             ) => {}
             _ => return None,
         }
-        let (mut hi, body, whole_body) = match self.toks.next()? {
+        let (mut hi, body, whole_body) = match self.iter.next()? {
             TokenTree::Token(..) => return None,
             TokenTree::Delimited(delimited_span, ..) => {
                 let data = delimited_span.entire().data();
@@ -1237,10 +1237,10 @@ impl<'a> MacroParser<'a> {
                 span,
             },
             _,
-        )) = self.toks.look_ahead(0)
+        )) = self.iter.peek()
         {
             hi = span.hi();
-            self.toks.next();
+            self.iter.next();
         }
         Some(MacroBranch {
             span: mk_sp(lo, hi),

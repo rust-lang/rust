@@ -9,7 +9,7 @@ use rustc_ast::token::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
-use rustc_span::symbol::{Ident, kw};
+use rustc_span::{Ident, kw};
 
 use crate::errors::UnexpectedNonterminal;
 use crate::parser::pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
@@ -174,7 +174,7 @@ impl<'a> Parser<'a> {
             NonterminalKind::Pat(pat_kind) => {
                 NtPat(self.collect_tokens_no_attrs(|this| match pat_kind {
                     PatParam { .. } => this.parse_pat_no_top_alt(None, None),
-                    PatWithOr => this.parse_pat_allow_top_alt(
+                    PatWithOr => this.parse_pat_no_top_guard(
                         None,
                         RecoverComma::No,
                         RecoverColon::No,

@@ -79,7 +79,7 @@ impl SymbolGallery {
 
 // todo: this function now accepts `Session` instead of `ParseSess` and should be relocated
 /// Construct a diagnostic for a language feature error due to the given `span`.
-/// The `feature`'s `Symbol` is the one you used in `unstable.rs` and `rustc_span::symbols`.
+/// The `feature`'s `Symbol` is the one you used in `unstable.rs` and `rustc_span::symbol`.
 #[track_caller]
 pub fn feature_err(
     sess: &Session,

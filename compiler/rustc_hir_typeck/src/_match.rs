@@ -57,7 +57,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // type in that case)
         let mut all_arms_diverge = Diverges::WarnedAlways;
 
-        let expected = orig_expected.adjust_for_branches(self);
+        let expected =
+            orig_expected.try_structurally_resolve_and_adjust_for_branches(self, expr.span);
         debug!(?expected);
 
         let mut coercion = {
@@ -76,12 +77,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut prior_non_diverging_arms = vec![]; // Used only for diagnostics.
         let mut prior_arm = None;
         for arm in arms {
+            self.diverges.set(Diverges::Maybe);
+
             if let Some(e) = &arm.guard {
-                self.diverges.set(Diverges::Maybe);
                 self.check_expr_has_type_or_error(e, tcx.types.bool, |_| {});
+
+                // FIXME: If this is the first arm and the pattern is irrefutable,
+                // e.g. `_` or `x`, and the guard diverges, then the whole match
+                // may also be considered to diverge. We should warn on all subsequent
+                // arms, too, just like we do for diverging scrutinees above.
             }
 
-            self.diverges.set(Diverges::Maybe);
+            // N.B. We don't reset diverges here b/c we want to warn in the arm
+            // if the guard diverges, like: `x if { loop {} } => f()`, and we
+            // also want to consider the arm to diverge itself.
 
             let arm_ty = self.check_expr_with_expectation(arm.body, expected);
             all_arms_diverge &= self.diverges.get();
@@ -382,7 +391,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let hir::Node::Block(block) = node {
             // check that the body's parent is an fn
             let parent = self.tcx.parent_hir_node(self.tcx.parent_hir_id(block.hir_id));
-            if let (Some(expr), hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })) =
+            if let (Some(expr), hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { .. }, .. })) =
                 (&block.expr, parent)
             {
                 // check that the `if` expr without `else` is the fn body's expr

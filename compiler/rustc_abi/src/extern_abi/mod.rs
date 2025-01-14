@@ -1,8 +1,7 @@
 use std::fmt;
 
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 
 #[cfg(test)]
 mod tests;
@@ -193,6 +192,10 @@ pub fn is_enabled(
     s
 }
 
+/// Returns whether the ABI is stable to use.
+///
+/// Note that there is a separate check determining whether the ABI is even supported
+/// on the current target; see `fn is_abi_supported` in `rustc_target::spec`.
 pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
     match name {
         // Stable

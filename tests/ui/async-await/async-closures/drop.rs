@@ -3,7 +3,6 @@
 //@ run-pass
 //@ check-run-results
 
-#![feature(async_closure)]
 #![allow(unused)]
 
 extern crate block_on;
@@ -16,7 +15,7 @@ impl Drop for DropMe {
     }
 }
 
-async fn call_once(f: impl async FnOnce()) {
+async fn call_once(f: impl AsyncFnOnce()) {
     println!("before call");
     let fut = Box::pin(f());
     println!("after call");

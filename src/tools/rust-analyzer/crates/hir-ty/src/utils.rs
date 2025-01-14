@@ -185,7 +185,7 @@ fn direct_super_traits_cb(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(
                     }
                 };
                 match is_trait {
-                    true => bound.as_path(),
+                    true => bound.as_path(&generic_params.types_map),
                     false => None,
                 }
             }
@@ -270,17 +270,15 @@ pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
         return true;
     }
 
-    let is_intrinsic = db.attrs(func.into()).by_key(&sym::rustc_intrinsic).exists()
-        || data.abi.as_ref() == Some(&sym::rust_dash_intrinsic);
-
     let loc = func.lookup(db.upcast());
     match loc.container {
         hir_def::ItemContainerId::ExternBlockId(block) => {
-            if is_intrinsic || {
-                let id = block.lookup(db.upcast()).id;
-                id.item_tree(db.upcast())[id.value].abi.as_ref() == Some(&sym::rust_dash_intrinsic)
-            } {
-                // Intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
+            let id = block.lookup(db.upcast()).id;
+            let is_intrinsic_block =
+                id.item_tree(db.upcast())[id.value].abi.as_ref() == Some(&sym::rust_dash_intrinsic);
+            if is_intrinsic_block {
+                // legacy intrinsics
+                // extern "rust-intrinsic" intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
                 !db.attrs(func.into()).by_key(&sym::rustc_safe_intrinsic).exists()
             } else {
                 // Function in an `extern` block are always unsafe to call, except when
@@ -288,7 +286,6 @@ pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
                 !data.is_safe()
             }
         }
-        _ if is_intrinsic => !db.attrs(func.into()).by_key(&sym::rustc_safe_intrinsic).exists(),
         _ => false,
     }
 }
@@ -334,6 +331,7 @@ pub(crate) fn detect_variant_from_bytes<'a>(
     e: EnumId,
 ) -> Option<(EnumVariantId, &'a Layout)> {
     let (var_id, var_layout) = match &layout.variants {
+        hir_def::layout::Variants::Empty => unreachable!(),
         hir_def::layout::Variants::Single { index } => {
             (db.enum_data(e).variants[index.0].0, layout)
         }
@@ -375,7 +373,7 @@ impl OpaqueInternableThing for InTypeConstIdMetadata {
     }
 
     fn dyn_eq(&self, other: &dyn OpaqueInternableThing) -> bool {
-        other.as_any().downcast_ref::<Self>().map_or(false, |x| self == x)
+        other.as_any().downcast_ref::<Self>() == Some(self)
     }
 
     fn dyn_clone(&self) -> Box<dyn OpaqueInternableThing> {

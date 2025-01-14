@@ -4,11 +4,9 @@
 // sure that we don't ICE or anything, even if precise closure captures means
 // that we can't actually borrowck successfully.
 
-#![feature(async_closure)]
-
 fn outlives<'a>(_: impl Sized + 'a) {}
 
-async fn call_once(f: impl async FnOnce()) {
+async fn call_once(f: impl AsyncFnOnce()) {
     f().await;
 }
 

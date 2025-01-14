@@ -13,16 +13,15 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, DesugaringKind, Span};
+use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use visit::{Visitor, walk_expr};
 
 use super::errors::{
-    AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks, BaseExpressionDoubleDot,
-    ClosureCannotBeStatic, CoroutineTooManyParameters,
-    FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd, MatchArmWithNoBody,
-    NeverPatternWithBody, NeverPatternWithGuard, UnderscoreExprLhsAssign,
+    AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks, ClosureCannotBeStatic,
+    CoroutineTooManyParameters, FunctionalRecordUpdateDestructuringAssignment,
+    InclusiveRangeWithNoEnd, MatchArmWithNoBody, NeverPatternWithBody, NeverPatternWithGuard,
+    UnderscoreExprLhsAssign,
 };
 use super::{
     GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt,
@@ -103,20 +102,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             let kind = match &e.kind {
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
-                ExprKind::ConstBlock(c) => {
-                    let c = self.with_new_scopes(c.value.span, |this| {
-                        let def_id = this.local_def_id(c.id);
-                        hir::ConstBlock {
-                            def_id,
-                            hir_id: this.lower_node_id(c.id),
-                            body: this.lower_const_body(c.value.span, Some(&c.value)),
-                        }
-                    });
-                    hir::ExprKind::ConstBlock(c)
-                }
+                ExprKind::ConstBlock(c) => hir::ExprKind::ConstBlock(self.lower_const_block(c)),
                 ExprKind::Repeat(expr, count) => {
                     let expr = self.lower_expr(expr);
-                    let count = self.lower_array_length(count);
+                    let count = self.lower_array_length_to_const_arg(count);
                     hir::ExprKind::Repeat(expr, count)
                 }
                 ExprKind::Tup(elts) => hir::ExprKind::Tup(self.lower_exprs(elts)),
@@ -154,18 +143,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let ohs = self.lower_expr(ohs);
                     hir::ExprKind::Unary(op, ohs)
                 }
-                ExprKind::Lit(token_lit) => {
-                    let lit_kind = match LitKind::from_token_lit(*token_lit) {
-                        Ok(lit_kind) => lit_kind,
-                        Err(err) => {
-                            let guar =
-                                report_lit_error(&self.tcx.sess.psess, err, *token_lit, e.span);
-                            LitKind::Err(guar)
-                        }
-                    };
-                    let lit = self.arena.alloc(respan(self.lower_span(e.span), lit_kind));
-                    hir::ExprKind::Lit(lit)
-                }
+                ExprKind::Lit(token_lit) => hir::ExprKind::Lit(self.lower_lit(token_lit, e.span)),
                 ExprKind::IncludedBytes(bytes) => {
                     let lit = self.arena.alloc(respan(
                         self.lower_span(e.span),
@@ -357,12 +335,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ),
                 ExprKind::Struct(se) => {
                     let rest = match &se.rest {
-                        StructRest::Base(e) => Some(self.lower_expr(e)),
-                        StructRest::Rest(sp) => {
-                            let guar = self.dcx().emit_err(BaseExpressionDoubleDot { span: *sp });
-                            Some(&*self.arena.alloc(self.expr_err(*sp, guar)))
-                        }
-                        StructRest::None => None,
+                        StructRest::Base(e) => hir::StructTailExpr::Base(self.lower_expr(e)),
+                        StructRest::Rest(sp) => hir::StructTailExpr::DefaultFields(*sp),
+                        StructRest::None => hir::StructTailExpr::None,
                     };
                     hir::ExprKind::Struct(
                         self.arena.alloc(self.lower_qpath(
@@ -382,6 +357,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Yield(opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
                 ExprKind::Err(guar) => hir::ExprKind::Err(*guar),
 
+                ExprKind::UnsafeBinderCast(kind, expr, ty) => hir::ExprKind::UnsafeBinderCast(
+                    *kind,
+                    self.lower_expr(expr),
+                    ty.as_ref().map(|ty| {
+                        self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Cast))
+                    }),
+                ),
+
                 ExprKind::Dummy => {
                     span_bug!(e.span, "lowered ExprKind::Dummy")
                 }
@@ -397,6 +380,32 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             hir::Expr { hir_id: expr_hir_id, kind, span: self.lower_span(e.span) }
         })
+    }
+
+    pub(crate) fn lower_const_block(&mut self, c: &AnonConst) -> hir::ConstBlock {
+        self.with_new_scopes(c.value.span, |this| {
+            let def_id = this.local_def_id(c.id);
+            hir::ConstBlock {
+                def_id,
+                hir_id: this.lower_node_id(c.id),
+                body: this.lower_const_body(c.value.span, Some(&c.value)),
+            }
+        })
+    }
+
+    pub(crate) fn lower_lit(
+        &mut self,
+        token_lit: &token::Lit,
+        span: Span,
+    ) -> &'hir Spanned<LitKind> {
+        let lit_kind = match LitKind::from_token_lit(*token_lit) {
+            Ok(lit_kind) => lit_kind,
+            Err(err) => {
+                let guar = report_lit_error(&self.tcx.sess.psess, err, *token_lit, span);
+                LitKind::Err(guar)
+            }
+        };
+        self.arena.alloc(respan(self.lower_span(span), lit_kind))
     }
 
     fn lower_unop(&mut self, u: UnOp) -> hir::UnOp {
@@ -1526,7 +1535,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ExprKind::Struct(
             self.arena.alloc(hir::QPath::LangItem(lang_item, self.lower_span(span))),
             fields,
-            None,
+            hir::StructTailExpr::None,
         )
     }
 

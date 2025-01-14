@@ -59,7 +59,7 @@ pub struct QuestionMark {
     /// As for why we need this in the first place: <https://github.com/rust-lang/rust-clippy/issues/8628>
     try_block_depth_stack: Vec<u32>,
     /// Keeps track of the number of inferred return type closures we are inside, to avoid problems
-    /// with the `Err(x.into())` expansion being ambiguious.
+    /// with the `Err(x.into())` expansion being ambiguous.
     inferred_ret_closure_stack: u16,
 }
 
@@ -251,7 +251,7 @@ fn check_is_none_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Ex
     {
         let mut applicability = Applicability::MachineApplicable;
         let receiver_str = snippet_with_applicability(cx, caller.span, "..", &mut applicability);
-        let by_ref = !caller_ty.is_copy_modulo_regions(cx.tcx, cx.typing_env())
+        let by_ref = !cx.type_is_copy_modulo_regions(caller_ty)
             && !matches!(caller.kind, ExprKind::Call(..) | ExprKind::MethodCall(..));
         let sugg = if let Some(else_inner) = r#else {
             if eq_expr_value(cx, caller, peel_blocks(else_inner)) {

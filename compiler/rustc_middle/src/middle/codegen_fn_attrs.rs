@@ -1,7 +1,7 @@
 use rustc_abi::Align;
-use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_attr_parsing::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
 
 use crate::mir::mono::Linkage;
@@ -28,6 +28,7 @@ pub struct CodegenFnAttrs {
     pub link_ordinal: Option<u16>,
     /// The `#[target_feature(enable = "...")]` attribute and the enabled
     /// features (only enabled features are supported right now).
+    /// Implied target features have already been applied.
     pub target_features: Vec<TargetFeature>,
     /// The `#[linkage = "..."]` attribute on Rust-defined items and the value we found.
     pub linkage: Option<Linkage>,

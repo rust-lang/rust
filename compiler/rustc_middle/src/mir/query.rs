@@ -3,20 +3,17 @@
 use std::cell::Cell;
 use std::fmt::{self, Debug};
 
-use derive_where::derive_where;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::bit_set::{BitMatrix, BitSet};
+use rustc_index::bit_set::BitMatrix;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_span::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::{Span, Symbol};
 use smallvec::SmallVec;
 
 use super::{ConstValue, SourceInfo};
-use crate::mir;
 use crate::ty::fold::fold_regions;
 use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty, TyCtxt};
 
@@ -227,29 +224,22 @@ rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 16);
 /// See also `rustc_const_eval::borrow_check::constraints`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
-#[derive_where(PartialOrd, Ord)]
 pub enum ConstraintCategory<'tcx> {
     Return(ReturnConstraint),
     Yield,
     UseAsConst,
     UseAsStatic,
-    TypeAnnotation,
+    TypeAnnotation(AnnotationSource),
     Cast {
         /// Whether this cast is a coercion that was automatically inserted by the compiler.
         is_implicit_coercion: bool,
         /// Whether this is an unsizing coercion and if yes, this contains the target type.
         /// Region variables are erased to ReErased.
-        #[derive_where(skip)]
         unsize_to: Option<Ty<'tcx>>,
     },
 
-    /// A constraint that came from checking the body of a closure.
-    ///
-    /// We try to get the category that the closure used when reporting this.
-    ClosureBounds,
-
     /// Contains the function type if available.
-    CallArgument(#[derive_where(skip)] Option<Ty<'tcx>>),
+    CallArgument(Option<Ty<'tcx>>),
     CopyBound,
     SizedBound,
     Assignment,
@@ -278,11 +268,20 @@ pub enum ConstraintCategory<'tcx> {
     IllegalUniverse,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
 pub enum ReturnConstraint {
     Normal,
     ClosureUpvar(FieldIdx),
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
+pub enum AnnotationSource {
+    Ascription,
+    Declaration,
+    OpaqueCast,
+    GenericArg,
 }
 
 /// The subject of a `ClosureOutlivesRequirement` -- that is, the thing
@@ -350,31 +349,4 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
 pub struct DestructuredConstant<'tcx> {
     pub variant: Option<VariantIdx>,
     pub fields: &'tcx [(ConstValue<'tcx>, Ty<'tcx>)],
-}
-
-/// Summarizes coverage IDs inserted by the `InstrumentCoverage` MIR pass
-/// (for compiler option `-Cinstrument-coverage`), after MIR optimizations
-/// have had a chance to potentially remove some of them.
-///
-/// Used by the `coverage_ids_info` query.
-#[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable)]
-pub struct CoverageIdsInfo {
-    pub counters_seen: BitSet<mir::coverage::CounterId>,
-    pub expressions_seen: BitSet<mir::coverage::ExpressionId>,
-}
-
-impl CoverageIdsInfo {
-    /// Coverage codegen needs to know how many coverage counters are ever
-    /// incremented within a function, so that it can set the `num-counters`
-    /// argument of the `llvm.instrprof.increment` intrinsic.
-    ///
-    /// This may be less than the highest counter ID emitted by the
-    /// InstrumentCoverage MIR pass, if the highest-numbered counter increments
-    /// were removed by MIR optimizations.
-    pub fn num_counters_after_mir_opts(&self) -> u32 {
-        // FIXME(Zalathar): Currently this treats an unused counter as "used"
-        // if its ID is less than that of the highest counter that really is
-        // used. Fixing this would require adding a renumbering step somewhere.
-        self.counters_seen.last_set_in(..).map_or(0, |max| max.as_u32() + 1)
-    }
 }
