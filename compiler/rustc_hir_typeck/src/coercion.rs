@@ -920,7 +920,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         match b.kind() {
             ty::FnPtr(_, b_hdr) => {
-                let a_sig = a.fn_sig(self.tcx);
+                let mut a_sig = a.fn_sig(self.tcx);
                 if let ty::FnDef(def_id, _) = *a.kind() {
                     // Intrinsics are not coercible to function pointers
                     if self.tcx.intrinsic(def_id).is_some() {
@@ -932,19 +932,20 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         return Err(TypeError::ForceInlineCast);
                     }
 
-                    let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
-                    if matches!(fn_attrs.inline, InlineAttr::Force { .. }) {
-                        return Err(TypeError::ForceInlineCast);
-                    }
-
-                    // FIXME(target_feature): Safe `#[target_feature]` functions could be cast to safe fn pointers (RFC 2396),
-                    // as you can already write that "cast" in user code by wrapping a target_feature fn call in a closure,
-                    // which is safe. This is sound because you already need to be executing code that is satisfying the target
-                    // feature constraints..
                     if b_hdr.safety.is_safe()
                         && self.tcx.codegen_fn_attrs(def_id).safe_target_features
                     {
-                        return Err(TypeError::TargetFeatureCast(def_id));
+                        // Allow the coercion if the current function has all the features that would be
+                        // needed to call the coercee safely.
+                        if let Some(safe_sig) = self.tcx.adjust_target_feature_sig(
+                            def_id,
+                            a_sig,
+                            self.fcx.body_id.into(),
+                        ) {
+                            a_sig = safe_sig;
+                        } else {
+                            return Err(TypeError::TargetFeatureCast(def_id));
+                        }
                     }
                 }
 
