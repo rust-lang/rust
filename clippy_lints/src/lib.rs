@@ -681,7 +681,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(unit_types::UnitTypes));
     store.register_late_pass(move |_| Box::new(loops::Loops::new(conf)));
     store.register_late_pass(|_| Box::<main_recursion::MainRecursion>::default());
-    store.register_late_pass(|_| Box::new(lifetimes::Lifetimes));
+    store.register_late_pass(move |_| Box::new(lifetimes::Lifetimes::new(conf)));
     store.register_late_pass(|_| Box::new(entry::HashMapPass));
     store.register_late_pass(|_| Box::new(minmax::MinMaxPass));
     store.register_late_pass(|_| Box::new(zero_div_zero::ZeroDiv));
