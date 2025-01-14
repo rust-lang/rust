@@ -590,7 +590,7 @@ LL | type Impossible = (str, str);
    = help: the trait `Sized` is not implemented for `str`
    = note: only the last element of a tuple may have a dynamically sized type
 
-error: the type `EmptyUnion` has an unknown layout
+error: the type has an unknown layout
   --> $DIR/debug.rs:83:1
    |
 LL | union EmptyUnion {}
