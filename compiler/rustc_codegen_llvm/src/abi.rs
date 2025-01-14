@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::cmp;
 
 use libc::c_uint;
@@ -312,7 +313,7 @@ impl<'ll, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
-    fn llvm_cconv(&self) -> llvm::CallConv;
+    fn llvm_cconv(&self, cx: &CodegenCx<'ll, 'tcx>) -> llvm::CallConv;
 
     /// Apply attributes to a function declaration/definition.
     fn apply_attrs_llfn(
@@ -404,8 +405,8 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         cx.type_ptr_ext(cx.data_layout().instruction_address_space)
     }
 
-    fn llvm_cconv(&self) -> llvm::CallConv {
-        self.conv.into()
+    fn llvm_cconv(&self, cx: &CodegenCx<'ll, 'tcx>) -> llvm::CallConv {
+        llvm::CallConv::from_conv(self.conv, cx.tcx.sess.target.arch.borrow())
     }
 
     fn apply_attrs_llfn(
@@ -617,7 +618,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             }
         }
 
-        let cconv = self.llvm_cconv();
+        let cconv = self.llvm_cconv(&bx.cx);
         if cconv != llvm::CCallConv {
             llvm::SetInstructionCallConv(callsite, cconv);
         }
@@ -655,8 +656,8 @@ impl<'tcx> AbiBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
     }
 }
 
-impl From<Conv> for llvm::CallConv {
-    fn from(conv: Conv) -> Self {
+impl llvm::CallConv {
+    pub fn from_conv(conv: Conv, arch: &str) -> Self {
         match conv {
             Conv::C
             | Conv::Rust
@@ -666,6 +667,15 @@ impl From<Conv> for llvm::CallConv {
             Conv::Cold => llvm::ColdCallConv,
             Conv::PreserveMost => llvm::PreserveMost,
             Conv::PreserveAll => llvm::PreserveAll,
+            Conv::GpuKernel => {
+                if arch == "amdgpu" {
+                    llvm::AmdgpuKernel
+                } else if arch == "nvptx64" {
+                    llvm::PtxKernel
+                } else {
+                    panic!("Architecture {arch} does not support GpuKernel calling convention");
+                }
+            }
             Conv::AvrInterrupt => llvm::AvrInterrupt,
             Conv::AvrNonBlockingInterrupt => llvm::AvrNonBlockingInterrupt,
             Conv::ArmAapcs => llvm::ArmAapcsCallConv,
