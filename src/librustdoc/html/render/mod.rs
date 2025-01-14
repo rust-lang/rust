@@ -2577,7 +2577,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &Context<'_>, item: &clean
             file_span,
             cx,
             &cx.root_path(),
-            highlight::DecorationInfo(decoration_info),
+            &highlight::DecorationInfo(decoration_info),
             sources::SourceContext::Embedded(sources::ScrapedInfo {
                 needs_expansion,
                 offset: line_min,

@@ -78,7 +78,7 @@ let a = 4;";
         decorations.insert("example2", vec![(22, 32)]);
 
         let mut html = Buffer::new();
-        write_code(&mut html, src, None, Some(DecorationInfo(decorations)));
+        write_code(&mut html, src, None, Some(&DecorationInfo(decorations)));
         expect_file!["fixtures/decorations.html"].assert_eq(&html.into_inner());
     });
 }

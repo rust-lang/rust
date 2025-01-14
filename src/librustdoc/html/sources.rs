@@ -249,7 +249,7 @@ impl SourceCollector<'_, '_> {
                     file_span,
                     self.cx,
                     &root_path,
-                    highlight::DecorationInfo::default(),
+                    &highlight::DecorationInfo::default(),
                     SourceContext::Standalone { file_path },
                 )
             },
@@ -328,7 +328,7 @@ pub(crate) fn print_src(
     file_span: rustc_span::Span,
     context: &Context<'_>,
     root_path: &str,
-    decoration_info: highlight::DecorationInfo,
+    decoration_info: &highlight::DecorationInfo,
     source_context: SourceContext<'_>,
 ) {
     let current_href = context
