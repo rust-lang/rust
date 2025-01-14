@@ -438,6 +438,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "windows-implement",
     "windows-interface",
     "windows-result",
+    "windows-strings",
     "windows-sys",
     "windows-targets",
     "windows_aarch64_gnullvm",
