@@ -149,7 +149,7 @@ fn find_from_definition(
 
     let (search_method, search_trait, return_type) = match method_call.name_ref()?.text().as_str() {
         "into" => ("from", FamousDefs(sema, krate).core_convert_From()?, return_type),
-        // If the mthod is try_into() or parse(), return_type is Result<T, Error>.
+        // If the method is try_into() or parse(), return_type is Result<T, Error>.
         // Get T from type arguments of Result<T, Error>.
         "try_into" => (
             "try_from",
