@@ -2129,6 +2129,8 @@ rustc_queries! {
         eval_always
         desc { "calculating the stability index for the local crate" }
     }
+    /// All available crates in the graph, including those that should not be user-facing
+    /// (such as private crates).
     query crates(_: ()) -> &'tcx [CrateNum] {
         eval_always
         desc { "fetching all foreign CrateNum instances" }
