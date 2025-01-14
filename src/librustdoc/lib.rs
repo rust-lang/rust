@@ -656,7 +656,7 @@ fn opts() -> Vec<RustcOptGroup> {
             FlagMulti,
             "",
             "disable-minification",
-            "diable the minification of CSS/JS files (perma-unstable, do not use with cached files)",
+            "disable the minification of CSS/JS files (perma-unstable, do not use with cached files)",
             "",
         ),
         // deprecated / removed options
