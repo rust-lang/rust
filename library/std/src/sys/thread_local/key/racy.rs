@@ -35,14 +35,14 @@ impl LazyKey {
     }
 
     #[inline]
-    pub fn force(&'static self) -> super::Key {
+    pub fn force(&self) -> super::Key {
         match self.key.load(Ordering::Acquire) {
             KEY_SENTVAL => self.lazy_init() as super::Key,
             n => n as super::Key,
         }
     }
 
-    fn lazy_init(&'static self) -> usize {
+    fn lazy_init(&self) -> usize {
         // POSIX allows the key created here to be KEY_SENTVAL, but the compare_exchange
         // below relies on using KEY_SENTVAL as a sentinel value to check who won the
         // race to set the shared TLS key. As far as I know, there is no
@@ -63,7 +63,6 @@ impl LazyKey {
             key2
         };
         rtassert!(key as usize != KEY_SENTVAL);
-
         match self.key.compare_exchange(
             KEY_SENTVAL,
             key as usize,
@@ -96,34 +95,14 @@ impl LazyKey {
 /// Thus we keep our own thread-local list for that purpose.
 #[cfg(not(target_thread_local))]
 fn lazy_keys() -> &'static crate::cell::RefCell<Vec<&'static LazyKey>> {
-    static KEY: atomic::AtomicUsize = atomic::AtomicUsize::new(KEY_SENTVAL);
+    static KEY: LazyKey = LazyKey::new(Some(drop_lazy_keys));
 
     unsafe extern "C" fn drop_lazy_keys(ptr: *mut u8) {
         let ptr = ptr as *mut crate::cell::RefCell<Vec<&'static LazyKey>>;
-        if !ptr.is_null() {
-            drop(unsafe { Box::from_raw(ptr) });
-        }
+        drop(unsafe { Box::from_raw(ptr) });
     }
 
-    // Allocate a TLS key to store the thread local destructor list.
-    let mut key = KEY.load(Ordering::Acquire) as super::Key;
-    if key == KEY_SENTVAL as _ {
-        let new_key = super::create(Some(drop_lazy_keys));
-        match KEY.compare_exchange_weak(
-            KEY_SENTVAL,
-            new_key as _,
-            Ordering::Release,
-            Ordering::Acquire,
-        ) {
-            Ok(_) => key = new_key,
-            Err(other_key) => {
-                unsafe { super::destroy(new_key) };
-                key = other_key as _;
-            }
-        }
-    }
-
-    // And allocate the list for this thread if necessary.
+    let key = KEY.force();
     let mut ptr = unsafe { super::get(key) as *const crate::cell::RefCell<Vec<&'static LazyKey>> };
     if ptr.is_null() {
         let list = Box::new(crate::cell::RefCell::new(Vec::new()));
