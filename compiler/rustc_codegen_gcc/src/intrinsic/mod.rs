@@ -13,15 +13,16 @@ use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
+#[cfg(feature = "master")]
+use rustc_codegen_ssa::traits::MiscCodegenMethods;
 use rustc_codegen_ssa::traits::{
-    ArgAbiBuilderMethods, BuilderMethods, ConstCodegenMethods, IntrinsicCallBuilderMethods,
+    ArgAbiBuilderMethods, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods,
+    IntrinsicCallBuilderMethods,
 };
-#[cfg(feature = "master")]
-use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, MiscCodegenMethods};
 use rustc_middle::bug;
-use rustc_middle::ty::layout::LayoutOf;
 #[cfg(feature = "master")]
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
+use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::abi::HasDataLayout;
@@ -138,6 +139,18 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     func,
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
+            }
+            sym::fmaf16 => {
+                // TODO(antoyo): use the correct builtin for f16.
+                let func = self.cx.context.get_builtin_function("fmaf");
+                let args: Vec<_> = args
+                    .iter()
+                    .map(|arg| {
+                        self.cx.context.new_cast(self.location, arg.immediate(), self.cx.type_f32())
+                    })
+                    .collect();
+                let result = self.cx.context.new_call(self.location, func, &args);
+                self.cx.context.new_cast(self.location, result, self.cx.type_f16())
             }
             sym::is_val_statically_known => {
                 let a = args[0].immediate();
