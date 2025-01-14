@@ -3224,6 +3224,9 @@ pub fn provide(providers: &mut Providers) {
         ))
     };
 
+    providers.extern_crate_kind =
+        |tcx, id| tcx.resolutions(()).extern_crate_kind_map.get(&id).cloned();
+
     providers.extern_mod_stmt_cnum =
         |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
     providers.is_panic_runtime =

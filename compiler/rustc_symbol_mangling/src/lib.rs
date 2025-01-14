@@ -91,6 +91,7 @@
 #![allow(internal_features)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
+#![feature(assert_matches)]
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
 #![warn(unreachable_pub)]
@@ -105,6 +106,7 @@ use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_session::config::SymbolManglingVersion;
 use tracing::debug;
 
+mod export;
 mod hashed;
 mod legacy;
 mod v0;
@@ -260,7 +262,7 @@ fn compute_symbol_name<'tcx>(
         tcx.symbol_mangling_version(mangling_version_crate)
     };
 
-    let symbol = match mangling_version {
+    let mut symbol = match mangling_version {
         SymbolManglingVersion::Legacy => legacy::mangle(tcx, instance, instantiating_crate),
         SymbolManglingVersion::V0 => v0::mangle(tcx, instance, instantiating_crate),
         SymbolManglingVersion::Hashed => hashed::mangle(tcx, instance, instantiating_crate, || {
@@ -272,6 +274,13 @@ fn compute_symbol_name<'tcx>(
         rustc_demangle::try_demangle(&symbol).is_ok(),
         "compute_symbol_name: `{symbol}` cannot be demangled"
     );
+
+    // FIXME: Demangle support.
+    if tcx.exportable_items(def_id.krate).contains(&def_id) {
+        debug_assert_eq!(mangling_version, SymbolManglingVersion::V0);
+        let hash = export::compute_hash_of_export_fn(tcx, instance);
+        symbol = format!("{}_{}", symbol, hash);
+    }
 
     symbol
 }

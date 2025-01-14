@@ -512,6 +512,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         naked_functions, experimental!(naked)
     ),
 
+    gated!(
+        export, Normal, template!(Word), WarnFollowing,
+        EncodeCrossCrate::Yes, experimental!(export)
+    ),
+
     // Testing:
     gated!(
         test_runner, CrateLevel, template!(List: "path"), ErrorFollowing,

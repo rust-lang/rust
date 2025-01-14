@@ -29,6 +29,7 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_feature::Features;
 use rustc_parse::validate_attr;
 use rustc_session::Session;
+use rustc_session::config::SymbolManglingVersion;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, MISSING_UNSAFE_ON_EXTERN,
     PATTERNS_IN_FNS_WITHOUT_BODY,
@@ -1108,6 +1109,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         span: where_clauses.after.span,
                         help: self.sess.is_nightly_build(),
                     });
+                }
+            }
+            ItemKind::ExternCrate(ast::ExternCrateKind::Stable, _) => {
+                if self.sess.opts.get_symbol_mangling_version() != SymbolManglingVersion::V0 {
+                    self.dcx()
+                        .emit_err(errors::WrongManglingSchemeForExternDyn { span: item.span });
                 }
             }
             _ => {}

@@ -3159,7 +3159,7 @@ impl Item {
 
     pub fn opt_generics(&self) -> Option<&Generics> {
         match &self.kind {
-            ItemKind::ExternCrate(_)
+            ItemKind::ExternCrate(_, _)
             | ItemKind::Use(_)
             | ItemKind::Mod(_, _)
             | ItemKind::ForeignMod(_)
@@ -3361,13 +3361,19 @@ pub struct ConstItem {
     pub expr: Option<P<Expr>>,
 }
 
+#[derive(PartialEq, Eq, Clone, Copy, Encodable, Decodable, Debug, HashStable_Generic)]
+pub enum ExternCrateKind {
+    Stable,
+    Default,
+}
+
 // Adding a new variant? Please update `test_item` in `tests/ui/macros/stringify.rs`.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ItemKind {
     /// An `extern crate` item, with the optional *original* crate name if the crate was renamed.
     ///
     /// E.g., `extern crate foo` or `extern crate foo_bar as foo`.
-    ExternCrate(Option<Symbol>),
+    ExternCrate(ExternCrateKind, Option<Symbol>),
     /// A use declaration item (`use`).
     ///
     /// E.g., `use foo;`, `use foo::bar;` or `use foo::bar as FooBar;`.

@@ -49,8 +49,36 @@ pub enum AnnNode<'a> {
 }
 
 pub trait PpAnn {
+    fn nested(&self, state: &mut State<'_>, node: AnnNode<'_>) {
+        print_default_nested_ann(state, node);
+    }
     fn pre(&self, _state: &mut State<'_>, _node: AnnNode<'_>) {}
     fn post(&self, _state: &mut State<'_>, _node: AnnNode<'_>) {}
+}
+
+pub fn print_default_nested_ann(state: &mut State<'_>, node: AnnNode<'_>) {
+    match node {
+        AnnNode::Block(blk) => {
+            for (i, st) in blk.stmts.iter().enumerate() {
+                match &st.kind {
+                    ast::StmtKind::Expr(expr) if i == blk.stmts.len() - 1 => {
+                        state.maybe_print_comment(st.span.lo());
+                        state.space_if_not_bol();
+                        state.print_expr_outer_attr_style(expr, false, FixupContext::new_stmt());
+                        state.maybe_print_trailing_comment(expr.span, Some(blk.span.hi()));
+                    }
+                    _ => state.print_stmt(st),
+                }
+            }
+        }
+        AnnNode::Crate(_)
+        | AnnNode::Expr(_)
+        | AnnNode::Ident(_)
+        | AnnNode::Item(_)
+        | AnnNode::Name(_)
+        | AnnNode::Pat(_)
+        | AnnNode::SubItem(_) => unimplemented!(),
+    }
 }
 
 struct NoAnn;
@@ -240,9 +268,29 @@ pub fn print_crate<'a>(
     edition: Edition,
     g: &AttrIdGenerator,
 ) -> String {
-    let mut s =
+    let s =
         State { s: pp::Printer::new(), comments: Some(Comments::new(sm, filename, input)), ann };
+    print_crate_with_state(s, krate, is_expanded, edition, g)
+}
 
+pub fn print_crate_with_erased_comments<'a>(
+    krate: &ast::Crate,
+    ann: &'a dyn PpAnn,
+    is_expanded: bool,
+    edition: Edition,
+    g: &AttrIdGenerator,
+) -> String {
+    let s = State { s: pp::Printer::new(), comments: None, ann };
+    print_crate_with_state(s, krate, is_expanded, edition, g)
+}
+
+fn print_crate_with_state<'a>(
+    mut s: State<'a>,
+    krate: &ast::Crate,
+    is_expanded: bool,
+    edition: Edition,
+    g: &AttrIdGenerator,
+) -> String {
     if is_expanded && !krate.attrs.iter().any(|attr| attr.has_name(sym::no_core)) {
         // We need to print `#![no_std]` (and its feature gate) so that
         // compiling pretty-printed source won't inject libstd again.
@@ -1383,17 +1431,7 @@ impl<'a> State<'a> {
 
         let has_attrs = self.print_inner_attributes(attrs);
 
-        for (i, st) in blk.stmts.iter().enumerate() {
-            match &st.kind {
-                ast::StmtKind::Expr(expr) if i == blk.stmts.len() - 1 => {
-                    self.maybe_print_comment(st.span.lo());
-                    self.space_if_not_bol();
-                    self.print_expr_outer_attr_style(expr, false, FixupContext::new_stmt());
-                    self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi()));
-                }
-                _ => self.print_stmt(st),
-            }
-        }
+        self.ann.nested(self, AnnNode::Block(blk));
 
         let empty = !has_attrs && blk.stmts.is_empty();
         self.bclose_maybe_open(blk.span, empty, close_box);

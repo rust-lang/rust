@@ -538,17 +538,19 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         name: Symbol,
         span: Span,
         dep_kind: CrateDepKind,
+        crate_kind: ExternCrateKind,
     ) -> Option<CrateNum> {
         self.used_extern_options.insert(name);
-        match self.maybe_resolve_crate(name, dep_kind, None) {
+        match self.maybe_resolve_crate(name, dep_kind, None, crate_kind) {
             Ok(cnum) => {
                 self.cstore.set_used_recursively(cnum);
                 Some(cnum)
             }
             Err(err) => {
                 debug!("failed to resolve crate {} {:?}", name, dep_kind);
-                let missing_core =
-                    self.maybe_resolve_crate(sym::core, CrateDepKind::Explicit, None).is_err();
+                let missing_core = self
+                    .maybe_resolve_crate(sym::core, CrateDepKind::Explicit, None, crate_kind)
+                    .is_err();
                 err.report(self.sess, span, missing_core);
                 None
             }
@@ -560,6 +562,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         name: Symbol,
         mut dep_kind: CrateDepKind,
         dep: Option<(&'b CratePaths, &'b CrateDep)>,
+        crate_kind: ExternCrateKind,
     ) -> Result<CrateNum, CrateError> {
         info!("resolving crate `{}`", name);
         if !name.as_str().is_ascii() {
@@ -590,6 +593,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 hash,
                 extra_filename,
                 path_kind,
+                crate_kind,
             );
 
             match self.load(&mut locator)? {
@@ -692,7 +696,12 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 CrateDepKind::MacrosOnly => CrateDepKind::MacrosOnly,
                 _ => dep.kind,
             };
-            let cnum = self.maybe_resolve_crate(dep.name, dep_kind, Some((root, &dep)))?;
+            let cnum = self.maybe_resolve_crate(
+                dep.name,
+                dep_kind,
+                Some((root, &dep)),
+                ExternCrateKind::Default,
+            )?;
             crate_num_map.push(cnum);
         }
 
@@ -786,7 +795,9 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         };
         info!("panic runtime not found -- loading {}", name);
 
-        let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else {
+        let Some(cnum) =
+            self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit, ExternCrateKind::Default)
+        else {
             return;
         };
         let data = self.cstore.get_crate_data(cnum);
@@ -815,7 +826,9 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         info!("loading profiler");
 
         let name = Symbol::intern(&self.sess.opts.unstable_opts.profiler_runtime);
-        let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else {
+        let Some(cnum) =
+            self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit, ExternCrateKind::Default)
+        else {
             return;
         };
         let data = self.cstore.get_crate_data(cnum);
@@ -928,7 +941,12 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             if entry.force {
                 let name_interned = Symbol::intern(name);
                 if !self.used_extern_options.contains(&name_interned) {
-                    self.resolve_crate(name_interned, DUMMY_SP, CrateDepKind::Explicit);
+                    self.resolve_crate(
+                        name_interned,
+                        DUMMY_SP,
+                        CrateDepKind::Explicit,
+                        ExternCrateKind::Default,
+                    );
                 }
             }
         }
@@ -1066,7 +1084,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         definitions: &Definitions,
     ) -> Option<CrateNum> {
         match item.kind {
-            ast::ItemKind::ExternCrate(orig_name) => {
+            ast::ItemKind::ExternCrate(kind, orig_name) => {
                 debug!(
                     "resolving extern crate stmt. ident: {} orig_name: {:?}",
                     item.ident, orig_name
@@ -1084,7 +1102,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                     CrateDepKind::Explicit
                 };
 
-                let cnum = self.resolve_crate(name, item.span, dep_kind)?;
+                let cnum = self.resolve_crate(name, item.span, dep_kind, kind)?;
 
                 let path_len = definitions.def_path(def_id).data.len();
                 self.cstore.update_extern_crate(cnum, ExternCrate {
@@ -1100,7 +1118,8 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     }
 
     pub fn process_path_extern(&mut self, name: Symbol, span: Span) -> Option<CrateNum> {
-        let cnum = self.resolve_crate(name, span, CrateDepKind::Explicit)?;
+        let cnum =
+            self.resolve_crate(name, span, CrateDepKind::Explicit, ExternCrateKind::Default)?;
 
         self.cstore.update_extern_crate(cnum, ExternCrate {
             src: ExternCrateSource::Path,
@@ -1114,7 +1133,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     }
 
     pub fn maybe_process_path_extern(&mut self, name: Symbol) -> Option<CrateNum> {
-        self.maybe_resolve_crate(name, CrateDepKind::Explicit, None).ok()
+        self.maybe_resolve_crate(name, CrateDepKind::Explicit, None, ExternCrateKind::Default).ok()
     }
 }
 

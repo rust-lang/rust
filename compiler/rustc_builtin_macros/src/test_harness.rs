@@ -318,7 +318,12 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     // extern crate test
     let test_extern_stmt = ecx.stmt_item(
         sp,
-        ecx.item(sp, test_id, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None)),
+        ecx.item(
+            sp,
+            test_id,
+            ast::AttrVec::new(),
+            ast::ItemKind::ExternCrate(ast::ExternCrateKind::Default, None),
+        ),
     );
 
     // #[rustc_main]

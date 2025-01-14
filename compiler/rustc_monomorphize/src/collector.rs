@@ -973,6 +973,10 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxtAt<'tcx>, instance: Instance<'tcx>) -
         return true;
     }
 
+    if tcx.extern_crate_kind(def_id.krate) == Some(rustc_ast::ExternCrateKind::Stable) {
+        return false;
+    }
+
     if tcx.is_reachable_non_generic(def_id) || instance.upstream_monomorphization(*tcx).is_some() {
         // We can link to the item in question, no instance needed in this crate.
         return false;

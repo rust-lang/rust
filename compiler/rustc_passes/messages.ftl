@@ -627,6 +627,17 @@ passes_pass_by_value =
 
 passes_proc_macro_bad_sig = {$kind} has incorrect signature
 
+passes_unexportable_item = {$descr}
+
+passes_unexportable_adt_with_private_fields = ADT types with private fields are not exportable
+    .note = `{$field_name}` is private
+
+passes_unexportable_priv_item = private items are not exportable
+    .note = is only usable at visibility `{$vis_descr}`
+
+passes_unexportable_type_in_interface = {$desc} with `#[export]` attribute uses type `{$ty}`, which is not exportable
+    .label = not exportable
+
 passes_remove_fields =
     consider removing { $num ->
       [one] this

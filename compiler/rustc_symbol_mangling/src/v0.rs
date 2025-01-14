@@ -28,10 +28,12 @@ pub(super) fn mangle<'tcx>(
     // FIXME(eddyb) this should ideally not be needed.
     let args = tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), instance.args);
 
+    let is_exportable = tcx.exportable_items(def_id.krate).contains(&def_id);
     let prefix = "_R";
     let mut cx: SymbolMangler<'_> = SymbolMangler {
         tcx,
         start_offset: prefix.len(),
+        is_exportable,
         paths: FxHashMap::default(),
         types: FxHashMap::default(),
         consts: FxHashMap::default(),
@@ -78,6 +80,7 @@ pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
     let mut cx = SymbolMangler {
         tcx,
         start_offset: 0,
+        is_exportable: false,
         paths: FxHashMap::default(),
         types: FxHashMap::default(),
         consts: FxHashMap::default(),
@@ -106,6 +109,7 @@ struct SymbolMangler<'tcx> {
     tcx: TyCtxt<'tcx>,
     binders: Vec<BinderLevel>,
     out: String,
+    is_exportable: bool,
 
     /// The length of the prefix in `out` (e.g. 2 for `_R`).
     start_offset: usize,
@@ -753,8 +757,10 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 
     fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
         self.push("C");
-        let stable_crate_id = self.tcx.def_path_hash(cnum.as_def_id()).stable_crate_id();
-        self.push_disambiguator(stable_crate_id.as_u64());
+        if !self.is_exportable {
+            let stable_crate_id = self.tcx.def_path_hash(cnum.as_def_id()).stable_crate_id();
+            self.push_disambiguator(stable_crate_id.as_u64());
+        }
         let name = self.tcx.crate_name(cnum);
         self.push_ident(name.as_str());
         Ok(())

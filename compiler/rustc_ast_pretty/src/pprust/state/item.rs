@@ -155,8 +155,12 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&item.attrs);
         self.ann.pre(self, AnnNode::Item(item));
         match &item.kind {
-            ast::ItemKind::ExternCrate(orig_name) => {
-                self.head(visibility_qualified(&item.vis, "extern crate"));
+            ast::ItemKind::ExternCrate(kind, orig_name) => {
+                let head = match kind {
+                    ast::ExternCrateKind::Default => "extern crate",
+                    ast::ExternCrateKind::Stable => "extern dyn crate",
+                };
+                self.head(visibility_qualified(&item.vis, head));
                 if let &Some(orig_name) = orig_name {
                     self.print_name(orig_name);
                     self.space();

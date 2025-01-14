@@ -1907,3 +1907,42 @@ pub(crate) struct NoSanitize<'a> {
     pub accepted_kind: &'a str,
     pub attr_str: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(passes_unexportable_type_in_interface)]
+pub(crate) struct UnexportableTypeInInterface<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub desc: &'a str,
+    pub ty: &'a str,
+    #[label]
+    pub ty_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_unexportable_item)]
+pub(crate) struct UnexportableItem<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub descr: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_unexportable_priv_item)]
+pub(crate) struct UnexportablePrivItem<'a> {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub vis_note: Span,
+    pub vis_descr: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_unexportable_adt_with_private_fields)]
+pub(crate) struct UnexportableAdtWithPrivFields<'a> {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub vis_note: Span,
+    pub field_name: &'a str,
+}
