@@ -1049,24 +1049,18 @@ unsafe fn embed_bitcode(
         {
             // We don't need custom section flags, create LLVM globals.
             let llconst = common::bytes_in_context(llcx, bitcode);
-            let llglobal = llvm::LLVMAddGlobal(
-                llmod,
-                common::val_ty(llconst),
-                c"rustc.embedded.module".as_ptr(),
-            );
-            llvm::LLVMSetInitializer(llglobal, llconst);
+            let llglobal =
+                llvm::add_global(llmod, common::val_ty(llconst), c"rustc.embedded.module");
+            llvm::set_initializer(llglobal, llconst);
 
             llvm::set_section(llglobal, bitcode_section_name(cgcx));
             llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
             llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
 
             let llconst = common::bytes_in_context(llcx, cmdline.as_bytes());
-            let llglobal = llvm::LLVMAddGlobal(
-                llmod,
-                common::val_ty(llconst),
-                c"rustc.embedded.cmdline".as_ptr(),
-            );
-            llvm::LLVMSetInitializer(llglobal, llconst);
+            let llglobal =
+                llvm::add_global(llmod, common::val_ty(llconst), c"rustc.embedded.cmdline");
+            llvm::set_initializer(llglobal, llconst);
             let section = if cgcx.target_is_like_osx {
                 c"__LLVM,__cmdline"
             } else if cgcx.target_is_like_aix {
@@ -1106,31 +1100,29 @@ fn create_msvc_imps(
     // underscores added in front).
     let prefix = if cgcx.target_arch == "x86" { "\x01__imp__" } else { "\x01__imp_" };
 
-    unsafe {
-        let ptr_ty = Type::ptr_llcx(llcx);
-        let globals = base::iter_globals(llmod)
-            .filter(|&val| {
-                llvm::get_linkage(val) == llvm::Linkage::ExternalLinkage
-                    && llvm::LLVMIsDeclaration(val) == 0
-            })
-            .filter_map(|val| {
-                // Exclude some symbols that we know are not Rust symbols.
-                let name = llvm::get_value_name(val);
-                if ignored(name) { None } else { Some((val, name)) }
-            })
-            .map(move |(val, name)| {
-                let mut imp_name = prefix.as_bytes().to_vec();
-                imp_name.extend(name);
-                let imp_name = CString::new(imp_name).unwrap();
-                (imp_name, val)
-            })
-            .collect::<Vec<_>>();
+    let ptr_ty = Type::ptr_llcx(llcx);
+    let globals = base::iter_globals(llmod)
+        .filter(|&val| {
+            llvm::get_linkage(val) == llvm::Linkage::ExternalLinkage && !llvm::is_declaration(val)
+        })
+        .filter_map(|val| {
+            // Exclude some symbols that we know are not Rust symbols.
+            let name = llvm::get_value_name(val);
+            if ignored(name) { None } else { Some((val, name)) }
+        })
+        .map(move |(val, name)| {
+            let mut imp_name = prefix.as_bytes().to_vec();
+            imp_name.extend(name);
+            let imp_name = CString::new(imp_name).unwrap();
+            (imp_name, val)
+        })
+        .collect::<Vec<_>>();
 
-        for (imp_name, val) in globals {
-            let imp = llvm::LLVMAddGlobal(llmod, ptr_ty, imp_name.as_ptr());
-            llvm::LLVMSetInitializer(imp, val);
-            llvm::set_linkage(imp, llvm::Linkage::ExternalLinkage);
-        }
+    for (imp_name, val) in globals {
+        let imp = llvm::add_global(llmod, ptr_ty, &imp_name);
+
+        llvm::set_initializer(imp, val);
+        llvm::set_linkage(imp, llvm::Linkage::ExternalLinkage);
     }
 
     // Use this function to exclude certain symbols from `__imp` generation.
