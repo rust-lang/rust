@@ -112,6 +112,22 @@ jobs:
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
         if: matrix.free_disk
 
+      - name: free up more disk space
+        if: matrix.free_disk
+        run: |
+          sudo apt purge -y \
+          '^java-*'         \
+          '^groff'          \
+          '^groff-base'     \
+          '^libllvm.*       \
+          '^llvm.*'         \
+          '^gcc'            \
+          '^gcc-11'         \
+          && sudo apt autoremove -y
+
+      - name: Show installed packages ordered by size
+        run: dpkg-query -W --showformat='${Installed-Size} ${Package}\n' | sort -nr
+
       # Rust Log Analyzer can't currently detect the PR number of a GitHub
       # Actions build on its own, so a hint in the log message is needed to
       # point it in the right direction.
