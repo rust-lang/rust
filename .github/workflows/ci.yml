@@ -116,13 +116,13 @@ jobs:
         if: matrix.free_disk
         run: |
           sudo apt purge -y \
-          '^java-*'         \
-          '^groff'          \
-          '^groff-base'     \
-          '^libllvm.*       \
-          '^llvm.*'         \
-          '^gcc'            \
-          '^gcc-11'         \
+            '^java-*'       \
+            'groff'         \
+            'groff-base'    \
+            '^libllvm.*'    \
+            '^llvm.*'       \
+            'gcc'           \
+            'gcc-11'        \
           && sudo apt autoremove -y
 
       - name: Show installed packages ordered by size
