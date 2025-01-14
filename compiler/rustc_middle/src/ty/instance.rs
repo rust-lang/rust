@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::def::Namespace;
+use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::FiniteBitSet;
@@ -498,7 +498,8 @@ impl<'tcx> Instance<'tcx> {
 
     /// Resolves a `(def_id, args)` pair to an (optional) instance -- most commonly,
     /// this is used to find the precise code that will run for a trait method invocation,
-    /// if known.
+    /// if known. This should only be used for functions and consts. If you want to
+    /// resolve an associated type, use [`TyCtxt::try_normalize_erasing_regions`].
     ///
     /// Returns `Ok(None)` if we cannot resolve `Instance` to a specific instance.
     /// For example, in a context like this,
@@ -527,6 +528,23 @@ impl<'tcx> Instance<'tcx> {
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
+        assert_matches!(
+            tcx.def_kind(def_id),
+            DefKind::Fn
+                | DefKind::AssocFn
+                | DefKind::Const
+                | DefKind::AssocConst
+                | DefKind::AnonConst
+                | DefKind::InlineConst
+                | DefKind::Static { .. }
+                | DefKind::Ctor(_, CtorKind::Fn)
+                | DefKind::Closure
+                | DefKind::SyntheticCoroutineBody,
+            "`Instance::try_resolve` should only be used to resolve instances of \
+            functions, statics, and consts; to resolve associated types, use \
+            `try_normalize_erasing_regions`."
+        );
+
         // Rust code can easily create exponentially-long types using only a
         // polynomial recursion depth. Even with the default recursion
         // depth, you can easily get cases that take >2^60 steps to run,

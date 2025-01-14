@@ -68,6 +68,16 @@ impl UnstableFeatures {
     /// If `krate` is [`Some`], then setting `RUSTC_BOOTSTRAP=krate` will enable the nightly
     /// features. Otherwise, only `RUSTC_BOOTSTRAP=1` will work.
     pub fn from_environment(krate: Option<&str>) -> Self {
+        Self::from_environment_value(krate, std::env::var("RUSTC_BOOTSTRAP"))
+    }
+
+    /// Avoid unsafe `std::env::set_var()` by allowing tests to inject
+    /// `std::env::var("RUSTC_BOOTSTRAP")` with the `env_var_rustc_bootstrap`
+    /// arg.
+    fn from_environment_value(
+        krate: Option<&str>,
+        env_var_rustc_bootstrap: Result<String, std::env::VarError>,
+    ) -> Self {
         // `true` if this is a feature-staged build, i.e., on the beta or stable channel.
         let disable_unstable_features =
             option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some_and(|s| s != "0");
@@ -75,7 +85,7 @@ impl UnstableFeatures {
         let is_unstable_crate =
             |var: &str| krate.is_some_and(|name| var.split(',').any(|new_krate| new_krate == name));
 
-        let bootstrap = std::env::var("RUSTC_BOOTSTRAP").ok();
+        let bootstrap = env_var_rustc_bootstrap.ok();
         if let Some(val) = bootstrap.as_deref() {
             match val {
                 val if val == "1" || is_unstable_crate(val) => return UnstableFeatures::Cheat,
