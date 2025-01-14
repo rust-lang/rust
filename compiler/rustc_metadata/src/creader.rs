@@ -32,7 +32,7 @@ use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_span::edition::Edition;
-use rustc_span::{DUMMY_SP, Ident, STDLIB_STABLE_CRATES, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_target::spec::{PanicStrategy, Target, TargetTuple};
 use tracing::{debug, info, trace};
 
@@ -533,27 +533,11 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         private_dep: Option<bool>,
         origin: CrateOrigin<'_>,
     ) -> bool {
-        // Standard library crates are never private.
-        if STDLIB_STABLE_CRATES.contains(&name) {
-            tracing::info!("returning false for {name} is private");
-            return false;
-        }
-
         if matches!(origin, CrateOrigin::Injected) {
             return true;
         }
 
         let extern_private = self.sess.opts.externs.get(name.as_str()).map(|e| e.is_private_dep);
-
-        // Any descendants of `std` should be private. These crates are usually not marked
-        // private in metadata, so we ignore that field.
-        if extern_private.is_none()
-            && let Some(dep) = origin.dep_root()
-            && STDLIB_STABLE_CRATES.contains(&dep.name)
-        {
-            return true;
-        }
-
         match (extern_private, private_dep) {
             // Explicit non-private via `--extern`, explicit non-private from metadata, or
             // unspecified with default to public.
