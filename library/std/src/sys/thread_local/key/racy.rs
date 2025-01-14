@@ -64,7 +64,7 @@ impl LazyKey {
         };
         rtassert!(key as usize != KEY_SENTVAL);
 
-        let final_key = match self.key.compare_exchange(
+        match self.key.compare_exchange(
             KEY_SENTVAL,
             key as usize,
             Ordering::Release,
@@ -77,15 +77,18 @@ impl LazyKey {
                 super::destroy(key);
                 n
             },
-        };
+        }
+    }
 
-        // TODO: This must be called for every thread that uses this LazyKey once!
-        #[cfg(not(target_thread_local))]
-        if self.dtor.is_some() {
-            unsafe { register_dtor(self) };
+    /// Registers destructor to run at process exit.
+    #[cfg(not(target_thread_local))]
+    pub fn register_process_dtor(&'static self) {
+        if self.dtor.is_none() {
+            return;
         }
 
-        final_key
+        crate::sys::thread_local::guard::enable();
+        lazy_keys().borrow_mut().push(self);
     }
 }
 
@@ -131,42 +134,31 @@ fn lazy_keys() -> &'static crate::cell::RefCell<Vec<&'static LazyKey>> {
     unsafe { &*ptr }
 }
 
-/// Registers destructor to run at process exit.
-#[cfg(not(target_thread_local))]
-unsafe fn register_dtor(lazy_key: &'static LazyKey) {
-    crate::sys::thread_local::guard::enable();
-
-    lazy_keys().borrow_mut().push(lazy_key);
-}
-
 /// Run destructors at process exit.
 ///
 /// SAFETY: This will and must only be run by the destructor callback in [`guard`].
 #[cfg(not(target_thread_local))]
 pub unsafe fn run_dtors() {
     let lazy_keys_cell = lazy_keys();
-    let mut lazy_keys = lazy_keys_cell.take();
 
     for _ in 0..5 {
         let mut any_run = false;
-        for lazy_key in &lazy_keys {
-            if let Some(dtor) = &lazy_key.dtor {
-                let key = lazy_key.force();
-                let ptr = unsafe { super::get(key) };
-                if !ptr.is_null() {
-                    unsafe { dtor(ptr) };
-                    unsafe { super::set(key, crate::ptr::null_mut()) };
-                    any_run = true;
+
+        for lazy_key in lazy_keys_cell.take() {
+            let key = lazy_key.force();
+            let ptr = unsafe { super::get(key) };
+            if !ptr.is_null() {
+                // SAFETY: only keys with destructors are registered.
+                unsafe {
+                    let Some(dtor) = &lazy_key.dtor else { crate::hint::unreachable_unchecked() };
+                    dtor(ptr);
                 }
+                any_run = true;
             }
         }
 
-        let mut new_lazy_keys = lazy_keys_cell.borrow_mut();
-
-        if !any_run && new_lazy_keys.is_empty() {
+        if !any_run {
             break;
         }
-
-        lazy_keys.extend(new_lazy_keys.drain(..));
     }
 }
