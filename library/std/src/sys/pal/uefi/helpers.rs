@@ -222,14 +222,14 @@ pub(crate) fn runtime_services() -> Option<NonNull<r_efi::efi::RuntimeServices>>
     NonNull::new(runtime_services)
 }
 
-pub(crate) struct DevicePath(NonNull<r_efi::protocols::device_path::Protocol>);
+pub(crate) struct OwnedDevicePath(NonNull<r_efi::protocols::device_path::Protocol>);
 
-impl DevicePath {
+impl OwnedDevicePath {
     pub(crate) fn from_text(p: &OsStr) -> io::Result<Self> {
         fn inner(
             p: &OsStr,
             protocol: NonNull<r_efi::protocols::device_path_from_text::Protocol>,
-        ) -> io::Result<DevicePath> {
+        ) -> io::Result<OwnedDevicePath> {
             let path_vec = p.encode_wide().chain(Some(0)).collect::<Vec<u16>>();
             if path_vec[..path_vec.len() - 1].contains(&0) {
                 return Err(const_error!(
@@ -242,7 +242,7 @@ impl DevicePath {
                 unsafe { ((*protocol.as_ptr()).convert_text_to_device_path)(path_vec.as_ptr()) };
 
             NonNull::new(path)
-                .map(DevicePath)
+                .map(OwnedDevicePath)
                 .ok_or_else(|| const_error!(io::ErrorKind::InvalidFilename, "Invalid Device Path"))
         }
 
@@ -275,18 +275,27 @@ impl DevicePath {
         ))
     }
 
-    pub(crate) fn as_ptr(&self) -> *mut r_efi::protocols::device_path::Protocol {
+    pub(crate) const fn as_ptr(&self) -> *mut r_efi::protocols::device_path::Protocol {
         self.0.as_ptr()
     }
 }
 
-impl Drop for DevicePath {
+impl Drop for OwnedDevicePath {
     fn drop(&mut self) {
         if let Some(bt) = boot_services() {
             let bt: NonNull<r_efi::efi::BootServices> = bt.cast();
             unsafe {
                 ((*bt.as_ptr()).free_pool)(self.0.as_ptr() as *mut crate::ffi::c_void);
             }
+        }
+    }
+}
+
+impl crate::fmt::Debug for OwnedDevicePath {
+    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+        match device_path_to_text(self.0) {
+            Ok(p) => p.fmt(f),
+            Err(_) => f.debug_struct("OwnedDevicePath").finish_non_exhaustive(),
         }
     }
 }
