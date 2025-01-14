@@ -122,7 +122,7 @@ jobs:
             '^libllvm.*'                 \
             '^llvm.*'                    \
             'gcc'                        \
-            'gcc-11'                     \
+            'gcc-.*'                     \
             'libicu-dev'                 \
             '^vim.*'                     \
             'perl'                       \
