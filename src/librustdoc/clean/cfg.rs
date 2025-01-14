@@ -90,11 +90,11 @@ impl Cfg {
             },
             MetaItemKind::List(ref items) => {
                 let orig_len = items.len();
-                let sub_cfgs =
+                let mut sub_cfgs =
                     items.iter().filter_map(|i| Cfg::parse_nested(i, exclude).transpose());
                 let ret = match name {
-                    sym::all => sub_cfgs.fold(Ok(Cfg::True), |x, y| Ok(x? & y?)),
-                    sym::any => sub_cfgs.fold(Ok(Cfg::False), |x, y| Ok(x? | y?)),
+                    sym::all => sub_cfgs.try_fold(Cfg::True, |x, y| Ok(x & y?)),
+                    sym::any => sub_cfgs.try_fold(Cfg::False, |x, y| Ok(x | y?)),
                     sym::not => {
                         if orig_len == 1 {
                             let mut sub_cfgs = sub_cfgs.collect::<Vec<_>>();
