@@ -911,6 +911,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::ExternAbi {
             ExternAbi::Win64 { unwind } => Abi::Win64 { unwind },
             ExternAbi::SysV64 { unwind } => Abi::SysV64 { unwind },
             ExternAbi::PtxKernel => Abi::PtxKernel,
+            ExternAbi::GpuKernel => Abi::GpuKernel,
             ExternAbi::Msp430Interrupt => Abi::Msp430Interrupt,
             ExternAbi::X86Interrupt => Abi::X86Interrupt,
             ExternAbi::EfiApi => Abi::EfiApi,
