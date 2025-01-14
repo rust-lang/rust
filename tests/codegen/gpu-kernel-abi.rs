@@ -3,6 +3,8 @@
 //@ revisions: amdgpu nvptx
 //@ [amdgpu] compile-flags: --crate-type=rlib --target=amdgcn-amd-amdhsa -Ctarget-cpu=gfx900
 //@ [amdgpu] needs-llvm-components: amdgpu
+// amdgpu target is not yet merged
+//@ [amdgpu] should-fail
 //@ [nvptx] compile-flags: --crate-type=rlib --target=nvptx64-nvidia-cuda
 //@ [nvptx] needs-llvm-components: nvptx
 #![feature(no_core, lang_items, abi_gpu_kernel)]
