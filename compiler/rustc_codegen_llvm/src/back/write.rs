@@ -40,7 +40,7 @@ use crate::errors::{
     WithLlvmError, WriteBytecode,
 };
 use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
-use crate::llvm::{self, DiagnosticInfo, PassManager};
+use crate::llvm::{self, DiagnosticInfo};
 use crate::type_::Type;
 use crate::{LlvmCodegenBackend, ModuleLlvm, base, common, llvm_util};
 
@@ -54,7 +54,7 @@ pub(crate) fn llvm_err<'a>(dcx: DiagCtxtHandle<'_>, err: LlvmError<'a>) -> Fatal
 fn write_output_file<'ll>(
     dcx: DiagCtxtHandle<'_>,
     target: &'ll llvm::TargetMachine,
-    pm: &llvm::PassManager<'ll>,
+    no_builtins: bool,
     m: &'ll llvm::Module,
     output: &Path,
     dwo_output: Option<&Path>,
@@ -63,16 +63,19 @@ fn write_output_file<'ll>(
     verify_llvm_ir: bool,
 ) -> Result<(), FatalError> {
     debug!("write_output_file output={:?} dwo_output={:?}", output, dwo_output);
-    unsafe {
-        let output_c = path_to_c_string(output);
-        let dwo_output_c;
-        let dwo_output_ptr = if let Some(dwo_output) = dwo_output {
-            dwo_output_c = path_to_c_string(dwo_output);
-            dwo_output_c.as_ptr()
-        } else {
-            std::ptr::null()
-        };
-        let result = llvm::LLVMRustWriteOutputFile(
+    let output_c = path_to_c_string(output);
+    let dwo_output_c;
+    let dwo_output_ptr = if let Some(dwo_output) = dwo_output {
+        dwo_output_c = path_to_c_string(dwo_output);
+        dwo_output_c.as_ptr()
+    } else {
+        std::ptr::null()
+    };
+    let result = unsafe {
+        let pm = llvm::LLVMCreatePassManager();
+        llvm::LLVMAddAnalysisPasses(target, pm);
+        llvm::LLVMRustAddLibraryInfo(pm, m, no_builtins);
+        llvm::LLVMRustWriteOutputFile(
             target,
             pm,
             m,
@@ -80,22 +83,22 @@ fn write_output_file<'ll>(
             dwo_output_ptr,
             file_type,
             verify_llvm_ir,
-        );
+        )
+    };
 
-        // Record artifact sizes for self-profiling
-        if result == llvm::LLVMRustResult::Success {
-            let artifact_kind = match file_type {
-                llvm::FileType::ObjectFile => "object_file",
-                llvm::FileType::AssemblyFile => "assembly_file",
-            };
-            record_artifact_size(self_profiler_ref, artifact_kind, output);
-            if let Some(dwo_file) = dwo_output {
-                record_artifact_size(self_profiler_ref, "dwo_file", dwo_file);
-            }
+    // Record artifact sizes for self-profiling
+    if result == llvm::LLVMRustResult::Success {
+        let artifact_kind = match file_type {
+            llvm::FileType::ObjectFile => "object_file",
+            llvm::FileType::AssemblyFile => "assembly_file",
+        };
+        record_artifact_size(self_profiler_ref, artifact_kind, output);
+        if let Some(dwo_file) = dwo_output {
+            record_artifact_size(self_profiler_ref, "dwo_file", dwo_file);
         }
-
-        result.into_result().map_err(|()| llvm_err(dcx, LlvmError::WriteOutput { path: output }))
     }
+
+    result.into_result().map_err(|()| llvm_err(dcx, LlvmError::WriteOutput { path: output }))
 }
 
 pub(crate) fn create_informational_target_machine(
@@ -755,31 +758,6 @@ pub(crate) unsafe fn codegen(
             create_msvc_imps(cgcx, llcx, llmod);
         }
 
-        // A codegen-specific pass manager is used to generate object
-        // files for an LLVM module.
-        //
-        // Apparently each of these pass managers is a one-shot kind of
-        // thing, so we create a new one for each type of output. The
-        // pass manager passed to the closure should be ensured to not
-        // escape the closure itself, and the manager should only be
-        // used once.
-        unsafe fn with_codegen<'ll, F, R>(
-            tm: &'ll llvm::TargetMachine,
-            llmod: &'ll llvm::Module,
-            no_builtins: bool,
-            f: F,
-        ) -> R
-        where
-            F: FnOnce(&'ll mut PassManager<'ll>) -> R,
-        {
-            unsafe {
-                let cpm = llvm::LLVMCreatePassManager();
-                llvm::LLVMAddAnalysisPasses(tm, cpm);
-                llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);
-                f(cpm)
-            }
-        }
-
         // Note that if object files are just LLVM bitcode we write bitcode,
         // copy it to the .o file, and delete the bitcode if it wasn't
         // otherwise requested.
@@ -898,21 +876,17 @@ pub(crate) unsafe fn codegen(
             } else {
                 llmod
             };
-            unsafe {
-                with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                    write_output_file(
-                        dcx,
-                        tm,
-                        cpm,
-                        llmod,
-                        &path,
-                        None,
-                        llvm::FileType::AssemblyFile,
-                        &cgcx.prof,
-                        config.verify_llvm_ir,
-                    )
-                })?;
-            }
+            write_output_file(
+                dcx,
+                tm,
+                config.no_builtins,
+                llmod,
+                &path,
+                None,
+                llvm::FileType::AssemblyFile,
+                &cgcx.prof,
+                config.verify_llvm_ir,
+            )?;
         }
 
         match config.emit_obj {
@@ -936,21 +910,17 @@ pub(crate) unsafe fn codegen(
                     (_, SplitDwarfKind::Split) => Some(dwo_out.as_path()),
                 };
 
-                unsafe {
-                    with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                        write_output_file(
-                            dcx,
-                            tm,
-                            cpm,
-                            llmod,
-                            &obj_out,
-                            dwo_out,
-                            llvm::FileType::ObjectFile,
-                            &cgcx.prof,
-                            config.verify_llvm_ir,
-                        )
-                    })?;
-                }
+                write_output_file(
+                    dcx,
+                    tm,
+                    config.no_builtins,
+                    llmod,
+                    &obj_out,
+                    dwo_out,
+                    llvm::FileType::ObjectFile,
+                    &cgcx.prof,
+                    config.verify_llvm_ir,
+                )?;
             }
 
             EmitObj::Bitcode => {
