@@ -11,7 +11,7 @@ impl Foo {
         //~^ ERROR invalid generic `self` parameter type
         //~| ERROR destructor of `R` cannot be evaluated at compile-time
         self.0
-        //~^ ERROR cannot perform conditionally-const deref coercion on `R` in constant functions
+        //~^ ERROR cannot perform non-const deref coercion on `R` in constant functions
     }
 }
 
