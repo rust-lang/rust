@@ -690,7 +690,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 if with_reduced_queries() {
                     p!(print_def_path(def_id, args));
                 } else {
-                    let sig = self.tcx().fn_sig(def_id).instantiate(self.tcx(), args);
+                    let mut sig = self.tcx().fn_sig(def_id).instantiate(self.tcx(), args);
+                    if self.tcx().codegen_fn_attrs(def_id).safe_target_features {
+                        p!("#[target_features] ");
+                        sig = sig.map_bound(|mut sig| {
+                            sig.safety = hir::Safety::Safe;
+                            sig
+                        });
+                    }
                     p!(print(sig), " {{", print_value_path(def_id, args), "}}");
                 }
             }
