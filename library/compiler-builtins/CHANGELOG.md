@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.144](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.143...compiler_builtins-v0.1.144) - 2025-01-15
+
+### Other
+
+- Eliminate the use of `public_test_dep!`
+
 ## [0.1.143](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.142...compiler_builtins-v0.1.143) - 2025-01-15
 
 ### Other
