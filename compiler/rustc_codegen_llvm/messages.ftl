@@ -10,11 +10,6 @@ codegen_llvm_dynamic_linking_with_lto =
 
 codegen_llvm_fixed_x18_invalid_arch = the `-Zfixed-x18` flag is not supported on the `{$arch}` architecture
 
-codegen_llvm_forbidden_ctarget_feature =
-    target feature `{$feature}` cannot be {$enabled} with `-Ctarget-feature`: {$reason}
-    .note = this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-codegen_llvm_forbidden_ctarget_feature_issue = for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>
-
 codegen_llvm_from_llvm_diag = {$message}
 
 codegen_llvm_from_llvm_optimization_diag = {$filename}:{$line}:{$column} {$pass_name} ({$kind}): {$message}
@@ -75,10 +70,6 @@ codegen_llvm_unknown_ctarget_feature_prefix =
     .note = features must begin with a `+` to enable or `-` to disable it
 
 codegen_llvm_unknown_debuginfo_compression = unknown debuginfo compression algorithm {$algorithm} - will fall back to uncompressed debuginfo
-
-codegen_llvm_unstable_ctarget_feature =
-    unstable feature specified for `-Ctarget-feature`: `{$feature}`
-    .note = this feature is not stably supported; its behavior can change in the future
 
 codegen_llvm_write_bytecode = failed to write bytecode to {$path}: {$err}
 

@@ -5,13 +5,17 @@ use rustc_codegen_ssa::errors::TargetFeatureDisableOrEnable;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_session::Session;
+use rustc_session::features::{StabilityExt, retpoline_features_by_flags};
 use rustc_target::target_features::RUSTC_SPECIFIC_FEATURES;
 use smallvec::{SmallVec, smallvec};
 
-use crate::errors::{
-    ForbiddenCTargetFeature, PossibleFeature, UnknownCTargetFeature, UnknownCTargetFeaturePrefix,
-    UnstableCTargetFeature,
-};
+use crate::errors::{PossibleFeature, UnknownCTargetFeature, UnknownCTargetFeaturePrefix};
+
+fn gcc_features_by_flags(sess: &Session) -> Vec<&str> {
+    let mut features: Vec<&str> = Vec::new();
+    retpoline_features_by_flags(sess, &mut features);
+    features
+}
 
 /// The list of GCC features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
 /// `--target` and similar).
@@ -45,7 +49,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
 
     // Compute implied features
     let mut all_rust_features = vec![];
-    for feature in sess.opts.cg.target_feature.split(',') {
+    for feature in sess.opts.cg.target_feature.split(',').chain(gcc_features_by_flags(sess)) {
         if let Some(feature) = feature.strip_prefix('+') {
             all_rust_features.extend(
                 UnordSet::from(sess.target.implied_target_features(feature))
@@ -94,18 +98,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
                     sess.dcx().emit_warn(unknown_feature);
                 }
                 Some(&(_, stability, _)) => {
-                    if let Err(reason) = stability.toggle_allowed() {
-                        sess.dcx().emit_warn(ForbiddenCTargetFeature {
-                            feature,
-                            enabled: if enable { "enabled" } else { "disabled" },
-                            reason,
-                        });
-                    } else if stability.requires_nightly().is_some() {
-                        // An unstable feature. Warn about using it. (It makes little sense
-                        // to hard-error here since we just warn about fully unknown
-                        // features above).
-                        sess.dcx().emit_warn(UnstableCTargetFeature { feature });
-                    }
+                    stability.verify_feature_enabled_by_flag(sess, enable, feature);
                 }
             }
 
