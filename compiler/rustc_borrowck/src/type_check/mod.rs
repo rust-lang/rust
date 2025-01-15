@@ -2548,30 +2548,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             )
             .apply_closure_requirements(closure_requirements, def_id.to_def_id(), args);
 
-            for (opaque_type_key, hidden_ty) in opaque_types {
+            for (OpaqueTypeKey { def_id, args }, hidden_ty) in opaque_types {
                 let _: Result<_, ErrorGuaranteed> = self.fully_perform_op(
                     Locations::All(hidden_ty.span),
                     ConstraintCategory::OpaqueType,
                     CustomTypeOp::new(
                         |ocx| {
-                            let mut goals = Vec::new();
-                            ocx.infcx.insert_hidden_type(
-                                opaque_type_key,
-                                hidden_ty.span,
-                                self.infcx.param_env,
-                                hidden_ty.ty,
-                                &mut goals,
-                            )?;
-
-                            ocx.register_obligations(goals.into_iter().map(|goal| {
-                                Obligation::new(
-                                    tcx,
-                                    ObligationCause::dummy_with_span(hidden_ty.span),
-                                    goal.param_env,
-                                    goal.predicate,
-                                )
-                            }));
-                            Ok(())
+                            let cause = ObligationCause::dummy_with_span(hidden_ty.span);
+                            let alias = ty::AliasTy::new(tcx, def_id.to_def_id(), args).to_ty(tcx);
+                            ocx.eq(&cause, self.infcx.param_env, alias, hidden_ty.ty)
+                                .map_err(|_e| NoSolution)
                         },
                         "opaque_type_map",
                     ),
