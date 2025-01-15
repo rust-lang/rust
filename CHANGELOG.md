@@ -6066,7 +6066,6 @@ Released 2018-09-13
 [`size_of_in_element_count`]: https://rust-lang.github.io/rust-clippy/master/index.html#size_of_in_element_count
 [`size_of_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#size_of_ref
 [`skip_while_next`]: https://rust-lang.github.io/rust-clippy/master/index.html#skip_while_next
-[`slice_as_bytes`]: https://rust-lang.github.io/rust-clippy/master/index.html#slice_as_bytes
 [`slow_vector_initialization`]: https://rust-lang.github.io/rust-clippy/master/index.html#slow_vector_initialization
 [`stable_sort_primitive`]: https://rust-lang.github.io/rust-clippy/master/index.html#stable_sort_primitive
 [`std_instead_of_alloc`]: https://rust-lang.github.io/rust-clippy/master/index.html#std_instead_of_alloc
