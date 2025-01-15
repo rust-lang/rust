@@ -249,9 +249,18 @@ fn late_report_deprecation(
         return;
     }
 
+    let is_in_effect = depr.is_in_effect();
+    let lint = deprecation_lint(is_in_effect);
+
+    // Calculating message for lint involves calling `self.def_path_str`,
+    // which will by default invoke the expensive `visible_parent_map` query.
+    // Skip all that work if the lint is allowed anyway.
+    if tcx.lint_level_at_node(lint, hir_id).0 == Level::Allow {
+        return;
+    }
+
     let def_path = with_no_trimmed_paths!(tcx.def_path_str(def_id));
     let def_kind = tcx.def_descr(def_id);
-    let is_in_effect = depr.is_in_effect();
 
     let method_span = method_span.unwrap_or(span);
     let suggestion =
@@ -267,7 +276,7 @@ fn late_report_deprecation(
         note: depr.note,
         since_kind: deprecated_since_kind(is_in_effect, depr.since),
     };
-    tcx.emit_node_span_lint(deprecation_lint(is_in_effect), hir_id, method_span, diag);
+    tcx.emit_node_span_lint(lint, hir_id, method_span, diag);
 }
 
 /// Result of `TyCtxt::eval_stability`.
@@ -377,13 +386,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // hierarchy.
                 let depr_attr = &depr_entry.attr;
                 if !skip || depr_attr.is_since_rustc_version() {
-                    // Calculating message for lint involves calling `self.def_path_str`.
-                    // Which by default to calculate visible path will invoke expensive `visible_parent_map` query.
-                    // So we skip message calculation altogether, if lint is allowed.
-                    let lint = deprecation_lint(depr_attr.is_in_effect());
-                    if self.lint_level_at_node(lint, id).0 != Level::Allow {
-                        late_report_deprecation(self, depr_attr, span, method_span, id, def_id);
-                    }
+                    late_report_deprecation(self, depr_attr, span, method_span, id, def_id);
                 }
             };
         }

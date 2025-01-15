@@ -119,7 +119,7 @@ fn merge_stability(
     parent_stability: Option<Stability>,
 ) -> Option<Stability> {
     if let Some(own_stab) = own_stability
-        && let StabilityLevel::Stable { since: own_since, allowed_through_unstable_modules: false } =
+        && let StabilityLevel::Stable { since: own_since, allowed_through_unstable_modules: None } =
             own_stab.level
         && let Some(parent_stab) = parent_stability
         && (parent_stab.is_unstable()
@@ -127,12 +127,12 @@ fn merge_stability(
     {
         parent_stability
     } else if let Some(mut own_stab) = own_stability
-        && let StabilityLevel::Stable { since, allowed_through_unstable_modules: true } =
+        && let StabilityLevel::Stable { since, allowed_through_unstable_modules: Some(_) } =
             own_stab.level
         && parent_stability.is_some_and(|stab| stab.is_stable())
     {
         // this property does not apply transitively through re-exports
-        own_stab.level = StabilityLevel::Stable { since, allowed_through_unstable_modules: false };
+        own_stab.level = StabilityLevel::Stable { since, allowed_through_unstable_modules: None };
         Some(own_stab)
     } else {
         own_stability
