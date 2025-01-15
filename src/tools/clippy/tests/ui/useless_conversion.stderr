@@ -16,11 +16,25 @@ error: useless conversion to the same type: `T`
 LL |     val.into()
    |     ^^^^^^^^^^ help: consider removing `.into()`: `val`
 
+error: this conversion is useless `T` to `T`
+  --> tests/ui/useless_conversion.rs:10:5
+   |
+LL |     val.into()
+   |     ^^^^^^^^^^
+   |
+   = note: `#[deny(self_type_conversion)]` on by default
+
 error: useless conversion to the same type: `i32`
   --> tests/ui/useless_conversion.rs:22:22
    |
 LL |         let _: i32 = 0i32.into();
    |                      ^^^^^^^^^^^ help: consider removing `.into()`: `0i32`
+
+error: this conversion is useless `i32` to `i32`
+  --> tests/ui/useless_conversion.rs:22:22
+   |
+LL |         let _: i32 = 0i32.into();
+   |                      ^^^^^^^^^^^
 
 error: useless conversion to the same type: `std::str::Lines<'_>`
   --> tests/ui/useless_conversion.rs:52:22
@@ -58,6 +72,12 @@ error: useless conversion to the same type: `std::string::String`
 LL |     let _: String = "foo".to_string().into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `"foo".to_string()`
 
+error: this conversion is useless `std::string::String` to `std::string::String`
+  --> tests/ui/useless_conversion.rs:136:21
+   |
+LL |     let _: String = "foo".to_string().into();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: useless conversion to the same type: `std::string::String`
   --> tests/ui/useless_conversion.rs:137:21
    |
@@ -94,6 +114,12 @@ error: useless conversion to the same type: `std::string::String`
 LL |     let _: String = format!("Hello {}", "world").into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `format!("Hello {}", "world")`
 
+error: this conversion is useless `std::string::String` to `std::string::String`
+  --> tests/ui/useless_conversion.rs:142:21
+   |
+LL |     let _: String = format!("Hello {}", "world").into();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: useless conversion to the same type: `i32`
   --> tests/ui/useless_conversion.rs:147:13
    |
@@ -105,6 +131,12 @@ error: useless conversion to the same type: `Foo<'a'>`
    |
 LL |     let _: Foo<'a'> = s2.into();
    |                       ^^^^^^^^^ help: consider removing `.into()`: `s2`
+
+error: this conversion is useless `Foo<'a'>` to `Foo<'a'>`
+  --> tests/ui/useless_conversion.rs:153:23
+   |
+LL |     let _: Foo<'a'> = s2.into();
+   |                       ^^^^^^^^^
 
 error: useless conversion to the same type: `Foo<'a'>`
   --> tests/ui/useless_conversion.rs:155:13
@@ -274,5 +306,45 @@ error: useless conversion to the same type: `T`
 LL |     x.into_iter().map(Into::into).collect()
    |                  ^^^^^^^^^^^^^^^^ help: consider removing
 
-error: aborting due to 36 previous errors
+error: this conversion is useless `T` to `T`
+  --> tests/ui/useless_conversion.rs:10:5
+   |
+LL |     val.into()
+   |     ^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: this conversion is useless `i32` to `i32`
+  --> tests/ui/useless_conversion.rs:22:22
+   |
+LL |         let _: i32 = 0i32.into();
+   |                      ^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: this conversion is useless `std::string::String` to `std::string::String`
+  --> tests/ui/useless_conversion.rs:136:21
+   |
+LL |     let _: String = "foo".to_string().into();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: this conversion is useless `std::string::String` to `std::string::String`
+  --> tests/ui/useless_conversion.rs:142:21
+   |
+LL |     let _: String = format!("Hello {}", "world").into();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: this conversion is useless `Foo<'a'>` to `Foo<'a'>`
+  --> tests/ui/useless_conversion.rs:153:23
+   |
+LL |     let _: Foo<'a'> = s2.into();
+   |                       ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 46 previous errors
 

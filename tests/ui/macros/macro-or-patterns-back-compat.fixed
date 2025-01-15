@@ -2,7 +2,7 @@
 //@ aux-build:or-pattern.rs
 
 #![deny(rust_2021_incompatible_or_patterns)]
-#![allow(unused_macros)]
+#![allow(unused_macros, self_type_conversion)]
 
 #[macro_use]
 extern crate or_pattern;

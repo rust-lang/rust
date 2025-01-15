@@ -95,13 +95,13 @@ macro_rules! expand_combined_late_lint_pass_methods {
 /// runtime.
 #[macro_export]
 macro_rules! declare_combined_late_lint_pass {
-    ([$v:vis $name:ident, [$($pass:ident: $constructor:expr,)*]], $methods:tt) => (
+    ([$v:vis $name:ident$(<$lt:lifetime>)?, [$($pass:ident$(<$inner_lt:lifetime>)?: $constructor:expr,)*]], $methods:tt) => (
         #[allow(non_snake_case)]
-        $v struct $name {
-            $($pass: $pass,)*
+        $v struct $name$(<$lt>)? {
+            $($pass: $pass$(<$inner_lt>)?,)*
         }
 
-        impl $name {
+        impl$(<$lt>)? $name$(<$lt>)? {
             $v fn new() -> Self {
                 Self {
                     $($pass: $constructor,)*
@@ -115,12 +115,12 @@ macro_rules! declare_combined_late_lint_pass {
             }
         }
 
-        impl<'tcx> $crate::LateLintPass<'tcx> for $name {
+        impl<'tcx> $crate::LateLintPass<'tcx> for $name$(<$lt>)? {
             $crate::expand_combined_late_lint_pass_methods!([$($pass),*], $methods);
         }
 
         #[allow(rustc::lint_pass_impl_without_macro)]
-        impl $crate::LintPass for $name {
+        impl$(<$lt>)? $crate::LintPass for $name$(<$lt>)? {
             fn name(&self) -> &'static str {
                 panic!()
             }

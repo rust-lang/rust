@@ -8,6 +8,7 @@ Available lint options:
 
 Lint checks provided by rustc:
 
+    $NAMES  $LEVELS  $MEANINGS                                       self-type-conversion  deny     
     $NAMES  $LEVELS  $MEANINGS
 
 Lint groups provided by rustc:

@@ -1,4 +1,5 @@
 #![feature(proc_macro_quote)]
+#![allow(self_type_conversion)]
 
 extern crate proc_macro;
 

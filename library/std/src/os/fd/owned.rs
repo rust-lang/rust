@@ -2,7 +2,7 @@
 
 #![stable(feature = "io_safety", since = "1.63.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
-
+#![cfg_attr(not(bootstrap), allow(self_type_conversion))]
 use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
