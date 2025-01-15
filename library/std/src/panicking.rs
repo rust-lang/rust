@@ -258,31 +258,34 @@ fn default_hook(info: &PanicHookInfo<'_>) {
     let location = info.location().unwrap();
 
     let msg = payload_as_str(info.payload());
-    let thread = thread::try_current();
-    let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = #[optimize(size)]
     |err: &mut dyn crate::io::Write| {
         // Use a lock to prevent mixed output in multithreading context.
         // Some platforms also require it when printing a backtrace, like `SymFromAddr` on Windows.
         let mut lock = backtrace::lock();
-        // Try to write the panic message to a buffer first to prevent other concurrent outputs
-        // interleaving with it.
-        let mut buffer = [0u8; 512];
-        let mut cursor = crate::io::Cursor::new(&mut buffer[..]);
 
-        let write_msg = |dst: &mut dyn crate::io::Write| {
-            // We add a newline to ensure the panic message appears at the start of a line.
-            writeln!(dst, "\nthread '{name}' panicked at {location}:\n{msg}")
-        };
+        thread::with_current_name(|name| {
+            let name = name.unwrap_or("<unnamed>");
 
-        if write_msg(&mut cursor).is_ok() {
-            let pos = cursor.position() as usize;
-            let _ = err.write_all(&buffer[0..pos]);
-        } else {
-            // The message did not fit into the buffer, write it directly instead.
-            let _ = write_msg(err);
-        };
+            // Try to write the panic message to a buffer first to prevent other concurrent outputs
+            // interleaving with it.
+            let mut buffer = [0u8; 512];
+            let mut cursor = crate::io::Cursor::new(&mut buffer[..]);
+
+            let write_msg = |dst: &mut dyn crate::io::Write| {
+                // We add a newline to ensure the panic message appears at the start of a line.
+                writeln!(dst, "\nthread '{name}' panicked at {location}:\n{msg}")
+            };
+
+            if write_msg(&mut cursor).is_ok() {
+                let pos = cursor.position() as usize;
+                let _ = err.write_all(&buffer[0..pos]);
+            } else {
+                // The message did not fit into the buffer, write it directly instead.
+                let _ = write_msg(err);
+            };
+        });
 
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
