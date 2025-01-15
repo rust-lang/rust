@@ -473,37 +473,64 @@ impl<'a> LintExtractor<'a> {
             .filter(|line| line.starts_with('{'))
             .map(serde_json::from_str)
             .collect::<Result<Vec<serde_json::Value>, _>>()?;
+
         // First try to find the messages with the `code` field set to our lint.
         let matches: Vec<_> = msgs
             .iter()
             .filter(|msg| matches!(&msg["code"]["code"], serde_json::Value::String(s) if s==name))
             .map(|msg| msg["rendered"].as_str().expect("rendered field should exist").to_string())
             .collect();
-        if matches.is_empty() {
-            // Some lints override their code to something else (E0566).
-            // Try to find something that looks like it could be our lint.
-            let matches: Vec<_> = msgs.iter().filter(|msg|
-                matches!(&msg["rendered"], serde_json::Value::String(s) if s.contains(name)))
-                .map(|msg| msg["rendered"].as_str().expect("rendered field should exist").to_string())
-                .collect();
-            if matches.is_empty() {
-                let rendered: Vec<&str> =
-                    msgs.iter().filter_map(|msg| msg["rendered"].as_str()).collect();
-                let non_json: Vec<&str> =
-                    stderr.lines().filter(|line| !line.starts_with('{')).collect();
-                Err(format!(
-                    "did not find lint `{}` in output of example, got:\n{}\n{}",
-                    name,
-                    non_json.join("\n"),
-                    rendered.join("\n")
-                )
-                .into())
-            } else {
-                Ok(matches.join("\n"))
-            }
-        } else {
-            Ok(matches.join("\n"))
+        if !matches.is_empty() {
+            return Ok(matches.join("\n"));
         }
+
+        // Try to detect if an unstable lint forgot to enable a `#![feature(..)]`.
+        // Specifically exclude `test_unstable_lint` which exercises this on purpose.
+        if name != "test_unstable_lint"
+            && msgs.iter().any(|msg| {
+                matches!(&msg["code"]["code"], serde_json::Value::String(s) if s=="unknown_lints")
+                    && matches!(&msg["message"], serde_json::Value::String(s) if s.contains(name))
+            })
+        {
+            let rendered: Vec<&str> =
+                msgs.iter().filter_map(|msg| msg["rendered"].as_str()).collect();
+            let non_json: Vec<&str> =
+                stderr.lines().filter(|line| !line.starts_with('{')).collect();
+            return Err(format!(
+                "did not find lint `{}` in output of example (got unknown_lints)\n\
+                Is the lint possibly misspelled, or does it need a `#![feature(...)]`?\n\
+                Output was:\n\
+                {}\n{}",
+                name,
+                rendered.join("\n"),
+                non_json.join("\n"),
+            )
+            .into());
+        }
+
+        // Some lints override their code to something else (E0566).
+        // Try to find something that looks like it could be our lint.
+        let matches: Vec<_> = msgs
+            .iter()
+            .filter(
+                |msg| matches!(&msg["rendered"], serde_json::Value::String(s) if s.contains(name)),
+            )
+            .map(|msg| msg["rendered"].as_str().expect("rendered field should exist").to_string())
+            .collect();
+        if !matches.is_empty() {
+            return Ok(matches.join("\n"));
+        }
+
+        // Otherwise, give a descriptive error.
+        let rendered: Vec<&str> = msgs.iter().filter_map(|msg| msg["rendered"].as_str()).collect();
+        let non_json: Vec<&str> = stderr.lines().filter(|line| !line.starts_with('{')).collect();
+        Err(format!(
+            "did not find lint `{}` in output of example, got:\n{}\n{}",
+            name,
+            non_json.join("\n"),
+            rendered.join("\n")
+        )
+        .into())
     }
 
     /// Saves the mdbook lint chapters at the given path.
