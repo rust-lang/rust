@@ -1,11 +1,11 @@
 //@ edition: 2024
 //@ run-rustfix
-//@ revisions: classic structural
+//@ revisions: classic2024 structural2024
 //! Tests for `&` patterns matched against `&mut` reference types where the inner pattern attempts
 //! to bind by mutable reference.
 #![allow(incomplete_features)]
-#![cfg_attr(classic, feature(ref_pat_eat_one_layer_2024))]
-#![cfg_attr(structural, feature(ref_pat_eat_one_layer_2024_structural))]
+#![cfg_attr(classic2024, feature(ref_pat_eat_one_layer_2024))]
+#![cfg_attr(structural2024, feature(ref_pat_eat_one_layer_2024_structural))]
 
 pub fn main() {
     if let Some(&Some(ref mut x)) = &mut Some(Some(0)) {
@@ -32,6 +32,6 @@ pub fn main() {
     let _: &mut bool = b;
 
     let &[x] = &mut &mut [0];
-    //[classic]~^ ERROR: cannot borrow as mutable inside an `&` pattern
+    //[classic2024]~^ ERROR: cannot borrow as mutable inside an `&` pattern
     let _: &u32 = x;
 }

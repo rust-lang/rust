@@ -1,9 +1,9 @@
 //@ edition: 2024
-//@ revisions: classic structural
+//@ revisions: classic2024 structural2024
 //! Test diagnostics for binding with `mut` when the default binding mode is by-ref.
 #![allow(incomplete_features)]
-#![cfg_attr(classic, feature(ref_pat_eat_one_layer_2024))]
-#![cfg_attr(structural, feature(ref_pat_eat_one_layer_2024_structural))]
+#![cfg_attr(classic2024, feature(ref_pat_eat_one_layer_2024))]
+#![cfg_attr(structural2024, feature(ref_pat_eat_one_layer_2024_structural))]
 
 pub fn main() {
     struct Foo(u8);
