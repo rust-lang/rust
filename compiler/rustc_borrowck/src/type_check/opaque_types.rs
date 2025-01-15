@@ -74,10 +74,6 @@ pub(super) fn force_regions_to_existential_externals<'tcx>(
                     typeck.constraints,
                 );
                 constraint_conversion.convert(
-                    ty::OutlivesPredicate(external_reg.into(), fr_fn_body),
-                    ConstraintCategory::OpaqueType,
-                );
-                constraint_conversion.convert(
                     ty::OutlivesPredicate(external_reg.into(), r),
                     ConstraintCategory::OpaqueType,
                 );
