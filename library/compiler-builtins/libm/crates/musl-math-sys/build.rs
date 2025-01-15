@@ -151,7 +151,6 @@ fn build_musl_math(cfg: &Config) {
         .flag_if_supported("-ffreestanding")
         .flag_if_supported("-nostdinc")
         .define("_ALL_SOURCE", "1")
-        .opt_level(3)
         .define(
             "ROOT_INCLUDE_FEATURES",
             Some(musl_dir.join("include/features.h").to_str().unwrap()),
