@@ -840,6 +840,22 @@ pub(crate) fn get_function_type_for_search(
         | clean::RequiredMethodItem(ref f) => {
             get_fn_inputs_and_outputs(f, tcx, impl_or_trait_generics, cache)
         }
+        clean::ConstantItem(ref c) => make_nullary_fn(&c.type_),
+        clean::StaticItem(ref s) => make_nullary_fn(&s.type_),
+        clean::StructFieldItem(ref t) => {
+            let Some(parent) = parent else {
+                return None;
+            };
+            let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> =
+                Default::default();
+            let output = get_index_type(t, vec![], &mut rgen);
+            let input = RenderType {
+                id: Some(RenderTypeId::DefId(parent)),
+                generics: None,
+                bindings: None,
+            };
+            (vec![input], vec![output], vec![], vec![])
+        }
         _ => return None,
     };
 
@@ -1351,6 +1367,17 @@ fn simplify_fn_constraint<'a>(
         }
     }
     res.push((ty_constrained_assoc, ty_constraints));
+}
+
+/// Create a fake nullary function.
+///
+/// Used to allow type-based search on constants and statics.
+fn make_nullary_fn(
+    clean_type: &clean::Type,
+) -> (Vec<RenderType>, Vec<RenderType>, Vec<Symbol>, Vec<Vec<RenderType>>) {
+    let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> = Default::default();
+    let output = get_index_type(clean_type, vec![], &mut rgen);
+    (vec![], vec![output], vec![], vec![])
 }
 
 /// Return the full list of types when bounds have been resolved.
