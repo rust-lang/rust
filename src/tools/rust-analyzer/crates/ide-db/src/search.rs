@@ -953,14 +953,19 @@ impl<'a> FindUsages<'a> {
 
             // Search for occurrences of the items name
             for offset in Self::match_indices(&text, finder, search_range) {
-                tree.token_at_offset(offset).for_each(|token| {
-                    let Some(str_token) = ast::String::cast(token.clone()) else { return };
+                let ret = tree.token_at_offset(offset).any(|token| {
+                    let Some(str_token) = ast::String::cast(token.clone()) else { return false };
                     if let Some((range, Some(nameres))) =
                         sema.check_for_format_args_template(token, offset)
                     {
-                        if self.found_format_args_ref(file_id, range, str_token, nameres, sink) {}
+                        return self
+                            .found_format_args_ref(file_id, range, str_token, nameres, sink);
                     }
+                    false
                 });
+                if ret {
+                    return;
+                }
 
                 for name in
                     Self::find_nodes(sema, name, &tree, offset).filter_map(ast::NameLike::cast)
