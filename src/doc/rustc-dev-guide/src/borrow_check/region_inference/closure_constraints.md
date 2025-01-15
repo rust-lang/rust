@@ -31,9 +31,9 @@ It starts by calling `fn try_promote_type_test_subject`. This function takes the
 
 We then promote the `lower_bound` into the context of the caller. If the lower bound is equal to a placeholder, we replace it with `'static`
 
-We then look at all universal regions `uv` which are required to outlive `lower_bound`, i.e. for which borrow checking adding region constraints. For each of these we then emit a `ClosureOutlivesRequirement` for non-local universal regions which are known to outlive `uv`.
+We then look at all universal regions `uv` which are required to be outlived by `lower_bound`, i.e. for which borrow checking added region constraints. For each of these we then emit a `ClosureOutlivesRequirement` for all non-local universal regions which are known to outlive `uv`.
 
-As we've already built the region graph of the closure at this point and emitted errors if that one is inconsistent, we are also able to assume that the outlive constraints `uv: lower_bound` hold.
+As we've already built the region graph of the closure at this point and separately check that it is consistent, we are also able to assume the outlive constraints `uv: lower_bound` here.
 
 So if we have a type-outlives bounds we can't prove, e.g. `T: 'local_infer`, we use the region graph to go to universal variables `'a` with `'a: local_infer`. In case `'a` are local, we then use the assumed outlived constraints to go to non-local ones.
 
