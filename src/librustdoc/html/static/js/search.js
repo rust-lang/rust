@@ -2717,9 +2717,26 @@ class DocSearch {
             const normalizedUserQuery = parsedQuery.userQuery.toLowerCase();
             const isMixedCase = normalizedUserQuery !== userQuery;
             const result_list = [];
+            const isReturnTypeQuery = parsedQuery.elems.length === 0 ||
+                typeInfo === "returned";
             for (const result of results.values()) {
                 result.item = this.searchIndex[result.id];
                 result.word = this.searchIndex[result.id].word;
+                if (isReturnTypeQuery) {
+                    // we are doing a return-type based search,
+                    // deprioritize "clone-like" results,
+                    // ie. functions that also take the queried type as an argument.
+                    const hasType = result.item && result.item.type;
+                    if (!hasType) {
+                        continue;
+                    }
+                    const inputs = result.item.type.inputs;
+                    const where_clause = result.item.type.where_clause;
+                    if (containsTypeFromQuery(inputs, where_clause)) {
+                        result.path_dist *= 100;
+                        result.dist *= 100;
+                    }
+                }
                 result_list.push(result);
             }
 
@@ -3536,6 +3553,35 @@ class DocSearch {
                     mgens,
                     unboxingDepth,
                 );
+            }
+            return false;
+        }
+
+        /**
+         * This function checks if the given list contains any
+         * (non-generic) types mentioned in the query.
+         *
+         * @param {Array<FunctionType>} list    - A list of function types.
+         * @param {[FunctionType]} where_clause - Trait bounds for generic items.
+         */
+        function containsTypeFromQuery(list, where_clause) {
+            if (!list) return false;
+            for (const ty of parsedQuery.returned) {
+                // negative type ids are generics
+                if (ty.id < 0) {
+                    continue;
+                }
+                if (checkIfInList(list, ty, where_clause, null, 0)) {
+                    return true;
+                }
+            }
+            for (const ty of parsedQuery.elems) {
+                if (ty.id < 0) {
+                    continue;
+                }
+                if (checkIfInList(list, ty, where_clause, null, 0)) {
+                    return true;
+                }
             }
             return false;
         }
