@@ -868,7 +868,7 @@ fn codegen_stmt<'tcx>(
                         NullOp::UbChecks => {
                             let val = fx.tcx.sess.ub_checks();
                             let val = CValue::by_val(
-                                fx.bcx.ins().iconst(types::I8, i64::try_from(val).unwrap()),
+                                fx.bcx.ins().iconst(types::I8, i64::from(val)),
                                 fx.layout_of(fx.tcx.types.bool),
                             );
                             lval.write_cvalue(fx, val);
@@ -877,7 +877,7 @@ fn codegen_stmt<'tcx>(
                         NullOp::ContractChecks => {
                             let val = fx.tcx.sess.contract_checks();
                             let val = CValue::by_val(
-                                fx.bcx.ins().iconst(types::I8, i64::try_from(val).unwrap()),
+                                fx.bcx.ins().iconst(types::I8, i64::from(val)),
                                 fx.layout_of(fx.tcx.types.bool),
                             );
                             lval.write_cvalue(fx, val);
