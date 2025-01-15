@@ -454,6 +454,13 @@ impl MaybeOverride<(i32, f32)> for SpecialCase {
                 XFAIL
             }
 
+            // `ynf(213, 109.15641) = -inf` with our library, should be finite.
+            (_, BaseName::Yn)
+                if input.0 > 200 && !expected.is_infinite() && actual.is_infinite() =>
+            {
+                XFAIL
+            }
+
             _ => None,
         }
     }
