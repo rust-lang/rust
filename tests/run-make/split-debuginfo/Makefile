@@ -112,8 +112,8 @@ else # Some non-Windows, non-Darwin platforms are not stable, and some are.
 	# - `.dwo` deleted
 	# - `.dwp` present
 	packed-remapped-split:
-		$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=packed -C debuginfo=2 \
-			-Z split-dwarf-kind=split --remap-path-prefix $(TMPDIR)=/a foo.rs -g
+		$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=packed -g \
+			-Z split-dwarf-kind=split --remap-path-prefix $(TMPDIR)=/a foo.rs
 		objdump -Wi $(TMPDIR)/foo | grep DW_AT_GNU_dwo_name | (! grep $(TMPDIR)) || exit 1
 		ls $(TMPDIR)/*.o && exit 1 || exit 0
 		ls $(TMPDIR)/*.dwo && exit 1 || exit 0
@@ -126,8 +126,8 @@ else # Some non-Windows, non-Darwin platforms are not stable, and some are.
 	# - `.dwo` never created
 	# - `.dwp` present
 	packed-remapped-single:
-		$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=packed -C debuginfo=2 \
-			-Z split-dwarf-kind=single --remap-path-prefix $(TMPDIR)=/a foo.rs -g
+		$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=packed -g \
+			-Z split-dwarf-kind=single --remap-path-prefix $(TMPDIR)=/a foo.rs
 		objdump -Wi $(TMPDIR)/foo | grep DW_AT_GNU_dwo_name | (! grep $(TMPDIR)) || exit 1
 		ls $(TMPDIR)/*.o && exit 1 || exit 0
 		ls $(TMPDIR)/*.dwo && exit 1 || exit 0
@@ -140,9 +140,9 @@ else # Some non-Windows, non-Darwin platforms are not stable, and some are.
 	# - `.dwo` never created
 	# - `.dwp` present
 	packed-remapped-scope:
-		$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=packed -C debuginfo=2 \
+		$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=packed -g \
 			-Z split-dwarf-kind=single --remap-path-prefix $(TMPDIR)=/a \
-			-Z remap-path-scope=debuginfo foo.rs -g
+			-Z remap-path-scope=debuginfo foo.rs
 		objdump -Wi $(TMPDIR)/foo | grep DW_AT_GNU_dwo_name | (! grep $(TMPDIR)) || exit 1
 		ls $(TMPDIR)/*.o && exit 1 || exit 0
 		ls $(TMPDIR)/*.dwo && exit 1 || exit 0
@@ -155,9 +155,9 @@ else # Some non-Windows, non-Darwin platforms are not stable, and some are.
 	# - `.dwo` never created
 	# - `.dwp` present
 	packed-remapped-wrong-scope:
-		$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=packed -C debuginfo=2 \
+		$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=packed -g \
 			-Z split-dwarf-kind=single --remap-path-prefix $(TMPDIR)=/a \
-			-Z remap-path-scope=macro foo.rs -g
+			-Z remap-path-scope=macro foo.rs
 		objdump -Wi $(TMPDIR)/foo | grep DW_AT_GNU_dwo_name | (grep $(TMPDIR)) || exit 1
 		ls $(TMPDIR)/*.o && exit 1 || exit 0
 		ls $(TMPDIR)/*.dwo && exit 1 || exit 0
@@ -176,13 +176,13 @@ else # Some non-Windows, non-Darwin platforms are not stable, and some are.
 	# - (main) `.dwp` present
 	packed-crosscrate-split:
 		$(RUSTC) --crate-type lib $(UNSTABLEOPTS) -C split-debuginfo=packed \
-			-Zsplit-dwarf-kind=split -C debuginfo=2 -g bar.rs
+			-Zsplit-dwarf-kind=split -g bar.rs
 		ls $(TMPDIR)/*.rlib
 		ls $(TMPDIR)/*.o && exit 1 || exit 0
 		ls $(TMPDIR)/*.dwo && exit 1 || exit 0
 		ls $(TMPDIR)/*.dwp && exit 1 || exit 0
 		$(RUSTC) --extern bar=$(TMPDIR)/libbar.rlib $(UNSTABLEOPTS) \
-			-C split-debuginfo=packed -Zsplit-dwarf-kind=split -C debuginfo=2 -g main.rs
+			-C split-debuginfo=packed -Zsplit-dwarf-kind=split -g main.rs
 		ls $(TMPDIR)/*.o && exit 1 || exit 0
 		ls $(TMPDIR)/*.dwo && exit 1 || exit 0
 		rm $(TMPDIR)/main.dwp
@@ -198,13 +198,13 @@ else # Some non-Windows, non-Darwin platforms are not stable, and some are.
 	# - (main) `.dwp` present
 	packed-crosscrate-single:
 		$(RUSTC) --crate-type lib $(UNSTABLEOPTS) -C split-debuginfo=packed \
-			-Zsplit-dwarf-kind=single -C debuginfo=2 -g bar.rs
+			-Zsplit-dwarf-kind=single -g bar.rs
 		ls $(TMPDIR)/*.rlib
 		ls $(TMPDIR)/*.o && exit 1 || exit 0
 		ls $(TMPDIR)/*.dwo && exit 1 || exit 0
 		ls $(TMPDIR)/*.dwp && exit 1 || exit 0
 		$(RUSTC) --extern bar=$(TMPDIR)/libbar.rlib $(UNSTABLEOPTS) \
-			-C split-debuginfo=packed -Zsplit-dwarf-kind=single -C debuginfo=2 -g main.rs
+			-C split-debuginfo=packed -Zsplit-dwarf-kind=single -g main.rs
 		ls $(TMPDIR)/*.o && exit 1 || exit 0
 		ls $(TMPDIR)/*.dwo && exit 1 || exit 0
 		rm $(TMPDIR)/main.dwp
@@ -268,8 +268,8 @@ else # Some non-Windows, non-Darwin platforms are not stable, and some are.
 	# - `.dwo` present
 	# - `.dwp` never created
 	unpacked-remapped-split:
-		$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=unpacked -C debuginfo=2 \
-			-Z split-dwarf-kind=split --remap-path-prefix $(TMPDIR)=/a foo.rs -g
+		$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=unpacked -g \
+			-Z split-dwarf-kind=split --remap-path-prefix $(TMPDIR)=/a foo.rs
 		objdump -Wi $(TMPDIR)/foo | grep DW_AT_GNU_dwo_name | (! grep $(TMPDIR)) || exit 1
 		ls $(TMPDIR)/*.o && exit 1 || exit 0
 		rm $(TMPDIR)/*.dwo
@@ -282,8 +282,8 @@ else # Some non-Windows, non-Darwin platforms are not stable, and some are.
 	# - `.dwo` never created
 	# - `.dwp` never created
 	unpacked-remapped-single:
-		$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=unpacked -C debuginfo=2 \
-			-Z split-dwarf-kind=single --remap-path-prefix $(TMPDIR)=/a foo.rs -g
+		$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=unpacked -g \
+			-Z split-dwarf-kind=single --remap-path-prefix $(TMPDIR)=/a foo.rs
 		objdump -Wi $(TMPDIR)/foo | grep DW_AT_GNU_dwo_name | (! grep $(TMPDIR)) || exit 1
 		rm $(TMPDIR)/*.o
 		ls $(TMPDIR)/*.dwo && exit 1 || exit 0
@@ -296,9 +296,9 @@ else # Some non-Windows, non-Darwin platforms are not stable, and some are.
 	# - `.dwo` never created
 	# - `.dwp` never created
 	unpacked-remapped-scope:
-		$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=unpacked -C debuginfo=2 \
+		$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=unpacked -g \
 			-Z split-dwarf-kind=single --remap-path-prefix $(TMPDIR)=/a \
-			-Z remap-path-scope=debuginfo foo.rs -g
+			-Z remap-path-scope=debuginfo foo.rs
 		objdump -Wi $(TMPDIR)/foo | grep DW_AT_GNU_dwo_name | (! grep $(TMPDIR)) || exit 1
 		rm $(TMPDIR)/*.o
 		ls $(TMPDIR)/*.dwo && exit 1 || exit 0
@@ -311,9 +311,9 @@ else # Some non-Windows, non-Darwin platforms are not stable, and some are.
 	# - `.dwo` never created
 	# - `.dwp` never created
 	unpacked-remapped-wrong-scope:
-		$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=unpacked -C debuginfo=2 \
+		$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=unpacked -g \
 			-Z split-dwarf-kind=single --remap-path-prefix $(TMPDIR)=/a \
-			-Z remap-path-scope=macro foo.rs -g
+			-Z remap-path-scope=macro foo.rs
 		objdump -Wi $(TMPDIR)/foo | grep DW_AT_GNU_dwo_name | (grep $(TMPDIR)) || exit 1
 		rm $(TMPDIR)/*.o
 		ls $(TMPDIR)/*.dwo && exit 1 || exit 0
@@ -332,13 +332,13 @@ else # Some non-Windows, non-Darwin platforms are not stable, and some are.
 	# - (main) `.dwp` never created
 	unpacked-crosscrate-split:
 		$(RUSTC) --crate-type lib $(UNSTABLEOPTS) -C split-debuginfo=unpacked \
-			-Zsplit-dwarf-kind=split -C debuginfo=2 -g bar.rs
+			-Zsplit-dwarf-kind=split -g bar.rs
 		ls $(TMPDIR)/*.rlib
 		ls $(TMPDIR)/*.o && exit 1 || exit 0
 		ls $(TMPDIR)/*.dwo
 		ls $(TMPDIR)/*.dwp && exit 1 || exit 0
 		$(RUSTC) --extern bar=$(TMPDIR)/libbar.rlib $(UNSTABLEOPTS) \
-			-C split-debuginfo=unpacked -Zsplit-dwarf-kind=split -C debuginfo=2 -g main.rs
+			-C split-debuginfo=unpacked -Zsplit-dwarf-kind=split -g main.rs
 		ls $(TMPDIR)/*.o && exit 1 || exit 0
 		rm $(TMPDIR)/*.dwo
 		ls $(TMPDIR)/*.dwp && exit 1 || exit 0
@@ -354,13 +354,13 @@ else # Some non-Windows, non-Darwin platforms are not stable, and some are.
 	# - (main) `.dwp` never created
 	unpacked-crosscrate-single:
 		$(RUSTC) --crate-type lib $(UNSTABLEOPTS) -C split-debuginfo=unpacked \
-			-Zsplit-dwarf-kind=single -C debuginfo=2 -g bar.rs
+			-Zsplit-dwarf-kind=single -g bar.rs
 		ls $(TMPDIR)/*.rlib
 		ls $(TMPDIR)/*.o
 		ls $(TMPDIR)/*.dwo && exit 1 || exit 0
 		ls $(TMPDIR)/*.dwp && exit 1 || exit 0
 		$(RUSTC) --extern bar=$(TMPDIR)/libbar.rlib $(UNSTABLEOPTS) \
-			-C split-debuginfo=unpacked -Zsplit-dwarf-kind=single -C debuginfo=2 -g main.rs
+			-C split-debuginfo=unpacked -Zsplit-dwarf-kind=single -g main.rs
 		ls $(TMPDIR)/*.o
 		ls $(TMPDIR)/*.dwo && exit 1 || exit 0
 		ls $(TMPDIR)/*.dwp && exit 1 || exit 0
