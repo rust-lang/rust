@@ -1,0 +1,8 @@
+error: couldn't read `$DIR/not-utf8-bin-file.rs`: stream did not contain valid UTF-8
+  --> $DIR/not-utf8-bin-file.rs:2:14
+   |
+LL |     let _ = "�|�␂!5�cc␕␂��";
+   |              ^ byte `193` is not valid utf-8
+
+error: aborting due to 1 previous error
+

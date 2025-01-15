@@ -1,0 +1,15 @@
+error: couldn't read `$DIR/not-utf8-bin-file.rs`: stream did not contain valid UTF-8
+  --> $DIR/not-utf8-2.rs:6:5
+   |
+LL |     include!("not-utf8-bin-file.rs");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: byte `193` is not valid utf-8
+  --> $DIR/not-utf8-bin-file.rs:2:14
+   |
+LL |     let _ = "�|�␂!5�cc␕␂��";
+   |              ^
+   = note: this error originates in the macro `include` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
