@@ -41,3 +41,16 @@ impl<'a> Drop for StructWithDropAndLt<'a> {
 struct StructWithDropAndLt<'a> {
     x: &'a i32,
 }
+
+// Make sure we don't ICE when checking impossible predicates for the struct.
+// Regression test for <https://github.com/rust-lang/rust/issues/135515>.
+//~ MONO_ITEM fn std::ptr::drop_in_place::<StructWithLtAndPredicate<'_>> - shim(Some(StructWithLtAndPredicate<'_>))
+struct StructWithLtAndPredicate<'a: 'a> {
+    x: &'a i32,
+}
+
+// We should be able to monomorphize drops for struct with lifetimes.
+impl<'a> Drop for StructWithLtAndPredicate<'a> {
+    //~ MONO_ITEM fn <StructWithLtAndPredicate<'_> as std::ops::Drop>::drop
+    fn drop(&mut self) {}
+}

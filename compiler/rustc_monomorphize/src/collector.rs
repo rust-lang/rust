@@ -1410,19 +1410,33 @@ impl<'v> RootCollector<'_, 'v> {
                     && !self.tcx.generics_of(id.owner_id).requires_monomorphization(self.tcx)
                 {
                     debug!("RootCollector: ADT drop-glue for `{id:?}`",);
+                    let id_args =
+                        ty::GenericArgs::for_item(self.tcx, id.owner_id.to_def_id(), |param, _| {
+                            match param.kind {
+                                GenericParamDefKind::Lifetime => {
+                                    self.tcx.lifetimes.re_erased.into()
+                                }
+                                GenericParamDefKind::Type { .. }
+                                | GenericParamDefKind::Const { .. } => {
+                                    unreachable!(
+                                        "`own_requires_monomorphization` check means that \
+                                we should have no type/const params"
+                                    )
+                                }
+                            }
+                        });
 
                     // This type is impossible to instantiate, so we should not try to
                     // generate a `drop_in_place` instance for it.
                     if self.tcx.instantiate_and_check_impossible_predicates((
                         id.owner_id.to_def_id(),
-                        ty::List::empty(),
+                        id_args,
                     )) {
                         return;
                     }
 
-                    let ty = self.tcx.erase_regions(
-                        self.tcx.type_of(id.owner_id.to_def_id()).instantiate_identity(),
-                    );
+                    let ty =
+                        self.tcx.type_of(id.owner_id.to_def_id()).instantiate(self.tcx, id_args);
                     assert!(!ty.has_non_region_param());
                     visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.output);
                 }

@@ -804,7 +804,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     #[inline(never)]
     fn region_param_out_of_range(&self, ebr: I::EarlyParamRegion, r: I::Region) -> ! {
         panic!(
-            "const parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
+            "region parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
             ebr,
             r,
             ebr.index(),
