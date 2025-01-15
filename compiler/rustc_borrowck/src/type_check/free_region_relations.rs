@@ -4,7 +4,7 @@ use rustc_hir::def::DefKind;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::GenericKind;
-use rustc_infer::infer::{outlives, InferCtxt, NllRegionVariableOrigin};
+use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, outlives};
 use rustc_infer::traits::ScrubbedTraitError;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::ObligationCause;
