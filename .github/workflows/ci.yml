@@ -126,7 +126,7 @@ jobs:
             'libicu-dev'                 \
             '^vim.*'                     \
             'python3-breezy'             \
-          && rm -rf /var/lib/apt/lists/*
+          && sudo rm -rf /var/lib/apt/lists/*
 
       - name: Show installed packages ordered by size
         run: dpkg-query -W --showformat='${Installed-Size} ${Package}\n' | sort -nr
