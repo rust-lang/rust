@@ -4,11 +4,11 @@
 // because they are both extern types.
 
 #![feature(extern_types)]
-extern {
+extern "C" {
     type ShouldNotBeMentioned;
 }
 
-extern {
+extern "C" {
     type Foo;
 }
 

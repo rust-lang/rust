@@ -146,6 +146,21 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
             let target_triple =
                 std::env::var("PGO_HOST").expect("PGO_HOST environment variable missing");
 
+            let is_aarch64 = target_triple.starts_with("aarch64");
+
+            let mut skip_tests = vec![
+                // Fails because of linker errors, as of June 2023.
+                "tests/ui/process/nofile-limit.rs".to_string(),
+            ];
+
+            if is_aarch64 {
+                skip_tests.extend([
+                    // Those tests fail only inside of Docker on aarch64, as of December 2024
+                    "tests/ui/consts/promoted_running_out_of_memory_issue-130687.rs".to_string(),
+                    "tests/ui/consts/large_const_alloc.rs".to_string(),
+                ]);
+            }
+
             let checkout_dir = Utf8PathBuf::from("/checkout");
             let env = EnvironmentBuilder::default()
                 .host_tuple(target_triple)
@@ -155,11 +170,9 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .artifact_dir(Utf8PathBuf::from("/tmp/tmp-multistage/opt-artifacts"))
                 .build_dir(checkout_dir.join("obj"))
                 .shared_llvm(true)
-                .use_bolt(true)
-                .skipped_tests(vec![
-                    // Fails because of linker errors, as of June 2023.
-                    "tests/ui/process/nofile-limit.rs".to_string(),
-                ])
+                // FIXME: Enable bolt for aarch64 once it's fixed upstream. Broken as of December 2024.
+                .use_bolt(!is_aarch64)
+                .skipped_tests(skip_tests)
                 .build()?;
 
             (env, shared.build_args)
@@ -304,7 +317,8 @@ fn execute_pipeline(
             // the final dist build. However, when BOLT optimizes an artifact, it does so *in-place*,
             // therefore it will actually optimize all the hard links, which means that the final
             // packaged `libLLVM.so` file *will* be BOLT optimized.
-            bolt_optimize(&llvm_lib, &llvm_profile).context("Could not optimize LLVM with BOLT")?;
+            bolt_optimize(&llvm_lib, &llvm_profile, env)
+                .context("Could not optimize LLVM with BOLT")?;
 
             let rustc_lib = io::find_file_in_dir(&libdir, "librustc_driver", ".so")?;
 
@@ -319,7 +333,7 @@ fn execute_pipeline(
             print_free_disk_space()?;
 
             // Now optimize the library with BOLT.
-            bolt_optimize(&rustc_lib, &rustc_profile)
+            bolt_optimize(&rustc_lib, &rustc_profile, env)
                 .context("Could not optimize rustc with BOLT")?;
 
             // LLVM is not being cleared here, we want to use the BOLT-optimized LLVM

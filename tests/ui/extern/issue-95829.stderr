@@ -1,8 +1,8 @@
 error: incorrect function inside `extern` block
   --> $DIR/issue-95829.rs:4:14
    |
-LL |   extern {
-   |   ------ `extern` blocks define existing foreign functions and functions inside of them cannot have a body
+LL |   extern "C" {
+   |   ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
 LL |       async fn L() {
    |  ______________^___-
    | |              |
@@ -18,8 +18,8 @@ LL | |     }
 error: functions in `extern` blocks cannot have `async` qualifier
   --> $DIR/issue-95829.rs:4:5
    |
-LL | extern {
-   | ------ in this `extern` block
+LL | extern "C" {
+   | ---------- in this `extern` block
 LL |     async fn L() {
    |     ^^^^^ help: remove the `async` qualifier
 

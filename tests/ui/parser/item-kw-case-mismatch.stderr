@@ -111,23 +111,23 @@ LL | CONST UNSAFE fn _e() {}
 error: keyword `unsafe` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:28:1
    |
-LL | unSAFE EXTern fn _f() {}
+LL | unSAFE EXTern "C" fn _f() {}
    | ^^^^^^
    |
 help: write it in the correct case
    |
-LL | unsafe EXTern fn _f() {}
+LL | unsafe EXTern "C" fn _f() {}
    | ~~~~~~
 
 error: keyword `extern` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:28:8
    |
-LL | unSAFE EXTern fn _f() {}
+LL | unSAFE EXTern "C" fn _f() {}
    |        ^^^^^^
    |
 help: write it in the correct case
    |
-LL | unSAFE extern fn _f() {}
+LL | unSAFE extern "C" fn _f() {}
    |        ~~~~~~
 
 error: keyword `extern` is written in the wrong case

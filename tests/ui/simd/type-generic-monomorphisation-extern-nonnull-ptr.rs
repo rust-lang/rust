@@ -6,7 +6,7 @@
 
 use std::ptr::NonNull;
 
-extern {
+extern "C" {
     type Extern;
 }
 
