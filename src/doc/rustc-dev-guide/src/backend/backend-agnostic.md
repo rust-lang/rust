@@ -45,7 +45,7 @@ heavily on other parts of the crate. The separation of the code must not affect
 the logic of the code nor its performance.
 
 For these reasons, the separation process involves two transformations that
-have to be done at the same time for the resulting code to compile :
+have to be done at the same time for the resulting code to compile:
 
 1. replace all the LLVM-specific types by generics inside function signatures
    and structure definitions;
