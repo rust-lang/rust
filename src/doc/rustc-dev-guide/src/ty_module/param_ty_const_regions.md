@@ -53,7 +53,7 @@ Concretely given the `ty::Generics` for the item the parameter is defined on, if
 
 The index fully defines the `Ty` and is the only part of `TyKind::Param` that matters for reasoning about the code we are compiling. 
 
-Generally we do not care what the name is and only use the index is included for diagnostics and debug logs as otherwise it would be
+Generally we do not care what the name is and only use the index. The name is included for diagnostics and debug logs as otherwise it would be
 incredibly difficult to understand the output, i.e. `Vec<Param(0)>: Sized` vs `Vec<T>: Sized`. In debug output, parameter types are
 often printed out as `{name}/#{index}`, for example in the function `foo` if we were to debug print `Vec<T>` it would be written as `Vec<T/#0>`.
 

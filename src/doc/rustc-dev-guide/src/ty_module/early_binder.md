@@ -48,7 +48,7 @@ fn bar(foo: Foo<u32, f32>) {
 In the compiler the `instantiate` call for this is done in [`FieldDef::ty`] ([src][field_def_ty_src]), at some point during type checking `bar` we will wind up calling `FieldDef::ty(x, &[u32, f32])` in order to obtain the type of `foo.x`.
 
 **Note on indices:** It is a bug if the index of a `Param` does not match what the `EarlyBinder` binds. For
-example, if the index is out of bounds or the index index of a lifetime corresponds to a type parameter.
+example, if the index is out of bounds or the index of a lifetime corresponds to a type parameter.
 These sorts of errors are caught earlier in the compiler during name resolution where we disallow references
 to generics parameters introduced by items that should not be nameable by the inner item. 
 
