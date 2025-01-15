@@ -4,9 +4,9 @@
 
 pub type T0 =  fn(); //~ ERROR an `fn` pointer type cannot be `const`
 pub type T1 =  extern "C" fn(); //~ ERROR an `fn` pointer type cannot be `const`
-pub type T2 =  unsafe extern fn(); //~ ERROR an `fn` pointer type cannot be `const`
+pub type T2 =  unsafe extern "C" fn(); //~ ERROR an `fn` pointer type cannot be `const`
 pub type T3 =  fn(); //~ ERROR an `fn` pointer type cannot be `async`
-pub type T4 =  extern fn(); //~ ERROR an `fn` pointer type cannot be `async`
+pub type T4 =  extern "C" fn(); //~ ERROR an `fn` pointer type cannot be `async`
 pub type T5 =  unsafe extern "C" fn(); //~ ERROR an `fn` pointer type cannot be `async`
 pub type T6 =   unsafe extern "C" fn();
 //~^ ERROR an `fn` pointer type cannot be `const`
@@ -14,9 +14,9 @@ pub type T6 =   unsafe extern "C" fn();
 
 pub type FTT0 = for<'a>  fn(); //~ ERROR an `fn` pointer type cannot be `const`
 pub type FTT1 = for<'a>  extern "C" fn(); //~ ERROR an `fn` pointer type cannot be `const`
-pub type FTT2 = for<'a>  unsafe extern fn(); //~ ERROR an `fn` pointer type cannot be `const`
+pub type FTT2 = for<'a>  unsafe extern "C" fn(); //~ ERROR an `fn` pointer type cannot be `const`
 pub type FTT3 = for<'a>  fn(); //~ ERROR an `fn` pointer type cannot be `async`
-pub type FTT4 = for<'a>  extern fn(); //~ ERROR an `fn` pointer type cannot be `async`
+pub type FTT4 = for<'a>  extern "C" fn(); //~ ERROR an `fn` pointer type cannot be `async`
 pub type FTT5 = for<'a>  unsafe extern "C" fn();
 //~^ ERROR an `fn` pointer type cannot be `async`
 pub type FTT6 = for<'a>   unsafe extern "C" fn();

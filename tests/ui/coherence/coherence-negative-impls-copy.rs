@@ -18,7 +18,7 @@ impl !Copy for WithDrop {}
 
 struct Type;
 trait Trait {}
-extern {
+extern "C" {
     type ExternType;
 }
 

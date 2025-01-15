@@ -4,7 +4,7 @@
 macro_rules! tt {
     ($e:tt) => {
         #$e
-        extern fn foo() {}
+        extern "C" fn foo() {}
     }
 }
 
@@ -13,7 +13,7 @@ macro_rules! ident {
         #[$e]
         //~^ ERROR: unsafe attribute used without unsafe
         //~| WARN this is accepted in the current edition
-        extern fn bar() {}
+        extern "C" fn bar() {}
     }
 }
 
@@ -22,21 +22,21 @@ macro_rules! ident2 {
         #[$e = $l]
         //~^ ERROR: unsafe attribute used without unsafe
         //~| WARN this is accepted in the current edition
-        extern fn bars() {}
+        extern "C" fn bars() {}
     }
 }
 
 macro_rules! meta {
     ($m:meta) => {
         #[$m]
-        extern fn baz() {}
+        extern "C" fn baz() {}
     }
 }
 
 macro_rules! meta2 {
     ($m:meta) => {
         #[$m]
-        extern fn baw() {}
+        extern "C" fn baw() {}
     }
 }
 

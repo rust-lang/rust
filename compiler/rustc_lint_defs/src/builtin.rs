@@ -3597,7 +3597,7 @@ declare_lint! {
     ///
     /// [Other ABIs]: https://doc.rust-lang.org/reference/items/external-blocks.html#abi
     pub MISSING_ABI,
-    Allow,
+    Warn,
     "No declared ABI for extern declaration"
 }
 

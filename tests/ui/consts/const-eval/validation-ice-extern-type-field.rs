@@ -1,6 +1,6 @@
 #![feature(extern_types)]
 
-extern {
+extern "C" {
     type Opaque;
 }
 

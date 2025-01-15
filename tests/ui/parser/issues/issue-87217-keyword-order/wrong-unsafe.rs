@@ -1,4 +1,5 @@
 //@ edition:2018
+#![allow(missing_abi)]
 
 // There is an order to respect for keywords before a function:
 // `<visibility>, const, async, unsafe, extern, "<ABI>"`
