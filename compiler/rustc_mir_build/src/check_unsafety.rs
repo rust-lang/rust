@@ -478,19 +478,27 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 return; // don't visit the whole expression
             }
             ExprKind::Call { fun, ty: _, args: _, from_hir_call: _, fn_span: _ } => {
-                if self.thir[fun].ty.fn_sig(self.tcx).safety().is_unsafe() {
-                    let func_id = if let ty::FnDef(func_id, _) = self.thir[fun].ty.kind() {
+                let fn_ty = self.thir[fun].ty;
+                let sig = fn_ty.fn_sig(self.tcx);
+                let (callee_features, safe_target_features): (&[_], _) = match fn_ty.kind() {
+                    ty::FnDef(func_id, ..) => {
+                        let cg_attrs = self.tcx.codegen_fn_attrs(func_id);
+                        (&cg_attrs.target_features, cg_attrs.safe_target_features)
+                    }
+                    _ => (&[], false),
+                };
+                if sig.safety().is_unsafe() && !safe_target_features {
+                    let func_id = if let ty::FnDef(func_id, _) = fn_ty.kind() {
                         Some(*func_id)
                     } else {
                         None
                     };
                     self.requires_unsafe(expr.span, CallToUnsafeFunction(func_id));
-                } else if let &ty::FnDef(func_did, _) = self.thir[fun].ty.kind() {
+                } else if let &ty::FnDef(func_did, _) = fn_ty.kind() {
                     // If the called function has target features the calling function hasn't,
                     // the call requires `unsafe`. Don't check this on wasm
                     // targets, though. For more information on wasm see the
                     // is_like_wasm check in hir_analysis/src/collect.rs
-                    let callee_features = &self.tcx.codegen_fn_attrs(func_did).target_features;
                     if !self.tcx.sess.target.options.is_like_wasm
                         && !callee_features.iter().all(|feature| {
                             self.body_target_features.iter().any(|f| f.name == feature.name)
@@ -739,7 +747,10 @@ impl UnsafeOpKind {
     ) {
         let parent_id = tcx.hir().get_parent_item(hir_id);
         let parent_owner = tcx.hir_owner_node(parent_id);
-        let should_suggest = parent_owner.fn_sig().is_some_and(|sig| sig.header.is_unsafe());
+        let should_suggest = parent_owner.fn_sig().is_some_and(|sig| {
+            // Do not suggest for safe target_feature functions
+            matches!(sig.header.safety, hir::HeaderSafety::Normal(hir::Safety::Unsafe))
+        });
         let unsafe_not_inherited_note = if should_suggest {
             suggest_unsafe_block.then(|| {
                 let body_span = tcx.hir().body(parent_owner.body_id().unwrap()).value.span;
@@ -902,7 +913,7 @@ impl UnsafeOpKind {
             {
                 true
             } else if let Some(sig) = tcx.hir().fn_sig_by_hir_id(*id)
-                && sig.header.is_unsafe()
+                && matches!(sig.header.safety, hir::HeaderSafety::Normal(hir::Safety::Unsafe))
             {
                 true
             } else {
@@ -1111,7 +1122,16 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
 
     let hir_id = tcx.local_def_id_to_hir_id(def);
     let safety_context = tcx.hir().fn_sig_by_hir_id(hir_id).map_or(SafetyContext::Safe, |fn_sig| {
-        if fn_sig.header.safety.is_unsafe() { SafetyContext::UnsafeFn } else { SafetyContext::Safe }
+        match fn_sig.header.safety {
+            // We typeck the body as safe, but otherwise treat it as unsafe everywhere else.
+            // Call sites to other SafeTargetFeatures functions are checked explicitly and don't need
+            // to care about safety of the body.
+            hir::HeaderSafety::SafeTargetFeatures => SafetyContext::Safe,
+            hir::HeaderSafety::Normal(safety) => match safety {
+                hir::Safety::Unsafe => SafetyContext::UnsafeFn,
+                hir::Safety::Safe => SafetyContext::Safe,
+            },
+        }
     });
     let body_target_features = &tcx.body_codegen_attrs(def.to_def_id()).target_features;
     let mut warnings = Vec::new();

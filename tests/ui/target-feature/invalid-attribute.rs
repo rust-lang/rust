@@ -97,6 +97,7 @@ impl Foo {}
 
 trait Quux {
     fn foo(); //~ NOTE `foo` from trait
+    //~^ NOTE: type in trait
 }
 
 impl Quux for Foo {
@@ -106,6 +107,9 @@ impl Quux for Foo {
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     fn foo() {}
     //~^ NOTE not an `unsafe` function
+    //~| ERROR: incompatible type for trait
+    //~| NOTE: expected safe fn, found unsafe fn
+    //~| NOTE: expected signature `fn()`
 }
 
 fn main() {

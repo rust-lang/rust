@@ -231,7 +231,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     });
                     let sig = hir::FnSig {
                         decl,
-                        header: this.lower_fn_header(*header, hir::Safety::Safe),
+                        header: this.lower_fn_header(*header, hir::Safety::Safe, attrs),
                         span: this.lower_span(*fn_sig_span),
                     };
                     hir::ItemKind::Fn { sig, generics, body: body_id, has_body: body.is_some() }
@@ -610,7 +610,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> &'hir hir::ForeignItem<'hir> {
         let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
         let owner_id = hir_id.expect_owner();
-        self.lower_attrs(hir_id, &i.attrs);
+        let attrs = self.lower_attrs(hir_id, &i.attrs);
         let item = hir::ForeignItem {
             owner_id,
             ident: self.lower_ident(i.ident),
@@ -634,7 +634,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         });
 
                     // Unmarked safety in unsafe block defaults to unsafe.
-                    let header = self.lower_fn_header(sig.header, hir::Safety::Unsafe);
+                    let header = self.lower_fn_header(sig.header, hir::Safety::Unsafe, attrs);
 
                     hir::ForeignItemKind::Fn(
                         hir::FnSig { header, decl, span: self.lower_span(sig.span) },
@@ -776,6 +776,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     i.id,
                     FnDeclKind::Trait,
                     sig.header.coroutine_kind,
+                    attrs,
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)), false)
             }
@@ -795,6 +796,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     i.id,
                     FnDeclKind::Trait,
                     sig.header.coroutine_kind,
+                    attrs,
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)), true)
             }
@@ -911,6 +913,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     i.id,
                     if self.is_in_trait_impl { FnDeclKind::Impl } else { FnDeclKind::Inherent },
                     sig.header.coroutine_kind,
+                    attrs,
                 );
 
                 (generics, hir::ImplItemKind::Fn(sig, body_id))
@@ -1339,8 +1342,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         kind: FnDeclKind,
         coroutine_kind: Option<CoroutineKind>,
+        attrs: &[hir::Attribute],
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
-        let header = self.lower_fn_header(sig.header, hir::Safety::Safe);
+        let header = self.lower_fn_header(sig.header, hir::Safety::Safe, attrs);
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) = self.lower_generics(generics, id, itctx, |this| {
             this.lower_fn_decl(&sig.decl, id, sig.span, kind, coroutine_kind)
@@ -1352,14 +1356,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         h: FnHeader,
         default_safety: hir::Safety,
+        attrs: &[hir::Attribute],
     ) -> hir::FnHeader {
         let asyncness = if let Some(CoroutineKind::Async { span, .. }) = h.coroutine_kind {
             hir::IsAsync::Async(span)
         } else {
             hir::IsAsync::NotAsync
         };
+
+        let safety = self.lower_safety(h.safety, default_safety);
+
+        // Treat safe `#[target_feature]` functions as unsafe, but also remember that we did so.
+        let safety = if attrs.iter().any(|attr| attr.has_name(sym::target_feature))
+            && safety.is_safe()
+            && !self.tcx.sess.target.is_like_wasm
+        {
+            hir::HeaderSafety::SafeTargetFeatures
+        } else {
+            safety.into()
+        };
+
         hir::FnHeader {
-            safety: self.lower_safety(h.safety, default_safety),
+            safety,
             asyncness,
             constness: self.lower_constness(h.constness),
             abi: self.lower_extern(h.ext),

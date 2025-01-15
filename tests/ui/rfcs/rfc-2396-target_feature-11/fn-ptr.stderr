@@ -10,13 +10,8 @@ LL |     let foo: fn() = foo;
    |              expected due to this
    |
    = note: expected fn pointer `fn()`
-                 found fn item `fn() {foo}`
-   = note: fn items are distinct from fn pointers
+                 found fn item `#[target_features] fn() {foo}`
    = note: functions with `#[target_feature]` can only be coerced to `unsafe` function pointers
-help: consider casting to a fn pointer
-   |
-LL |     let foo: fn() = foo as fn();
-   |                     ~~~~~~~~~~~
 
 error: aborting due to 1 previous error
 

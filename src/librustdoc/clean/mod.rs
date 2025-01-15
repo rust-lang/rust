@@ -3094,7 +3094,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
         let kind = match item.kind {
             hir::ForeignItemKind::Fn(sig, names, generics) => ForeignFunctionItem(
                 clean_function(cx, &sig, generics, FunctionArgs::Names(names)),
-                sig.header.safety,
+                sig.header.safety(),
             ),
             hir::ForeignItemKind::Static(ty, mutability, safety) => ForeignStaticItem(
                 Static { type_: Box::new(clean_ty(ty, cx)), mutability, expr: None },

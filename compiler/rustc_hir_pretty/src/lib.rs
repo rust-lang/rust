@@ -2407,7 +2407,7 @@ impl<'a> State<'a> {
         self.print_fn(
             decl,
             hir::FnHeader {
-                safety,
+                safety: safety.into(),
                 abi,
                 constness: hir::Constness::NotConst,
                 asyncness: hir::IsAsync::NotAsync,
@@ -2423,12 +2423,20 @@ impl<'a> State<'a> {
     fn print_fn_header_info(&mut self, header: hir::FnHeader) {
         self.print_constness(header.constness);
 
+        let safety = match header.safety {
+            hir::HeaderSafety::SafeTargetFeatures => {
+                self.word_nbsp("#[target_feature]");
+                hir::Safety::Safe
+            }
+            hir::HeaderSafety::Normal(safety) => safety,
+        };
+
         match header.asyncness {
             hir::IsAsync::NotAsync => {}
             hir::IsAsync::Async(_) => self.word_nbsp("async"),
         }
 
-        self.print_safety(header.safety);
+        self.print_safety(safety);
 
         if header.abi != ExternAbi::Rust {
             self.word_nbsp("extern");

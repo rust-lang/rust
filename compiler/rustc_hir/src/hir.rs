@@ -3762,9 +3762,30 @@ impl fmt::Display for Constness {
     }
 }
 
+/// The actualy safety specified in syntax. We may treat
+/// its safety different within the type system to create a
+/// "sound by default" system that needs checking this enum
+/// explicitly to allow unsafe operations.
+#[derive(Copy, Clone, Debug, HashStable_Generic, PartialEq, Eq)]
+pub enum HeaderSafety {
+    /// A safe function annotated with `#[target_features]`.
+    /// The type system treats this function as an unsafe function,
+    /// but safety checking will check this enum to treat it as safe
+    /// and allowing calling other safe target feature functions with
+    /// the same features without requiring an additional unsafe block.
+    SafeTargetFeatures,
+    Normal(Safety),
+}
+
+impl From<Safety> for HeaderSafety {
+    fn from(v: Safety) -> Self {
+        Self::Normal(v)
+    }
+}
+
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub struct FnHeader {
-    pub safety: Safety,
+    pub safety: HeaderSafety,
     pub constness: Constness,
     pub asyncness: IsAsync,
     pub abi: ExternAbi,
@@ -3780,7 +3801,18 @@ impl FnHeader {
     }
 
     pub fn is_unsafe(&self) -> bool {
-        self.safety.is_unsafe()
+        self.safety().is_unsafe()
+    }
+
+    pub fn is_safe(&self) -> bool {
+        self.safety().is_safe()
+    }
+
+    pub fn safety(&self) -> Safety {
+        match self.safety {
+            HeaderSafety::SafeTargetFeatures => Safety::Unsafe,
+            HeaderSafety::Normal(safety) => safety,
+        }
     }
 }
 

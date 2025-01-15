@@ -932,10 +932,17 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         return Err(TypeError::ForceInlineCast);
                     }
 
-                    // Safe `#[target_feature]` functions are not assignable to safe fn pointers
-                    // (RFC 2396).
+                    let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
+                    if matches!(fn_attrs.inline, InlineAttr::Force { .. }) {
+                        return Err(TypeError::ForceInlineCast);
+                    }
+
+                    // FIXME(target_feature): Safe `#[target_feature]` functions could be cast to safe fn pointers (RFC 2396),
+                    // as you can already write that "cast" in user code by wrapping a target_feature fn call in a closure,
+                    // which is safe. This is sound because you already need to be executing code that is satisfying the target
+                    // feature constraints..
                     if b_hdr.safety.is_safe()
-                        && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                        && self.tcx.codegen_fn_attrs(def_id).safe_target_features
                     {
                         return Err(TypeError::TargetFeatureCast(def_id));
                     }
