@@ -5,6 +5,7 @@ use rustc_codegen_ssa::errors::TargetFeatureDisableOrEnable;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_session::Session;
+use rustc_session::features::StabilityExt;
 use rustc_target::target_features::RUSTC_SPECIFIC_FEATURES;
 use smallvec::{SmallVec, smallvec};
 
@@ -94,7 +95,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
                     sess.dcx().emit_warn(unknown_feature);
                 }
                 Some(&(_, stability, _)) => {
-                    if let Err(reason) = stability.toggle_allowed() {
+                    if let Err(reason) = stability.is_toggle_permitted(sess) {
                         sess.dcx().emit_warn(ForbiddenCTargetFeature {
                             feature,
                             enabled: if enable { "enabled" } else { "disabled" },
