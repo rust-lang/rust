@@ -741,12 +741,14 @@ where
                 a_data.principal(),
             ));
         } else if let Some(a_principal) = a_data.principal() {
-            for new_a_principal in
-                elaborate::supertraits(self.cx(), a_principal.with_self_ty(cx, a_ty)).skip(1)
+            for (idx, new_a_principal) in
+                elaborate::supertraits(self.cx(), a_principal.with_self_ty(cx, a_ty))
+                    .enumerate()
+                    .skip(1)
             {
                 responses.extend(self.consider_builtin_upcast_to_principal(
                     goal,
-                    CandidateSource::BuiltinImpl(BuiltinImplSource::TraitUpcasting),
+                    CandidateSource::BuiltinImpl(BuiltinImplSource::TraitUpcasting(idx)),
                     a_data,
                     a_region,
                     b_data,
