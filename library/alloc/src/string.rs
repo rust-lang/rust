@@ -42,6 +42,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use core::cmp::Ordering;
 use core::error::Error;
 use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
@@ -2530,12 +2531,49 @@ macro_rules! impl_eq {
 
 impl_eq! { String, str }
 impl_eq! { String, &'a str }
+impl_eq! { &String, str }
 #[cfg(not(no_global_oom_handling))]
 impl_eq! { Cow<'a, str>, str }
 #[cfg(not(no_global_oom_handling))]
 impl_eq! { Cow<'a, str>, &'b str }
 #[cfg(not(no_global_oom_handling))]
 impl_eq! { Cow<'a, str>, String }
+#[cfg(not(no_global_oom_handling))]
+impl_eq! { Cow<'a, str>, &String }
+
+macro_rules! impl_ord {
+    ($lhs:ty, $rhs: ty) => {
+        #[stable(feature = "string_partialord_impls", since = "CURRENT_RUSTC_VERSION")]
+        #[allow(unused_lifetimes)]
+        impl<'a, 'b> PartialOrd<$rhs> for $lhs {
+            #[inline]
+            fn partial_cmp(&self, other: &$rhs) -> Option<Ordering> {
+                PartialOrd::partial_cmp(&self[..], &other[..])
+            }
+        }
+
+        #[stable(feature = "string_partialord_impls", since = "CURRENT_RUSTC_VERSION")]
+        #[allow(unused_lifetimes)]
+        impl<'a, 'b> PartialOrd<$lhs> for $rhs {
+            #[inline]
+            fn partial_cmp(&self, other: &$lhs) -> Option<Ordering> {
+                PartialOrd::partial_cmp(&self[..], &other[..])
+            }
+        }
+    };
+}
+
+impl_ord! { String, str }
+impl_ord! { String, &'a str }
+impl_ord! { &String, str }
+#[cfg(not(no_global_oom_handling))]
+impl_ord! { Cow<'a, str>, str }
+#[cfg(not(no_global_oom_handling))]
+impl_ord! { Cow<'a, str>, &'b str }
+#[cfg(not(no_global_oom_handling))]
+impl_ord! { Cow<'a, str>, String }
+#[cfg(not(no_global_oom_handling))]
+impl_ord! { Cow<'a, str>, &String }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for String {
