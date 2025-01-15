@@ -117,28 +117,39 @@ pub fn overlapping_impls(
         return None;
     }
 
-    let _overlap_with_bad_diagnostics = overlap(
-        tcx,
-        TrackAmbiguityCauses::No,
-        skip_leak_check,
-        impl1_def_id,
-        impl2_def_id,
-        overlap_mode,
-    )?;
+    if tcx.next_trait_solver_in_coherence() {
+        overlap(
+            tcx,
+            TrackAmbiguityCauses::Yes,
+            skip_leak_check,
+            impl1_def_id,
+            impl2_def_id,
+            overlap_mode,
+        )
+    } else {
+        let _overlap_with_bad_diagnostics = overlap(
+            tcx,
+            TrackAmbiguityCauses::No,
+            skip_leak_check,
+            impl1_def_id,
+            impl2_def_id,
+            overlap_mode,
+        )?;
 
-    // In the case where we detect an error, run the check again, but
-    // this time tracking intercrate ambiguity causes for better
-    // diagnostics. (These take time and can lead to false errors.)
-    let overlap = overlap(
-        tcx,
-        TrackAmbiguityCauses::Yes,
-        skip_leak_check,
-        impl1_def_id,
-        impl2_def_id,
-        overlap_mode,
-    )
-    .unwrap();
-    Some(overlap)
+        // In the case where we detect an error, run the check again, but
+        // this time tracking intercrate ambiguity causes for better
+        // diagnostics. (These take time and can lead to false errors.)
+        let overlap = overlap(
+            tcx,
+            TrackAmbiguityCauses::Yes,
+            skip_leak_check,
+            impl1_def_id,
+            impl2_def_id,
+            overlap_mode,
+        )
+        .unwrap();
+        Some(overlap)
+    }
 }
 
 fn fresh_impl_header<'tcx>(infcx: &InferCtxt<'tcx>, impl_def_id: DefId) -> ty::ImplHeader<'tcx> {
