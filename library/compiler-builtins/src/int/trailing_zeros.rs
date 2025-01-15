@@ -1,44 +1,49 @@
-use crate::int::{CastInto, Int};
+#[cfg(feature = "public-test-deps")]
+pub use implementation::trailing_zeros;
+#[cfg(not(feature = "public-test-deps"))]
+pub(crate) use implementation::trailing_zeros;
 
-public_test_dep! {
-/// Returns number of trailing binary zeros in `x`.
-#[allow(dead_code)]
-pub(crate) fn trailing_zeros<T: Int + CastInto<u32> + CastInto<u16> + CastInto<u8>>(x: T) -> usize {
-    let mut x = x;
-    let mut r: u32 = 0;
-    let mut t: u32;
+mod implementation {
+    use crate::int::{CastInto, Int};
 
-    const { assert!(T::BITS <= 64) };
-    if T::BITS >= 64 {
-        r += ((CastInto::<u32>::cast(x) == 0) as u32) << 5; // if (x has no 32 small bits) t = 32 else 0
-        x >>= r; // remove 32 zero bits
-    }
+    /// Returns number of trailing binary zeros in `x`.
+    #[allow(dead_code)]
+    pub fn trailing_zeros<T: Int + CastInto<u32> + CastInto<u16> + CastInto<u8>>(x: T) -> usize {
+        let mut x = x;
+        let mut r: u32 = 0;
+        let mut t: u32;
 
-    if T::BITS >= 32 {
-        t = ((CastInto::<u16>::cast(x) == 0) as u32) << 4; // if (x has no 16 small bits) t = 16 else 0
+        const { assert!(T::BITS <= 64) };
+        if T::BITS >= 64 {
+            r += ((CastInto::<u32>::cast(x) == 0) as u32) << 5; // if (x has no 32 small bits) t = 32 else 0
+            x >>= r; // remove 32 zero bits
+        }
+
+        if T::BITS >= 32 {
+            t = ((CastInto::<u16>::cast(x) == 0) as u32) << 4; // if (x has no 16 small bits) t = 16 else 0
+            r += t;
+            x >>= t; // x = [0 - 0xFFFF] + higher garbage bits
+        }
+
+        const { assert!(T::BITS >= 16) };
+        t = ((CastInto::<u8>::cast(x) == 0) as u32) << 3;
+        x >>= t; // x = [0 - 0xFF] + higher garbage bits
         r += t;
-        x >>= t;         // x = [0 - 0xFFFF] + higher garbage bits
+
+        let mut x: u8 = x.cast();
+
+        t = (((x & 0x0F) == 0) as u32) << 2;
+        x >>= t; // x = [0 - 0xF] + higher garbage bits
+        r += t;
+
+        t = (((x & 0x3) == 0) as u32) << 1;
+        x >>= t; // x = [0 - 0x3] + higher garbage bits
+        r += t;
+
+        x &= 3;
+
+        r as usize + ((2 - (x >> 1) as usize) & (((x & 1) == 0) as usize).wrapping_neg())
     }
-
-    const { assert!(T::BITS >= 16) };
-    t = ((CastInto::<u8>::cast(x) == 0) as u32) << 3;
-    x >>= t; // x = [0 - 0xFF] + higher garbage bits
-    r += t;
-
-    let mut x: u8 = x.cast();
-
-    t = (((x & 0x0F) == 0) as u32) << 2;
-    x >>= t; // x = [0 - 0xF] + higher garbage bits
-    r += t;
-
-    t = (((x & 0x3) == 0) as u32) << 1;
-    x >>= t;  // x = [0 - 0x3] + higher garbage bits
-    r += t;
-
-    x &= 3;
-
-    r as usize + ((2 - (x >> 1) as usize) & (((x & 1) == 0) as usize).wrapping_neg())
-}
 }
 
 intrinsics! {
