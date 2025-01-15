@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.143](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.142...compiler_builtins-v0.1.143) - 2025-01-15
+
+### Other
+
+- Use a C-safe return type for `__rust_[ui]128_*` overflowing intrinsics
+
 ## [0.1.142](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.141...compiler_builtins-v0.1.142) - 2025-01-07
 
 ### Other
