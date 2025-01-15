@@ -8,6 +8,7 @@
 #![allow(missing_docs)]
 
 #[const_trait]
+#[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
 pub trait CarryingMulAdd: Copy + 'static {
     type Unsigned: Copy + 'static;
     fn carrying_mul_add(
