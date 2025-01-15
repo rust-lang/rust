@@ -265,6 +265,12 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     .or_else(|| self.give_name_if_anonymous_region_appears_in_impl_signature(fr))
                     .or_else(|| {
                         self.give_name_if_anonymous_region_appears_in_arg_position_impl_trait(fr)
+                    })
+                    .or_else(|| {
+                        Some(RegionName {
+                            name: self.synthesize_region_name(),
+                            source: RegionNameSource::Static,
+                        })
                     });
 
                 if let Some(new_name) = new_name {
