@@ -434,29 +434,24 @@ pub(crate) fn handle_on_type_formatting(
     params: lsp_types::DocumentOnTypeFormattingParams,
 ) -> anyhow::Result<Option<Vec<lsp_ext::SnippetTextEdit>>> {
     let _p = tracing::info_span!("handle_on_type_formatting").entered();
+    let char_typed = params.ch.chars().next().unwrap_or('\0');
+    if !snap.config.typing_trigger_chars().contains(char_typed) {
+        return Ok(None);
+    }
+
     let mut position = from_proto::file_position(&snap, params.text_document_position)?;
     let line_index = snap.file_line_index(position.file_id)?;
 
     // in `ide`, the `on_type` invariant is that
     // `text.char_at(position) == typed_char`.
     position.offset -= TextSize::of('.');
-    let char_typed = params.ch.chars().next().unwrap_or('\0');
 
     let text = snap.analysis.file_text(position.file_id)?;
     if stdx::never!(!text[usize::from(position.offset)..].starts_with(char_typed)) {
         return Ok(None);
     }
 
-    // We have an assist that inserts ` ` after typing `->` in `fn foo() ->{`,
-    // but it requires precise cursor positioning to work, and one can't
-    // position the cursor with on_type formatting. So, let's just toggle this
-    // feature off here, hoping that we'll enable it one day, 😿.
-    if char_typed == '>' {
-        return Ok(None);
-    }
-    let chars_to_exclude = snap.config.typing_exclude_chars();
-
-    let edit = snap.analysis.on_char_typed(position, char_typed, chars_to_exclude)?;
+    let edit = snap.analysis.on_char_typed(position, char_typed)?;
     let edit = match edit {
         Some(it) => it,
         None => return Ok(None),

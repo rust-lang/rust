@@ -1756,7 +1756,7 @@ impl<'db> SemanticsImpl<'db> {
         let file_id = self.lookup(&root_node).unwrap_or_else(|| {
             panic!(
                 "\n\nFailed to lookup {:?} in this Semantics.\n\
-                 Make sure to use only query nodes, derived from this instance of Semantics.\n\
+                 Make sure to only query nodes derived from this instance of Semantics.\n\
                  root node:   {:?}\n\
                  known nodes: {}\n\n",
                 node,
