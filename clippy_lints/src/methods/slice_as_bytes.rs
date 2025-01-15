@@ -8,7 +8,7 @@ use rustc_lint::LateContext;
 use super::SLICE_AS_BYTES;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>) {
-    if let ExprKind::Index(indexed, index) = recv.kind
+    if let ExprKind::Index(indexed, index, _) = recv.kind
         && is_range_literal(index)
     {
         let ty = cx.typeck_results().expr_ty(indexed).peel_refs();
