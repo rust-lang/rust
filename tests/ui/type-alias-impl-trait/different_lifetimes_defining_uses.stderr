@@ -1,11 +1,11 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/different_lifetimes_defining_uses.rs:11:5
+  --> $DIR/different_lifetimes_defining_uses.rs:13:5
    |
 LL |     b
    |     ^ expected `&'a u32`, got `&'b u32`
    |
 note: previous use here
-  --> $DIR/different_lifetimes_defining_uses.rs:7:5
+  --> $DIR/different_lifetimes_defining_uses.rs:8:5
    |
 LL |     a
    |     ^

@@ -3,6 +3,7 @@
 type Tait = impl Copy;
 // Make sure that this TAIT isn't considered unconstrained...
 
+#[defines(Tait)]
 fn empty_opaque() -> Tait {
     if false {
         match empty_opaque() {}

@@ -5,6 +5,7 @@
 
 type Opaque = impl std::fmt::Debug + ?Sized;
 
+#[defines(Opaque)]
 fn opaque() -> &'static Opaque {
     &[1] as &[i32]
 }

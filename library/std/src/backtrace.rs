@@ -432,6 +432,7 @@ mod helper {
     use super::*;
     pub(super) type LazyResolve = impl (FnOnce() -> Capture) + Send + Sync + UnwindSafe;
 
+    #[cfg_attr(not(bootstrap), defines(LazyResolve))]
     pub(super) fn lazy_resolve(mut capture: Capture) -> LazyResolve {
         move || {
             // Use the global backtrace lock to synchronize this as it's a

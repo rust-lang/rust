@@ -102,9 +102,9 @@ impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'
 
 impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for AttributeMap<'tcx> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        // We ignore the `map` since it refers to information included in `opt_hash` which is
+        // We ignore the `map` and `defines` since they refer to information included in `opt_hash` which is
         // hashed in the collector and used for the crate hash.
-        let AttributeMap { opt_hash, map: _ } = *self;
+        let AttributeMap { opt_hash, map: _, defines: _ } = *self;
         opt_hash.unwrap().hash_stable(hcx, hasher);
     }
 }

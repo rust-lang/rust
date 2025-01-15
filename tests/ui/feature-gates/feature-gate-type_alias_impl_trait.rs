@@ -5,27 +5,32 @@ use std::fmt::Debug;
 type Foo = impl Debug;
 
 struct Bar(Foo);
+#[defines(Foo)]
 fn define() -> Bar {
     Bar(42)
 }
 
 type Foo2 = impl Debug;
 
-fn define2(_: Foo2) {
+#[defines(Foo2)]
+fn define2() {
     let x = || -> Foo2 { 42 };
 }
 
 type Foo3 = impl Debug;
 
+#[defines(Foo3)]
 fn define3(x: Foo3) {
     let y: i32 = x;
 }
-fn define3_1(_: Foo3) {
+#[defines(Foo3)]
+fn define3_1() {
     define3(42)
 }
 
 type Foo4 = impl Debug;
 
+#[defines(Foo4)]
 fn define4(_: Foo4) {
     let y: Foo4 = 42;
 }

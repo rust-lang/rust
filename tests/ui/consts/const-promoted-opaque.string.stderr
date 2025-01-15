@@ -1,4 +1,4 @@
-error[E0493]: destructor of `helper::Foo` cannot be evaluated at compile-time
+error[E0493]: destructor of `Foo` cannot be evaluated at compile-time
   --> $DIR/const-promoted-opaque.rs:28:26
    |
 LL |     let _: &'static _ = &FOO;

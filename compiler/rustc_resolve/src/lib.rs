@@ -40,8 +40,8 @@ use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{
-    self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, Expr, ExprKind, GenericArg, GenericArgs,
-    LitKind, NodeId, Path, attr,
+    self as ast, AngleBracketedArg, AttrId, CRATE_NODE_ID, Crate, Expr, ExprKind, GenericArg,
+    GenericArgs, LitKind, NodeId, Path, attr,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
@@ -1024,6 +1024,11 @@ pub struct Resolver<'ra, 'tcx> {
     /// Used for hints during error reporting.
     field_visibility_spans: FxHashMap<DefId, Vec<Span>>,
 
+    /// Processed `#[defines]` attributes into a list of defines on them (if any).
+    /// The node ids are ids that can be resolved to the items mentioned
+    /// in the `defines` list.
+    defines: FxHashMap<AttrId, Vec<DefId>>,
+
     /// All imports known to succeed or fail.
     determined_imports: Vec<Import<'ra>>,
 
@@ -1441,6 +1446,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             field_names: Default::default(),
             field_visibility_spans: FxHashMap::default(),
 
+            defines: Default::default(),
+
             determined_imports: Vec::new(),
             indeterminate_imports: Vec::new(),
 
@@ -1649,6 +1656,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             stripped_cfg_items,
         };
         let ast_lowering = ty::ResolverAstLowering {
+            defines: self.defines,
             legacy_const_generic_args: self.legacy_const_generic_args,
             partial_res_map: self.partial_res_map,
             import_res_map: self.import_res_map,

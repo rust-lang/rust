@@ -6,6 +6,7 @@
 
 pub type Successors<'a> = impl Iterator<Item = &'a ()>;
 
+#[defines(Successors)]
 pub fn f<'a>() -> Successors<'a> {
     None.into_iter()
 }

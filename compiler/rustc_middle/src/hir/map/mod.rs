@@ -656,17 +656,6 @@ impl<'hir> Map<'hir> {
         None
     }
 
-    /// Returns the defining scope for an opaque type definition.
-    pub fn get_defining_scope(self, id: HirId) -> HirId {
-        let mut scope = id;
-        loop {
-            scope = self.get_enclosing_scope(scope).unwrap_or(CRATE_HIR_ID);
-            if scope == CRATE_HIR_ID || !matches!(self.tcx.hir_node(scope), Node::Block(_)) {
-                return scope;
-            }
-        }
-    }
-
     pub fn get_foreign_abi(self, hir_id: HirId) -> ExternAbi {
         let parent = self.get_parent_item(hir_id);
         if let OwnerNode::Item(Item { kind: ItemKind::ForeignMod { abi, .. }, .. }) =

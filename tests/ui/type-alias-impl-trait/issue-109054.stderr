@@ -1,5 +1,5 @@
 error: item does not constrain `ReturnType::{opaque#0}`, but has it in its signature
-  --> $DIR/issue-109054.rs:13:8
+  --> $DIR/issue-109054.rs:14:8
    |
 LL |     fn deref(&self) -> &Self::Target {
    |        ^^^^^
@@ -12,7 +12,7 @@ LL | type ReturnType<'a> = impl std::future::Future<Output = u32> + 'a;
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0792]: expected generic lifetime parameter, found `'_`
-  --> $DIR/issue-109054.rs:19:9
+  --> $DIR/issue-109054.rs:21:9
    |
 LL | type ReturnType<'a> = impl std::future::Future<Output = u32> + 'a;
    |                 -- this generic parameter must be used with a generic lifetime parameter

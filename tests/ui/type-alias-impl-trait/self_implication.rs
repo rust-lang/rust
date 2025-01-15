@@ -20,11 +20,10 @@ struct Foo<'a> {
     x: &'a mut u8,
 }
 // desugared
-mod foo {
-    pub type FooX = impl Sized;
-    impl<'a> super::Foo<'a> {
-        pub fn foo(&self) -> FooX {}
-    }
+pub type FooX = impl Sized;
+impl<'a> Foo<'a> {
+    #[defines(FooX)]
+    pub fn foo(&self) -> FooX {}
 }
 
 fn bar() {

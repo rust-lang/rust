@@ -6,6 +6,7 @@ fn foo<'a>(x: &'a ()) -> &'a () {
     x
 }
 
+#[defines(Opaque)]
 fn test() -> for<'a> fn(&'a ()) -> Opaque<'a> {
     foo //~ ERROR: mismatched types
 }

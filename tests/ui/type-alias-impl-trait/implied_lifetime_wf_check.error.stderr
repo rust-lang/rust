@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Yay` for type `<() as HideIt>::Assoc`
-  --> $DIR/implied_lifetime_wf_check.rs:26:1
+  --> $DIR/implied_lifetime_wf_check.rs:27:1
    |
 LL | impl Yay for <() as HideIt>::Assoc {}
    | ---------------------------------- first implementation here

@@ -22,10 +22,12 @@ type StateWidget<'a> = impl Widget<&'a ()>;
 impl<F: for<'a> Fn(&'a ()) -> StateWidget<'a>> Widget<()> for StatefulWidget<F> {
     type State = ();
 
+    #[defines(StateWidget)]
     fn make_state(&self) -> Self::State {}
     //~^ ERROR item does not constrain
 }
 
+#[defines(StateWidget)]
 fn new_stateful_widget<F: for<'a> Fn(&'a ()) -> StateWidget<'a>>(build: F) -> impl Widget<()> {
     //~^ ERROR item does not constrain
     StatefulWidget(build)

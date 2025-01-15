@@ -11,7 +11,7 @@ LL |             let x: <() as Foo>::Assoc = 42_i32;
    |
    = note: expected opaque type `<() as Foo>::Assoc`
                      found type `i32`
-note: this item must have the opaque type in its signature in order to be able to register hidden types
+note: this item must have a `#[defines(<() as Foo>::Assoc)]` attribute to be able to define hidden types
   --> $DIR/itiat-forbid-nested-items.rs:11:12
    |
 LL |         fn foo() -> <() as Foo>::Assoc {

@@ -21,6 +21,7 @@ trait Bar {
     type Other;
 }
 
+#[defines(Tait)]
 fn tait() -> Tait {}
 
 fn main() {}

@@ -5,6 +5,7 @@ mod foo {
     pub trait T {}
 
     pub type Alias<'a> = impl T;
+    //~^ ERROR: unconstrained opaque type
     fn bar() {
         super::with_positive(|&n| ());
         //~^ ERROR mismatched types

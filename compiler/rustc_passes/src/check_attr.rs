@@ -122,6 +122,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 [sym::inline, ..] => self.check_inline(hir_id, attr, span, target),
                 [sym::coverage, ..] => self.check_coverage(attr, span, target),
+                [sym::defines] => self.check_defines(attr, span, target),
                 [sym::optimize, ..] => self.check_optimize(hir_id, attr, span, target),
                 [sym::no_sanitize, ..] => self.check_no_sanitize(attr, span, target),
                 [sym::non_exhaustive, ..] => self.check_non_exhaustive(hir_id, attr, span, target, item),
@@ -510,6 +511,25 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    /// Checks that `#[defines(..)]` is applied to a function/const/static.
+    fn check_defines(&self, attr: &Attribute, span: Span, target: Target) {
+        match target {
+            Target::Fn
+            | Target::Closure
+            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
+            | Target::Const
+            | Target::AssocConst
+            | Target::Static => {}
+
+            _ => {
+                self.dcx().emit_err(errors::DefinesNotFnOrConst {
+                    attr_span: attr.span,
+                    defn_span: span,
+                });
             }
         }
     }

@@ -24,10 +24,12 @@ type AliasA = impl TraitA<Assoc = u32>;
 
 type AliasB = impl TraitB<Assoc = AliasA>;
 
+#[defines(AliasA)]
 fn use_of_a() -> AliasA {
     3
 }
 
+#[defines(AliasB)]
 fn use_of_b() -> AliasB {
     3
 }

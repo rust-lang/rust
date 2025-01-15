@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `OtherTrait` for type `Alias`
-  --> $DIR/coherence_cross_crate.rs:21:1
+  --> $DIR/coherence_cross_crate.rs:22:1
    |
 LL | impl OtherTrait for Alias {}
    | ------------------------- first implementation here

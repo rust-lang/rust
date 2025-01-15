@@ -1,14 +1,14 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/recursive-tait-conflicting-defn-2.rs:12:5
+  --> $DIR/recursive-tait-conflicting-defn-2.rs:16:5
    |
 LL |     transform::<Op>()
    |     ^^^^^^^^^^^^^^^^^ expected `&'static &'static str`, got `impl std::fmt::Display`
    |
 note: previous use here
-  --> $DIR/recursive-tait-conflicting-defn-2.rs:6:18
+  --> $DIR/recursive-tait-conflicting-defn-2.rs:8:5
    |
-LL | fn foo() -> Op { &"hello world" }
-   |                  ^^^^^^^^^^^^^^
+LL |     &"hello world"
+   |     ^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

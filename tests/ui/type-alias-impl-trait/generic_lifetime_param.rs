@@ -6,6 +6,7 @@ fn main() {}
 
 type Region<'a> = impl std::fmt::Debug;
 
+#[defines(Region)]
 fn region<'b>(a: &'b ()) -> Region<'b> {
     a
 }

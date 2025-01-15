@@ -6,9 +6,9 @@
 trait Trait<T> {}
 type Alias<'a, U> = impl Trait<U>;
 
+#[defines(Alias)]
 fn f<'a>() -> Alias<'a, ()> {}
-//~^ ERROR non-defining opaque type use
-//~| ERROR expected generic type parameter, found `()`
+//~^ ERROR expected generic type parameter, found `()`
 
 fn main() {}
 

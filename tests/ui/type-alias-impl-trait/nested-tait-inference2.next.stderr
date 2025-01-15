@@ -1,5 +1,5 @@
 error[E0284]: type annotations needed: cannot satisfy `impl Foo<FooX> == ()`
-  --> $DIR/nested-tait-inference2.rs:19:5
+  --> $DIR/nested-tait-inference2.rs:20:5
    |
 LL |     ()
    |     ^^ cannot satisfy `impl Foo<FooX> == ()`

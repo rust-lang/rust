@@ -157,6 +157,7 @@ extern "C" fn in_extern_fn_return() -> impl Debug {
 
 type InTypeAlias<R> = impl Debug;
 //~^ ERROR `impl Trait` in type aliases is unstable
+//~| ERROR unconstrained opaque type
 
 type InReturnInTypeAlias<R> = fn() -> impl Debug;
 //~^ ERROR `impl Trait` is not allowed in `fn` pointer

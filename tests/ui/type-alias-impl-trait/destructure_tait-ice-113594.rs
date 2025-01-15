@@ -10,6 +10,7 @@ pub struct Foo {
 
 pub type Tait = impl Sized;
 
+#[defines(Tait)]
 pub async fn ice_cold(beverage: Tait) {
     // Must destructure at least one field of `Foo`
     let Foo { field } = beverage;

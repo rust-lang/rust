@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/closures_in_branches.rs:7:10
+  --> $DIR/closures_in_branches.rs:8:10
    |
 LL |         |x| x.len()
    |          ^  - type must be known at this point
@@ -10,7 +10,7 @@ LL |         |x: /* Type */| x.len()
    |           ++++++++++++
 
 error[E0282]: type annotations needed
-  --> $DIR/closures_in_branches.rs:21:10
+  --> $DIR/closures_in_branches.rs:22:10
    |
 LL |         |x| x.len()
    |          ^  - type must be known at this point

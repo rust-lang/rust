@@ -72,6 +72,7 @@ type NestedDeeply<'a> =
             >,
         >,
     >;
+#[defines(NestedDeeply)]
 fn test<'a>() -> NestedDeeply<'a> {
     &()
 }

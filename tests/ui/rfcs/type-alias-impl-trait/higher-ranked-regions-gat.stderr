@@ -1,5 +1,5 @@
 error[E0792]: expected generic lifetime parameter, found `'a`
-  --> $DIR/higher-ranked-regions-gat.rs:17:18
+  --> $DIR/higher-ranked-regions-gat.rs:18:18
    |
 LL | pub type FooAssoc<'a> = impl Sized;
    |                   -- this generic parameter must be used with a generic lifetime parameter

@@ -11,9 +11,11 @@ impl<A, B: Equate<Proj = A>> Indirect for (A, B) { type Ty = (); }
 mod basic {
     use super::*;
     type Opq = impl Sized;
+    #[defines(Opq)]
     fn define_1(_: Opq) {
         let _ = None::<<(Opq, u8) as Indirect>::Ty>;
     }
+    #[defines(Opq)]
     fn define_2() -> Opq {
         0u8
     }
@@ -23,6 +25,7 @@ mod basic {
 mod lifetime {
     use super::*;
     type Opq<'a> = impl Sized + 'a;
+    #[defines(Opq)]
     fn define<'a: 'b, 'b: 'a>(_: Opq<'a>) {
         let _ = None::<<(Opq<'a>, &'b u8) as Indirect>::Ty>;
     }

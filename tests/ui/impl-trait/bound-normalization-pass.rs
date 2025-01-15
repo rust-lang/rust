@@ -77,6 +77,7 @@ mod opaque_types {
 
     type Ex = impl Trait<Out = <() as Implemented>::Assoc>;
 
+    #[defines(Ex)]
     fn define() -> Ex {
         ()
     }

@@ -18,6 +18,7 @@ struct Foo<'a> {
 type F = impl Future;
 
 impl<'a> Foo<'a> {
+    #[defines(F)]
     fn reply(&mut self) -> F {
         AndThen(|| ())
     }

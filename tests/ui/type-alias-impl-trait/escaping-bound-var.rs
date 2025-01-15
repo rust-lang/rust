@@ -16,6 +16,7 @@ impl Trait<'_> for () {
 
 impl Test<'_> for () {}
 
+#[defines(Foo)]
 fn constrain() -> Foo {
     ()
 }

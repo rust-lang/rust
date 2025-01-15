@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `T: Trait` is not satisfied
-  --> $DIR/issue-89686.rs:18:9
+  --> $DIR/issue-89686.rs:19:9
    |
 LL |         async move { self.f().await }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`

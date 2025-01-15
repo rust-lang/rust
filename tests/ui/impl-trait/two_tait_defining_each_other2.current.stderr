@@ -1,5 +1,5 @@
 error: item does not constrain `A::{opaque#0}`, but has it in its signature
-  --> $DIR/two_tait_defining_each_other2.rs:11:4
+  --> $DIR/two_tait_defining_each_other2.rs:12:4
    |
 LL | fn muh(x: A) -> B {
    |    ^^^
@@ -12,7 +12,7 @@ LL | type A = impl Foo;
    |          ^^^^^^^^
 
 error: opaque type's hidden type cannot be another opaque type from the same scope
-  --> $DIR/two_tait_defining_each_other2.rs:14:5
+  --> $DIR/two_tait_defining_each_other2.rs:15:5
    |
 LL |     x // B's hidden type is A (opaquely)
    |     ^ one of the two opaque types used here has to be outside its defining scope

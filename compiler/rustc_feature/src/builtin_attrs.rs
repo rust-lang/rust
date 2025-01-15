@@ -575,6 +575,13 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, coroutines, experimental!(coroutine)
     ),
 
+    // `#[defines]` attribute to be applied to functions can and must define hidden types for
+    // the opaque types specified in the attribute.
+    gated!(
+        defines, Normal, template!(List: r#"path::to::Alias, OtherAlias"#), ErrorFollowing,
+        EncodeCrossCrate::No, type_alias_impl_trait, experimental!(defines)
+    ),
+
     // RFC 3543
     // `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
     gated!(

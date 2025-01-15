@@ -85,6 +85,7 @@ impl Foobar for Bar {
     type Bar = u32;
 }
 
+#[defines(AFoobar)]
 fn constraining() -> AFoobar {
     Bar { field: 3 }
 }

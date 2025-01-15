@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `T: Default` is not satisfied
-  --> $DIR/issue-52843.rs:7:5
+  --> $DIR/issue-52843.rs:8:5
    |
 LL |     t
    |     ^ the trait `Default` is not implemented for `T`
@@ -10,7 +10,7 @@ note: required by a bound in an opaque type
 LL | type Foo<T> = impl Default;
    |                    ^^^^^^^
 note: this definition site has more where clauses than the opaque type
-  --> $DIR/issue-52843.rs:6:1
+  --> $DIR/issue-52843.rs:7:1
    |
 LL | fn foo<T: Default>(t: T) -> Foo<T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

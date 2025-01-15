@@ -22,6 +22,7 @@ struct Terminator;
 type Successors<'a> = impl std::fmt::Debug + 'a;
 
 impl Terminator {
+    #[defines(Successors)]
     fn successors(&self, _: for<'x> fn(&'x ()) -> <&'x A as B>::C) -> Successors<'_> {}
 }
 

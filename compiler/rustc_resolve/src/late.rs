@@ -394,32 +394,37 @@ pub(crate) enum AliasPossibility {
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum PathSource<'a> {
-    // Type paths `Path`.
+    /// Type paths `Path`.
     Type,
-    // Trait paths in bounds or impls.
+    /// Trait paths in bounds or impls.
     Trait(AliasPossibility),
-    // Expression paths `path`, with optional parent context.
+    /// Expression paths `path`, with optional parent context.
     Expr(Option<&'a Expr>),
-    // Paths in path patterns `Path`.
+    /// Paths in path patterns `Path`.
     Pat,
-    // Paths in struct expressions and patterns `Path { .. }`.
+    /// Paths in struct expressions and patterns `Path { .. }`.
     Struct,
-    // Paths in tuple struct patterns `Path(..)`.
+    /// Paths in tuple struct patterns `Path(..)`.
     TupleStruct(Span, &'a [Span]),
-    // `m::A::B` in `<T as m::A>::B::C`.
+    /// `m::A::B` in `<T as m::A>::B::C`.
     TraitItem(Namespace),
-    // Paths in delegation item
+    /// Paths in delegation item
     Delegation,
     /// An arg in a `use<'a, N>` precise-capturing bound.
     PreciseCapturingArg(Namespace),
-    // Paths that end with `(..)`, for return type notation.
+    /// Paths that end with `(..)`, for return type notation.
     ReturnTypeNotation,
+    /// Paths from `#[defines]` attributes
+    DefinesAttr,
 }
 
 impl<'a> PathSource<'a> {
     fn namespace(self) -> Namespace {
         match self {
-            PathSource::Type | PathSource::Trait(_) | PathSource::Struct => TypeNS,
+            PathSource::Type
+            | PathSource::Trait(_)
+            | PathSource::DefinesAttr
+            | PathSource::Struct => TypeNS,
             PathSource::Expr(..)
             | PathSource::Pat
             | PathSource::TupleStruct(..)
@@ -436,6 +441,7 @@ impl<'a> PathSource<'a> {
             | PathSource::Expr(..)
             | PathSource::Pat
             | PathSource::Struct
+            | PathSource::DefinesAttr
             | PathSource::TupleStruct(..)
             | PathSource::ReturnTypeNotation => true,
             PathSource::Trait(_)
@@ -447,6 +453,7 @@ impl<'a> PathSource<'a> {
 
     fn descr_expected(self) -> &'static str {
         match &self {
+            PathSource::DefinesAttr => "type alias or associated type with opaqaue types",
             PathSource::Type => "type",
             PathSource::Trait(_) => "trait",
             PathSource::Pat => "unit struct, unit variant or constant",
@@ -494,6 +501,19 @@ impl<'a> PathSource<'a> {
 
     pub(crate) fn is_expected(self, res: Res) -> bool {
         match self {
+            PathSource::DefinesAttr => {
+                matches!(
+                    res,
+                    Res::Def(
+                        DefKind::Struct
+                            | DefKind::Union
+                            | DefKind::Enum
+                            | DefKind::TyAlias
+                            | DefKind::AssocTy,
+                        _
+                    ) | Res::SelfTyAlias { .. }
+                )
+            }
             PathSource::Type => matches!(
                 res,
                 Res::Def(
@@ -573,16 +593,16 @@ impl<'a> PathSource<'a> {
         match (self, has_unexpected_resolution) {
             (PathSource::Trait(_), true) => E0404,
             (PathSource::Trait(_), false) => E0405,
-            (PathSource::Type, true) => E0573,
-            (PathSource::Type, false) => E0412,
+            (PathSource::Type | PathSource::DefinesAttr, true) => E0573,
+            (PathSource::Type | PathSource::DefinesAttr, false) => E0412,
             (PathSource::Struct, true) => E0574,
             (PathSource::Struct, false) => E0422,
             (PathSource::Expr(..), true) | (PathSource::Delegation, true) => E0423,
             (PathSource::Expr(..), false) | (PathSource::Delegation, false) => E0425,
             (PathSource::Pat | PathSource::TupleStruct(..), true) => E0532,
             (PathSource::Pat | PathSource::TupleStruct(..), false) => E0531,
-            (PathSource::TraitItem(..), true) | (PathSource::ReturnTypeNotation, true) => E0575,
-            (PathSource::TraitItem(..), false) | (PathSource::ReturnTypeNotation, false) => E0576,
+            (PathSource::TraitItem(..) | PathSource::ReturnTypeNotation, true) => E0575,
+            (PathSource::TraitItem(..) | PathSource::ReturnTypeNotation, false) => E0576,
             (PathSource::PreciseCapturingArg(..), true) => E0799,
             (PathSource::PreciseCapturingArg(..), false) => E0800,
         }
@@ -1424,6 +1444,37 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
+    fn resolve_defines_attr(&mut self, attrs: &[Attribute]) {
+        for attr in attrs {
+            // for `#[defines(Path, other::Path)]` attributes we need to resolve the paths
+            if attr.has_name(sym::defines) {
+                for item in attr.meta_item_list().unwrap() {
+                    let item = item.meta_item().unwrap();
+                    let mut path = Segment::from_path(&item.path);
+                    for segment in &mut path {
+                        // We don't want to record any resolutions.
+                        segment.id = None;
+                        if segment.has_generic_args {
+                            span_bug!(segment.args_span, "generic args in #[defines] paths");
+                        }
+                    }
+                    let partial_res = self.smart_resolve_path_fragment(
+                        &None,
+                        &path,
+                        PathSource::DefinesAttr,
+                        Finalize::new(DUMMY_NODE_ID, item.path.span),
+                        RecordPartialRes::No,
+                    );
+                    self.r
+                        .defines
+                        .entry(attr.id)
+                        .or_default()
+                        .push(partial_res.expect_full_res().def_id());
+                }
+            }
+        }
+    }
+
     fn maybe_resolve_ident_in_lexical_scope(
         &mut self,
         ident: Ident,
@@ -1971,6 +2022,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 PathSource::Trait(..)
                 | PathSource::TraitItem(..)
                 | PathSource::Type
+                | PathSource::DefinesAttr
                 | PathSource::PreciseCapturingArg(..)
                 | PathSource::ReturnTypeNotation => false,
                 PathSource::Expr(..)
@@ -2582,6 +2634,8 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let name = item.ident.name;
         debug!("(resolving item) resolving {} ({:?})", name, item.kind);
 
+        self.resolve_defines_attr(&item.attrs);
+
         let def_kind = self.r.local_def_kind(item.id);
         match item.kind {
             ItemKind::TyAlias(box TyAlias { ref generics, .. }) => {
@@ -3037,7 +3091,10 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     &generics.params,
                     RibKind::AssocItem,
                     LifetimeRibKind::Generics { binder: item.id, span: generics.span, kind },
-                    |this| visit::walk_assoc_item(this, item, AssocCtxt::Trait),
+                    |this| {
+                        this.resolve_defines_attr(&item.attrs);
+                        visit::walk_assoc_item(this, item, AssocCtxt::Trait)
+                    },
                 );
             };
 
@@ -3240,6 +3297,8 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         seen_trait_items: &mut FxHashMap<DefId, Span>,
         trait_id: Option<DefId>,
     ) {
+        self.resolve_defines_attr(&item.attrs);
+
         use crate::ResolutionError::*;
         self.resolve_doc_links(&item.attrs, MaybeExported::ImplItem(trait_id.ok_or(&item.vis)));
         match &item.kind {
@@ -4655,6 +4714,8 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         // result in the invocation of a method call.
 
         self.record_candidate_traits_for_expr_if_necessary(expr);
+
+        self.resolve_defines_attr(&expr.attrs);
 
         // Next, resolve the node.
         match expr.kind {

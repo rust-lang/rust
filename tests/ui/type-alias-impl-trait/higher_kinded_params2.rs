@@ -16,12 +16,14 @@ impl<'a> B for &'a A {
 }
 
 type Tait = impl std::fmt::Debug;
+//~^ ERROR: unconstrained opaque type
 
 struct Terminator;
 
 type Successors<'a> = impl std::fmt::Debug + 'a;
 
 impl Terminator {
+    #[defines(Successors)]
     fn successors(&self, mut f: for<'x> fn(&'x ()) -> <&'x A as B>::C) -> Successors<'_> {
         f = g;
         //~^ ERROR mismatched types

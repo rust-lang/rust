@@ -1,5 +1,5 @@
 error: item does not constrain `TransactionFuture::{opaque#0}`, but has it in its signature
-  --> $DIR/issue-86800.rs:27:4
+  --> $DIR/issue-86800.rs:28:4
    |
 LL | fn execute_transaction_fut<'f, F, O>(
    |    ^^^^^^^^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResu
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: item does not constrain `TransactionFuture::{opaque#0}`, but has it in its signature
-  --> $DIR/issue-86800.rs:39:14
+  --> $DIR/issue-86800.rs:41:14
    |
 LL |     async fn do_transaction<O>(
    |              ^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResu
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: item does not constrain `TransactionFuture::{opaque#0}`, but has it in its signature
-  --> $DIR/issue-86800.rs:43:5
+  --> $DIR/issue-86800.rs:45:5
    |
 LL | /     {
 LL | |
@@ -44,7 +44,7 @@ LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResu
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0792]: expected generic lifetime parameter, found `'_`
-  --> $DIR/issue-86800.rs:34:5
+  --> $DIR/issue-86800.rs:35:5
    |
 LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
    |                        --- this generic parameter must be used with a generic lifetime parameter
@@ -53,7 +53,7 @@ LL |     f
    |     ^
 
 error[E0792]: expected generic lifetime parameter, found `'_`
-  --> $DIR/issue-86800.rs:43:5
+  --> $DIR/issue-86800.rs:45:5
    |
 LL |   type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
    |                          --- this generic parameter must be used with a generic lifetime parameter

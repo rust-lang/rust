@@ -8,14 +8,24 @@ LL | type Foo = impl Send;
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
+error[E0658]: the `#[defines]` attribute is an experimental feature
+  --> $DIR/ice-unhandled-type-122191.rs:6:1
+   |
+LL | #[defines(Foo)]
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0425]: cannot find function `value` in this scope
-  --> $DIR/ice-unhandled-type-122191.rs:6:20
+  --> $DIR/ice-unhandled-type-122191.rs:8:20
    |
 LL | const VALUE: Foo = value();
    |                    ^^^^^ not found in this scope
 
 error[E0308]: mismatched types
-  --> $DIR/ice-unhandled-type-122191.rs:11:9
+  --> $DIR/ice-unhandled-type-122191.rs:13:9
    |
 LL | type Foo = impl Send;
    |            --------- the expected opaque type
@@ -27,14 +37,14 @@ LL |         0 | 0 => {}
    |
    = note: expected opaque type `Foo`
                      found type `{integer}`
-note: this item must have the opaque type in its signature in order to be able to register hidden types
-  --> $DIR/ice-unhandled-type-122191.rs:9:4
+note: this item must have a `#[defines(Foo)]` attribute to be able to define hidden types
+  --> $DIR/ice-unhandled-type-122191.rs:11:4
    |
 LL | fn test() {
    |    ^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/ice-unhandled-type-122191.rs:11:13
+  --> $DIR/ice-unhandled-type-122191.rs:13:13
    |
 LL | type Foo = impl Send;
    |            --------- the expected opaque type
@@ -46,13 +56,13 @@ LL |         0 | 0 => {}
    |
    = note: expected opaque type `Foo`
                      found type `{integer}`
-note: this item must have the opaque type in its signature in order to be able to register hidden types
-  --> $DIR/ice-unhandled-type-122191.rs:9:4
+note: this item must have a `#[defines(Foo)]` attribute to be able to define hidden types
+  --> $DIR/ice-unhandled-type-122191.rs:11:4
    |
 LL | fn test() {
    |    ^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0308, E0425, E0658.
 For more information about an error, try `rustc --explain E0308`.

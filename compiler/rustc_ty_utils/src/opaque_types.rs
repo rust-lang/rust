@@ -1,8 +1,8 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{CRATE_HIR_ID, intravisit};
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
@@ -30,14 +30,21 @@ enum CollectionMode {
     /// For impl trait in assoc types we only permit collecting them from
     /// associated types of the same impl block.
     ImplTraitInAssocTypes,
-    TypeAliasImplTraitTransition,
+    /// When collecting for an explicit `#[defines]` attribute, find all TAITs
+    Taits,
+    /// The default case, only collect RPITs and AsyncFn return types, as these are
+    /// always defined by the current item.
+    RpitAndAsyncFnOnly,
 }
 
 impl<'tcx> OpaqueTypeCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, item: LocalDefId) -> Self {
-        let mode = match tcx.def_kind(tcx.local_parent(item)) {
-            DefKind::Impl { of_trait: true } => CollectionMode::ImplTraitInAssocTypes,
-            _ => CollectionMode::TypeAliasImplTraitTransition,
+        let mode = match tcx.def_kind(item) {
+            DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy => {
+                CollectionMode::ImplTraitInAssocTypes
+            }
+            DefKind::TyAlias => CollectionMode::Taits,
+            _ => CollectionMode::RpitAndAsyncFnOnly,
         };
         Self { tcx, opaques: Vec::new(), item, seen: Default::default(), span: None, mode }
     }
@@ -73,40 +80,6 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         }
     }
 
-    /// Returns `true` if `opaque_hir_id` is a sibling or a child of a sibling of `self.item`.
-    ///
-    /// Example:
-    /// ```ignore UNSOLVED (is this a bug?)
-    /// # #![feature(type_alias_impl_trait)]
-    /// pub mod foo {
-    ///     pub mod bar {
-    ///         pub trait Bar { /* ... */ }
-    ///         pub type Baz = impl Bar;
-    ///
-    ///         # impl Bar for () {}
-    ///         fn f1() -> Baz { /* ... */ }
-    ///     }
-    ///     fn f2() -> bar::Baz { /* ... */ }
-    /// }
-    /// ```
-    ///
-    /// and `opaque_def_id` is the `DefId` of the definition of the opaque type `Baz`.
-    /// For the above example, this function returns `true` for `f1` and `false` for `f2`.
-    #[instrument(level = "trace", skip(self), ret)]
-    fn check_tait_defining_scope(&self, opaque_def_id: LocalDefId) -> bool {
-        let mut hir_id = self.tcx.local_def_id_to_hir_id(self.item);
-        let opaque_hir_id = self.tcx.local_def_id_to_hir_id(opaque_def_id);
-
-        // Named opaque types can be defined by any siblings or children of siblings.
-        let scope = self.tcx.hir().get_defining_scope(opaque_hir_id);
-        // We walk up the node tree until we hit the root or the scope of the opaque type.
-        while hir_id != scope && hir_id != CRATE_HIR_ID {
-            hir_id = self.tcx.hir().get_parent_item(hir_id).into();
-        }
-        // Syntactically, we are allowed to define the concrete type if:
-        hir_id == scope
-    }
-
     #[instrument(level = "trace", skip(self))]
     fn collect_taits_declared_in_body(&mut self) {
         let body = self.tcx.hir().body_owned_by(self.item).value;
@@ -139,18 +112,25 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         }
 
         // TAITs outside their defining scopes are ignored.
-        let origin = self.tcx.local_opaque_ty_origin(alias_ty.def_id.expect_local());
-        trace!(?origin);
-        match origin {
+        match self.tcx.local_opaque_ty_origin(alias_ty.def_id.expect_local()) {
             rustc_hir::OpaqueTyOrigin::FnReturn { .. }
             | rustc_hir::OpaqueTyOrigin::AsyncFn { .. } => {}
-            rustc_hir::OpaqueTyOrigin::TyAlias { in_assoc_ty, .. } => {
-                if !in_assoc_ty && !self.check_tait_defining_scope(alias_ty.def_id.expect_local()) {
-                    return;
+            rustc_hir::OpaqueTyOrigin::TyAlias { in_assoc_ty, .. } => match self.mode {
+                CollectionMode::ImplTraitInAssocTypes => {
+                    if !in_assoc_ty {
+                        return;
+                    }
                 }
-            }
+                CollectionMode::Taits => {
+                    if in_assoc_ty {
+                        return;
+                    }
+                }
+                CollectionMode::RpitAndAsyncFnOnly => return,
+            },
         }
 
+        trace!(?alias_ty, "adding");
         self.opaques.push(alias_ty.def_id.expect_local());
 
         let parent_count = self.tcx.generics_of(alias_ty.def_id).parent_count;
@@ -192,6 +172,27 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
             }
         }
     }
+
+    /// Returns true if a defines attr with entries was found
+    #[instrument(level = "trace", skip(self))]
+    fn collect_taits_from_defines_attr(&mut self) {
+        // TODO: add a nice HIR helper for this, just like `get_attr`
+        let hir_id = self.tcx.local_def_id_to_hir_id(self.item);
+        let Some(&defines) = self.tcx.hir_attrs(hir_id.owner).defines.get(&hir_id.local_id) else {
+            return;
+        };
+        for &define in defines {
+            // TODO: check that `define` is a type alias (and add tests)
+            trace!(?define);
+            let mode = std::mem::replace(&mut self.mode, CollectionMode::Taits);
+            // TODO: check that opaque types were introduced and error otherwise (also add tests)
+            super::sig_types::walk_types(self.tcx, define, self);
+            self.mode = mode;
+        }
+        // Allow using `#[defines]` on assoc methods and type aliases to override the default collection mode in
+        // case it was capturing too much.
+        self.mode = CollectionMode::RpitAndAsyncFnOnly;
+    }
 }
 
 impl<'tcx> super::sig_types::SpannedTypeVisitor<'tcx> for OpaqueTypeCollector<'tcx> {
@@ -210,6 +211,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                 self.visit_opaque_ty(alias_ty);
             }
             // Skips type aliases, as they are meant to be transparent.
+            // TODO: remove this to require mentioning nested type aliases explicitly.
             ty::Alias(ty::Weak, alias_ty) if alias_ty.def_id.is_local() => {
                 self.tcx
                     .type_of(alias_ty.def_id)
@@ -283,6 +285,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                     self.visit_opaque_ty(alias_ty);
                 }
             }
+            // TODO: remove this arm and fix tests
             ty::Adt(def, _) if def.did().is_local() => {
                 if let CollectionMode::ImplTraitInAssocTypes = self.mode {
                     return;
@@ -317,7 +320,9 @@ fn opaque_types_defined_by<'tcx>(
     let kind = tcx.def_kind(item);
     trace!(?kind);
     let mut collector = OpaqueTypeCollector::new(tcx, item);
+    collector.collect_taits_from_defines_attr();
     super::sig_types::walk_types(tcx, item, &mut collector);
+
     match kind {
         DefKind::AssocFn
         | DefKind::Fn
@@ -352,6 +357,7 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::SyntheticCoroutineBody => {}
         // Closures and coroutines are type checked with their parent, so we need to allow all
         // opaques from the closure signature *and* from the parent body.
+        // TODO: just require `defines` attrs on them?
         DefKind::Closure | DefKind::InlineConst => {
             collector.opaques.extend(tcx.opaque_types_defined_by(tcx.local_parent(item)));
         }

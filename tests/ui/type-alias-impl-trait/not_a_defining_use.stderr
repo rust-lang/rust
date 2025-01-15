@@ -1,11 +1,11 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/not_a_defining_use.rs:24:5
+  --> $DIR/not_a_defining_use.rs:26:5
    |
 LL |     (t, <U as Bar>::FOO)
    |     ^^^^^^^^^^^^^^^^^^^^ expected `(T, i8)`, got `(T, <U as Bar>::Blub)`
    |
 note: previous use here
-  --> $DIR/not_a_defining_use.rs:10:5
+  --> $DIR/not_a_defining_use.rs:11:5
    |
 LL |     (t, 5i8)
    |     ^^^^^^^^

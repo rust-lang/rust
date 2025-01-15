@@ -157,6 +157,7 @@ impl<'tcx> TyCtxt<'tcx> {
         node: OwnerNode<'_>,
         bodies: &SortedMap<ItemLocalId, &Body<'_>>,
         attrs: &SortedMap<ItemLocalId, &[Attribute]>,
+        defines: &SortedMap<ItemLocalId, &[LocalDefId]>,
     ) -> (Option<Fingerprint>, Option<Fingerprint>) {
         if self.needs_crate_hash() {
             self.with_stable_hashing_context(|mut hcx| {
@@ -168,6 +169,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
                 let mut stable_hasher = StableHasher::new();
                 attrs.hash_stable(&mut hcx, &mut stable_hasher);
+                defines.hash_stable(&mut hcx, &mut stable_hasher);
                 let h2 = stable_hasher.finish();
                 (Some(h1), Some(h2))
             })

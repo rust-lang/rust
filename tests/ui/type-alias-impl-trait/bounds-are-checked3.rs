@@ -9,6 +9,7 @@ struct Struct<V: Display>(Option<V>);
 type Foo<T: Debug> = (impl Debug, Struct<T>);
 //~^ ERROR: `T` doesn't implement `std::fmt::Display`
 
+#[defines(Foo)]
 fn foo<U: Debug + Display>() -> Foo<U> {
     (Vec::<U>::new(), Struct(None))
 }

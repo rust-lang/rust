@@ -22,6 +22,7 @@ impl<'x, T: 'x> Trait<'x> for (T,) {
 }
 
 impl Foo<'_> {
+    #[defines(Fut)]
     fn make_fut(&self) -> Box<dyn for<'a> Trait<'a, Thing = Fut<'a>>> {
         Box::new((async { () },))
     }

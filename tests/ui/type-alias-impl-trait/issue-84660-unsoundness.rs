@@ -10,6 +10,7 @@
 trait Foo {}
 impl Foo for () {}
 type Bar = impl Foo;
+#[defines(Bar)]
 fn _defining_use() -> Bar {}
 
 trait Trait<T, In> {
@@ -19,6 +20,7 @@ trait Trait<T, In> {
 
 impl<In, Out> Trait<Bar, In> for Out {
     type Out = Out;
+    #[defines(Bar)]
     fn convert(_i: In) -> Self::Out {
         //[next]~^  ERROR: cannot satisfy `Bar == _`
         //[current]~^^ ERROR: item does not constrain `Bar::{opaque#0}`, but has it in its signature

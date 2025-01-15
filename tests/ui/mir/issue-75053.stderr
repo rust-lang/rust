@@ -1,5 +1,5 @@
 error: fatal error triggered by #[rustc_error]
-  --> $DIR/issue-75053.rs:49:1
+  --> $DIR/issue-75053.rs:47:1
    |
 LL | fn main() {
    | ^^^^^^^^^

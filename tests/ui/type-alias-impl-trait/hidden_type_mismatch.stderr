@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<() as Proj>::Assoc == i32`
-  --> $DIR/hidden_type_mismatch.rs:43:9
+  --> $DIR/hidden_type_mismatch.rs:45:9
    |
 LL |     pub type Sep = impl Sized + std::fmt::Display;
    |                    ------------------------------ the found opaque type
@@ -8,26 +8,26 @@ LL |         Bar { inner: 1i32, _marker: () }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<() as Proj>::Assoc == i32`
    |
 note: expected this to be `i32`
-  --> $DIR/hidden_type_mismatch.rs:20:22
+  --> $DIR/hidden_type_mismatch.rs:21:22
    |
 LL |         type Assoc = sus::Sep;
    |                      ^^^^^^^^
    = note:     expected type `i32`
            found opaque type `Sep`
 note: required for `Bar<()>` to implement `Copy`
-  --> $DIR/hidden_type_mismatch.rs:32:39
+  --> $DIR/hidden_type_mismatch.rs:33:39
    |
 LL |     impl<T: Proj<Assoc = i32> + Copy> Copy for Bar<T> {}
    |                  -----------          ^^^^     ^^^^^^
    |                  |
    |                  unsatisfied trait bound introduced here
 note: required by a bound in an opaque type
-  --> $DIR/hidden_type_mismatch.rs:36:26
+  --> $DIR/hidden_type_mismatch.rs:37:26
    |
 LL |     pub type Tait = impl Copy + From<Bar<()>> + Into<Bar<()>>;
    |                          ^^^^
 note: this definition site has more where clauses than the opaque type
-  --> $DIR/hidden_type_mismatch.rs:37:5
+  --> $DIR/hidden_type_mismatch.rs:39:5
    |
 LL | /     pub fn define_tait() -> Tait
 LL | |     where

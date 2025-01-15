@@ -22,11 +22,13 @@ impl Pending {
     }
 
     #[cfg(tait)]
+    #[defines(OpeningReadFuture)]
     fn read_fut(&mut self) -> OpeningReadFuture<'_> {
         self.read()
     }
 
     #[cfg(rpit)]
+    #[defines(PendingReader)]
     fn read_fut(
         &mut self,
     ) -> impl std::future::Future<Output = Result<PendingReader<'_>, CantOpen>> {

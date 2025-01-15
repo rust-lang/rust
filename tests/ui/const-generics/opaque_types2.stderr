@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/opaque_types2.rs:13:11
+  --> $DIR/opaque_types2.rs:12:11
    |
 LL | type Foo = impl Sized;
    |            ---------- the found opaque type
