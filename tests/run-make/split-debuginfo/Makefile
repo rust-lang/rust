@@ -47,7 +47,7 @@ else # Some non-Windows, non-Darwin platforms are not stable, and some are.
 	# - `.dwo` never created
 	# - `.dwp` never created
 	off:
-		$(RUSTC) foo.rs -g -C $(UNSTABLEOPTS) split-debuginfo=off
+		$(RUSTC) foo.rs -g $(UNSTABLEOPTS) -C split-debuginfo=off
 		[ ! -f $(TMPDIR)/*.dwp ]
 		[ ! -f $(TMPDIR)/*.dwo ]
 		$(RUSTC) foo.rs -g
