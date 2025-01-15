@@ -264,9 +264,10 @@ fn fulfillment_error_for_no_solution<'tcx>(
                     infcx.tcx.type_of(uv.def).instantiate(infcx.tcx, uv.args)
                 }
                 ty::ConstKind::Param(param_ct) => param_ct.find_ty_from_env(obligation.param_env),
-                _ => span_bug!(
+                ty::ConstKind::Value(ty, _) => ty,
+                kind => span_bug!(
                     obligation.cause.span,
-                    "ConstArgHasWrongType failed but we don't know how to compute type"
+                    "ConstArgHasWrongType failed but we don't know how to compute type for {kind:?}"
                 ),
             };
             FulfillmentErrorCode::Select(SelectionError::ConstArgHasWrongType {
