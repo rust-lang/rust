@@ -196,7 +196,7 @@ impl Step for CollectLicenseMetadata {
 pub struct GenerateCopyright;
 
 impl Step for GenerateCopyright {
-    type Output = PathBuf;
+    type Output = Vec<PathBuf>;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -218,9 +218,12 @@ impl Step for GenerateCopyright {
         cmd.env("DEST_LIBSTD", &dest_libstd);
         cmd.env("OUT_DIR", &builder.out);
         cmd.env("CARGO", &builder.initial_cargo);
+        // it is important that generate-copyright runs from the root of the
+        // source tree, because it uses relative paths
+        cmd.current_dir(&builder.src);
         cmd.run(builder);
 
-        dest
+        vec![dest, dest_libstd]
     }
 }
 
