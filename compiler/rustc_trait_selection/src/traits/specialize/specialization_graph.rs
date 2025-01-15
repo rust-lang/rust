@@ -138,35 +138,44 @@ impl<'tcx> Children {
             };
 
             let last_lint_mut = &mut last_lint;
-            let (le, ge) = traits::overlapping_impls(
-                tcx,
-                possible_sibling,
-                impl_def_id,
-                traits::SkipLeakCheck::Yes,
-                overlap_mode,
-            )
-            .map_or(Ok((false, false)), |overlap| {
-                if let Some(overlap_kind) =
-                    tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling)
-                {
-                    match overlap_kind {
-                        ty::ImplOverlapKind::Permitted { marker: _ } => {}
-                        ty::ImplOverlapKind::FutureCompatOrderDepTraitObjects => {
-                            *last_lint_mut = Some(FutureCompatOverlapError {
-                                error: create_overlap_error(overlap),
-                                kind: FutureCompatOverlapErrorKind::OrderDepTraitObjects,
-                            });
+
+            let overlap_kind = tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling);
+            let (le, ge) = if let Some(ty::ImplOverlapKind::Permitted { marker: _ }) = overlap_kind
+            {
+                (false, false)
+            } else {
+                traits::overlapping_impls(
+                    tcx,
+                    possible_sibling,
+                    impl_def_id,
+                    traits::SkipLeakCheck::Yes,
+                    overlap_mode,
+                )
+                .map_or(Ok((false, false)), |overlap| {
+                    if let Some(overlap_kind) = overlap_kind {
+                        match overlap_kind {
+                            ty::ImplOverlapKind::Permitted { marker: _ } => {}
+                            ty::ImplOverlapKind::FutureCompatOrderDepTraitObjects => {
+                                *last_lint_mut = Some(FutureCompatOverlapError {
+                                    error: create_overlap_error(overlap),
+                                    kind: FutureCompatOverlapErrorKind::OrderDepTraitObjects,
+                                });
+                            }
                         }
+
+                        return Ok((false, false));
                     }
 
-                    return Ok((false, false));
-                }
+                    let le = tcx.specializes((impl_def_id, possible_sibling));
+                    let ge = tcx.specializes((possible_sibling, impl_def_id));
 
-                let le = tcx.specializes((impl_def_id, possible_sibling));
-                let ge = tcx.specializes((possible_sibling, impl_def_id));
-
-                if le == ge { report_overlap_error(overlap, last_lint_mut) } else { Ok((le, ge)) }
-            })?;
+                    if le == ge {
+                        report_overlap_error(overlap, last_lint_mut)
+                    } else {
+                        Ok((le, ge))
+                    }
+                })?
+            };
 
             if le && !ge {
                 debug!(
