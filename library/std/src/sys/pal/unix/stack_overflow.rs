@@ -100,10 +100,11 @@ mod imp {
         // If the faulting address is within the guard page, then we print a
         // message saying so and abort.
         if start <= addr && addr < end {
-            rtprintpanic!(
-                "\nthread '{}' has overflowed its stack\n",
-                thread::current().name().unwrap_or("<unknown>")
-            );
+            thread::with_current_name(|name| {
+                let name = name.unwrap_or("<unknown>");
+                rtprintpanic!("\nthread '{name}' has overflowed its stack\n");
+            });
+
             rtabort!("stack overflow");
         } else {
             // Unregister ourselves by reverting back to the default behavior.
