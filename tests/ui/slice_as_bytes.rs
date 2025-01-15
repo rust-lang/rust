@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(unused)]
 #![warn(clippy::slice_as_bytes)]
 
