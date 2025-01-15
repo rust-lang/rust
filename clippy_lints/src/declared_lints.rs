@@ -468,7 +468,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::methods::SHOULD_IMPLEMENT_TRAIT_INFO,
     crate::methods::SINGLE_CHAR_ADD_STR_INFO,
     crate::methods::SKIP_WHILE_NEXT_INFO,
-    crate::methods::SLICE_AS_BYTES_INFO,
+    crate::methods::SLICED_STRING_AS_BYTES_INFO,
     crate::methods::STABLE_SORT_PRIMITIVE_INFO,
     crate::methods::STRING_EXTEND_CHARS_INFO,
     crate::methods::STRING_LIT_CHARS_ANY_INFO,

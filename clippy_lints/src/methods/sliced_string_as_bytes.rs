@@ -5,7 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, is_range_literal};
 use rustc_lint::LateContext;
 
-use super::SLICE_AS_BYTES;
+use super::SLICED_STRING_AS_BYTES;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>) {
     if let ExprKind::Index(indexed, index, _) = recv.kind
@@ -18,7 +18,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>) {
             let range = snippet_with_applicability(cx, index.span, "..", &mut applicability);
             span_lint_and_sugg(
                 cx,
-                SLICE_AS_BYTES,
+                SLICED_STRING_AS_BYTES,
                 expr.span,
                 "calling `as_bytes` after slicing a string",
                 "try",

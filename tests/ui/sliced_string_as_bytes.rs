@@ -1,5 +1,5 @@
 #![allow(unused)]
-#![warn(clippy::slice_as_bytes)]
+#![warn(clippy::sliced_string_as_bytes)]
 
 use std::ops::{Index, Range};
 
@@ -25,9 +25,9 @@ fn main() {
     let s = "Lorem ipsum";
     let string: String = "dolor sit amet".to_owned();
 
-    let bytes = &s.as_bytes()[1..5];
-    let bytes = &string.as_bytes()[1..];
-    let bytes = &"consectetur adipiscing".as_bytes()[..=5];
+    let bytes = s[1..5].as_bytes();
+    let bytes = string[1..].as_bytes();
+    let bytes = "consectetur adipiscing"[..=5].as_bytes();
 
     let f = Foo;
     let bytes = f[0..4].as_bytes();
