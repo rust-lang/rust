@@ -331,7 +331,7 @@
 //!
 //! Note that this invariant is enforced by simply making it impossible to call code that would
 //! perform a move on the pinned value. This is the case since the only way to access that pinned
-//! value is through the pinning <code>[Pin]<[&mut] T>></code>, which in turn restricts our access.
+//! value is through the pinning <code>[Pin]<[&mut] T></code>, which in turn restricts our access.
 //!
 //! ## [`Unpin`]
 //!
@@ -379,7 +379,7 @@
 //!
 //! Exposing access to the inner field which you want to remain pinned must then be carefully
 //! considered as well! Remember, exposing a method that gives access to a
-//! <code>[Pin]<[&mut] InnerT>></code> where <code>InnerT: [Unpin]</code> would allow safe code to
+//! <code>[Pin]<[&mut] InnerT></code> where <code>InnerT: [Unpin]</code> would allow safe code to
 //! trivially move the inner value out of that pinning pointer, which is precisely what you're
 //! seeking to prevent! Exposing a field of a pinned value through a pinning pointer is called
 //! "projecting" a pin, and the more general case of deciding in which cases a pin should be able
