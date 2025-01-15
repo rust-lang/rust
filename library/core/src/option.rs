@@ -1149,7 +1149,7 @@ impl<T> Option<T> {
         self
     }
 
-        /// Returns the provided default result (if none),
+    /// Returns the provided default result (if none),
     /// or applies a function to the contained value (if any).
     ///
     /// Arguments passed to `map_or` are eagerly evaluated; if you are passing
