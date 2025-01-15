@@ -1,4 +1,5 @@
 #![allow(clippy::unnecessary_operation)]
+#![allow(clippy::slice_as_bytes)]
 #![warn(clippy::bytes_nth)]
 
 fn main() {

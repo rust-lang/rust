@@ -1,0 +1,21 @@
+error: slicing a str before calling `as_bytes` results in needless UTF-8 alignment checks, and has the possiblity of panicking
+--> $DIR/slice_as_bytes.rs:29:17
+|
+LL |     let bytes = s[1..5].as_bytes();
+|                 ^^^^^^^^^^^^^^^^^^ help: try: `&s.as_bytes()[1..5]`
+|
+= note: `-D clippy::slice-as-bytes` implied by `-D warnings`
+
+error: slicing a String before calling `as_bytes` results in needless UTF-8 alignment checks, and has the possiblity of panicking
+--> $DIR/slice_as_bytes.rs:30:17
+|
+LL |     let bytes = string[1..].as_bytes();
+|                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&string.as_bytes()[1..]`
+
+error: slicing a str before calling `as_bytes` results in needless UTF-8 alignment checks, and has the possiblity of panicking
+--> $DIR/slice_as_bytes.rs:31:17
+|
+LL |     let bytes = "consectetur adipiscing"[..=5].as_bytes();
+|                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&"consectetur adipiscing".as_bytes()[..=5]`
+
+error: aborting due to 3 previous errors
