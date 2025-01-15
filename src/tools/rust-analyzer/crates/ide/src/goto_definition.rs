@@ -3106,4 +3106,103 @@ fn f() {
         "#,
         );
     }
+
+    #[test]
+    fn goto_into_definition_if_exists() {
+        check(
+            r#"
+//- minicore: from
+struct A;
+
+struct B;
+
+impl Into<B> for A {
+    fn into(self) -> B {
+     //^^^^
+        B
+    }
+}
+
+fn f() {
+    let a = A;
+    let b: B = a.into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn try_into_call_to_try_from_definition() {
+        check(
+            r#"
+//- minicore: from
+struct A;
+
+struct B;
+
+impl TryFrom<A> for B {
+    type Error = String;
+
+    fn try_from(value: A) -> Result<Self, Self::Error> {
+     //^^^^^^^^
+        Ok(B)
+    }
+}
+
+fn f() {
+    let a = A;
+    let b: Result<B, _> = a.try_into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn goto_try_into_definition_if_exists() {
+        check(
+            r#"
+//- minicore: from
+struct A;
+
+struct B;
+
+impl TryInto<B> for A {
+    type Error = String;
+
+    fn try_into(self) -> Result<B, Self::Error> {
+     //^^^^^^^^
+        Ok(B)
+    }
+}
+
+fn f() {
+    let a = A;
+    let b: Result<B, _> = a.try_into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn parse_call_to_from_str_definition() {
+        check(
+            r#"
+//- minicore: from, str
+struct A;
+
+impl FromStr for A {
+    type Error = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Error> {
+     //^^^^^^^^
+        Ok(A)
+    }
+}
+
+fn f() {
+    let a: Result<A, _> = "aaaaaa".parse$0();
+}
+        "#,
+        );
+    }
 }
