@@ -1149,7 +1149,7 @@ impl<T> Option<T> {
         self
     }
 
-    /// Returns the provided default result (if none),
+        /// Returns the provided default result (if none),
     /// or applies a function to the contained value (if any).
     ///
     /// Arguments passed to `map_or` are eagerly evaluated; if you are passing
@@ -1166,6 +1166,23 @@ impl<T> Option<T> {
     ///
     /// let x: Option<&str> = None;
     /// assert_eq!(x.map_or(42, |v| v.len()), 42);
+    ///
+    /// // Using a default value for an empty option.
+    /// let empty: Option<i32> = None;
+    /// assert_eq!(empty.map_or(0, |v| v * 2), 0); // Default value is used.
+    ///
+    /// // Applying a function to a `Some` value.
+    /// let value = Some(21);
+    /// assert_eq!(value.map_or(0, |v| v * 2), 42); // Function is applied to `21`.
+    ///
+    /// // Practical example with `Option<&str>`:
+    /// let username: Option<&str> = Some("Alice");
+    /// let greeting = username.map_or("Hello, guest!".to_string(), |name| format!("Hello, {}!", name));
+    /// assert_eq!(greeting, "Hello, Alice!");
+    ///
+    /// let no_username: Option<&str> = None;
+    /// let fallback_greeting = no_username.map_or("Hello, guest!".to_string(), |name| format!("Hello, {}!", name));
+    /// assert_eq!(fallback_greeting, "Hello, guest!");
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
