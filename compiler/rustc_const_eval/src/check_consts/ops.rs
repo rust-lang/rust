@@ -14,9 +14,11 @@ use rustc_middle::ty::{
     self, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef, Param, TraitRef, Ty,
     suggest_constraining_type_param,
 };
-use rustc_middle::util::{CallDesugaringKind, CallKind, call_kind};
 use rustc_session::parse::add_feature_diagnostics;
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
+use rustc_trait_selection::error_reporting::traits::call_kind::{
+    CallDesugaringKind, CallKind, call_kind,
+};
 use rustc_trait_selection::traits::SelectionContext;
 use tracing::debug;
 
@@ -324,10 +326,12 @@ fn build_error_for_const_call<'tcx>(
             note_trait_if_possible(&mut err, self_ty, trait_id);
             err
         }
-        CallKind::DerefCoercion { deref_target, deref_target_ty, self_ty } => {
+        CallKind::DerefCoercion { deref_target_span, deref_target_ty, self_ty } => {
             // Check first whether the source is accessible (issue #87060)
-            let target = if tcx.sess.source_map().is_span_accessible(deref_target) {
-                Some(deref_target)
+            let target = if let Some(deref_target_span) = deref_target_span
+                && tcx.sess.source_map().is_span_accessible(deref_target_span)
+            {
+                Some(deref_target_span)
             } else {
                 None
             };

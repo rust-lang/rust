@@ -386,6 +386,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
     type Value = RValue<'gcc>;
     type Metadata = RValue<'gcc>;
+    // TODO(antoyo): change to Function<'gcc>.
     type Function = RValue<'gcc>;
 
     type BasicBlock = Block<'gcc>;

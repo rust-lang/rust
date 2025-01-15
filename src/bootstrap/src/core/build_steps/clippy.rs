@@ -386,13 +386,37 @@ impl Step for CI {
         let library_clippy_cfg = LintConfig {
             allow: vec!["clippy::all".into()],
             warn: vec![],
-            deny: vec!["clippy::correctness".into()],
+            deny: vec![
+                "clippy::correctness".into(),
+                "clippy::char_lit_as_u8".into(),
+                "clippy::four_forward_slashes".into(),
+                "clippy::needless_bool".into(),
+                "clippy::needless_bool_assign".into(),
+                "clippy::non_minimal_cfg".into(),
+                "clippy::print_literal".into(),
+                "clippy::same_item_push".into(),
+                "clippy::single_char_add_str".into(),
+                "clippy::to_string_in_format_args".into(),
+            ],
             forbid: vec![],
         };
         let compiler_clippy_cfg = LintConfig {
             allow: vec!["clippy::all".into()],
             warn: vec![],
-            deny: vec!["clippy::correctness".into(), "clippy::clone_on_ref_ptr".into()],
+            deny: vec![
+                "clippy::correctness".into(),
+                "clippy::char_lit_as_u8".into(),
+                "clippy::clone_on_ref_ptr".into(),
+                "clippy::format_in_format_args".into(),
+                "clippy::four_forward_slashes".into(),
+                "clippy::needless_bool".into(),
+                "clippy::needless_bool_assign".into(),
+                "clippy::non_minimal_cfg".into(),
+                "clippy::print_literal".into(),
+                "clippy::same_item_push".into(),
+                "clippy::single_char_add_str".into(),
+                "clippy::to_string_in_format_args".into(),
+            ],
             forbid: vec![],
         };
 

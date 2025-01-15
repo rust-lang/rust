@@ -179,7 +179,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // all visible traits. If there's one clear winner, just suggest that.
 
         let visible_traits: Vec<_> = tcx
-            .all_traits()
+            .visible_traits()
             .filter(|trait_def_id| {
                 let viz = tcx.visibility(*trait_def_id);
                 let def_id = self.item_def_id();

@@ -47,30 +47,33 @@
 
 // === CDB TESTS ==================================================================================
 
+// Note: `/n` causes the the output to be sorted to avoid depending on the order in PDB which may
+// be arbitrary.
+
 // cdb-command: g
-// cdb-command: dv
+// cdb-command: dv /n
 // cdb-check:[...]a = 0n123
 
 // cdb-command: g
-// cdb-command: dv
+// cdb-command: dv /n
 // cdb-check:[...]a = 0n123
 // cdb-check:[...]x = 0n42
 
 // cdb-command: g
-// cdb-command: dv
+// cdb-command: dv /n
 // cdb-check:[...]a = 0n123
-// cdb-check:[...]x = 0n42
 // cdb-check:[...]b = 0n456
+// cdb-check:[...]x = 0n42
 // cdb-check:[...]y = true
 
 // cdb-command: g
-// cdb-command: dv
-// cdb-check:[...]z = 0n10
+// cdb-command: dv /n
+// cdb-check:[...]a = 0n123
+// cdb-check:[...]b = 0n456
 // cdb-check:[...]c = 0n789
-// cdb-check:[...]a = 0n123
 // cdb-check:[...]x = 0n42
-// cdb-check:[...]b = 0n456
 // cdb-check:[...]y = true
+// cdb-check:[...]z = 0n10
 
 fn main() {
     let a = id(123);
@@ -95,6 +98,8 @@ fn main() {
 }
 
 #[inline(never)]
-fn id<T>(value: T) -> T { value }
+fn id<T>(value: T) -> T {
+    value
+}
 
-fn zzz() { }
+fn zzz() {}

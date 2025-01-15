@@ -234,7 +234,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
     pub fn iter_opaque_types(
         &self,
     ) -> impl Iterator<Item = (ty::OpaqueTypeKey<'tcx>, ty::OpaqueHiddenType<'tcx>)> + '_ {
-        self.opaque_type_storage.opaque_types.iter().map(|(&k, v)| (k, v.hidden_type))
+        self.opaque_type_storage.opaque_types.iter().map(|(&k, &v)| (k, v))
     }
 }
 

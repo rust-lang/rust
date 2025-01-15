@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::{fmt, iter};
 
-pub use rustc_abi::{Reg, RegKind};
+pub use rustc_abi::{ExternAbi, Reg, RegKind};
 use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 
@@ -9,8 +9,7 @@ use crate::abi::{
     self, AddressSpace, Align, BackendRepr, HasDataLayout, Pointer, Size, TyAbiInterface,
     TyAndLayout,
 };
-use crate::spec::abi::Abi as SpecAbi;
-use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, WasmCAbi};
+use crate::spec::{HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, WasmCAbi};
 
 mod aarch64;
 mod amdgpu;
@@ -627,20 +626,20 @@ impl<'a, Ty: fmt::Display> fmt::Debug for FnAbi<'a, Ty> {
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum AdjustForForeignAbiError {
     /// Target architecture doesn't support "foreign" (i.e. non-Rust) ABIs.
-    Unsupported { arch: Symbol, abi: spec::abi::Abi },
+    Unsupported { arch: Symbol, abi: ExternAbi },
 }
 
 impl<'a, Ty> FnAbi<'a, Ty> {
     pub fn adjust_for_foreign_abi<C>(
         &mut self,
         cx: &C,
-        abi: spec::abi::Abi,
+        abi: ExternAbi,
     ) -> Result<(), AdjustForForeignAbiError>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
         C: HasDataLayout + HasTargetSpec + HasWasmCAbiOpt + HasX86AbiOpt,
     {
-        if abi == spec::abi::Abi::X86Interrupt {
+        if abi == ExternAbi::X86Interrupt {
             if let Some(arg) = self.args.first_mut() {
                 arg.pass_by_stack_offset(None);
             }
@@ -651,12 +650,10 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         match &spec.arch[..] {
             "x86" => {
                 let (flavor, regparm) = match abi {
-                    spec::abi::Abi::Fastcall { .. } | spec::abi::Abi::Vectorcall { .. } => {
+                    ExternAbi::Fastcall { .. } | ExternAbi::Vectorcall { .. } => {
                         (x86::Flavor::FastcallOrVectorcall, None)
                     }
-                    spec::abi::Abi::C { .. }
-                    | spec::abi::Abi::Cdecl { .. }
-                    | spec::abi::Abi::Stdcall { .. } => {
+                    ExternAbi::C { .. } | ExternAbi::Cdecl { .. } | ExternAbi::Stdcall { .. } => {
                         (x86::Flavor::General, cx.x86_abi_opt().regparm)
                     }
                     _ => (x86::Flavor::General, None),
@@ -666,8 +663,10 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 x86::compute_abi_info(cx, self, opts);
             }
             "x86_64" => match abi {
-                spec::abi::Abi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),
-                spec::abi::Abi::Win64 { .. } => x86_win64::compute_abi_info(cx, self),
+                ExternAbi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),
+                ExternAbi::Win64 { .. } | ExternAbi::Vectorcall { .. } => {
+                    x86_win64::compute_abi_info(cx, self)
+                }
                 _ => {
                     if cx.target_spec().is_like_windows {
                         x86_win64::compute_abi_info(cx, self)
@@ -701,7 +700,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),
             "nvptx64" => {
-                if cx.target_spec().adjust_abi(abi, self.c_variadic) == spec::abi::Abi::PtxKernel {
+                if cx.target_spec().adjust_abi(abi, self.c_variadic) == ExternAbi::PtxKernel {
                     nvptx64::compute_ptx_kernel_abi_info(cx, self)
                 } else {
                     nvptx64::compute_abi_info(self)
@@ -730,7 +729,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         Ok(())
     }
 
-    pub fn adjust_for_rust_abi<C>(&mut self, cx: &C, abi: SpecAbi)
+    pub fn adjust_for_rust_abi<C>(&mut self, cx: &C, abi: ExternAbi)
     where
         Ty: TyAbiInterface<'a, C> + Copy,
         C: HasDataLayout + HasTargetSpec,
@@ -821,7 +820,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 // that's how we connect up to LLVM and it's unstable
                 // anyway, we control all calls to it in libstd.
                 BackendRepr::Vector { .. }
-                    if abi != SpecAbi::RustIntrinsic && spec.simd_types_indirect =>
+                    if abi != ExternAbi::RustIntrinsic && spec.simd_types_indirect =>
                 {
                     arg.make_indirect();
                     continue;

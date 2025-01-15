@@ -38,8 +38,8 @@ pub trait Deref {
     fn deref(&self) -> &Self::Target;
 }
 
-#[lang = "receiver"]
-trait Receiver {
+#[lang = "legacy_receiver"]
+trait LegacyReceiver {
 }
 
 #[lang = "freeze"]

@@ -90,7 +90,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     }
                 }
             }
-        } else if a_type.is_vector() && a_type.is_vector() {
+        } else if a_type.is_vector() && b_type.is_vector() {
             a >> b
         } else if a_native && !b_native {
             self.gcc_lshr(a, self.gcc_int_cast(b, a_type))
@@ -660,7 +660,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     }
                 }
             }
-        } else if a_type.is_vector() && a_type.is_vector() {
+        } else if a_type.is_vector() && b_type.is_vector() {
             a << b
         } else if a_native && !b_native {
             self.gcc_shl(a, self.gcc_int_cast(b, a_type))

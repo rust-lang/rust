@@ -23,7 +23,6 @@ jobs:
       fail-fast: false
       matrix:
         commands: [
-          "--mini-tests",
           "--std-tests",
           # TODO(antoyo): fix those on m68k.
           #"--test-libcore",
@@ -93,6 +92,7 @@ jobs:
       run: |
         ./y.sh prepare --only-libcore --cross
         ./y.sh build --sysroot --features compiler_builtins/no-f16-f128 --target-triple m68k-unknown-linux-gnu
+        ./y.sh test --mini-tests
         CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu cargo test
         ./y.sh clean all
 
@@ -101,9 +101,6 @@ jobs:
         git config --global user.email "user@example.com"
         git config --global user.name "User"
         ./y.sh prepare --cross
-
-    - name: Add more failing tests because the sysroot is not compiled with LTO
-      run: cat tests/failing-non-lto-tests.txt >> tests/failing-ui-tests.txt
 
     - name: Run tests
       run: |
