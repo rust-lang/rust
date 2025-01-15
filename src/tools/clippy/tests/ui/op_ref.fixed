@@ -18,7 +18,7 @@ fn main() {
     let a = "a".to_string();
     let b = "a";
 
-    if b < &a {
+    if b < a {
         println!("OK");
     }
 
