@@ -1897,7 +1897,11 @@ pub const fn forget<T: ?Sized>(_: T) {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_allowed_through_unstable_modules]
+#[cfg_attr(bootstrap, rustc_allowed_through_unstable_modules)]
+#[cfg_attr(
+    not(bootstrap),
+    rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"
+)]
 #[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
 #[rustc_diagnostic_item = "transmute"]
 #[rustc_nounwind]
@@ -4325,7 +4329,11 @@ pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *cons
 /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_allowed_through_unstable_modules]
+#[cfg_attr(bootstrap, rustc_allowed_through_unstable_modules)]
+#[cfg_attr(
+    not(bootstrap),
+    rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"
+)]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -4429,7 +4437,11 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// ```
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_allowed_through_unstable_modules]
+#[cfg_attr(bootstrap, rustc_allowed_through_unstable_modules)]
+#[cfg_attr(
+    not(bootstrap),
+    rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"
+)]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -4512,7 +4524,11 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// ```
 #[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_allowed_through_unstable_modules]
+#[cfg_attr(bootstrap, rustc_allowed_through_unstable_modules)]
+#[cfg_attr(
+    not(bootstrap),
+    rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"
+)]
 #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
