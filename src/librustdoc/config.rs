@@ -303,6 +303,8 @@ pub(crate) struct RenderOptions {
     pub(crate) include_parts_dir: Vec<PathToParts>,
     /// Where to write crate-info
     pub(crate) parts_out_dir: Option<PathToParts>,
+    /// disable minification of CSS/JS
+    pub(crate) disable_minification: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -781,6 +783,9 @@ impl Options {
 
         let unstable_features =
             rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
+
+        let disable_minification = matches.opt_present("disable-minification");
+
         let options = Options {
             bin_crate,
             proc_macro_crate,
@@ -857,6 +862,7 @@ impl Options {
             should_merge,
             include_parts_dir,
             parts_out_dir,
+            disable_minification,
         };
         Some((input, options, render_options))
     }
