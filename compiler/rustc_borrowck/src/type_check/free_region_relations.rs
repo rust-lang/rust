@@ -5,13 +5,14 @@ use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::infer::{InferCtxt, outlives};
+use rustc_infer::traits::ScrubbedTraitError;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, RegionVid, Ty, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, Span};
-use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
-use rustc_trait_selection::solve::deeply_normalize;
+use rustc_trait_selection::solve::NoSolution;
+use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use tracing::{debug, instrument};
 use type_op::TypeOpOutput;
@@ -229,24 +230,14 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         let mut constraints = vec![];
         let mut known_type_outlives_obligations = vec![];
         for bound in param_env.caller_bounds() {
-            let Some(mut outlives) = bound.as_type_outlives_clause() else { continue };
-
-            // In the new solver, normalize the type-outlives obligation assumptions.
-            if self.infcx.next_trait_solver() {
-                match deeply_normalize(
-                    self.infcx.at(&ObligationCause::misc(span, defining_ty_def_id), param_env),
+            if let Some(outlives) = bound.as_type_outlives_clause() {
+                self.normalize_and_push_type_outlives_obligation(
                     outlives,
-                ) {
-                    Ok(normalized_outlives) => {
-                        outlives = normalized_outlives;
-                    }
-                    Err(e) => {
-                        self.infcx.err_ctxt().report_fulfillment_errors(e);
-                    }
-                }
-            }
-
-            known_type_outlives_obligations.push(outlives);
+                    span,
+                    &mut known_type_outlives_obligations,
+                    &mut constraints,
+                );
+            };
         }
 
         let unnormalized_input_output_tys = self
@@ -354,6 +345,44 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             region_bound_pairs: self.region_bound_pairs,
             normalized_inputs_and_output,
         }
+    }
+
+    fn normalize_and_push_type_outlives_obligation(
+        &self,
+        mut outlives: ty::PolyTypeOutlivesPredicate<'tcx>,
+        span: Span,
+        known_type_outlives_obligations: &mut Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
+        constraints: &mut Vec<&QueryRegionConstraints<'tcx>>,
+    ) {
+        // In the new solver, normalize the type-outlives obligation assumptions.
+        if self.infcx.next_trait_solver() {
+            let Ok(TypeOpOutput {
+                output: normalized_outlives,
+                constraints: constraints_normalize,
+                error_info: _,
+            }) = CustomTypeOp::new(
+                |ocx| {
+                    ocx.deeply_normalize(
+                        &ObligationCause::dummy_with_span(span),
+                        self.param_env,
+                        outlives,
+                    )
+                    .map_err(|_: Vec<ScrubbedTraitError<'tcx>>| NoSolution)
+                },
+                "normalize type outlives obligation",
+            )
+            .fully_perform(self.infcx, span)
+            else {
+                self.infcx.dcx().delayed_bug(format!("could not normalize {outlives:?}"));
+                return;
+            };
+            outlives = normalized_outlives;
+            if let Some(c) = constraints_normalize {
+                constraints.push(c);
+            }
+        }
+
+        known_type_outlives_obligations.push(outlives);
     }
 
     /// Update the type of a single local, which should represent

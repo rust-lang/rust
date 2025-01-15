@@ -207,7 +207,15 @@ fn write_static_files(
     if opt.emit.is_empty() || opt.emit.contains(&EmitType::Toolchain) {
         static_files::for_each(|f: &static_files::StaticFile| {
             let filename = static_dir.join(f.output_filename());
-            fs::write(&filename, f.minified()).map_err(|e| PathError::new(e, &filename))
+            let contents: &[u8];
+            let contents_vec: Vec<u8>;
+            if opt.disable_minification {
+                contents = f.bytes;
+            } else {
+                contents_vec = f.minified();
+                contents = &contents_vec;
+            };
+            fs::write(&filename, contents).map_err(|e| PathError::new(e, &filename))
         })?;
     }
 
