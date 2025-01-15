@@ -98,12 +98,12 @@ fn check_op(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool)
             let arg_snip = snippet(cx, arg_span, "..");
             let expr_snip;
             let eq_impl;
-            if with_deref.is_implemented() {
-                expr_snip = format!("*{arg_snip}");
-                eq_impl = with_deref;
-            } else {
+            if without_deref.is_implemented() {
                 expr_snip = arg_snip.to_string();
                 eq_impl = without_deref;
+            } else {
+                expr_snip = format!("*{arg_snip}");
+                eq_impl = with_deref;
             }
 
             let span;
