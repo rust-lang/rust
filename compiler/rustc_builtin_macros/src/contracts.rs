@@ -35,90 +35,90 @@ impl AttrProcMacro for ExpandEnsures {
     }
 }
 
-fn expand_injecting_circa_where_clause(
+/// Expand the function signature to include the contract clause.
+///
+/// The contracts clause will be injected before the function body and the optional where clause.
+/// For that, we search for the body / where token, and invoke the `inject` callback to generate the
+/// contract clause in the right place.
+///
+// FIXME: this kind of manual token tree munging does not have significant precedent among
+// rustc builtin macros, probably because most builtin macros use direct AST manipulation to
+// accomplish similar goals. But since our attributes need to take arbitrary expressions, and
+// our attribute infrastructure does not yet support mixing a token-tree annotation with an AST
+// annotated, we end up doing token tree manipulation.
+fn expand_contract_clause(
     ecx: &mut ExtCtxt<'_>,
     attr_span: Span,
     annotated: TokenStream,
-    inject: impl FnOnce(&mut Vec<TokenTree>) -> Result<(), ErrorGuaranteed>,
+    inject: impl FnOnce(&mut TokenStream) -> Result<(), ErrorGuaranteed>,
 ) -> Result<TokenStream, ErrorGuaranteed> {
-    let mut new_tts = Vec::with_capacity(annotated.len());
+    let mut new_tts = TokenStream::default();
     let mut cursor = annotated.iter();
 
-    // Find the `fn name<G,...>(x:X,...)` and inject the AST contract forms right after
-    // the formal parameters (and return type if any).
-    while let Some(tt) = cursor.next() {
-        new_tts.push(tt.clone());
-        if let TokenTree::Token(tok, _) = tt
-            && tok.is_ident_named(kw::Fn)
-        {
-            break;
-        }
+    let is_kw = |tt: &TokenTree, sym: Symbol| {
+        if let TokenTree::Token(token, _) = tt { token.is_ident_named(sym) } else { false }
+    };
+
+    // Find the `fn` keyword to check if this is a function.
+    if cursor
+        .find(|tt| {
+            new_tts.push_tree((*tt).clone());
+            is_kw(tt, kw::Fn)
+        })
+        .is_none()
+    {
+        return Err(ecx
+            .sess
+            .dcx()
+            .span_err(attr_span, "contract annotations can only be used on functions"));
     }
 
-    // Found the `fn` keyword, now find the formal parameters.
-    //
-    // FIXME: can this fail if you have parentheticals in a generics list, like `fn foo<F: Fn(X) -> Y>` ?
-    while let Some(tt) = cursor.next() {
-        new_tts.push(tt.clone());
-
-        if let TokenTree::Delimited(_, _, token::Delimiter::Parenthesis, _) = tt {
-            break;
-        }
-        if let TokenTree::Token(token::Token { kind: token::TokenKind::Semi, .. }, _) = tt {
-            panic!("contract attribute applied to fn without parameter list.");
-        }
-    }
-
-    // There *might* be a return type declaration (and figuring out where that ends would require
-    // parsing an arbitrary type expression, e.g. `-> Foo<args ...>`
-    //
-    // Instead of trying to figure that out, scan ahead and look for the first occurence of a
-    // `where`, a `{ ... }`, or a `;`.
-    //
-    // FIXME: this might still fall into a trap for something like `-> Ctor<T, const { 0 }>`. I
-    // *think* such cases must be under a Delimited (e.g. `[T; { N }]` or have the braced form
-    // prefixed by e.g. `const`, so we should still be able to filter them out without having to
-    // parse the type expression itself. But rather than try to fix things with hacks like that,
-    // time might be better spent extending the attribute expander to suport tt-annotation atop
-    // ast-annotated, which would be an elegant way to sidestep all of this.
-    let mut opt_next_tt = cursor.next();
-    while let Some(next_tt) = opt_next_tt {
-        if let TokenTree::Token(tok, _) = next_tt
-            && tok.is_ident_named(kw::Where)
-        {
-            break;
-        }
-        if let TokenTree::Delimited(_, _, token::Delimiter::Brace, _) = next_tt {
-            break;
-        }
-        if let TokenTree::Token(token::Token { kind: token::TokenKind::Semi, .. }, _) = next_tt {
-            break;
+    // Found the `fn` keyword, now find either the `where` token or the function body.
+    let next_tt = loop {
+        let Some(tt) = cursor.next() else {
+            return Err(ecx.sess.dcx().span_err(
+                attr_span,
+                "contract annotations is only supported in functions with bodies",
+            ));
+        };
+        // If `tt` is the last element. Check if it is the function body.
+        if cursor.peek().is_none() {
+            if let TokenTree::Delimited(_, _, token::Delimiter::Brace, _) = tt {
+                break tt;
+            } else {
+                return Err(ecx.sess.dcx().span_err(
+                    attr_span,
+                    "contract annotations is only supported in functions with bodies",
+                ));
+            }
         }
 
-        // for anything else, transcribe the tt and keep looking.
-        new_tts.push(next_tt.clone());
-        opt_next_tt = cursor.next();
-    }
+        if is_kw(tt, kw::Where) {
+            break tt;
+        }
+        new_tts.push_tree(tt.clone());
+    };
 
     // At this point, we've transcribed everything from the `fn` through the formal parameter list
     // and return type declaration, (if any), but `tt` itself has *not* been transcribed.
     //
     // Now inject the AST contract form.
     //
-    // FIXME: this kind of manual token tree munging does not have significant precedent among
-    // rustc builtin macros, probably because most builtin macros use direct AST manipulation to
-    // accomplish similar goals. But since our attributes need to take arbitrary expressions, and
-    // our attribute infrastructure does not yet support mixing a token-tree annotation with an AST
-    // annotated, we end up doing token tree manipulation.
     inject(&mut new_tts)?;
 
-    // Above we injected the internal AST requires/ensures contruct. Now copy over all the other
+    // Above we injected the internal AST requires/ensures construct. Now copy over all the other
     // token trees.
-    if let Some(tt) = opt_next_tt {
-        new_tts.push(tt.clone());
-    }
+    new_tts.push_tree(next_tt.clone());
     while let Some(tt) = cursor.next() {
-        new_tts.push(tt.clone());
+        new_tts.push_tree(tt.clone());
+        if cursor.peek().is_none()
+            && !matches!(tt, TokenTree::Delimited(_, _, token::Delimiter::Brace, _))
+        {
+            return Err(ecx.sess.dcx().span_err(
+                attr_span,
+                "contract annotations is only supported in functions with bodies",
+            ));
+        }
     }
 
     // Record the span as a contract attribute expansion.
@@ -126,7 +126,7 @@ fn expand_injecting_circa_where_clause(
     // which is gated via `rustc_contracts_internals`.
     ecx.psess().contract_attribute_spans.push(attr_span);
 
-    Ok(TokenStream::new(new_tts))
+    Ok(new_tts)
 }
 
 fn expand_requires_tts(
@@ -135,16 +135,16 @@ fn expand_requires_tts(
     annotation: TokenStream,
     annotated: TokenStream,
 ) -> Result<TokenStream, ErrorGuaranteed> {
-    expand_injecting_circa_where_clause(_ecx, attr_span, annotated, |new_tts| {
-        new_tts.push(TokenTree::Token(
+    expand_contract_clause(_ecx, attr_span, annotated, |new_tts| {
+        new_tts.push_tree(TokenTree::Token(
             token::Token::from_ast_ident(Ident::new(kw::RustcContractRequires, attr_span)),
             Spacing::Joint,
         ));
-        new_tts.push(TokenTree::Token(
+        new_tts.push_tree(TokenTree::Token(
             token::Token::new(token::TokenKind::OrOr, attr_span),
             Spacing::Alone,
         ));
-        new_tts.push(TokenTree::Delimited(
+        new_tts.push_tree(TokenTree::Delimited(
             DelimSpan::from_single(attr_span),
             DelimSpacing::new(Spacing::JointHidden, Spacing::JointHidden),
             token::Delimiter::Parenthesis,
@@ -160,12 +160,12 @@ fn expand_ensures_tts(
     annotation: TokenStream,
     annotated: TokenStream,
 ) -> Result<TokenStream, ErrorGuaranteed> {
-    expand_injecting_circa_where_clause(_ecx, attr_span, annotated, |new_tts| {
-        new_tts.push(TokenTree::Token(
+    expand_contract_clause(_ecx, attr_span, annotated, |new_tts| {
+        new_tts.push_tree(TokenTree::Token(
             token::Token::from_ast_ident(Ident::new(kw::RustcContractEnsures, attr_span)),
             Spacing::Joint,
         ));
-        new_tts.push(TokenTree::Delimited(
+        new_tts.push_tree(TokenTree::Delimited(
             DelimSpan::from_single(attr_span),
             DelimSpacing::new(Spacing::JointHidden, Spacing::JointHidden),
             token::Delimiter::Parenthesis,
