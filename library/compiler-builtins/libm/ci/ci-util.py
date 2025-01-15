@@ -1,18 +1,30 @@
 #!/usr/bin/env python3
-"""Calculate which exhaustive tests should be run as part of CI.
+"""Utilities for CI.
 
 This dynamically prepares a list of routines that had a source file change based on
 git history.
 """
 
+import json
 import subprocess as sp
 import sys
-import json
 from dataclasses import dataclass
+from inspect import cleandoc
 from os import getenv
 from pathlib import Path
 from typing import TypedDict
 
+USAGE = cleandoc(
+    """
+    usage:
+
+    ./ci/ci-util.py <SUBCOMMAND>
+
+    SUBCOMMAND:
+        generate-matrix    Calculate a matrix of which functions had source change,
+                           print that as JSON object.
+    """
+)
 
 REPO_ROOT = Path(__file__).parent.parent
 GIT = ["git", "-C", REPO_ROOT]
@@ -139,9 +151,17 @@ def eprint(*args, **kwargs):
 
 
 def main():
-    ctx = Context()
-    output = ctx.make_workflow_output()
-    print(f"matrix={output}")
+    match sys.argv[1:]:
+        case ["generate-matrix"]:
+            ctx = Context()
+            output = ctx.make_workflow_output()
+            print(f"matrix={output}")
+        case ["--help" | "-h"]:
+            print(USAGE)
+            exit()
+        case _:
+            eprint(USAGE)
+            exit(1)
 
 
 if __name__ == "__main__":

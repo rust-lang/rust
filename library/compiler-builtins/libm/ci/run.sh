@@ -93,7 +93,7 @@ if [ "$nextest" = "1" ]; then
         cfg_flag="--config-file $cfg_file"
     fi
     
-    cmd="cargo nextest run ${cfg_flag:-} $flags"
+    cmd="cargo nextest run ${cfg_flag:-} --max-fail=10 $flags"
     profile="--cargo-profile"
 fi
 

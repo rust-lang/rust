@@ -7,7 +7,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  CARGO_TERM_VERBOSE: true
   RUSTDOCFLAGS: -Dwarnings
   RUSTFLAGS: -Dwarnings
   RUST_BACKTRACE: full
@@ -202,7 +201,7 @@ jobs:
       - name: Fetch pull request ref
         run: git fetch origin "$GITHUB_REF:$GITHUB_REF"
         if: github.event_name == 'pull_request'
-      - run: python3 ci/calculate-exhaustive-matrix.py >> "$GITHUB_OUTPUT"
+      - run: python3 ci/ci-util.py generate-matrix >> "$GITHUB_OUTPUT"
         id: script
 
   extensive:
