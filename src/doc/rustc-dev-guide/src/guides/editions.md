@@ -91,7 +91,7 @@ stability.
 ## Edition parsing
 
 For the most part, the lexer is edition-agnostic.
-Within [`StringReader`], tokens can be modified based on edition-specific behavior.
+Within [`Lexer`], tokens can be modified based on edition-specific behavior.
 For example, C-String literals like `c"foo"` are split into multiple tokens in editions before 2021.
 This is also where things like reserved prefixes are handled for the 2021 edition.
 
@@ -114,7 +114,7 @@ For example, the deprecated `start...end` pattern syntax emits the
 [`ellipsis_inclusive_range_patterns`] lint on editions before 2021, and in 2021 is an hard error via
 the `emit_err` method.
 
-[`StringReader`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/struct.StringReader.html
+[`Lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/struct.Lexer.html
 [`ParseSess::edition`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/parse/struct.ParseSess.html#structfield.edition
 [`ellipsis_inclusive_range_patterns`]: https://doc.rust-lang.org/nightly/rustc/lints/listing/warn-by-default.html#ellipsis-inclusive-range-patterns
 
