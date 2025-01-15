@@ -37,11 +37,11 @@ jobs:
       run: sudo apt-get install ninja-build ripgrep
 
     - name: Download artifact
-      run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/gcc-13.deb
+      run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/gcc-15.deb
 
     - name: Setup path to libgccjit
       run: |
-          sudo dpkg --force-overwrite -i gcc-13.deb
+          sudo dpkg --force-overwrite -i gcc-15.deb
           echo 'gcc-path = "/usr/lib/"' > config.toml
 
     - name: Set env

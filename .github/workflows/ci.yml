@@ -19,8 +19,8 @@ jobs:
       fail-fast: false
       matrix:
         libgccjit_version:
-          - { gcc: "gcc-13.deb" }
-          - { gcc: "gcc-13-without-int128.deb" }
+          - { gcc: "gcc-15.deb" }
+          - { gcc: "gcc-15-without-int128.deb" }
         commands: [
           "--std-tests",
           # FIXME: re-enable asm tests when GCC can emit in the right syntax.
