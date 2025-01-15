@@ -1787,9 +1787,26 @@ pub(crate) struct IneffectiveUnstableImpl;
 
 #[derive(LintDiagnostic)]
 #[diag(passes_unused_assign)]
-#[help]
 pub(crate) struct UnusedAssign {
     pub name: String,
+    #[subdiagnostic]
+    pub suggestion: Option<UnusedAssignSuggestion>,
+    #[help]
+    pub help: bool,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(passes_unused_assign_suggestion, applicability = "maybe-incorrect")]
+pub(crate) struct UnusedAssignSuggestion {
+    pub pre: &'static str,
+    #[suggestion_part(code = "{pre}mut ")]
+    pub ty_span: Span,
+    #[suggestion_part(code = "")]
+    pub ty_ref_span: Span,
+    #[suggestion_part(code = "*")]
+    pub ident_span: Span,
+    #[suggestion_part(code = "")]
+    pub expr_ref_span: Span,
 }
 
 #[derive(LintDiagnostic)]

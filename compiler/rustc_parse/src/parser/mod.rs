@@ -655,9 +655,9 @@ impl<'a> Parser<'a> {
     fn check_keyword_case(&mut self, exp: ExpKeywordPair, case: Case) -> bool {
         if self.check_keyword(exp) {
             true
-        // Do an ASCII case-insensitive match, because all keywords are ASCII.
         } else if case == Case::Insensitive
             && let Some((ident, IdentIsRaw::No)) = self.token.ident()
+            // Do an ASCII case-insensitive match, because all keywords are ASCII.
             && ident.as_str().eq_ignore_ascii_case(exp.kw.as_str())
         {
             true
@@ -689,7 +689,8 @@ impl<'a> Parser<'a> {
             true
         } else if case == Case::Insensitive
             && let Some((ident, IdentIsRaw::No)) = self.token.ident()
-            && ident.as_str().to_lowercase() == exp.kw.as_str().to_lowercase()
+            // Do an ASCII case-insensitive match, because all keywords are ASCII.
+            && ident.as_str().eq_ignore_ascii_case(exp.kw.as_str())
         {
             self.dcx().emit_err(errors::KwBadCase { span: ident.span, kw: exp.kw.as_str() });
             self.bump();

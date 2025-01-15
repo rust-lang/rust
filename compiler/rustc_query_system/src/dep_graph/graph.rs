@@ -376,25 +376,8 @@ impl<D: Deps> DepGraphData<D> {
         };
 
         let dcx = cx.dep_context();
-        let hashing_timer = dcx.profiler().incr_result_hashing();
-        let current_fingerprint =
-            hash_result.map(|f| dcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, &result)));
-
-        // Intern the new `DepNode`.
-        let (dep_node_index, prev_and_color) =
-            self.current.intern_node(&self.previous, key, edges, current_fingerprint);
-
-        hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
-
-        if let Some((prev_index, color)) = prev_and_color {
-            debug_assert!(
-                self.colors.get(prev_index).is_none(),
-                "DepGraph::with_task() - Duplicate DepNodeColor \
-                            insertion for {key:?}"
-            );
-
-            self.colors.insert(prev_index, color);
-        }
+        let dep_node_index =
+            self.hash_result_and_intern_node(dcx, key, edges, &result, hash_result);
 
         (result, dep_node_index)
     }
@@ -461,6 +444,38 @@ impl<D: Deps> DepGraphData<D> {
         };
 
         (result, dep_node_index)
+    }
+
+    /// Intern the new `DepNode` with the dependencies up-to-now.
+    fn hash_result_and_intern_node<Ctxt: DepContext<Deps = D>, R>(
+        &self,
+        cx: &Ctxt,
+        node: DepNode,
+        edges: EdgesVec,
+        result: &R,
+        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
+    ) -> DepNodeIndex {
+        let hashing_timer = cx.profiler().incr_result_hashing();
+        let current_fingerprint = hash_result.map(|hash_result| {
+            cx.with_stable_hashing_context(|mut hcx| hash_result(&mut hcx, result))
+        });
+
+        // Intern the new `DepNode` with the dependencies up-to-now.
+        let (dep_node_index, prev_and_color) =
+            self.current.intern_node(&self.previous, node, edges, current_fingerprint);
+
+        hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
+
+        if let Some((prev_index, color)) = prev_and_color {
+            debug_assert!(
+                self.colors.get(prev_index).is_none(),
+                "DepGraph::with_task() - Duplicate DepNodeColor insertion for {node:?}",
+            );
+
+            self.colors.insert(prev_index, color);
+        }
+
+        dep_node_index
     }
 }
 
@@ -536,11 +551,10 @@ impl<D: Deps> DepGraph<D> {
     /// FIXME: If the code is changed enough for this node to be marked before requiring the
     /// caller's node, we suppose that those changes will be enough to mark this node red and
     /// force a recomputation using the "normal" way.
-    pub fn with_feed_task<Ctxt: DepContext<Deps = D>, A: Debug, R: Debug>(
+    pub fn with_feed_task<Ctxt: DepContext<Deps = D>, R: Debug>(
         &self,
         node: DepNode,
         cx: Ctxt,
-        key: A,
         result: &R,
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> DepNodeIndex {
@@ -588,27 +602,7 @@ impl<D: Deps> DepGraph<D> {
                 }
             });
 
-            let hashing_timer = cx.profiler().incr_result_hashing();
-            let current_fingerprint = hash_result.map(|hash_result| {
-                cx.with_stable_hashing_context(|mut hcx| hash_result(&mut hcx, result))
-            });
-
-            // Intern the new `DepNode` with the dependencies up-to-now.
-            let (dep_node_index, prev_and_color) =
-                data.current.intern_node(&data.previous, node, edges, current_fingerprint);
-
-            hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
-
-            if let Some((prev_index, color)) = prev_and_color {
-                debug_assert!(
-                    data.colors.get(prev_index).is_none(),
-                    "DepGraph::with_task() - Duplicate DepNodeColor insertion for {key:?}",
-                );
-
-                data.colors.insert(prev_index, color);
-            }
-
-            dep_node_index
+            data.hash_result_and_intern_node(&cx, node, edges, result, hash_result)
         } else {
             // Incremental compilation is turned off. We just execute the task
             // without tracking. We still provide a dep-node index that uniquely

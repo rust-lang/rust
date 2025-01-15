@@ -17,8 +17,8 @@ use tracing::*;
 
 use crate::common::{
     Assembly, Codegen, CodegenUnits, CompareMode, Config, CoverageMap, CoverageRun, Crashes,
-    DebugInfo, Debugger, FailMode, Incremental, JsDocTest, MirOpt, PassMode, Pretty, RunMake,
-    Rustdoc, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT,
+    DebugInfo, Debugger, FailMode, Incremental, MirOpt, PassMode, Pretty, RunMake, Rustdoc,
+    RustdocJs, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT,
     UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG, Ui, expected_output_path, incremental_dir,
     output_base_dir, output_base_name, output_testname_unique,
 };
@@ -269,7 +269,7 @@ impl<'test> TestCx<'test> {
             Ui => self.run_ui_test(),
             MirOpt => self.run_mir_opt_test(),
             Assembly => self.run_assembly_test(),
-            JsDocTest => self.run_js_doc_test(),
+            RustdocJs => self.run_rustdoc_js_test(),
             CoverageMap => self.run_coverage_map_test(), // see self::coverage
             CoverageRun => self.run_coverage_run_test(), // see self::coverage
             Crashes => self.run_crash_test(),
@@ -303,7 +303,7 @@ impl<'test> TestCx<'test> {
 
     fn should_compile_successfully(&self, pm: Option<PassMode>) -> bool {
         match self.config.mode {
-            JsDocTest => true,
+            RustdocJs => true,
             Ui => pm.is_some() || self.props.fail_mode > Some(FailMode::Build),
             Crashes => false,
             Incremental => {
@@ -1627,7 +1627,7 @@ impl<'test> TestCx<'test> {
             Crashes => {
                 set_mir_dump_dir(&mut rustc);
             }
-            Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake | CodegenUnits | JsDocTest => {
+            Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake | CodegenUnits | RustdocJs => {
                 // do not use JSON output
             }
         }

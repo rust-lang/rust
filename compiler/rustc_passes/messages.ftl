@@ -799,6 +799,9 @@ passes_unused_assign = value assigned to `{$name}` is never read
 passes_unused_assign_passed = value passed to `{$name}` is never read
     .help = maybe it is overwritten before being read?
 
+passes_unused_assign_suggestion =
+    you might have meant to mutate the pointed at value being passed in, instead of changing the reference in the local binding
+
 passes_unused_capture_maybe_capture_ref = value captured by `{$name}` is never read
     .help = did you mean to capture by reference instead?
 

@@ -252,7 +252,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             let global = self.declare_global(
                 sym,
                 gcc_type,
-                GlobalKind::Exported,
+                GlobalKind::Imported,
                 is_tls,
                 fn_attrs.link_section,
             );
@@ -404,7 +404,6 @@ fn check_and_apply_linkage<'gcc, 'tcx>(
         // TODO(antoyo): set linkage.
         let value = cx.const_ptrcast(global1.get_address(None), gcc_type);
         global2.global_set_initializer_rvalue(value);
-        // TODO(antoyo): use global_set_initializer() when it will work.
         global2
     } else {
         // Generate an external declaration.

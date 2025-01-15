@@ -22,7 +22,6 @@ jobs:
           - { gcc: "gcc-13.deb" }
           - { gcc: "gcc-13-without-int128.deb" }
         commands: [
-          "--mini-tests",
           "--std-tests",
           # FIXME: re-enable asm tests when GCC can emit in the right syntax.
           # "--asm-tests",
@@ -79,6 +78,7 @@ jobs:
       run: |
         ./y.sh prepare --only-libcore
         ./y.sh build --sysroot
+        ./y.sh test --mini-tests
         cargo test
 
     - name: Run y.sh cargo build
@@ -87,16 +87,13 @@ jobs:
 
     - name: Clean
       run: |
-        ./y.sh clean all      
+        ./y.sh clean all
 
     - name: Prepare dependencies
       run: |
         git config --global user.email "user@example.com"
         git config --global user.name "User"
         ./y.sh prepare
-
-    - name: Add more failing tests because the sysroot is not compiled with LTO
-      run: cat tests/failing-non-lto-tests.txt >> tests/failing-ui-tests.txt
 
     - name: Run tests
       run: |

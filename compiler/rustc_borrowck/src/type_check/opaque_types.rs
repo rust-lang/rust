@@ -25,8 +25,8 @@ pub(super) fn take_opaques_and_register_member_constraints<'tcx>(
     let opaque_types = infcx
         .take_opaque_types()
         .into_iter()
-        .map(|(opaque_type_key, decl)| {
-            let hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
+        .map(|(opaque_type_key, hidden_type)| {
+            let hidden_type = infcx.resolve_vars_if_possible(hidden_type);
             register_member_constraints(
                 typeck,
                 &mut member_constraints,

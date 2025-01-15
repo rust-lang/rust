@@ -15,8 +15,18 @@ use bootstrap::{
     human_readable_changes, t,
 };
 use build_helper::ci::CiEnv;
+#[cfg(feature = "tracing")]
+use tracing::*;
+#[cfg(feature = "tracing")]
+use tracing_subscriber::EnvFilter;
+#[cfg(feature = "tracing")]
+use tracing_subscriber::prelude::*;
 
+#[cfg_attr(feature = "tracing", instrument(level = "trace", name = "main"))]
 fn main() {
+    #[cfg(feature = "tracing")]
+    setup_tracing();
+
     let args = env::args().skip(1).collect::<Vec<_>>();
 
     if Flags::try_parse_verbose_help(&args) {
@@ -186,4 +196,29 @@ fn check_version(config: &Config) -> Option<String> {
     };
 
     Some(msg)
+}
+
+// # Note on `tracing` usage in bootstrap
+//
+// Due to the conditional compilation via the `tracing` cargo feature, this means that `tracing`
+// usages in bootstrap need to be also gated behind the `tracing` feature:
+//
+// - `tracing` macros (like `trace!`) and anything from `tracing`, `tracing_subscriber` and
+//   `tracing-tree` will need to be gated by `#[cfg(feature = "tracing")]`.
+// - `tracing`'s `#[instrument(..)]` macro will need to be gated like `#![cfg_attr(feature =
+//   "tracing", instrument(..))]`.
+#[cfg(feature = "tracing")]
+fn setup_tracing() {
+    let filter = EnvFilter::from_env("BOOTSTRAP_TRACING");
+    let layer = tracing_tree::HierarchicalLayer::default()
+        .with_writer(std::io::stderr)
+        .with_ansi(true)
+        .with_targets(true)
+        .with_bracketed_fields(true)
+        .with_indent_amount(2)
+        .with_indent_lines(true);
+    let subscriber = tracing_subscriber::registry().with(filter).with(layer);
+
+    tracing::subscriber::set_global_default(subscriber).unwrap();
+    trace!("tracing subscriber setup");
 }

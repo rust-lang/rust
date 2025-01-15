@@ -1407,7 +1407,7 @@ impl<'v> RootCollector<'_, 'v> {
         match self.tcx.def_kind(id.owner_id) {
             DefKind::Enum | DefKind::Struct | DefKind::Union => {
                 if self.strategy == MonoItemCollectionStrategy::Eager
-                    && self.tcx.generics_of(id.owner_id).is_empty()
+                    && !self.tcx.generics_of(id.owner_id).requires_monomorphization(self.tcx)
                 {
                     debug!("RootCollector: ADT drop-glue for `{id:?}`",);
 
@@ -1420,7 +1420,10 @@ impl<'v> RootCollector<'_, 'v> {
                         return;
                     }
 
-                    let ty = self.tcx.type_of(id.owner_id.to_def_id()).no_bound_vars().unwrap();
+                    let ty = self.tcx.erase_regions(
+                        self.tcx.type_of(id.owner_id.to_def_id()).instantiate_identity(),
+                    );
+                    assert!(!ty.has_non_region_param());
                     visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.output);
                 }
             }

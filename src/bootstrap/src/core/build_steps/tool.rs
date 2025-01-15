@@ -334,7 +334,11 @@ macro_rules! bootstrap_tool {
 }
 
 bootstrap_tool!(
-    Rustbook, "src/tools/rustbook", "rustbook", submodules = SUBMODULES_FOR_RUSTBOOK;
+    // This is marked as an external tool because it includes dependencies
+    // from submodules. Trying to keep the lints in sync between all the repos
+    // is a bit of a pain. Unfortunately it means the rustbook source itself
+    // doesn't deny warnings, but it is a relatively small piece of code.
+    Rustbook, "src/tools/rustbook", "rustbook", is_external_tool = true, submodules = SUBMODULES_FOR_RUSTBOOK;
     UnstableBookGen, "src/tools/unstable-book-gen", "unstable-book-gen";
     Tidy, "src/tools/tidy", "tidy";
     Linkchecker, "src/tools/linkchecker", "linkchecker";

@@ -298,7 +298,7 @@ where
 }
 
 // Detect scheme on Redox
-fn has_redox_scheme(s: &[u8]) -> bool {
+pub(crate) fn has_redox_scheme(s: &[u8]) -> bool {
     cfg!(target_os = "redox") && s.contains(&b':')
 }
 
@@ -2155,7 +2155,7 @@ impl Path {
         unsafe { Path::new(OsStr::from_encoded_bytes_unchecked(s)) }
     }
     // The following (private!) function reveals the byte encoding used for OsStr.
-    fn as_u8_slice(&self) -> &[u8] {
+    pub(crate) fn as_u8_slice(&self) -> &[u8] {
         self.inner.as_encoded_bytes()
     }
 
@@ -2323,14 +2323,7 @@ impl Path {
     #[must_use]
     #[allow(deprecated)]
     pub fn is_absolute(&self) -> bool {
-        if cfg!(target_os = "redox") {
-            // FIXME: Allow Redox prefixes
-            self.has_root() || has_redox_scheme(self.as_u8_slice())
-        } else {
-            self.has_root()
-                && (cfg!(any(unix, target_os = "hermit", target_os = "wasi"))
-                    || self.prefix().is_some())
-        }
+        sys::path::is_absolute(self)
     }
 
     /// Returns `true` if the `Path` is relative, i.e., not absolute.
@@ -2353,7 +2346,7 @@ impl Path {
         !self.is_absolute()
     }
 
-    fn prefix(&self) -> Option<Prefix<'_>> {
+    pub(crate) fn prefix(&self) -> Option<Prefix<'_>> {
         self.components().prefix
     }
 
