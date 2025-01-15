@@ -4,7 +4,7 @@ error: calling `as_bytes` after slicing a string
 LL |     let bytes = s[1..5].as_bytes();
    |                 ^^^^^^^^^^^^^^^^^^ help: try: `&s.as_bytes()[1..5]`
    |
-   = note: `-D clippy::slice-as-bytes` implied by `-D warnings`
+   = note: `-D clippy::sliced-string-as-bytes` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::sliced_string_as_bytes)]`
 
 error: calling `as_bytes` after slicing a string
