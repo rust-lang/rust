@@ -16,6 +16,7 @@ use rustc_fs_util::path_to_c_string;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_session::config::{PrintKind, PrintRequest};
+use rustc_session::features::StabilityExt;
 use rustc_span::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy, SmallDataThresholdSupport};
 use rustc_target::target_features::{RUSTC_SPECIAL_FEATURES, RUSTC_SPECIFIC_FEATURES};
@@ -832,7 +833,7 @@ pub(crate) fn global_llvm_features(
                         sess.dcx().emit_warn(unknown_feature);
                     }
                     Some((_, stability, _)) => {
-                        if let Err(reason) = stability.toggle_allowed() {
+                        if let Err(reason) = stability.is_toggle_permitted(sess) {
                             sess.dcx().emit_warn(ForbiddenCTargetFeature {
                                 feature,
                                 enabled: if enable { "enabled" } else { "disabled" },
