@@ -143,8 +143,8 @@ fn render(
         }
         FuncKind::Method(DotAccess { receiver: Some(receiver), .. }, _) => {
             if let Some(original_expr) = completion.sema.original_ast_node(receiver.clone()) {
-                if let Some(ref_match) = compute_ref_match(completion, &ret_type) {
-                    item.ref_match(ref_match, original_expr.syntax().text_range().start());
+                if let Some(ref_mode) = compute_ref_match(completion, &ret_type) {
+                    item.ref_match(ref_mode, original_expr.syntax().text_range().start());
                 }
             }
         }

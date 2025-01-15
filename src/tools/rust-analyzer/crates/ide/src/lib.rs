@@ -120,7 +120,7 @@ pub use ide_assists::{
 };
 pub use ide_completion::{
     CallableSnippets, CompletionConfig, CompletionFieldsToResolve, CompletionItem,
-    CompletionItemKind, CompletionRelevance, Snippet, SnippetScope,
+    CompletionItemKind, CompletionItemRefMode, CompletionRelevance, Snippet, SnippetScope,
 };
 pub use ide_db::text_edit::{Indel, TextEdit};
 pub use ide_db::{
