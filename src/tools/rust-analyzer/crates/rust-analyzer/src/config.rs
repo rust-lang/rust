@@ -326,8 +326,16 @@ config_data! {
         /// Show documentation.
         signatureInfo_documentation_enable: bool                       = true,
 
-        /// Specify the characters to exclude from triggering typing assists. The default trigger characters are `.`, `=`, `<`, `>`, `{`, and `(`.
-        typing_excludeChars: Option<String> = Some("|<".to_owned()),
+        /// Specify the characters allowed to invoke special on typing triggers.
+        /// - typing `=` after `let` tries to smartly add `;` if `=` is followed by an existing expression
+        /// - typing `=` between two expressions adds `;` when in statement position
+        /// - typing `=` to turn an assignment into an equality comparison removes `;` when in expression position
+        /// - typing `.` in a chain method call auto-indents
+        /// - typing `{` or `(` in front of an expression inserts a closing `}` or `)` after the expression
+        /// - typing `{` in a use item adds a closing `}` in the right place
+        /// - typing `>` to complete a return type `->` will insert a whitespace after it
+        /// - typing `<` in a path or type position inserts a closing `>` after the path or type.
+        typing_triggerChars: Option<String> = Some("=.".to_owned()),
 
 
         /// Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].
@@ -2251,8 +2259,8 @@ impl Config {
         }
     }
 
-    pub fn typing_exclude_chars(&self) -> Option<String> {
-        self.typing_excludeChars().clone()
+    pub fn typing_trigger_chars(&self) -> &str {
+        self.typing_triggerChars().as_deref().unwrap_or_default()
     }
 
     // VSCode is our reference implementation, so we allow ourselves to work around issues by
