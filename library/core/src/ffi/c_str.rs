@@ -124,37 +124,25 @@ pub struct CStr {
 ///
 /// let _: FromBytesWithNulError = CStr::from_bytes_with_nul(b"f\0oo").unwrap_err();
 /// ```
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
-pub struct FromBytesWithNulError {
-    kind: FromBytesWithNulErrorKind,
-}
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-enum FromBytesWithNulErrorKind {
-    InteriorNul(usize),
+pub enum FromBytesWithNulError {
+    /// Data provided contains an interior nul byte at byte `position`.
+    InteriorNul {
+        /// The position of the interior nul byte.
+        position: usize,
+    },
+    /// Data provided is not nul terminated.
     NotNulTerminated,
-}
-
-// FIXME: const stability attributes should not be required here, I think
-impl FromBytesWithNulError {
-    const fn interior_nul(pos: usize) -> FromBytesWithNulError {
-        FromBytesWithNulError { kind: FromBytesWithNulErrorKind::InteriorNul(pos) }
-    }
-    const fn not_nul_terminated() -> FromBytesWithNulError {
-        FromBytesWithNulError { kind: FromBytesWithNulErrorKind::NotNulTerminated }
-    }
 }
 
 #[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
 impl Error for FromBytesWithNulError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
-        match self.kind {
-            FromBytesWithNulErrorKind::InteriorNul(..) => {
-                "data provided contains an interior nul byte"
-            }
-            FromBytesWithNulErrorKind::NotNulTerminated => "data provided is not nul terminated",
+        match self {
+            Self::InteriorNul { .. } => "data provided contains an interior nul byte",
+            Self::NotNulTerminated => "data provided is not nul terminated",
         }
     }
 }
@@ -199,8 +187,8 @@ impl fmt::Display for FromBytesWithNulError {
     #[allow(deprecated, deprecated_in_future)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.description())?;
-        if let FromBytesWithNulErrorKind::InteriorNul(pos) = self.kind {
-            write!(f, " at byte pos {pos}")?;
+        if let Self::InteriorNul { position } = self {
+            write!(f, " at byte pos {position}")?;
         }
         Ok(())
     }
@@ -349,25 +337,25 @@ impl CStr {
     /// use std::ffi::CStr;
     ///
     /// let cstr = CStr::from_bytes_with_nul(b"hello\0");
-    /// assert!(cstr.is_ok());
+    /// assert_eq!(cstr, Ok(c"hello"));
     /// ```
     ///
     /// Creating a `CStr` without a trailing nul terminator is an error:
     ///
     /// ```
-    /// use std::ffi::CStr;
+    /// use std::ffi::{CStr, FromBytesWithNulError};
     ///
     /// let cstr = CStr::from_bytes_with_nul(b"hello");
-    /// assert!(cstr.is_err());
+    /// assert_eq!(cstr, Err(FromBytesWithNulError::NotNulTerminated));
     /// ```
     ///
     /// Creating a `CStr` with an interior nul byte is an error:
     ///
     /// ```
-    /// use std::ffi::CStr;
+    /// use std::ffi::{CStr, FromBytesWithNulError};
     ///
     /// let cstr = CStr::from_bytes_with_nul(b"he\0llo\0");
-    /// assert!(cstr.is_err());
+    /// assert_eq!(cstr, Err(FromBytesWithNulError::InteriorNul { position: 2 }));
     /// ```
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
@@ -379,8 +367,8 @@ impl CStr {
                 // of the byte slice.
                 Ok(unsafe { Self::from_bytes_with_nul_unchecked(bytes) })
             }
-            Some(nul_pos) => Err(FromBytesWithNulError::interior_nul(nul_pos)),
-            None => Err(FromBytesWithNulError::not_nul_terminated()),
+            Some(position) => Err(FromBytesWithNulError::InteriorNul { position }),
+            None => Err(FromBytesWithNulError::NotNulTerminated),
         }
     }
 
