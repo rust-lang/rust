@@ -149,6 +149,7 @@ mod msrv {
         //~^ ERROR: this could be a `const fn`
 
         #[rustfmt::skip]
+        #[allow(missing_abi)]
         extern fn implicit_c() {}
         //~^ ERROR: this could be a `const fn`
 
