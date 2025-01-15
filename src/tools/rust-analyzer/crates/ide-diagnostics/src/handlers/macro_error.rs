@@ -291,4 +291,30 @@ mod prim_never {}
 "#,
         );
     }
+
+    #[test]
+    fn no_stack_overflow_for_missing_binding() {
+        check_diagnostics(
+            r#"
+#[macro_export]
+macro_rules! boom {
+    (
+        $($code:literal),+,
+        $(param: $param:expr,)?
+    ) => {{
+        let _ = $crate::boom!(@param $($param)*);
+    }};
+    (@param) => { () };
+    (@param $param:expr) => { $param };
+}
+
+fn it_works() {
+    // NOTE: there is an error, but RA crashes before showing it
+    boom!("RAND", param: c7.clone());
+               // ^^^^^ error: expected literal
+}
+
+        "#,
+        );
+    }
 }
