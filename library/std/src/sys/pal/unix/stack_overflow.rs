@@ -3,6 +3,9 @@
 pub use self::imp::{cleanup, init};
 use self::imp::{drop_handler, make_handler};
 
+#[cfg(any(all(target_os = "linux", target_env = "gnu"), target_os = "macos",))]
+mod backtrace;
+
 pub struct Handler {
     data: *mut libc::c_void,
 }
@@ -104,6 +107,13 @@ mod imp {
                 "\nthread '{}' has overflowed its stack\n",
                 thread::current().name().unwrap_or("<unknown>")
             );
+
+            #[cfg(any(all(target_os = "linux", target_env = "gnu"), target_os = "macos",))]
+            {
+                rtprintpanic!("backtrace:\n\n");
+                super::backtrace::print();
+            }
+
             rtabort!("stack overflow");
         } else {
             // Unregister ourselves by reverting back to the default behavior.
