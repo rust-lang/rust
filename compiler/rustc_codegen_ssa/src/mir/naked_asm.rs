@@ -1,10 +1,12 @@
+use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind};
 use rustc_attr_parsing::InstructionSetAttr;
 use rustc_middle::mir::mono::{Linkage, MonoItem, MonoItemData, Visibility};
 use rustc_middle::mir::{Body, InlineAsmOperand};
-use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{Instance, TyCtxt};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
+use rustc_middle::ty::{Instance, Ty, TyCtxt};
 use rustc_middle::{bug, ty};
 use rustc_span::sym;
+use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 
 use crate::common;
 use crate::traits::{AsmCodegenMethods, BuilderMethods, GlobalAsmOperandRef, MiscCodegenMethods};
@@ -32,7 +34,8 @@ pub(crate) fn codegen_naked_asm<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let item_data = cx.codegen_unit().items().get(&MonoItem::Fn(instance)).unwrap();
     let name = cx.mangled_name(instance);
-    let (begin, end) = prefix_and_suffix(cx.tcx(), instance, &name, item_data);
+    let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
+    let (begin, end) = prefix_and_suffix(cx.tcx(), instance, &name, item_data, fn_abi);
 
     let mut template_vec = Vec::new();
     template_vec.push(rustc_ast::ast::InlineAsmTemplatePiece::String(begin.into()));
@@ -103,6 +106,7 @@ enum AsmBinaryFormat {
     Elf,
     Macho,
     Coff,
+    Wasm,
 }
 
 impl AsmBinaryFormat {
@@ -111,6 +115,8 @@ impl AsmBinaryFormat {
             Self::Coff
         } else if target.is_like_osx {
             Self::Macho
+        } else if target.is_like_wasm {
+            Self::Wasm
         } else {
             Self::Elf
         }
@@ -122,6 +128,7 @@ fn prefix_and_suffix<'tcx>(
     instance: Instance<'tcx>,
     asm_name: &str,
     item_data: &MonoItemData,
+    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
 ) -> (String, String) {
     use std::fmt::Write;
 
@@ -169,7 +176,7 @@ fn prefix_and_suffix<'tcx>(
             }
             Linkage::LinkOnceAny | Linkage::LinkOnceODR | Linkage::WeakAny | Linkage::WeakODR => {
                 match asm_binary_format {
-                    AsmBinaryFormat::Elf | AsmBinaryFormat::Coff => {
+                    AsmBinaryFormat::Elf | AsmBinaryFormat::Coff | AsmBinaryFormat::Wasm => {
                         writeln!(w, ".weak {asm_name}")?;
                     }
                     AsmBinaryFormat::Macho => {
@@ -264,7 +271,132 @@ fn prefix_and_suffix<'tcx>(
                 writeln!(end, "{}", arch_suffix).unwrap();
             }
         }
+        AsmBinaryFormat::Wasm => {
+            let section = link_section.unwrap_or(format!(".text.{asm_name}"));
+
+            writeln!(begin, ".section {section},\"\",@").unwrap();
+            // wasm functions cannot be aligned, so skip
+            write_linkage(&mut begin).unwrap();
+            if let Visibility::Hidden = item_data.visibility {
+                writeln!(begin, ".hidden {asm_name}").unwrap();
+            }
+            writeln!(begin, ".type {asm_name}, @function").unwrap();
+            if !arch_prefix.is_empty() {
+                writeln!(begin, "{}", arch_prefix).unwrap();
+            }
+            writeln!(begin, "{asm_name}:").unwrap();
+            writeln!(begin, ".functype {asm_name} {}", wasm_functype(tcx, fn_abi)).unwrap();
+
+            writeln!(end).unwrap();
+            // .size is ignored for function symbols, so we can skip it
+            writeln!(end, "end_function").unwrap();
+        }
     }
 
     (begin, end)
+}
+
+/// The webassembly type signature for the given function.
+///
+/// Used by the `.functype` directive on wasm targets.
+fn wasm_functype<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> String {
+    let mut signature = String::with_capacity(64);
+
+    let ptr_type = match tcx.data_layout.pointer_size.bits() {
+        32 => "i32",
+        64 => "i64",
+        other => bug!("wasm pointer size cannot be {other} bits"),
+    };
+
+    let hidden_return =
+        matches!(fn_abi.ret.mode, PassMode::Indirect { .. } | PassMode::Pair { .. });
+
+    signature.push('(');
+
+    if hidden_return {
+        signature.push_str(ptr_type);
+        if !fn_abi.args.is_empty() {
+            signature.push_str(", ");
+        }
+    }
+
+    let mut it = fn_abi.args.iter().peekable();
+    while let Some(arg_abi) = it.next() {
+        wasm_type(&mut signature, arg_abi, ptr_type);
+        if it.peek().is_some() {
+            signature.push_str(", ");
+        }
+    }
+
+    signature.push_str(") -> (");
+
+    if !hidden_return {
+        wasm_type(&mut signature, &fn_abi.ret, ptr_type);
+    }
+
+    signature.push(')');
+
+    signature
+}
+
+fn wasm_type<'tcx>(signature: &mut String, arg_abi: &ArgAbi<'_, Ty<'tcx>>, ptr_type: &'static str) {
+    match arg_abi.mode {
+        PassMode::Ignore => { /* do nothing */ }
+        PassMode::Direct(_) => {
+            let direct_type = match arg_abi.layout.backend_repr {
+                BackendRepr::Scalar(scalar) => wasm_primitive(scalar.primitive(), ptr_type),
+                BackendRepr::Vector { .. } => "v128",
+                other => unreachable!("unexpected BackendRepr: {:?}", other),
+            };
+
+            signature.push_str(direct_type);
+        }
+        PassMode::Pair(_, _) => match arg_abi.layout.backend_repr {
+            BackendRepr::ScalarPair(a, b) => {
+                signature.push_str(wasm_primitive(a.primitive(), ptr_type));
+                signature.push_str(", ");
+                signature.push_str(wasm_primitive(b.primitive(), ptr_type));
+            }
+            other => unreachable!("{other:?}"),
+        },
+        PassMode::Cast { pad_i32, ref cast } => {
+            // For wasm, Cast is used for single-field primitive wrappers like `struct Wrapper(i64);`
+            assert!(!pad_i32, "not currently used by wasm calling convention");
+            assert!(cast.prefix[0].is_none(), "no prefix");
+            assert_eq!(cast.rest.total, arg_abi.layout.size, "single item");
+
+            let wrapped_wasm_type = match cast.rest.unit.kind {
+                RegKind::Integer => match cast.rest.unit.size.bytes() {
+                    ..=4 => "i32",
+                    ..=8 => "i64",
+                    _ => ptr_type,
+                },
+                RegKind::Float => match cast.rest.unit.size.bytes() {
+                    ..=4 => "f32",
+                    ..=8 => "f64",
+                    _ => ptr_type,
+                },
+                RegKind::Vector => "v128",
+            };
+
+            signature.push_str(wrapped_wasm_type);
+        }
+        PassMode::Indirect { .. } => signature.push_str(ptr_type),
+    }
+}
+
+fn wasm_primitive(primitive: Primitive, ptr_type: &'static str) -> &'static str {
+    match primitive {
+        Primitive::Int(integer, _) => match integer {
+            Integer::I8 | Integer::I16 | Integer::I32 => "i32",
+            Integer::I64 => "i64",
+            Integer::I128 => "i64, i64",
+        },
+        Primitive::Float(float) => match float {
+            Float::F16 | Float::F32 => "f32",
+            Float::F64 => "f64",
+            Float::F128 => "i64, i64",
+        },
+        Primitive::Pointer(_) => ptr_type,
+    }
 }
