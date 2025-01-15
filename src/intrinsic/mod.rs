@@ -1001,7 +1001,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     128 => "__rust_i128_addo",
                     _ => unreachable!(),
                 };
-                let (int_result, overflow) = self.operation_with_overflow(func_name, lhs, rhs);
+                let (int_result, overflow) =
+                    self.operation_with_overflow(func_name, lhs, rhs, width);
                 self.llbb().add_assignment(self.location, res, int_result);
                 overflow
             };
@@ -1071,7 +1072,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     128 => "__rust_i128_subo",
                     _ => unreachable!(),
                 };
-                let (int_result, overflow) = self.operation_with_overflow(func_name, lhs, rhs);
+                let (int_result, overflow) =
+                    self.operation_with_overflow(func_name, lhs, rhs, width);
                 self.llbb().add_assignment(self.location, res, int_result);
                 overflow
             };
