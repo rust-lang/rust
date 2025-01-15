@@ -1834,7 +1834,7 @@ pub mod prelude {
             option::Option::{self, None, Some},      // :option
             panic,                                   // :panic
             result::Result::{self, Err, Ok},         // :result
-            str::FromStr,                            // :from
+            str::FromStr,                            // :str
         };
     }
 
