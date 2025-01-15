@@ -144,7 +144,7 @@ fn find_from_definition(
     // - return_type is B (type of b)
     // We will find the definition of B::from(a: A).
     let method_call = ast::MethodCallExpr::cast(original_token.parent()?.parent()?)?;
-    let receiver_type = sema.type_of_expr(&method_call.receiver()?)?.original();
+    let receiver_type = sema.type_of_expr(&method_call.receiver()?)?.adjusted();
     let return_type = sema.type_of_expr(&method_call.clone().into())?.original();
 
     let (search_method, search_trait, return_type) = match method_call.name_ref()?.text().as_str() {
