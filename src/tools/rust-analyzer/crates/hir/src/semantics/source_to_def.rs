@@ -110,10 +110,7 @@ use syntax::{
     AstNode, AstPtr, SyntaxNode,
 };
 
-use crate::{
-    db::HirDatabase, semantics::child_by_source::ChildBySource, InFile, InlineAsmOperand,
-    SemanticsImpl,
-};
+use crate::{db::HirDatabase, semantics::child_by_source::ChildBySource, InFile, InlineAsmOperand};
 
 #[derive(Default)]
 pub(super) struct SourceToDefCache {
@@ -121,9 +118,21 @@ pub(super) struct SourceToDefCache {
     expansion_info_cache: FxHashMap<MacroFileId, ExpansionInfo>,
     pub(super) file_to_def_cache: FxHashMap<FileId, SmallVec<[ModuleId; 1]>>,
     pub(super) included_file_cache: FxHashMap<EditionedFileId, Option<MacroFileId>>,
+    /// Rootnode to HirFileId cache
+    pub(super) root_to_file_cache: FxHashMap<SyntaxNode, HirFileId>,
 }
 
 impl SourceToDefCache {
+    pub(super) fn cache(
+        root_to_file_cache: &mut FxHashMap<SyntaxNode, HirFileId>,
+        root_node: SyntaxNode,
+        file_id: HirFileId,
+    ) {
+        assert!(root_node.parent().is_none());
+        let prev = root_to_file_cache.insert(root_node, file_id);
+        assert!(prev.is_none() || prev == Some(file_id));
+    }
+
     pub(super) fn get_or_insert_include_for(
         &mut self,
         db: &dyn HirDatabase,
@@ -143,14 +152,14 @@ impl SourceToDefCache {
 
     pub(super) fn get_or_insert_expansion(
         &mut self,
-        sema: &SemanticsImpl<'_>,
+        db: &dyn HirDatabase,
         macro_file: MacroFileId,
     ) -> &ExpansionInfo {
         self.expansion_info_cache.entry(macro_file).or_insert_with(|| {
-            let exp_info = macro_file.expansion_info(sema.db.upcast());
+            let exp_info = macro_file.expansion_info(db.upcast());
 
             let InMacroFile { file_id, value } = exp_info.expanded();
-            sema.cache(value, file_id.into());
+            Self::cache(&mut self.root_to_file_cache, value, file_id.into());
 
             exp_info
         })
@@ -520,18 +529,11 @@ impl SourceToDefCtx<'_, '_> {
         node: InFile<&SyntaxNode>,
         mut cb: impl FnMut(&mut Self, InFile<SyntaxNode>) -> Option<T>,
     ) -> Option<T> {
-        use hir_expand::MacroFileIdExt;
         let parent = |this: &mut Self, node: InFile<&SyntaxNode>| match node.value.parent() {
             Some(parent) => Some(node.with_value(parent)),
             None => {
                 let macro_file = node.file_id.macro_file()?;
-
-                let expansion_info = this
-                    .cache
-                    .expansion_info_cache
-                    .entry(macro_file)
-                    .or_insert_with(|| macro_file.expansion_info(this.db.upcast()));
-
+                let expansion_info = this.cache.get_or_insert_expansion(this.db, macro_file);
                 expansion_info.arg().map(|node| node?.parent()).transpose()
             }
         };

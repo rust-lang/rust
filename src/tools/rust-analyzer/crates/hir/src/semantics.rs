@@ -136,8 +136,6 @@ pub struct Semantics<'db, DB> {
 pub struct SemanticsImpl<'db> {
     pub db: &'db dyn HirDatabase,
     s2d_cache: RefCell<SourceToDefCache>,
-    /// Rootnode to HirFileId cache
-    root_to_file_cache: RefCell<FxHashMap<SyntaxNode, HirFileId>>,
     /// MacroCall to its expansion's MacroFileId cache
     macro_call_cache: RefCell<FxHashMap<InFile<ast::MacroCall>, MacroFileId>>,
 }
@@ -304,12 +302,7 @@ impl<DB: HirDatabase> Semantics<'_, DB> {
 
 impl<'db> SemanticsImpl<'db> {
     fn new(db: &'db dyn HirDatabase) -> Self {
-        SemanticsImpl {
-            db,
-            s2d_cache: Default::default(),
-            root_to_file_cache: Default::default(),
-            macro_call_cache: Default::default(),
-        }
+        SemanticsImpl { db, s2d_cache: Default::default(), macro_call_cache: Default::default() }
     }
 
     pub fn parse(&self, file_id: EditionedFileId) -> ast::SourceFile {
@@ -483,7 +476,7 @@ impl<'db> SemanticsImpl<'db> {
             Some(
                 calls
                     .into_iter()
-                    .map(|call| macro_call_to_macro_id(self, ctx, call?).map(|id| Macro { id }))
+                    .map(|call| macro_call_to_macro_id(ctx, call?).map(|id| Macro { id }))
                     .collect(),
             )
         })
@@ -962,7 +955,7 @@ impl<'db> SemanticsImpl<'db> {
             let InMacroFile { file_id, value: mapped_tokens } = self.with_ctx(|ctx| {
                 Some(
                     ctx.cache
-                        .get_or_insert_expansion(self, macro_file)
+                        .get_or_insert_expansion(ctx.db, macro_file)
                         .map_range_down(span)?
                         .map(SmallVec::<[_; 2]>::from_iter),
                 )
@@ -1287,7 +1280,7 @@ impl<'db> SemanticsImpl<'db> {
                     let macro_file = file_id.macro_file()?;
 
                     self.with_ctx(|ctx| {
-                        let expansion_info = ctx.cache.get_or_insert_expansion(self, macro_file);
+                        let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);
                         expansion_info.arg().map(|node| node?.parent()).transpose()
                     })
                 }
@@ -1318,8 +1311,8 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn resolve_label(&self, label: &ast::Lifetime) -> Option<Label> {
-        let (parent, label_id) = self
-            .with_ctx(|ctx| ctx.label_ref_to_def(self.wrap_node_infile(label.clone()).as_ref()))?;
+        let src = self.wrap_node_infile(label.clone());
+        let (parent, label_id) = self.with_ctx(|ctx| ctx.label_ref_to_def(src.as_ref()))?;
         Some(Label { parent, label_id })
     }
 
@@ -1519,7 +1512,7 @@ impl<'db> SemanticsImpl<'db> {
         let macro_call = self.find_file(macro_call.syntax()).with_value(macro_call);
         self.with_ctx(|ctx| {
             ctx.macro_call_to_macro_call(macro_call)
-                .and_then(|call| macro_call_to_macro_id(self, ctx, call))
+                .and_then(|call| macro_call_to_macro_id(ctx, call))
                 .map(Into::into)
         })
         .or_else(|| {
@@ -1561,7 +1554,7 @@ impl<'db> SemanticsImpl<'db> {
         let item_in_file = self.wrap_node_infile(item.clone());
         let id = self.with_ctx(|ctx| {
             let macro_call_id = ctx.item_to_macro_call(item_in_file.as_ref())?;
-            macro_call_to_macro_id(self, ctx, macro_call_id)
+            macro_call_to_macro_id(ctx, macro_call_id)
         })?;
         Some(Macro { id })
     }
@@ -1725,10 +1718,11 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn cache(&self, root_node: SyntaxNode, file_id: HirFileId) {
-        assert!(root_node.parent().is_none());
-        let mut cache = self.root_to_file_cache.borrow_mut();
-        let prev = cache.insert(root_node, file_id);
-        assert!(prev.is_none() || prev == Some(file_id));
+        SourceToDefCache::cache(
+            &mut self.s2d_cache.borrow_mut().root_to_file_cache,
+            root_node,
+            file_id,
+        );
     }
 
     pub fn assert_contains_node(&self, node: &SyntaxNode) {
@@ -1736,8 +1730,8 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn lookup(&self, root_node: &SyntaxNode) -> Option<HirFileId> {
-        let cache = self.root_to_file_cache.borrow();
-        cache.get(root_node).copied()
+        let cache = self.s2d_cache.borrow();
+        cache.root_to_file_cache.get(root_node).copied()
     }
 
     fn wrap_node_infile<N: AstNode>(&self, node: N) -> InFile<N> {
@@ -1761,8 +1755,9 @@ impl<'db> SemanticsImpl<'db> {
                  known nodes: {}\n\n",
                 node,
                 root_node,
-                self.root_to_file_cache
+                self.s2d_cache
                     .borrow()
+                    .root_to_file_cache
                     .keys()
                     .map(|it| format!("{it:?}"))
                     .collect::<Vec<_>>()
@@ -1909,7 +1904,6 @@ impl<'db> SemanticsImpl<'db> {
 }
 
 fn macro_call_to_macro_id(
-    sema: &SemanticsImpl<'_>,
     ctx: &mut SourceToDefCtx<'_, '_>,
     macro_call_id: MacroCallId,
 ) -> Option<MacroId> {
@@ -1925,7 +1919,7 @@ fn macro_call_to_macro_id(
                     it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
                 }
                 HirFileIdRepr::MacroFile(macro_file) => {
-                    let expansion_info = ctx.cache.get_or_insert_expansion(sema, macro_file);
+                    let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);
                     it.to_ptr(db).to_node(&expansion_info.expanded().value)
                 }
             };
@@ -1937,7 +1931,7 @@ fn macro_call_to_macro_id(
                     it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
                 }
                 HirFileIdRepr::MacroFile(macro_file) => {
-                    let expansion_info = ctx.cache.get_or_insert_expansion(sema, macro_file);
+                    let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);
                     it.to_ptr(db).to_node(&expansion_info.expanded().value)
                 }
             };
