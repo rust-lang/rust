@@ -130,6 +130,7 @@ mod unnecessary_to_owned;
 mod unused_enumerate_index;
 mod unwrap_expect_used;
 mod useless_asref;
+mod useless_nonzero_new_unchecked;
 mod utils;
 mod vec_resize_to_zero;
 mod verbose_file_reads;
@@ -4311,6 +4312,33 @@ declare_clippy_lint! {
     "using `Iterator::last` on a `DoubleEndedIterator`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for `NonZero*::new_unchecked()` being used in a `const` context.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Using `NonZero*::new_unchecked()` is an `unsafe` function and requires an `unsafe` context. When used in a
+    /// context evaluated at compilation time, `NonZero*::new().unwrap()` will provide the same result with identical
+    /// runtime performances while not requiring `unsafe`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::num::NonZeroUsize;
+    /// const PLAYERS: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(3) };
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::num::NonZeroUsize;
+    /// const PLAYERS: NonZeroUsize = NonZeroUsize::new(3).unwrap();
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub USELESS_NONZERO_NEW_UNCHECKED,
+    complexity,
+    "using `NonZero::new_unchecked()` in a `const` context"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -4477,6 +4505,7 @@ impl_lint_pass!(Methods => [
     MAP_WITH_UNUSED_ARGUMENT_OVER_RANGES,
     UNNECESSARY_MAP_OR,
     DOUBLE_ENDED_ITERATOR_LAST,
+    USELESS_NONZERO_NEW_UNCHECKED,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4505,6 +4534,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 from_iter_instead_of_collect::check(cx, expr, args, func);
                 unnecessary_fallible_conversions::check_function(cx, expr, func);
                 manual_c_str_literals::check(cx, expr, func, args, &self.msrv);
+                useless_nonzero_new_unchecked::check(cx, expr, func, args, &self.msrv);
             },
             ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;
