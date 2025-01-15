@@ -1,5 +1,5 @@
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/normalize-tait-in-const.rs:26:35
+  --> $DIR/normalize-tait-in-const.rs:27:35
    |
 LL | const fn with_positive<F: for<'a> ~const Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
    |                                   ^^^^^^ can't be applied to `Fn`
@@ -8,7 +8,7 @@ note: `Fn` can't be used with `~const` because it isn't annotated with `#[const_
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/normalize-tait-in-const.rs:26:35
+  --> $DIR/normalize-tait-in-const.rs:27:35
    |
 LL | const fn with_positive<F: for<'a> ~const Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
    |                                   ^^^^^^ can't be applied to `Fn`
@@ -18,7 +18,7 @@ note: `Fn` can't be used with `~const` because it isn't annotated with `#[const_
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0015]: cannot call non-const closure in constant functions
-  --> $DIR/normalize-tait-in-const.rs:27:5
+  --> $DIR/normalize-tait-in-const.rs:28:5
    |
 LL |     fun(filter_positive());
    |     ^^^^^^^^^^^^^^^^^^^^^^
