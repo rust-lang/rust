@@ -1,9 +1,6 @@
 #![no_std]
 #![feature(
     const_eval_select,
-    const_intrinsic_copy,
-    const_refs_to_cell,
-    const_mut_refs,
     convert_float_to_int,
     core_intrinsics,
     decl_macro,
