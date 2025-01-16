@@ -87,6 +87,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 candidates.vec.push(BuiltinCandidate { has_nested: false });
             } else if tcx.is_lang_item(def_id, LangItem::Sized) {
                 self.assemble_builtin_sized_candidate(obligation, &mut candidates);
+            } else if tcx.is_lang_item(def_id, LangItem::MetaSized) {
+                self.assemble_builtin_sized_candidate(obligation, &mut candidates);
+            } else if tcx.is_lang_item(def_id, LangItem::PointeeSized) {
+                self.assemble_builtin_sized_candidate(obligation, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::Unsize) {
                 self.assemble_candidates_for_unsizing(obligation, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::Destruct) {
