@@ -557,12 +557,16 @@ fn goto_type_action_for_def(
             .into_iter()
             .filter(|&it| Some(it.into()) != sized_trait)
             .for_each(|it| push_new_def(it.into()));
+    } else if let Definition::Function(function) = def {
+        walk_and_push_ty(db, &function.ret_type(db), &mut push_new_def);
+        for param in function.params_without_self(db) {
+            walk_and_push_ty(db, param.ty(), &mut push_new_def);
+        }
     } else {
         let ty = match def {
             Definition::Local(it) => it.ty(db),
             Definition::GenericParam(hir::GenericParam::ConstParam(it)) => it.ty(db),
             Definition::Field(field) => field.ty(db),
-            Definition::Function(function) => function.ret_type(db),
             _ => return HoverAction::goto_type_from_targets(db, targets, edition),
         };
 
