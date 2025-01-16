@@ -1001,6 +1001,7 @@ impl Step for PlainSourceTarball {
             "README.md",
             "RELEASES.md",
             "REUSE.toml",
+            "license-metadata.json",
             "configure",
             "x.py",
             "config.example.toml",
