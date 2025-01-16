@@ -312,3 +312,15 @@ pub enum AdtDestructorKind {
     NotConst,
     Const,
 }
+
+/// Which sizedness trait - `Sized`, `MetaSized` or `PointeeSized`?
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+pub enum SizedTraitKind {
+    /// `Sized` trait
+    Sized,
+    /// `MetaSized` trait
+    MetaSized,
+    /// `PointeeSized` trait
+    PointeeSized,
+}

@@ -5,6 +5,7 @@ pub(super) mod structural_traits;
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{
     self as ty, Interner, TypeFoldable, TypeVisitableExt as _, TypingMode, Upcast as _, elaborate,
 };
@@ -146,31 +147,16 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution>;
 
-    /// A type is `Sized` if its tail component is `Sized`.
+    /// A type is `Sized` if its tail component is `Sized`, a type is `MetaSized` if its tail
+    /// component is `MetaSized` and a type is `PointeeSized` if its tail component is
+    /// `PointeeSized`.
     ///
     /// These components are given by built-in rules from
-    /// [`structural_traits::instantiate_constituent_tys_for_sized_trait`].
-    fn consider_builtin_sized_candidate(
+    /// [`structural_traits::instantiate_constituent_tys_for_sizedness_trait`].
+    fn consider_builtin_sizedness_candidates(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution>;
-
-    /// A type is `MetaSized` if its tail component is `MetaSized`.
-    ///
-    /// These components are given by built-in rules from
-    /// [`structural_traits::instantiate_constituent_tys_for_sized_trait`].
-    fn consider_builtin_meta_sized_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution>;
-
-    /// A type is `PointeeSized` if its tail component is `PointeeSized`.
-    ///
-    /// These components are given by built-in rules from
-    /// [`structural_traits::instantiate_constituent_tys_for_sized_trait`].
-    fn consider_builtin_pointee_sized_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
+        sizedness: SizedTraitKind,
     ) -> Result<Candidate<I>, NoSolution>;
 
     /// A type is `Copy` or `Clone` if its components are `Copy` or `Clone`.
@@ -414,12 +400,18 @@ where
             G::consider_trait_alias_candidate(self, goal)
         } else {
             match cx.as_lang_item(trait_def_id) {
-                Some(TraitSolverLangItem::Sized) => G::consider_builtin_sized_candidate(self, goal),
+                Some(TraitSolverLangItem::Sized) => {
+                    G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::Sized)
+                }
                 Some(TraitSolverLangItem::MetaSized) => {
-                    G::consider_builtin_meta_sized_candidate(self, goal)
+                    G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::MetaSized)
                 }
                 Some(TraitSolverLangItem::PointeeSized) => {
-                    G::consider_builtin_pointee_sized_candidate(self, goal)
+                    G::consider_builtin_sizedness_candidates(
+                        self,
+                        goal,
+                        SizedTraitKind::PointeeSized,
+                    )
                 }
                 Some(TraitSolverLangItem::Copy | TraitSolverLangItem::Clone) => {
                     G::consider_builtin_copy_clone_candidate(self, goal)

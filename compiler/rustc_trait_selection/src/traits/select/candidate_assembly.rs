@@ -17,6 +17,7 @@ use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_type_ir::elaborate;
+use rustc_type_ir::solve::SizedTraitKind;
 use tracing::{debug, instrument, trace};
 
 use super::SelectionCandidate::*;
@@ -86,11 +87,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // `Pointee` is automatically implemented for every type.
                 candidates.vec.push(BuiltinCandidate { has_nested: false });
             } else if tcx.is_lang_item(def_id, LangItem::Sized) {
-                self.assemble_builtin_sized_candidate(obligation, &mut candidates);
+                self.assemble_builtin_sized_candidate(
+                    obligation,
+                    &mut candidates,
+                    SizedTraitKind::Sized,
+                );
             } else if tcx.is_lang_item(def_id, LangItem::MetaSized) {
-                self.assemble_builtin_sized_candidate(obligation, &mut candidates);
+                self.assemble_builtin_sized_candidate(
+                    obligation,
+                    &mut candidates,
+                    SizedTraitKind::MetaSized,
+                );
             } else if tcx.is_lang_item(def_id, LangItem::PointeeSized) {
-                self.assemble_builtin_sized_candidate(obligation, &mut candidates);
+                self.assemble_builtin_sized_candidate(
+                    obligation,
+                    &mut candidates,
+                    SizedTraitKind::PointeeSized,
+                );
             } else if tcx.is_lang_item(def_id, LangItem::Unsize) {
                 self.assemble_candidates_for_unsizing(obligation, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::Destruct) {
@@ -1069,15 +1082,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    /// Assembles the trait which are built-in to the language itself:
-    /// `Copy`, `Clone` and `Sized`.
+    /// Assembles the `Sized`, `MetaSized` and `PointeeSized` traits which are built-in to the
+    /// language itself.
     #[instrument(level = "debug", skip(self, candidates))]
     fn assemble_builtin_sized_candidate(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
+        sizedness: SizedTraitKind,
     ) {
-        match self.sized_conditions(obligation) {
+        match self.sizedness_conditions(obligation, sizedness) {
             BuiltinImplConditions::Where(nested) => {
                 candidates
                     .vec

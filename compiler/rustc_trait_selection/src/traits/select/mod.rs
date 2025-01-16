@@ -32,6 +32,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::{Symbol, sym};
 use rustc_type_ir::elaborate;
+use rustc_type_ir::solve::SizedTraitKind;
 use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
@@ -2068,9 +2069,10 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 }
 
 impl<'tcx> SelectionContext<'_, 'tcx> {
-    fn sized_conditions(
+    fn sizedness_conditions(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
+        sizedness: SizedTraitKind,
     ) -> BuiltinImplConditions<'tcx> {
         use self::BuiltinImplConditions::{Ambiguous, None, Where};
 
@@ -2100,7 +2102,16 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 Where(ty::Binder::dummy(Vec::new()))
             }
 
-            ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => None,
+            ty::Str | ty::Slice(_) | ty::Dynamic(..) => match sizedness {
+                SizedTraitKind::Sized => None,
+                SizedTraitKind::MetaSized => Where(ty::Binder::dummy(Vec::new())),
+                SizedTraitKind::PointeeSized => Where(ty::Binder::dummy(Vec::new())),
+            },
+
+            ty::Foreign(..) => match sizedness {
+                SizedTraitKind::Sized | SizedTraitKind::MetaSized => None,
+                SizedTraitKind::PointeeSized => Where(ty::Binder::dummy(Vec::new())),
+            },
 
             ty::Tuple(tys) => Where(
                 obligation.predicate.rebind(tys.last().map_or_else(Vec::new, |&last| vec![last])),
@@ -2109,11 +2120,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Pat(ty, _) => Where(obligation.predicate.rebind(vec![*ty])),
 
             ty::Adt(def, args) => {
-                if let Some(sized_crit) = def.sized_constraint(self.tcx()) {
+                if let Some(crit) = def.sizedness_constraint(self.tcx(), sizedness) {
                     // (*) binder moved here
-                    Where(
-                        obligation.predicate.rebind(vec![sized_crit.instantiate(self.tcx(), args)]),
-                    )
+                    Where(obligation.predicate.rebind(vec![crit.instantiate(self.tcx(), args)]))
                 } else {
                     Where(ty::Binder::dummy(Vec::new()))
                 }
