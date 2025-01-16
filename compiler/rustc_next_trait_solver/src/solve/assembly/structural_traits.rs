@@ -5,6 +5,7 @@ use derive_where::derive_where;
 use rustc_type_ir::data_structures::HashMap;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{
     self as ty, Interner, Movability, Mutability, TypeFoldable, TypeFolder, TypeSuperFoldable,
     Upcast as _, elaborate,
@@ -103,8 +104,9 @@ where
 }
 
 #[instrument(level = "trace", skip(ecx), ret)]
-pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<D, I>(
+pub(in crate::solve) fn instantiate_constituent_tys_for_sizedness_trait<D, I>(
     ecx: &EvalCtxt<'_, D>,
+    sizedness: SizedTraitKind,
     ty: I::Ty,
 ) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>
 where
@@ -112,8 +114,9 @@ where
     I: Interner,
 {
     match ty.kind() {
-        // impl Sized for u*, i*, bool, f*, FnDef, FnPtr, *(const/mut) T, char, &mut? T, [T; N], dyn* Trait, !
-        // impl Sized for Coroutine, CoroutineWitness, Closure, CoroutineClosure
+        // impl {Meta,Pointee,}Sized for u*, i*, bool, f*, FnDef, FnPtr, *(const/mut) T, char
+        // impl {Meta,Pointee,}Sized for &mut? T, [T; N], dyn* Trait, !, Coroutine, CoroutineWitness
+        // impl {Meta,Pointee,}Sized for Closure, CoroutineClosure
         ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Uint(_)
         | ty::Int(_)
@@ -134,13 +137,21 @@ where
         | ty::Dynamic(_, _, ty::DynStar)
         | ty::Error(_) => Ok(ty::Binder::dummy(vec![])),
 
-        ty::Str
-        | ty::Slice(_)
-        | ty::Dynamic(..)
-        | ty::Foreign(..)
-        | ty::Alias(..)
-        | ty::Param(_)
-        | ty::Placeholder(..) => Err(NoSolution),
+        // impl {Meta,Pointee,}Sized for str, [T], dyn Trait
+        ty::Str | ty::Slice(_) | ty::Dynamic(..) => match sizedness {
+            SizedTraitKind::Sized => Err(NoSolution),
+            SizedTraitKind::MetaSized | SizedTraitKind::PointeeSized => {
+                Ok(ty::Binder::dummy(vec![]))
+            }
+        },
+
+        // impl PointeeSized for extern type
+        ty::Foreign(..) => match sizedness {
+            SizedTraitKind::Sized | SizedTraitKind::MetaSized => Err(NoSolution),
+            SizedTraitKind::PointeeSized => Ok(ty::Binder::dummy(vec![])),
+        },
+
+        ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => Err(NoSolution),
 
         ty::Bound(..)
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
@@ -149,22 +160,27 @@ where
 
         ty::UnsafeBinder(bound_ty) => Ok(bound_ty.map_bound(|ty| vec![ty])),
 
-        // impl Sized for ()
-        // impl Sized for (T1, T2, .., Tn) where Tn: Sized if n >= 1
+        // impl {Meta,Pointee,}Sized for ()
+        // impl {Meta,Pointee,}Sized for (T1, T2, .., Tn) where Tn: {Meta,Pointee,}Sized if n >= 1
         ty::Tuple(tys) => Ok(ty::Binder::dummy(tys.last().map_or_else(Vec::new, |ty| vec![ty]))),
 
-        // impl Sized for Adt<Args...> where sized_constraint(Adt)<Args...>: Sized
-        //   `sized_constraint(Adt)` is the deepest struct trail that can be determined
-        //   by the definition of `Adt`, independent of the generic args.
-        // impl Sized for Adt<Args...> if sized_constraint(Adt) == None
-        //   As a performance optimization, `sized_constraint(Adt)` can return `None`
-        //   if the ADTs definition implies that it is sized by for all possible args.
+        // impl {Meta,Pointee,}Sized for Adt<Args...>
+        //   where {meta,pointee,}sized_constraint(Adt)<Args...>: {Meta,Pointee,}Sized
+        //
+        //   `{meta,pointee,}sized_constraint(Adt)` is the deepest struct trail that can be
+        //   determined by the definition of `Adt`, independent of the generic args.
+        //
+        // impl {Meta,Pointee,}Sized for Adt<Args...>
+        //   if {meta,pointee,}sized_constraint(Adt) == None
+        //
+        //   As a performance optimization, `{meta,pointee,}sized_constraint(Adt)` can return `None`
+        //   if the ADTs definition implies that it is {meta,}sized by for all possible args.
         //   In this case, the builtin impl will have no nested subgoals. This is a
-        //   "best effort" optimization and `sized_constraint` may return `Some`, even
-        //   if the ADT is sized for all possible args.
+        //   "best effort" optimization and `{meta,pointee,}sized_constraint` may return `Some`,
+        //   even if the ADT is {meta,pointee,}sized for all possible args.
         ty::Adt(def, args) => {
-            if let Some(sized_crit) = def.sized_constraint(ecx.cx()) {
-                Ok(ty::Binder::dummy(vec![sized_crit.instantiate(ecx.cx(), args)]))
+            if let Some(crit) = def.sizedness_constraint(ecx.cx(), sizedness) {
+                Ok(ty::Binder::dummy(vec![crit.instantiate(ecx.cx(), args)]))
             } else {
                 Ok(ty::Binder::dummy(vec![]))
             }
