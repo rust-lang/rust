@@ -14,7 +14,7 @@ error: in the trait associated type is declared without lifetime parameters, so 
   --> $DIR/no_lending_iterators.rs:18:17
    |
 LL | impl Bar for usize {
-   |     - you could add a lifetime on the impl block, if the trait or the self type can have one
+   |     - you could add a lifetime on the impl block, if the trait or the self type could have one
 LL |     type Item = &usize;
    |                 ^ this lifetime must come from the implemented type
 

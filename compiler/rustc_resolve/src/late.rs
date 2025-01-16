@@ -10,6 +10,7 @@ use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::mem::{replace, swap, take};
+use std::ops::ControlFlow;
 
 use rustc_ast::visit::{
     AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, try_visit, visit_opt, walk_list,
@@ -1953,11 +1954,63 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
             }
         } else {
-            err.span_label(
-                span,
-                "you could add a lifetime on the impl block, if the trait or the self type can \
-                 have one",
-            );
+            struct AnonRefFinder;
+            impl<'ast> Visitor<'ast> for AnonRefFinder {
+                type Result = ControlFlow<Span>;
+
+                fn visit_ty(&mut self, ty: &'ast ast::Ty) -> Self::Result {
+                    if let ast::TyKind::Ref(None, mut_ty) = &ty.kind {
+                        return ControlFlow::Break(mut_ty.ty.span.shrink_to_lo());
+                    }
+                    visit::walk_ty(self, ty)
+                }
+
+                fn visit_lifetime(
+                    &mut self,
+                    lt: &'ast ast::Lifetime,
+                    _cx: visit::LifetimeCtxt,
+                ) -> Self::Result {
+                    if lt.ident.name == kw::UnderscoreLifetime {
+                        return ControlFlow::Break(lt.ident.span);
+                    }
+                    visit::walk_lifetime(self, lt)
+                }
+            }
+
+            if let Some(ty) = &self.diag_metadata.current_self_type
+                && let ControlFlow::Break(sp) = AnonRefFinder.visit_ty(ty)
+            {
+                err.multipart_suggestion_verbose(
+                    "add a lifetime to the impl block and use it in the self type and associated \
+                     type",
+                    vec![
+                        (span, "<'a>".to_string()),
+                        (sp, "'a ".to_string()),
+                        (lifetime.shrink_to_hi(), "'a ".to_string()),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
+            } else if let Some(item) = &self.diag_metadata.current_item
+                && let ItemKind::Impl(impl_) = &item.kind
+                && let Some(of_trait) = &impl_.of_trait
+                && let ControlFlow::Break(sp) = AnonRefFinder.visit_trait_ref(of_trait)
+            {
+                err.multipart_suggestion_verbose(
+                    "add a lifetime to the impl block and use it in the trait and associated type",
+                    vec![
+                        (span, "<'a>".to_string()),
+                        (sp, "'a".to_string()),
+                        (lifetime.shrink_to_hi(), "'a ".to_string()),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
+            } else {
+                err.span_label(
+                    span,
+                    "you could add a lifetime on the impl block, if the trait or the self type \
+                     could have one",
+                );
+            }
         }
     }
 
