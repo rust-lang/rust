@@ -1397,6 +1397,8 @@ impl<T: ?Sized> Arc<T> {
     /// different types. See [`mem::transmute`][transmute] for more information
     /// on what restrictions apply in this case.
     ///
+    /// The raw pointer must point to a block of memory allocated by the global allocator.
+    ///
     /// The user of `from_raw` has to make sure a specific value of `T` is only
     /// dropped once.
     ///
@@ -1452,7 +1454,8 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// The pointer must have been obtained through `Arc::into_raw`, and the
     /// associated `Arc` instance must be valid (i.e. the strong count must be at
-    /// least 1) for the duration of this method.
+    /// least 1) for the duration of this method, and `ptr` must point to a block of memory
+    /// allocated by the global allocator.
     ///
     /// # Examples
     ///
@@ -1486,7 +1489,8 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// The pointer must have been obtained through `Arc::into_raw`, and the
     /// associated `Arc` instance must be valid (i.e. the strong count must be at
-    /// least 1) when invoking this method. This method can be used to release the final
+    /// least 1) when invoking this method, and `ptr` must point to a block of memory
+    /// allocated by the global allocator. This method can be used to release the final
     /// `Arc` and backing storage, but **should not** be called after the final `Arc` has been
     /// released.
     ///
