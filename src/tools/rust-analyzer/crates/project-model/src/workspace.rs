@@ -11,9 +11,8 @@ use base_db::{
 };
 use cfg::{CfgAtom, CfgDiff, CfgOptions};
 use intern::{sym, Symbol};
-use itertools::Itertools;
 use paths::{AbsPath, AbsPathBuf};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
 use span::{Edition, FileId};
 use tracing::instrument;
@@ -591,9 +590,10 @@ impl ProjectWorkspace {
                         exclude: krate.exclude.clone(),
                     }
                 })
+                .collect::<FxHashSet<_>>()
+                .into_iter()
                 .chain(mk_sysroot())
-                .unique()
-                .collect(),
+                .collect::<Vec<_>>(),
             ProjectWorkspaceKind::Cargo { cargo, rustc, build_scripts, error: _, set_test: _ } => {
                 cargo
                     .packages()
@@ -642,11 +642,6 @@ impl ProjectWorkspace {
                             include: vec![rustc[krate].manifest.parent().to_path_buf()],
                             exclude: Vec::new(),
                         })
-                    }))
-                    .chain(cargo.is_virtual_workspace().then(|| PackageRoot {
-                        is_local: true,
-                        include: vec![cargo.workspace_root().to_path_buf()],
-                        exclude: Vec::new(),
                     }))
                     .collect()
             }
