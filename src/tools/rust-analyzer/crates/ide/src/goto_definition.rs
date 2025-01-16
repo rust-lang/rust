@@ -145,8 +145,9 @@ fn find_definition_for_known_blanket_dual_impls(
     // - return_type is B (type of b)
     // We will find the definition of B::from(a: A).
     let method_call = ast::MethodCallExpr::cast(original_token.parent()?.parent()?)?;
-    let receiver_type = sema.type_of_expr(&method_call.receiver()?)?.adjusted();
-    let return_type = sema.type_of_expr(&method_call.clone().into())?.original();
+    let callable = sema.resolve_method_call_as_callable(&method_call)?;
+    let (_, receiver_type) = callable.receiver_param(db)?;
+    let return_type = callable.return_type();
 
     let (search_method, search_trait, return_type) = match method_call.name_ref()?.text().as_str() {
         "into" => ("from", FamousDefs(sema, krate).core_convert_From()?, return_type),
