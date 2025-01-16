@@ -71,6 +71,17 @@ impl OngoingCodegen {
         outputs: &OutputFilenames,
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
         let mut work_products = FxIndexMap::default();
+
+        if let Some(path) = self.metadata.path() {
+            if let Some((id, product)) =
+                rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(sess, "metadata", &[
+                    ("rmeta", path),
+                ])
+            {
+                work_products.insert(id, product);
+            }
+        }
+
         let mut modules = vec![];
         let disable_incr_cache = disable_incr_cache();
 

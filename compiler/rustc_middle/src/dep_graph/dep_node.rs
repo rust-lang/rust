@@ -140,6 +140,7 @@ rustc_query_append!(define_dep_nodes![
     [] fn TraitSelect() -> (),
     [] fn CompileCodegenUnit() -> (),
     [] fn CompileMonoItem() -> (),
+    [] fn Metadata() -> (),
 ]);
 
 // WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as keys.
@@ -155,6 +156,12 @@ pub(crate) fn make_compile_mono_item<'tcx>(
     mono_item: &MonoItem<'tcx>,
 ) -> DepNode {
     DepNode::construct(tcx, dep_kinds::CompileMonoItem, mono_item)
+}
+
+// WARNING: `construct` is generic and does not know that `Metadata` takes `()`s as keys.
+// Be very careful changing this type signature!
+pub(crate) fn make_metadata(tcx: TyCtxt<'_>) -> DepNode {
+    DepNode::construct(tcx, dep_kinds::Metadata, &())
 }
 
 pub trait DepNodeExt: Sized {
