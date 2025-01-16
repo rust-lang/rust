@@ -2369,6 +2369,97 @@ fn test() {
 }
 
 #[test]
+fn test_hover_show_type_def_for_func_param() {
+    check_actions(
+        r#"
+struct Bar;
+fn f(b: Bar) {
+
+}
+
+fn test() {
+    let b = Bar;
+    f$0(b);
+}
+"#,
+        expect![[r#"
+            [
+                Reference(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 15,
+                    },
+                ),
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "ra_test_fixture::Bar",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..11,
+                                focus_range: 7..10,
+                                name: "Bar",
+                                kind: Struct,
+                                description: "struct Bar",
+                            },
+                        },
+                    ],
+                ),
+            ]
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_show_type_def_for_trait_bound() {
+    check_actions(
+        r#"
+trait Bar {}
+fn f<T: Bar>(b: T) {
+
+}
+
+fn test() {
+    f$0();
+}
+"#,
+        expect![[r#"
+            [
+                Reference(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 16,
+                    },
+                ),
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "ra_test_fixture::Bar",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..12,
+                                focus_range: 6..9,
+                                name: "Bar",
+                                kind: Trait,
+                                description: "trait Bar",
+                            },
+                        },
+                    ],
+                ),
+            ]
+        "#]],
+    );
+}
+
+#[test]
 fn test_hover_non_ascii_space_doc() {
     check(
         "
