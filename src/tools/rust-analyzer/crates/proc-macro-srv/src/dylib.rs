@@ -12,15 +12,6 @@ use paths::{Utf8Path, Utf8PathBuf};
 use crate::{proc_macros::ProcMacros, server_impl::TopSubtree, ProcMacroKind, ProcMacroSrvSpan};
 
 /// Loads dynamic library in platform dependent manner.
-///
-/// For unix, you have to use RTLD_DEEPBIND flag to escape problems described
-/// [here](https://github.com/fedochet/rust-proc-macro-panic-inside-panic-expample)
-/// and [here](https://github.com/rust-lang/rust/issues/60593).
-///
-/// Usage of RTLD_DEEPBIND
-/// [here](https://github.com/fedochet/rust-proc-macro-panic-inside-panic-expample/issues/1)
-///
-/// It seems that on Windows that behaviour is default, so we do nothing in that case.
 #[cfg(windows)]
 fn load_library(file: &Utf8Path) -> Result<Library, libloading::Error> {
     unsafe { Library::new(file) }
@@ -29,12 +20,7 @@ fn load_library(file: &Utf8Path) -> Result<Library, libloading::Error> {
 #[cfg(unix)]
 fn load_library(file: &Utf8Path) -> Result<Library, libloading::Error> {
     use libloading::os::unix::Library as UnixLibrary;
-    use std::os::raw::c_int;
-
-    const RTLD_NOW: c_int = 0x00002;
-    const RTLD_DEEPBIND: c_int = 0x00008;
-
-    unsafe { UnixLibrary::open(Some(file), RTLD_NOW | RTLD_DEEPBIND).map(|lib| lib.into()) }
+    unsafe { UnixLibrary::open(Some(file), libloading::os::unix::RTLD_NOW).map(|lib| lib.into()) }
 }
 
 #[derive(Debug)]
