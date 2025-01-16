@@ -20,7 +20,8 @@ use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, DiagArgValue, ErrorGuaranteed, IntoDiagArg, StashKey, Suggestions,
+    Applicability, Diag, DiagArgValue, ErrorGuaranteed, IntoDiagArg, StashKey, Suggestions,
+    pluralize,
 };
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
@@ -1870,9 +1871,13 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                     ty: ty.span,
                                 });
                             } else {
-                                self.r.dcx().emit_err(errors::AnonymousLivetimeNonGatReportError {
-                                    lifetime: lifetime.ident.span,
-                                });
+                                let mut err = self.r.dcx().create_err(
+                                    errors::AnonymousLivetimeNonGatReportError {
+                                        lifetime: lifetime.ident.span,
+                                    },
+                                );
+                                self.point_at_impl_lifetimes(&mut err, i, lifetime.ident.span);
+                                err.emit();
                             }
                         } else {
                             self.r.dcx().emit_err(errors::ElidedAnonymousLivetimeReportError {
@@ -1907,6 +1912,47 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
         self.record_lifetime_res(lifetime.id, LifetimeRes::Error, elision_candidate);
         self.report_missing_lifetime_specifiers(vec![missing_lifetime], None);
+    }
+
+    fn point_at_impl_lifetimes(&mut self, err: &mut Diag<'_>, i: usize, lifetime: Span) {
+        let Some((rib, span)) = self.lifetime_ribs[..i]
+            .iter()
+            .rev()
+            .skip(1)
+            .filter_map(|rib| match rib.kind {
+                LifetimeRibKind::Generics { span, kind: LifetimeBinderKind::ImplBlock, .. } => {
+                    Some((rib, span))
+                }
+                _ => None,
+            })
+            .next()
+        else {
+            return;
+        };
+        if !rib.bindings.is_empty() {
+            err.span_label(
+                span,
+                format!(
+                    "there {} named lifetime{} specified on the impl block you could use",
+                    if rib.bindings.len() == 1 { "is a" } else { "are" },
+                    pluralize!(rib.bindings.len()),
+                ),
+            );
+            if rib.bindings.len() == 1 {
+                err.span_suggestion_verbose(
+                    lifetime.shrink_to_hi(),
+                    "consider using the lifetime from the impl block",
+                    format!("{} ", rib.bindings.keys().next().unwrap()),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        } else {
+            err.span_label(
+                span,
+                "you could add a lifetime on the impl block, if the trait or the self type can \
+                 have one",
+            );
+        }
     }
 
     #[instrument(level = "debug", skip(self))]
