@@ -4855,6 +4855,7 @@ impl Type {
         self.normalize_trait_assoc_type(db, &[], iterator_item.into())
     }
 
+    /// Resolves the projection `<Self as IntoIterator>::IntoIter` and returns the resulting type
     pub fn into_iterator_iter(self, db: &dyn HirDatabase) -> Option<Type> {
         let trait_ = db.lang_item(self.env.krate, LangItem::IntoIterIntoIter).and_then(|it| {
             let into_iter_fn = it.as_function()?;
