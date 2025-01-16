@@ -62,6 +62,7 @@ pub(crate) fn complete_expr_path(
         in_condition,
         incomplete_let,
         ref ref_expr_parent,
+        after_amp,
         ref is_func_update,
         ref innermost_ret_ty,
         ref impl_,
@@ -69,14 +70,12 @@ pub(crate) fn complete_expr_path(
         ..
     } = expr_ctx;
 
-    let has_raw_token =
-        ref_expr_parent.as_ref().map(|it| it.raw_token().is_some()).unwrap_or(false);
-    let has_const_token =
-        ref_expr_parent.as_ref().map(|it| it.const_token().is_some()).unwrap_or(false);
-    let has_mut_token =
-        ref_expr_parent.as_ref().map(|it| it.mut_token().is_some()).unwrap_or(false);
+    let (has_raw_token, has_const_token, has_mut_token) = ref_expr_parent
+        .as_ref()
+        .map(|it| (it.raw_token().is_some(), it.const_token().is_some(), it.mut_token().is_some()))
+        .unwrap_or((false, false, false));
 
-    let wants_raw_token = ref_expr_parent.is_some() && !has_raw_token;
+    let wants_raw_token = ref_expr_parent.is_some() && !has_raw_token && after_amp;
     let wants_const_token =
         ref_expr_parent.is_some() && has_raw_token && !has_const_token && !has_mut_token;
     let wants_mut_token = if ref_expr_parent.is_some() {

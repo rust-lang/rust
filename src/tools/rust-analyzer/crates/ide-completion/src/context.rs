@@ -146,6 +146,7 @@ pub(crate) struct PathExprCtx {
     pub(crate) in_condition: bool,
     pub(crate) incomplete_let: bool,
     pub(crate) ref_expr_parent: Option<ast::RefExpr>,
+    pub(crate) after_amp: bool,
     /// The surrounding RecordExpression we are completing a functional update
     pub(crate) is_func_update: Option<ast::RecordExpr>,
     pub(crate) self_param: Option<hir::SelfParam>,
