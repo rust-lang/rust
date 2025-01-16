@@ -816,7 +816,7 @@
                     "rust-analyzer.cargo.cfgs": {
                         "markdownDescription": "List of cfg options to enable with the given values.",
                         "default": [
-                            "debug_assertion",
+                            "debug_assertions",
                             "miri"
                         ],
                         "type": "array",
