@@ -220,7 +220,11 @@ fn render_completion_list(completions: Vec<CompletionItem>) -> String {
 }
 
 #[track_caller]
-pub(crate) fn check_edit(what: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
+pub(crate) fn check_edit(
+    what: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+) {
     check_edit_with_config(TEST_CONFIG, what, ra_fixture_before, ra_fixture_after)
 }
 

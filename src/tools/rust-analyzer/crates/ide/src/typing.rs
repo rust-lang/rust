@@ -436,14 +436,18 @@ mod tests {
         })
     }
 
-    fn type_char(char_typed: char, ra_fixture_before: &str, ra_fixture_after: &str) {
+    fn type_char(
+        char_typed: char,
+        #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+    ) {
         let actual = do_type_char(char_typed, ra_fixture_before)
             .unwrap_or_else(|| panic!("typing `{char_typed}` did nothing"));
 
         assert_eq_text!(ra_fixture_after, &actual);
     }
 
-    fn type_char_noop(char_typed: char, ra_fixture_before: &str) {
+    fn type_char_noop(char_typed: char, #[rust_analyzer::rust_fixture] ra_fixture_before: &str) {
         let file_change = do_type_char(char_typed, ra_fixture_before);
         assert_eq!(file_change, None)
     }
