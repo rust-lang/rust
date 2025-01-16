@@ -1,0 +1,81 @@
+error[E0277]: values of type `str` may or may not have a size
+  --> $DIR/feature-gate-sized-hierarchy.rs:15:26
+   |
+LL |     needs_pointeesized::<str>();
+   |                          ^^^ may or may not have a known size
+   |
+   = help: the trait `PointeeSized` is not implemented for `str`
+note: required by a bound in `needs_pointeesized`
+  --> $DIR/feature-gate-sized-hierarchy.rs:6:35
+   |
+LL | fn needs_pointeesized<T: ?Sized + PointeeSized>() {}
+   |                                   ^^^^^^^^^^^^ required by this bound in `needs_pointeesized`
+
+error[E0277]: the size for values of type `str` cannot be known
+  --> $DIR/feature-gate-sized-hierarchy.rs:17:23
+   |
+LL |     needs_metasized::<str>();
+   |                       ^^^ doesn't have a known size
+   |
+   = help: the trait `MetaSized` is not implemented for `str`
+note: required by a bound in `needs_metasized`
+  --> $DIR/feature-gate-sized-hierarchy.rs:7:32
+   |
+LL | fn needs_metasized<T: ?Sized + MetaSized>() {}
+   |                                ^^^^^^^^^ required by this bound in `needs_metasized`
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/feature-gate-sized-hierarchy.rs:19:19
+   |
+LL |     needs_sized::<str>();
+   |                   ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+note: required by a bound in `needs_sized`
+  --> $DIR/feature-gate-sized-hierarchy.rs:8:19
+   |
+LL | fn needs_sized<T: Sized>() {}
+   |                   ^^^^^ required by this bound in `needs_sized`
+
+error[E0277]: values of type `main::Foo` may or may not have a size
+  --> $DIR/feature-gate-sized-hierarchy.rs:26:26
+   |
+LL |     needs_pointeesized::<Foo>();
+   |                          ^^^ may or may not have a known size
+   |
+   = help: the trait `PointeeSized` is not implemented for `main::Foo`
+note: required by a bound in `needs_pointeesized`
+  --> $DIR/feature-gate-sized-hierarchy.rs:6:35
+   |
+LL | fn needs_pointeesized<T: ?Sized + PointeeSized>() {}
+   |                                   ^^^^^^^^^^^^ required by this bound in `needs_pointeesized`
+
+error[E0277]: the size for values of type `main::Foo` cannot be known
+  --> $DIR/feature-gate-sized-hierarchy.rs:28:23
+   |
+LL |     needs_metasized::<Foo>();
+   |                       ^^^ doesn't have a known size
+   |
+   = help: the trait `MetaSized` is not implemented for `main::Foo`
+note: required by a bound in `needs_metasized`
+  --> $DIR/feature-gate-sized-hierarchy.rs:7:32
+   |
+LL | fn needs_metasized<T: ?Sized + MetaSized>() {}
+   |                                ^^^^^^^^^ required by this bound in `needs_metasized`
+
+error[E0277]: the size for values of type `main::Foo` cannot be known at compilation time
+  --> $DIR/feature-gate-sized-hierarchy.rs:30:19
+   |
+LL |     needs_sized::<Foo>();
+   |                   ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `main::Foo`
+note: required by a bound in `needs_sized`
+  --> $DIR/feature-gate-sized-hierarchy.rs:8:19
+   |
+LL | fn needs_sized<T: Sized>() {}
+   |                   ^^^^^ required by this bound in `needs_sized`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

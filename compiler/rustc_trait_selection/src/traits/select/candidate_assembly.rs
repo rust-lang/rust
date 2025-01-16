@@ -89,6 +89,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Some(LangItem::Sized) => {
                     self.assemble_builtin_sized_candidate(obligation, &mut candidates);
                 }
+                Some(LangItem::MetaSized) => {
+                    self.assemble_builtin_sized_candidate(obligation, &mut candidates);
+                }
+                Some(LangItem::PointeeSized) => {
+                    self.assemble_builtin_sized_candidate(obligation, &mut candidates);
+                }
                 Some(LangItem::Unsize) => {
                     self.assemble_candidates_for_unsizing(obligation, &mut candidates);
                 }
