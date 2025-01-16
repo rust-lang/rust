@@ -151,8 +151,8 @@ pub fn musl_random() {
     // about the same time as other tests.
     if cfg!(feature = "short-benchmarks") {
         criterion = criterion
-            .warm_up_time(Duration::from_millis(500))
-            .measurement_time(Duration::from_millis(1000));
+            .warm_up_time(Duration::from_millis(200))
+            .measurement_time(Duration::from_millis(600));
     }
 
     criterion = criterion.configure_from_args();

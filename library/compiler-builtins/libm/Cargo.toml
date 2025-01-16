@@ -73,3 +73,7 @@ debug-assertions = true
 inherits = "release"
 lto = "fat"
 overflow-checks = true
+
+[profile.bench]
+# Required for iai-callgrind
+debug = true

@@ -10,6 +10,7 @@ env:
   RUSTDOCFLAGS: -Dwarnings
   RUSTFLAGS: -Dwarnings
   RUST_BACKTRACE: full
+  BENCHMARK_RUSTC: nightly-2025-01-16 # Pin the toolchain for reproducable results
 
 jobs:
   test:
@@ -147,18 +148,69 @@ jobs:
   benchmarks:
     name: Benchmarks
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
     - uses: actions/checkout@master
-    - name: Install Rust
-      run: rustup update nightly --no-self-update && rustup default nightly
+    - uses: taiki-e/install-action@cargo-binstall
+
+    - name: Set up dependencies
+      run: |
+        rustup update "$BENCHMARK_RUSTC" --no-self-update
+        rustup default "$BENCHMARK_RUSTC"
+        # Install the version of iai-callgrind-runner that is specified in Cargo.toml
+        iai_version="$(cargo metadata --format-version=1 --features icount |
+           jq -r '.packages[] | select(.name == "iai-callgrind").version')"
+        cargo binstall -y iai-callgrind-runner --version "$iai_version"
+        sudo apt-get install valgrind
+
     - uses: Swatinem/rust-cache@v2
     - name: Download musl source
       run: ./ci/download-musl.sh
-    - run: |
+
+    - name: Run icount benchmarks
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        set -eux
+        iai_home="iai-home"
+        # Download the baseline from master
+        ./ci/ci-util.py locate-baseline --download --extract
+
+        # Run iai-callgrind benchmarks
+        cargo bench --no-default-features \
+          --features unstable,unstable-float,icount \
+          --bench icount \
+          -- \
+          --save-baseline=default \
+          --home "$(pwd)/$iai_home" \
+          --regression='ir=5.0' \
+          --save-summary
+        # NB: iai-callgrind should exit on error but does not, so we inspect the sumary
+        # for errors. See  https://github.com/iai-callgrind/iai-callgrind/issues/337
+        ./ci/ci-util.py check-regressions "$iai_home"
+
+        # Name and tar the new baseline
+        name="baseline-icount-$(date -u +'%Y%m%d%H%M')-${GITHUB_SHA:0:12}"
+        echo "BASELINE_NAME=$name" >> "$GITHUB_ENV"
+        tar cJf "$name.tar.xz" "$iai_home"
+
+    - name: Upload the benchmark baseline
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.BASELINE_NAME }}
+        path: ${{ env.BASELINE_NAME }}.tar.xz
+    
+    - name: Run wall time benchmarks
+      run: |
         # Always use the same seed for benchmarks. Ideally we should switch to a
         # non-random generator.
         export LIBM_SEED=benchesbenchesbenchesbencheswoo!
         cargo bench --all --features libm-test/short-benchmarks,libm-test/build-musl
+
+    - name: Print test logs if available
+      if: always()
+      run: if [ -f "target/test-log.txt" ]; then cat target/test-log.txt; fi
+      shell: bash
 
   msrv:
     name: Check MSRV
