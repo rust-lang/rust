@@ -17,10 +17,10 @@ SOURCE_FILE
       BLOCK_EXPR
         STMT_LIST
           L_CURLY "{"
-          WHITESPACE "\r\n    "
+          WHITESPACE "\n    "
           LITERAL
             INT_NUMBER "1"
-          WHITESPACE "\r\n"
+          WHITESPACE "\n"
           R_CURLY "}"
     WHITESPACE " "
     LET_ELSE
@@ -29,14 +29,14 @@ SOURCE_FILE
       BLOCK_EXPR
         STMT_LIST
           L_CURLY "{"
-          WHITESPACE "\r\n    "
+          WHITESPACE "\n    "
           EXPR_STMT
             RETURN_EXPR
               RETURN_KW "return"
             SEMICOLON ";"
-          WHITESPACE "\r\n"
+          WHITESPACE "\n"
           R_CURLY "}"
     SEMICOLON ";"
-  WHITESPACE "\r\n"
+  WHITESPACE "\n"
 error 0: expected an item
-error 25: right curly brace `}` before `else` in a `let...else` statement not allowed
+error 23: right curly brace `}` before `else` in a `let...else` statement not allowed

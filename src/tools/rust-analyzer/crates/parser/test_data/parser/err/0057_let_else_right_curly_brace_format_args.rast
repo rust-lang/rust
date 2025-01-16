@@ -11,7 +11,7 @@ SOURCE_FILE
     BLOCK_EXPR
       STMT_LIST
         L_CURLY "{"
-        WHITESPACE "\r\n    "
+        WHITESPACE "\n    "
         LET_STMT
           LET_KW "let"
           WHITESPACE " "
@@ -47,7 +47,7 @@ SOURCE_FILE
                 WHITESPACE " "
                 R_CURLY "}"
           SEMICOLON ";"
-        WHITESPACE "\r\n\r\n    "
+        WHITESPACE "\n\n    "
         LET_STMT
           LET_KW "let"
           WHITESPACE " "
@@ -84,7 +84,7 @@ SOURCE_FILE
                 WHITESPACE " "
                 R_CURLY "}"
           SEMICOLON ";"
-        WHITESPACE "\r\n"
+        WHITESPACE "\n"
         R_CURLY "}"
-  WHITESPACE "\r\n"
-error 92: right curly brace `}` before `else` in a `let...else` statement not allowed
+  WHITESPACE "\n"
+error 89: right curly brace `}` before `else` in a `let...else` statement not allowed

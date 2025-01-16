@@ -1,6 +1,8 @@
 struct X {a: i32}
-let foo = X {
-    a: 1
-} else {
-    return;
-};
+fn f() {
+    let foo = X {
+        a: 1
+    } else {
+        return;
+    };
+}

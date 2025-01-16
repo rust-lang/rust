@@ -27,13 +27,13 @@ SOURCE_FILE
       BLOCK_EXPR
         STMT_LIST
           L_CURLY "{"
-          WHITESPACE "\r\n    "
+          WHITESPACE "\n    "
           PATH_EXPR
             PATH
               PATH_SEGMENT
                 NAME_REF
                   IDENT "x"
-          WHITESPACE "\r\n"
+          WHITESPACE "\n"
           R_CURLY "}"
     WHITESPACE " "
     LET_ELSE
@@ -42,14 +42,14 @@ SOURCE_FILE
       BLOCK_EXPR
         STMT_LIST
           L_CURLY "{"
-          WHITESPACE "\r\n    "
+          WHITESPACE "\n    "
           EXPR_STMT
             RETURN_EXPR
               RETURN_KW "return"
             SEMICOLON ";"
-          WHITESPACE "\r\n"
+          WHITESPACE "\n"
           R_CURLY "}"
     SEMICOLON ";"
-  WHITESPACE "\r\n"
+  WHITESPACE "\n"
 error 0: expected an item
-error 30: right curly brace `}` before `else` in a `let...else` statement not allowed
+error 28: right curly brace `}` before `else` in a `let...else` statement not allowed

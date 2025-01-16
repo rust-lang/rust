@@ -18,49 +18,62 @@ SOURCE_FILE
               NAME_REF
                 IDENT "i32"
       R_CURLY "}"
-  WHITESPACE "\r\n"
-  ERROR
-    LET_KW "let"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
     WHITESPACE " "
-    IDENT_PAT
-      NAME
-        IDENT "foo"
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
     WHITESPACE " "
-    EQ "="
-    WHITESPACE " "
-    RECORD_EXPR
-      PATH
-        PATH_SEGMENT
-          NAME_REF
-            IDENT "X"
-      WHITESPACE " "
-      RECORD_EXPR_FIELD_LIST
+    BLOCK_EXPR
+      STMT_LIST
         L_CURLY "{"
-        WHITESPACE "\r\n    "
-        RECORD_EXPR_FIELD
-          NAME_REF
-            IDENT "a"
-          COLON ":"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
           WHITESPACE " "
-          LITERAL
-            INT_NUMBER "1"
-        WHITESPACE "\r\n"
+          IDENT_PAT
+            NAME
+              IDENT "foo"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          RECORD_EXPR
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "X"
+            WHITESPACE " "
+            RECORD_EXPR_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              RECORD_EXPR_FIELD
+                NAME_REF
+                  IDENT "a"
+                COLON ":"
+                WHITESPACE " "
+                LITERAL
+                  INT_NUMBER "1"
+              WHITESPACE "\n    "
+              R_CURLY "}"
+          WHITESPACE " "
+          LET_ELSE
+            ELSE_KW "else"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                WHITESPACE "\n        "
+                EXPR_STMT
+                  RETURN_EXPR
+                    RETURN_KW "return"
+                  SEMICOLON ";"
+                WHITESPACE "\n    "
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n"
         R_CURLY "}"
-    WHITESPACE " "
-    LET_ELSE
-      ELSE_KW "else"
-      WHITESPACE " "
-      BLOCK_EXPR
-        STMT_LIST
-          L_CURLY "{"
-          WHITESPACE "\r\n    "
-          EXPR_STMT
-            RETURN_EXPR
-              RETURN_KW "return"
-            SEMICOLON ";"
-          WHITESPACE "\r\n"
-          R_CURLY "}"
-    SEMICOLON ";"
-  WHITESPACE "\r\n"
-error 19: expected an item
-error 45: right curly brace `}` before `else` in a `let...else` statement not allowed
+error 63: right curly brace `}` before `else` in a `let...else` statement not allowed
