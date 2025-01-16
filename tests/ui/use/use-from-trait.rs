@@ -1,6 +1,6 @@
-use Trait::foo; //~ ERROR `foo` is not directly importable
+use Trait::foo; //~ ERROR `use` associated items of traits is unstable [E0658]
 use Trait::Assoc; //~ ERROR `Assoc` is not directly importable
-use Trait::C; //~ ERROR `C` is not directly importable
+use Trait::C; //~ ERROR `use` associated items of traits is unstable [E0658]
 
 use Foo::new; //~ ERROR unresolved import `Foo` [E0432]
 

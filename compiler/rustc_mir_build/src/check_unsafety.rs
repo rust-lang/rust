@@ -495,14 +495,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     };
                     self.requires_unsafe(expr.span, CallToUnsafeFunction(func_id));
                 } else if let &ty::FnDef(func_did, _) = fn_ty.kind() {
-                    // If the called function has target features the calling function hasn't,
-                    // the call requires `unsafe`. Don't check this on wasm
-                    // targets, though. For more information on wasm see the
-                    // is_like_wasm check in hir_analysis/src/collect.rs
-                    if !self.tcx.sess.target.options.is_like_wasm
-                        && !callee_features.iter().all(|feature| {
-                            self.body_target_features.iter().any(|f| f.name == feature.name)
-                        })
+                    if !self
+                        .tcx
+                        .is_target_feature_call_safe(callee_features, self.body_target_features)
                     {
                         let missing: Vec<_> = callee_features
                             .iter()

@@ -207,14 +207,14 @@ options should be separated by spaces.
 
 ## link-dead-code
 
-This flag controls whether the linker will keep dead code. It takes one of
-the following values:
+Tries to generate and link dead code that would otherwise not be generated or
+linked. It takes one of the following values:
 
-* `y`, `yes`, `on`, `true` or no value: keep dead code.
+* `y`, `yes`, `on`, `true` or no value: try to keep dead code.
 * `n`, `no`, `off` or `false`: remove dead code (the default).
 
-An example of when this flag might be useful is when trying to construct code coverage
-metrics.
+This flag was historically used to help improve some older forms of code
+coverage measurement. Its use is not recommended.
 
 ## link-self-contained
 

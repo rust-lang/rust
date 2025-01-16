@@ -1,10 +1,10 @@
 mod foo {
     pub trait MyTrait {
-        fn do_something();
+        type SomeType;
     }
 }
 
-use foo::MyTrait::do_something;
+use foo::MyTrait::SomeType;
     //~^ ERROR E0253
 
 fn main() {}

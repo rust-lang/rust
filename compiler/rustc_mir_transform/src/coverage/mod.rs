@@ -15,10 +15,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::coverage::{
     CoverageKind, DecisionInfo, FunctionCoverageInfo, Mapping, MappingKind,
 };
-use rustc_middle::mir::{
-    self, BasicBlock, BasicBlockData, SourceInfo, Statement, StatementKind, Terminator,
-    TerminatorKind,
-};
+use rustc_middle::mir::{self, BasicBlock, Statement, StatementKind, TerminatorKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
@@ -248,19 +245,6 @@ fn inject_coverage_statements<'tcx>(
         // to create a new block between the two BCBs, and inject into that.
         let target_bb = match site {
             Site::Node { bcb } => graph[bcb].leader_bb(),
-            Site::Edge { from_bcb, to_bcb } => {
-                // Create a new block between the last block of `from_bcb` and
-                // the first block of `to_bcb`.
-                let from_bb = graph[from_bcb].last_bb();
-                let to_bb = graph[to_bcb].leader_bb();
-
-                let new_bb = inject_edge_counter_basic_block(mir_body, from_bb, to_bb);
-                debug!(
-                    "Edge {from_bcb:?} (last {from_bb:?}) -> {to_bcb:?} (leader {to_bb:?}) \
-                    requires a new MIR BasicBlock {new_bb:?} for counter increment {id:?}",
-                );
-                new_bb
-            }
         };
 
         inject_statement(mir_body, CoverageKind::CounterIncrement { id }, target_bb);
@@ -333,31 +317,6 @@ fn inject_mcdc_statements<'tcx>(
             }
         }
     }
-}
-
-/// Given two basic blocks that have a control-flow edge between them, creates
-/// and returns a new block that sits between those blocks.
-fn inject_edge_counter_basic_block(
-    mir_body: &mut mir::Body<'_>,
-    from_bb: BasicBlock,
-    to_bb: BasicBlock,
-) -> BasicBlock {
-    let span = mir_body[from_bb].terminator().source_info.span.shrink_to_hi();
-    let new_bb = mir_body.basic_blocks_mut().push(BasicBlockData {
-        statements: vec![], // counter will be injected here
-        terminator: Some(Terminator {
-            source_info: SourceInfo::outermost(span),
-            kind: TerminatorKind::Goto { target: to_bb },
-        }),
-        is_cleanup: false,
-    });
-    let edge_ref = mir_body[from_bb]
-        .terminator_mut()
-        .successors_mut()
-        .find(|successor| **successor == to_bb)
-        .expect("from_bb should have a successor for to_bb");
-    *edge_ref = new_bb;
-    new_bb
 }
 
 fn inject_statement(mir_body: &mut mir::Body<'_>, counter_kind: CoverageKind, bb: BasicBlock) {
