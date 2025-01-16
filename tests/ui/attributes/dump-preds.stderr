@@ -35,6 +35,7 @@ LL |     type Assoc<P: Eq>: std::ops::Deref<Target = ()>
    = note: Binder { value: TraitPredicate(<<Self as Trait<T>>::Assoc<P> as std::ops::Deref>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<<Self as Trait<T>>::Assoc<P> as std::marker::Sized>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<<Self as Trait<T>>::Assoc<P> as std::marker::MetaSized>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: TraitPredicate(<<Self as Trait<T>>::Assoc<P> as std::marker::PointeeSized>, polarity:Positive), bound_vars: [] }
 
 error: aborting due to 3 previous errors
 
