@@ -1437,5 +1437,33 @@ async fn bar() {
     me into_future() (use core::future::IntoFuture) fn(self) -> <Self as IntoFuture>::IntoFuture
 "#]],
         );
+        check_edit(
+            "foo",
+            r#"
+//- minicore: future
+struct Foo;
+impl Foo {
+    fn foo(self) {}
+}
+
+async fn foo() -> Foo { Foo }
+
+async fn bar() {
+    foo().$0
+}
+"#,
+            r#"
+struct Foo;
+impl Foo {
+    fn foo(self) {}
+}
+
+async fn foo() -> Foo { Foo }
+
+async fn bar() {
+    foo().await.foo();$0
+}
+"#,
+        );
     }
 }
