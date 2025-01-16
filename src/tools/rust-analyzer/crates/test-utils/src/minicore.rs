@@ -1510,12 +1510,35 @@ pub mod iter {
             impl<T, const N: usize> IntoIterator for [T; N] {
                 type Item = T;
                 type IntoIter = IntoIter<T, N>;
-                fn into_iter(self) -> I {
+                fn into_iter(self) -> Self::IntoIter {
                     IntoIter { data: self, range: IndexRange { start: 0, end: loop {} } }
                 }
             }
             impl<T, const N: usize> Iterator for IntoIter<T, N> {
                 type Item = T;
+                fn next(&mut self) -> Option<T> {
+                    loop {}
+                }
+            }
+            pub struct Iter<'a, T> {
+                slice: &'a [T],
+            }
+            impl<'a, T> IntoIterator for &'a [T; N] {
+                type Item = &'a T;
+                type IntoIter = Iter<'a, T>;
+                fn into_iter(self) -> Self::IntoIter {
+                    loop {}
+                }
+            }
+            impl<'a, T> IntoIterator for &'a [T] {
+                type Item = &'a T;
+                type IntoIter = Iter<'a, T>;
+                fn into_iter(self) -> Self::IntoIter {
+                    loop {}
+                }
+            }
+            impl<'a, T> Iterator for Iter<'a, T> {
+                type Item = &'a T;
                 fn next(&mut self) -> Option<T> {
                     loop {}
                 }

@@ -18,7 +18,7 @@ use ide_db::{
     imports::import_assets::LocatedImport,
     RootDatabase, SnippetCap, SymbolKind,
 };
-use syntax::{ast, format_smolstr, AstNode, Edition, SmolStr, SyntaxKind, TextRange, ToSmolStr};
+use syntax::{ast, format_smolstr, AstNode, SmolStr, SyntaxKind, TextRange, ToSmolStr};
 
 use crate::{
     context::{DotAccess, DotAccessKind, PathCompletionCtx, PathKind, PatternContext},
@@ -123,7 +123,7 @@ impl<'a> RenderContext<'a> {
 pub(crate) fn render_field(
     ctx: RenderContext<'_>,
     dot_access: &DotAccess,
-    receiver: Option<hir::Name>,
+    receiver: Option<SmolStr>,
     field: hir::Field,
     ty: &hir::Type,
 ) -> CompletionItem {
@@ -137,7 +137,7 @@ pub(crate) fn render_field(
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
-        field_with_receiver(db, receiver.as_ref(), &name, ctx.completion.edition),
+        field_with_receiver(receiver.as_deref(), &name),
         ctx.completion.edition,
     );
     item.set_relevance(CompletionRelevance {
@@ -159,8 +159,7 @@ pub(crate) fn render_field(
 
         builder.replace(
             ctx.source_range(),
-            field_with_receiver(db, receiver.as_ref(), &escaped_name, ctx.completion.edition)
-                .into(),
+            field_with_receiver(receiver.as_deref(), &escaped_name).into(),
         );
 
         let expected_fn_type =
@@ -184,12 +183,7 @@ pub(crate) fn render_field(
 
         item.text_edit(builder.finish());
     } else {
-        item.insert_text(field_with_receiver(
-            db,
-            receiver.as_ref(),
-            &escaped_name,
-            ctx.completion.edition,
-        ));
+        item.insert_text(field_with_receiver(receiver.as_deref(), &escaped_name));
     }
     if let Some(receiver) = &dot_access.receiver {
         if let Some(original) = ctx.completion.sema.original_ast_node(receiver.clone()) {
@@ -202,33 +196,21 @@ pub(crate) fn render_field(
     item.build(db)
 }
 
-fn field_with_receiver(
-    db: &RootDatabase,
-    receiver: Option<&hir::Name>,
-    field_name: &str,
-    edition: Edition,
-) -> SmolStr {
-    receiver.map_or_else(
-        || field_name.into(),
-        |receiver| format_smolstr!("{}.{field_name}", receiver.display(db, edition)),
-    )
+fn field_with_receiver(receiver: Option<&str>, field_name: &str) -> SmolStr {
+    receiver
+        .map_or_else(|| field_name.into(), |receiver| format_smolstr!("{}.{field_name}", receiver))
 }
 
 pub(crate) fn render_tuple_field(
     ctx: RenderContext<'_>,
-    receiver: Option<hir::Name>,
+    receiver: Option<SmolStr>,
     field: usize,
     ty: &hir::Type,
 ) -> CompletionItem {
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
-        field_with_receiver(
-            ctx.db(),
-            receiver.as_ref(),
-            &field.to_string(),
-            ctx.completion.edition,
-        ),
+        field_with_receiver(receiver.as_deref(), &field.to_string()),
         ctx.completion.edition,
     );
     item.detail(ty.display(ctx.db(), ctx.completion.edition).to_string())

@@ -390,7 +390,7 @@ pub(crate) struct DotAccess {
     pub(crate) ctx: DotAccessExprCtx,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) enum DotAccessKind {
     Field {
         /// True if the receiver is an integer and there is no ident in the original file after it yet
@@ -402,7 +402,7 @@ pub(crate) enum DotAccessKind {
     },
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct DotAccessExprCtx {
     pub(crate) in_block_expr: bool,
     pub(crate) in_breakable: BreakableKind,

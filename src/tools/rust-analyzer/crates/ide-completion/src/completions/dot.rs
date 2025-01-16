@@ -2,7 +2,7 @@
 
 use std::ops::ControlFlow;
 
-use hir::{sym, HasContainer, ItemContainer, MethodCandidateCallback, Name};
+use hir::{HasContainer, ItemContainer, MethodCandidateCallback, Name};
 use ide_db::FxHashSet;
 use syntax::SmolStr;
 
@@ -25,8 +25,13 @@ pub(crate) fn complete_dot(
         _ => return,
     };
 
+    let is_field_access = matches!(dot_access.kind, DotAccessKind::Field { .. });
+    let is_method_access_with_parens =
+        matches!(dot_access.kind, DotAccessKind::Method { has_parens: true });
+    let traits_in_scope = ctx.traits_in_scope();
+
     // Suggest .await syntax for types that implement Future trait
-    if receiver_ty.impls_into_future(ctx.db) {
+    if let Some(future_output) = receiver_ty.into_future_output(ctx.db) {
         let mut item = CompletionItem::new(
             CompletionItemKind::Keyword,
             ctx.source_range(),
@@ -35,11 +40,37 @@ pub(crate) fn complete_dot(
         );
         item.detail("expr.await");
         item.add_to(acc, ctx.db);
-    }
 
-    let is_field_access = matches!(dot_access.kind, DotAccessKind::Field { .. });
-    let is_method_access_with_parens =
-        matches!(dot_access.kind, DotAccessKind::Method { has_parens: true });
+        // Completions that skip `.await`, e.g. `.await.foo()`.
+        let dot_access_kind = match &dot_access.kind {
+            DotAccessKind::Field { receiver_is_ambiguous_float_literal: _ } => {
+                DotAccessKind::Field { receiver_is_ambiguous_float_literal: false }
+            }
+            it @ DotAccessKind::Method { .. } => *it,
+        };
+        let dot_access = DotAccess {
+            receiver: dot_access.receiver.clone(),
+            receiver_ty: Some(hir::TypeInfo { original: future_output.clone(), adjusted: None }),
+            kind: dot_access_kind,
+            ctx: dot_access.ctx,
+        };
+        complete_fields(
+            acc,
+            ctx,
+            &future_output,
+            |acc, field, ty| {
+                acc.add_field(ctx, &dot_access, Some(SmolStr::new_static("await")), field, &ty)
+            },
+            |acc, field, ty| {
+                acc.add_tuple_field(ctx, Some(SmolStr::new_static("await")), field, &ty)
+            },
+            is_field_access,
+            is_method_access_with_parens,
+        );
+        complete_methods(ctx, &future_output, &traits_in_scope, |func| {
+            acc.add_method(ctx, &dot_access, func, Some(SmolStr::new_static("await")), None)
+        });
+    }
 
     complete_fields(
         acc,
@@ -50,8 +81,41 @@ pub(crate) fn complete_dot(
         is_field_access,
         is_method_access_with_parens,
     );
+    complete_methods(ctx, receiver_ty, &traits_in_scope, |func| {
+        acc.add_method(ctx, dot_access, func, None, None)
+    });
 
-    complete_methods(ctx, receiver_ty, |func| acc.add_method(ctx, dot_access, func, None, None));
+    // Checking for the existence of `iter()` is complicated in our setup, because we need to substitute
+    // its return type, so we instead check for `<&Self as IntoIterator>::IntoIter`.
+    let iter = receiver_ty
+        .strip_references()
+        .add_reference(hir::Mutability::Shared)
+        .into_iterator_iter(ctx.db)
+        .map(|ty| (ty, SmolStr::new_static("iter()")))
+        .or_else(|| {
+            receiver_ty
+                .clone()
+                .into_iterator_iter(ctx.db)
+                .map(|ty| (ty, SmolStr::new_static("into_iter()")))
+        });
+    if let Some((iter, iter_sym)) = iter {
+        // Skip iterators, e.g. complete `.iter().filter_map()`.
+        let dot_access_kind = match &dot_access.kind {
+            DotAccessKind::Field { receiver_is_ambiguous_float_literal: _ } => {
+                DotAccessKind::Field { receiver_is_ambiguous_float_literal: false }
+            }
+            it @ DotAccessKind::Method { .. } => *it,
+        };
+        let dot_access = DotAccess {
+            receiver: dot_access.receiver.clone(),
+            receiver_ty: Some(hir::TypeInfo { original: iter.clone(), adjusted: None }),
+            kind: dot_access_kind,
+            ctx: dot_access.ctx,
+        };
+        complete_methods(ctx, &iter, &traits_in_scope, |func| {
+            acc.add_method(ctx, &dot_access, func, Some(iter_sym.clone()), None)
+        });
+    }
 }
 
 pub(crate) fn complete_undotted_self(
@@ -94,18 +158,16 @@ pub(crate) fn complete_undotted_self(
                         in_breakable: expr_ctx.in_breakable,
                     },
                 },
-                Some(Name::new_symbol_root(sym::self_.clone())),
+                Some(SmolStr::new_static("self")),
                 field,
                 &ty,
             )
         },
-        |acc, field, ty| {
-            acc.add_tuple_field(ctx, Some(Name::new_symbol_root(sym::self_.clone())), field, &ty)
-        },
+        |acc, field, ty| acc.add_tuple_field(ctx, Some(SmolStr::new_static("self")), field, &ty),
         true,
         false,
     );
-    complete_methods(ctx, &ty, |func| {
+    complete_methods(ctx, &ty, &ctx.traits_in_scope(), |func| {
         acc.add_method(
             ctx,
             &DotAccess {
@@ -118,7 +180,7 @@ pub(crate) fn complete_undotted_self(
                 },
             },
             func,
-            Some(Name::new_symbol_root(sym::self_.clone())),
+            Some(SmolStr::new_static("self")),
             None,
         )
     });
@@ -160,6 +222,7 @@ fn complete_fields(
 fn complete_methods(
     ctx: &CompletionContext<'_>,
     receiver: &hir::Type,
+    traits_in_scope: &FxHashSet<hir::TraitId>,
     f: impl FnMut(hir::Function),
 ) {
     struct Callback<'a, F> {
@@ -205,7 +268,7 @@ fn complete_methods(
     receiver.iterate_method_candidates_split_inherent(
         ctx.db,
         &ctx.scope,
-        &ctx.traits_in_scope(),
+        traits_in_scope,
         Some(ctx.module),
         None,
         Callback { ctx, f, seen_methods: FxHashSet::default() },
@@ -1304,6 +1367,75 @@ fn baz() {
             expect![[r#"
                 me bar(…) fn(self, T)
             "#]],
+        );
+    }
+
+    #[test]
+    fn skip_iter() {
+        check_no_kw(
+            r#"
+        //- minicore: iterator
+        fn foo() {
+            [].$0
+        }
+        "#,
+            expect![[r#"
+                me clone() (as Clone)                                       fn(&self) -> Self
+                me into_iter() (as IntoIterator) fn(self) -> <Self as IntoIterator>::IntoIter
+            "#]],
+        );
+        check_no_kw(
+            r#"
+//- minicore: iterator
+struct MyIntoIter;
+impl IntoIterator for MyIntoIter {
+    type Item = ();
+    type IntoIter = MyIterator;
+    fn into_iter(self) -> Self::IntoIter {
+        MyIterator
+    }
+}
+
+struct MyIterator;
+impl Iterator for MyIterator {
+    type Item = ();
+    fn next(&mut self) -> Self::Item {}
+}
+
+fn foo() {
+    MyIntoIter.$0
+}
+"#,
+            expect![[r#"
+                me into_iter() (as IntoIterator)                fn(self) -> <Self as IntoIterator>::IntoIter
+                me into_iter().by_ref() (as Iterator)                             fn(&mut self) -> &mut Self
+                me into_iter().into_iter() (as IntoIterator)    fn(self) -> <Self as IntoIterator>::IntoIter
+                me into_iter().next() (as Iterator)        fn(&mut self) -> Option<<Self as Iterator>::Item>
+                me into_iter().nth(…) (as Iterator) fn(&mut self, usize) -> Option<<Self as Iterator>::Item>
+            "#]],
+        );
+    }
+
+    #[test]
+    fn skip_await() {
+        check_no_kw(
+            r#"
+//- minicore: future
+struct Foo;
+impl Foo {
+    fn foo(self) {}
+}
+
+async fn foo() -> Foo { Foo }
+
+async fn bar() {
+    foo().$0
+}
+"#,
+            expect![[r#"
+    me await.foo()                                                                      fn(self)
+    me into_future() (use core::future::IntoFuture) fn(self) -> <Self as IntoFuture>::IntoFuture
+"#]],
         );
     }
 }
