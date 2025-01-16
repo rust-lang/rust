@@ -1,0 +1,38 @@
+# Mirror DockerHub images used by the Rust project to ghcr.io.
+#
+# In some CI jobs, we pull images from ghcr.io instead of Docker Hub because
+# Docker Hub has a rate limit, while ghcr.io doesn't.
+# Those images are pushed to ghcr.io by this job.
+#
+# Note that authenticating to DockerHub or other registries isn't possible
+# for PR jobs, because forks can't access secrets.
+# That's why we use ghcr.io: it has no rate limit and doesn't require authentication.
+
+name: GHCR
+
+on:
+  schedule:
+    # Run daily at midnight UTC
+    - cron: '0 0 * * *'
+
+jobs:
+  mirror:
+    name: DockerHub mirror
+    runs-on: ubuntu-24.04
+    permissions:
+      # Needed to write to the ghcr.io registry
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ github.token }}
+
+      - name: Mirror DockerHub
+        run: python3 src/ci/github-actions/ghcr.py
+        shell: bash
