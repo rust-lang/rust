@@ -151,9 +151,49 @@ unsafe impl<T: Sync + ?Sized> Send for &T {}
 #[rustc_deny_explicit_impl]
 #[rustc_do_not_implement_via_object]
 #[rustc_coinductive]
-pub trait Sized {
+pub trait Sized: MetaSized {
     // Empty.
 }
+
+/// Types with a size that can be determined from pointer metadata.
+#[unstable(feature = "sized_hierarchy", issue = "none")]
+#[cfg_attr(not(bootstrap), lang = "meta_sized")]
+#[diagnostic::on_unimplemented(
+    message = "the size for values of type `{Self}` cannot be known",
+    label = "doesn't have a known size"
+)]
+#[fundamental]
+#[rustc_specialization_trait]
+#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
+#[rustc_do_not_implement_via_object]
+#[rustc_coinductive]
+pub trait MetaSized: PointeeSized {
+    // Empty
+}
+
+#[cfg(bootstrap)]
+#[unstable(feature = "sized_hierarchy", issue = "none")]
+impl<T: ?Sized> MetaSized for T {}
+
+/// Types that may or may not have a size.
+#[unstable(feature = "sized_hierarchy", issue = "none")]
+#[cfg_attr(not(bootstrap), lang = "pointee_sized")]
+#[diagnostic::on_unimplemented(
+    message = "values of type `{Self}` may or may not have a size",
+    label = "may or may not have a known size"
+)]
+#[fundamental]
+#[rustc_specialization_trait]
+#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
+#[rustc_do_not_implement_via_object]
+#[rustc_coinductive]
+pub trait PointeeSized {
+    // Empty
+}
+
+#[cfg(bootstrap)]
+#[unstable(feature = "sized_hierarchy", issue = "none")]
+impl<T: ?Sized> PointeeSized for T {}
 
 /// Types that can be "unsized" to a dynamically-sized type.
 ///
