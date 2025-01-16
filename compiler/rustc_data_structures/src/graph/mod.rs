@@ -4,6 +4,7 @@ pub mod dominators;
 pub mod implementation;
 pub mod iterate;
 mod reference;
+pub mod reversed;
 pub mod scc;
 pub mod vec_graph;
 
