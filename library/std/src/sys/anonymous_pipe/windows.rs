@@ -1,12 +1,12 @@
+use crate::io::{self, PipeReader, PipeWriter};
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
 };
-use crate::pipe::{PipeReader, PipeWriter};
 use crate::process::Stdio;
+use crate::ptr;
 use crate::sys::c;
 use crate::sys::handle::Handle;
 use crate::sys_common::{FromInner, IntoInner};
-use crate::{io, ptr};
 
 pub type AnonPipe = Handle;
 
