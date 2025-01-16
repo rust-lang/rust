@@ -142,7 +142,8 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     elif [[ "$PR_CI_JOB" == "1" ]];
     then
         # Enable a new Docker driver so that --cache-from works with a registry backend
-        docker buildx create --use --driver docker-container
+        docker buildx create --use --driver docker-container \
+          --driver-opt image=ghcr.io/marcoieni/buildkit:buildx-stable-1
 
         # Build the image using registry caching backend
         retry docker \
@@ -159,7 +160,8 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
             --password-stdin
 
         # Enable a new Docker driver so that --cache-from/to works with a registry backend
-        docker buildx create --use --driver docker-container
+        docker buildx create --use --driver docker-container \
+          --driver-opt image=ghcr.io/marcoieni/buildkit:master
 
         echo "Building Docker image with cache"
         # Build the image using registry caching backend
