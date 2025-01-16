@@ -179,9 +179,7 @@ pub enum BuiltinImplSource {
     Object(usize),
     /// A built-in implementation of `Upcast` for trait objects to other trait objects.
     ///
-    /// This can be removed when `feature(dyn_upcasting)` is stabilized, since we only
-    /// use it to detect when upcasting traits in hir typeck. The index is only used
-    /// for winnowing.
+    /// The index is only used for winnowing.
     TraitUpcasting(usize),
     /// Unsizing a tuple like `(A, B, ..., X)` to `(A, B, ..., Y)` if `X` unsizes to `Y`.
     ///
