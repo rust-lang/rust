@@ -11,6 +11,9 @@ error[E0195]: lifetime parameters or bounds on type `IntoIter` do not match the 
    |
 LL |     type IntoIter<'a> = std::collections::btree_map::Values<'a, i32, T>;
    |                  ^^^^ lifetimes do not match type in trait
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   |
+   = note: lifetimes in impl do not match this type in trait
 
 error: aborting due to 2 previous errors
 
