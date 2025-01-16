@@ -17,7 +17,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: false
@@ -47,17 +47,17 @@ jobs:
     - name: Install packages
       run: |
         sudo apt-get update
-        sudo apt-get install qemu qemu-user-static
+        sudo apt-get install qemu-system qemu-user-static
 
     - name: Download artifact
-      run: curl -LO https://github.com/cross-cg-gcc-tools/cross-gcc/releases/latest/download/gcc-m68k-13.deb
+      run: curl -LO https://github.com/cross-cg-gcc-tools/cross-gcc/releases/latest/download/gcc-m68k-15.deb
 
     - name: Download VM artifact
       run: curl -LO https://github.com/cross-cg-gcc-tools/vms/releases/latest/download/debian-m68k.img
 
     - name: Setup path to libgccjit
       run: |
-          sudo dpkg -i gcc-m68k-13.deb
+          sudo dpkg -i gcc-m68k-15.deb
           echo 'gcc-path = "/usr/lib/"' > config.toml
 
     - name: Set env
