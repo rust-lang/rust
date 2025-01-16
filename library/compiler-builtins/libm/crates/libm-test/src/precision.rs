@@ -4,6 +4,7 @@
 use core::f32;
 
 use CheckBasis::{Mpfr, Musl};
+use libm::support::CastFrom;
 use {BaseName as Bn, Identifier as Id};
 
 use crate::{BaseName, CheckBasis, CheckCtx, Float, Identifier, Int, TestResult};
@@ -524,7 +525,7 @@ impl MaybeOverride<(i32, f32)> for SpecialCase {
         ctx: &CheckCtx,
     ) -> Option<TestResult> {
         match (&ctx.basis, ctx.base_name) {
-            (Musl, _) => bessel_prec_dropoff(input, ulp, ctx),
+            (Musl, _) => bessel_prec_dropoff(input, actual, expected, ulp, ctx),
 
             // We return +0.0, MPFR returns -0.0
             (Mpfr, BaseName::Jn | BaseName::Yn)
@@ -554,7 +555,7 @@ impl MaybeOverride<(i32, f64)> for SpecialCase {
         ctx: &CheckCtx,
     ) -> Option<TestResult> {
         match (&ctx.basis, ctx.base_name) {
-            (Musl, _) => bessel_prec_dropoff(input, ulp, ctx),
+            (Musl, _) => bessel_prec_dropoff(input, actual, expected, ulp, ctx),
 
             // We return +0.0, MPFR returns -0.0
             (Mpfr, BaseName::Jn | BaseName::Yn)
@@ -569,8 +570,10 @@ impl MaybeOverride<(i32, f64)> for SpecialCase {
 }
 
 /// Our bessel functions blow up with large N values
-fn bessel_prec_dropoff<F: Float>(
-    input: (i32, F),
+fn bessel_prec_dropoff<F1: Float, F2: Float>(
+    input: (i32, F1),
+    actual: F2,
+    expected: F2,
     ulp: &mut u32,
     ctx: &CheckCtx,
 ) -> Option<TestResult> {
@@ -583,6 +586,17 @@ fn bessel_prec_dropoff<F: Float>(
         } else if input.0 > 1000 {
             *ulp = 4000;
         }
+    }
+
+    // Values near infinity sometimes get cut off for us. `ynf(681, 509.90924) = -inf` but should
+    // be -3.2161271e38.
+    if ctx.fn_ident == Identifier::Ynf
+        && !expected.is_infinite()
+        && actual.is_infinite()
+        && (expected.abs().to_bits().abs_diff(actual.abs().to_bits())
+            < F2::Int::cast_from(1_000_000u32))
+    {
+        return XFAIL;
     }
 
     None
