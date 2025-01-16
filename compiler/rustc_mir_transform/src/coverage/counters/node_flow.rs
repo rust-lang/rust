@@ -159,6 +159,8 @@ struct SpantreeBuilder<'a, Node: Idx> {
     /// A supernode without a span edge is the root of its component of the
     /// spantree. Nodes that aren't supernodes cannot have a spantree edge.
     span_edges: IndexVec<Node, Option<SpantreeEdge<Node>>>,
+    /// Shared path buffer recycled by all calls to `yank_to_spantree_root`.
+    yank_buffer: Vec<Node>,
     /// An in-progress counter expression for each node. Each expression is
     /// initially empty, and will be filled in as relevant nodes are visited.
     counter_exprs: IndexVec<Node, CounterExprVec<Node>>,
@@ -171,6 +173,7 @@ impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
             graph,
             is_unvisited: DenseBitSet::new_filled(num_nodes),
             span_edges: IndexVec::from_fn_n(|_| None, num_nodes),
+            yank_buffer: vec![],
             counter_exprs: IndexVec::from_fn_n(|_| SmallVec::new(), num_nodes),
         }
     }
@@ -192,24 +195,37 @@ impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
     fn yank_to_spantree_root(&mut self, this: Node) {
         debug_assert!(self.graph.is_supernode(this));
 
-        // Temporarily remove this supernode (any any spantree-children) from its
-        // spantree component, by disconnecting the edge to its spantree-parent.
-        let Some(SpantreeEdge { is_reversed, claiming_node, span_parent }) =
-            self.span_edges[this].take()
-        else {
-            // This supernode has no spantree-parent edge, so it is already the
-            // root of its spantree component.
-            return;
-        };
+        // The rotation is done iteratively, by first traversing from `this` to
+        // its root and storing the path in a buffer, and then traversing the
+        // path buffer backwards to reverse all the edges.
 
-        // Recursively make our immediate spantree-parent the root of what's
-        // left of its component, so that only one more edge rotation is needed.
-        self.yank_to_spantree_root(span_parent);
+        // Recycle the same path buffer for all calls to this method.
+        let path_buf = &mut self.yank_buffer;
+        path_buf.clear();
+        path_buf.push(this);
 
-        // Recreate the removed edge, but in the opposite direction.
-        // Now `this` is the root of its spantree component.
-        self.span_edges[span_parent] =
-            Some(SpantreeEdge { is_reversed: !is_reversed, claiming_node, span_parent: this });
+        // Traverse the spantree until we reach a supernode that has no
+        // span-parent, which must be the root.
+        let mut curr = this;
+        while let &Some(SpantreeEdge { span_parent, .. }) = &self.span_edges[curr] {
+            path_buf.push(span_parent);
+            curr = span_parent;
+        }
+
+        // For each spantree edge `a -> b` in the path that was just traversed,
+        // reverse it to become `a <- b`, while preserving `claiming_node`.
+        for &[a, b] in path_buf.array_windows::<2>().rev() {
+            let SpantreeEdge { is_reversed, claiming_node, span_parent } = self.span_edges[a]
+                .take()
+                .expect("all nodes in the path (except the last) have a `span_parent`");
+            debug_assert_eq!(span_parent, b);
+            debug_assert!(self.span_edges[b].is_none());
+            self.span_edges[b] =
+                Some(SpantreeEdge { is_reversed: !is_reversed, claiming_node, span_parent: a });
+        }
+
+        // The result of the rotation is that `this` is now a spantree root.
+        debug_assert!(self.span_edges[this].is_none());
     }
 
     /// Must be called exactly once for each node in the balanced-flow graph.
@@ -273,7 +289,7 @@ impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
     /// Asserts that all nodes have been visited, and returns the computed
     /// counter expressions (made up of physical counters) for each node.
     fn finish(self) -> IndexVec<Node, CounterExprVec<Node>> {
-        let Self { graph, is_unvisited, span_edges, counter_exprs } = self;
+        let Self { graph, is_unvisited, span_edges, yank_buffer: _, counter_exprs } = self;
         assert!(is_unvisited.is_empty(), "some nodes were never visited: {is_unvisited:?}");
         debug_assert!(
             span_edges
