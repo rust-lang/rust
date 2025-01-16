@@ -201,22 +201,24 @@ def locate_baseline(flags: list[str]) -> None:
                 "gh",
                 "run",
                 "list",
-                "--limit=1",
                 "--status=success",
                 f"--branch={DEFAULT_BRANCH}",
                 "--json=databaseId,url,headSha,conclusion,createdAt,"
                 "status,workflowDatabaseId,workflowName",
-                f'--jq=select(.[].workflowName == "{WORKFLOW_NAME}")',
+                # Return the first array element matching our workflow name. NB: cannot
+                # just use `--limit=1`, jq filtering happens after limiting. We also
+                # cannot just use `--workflow` because GH gets confused from
+                # different file names in history.
+                f'--jq=[.[] | select(.workflowName == "{WORKFLOW_NAME}")][0]',
             ],
             text=True,
         )
-        eprint(f"latest: '{latest_job}'")
     except sp.CalledProcessError as e:
         eprint(f"failed to run github command: {e}")
         return
 
     try:
-        latest = json.loads(latest_job)[0]
+        latest = json.loads(latest_job)
         eprint("latest job: ", json.dumps(latest, indent=4))
     except json.JSONDecodeError as e:
         eprint(f"failed to decode json '{latest_job}', {e}")
