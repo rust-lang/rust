@@ -68,4 +68,5 @@ extend-ignore-re = [
     "\"core::iter::adapters::Copie\"",
     "-Ccontrol-flow-guard",
     "concat!\\(\"CURRENT_RUSTC_VERSIO\", \"N\"\\)",
+    "\\*\\*v\\*\\*ariable"
 ]

@@ -16,7 +16,7 @@ jobs:
 
       - name: check typos
         # sync version with src/tools/tidy/src/ext_tool_checks.rs
-        uses: crate-ci/typos@v1.28.2
+        uses: crate-ci/typos@v1.29.4
         with:
           # sync target files with src/tools/tidy/src/ext_tool_checks.rs
           files: ./compiler ./library ./src/bootstrap ./src/librustdoc
