@@ -391,9 +391,7 @@ impl CompletedMarker {
 
     pub(crate) fn last_token(&self, p: &Parser<'_>) -> Option<SyntaxKind> {
         let end_pos = self.end_pos as usize;
-        if end_pos > p.events.len() {
-            return None;
-        }
+        debug_assert_eq!(p.events[end_pos - 1], Event::Finish);
         p.events[..end_pos].iter().rev().find_map(|event| match event {
             Event::Token { kind, .. } => Some(*kind),
             _ => None,
