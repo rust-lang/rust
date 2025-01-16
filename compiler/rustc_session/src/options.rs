@@ -1638,7 +1638,7 @@ options! {
         "extra arguments to append to the linker invocation (space separated)"),
     #[rustc_lint_opt_deny_field_access("use `Session::link_dead_code` instead of this field")]
     link_dead_code: Option<bool> = (None, parse_opt_bool, [TRACKED],
-        "keep dead code at link time (useful for code coverage) (default: no)"),
+        "try to generate and link dead code (default: no)"),
     link_self_contained: LinkSelfContained = (LinkSelfContained::default(), parse_link_self_contained, [UNTRACKED],
         "control whether to link Rust provided C objects/libraries or rely \
         on a C toolchain or linker installed in the system"),
