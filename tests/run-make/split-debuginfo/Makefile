@@ -237,7 +237,7 @@ else # Some non-Windows, non-Darwin platforms are not stable, and some are.
 	unpacked-lto: unpacked-lto-split unpacked-lto-single
 
 	# - rmeta file added to rlib, no object files are generated and thus no debuginfo is generated
-	# - `.o` present (bitcode)
+	# - `.o` not present
 	# - `.dwo` never created
 	# - `.dwp` never created
 	unpacked-lto-split:
