@@ -134,10 +134,12 @@ pub(super) fn let_stmt(p: &mut Parser<'_>, with_semi: Semicolon) {
         // test_err let_else_right_curly_brace
         // fn func() { let Some(_) = {Some(1)} else { panic!("h") };}
         if let Some(expr) = expr_after_eq {
-            if BlockLike::is_blocklike(&expr, p) {
-                p.error(
-                    "right curly brace `}` before `else` in a `let...else` statement not allowed",
-                )
+            if let Some(token) = expr.last_token(p) {
+                if token == T!['}'] {
+                    p.error(
+                        "right curly brace `}` before `else` in a `let...else` statement not allowed"
+                    )
+                }
             }
         }
 

@@ -198,7 +198,7 @@ pub(super) fn atom_expr(
         }
     };
     let blocklike =
-        if BlockLike::is_blocklike(&done, p) { BlockLike::Block } else { BlockLike::NotBlock };
+        if BlockLike::is_blocklike(done.kind()) { BlockLike::Block } else { BlockLike::NotBlock };
     Some((done, blocklike))
 }
 

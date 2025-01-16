@@ -204,9 +204,8 @@ impl BlockLike {
         self == BlockLike::Block
     }
 
-    fn is_blocklike(expr: &CompletedMarker, p: &Parser<'_>) -> bool {
-        matches!(expr.kind(), BLOCK_EXPR | IF_EXPR | WHILE_EXPR | FOR_EXPR | LOOP_EXPR | MATCH_EXPR)
-            || (expr.last_token(p) == Some(T!['}']) && !matches!(expr.kind(), CLOSURE_EXPR))
+    fn is_blocklike(kind: SyntaxKind) -> bool {
+        matches!(kind, BLOCK_EXPR | IF_EXPR | WHILE_EXPR | FOR_EXPR | LOOP_EXPR | MATCH_EXPR)
     }
 }
 
