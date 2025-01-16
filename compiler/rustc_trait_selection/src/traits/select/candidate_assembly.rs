@@ -93,12 +93,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else if tcx.is_lang_item(def_id, LangItem::MetaSized) {
                 // MetaSized is never implementable by end-users, it is
                 // always automatically computed.
-                let conditions = self.sized_conditions(obligation);
+                let conditions = self.metasized_conditions(obligation);
                 self.assemble_builtin_bound_candidates(conditions, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::PointeeSized) {
                 // PointeeSized is never implementable by end-users, it is
                 // always automatically computed.
-                let conditions = self.sized_conditions(obligation);
+                let conditions = self.pointeesized_conditions(obligation);
                 self.assemble_builtin_bound_candidates(conditions, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::Unsize) {
                 self.assemble_candidates_for_unsizing(obligation, &mut candidates);

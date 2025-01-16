@@ -299,3 +299,14 @@ pub enum AdtDestructorKind {
     NotConst,
     Const,
 }
+
+/// Which sizedness trait - `Sized`, `MetaSized` or `PointeeSized`?
+#[derive(Copy, Clone, Debug)]
+pub enum Sizedness {
+    /// `Sized` trait
+    Sized,
+    /// `MetaSized` trait
+    MetaSized,
+    /// `PointeeSized` trait
+    PointeeSized,
+}
