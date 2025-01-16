@@ -24,7 +24,8 @@ pub use f8_impl::f8;
 pub use libm::support::{Float, Int, IntTy, MinInt};
 pub use num::{FloatExt, linear_ints, logspace};
 pub use op::{
-    BaseName, FloatTy, Identifier, MathOp, OpCFn, OpCRet, OpFTy, OpRustFn, OpRustRet, Ty,
+    BaseName, FloatTy, Identifier, MathOp, OpCFn, OpCRet, OpFTy, OpRustArgs, OpRustFn, OpRustRet,
+    Ty,
 };
 pub use precision::{MaybeOverride, SpecialCase, default_ulp};
 use run_cfg::EXTENSIVE_MAX_ITERATIONS;

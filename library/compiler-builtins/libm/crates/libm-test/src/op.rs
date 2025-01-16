@@ -100,6 +100,8 @@ pub type OpCFn<Op> = <Op as MathOp>::CFn;
 pub type OpCRet<Op> = <Op as MathOp>::CRet;
 /// Access the associated `RustFn` type from an op (helper to avoid ambiguous associated types).
 pub type OpRustFn<Op> = <Op as MathOp>::RustFn;
+/// Access the associated `RustArgs` type from an op (helper to avoid ambiguous associated types).
+pub type OpRustArgs<Op> = <Op as MathOp>::RustArgs;
 /// Access the associated `RustRet` type from an op (helper to avoid ambiguous associated types).
 pub type OpRustRet<Op> = <Op as MathOp>::RustRet;
 

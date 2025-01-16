@@ -20,6 +20,9 @@ build-musl = ["dep:musl-math-sys"]
 # Enable report generation without bringing in more dependencies by default
 benchmarking-reports = ["criterion/plotters", "criterion/html_reports"]
 
+# Enable icount benchmarks (requires iai-callgrind and valgrind)
+icount = ["dep:iai-callgrind"]
+
 # Run with a reduced set of benchmarks, such as for CI
 short-benchmarks = []
 
@@ -27,6 +30,7 @@ short-benchmarks = []
 anyhow = "1.0.90"
 az = { version = "1.2.1", optional = true }
 gmp-mpfr-sys = { version = "1.6.4", optional = true, default-features = false, features = ["mpfr"] }
+iai-callgrind = { version = "0.14.0", optional = true }
 indicatif = { version = "0.17.9", default-features = false }
 libm = { path = "../..", features = ["unstable-public-internals"] }
 libm-macros = { path = "../libm-macros" }
@@ -47,6 +51,11 @@ rand = { version = "0.8.5", optional = true }
 [dev-dependencies]
 criterion = { version = "0.5.1", default-features = false, features = ["cargo_bench_support"] }
 libtest-mimic = "0.8.1"
+
+[[bench]]
+name = "icount"
+harness = false
+required-features = ["icount"]
 
 [[bench]]
 name = "random"
