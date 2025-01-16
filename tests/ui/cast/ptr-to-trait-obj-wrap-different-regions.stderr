@@ -1,0 +1,139 @@
+error[E0277]: the trait bound `W<(dyn A<'a> + 'static)>: A<'b>` is not satisfied
+  --> $DIR/ptr-to-trait-obj-wrap-different-regions.rs:12:5
+   |
+LL |     a as _
+   |     ^ the trait `A<'b>` is not implemented for `W<(dyn A<'a> + 'static)>`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/ptr-to-trait-obj-wrap-different-regions.rs:6:1
+   |
+LL | trait A<'a> {}
+   | ^^^^^^^^^^^
+   = note: required for the cast from `*const W<(dyn A<'a> + 'static)>` to `*const dyn A<'b>`
+
+error[E0277]: the size for values of type `(dyn A<'a> + 'static)` cannot be known at compilation time
+  --> $DIR/ptr-to-trait-obj-wrap-different-regions.rs:12:5
+   |
+LL |     a as _
+   |     ^ doesn't have a size known at compile-time
+   |
+   = help: within `W<(dyn A<'a> + 'static)>`, the trait `Sized` is not implemented for `(dyn A<'a> + 'static)`
+note: required because it appears within the type `W<(dyn A<'a> + 'static)>`
+  --> $DIR/ptr-to-trait-obj-wrap-different-regions.rs:8:8
+   |
+LL | struct W<T: ?Sized>(T);
+   |        ^
+   = note: required for the cast from `*const W<(dyn A<'a> + 'static)>` to `*const dyn A<'b>`
+
+error[E0277]: the trait bound `W<(dyn A<'a> + 'static)>: A<'b>` is not satisfied
+  --> $DIR/ptr-to-trait-obj-wrap-different-regions.rs:18:5
+   |
+LL |     a as _
+   |     ^ the trait `A<'b>` is not implemented for `W<(dyn A<'a> + 'static)>`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/ptr-to-trait-obj-wrap-different-regions.rs:6:1
+   |
+LL | trait A<'a> {}
+   | ^^^^^^^^^^^
+   = note: required for the cast from `*const W<W<(dyn A<'a> + 'static)>>` to `*const W<dyn A<'b>>`
+
+error[E0277]: the size for values of type `(dyn A<'a> + 'static)` cannot be known at compilation time
+  --> $DIR/ptr-to-trait-obj-wrap-different-regions.rs:18:5
+   |
+LL |     a as _
+   |     ^ doesn't have a size known at compile-time
+   |
+   = help: within `W<(dyn A<'a> + 'static)>`, the trait `Sized` is not implemented for `(dyn A<'a> + 'static)`
+note: required because it appears within the type `W<(dyn A<'a> + 'static)>`
+  --> $DIR/ptr-to-trait-obj-wrap-different-regions.rs:8:8
+   |
+LL | struct W<T: ?Sized>(T);
+   |        ^
+   = note: required for the cast from `*const W<W<(dyn A<'a> + 'static)>>` to `*const W<dyn A<'b>>`
+
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-wrap-different-regions.rs:24:5
+   |
+LL | fn rewrap<'a, 'b>(a: *const W<dyn A<'a>>) -> *const X<dyn A<'b>> {
+   |           --  -- lifetime `'b` defined here
+   |           |
+   |           lifetime `'a` defined here
+LL |     a as _
+   |     ^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-wrap-different-regions.rs:24:5
+   |
+LL | fn rewrap<'a, 'b>(a: *const W<dyn A<'a>>) -> *const X<dyn A<'b>> {
+   |           --  -- lifetime `'b` defined here
+   |           |
+   |           lifetime `'a` defined here
+LL |     a as _
+   |     ^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+help: `'b` and `'a` must be the same: replace one with the other
+
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-wrap-different-regions.rs:30:5
+   |
+LL | fn rewrap_nested<'a, 'b>(a: *const W<W<dyn A<'a>>>) -> *const W<X<dyn A<'b>>> {
+   |                  --  -- lifetime `'b` defined here
+   |                  |
+   |                  lifetime `'a` defined here
+LL |     a as _
+   |     ^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-wrap-different-regions.rs:30:5
+   |
+LL | fn rewrap_nested<'a, 'b>(a: *const W<W<dyn A<'a>>>) -> *const W<X<dyn A<'b>>> {
+   |                  --  -- lifetime `'b` defined here
+   |                  |
+   |                  lifetime `'a` defined here
+LL |     a as _
+   |     ^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+help: `'b` and `'a` must be the same: replace one with the other
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-wrap-different-regions.rs:36:5
+   |
+LL | fn wrap<'a, 'b>(a: *const dyn A<'a>) -> *const W<dyn A<'b>> {
+   |         --  -- lifetime `'b` defined here
+   |         |
+   |         lifetime `'a` defined here
+LL |     a as _
+   |     ^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-wrap-different-regions.rs:36:5
+   |
+LL | fn wrap<'a, 'b>(a: *const dyn A<'a>) -> *const W<dyn A<'b>> {
+   |         --  -- lifetime `'b` defined here
+   |         |
+   |         lifetime `'a` defined here
+LL |     a as _
+   |     ^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+help: `'b` and `'a` must be the same: replace one with the other
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
