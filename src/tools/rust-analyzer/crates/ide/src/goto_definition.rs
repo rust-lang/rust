@@ -82,7 +82,7 @@ pub(crate) fn goto_definition(
         return Some(RangeInfo::new(original_token.text_range(), navs));
     }
 
-    if let Some(navs) = find_definition_for_known_blanket_dual_impls(file_id, &original_token, sema)
+    if let Some(navs) = find_definition_for_known_blanket_dual_impls(sema, file_id, &original_token)
     {
         return Some(RangeInfo::new(original_token.text_range(), navs));
     }
@@ -133,9 +133,9 @@ pub(crate) fn goto_definition(
 
 // If the token is into(), try_into(), parse(), search the definition of From, TryFrom, FromStr.
 fn find_definition_for_known_blanket_dual_impls(
+    sema: &Semantics<'_, RootDatabase>,
     file_id: FileId,
     original_token: &SyntaxToken,
-    sema: &Semantics<'_, RootDatabase>,
 ) -> Option<Vec<NavigationTarget>> {
     let db = sema.db;
     let krate = sema.file_to_module_def(file_id)?.krate();
