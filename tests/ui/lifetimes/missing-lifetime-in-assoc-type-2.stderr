@@ -14,10 +14,6 @@ LL |     type IntoIter = std::collections::btree_map::Values<'a, i32, T>;
    |
 help: consider introducing lifetime `'a` here
    |
-LL |     type IntoIter<'a> = std::collections::btree_map::Values<'a, i32, T>;
-   |                  ++++
-help: consider introducing lifetime `'a` here
-   |
 LL | impl<'a> IntoIterator for &S {
    |     ++++
 
