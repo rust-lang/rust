@@ -14,8 +14,11 @@ LL |     type IntoIter = std::collections::btree_map::Values<i32, T>;
    |
 help: consider introducing a named lifetime parameter
    |
-LL |     type IntoIter<'a> = std::collections::btree_map::Values<'a, i32, T>;
-   |                  ++++                                       +++
+LL ~ impl<'a> IntoIterator for &S {
+LL |     type Item = &T;
+LL |
+LL ~     type IntoIter = std::collections::btree_map::Values<'a, i32, T>;
+   |
 
 error: aborting due to 2 previous errors
 

@@ -9,17 +9,10 @@ LL | impl Lt<'missing> for () {
 error[E0261]: use of undeclared lifetime name `'missing`
   --> $DIR/region-error-ice-109072.rs:9:15
    |
+LL | impl Lt<'missing> for () {
+   |     - help: consider introducing lifetime `'missing` here: `<'missing>`
 LL |     type T = &'missing ();
    |               ^^^^^^^^ undeclared lifetime
-   |
-help: consider introducing lifetime `'missing` here
-   |
-LL |     type T<'missing> = &'missing ();
-   |           ++++++++++
-help: consider introducing lifetime `'missing` here
-   |
-LL | impl<'missing> Lt<'missing> for () {
-   |     ++++++++++
 
 error: aborting due to 2 previous errors
 
