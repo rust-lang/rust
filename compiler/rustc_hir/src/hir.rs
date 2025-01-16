@@ -3890,7 +3890,7 @@ impl fmt::Display for Constness {
     }
 }
 
-/// The actualy safety specified in syntax. We may treat
+/// The actually safety specified in syntax. We may treat
 /// its safety different within the type system to create a
 /// "sound by default" system that needs checking this enum
 /// explicitly to allow unsafe operations.

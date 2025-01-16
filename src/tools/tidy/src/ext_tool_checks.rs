@@ -514,7 +514,7 @@ fn spellcheck_runner(args: &[&str]) -> Result<(), Error> {
                 "typos",
                 "spellcheck file checks",
                 // sync version with .github/workflows/ci.yml
-                Some("install tool via `cargo install typos-cli@1.28.2`".to_owned()),
+                Some("install tool via `cargo install typos-cli@1.29.4`".to_owned()),
             ));
         }
         Err(e) => return Err(e.into()),
