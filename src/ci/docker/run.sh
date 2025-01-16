@@ -161,7 +161,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
 
         # Enable a new Docker driver so that --cache-from/to works with a registry backend
         docker buildx create --use --driver docker-container \
-          --driver-opt image=ghcr.io/marcoieni/buildkit:master
+          --driver-opt image=ghcr.io/marcoieni/buildkit:buildx-stable-1
 
         echo "Building Docker image with cache"
         # Build the image using registry caching backend
