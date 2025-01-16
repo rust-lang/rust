@@ -285,7 +285,7 @@ args="$args --privileged"
 # read/written as the same user as the bare-metal user.
 if [ -f /.dockerenv ]; then
   echo "Dockerenv detected. We are in docker-in-docker scenario."
-  docker create -v /checkout --name checkout alpine:3.4 /bin/true
+  docker create -v /checkout --name checkout ghcr.io/marcoieni/alpine:3.4 /bin/true
   docker cp . checkout:/checkout
   args="$args --volumes-from checkout"
 else
