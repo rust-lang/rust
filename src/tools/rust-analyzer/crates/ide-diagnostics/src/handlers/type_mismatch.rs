@@ -1164,6 +1164,37 @@ struct Bar {
     }
 
     #[test]
+    fn trait_upcast_ok() {
+        check_diagnostics(
+            r#"
+//- minicore: coerce_unsized
+trait A: B {}
+trait B {}
+
+fn test(a: &dyn A) -> &dyn B {
+    a
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn trait_upcast_err() {
+        check_diagnostics(
+            r#"
+//- minicore: coerce_unsized
+trait A {} // `A` does not have `B` as a supertrait, so no upcast :c
+trait B {}
+
+fn test(a: &dyn A) -> &dyn B {
+    a
+  //^ error: expected &dyn B, found &dyn A
+}
+"#,
+        );
+    }
+
+    #[test]
     fn return_no_value() {
         check_diagnostics_with_disabled(
             r#"
