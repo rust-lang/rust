@@ -127,6 +127,7 @@ jobs:
             '^vim.*'                     \
             'python3-breezy'             \
           && sudo rm -rf /var/lib/apt/lists/*
+          df -h /
 
       - name: Show installed packages ordered by size
         run: dpkg-query -W --showformat='${Installed-Size} ${Package}\n' | sort -nr

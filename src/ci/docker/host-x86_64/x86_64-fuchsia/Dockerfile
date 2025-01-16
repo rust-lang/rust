@@ -75,5 +75,7 @@ ENV RUST_CONFIGURE_ARGS \
   --set target.x86_64-unknown-fuchsia.linker=/usr/local/bin/ld.lld
 
 ENV SCRIPT \
+    echo "x install" && df -h / \
     python3 ../x.py install --target $TARGETS compiler/rustc library/std clippy && \
+    echo "build fuchsia" && df -h / \
     bash ../src/ci/docker/host-x86_64/x86_64-fuchsia/build-fuchsia.sh
