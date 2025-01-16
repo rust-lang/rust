@@ -1,7 +1,7 @@
 struct S;
 struct T;
 
-impl<'a> IntoIterator for &S {
+impl<'a> IntoIterator for &'_ S {
     //~^ ERROR E0207
     //~| NOTE there is a named lifetime specified on the impl block you could use
     //~| NOTE unconstrained lifetime parameter
