@@ -91,12 +91,12 @@ impl<T: Sized> NonNull<T> {
     ///
     /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
     #[unstable(feature = "nonnull_provenance", issue = "135243")]
+    #[must_use]
+    #[inline]
     pub const fn without_provenance(addr: NonZero<usize>) -> Self {
+        let pointer = crate::ptr::without_provenance(addr.get());
         // SAFETY: we know `addr` is non-zero.
-        unsafe {
-            let ptr = crate::ptr::without_provenance_mut(addr.get());
-            NonNull::new_unchecked(ptr)
-        }
+        unsafe { NonNull { pointer } }
     }
 
     /// Creates a new `NonNull` that is dangling, but well-aligned.
@@ -123,11 +123,8 @@ impl<T: Sized> NonNull<T> {
     #[must_use]
     #[inline]
     pub const fn dangling() -> Self {
-        // SAFETY: ptr::dangling_mut() returns a non-null well-aligned pointer.
-        unsafe {
-            let ptr = crate::ptr::dangling_mut::<T>();
-            NonNull::new_unchecked(ptr)
-        }
+        let align = crate::ptr::Alignment::of::<T>();
+        NonNull::without_provenance(align.as_nonzero())
     }
 
     /// Converts an address back to a mutable pointer, picking up some previously 'exposed'
@@ -137,6 +134,7 @@ impl<T: Sized> NonNull<T> {
     ///
     /// This is an [Exposed Provenance][crate::ptr#exposed-provenance] API.
     #[unstable(feature = "nonnull_provenance", issue = "135243")]
+    #[inline]
     pub fn with_exposed_provenance(addr: NonZero<usize>) -> Self {
         // SAFETY: we know `addr` is non-zero.
         unsafe {
