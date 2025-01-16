@@ -28,11 +28,16 @@ fn load_library(file: &Utf8Path) -> Result<Library, libloading::Error> {
 
 #[cfg(unix)]
 fn load_library(file: &Utf8Path) -> Result<Library, libloading::Error> {
+    // not defined by POSIX, different values on mips vs other targets
+    #[cfg(target_env = "gnu")]
+    use libc::RTLD_DEEPBIND;
     use libloading::os::unix::Library as UnixLibrary;
-    use std::os::raw::c_int;
+    // defined by POSIX
+    use libloading::os::unix::RTLD_NOW;
 
-    const RTLD_NOW: c_int = 0x00002;
-    const RTLD_DEEPBIND: c_int = 0x00008;
+    // MUSL and bionic don't have it..
+    #[cfg(not(target_env = "gnu"))]
+    const RTLD_DEEPBIND: std::os::raw::c_int = 0x0;
 
     unsafe { UnixLibrary::open(Some(file), RTLD_NOW | RTLD_DEEPBIND).map(|lib| lib.into()) }
 }
