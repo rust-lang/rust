@@ -319,6 +319,20 @@ where
         panic!("`Sized` does not have an associated type: {:?}", goal);
     }
 
+    fn consider_builtin_metasized_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        panic!("`MetaSized` does not have an associated type: {:?}", goal);
+    }
+
+    fn consider_builtin_pointeesized_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        panic!("`PointeeSized` does not have an associated type: {:?}", goal);
+    }
+
     fn consider_builtin_copy_clone_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,

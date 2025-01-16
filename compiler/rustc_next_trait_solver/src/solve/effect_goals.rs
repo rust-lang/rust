@@ -205,6 +205,20 @@ where
         unreachable!("Sized is never const")
     }
 
+    fn consider_builtin_metasized_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        unreachable!("MetaSized is never const")
+    }
+
+    fn consider_builtin_pointeesized_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        unreachable!("PointeeSized is never const")
+    }
+
     fn consider_builtin_copy_clone_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
