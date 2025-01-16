@@ -229,8 +229,12 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
         )
     }
 
-    fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
-        self.sized_constraint(tcx)
+    fn sizedness_constraint(
+        self,
+        tcx: TyCtxt<'tcx>,
+        sizedness: ty::SizedTraitKind,
+    ) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        self.sizedness_constraint(tcx, sizedness)
     }
 
     fn is_fundamental(self) -> bool {
@@ -634,10 +638,15 @@ impl<'tcx> AdtDef<'tcx> {
         tcx.adt_async_destructor(self.did())
     }
 
-    /// Returns a type such that `Self: Sized` if and only if that type is `Sized`,
-    /// or `None` if the type is always sized.
-    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
-        if self.is_struct() { tcx.adt_sized_constraint(self.did()) } else { None }
+    /// If this ADT is a struct, returns a type such that `Self: {Meta,Pointee,}Sized` if and only
+    /// if that type is `{Meta,Pointee,}Sized`, or `None` if this ADT is always
+    /// `{Meta,Pointee,}Sized`.
+    pub fn sizedness_constraint(
+        self,
+        tcx: TyCtxt<'tcx>,
+        sizedness: ty::SizedTraitKind,
+    ) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        if self.is_struct() { tcx.adt_sizedness_constraint((self.did(), sizedness)) } else { None }
     }
 }
 
