@@ -231,6 +231,17 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
         self.sized_constraint(tcx)
     }
 
+    fn meta_sized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        self.meta_sized_constraint(tcx)
+    }
+
+    fn pointee_sized_constraint(
+        self,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        self.pointee_sized_constraint(tcx)
+    }
+
     fn is_fundamental(self) -> bool {
         self.is_fundamental()
     }
@@ -627,6 +638,24 @@ impl<'tcx> AdtDef<'tcx> {
     /// or `None` if the type is always sized.
     pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
         if self.is_struct() { tcx.adt_sized_constraint(self.did()) } else { None }
+    }
+
+    /// Returns a type such that `Self: MetaSized` if and only if that type is `MetaSized`,
+    /// or `None` if the type is always `MetaSized`.
+    pub fn meta_sized_constraint(
+        self,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        if self.is_struct() { tcx.adt_meta_sized_constraint(self.did()) } else { None }
+    }
+
+    /// Returns a type such that `Self: PointeeSized` if and only if that type is `PointeeSized`,
+    /// or `None` if the type is always `PointeeSized`.
+    pub fn pointee_sized_constraint(
+        self,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        if self.is_struct() { tcx.adt_pointee_sized_constraint(self.did()) } else { None }
     }
 }
 
