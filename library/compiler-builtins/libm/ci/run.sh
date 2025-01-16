@@ -49,14 +49,12 @@ case "$target" in
     *windows-msvc*) ;;
     # FIXME: MinGW should be able to build MPFR, but setup in CI is nontrivial.
     *windows-gnu*) ;;
-    # Targets that aren't cross compiled work fine
-    # FIXME(ci): we should be able to enable aarch64 Linux here once GHA
-    # support rolls out.
-    x86_64*) flags="$flags --features libm-test/build-mpfr" ;;
-    i686*) flags="$flags --features libm-test/build-mpfr" ;;
-    i586*) flags="$flags --features libm-test/build-mpfr --features gmp-mpfr-sys/force-cross" ;;
-    # Apple aarch64 is native
+    # Targets that aren't cross compiled in CI work fine
     aarch64*apple*) flags="$flags --features libm-test/build-mpfr" ;;
+    aarch64*linux*) flags="$flags --features libm-test/build-mpfr" ;;
+    i586*) flags="$flags --features libm-test/build-mpfr --features gmp-mpfr-sys/force-cross" ;;
+    i686*) flags="$flags --features libm-test/build-mpfr" ;;
+    x86_64*) flags="$flags --features libm-test/build-mpfr" ;;
 esac
 
 # FIXME: `STATUS_DLL_NOT_FOUND` testing macros on CI.

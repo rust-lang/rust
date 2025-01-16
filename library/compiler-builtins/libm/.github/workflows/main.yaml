@@ -23,7 +23,7 @@ jobs:
         - target: aarch64-apple-darwin
           os: macos-15
         - target: aarch64-unknown-linux-gnu
-          os: ubuntu-24.04
+          os: ubuntu-24.04-arm
         - target: aarch64-pc-windows-msvc
           os: windows-2025
           build_only: 1 # Can't run on x86 hosts
