@@ -150,7 +150,7 @@ else # Some non-Windows, non-Darwin platforms are not stable, and some are.
 		rm $(TMPDIR)/$(call BIN,foo)
 
 	# - Debuginfo in `.o` files
-	# - `.o` and binary refer to remapped `.o` paths which do not exist
+	# - `.o` and binary refer to un-remapped `.o` because the remap path scope is for macros.
 	# - `.o` deleted
 	# - `.dwo` never created
 	# - `.dwp` present
