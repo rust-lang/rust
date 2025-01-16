@@ -26,6 +26,7 @@
 #![cfg_attr(miri, allow(dead_code))]
 #![allow(internal_features)]
 #![cfg_attr(not(bootstrap), feature(cfg_emscripten_wasm_eh))]
+#![warn(unreachable_pub)]
 
 use alloc::boxed::Box;
 use core::any::Any;

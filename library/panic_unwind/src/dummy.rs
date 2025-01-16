@@ -6,10 +6,10 @@ use alloc::boxed::Box;
 use core::any::Any;
 use core::intrinsics;
 
-pub unsafe fn cleanup(_ptr: *mut u8) -> Box<dyn Any + Send> {
+pub(crate) unsafe fn cleanup(_ptr: *mut u8) -> Box<dyn Any + Send> {
     intrinsics::abort()
 }
 
-pub unsafe fn panic(_data: Box<dyn Any + Send>) -> u32 {
+pub(crate) unsafe fn panic(_data: Box<dyn Any + Send>) -> u32 {
     intrinsics::abort()
 }

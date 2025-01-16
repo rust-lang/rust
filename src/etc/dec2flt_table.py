@@ -43,10 +43,10 @@ def main():
 
     print(HEADER.strip())
     print()
-    print("pub const SMALLEST_POWER_OF_FIVE: i32 = {};".format(min_exp))
-    print("pub const LARGEST_POWER_OF_FIVE: i32 = {};".format(max_exp))
-    print("pub const N_POWERS_OF_FIVE: usize = ", end="")
-    print("(LARGEST_POWER_OF_FIVE - SMALLEST_POWER_OF_FIVE + 1) as usize;")
+    print("pub(super) const SMALLEST_POWER_OF_FIVE: i32 = {};".format(min_exp))
+    print("pub(super) const LARGEST_POWER_OF_FIVE: i32 = {};".format(max_exp))
+    print("pub(super) const N_POWERS_OF_FIVE: usize =")
+    print("    (LARGEST_POWER_OF_FIVE - SMALLEST_POWER_OF_FIVE + 1) as usize;")
     print()
     print_proper_powers(min_exp, max_exp, bias)
 
@@ -97,7 +97,7 @@ def print_proper_powers(min_exp, max_exp, bias):
     print(STATIC_WARNING.strip())
     print("#[rustfmt::skip]")
     typ = "[(u64, u64); N_POWERS_OF_FIVE]"
-    print("pub static POWER_OF_FIVE_128: {} = [".format(typ))
+    print("pub(super) static POWER_OF_FIVE_128: {} = [".format(typ))
     for c, exp in powers:
         hi = "0x{:x}".format(c // (1 << 64))
         lo = "0x{:x}".format(c % (1 << 64))
