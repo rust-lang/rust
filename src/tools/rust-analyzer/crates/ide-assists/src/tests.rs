@@ -77,7 +77,11 @@ pub(crate) fn with_single_file(text: &str) -> (RootDatabase, EditionedFileId) {
 }
 
 #[track_caller]
-pub(crate) fn check_assist(assist: Handler, ra_fixture_before: &str, ra_fixture_after: &str) {
+pub(crate) fn check_assist(
+    assist: Handler,
+    #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+) {
     let ra_fixture_after = trim_indent(ra_fixture_after);
     check(assist, ra_fixture_before, ExpectedResult::After(&ra_fixture_after), None);
 }
@@ -85,8 +89,8 @@ pub(crate) fn check_assist(assist: Handler, ra_fixture_before: &str, ra_fixture_
 #[track_caller]
 pub(crate) fn check_assist_no_snippet_cap(
     assist: Handler,
-    ra_fixture_before: &str,
-    ra_fixture_after: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
 ) {
     let ra_fixture_after = trim_indent(ra_fixture_after);
     check_with_config(
@@ -101,8 +105,8 @@ pub(crate) fn check_assist_no_snippet_cap(
 #[track_caller]
 pub(crate) fn check_assist_import_one(
     assist: Handler,
-    ra_fixture_before: &str,
-    ra_fixture_after: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
 ) {
     let ra_fixture_after = trim_indent(ra_fixture_after);
     check_with_config(
@@ -118,8 +122,8 @@ pub(crate) fn check_assist_import_one(
 // so this is here to allow you choose.
 pub(crate) fn check_assist_by_label(
     assist: Handler,
-    ra_fixture_before: &str,
-    ra_fixture_after: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
     label: &str,
 ) {
     let ra_fixture_after = trim_indent(ra_fixture_after);

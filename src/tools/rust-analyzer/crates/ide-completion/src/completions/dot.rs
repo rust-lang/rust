@@ -32,10 +32,11 @@ pub(crate) fn complete_dot(
 
     // Suggest .await syntax for types that implement Future trait
     if let Some(future_output) = receiver_ty.into_future_output(ctx.db) {
+        let await_str = SmolStr::new_static("await");
         let mut item = CompletionItem::new(
             CompletionItemKind::Keyword,
             ctx.source_range(),
-            SmolStr::new_static("await"),
+            await_str.clone(),
             ctx.edition,
         );
         item.detail("expr.await");
@@ -58,17 +59,13 @@ pub(crate) fn complete_dot(
             acc,
             ctx,
             &future_output,
-            |acc, field, ty| {
-                acc.add_field(ctx, &dot_access, Some(SmolStr::new_static("await")), field, &ty)
-            },
-            |acc, field, ty| {
-                acc.add_tuple_field(ctx, Some(SmolStr::new_static("await")), field, &ty)
-            },
+            |acc, field, ty| acc.add_field(ctx, &dot_access, Some(await_str.clone()), field, &ty),
+            |acc, field, ty| acc.add_tuple_field(ctx, Some(await_str.clone()), field, &ty),
             is_field_access,
             is_method_access_with_parens,
         );
         complete_methods(ctx, &future_output, &traits_in_scope, |func| {
-            acc.add_method(ctx, &dot_access, func, Some(SmolStr::new_static("await")), None)
+            acc.add_method(ctx, &dot_access, func, Some(await_str.clone()), None)
         });
     }
 
@@ -85,20 +82,23 @@ pub(crate) fn complete_dot(
         acc.add_method(ctx, dot_access, func, None, None)
     });
 
+    // FIXME:
     // Checking for the existence of `iter()` is complicated in our setup, because we need to substitute
     // its return type, so we instead check for `<&Self as IntoIterator>::IntoIter`.
+    // Does <&receiver_ty as IntoIterator>::IntoIter` exist? Assume `iter` is valid
     let iter = receiver_ty
         .strip_references()
         .add_reference(hir::Mutability::Shared)
         .into_iterator_iter(ctx.db)
-        .map(|ty| (ty, SmolStr::new_static("iter()")))
-        .or_else(|| {
-            receiver_ty
-                .clone()
-                .into_iterator_iter(ctx.db)
-                .map(|ty| (ty, SmolStr::new_static("into_iter()")))
-        });
-    if let Some((iter, iter_sym)) = iter {
+        .map(|ty| (ty, SmolStr::new_static("iter()")));
+    // Does <receiver_ty as IntoIterator>::IntoIter` exist?
+    let into_iter = || {
+        receiver_ty
+            .clone()
+            .into_iterator_iter(ctx.db)
+            .map(|ty| (ty, SmolStr::new_static("into_iter()")))
+    };
+    if let Some((iter, iter_sym)) = iter.or_else(into_iter) {
         // Skip iterators, e.g. complete `.iter().filter_map()`.
         let dot_access_kind = match &dot_access.kind {
             DotAccessKind::Field { receiver_is_ambiguous_float_literal: _ } => {
@@ -1436,6 +1436,34 @@ async fn bar() {
     me await.foo()                                                                      fn(self)
     me into_future() (use core::future::IntoFuture) fn(self) -> <Self as IntoFuture>::IntoFuture
 "#]],
+        );
+        check_edit(
+            "foo",
+            r#"
+//- minicore: future
+struct Foo;
+impl Foo {
+    fn foo(self) {}
+}
+
+async fn foo() -> Foo { Foo }
+
+async fn bar() {
+    foo().$0
+}
+"#,
+            r#"
+struct Foo;
+impl Foo {
+    fn foo(self) {}
+}
+
+async fn foo() -> Foo { Foo }
+
+async fn bar() {
+    foo().await.foo();$0
+}
+"#,
         );
     }
 }

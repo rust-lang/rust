@@ -209,7 +209,10 @@ mod tests {
 
     use super::*;
 
-    fn check(ra_fixture_before: &str, ra_fixture_after: &str) {
+    fn check(
+        #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+    ) {
         check_assist(
             remove_dbg,
             &format!("fn main() {{\n{ra_fixture_before}\n}}"),

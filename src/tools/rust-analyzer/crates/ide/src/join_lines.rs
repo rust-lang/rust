@@ -307,7 +307,10 @@ mod tests {
 
     use super::*;
 
-    fn check_join_lines(ra_fixture_before: &str, ra_fixture_after: &str) {
+    fn check_join_lines(
+        #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+    ) {
         let config = JoinLinesConfig {
             join_else_if: true,
             remove_trailing_comma: true,
@@ -333,7 +336,10 @@ mod tests {
         assert_eq_text!(ra_fixture_after, &actual);
     }
 
-    fn check_join_lines_sel(ra_fixture_before: &str, ra_fixture_after: &str) {
+    fn check_join_lines_sel(
+        #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+    ) {
         let config = JoinLinesConfig {
             join_else_if: true,
             remove_trailing_comma: true,
