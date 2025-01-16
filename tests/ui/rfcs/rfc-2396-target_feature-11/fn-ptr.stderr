@@ -1,5 +1,20 @@
 error[E0308]: mismatched types
-  --> $DIR/fn-ptr.rs:9:21
+  --> $DIR/fn-ptr.rs:14:21
+   |
+LL | #[target_feature(enable = "avx")]
+   | --------------------------------- `#[target_feature]` added here
+...
+LL |     let foo: fn() = foo_avx;
+   |              ----   ^^^^^^^ cannot coerce functions with `#[target_feature]` to safe function pointers
+   |              |
+   |              expected due to this
+   |
+   = note: expected fn pointer `fn()`
+                 found fn item `#[target_features] fn() {foo_avx}`
+   = note: functions with `#[target_feature]` can only be coerced to `unsafe` function pointers
+
+error[E0308]: mismatched types
+  --> $DIR/fn-ptr.rs:23:21
    |
 LL | #[target_feature(enable = "sse2")]
    | ---------------------------------- `#[target_feature]` added here
@@ -13,6 +28,6 @@ LL |     let foo: fn() = foo;
                  found fn item `#[target_features] fn() {foo}`
    = note: functions with `#[target_feature]` can only be coerced to `unsafe` function pointers
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
