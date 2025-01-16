@@ -9,8 +9,8 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 use super::KnownSize;
+use crate::CheckCtx;
 use crate::run_cfg::{int_range, iteration_count};
-use crate::{CheckCtx, GeneratorKind};
 
 pub(crate) const SEED_ENV: &str = "LIBM_SEED";
 
@@ -52,7 +52,7 @@ macro_rules! impl_random_input {
     ($fty:ty) => {
         impl RandomInput for ($fty,) {
             fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> {
-                let count = iteration_count(ctx, GeneratorKind::Random, 0);
+                let count = iteration_count(ctx, 0);
                 let iter = random_floats(count).map(|f: $fty| (f,));
                 KnownSize::new(iter, count)
             }
@@ -60,8 +60,8 @@ macro_rules! impl_random_input {
 
         impl RandomInput for ($fty, $fty) {
             fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> {
-                let count0 = iteration_count(ctx, GeneratorKind::Random, 0);
-                let count1 = iteration_count(ctx, GeneratorKind::Random, 1);
+                let count0 = iteration_count(ctx, 0);
+                let count1 = iteration_count(ctx, 1);
                 let iter = random_floats(count0)
                     .flat_map(move |f1: $fty| random_floats(count1).map(move |f2: $fty| (f1, f2)));
                 KnownSize::new(iter, count0 * count1)
@@ -70,9 +70,9 @@ macro_rules! impl_random_input {
 
         impl RandomInput for ($fty, $fty, $fty) {
             fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> {
-                let count0 = iteration_count(ctx, GeneratorKind::Random, 0);
-                let count1 = iteration_count(ctx, GeneratorKind::Random, 1);
-                let count2 = iteration_count(ctx, GeneratorKind::Random, 2);
+                let count0 = iteration_count(ctx, 0);
+                let count1 = iteration_count(ctx, 1);
+                let count2 = iteration_count(ctx, 2);
                 let iter = random_floats(count0).flat_map(move |f1: $fty| {
                     random_floats(count1).flat_map(move |f2: $fty| {
                         random_floats(count2).map(move |f3: $fty| (f1, f2, f3))
@@ -84,9 +84,9 @@ macro_rules! impl_random_input {
 
         impl RandomInput for (i32, $fty) {
             fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> {
-                let count0 = iteration_count(ctx, GeneratorKind::Random, 0);
-                let count1 = iteration_count(ctx, GeneratorKind::Random, 1);
-                let range0 = int_range(ctx, GeneratorKind::Random, 0);
+                let count0 = iteration_count(ctx, 0);
+                let count1 = iteration_count(ctx, 1);
+                let range0 = int_range(ctx, 0);
                 let iter = random_ints(count0, range0)
                     .flat_map(move |f1: i32| random_floats(count1).map(move |f2: $fty| (f1, f2)));
                 KnownSize::new(iter, count0 * count1)
@@ -95,9 +95,9 @@ macro_rules! impl_random_input {
 
         impl RandomInput for ($fty, i32) {
             fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> {
-                let count0 = iteration_count(ctx, GeneratorKind::Random, 0);
-                let count1 = iteration_count(ctx, GeneratorKind::Random, 1);
-                let range1 = int_range(ctx, GeneratorKind::Random, 1);
+                let count0 = iteration_count(ctx, 0);
+                let count1 = iteration_count(ctx, 1);
+                let range1 = int_range(ctx, 1);
                 let iter = random_floats(count0).flat_map(move |f1: $fty| {
                     random_ints(count1, range1.clone()).map(move |f2: i32| (f1, f2))
                 });

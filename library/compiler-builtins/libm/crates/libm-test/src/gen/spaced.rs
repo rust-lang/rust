@@ -3,23 +3,23 @@ use std::ops::RangeInclusive;
 
 use libm::support::{Float, MinInt};
 
-use crate::domain::HasDomain;
+use crate::domain::get_domain;
 use crate::op::OpITy;
 use crate::run_cfg::{int_range, iteration_count};
-use crate::{CheckCtx, GeneratorKind, MathOp, linear_ints, logspace};
+use crate::{CheckCtx, MathOp, linear_ints, logspace};
 
-/// Generate a sequence of inputs that either cover the domain in completeness (for smaller float
+/// Generate a sequence of inputs that eiher cover the domain in completeness (for smaller float
 /// types and single argument functions) or provide evenly spaced inputs across the domain with
 /// approximately `u32::MAX` total iterations.
-pub trait ExtensiveInput<Op> {
+pub trait SpacedInput<Op> {
     fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self> + Send, u64);
 }
 
 /// Construct an iterator from `logspace` and also calculate the total number of steps expected
 /// for that iterator.
 fn logspace_steps<Op>(
-    start: Op::FTy,
-    end: Op::FTy,
+    ctx: &CheckCtx,
+    argnum: usize,
     max_steps: u64,
 ) -> (impl Iterator<Item = Op::FTy> + Clone, u64)
 where
@@ -28,6 +28,11 @@ where
     u64: TryFrom<OpITy<Op>, Error: fmt::Debug>,
     RangeInclusive<OpITy<Op>>: Iterator,
 {
+    // i8 is a dummy type here, it can be any integer.
+    let domain = get_domain::<Op::FTy, i8>(ctx.fn_ident, argnum).unwrap_float();
+    let start = domain.range_start();
+    let end = domain.range_end();
+
     let max_steps = OpITy::<Op>::try_from(max_steps).unwrap_or(OpITy::<Op>::MAX);
     let (iter, steps) = logspace(start, end, max_steps);
 
@@ -76,15 +81,14 @@ where
     (F::Int::MIN..=F::Int::MAX).map(|bits| F::from_bits(bits))
 }
 
-macro_rules! impl_extensive_input {
+macro_rules! impl_spaced_input {
     ($fty:ty) => {
-        impl<Op> ExtensiveInput<Op> for ($fty,)
+        impl<Op> SpacedInput<Op> for ($fty,)
         where
             Op: MathOp<RustArgs = Self, FTy = $fty>,
-            Op: HasDomain<Op::FTy>,
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let max_steps0 = iteration_count(ctx, GeneratorKind::Extensive, 0);
+                let max_steps0 = iteration_count(ctx, 0);
                 // `f16` and `f32` can have exhaustive tests.
                 match value_count::<Op::FTy>() {
                     Some(steps0) if steps0 <= max_steps0 => {
@@ -93,9 +97,7 @@ macro_rules! impl_extensive_input {
                         (EitherIter::A(iter0), steps0)
                     }
                     _ => {
-                        let start = Op::DOMAIN.range_start();
-                        let end = Op::DOMAIN.range_end();
-                        let (iter0, steps0) = logspace_steps::<Op>(start, end, max_steps0);
+                        let (iter0, steps0) = logspace_steps::<Op>(ctx, 0, max_steps0);
                         let iter0 = iter0.map(|v| (v,));
                         (EitherIter::B(iter0), steps0)
                     }
@@ -103,13 +105,13 @@ macro_rules! impl_extensive_input {
             }
         }
 
-        impl<Op> ExtensiveInput<Op> for ($fty, $fty)
+        impl<Op> SpacedInput<Op> for ($fty, $fty)
         where
             Op: MathOp<RustArgs = Self, FTy = $fty>,
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let max_steps0 = iteration_count(ctx, GeneratorKind::Extensive, 0);
-                let max_steps1 = iteration_count(ctx, GeneratorKind::Extensive, 1);
+                let max_steps0 = iteration_count(ctx, 0);
+                let max_steps1 = iteration_count(ctx, 1);
                 // `f16` can have exhaustive tests.
                 match value_count::<Op::FTy>() {
                     Some(count) if count <= max_steps0 && count <= max_steps1 => {
@@ -118,10 +120,8 @@ macro_rules! impl_extensive_input {
                         (EitherIter::A(iter), count.checked_mul(count).unwrap())
                     }
                     _ => {
-                        let start = <$fty>::NEG_INFINITY;
-                        let end = <$fty>::INFINITY;
-                        let (iter0, steps0) = logspace_steps::<Op>(start, end, max_steps0);
-                        let (iter1, steps1) = logspace_steps::<Op>(start, end, max_steps1);
+                        let (iter0, steps0) = logspace_steps::<Op>(ctx, 0, max_steps0);
+                        let (iter1, steps1) = logspace_steps::<Op>(ctx, 1, max_steps1);
                         let iter = iter0.flat_map(move |first| {
                             iter1.clone().map(move |second| (first, second))
                         });
@@ -132,14 +132,14 @@ macro_rules! impl_extensive_input {
             }
         }
 
-        impl<Op> ExtensiveInput<Op> for ($fty, $fty, $fty)
+        impl<Op> SpacedInput<Op> for ($fty, $fty, $fty)
         where
             Op: MathOp<RustArgs = Self, FTy = $fty>,
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let max_steps0 = iteration_count(ctx, GeneratorKind::Extensive, 0);
-                let max_steps1 = iteration_count(ctx, GeneratorKind::Extensive, 1);
-                let max_steps2 = iteration_count(ctx, GeneratorKind::Extensive, 2);
+                let max_steps0 = iteration_count(ctx, 0);
+                let max_steps1 = iteration_count(ctx, 1);
+                let max_steps2 = iteration_count(ctx, 2);
                 // `f16` can be exhaustive tested if `LIBM_EXTENSIVE_TESTS` is incresed.
                 match value_count::<Op::FTy>() {
                     Some(count)
@@ -153,12 +153,9 @@ macro_rules! impl_extensive_input {
                         (EitherIter::A(iter), count.checked_pow(3).unwrap())
                     }
                     _ => {
-                        let start = <$fty>::NEG_INFINITY;
-                        let end = <$fty>::INFINITY;
-
-                        let (iter0, steps0) = logspace_steps::<Op>(start, end, max_steps0);
-                        let (iter1, steps1) = logspace_steps::<Op>(start, end, max_steps1);
-                        let (iter2, steps2) = logspace_steps::<Op>(start, end, max_steps2);
+                        let (iter0, steps0) = logspace_steps::<Op>(ctx, 0, max_steps0);
+                        let (iter1, steps1) = logspace_steps::<Op>(ctx, 1, max_steps1);
+                        let (iter2, steps2) = logspace_steps::<Op>(ctx, 2, max_steps2);
 
                         let iter = iter0
                             .flat_map(move |first| iter1.clone().map(move |second| (first, second)))
@@ -174,14 +171,14 @@ macro_rules! impl_extensive_input {
             }
         }
 
-        impl<Op> ExtensiveInput<Op> for (i32, $fty)
+        impl<Op> SpacedInput<Op> for (i32, $fty)
         where
             Op: MathOp<RustArgs = Self, FTy = $fty>,
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let range0 = int_range(ctx, GeneratorKind::Extensive, 0);
-                let max_steps0 = iteration_count(ctx, GeneratorKind::Extensive, 0);
-                let max_steps1 = iteration_count(ctx, GeneratorKind::Extensive, 1);
+                let range0 = int_range(ctx, 0);
+                let max_steps0 = iteration_count(ctx, 0);
+                let max_steps1 = iteration_count(ctx, 1);
                 match value_count::<Op::FTy>() {
                     Some(count1) if count1 <= max_steps1 => {
                         let (iter0, steps0) = linear_ints(range0, max_steps0);
@@ -190,11 +187,8 @@ macro_rules! impl_extensive_input {
                         (EitherIter::A(iter), steps0.checked_mul(count1).unwrap())
                     }
                     _ => {
-                        let start = <$fty>::NEG_INFINITY;
-                        let end = <$fty>::INFINITY;
-
                         let (iter0, steps0) = linear_ints(range0, max_steps0);
-                        let (iter1, steps1) = logspace_steps::<Op>(start, end, max_steps1);
+                        let (iter1, steps1) = logspace_steps::<Op>(ctx, 1, max_steps1);
 
                         let iter = iter0.flat_map(move |first| {
                             iter1.clone().map(move |second| (first, second))
@@ -207,14 +201,14 @@ macro_rules! impl_extensive_input {
             }
         }
 
-        impl<Op> ExtensiveInput<Op> for ($fty, i32)
+        impl<Op> SpacedInput<Op> for ($fty, i32)
         where
             Op: MathOp<RustArgs = Self, FTy = $fty>,
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let max_steps0 = iteration_count(ctx, GeneratorKind::Extensive, 0);
-                let range1 = int_range(ctx, GeneratorKind::Extensive, 1);
-                let max_steps1 = iteration_count(ctx, GeneratorKind::Extensive, 1);
+                let max_steps0 = iteration_count(ctx, 0);
+                let range1 = int_range(ctx, 1);
+                let max_steps1 = iteration_count(ctx, 1);
                 match value_count::<Op::FTy>() {
                     Some(count0) if count0 <= max_steps0 => {
                         let (iter1, steps1) = linear_ints(range1, max_steps1);
@@ -224,10 +218,7 @@ macro_rules! impl_extensive_input {
                         (EitherIter::A(iter), count0.checked_mul(steps1).unwrap())
                     }
                     _ => {
-                        let start = <$fty>::NEG_INFINITY;
-                        let end = <$fty>::INFINITY;
-
-                        let (iter0, steps0) = logspace_steps::<Op>(start, end, max_steps0);
+                        let (iter0, steps0) = logspace_steps::<Op>(ctx, 0, max_steps0);
                         let (iter1, steps1) = linear_ints(range1, max_steps1);
 
                         let iter = iter0.flat_map(move |first| {
@@ -244,11 +235,11 @@ macro_rules! impl_extensive_input {
 }
 
 #[cfg(f16_enabled)]
-impl_extensive_input!(f16);
-impl_extensive_input!(f32);
-impl_extensive_input!(f64);
+impl_spaced_input!(f16);
+impl_spaced_input!(f32);
+impl_spaced_input!(f64);
 #[cfg(f128_enabled)]
-impl_extensive_input!(f128);
+impl_spaced_input!(f128);
 
 /// Create a test case iterator for extensive inputs. Also returns the total test case count.
 pub fn get_test_cases<Op>(
@@ -256,7 +247,7 @@ pub fn get_test_cases<Op>(
 ) -> (impl Iterator<Item = Op::RustArgs> + Send + use<'_, Op>, u64)
 where
     Op: MathOp,
-    Op::RustArgs: ExtensiveInput<Op>,
+    Op::RustArgs: SpacedInput<Op>,
 {
     Op::RustArgs::get_cases(ctx)
 }

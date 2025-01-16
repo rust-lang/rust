@@ -39,11 +39,12 @@ pub struct CheckCtx {
     pub base_name_str: &'static str,
     /// Source of truth for tests.
     pub basis: CheckBasis,
+    pub gen_kind: GeneratorKind,
 }
 
 impl CheckCtx {
     /// Create a new check context, using the default ULP for the function.
-    pub fn new(fn_ident: Identifier, basis: CheckBasis) -> Self {
+    pub fn new(fn_ident: Identifier, basis: CheckBasis, gen_kind: GeneratorKind) -> Self {
         let mut ret = Self {
             ulp: 0,
             fn_ident,
@@ -51,9 +52,15 @@ impl CheckCtx {
             base_name: fn_ident.base_name(),
             base_name_str: fn_ident.base_name().as_str(),
             basis,
+            gen_kind,
         };
         ret.ulp = crate::default_ulp(&ret);
         ret
+    }
+
+    /// The number of input arguments for this function.
+    pub fn input_count(&self) -> usize {
+        self.fn_ident.math_op().rust_sig.args.len()
     }
 }
 
@@ -66,11 +73,13 @@ pub enum CheckBasis {
     Mpfr,
 }
 
-/// The different kinds of generators that provide test input.
+/// The different kinds of generators that provide test input, which account for input pattern
+/// and quantity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GeneratorKind {
-    Domain,
+    EdgeCases,
     Extensive,
+    QuickSpaced,
     Random,
 }
 
@@ -155,7 +164,7 @@ impl TestEnv {
 }
 
 /// The number of iterations to run for a given test.
-pub fn iteration_count(ctx: &CheckCtx, gen_kind: GeneratorKind, argnum: usize) -> u64 {
+pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
     let t_env = TestEnv::from_env(ctx);
 
     // Ideally run 5M tests
@@ -185,10 +194,13 @@ pub fn iteration_count(ctx: &CheckCtx, gen_kind: GeneratorKind, argnum: usize) -
     // Run fewer random tests than domain tests.
     let random_iter_count = domain_iter_count / 100;
 
-    let mut total_iterations = match gen_kind {
-        GeneratorKind::Domain => domain_iter_count,
+    let mut total_iterations = match ctx.gen_kind {
+        GeneratorKind::QuickSpaced => domain_iter_count,
         GeneratorKind::Random => random_iter_count,
         GeneratorKind::Extensive => *EXTENSIVE_MAX_ITERATIONS,
+        GeneratorKind::EdgeCases => {
+            unimplemented!("edge case tests shoudn't need `iteration_count`")
+        }
     };
 
     // FMA has a huge domain but is reasonably fast to run, so increase iterations.
@@ -213,16 +225,18 @@ pub fn iteration_count(ctx: &CheckCtx, gen_kind: GeneratorKind, argnum: usize) -
     };
     let total = ntests.pow(t_env.input_count.try_into().unwrap());
 
-    let seed_msg = match gen_kind {
-        GeneratorKind::Domain | GeneratorKind::Extensive => String::new(),
+    let seed_msg = match ctx.gen_kind {
+        GeneratorKind::QuickSpaced | GeneratorKind::Extensive => String::new(),
         GeneratorKind::Random => {
             format!(" using `{SEED_ENV}={}`", str::from_utf8(SEED.as_slice()).unwrap())
         }
+        GeneratorKind::EdgeCases => unreachable!(),
     };
 
     test_log(&format!(
         "{gen_kind:?} {basis:?} {fn_ident} arg {arg}/{args}: {ntests} iterations \
          ({total} total){seed_msg}",
+        gen_kind = ctx.gen_kind,
         basis = ctx.basis,
         fn_ident = ctx.fn_ident,
         arg = argnum + 1,
@@ -233,7 +247,7 @@ pub fn iteration_count(ctx: &CheckCtx, gen_kind: GeneratorKind, argnum: usize) -
 }
 
 /// Some tests require that an integer be kept within reasonable limits; generate that here.
-pub fn int_range(ctx: &CheckCtx, gen_kind: GeneratorKind, argnum: usize) -> RangeInclusive<i32> {
+pub fn int_range(ctx: &CheckCtx, argnum: usize) -> RangeInclusive<i32> {
     let t_env = TestEnv::from_env(ctx);
 
     if !matches!(ctx.base_name, BaseName::Jn | BaseName::Yn) {
@@ -252,22 +266,42 @@ pub fn int_range(ctx: &CheckCtx, gen_kind: GeneratorKind, argnum: usize) -> Rang
 
     let extensive_range = (-0xfff)..=0xfffff;
 
-    match gen_kind {
+    match ctx.gen_kind {
         GeneratorKind::Extensive => extensive_range,
-        GeneratorKind::Domain | GeneratorKind::Random => non_extensive_range,
+        GeneratorKind::QuickSpaced | GeneratorKind::Random => non_extensive_range,
+        GeneratorKind::EdgeCases => extensive_range,
     }
 }
 
 /// For domain tests, limit how many asymptotes or specified check points we test.
 pub fn check_point_count(ctx: &CheckCtx) -> usize {
+    assert_eq!(
+        ctx.gen_kind,
+        GeneratorKind::EdgeCases,
+        "check_point_count is intended for edge case tests"
+    );
     let t_env = TestEnv::from_env(ctx);
     if t_env.slow_platform || !cfg!(optimizations_enabled) { 4 } else { 10 }
 }
 
 /// When validating points of interest (e.g. asymptotes, inflection points, extremes), also check
 /// this many surrounding values.
-pub fn check_near_count(_ctx: &CheckCtx) -> u64 {
-    if cfg!(optimizations_enabled) { 100 } else { 10 }
+pub fn check_near_count(ctx: &CheckCtx) -> u64 {
+    assert_eq!(
+        ctx.gen_kind,
+        GeneratorKind::EdgeCases,
+        "check_near_count is intended for edge case tests"
+    );
+    if cfg!(optimizations_enabled) {
+        // Taper based on the number of inputs.
+        match ctx.input_count() {
+            1 | 2 => 100,
+            3 => 50,
+            x => panic!("unexpected argument count {x}"),
+        }
+    } else {
+        10
+    }
 }
 
 /// Check whether extensive actions should be run or skipped.
