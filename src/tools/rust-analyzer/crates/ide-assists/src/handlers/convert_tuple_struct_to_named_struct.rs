@@ -140,8 +140,10 @@ fn edit_struct_references(
         match_ast! {
             match node {
                 ast::TupleStructPat(tuple_struct_pat) => {
+                    let file_range = ctx.sema.original_range_opt(&node)?;
+                    edit.edit_file(file_range.file_id);
                     edit.replace(
-                        tuple_struct_pat.syntax().text_range(),
+                        file_range.range,
                         ast::make::record_pat_with_fields(
                             tuple_struct_pat.path()?,
                             ast::make::record_pat_field_list(tuple_struct_pat.fields().zip(names).map(
@@ -921,6 +923,104 @@ pub struct $0Foo(#[my_custom_attr] u32);
 "#,
             r#"
 pub struct Foo { #[my_custom_attr] field1: u32 }
+"#,
+        );
+    }
+
+    #[test]
+    fn convert_in_macro_pattern_args() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+macro_rules! foo {
+    ($expression:expr, $pattern:pat) => {
+        match $expression {
+            $pattern => true,
+            _ => false
+        }
+    };
+}
+enum Expr {
+    A$0(usize),
+}
+fn main() {
+    let e = Expr::A(0);
+    foo!(e, Expr::A(0));
+}
+"#,
+            r#"
+macro_rules! foo {
+    ($expression:expr, $pattern:pat) => {
+        match $expression {
+            $pattern => true,
+            _ => false
+        }
+    };
+}
+enum Expr {
+    A { field1: usize },
+}
+fn main() {
+    let e = Expr::A { field1: 0 };
+    foo!(e, Expr::A { field1: 0 });
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn convert_in_multi_file_macro_pattern_args() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+//- /main.rs
+mod foo;
+
+enum Test {
+    A$0(i32)
+}
+
+//- /foo.rs
+use crate::Test;
+
+macro_rules! foo {
+    ($expression:expr, $pattern:pat) => {
+        match $expression {
+            $pattern => true,
+            _ => false
+        }
+    };
+}
+
+fn foo() {
+    let a = Test::A(0);
+    foo!(a, Test::A(0));
+}
+"#,
+            r#"
+//- /main.rs
+mod foo;
+
+enum Test {
+    A { field1: i32 }
+}
+
+//- /foo.rs
+use crate::Test;
+
+macro_rules! foo {
+    ($expression:expr, $pattern:pat) => {
+        match $expression {
+            $pattern => true,
+            _ => false
+        }
+    };
+}
+
+fn foo() {
+    let a = Test::A { field1: 0 };
+    foo!(a, Test::A { field1: 0 });
+}
 "#,
         );
     }
