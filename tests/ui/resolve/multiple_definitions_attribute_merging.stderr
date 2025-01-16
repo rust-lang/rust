@@ -21,7 +21,7 @@ Box<dyn Any>
 query stack during panic:
 #0 [mir_built] building MIR for `<impl at $DIR/multiple_definitions_attribute_merging.rs:15:10: 15:19>::eq`
 #1 [check_unsafety] unsafety-checking `<impl at $DIR/multiple_definitions_attribute_merging.rs:15:10: 15:19>::eq`
-end of query stack
+... and 1 other queries... use `env RUST_BACKTRACE=1` to see the full query stack
 error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0428`.

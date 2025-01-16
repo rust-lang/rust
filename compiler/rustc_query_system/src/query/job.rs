@@ -567,7 +567,7 @@ pub fn print_query_stack<Qcx: QueryContext>(
     qcx: Qcx,
     mut current_query: Option<QueryJobId>,
     dcx: DiagCtxtHandle<'_>,
-    num_frames: Option<usize>,
+    limit_frames: Option<usize>,
     mut file: Option<std::fs::File>,
 ) -> usize {
     // Be careful relying on global state here: this code is called from
@@ -584,7 +584,7 @@ pub fn print_query_stack<Qcx: QueryContext>(
         let Some(query_info) = query_map.get(&query) else {
             break;
         };
-        if Some(count_printed) < num_frames || num_frames.is_none() {
+        if Some(count_printed) < limit_frames || limit_frames.is_none() {
             // Only print to stderr as many stack frames as `num_frames` when present.
             // FIXME: needs translation
             #[allow(rustc::diagnostic_outside_of_impl)]
@@ -615,5 +615,5 @@ pub fn print_query_stack<Qcx: QueryContext>(
     if let Some(ref mut file) = file {
         let _ = writeln!(file, "end of query stack");
     }
-    count_printed
+    count_total
 }

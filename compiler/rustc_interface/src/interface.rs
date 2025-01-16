@@ -533,7 +533,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
 pub fn try_print_query_stack(
     dcx: DiagCtxtHandle<'_>,
-    num_frames: Option<usize>,
+    limit_frames: Option<usize>,
     file: Option<std::fs::File>,
 ) {
     eprintln!("query stack during panic:");
@@ -541,13 +541,13 @@ pub fn try_print_query_stack(
     // Be careful relying on global state here: this code is called from
     // a panic hook, which means that the global `DiagCtxt` may be in a weird
     // state if it was responsible for triggering the panic.
-    let i = ty::tls::with_context_opt(|icx| {
+    let all_frames = ty::tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
             ty::print::with_no_queries!(print_query_stack(
                 QueryCtxt::new(icx.tcx),
                 icx.query,
                 dcx,
-                num_frames,
+                limit_frames,
                 file,
             ))
         } else {
@@ -555,9 +555,14 @@ pub fn try_print_query_stack(
         }
     });
 
-    if num_frames == None || num_frames >= Some(i) {
-        eprintln!("end of query stack");
+    if let Some(limit_frames) = limit_frames
+        && all_frames > limit_frames
+    {
+        eprintln!(
+            "... and {} other queries... use `env RUST_BACKTRACE=1` to see the full query stack",
+            all_frames - limit_frames
+        );
     } else {
-        eprintln!("we're just showing a limited slice of the query stack");
+        eprintln!("end of query stack");
     }
 }
