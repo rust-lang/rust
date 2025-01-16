@@ -20,8 +20,9 @@ LL | impl<'a> IntoIterator for &'_ S {
    |
 help: consider using the named lifetime here instead of an implict lifetime
    |
-LL | impl<'a> IntoIterator for &'a S {
-   |                            ~~
+LL - impl<'a> IntoIterator for &'_ S {
+LL + impl<'a> IntoIterator for &'a S {
+   |
 
 error: aborting due to 2 previous errors
 

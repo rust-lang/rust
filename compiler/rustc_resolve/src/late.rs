@@ -378,6 +378,7 @@ enum LifetimeBinderKind {
     Function,
     Closure,
     ImplBlock,
+    ImplAssocType,
 }
 
 impl LifetimeBinderKind {
@@ -388,6 +389,7 @@ impl LifetimeBinderKind {
             PolyTrait => "bound",
             WhereBound => "bound",
             Item | ConstItem => "item",
+            ImplAssocType => "associated type",
             ImplBlock => "impl block",
             Function => "function",
             Closure => "closure",
@@ -3406,7 +3408,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     &generics.params,
                     RibKind::AssocItem,
                     item.id,
-                    LifetimeBinderKind::Item,
+                    LifetimeBinderKind::ImplAssocType,
                     generics.span,
                     |this| {
                         this.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
