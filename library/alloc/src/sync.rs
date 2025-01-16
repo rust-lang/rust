@@ -1376,7 +1376,7 @@ impl<T: ?Sized> Arc<T> {
     /// different types. See [`mem::transmute`][transmute] for more information
     /// on what restrictions apply in this case.
     ///
-    /// The raw pointer must point to a block of memory allocated by the global allocator
+    /// The raw pointer must point to a block of memory allocated by the global allocator.
     ///
     /// The user of `from_raw` has to make sure a specific value of `T` is only
     /// dropped once.
