@@ -582,7 +582,7 @@ config_data! {
         cargo_buildScripts_useRustcWrapper: bool = true,
         /// List of cfg options to enable with the given values.
         cargo_cfgs: Vec<String> = {
-            vec!["debug_assertion".into(), "miri".into()]
+            vec!["debug_assertions".into(), "miri".into()]
         },
         /// Extra arguments that are passed to every cargo invocation.
         cargo_extraArgs: Vec<String> = vec![],

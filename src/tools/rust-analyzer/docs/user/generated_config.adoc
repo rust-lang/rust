@@ -95,7 +95,7 @@ avoid checking unnecessary things.
 Default:
 ----
 [
-  "debug_assertion",
+  "debug_assertions",
   "miri"
 ]
 ----
