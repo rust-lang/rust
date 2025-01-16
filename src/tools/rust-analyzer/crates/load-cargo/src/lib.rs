@@ -242,9 +242,6 @@ impl ProjectFolders {
                     }
                 }
 
-                if dirs.include.is_empty() {
-                    continue;
-                }
                 vfs::loader::Entry::Directories(dirs)
             };
 
@@ -267,7 +264,7 @@ impl ProjectFolders {
             };
 
             let file_set_roots = vec![VfsPath::from(ratoml_path.to_owned())];
-            let entry = vfs::loader::Entry::Files(vec![ratoml_path]);
+            let entry = vfs::loader::Entry::Files(vec![ratoml_path.to_owned()]);
 
             res.watch.push(res.load.len());
             res.load.push(entry);
