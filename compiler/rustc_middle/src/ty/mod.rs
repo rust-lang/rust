@@ -2236,3 +2236,10 @@ mod size_asserts {
     static_assert_size!(WithCachedTypeInfo<TyKind<'_>>, 48);
     // tidy-alphabetical-end
 }
+
+define_queries! {
+    /// Query to return all reachable symbols (DefIds) for a given crate.
+    query reachable_symbols(key: CrateNum) -> &'tcx [DefId] {
+        desc { |tcx| format!("computing reachable symbols for crate `{}`", key) }
+    }
+}
