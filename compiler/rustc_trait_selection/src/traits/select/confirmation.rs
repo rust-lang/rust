@@ -15,7 +15,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{DefineOpaqueTypes, HigherRankedType, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, Upcast, elaborate};
+use rustc_middle::ty::{self, GenericArgsRef, SizedTraitKind, Ty, TyCtxt, Upcast, elaborate};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use thin_vec::thin_vec;
@@ -251,20 +251,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         let obligations = if has_nested {
             let trait_def = obligation.predicate.def_id();
-            let conditions = if tcx.is_lang_item(trait_def, LangItem::Sized) {
-                self.sized_conditions(obligation)
-            } else if tcx.is_lang_item(trait_def, LangItem::MetaSized) {
-                self.sized_conditions(obligation)
-            } else if tcx.is_lang_item(trait_def, LangItem::PointeeSized) {
-                self.sized_conditions(obligation)
-            } else if tcx.is_lang_item(trait_def, LangItem::Copy) {
-                self.copy_clone_conditions(obligation)
-            } else if tcx.is_lang_item(trait_def, LangItem::Clone) {
-                self.copy_clone_conditions(obligation)
-            } else if tcx.is_lang_item(trait_def, LangItem::FusedIterator) {
-                self.fused_iterator_conditions(obligation)
-            } else {
-                bug!("unexpected builtin trait {:?}", trait_def)
+            let conditions = match tcx.as_lang_item(trait_def) {
+                Some(LangItem::Sized) => {
+                    self.sizedness_conditions(obligation, SizedTraitKind::Sized)
+                }
+                Some(LangItem::MetaSized) => {
+                    self.sizedness_conditions(obligation, SizedTraitKind::MetaSized)
+                }
+                Some(LangItem::PointeeSized) => {
+                    self.sizedness_conditions(obligation, SizedTraitKind::PointeeSized)
+                }
+                Some(LangItem::Copy) => self.copy_clone_conditions(obligation),
+                Some(LangItem::Clone) => self.copy_clone_conditions(obligation),
+                Some(LangItem::FusedIterator) => self.fused_iterator_conditions(obligation),
+                _ => bug!("unexpected builtin trait {:?}", trait_def),
             };
             let BuiltinImplConditions::Where(types) = conditions else {
                 bug!("obligation {:?} had matched a builtin impl but now doesn't", obligation);
