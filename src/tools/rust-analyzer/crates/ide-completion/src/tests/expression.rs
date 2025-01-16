@@ -66,6 +66,7 @@ fn baz() {
             kw loop
             kw match
             kw mut
+            kw raw
             kw return
             kw self::
             kw true
@@ -416,6 +417,94 @@ fn completes_in_loop_ctx() {
 fn completes_in_let_initializer() {
     check(
         r#"fn main() { let _ = $0 }"#,
+        expect![[r#"
+            fn main() fn()
+            bt u32     u32
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    )
+}
+
+#[test]
+fn completes_after_ref_expr() {
+    check(
+        r#"fn main() { let _ = &$0 }"#,
+        expect![[r#"
+            fn main() fn()
+            bt u32     u32
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw mut
+            kw raw
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+    check(
+        r#"fn main() { let _ = &raw $0 }"#,
+        expect![[r#"
+            fn main() fn()
+            bt u32     u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw mut
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+    check(
+        r#"fn main() { let _ = &raw const $0 }"#,
+        expect![[r#"
+            fn main() fn()
+            bt u32     u32
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+    check(
+        r#"fn main() { let _ = &raw mut $0 }"#,
         expect![[r#"
             fn main() fn()
             bt u32     u32

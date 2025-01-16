@@ -581,10 +581,7 @@ impl ExprCollector<'_> {
                 let mutability = if raw_tok {
                     if e.mut_token().is_some() {
                         Mutability::Mut
-                    } else if e.const_token().is_some() {
-                        Mutability::Shared
                     } else {
-                        never!("parser only remaps to raw_token() if matching mutability token follows");
                         Mutability::Shared
                     }
                 } else {
