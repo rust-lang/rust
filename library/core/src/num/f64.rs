@@ -750,11 +750,14 @@ impl f64 {
     /// assert_eq!(9007199254740992f64.next_up(), 9007199254740994.0);
     /// ```
     ///
+    /// This operation corresponds to IEEE-754 `nextUp`.
+    ///
     /// [`NEG_INFINITY`]: Self::NEG_INFINITY
     /// [`INFINITY`]: Self::INFINITY
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
     #[inline]
+    #[doc(alias = "nextUp")]
     #[stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
     pub const fn next_up(self) -> Self {
@@ -798,11 +801,14 @@ impl f64 {
     /// assert_eq!(clamped.next_up(), 1.0);
     /// ```
     ///
+    /// This operation corresponds to IEEE-754 `nextDown`.
+    ///
     /// [`NEG_INFINITY`]: Self::NEG_INFINITY
     /// [`INFINITY`]: Self::INFINITY
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
     #[inline]
+    #[doc(alias = "nextDown")]
     #[stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
     pub const fn next_down(self) -> Self {
