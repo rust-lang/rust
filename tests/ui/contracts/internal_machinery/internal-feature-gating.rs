@@ -9,9 +9,6 @@ fn main() {
     core::intrinsics::contract_check_ensures(&1, |_|true);
     //~^ ERROR use of unstable library feature `rustc_contracts_internals`
 
-    // lang items are guarded by rustc_contracts_internals feature gate.
-    core::contracts::check_requires(|| true);
-    //~^ ERROR use of unstable library feature `rustc_contracts_internals`
     core::contracts::build_check_ensures(|_: &()| true);
     //~^ ERROR use of unstable library feature `rustc_contracts_internals`
 

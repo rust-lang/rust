@@ -4062,18 +4062,32 @@ pub const fn contract_checks() -> bool {
     false
 }
 
+/// Check if the pre-condition `cond` has been met.
+///
+/// By default, if `contract_checks` is enabled, this will panic with no unwind if the condition
+/// returns false.
 #[cfg(not(bootstrap))]
 #[unstable(feature = "rustc_contracts_internals", issue = "133866" /* compiler-team#759 */)]
+#[lang = "contract_check_requires"]
 #[rustc_intrinsic]
-pub fn contract_check_requires<C: FnOnce() -> bool>(c: C) -> bool {
-    c()
+pub fn contract_check_requires<C: Fn() -> bool>(cond: C) {
+    if contract_checks() && !cond() {
+        // Emit no unwind panic in case this was a safety requirement.
+        crate::panicking::panic_nounwind("failed requires check");
+    }
 }
 
+/// Check if the post-condition `cond` has been met.
+///
+/// By default, if `contract_checks` is enabled, this will panic with no unwind if the condition
+/// returns false.
 #[cfg(not(bootstrap))]
 #[unstable(feature = "rustc_contracts_internals", issue = "133866" /* compiler-team#759 */)]
 #[rustc_intrinsic]
-pub fn contract_check_ensures<'a, Ret, C: FnOnce(&'a Ret) -> bool>(ret: &'a Ret, c: C) -> bool {
-    c(ret)
+pub fn contract_check_ensures<'a, Ret, C: Fn(&'a Ret) -> bool>(ret: &'a Ret, cond: C) {
+    if contract_checks() && !cond(ret) {
+        crate::panicking::panic_nounwind("failed ensures check");
+    }
 }
 
 /// The intrinsic will return the size stored in that vtable.
