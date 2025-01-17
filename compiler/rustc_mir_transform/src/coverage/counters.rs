@@ -4,7 +4,7 @@ use std::fmt::{self, Debug};
 use either::Either;
 use itertools::Itertools;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
@@ -58,7 +58,8 @@ struct BcbExpression {
 pub(super) struct CoverageCounters {
     /// List of places where a counter-increment statement should be injected
     /// into MIR, each with its corresponding counter ID.
-    counter_increment_sites: IndexVec<CounterId, BasicCoverageBlock>,
+    phys_counter_for_node: FxIndexMap<BasicCoverageBlock, CounterId>,
+    next_counter_id: CounterId,
 
     /// Coverage counters/expressions that are associated with individual BCBs.
     node_counters: IndexVec<BasicCoverageBlock, Option<BcbCounter>>,
@@ -114,16 +115,21 @@ impl CoverageCounters {
 
     fn with_num_bcbs(num_bcbs: usize) -> Self {
         Self {
-            counter_increment_sites: IndexVec::new(),
+            phys_counter_for_node: FxIndexMap::default(),
+            next_counter_id: CounterId::ZERO,
             node_counters: IndexVec::from_elem_n(None, num_bcbs),
             expressions: IndexVec::new(),
             expressions_memo: FxHashMap::default(),
         }
     }
 
-    /// Creates a new physical counter for a BCB node.
-    fn make_phys_counter(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
-        let id = self.counter_increment_sites.push(bcb);
+    /// Returns the physical counter for the given node, creating it if necessary.
+    fn ensure_phys_counter(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
+        let id = *self.phys_counter_for_node.entry(bcb).or_insert_with(|| {
+            let id = self.next_counter_id;
+            self.next_counter_id = id + 1;
+            id
+        });
         BcbCounter::Counter { id }
     }
 
@@ -152,7 +158,9 @@ impl CoverageCounters {
     }
 
     pub(super) fn num_counters(&self) -> usize {
-        self.counter_increment_sites.len()
+        let num_counters = self.phys_counter_for_node.len();
+        assert_eq!(num_counters, self.next_counter_id.as_usize());
+        num_counters
     }
 
     fn set_node_counter(&mut self, bcb: BasicCoverageBlock, counter: BcbCounter) -> BcbCounter {
@@ -174,7 +182,7 @@ impl CoverageCounters {
     pub(super) fn counter_increment_sites(
         &self,
     ) -> impl Iterator<Item = (CounterId, BasicCoverageBlock)> + Captures<'_> {
-        self.counter_increment_sites.iter_enumerated().map(|(id, &site)| (id, site))
+        self.phys_counter_for_node.iter().map(|(&site, &id)| (id, site))
     }
 
     /// Returns an iterator over the subset of BCB nodes that have been associated
@@ -212,16 +220,11 @@ impl CoverageCounters {
 struct Transcriber {
     old: NodeCounters<BasicCoverageBlock>,
     new: CoverageCounters,
-    phys_counter_for_node: FxHashMap<BasicCoverageBlock, BcbCounter>,
 }
 
 impl Transcriber {
     fn new(num_nodes: usize, old: NodeCounters<BasicCoverageBlock>) -> Self {
-        Self {
-            old,
-            new: CoverageCounters::with_num_bcbs(num_nodes),
-            phys_counter_for_node: FxHashMap::default(),
-        }
+        Self { old, new: CoverageCounters::with_num_bcbs(num_nodes) }
     }
 
     fn transcribe_counters(
@@ -250,7 +253,7 @@ impl Transcriber {
             neg.sort();
 
             let mut new_counters_for_sites = |sites: Vec<BasicCoverageBlock>| {
-                sites.into_iter().map(|node| self.ensure_phys_counter(node)).collect::<Vec<_>>()
+                sites.into_iter().map(|node| self.new.ensure_phys_counter(node)).collect::<Vec<_>>()
             };
             let mut pos = new_counters_for_sites(pos);
             let mut neg = new_counters_for_sites(neg);
@@ -264,9 +267,5 @@ impl Transcriber {
         }
 
         self.new
-    }
-
-    fn ensure_phys_counter(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
-        *self.phys_counter_for_node.entry(bcb).or_insert_with(|| self.new.make_phys_counter(bcb))
     }
 }
