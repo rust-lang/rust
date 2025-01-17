@@ -43,6 +43,7 @@ jiri=.jiri_root/bin/jiri
 set -x
 
 if [ -z "$KEEP_CHECKOUT" ]; then
+    echo "downloading jiri" && df -h /
     # This script will:
     # - create a directory named "fuchsia" if it does not exist
     # - download "jiri" to "fuchsia/.jiri_root/bin"
@@ -52,11 +53,13 @@ if [ -z "$KEEP_CHECKOUT" ]; then
 
     cd $checkout
 
+    echo "running jiri init" && df -h /
     $jiri init \
         -partial=true \
         -analytics-opt=false \
         .
 
+    echo "running jiri import" && df -h /
     $jiri import \
         -name=integration \
         -revision=$INTEGRATION_SHA \
@@ -65,24 +68,29 @@ if [ -z "$KEEP_CHECKOUT" ]; then
         "https://fuchsia.googlesource.com/integration"
 
     if [ -d ".git" ]; then
+        echo "Wipe out any local changes" && df -h /
         # Wipe out any local changes if we're reusing a checkout.
         git checkout --force JIRI_HEAD
     fi
 
+    echo "running jiri update" && df -h /
     $jiri update -autoupdate=false
 
     echo integration commit = $(git -C integration rev-parse HEAD)
 
     for git_ref in "${PICK_REFS[@]}"; do
+        echo "running git fetch" && df -h /
         git fetch https://fuchsia.googlesource.com/fuchsia $git_ref
+        echo "running git cherry-pick" && df -h /
         git cherry-pick --no-commit FETCH_HEAD
     done
 else
-    echo Reusing existing Fuchsia checkout
+    echo Reusing existing Fuchsia checkout && df -h /
     cd $checkout
 fi
 
 # Run the script inside the Fuchsia checkout responsible for building Fuchsia.
 # You can change arguments to the build by setting KEEP_CHECKOUT=1 above and
 # modifying them in build_fuchsia_from_rust_ci.sh.
+echo "running build_fuchsia_from_rust_ci.sh" && df -h /
 bash scripts/rust/build_fuchsia_from_rust_ci.sh
