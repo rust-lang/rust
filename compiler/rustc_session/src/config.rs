@@ -2093,8 +2093,7 @@ fn parse_opt_level(
         OptLevel::Default
     } else {
         match cg.opt_level.as_ref() {
-            "0" => OptLevel::No,
-            "1" => OptLevel::Less,
+            "0" | "1" => OptLevel::Less,
             "2" => OptLevel::Default,
             "3" => OptLevel::Aggressive,
             "s" => OptLevel::Size,
