@@ -103,7 +103,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         constraints,
         universal_region_relations,
         opaque_type_values,
-        mut polonius_context,
+        polonius_context,
     } = type_check::type_check(
         infcx,
         body,
@@ -142,10 +142,10 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         location_map,
     );
 
-    // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives
-    // constraints.
-    let localized_outlives_constraints = polonius_context.as_mut().map(|polonius_context| {
-        polonius_context.create_localized_constraints(infcx.tcx, &regioncx, body)
+    // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives constraints
+    // and use them to compute loan liveness.
+    let localized_outlives_constraints = polonius_context.as_ref().map(|polonius_context| {
+        polonius_context.compute_loan_liveness(infcx.tcx, &mut regioncx, body, borrow_set)
     });
 
     // If requested: dump NLL facts, and run legacy polonius analysis.
