@@ -9,7 +9,7 @@
 # for PR jobs, because forks can't access secrets.
 # That's why we use ghcr.io: it has no rate limit and it doesn't require authentication.
 
-name: GHCR
+name: GHCR image mirroring
 
 on:
   workflow_dispatch:
