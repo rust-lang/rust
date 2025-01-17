@@ -11,6 +11,7 @@ use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use tracing::debug;
 
 use crate::BorrowIndex;
+use crate::polonius::LiveLoans;
 
 rustc_index::newtype_index! {
     /// A single integer representing a `ty::Placeholder`.
@@ -50,29 +51,8 @@ pub(crate) struct LivenessValues {
     /// region is live, only that it is.
     points: Option<SparseIntervalMatrix<RegionVid, PointIndex>>,
 
-    /// When using `-Zpolonius=next`, for each point: the loans flowing into the live regions at
-    /// that point.
-    pub(crate) loans: Option<LiveLoans>,
-}
-
-/// Data used to compute the loans that are live at a given point in the CFG, when using
-/// `-Zpolonius=next`.
-pub(crate) struct LiveLoans {
-    /// The set of loans that flow into a given region. When individual regions are marked as live
-    /// in the CFG, these inflowing loans are recorded as live.
-    pub(crate) inflowing_loans: SparseBitMatrix<RegionVid, BorrowIndex>,
-
-    /// The set of loans that are live at a given point in the CFG.
-    pub(crate) live_loans: SparseBitMatrix<PointIndex, BorrowIndex>,
-}
-
-impl LiveLoans {
-    pub(crate) fn new(num_loans: usize) -> Self {
-        LiveLoans {
-            live_loans: SparseBitMatrix::new(num_loans),
-            inflowing_loans: SparseBitMatrix::new(num_loans),
-        }
-    }
+    /// When using `-Zpolonius=next`, the set of loans that are live at a given point in the CFG.
+    live_loans: Option<LiveLoans>,
 }
 
 impl LivenessValues {
@@ -82,7 +62,7 @@ impl LivenessValues {
             live_regions: None,
             points: Some(SparseIntervalMatrix::new(location_map.num_points())),
             location_map,
-            loans: None,
+            live_loans: None,
         }
     }
 
@@ -95,7 +75,7 @@ impl LivenessValues {
             live_regions: Some(Default::default()),
             points: None,
             location_map,
-            loans: None,
+            live_loans: None,
         }
     }
 
@@ -129,13 +109,6 @@ impl LivenessValues {
         } else if self.location_map.point_in_range(point) {
             self.live_regions.as_mut().unwrap().insert(region);
         }
-
-        // When available, record the loans flowing into this region as live at the given point.
-        if let Some(loans) = self.loans.as_mut() {
-            if let Some(inflowing) = loans.inflowing_loans.row(region) {
-                loans.live_loans.union_row(point, inflowing);
-            }
-        }
     }
 
     /// Records `region` as being live at all the given `points`.
@@ -145,17 +118,6 @@ impl LivenessValues {
             this.union_row(region, points);
         } else if points.iter().any(|point| self.location_map.point_in_range(point)) {
             self.live_regions.as_mut().unwrap().insert(region);
-        }
-
-        // When available, record the loans flowing into this region as live at the given points.
-        if let Some(loans) = self.loans.as_mut() {
-            if let Some(inflowing) = loans.inflowing_loans.row(region) {
-                if !inflowing.is_empty() {
-                    for point in points.iter() {
-                        loans.live_loans.union_row(point, inflowing);
-                    }
-                }
-            }
         }
     }
 
@@ -213,12 +175,17 @@ impl LivenessValues {
         self.location_map.to_location(point)
     }
 
+    /// When using `-Zpolonius=next`, records the given live loans for the loan scopes and active
+    /// loans dataflow computations.
+    pub(crate) fn record_live_loans(&mut self, live_loans: LiveLoans) {
+        self.live_loans = Some(live_loans);
+    }
+
     /// When using `-Zpolonius=next`, returns whether the `loan_idx` is live at the given `point`.
     pub(crate) fn is_loan_live_at(&self, loan_idx: BorrowIndex, point: PointIndex) -> bool {
-        self.loans
+        self.live_loans
             .as_ref()
             .expect("Accessing live loans requires `-Zpolonius=next`")
-            .live_loans
             .contains(point, loan_idx)
     }
 }
