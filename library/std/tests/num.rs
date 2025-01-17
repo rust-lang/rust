@@ -1,4 +1,4 @@
-use crate::ops::Mul;
+use std::ops::Mul;
 
 #[test]
 fn test_saturating_add_uint() {
@@ -190,8 +190,8 @@ fn test_uint_to_str_overflow() {
     assert_eq!(u64_val.to_string(), "0");
 }
 
-fn from_str<T: crate::str::FromStr>(t: &str) -> Option<T> {
-    crate::str::FromStr::from_str(t).ok()
+fn from_str<T: std::str::FromStr>(t: &str) -> Option<T> {
+    std::str::FromStr::from_str(t).ok()
 }
 
 #[test]
