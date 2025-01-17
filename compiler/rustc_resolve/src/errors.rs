@@ -930,6 +930,8 @@ pub(crate) struct AnonymousLifetimeNonGatReportError {
     #[primary_span]
     #[label]
     pub(crate) lifetime: Span,
+    #[note]
+    pub(crate) decl: MultiSpan,
 }
 
 #[derive(Subdiagnostic)]
