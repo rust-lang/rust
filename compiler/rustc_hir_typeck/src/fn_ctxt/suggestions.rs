@@ -793,7 +793,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ExprKind::Path(..) | ExprKind::Lit(_) if parent_is_closure => {
                     err.span_suggestion(
                         expression.span.shrink_to_lo(),
-                        "consider ignore the value here",
+                        "consider ignoring the value",
                         "_ = ",
                         if in_external_macro(self.tcx.sess, expression.span) {
                             Applicability::MaybeIncorrect
