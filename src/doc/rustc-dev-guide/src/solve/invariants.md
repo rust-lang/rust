@@ -23,9 +23,6 @@ well-formed after normalizing said aliases. We rely on this as
 otherwise we would have to re-check for well-formedness for these
 types.
 
-This is unfortunately broken for `<fndef as FnOnce<..>>::Output` due to implied bounds,
-resulting in [#114936].
-
 ### Structural equality modulo regions implies semantic equality ✅
 
 If you have a some type and equate it to itself after replacing any regions with unique
