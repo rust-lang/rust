@@ -741,7 +741,10 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         if self.get_declared_value(entry_name).is_none() {
             Some(self.declare_entry_fn(
                 entry_name,
-                self.sess().target.entry_abi.into(),
+                llvm::CallConv::from_conv(
+                    self.sess().target.entry_abi,
+                    self.sess().target.arch.borrow(),
+                ),
                 llvm::UnnamedAddr::Global,
                 fn_type,
             ))
