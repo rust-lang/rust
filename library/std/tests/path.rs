@@ -1,10 +1,19 @@
-use core::hint::black_box;
+#![feature(
+    clone_to_uninit,
+    path_add_extension,
+    path_file_prefix,
+    maybe_uninit_slice,
+    os_string_pathbuf_leak
+)]
 
-use super::*;
-use crate::collections::{BTreeSet, HashSet};
-use crate::hash::DefaultHasher;
-use crate::mem::MaybeUninit;
-use crate::ptr;
+use std::clone::CloneToUninit;
+use std::ffi::OsStr;
+use std::hash::{DefaultHasher, Hash, Hasher};
+use std::mem::MaybeUninit;
+use std::path::*;
+use std::ptr;
+use std::rc::Rc;
+use std::sync::Arc;
 
 #[allow(unknown_lints, unused_macro_rules)]
 macro_rules! t (
@@ -110,7 +119,7 @@ macro_rules! t (
 
 #[test]
 fn into() {
-    use crate::borrow::Cow;
+    use std::borrow::Cow;
 
     let static_path = Path::new("/home/foo");
     let static_cow_path: Cow<'static, Path> = static_path.into();
@@ -1525,7 +1534,7 @@ pub fn test_with_added_extension() {
 
 #[test]
 fn test_eq_receivers() {
-    use crate::borrow::Cow;
+    use std::borrow::Cow;
 
     let borrowed: &Path = Path::new("foo/bar");
     let mut owned: PathBuf = PathBuf::new();
@@ -1550,7 +1559,7 @@ fn test_eq_receivers() {
 
 #[test]
 pub fn test_compare() {
-    use crate::hash::{DefaultHasher, Hash, Hasher};
+    use std::hash::{DefaultHasher, Hash, Hasher};
 
     fn hash<T: Hash>(t: T) -> u64 {
         let mut s = DefaultHasher::new();
@@ -1867,12 +1876,12 @@ fn test_ord() {
 #[test]
 #[cfg(any(unix, target_os = "wasi"))]
 fn test_unix_absolute() {
-    use crate::path::absolute;
+    use std::path::absolute;
 
     assert!(absolute("").is_err());
 
     let relative = "a/b";
-    let mut expected = crate::env::current_dir().unwrap();
+    let mut expected = std::env::current_dir().unwrap();
     expected.push(relative);
     assert_eq!(absolute(relative).unwrap().as_os_str(), expected.as_os_str());
 
@@ -1888,7 +1897,7 @@ fn test_unix_absolute() {
     );
 
     // Test leading `.` and `..` components
-    let curdir = crate::env::current_dir().unwrap();
+    let curdir = std::env::current_dir().unwrap();
     assert_eq!(absolute("./a").unwrap().as_os_str(), curdir.join("a").as_os_str());
     assert_eq!(absolute("../a").unwrap().as_os_str(), curdir.join("../a").as_os_str()); // return /pwd/../a
 }
@@ -1896,12 +1905,12 @@ fn test_unix_absolute() {
 #[test]
 #[cfg(windows)]
 fn test_windows_absolute() {
-    use crate::path::absolute;
+    use std::path::absolute;
     // An empty path is an error.
     assert!(absolute("").is_err());
 
     let relative = r"a\b";
-    let mut expected = crate::env::current_dir().unwrap();
+    let mut expected = std::env::current_dir().unwrap();
     expected.push(relative);
     assert_eq!(absolute(relative).unwrap().as_os_str(), expected.as_os_str());
 
@@ -1951,116 +1960,6 @@ fn test_extension_path_sep_alternate() {
     let mut path = PathBuf::from("path/to/file");
     path.set_extension("d\\test");
     assert_eq!(path, Path::new("path/to/file.d\\test"));
-}
-
-#[bench]
-#[cfg_attr(miri, ignore)] // Miri isn't fast...
-fn bench_path_cmp_fast_path_buf_sort(b: &mut test::Bencher) {
-    let prefix = "my/home";
-    let mut paths: Vec<_> =
-        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {num}.rs"))).collect();
-
-    paths.sort();
-
-    b.iter(|| {
-        black_box(paths.as_mut_slice()).sort_unstable();
-    });
-}
-
-#[bench]
-#[cfg_attr(miri, ignore)] // Miri isn't fast...
-fn bench_path_cmp_fast_path_long(b: &mut test::Bencher) {
-    let prefix = "/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/";
-    let paths: Vec<_> =
-        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {num}.rs"))).collect();
-
-    let mut set = BTreeSet::new();
-
-    paths.iter().for_each(|p| {
-        set.insert(p.as_path());
-    });
-
-    b.iter(|| {
-        set.remove(paths[500].as_path());
-        set.insert(paths[500].as_path());
-    });
-}
-
-#[bench]
-#[cfg_attr(miri, ignore)] // Miri isn't fast...
-fn bench_path_cmp_fast_path_short(b: &mut test::Bencher) {
-    let prefix = "my/home";
-    let paths: Vec<_> =
-        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {num}.rs"))).collect();
-
-    let mut set = BTreeSet::new();
-
-    paths.iter().for_each(|p| {
-        set.insert(p.as_path());
-    });
-
-    b.iter(|| {
-        set.remove(paths[500].as_path());
-        set.insert(paths[500].as_path());
-    });
-}
-
-#[bench]
-#[cfg_attr(miri, ignore)] // Miri isn't fast...
-fn bench_path_hashset(b: &mut test::Bencher) {
-    let prefix = "/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/";
-    let paths: Vec<_> =
-        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {num}.rs"))).collect();
-
-    let mut set = HashSet::new();
-
-    paths.iter().for_each(|p| {
-        set.insert(p.as_path());
-    });
-
-    b.iter(|| {
-        set.remove(paths[500].as_path());
-        set.insert(black_box(paths[500].as_path()))
-    });
-}
-
-#[bench]
-#[cfg_attr(miri, ignore)] // Miri isn't fast...
-fn bench_path_hashset_miss(b: &mut test::Bencher) {
-    let prefix = "/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/";
-    let paths: Vec<_> =
-        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {num}.rs"))).collect();
-
-    let mut set = HashSet::new();
-
-    paths.iter().for_each(|p| {
-        set.insert(p.as_path());
-    });
-
-    let probe = PathBuf::from(prefix).join("other");
-
-    b.iter(|| set.remove(black_box(probe.as_path())));
-}
-
-#[bench]
-fn bench_hash_path_short(b: &mut test::Bencher) {
-    let mut hasher = DefaultHasher::new();
-    let path = Path::new("explorer.exe");
-
-    b.iter(|| black_box(path).hash(&mut hasher));
-
-    black_box(hasher.finish());
-}
-
-#[bench]
-fn bench_hash_path_long(b: &mut test::Bencher) {
-    let mut hasher = DefaultHasher::new();
-    let path =
-        Path::new("/aaaaa/aaaaaa/./../aaaaaaaa/bbbbbbbbbbbbb/ccccccccccc/ddddddddd/eeeeeee.fff");
-
-    b.iter(|| black_box(path).hash(&mut hasher));
-
-    black_box(hasher.finish());
 }
 
 #[test]

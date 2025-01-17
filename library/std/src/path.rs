@@ -67,9 +67,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
 
-#[cfg(test)]
-mod tests;
-
 use core::clone::CloneToUninit;
 
 use crate::borrow::{Borrow, Cow};
