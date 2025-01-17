@@ -177,6 +177,7 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
     //
     // NOTE: These insertions should be kept in sync with
     // `CheckCfg::fill_well_known` below.
+    // FIXME: sync me
 
     if sess.opts.debug_assertions {
         ins_none!(sym::debug_assertions);

@@ -245,6 +245,7 @@ fn evaluate_host_effect_from_builtin_impls<'tcx>(
 }
 
 // NOTE: Keep this in sync with `const_conditions_for_destruct` in the new solver.
+// FIXME: sync me
 fn evaluate_host_effect_for_destruct_goal<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,

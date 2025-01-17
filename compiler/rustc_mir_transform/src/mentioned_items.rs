@@ -37,6 +37,7 @@ impl<'tcx> crate::MirPass<'tcx> for MentionedItems {
 // visiting the exact same places but then instead of monomorphizing and creating `MonoItems`, we
 // have to remain generic and just recording the relevant information in `mentioned_items`, where it
 // will then be monomorphized later during "mentioned items" collection.
+// FIXME: sync me
 impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
         self.super_terminator(terminator, location);

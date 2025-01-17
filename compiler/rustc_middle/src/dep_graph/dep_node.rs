@@ -28,6 +28,7 @@ macro_rules! define_dep_nodes {
         // struct, and there we can take advantage of the unused bits in the u16.
         #[allow(non_camel_case_types)]
         #[repr(u16)] // Must be kept in sync with the inner type of `DepKind`.
+        // FIXME: sync me
         enum DepKindDefs {
             $( $( #[$attr] )* $variant),*
         }
@@ -38,6 +39,7 @@ macro_rules! define_dep_nodes {
 
             $(
                 // The `as u16` cast must be kept in sync with the inner type of `DepKind`.
+                // FIXME: sync me
                 pub const $variant: DepKind = DepKind::new(DepKindDefs::$variant as u16);
             )*
         }

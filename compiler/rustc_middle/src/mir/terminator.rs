@@ -136,6 +136,7 @@ impl UnwindAction {
 impl UnwindTerminateReason {
     pub fn as_str(self) -> &'static str {
         // Keep this in sync with the messages in `core/src/panicking.rs`.
+        // FIXME: sync me
         match self {
             UnwindTerminateReason::Abi => "panic in a function that cannot unwind",
             UnwindTerminateReason::InCleanup => "panic in a destructor during cleanup",
@@ -306,6 +307,7 @@ impl<O> AssertKind<O> {
     /// `AssertKind::panic_function` and the lang items mentioned in its docs).
     /// Note that we deliberately show more details here than we do at runtime, such as the actual
     /// numbers that overflowed -- it is much easier to do so here than at runtime.
+    // FIXME: sync me
     pub fn diagnostic_message(&self) -> DiagMessage {
         use AssertKind::*;
 
