@@ -3,8 +3,7 @@
 use std::path::PathBuf;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 
 use super::{Feature, to_nonzero};
 
@@ -203,6 +202,8 @@ declare_features! (
     (internal, allow_internal_unstable, "1.0.0", None),
     /// Allows using anonymous lifetimes in argument-position impl-trait.
     (unstable, anonymous_lifetime_in_impl_trait, "1.63.0", None),
+    /// Allows access to the emscripten_wasm_eh config, used by panic_unwind and unwind
+    (internal, cfg_emscripten_wasm_eh, "CURRENT_RUSTC_VERSION", None),
     /// Allows identifying the `compiler_builtins` crate.
     (internal, compiler_builtins, "1.13.0", None),
     /// Allows writing custom MIR
@@ -332,16 +333,18 @@ declare_features! (
     (unstable, hexagon_target_feature, "1.27.0", Some(44839)),
     (unstable, lahfsahf_target_feature, "1.78.0", Some(44839)),
     (unstable, loongarch_target_feature, "1.73.0", Some(44839)),
+    (unstable, m68k_target_feature, "1.85.0", Some(134328)),
     (unstable, mips_target_feature, "1.27.0", Some(44839)),
     (unstable, powerpc_target_feature, "1.27.0", Some(44839)),
     (unstable, prfchw_target_feature, "1.78.0", Some(44839)),
     (unstable, riscv_target_feature, "1.45.0", Some(44839)),
     (unstable, rtm_target_feature, "1.35.0", Some(44839)),
     (unstable, s390x_target_feature, "1.82.0", Some(44839)),
-    (unstable, sparc_target_feature, "CURRENT_RUSTC_VERSION", Some(132783)),
+    (unstable, sparc_target_feature, "1.84.0", Some(132783)),
     (unstable, sse4a_target_feature, "1.27.0", Some(44839)),
     (unstable, tbm_target_feature, "1.27.0", Some(44839)),
     (unstable, wasm_target_feature, "1.30.0", Some(44839)),
+    (unstable, x87_target_feature, "1.85.0", Some(44839)),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
     // Features are listed in alphabetical order. Tidy will fail if you don't keep it this way.
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
@@ -358,6 +361,8 @@ declare_features! (
     (unstable, abi_avr_interrupt, "1.45.0", Some(69664)),
     /// Allows `extern "C-cmse-nonsecure-call" fn()`.
     (unstable, abi_c_cmse_nonsecure_call, "1.51.0", Some(81391)),
+    /// Allows `extern "gpu-kernel" fn()`.
+    (unstable, abi_gpu_kernel, "CURRENT_RUSTC_VERSION", Some(135467)),
     /// Allows `extern "msp430-interrupt" fn()`.
     (unstable, abi_msp430_interrupt, "1.16.0", Some(38487)),
     /// Allows `extern "ptx-*" fn()`.
@@ -377,23 +382,25 @@ declare_features! (
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
     /// Enables experimental register support in inline assembly.
-    (unstable, asm_experimental_reg, "CURRENT_RUSTC_VERSION", Some(133416)),
+    (unstable, asm_experimental_reg, "1.85.0", Some(133416)),
     /// Allows using `label` operands in inline assembly.
     (unstable, asm_goto, "1.78.0", Some(119364)),
     /// Allows using `label` operands in inline assembly together with output operands.
-    (unstable, asm_goto_with_outputs, "CURRENT_RUSTC_VERSION", Some(119364)),
+    (unstable, asm_goto_with_outputs, "1.85.0", Some(119364)),
     /// Allows the `may_unwind` option in inline assembly.
     (unstable, asm_unwind, "1.58.0", Some(93334)),
     /// Allows users to enforce equality of associated constants `TraitImpl<AssocConst=3>`.
     (unstable, associated_const_equality, "1.58.0", Some(92827)),
     /// Allows associated type defaults.
     (unstable, associated_type_defaults, "1.2.0", Some(29661)),
-    /// Allows `async || body` closures.
-    (unstable, async_closure, "1.37.0", Some(62290)),
+    /// Allows async functions to be called from `dyn Trait`.
+    (incomplete, async_fn_in_dyn_trait, "1.85.0", Some(133119)),
     /// Allows `#[track_caller]` on async functions.
     (unstable, async_fn_track_caller, "1.73.0", Some(110011)),
     /// Allows `for await` loops.
     (unstable, async_for_loop, "1.77.0", Some(118898)),
+    /// Allows `async` trait bound modifier.
+    (unstable, async_trait_bounds, "1.85.0", Some(62290)),
     /// Allows using C-variadics.
     (unstable, c_variadic, "1.34.0", Some(44930)),
     /// Allows the use of `#[cfg(<true/false>)]`.
@@ -431,7 +438,7 @@ declare_features! (
     /// Allows `const || {}` closures in const contexts.
     (incomplete, const_closures, "1.68.0", Some(106003)),
     /// Allows using `~const Destruct` bounds and calling drop impls in const contexts.
-    (unstable, const_destruct, "CURRENT_RUSTC_VERSION", Some(133214)),
+    (unstable, const_destruct, "1.85.0", Some(133214)),
     /// Allows `for _ in _` loops in const contexts.
     (unstable, const_for, "1.56.0", Some(87575)),
     /// Be more precise when looking for live drops in a const context.
@@ -453,14 +460,15 @@ declare_features! (
     (unstable, custom_test_frameworks, "1.30.0", Some(50297)),
     /// Allows declarative macros 2.0 (`macro`).
     (unstable, decl_macro, "1.17.0", Some(39412)),
+    /// Allows the use of default values on struct definitions and the construction of struct
+    /// literals with the functional update syntax without a base.
+    (unstable, default_field_values, "1.85.0", Some(132162)),
     /// Allows using `#[deprecated_safe]` to deprecate the safeness of a function or trait
     (unstable, deprecated_safe, "1.61.0", Some(94978)),
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
     (unstable, deprecated_suggestion, "1.61.0", Some(94785)),
     /// Allows deref patterns.
     (incomplete, deref_patterns, "1.79.0", Some(87121)),
-    /// Controls errors in trait implementations.
-    (unstable, do_not_recommend, "1.67.0", Some(51992)),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
     (unstable, doc_auto_cfg, "1.58.0", Some(43781)),
     /// Allows `#[doc(cfg(...))]`.
@@ -475,9 +483,6 @@ declare_features! (
     (unstable, exhaustive_patterns, "1.13.0", Some(51085)),
     /// Allows explicit tail calls via `become` expression.
     (incomplete, explicit_tail_calls, "1.72.0", Some(112788)),
-    /// Allows using `efiapi`, `sysv64` and `win64` as calling convention
-    /// for functions with varargs.
-    (unstable, extended_varargs_abi_support, "1.65.0", Some(100189)),
     /// Allows defining `extern type`s.
     (unstable, extern_types, "1.23.0", Some(43467)),
     /// Allow using 128-bit (quad precision) floating point numbers.
@@ -500,22 +505,26 @@ declare_features! (
     (unstable, gen_blocks, "1.75.0", Some(117078)),
     /// Infer generic args for both consts and types.
     (unstable, generic_arg_infer, "1.55.0", Some(85077)),
-    /// An extension to the `generic_associated_types` feature, allowing incomplete features.
-    (incomplete, generic_associated_types_extended, "1.61.0", Some(95451)),
     /// Allows non-trivial generic constants which have to have wfness manually propagated to callers
     (incomplete, generic_const_exprs, "1.56.0", Some(76560)),
     /// Allows generic parameters and where-clauses on free & associated const items.
     (incomplete, generic_const_items, "1.73.0", Some(113521)),
     /// Allows registering static items globally, possibly across crates, to iterate over at runtime.
     (unstable, global_registration, "1.80.0", Some(125119)),
+    /// Allows using guards in patterns.
+    (incomplete, guard_patterns, "1.85.0", Some(129967)),
     /// Allows using `..=X` as a patterns in slices.
     (unstable, half_open_range_patterns_in_slices, "1.66.0", Some(67264)),
     /// Allows `if let` guard in match arms.
     (unstable, if_let_guard, "1.47.0", Some(51114)),
     /// Allows `impl Trait` to be used inside associated types (RFC 2515).
     (unstable, impl_trait_in_assoc_type, "1.70.0", Some(63063)),
+    /// Allows `impl Trait` in bindings (`let`).
+    (unstable, impl_trait_in_bindings, "1.64.0", Some(63065)),
     /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.
     (unstable, impl_trait_in_fn_trait_return, "1.64.0", Some(99697)),
+    /// Allows `use` associated functions from traits.
+    (unstable, import_trait_associated_functions, "CURRENT_RUSTC_VERSION", Some(134691)),
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995)),
     /// Allow anonymous constants from an inline `const` block in pattern position
@@ -538,7 +547,7 @@ declare_features! (
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
     /// Enables the generic const args MVP (only bare paths, not arbitrary computation).
-    (incomplete, min_generic_const_args, "CURRENT_RUSTC_VERSION", Some(132980)),
+    (incomplete, min_generic_const_args, "1.84.0", Some(132980)),
     /// A minimal, sound subset of specialization intended to be used by the
     /// standard library until the soundness issues with specialization
     /// are fixed.
@@ -633,8 +642,10 @@ declare_features! (
     /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
     (unstable, type_changing_struct_update, "1.58.0", Some(86555)),
+    /// Allows using `unsafe<'a> &'a T` unsafe binder types.
+    (incomplete, unsafe_binders, "1.85.0", Some(130516)),
     /// Allows declaring fields `unsafe`.
-    (incomplete, unsafe_fields, "CURRENT_RUSTC_VERSION", Some(132922)),
+    (incomplete, unsafe_fields, "1.85.0", Some(132922)),
     /// Allows const generic parameters to be defined with types that
     /// are not `Sized`, e.g. `fn foo<const N: [u8]>() {`.
     (incomplete, unsized_const_params, "1.82.0", Some(95174)),

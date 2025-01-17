@@ -23,6 +23,7 @@ use crate::{
     hir::Literal,
     lower::LowerCtx,
     path::{GenericArg, Path},
+    SyntheticSyntax,
 };
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -91,19 +92,37 @@ impl Rawness {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+/// A `TypeRefId` that is guaranteed to always be `TypeRef::Path`. We use this for things like
+/// impl's trait, that are always paths but need to be traced back to source code.
+pub struct PathId(TypeRefId);
+
+impl PathId {
+    #[inline]
+    pub fn from_type_ref_unchecked(type_ref: TypeRefId) -> Self {
+        Self(type_ref)
+    }
+
+    #[inline]
+    pub fn type_ref(self) -> TypeRefId {
+        self.0
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct TraitRef {
-    pub path: Path,
+    pub path: PathId,
 }
 
 impl TraitRef {
     /// Converts an `ast::PathType` to a `hir::TraitRef`.
     pub(crate) fn from_ast(ctx: &mut LowerCtx<'_>, node: ast::Type) -> Option<Self> {
         // FIXME: Use `Path::from_src`
-        match node {
-            ast::Type::PathType(path) => {
-                path.path().and_then(|it| ctx.lower_path(it)).map(|path| TraitRef { path })
-            }
+        match &node {
+            ast::Type::PathType(path) => path
+                .path()
+                .and_then(|it| ctx.lower_path(it))
+                .map(|path| TraitRef { path: ctx.alloc_path(path, AstPtr::new(&node)) }),
             _ => None,
         }
     }
@@ -173,8 +192,21 @@ impl TypesMap {
 impl Index<TypeRefId> for TypesMap {
     type Output = TypeRef;
 
+    #[inline]
     fn index(&self, index: TypeRefId) -> &Self::Output {
         &self.types[index]
+    }
+}
+
+impl Index<PathId> for TypesMap {
+    type Output = Path;
+
+    #[inline]
+    fn index(&self, index: PathId) -> &Self::Output {
+        let TypeRef::Path(path) = &self[index.type_ref()] else {
+            unreachable!("`PathId` always points to `TypeRef::Path`");
+        };
+        path
     }
 }
 
@@ -187,6 +219,12 @@ pub struct TypesSourceMap {
 }
 
 impl TypesSourceMap {
+    pub const EMPTY: Self = Self { types_map_back: ArenaMap::new() };
+
+    pub fn type_syntax(&self, id: TypeRefId) -> Result<TypeSource, SyntheticSyntax> {
+        self.types_map_back.get(id).cloned().ok_or(SyntheticSyntax)
+    }
+
     pub(crate) fn shrink_to_fit(&mut self) {
         let TypesSourceMap { types_map_back } = self;
         types_map_back.shrink_to_fit();
@@ -214,15 +252,15 @@ impl LifetimeRef {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TypeBound {
-    Path(Path, TraitBoundModifier),
-    ForLifetime(Box<[Name]>, Path),
+    Path(PathId, TraitBoundModifier),
+    ForLifetime(Box<[Name]>, PathId),
     Lifetime(LifetimeRef),
     Use(Box<[UseArgRef]>),
     Error,
 }
 
 #[cfg(target_pointer_width = "64")]
-const _: [(); 32] = [(); ::std::mem::size_of::<TypeBound>()];
+const _: [(); 24] = [(); ::std::mem::size_of::<TypeBound>()];
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum UseArgRef {
@@ -365,8 +403,8 @@ impl TypeRef {
                 TypeRef::ImplTrait(bounds) | TypeRef::DynTrait(bounds) => {
                     for bound in bounds {
                         match bound {
-                            TypeBound::Path(path, _) | TypeBound::ForLifetime(_, path) => {
-                                go_path(path, f, map)
+                            &TypeBound::Path(path, _) | &TypeBound::ForLifetime(_, path) => {
+                                go_path(&map[path], f, map)
                             }
                             TypeBound::Lifetime(_) | TypeBound::Error | TypeBound::Use(_) => (),
                         }
@@ -397,8 +435,8 @@ impl TypeRef {
                         }
                         for bound in binding.bounds.iter() {
                             match bound {
-                                TypeBound::Path(path, _) | TypeBound::ForLifetime(_, path) => {
-                                    go_path(path, f, map)
+                                &TypeBound::Path(path, _) | &TypeBound::ForLifetime(_, path) => {
+                                    go_path(&map[path], f, map)
                                 }
                                 TypeBound::Lifetime(_) | TypeBound::Error | TypeBound::Use(_) => (),
                             }
@@ -425,7 +463,7 @@ pub(crate) fn type_bounds_from_ast(
 
 impl TypeBound {
     pub(crate) fn from_ast(ctx: &mut LowerCtx<'_>, node: ast::TypeBound) -> Self {
-        let mut lower_path_type = |path_type: ast::PathType| ctx.lower_path(path_type.path()?);
+        let mut lower_path_type = |path_type: &ast::PathType| ctx.lower_path(path_type.path()?);
 
         match node.kind() {
             ast::TypeBoundKind::PathType(path_type) => {
@@ -433,8 +471,10 @@ impl TypeBound {
                     Some(_) => TraitBoundModifier::Maybe,
                     None => TraitBoundModifier::None,
                 };
-                lower_path_type(path_type)
-                    .map(|p| TypeBound::Path(p, m))
+                lower_path_type(&path_type)
+                    .map(|p| {
+                        TypeBound::Path(ctx.alloc_path(p, AstPtr::new(&path_type).upcast()), m)
+                    })
                     .unwrap_or(TypeBound::Error)
             }
             ast::TypeBoundKind::ForType(for_type) => {
@@ -445,12 +485,14 @@ impl TypeBound {
                         .collect(),
                     None => Box::default(),
                 };
-                let path = for_type.ty().and_then(|ty| match ty {
-                    ast::Type::PathType(path_type) => lower_path_type(path_type),
+                let path = for_type.ty().and_then(|ty| match &ty {
+                    ast::Type::PathType(path_type) => lower_path_type(path_type).map(|p| (p, ty)),
                     _ => None,
                 });
                 match path {
-                    Some(p) => TypeBound::ForLifetime(lt_refs, p),
+                    Some((p, ty)) => {
+                        TypeBound::ForLifetime(lt_refs, ctx.alloc_path(p, AstPtr::new(&ty)))
+                    }
                     None => TypeBound::Error,
                 }
             }
@@ -470,10 +512,10 @@ impl TypeBound {
         }
     }
 
-    pub fn as_path(&self) -> Option<(&Path, &TraitBoundModifier)> {
+    pub fn as_path<'a>(&self, map: &'a TypesMap) -> Option<(&'a Path, TraitBoundModifier)> {
         match self {
-            TypeBound::Path(p, m) => Some((p, m)),
-            TypeBound::ForLifetime(_, p) => Some((p, &TraitBoundModifier::None)),
+            &TypeBound::Path(p, m) => Some((&map[p], m)),
+            &TypeBound::ForLifetime(_, p) => Some((&map[p], TraitBoundModifier::None)),
             TypeBound::Lifetime(_) | TypeBound::Error | TypeBound::Use(_) => None,
         }
     }

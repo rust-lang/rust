@@ -1,4 +1,4 @@
-use crate::common::{Config, Sanitizer};
+use crate::common::{Config, KNOWN_TARGET_HAS_ATOMIC_WIDTHS, Sanitizer};
 use crate::header::{IgnoreDecision, llvm_has_libzstd};
 
 pub(super) fn handle_needs(
@@ -171,10 +171,53 @@ pub(super) fn handle_needs(
         },
     ];
 
-    let (name, comment) = match ln.split_once([':', ' ']) {
-        Some((name, comment)) => (name, Some(comment)),
+    let (name, rest) = match ln.split_once([':', ' ']) {
+        Some((name, rest)) => (name, Some(rest)),
         None => (ln, None),
     };
+
+    // FIXME(jieyouxu): tighten up this parsing to reject using both `:` and ` ` as means to
+    // delineate value.
+    if name == "needs-target-has-atomic" {
+        let Some(rest) = rest else {
+            return IgnoreDecision::Error {
+                message: "expected `needs-target-has-atomic` to have a comma-separated list of atomic widths".to_string(),
+            };
+        };
+
+        // Expect directive value to be a list of comma-separated atomic widths.
+        let specified_widths = rest
+            .split(',')
+            .map(|width| width.trim())
+            .map(ToString::to_string)
+            .collect::<Vec<String>>();
+
+        for width in &specified_widths {
+            if !KNOWN_TARGET_HAS_ATOMIC_WIDTHS.contains(&width.as_str()) {
+                return IgnoreDecision::Error {
+                    message: format!(
+                        "unknown width specified in `needs-target-has-atomic`: `{width}` is not a \
+                        known `target_has_atomic_width`, known values are `{:?}`",
+                        KNOWN_TARGET_HAS_ATOMIC_WIDTHS
+                    ),
+                };
+            }
+        }
+
+        let satisfies_all_specified_widths = specified_widths
+            .iter()
+            .all(|specified| config.target_cfg().target_has_atomic.contains(specified));
+        if satisfies_all_specified_widths {
+            return IgnoreDecision::Continue;
+        } else {
+            return IgnoreDecision::Ignore {
+                reason: format!(
+                    "skipping test as target does not support all of the required `target_has_atomic` widths `{:?}`",
+                    specified_widths
+                ),
+            };
+        }
+    }
 
     if !name.starts_with("needs-") {
         return IgnoreDecision::Continue;
@@ -193,7 +236,7 @@ pub(super) fn handle_needs(
                 break;
             } else {
                 return IgnoreDecision::Ignore {
-                    reason: if let Some(comment) = comment {
+                    reason: if let Some(comment) = rest {
                         format!("{} ({})", need.ignore_reason, comment.trim())
                     } else {
                         need.ignore_reason.into()

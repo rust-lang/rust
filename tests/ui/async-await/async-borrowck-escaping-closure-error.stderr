@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing local variable `x`
-  --> $DIR/async-borrowck-escaping-closure-error.rs:6:5
+  --> $DIR/async-borrowck-escaping-closure-error.rs:5:5
    |
 LL |     Box::new((async || x)())
    |     ^^^^^^^^^------------^^^

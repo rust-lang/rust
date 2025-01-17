@@ -447,7 +447,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // This works fairly well because trait matching does not actually care about param-env
     // TypeOutlives predicates - these are normally used by regionck.
     let outlives_predicates: Vec<_> = predicates
-        .extract_if(|predicate| {
+        .extract_if(.., |predicate| {
             matches!(predicate.kind().skip_binder(), ty::ClauseKind::TypeOutlives(..))
         })
         .collect();
@@ -551,8 +551,18 @@ pub fn try_evaluate_const<'tcx>(
         | ty::ConstKind::Placeholder(_)
         | ty::ConstKind::Expr(_) => Err(EvaluateConstErr::HasGenericsOrInfers),
         ty::ConstKind::Unevaluated(uv) => {
-            // Postpone evaluation of constants that depend on generic parameters or inference variables.
-            let (args, param_env) = if tcx.features().generic_const_exprs()
+            // Postpone evaluation of constants that depend on generic parameters or
+            // inference variables.
+            //
+            // We use `TypingMode::PostAnalysis`  here which is not *technically* correct
+            // to be revealing opaque types here as borrowcheck has not run yet. However,
+            // CTFE itself uses `TypingMode::PostAnalysis` unconditionally even during
+            // typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821).
+            // As a result we always use a revealed env when resolving the instance to evaluate.
+            //
+            // FIXME: `const_eval_resolve_for_typeck` should probably just modify the env itself
+            // instead of having this logic here
+            let (args, typing_env) = if tcx.features().generic_const_exprs()
                 && uv.has_non_region_infer()
             {
                 // `feature(generic_const_exprs)` causes anon consts to inherit all parent generics. This can cause
@@ -568,13 +578,17 @@ pub fn try_evaluate_const<'tcx>(
                             // the generic arguments provided for it, then we should *not* attempt to evaluate it.
                             return Err(EvaluateConstErr::HasGenericsOrInfers);
                         } else {
-                            (replace_param_and_infer_args_with_placeholder(tcx, uv.args), param_env)
+                            let args = replace_param_and_infer_args_with_placeholder(tcx, uv.args);
+                            let typing_env = infcx
+                                .typing_env(tcx.erase_regions(param_env))
+                                .with_post_analysis_normalized(tcx);
+                            (args, typing_env)
                         }
                     }
                     Err(_) | Ok(None) => {
                         let args = GenericArgs::identity_for_item(tcx, uv.def);
-                        let param_env = tcx.param_env(uv.def);
-                        (args, param_env)
+                        let typing_env = ty::TypingEnv::post_analysis(tcx, uv.def);
+                        (args, typing_env)
                     }
                 }
             } else if tcx.def_kind(uv.def) == DefKind::AnonConst && uv.has_non_region_infer() {
@@ -585,7 +599,7 @@ pub fn try_evaluate_const<'tcx>(
                 // even though it is not something we should ever actually encounter.
                 //
                 // Array repeat expr counts are allowed to syntactically use generic parameters
-                // but must not actually depend on them in order to evalaute succesfully. This means
+                // but must not actually depend on them in order to evalaute successfully. This means
                 // that it is actually fine to evalaute them in their own environment rather than with
                 // the actually provided generic arguments.
                 tcx.dcx().delayed_bug(
@@ -593,27 +607,20 @@ pub fn try_evaluate_const<'tcx>(
                 );
 
                 let args = GenericArgs::identity_for_item(tcx, uv.def);
-                let param_env = tcx.param_env(uv.def);
-                (args, param_env)
+                let typing_env = ty::TypingEnv::post_analysis(tcx, uv.def);
+                (args, typing_env)
             } else {
                 // FIXME: This codepath is reachable under `associated_const_equality` and in the
                 // future will be reachable by `min_generic_const_args`. We should handle inference
                 // variables and generic parameters properly instead of doing nothing.
-                (uv.args, param_env)
+                let typing_env = infcx
+                    .typing_env(tcx.erase_regions(param_env))
+                    .with_post_analysis_normalized(tcx);
+                (uv.args, typing_env)
             };
             let uv = ty::UnevaluatedConst::new(uv.def, args);
 
-            // It's not *technically* correct to be revealing opaque types here as borrowcheck has
-            // not run yet. However, CTFE itself uses `TypingMode::PostAnalysis` unconditionally even
-            // during typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821).
-            // As a result we always use a revealed env when resolving the instance to evaluate.
-            //
-            // FIXME: `const_eval_resolve_for_typeck` should probably just modify the env itself
-            // instead of having this logic here
-            let typing_env =
-                tcx.erase_regions(infcx.typing_env(param_env)).with_post_analysis_normalized(tcx);
             let erased_uv = tcx.erase_regions(uv);
-
             use rustc_middle::mir::interpret::ErrorHandled;
             match tcx.const_eval_resolve_for_typeck(typing_env, erased_uv, DUMMY_SP) {
                 Ok(Ok(val)) => Ok(ty::Const::new_value(
@@ -707,9 +714,18 @@ pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause
     }
     let errors = ocx.select_all_or_error();
 
-    let result = !errors.is_empty();
-    debug!("impossible_predicates = {:?}", result);
-    result
+    if !errors.is_empty() {
+        return true;
+    }
+
+    // Leak check for any higher-ranked trait mismatches.
+    // We only need to do this in the old solver, since the new solver already
+    // leak-checks.
+    if !infcx.next_trait_solver() && infcx.leak_check(ty::UniverseIndex::ROOT, None).is_err() {
+        return true;
+    }
+
+    false
 }
 
 fn instantiate_and_check_impossible_predicates<'tcx>(

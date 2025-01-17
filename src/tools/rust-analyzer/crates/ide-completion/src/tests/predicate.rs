@@ -16,16 +16,16 @@ fn predicate_start() {
 struct Foo<'lt, T, const C: usize> where $0 {}
 "#,
         expect![[r#"
-            en Enum      Enum
+            en Enum                    Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Foo<…>    Foo<'_, {unknown}, _>
-            st Record    Record
-            st Tuple     Tuple
-            st Unit      Unit
+            st Foo<…> Foo<'_, {unknown}, _>
+            st Record                Record
+            st Tuple                  Tuple
+            st Unit                    Unit
             tt Trait
-            un Union     Union
-            bt u32       u32
+            un Union                  Union
+            bt u32                      u32
             kw crate::
             kw self::
         "#]],
@@ -89,16 +89,16 @@ fn param_list_for_for_pred() {
 struct Foo<'lt, T, const C: usize> where for<'a> $0 {}
 "#,
         expect![[r#"
-            en Enum      Enum
+            en Enum                    Enum
             ma makro!(…) macro_rules! makro
             md module
-            st Foo<…>    Foo<'_, {unknown}, _>
-            st Record    Record
-            st Tuple     Tuple
-            st Unit      Unit
+            st Foo<…> Foo<'_, {unknown}, _>
+            st Record                Record
+            st Tuple                  Tuple
+            st Unit                    Unit
             tt Trait
-            un Union     Union
-            bt u32       u32
+            un Union                  Union
+            bt u32                      u32
             kw crate::
             kw self::
         "#]],
@@ -114,16 +114,16 @@ impl Record {
 }
 "#,
         expect![[r#"
-            en Enum      Enum
+            en Enum                    Enum
             ma makro!(…) macro_rules! makro
             md module
-            sp Self      Record
-            st Record    Record
-            st Tuple     Tuple
-            st Unit      Unit
+            sp Self                  Record
+            st Record                Record
+            st Tuple                  Tuple
+            st Unit                    Unit
             tt Trait
-            un Union     Union
-            bt u32       u32
+            un Union                  Union
+            bt u32                      u32
             kw crate::
             kw self::
         "#]],

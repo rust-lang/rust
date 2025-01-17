@@ -92,7 +92,7 @@ use self::{foo::*, bar$0};
 "#,
         expect![[r#"
             md foo
-            st S   S
+            st S S
         "#]],
     );
 }
@@ -179,7 +179,7 @@ struct Bar;
 "#,
         expect![[r#"
             ma foo macro_rules! foo_
-            st Foo Foo
+            st Foo               Foo
         "#]],
     );
 }
@@ -203,8 +203,8 @@ impl Foo {
 "#,
         expect![[r#"
             ev RecordVariant RecordVariant
-            ev TupleVariant  TupleVariant
-            ev UnitVariant   UnitVariant
+            ev TupleVariant   TupleVariant
+            ev UnitVariant     UnitVariant
         "#]],
     );
 }
@@ -257,7 +257,7 @@ mod a {
 }
 "#,
         expect![[r#"
-            ct A       usize
+            ct A usize
             md b
             kw super::
         "#]],
@@ -450,9 +450,9 @@ pub fn foo() {}
 marco_rules! m { () => {} }
 "#,
         expect![[r#"
-            fn foo  fn()
+            fn foo fn()
             md simd
-            st S    S
+            st S      S
         "#]],
     );
 }

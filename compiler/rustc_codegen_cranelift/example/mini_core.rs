@@ -55,26 +55,26 @@ impl<T: ?Sized> LegacyReceiver for &mut T {}
 impl<T: ?Sized> LegacyReceiver for Box<T> {}
 
 #[lang = "copy"]
-pub unsafe trait Copy {}
+pub trait Copy {}
 
-unsafe impl Copy for bool {}
-unsafe impl Copy for u8 {}
-unsafe impl Copy for u16 {}
-unsafe impl Copy for u32 {}
-unsafe impl Copy for u64 {}
-unsafe impl Copy for u128 {}
-unsafe impl Copy for usize {}
-unsafe impl Copy for i8 {}
-unsafe impl Copy for i16 {}
-unsafe impl Copy for i32 {}
-unsafe impl Copy for isize {}
-unsafe impl Copy for f32 {}
-unsafe impl Copy for f64 {}
-unsafe impl Copy for char {}
-unsafe impl<'a, T: ?Sized> Copy for &'a T {}
-unsafe impl<T: ?Sized> Copy for *const T {}
-unsafe impl<T: ?Sized> Copy for *mut T {}
-unsafe impl<T: Copy> Copy for Option<T> {}
+impl Copy for bool {}
+impl Copy for u8 {}
+impl Copy for u16 {}
+impl Copy for u32 {}
+impl Copy for u64 {}
+impl Copy for u128 {}
+impl Copy for usize {}
+impl Copy for i8 {}
+impl Copy for i16 {}
+impl Copy for i32 {}
+impl Copy for isize {}
+impl Copy for f32 {}
+impl Copy for f64 {}
+impl Copy for char {}
+impl<'a, T: ?Sized> Copy for &'a T {}
+impl<T: ?Sized> Copy for *const T {}
+impl<T: ?Sized> Copy for *mut T {}
+impl<T: Copy> Copy for Option<T> {}
 
 #[lang = "sync"]
 pub unsafe trait Sync {}

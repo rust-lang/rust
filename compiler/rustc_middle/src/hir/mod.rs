@@ -30,6 +30,7 @@ pub struct ModuleItems {
     foreign_items: Box<[ForeignItemId]>,
     opaques: Box<[LocalDefId]>,
     body_owners: Box<[LocalDefId]>,
+    nested_bodies: Box<[LocalDefId]>,
 }
 
 impl ModuleItems {
@@ -68,6 +69,10 @@ impl ModuleItems {
 
     pub fn opaques(&self) -> impl Iterator<Item = LocalDefId> + '_ {
         self.opaques.iter().copied()
+    }
+
+    pub fn nested_bodies(&self) -> impl Iterator<Item = LocalDefId> + '_ {
+        self.nested_bodies.iter().copied()
     }
 
     pub fn definitions(&self) -> impl Iterator<Item = LocalDefId> + '_ {
@@ -151,7 +156,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         node: OwnerNode<'_>,
         bodies: &SortedMap<ItemLocalId, &Body<'_>>,
-        attrs: &SortedMap<ItemLocalId, &[rustc_ast::Attribute]>,
+        attrs: &SortedMap<ItemLocalId, &[Attribute]>,
     ) -> (Option<Fingerprint>, Option<Fingerprint>) {
         if self.needs_crate_hash() {
             self.with_stable_hashing_context(|mut hcx| {

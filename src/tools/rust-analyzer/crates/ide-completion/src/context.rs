@@ -7,8 +7,8 @@ mod tests;
 use std::{iter, ops::ControlFlow};
 
 use hir::{
-    HasAttrs, Local, ModuleSource, Name, PathResolution, ScopeDef, Semantics, SemanticsScope, Type,
-    TypeInfo,
+    HasAttrs, Local, ModPath, ModuleDef, ModuleSource, Name, PathResolution, ScopeDef, Semantics,
+    SemanticsScope, Symbol, Type, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase, famous_defs::FamousDefs, helpers::is_editable_crate, FilePosition,
@@ -22,6 +22,7 @@ use syntax::{
 };
 
 use crate::{
+    config::AutoImportExclusionType,
     context::analysis::{expand_and_analyze, AnalysisResult},
     CompletionConfig,
 };
@@ -133,6 +134,7 @@ pub(crate) type ExistingDerives = FxHashSet<hir::Macro>;
 pub(crate) struct AttrCtx {
     pub(crate) kind: AttrKind,
     pub(crate) annotated_item_kind: Option<SyntaxKind>,
+    pub(crate) derive_helpers: Vec<(Symbol, Symbol)>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -289,15 +291,14 @@ pub(crate) struct ParamContext {
 /// The state of the lifetime we are completing.
 #[derive(Debug)]
 pub(crate) struct LifetimeContext {
-    pub(crate) lifetime: Option<ast::Lifetime>,
     pub(crate) kind: LifetimeKind,
 }
 
 /// The kind of lifetime we are completing.
 #[derive(Debug)]
 pub(crate) enum LifetimeKind {
-    LifetimeParam { is_decl: bool, param: ast::LifetimeParam },
-    Lifetime,
+    LifetimeParam,
+    Lifetime { in_lifetime_param_bound: bool, def: Option<hir::GenericDef> },
     LabelRef,
     LabelDef,
 }
@@ -429,7 +430,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(crate) sema: Semantics<'a, RootDatabase>,
     pub(crate) scope: SemanticsScope<'a>,
     pub(crate) db: &'a RootDatabase,
-    pub(crate) config: &'a CompletionConfig,
+    pub(crate) config: &'a CompletionConfig<'a>,
     pub(crate) position: FilePosition,
 
     /// The token before the cursor, in the original file.
@@ -461,6 +462,17 @@ pub(crate) struct CompletionContext<'a> {
     ///
     /// Here depth will be 2
     pub(crate) depth_from_crate_root: usize,
+
+    /// Traits whose methods will be excluded from flyimport. Flyimport should not suggest
+    /// importing those traits.
+    ///
+    /// Note the trait *themselves* are not excluded, only their methods are.
+    pub(crate) exclude_flyimport: FxHashMap<ModuleDef, AutoImportExclusionType>,
+    /// Traits whose methods should always be excluded, even when in scope (compare `exclude_flyimport_traits`).
+    /// They will *not* be excluded, however, if they are available as a generic bound.
+    ///
+    /// Note the trait *themselves* are not excluded, only their methods are.
+    pub(crate) exclude_traits: FxHashSet<hir::Trait>,
 
     /// Whether and how to complete semicolon for unit-returning functions.
     pub(crate) complete_semicolon: CompleteSemicolon,
@@ -670,7 +682,7 @@ impl<'a> CompletionContext<'a> {
     pub(crate) fn new(
         db: &'a RootDatabase,
         position @ FilePosition { file_id, offset }: FilePosition,
-        config: &'a CompletionConfig,
+        config: &'a CompletionConfig<'a>,
     ) -> Option<(CompletionContext<'a>, CompletionAnalysis)> {
         let _p = tracing::info_span!("CompletionContext::new").entered();
         let sema = Semantics::new(db);
@@ -718,7 +730,7 @@ impl<'a> CompletionContext<'a> {
             expected: (expected_type, expected_name),
             qualifier_ctx,
             token,
-            offset,
+            original_offset,
         } = expand_and_analyze(
             &sema,
             original_file.syntax().clone(),
@@ -728,7 +740,7 @@ impl<'a> CompletionContext<'a> {
         )?;
 
         // adjust for macro input, this still fails if there is no token written yet
-        let scope = sema.scope_at_offset(&token.parent()?, offset)?;
+        let scope = sema.scope_at_offset(&token.parent()?, original_offset)?;
 
         let krate = scope.krate();
         let module = scope.module();
@@ -742,16 +754,52 @@ impl<'a> CompletionContext<'a> {
         let mut locals = FxHashMap::default();
         scope.process_all_names(&mut |name, scope| {
             if let ScopeDef::Local(local) = scope {
+                // synthetic names currently leak out as we lack synthetic hygiene, so filter them
+                // out here
+                if name.as_str().starts_with('<') {
+                    return;
+                }
                 locals.insert(name, local);
             }
         });
 
         let depth_from_crate_root = iter::successors(Some(module), |m| m.parent(db))
-            // `BlockExpr` modules are not count as module depth
+            // `BlockExpr` modules do not count towards module depth
             .filter(|m| !matches!(m.definition_source(db).value, ModuleSource::BlockExpr(_)))
             .count()
             // exclude `m` itself
             .saturating_sub(1);
+
+        let exclude_traits: FxHashSet<_> = config
+            .exclude_traits
+            .iter()
+            .filter_map(|path| {
+                scope
+                    .resolve_mod_path(&ModPath::from_segments(
+                        hir::PathKind::Plain,
+                        path.split("::").map(Symbol::intern).map(Name::new_symbol_root),
+                    ))
+                    .find_map(|it| match it {
+                        hir::ItemInNs::Types(ModuleDef::Trait(t)) => Some(t),
+                        _ => None,
+                    })
+            })
+            .collect();
+
+        let mut exclude_flyimport: FxHashMap<_, _> = config
+            .exclude_flyimport
+            .iter()
+            .flat_map(|(path, kind)| {
+                scope
+                    .resolve_mod_path(&ModPath::from_segments(
+                        hir::PathKind::Plain,
+                        path.split("::").map(Symbol::intern).map(Name::new_symbol_root),
+                    ))
+                    .map(|it| (it.into_module_def(), *kind))
+            })
+            .collect();
+        exclude_flyimport
+            .extend(exclude_traits.iter().map(|&t| (t.into(), AutoImportExclusionType::Always)));
 
         let complete_semicolon = if config.add_semicolon_to_unit {
             let inside_closure_ret = token.parent_ancestors().try_for_each(|ancestor| {
@@ -817,6 +865,8 @@ impl<'a> CompletionContext<'a> {
             qualifier_ctx,
             locals,
             depth_from_crate_root,
+            exclude_flyimport,
+            exclude_traits,
             complete_semicolon,
         };
         Some((ctx, analysis))

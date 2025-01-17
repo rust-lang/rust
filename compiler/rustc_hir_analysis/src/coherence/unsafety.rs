@@ -3,7 +3,7 @@
 
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
-use rustc_hir::Safety;
+use rustc_hir::{LangItem, Safety};
 use rustc_middle::ty::ImplPolarity::*;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{ImplTraitHeader, TraitDef, TyCtxt};
@@ -20,7 +20,19 @@ pub(super) fn check_item(
         tcx.generics_of(def_id).own_params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle");
     let trait_ref = trait_header.trait_ref.instantiate_identity();
 
-    match (trait_def.safety, unsafe_attr, trait_header.safety, trait_header.polarity) {
+    let is_copy = tcx.is_lang_item(trait_def.def_id, LangItem::Copy);
+    let trait_def_safety = if is_copy {
+        // If `Self` has unsafe fields, `Copy` is unsafe to implement.
+        if trait_header.trait_ref.skip_binder().self_ty().has_unsafe_fields() {
+            rustc_hir::Safety::Unsafe
+        } else {
+            rustc_hir::Safety::Safe
+        }
+    } else {
+        trait_def.safety
+    };
+
+    match (trait_def_safety, unsafe_attr, trait_header.safety, trait_header.polarity) {
         (Safety::Safe, None, Safety::Unsafe, Positive | Reservation) => {
             let span = tcx.def_span(def_id);
             return Err(struct_span_code_err!(
@@ -48,12 +60,22 @@ pub(super) fn check_item(
                 "the trait `{}` requires an `unsafe impl` declaration",
                 trait_ref.print_trait_sugared()
             )
-            .with_note(format!(
-                "the trait `{}` enforces invariants that the compiler can't check. \
-                    Review the trait documentation and make sure this implementation \
-                    upholds those invariants before adding the `unsafe` keyword",
-                trait_ref.print_trait_sugared()
-            ))
+            .with_note(if is_copy {
+                format!(
+                    "the trait `{}` cannot be safely implemented for `{}` \
+                        because it has unsafe fields. Review the invariants \
+                        of those fields before adding an `unsafe impl`",
+                    trait_ref.print_trait_sugared(),
+                    trait_ref.self_ty(),
+                )
+            } else {
+                format!(
+                    "the trait `{}` enforces invariants that the compiler can't check. \
+                        Review the trait documentation and make sure this implementation \
+                        upholds those invariants before adding the `unsafe` keyword",
+                    trait_ref.print_trait_sugared()
+                )
+            })
             .with_span_suggestion_verbose(
                 span.shrink_to_lo(),
                 "add `unsafe` to this trait implementation",

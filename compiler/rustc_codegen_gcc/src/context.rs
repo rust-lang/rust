@@ -386,6 +386,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
     type Value = RValue<'gcc>;
     type Metadata = RValue<'gcc>;
+    // TODO(antoyo): change to Function<'gcc>.
     type Function = RValue<'gcc>;
 
     type BasicBlock = Block<'gcc>;
@@ -544,7 +545,10 @@ impl<'gcc, 'tcx> HasWasmCAbiOpt for CodegenCx<'gcc, 'tcx> {
 
 impl<'gcc, 'tcx> HasX86AbiOpt for CodegenCx<'gcc, 'tcx> {
     fn x86_abi_opt(&self) -> X86Abi {
-        X86Abi { regparm: self.tcx.sess.opts.unstable_opts.regparm }
+        X86Abi {
+            regparm: self.tcx.sess.opts.unstable_opts.regparm,
+            reg_struct_return: self.tcx.sess.opts.unstable_opts.reg_struct_return,
+        }
     }
 }
 

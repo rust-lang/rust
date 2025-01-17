@@ -1,6 +1,6 @@
 use super::ITER_KV_MAP;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::pat_is_wild;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;

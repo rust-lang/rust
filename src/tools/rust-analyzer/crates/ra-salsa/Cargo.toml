@@ -20,7 +20,7 @@ parking_lot = "0.12.1"
 rustc-hash = "2.0.0"
 smallvec = "1.0.0"
 oorandom = "11"
-triomphe = "0.1.11"
+triomphe.workspace = true
 itertools.workspace = true
 
 ra-salsa-macros = { version = "0.0.0", path = "ra-salsa-macros", package = "salsa-macros" }

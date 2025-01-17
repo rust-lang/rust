@@ -73,5 +73,17 @@ error: unnecessary map of the identity function
 LL |     let _ = x.iter().copied().map(|(x, y)| (x, y));
    |                              ^^^^^^^^^^^^^^^^^^^^^ help: remove the call to `map`
 
-error: aborting due to 11 previous errors
+error: unnecessary map of the identity function
+  --> tests/ui/map_identity.rs:77:15
+   |
+LL |     let _ = it.map(|x| x).next();
+   |               ^^^^^^^^^^^ help: remove the call to `map`
+
+error: unnecessary map of the identity function
+  --> tests/ui/map_identity.rs:81:19
+   |
+LL |     let _ = { it }.map(|x| x).next();
+   |                   ^^^^^^^^^^^ help: remove the call to `map`
+
+error: aborting due to 13 previous errors
 

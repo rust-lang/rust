@@ -88,6 +88,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
     private _treeView: vscode.TreeView<Dependency | DependencyFile | DependencyId> | undefined;
     private lastStatus: ServerStatusParams | { health: "stopped" } = { health: "stopped" };
     private _serverVersion: string;
+    private statusBarActiveEditorListener: Disposable;
 
     get serverPath(): string | undefined {
         return this._serverPath;
@@ -119,6 +120,10 @@ export class Ctx implements RustAnalyzerExtensionApi {
         this._serverVersion = "<not running>";
         this.config = new Config(extCtx.subscriptions);
         this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+        this.updateStatusBarVisibility(vscode.window.activeTextEditor);
+        this.statusBarActiveEditorListener = vscode.window.onDidChangeActiveTextEditor((editor) =>
+            this.updateStatusBarVisibility(editor),
+        );
         if (this.config.testExplorer) {
             this.testController = vscode.tests.createTestController(
                 "rustAnalyzerTestController",
@@ -141,6 +146,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
     dispose() {
         this.config.dispose();
         this.statusBar.dispose();
+        this.statusBarActiveEditorListener.dispose();
         this.testController?.dispose();
         void this.disposeClient();
         this.commandDisposables.forEach((disposable) => disposable.dispose());
@@ -341,6 +347,8 @@ export class Ctx implements RustAnalyzerExtensionApi {
         }
         log.info("Disposing language client");
         this.updateCommands("disable");
+        // we give the server 100ms to stop gracefully
+        await this.client?.stop(100).catch((_) => {});
         await this.disposeClient();
     }
 
@@ -404,7 +412,6 @@ export class Ctx implements RustAnalyzerExtensionApi {
         let icon = "";
         const status = this.lastStatus;
         const statusBar = this.statusBar;
-        statusBar.show();
         statusBar.tooltip = new vscode.MarkdownString("", true);
         statusBar.tooltip.isTrusted = true;
         switch (status.health) {
@@ -470,6 +477,22 @@ export class Ctx implements RustAnalyzerExtensionApi {
         );
         if (!status.quiescent) icon = "$(loading~spin) ";
         statusBar.text = `${icon}rust-analyzer`;
+    }
+
+    private updateStatusBarVisibility(editor: vscode.TextEditor | undefined) {
+        const showStatusBar = this.config.statusBarShowStatusBar;
+        if (showStatusBar == null || showStatusBar === "never") {
+            this.statusBar.hide();
+        } else if (showStatusBar === "always") {
+            this.statusBar.show();
+        } else {
+            const documentSelector = showStatusBar.documentSelector;
+            if (editor != null && vscode.languages.match(documentSelector, editor.document) > 0) {
+                this.statusBar.show();
+            } else {
+                this.statusBar.hide();
+            }
+        }
     }
 
     pushExtCleanup(d: Disposable) {

@@ -2,6 +2,8 @@ use std::borrow::Cow;
 use std::ops::Deref;
 use std::{iter, ptr};
 
+pub(crate) mod autodiff;
+
 use libc::{c_char, c_uint};
 use rustc_abi as abi;
 use rustc_abi::{Align, Size, WrappingRange};
@@ -608,14 +610,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn range_metadata(&mut self, load: &'ll Value, range: WrappingRange) {
-        if self.sess().target.arch == "amdgpu" {
-            // amdgpu/LLVM does something weird and thinks an i64 value is
-            // split into a v2i32, halving the bitwidth LLVM expects,
-            // tripping an assertion. So, for now, just disable this
-            // optimization.
-            return;
-        }
-
         if self.cx.sess().opts.optimize == OptLevel::No {
             // Don't emit metadata we're not going to use
             return;

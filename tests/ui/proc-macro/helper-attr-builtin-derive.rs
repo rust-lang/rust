@@ -2,7 +2,7 @@
 // other built-in derive macros.
 // issue: rust-lang/rust#132561
 //@ check-pass
-//@ aux-build:helper-attr.rs
+//@ proc-macro: helper-attr.rs
 //@ edition:2021
 
 #[macro_use]

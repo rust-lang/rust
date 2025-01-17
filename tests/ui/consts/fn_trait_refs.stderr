@@ -14,166 +14,145 @@ error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:14:8
    |
 LL |     T: ~const Fn<()> + ~const Destruct,
-   |        ^^^^^^
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:14:24
+   |        ^^^^^^ can't be applied to `Fn`
    |
-LL |     T: ~const Fn<()> + ~const Destruct,
-   |                        ^^^^^^
+note: `Fn` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:14:8
    |
 LL |     T: ~const Fn<()> + ~const Destruct,
-   |        ^^^^^^
+   |        ^^^^^^ can't be applied to `Fn`
    |
+note: `Fn` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:14:8
    |
 LL |     T: ~const Fn<()> + ~const Destruct,
-   |        ^^^^^^
+   |        ^^^^^^ can't be applied to `Fn`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:14:24
-   |
-LL |     T: ~const Fn<()> + ~const Destruct,
-   |                        ^^^^^^
-   |
+note: `Fn` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:21:8
    |
 LL |     T: ~const FnMut<()> + ~const Destruct,
-   |        ^^^^^^
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:21:27
+   |        ^^^^^^ can't be applied to `FnMut`
    |
-LL |     T: ~const FnMut<()> + ~const Destruct,
-   |                           ^^^^^^
+note: `FnMut` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:21:8
    |
 LL |     T: ~const FnMut<()> + ~const Destruct,
-   |        ^^^^^^
+   |        ^^^^^^ can't be applied to `FnMut`
    |
+note: `FnMut` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:21:8
    |
 LL |     T: ~const FnMut<()> + ~const Destruct,
-   |        ^^^^^^
+   |        ^^^^^^ can't be applied to `FnMut`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:21:27
-   |
-LL |     T: ~const FnMut<()> + ~const Destruct,
-   |                           ^^^^^^
-   |
+note: `FnMut` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:28:8
    |
 LL |     T: ~const FnOnce<()>,
-   |        ^^^^^^
+   |        ^^^^^^ can't be applied to `FnOnce`
+   |
+note: `FnOnce` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:28:8
    |
 LL |     T: ~const FnOnce<()>,
-   |        ^^^^^^
+   |        ^^^^^^ can't be applied to `FnOnce`
    |
+note: `FnOnce` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:28:8
    |
 LL |     T: ~const FnOnce<()>,
-   |        ^^^^^^
+   |        ^^^^^^ can't be applied to `FnOnce`
    |
+note: `FnOnce` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:35:8
    |
 LL |     T: ~const Fn<()> + ~const Destruct,
-   |        ^^^^^^
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:35:24
+   |        ^^^^^^ can't be applied to `Fn`
    |
-LL |     T: ~const Fn<()> + ~const Destruct,
-   |                        ^^^^^^
+note: `Fn` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:35:8
    |
 LL |     T: ~const Fn<()> + ~const Destruct,
-   |        ^^^^^^
+   |        ^^^^^^ can't be applied to `Fn`
    |
+note: `Fn` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:35:8
    |
 LL |     T: ~const Fn<()> + ~const Destruct,
-   |        ^^^^^^
+   |        ^^^^^^ can't be applied to `Fn`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:35:24
-   |
-LL |     T: ~const Fn<()> + ~const Destruct,
-   |                        ^^^^^^
-   |
+note: `Fn` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:49:8
    |
 LL |     T: ~const FnMut<()> + ~const Destruct,
-   |        ^^^^^^
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:49:27
+   |        ^^^^^^ can't be applied to `FnMut`
    |
-LL |     T: ~const FnMut<()> + ~const Destruct,
-   |                           ^^^^^^
+note: `FnMut` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:49:8
    |
 LL |     T: ~const FnMut<()> + ~const Destruct,
-   |        ^^^^^^
+   |        ^^^^^^ can't be applied to `FnMut`
    |
+note: `FnMut` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:49:8
    |
 LL |     T: ~const FnMut<()> + ~const Destruct,
-   |        ^^^^^^
+   |        ^^^^^^ can't be applied to `FnMut`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:49:27
-   |
-LL |     T: ~const FnMut<()> + ~const Destruct,
-   |                           ^^^^^^
-   |
+note: `FnMut` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0015]: cannot call non-const operator in constants
@@ -199,19 +178,6 @@ LL |     f()
    |     ^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: consider further restricting this bound
-   |
-LL |     T: ~const Fn<()> + ~const Destruct + ~const Fn(),
-   |                                        +++++++++++++
-
-error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/fn_trait_refs.rs:12:23
-   |
-LL | const fn tester_fn<T>(f: T) -> T::Output
-   |                       ^ the destructor for this type cannot be evaluated in constant functions
-...
-LL | }
-   | - value is dropped here
 
 error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/fn_trait_refs.rs:23:5
@@ -220,19 +186,6 @@ LL |     f()
    |     ^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: consider further restricting this bound
-   |
-LL |     T: ~const FnMut<()> + ~const Destruct + ~const FnMut(),
-   |                                           ++++++++++++++++
-
-error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/fn_trait_refs.rs:19:27
-   |
-LL | const fn tester_fn_mut<T>(mut f: T) -> T::Output
-   |                           ^^^^^ the destructor for this type cannot be evaluated in constant functions
-...
-LL | }
-   | - value is dropped here
 
 error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/fn_trait_refs.rs:30:5
@@ -241,30 +194,8 @@ LL |     f()
    |     ^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: consider further restricting this bound
-   |
-LL |     T: ~const FnOnce<()> + ~const FnOnce(),
-   |                          +++++++++++++++++
 
-error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/fn_trait_refs.rs:33:21
-   |
-LL | const fn test_fn<T>(mut f: T) -> (T::Output, T::Output, T::Output)
-   |                     ^^^^^ the destructor for this type cannot be evaluated in constant functions
-...
-LL | }
-   | - value is dropped here
+error: aborting due to 22 previous errors
 
-error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/fn_trait_refs.rs:47:25
-   |
-LL | const fn test_fn_mut<T>(mut f: T) -> (T::Output, T::Output)
-   |                         ^^^^^ the destructor for this type cannot be evaluated in constant functions
-...
-LL | }
-   | - value is dropped here
-
-error: aborting due to 34 previous errors
-
-Some errors have detailed explanations: E0015, E0493, E0635.
+Some errors have detailed explanations: E0015, E0635.
 For more information about an error, try `rustc --explain E0015`.

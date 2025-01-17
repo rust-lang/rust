@@ -25,8 +25,7 @@ LL | /      || unsafe {
 LL | |
 LL | |
 LL | |         println!("{:?}", (*t.0).s);
-LL | |
-LL | |
+...  |
 LL | |     };
    | |_____^
    |
@@ -43,8 +42,7 @@ LL | /      || unsafe {
 LL | |
 LL | |
 LL | |         println!("{:?}", (*t.0).s);
-LL | |
-LL | |
+...  |
 LL | |     };
    | |_____^
    |

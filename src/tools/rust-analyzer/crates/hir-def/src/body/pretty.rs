@@ -685,6 +685,7 @@ impl Printer<'_> {
                 self.print_binding(*id);
                 if let Some(pat) = subpat {
                     self.whitespace();
+                    w!(self, "@ ");
                     self.print_pat(*pat);
                 }
             }

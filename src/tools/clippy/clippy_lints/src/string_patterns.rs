@@ -1,17 +1,17 @@
 use std::ops::ControlFlow;
 
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::macros::matching_root_macro_call;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::path_to_local_id;
 use clippy_utils::source::{snippet, str_literal_to_char_literal};
 use clippy_utils::visitors::{Descend, for_each_expr};
 use itertools::Itertools;
 use rustc_ast::{BinOpKind, LitKind};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, PatKind};
+use rustc_hir::{Expr, ExprKind, PatExprKind, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
@@ -171,7 +171,7 @@ fn check_manual_pattern_char_comparison(cx: &LateContext<'_>, method_arg: &Expr<
                         return ControlFlow::Break(());
                     }
                     if arm.pat.walk_short(|pat| match pat.kind {
-                        PatKind::Lit(expr) if let ExprKind::Lit(lit) = expr.kind => {
+                        PatKind::Expr(expr) if let PatExprKind::Lit { lit, negated: false } = expr.kind => {
                             if let LitKind::Char(_) = lit.node {
                                 set_char_spans.push(lit.span);
                             }

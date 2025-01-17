@@ -28,6 +28,7 @@ path = [
     "COPYRIGHT",
     "INSTALL.md",
     "LICENSE-APACHE",
+    "license-metadata.json",
     "LICENSE-MIT",
     "README.md",
     "RELEASES.md",

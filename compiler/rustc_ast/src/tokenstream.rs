@@ -99,7 +99,7 @@ where
     CTX: crate::HashStableContext,
 {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        for sub_tt in self.trees() {
+        for sub_tt in self.iter() {
             sub_tt.hash_stable(hcx, hasher);
         }
     }
@@ -406,7 +406,7 @@ impl Eq for TokenStream {}
 
 impl PartialEq<TokenStream> for TokenStream {
     fn eq(&self, other: &TokenStream) -> bool {
-        self.trees().eq(other.trees())
+        self.iter().eq(other.iter())
     }
 }
 
@@ -423,24 +423,24 @@ impl TokenStream {
         self.0.len()
     }
 
-    pub fn trees(&self) -> RefTokenTreeCursor<'_> {
-        RefTokenTreeCursor::new(self)
+    pub fn get(&self, index: usize) -> Option<&TokenTree> {
+        self.0.get(index)
     }
 
-    pub fn into_trees(self) -> TokenTreeCursor {
-        TokenTreeCursor::new(self)
+    pub fn iter(&self) -> TokenStreamIter<'_> {
+        TokenStreamIter::new(self)
     }
 
     /// Compares two `TokenStream`s, checking equality without regarding span information.
     pub fn eq_unspanned(&self, other: &TokenStream) -> bool {
-        let mut t1 = self.trees();
-        let mut t2 = other.trees();
-        for (t1, t2) in iter::zip(&mut t1, &mut t2) {
-            if !t1.eq_unspanned(t2) {
+        let mut iter1 = self.iter();
+        let mut iter2 = other.iter();
+        for (tt1, tt2) in iter::zip(&mut iter1, &mut iter2) {
+            if !tt1.eq_unspanned(tt2) {
                 return false;
             }
         }
-        t1.next().is_none() && t2.next().is_none()
+        iter1.next().is_none() && iter2.next().is_none()
     }
 
     /// Create a token stream containing a single token with alone spacing. The
@@ -509,7 +509,7 @@ impl TokenStream {
     #[must_use]
     pub fn flattened(&self) -> TokenStream {
         fn can_skip(stream: &TokenStream) -> bool {
-            stream.trees().all(|tree| match tree {
+            stream.iter().all(|tree| match tree {
                 TokenTree::Token(token, _) => !matches!(
                     token.kind,
                     token::NtIdent(..) | token::NtLifetime(..) | token::Interpolated(..)
@@ -522,7 +522,7 @@ impl TokenStream {
             return self.clone();
         }
 
-        self.trees().map(|tree| TokenStream::flatten_token_tree(tree)).collect()
+        self.iter().map(|tree| TokenStream::flatten_token_tree(tree)).collect()
     }
 
     // If `vec` is not empty, try to glue `tt` onto its last token. The return
@@ -665,25 +665,26 @@ impl TokenStream {
     }
 }
 
-/// By-reference iterator over a [`TokenStream`], that produces `&TokenTree`
-/// items.
 #[derive(Clone)]
-pub struct RefTokenTreeCursor<'t> {
+pub struct TokenStreamIter<'t> {
     stream: &'t TokenStream,
     index: usize,
 }
 
-impl<'t> RefTokenTreeCursor<'t> {
+impl<'t> TokenStreamIter<'t> {
     fn new(stream: &'t TokenStream) -> Self {
-        RefTokenTreeCursor { stream, index: 0 }
+        TokenStreamIter { stream, index: 0 }
     }
 
-    pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
-        self.stream.0.get(self.index + n)
+    // Peeking could be done via `Peekable`, but most iterators need peeking,
+    // and this is simple and avoids the need to use `peekable` and `Peekable`
+    // at all the use sites.
+    pub fn peek(&self) -> Option<&'t TokenTree> {
+        self.stream.0.get(self.index)
     }
 }
 
-impl<'t> Iterator for RefTokenTreeCursor<'t> {
+impl<'t> Iterator for TokenStreamIter<'t> {
     type Item = &'t TokenTree;
 
     fn next(&mut self) -> Option<&'t TokenTree> {
@@ -691,39 +692,6 @@ impl<'t> Iterator for RefTokenTreeCursor<'t> {
             self.index += 1;
             tree
         })
-    }
-}
-
-/// Owning by-value iterator over a [`TokenStream`], that produces `&TokenTree`
-/// items.
-///
-/// Doesn't impl `Iterator` because Rust doesn't permit an owning iterator to
-/// return `&T` from `next`; the need for an explicit lifetime in the `Item`
-/// associated type gets in the way. Instead, use `next_ref` (which doesn't
-/// involve associated types) for getting individual elements, or
-/// `RefTokenTreeCursor` if you really want an `Iterator`, e.g. in a `for`
-/// loop.
-#[derive(Clone, Debug)]
-pub struct TokenTreeCursor {
-    pub stream: TokenStream,
-    index: usize,
-}
-
-impl TokenTreeCursor {
-    fn new(stream: TokenStream) -> Self {
-        TokenTreeCursor { stream, index: 0 }
-    }
-
-    #[inline]
-    pub fn next_ref(&mut self) -> Option<&TokenTree> {
-        self.stream.0.get(self.index).map(|tree| {
-            self.index += 1;
-            tree
-        })
-    }
-
-    pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
-        self.stream.0.get(self.index + n)
     }
 }
 

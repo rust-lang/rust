@@ -86,7 +86,7 @@
 //!     // This is fine: `join` synchronizes the code in a way such that the atomic
 //!     // store happens-before the non-atomic write.
 //!     let handle = s.spawn(|| atomic.store(1, Ordering::Relaxed)); // atomic store
-//!     handle.join().unwrap(); // synchronize
+//!     handle.join().expect("thread won't panic"); // synchronize
 //!     s.spawn(|| unsafe { atomic.as_ptr().write(2) }); // non-atomic write
 //! });
 //!
@@ -103,7 +103,7 @@
 //!     // This is fine: `join` synchronizes the code in a way such that
 //!     // the 1-byte store happens-before the 2-byte store.
 //!     let handle = s.spawn(|| atomic.store(1, Ordering::Relaxed));
-//!     handle.join().unwrap();
+//!     handle.join().expect("thread won't panic");
 //!     s.spawn(|| unsafe {
 //!         let differently_sized = transmute::<&AtomicU16, &AtomicU8>(&atomic);
 //!         differently_sized.store(2, Ordering::Relaxed);
@@ -469,7 +469,7 @@ impl AtomicBool {
     /// [valid]: crate::ptr#safety
     /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
     #[stable(feature = "atomic_from_ptr", since = "1.75.0")]
-    #[rustc_const_stable(feature = "const_atomic_from_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_atomic_from_ptr", since = "1.84.0")]
     pub const unsafe fn from_ptr<'a>(ptr: *mut bool) -> &'a AtomicBool {
         // SAFETY: guaranteed by the caller
         unsafe { &*ptr.cast() }
@@ -1264,7 +1264,7 @@ impl<T> AtomicPtr<T> {
     /// [valid]: crate::ptr#safety
     /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
     #[stable(feature = "atomic_from_ptr", since = "1.75.0")]
-    #[rustc_const_stable(feature = "const_atomic_from_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_atomic_from_ptr", since = "1.84.0")]
     pub const unsafe fn from_ptr<'a>(ptr: *mut *mut T) -> &'a AtomicPtr<T> {
         // SAFETY: guaranteed by the caller
         unsafe { &*ptr.cast() }
@@ -2263,7 +2263,7 @@ macro_rules! atomic_int {
             /// [valid]: crate::ptr#safety
             /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
             #[stable(feature = "atomic_from_ptr", since = "1.75.0")]
-            #[rustc_const_stable(feature = "const_atomic_from_ptr", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_stable(feature = "const_atomic_from_ptr", since = "1.84.0")]
             pub const unsafe fn from_ptr<'a>(ptr: *mut $int_type) -> &'a $atomic_type {
                 // SAFETY: guaranteed by the caller
                 unsafe { &*ptr.cast() }

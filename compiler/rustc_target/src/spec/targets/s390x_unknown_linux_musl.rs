@@ -12,6 +12,8 @@ pub(crate) fn target() -> Target {
     base.stack_probes = StackProbeType::Inline;
     base.supported_sanitizers =
         SanitizerSet::ADDRESS | SanitizerSet::LEAK | SanitizerSet::MEMORY | SanitizerSet::THREAD;
+    // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
+    base.crt_static_default = true;
 
     Target {
         llvm_target: "s390x-unknown-linux-musl".into(),
@@ -19,7 +21,7 @@ pub(crate) fn target() -> Target {
             description: Some("S390x Linux (kernel 3.2, musl 1.2.3)".into()),
             tier: Some(3),
             host_tools: Some(false),
-            std: Some(false),
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout: "E-m:e-i1:8:16-i8:8:16-i64:64-f128:64-v128:64-a:8:16-n32:64".into(),

@@ -33,7 +33,25 @@ use tracing::{debug, instrument};
 use super::potentially_plural_count;
 use crate::errors::{LifetimesOrBoundsMismatchOnTrait, MethodShouldReturnFuture};
 
-mod refine;
+pub(super) mod refine;
+
+/// Call the query `tcx.compare_impl_item()` directly instead.
+pub(super) fn compare_impl_item(
+    tcx: TyCtxt<'_>,
+    impl_item_def_id: LocalDefId,
+) -> Result<(), ErrorGuaranteed> {
+    let impl_item = tcx.associated_item(impl_item_def_id);
+    let trait_item = tcx.associated_item(impl_item.trait_item_def_id.unwrap());
+    let impl_trait_ref =
+        tcx.impl_trait_ref(impl_item.container_id(tcx)).unwrap().instantiate_identity();
+    debug!(?impl_trait_ref);
+
+    match impl_item.kind {
+        ty::AssocKind::Fn => compare_impl_method(tcx, impl_item, trait_item, impl_trait_ref),
+        ty::AssocKind::Type => compare_impl_ty(tcx, impl_item, trait_item, impl_trait_ref),
+        ty::AssocKind::Const => compare_impl_const(tcx, impl_item, trait_item, impl_trait_ref),
+    }
+}
 
 /// Checks that a method from an impl conforms to the signature of
 /// the same method as declared in the trait.
@@ -44,22 +62,15 @@ mod refine;
 /// - `trait_m`: the method in the trait
 /// - `impl_trait_ref`: the TraitRef corresponding to the trait implementation
 #[instrument(level = "debug", skip(tcx))]
-pub(super) fn compare_impl_method<'tcx>(
+fn compare_impl_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: ty::AssocItem,
     trait_m: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
-) {
-    let _: Result<_, ErrorGuaranteed> = try {
-        check_method_is_structurally_compatible(tcx, impl_m, trait_m, impl_trait_ref, false)?;
-        compare_method_predicate_entailment(tcx, impl_m, trait_m, impl_trait_ref)?;
-        refine::check_refining_return_position_impl_trait_in_trait(
-            tcx,
-            impl_m,
-            trait_m,
-            impl_trait_ref,
-        );
-    };
+) -> Result<(), ErrorGuaranteed> {
+    check_method_is_structurally_compatible(tcx, impl_m, trait_m, impl_trait_ref, false)?;
+    compare_method_predicate_entailment(tcx, impl_m, trait_m, impl_trait_ref)?;
+    Ok(())
 }
 
 /// Checks a bunch of different properties of the impl/trait methods for
@@ -419,12 +430,12 @@ fn compare_method_predicate_entailment<'tcx>(
     Ok(())
 }
 
-struct RemapLateBound<'a, 'tcx> {
+struct RemapLateParam<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    mapping: &'a FxIndexMap<ty::BoundRegionKind, ty::BoundRegionKind>,
+    mapping: &'a FxIndexMap<ty::LateParamRegionKind, ty::LateParamRegionKind>,
 }
 
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateBound<'_, 'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateParam<'_, 'tcx> {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -434,7 +445,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateBound<'_, 'tcx> {
             ty::Region::new_late_param(
                 self.tcx,
                 fr.scope,
-                self.mapping.get(&fr.bound_region).copied().unwrap_or(fr.bound_region),
+                self.mapping.get(&fr.kind).copied().unwrap_or(fr.kind),
             )
         } else {
             r
@@ -518,13 +529,34 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
 
+    // Check that the where clauses of the impl are satisfied by the hybrid param env.
+    // You might ask -- what does this have to do with RPITIT inference? Nothing.
+    // We check these because if the where clauses of the signatures do not match
+    // up, then we don't want to give spurious other errors that point at the RPITITs.
+    // They're not necessary to check, though, because we already check them in
+    // `compare_method_predicate_entailment`.
+    let impl_m_own_bounds = tcx.predicates_of(impl_m_def_id).instantiate_own_identity();
+    for (predicate, span) in impl_m_own_bounds {
+        let normalize_cause = traits::ObligationCause::misc(span, impl_m_def_id);
+        let predicate = ocx.normalize(&normalize_cause, param_env, predicate);
+
+        let cause =
+            ObligationCause::new(span, impl_m_def_id, ObligationCauseCode::CompareImplItem {
+                impl_item_def_id: impl_m_def_id,
+                trait_item_def_id: trait_m.def_id,
+                kind: impl_m.kind,
+            });
+        ocx.register_obligation(traits::Obligation::new(tcx, cause, param_env, predicate));
+    }
+
     // Normalize the impl signature with fresh variables for lifetime inference.
     let misc_cause = ObligationCause::misc(return_span, impl_m_def_id);
     let impl_sig = ocx.normalize(
         &misc_cause,
         param_env,
-        tcx.liberate_late_bound_regions(
-            impl_m.def_id,
+        infcx.instantiate_binder_with_fresh_vars(
+            return_span,
+            infer::HigherRankedType,
             tcx.fn_sig(impl_m.def_id).instantiate_identity(),
         ),
     );
@@ -536,10 +568,9 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // them with inference variables.
     // We will use these inference variables to collect the hidden types of RPITITs.
     let mut collector = ImplTraitInTraitCollector::new(&ocx, return_span, param_env, impl_m_def_id);
-    let unnormalized_trait_sig = infcx
-        .instantiate_binder_with_fresh_vars(
-            return_span,
-            infer::HigherRankedType,
+    let unnormalized_trait_sig = tcx
+        .liberate_late_bound_regions(
+            impl_m.def_id,
             tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args),
         )
         .fold_with(&mut collector);
@@ -702,8 +733,8 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
     let mut remapped_types = DefIdMap::default();
     for (def_id, (ty, args)) in collected_types {
-        match infcx.fully_resolve((ty, args)) {
-            Ok((ty, args)) => {
+        match infcx.fully_resolve(ty) {
+            Ok(ty) => {
                 // `ty` contains free regions that we created earlier while liberating the
                 // trait fn signature. However, projection normalization expects `ty` to
                 // contains `def_id`'s early-bound regions.
@@ -883,33 +914,27 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
         self.tcx
     }
 
-    fn try_fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
-        if let ty::Alias(ty::Opaque, ty::AliasTy { args, def_id, .. }) = *t.kind() {
-            let mut mapped_args = Vec::with_capacity(args.len());
-            for (arg, v) in std::iter::zip(args, self.tcx.variances_of(def_id)) {
-                mapped_args.push(match (arg.unpack(), v) {
-                    // Skip uncaptured opaque args
-                    (ty::GenericArgKind::Lifetime(_), ty::Bivariant) => arg,
-                    _ => arg.try_fold_with(self)?,
-                });
-            }
-            Ok(Ty::new_opaque(self.tcx, def_id, self.tcx.mk_args(&mapped_args)))
-        } else {
-            t.try_super_fold_with(self)
-        }
-    }
-
     fn try_fold_region(
         &mut self,
         region: ty::Region<'tcx>,
     ) -> Result<ty::Region<'tcx>, Self::Error> {
         match region.kind() {
-            // Remap late-bound regions from the function.
+            // Never remap bound regions or `'static`
+            ty::ReBound(..) | ty::ReStatic | ty::ReError(_) => return Ok(region),
+            // We always remap liberated late-bound regions from the function.
             ty::ReLateParam(_) => {}
             // Remap early-bound regions as long as they don't come from the `impl` itself,
             // in which case we don't really need to renumber them.
-            ty::ReEarlyParam(ebr) if ebr.index as usize >= self.num_impl_args => {}
-            _ => return Ok(region),
+            ty::ReEarlyParam(ebr) => {
+                if ebr.index as usize >= self.num_impl_args {
+                    // Remap
+                } else {
+                    return Ok(region);
+                }
+            }
+            ty::ReVar(_) | ty::RePlaceholder(_) | ty::ReErased => unreachable!(
+                "should not have leaked vars or placeholders into hidden type of RPITIT"
+            ),
         }
 
         let e = if let Some(id_region) = self.map.get(&region) {
@@ -1100,7 +1125,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
             // FIXME: we could potentially look at the impl's bounds to not point at bounds that
             // *are* present in the impl.
             for p in trait_generics.predicates {
-                if let hir::WherePredicate::BoundPredicate(pred) = p {
+                if let hir::WherePredicateKind::BoundPredicate(pred) = p.kind {
                     for b in pred.bounds {
                         if let hir::GenericBound::Outlives(lt) = b {
                             bounds_span.push(lt.ident.span);
@@ -1113,7 +1138,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
             {
                 let mut impl_bounds = 0;
                 for p in impl_generics.predicates {
-                    if let hir::WherePredicate::BoundPredicate(pred) = p {
+                    if let hir::WherePredicateKind::BoundPredicate(pred) = p.kind {
                         for b in pred.bounds {
                             if let hir::GenericBound::Outlives(_) = b {
                                 impl_bounds += 1;
@@ -1727,17 +1752,12 @@ fn compare_generic_param_kinds<'tcx>(
     Ok(())
 }
 
-/// Use `tcx.compare_impl_const` instead
-pub(super) fn compare_impl_const_raw(
-    tcx: TyCtxt<'_>,
-    (impl_const_item_def, trait_const_item_def): (LocalDefId, DefId),
+fn compare_impl_const<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_const_item: ty::AssocItem,
+    trait_const_item: ty::AssocItem,
+    impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let impl_const_item = tcx.associated_item(impl_const_item_def);
-    let trait_const_item = tcx.associated_item(trait_const_item_def);
-    let impl_trait_ref =
-        tcx.impl_trait_ref(impl_const_item.container_id(tcx)).unwrap().instantiate_identity();
-    debug!(?impl_trait_ref);
-
     compare_number_of_generics(tcx, impl_const_item, trait_const_item, false)?;
     compare_generic_param_kinds(tcx, impl_const_item, trait_const_item, false)?;
     check_region_bounds_on_impl_item(tcx, impl_const_item, trait_const_item, false)?;
@@ -1868,19 +1888,17 @@ fn compare_const_predicate_entailment<'tcx>(
 }
 
 #[instrument(level = "debug", skip(tcx))]
-pub(super) fn compare_impl_ty<'tcx>(
+fn compare_impl_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_ty: ty::AssocItem,
     trait_ty: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
-) {
-    let _: Result<(), ErrorGuaranteed> = try {
-        compare_number_of_generics(tcx, impl_ty, trait_ty, false)?;
-        compare_generic_param_kinds(tcx, impl_ty, trait_ty, false)?;
-        check_region_bounds_on_impl_item(tcx, impl_ty, trait_ty, false)?;
-        compare_type_predicate_entailment(tcx, impl_ty, trait_ty, impl_trait_ref)?;
-        check_type_bounds(tcx, trait_ty, impl_ty, impl_trait_ref)?;
-    };
+) -> Result<(), ErrorGuaranteed> {
+    compare_number_of_generics(tcx, impl_ty, trait_ty, false)?;
+    compare_generic_param_kinds(tcx, impl_ty, trait_ty, false)?;
+    check_region_bounds_on_impl_item(tcx, impl_ty, trait_ty, false)?;
+    compare_type_predicate_entailment(tcx, impl_ty, trait_ty, impl_trait_ref)?;
+    check_type_bounds(tcx, trait_ty, impl_ty, impl_trait_ref)
 }
 
 /// The equivalent of [compare_method_predicate_entailment], but for associated types

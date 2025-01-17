@@ -16,7 +16,7 @@ fn main() {
     if let Some(name) = option_env!("BUILTIN_BACKEND") {
         rustflags.push(format!("-Zcodegen-backend={name}"));
     } else {
-        let dylib = sysroot.join(if cfg!(windows) { "bin" } else { "lib" }).join(
+        let dylib = sysroot.join("lib").join(
             env::consts::DLL_PREFIX.to_string()
                 + "rustc_codegen_cranelift"
                 + env::consts::DLL_SUFFIX,

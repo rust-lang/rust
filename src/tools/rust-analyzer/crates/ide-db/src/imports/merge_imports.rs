@@ -290,7 +290,7 @@ pub fn try_normalize_use_tree_mut(
 fn recursive_normalize(use_tree: &ast::UseTree, style: NormalizationStyle) -> Option<()> {
     let use_tree_list = use_tree.use_tree_list()?;
     let merge_subtree_into_parent_tree = |single_subtree: &ast::UseTree| {
-        let subtree_is_only_self = single_subtree.path().as_ref().map_or(false, path_is_self);
+        let subtree_is_only_self = single_subtree.path().as_ref().is_some_and(path_is_self);
 
         let merged_path = match (use_tree.path(), single_subtree.path()) {
             // If the subtree is `{self}` then we cannot merge: `use

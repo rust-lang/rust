@@ -203,7 +203,8 @@ fn is_is_empty_sig(cx: &LateContext<'_>, call_id: HirId) -> bool {
 fn iterates_same_ty<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>, collect_ty: Ty<'tcx>) -> bool {
     if let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator)
         && let Some(into_iter_trait) = cx.tcx.get_diagnostic_item(sym::IntoIterator)
-        && let Some(iter_item_ty) = make_normalized_projection(cx.tcx, cx.typing_env(), iter_trait, sym::Item, [iter_ty])
+        && let Some(iter_item_ty) =
+            make_normalized_projection(cx.tcx, cx.typing_env(), iter_trait, sym::Item, [iter_ty])
         && let Some(into_iter_item_proj) = make_projection(cx.tcx, into_iter_trait, sym::Item, [collect_ty])
         && let Ok(into_iter_item_ty) = cx.tcx.try_normalize_erasing_regions(
             cx.typing_env(),
@@ -469,14 +470,14 @@ fn detect_iter_and_into_iters<'tcx: 'a, 'a>(
     captured_ids: HirIdSet,
 ) -> Option<Vec<IterFunction>> {
     let mut visitor = IterFunctionVisitor {
-        uses: Vec::new(),
-        target: id,
-        seen_other: false,
-        cx,
-        current_mutably_captured_ids: HirIdSet::default(),
         illegal_mutable_capture_ids: captured_ids,
+        current_mutably_captured_ids: HirIdSet::default(),
+        cx,
+        uses: Vec::new(),
         hir_id_uses_map: FxHashMap::default(),
         current_statement_hir_id: None,
+        seen_other: false,
+        target: id,
     };
     visitor.visit_block(block);
     if visitor.seen_other {

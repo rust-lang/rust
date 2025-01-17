@@ -28,3 +28,25 @@ fn main() {
     let _ = (7_u32 as i32 + (y_i - 1)) / y_i;
     let _ = (7_u32 as i32 + (4 - 1)) / 4;
 }
+
+fn issue_13843() {
+    let x = 3usize;
+    let _ = 2048_usize.div_ceil(x);
+
+    let x = 5usize;
+    let _ = 2048usize.div_ceil(x);
+
+    let x = 5usize;
+    let _ = 2048_usize.div_ceil(x);
+
+    let x = 2048usize;
+    let _ = x.div_ceil(4);
+
+    let _: u32 = 2048_u32.div_ceil(6);
+    let _: usize = 2048_usize.div_ceil(6);
+    let _: u32 = 0x2048_u32.div_ceil(0x6);
+
+    let _ = 2048_u32.div_ceil(6u32);
+
+    let _ = 1_000_000_u32.div_ceil(6u32);
+}

@@ -1,0 +1,79 @@
+SOURCE_FILE
+  CONST
+    CONST_KW "const"
+    WHITESPACE " "
+    UNDERSCORE "_"
+    COLON ":"
+    WHITESPACE " "
+    TUPLE_TYPE
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_EXPR
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "T"
+          GENERIC_ARG_LIST
+            COLON2 "::"
+            L_ANGLE "<"
+            CONST_ARG
+              LITERAL
+                INT_NUMBER "0"
+            COMMA ","
+            WHITESPACE " "
+            ERROR
+              COMMA ","
+            TYPE_ARG
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "T"
+            R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  CONST
+    CONST_KW "const"
+    WHITESPACE " "
+    UNDERSCORE "_"
+    COLON ":"
+    WHITESPACE " "
+    TUPLE_TYPE
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    CALL_EXPR
+      PATH_EXPR
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "T"
+            GENERIC_ARG_LIST
+              COLON2 "::"
+              L_ANGLE "<"
+              CONST_ARG
+                LITERAL
+                  INT_NUMBER "0"
+              COMMA ","
+              WHITESPACE " "
+              ERROR
+                COMMA ","
+              TYPE_ARG
+                PATH_TYPE
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "T"
+              R_ANGLE ">"
+      ARG_LIST
+        L_PAREN "("
+        R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 21: expected generic argument
+error 47: expected generic argument

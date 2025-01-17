@@ -11,8 +11,7 @@ use rustc_hir::{self as hir, LangItem};
 use rustc_infer::traits::util::elaborate;
 use rustc_middle::ty::{self, Ty, adjustment};
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
-use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, Symbol, kw, sym};
 use tracing::instrument;
 
 use crate::lints::{
@@ -1024,17 +1023,12 @@ declare_lint! {
     "`if`, `match`, `while` and `return` do not need parentheses"
 }
 
+#[derive(Default)]
 pub(crate) struct UnusedParens {
     with_self_ty_parens: bool,
     /// `1 as (i32) < 2` parses to ExprKind::Lt
     /// `1 as i32 < 2` parses to i32::<2[missing angle bracket]
     parens_in_cast_in_lt: Vec<ast::NodeId>,
-}
-
-impl Default for UnusedParens {
-    fn default() -> Self {
-        Self { with_self_ty_parens: false, parens_in_cast_in_lt: Vec::new() }
-    }
 }
 
 impl_lint_pass!(UnusedParens => [UNUSED_PARENS]);
@@ -1226,7 +1220,7 @@ impl EarlyLintPass for UnusedParens {
             // Do not lint on `(..)` as that will result in the other arms being useless.
             Paren(_)
             // The other cases do not contain sub-patterns.
-            | Wild | Never | Rest | Lit(..) | MacCall(..) | Range(..) | Ident(.., None) | Path(..) | Err(_) => {},
+            | Wild | Never | Rest | Expr(..) | MacCall(..) | Range(..) | Ident(.., None) | Path(..) | Err(_) => {},
             // These are list-like patterns; parens can always be removed.
             TupleStruct(_, _, ps) | Tuple(ps) | Slice(ps) | Or(ps) => for p in ps {
                 self.check_unused_parens_pat(cx, p, false, false, keep_space);
@@ -1235,7 +1229,7 @@ impl EarlyLintPass for UnusedParens {
                 self.check_unused_parens_pat(cx, &f.pat, false, false, keep_space);
             },
             // Avoid linting on `i @ (p0 | .. | pn)` and `box (p0 | .. | pn)`, #64106.
-            Ident(.., Some(p)) | Box(p) | Deref(p) => self.check_unused_parens_pat(cx, p, true, false, keep_space),
+            Ident(.., Some(p)) | Box(p) | Deref(p) | Guard(p, _) => self.check_unused_parens_pat(cx, p, true, false, keep_space),
             // Avoid linting on `&(mut x)` as `&mut x` has a different meaning, #55342.
             // Also avoid linting on `& mut? (p0 | .. | pn)`, #64106.
             Ref(p, m) => self.check_unused_parens_pat(cx, p, true, *m == Mutability::Not, keep_space),
@@ -1304,12 +1298,12 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn enter_where_predicate(&mut self, _: &EarlyContext<'_>, pred: &ast::WherePredicate) {
-        use rustc_ast::{WhereBoundPredicate, WherePredicate};
-        if let WherePredicate::BoundPredicate(WhereBoundPredicate {
+        use rustc_ast::{WhereBoundPredicate, WherePredicateKind};
+        if let WherePredicateKind::BoundPredicate(WhereBoundPredicate {
             bounded_ty,
             bound_generic_params,
             ..
-        }) = pred
+        }) = &pred.kind
             && let ast::TyKind::Paren(_) = &bounded_ty.kind
             && bound_generic_params.is_empty()
         {
@@ -1563,7 +1557,7 @@ impl UnusedImportBraces {
                     }
                     rename.unwrap_or(orig_ident).name
                 }
-                ast::UseTreeKind::Glob => Symbol::intern("*"),
+                ast::UseTreeKind::Glob => sym::asterisk,
                 ast::UseTreeKind::Nested { .. } => return,
             };
 

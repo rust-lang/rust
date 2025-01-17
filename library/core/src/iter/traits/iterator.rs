@@ -1553,7 +1553,7 @@ pub trait Iterator {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0. This check will most probably get changed to a
+    /// Panics if `N` is zero. This check will most probably get changed to a
     /// compile time error before this method gets stabilized.
     ///
     /// ```should_panic
@@ -2564,7 +2564,7 @@ pub trait Iterator {
     /// # Example
     ///
     /// ```
-    /// let reduced: i32 = (1..10).reduce(|acc, e| acc + e).unwrap();
+    /// let reduced: i32 = (1..10).reduce(|acc, e| acc + e).unwrap_or(0);
     /// assert_eq!(reduced, 45);
     ///
     /// // Which is equivalent to doing it with `fold`:
@@ -3051,6 +3051,7 @@ pub trait Iterator {
     ///
     /// // we can still use `iter`, as there are more elements.
     /// assert_eq!(iter.next(), Some(&-1));
+    /// assert_eq!(iter.next_back(), Some(&3));
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -3087,7 +3088,7 @@ pub trait Iterator {
     ///     [2.4, f32::NAN, 1.3]
     ///         .into_iter()
     ///         .reduce(f32::max)
-    ///         .unwrap(),
+    ///         .unwrap_or(0.),
     ///     2.4
     /// );
     /// ```
@@ -3123,7 +3124,7 @@ pub trait Iterator {
     ///     [2.4, f32::NAN, 1.3]
     ///         .into_iter()
     ///         .reduce(f32::min)
-    ///         .unwrap(),
+    ///         .unwrap_or(0.),
     ///     1.3
     /// );
     /// ```
@@ -3454,7 +3455,7 @@ pub trait Iterator {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0.
+    /// Panics if `N` is zero.
     ///
     /// # Examples
     ///

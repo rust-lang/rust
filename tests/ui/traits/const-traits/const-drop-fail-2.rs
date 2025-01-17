@@ -1,6 +1,7 @@
-//@ known-bug: #110395
+//@ revisions: stock precise
+
 #![feature(const_trait_impl, const_destruct)]
-// #![cfg_attr(precise, feature(const_precise_live_drops))]
+#![cfg_attr(precise, feature(const_precise_live_drops))]
 
 use std::marker::{Destruct, PhantomData};
 
@@ -19,9 +20,7 @@ impl A for NonTrivialDrop {}
 
 const fn check<T: ~const Destruct>(_: T) {}
 
-
-/* FIXME(const_trait_impl)
-struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
+struct ConstDropImplWithBounds<T: A>(PhantomData<T>);
 
 impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {
     fn drop(&mut self) {
@@ -30,9 +29,9 @@ impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {
 }
 
 const _: () = check::<ConstDropImplWithBounds<NonTrivialDrop>>(
+    //~^ ERROR the trait bound
     ConstDropImplWithBounds(PhantomData)
 );
-*/
 
 struct ConstDropImplWithNonConstBounds<T: A>(PhantomData<T>);
 

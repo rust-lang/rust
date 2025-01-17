@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
-use std::ffi::{CStr, c_uint};
+use std::ffi::{CStr, c_char, c_uint};
 use std::str;
 
 use rustc_abi::{HasDataLayout, TargetDataLayout, VariantIdx};
@@ -82,8 +82,8 @@ pub(crate) struct CodegenCx<'ll, 'tcx> {
 
     pub isize_ty: &'ll Type,
 
-    /// Extra codegen state needed when coverage instrumentation is enabled.
-    pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'ll, 'tcx>>,
+    /// Extra per-CGU codegen state needed when coverage instrumentation is enabled.
+    pub coverage_cx: Option<coverageinfo::CguCoverageContext<'ll, 'tcx>>,
     pub dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
 
     eh_personality: Cell<Option<&'ll Value>>,
@@ -157,6 +157,16 @@ pub(crate) unsafe fn create_module<'ll>(
         if sess.target.arch.starts_with("mips64") {
             // LLVM 20 updates the mips64 layout to correctly align 128 bit integers to 128 bit.
             // See https://github.com/llvm/llvm-project/pull/112084
+            target_data_layout = target_data_layout.replace("-i128:128", "");
+        }
+        if sess.target.arch.starts_with("powerpc64") {
+            // LLVM 20 updates the powerpc64 layout to correctly align 128 bit integers to 128 bit.
+            // See https://github.com/llvm/llvm-project/pull/118004
+            target_data_layout = target_data_layout.replace("-i128:128", "");
+        }
+        if sess.target.arch.starts_with("wasm32") || sess.target.arch.starts_with("wasm64") {
+            // LLVM 20 updates the wasm(32|64) layout to correctly align 128 bit integers to 128 bit.
+            // See https://github.com/llvm/llvm-project/pull/119204
             target_data_layout = target_data_layout.replace("-i128:128", "");
         }
     }
@@ -525,7 +535,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
 
         let coverage_cx =
-            tcx.sess.instrument_coverage().then(coverageinfo::CrateCoverageContext::new);
+            tcx.sess.instrument_coverage().then(coverageinfo::CguCoverageContext::new);
 
         let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
             let dctx = debuginfo::CodegenUnitDebugContext::new(llmod);
@@ -576,7 +586,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// Extra state that is only available when coverage instrumentation is enabled.
     #[inline]
     #[track_caller]
-    pub(crate) fn coverage_cx(&self) -> &coverageinfo::CrateCoverageContext<'ll, 'tcx> {
+    pub(crate) fn coverage_cx(&self) -> &coverageinfo::CguCoverageContext<'ll, 'tcx> {
         self.coverage_cx.as_ref().expect("only called when coverage instrumentation is enabled")
     }
 
@@ -589,6 +599,31 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             llvm::set_linkage(g, llvm::Linkage::AppendingLinkage);
             llvm::set_section(g, c"llvm.metadata");
         }
+    }
+
+    pub(crate) fn get_metadata_value(&self, metadata: &'ll Metadata) -> &'ll Value {
+        unsafe { llvm::LLVMMetadataAsValue(self.llcx, metadata) }
+    }
+
+    pub(crate) fn get_function(&self, name: &str) -> Option<&'ll Value> {
+        let name = SmallCStr::new(name);
+        unsafe { llvm::LLVMGetNamedFunction(self.llmod, name.as_ptr()) }
+    }
+
+    pub(crate) fn get_md_kind_id(&self, name: &str) -> u32 {
+        unsafe {
+            llvm::LLVMGetMDKindIDInContext(
+                self.llcx,
+                name.as_ptr() as *const c_char,
+                name.len() as c_uint,
+            )
+        }
+    }
+
+    pub(crate) fn create_metadata(&self, name: String) -> Option<&'ll Metadata> {
+        Some(unsafe {
+            llvm::LLVMMDStringInContext2(self.llcx, name.as_ptr() as *const c_char, name.len())
+        })
     }
 }
 
@@ -706,7 +741,10 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         if self.get_declared_value(entry_name).is_none() {
             Some(self.declare_entry_fn(
                 entry_name,
-                self.sess().target.entry_abi.into(),
+                llvm::CallConv::from_conv(
+                    self.sess().target.entry_abi,
+                    self.sess().target.arch.borrow(),
+                ),
                 llvm::UnnamedAddr::Global,
                 fn_type,
             ))

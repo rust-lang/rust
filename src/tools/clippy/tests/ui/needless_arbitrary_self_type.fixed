@@ -64,4 +64,9 @@ impl ValType {
     }
 }
 
+trait Foo<'r#struct> {
+    fn f1(&'r#struct self) {}
+    fn f2(&'r#struct mut self) {}
+}
+
 fn main() {}

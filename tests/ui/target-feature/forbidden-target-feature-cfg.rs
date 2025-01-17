@@ -2,7 +2,6 @@
 //@ needs-llvm-components: x86
 //@ check-pass
 #![feature(no_core, lang_items)]
-#![no_std]
 #![no_core]
 #![allow(unexpected_cfgs)]
 

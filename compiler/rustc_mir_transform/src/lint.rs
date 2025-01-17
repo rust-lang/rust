@@ -5,12 +5,11 @@
 use std::borrow::Cow;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use rustc_mir_dataflow::impls::{MaybeStorageDead, MaybeStorageLive};
-use rustc_mir_dataflow::storage::always_storage_live_locals;
+use rustc_mir_dataflow::impls::{MaybeStorageDead, MaybeStorageLive, always_storage_live_locals};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 
 pub(super) fn lint_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: String) {
@@ -44,7 +43,7 @@ struct Lint<'a, 'tcx> {
     when: String,
     body: &'a Body<'tcx>,
     is_fn_like: bool,
-    always_live_locals: &'a BitSet<Local>,
+    always_live_locals: &'a DenseBitSet<Local>,
     maybe_storage_live: ResultsCursor<'a, 'tcx, MaybeStorageLive<'a>>,
     maybe_storage_dead: ResultsCursor<'a, 'tcx, MaybeStorageDead<'a>>,
     places: FxHashSet<PlaceRef<'tcx>>,

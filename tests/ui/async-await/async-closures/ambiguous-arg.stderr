@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/ambiguous-arg.rs:9:25
+  --> $DIR/ambiguous-arg.rs:7:25
    |
 LL |       async |check, a, b| {
    |  _________________________^

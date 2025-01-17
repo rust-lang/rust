@@ -333,7 +333,7 @@ pub const fn size_of<T>() -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
+#[rustc_const_stable(feature = "const_size_of_val", since = "1.85.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mem_size_of_val")]
 pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
     // SAFETY: `val` is a reference, so it's a valid raw pointer
@@ -390,7 +390,6 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 #[inline]
 #[must_use]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
-#[rustc_const_unstable(feature = "const_size_of_val_raw", issue = "46571")]
 pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     // SAFETY: the caller must provide a valid raw pointer
     unsafe { intrinsics::size_of_val(val) }
@@ -485,7 +484,7 @@ pub const fn align_of<T>() -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
+#[rustc_const_stable(feature = "const_align_of_val", since = "1.85.0")]
 #[allow(deprecated)]
 pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
     // SAFETY: val is a reference, so it's a valid raw pointer
@@ -534,7 +533,6 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 #[inline]
 #[must_use]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
-#[rustc_const_unstable(feature = "const_align_of_val_raw", issue = "46571")]
 pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     // SAFETY: the caller must provide a valid raw pointer
     unsafe { intrinsics::min_align_of_val(val) }
@@ -727,12 +725,12 @@ pub unsafe fn uninitialized<T>() -> T {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+#[rustc_const_stable(feature = "const_swap", since = "1.85.0")]
 #[rustc_diagnostic_item = "mem_swap"]
 pub const fn swap<T>(x: &mut T, y: &mut T) {
     // SAFETY: `&mut` guarantees these are typed readable and writable
     // as well as non-overlapping.
-    unsafe { intrinsics::typed_swap(x, y) }
+    unsafe { intrinsics::typed_swap_nonoverlapping(x, y) }
 }
 
 /// Replaces `dest` with the default value of `T`, returning the previous `dest` value.
@@ -1243,6 +1241,17 @@ pub trait SizedTypeProperties: Sized {
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
     const LAYOUT: Layout = Layout::new::<Self>();
+
+    /// The largest safe length for a `[Self]`.
+    ///
+    /// Anything larger than this would make `size_of_val` overflow `isize::MAX`,
+    /// which is never allowed for a single object.
+    #[doc(hidden)]
+    #[unstable(feature = "sized_type_properties", issue = "none")]
+    const MAX_SLICE_LEN: usize = match size_of::<Self>() {
+        0 => usize::MAX,
+        n => (isize::MAX as usize) / n,
+    };
 }
 #[doc(hidden)]
 #[unstable(feature = "sized_type_properties", issue = "none")]

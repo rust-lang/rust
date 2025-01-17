@@ -303,7 +303,8 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 | ExprKind::AddrOf(..)
                 | ExprKind::Repeat(..)
                 | ExprKind::Block(Block { stmts: [], .. }, _)
-                | ExprKind::OffsetOf(..) => (),
+                | ExprKind::OffsetOf(..)
+                | ExprKind::UnsafeBinderCast(..) => (),
 
                 // Assignment might be to a local defined earlier, so don't eagerly evaluate.
                 // Blocks with multiple statements might be expensive, so don't eagerly evaluate.

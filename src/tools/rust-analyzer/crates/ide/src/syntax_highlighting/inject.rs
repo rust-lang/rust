@@ -28,7 +28,7 @@ pub(super) fn ra_fixture(
     expanded: &ast::String,
 ) -> Option<()> {
     let active_parameter = ActiveParameter::at_token(sema, expanded.syntax().clone())?;
-    if !active_parameter.ident().map_or(false, |name| name.text().starts_with("ra_fixture")) {
+    if !active_parameter.ident().is_some_and(|name| name.text().starts_with("ra_fixture")) {
         return None;
     }
     let value = literal.value().ok()?;
@@ -279,9 +279,7 @@ fn find_doc_string_in_attr(attr: &hir::Attr, it: &ast::Attr) -> Option<ast::Stri
                 .descendants_with_tokens()
                 .filter_map(NodeOrToken::into_token)
                 .filter_map(ast::String::cast)
-                .find(|string| {
-                    string.text().get(1..string.text().len() - 1).map_or(false, |it| it == text)
-                })
+                .find(|string| string.text().get(1..string.text().len() - 1) == Some(text))
         }
         _ => None,
     }

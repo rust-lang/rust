@@ -26,6 +26,7 @@
 
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
+use std::collections::hash_set::Entry as SetEntry;
 use std::fmt;
 use std::hash::Hash;
 
@@ -1162,6 +1163,9 @@ pub enum DesugaringKind {
     WhileLoop,
     /// `async Fn()` bound modifier
     BoundModifier,
+    /// Marks a `&raw const *_1` needed as part of getting the length of a mutable
+    /// slice for the bounds check, so that MIRI's retag handling can recognize it.
+    IndexBoundsCheckReborrow,
 }
 
 impl DesugaringKind {
@@ -1178,6 +1182,7 @@ impl DesugaringKind {
             DesugaringKind::ForLoop => "`for` loop",
             DesugaringKind::WhileLoop => "`while` loop",
             DesugaringKind::BoundModifier => "trait bound modifier",
+            DesugaringKind::IndexBoundsCheckReborrow => "slice indexing",
         }
     }
 }
@@ -1270,7 +1275,7 @@ pub struct HygieneDecodeContext {
     inner: Lock<HygieneDecodeContextInner>,
 
     /// A set of serialized `SyntaxContext` ids that are currently being decoded on each thread.
-    local_in_progress: WorkerLocal<RefCell<FxHashMap<u32, ()>>>,
+    local_in_progress: WorkerLocal<RefCell<FxHashSet<u32>>>,
 }
 
 /// Register an expansion which has been decoded from the on-disk-cache for the local crate.
@@ -1364,14 +1369,14 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
         match inner.decoding.entry(raw_id) {
             Entry::Occupied(ctxt_entry) => {
                 match context.local_in_progress.borrow_mut().entry(raw_id) {
-                    Entry::Occupied(..) => {
+                    SetEntry::Occupied(..) => {
                         // We're decoding this already on the current thread. Return here
                         // and let the function higher up the stack finish decoding to handle
                         // recursive cases.
                         return *ctxt_entry.get();
                     }
-                    Entry::Vacant(entry) => {
-                        entry.insert(());
+                    SetEntry::Vacant(entry) => {
+                        entry.insert();
 
                         // Some other thread is current decoding this. Race with it.
                         *ctxt_entry.get()
@@ -1380,7 +1385,7 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
             }
             Entry::Vacant(entry) => {
                 // We are the first thread to start decoding. Mark the current thread as being progress.
-                context.local_in_progress.borrow_mut().insert(raw_id, ());
+                context.local_in_progress.borrow_mut().insert(raw_id);
 
                 // Allocate and store SyntaxContext id *before* calling the decoder function,
                 // as the SyntaxContextData may reference itself.

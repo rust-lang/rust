@@ -16,8 +16,7 @@ use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_macros::{Lift, extension};
 use rustc_session::Limit;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
-use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_span::{FileNameDisplayPreference, sym};
+use rustc_span::{FileNameDisplayPreference, Ident, Symbol, kw, sym};
 use rustc_type_ir::{Upcast as _, elaborate};
 use smallvec::SmallVec;
 
@@ -691,11 +690,22 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 if with_reduced_queries() {
                     p!(print_def_path(def_id, args));
                 } else {
-                    let sig = self.tcx().fn_sig(def_id).instantiate(self.tcx(), args);
+                    let mut sig = self.tcx().fn_sig(def_id).instantiate(self.tcx(), args);
+                    if self.tcx().codegen_fn_attrs(def_id).safe_target_features {
+                        p!("#[target_features] ");
+                        sig = sig.map_bound(|mut sig| {
+                            sig.safety = hir::Safety::Safe;
+                            sig
+                        });
+                    }
                     p!(print(sig), " {{", print_value_path(def_id, args), "}}");
                 }
             }
             ty::FnPtr(ref sig_tys, hdr) => p!(print(sig_tys.with(hdr))),
+            ty::UnsafeBinder(ref bound_ty) => {
+                // FIXME(unsafe_binders): Make this print `unsafe<>` rather than `for<>`.
+                self.wrap_binder(bound_ty, |ty, cx| cx.pretty_print_type(*ty))?;
+            }
             ty::Infer(infer_ty) => {
                 if self.should_print_verbose() {
                     p!(write("{:?}", ty.kind()));
@@ -838,6 +848,12 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     p!(
                         " upvar_tys=",
                         print(args.as_coroutine().tupled_upvars_ty()),
+                        " resume_ty=",
+                        print(args.as_coroutine().resume_ty()),
+                        " yield_ty=",
+                        print(args.as_coroutine().yield_ty()),
+                        " return_ty=",
+                        print(args.as_coroutine().return_ty()),
                         " witness=",
                         print(args.as_coroutine().witness())
                     );
@@ -1020,7 +1036,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
                     self.insert_trait_and_projection(
                         trait_ref,
-                        Some((proj.projection_def_id(), proj.term())),
+                        Some((proj.item_def_id(), proj.term())),
                         &mut traits,
                         &mut fn_traits,
                     );
@@ -2375,8 +2391,8 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         match *region {
             ty::ReEarlyParam(ref data) => data.has_name(),
 
+            ty::ReLateParam(ty::LateParamRegion { kind, .. }) => kind.is_named(),
             ty::ReBound(_, ty::BoundRegion { kind: br, .. })
-            | ty::ReLateParam(ty::LateParamRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder {
                 bound: ty::BoundRegion { kind: br, .. }, ..
             }) => {
@@ -2449,8 +2465,13 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     return Ok(());
                 }
             }
+            ty::ReLateParam(ty::LateParamRegion { kind, .. }) => {
+                if let Some(name) = kind.get_name() {
+                    p!(write("{}", name));
+                    return Ok(());
+                }
+            }
             ty::ReBound(_, ty::BoundRegion { kind: br, .. })
-            | ty::ReLateParam(ty::LateParamRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder {
                 bound: ty::BoundRegion { kind: br, .. }, ..
             }) => {

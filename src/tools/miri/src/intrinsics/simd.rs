@@ -1,4 +1,5 @@
 use either::Either;
+use rand::Rng;
 use rustc_abi::{Endian, HasDataLayout};
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::FloatTy;
@@ -286,7 +287,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_scalar(val, &dest)?;
                 }
             }
-            "fma" => {
+            "fma" | "relaxed_fma" => {
                 let [a, b, c] = check_arg_count(args)?;
                 let (a, a_len) = this.project_to_simd(a)?;
                 let (b, b_len) = this.project_to_simd(b)?;
@@ -303,6 +304,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let c = this.read_scalar(&this.project_index(&c, i)?)?;
                     let dest = this.project_index(&dest, i)?;
 
+                    let fuse: bool = intrinsic_name == "fma" || this.machine.rng.get_mut().gen();
+
                     // Works for f32 and f64.
                     // FIXME: using host floats to work around https://github.com/rust-lang/miri/issues/2468.
                     let ty::Float(float_ty) = dest.layout.ty.kind() else {
@@ -314,7 +317,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             let a = a.to_f32()?;
                             let b = b.to_f32()?;
                             let c = c.to_f32()?;
-                            let res = a.to_host().mul_add(b.to_host(), c.to_host()).to_soft();
+                            let res = if fuse {
+                                a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()
+                            } else {
+                                ((a * b).value + c).value
+                            };
                             let res = this.adjust_nan(res, &[a, b, c]);
                             Scalar::from(res)
                         }
@@ -322,7 +329,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             let a = a.to_f64()?;
                             let b = b.to_f64()?;
                             let c = c.to_f64()?;
-                            let res = a.to_host().mul_add(b.to_host(), c.to_host()).to_soft();
+                            let res = if fuse {
+                                a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()
+                            } else {
+                                ((a * b).value + c).value
+                            };
                             let res = this.adjust_nan(res, &[a, b, c]);
                             Scalar::from(res)
                         }

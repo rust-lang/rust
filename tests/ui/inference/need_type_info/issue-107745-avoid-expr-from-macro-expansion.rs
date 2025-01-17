@@ -2,7 +2,7 @@
 
 // Regression test for #107745.
 // Previously need_type_info::update_infer_source will consider expressions originating from
-// macro expressions as candiate "previous sources". This unfortunately can mean that
+// macro expressions as candidate "previous sources". This unfortunately can mean that
 // for macros expansions such as `format!()` internal implementation details can leak, such as:
 //
 // ```

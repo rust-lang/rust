@@ -4,7 +4,7 @@ error[E0277]: the trait bound `for<'b> T: X<'b, T>` is not satisfied
 LL | impl<S, T> X<'_, T> for (S,) {
    |            ^^^^^^^^ the trait `for<'b> X<'b, T>` is not implemented for `T`
    |
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `X`
    |
 LL | impl<S, T: for<'b> X<'b, T>> X<'_, T> for (S,) {
    |          ++++++++++++++++++

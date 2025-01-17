@@ -1,10 +1,8 @@
 use rustc_ast::MetaItem;
 use rustc_hir::def_id::DefId;
-use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, info};
 
 use crate::errors::{
@@ -12,9 +10,7 @@ use crate::errors::{
     PeekMustBePlaceOrRefPlace, StopAfterDataFlowEndedCompilation,
 };
 use crate::framework::BitSetExt;
-use crate::impls::{
-    DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeLiveLocals, MaybeUninitializedPlaces,
-};
+use crate::impls::{MaybeInitializedPlaces, MaybeLiveLocals, MaybeUninitializedPlaces};
 use crate::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
 use crate::{Analysis, JoinSemiLattice, ResultsCursor};
 
@@ -54,13 +50,6 @@ pub fn sanity_check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
             .iterate_to_fixpoint(tcx, body, None);
 
         sanity_check_via_rustc_peek(tcx, flow_uninits.into_results_cursor(body));
-    }
-
-    if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_definite_init).is_some() {
-        let flow_def_inits =
-            DefinitelyInitializedPlaces::new(body, &move_data).iterate_to_fixpoint(tcx, body, None);
-
-        sanity_check_via_rustc_peek(tcx, flow_def_inits.into_results_cursor(body));
     }
 
     if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_liveness).is_some() {
@@ -263,7 +252,7 @@ impl<'tcx> RustcPeekAt<'tcx> for MaybeLiveLocals {
         &self,
         tcx: TyCtxt<'tcx>,
         place: mir::Place<'tcx>,
-        state: &BitSet<Local>,
+        state: &Self::Domain,
         call: PeekCall,
     ) {
         info!(?place, "peek_at");

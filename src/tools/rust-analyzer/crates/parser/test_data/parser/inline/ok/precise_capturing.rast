@@ -11,8 +11,10 @@ SOURCE_FILE
           LIFETIME_IDENT "'a"
         COLON ":"
         WHITESPACE " "
-        LIFETIME
-          LIFETIME_IDENT "'a"
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            LIFETIME
+              LIFETIME_IDENT "'a"
       COMMA ","
       WHITESPACE " "
       LIFETIME_PARAM
@@ -20,8 +22,10 @@ SOURCE_FILE
           LIFETIME_IDENT "'b"
         COLON ":"
         WHITESPACE " "
-        LIFETIME
-          LIFETIME_IDENT "'b"
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            LIFETIME
+              LIFETIME_IDENT "'b"
       COMMA ","
       WHITESPACE " "
       TYPE_PARAM

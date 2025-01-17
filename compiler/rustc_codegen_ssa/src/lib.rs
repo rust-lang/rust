@@ -42,7 +42,7 @@ use rustc_session::Session;
 use rustc_session::config::{CrateType, OutputFilenames, OutputType, RUST_CGU_EXT};
 use rustc_session::cstore::{self, CrateSource};
 use rustc_session::utils::NativeLibKind;
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 
 pub mod assert_module_sources;
 pub mod back;

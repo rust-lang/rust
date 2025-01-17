@@ -151,7 +151,8 @@ impl<'a> Sugg<'a> {
             | ExprKind::Become(..)
             | ExprKind::Struct(..)
             | ExprKind::Tup(..)
-            | ExprKind::Err(_) => Sugg::NonParen(get_snippet(expr.span)),
+            | ExprKind::Err(_)
+            | ExprKind::UnsafeBinderCast(..) => Sugg::NonParen(get_snippet(expr.span)),
             ExprKind::DropTemps(inner) => Self::hir_from_snippet(inner, get_snippet),
             ExprKind::Assign(lhs, rhs, _) => {
                 Sugg::BinOp(AssocOp::Assign, get_snippet(lhs.span), get_snippet(rhs.span))
@@ -226,7 +227,8 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::While(..)
             | ast::ExprKind::Await(..)
             | ast::ExprKind::Err(_)
-            | ast::ExprKind::Dummy => Sugg::NonParen(snippet(expr.span)),
+            | ast::ExprKind::Dummy
+            | ast::ExprKind::UnsafeBinderCast(..) => Sugg::NonParen(snippet(expr.span)),
             ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::HalfOpen) => Sugg::BinOp(
                 AssocOp::DotDot,
                 lhs.as_ref().map_or("".into(), |lhs| snippet(lhs.span)),

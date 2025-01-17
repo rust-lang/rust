@@ -149,11 +149,21 @@ pub struct CandidateStep<'tcx> {
     /// `foo.by_raw_ptr()` will work and `foo.by_ref()` won't.
     pub from_unsafe_deref: bool,
     pub unsize: bool,
+    /// We will generate CandidateSteps which are reachable via a chain
+    /// of following `Receiver`. The first 'n' of those will be reachable
+    /// by following a chain of 'Deref' instead (since there's a blanket
+    /// implementation of Receiver for Deref).
+    /// We use the entire set of steps when identifying method candidates
+    /// (e.g. identifying relevant `impl` blocks) but only those that are
+    /// reachable via Deref when examining what the receiver type can
+    /// be converted into by autodereffing.
+    pub reachable_via_deref: bool,
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct MethodAutoderefStepsResult<'tcx> {
-    /// The valid autoderef steps that could be found.
+    /// The valid autoderef steps that could be found by following a chain
+    /// of `Receiver<Target=T>` or `Deref<Target=T>` trait implementations.
     pub steps: &'tcx [CandidateStep<'tcx>],
     /// If Some(T), a type autoderef reported an error on.
     pub opt_bad_ty: Option<&'tcx MethodAutoderefBadTy<'tcx>>,

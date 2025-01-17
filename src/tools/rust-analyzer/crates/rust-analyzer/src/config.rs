@@ -3,11 +3,7 @@
 //! Of particular interest is the `feature_flags` hash map: while other fields
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
-use std::{
-    env, fmt, iter,
-    ops::Not,
-    sync::{LazyLock, OnceLock},
-};
+use std::{env, fmt, iter, ops::Not, sync::OnceLock};
 
 use cfg::{CfgAtom, CfgDiff};
 use hir::Symbol;
@@ -53,6 +49,14 @@ mod patch_old_style;
 //  - In general be wary of using the namespace of something verbatim, it prevents us from adding subkeys in the future
 //  - Don't use abbreviations unless really necessary
 //  - foo_command = overrides the subcommand, foo_overrideCommand allows full overwriting, extra args only applies for foo_command
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum MaxSubstitutionLength {
+    Hide,
+    #[serde(untagged)]
+    Limit(usize),
+}
 
 // Defines the server-side configuration of the rust-analyzer. We generate
 // *parts* of VS Code's `package.json` config from this. Run `cargo test` to
@@ -115,6 +119,9 @@ config_data! {
         /// Whether to show `Run` action. Only applies when
         /// `#rust-analyzer.hover.actions.enable#` is set.
         hover_actions_run_enable: bool             = true,
+        /// Whether to show `Update Test` action. Only applies when
+        /// `#rust-analyzer.hover.actions.enable#` and `#rust-analyzer.hover.actions.run.enable#` are set.
+        hover_actions_updateTest_enable: bool     = true,
 
         /// Whether to show documentation on hover.
         hover_documentation_enable: bool           = true,
@@ -123,6 +130,12 @@ config_data! {
         hover_documentation_keywords_enable: bool  = true,
         /// Use markdown syntax for links on hover.
         hover_links_enable: bool = true,
+        /// Whether to show what types are used as generic arguments in calls etc. on hover, and what is their max length to show such types, beyond it they will be shown with ellipsis.
+        ///
+        /// This can take three values: `null` means "unlimited", the string `"hide"` means to not show generic substitutions at all, and a number means to limit them to X characters.
+        ///
+        /// The default is 20 characters.
+        hover_maxSubstitutionLength: Option<MaxSubstitutionLength> = Some(MaxSubstitutionLength::Limit(20)),
         /// How to render the align information in a memory layout hover.
         hover_memoryLayout_alignment: Option<MemoryLayoutHoverRenderKindDef> = Some(MemoryLayoutHoverRenderKindDef::Hexadecimal),
         /// Whether to show memory layout data on hover.
@@ -233,6 +246,9 @@ config_data! {
         /// Whether to show `Run` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
         lens_run_enable: bool              = true,
+        /// Whether to show `Update Test` lens. Only applies when
+        /// `#rust-analyzer.lens.enable#` and `#rust-analyzer.lens.run.enable#` are set.
+        lens_updateTest_enable: bool = true,
 
         /// Disable project auto-discovery in favor of explicitly specified set
         /// of projects.
@@ -308,8 +324,8 @@ config_data! {
         /// Show documentation.
         signatureInfo_documentation_enable: bool                       = true,
 
-        /// Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.
-        typing_autoClosingAngleBrackets_enable: bool = false,
+        /// Specify the characters to exclude from triggering typing assists. The default trigger characters are `.`, `=`, `<`, `>`, `{`, and `(`.
+        typing_excludeChars: Option<String> = Some("|<".to_owned()),
 
 
         /// Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].
@@ -430,11 +446,32 @@ config_data! {
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
         completion_autoimport_enable: bool       = true,
+        /// A list of full paths to items to exclude from auto-importing completions.
+        ///
+        /// Traits in this list won't have their methods suggested in completions unless the trait
+        /// is in scope.
+        ///
+        /// You can either specify a string path which defaults to type "always" or use the more verbose
+        /// form `{ "path": "path::to::item", type: "always" }`.
+        ///
+        /// For traits the type "methods" can be used to only exclude the methods but not the trait itself.
+        ///
+        /// This setting also inherits `#rust-analyzer.completion.excludeTraits#`.
+        completion_autoimport_exclude: Vec<AutoImportExclusion> = vec![
+            AutoImportExclusion::Verbose { path: "core::borrow::Borrow".to_owned(), r#type: AutoImportExclusionType::Methods },
+            AutoImportExclusion::Verbose { path: "core::borrow::BorrowMut".to_owned(), r#type: AutoImportExclusionType::Methods },
+        ],
         /// Toggles the additional completions that automatically show method calls and field accesses
         /// with `self` prefixed to them when inside a method.
         completion_autoself_enable: bool        = true,
         /// Whether to add parenthesis and argument snippets when completing function.
         completion_callable_snippets: CallableCompletionDef  = CallableCompletionDef::FillArguments,
+        /// A list of full paths to traits whose methods to exclude from completion.
+        ///
+        /// Methods from these traits won't be completed, even if the trait is in scope. However, they will still be suggested on expressions whose type is `dyn Trait`, `impl Trait` or `T where T: Trait`.
+        ///
+        /// Note that the trait themselves can still be completed.
+        completion_excludeTraits: Vec<String> = Vec::new(),
         /// Whether to show full function/method signatures in completion docs.
         completion_fullFunctionSignatures_enable: bool = false,
         /// Whether to omit deprecated items from autocompletion. By default they are marked as deprecated but not hidden.
@@ -563,7 +600,7 @@ config_data! {
         ///
         /// This option does not take effect until rust-analyzer is restarted.
         cargo_sysrootSrc: Option<String>    = None,
-        /// Compilation target override (target triple).
+        /// Compilation target override (target tuple).
         // FIXME(@poliorcetics): move to multiple targets here too, but this will need more work
         // than `checkOnSave_target`
         cargo_target: Option<String>     = None,
@@ -645,7 +682,8 @@ config_data! {
         /// Aliased as `"checkOnSave.targets"`.
         check_targets | checkOnSave_targets | checkOnSave_target: Option<CheckOnSaveTargets> = None,
         /// Whether `--workspace` should be passed to `cargo check`.
-        /// If false, `-p <package>` will be passed instead.
+        /// If false, `-p <package>` will be passed instead if applicable. In case it is not, no
+        /// check will be performed.
         check_workspace: bool = true,
 
         /// These proc-macros will be ignored when trying to expand them.
@@ -727,6 +765,12 @@ enum RatomlFile {
     Crate(LocalConfigInput),
 }
 
+#[derive(Clone, Debug)]
+struct ClientInfo {
+    name: String,
+    version: Option<Version>,
+}
+
 #[derive(Clone)]
 pub struct Config {
     /// Projects that have a Cargo.toml or a rust-project.json in a
@@ -741,7 +785,7 @@ pub struct Config {
     caps: ClientCapabilities,
     root_path: AbsPathBuf,
     snippets: Vec<Snippet>,
-    visual_studio_code_version: Option<Version>,
+    client_info: Option<ClientInfo>,
 
     default_config: &'static DefaultConfigData,
     /// Config node that obtains its initial value during the server initialization and
@@ -774,7 +818,7 @@ impl fmt::Debug for Config {
             .field("caps", &self.caps)
             .field("root_path", &self.root_path)
             .field("snippets", &self.snippets)
-            .field("visual_studio_code_version", &self.visual_studio_code_version)
+            .field("client_info", &self.client_info)
             .field("client_config", &self.client_config)
             .field("user_config", &self.user_config)
             .field("ratoml_file", &self.ratoml_file)
@@ -795,25 +839,14 @@ impl std::ops::Deref for Config {
 }
 
 impl Config {
-    /// Path to the root configuration file. This can be seen as a generic way to define what would be `$XDG_CONFIG_HOME/rust-analyzer/rust-analyzer.toml` in Linux.
-    /// This path is equal to:
-    ///
-    /// |Platform | Value                                 | Example                                  |
-    /// | ------- | ------------------------------------- | ---------------------------------------- |
-    /// | Linux   | `$XDG_CONFIG_HOME` or `$HOME`/.config | /home/alice/.config                      |
-    /// | macOS   | `$HOME`/Library/Application Support   | /Users/Alice/Library/Application Support |
-    /// | Windows | `{FOLDERID_RoamingAppData}`           | C:\Users\Alice\AppData\Roaming           |
-    pub fn user_config_path() -> Option<&'static AbsPath> {
-        static USER_CONFIG_PATH: LazyLock<Option<AbsPathBuf>> = LazyLock::new(|| {
-            let user_config_path = if let Some(path) = env::var_os("__TEST_RA_USER_CONFIG_DIR") {
-                std::path::PathBuf::from(path)
-            } else {
-                dirs::config_dir()?.join("rust-analyzer")
-            }
-            .join("rust-analyzer.toml");
-            Some(AbsPathBuf::assert_utf8(user_config_path))
-        });
-        USER_CONFIG_PATH.as_deref()
+    /// Path to the user configuration dir. This can be seen as a generic way to define what would be `$XDG_CONFIG_HOME/rust-analyzer` in Linux.
+    pub fn user_config_dir_path() -> Option<AbsPathBuf> {
+        let user_config_path = if let Some(path) = env::var_os("__TEST_RA_USER_CONFIG_DIR") {
+            std::path::PathBuf::from(path)
+        } else {
+            dirs::config_dir()?.join("rust-analyzer")
+        };
+        Some(AbsPathBuf::assert_utf8(user_config_path))
     }
 
     pub fn same_source_root_parent_map(
@@ -833,6 +866,7 @@ impl Config {
         let mut should_update = false;
 
         if let Some(change) = change.user_config_change {
+            tracing::info!("updating config from user config toml: {:#}", change);
             if let Ok(table) = toml::from_str(&change) {
                 let mut toml_errors = vec![];
                 validate_toml_table(
@@ -858,7 +892,7 @@ impl Config {
         if let Some(mut json) = change.client_config_change {
             tracing::info!("updating config from JSON: {:#}", json);
 
-            if !(json.is_null() || json.as_object().map_or(false, |it| it.is_empty())) {
+            if !(json.is_null() || json.as_object().is_some_and(|it| it.is_empty())) {
                 let mut json_errors = vec![];
                 let detached_files = get_field_json::<Vec<Utf8PathBuf>>(
                     &mut json,
@@ -873,10 +907,17 @@ impl Config {
 
                 patch_old_style::patch_json_for_outdated_configs(&mut json);
 
+                let mut json_errors = vec![];
+                let snips = get_field_json::<FxHashMap<String, SnippetDef>>(
+                    &mut json,
+                    &mut json_errors,
+                    "completion_snippets_custom",
+                    None,
+                )
+                .unwrap_or(self.completion_snippets_custom().to_owned());
+
                 // IMPORTANT : This holds as long as ` completion_snippets_custom` is declared `client`.
                 config.snippets.clear();
-
-                let snips = self.completion_snippets_custom().to_owned();
 
                 for (name, def) in snips.iter() {
                     if def.prefix.is_empty() && def.postfix.is_empty() {
@@ -925,7 +966,7 @@ impl Config {
                     RatomlFileKind::Crate => {
                         if let Some(text) = text {
                             let mut toml_errors = vec![];
-                            tracing::info!("updating ra-toml config: {:#}", text);
+                            tracing::info!("updating ra-toml crate config: {:#}", text);
                             match toml::from_str(&text) {
                                 Ok(table) => {
                                     validate_toml_table(
@@ -967,6 +1008,7 @@ impl Config {
                     }
                     RatomlFileKind::Workspace => {
                         if let Some(text) = text {
+                            tracing::info!("updating ra-toml workspace config: {:#}", text);
                             let mut toml_errors = vec![];
                             match toml::from_str(&text) {
                                 Ok(table) => {
@@ -1150,6 +1192,7 @@ pub struct LensConfig {
     // runnables
     pub run: bool,
     pub debug: bool,
+    pub update_test: bool,
     pub interpret: bool,
 
     // implementations
@@ -1185,6 +1228,7 @@ impl LensConfig {
     pub fn any(&self) -> bool {
         self.run
             || self.debug
+            || self.update_test
             || self.implementations
             || self.method_refs
             || self.refs_adt
@@ -1197,7 +1241,7 @@ impl LensConfig {
     }
 
     pub fn runnable(&self) -> bool {
-        self.run || self.debug
+        self.run || self.debug || self.update_test
     }
 
     pub fn references(&self) -> bool {
@@ -1211,6 +1255,7 @@ pub struct HoverActionsConfig {
     pub references: bool,
     pub run: bool,
     pub debug: bool,
+    pub update_test: bool,
     pub goto_type_def: bool,
 }
 
@@ -1220,6 +1265,7 @@ impl HoverActionsConfig {
         references: false,
         run: false,
         debug: false,
+        update_test: false,
         goto_type_def: false,
     };
 
@@ -1232,7 +1278,7 @@ impl HoverActionsConfig {
     }
 
     pub fn runnable(&self) -> bool {
-        self.run || self.debug
+        self.run || self.debug || self.update_test
     }
 }
 
@@ -1253,7 +1299,7 @@ pub struct NotificationsConfig {
     pub cargo_toml_not_found: bool,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub enum RustfmtConfig {
     Rustfmt { extra_args: Vec<String>, enable_range_formatting: bool },
     CustomCommand { command: String, args: Vec<String> },
@@ -1332,7 +1378,7 @@ impl Config {
         root_path: AbsPathBuf,
         caps: lsp_types::ClientCapabilities,
         workspace_roots: Vec<AbsPathBuf>,
-        visual_studio_code_version: Option<Version>,
+        client_info: Option<lsp_types::ClientInfo>,
     ) -> Self {
         static DEFAULT_CONFIG_DATA: OnceLock<&'static DefaultConfigData> = OnceLock::new();
 
@@ -1343,7 +1389,10 @@ impl Config {
             root_path,
             snippets: Default::default(),
             workspace_roots,
-            visual_studio_code_version,
+            client_info: client_info.map(|it| ClientInfo {
+                name: it.name,
+                version: it.version.as_deref().map(Version::parse).and_then(Result::ok),
+            }),
             client_config: (FullConfigInput::default(), ConfigErrors(vec![])),
             default_config: DEFAULT_CONFIG_DATA.get_or_init(|| Box::leak(Box::default())),
             source_root_parent_map: Arc::new(FxHashMap::default()),
@@ -1417,7 +1466,7 @@ impl Config {
         CallHierarchyConfig { exclude_tests: self.references_excludeTests().to_owned() }
     }
 
-    pub fn completion(&self, source_root: Option<SourceRootId>) -> CompletionConfig {
+    pub fn completion(&self, source_root: Option<SourceRootId>) -> CompletionConfig<'_> {
         let client_capability_fields = self.completion_resolve_support_properties();
         CompletionConfig {
             enable_postfix_completions: self.completion_postfix_enable(source_root).to_owned(),
@@ -1443,15 +1492,32 @@ impl Config {
             limit: self.completion_limit(source_root).to_owned(),
             enable_term_search: self.completion_termSearch_enable(source_root).to_owned(),
             term_search_fuel: self.completion_termSearch_fuel(source_root).to_owned() as u64,
-            fields_to_resolve: CompletionFieldsToResolve {
-                resolve_label_details: client_capability_fields.contains("labelDetails"),
-                resolve_tags: client_capability_fields.contains("tags"),
-                resolve_detail: client_capability_fields.contains("detail"),
-                resolve_documentation: client_capability_fields.contains("documentation"),
-                resolve_filter_text: client_capability_fields.contains("filterText"),
-                resolve_text_edit: client_capability_fields.contains("textEdit"),
-                resolve_command: client_capability_fields.contains("command"),
+            fields_to_resolve: if self.client_is_neovim() {
+                CompletionFieldsToResolve::empty()
+            } else {
+                CompletionFieldsToResolve::from_client_capabilities(&client_capability_fields)
             },
+            exclude_flyimport: self
+                .completion_autoimport_exclude(source_root)
+                .iter()
+                .map(|it| match it {
+                    AutoImportExclusion::Path(path) => {
+                        (path.clone(), ide_completion::AutoImportExclusionType::Always)
+                    }
+                    AutoImportExclusion::Verbose { path, r#type } => (
+                        path.clone(),
+                        match r#type {
+                            AutoImportExclusionType::Always => {
+                                ide_completion::AutoImportExclusionType::Always
+                            }
+                            AutoImportExclusionType::Methods => {
+                                ide_completion::AutoImportExclusionType::Methods
+                            }
+                        },
+                    ),
+                })
+                .collect(),
+            exclude_traits: self.completion_excludeTraits(source_root),
         }
     }
 
@@ -1507,6 +1573,9 @@ impl Config {
             references: enable && self.hover_actions_references_enable().to_owned(),
             run: enable && self.hover_actions_run_enable().to_owned(),
             debug: enable && self.hover_actions_debug_enable().to_owned(),
+            update_test: enable
+                && self.hover_actions_run_enable().to_owned()
+                && self.hover_actions_updateTest_enable().to_owned(),
             goto_type_def: enable && self.hover_actions_gotoTypeDef_enable().to_owned(),
         }
     }
@@ -1537,6 +1606,11 @@ impl Config {
             max_trait_assoc_items_count: self.hover_show_traitAssocItems().to_owned(),
             max_fields_count: self.hover_show_fields().to_owned(),
             max_enum_variants_count: self.hover_show_enumVariants().to_owned(),
+            max_subst_ty_len: match self.hover_maxSubstitutionLength() {
+                Some(MaxSubstitutionLength::Hide) => ide::SubstTyLen::Hide,
+                Some(MaxSubstitutionLength::Limit(limit)) => ide::SubstTyLen::LimitTo(*limit),
+                None => ide::SubstTyLen::Unlimited,
+            },
         }
     }
 
@@ -1611,13 +1685,9 @@ impl Config {
             } else {
                 None
             },
-            fields_to_resolve: InlayFieldsToResolve {
-                resolve_text_edits: client_capability_fields.contains("textEdits"),
-                resolve_hint_tooltip: client_capability_fields.contains("tooltip"),
-                resolve_label_tooltip: client_capability_fields.contains("label.tooltip"),
-                resolve_label_location: client_capability_fields.contains("label.location"),
-                resolve_label_command: client_capability_fields.contains("label.command"),
-            },
+            fields_to_resolve: InlayFieldsToResolve::from_client_capabilities(
+                &client_capability_fields,
+            ),
             implicit_drop_hints: self.inlayHints_implicitDrops_enable().to_owned(),
             range_exclusive_hints: self.inlayHints_rangeExclusiveHints_enable().to_owned(),
         }
@@ -1971,7 +2041,7 @@ impl Config {
 
     pub(crate) fn cargo_test_options(&self, source_root: Option<SourceRootId>) -> CargoOptions {
         CargoOptions {
-            target_triples: self.cargo_target(source_root).clone().into_iter().collect(),
+            target_tuples: self.cargo_target(source_root).clone().into_iter().collect(),
             all_targets: false,
             no_default_features: *self.cargo_noDefaultFeatures(source_root),
             all_features: matches!(self.cargo_features(source_root), CargoFeaturesDef::All),
@@ -2006,7 +2076,7 @@ impl Config {
             Some(_) | None => FlycheckConfig::CargoCommand {
                 command: self.check_command(source_root).clone(),
                 options: CargoOptions {
-                    target_triples: self
+                    target_tuples: self
                         .check_targets(source_root)
                         .clone()
                         .and_then(|targets| match &targets.0[..] {
@@ -2049,11 +2119,13 @@ impl Config {
     fn target_dir_from_config(&self, source_root: Option<SourceRootId>) -> Option<Utf8PathBuf> {
         self.cargo_targetDir(source_root).as_ref().and_then(|target_dir| match target_dir {
             TargetDirectory::UseSubdirectory(true) => {
-                Some(Utf8PathBuf::from("target/rust-analyzer"))
+                let env_var = env::var("CARGO_TARGET_DIR").ok();
+                let mut path = Utf8PathBuf::from(env_var.as_deref().unwrap_or("target"));
+                path.push("rust-analyzer");
+                Some(path)
             }
             TargetDirectory::UseSubdirectory(false) => None,
-            TargetDirectory::Directory(dir) if dir.is_relative() => Some(dir.clone()),
-            TargetDirectory::Directory(_) => None,
+            TargetDirectory::Directory(dir) => Some(dir.clone()),
         })
     }
 
@@ -2098,6 +2170,9 @@ impl Config {
         LensConfig {
             run: *self.lens_enable() && *self.lens_run_enable(),
             debug: *self.lens_enable() && *self.lens_debug_enable(),
+            update_test: *self.lens_enable()
+                && *self.lens_updateTest_enable()
+                && *self.lens_run_enable(),
             interpret: *self.lens_enable() && *self.lens_run_enable() && *self.interpret_tests(),
             implementations: *self.lens_enable() && *self.lens_implementations_enable(),
             method_refs: *self.lens_enable() && *self.lens_references_method_enable(),
@@ -2157,14 +2232,25 @@ impl Config {
         }
     }
 
-    pub fn typing_autoclose_angle(&self) -> bool {
-        *self.typing_autoClosingAngleBrackets_enable()
+    pub fn typing_exclude_chars(&self) -> Option<String> {
+        self.typing_excludeChars().clone()
     }
 
     // VSCode is our reference implementation, so we allow ourselves to work around issues by
     // special casing certain versions
     pub fn visual_studio_code_version(&self) -> Option<&Version> {
-        self.visual_studio_code_version.as_ref()
+        self.client_info
+            .as_ref()
+            .filter(|it| it.name.starts_with("Visual Studio Code"))
+            .and_then(|it| it.version.as_ref())
+    }
+
+    pub fn client_is_helix(&self) -> bool {
+        self.client_info.as_ref().map(|it| it.name == "helix").unwrap_or_default()
+    }
+
+    pub fn client_is_neovim(&self) -> bool {
+        self.client_info.as_ref().map(|it| it.name == "Neovim").unwrap_or_default()
     }
 }
 // Deserialization definitions
@@ -2366,6 +2452,21 @@ where
 enum ExprFillDefaultDef {
     Todo,
     Default,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(untagged)]
+#[serde(rename_all = "snake_case")]
+pub enum AutoImportExclusion {
+    Path(String),
+    Verbose { path: String, r#type: AutoImportExclusionType },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum AutoImportExclusionType {
+    Always,
+    Methods,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -3409,6 +3510,46 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                     }
                 }
             ]
+        },
+        "Option<MaxSubstitutionLength>" => set! {
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string",
+                    "enum": ["hide"]
+                },
+                {
+                    "type": "integer"
+                }
+            ]
+        },
+        "Vec<AutoImportExclusion>" => set! {
+            "type": "array",
+            "items": {
+                "anyOf": [
+                    {
+                        "type": "string",
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "path": {
+                                "type": "string",
+                            },
+                            "type": {
+                                "type": "string",
+                                "enum": ["always", "methods"],
+                                "enumDescriptions": [
+                                    "Do not show this item or its methods (if it is a trait) in auto-import completions.",
+                                    "Do not show this traits methods in auto-import completions."
+                                ],
+                            },
+                        }
+                    }
+                ]
+             }
         },
         _ => panic!("missing entry for {ty}: {default} (field {field})"),
     }

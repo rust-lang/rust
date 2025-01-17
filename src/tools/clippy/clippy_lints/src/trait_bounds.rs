@@ -1,6 +1,6 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_applicability};
 use clippy_utils::{SpanlessEq, SpanlessHash, is_from_proc_macro};
 use core::hash::{Hash, Hasher};
@@ -11,7 +11,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{
     BoundPolarity, GenericBound, Generics, Item, ItemKind, LangItem, Node, Path, PathSegment, PredicateOrigin, QPath,
-    TraitBoundModifiers, TraitItem, TraitRef, Ty, TyKind, WherePredicate,
+    TraitBoundModifiers, TraitItem, TraitRef, Ty, TyKind, WherePredicateKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -124,9 +124,9 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
         let mut self_bounds_map = FxHashMap::default();
 
         for predicate in item.generics.predicates {
-            if let WherePredicate::BoundPredicate(bound_predicate) = predicate
+            if let WherePredicateKind::BoundPredicate(bound_predicate) = predicate.kind
                 && bound_predicate.origin != PredicateOrigin::ImplTrait
-                && !bound_predicate.span.from_expansion()
+                && !predicate.span.from_expansion()
                 && let TyKind::Path(QPath::Resolved(_, Path { segments, .. })) = bound_predicate.bounded_ty.kind
                 && let Some(PathSegment {
                     res: Res::SelfTyParam { trait_: def_id },
@@ -268,10 +268,10 @@ impl TraitBounds {
         let mut map: UnhashMap<SpanlessTy<'_, '_>, Vec<&GenericBound<'_>>> = UnhashMap::default();
         let mut applicability = Applicability::MaybeIncorrect;
         for bound in generics.predicates {
-            if let WherePredicate::BoundPredicate(p) = bound
+            if let WherePredicateKind::BoundPredicate(p) = bound.kind
                 && p.origin != PredicateOrigin::ImplTrait
                 && p.bounds.len() as u64 <= self.max_trait_bounds
-                && !p.span.from_expansion()
+                && !bound.span.from_expansion()
                 && let bounds = p
                     .bounds
                     .iter()
@@ -295,7 +295,7 @@ impl TraitBounds {
                 span_lint_and_help(
                     cx,
                     TYPE_REPETITION_IN_BOUNDS,
-                    p.span,
+                    bound.span,
                     "this type has already been used as a bound predicate",
                     None,
                     hint_string,
@@ -322,8 +322,8 @@ fn check_trait_bound_duplication<'tcx>(cx: &LateContext<'tcx>, generics: &'_ Gen
         .predicates
         .iter()
         .filter_map(|pred| {
-            if pred.in_where_clause()
-                && let WherePredicate::BoundPredicate(bound_predicate) = pred
+            if pred.kind.in_where_clause()
+                && let WherePredicateKind::BoundPredicate(bound_predicate) = pred.kind
                 && let TyKind::Path(QPath::Resolved(_, path)) = bound_predicate.bounded_ty.kind
             {
                 return Some(
@@ -347,10 +347,10 @@ fn check_trait_bound_duplication<'tcx>(cx: &LateContext<'tcx>, generics: &'_ Gen
     //            |
     // compare trait bounds keyed by generic name and comparable trait to collected where
     // predicates eg. (T, Clone)
-    for predicate in generics.predicates.iter().filter(|pred| !pred.in_where_clause()) {
-        if let WherePredicate::BoundPredicate(bound_predicate) = predicate
+    for predicate in generics.predicates.iter().filter(|pred| !pred.kind.in_where_clause()) {
+        if let WherePredicateKind::BoundPredicate(bound_predicate) = predicate.kind
             && bound_predicate.origin != PredicateOrigin::ImplTrait
-            && !bound_predicate.span.from_expansion()
+            && !predicate.span.from_expansion()
             && let TyKind::Path(QPath::Resolved(_, path)) = bound_predicate.bounded_ty.kind
         {
             let traits = rollup_traits(cx, bound_predicate.bounds, "these bounds contain repeated elements");

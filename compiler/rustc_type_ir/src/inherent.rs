@@ -112,6 +112,8 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_pat(interner: I, ty: Self, pat: I::Pat) -> Self;
 
+    fn new_unsafe_binder(interner: I, ty: ty::Binder<I, I::Ty>) -> Self;
+
     fn tuple_fields(self) -> I::Tys;
 
     fn to_opt_closure_kind(self) -> Option<ty::ClosureKind>;
@@ -135,6 +137,9 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn is_fn_ptr(self) -> bool {
         matches!(self.kind(), ty::FnPtr(..))
     }
+
+    /// Checks whether this type is an ADT that has unsafe fields.
+    fn has_unsafe_fields(self) -> bool;
 
     fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
         match self.kind() {
@@ -182,6 +187,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
             | ty::FnPtr(..)
+            | ty::UnsafeBinder(_)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
             | ty::CoroutineClosure(_, _)
@@ -257,8 +263,6 @@ pub trait Const<I: Interner<Const = Self>>:
     + Relate<I>
     + Flags
 {
-    fn try_to_target_usize(self, interner: I) -> Option<u64>;
-
     fn new_infer(interner: I, var: ty::InferConst) -> Self;
 
     fn new_var(interner: I, var: ty::ConstVid) -> Self;
@@ -542,7 +546,7 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
 }
 
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
-    fn caller_bounds(self) -> impl IntoIterator<Item = I::Clause>;
+    fn caller_bounds(self) -> impl SliceLike<Item = I::Clause>;
 }
 
 pub trait Features<I: Interner>: Copy {

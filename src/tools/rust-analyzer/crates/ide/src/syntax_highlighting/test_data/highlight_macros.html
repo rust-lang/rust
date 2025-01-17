@@ -54,7 +54,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="brace macro proc_macro">}</span> <span class="struct declaration macro proc_macro">Foo</span> <span class="keyword macro proc_macro">struct</span>
 <span class="brace macro proc_macro">}</span>
 <span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">def_fn</span> <span class="brace">{</span>
-    <span class="parenthesis">(</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="colon">:</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span><span class="brace">}</span>
+    <span class="parenthesis">(</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="colon">:</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="operator">&gt;</span> <span class="brace">{</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span><span class="brace">}</span>
 <span class="brace">}</span>
 
 <span class="macro">def_fn</span><span class="macro_bang">!</span> <span class="brace macro">{</span>
@@ -64,24 +64,24 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="brace macro">}</span>
 
 <span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">dont_color_me_braces</span> <span class="brace">{</span>
-    <span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span><span class="numeric_literal">0</span><span class="brace">}</span>
+    <span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="operator">&gt;</span> <span class="brace">{</span><span class="numeric_literal">0</span><span class="brace">}</span>
 <span class="brace">}</span>
 
 <span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">noop</span> <span class="brace">{</span>
-    <span class="parenthesis">(</span><span class="punctuation">$</span>expr<span class="colon">:</span>expr<span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span>
+    <span class="parenthesis">(</span><span class="punctuation">$</span>expr<span class="colon">:</span>expr<span class="parenthesis">)</span> <span class="operator">=</span><span class="operator">&gt;</span> <span class="brace">{</span>
         <span class="punctuation">$</span>expr
     <span class="brace">}</span>
 <span class="brace">}</span>
 
 <span class="comment documentation">/// textually shadow previous definition</span>
 <span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">noop</span> <span class="brace">{</span>
-    <span class="parenthesis">(</span><span class="punctuation">$</span>expr<span class="colon">:</span>expr<span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span>
+    <span class="parenthesis">(</span><span class="punctuation">$</span>expr<span class="colon">:</span>expr<span class="parenthesis">)</span> <span class="operator">=</span><span class="operator">&gt;</span> <span class="brace">{</span>
         <span class="punctuation">$</span>expr
     <span class="brace">}</span>
 <span class="brace">}</span>
 
 <span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">keyword_frag</span> <span class="brace">{</span>
-    <span class="parenthesis">(</span><span class="punctuation">$</span>type<span class="colon">:</span>ty<span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="parenthesis">(</span><span class="punctuation">$</span>type<span class="parenthesis">)</span>
+    <span class="parenthesis">(</span><span class="punctuation">$</span>type<span class="colon">:</span>ty<span class="parenthesis">)</span> <span class="operator">=</span><span class="operator">&gt;</span> <span class="parenthesis">(</span><span class="punctuation">$</span>type<span class="parenthesis">)</span>
 <span class="brace">}</span>
 
 <span class="keyword">macro</span> <span class="macro declaration">with_args</span><span class="parenthesis">(</span><span class="punctuation">$</span>i<span class="colon">:</span>ident<span class="parenthesis">)</span> <span class="brace">{</span>
@@ -95,7 +95,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="brace">}</span>
 
 <span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">id</span> <span class="brace">{</span>
-    <span class="parenthesis">(</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="colon">:</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span>
+    <span class="parenthesis">(</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="colon">:</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="operator">&gt;</span> <span class="brace">{</span>
         <span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span>
     <span class="brace">}</span><span class="semicolon">;</span>
 <span class="brace">}</span>

@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: aarch64 arm64ec
 //@ assembly-output: emit-asm
 //@ [aarch64] compile-flags: --target aarch64-unknown-linux-gnu
@@ -6,33 +7,15 @@
 //@ [arm64ec] needs-llvm-components: aarch64
 //@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd, f16, f128)]
+#![feature(no_core, repr_simd, f16, f128)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 // FIXME(f16_f128): Only needed for FIXME in check! and check_reg!
-#![feature(auto_traits)]
+#![feature(auto_traits, lang_items)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! concat {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! stringify {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
-
-// Do we really need to use no_core for this?!?
-impl<T: Copy, const N: usize> Copy for [T; N] {}
+extern crate minicore;
+use minicore::*;
 
 type ptr = *mut u8;
 
@@ -65,15 +48,6 @@ pub struct f32x4([f32; 4]);
 #[repr(simd)]
 pub struct f64x2([f64; 2]);
 
-impl Copy for i8 {}
-impl Copy for i16 {}
-impl Copy for f16 {}
-impl Copy for i32 {}
-impl Copy for f32 {}
-impl Copy for i64 {}
-impl Copy for f64 {}
-impl Copy for f128 {}
-impl Copy for ptr {}
 impl Copy for i8x8 {}
 impl Copy for i16x4 {}
 impl Copy for i32x2 {}

@@ -26,9 +26,8 @@ use rustc_middle::middle::resolve_bound_vars::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId, LocalDefIdMap};
-use rustc_span::symbol::{Ident, sym};
+use rustc_span::{Ident, Span, sym};
 use tracing::{debug, debug_span, instrument};
 
 use crate::errors;
@@ -661,7 +660,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             _ => {}
         }
         match item.kind {
-            hir::ItemKind::Fn(_, generics, _) => {
+            hir::ItemKind::Fn { generics, .. } => {
                 self.visit_early_late(item.hir_id(), generics, |this| {
                     intravisit::walk_item(this, item);
                 });
@@ -781,6 +780,36 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     intravisit::walk_ty(this, ty);
                 });
             }
+            hir::TyKind::UnsafeBinder(binder) => {
+                let (mut bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) =
+                    binder
+                        .generic_params
+                        .iter()
+                        .enumerate()
+                        .map(|(late_bound_idx, param)| {
+                            (
+                                (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
+                                late_arg_as_bound_arg(self.tcx, param),
+                            )
+                        })
+                        .unzip();
+
+                deny_non_region_late_bound(self.tcx, &mut bound_vars, "function pointer types");
+
+                self.record_late_bound_vars(ty.hir_id, binders);
+                let scope = Scope::Binder {
+                    hir_id: ty.hir_id,
+                    bound_vars,
+                    s: self.scope,
+                    scope_type: BinderScopeType::Normal,
+                    where_bound_origin: None,
+                };
+                self.with(scope, |this| {
+                    // a bare fn has no bounds, so everything
+                    // contained within is scoped within its binder.
+                    intravisit::walk_ty(this, ty);
+                });
+            }
             hir::TyKind::TraitObject(bounds, lifetime, _) => {
                 debug!(?bounds, ?lifetime, "TraitObject");
                 let scope = Scope::TraitRefBoundary { s: self.scope };
@@ -821,6 +850,21 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     s: self.scope,
                 };
                 self.with(scope, |this| this.visit_ty(mt.ty));
+            }
+            hir::TyKind::TraitAscription(bounds) => {
+                let scope = Scope::TraitRefBoundary { s: self.scope };
+                self.with(scope, |this| {
+                    let scope = Scope::LateBoundary {
+                        s: this.scope,
+                        what: "`impl Trait` in binding",
+                        deny_late_regions: true,
+                    };
+                    this.with(scope, |this| {
+                        for bound in bounds {
+                            this.visit_param_bound(bound);
+                        }
+                    })
+                });
             }
             _ => intravisit::walk_ty(self, ty),
         }
@@ -936,9 +980,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     }
 
     fn visit_where_predicate(&mut self, predicate: &'tcx hir::WherePredicate<'tcx>) {
-        match predicate {
-            &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                hir_id,
+        let hir_id = predicate.hir_id;
+        match predicate.kind {
+            &hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                 bounded_ty,
                 bounds,
                 bound_generic_params,
@@ -979,7 +1023,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     walk_list!(this, visit_param_bound, bounds);
                 })
             }
-            &hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
+            &hir::WherePredicateKind::RegionPredicate(hir::WhereRegionPredicate {
                 lifetime,
                 bounds,
                 ..
@@ -987,7 +1031,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 self.visit_lifetime(lifetime);
                 walk_list!(self, visit_param_bound, bounds);
             }
-            &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate { lhs_ty, rhs_ty, .. }) => {
+            &hir::WherePredicateKind::EqPredicate(hir::WhereEqPredicate {
+                lhs_ty, rhs_ty, ..
+            }) => {
                 self.visit_ty(lhs_ty);
                 self.visit_ty(rhs_ty);
             }
@@ -1333,7 +1379,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             } else if let Some(body_id) = outermost_body {
                 let fn_id = self.tcx.hir().body_owner(body_id);
                 match self.tcx.hir_node(fn_id) {
-                    Node::Item(hir::Item { owner_id, kind: hir::ItemKind::Fn(..), .. })
+                    Node::Item(hir::Item { owner_id, kind: hir::ItemKind::Fn { .. }, .. })
                     | Node::TraitItem(hir::TraitItem {
                         owner_id,
                         kind: hir::TraitItemKind::Fn(..),
@@ -2058,47 +2104,37 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 };
                 match path.res {
                     Res::Def(DefKind::TyParam, _) | Res::SelfTyParam { trait_: _ } => {
-                        // Get the generics of this type's hir owner. This is *different*
-                        // from the generics of the parameter's definition, since we want
-                        // to be able to resolve an RTN path on a nested body (e.g. method
-                        // inside an impl) using the where clauses on the method.
-                        // FIXME(return_type_notation): Think of some better way of doing this.
-                        let Some(generics) = self.tcx.hir_owner_node(hir_id.owner).generics()
-                        else {
-                            return;
-                        };
-
-                        // Look for the first bound that contains an associated type that
-                        // matches the segment that we're looking for. We ignore any subsequent
-                        // bounds since we'll be emitting a hard error in HIR lowering, so this
-                        // is purely speculative.
-                        let one_bound = generics.predicates.iter().find_map(|predicate| {
-                            let hir::WherePredicate::BoundPredicate(predicate) = predicate else {
-                                return None;
-                            };
-                            let hir::TyKind::Path(hir::QPath::Resolved(None, bounded_path)) =
-                                predicate.bounded_ty.kind
-                            else {
-                                return None;
-                            };
-                            if bounded_path.res != path.res {
-                                return None;
-                            }
-                            predicate.bounds.iter().find_map(|bound| {
-                                let hir::GenericBound::Trait(trait_) = bound else {
-                                    return None;
-                                };
+                        let mut bounds =
+                            self.for_each_trait_bound_on_res(path.res).filter_map(|trait_def_id| {
                                 BoundVarContext::supertrait_hrtb_vars(
                                     self.tcx,
-                                    trait_.trait_ref.trait_def_id()?,
+                                    trait_def_id,
                                     item_segment.ident,
                                     ty::AssocKind::Fn,
                                 )
-                            })
-                        });
-                        let Some((bound_vars, assoc_item)) = one_bound else {
+                            });
+
+                        let Some((bound_vars, assoc_item)) = bounds.next() else {
+                            // This will error in HIR lowering.
+                            self.tcx
+                                .dcx()
+                                .span_delayed_bug(path.span, "no resolution for RTN path");
                             return;
                         };
+
+                        // Don't bail if we have identical bounds, which may be collected from
+                        // something like `T: Bound + Bound`, or via elaborating supertraits.
+                        for (second_vars, second_assoc_item) in bounds {
+                            if second_vars != bound_vars || second_assoc_item != assoc_item {
+                                // This will error in HIR lowering.
+                                self.tcx.dcx().span_delayed_bug(
+                                    path.span,
+                                    "ambiguous resolution for RTN path",
+                                );
+                                return;
+                            }
+                        }
+
                         (bound_vars, assoc_item.def_id, item_segment)
                     }
                     // If we have a self type alias (in an impl), try to resolve an
@@ -2163,6 +2199,92 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         let existing_bound_vars_saved = existing_bound_vars.clone();
         existing_bound_vars.extend(bound_vars);
         self.record_late_bound_vars(item_segment.hir_id, existing_bound_vars_saved);
+    }
+
+    /// Walk the generics of the item for a trait bound whose self type
+    /// corresponds to the expected res, and return the trait def id.
+    fn for_each_trait_bound_on_res(
+        &self,
+        expected_res: Res,
+    ) -> impl Iterator<Item = DefId> + use<'tcx, '_> {
+        std::iter::from_coroutine(
+            #[coroutine]
+            move || {
+                let mut scope = self.scope;
+                loop {
+                    let hir_id = match *scope {
+                        Scope::Binder { hir_id, .. } => Some(hir_id),
+                        Scope::Root { opt_parent_item: Some(parent_def_id) } => {
+                            Some(self.tcx.local_def_id_to_hir_id(parent_def_id))
+                        }
+                        Scope::Body { .. }
+                        | Scope::ObjectLifetimeDefault { .. }
+                        | Scope::Supertrait { .. }
+                        | Scope::TraitRefBoundary { .. }
+                        | Scope::LateBoundary { .. }
+                        | Scope::Opaque { .. }
+                        | Scope::Root { opt_parent_item: None } => None,
+                    };
+
+                    if let Some(hir_id) = hir_id {
+                        let node = self.tcx.hir_node(hir_id);
+                        // If this is a `Self` bound in a trait, yield the trait itself.
+                        // Specifically, we don't need to look at any supertraits since
+                        // we already do that in `BoundVarContext::supertrait_hrtb_vars`.
+                        if let Res::SelfTyParam { trait_: _ } = expected_res
+                            && let hir::Node::Item(item) = node
+                            && let hir::ItemKind::Trait(..) = item.kind
+                        {
+                            // Yield the trait's def id. Supertraits will be
+                            // elaborated from that.
+                            yield item.owner_id.def_id.to_def_id();
+                        } else if let Some(generics) = node.generics() {
+                            for pred in generics.predicates {
+                                let hir::WherePredicateKind::BoundPredicate(pred) = pred.kind
+                                else {
+                                    continue;
+                                };
+                                let hir::TyKind::Path(hir::QPath::Resolved(None, bounded_path)) =
+                                    pred.bounded_ty.kind
+                                else {
+                                    continue;
+                                };
+                                // Match the expected res.
+                                if bounded_path.res != expected_res {
+                                    continue;
+                                }
+                                for pred in pred.bounds {
+                                    match pred {
+                                        hir::GenericBound::Trait(poly_trait_ref) => {
+                                            if let Some(def_id) =
+                                                poly_trait_ref.trait_ref.trait_def_id()
+                                            {
+                                                yield def_id;
+                                            }
+                                        }
+                                        hir::GenericBound::Outlives(_)
+                                        | hir::GenericBound::Use(_, _) => {}
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    match *scope {
+                        Scope::Binder { s, .. }
+                        | Scope::Body { s, .. }
+                        | Scope::ObjectLifetimeDefault { s, .. }
+                        | Scope::Supertrait { s, .. }
+                        | Scope::TraitRefBoundary { s }
+                        | Scope::LateBoundary { s, .. }
+                        | Scope::Opaque { s, .. } => {
+                            scope = s;
+                        }
+                        Scope::Root { .. } => break,
+                    }
+                }
+            },
+        )
     }
 }
 

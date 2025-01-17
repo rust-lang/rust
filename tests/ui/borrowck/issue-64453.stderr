@@ -1,4 +1,4 @@
-error[E0015]: cannot call non-const fn `format` in statics
+error[E0015]: cannot call non-const function `format` in statics
   --> $DIR/issue-64453.rs:4:31
    |
 LL | static settings_dir: String = format!("");

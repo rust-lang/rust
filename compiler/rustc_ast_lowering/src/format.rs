@@ -6,8 +6,7 @@ use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_session::config::FmtDebug;
-use rustc_span::symbol::{Ident, kw};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, kw, sym};
 
 use super::LoweringContext;
 

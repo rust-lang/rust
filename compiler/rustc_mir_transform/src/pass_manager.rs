@@ -79,6 +79,12 @@ pub(super) trait MirPass<'tcx> {
         true
     }
 
+    /// Returns `true` if this pass can be overridden by `-Zenable-mir-passes`. This should be
+    /// true for basically every pass other than those that are necessary for correctness.
+    fn can_be_overridden(&self) -> bool {
+        true
+    }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>);
 
     fn is_mir_dump_enabled(&self) -> bool {
@@ -175,6 +181,10 @@ where
     P: MirPass<'tcx> + ?Sized,
 {
     let name = pass.name();
+
+    if !pass.can_be_overridden() {
+        return pass.is_enabled(tcx.sess);
+    }
 
     let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
     let overridden =
@@ -292,7 +302,7 @@ fn run_passes_inner<'tcx>(
 }
 
 pub(super) fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when: String) {
-    validate::Validator { when, mir_phase: body.phase }.run_pass(tcx, body);
+    validate::Validator { when }.run_pass(tcx, body);
 }
 
 fn dump_mir_for_pass<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, pass_name: &str, is_after: bool) {

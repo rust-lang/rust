@@ -10,10 +10,50 @@ use rustc_errors::{
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_base_expression_double_dot, code = E0797)]
+pub(crate) struct BaseExpressionDoubleDot {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub default_field_values: Option<BaseExpressionDoubleDotEnableDefaultFieldValues>,
+    #[subdiagnostic]
+    pub add_expr: Option<BaseExpressionDoubleDotAddExpr>,
+    #[subdiagnostic]
+    pub remove_dots: Option<BaseExpressionDoubleDotRemove>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    hir_typeck_base_expression_double_dot_remove,
+    code = "",
+    applicability = "machine-applicable",
+    style = "verbose"
+)]
+pub(crate) struct BaseExpressionDoubleDotRemove {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    hir_typeck_base_expression_double_dot_add_expr,
+    code = "/* expr */",
+    applicability = "has-placeholders",
+    style = "verbose"
+)]
+pub(crate) struct BaseExpressionDoubleDotAddExpr {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[help(hir_typeck_base_expression_double_dot_enable_default_field_values)]
+pub(crate) struct BaseExpressionDoubleDotEnableDefaultFieldValues;
 
 #[derive(Diagnostic)]
 #[diag(hir_typeck_field_multiply_specified_in_initializer, code = E0062)]
@@ -789,11 +829,33 @@ pub(crate) struct PassToVariadicFunction<'a, 'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub cast_ty: &'a str,
-    #[suggestion(code = "{replace}", applicability = "machine-applicable")]
-    pub sugg_span: Option<Span>,
-    pub replace: String,
-    #[help]
-    pub help: bool,
+    #[suggestion(code = " as {cast_ty}", applicability = "machine-applicable", style = "verbose")]
+    pub sugg_span: Span,
     #[note(hir_typeck_teach_help)]
     pub(crate) teach: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_fn_item_to_variadic_function, code = E0617)]
+#[help]
+#[note]
+pub(crate) struct PassFnItemToVariadicFunction {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = " as {replace}", applicability = "machine-applicable", style = "verbose")]
+    pub sugg_span: Span,
+    pub replace: String,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    hir_typeck_replace_comma_with_semicolon,
+    applicability = "machine-applicable",
+    style = "verbose",
+    code = "; "
+)]
+pub(crate) struct ReplaceCommaWithSemicolon {
+    #[primary_span]
+    pub comma_span: Span,
+    pub descr: &'static str,
 }

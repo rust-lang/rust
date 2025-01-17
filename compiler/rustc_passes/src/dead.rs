@@ -22,7 +22,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_session::lint::builtin::DEAD_CODE;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 
 use crate::errors::{
     ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UselessAssignment,

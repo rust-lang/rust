@@ -7,8 +7,7 @@ use rustc_macros::Subdiagnostic;
 use rustc_parse::parser::{Parser, Recovery, token_descr};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::Ident;
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Ident, Span};
 use tracing::debug;
 
 use super::macro_rules::{NoopTracker, parser_from_cx};

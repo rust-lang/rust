@@ -1,6 +1,5 @@
 //@ run-pass
 #![allow(dead_code)]
-//@ pretty-expanded FIXME #23616
 
 type Connection = Box<dyn FnMut(Vec<u8>) + 'static>;
 

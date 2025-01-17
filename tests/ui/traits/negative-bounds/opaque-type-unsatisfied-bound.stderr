@@ -5,52 +5,16 @@ LL | fn weird0() -> impl Sized + !Sized {}
    |                ^^^^^^^^^^^^^^^^^^^ the trait bound `(): !Sized` is not satisfied
 
 error[E0277]: the trait bound `(): !Sized` is not satisfied
-  --> $DIR/opaque-type-unsatisfied-bound.rs:15:36
-   |
-LL | fn weird0() -> impl Sized + !Sized {}
-   |                                    ^^ the trait bound `(): !Sized` is not satisfied
-
-error[E0277]: the trait bound `(): !Sized` is not satisfied
-  --> $DIR/opaque-type-unsatisfied-bound.rs:15:1
-   |
-LL | fn weird0() -> impl Sized + !Sized {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait bound `(): !Sized` is not satisfied
-
-error[E0277]: the trait bound `(): !Sized` is not satisfied
-  --> $DIR/opaque-type-unsatisfied-bound.rs:19:16
+  --> $DIR/opaque-type-unsatisfied-bound.rs:17:16
    |
 LL | fn weird1() -> impl !Sized + Sized {}
    |                ^^^^^^^^^^^^^^^^^^^ the trait bound `(): !Sized` is not satisfied
 
 error[E0277]: the trait bound `(): !Sized` is not satisfied
-  --> $DIR/opaque-type-unsatisfied-bound.rs:19:36
-   |
-LL | fn weird1() -> impl !Sized + Sized {}
-   |                                    ^^ the trait bound `(): !Sized` is not satisfied
-
-error[E0277]: the trait bound `(): !Sized` is not satisfied
-  --> $DIR/opaque-type-unsatisfied-bound.rs:19:1
-   |
-LL | fn weird1() -> impl !Sized + Sized {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait bound `(): !Sized` is not satisfied
-
-error[E0277]: the trait bound `(): !Sized` is not satisfied
-  --> $DIR/opaque-type-unsatisfied-bound.rs:23:16
+  --> $DIR/opaque-type-unsatisfied-bound.rs:19:16
    |
 LL | fn weird2() -> impl !Sized {}
    |                ^^^^^^^^^^^ the trait bound `(): !Sized` is not satisfied
-
-error[E0277]: the trait bound `(): !Sized` is not satisfied
-  --> $DIR/opaque-type-unsatisfied-bound.rs:23:28
-   |
-LL | fn weird2() -> impl !Sized {}
-   |                            ^^ the trait bound `(): !Sized` is not satisfied
-
-error[E0277]: the trait bound `(): !Sized` is not satisfied
-  --> $DIR/opaque-type-unsatisfied-bound.rs:23:1
-   |
-LL | fn weird2() -> impl !Sized {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait bound `(): !Sized` is not satisfied
 
 error[E0277]: the trait bound `impl !Trait: Trait` is not satisfied
   --> $DIR/opaque-type-unsatisfied-bound.rs:12:13
@@ -66,6 +30,6 @@ note: required by a bound in `consume`
 LL | fn consume(_: impl Trait) {}
    |                    ^^^^^ required by this bound in `consume`
 
-error: aborting due to 10 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

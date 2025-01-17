@@ -304,7 +304,7 @@ where
                 self.pos = n;
                 Ok(self.pos)
             }
-            None => Err(io::const_io_error!(
+            None => Err(io::const_error!(
                 ErrorKind::InvalidInput,
                 "invalid seek to a negative or overflowing position",
             )),
@@ -446,7 +446,7 @@ fn reserve_and_pad<A: Allocator>(
     buf_len: usize,
 ) -> io::Result<usize> {
     let pos: usize = (*pos_mut).try_into().map_err(|_| {
-        io::const_io_error!(
+        io::const_error!(
             ErrorKind::InvalidInput,
             "cursor position exceeds maximum possible vector length",
         )

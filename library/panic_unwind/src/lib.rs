@@ -25,13 +25,14 @@
 // `real_imp` is unused with Miri, so silence warnings.
 #![cfg_attr(miri, allow(dead_code))]
 #![allow(internal_features)]
+#![cfg_attr(not(bootstrap), feature(cfg_emscripten_wasm_eh))]
 
 use alloc::boxed::Box;
 use core::any::Any;
 use core::panic::PanicPayload;
 
 cfg_if::cfg_if! {
-    if #[cfg(target_os = "emscripten")] {
+    if #[cfg(all(target_os = "emscripten", not(emscripten_wasm_eh)))] {
         #[path = "emcc.rs"]
         mod imp;
     } else if #[cfg(target_os = "hermit")] {
@@ -46,7 +47,7 @@ cfg_if::cfg_if! {
         target_os = "psp",
         target_os = "xous",
         target_os = "solid_asp3",
-        all(target_family = "unix", not(any(target_os = "espidf", target_os = "rtems", target_os = "nuttx"))),
+        all(target_family = "unix", not(any(target_os = "espidf", target_os = "nuttx"))),
         all(target_vendor = "fortanix", target_env = "sgx"),
         target_family = "wasm",
     ))] {

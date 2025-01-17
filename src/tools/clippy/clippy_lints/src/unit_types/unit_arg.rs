@@ -25,13 +25,13 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         return;
     }
 
-    let (reciever, args) = match expr.kind {
+    let (receiver, args) = match expr.kind {
         ExprKind::Call(_, args) => (None, args),
         ExprKind::MethodCall(_, receiver, args, _) => (Some(receiver), args),
         _ => return,
     };
 
-    let args_to_recover = reciever
+    let args_to_recover = receiver
         .into_iter()
         .chain(args)
         .filter(|arg| {

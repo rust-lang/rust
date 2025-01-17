@@ -3,14 +3,16 @@
 use std::{path::PathBuf, time::Instant};
 
 use ide::{
-    AnalysisHost, LineCol, MonikerDescriptorKind, MonikerResult, StaticIndex, StaticIndexedFile,
-    SymbolInformationKind, TextRange, TokenId, VendoredLibrariesConfig,
+    AnalysisHost, LineCol, Moniker, MonikerDescriptorKind, MonikerIdentifier, MonikerResult,
+    RootDatabase, StaticIndex, StaticIndexedFile, SymbolInformationKind, TextRange, TokenId,
+    TokenStaticData, VendoredLibrariesConfig,
 };
 use ide_db::LineIndexDatabase;
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
 use rustc_hash::{FxHashMap, FxHashSet};
-use scip::types as scip_types;
+use scip::types::{self as scip_types, SymbolInformation};
 use tracing::error;
+use vfs::FileId;
 
 use crate::{
     cli::flags,
@@ -83,32 +85,56 @@ impl flags::Scip {
             text_document_encoding: scip_types::TextEncoding::UTF8.into(),
             special_fields: Default::default(),
         };
+
         let mut documents = Vec::new();
 
-        let mut symbols_emitted: FxHashSet<TokenId> = FxHashSet::default();
-        let mut tokens_to_symbol: FxHashMap<TokenId, String> = FxHashMap::default();
-        let mut tokens_to_enclosing_symbol: FxHashMap<TokenId, Option<String>> =
-            FxHashMap::default();
+        // All TokenIds where an Occurrence has been emitted that references a symbol.
+        let mut token_ids_referenced: FxHashSet<TokenId> = FxHashSet::default();
+        // All TokenIds where the SymbolInformation has been written to the document.
+        let mut token_ids_emitted: FxHashSet<TokenId> = FxHashSet::default();
+        // All FileIds emitted as documents.
+        let mut file_ids_emitted: FxHashSet<FileId> = FxHashSet::default();
+
+        // All non-local symbols encountered, for detecting duplicate symbol errors.
+        let mut nonlocal_symbols_emitted: FxHashSet<String> = FxHashSet::default();
+        // List of (source_location, symbol) for duplicate symbol errors to report.
+        let mut duplicate_symbol_errors: Vec<(String, String)> = Vec::new();
+        // This is called after definitions have been deduplicated by token_ids_emitted. The purpose
+        // is to detect reuse of symbol names because this causes ambiguity about their meaning.
+        let mut record_error_if_symbol_already_used =
+            |symbol: String,
+             is_inherent_impl: bool,
+             relative_path: &str,
+             line_index: &LineIndex,
+             text_range: TextRange| {
+                let is_local = symbol.starts_with("local ");
+                if !is_local && !nonlocal_symbols_emitted.insert(symbol.clone()) {
+                    if is_inherent_impl {
+                        // FIXME: See #18772. Duplicate SymbolInformation for inherent impls is
+                        // omitted. It would be preferable to emit them with numbers with
+                        // disambiguation, but this is more complex to implement.
+                        false
+                    } else {
+                        let source_location =
+                            text_range_to_string(relative_path, line_index, text_range);
+                        duplicate_symbol_errors.push((source_location, symbol));
+                        // Keep duplicate SymbolInformation. This behavior is preferred over
+                        // omitting so that the issue might be visible within downstream tools.
+                        true
+                    }
+                } else {
+                    true
+                }
+            };
+
+        // Generates symbols from token monikers.
+        let mut symbol_generator = SymbolGenerator::new();
 
         for StaticIndexedFile { file_id, tokens, .. } in si.files {
-            let mut local_count = 0;
-            let mut new_local_symbol = || {
-                let new_symbol = scip::types::Symbol::new_local(local_count);
-                local_count += 1;
+            symbol_generator.clear_document_local_state();
 
-                new_symbol
-            };
-
-            let relative_path = match get_relative_filepath(&vfs, &root, file_id) {
-                Some(relative_path) => relative_path,
-                None => continue,
-            };
-
-            let line_index = LineIndex {
-                index: db.line_index(file_id),
-                encoding: PositionEncoding::Utf8,
-                endings: LineEndings::Unix,
-            };
+            let Some(relative_path) = get_relative_filepath(&vfs, &root, file_id) else { continue };
+            let line_index = get_line_index(db, file_id);
 
             let mut occurrences = Vec::new();
             let mut symbols = Vec::new();
@@ -116,71 +142,58 @@ impl flags::Scip {
             tokens.into_iter().for_each(|(text_range, id)| {
                 let token = si.tokens.get(id).unwrap();
 
-                let range = text_range_to_scip_range(&line_index, text_range);
-                let symbol = tokens_to_symbol
-                    .entry(id)
-                    .or_insert_with(|| {
-                        let symbol = token
-                            .moniker
-                            .as_ref()
-                            .map(moniker_to_symbol)
-                            .unwrap_or_else(&mut new_local_symbol);
-                        scip::symbol::format_symbol(symbol)
-                    })
-                    .clone();
-                let enclosing_symbol = tokens_to_enclosing_symbol
-                    .entry(id)
-                    .or_insert_with(|| {
-                        token
-                            .enclosing_moniker
-                            .as_ref()
-                            .map(moniker_to_symbol)
-                            .map(scip::symbol::format_symbol)
-                    })
-                    .clone();
+                let (symbol, enclosing_symbol, is_inherent_impl) =
+                    if let Some(TokenSymbols { symbol, enclosing_symbol, is_inherent_impl }) =
+                        symbol_generator.token_symbols(id, token)
+                    {
+                        (symbol, enclosing_symbol, is_inherent_impl)
+                    } else {
+                        ("".to_owned(), None, false)
+                    };
 
-                let mut symbol_roles = Default::default();
-
-                if let Some(def) = token.definition {
-                    // if the range of the def and the range of the token are the same, this must be the definition.
-                    // they also must be in the same file. See https://github.com/rust-lang/rust-analyzer/pull/17988
-                    if def.file_id == file_id && def.range == text_range {
-                        symbol_roles |= scip_types::SymbolRole::Definition as i32;
-                    }
-
-                    if symbols_emitted.insert(id) {
-                        let documentation = match &token.documentation {
-                            Some(doc) => vec![doc.as_str().to_owned()],
-                            None => vec![],
-                        };
-
-                        let position_encoding =
-                            scip_types::PositionEncoding::UTF8CodeUnitOffsetFromLineStart.into();
-                        let signature_documentation =
-                            token.signature.clone().map(|text| scip_types::Document {
-                                relative_path: relative_path.clone(),
-                                language: "rust".to_owned(),
-                                text,
-                                position_encoding,
-                                ..Default::default()
-                            });
-                        let symbol_info = scip_types::SymbolInformation {
-                            symbol: symbol.clone(),
-                            documentation,
-                            relationships: Vec::new(),
-                            special_fields: Default::default(),
-                            kind: symbol_kind(token.kind).into(),
-                            display_name: token.display_name.clone().unwrap_or_default(),
-                            signature_documentation: signature_documentation.into(),
-                            enclosing_symbol: enclosing_symbol.unwrap_or_default(),
-                        };
-
-                        symbols.push(symbol_info)
+                if !symbol.is_empty() {
+                    let is_defined_in_this_document = match token.definition {
+                        Some(def) => def.file_id == file_id,
+                        _ => false,
+                    };
+                    if is_defined_in_this_document {
+                        if token_ids_emitted.insert(id) {
+                            // token_ids_emitted does deduplication. This checks that this results
+                            // in unique emitted symbols, as otherwise references are ambiguous.
+                            let should_emit = record_error_if_symbol_already_used(
+                                symbol.clone(),
+                                is_inherent_impl,
+                                relative_path.as_str(),
+                                &line_index,
+                                text_range,
+                            );
+                            if should_emit {
+                                symbols.push(compute_symbol_info(
+                                    symbol.clone(),
+                                    enclosing_symbol,
+                                    token,
+                                ));
+                            }
+                        }
+                    } else {
+                        token_ids_referenced.insert(id);
                     }
                 }
 
+                // If the range of the def and the range of the token are the same, this must be the definition.
+                // they also must be in the same file. See https://github.com/rust-lang/rust-analyzer/pull/17988
+                let is_definition = match token.definition {
+                    Some(def) => def.file_id == file_id && def.range == text_range,
+                    _ => false,
+                };
+
+                let mut symbol_roles = Default::default();
+                if is_definition {
+                    symbol_roles |= scip_types::SymbolRole::Definition as i32;
+                }
+
                 occurrences.push(scip_types::Occurrence {
-                    range,
+                    range: text_range_to_scip_range(&line_index, text_range),
                     symbol,
                     symbol_roles,
                     override_documentation: Vec::new(),
@@ -206,14 +219,62 @@ impl flags::Scip {
                 position_encoding,
                 special_fields: Default::default(),
             });
+            if !file_ids_emitted.insert(file_id) {
+                panic!("Invariant violation: file emitted multiple times.");
+            }
+        }
+
+        // Collect all symbols referenced by the files but not defined within them.
+        let mut external_symbols = Vec::new();
+        for id in token_ids_referenced.difference(&token_ids_emitted) {
+            let id = *id;
+            let token = si.tokens.get(id).unwrap();
+
+            let Some(definition) = token.definition else {
+                break;
+            };
+
+            let file_id = definition.file_id;
+            let Some(relative_path) = get_relative_filepath(&vfs, &root, file_id) else { continue };
+            let line_index = get_line_index(db, file_id);
+            let text_range = definition.range;
+            if file_ids_emitted.contains(&file_id) {
+                tracing::error!(
+                    "Bug: definition at {} should have been in an SCIP document but was not.",
+                    text_range_to_string(relative_path.as_str(), &line_index, text_range)
+                );
+                continue;
+            }
+
+            let TokenSymbols { symbol, enclosing_symbol, .. } = symbol_generator
+                .token_symbols(id, token)
+                .expect("To have been referenced, the symbol must be in the cache.");
+
+            record_error_if_symbol_already_used(
+                symbol.clone(),
+                false,
+                relative_path.as_str(),
+                &line_index,
+                text_range,
+            );
+            external_symbols.push(compute_symbol_info(symbol.clone(), enclosing_symbol, token));
         }
 
         let index = scip_types::Index {
             metadata: Some(metadata).into(),
             documents,
-            external_symbols: Vec::new(),
+            external_symbols,
             special_fields: Default::default(),
         };
+
+        if !duplicate_symbol_errors.is_empty() {
+            eprintln!("{}", DUPLICATE_SYMBOLS_MESSAGE);
+            for (source_location, symbol) in duplicate_symbol_errors {
+                eprintln!("{}", source_location);
+                eprintln!("  Duplicate symbol: {}", symbol);
+                eprintln!();
+            }
+        }
 
         let out_path = self.output.unwrap_or_else(|| PathBuf::from(r"index.scip"));
         scip::write_message_to_file(out_path, index)
@@ -224,12 +285,67 @@ impl flags::Scip {
     }
 }
 
+// FIXME: Known buggy cases are described here.
+const DUPLICATE_SYMBOLS_MESSAGE: &str = "
+Encountered duplicate scip symbols, indicating an internal rust-analyzer bug. These duplicates are
+included in the output, but this causes information lookup to be ambiguous and so information about
+these symbols presented by downstream tools may be incorrect.
+
+Known rust-analyzer bugs that can cause this:
+
+  * Definitions in crate example binaries which have the same symbol as definitions in the library
+    or some other example.
+
+  * Struct/enum/const/static/impl definitions nested in a function do not mention the function name.
+    See #18771.
+
+Duplicate symbols encountered:
+";
+
+fn compute_symbol_info(
+    symbol: String,
+    enclosing_symbol: Option<String>,
+    token: &TokenStaticData,
+) -> SymbolInformation {
+    let documentation = match &token.documentation {
+        Some(doc) => vec![doc.as_str().to_owned()],
+        None => vec![],
+    };
+
+    let position_encoding = scip_types::PositionEncoding::UTF8CodeUnitOffsetFromLineStart.into();
+    let signature_documentation = token.signature.clone().map(|text| scip_types::Document {
+        relative_path: "".to_owned(),
+        language: "rust".to_owned(),
+        text,
+        position_encoding,
+        ..Default::default()
+    });
+    scip_types::SymbolInformation {
+        symbol,
+        documentation,
+        relationships: Vec::new(),
+        special_fields: Default::default(),
+        kind: symbol_kind(token.kind).into(),
+        display_name: token.display_name.clone().unwrap_or_default(),
+        signature_documentation: signature_documentation.into(),
+        enclosing_symbol: enclosing_symbol.unwrap_or_default(),
+    }
+}
+
 fn get_relative_filepath(
     vfs: &vfs::Vfs,
     rootpath: &vfs::AbsPathBuf,
     file_id: ide::FileId,
 ) -> Option<String> {
     Some(vfs.file_path(file_id).as_path()?.strip_prefix(rootpath)?.as_str().to_owned())
+}
+
+fn get_line_index(db: &RootDatabase, file_id: FileId) -> LineIndex {
+    LineIndex {
+        index: db.line_index(file_id),
+        encoding: PositionEncoding::Utf8,
+        endings: LineEndings::Unix,
+    }
 }
 
 // SCIP Ranges have a (very large) optimization that ranges if they are on the same line
@@ -247,6 +363,13 @@ fn text_range_to_scip_range(line_index: &LineIndex, range: TextRange) -> Vec<i32
     }
 }
 
+fn text_range_to_string(relative_path: &str, line_index: &LineIndex, range: TextRange) -> String {
+    let LineCol { line: start_line, col: start_col } = line_index.index.line_col(range.start());
+    let LineCol { line: end_line, col: end_col } = line_index.index.line_col(range.end());
+
+    format!("{relative_path}:{start_line}:{start_col}-{end_line}:{end_col}")
+}
+
 fn new_descriptor_str(
     name: &str,
     suffix: scip_types::descriptor::Suffix,
@@ -256,14 +379,6 @@ fn new_descriptor_str(
         disambiguator: "".to_owned(),
         suffix: suffix.into(),
         special_fields: Default::default(),
-    }
-}
-
-fn new_descriptor(name: &str, suffix: scip_types::descriptor::Suffix) -> scip_types::Descriptor {
-    if name.contains('\'') {
-        new_descriptor_str(&format!("`{name}`"), suffix)
-    } else {
-        new_descriptor_str(name, suffix)
     }
 }
 
@@ -295,17 +410,91 @@ fn symbol_kind(kind: SymbolInformationKind) -> scip_types::symbol_information::K
     }
 }
 
-fn moniker_to_symbol(moniker: &MonikerResult) -> scip_types::Symbol {
-    use scip_types::descriptor::Suffix::*;
+#[derive(Clone)]
+struct TokenSymbols {
+    symbol: String,
+    /// Definition that contains this one. Only set when `symbol` is local.
+    enclosing_symbol: Option<String>,
+    /// True if this symbol is for an inherent impl. This is used to only emit `SymbolInformation`
+    /// for a struct's first inherent impl, since their symbol names are not disambiguated.
+    is_inherent_impl: bool,
+}
 
-    let package_name = moniker.package_information.name.clone();
-    let version = moniker.package_information.version.clone();
-    let descriptors = moniker
-        .identifier
+struct SymbolGenerator {
+    token_to_symbols: FxHashMap<TokenId, Option<TokenSymbols>>,
+    local_count: usize,
+}
+
+impl SymbolGenerator {
+    fn new() -> Self {
+        SymbolGenerator { token_to_symbols: FxHashMap::default(), local_count: 0 }
+    }
+
+    fn clear_document_local_state(&mut self) {
+        self.local_count = 0;
+    }
+
+    fn token_symbols(&mut self, id: TokenId, token: &TokenStaticData) -> Option<TokenSymbols> {
+        let mut local_count = self.local_count;
+        let token_symbols = self
+            .token_to_symbols
+            .entry(id)
+            .or_insert_with(|| {
+                Some(match token.moniker.as_ref()? {
+                    MonikerResult::Moniker(moniker) => TokenSymbols {
+                        symbol: scip::symbol::format_symbol(moniker_to_symbol(moniker)),
+                        enclosing_symbol: None,
+                        is_inherent_impl: moniker
+                            .identifier
+                            .description
+                            .get(moniker.identifier.description.len() - 2)
+                            .is_some_and(|descriptor| {
+                                descriptor.desc == MonikerDescriptorKind::Type
+                                    && descriptor.name == "impl"
+                            }),
+                    },
+                    MonikerResult::Local { enclosing_moniker } => {
+                        let local_symbol = scip::types::Symbol::new_local(local_count);
+                        local_count += 1;
+                        TokenSymbols {
+                            symbol: scip::symbol::format_symbol(local_symbol),
+                            enclosing_symbol: enclosing_moniker
+                                .as_ref()
+                                .map(moniker_to_symbol)
+                                .map(scip::symbol::format_symbol),
+                            is_inherent_impl: false,
+                        }
+                    }
+                })
+            })
+            .clone();
+        self.local_count = local_count;
+        token_symbols
+    }
+}
+
+fn moniker_to_symbol(moniker: &Moniker) -> scip_types::Symbol {
+    scip_types::Symbol {
+        scheme: "rust-analyzer".into(),
+        package: Some(scip_types::Package {
+            manager: "cargo".to_owned(),
+            name: moniker.package_information.name.clone(),
+            version: moniker.package_information.version.clone().unwrap_or_else(|| ".".to_owned()),
+            special_fields: Default::default(),
+        })
+        .into(),
+        descriptors: moniker_descriptors(&moniker.identifier),
+        special_fields: Default::default(),
+    }
+}
+
+fn moniker_descriptors(identifier: &MonikerIdentifier) -> Vec<scip_types::Descriptor> {
+    use scip_types::descriptor::Suffix::*;
+    identifier
         .description
         .iter()
         .map(|desc| {
-            new_descriptor(
+            new_descriptor_str(
                 &desc.name,
                 match desc.desc {
                     MonikerDescriptorKind::Namespace => Namespace,
@@ -319,27 +508,13 @@ fn moniker_to_symbol(moniker: &MonikerResult) -> scip_types::Symbol {
                 },
             )
         })
-        .collect();
-
-    scip_types::Symbol {
-        scheme: "rust-analyzer".into(),
-        package: Some(scip_types::Package {
-            manager: "cargo".to_owned(),
-            name: package_name,
-            version: version.unwrap_or_else(|| ".".to_owned()),
-            special_fields: Default::default(),
-        })
-        .into(),
-        descriptors,
-        special_fields: Default::default(),
-    }
+        .collect()
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
     use ide::{FilePosition, TextSize};
-    use scip::symbol::format_symbol;
     use test_fixture::ChangeFixture;
     use vfs::VfsPath;
 
@@ -376,7 +551,21 @@ mod test {
             for &(range, id) in &file.tokens {
                 if range.contains(offset - TextSize::from(1)) {
                     let token = si.tokens.get(id).unwrap();
-                    found_symbol = token.moniker.as_ref().map(moniker_to_symbol);
+                    found_symbol = match token.moniker.as_ref() {
+                        None => None,
+                        Some(MonikerResult::Moniker(moniker)) => {
+                            Some(scip::symbol::format_symbol(moniker_to_symbol(moniker)))
+                        }
+                        Some(MonikerResult::Local { enclosing_moniker: Some(moniker) }) => {
+                            Some(format!(
+                                "local enclosed by {}",
+                                scip::symbol::format_symbol(moniker_to_symbol(moniker))
+                            ))
+                        }
+                        Some(MonikerResult::Local { enclosing_moniker: None }) => {
+                            Some("unenclosed local".to_owned())
+                        }
+                    };
                     break;
                 }
             }
@@ -388,9 +577,7 @@ mod test {
         }
 
         assert!(found_symbol.is_some(), "must have one symbol {found_symbol:?}");
-        let res = found_symbol.unwrap();
-        let formatted = format_symbol(res);
-        assert_eq!(formatted, expected);
+        assert_eq!(found_symbol.unwrap(), expected);
     }
 
     #[test]
@@ -467,8 +654,7 @@ pub mod module {
         }
     }
     "#,
-            // "foo::module::MyTrait::MyType",
-            "rust-analyzer cargo foo 0.1.0 module/MyTrait#[MyType]",
+            "rust-analyzer cargo foo 0.1.0 module/MyTrait#MyType#",
         );
     }
 
@@ -489,8 +675,7 @@ pub mod module {
         }
     }
     "#,
-            // "foo::module::MyStruct::MyTrait::func",
-            "rust-analyzer cargo foo 0.1.0 module/MyStruct#MyTrait#func().",
+            "rust-analyzer cargo foo 0.1.0 module/impl#[MyStruct][MyTrait]func().",
         );
     }
 
@@ -526,7 +711,7 @@ pub mod example_mod {
     pub fn func(x$0: usize) {}
 }
 "#,
-            "rust-analyzer cargo foo 0.1.0 example_mod/func().(x)",
+            "local enclosed by rust-analyzer cargo foo 0.1.0 example_mod/func().",
         );
     }
 
@@ -546,7 +731,7 @@ pub mod example_mod {
     }
 }
 "#,
-            "rust-analyzer cargo foo 0.1.0 example_mod/func().(x)",
+            "local enclosed by rust-analyzer cargo foo 0.1.0 example_mod/func().",
         );
     }
 
@@ -566,7 +751,7 @@ pub mod example_mod {
         }
     }
     "#,
-            "",
+            "local enclosed by rust-analyzer cargo foo 0.1.0 module/func().",
         );
     }
 
@@ -609,13 +794,77 @@ pub mod example_mod {
     }
 
     #[test]
-    fn symbol_for_for_type_alias() {
+    fn symbol_for_type_alias() {
         check_symbol(
             r#"
     //- /workspace/lib.rs crate:main
     pub type MyTypeAlias$0 = u8;
     "#,
             "rust-analyzer cargo main . MyTypeAlias#",
+        );
+    }
+
+    // FIXME: This test represents current misbehavior.
+    #[test]
+    fn symbol_for_nested_function() {
+        check_symbol(
+            r#"
+    //- /workspace/lib.rs crate:main
+    pub fn func() {
+       pub fn inner_func$0() {}
+    }
+    "#,
+            "rust-analyzer cargo main . inner_func().",
+            // FIXME: This should be a local:
+            // "local enclosed by rust-analyzer cargo main . func().",
+        );
+    }
+
+    // FIXME: This test represents current misbehavior.
+    #[test]
+    fn symbol_for_struct_in_function() {
+        check_symbol(
+            r#"
+    //- /workspace/lib.rs crate:main
+    pub fn func() {
+       struct SomeStruct$0 {}
+    }
+    "#,
+            "rust-analyzer cargo main . SomeStruct#",
+            // FIXME: This should be a local:
+            // "local enclosed by rust-analyzer cargo main . func().",
+        );
+    }
+
+    // FIXME: This test represents current misbehavior.
+    #[test]
+    fn symbol_for_const_in_function() {
+        check_symbol(
+            r#"
+    //- /workspace/lib.rs crate:main
+    pub fn func() {
+       const SOME_CONST$0: u32 = 1;
+    }
+    "#,
+            "rust-analyzer cargo main . SOME_CONST.",
+            // FIXME: This should be a local:
+            // "local enclosed by rust-analyzer cargo main . func().",
+        );
+    }
+
+    // FIXME: This test represents current misbehavior.
+    #[test]
+    fn symbol_for_static_in_function() {
+        check_symbol(
+            r#"
+    //- /workspace/lib.rs crate:main
+    pub fn func() {
+       static SOME_STATIC$0: u32 = 1;
+    }
+    "#,
+            "rust-analyzer cargo main . SOME_STATIC.",
+            // FIXME: This should be a local:
+            // "local enclosed by rust-analyzer cargo main . func().",
         );
     }
 

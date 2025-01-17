@@ -16,8 +16,7 @@ LL | /     if !m.contains_key(&k) {
 LL | |         if true {
 LL | |             m.insert(k, v);
 LL | |         } else {
-LL | |             m.insert(k, v2);
-LL | |         }
+...  |
 LL | |     }
    | |_____^
    |
@@ -63,7 +62,6 @@ LL | |         if true {
 LL | |             m.insert(k, v);
 LL | |         } else {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |
@@ -154,7 +152,6 @@ LL | |         foo();
 LL | |         match 0 {
 LL | |             0 if false => {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |

@@ -1,0 +1,26 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |// Checks that `#[coverage(..)]` in a trait method is not inherited in an
+   LL|       |// implementation.
+   LL|       |//@ edition: 2021
+   LL|       |//@ reference: attributes.coverage.trait-impl-inherit
+   LL|       |
+   LL|       |trait T {
+   LL|       |    #[coverage(off)]
+   LL|       |    fn f(&self) {
+   LL|       |        println!("default");
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|       |struct S;
+   LL|       |
+   LL|       |impl T for S {
+   LL|      1|    fn f(&self) {
+   LL|      1|        println!("impl S");
+   LL|      1|    }
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    S.f();
+   LL|       |}
+

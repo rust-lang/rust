@@ -45,11 +45,23 @@ LL |     let mut mut x = 0;
 help: remove the additional `mut`s
    |
 LL -     let mut mut x = 0;
-LL +     let mut  x = 0;
+LL +     let mut x = 0;
+   |
+
+error: `mut` on a binding may not be repeated
+  --> $DIR/mut-patterns.rs:18:13
+   |
+LL |     let mut mut mut mut mut x = 0;
+   |             ^^^^^^^^^^^^^^^
+   |
+help: remove the additional `mut`s
+   |
+LL -     let mut mut mut mut mut x = 0;
+LL +     let mut x = 0;
    |
 
 error: `mut` must be attached to each individual binding
-  --> $DIR/mut-patterns.rs:19:9
+  --> $DIR/mut-patterns.rs:23:9
    |
 LL |     let mut Foo { x: x } = Foo { x: 3 };
    |         ^^^^^^^^^^^^^^^^
@@ -61,7 +73,7 @@ LL |     let Foo { x: mut x } = Foo { x: 3 };
    |         ~~~~~~~~~~~~~~~~
 
 error: `mut` must be attached to each individual binding
-  --> $DIR/mut-patterns.rs:23:9
+  --> $DIR/mut-patterns.rs:27:9
    |
 LL |     let mut Foo { x } = Foo { x: 3 };
    |         ^^^^^^^^^^^^^
@@ -73,7 +85,7 @@ LL |     let Foo { mut x } = Foo { x: 3 };
    |         ~~~~~~~~~~~~~
 
 error: `mut` on a binding may not be repeated
-  --> $DIR/mut-patterns.rs:28:13
+  --> $DIR/mut-patterns.rs:32:13
    |
 LL |     let mut mut yield(become, await) = r#yield(0, 0);
    |             ^^^
@@ -81,11 +93,11 @@ LL |     let mut mut yield(become, await) = r#yield(0, 0);
 help: remove the additional `mut`s
    |
 LL -     let mut mut yield(become, await) = r#yield(0, 0);
-LL +     let mut  yield(become, await) = r#yield(0, 0);
+LL +     let mut yield(become, await) = r#yield(0, 0);
    |
 
 error: expected identifier, found reserved keyword `yield`
-  --> $DIR/mut-patterns.rs:28:17
+  --> $DIR/mut-patterns.rs:32:17
    |
 LL |     let mut mut yield(become, await) = r#yield(0, 0);
    |                 ^^^^^ expected identifier, found reserved keyword
@@ -96,7 +108,7 @@ LL |     let mut mut r#yield(become, await) = r#yield(0, 0);
    |                 ++
 
 error: expected identifier, found reserved keyword `become`
-  --> $DIR/mut-patterns.rs:28:23
+  --> $DIR/mut-patterns.rs:32:23
    |
 LL |     let mut mut yield(become, await) = r#yield(0, 0);
    |                       ^^^^^^ expected identifier, found reserved keyword
@@ -107,7 +119,7 @@ LL |     let mut mut yield(r#become, await) = r#yield(0, 0);
    |                       ++
 
 error: expected identifier, found keyword `await`
-  --> $DIR/mut-patterns.rs:28:31
+  --> $DIR/mut-patterns.rs:32:31
    |
 LL |     let mut mut yield(become, await) = r#yield(0, 0);
    |                               ^^^^^ expected identifier, found keyword
@@ -118,7 +130,7 @@ LL |     let mut mut yield(become, r#await) = r#yield(0, 0);
    |                               ++
 
 error: `mut` must be followed by a named binding
-  --> $DIR/mut-patterns.rs:28:9
+  --> $DIR/mut-patterns.rs:32:9
    |
 LL |     let mut mut yield(become, await) = r#yield(0, 0);
    |         ^^^^^^^^
@@ -131,7 +143,7 @@ LL +     let yield(become, await) = r#yield(0, 0);
    |
 
 error: `mut` must be attached to each individual binding
-  --> $DIR/mut-patterns.rs:37:9
+  --> $DIR/mut-patterns.rs:41:9
    |
 LL |     let mut W(mut a, W(b, W(ref c, W(d, B { box f }))))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -143,7 +155,7 @@ LL |     let W(mut a, W(mut b, W(ref c, W(mut d, B { box mut f }))))
    |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: expected identifier, found `x`
-  --> $DIR/mut-patterns.rs:44:21
+  --> $DIR/mut-patterns.rs:48:21
    |
 LL |             let mut $p = 0;
    |                     ^^ expected identifier
@@ -153,5 +165,5 @@ LL |     foo!(x);
    |
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 13 previous errors
+error: aborting due to 14 previous errors
 

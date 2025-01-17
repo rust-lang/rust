@@ -209,6 +209,14 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    fn visit_pat_expr(&mut self, expr: &'hir PatExpr<'hir>) {
+        self.insert(expr.span, expr.hir_id, Node::PatExpr(expr));
+
+        self.with_parent(expr.hir_id, |this| {
+            intravisit::walk_pat_expr(this, expr);
+        });
+    }
+
     fn visit_pat_field(&mut self, field: &'hir PatField<'hir>) {
         self.insert(field.span, field.hir_id, Node::PatField(field));
         self.with_parent(field.hir_id, |this| {
@@ -235,8 +243,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_anon_const(&mut self, constant: &'hir AnonConst) {
-        // FIXME: use real span?
-        self.insert(DUMMY_SP, constant.hir_id, Node::AnonConst(constant));
+        self.insert(constant.span, constant.hir_id, Node::AnonConst(constant));
 
         self.with_parent(constant.hir_id, |this| {
             intravisit::walk_anon_const(this, constant);
@@ -252,8 +259,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_const_arg(&mut self, const_arg: &'hir ConstArg<'hir>) {
-        // FIXME: use real span?
-        self.insert(DUMMY_SP, const_arg.hir_id, Node::ConstArg(const_arg));
+        self.insert(const_arg.span(), const_arg.hir_id, Node::ConstArg(const_arg));
 
         self.with_parent(const_arg.hir_id, |this| {
             intravisit::walk_const_arg(this, const_arg);
@@ -381,22 +387,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_where_predicate(&mut self, predicate: &'hir WherePredicate<'hir>) {
-        match predicate {
-            WherePredicate::BoundPredicate(pred) => {
-                self.insert(pred.span, pred.hir_id, Node::WhereBoundPredicate(pred));
-                self.with_parent(pred.hir_id, |this| {
-                    intravisit::walk_where_predicate(this, predicate)
-                })
-            }
-            _ => intravisit::walk_where_predicate(self, predicate),
-        }
-    }
-
-    fn visit_array_length(&mut self, len: &'hir ArrayLen<'hir>) {
-        match len {
-            ArrayLen::Infer(inf) => self.insert(inf.span, inf.hir_id, Node::ArrayLenInfer(inf)),
-            ArrayLen::Body(..) => intravisit::walk_array_len(self, len),
-        }
+        self.insert(predicate.span, predicate.hir_id, Node::WherePredicate(predicate));
+        self.with_parent(predicate.hir_id, |this| {
+            intravisit::walk_where_predicate(this, predicate)
+        });
     }
 
     fn visit_pattern_type_pattern(&mut self, p: &'hir hir::Pat<'hir>) {

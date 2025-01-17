@@ -30,7 +30,6 @@ const KEY_SENTVAL: usize = 0;
 const KEY_SENTVAL: usize = libc::PTHREAD_KEYS_MAX + 1;
 
 impl LazyKey {
-    #[cfg_attr(bootstrap, rustc_const_unstable(feature = "thread_local_internals", issue = "none"))]
     pub const fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> LazyKey {
         LazyKey { key: atomic::AtomicUsize::new(KEY_SENTVAL), dtor }
     }

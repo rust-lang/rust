@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
 use std::fs::File;
-use std::mem::ManuallyDrop;
 use std::path::Path;
 use std::sync::Arc;
 use std::{io, iter, slice};
@@ -9,7 +8,7 @@ use std::{io, iter, slice};
 use object::read::archive::ArchiveFile;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::symbol_export;
-use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, TargetMachineFactoryConfig};
+use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::fx::FxHashMap;
@@ -148,7 +147,7 @@ fn prepare_lto(
     // __llvm_profile_counter_bias is pulled in at link time by an undefined reference to
     // __llvm_profile_runtime, therefore we won't know until link time if this symbol
     // should have default visibility.
-    symbols_below_threshold.push(CString::new("__llvm_profile_counter_bias").unwrap());
+    symbols_below_threshold.push(c"__llvm_profile_counter_bias".to_owned());
     Ok((symbols_below_threshold, upstream_modules))
 }
 
@@ -604,7 +603,14 @@ pub(crate) fn run_pass_manager(
     debug!("running the pass manager");
     let opt_stage = if thin { llvm::OptStage::ThinLTO } else { llvm::OptStage::FatLTO };
     let opt_level = config.opt_level.unwrap_or(config::OptLevel::No);
-    unsafe { write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage) }?;
+
+    // If this rustc version was build with enzyme/autodiff enabled, and if users applied the
+    // `#[autodiff]` macro at least once, then we will later call llvm_optimize a second time.
+    let first_run = true;
+    debug!("running llvm pm opt pipeline");
+    unsafe {
+        write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage, first_run)?;
+    }
     debug!("lto done");
     Ok(())
 }
@@ -699,18 +705,15 @@ pub(crate) unsafe fn optimize_thin_module(
     let dcx = dcx.handle();
 
     let module_name = &thin_module.shared.module_names[thin_module.idx];
-    let tm_factory_config = TargetMachineFactoryConfig::new(cgcx, module_name.to_str().unwrap());
-    let tm = (cgcx.tm_factory)(tm_factory_config).map_err(|e| write::llvm_err(dcx, e))?;
 
     // Right now the implementation we've got only works over serialized
     // modules, so we create a fresh new LLVM context and parse the module
     // into that context. One day, however, we may do this for upstream
     // crates but for locally codegened modules we may be able to reuse
     // that LLVM Context and Module.
-    let llcx = unsafe { llvm::LLVMRustContextCreate(cgcx.fewer_names) };
-    let llmod_raw = parse_module(llcx, module_name, thin_module.data(), dcx)? as *const _;
+    let module_llvm = ModuleLlvm::parse(cgcx, module_name, thin_module.data(), dcx)?;
     let mut module = ModuleCodegen {
-        module_llvm: ModuleLlvm { llmod_raw, llcx, tm: ManuallyDrop::new(tm) },
+        module_llvm,
         name: thin_module.name().to_string(),
         kind: ModuleKind::Regular,
     };
@@ -730,11 +733,7 @@ pub(crate) unsafe fn optimize_thin_module(
         {
             let _timer =
                 cgcx.prof.generic_activity_with_arg("LLVM_thin_lto_rename", thin_module.name());
-            if unsafe {
-                !llvm::LLVMRustPrepareThinLTORename(thin_module.shared.data.0, llmod, target)
-            } {
-                return Err(write::llvm_err(dcx, LlvmError::PrepareThinLtoModule));
-            }
+            unsafe { llvm::LLVMRustPrepareThinLTORename(thin_module.shared.data.0, llmod, target) };
             save_temp_bitcode(cgcx, &module, "thin-lto-after-rename");
         }
 

@@ -510,7 +510,6 @@ ui/confuse-field-and-method/issue-2392.rs
 ui/confuse-field-and-method/issue-32128.rs
 ui/confuse-field-and-method/issue-33784.rs
 ui/const-generics/generic_arg_infer/issue-91614.rs
-ui/const-generics/generic_const_exprs/auxiliary/issue-94287-aux.rs
 ui/const-generics/generic_const_exprs/const_kind_expr/issue_114151.rs
 ui/const-generics/generic_const_exprs/issue-100217.rs
 ui/const-generics/generic_const_exprs/issue-100360.rs
@@ -540,7 +539,6 @@ ui/const-generics/generic_const_exprs/issue-85848.rs
 ui/const-generics/generic_const_exprs/issue-86710.rs
 ui/const-generics/generic_const_exprs/issue-89851.rs
 ui/const-generics/generic_const_exprs/issue-90847.rs
-ui/const-generics/generic_const_exprs/issue-94287.rs
 ui/const-generics/generic_const_exprs/issue-94293.rs
 ui/const-generics/generic_const_exprs/issue-96699.rs
 ui/const-generics/generic_const_exprs/issue-97047-ice-1.rs
@@ -2297,8 +2295,6 @@ ui/issues/issue-43853.rs
 ui/issues/issue-4387.rs
 ui/issues/issue-43910.rs
 ui/issues/issue-43923.rs
-ui/issues/issue-43925.rs
-ui/issues/issue-43926.rs
 ui/issues/issue-43988.rs
 ui/issues/issue-44023.rs
 ui/issues/issue-44056.rs
@@ -2547,8 +2543,6 @@ ui/issues/issue-6936.rs
 ui/issues/issue-69455.rs
 ui/issues/issue-69602-type-err-during-codegen-ice.rs
 ui/issues/issue-69683.rs
-ui/issues/issue-70093/issue-70093-link-directives.rs
-ui/issues/issue-70093/issue-70093.rs
 ui/issues/issue-7012.rs
 ui/issues/issue-70381.rs
 ui/issues/issue-7044.rs
@@ -2713,11 +2707,13 @@ ui/limits/issue-17913.rs
 ui/limits/issue-55878.rs
 ui/limits/issue-69485-var-size-diffs-too-large.rs
 ui/limits/issue-75158-64.rs
+ui/link-native-libs/issue-109144.rs
+ui/link-native-libs/issue-43925.rs
+ui/link-native-libs/issue-43926.rs
 ui/linkage-attr/auxiliary/issue-12133-dylib.rs
 ui/linkage-attr/auxiliary/issue-12133-dylib2.rs
 ui/linkage-attr/auxiliary/issue-12133-rlib.rs
 ui/linkage-attr/issue-10755.rs
-ui/linkage-attr/issue-109144.rs
 ui/linkage-attr/issue-12133-1.rs
 ui/linkage-attr/issue-12133-2.rs
 ui/linkage-attr/issue-12133-3.rs
@@ -2756,7 +2752,6 @@ ui/lint/issue-57410-1.rs
 ui/lint/issue-57410.rs
 ui/lint/issue-63364.rs
 ui/lint/issue-70819-dont-override-forbid-in-same-scope.rs
-ui/lint/issue-79546-fuel-ice.rs
 ui/lint/issue-79744.rs
 ui/lint/issue-81218.rs
 ui/lint/issue-83477.rs
@@ -3482,8 +3477,6 @@ ui/pattern/usefulness/issue-80501-or-pat-and-macro.rs
 ui/pattern/usefulness/issue-82772-match-box-as-struct.rs
 ui/pattern/usefulness/issue-85222-types-containing-non-exhaustive-types.rs
 ui/pattern/usefulness/issue-88747.rs
-ui/polymorphization/issue-74614.rs
-ui/polymorphization/issue-74636.rs
 ui/privacy/auxiliary/issue-117997.rs
 ui/privacy/auxiliary/issue-119463-extern.rs
 ui/privacy/auxiliary/issue-17718-const-privacy.rs

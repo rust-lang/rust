@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: x86_64 i686
 //@ assembly-output: emit-asm
 //@[x86_64] compile-flags: --target x86_64-unknown-linux-gnu
@@ -8,31 +9,13 @@
 //@ compile-flags: -C target-feature=+avx512bw
 //@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd, f16, f128)]
+#![feature(no_core, repr_simd, f16, f128)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! concat {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! stringify {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
-
-// Do we really need to use no_core for this?!?
-impl<T: Copy, const N: usize> Copy for [T; N] {}
+extern crate minicore;
+use minicore::*;
 
 type ptr = *mut u8;
 
@@ -90,7 +73,6 @@ macro_rules! impl_copy {
 }
 
 impl_copy!(
-    i8 i16 f16 i32 f32 i64 f64 f128 ptr
     i8x16 i16x8 i32x4 i64x2 f16x8 f32x4 f64x2
     i8x32 i16x16 i32x8 i64x4 f16x16 f32x8 f64x4
     i8x64 i16x32 i32x16 i64x8 f16x32 f32x16 f64x8

@@ -7,6 +7,14 @@ LL |         [5; Self::HOST_SIZE] == [6; 0]
    = note: this may fail depending on what value the parameter takes
 
 error: constant expression depends on a generic parameter
+  --> $DIR/too_generic_eval_ice.rs:7:9
+   |
+LL |         [5; Self::HOST_SIZE] == [6; 0]
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: constant expression depends on a generic parameter
   --> $DIR/too_generic_eval_ice.rs:7:30
    |
 LL |         [5; Self::HOST_SIZE] == [6; 0]
@@ -32,6 +40,6 @@ LL |         [5; Self::HOST_SIZE] == [6; 0]
              `[T; N]` implements `PartialEq<[U]>`
            and 3 others
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

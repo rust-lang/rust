@@ -333,7 +333,7 @@ impl ast::Path {
 
 impl ast::Use {
     pub fn is_simple_glob(&self) -> bool {
-        self.use_tree().map_or(false, |use_tree| {
+        self.use_tree().is_some_and(|use_tree| {
             use_tree.use_tree_list().is_none() && use_tree.star_token().is_some()
         })
     }
@@ -387,7 +387,7 @@ impl ast::UseTreeList {
             if let Some((single_subtree,)) = u.use_trees().collect_tuple() {
                 // We have a single subtree, check whether it is self.
 
-                let is_self = single_subtree.path().as_ref().map_or(false, |path| {
+                let is_self = single_subtree.path().as_ref().is_some_and(|path| {
                     path.segment().and_then(|seg| seg.self_token()).is_some()
                         && path.qualifier().is_none()
                 });

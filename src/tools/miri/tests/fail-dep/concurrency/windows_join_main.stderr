@@ -24,8 +24,7 @@ note: inside `main`
 LL | /     thread::spawn(|| {
 LL | |         unsafe {
 LL | |             assert_eq!(WaitForSingleObject(MAIN_THREAD, INFINITE), WAIT_OBJECT_0);
-LL | |         }
-LL | |     })
+...  |
 LL | |     .join()
    | |___________^
 

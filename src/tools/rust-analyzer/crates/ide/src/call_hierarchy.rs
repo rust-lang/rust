@@ -47,7 +47,7 @@ pub(crate) fn incoming_calls(
         .find_nodes_at_offset_with_descend(file, offset)
         .filter_map(move |node| match node {
             ast::NameLike::NameRef(name_ref) => match NameRefClass::classify(sema, &name_ref)? {
-                NameRefClass::Definition(def @ Definition::Function(_)) => Some(def),
+                NameRefClass::Definition(def @ Definition::Function(_), _) => Some(def),
                 _ => None,
             },
             ast::NameLike::Name(name) => match NameClass::classify(sema, &name)? {

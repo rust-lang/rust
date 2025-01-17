@@ -25,7 +25,7 @@ use crate::task::{Context, Poll};
 /// [`async`]: ../../std/keyword.async.html
 /// [`Waker`]: crate::task::Waker
 #[doc(notable_trait)]
-#[cfg_attr(not(bootstrap), doc(search_unbox))]
+#[doc(search_unbox)]
 #[must_use = "futures do nothing unless you `.await` or poll them"]
 #[stable(feature = "futures_api", since = "1.36.0")]
 #[lang = "future_trait"]

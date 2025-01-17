@@ -4,52 +4,26 @@
 //! field-deref on a local variable, `x.field`, has the same meaning
 //! in both domains). Indexed projections are the exception: `a[x]`
 //! needs to be treated as mapping to the same move path as `a[y]` as
-//! well as `a[13]`, etc.
+//! well as `a[13]`, etc. So we map these `x`/`y` values to `()`.
 //!
 //! (In theory, the analysis could be extended to work with sets of
 //! paths, so that `a[0]` and `a[13]` could be kept distinct, while
 //! `a[x]` would still overlap them both. But that is not this
 //! representation does today.)
 
-use rustc_middle::mir::{Local, Operand, PlaceElem, ProjectionElem};
-use rustc_middle::ty::Ty;
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub(crate) struct AbstractOperand;
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub(crate) struct AbstractType;
-pub(crate) type AbstractElem = ProjectionElem<AbstractOperand, AbstractType>;
+use rustc_middle::mir::{PlaceElem, ProjectionElem, ProjectionKind};
 
 pub(crate) trait Lift {
-    type Abstract;
-    fn lift(&self) -> Self::Abstract;
+    fn lift(&self) -> ProjectionKind;
 }
-impl<'tcx> Lift for Operand<'tcx> {
-    type Abstract = AbstractOperand;
-    fn lift(&self) -> Self::Abstract {
-        AbstractOperand
-    }
-}
-impl Lift for Local {
-    type Abstract = AbstractOperand;
-    fn lift(&self) -> Self::Abstract {
-        AbstractOperand
-    }
-}
-impl<'tcx> Lift for Ty<'tcx> {
-    type Abstract = AbstractType;
-    fn lift(&self) -> Self::Abstract {
-        AbstractType
-    }
-}
+
 impl<'tcx> Lift for PlaceElem<'tcx> {
-    type Abstract = AbstractElem;
-    fn lift(&self) -> Self::Abstract {
+    fn lift(&self) -> ProjectionKind {
         match *self {
             ProjectionElem::Deref => ProjectionElem::Deref,
-            ProjectionElem::Field(f, ty) => ProjectionElem::Field(f, ty.lift()),
-            ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty.lift()),
-            ProjectionElem::Index(ref i) => ProjectionElem::Index(i.lift()),
+            ProjectionElem::Field(f, _ty) => ProjectionElem::Field(f, ()),
+            ProjectionElem::OpaqueCast(_ty) => ProjectionElem::OpaqueCast(()),
+            ProjectionElem::Index(_i) => ProjectionElem::Index(()),
             ProjectionElem::Subslice { from, to, from_end } => {
                 ProjectionElem::Subslice { from, to, from_end }
             }
@@ -57,7 +31,7 @@ impl<'tcx> Lift for PlaceElem<'tcx> {
                 ProjectionElem::ConstantIndex { offset, min_length, from_end }
             }
             ProjectionElem::Downcast(a, u) => ProjectionElem::Downcast(a, u),
-            ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(ty.lift()),
+            ProjectionElem::Subtype(_ty) => ProjectionElem::Subtype(()),
         }
     }
 }

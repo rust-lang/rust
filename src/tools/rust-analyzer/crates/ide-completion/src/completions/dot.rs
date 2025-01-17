@@ -1,6 +1,8 @@
 //! Completes references after dot (fields and method calls).
 
-use hir::{sym, Name};
+use std::ops::ControlFlow;
+
+use hir::{sym, HasContainer, ItemContainer, MethodCandidateCallback, Name};
 use ide_db::FxHashSet;
 use syntax::SmolStr;
 
@@ -158,21 +160,55 @@ fn complete_fields(
 fn complete_methods(
     ctx: &CompletionContext<'_>,
     receiver: &hir::Type,
-    mut f: impl FnMut(hir::Function),
+    f: impl FnMut(hir::Function),
 ) {
-    let mut seen_methods = FxHashSet::default();
-    receiver.iterate_method_candidates_with_traits(
+    struct Callback<'a, F> {
+        ctx: &'a CompletionContext<'a>,
+        f: F,
+        seen_methods: FxHashSet<Name>,
+    }
+
+    impl<F> MethodCandidateCallback for Callback<'_, F>
+    where
+        F: FnMut(hir::Function),
+    {
+        // We don't want to exclude inherent trait methods - that is, methods of traits available from
+        // `where` clauses or `dyn Trait`.
+        fn on_inherent_method(&mut self, func: hir::Function) -> ControlFlow<()> {
+            if func.self_param(self.ctx.db).is_some()
+                && self.seen_methods.insert(func.name(self.ctx.db))
+            {
+                (self.f)(func);
+            }
+            ControlFlow::Continue(())
+        }
+
+        fn on_trait_method(&mut self, func: hir::Function) -> ControlFlow<()> {
+            // This needs to come before the `seen_methods` test, so that if we see the same method twice,
+            // once as inherent and once not, we will include it.
+            if let ItemContainer::Trait(trait_) = func.container(self.ctx.db) {
+                if self.ctx.exclude_traits.contains(&trait_) {
+                    return ControlFlow::Continue(());
+                }
+            }
+
+            if func.self_param(self.ctx.db).is_some()
+                && self.seen_methods.insert(func.name(self.ctx.db))
+            {
+                (self.f)(func);
+            }
+
+            ControlFlow::Continue(())
+        }
+    }
+
+    receiver.iterate_method_candidates_split_inherent(
         ctx.db,
         &ctx.scope,
         &ctx.traits_in_scope(),
         Some(ctx.module),
         None,
-        |func| {
-            if func.self_param(ctx.db).is_some() && seen_methods.insert(func.name(ctx.db)) {
-                f(func);
-            }
-            None::<()>
-        },
+        Callback { ctx, f, seen_methods: FxHashSet::default() },
     );
 }
 
@@ -205,7 +241,7 @@ impl S {
 fn foo(s: S) { s.$0 }
 "#,
             expect![[r#"
-                fd foo   u32
+                fd foo         u32
                 me bar() fn(&self)
             "#]],
         );
@@ -259,7 +295,7 @@ impl S {
 "#,
             expect![[r#"
                 fd the_field (u32,)
-                me foo()     fn(self)
+                me foo()   fn(self)
             "#]],
         )
     }
@@ -275,7 +311,7 @@ impl A {
 "#,
             expect![[r#"
                 fd the_field (u32, i32)
-                me foo()     fn(&self)
+                me foo()      fn(&self)
             "#]],
         )
     }
@@ -536,7 +572,7 @@ impl A {
 }
             "#,
             expect![[r#"
-                fd pub_field    u32
+                fd pub_field          u32
                 me pub_method() fn(&self)
             "#]],
         )
@@ -550,7 +586,7 @@ union U { field: u8, other: u16 }
 fn foo(u: U) { u.$0 }
 "#,
             expect![[r#"
-                fd field u8
+                fd field  u8
                 fd other u16
             "#]],
         );
@@ -725,8 +761,8 @@ fn test(a: A) {
 }
 "#,
             expect![[r#"
-                fd another                u32
-                fd field                  u8
+                fd another                                                          u32
+                fd field                                                             u8
                 me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
             "#]],
         );
@@ -748,8 +784,8 @@ fn test(a: A) {
 }
 "#,
             expect![[r#"
-                fd 0                      u8
-                fd 1                      u32
+                fd 0                                                                 u8
+                fd 1                                                                u32
                 me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
             "#]],
         );
@@ -770,8 +806,8 @@ fn test(a: A) {
 }
 "#,
             expect![[r#"
-                fd 0                      u8
-                fd 1                      u32
+                fd 0                                                                 u8
+                fd 1                                                                u32
                 me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
             "#]],
         );
@@ -964,12 +1000,12 @@ struct Foo { field: i32 }
 
 impl Foo { fn foo(&self) { $0 } }"#,
             expect![[r#"
-                fd self.field i32
+                fd self.field       i32
                 me self.foo() fn(&self)
-                lc self       &Foo
-                sp Self       Foo
-                st Foo        Foo
-                bt u32        u32
+                lc self            &Foo
+                sp Self             Foo
+                st Foo              Foo
+                bt u32              u32
             "#]],
         );
         check(
@@ -978,12 +1014,12 @@ struct Foo(i32);
 
 impl Foo { fn foo(&mut self) { $0 } }"#,
             expect![[r#"
-                fd self.0     i32
+                fd self.0               i32
                 me self.foo() fn(&mut self)
-                lc self       &mut Foo
-                sp Self       Foo
-                st Foo        Foo
-                bt u32        u32
+                lc self            &mut Foo
+                sp Self                 Foo
+                st Foo                  Foo
+                bt u32                  u32
             "#]],
         );
     }
@@ -1106,7 +1142,7 @@ fn test(a: A) {
 }
 "#,
             expect![[r#"
-                fd 0                      u8
+                fd 0                                                                 u8
                 me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
             "#]],
         );
@@ -1162,7 +1198,7 @@ impl<F: core::ops::Deref<Target = impl Bar>> Foo<F> {
 }
 "#,
             expect![[r#"
-                fd foo      &u8
+                fd foo            &u8
                 me foobar() fn(&self)
             "#]],
         );
@@ -1199,8 +1235,8 @@ impl<B: Bar, F: core::ops::Deref<Target = B>> Foo<F> {
 }
 "#,
             expect![[r#"
-            fd foo &u8
-        "#]],
+                fd foo &u8
+            "#]],
         );
     }
 

@@ -23,7 +23,7 @@ mod trait_goals;
 
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Interner};
+use rustc_type_ir::{self as ty, Interner, TypingMode};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{EvalCtxt, GenerateProofTree, SolverDelegateEvalExt};
@@ -243,22 +243,27 @@ where
             .copied()
     }
 
+    fn bail_with_ambiguity(&mut self, responses: &[CanonicalResponse<I>]) -> CanonicalResponse<I> {
+        debug_assert!(!responses.is_empty());
+        if let Certainty::Maybe(maybe_cause) =
+            responses.iter().fold(Certainty::AMBIGUOUS, |certainty, response| {
+                certainty.unify_with(response.value.certainty)
+            })
+        {
+            self.make_ambiguous_response_no_constraints(maybe_cause)
+        } else {
+            panic!("expected flounder response to be ambiguous")
+        }
+    }
+
     /// If we fail to merge responses we flounder and return overflow or ambiguity.
     #[instrument(level = "trace", skip(self), ret)]
     fn flounder(&mut self, responses: &[CanonicalResponse<I>]) -> QueryResult<I> {
         if responses.is_empty() {
             return Err(NoSolution);
+        } else {
+            Ok(self.bail_with_ambiguity(responses))
         }
-
-        let Certainty::Maybe(maybe_cause) =
-            responses.iter().fold(Certainty::AMBIGUOUS, |certainty, response| {
-                certainty.unify_with(response.value.certainty)
-            })
-        else {
-            panic!("expected flounder response to be ambiguous")
-        };
-
-        Ok(self.make_ambiguous_response_no_constraints(maybe_cause))
     }
 
     /// Normalize a type for when it is structurally matched on.
@@ -319,6 +324,19 @@ where
             Ok(self.resolve_vars_if_possible(normalized_ct))
         } else {
             Ok(ct)
+        }
+    }
+
+    fn opaque_type_is_rigid(&self, def_id: I::DefId) -> bool {
+        match self.typing_mode() {
+            // Opaques are never rigid outside of analysis mode.
+            TypingMode::Coherence | TypingMode::PostAnalysis => false,
+            // During analysis, opaques are rigid unless they may be defined by
+            // the current body.
+            TypingMode::Analysis { defining_opaque_types: non_rigid_opaques }
+            | TypingMode::PostBorrowckAnalysis { defined_opaque_types: non_rigid_opaques } => {
+                !def_id.as_local().is_some_and(|def_id| non_rigid_opaques.contains(&def_id))
+            }
         }
     }
 }

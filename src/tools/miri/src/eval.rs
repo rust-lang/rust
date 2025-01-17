@@ -249,6 +249,13 @@ impl<'tcx> MainThreadState<'tcx> {
                 // Figure out exit code.
                 let ret_place = this.machine.main_fn_ret_place.clone().unwrap();
                 let exit_code = this.read_target_isize(&ret_place)?;
+                // Rust uses `isize` but the underlying type of an exit code is `i32`.
+                // Do a saturating cast.
+                let exit_code = i32::try_from(exit_code).unwrap_or(if exit_code >= 0 {
+                    i32::MAX
+                } else {
+                    i32::MIN
+                });
                 // Deal with our thread-local memory. We do *not* want to actually free it, instead we consider TLS
                 // to be like a global `static`, so that all memory reached by it is considered to "not leak".
                 this.terminate_active_thread(TlsAllocAction::Leak)?;
@@ -421,7 +428,7 @@ pub fn create_ecx<'tcx>(
 }
 
 /// Evaluates the entry function specified by `entry_id`.
-/// Returns `Some(return_code)` if program executed completed.
+/// Returns `Some(return_code)` if program execution completed.
 /// Returns `None` if an evaluation error occurred.
 #[expect(clippy::needless_lifetimes)]
 pub fn eval_entry<'tcx>(
@@ -429,7 +436,7 @@ pub fn eval_entry<'tcx>(
     entry_id: DefId,
     entry_type: EntryFnType,
     config: MiriConfig,
-) -> Option<i64> {
+) -> Option<i32> {
     // Copy setting before we move `config`.
     let ignore_leaks = config.ignore_leaks;
 

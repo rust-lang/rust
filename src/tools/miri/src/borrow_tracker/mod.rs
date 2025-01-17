@@ -302,8 +302,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn expose_tag(&mut self, alloc_id: AllocId, tag: BorTag) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+    fn expose_tag(&self, alloc_id: AllocId, tag: BorTag) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
             BorrowTrackerMethod::StackedBorrows => this.sb_expose_tag(alloc_id, tag),

@@ -85,6 +85,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "base64"
+version = "0.22.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -384,6 +390,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9bda8e21c04aca2ae33ffc2fd8c23134f3cac46db123ba97bd9d3f3b8a4a85e1"
 
 [[package]]
+name = "edition"
+version = "0.0.0"
+
+[[package]]
 name = "either"
 version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -509,6 +519,7 @@ dependencies = [
  "base-db",
  "cfg",
  "either",
+ "expect-test",
  "hir-def",
  "hir-expand",
  "hir-ty",
@@ -519,6 +530,9 @@ dependencies = [
  "span",
  "stdx",
  "syntax",
+ "syntax-bridge",
+ "test-fixture",
+ "test-utils",
  "tracing",
  "triomphe",
  "tt",
@@ -997,24 +1011,25 @@ checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 [[package]]
 name = "lsp-server"
 version = "0.7.7"
-dependencies = [
- "crossbeam-channel",
- "ctrlc",
- "log",
- "lsp-types",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "lsp-server"
-version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "550446e84739dcaf6d48a4a093973850669e13e8a34d8f8d64851041be267cd9"
 dependencies = [
  "crossbeam-channel",
  "log",
  "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "lsp-server"
+version = "0.7.8"
+dependencies = [
+ "crossbeam-channel",
+ "ctrlc",
+ "log",
+ "lsp-types",
+ "serde",
+ "serde_derive",
  "serde_json",
 ]
 
@@ -1256,6 +1271,7 @@ name = "parser"
 version = "0.0.0"
 dependencies = [
  "drop_bomb",
+ "edition",
  "expect-test",
  "limit",
  "ra-ap-rustc_lexer",
@@ -1274,7 +1290,6 @@ name = "paths"
 version = "0.0.0"
 dependencies = [
  "camino",
- "serde",
 ]
 
 [[package]]
@@ -1337,12 +1352,12 @@ dependencies = [
 name = "proc-macro-api"
 version = "0.0.0"
 dependencies = [
- "base-db",
  "indexmap",
  "intern",
  "paths",
  "rustc-hash 2.0.0",
  "serde",
+ "serde_derive",
  "serde_json",
  "span",
  "stdx",
@@ -1354,14 +1369,12 @@ dependencies = [
 name = "proc-macro-srv"
 version = "0.0.0"
 dependencies = [
- "base-db",
  "expect-test",
  "intern",
  "libloading",
  "memmap2",
  "object 0.33.0",
  "paths",
- "proc-macro-api",
  "proc-macro-test",
  "ra-ap-rustc_lexer",
  "span",
@@ -1376,6 +1389,7 @@ version = "0.0.0"
 dependencies = [
  "proc-macro-api",
  "proc-macro-srv",
+ "tt",
 ]
 
 [[package]]
@@ -1433,6 +1447,7 @@ dependencies = [
  "rustc-hash 2.0.0",
  "semver",
  "serde",
+ "serde_derive",
  "serde_json",
  "span",
  "stdx",
@@ -1492,9 +1507,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_abi"
-version = "0.76.0"
+version = "0.87.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "709fde78db053c78c87776ec738677649f791645883f82ff145f68caf9f18e1a"
+checksum = "28b782af0a7a8df16ddf43cd70da9f17bc3b1ce712c9e4992b6edb16f5f53632"
 dependencies = [
  "bitflags 2.6.0",
  "ra-ap-rustc_index",
@@ -1503,20 +1518,19 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_index"
-version = "0.76.0"
+version = "0.87.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da115d496e5abd65e2dceb6883d7597593badfe23fea3439202b8da5a11ea250"
+checksum = "ce5742f134960482f543b35ecebec3cacc6d79a9a685713518b4d8d70c5f9aa8"
 dependencies = [
- "arrayvec",
  "ra-ap-rustc_index_macros",
  "smallvec",
 ]
 
 [[package]]
 name = "ra-ap-rustc_index_macros"
-version = "0.76.0"
+version = "0.87.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be86d06a75a8125c1ace197d5030e6e02721348d32e572baea35c891669ad1e2"
+checksum = "d7ea011fcf68309a8835ad01d91c032cb18444617b00e2cab21d45b208164441"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1525,9 +1539,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_lexer"
-version = "0.76.0"
+version = "0.87.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b64b46ae0d8f59acc32e64e0085532b831f0d6182d870a7cd86c046c2c46e722"
+checksum = "eb76f0a4d4c20859e41f0a23bff0f37ab9ca9171c214a6c7dd72ea69434865dc"
 dependencies = [
  "unicode-properties",
  "unicode-xid",
@@ -1535,9 +1549,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_parse_format"
-version = "0.76.0"
+version = "0.87.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbdaad19ddbd0ff46e947ca8dbb6ae678a112d3938669fb3ad6bfd244917e24b"
+checksum = "06080bd35078305421a62da77f3c128482d8d44441b6da8ce9d146d1cd9cdb5b"
 dependencies = [
  "ra-ap-rustc_index",
  "ra-ap-rustc_lexer",
@@ -1545,9 +1559,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_pattern_analysis"
-version = "0.76.0"
+version = "0.87.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc5761e37c78d98ede9f20f6b66526093d0be66aa256d5cbdf214495843ba74d"
+checksum = "68a3154fe4c20c177d7b3c678a2d3a97aba0cca156ddef88959915041889daf0"
 dependencies = [
  "ra-ap-rustc_index",
  "rustc-hash 2.0.0",
@@ -1645,6 +1659,7 @@ version = "0.0.0"
 dependencies = [
  "always-assert",
  "anyhow",
+ "base64",
  "cargo_metadata",
  "cfg",
  "crossbeam-channel",
@@ -1655,12 +1670,13 @@ dependencies = [
  "hir-def",
  "hir-ty",
  "ide",
+ "ide-completion",
  "ide-db",
  "ide-ssr",
  "intern",
  "itertools",
  "load-cargo",
- "lsp-server 0.7.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lsp-server 0.7.7",
  "lsp-types",
  "memchr",
  "mimalloc",
@@ -1679,10 +1695,12 @@ dependencies = [
  "scip",
  "semver",
  "serde",
+ "serde_derive",
  "serde_json",
  "stdx",
  "syntax",
  "syntax-bridge",
+ "tenthash",
  "test-fixture",
  "test-utils",
  "tikv-jemallocator",
@@ -1805,18 +1823,18 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.206"
+version = "1.0.216"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b3e4cd94123dd520a128bcd11e34d9e9e423e7e3e50425cb1b4b1e3549d0284"
+checksum = "0b9781016e935a97e8beecf0c933758c97a5520d32930e460142b4cd80c6338e"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.206"
+version = "1.0.216"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fabfb6138d2383ea8208cf98ccf69cdfb1aff4088460681d84189aa259762f97"
+checksum = "46f859dbbf73865c6627ed570e78961cd3ac92407a2d117204c49232485da55e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1908,12 +1926,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b9b39299b249ad65f3b7e96443bad61c02ca5cd3589f46cb6d610a0fd6c0d6a"
 
 [[package]]
-name = "stable_deref_trait"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
-
-[[package]]
 name = "stdx"
 version = "0.0.0"
 dependencies = [
@@ -1929,9 +1941,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.74"
+version = "2.0.87"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fceb41e3d546d0bd83421d3409b1460cc7444cd389341a4c880fe7a042cb3d7"
+checksum = "25aa4ce346d03a6dcd68dd8b4010bcb74e54e62c90c573f394c46eae99aba32d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1985,6 +1997,12 @@ dependencies = [
  "tracing",
  "tt",
 ]
+
+[[package]]
+name = "tenthash"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d67f9f3cf70e0852941d7bc3cb884b49b24b8ee956baf91ad0abae31f5ef11fb"
 
 [[package]]
 name = "test-fixture"
@@ -2241,13 +2259,9 @@ dependencies = [
 
 [[package]]
 name = "triomphe"
-version = "0.1.13"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6631e42e10b40c0690bf92f404ebcfe6e1fdb480391d15f17cc8e96eeed5369"
-dependencies = [
- "serde",
- "stable_deref_trait",
-]
+checksum = "ef8f7726da4807b58ea5c96fdc122f80702030edc33b35aff9190a51148ccc85"
 
 [[package]]
 name = "tt"
@@ -2644,6 +2658,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "directories",
+ "edition",
  "either",
  "flate2",
  "itertools",

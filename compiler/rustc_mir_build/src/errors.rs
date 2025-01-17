@@ -1,14 +1,13 @@
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
-    MultiSpan, SubdiagMessageOp, Subdiagnostic,
+    MultiSpan, SubdiagMessageOp, Subdiagnostic, pluralize,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_pattern_analysis::errors::Uncovered;
 use rustc_pattern_analysis::rustc::RustcPatCtxt;
-use rustc_span::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::{Span, Symbol};
 
 use crate::fluent_generated as fluent;
 
@@ -631,20 +630,27 @@ pub(crate) struct NonExhaustiveMatchAllArmsGuarded;
 #[diag(mir_build_static_in_pattern, code = E0158)]
 pub(crate) struct StaticInPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
+    #[label(mir_build_static_in_pattern_def)]
+    pub(crate) static_span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_const_param_in_pattern, code = E0158)]
 pub(crate) struct ConstParamInPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
+    #[label(mir_build_const_param_in_pattern_def)]
+    pub(crate) const_span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_non_const_path, code = E0080)]
 pub(crate) struct NonConstPath {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
@@ -695,6 +701,7 @@ pub(crate) struct WantedConstant {
 #[diag(mir_build_const_pattern_depends_on_generic_parameter, code = E0158)]
 pub(crate) struct ConstPatternDependsOnGenericParameter {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
@@ -702,6 +709,7 @@ pub(crate) struct ConstPatternDependsOnGenericParameter {
 #[diag(mir_build_could_not_eval_const_pattern)]
 pub(crate) struct CouldNotEvalConstPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
@@ -867,33 +875,43 @@ pub(crate) enum Conflict {
 #[diag(mir_build_union_pattern)]
 pub(crate) struct UnionPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_type_not_structural)]
-#[note(mir_build_type_not_structural_tip)]
-#[note(mir_build_type_not_structural_more_info)]
 pub(crate) struct TypeNotStructural<'tcx> {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
-    pub(crate) non_sm_ty: Ty<'tcx>,
+    #[label(mir_build_type_not_structural_def)]
+    pub(crate) ty_def_span: Span,
+    pub(crate) ty: Ty<'tcx>,
+    #[note(mir_build_type_not_structural_tip)]
+    pub(crate) manual_partialeq_impl_span: Option<Span>,
+    #[note(mir_build_type_not_structural_more_info)]
+    pub(crate) manual_partialeq_impl_note: bool,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_non_partial_eq_match)]
+#[note(mir_build_type_not_structural_more_info)]
 pub(crate) struct TypeNotPartialEq<'tcx> {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
-    pub(crate) non_peq_ty: Ty<'tcx>,
+    pub(crate) ty: Ty<'tcx>,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_invalid_pattern)]
 pub(crate) struct InvalidPattern<'tcx> {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
     pub(crate) non_sm_ty: Ty<'tcx>,
+    pub(crate) prefix: String,
 }
 
 #[derive(Diagnostic)]
@@ -910,13 +928,16 @@ pub(crate) struct UnsizedPattern<'tcx> {
 #[help]
 pub(crate) struct NaNPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_pointer_pattern)]
+#[note]
 pub(crate) struct PointerPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
@@ -1046,39 +1067,22 @@ pub(crate) enum MiscPatternSuggestion {
     },
 }
 
-#[derive(Diagnostic)]
-#[diag(mir_build_rustc_box_attribute_error)]
-pub(crate) struct RustcBoxAttributeError {
-    #[primary_span]
-    pub(crate) span: Span,
-    #[subdiagnostic]
-    pub(crate) reason: RustcBoxAttrReason,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum RustcBoxAttrReason {
-    #[note(mir_build_attributes)]
-    Attributes,
-    #[note(mir_build_not_box)]
-    NotBoxNew,
-    #[note(mir_build_missing_box)]
-    MissingBox,
-}
-
 #[derive(LintDiagnostic)]
 #[diag(mir_build_rust_2024_incompatible_pat)]
-pub(crate) struct Rust2024IncompatiblePat {
+pub(crate) struct Rust2024IncompatiblePat<'a> {
     #[subdiagnostic]
-    pub(crate) sugg: Rust2024IncompatiblePatSugg,
+    pub(crate) sugg: Rust2024IncompatiblePatSugg<'a>,
 }
 
-pub(crate) struct Rust2024IncompatiblePatSugg {
+pub(crate) struct Rust2024IncompatiblePatSugg<'a> {
     pub(crate) suggestion: Vec<(Span, String)>,
-    /// Whether the incompatibility is a hard error because a relevant span is in edition 2024.
-    pub(crate) is_hard_error: bool,
+    pub(crate) ref_pattern_count: usize,
+    pub(crate) binding_mode_count: usize,
+    /// Labeled spans for subpatterns invalid in Rust 2024.
+    pub(crate) labels: &'a [(Span, String)],
 }
 
-impl Subdiagnostic for Rust2024IncompatiblePatSugg {
+impl<'a> Subdiagnostic for Rust2024IncompatiblePatSugg<'a> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
@@ -1090,6 +1094,28 @@ impl Subdiagnostic for Rust2024IncompatiblePatSugg {
             } else {
                 Applicability::MaybeIncorrect
             };
-        diag.multipart_suggestion("desugar the match ergonomics", self.suggestion, applicability);
+        let plural_derefs = pluralize!(self.ref_pattern_count);
+        let and_modes = if self.binding_mode_count > 0 {
+            format!(" and variable binding mode{}", pluralize!(self.binding_mode_count))
+        } else {
+            String::new()
+        };
+        diag.multipart_suggestion_verbose(
+            format!("make the implied reference pattern{plural_derefs}{and_modes} explicit"),
+            self.suggestion,
+            applicability,
+        );
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_force_inline)]
+#[note]
+pub(crate) struct InvalidForceInline {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label(mir_build_callee)]
+    pub callee_span: Span,
+    pub callee: String,
+    pub reason: &'static str,
 }

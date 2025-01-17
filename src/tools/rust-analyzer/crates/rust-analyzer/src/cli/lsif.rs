@@ -4,8 +4,9 @@ use std::env;
 use std::time::Instant;
 
 use ide::{
-    Analysis, AnalysisHost, FileId, FileRange, MonikerKind, PackageInformation, RootDatabase,
-    StaticIndex, StaticIndexedFile, TokenId, TokenStaticData, VendoredLibrariesConfig,
+    Analysis, AnalysisHost, FileId, FileRange, MonikerKind, MonikerResult, PackageInformation,
+    RootDatabase, StaticIndex, StaticIndexedFile, TokenId, TokenStaticData,
+    VendoredLibrariesConfig,
 };
 use ide_db::{line_index::WideEncoding, LineIndexDatabase};
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
@@ -167,7 +168,7 @@ impl LsifManager<'_, '_> {
                 out_v: result_set_id.into(),
             }));
         }
-        if let Some(moniker) = token.moniker {
+        if let Some(MonikerResult::Moniker(moniker)) = token.moniker {
             let package_id = self.get_package_id(moniker.package_information);
             let moniker_id = self.add_vertex(lsif::Vertex::Moniker(lsp_types::Moniker {
                 scheme: "rust-analyzer".to_owned(),

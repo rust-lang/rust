@@ -464,12 +464,6 @@ pub fn report_lit_error(
 }
 
 #[derive(Diagnostic)]
-#[diag(session_optimization_fuel_exhausted)]
-pub(crate) struct OptimisationFuelExhausted {
-    pub(crate) msg: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(session_incompatible_linker_flavor)]
 #[note]
 pub(crate) struct IncompatibleLinkerFlavor {
@@ -494,6 +488,10 @@ pub(crate) struct UnsupportedRegparm {
 #[derive(Diagnostic)]
 #[diag(session_unsupported_regparm_arch)]
 pub(crate) struct UnsupportedRegparmArch;
+
+#[derive(Diagnostic)]
+#[diag(session_unsupported_reg_struct_return_arch)]
+pub(crate) struct UnsupportedRegStructReturnArch;
 
 #[derive(Diagnostic)]
 #[diag(session_failed_to_create_profiler)]

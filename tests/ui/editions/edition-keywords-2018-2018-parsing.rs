@@ -1,8 +1,6 @@
 //@ edition:2018
 //@ aux-build:edition-kw-macro-2018.rs
 
-#![feature(async_closure)]
-
 fn main() {}
 
 #[macro_use]

@@ -41,7 +41,7 @@ impl Buffer {
         match Box::try_new_uninit_slice(capacity) {
             Ok(buf) => Ok(Self { buf, pos: 0, filled: 0, initialized: 0 }),
             Err(_) => {
-                Err(io::const_io_error!(ErrorKind::OutOfMemory, "failed to allocate read buffer"))
+                Err(io::const_error!(ErrorKind::OutOfMemory, "failed to allocate read buffer"))
             }
         }
     }
@@ -50,7 +50,7 @@ impl Buffer {
     pub fn buffer(&self) -> &[u8] {
         // SAFETY: self.pos and self.cap are valid, and self.cap => self.pos, and
         // that region is initialized because those are all invariants of this type.
-        unsafe { MaybeUninit::slice_assume_init_ref(self.buf.get_unchecked(self.pos..self.filled)) }
+        unsafe { self.buf.get_unchecked(self.pos..self.filled).assume_init_ref() }
     }
 
     #[inline]

@@ -1,10 +1,6 @@
-//@ revisions: base extended
-//@[base] check-fail
-//@[extended] check-pass
+//@ check-fail
 
 #![feature(associated_type_defaults)]
-#![cfg_attr(extended, feature(generic_associated_types_extended))]
-#![cfg_attr(extended, allow(incomplete_features))]
 
 trait Foo {
     type A<'a> where Self: 'a;
@@ -24,12 +20,12 @@ impl<T> Foo for Fooer<T> {
 }
 
 fn f(_arg : Box<dyn for<'a> Foo<A<'a> = &'a ()>>) {}
-//[base]~^ the trait `Foo` cannot be made into an object
+//~^ the trait `Foo` cannot be made into an object
 
 
 fn main() {
   let foo = Fooer(5);
   f(Box::new(foo));
-  //[base]~^ the trait `Foo` cannot be made into an object
-  //[base]~| the trait `Foo` cannot be made into an object
+  //~^ the trait `Foo` cannot be made into an object
+  //~| the trait `Foo` cannot be made into an object
 }

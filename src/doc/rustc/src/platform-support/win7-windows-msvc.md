@@ -1,8 +1,12 @@
-# *-win7-windows-msvc
+# \*-win7-windows-msvc
 
 **Tier: 3**
 
-Windows targets continuing support of windows7.
+Windows targets continuing support of Windows 7.
+
+Target triples:
+- `i686-win7-windows-msvc`
+- `x86_64-win7-windows-msvc`
 
 ## Target maintainers
 
@@ -25,7 +29,7 @@ You can build Rust with support for the targets by adding it to the target list 
 ```toml
 [build]
 build-stage = 1
-target = [ "x86_64-win7-windows-msvc" ]
+target = ["x86_64-win7-windows-msvc"]
 ```
 
 ## Building Rust programs

@@ -1,5 +1,3 @@
-#![feature(async_closure)]
-
 //@ edition:2021
 
 fn foo<X>(x: impl FnOnce() -> Box<X>) {}

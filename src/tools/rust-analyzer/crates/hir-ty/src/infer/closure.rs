@@ -96,8 +96,8 @@ impl InferenceContext<'_> {
                     .map(|b| b.into_value_and_skipped_binders().0);
                 self.deduce_closure_kind_from_predicate_clauses(clauses)
             }
-            TyKind::Dyn(dyn_ty) => dyn_ty.principal().and_then(|trait_ref| {
-                self.fn_trait_kind_from_trait_id(from_chalk_trait_id(trait_ref.trait_id))
+            TyKind::Dyn(dyn_ty) => dyn_ty.principal_id().and_then(|trait_id| {
+                self.fn_trait_kind_from_trait_id(from_chalk_trait_id(trait_id))
             }),
             TyKind::InferenceVar(ty, chalk_ir::TyVariableKind::General) => {
                 let clauses = self.clauses_for_self_ty(*ty);
@@ -992,7 +992,7 @@ impl InferenceContext<'_> {
                 },
             },
         }
-        if self.result.pat_adjustments.get(&p).map_or(false, |it| !it.is_empty()) {
+        if self.result.pat_adjustments.get(&p).is_some_and(|it| !it.is_empty()) {
             for_mut = BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture };
         }
         self.body.walk_pats_shallow(p, |p| self.walk_pat_inner(p, update_result, for_mut));

@@ -2,18 +2,19 @@ use std::borrow::{Borrow, Cow};
 use std::fmt;
 use std::hash::Hash;
 
-use rustc_abi::{Align, ExternAbi, Size};
+use rustc_abi::{Align, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem};
 use rustc_middle::mir::AssertMessage;
+use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
+use rustc_target::callconv::FnAbi;
 use tracing::debug;
 
 use super::error::*;
@@ -21,9 +22,8 @@ use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
 use crate::interpret::{
     self, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame, GlobalAlloc, ImmTy,
-    InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, RangeSet, Scalar, compile_time_machine,
-    interp_ok, throw_exhaust, throw_inval, throw_ub, throw_ub_custom, throw_unsup,
-    throw_unsup_format,
+    InterpCx, InterpResult, MPlaceTy, OpTy, RangeSet, Scalar, compile_time_machine, interp_ok,
+    throw_exhaust, throw_inval, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -249,10 +249,9 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
         } else if self.tcx.is_lang_item(def_id, LangItem::PanicFmt) {
             // For panic_fmt, call const_panic_fmt instead.
             let const_def_id = self.tcx.require_lang_item(LangItem::ConstPanicFmt, None);
-            // FIXME(@lcnr): why does this use an empty env if we've got a `param_env` right here.
             let new_instance = ty::Instance::expect_resolve(
                 *self.tcx,
-                ty::TypingEnv::fully_monomorphized(),
+                self.typing_env(),
                 const_def_id,
                 instance.args,
                 self.cur_span(),
@@ -341,7 +340,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'tcx, Self>,
         orig_instance: ty::Instance<'tcx>,
-        _abi: ExternAbi,
+        _abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[FnArg<'tcx>],
         dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
@@ -361,10 +360,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             // sensitive check here. But we can at least rule out functions that are not const at
             // all. That said, we have to allow calling functions inside a trait marked with
             // #[const_trait]. These *are* const-checked!
-            // FIXME(const_trait_impl): why does `is_const_fn` not classify them as const?
-            if (!ecx.tcx.is_const_fn(def) && !ecx.tcx.is_const_default_method(def))
-                || ecx.tcx.has_attr(def, sym::rustc_do_not_const_check)
-            {
+            if !ecx.tcx.is_const_fn(def) || ecx.tcx.has_attr(def, sym::rustc_do_not_const_check) {
                 // We certainly do *not* want to actually call the fn
                 // though, so be sure we return here.
                 throw_unsup_format!("calling non-const function `{}`", instance)
@@ -564,7 +560,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                         .tcx
                         .dcx()
                         .span_delayed_bug(span, "The deny lint should have already errored");
-                    throw_inval!(AlreadyReported(guard.into()));
+                    throw_inval!(AlreadyReported(ReportedErrorInfo::allowed_in_infallible(guard)));
                 }
             } else if new_steps > start && new_steps.is_power_of_two() {
                 // Only report after a certain number of terminators have been evaluated and the
@@ -586,7 +582,10 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     }
 
     #[inline(always)]
-    fn expose_ptr(_ecx: &mut InterpCx<'tcx, Self>, _ptr: Pointer) -> InterpResult<'tcx> {
+    fn expose_provenance(
+        _ecx: &InterpCx<'tcx, Self>,
+        _provenance: Self::Provenance,
+    ) -> InterpResult<'tcx> {
         // This is only reachable with -Zunleash-the-miri-inside-of-you.
         throw_unsup_format!("exposing pointers is not possible at compile-time")
     }

@@ -23,7 +23,6 @@ struct Context {
 type TransactionResult<O> = Result<O, ()>;
 
 type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
-//~^ ERROR unconstrained opaque type
 
 fn execute_transaction_fut<'f, F, O>(
     //~^ ERROR: item does not constrain

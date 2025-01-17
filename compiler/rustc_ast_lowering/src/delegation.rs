@@ -46,8 +46,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{Asyncness, ResolverAstLowering};
-use rustc_span::Span;
-use rustc_span::symbol::Ident;
+use rustc_span::{Ident, Span};
 use rustc_target::spec::abi;
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -189,7 +188,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::FnSig<'hir> {
         let header = if let Some(local_sig_id) = sig_id.as_local() {
             match self.resolver.delegation_fn_sigs.get(&local_sig_id) {
-                Some(sig) => self.lower_fn_header(sig.header, hir::Safety::Safe),
+                Some(sig) => self.lower_fn_header(
+                    sig.header,
+                    // HACK: we override the default safety instead of generating attributes from the ether.
+                    // We are not forwarding the attributes, as the delegation fn sigs are collected on the ast,
+                    // and here we need the hir attributes.
+                    if sig.target_feature { hir::Safety::Unsafe } else { hir::Safety::Safe },
+                    &[],
+                ),
                 None => self.generate_header_error(),
             }
         } else {
@@ -199,7 +205,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 Asyncness::No => hir::IsAsync::NotAsync,
             };
             hir::FnHeader {
-                safety: sig.safety,
+                safety: if self.tcx.codegen_fn_attrs(sig_id).safe_target_features {
+                    hir::HeaderSafety::SafeTargetFeatures
+                } else {
+                    hir::HeaderSafety::Normal(sig.safety)
+                },
                 constness: self.tcx.constness(sig_id),
                 asyncness,
                 abi: sig.abi,
@@ -385,7 +395,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn generate_header_error(&self) -> hir::FnHeader {
         hir::FnHeader {
-            safety: hir::Safety::Safe,
+            safety: hir::Safety::Safe.into(),
             constness: hir::Constness::NotConst,
             asyncness: hir::IsAsync::NotAsync,
             abi: abi::Abi::Rust,

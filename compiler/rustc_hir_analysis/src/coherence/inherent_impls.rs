@@ -13,8 +13,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams, simplify_type};
 use rustc_middle::ty::{self, CrateInherentImpls, Ty, TyCtxt};
-use rustc_span::ErrorGuaranteed;
-use rustc_span::symbol::sym;
+use rustc_span::{ErrorGuaranteed, sym};
 
 use crate::errors;
 
@@ -179,7 +178,8 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::Ref(..)
             | ty::Never
             | ty::FnPtr(..)
-            | ty::Tuple(..) => self.check_primitive_impl(id, self_ty),
+            | ty::Tuple(..)
+            | ty::UnsafeBinder(_) => self.check_primitive_impl(id, self_ty),
             ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, _) | ty::Param(_) => {
                 Err(self.tcx.dcx().emit_err(errors::InherentNominal { span: item_span }))
             }

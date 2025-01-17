@@ -103,8 +103,7 @@ error: empty lines after outer attribute
   --> tests/ui/empty_line_after/outer_attribute.rs:64:1
    |
 LL | / #[allow(unused)]
-LL | |
-LL | | // This comment is isolated
+...  |
 LL | |
    | |_^
 LL |   pub fn isolated_comment() {}

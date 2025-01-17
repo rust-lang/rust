@@ -14,10 +14,9 @@ diff --git a/lib.rs b/lib.rs
 index 1e336bf..35e6f54 100644
 --- a/lib.rs
 +++ b/lib.rs
-@@ -2,7 +2,6 @@
- #![cfg_attr(bootstrap, feature(const_three_way_compare))]
- #![cfg_attr(bootstrap, feature(strict_provenance))]
- #![cfg_attr(not(bootstrap), feature(strict_provenance_lints))]
+@@ -2,6 +2,5 @@
+ #![cfg(test)]
+ // tidy-alphabetical-start
 -#![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
  #![cfg_attr(test, feature(cfg_match))]
  #![feature(alloc_layout_extra)]

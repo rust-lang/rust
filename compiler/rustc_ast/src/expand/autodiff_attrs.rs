@@ -6,7 +6,6 @@
 use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
-use crate::expand::typetree::TypeTree;
 use crate::expand::{Decodable, Encodable, HashStable_Generic};
 use crate::ptr::P;
 use crate::{Ty, TyKind};
@@ -79,10 +78,6 @@ pub struct AutoDiffItem {
     /// The name of the function being generated
     pub target: String,
     pub attrs: AutoDiffAttrs,
-    /// Describe the memory layout of input types
-    pub inputs: Vec<TypeTree>,
-    /// Describe the memory layout of the output type
-    pub output: TypeTree,
 }
 #[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct AutoDiffAttrs {
@@ -262,22 +257,14 @@ impl AutoDiffAttrs {
         !matches!(self.mode, DiffMode::Error | DiffMode::Source)
     }
 
-    pub fn into_item(
-        self,
-        source: String,
-        target: String,
-        inputs: Vec<TypeTree>,
-        output: TypeTree,
-    ) -> AutoDiffItem {
-        AutoDiffItem { source, target, inputs, output, attrs: self }
+    pub fn into_item(self, source: String, target: String) -> AutoDiffItem {
+        AutoDiffItem { source, target, attrs: self }
     }
 }
 
 impl fmt::Display for AutoDiffItem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Differentiating {} -> {}", self.source, self.target)?;
-        write!(f, " with attributes: {:?}", self.attrs)?;
-        write!(f, " with inputs: {:?}", self.inputs)?;
-        write!(f, " with output: {:?}", self.output)
+        write!(f, " with attributes: {:?}", self.attrs)
     }
 }

@@ -1,6 +1,6 @@
 use super::EXPLICIT_ITER_LOOP;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{
     implements_trait, implements_trait_with_env, is_copy, is_type_lang_item, make_normalized_projection,
@@ -29,7 +29,7 @@ pub(super) fn check(
             if !msrv.meets(msrvs::ARRAY_INTO_ITERATOR) {
                 return;
             }
-        } else if count.try_to_target_usize(cx.tcx).map_or(true, |x| x > 32) && !msrv.meets(msrvs::ARRAY_IMPL_ANY_LEN) {
+        } else if count.try_to_target_usize(cx.tcx).is_none_or(|x| x > 32) && !msrv.meets(msrvs::ARRAY_IMPL_ANY_LEN) {
             return;
         }
     }
@@ -181,7 +181,8 @@ fn is_ref_iterable<'tcx>(
             // Attempt to borrow
             let self_ty = Ty::new_ref(cx.tcx, cx.tcx.lifetimes.re_erased, self_ty, mutbl);
             if implements_trait(cx, self_ty, trait_id, &[])
-                && let Some(ty) = make_normalized_projection(cx.tcx, cx.typing_env(), trait_id, sym!(IntoIter), [self_ty])
+                && let Some(ty) =
+                    make_normalized_projection(cx.tcx, cx.typing_env(), trait_id, sym!(IntoIter), [self_ty])
                 && ty == res_ty
             {
                 return Some((AdjustKind::borrow(mutbl), self_ty));

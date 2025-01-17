@@ -1,7 +1,6 @@
 //@ check-pass
 #![allow(type_alias_bounds)]
 
-//@ pretty-expanded FIXME #23616
 
 use std::marker::PhantomData;
 

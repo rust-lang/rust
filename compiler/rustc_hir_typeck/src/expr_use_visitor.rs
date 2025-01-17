@@ -228,7 +228,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
     }
 
     fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_copy_modulo_regions(self.0.tcx, self.0.typing_env())
+        self.0.type_is_copy_modulo_regions(ty)
     }
 
     fn body_owner_def_id(&self) -> LocalDefId {
@@ -338,6 +338,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             hir::ExprKind::Path(_) => {}
 
             hir::ExprKind::Type(subexpr, _) => {
+                self.walk_expr(subexpr)?;
+            }
+
+            hir::ExprKind::UnsafeBinderCast(_, subexpr, _) => {
                 self.walk_expr(subexpr)?;
             }
 
@@ -591,7 +595,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         let place_ty = place.place.ty();
                         needs_to_be_read |= self.is_multivariant_adt(place_ty, pat.span);
                     }
-                    PatKind::Lit(_) | PatKind::Range(..) => {
+                    PatKind::Expr(_) | PatKind::Range(..) => {
                         // If the PatKind is a Lit or a Range then we want
                         // to borrow discr.
                         needs_to_be_read = true;
@@ -611,6 +615,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     | PatKind::Box(_)
                     | PatKind::Deref(_)
                     | PatKind::Ref(..)
+                    | PatKind::Guard(..)
                     | PatKind::Wild
                     | PatKind::Err(_) => {
                         // If the PatKind is Or, Box, or Ref, the decision is made later
@@ -686,7 +691,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     fn walk_struct_expr<'hir>(
         &self,
         fields: &[hir::ExprField<'_>],
-        opt_with: &Option<&'hir hir::Expr<'_>>,
+        opt_with: &hir::StructTailExpr<'hir>,
     ) -> Result<(), Cx::Error> {
         // Consume the expressions supplying values for each field.
         for field in fields {
@@ -702,8 +707,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
 
         let with_expr = match *opt_with {
-            Some(w) => &*w,
-            None => {
+            hir::StructTailExpr::Base(w) => &*w,
+            hir::StructTailExpr::DefaultFields(_) | hir::StructTailExpr::None => {
                 return Ok(());
             }
         };
@@ -1360,7 +1365,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.cat_res(expr.hir_id, expr.span, expr_ty, res)
             }
 
+            // both type ascription and unsafe binder casts don't affect
+            // the place-ness of the subexpression.
             hir::ExprKind::Type(e, _) => self.cat_expr(e),
+            hir::ExprKind::UnsafeBinderCast(_, e, _) => self.cat_expr(e),
 
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Call(..)
@@ -1730,7 +1738,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 }
             }
 
-            PatKind::Binding(.., Some(subpat)) => {
+            PatKind::Binding(.., Some(subpat)) | PatKind::Guard(subpat, _) => {
                 self.cat_pattern(place_with_id, subpat, op)?;
             }
 
@@ -1795,7 +1803,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
             PatKind::Path(_)
             | PatKind::Binding(.., None)
-            | PatKind::Lit(..)
+            | PatKind::Expr(..)
             | PatKind::Range(..)
             | PatKind::Never
             | PatKind::Wild

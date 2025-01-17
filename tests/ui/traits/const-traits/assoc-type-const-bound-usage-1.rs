@@ -1,5 +1,4 @@
-//@ compile-flags: -Znext-solver
-//@ known-bug: unknown
+//@ check-pass
 
 #![feature(const_trait_impl, generic_const_exprs)]
 #![allow(incomplete_features)]

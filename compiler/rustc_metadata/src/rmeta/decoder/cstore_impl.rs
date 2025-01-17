@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::mem;
 
-use rustc_attr::Deprecation;
+use rustc_attr_parsing::Deprecation;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
@@ -17,9 +17,8 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::cstore::{CrateStore, ExternCrate};
 use rustc_session::{Session, StableCrateId};
-use rustc_span::Span;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::symbol::{Symbol, kw};
+use rustc_span::{Span, Symbol, kw};
 
 use super::{Decodable, DecodeContext, DecodeIterator};
 use crate::creader::{CStore, LoadedMacro};
@@ -269,7 +268,6 @@ provide! { tcx, def_id, other, cdata,
     lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
     params_in_repr => { table }
-    unused_generic_params => { table_direct }
     def_kind => { cdata.def_kind(def_id.index) }
     impl_parent => { table }
     defaultness => { table_direct }
@@ -345,7 +343,7 @@ provide! { tcx, def_id, other, cdata,
     }
     associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
-    item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
+    attrs_for_def => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     is_ctfe_mir_available => { cdata.is_ctfe_mir_available(def_id.index) }
     cross_crate_inlinable => { table_direct }

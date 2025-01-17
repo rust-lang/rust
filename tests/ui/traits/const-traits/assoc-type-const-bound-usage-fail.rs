@@ -1,4 +1,5 @@
-//@ compile-flags: -Znext-solver
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
 
 // Check that `~const` item bounds only hold if the parent trait is `~const`.
 // i.e. check that we validate the const conditions for the associated type

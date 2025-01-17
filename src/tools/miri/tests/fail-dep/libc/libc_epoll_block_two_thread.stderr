@@ -1,4 +1,10 @@
 error: deadlock: the evaluated program deadlocked
+   |
+   = note: the evaluated program deadlocked
+   = note: (no span available)
+   = note: BACKTRACE on thread `unnamed-ID`:
+
+error: deadlock: the evaluated program deadlocked
   --> RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
    |
 LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
@@ -11,14 +17,8 @@ LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
 note: inside `main`
   --> tests/fail-dep/libc/libc_epoll_block_two_thread.rs:LL:CC
    |
-LL |     thread2.join().unwrap();
+LL |     thread1.join().unwrap();
    |     ^^^^^^^^^^^^^^
-
-error: deadlock: the evaluated program deadlocked
-   |
-   = note: the evaluated program deadlocked
-   = note: (no span available)
-   = note: BACKTRACE on thread `unnamed-ID`:
 
 error: deadlock: the evaluated program deadlocked
   --> tests/fail-dep/libc/libc_epoll_block_two_thread.rs:LL:CC

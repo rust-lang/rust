@@ -67,6 +67,17 @@ impl SwitchTargets {
         &mut self.targets
     }
 
+    /// Returns a slice with all considered values (not including the fallback).
+    #[inline]
+    pub fn all_values(&self) -> &[Pu128] {
+        &self.values
+    }
+
+    #[inline]
+    pub fn all_values_mut(&mut self) -> &mut [Pu128] {
+        &mut self.values
+    }
+
     /// Finds the `BasicBlock` to which this `SwitchInt` will branch given the
     /// specific value. This cannot fail, as it'll return the `otherwise`
     /// branch if there's not a specific match for the value.

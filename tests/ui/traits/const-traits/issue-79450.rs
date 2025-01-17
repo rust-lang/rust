@@ -6,7 +6,7 @@ trait Tr {
     fn req(&self);
 
     fn prov(&self) {
-        println!("lul"); //~ ERROR: cannot call non-const fn `_print` in constant functions
+        println!("lul"); //~ ERROR: cannot call non-const function `_print` in constant functions
         self.req();
     }
 }

@@ -1,0 +1,28 @@
+error[E0200]: the trait `Copy` requires an `unsafe impl` declaration
+  --> $DIR/copy-trait.rs:21:5
+   |
+LL |     impl Copy for UnsafeEnum {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the trait `Copy` cannot be safely implemented for `bad_safe_impl::UnsafeEnum` because it has unsafe fields. Review the invariants of those fields before adding an `unsafe impl`
+help: add `unsafe` to this trait implementation
+   |
+LL |     unsafe impl Copy for UnsafeEnum {}
+   |     ++++++
+
+error[E0199]: implementing the trait `Copy` is not unsafe
+  --> $DIR/copy-trait.rs:39:5
+   |
+LL |     unsafe impl Copy for SafeEnum {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove `unsafe` from this trait implementation
+   |
+LL -     unsafe impl Copy for SafeEnum {}
+LL +     impl Copy for SafeEnum {}
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0199, E0200.
+For more information about an error, try `rustc --explain E0199`.

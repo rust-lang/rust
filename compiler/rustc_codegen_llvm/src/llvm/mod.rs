@@ -22,7 +22,10 @@ use crate::common::AsCCharPtr;
 
 pub mod archive_ro;
 pub mod diagnostic;
+pub mod enzyme_ffi;
 mod ffi;
+
+pub use self::enzyme_ffi::*;
 
 impl LLVMRustResult {
     pub fn into_result(self) -> Result<(), ()> {

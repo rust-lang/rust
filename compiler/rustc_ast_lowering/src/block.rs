@@ -1,5 +1,6 @@
 use rustc_ast::{Block, BlockCheckMode, Local, LocalKind, Stmt, StmtKind};
 use rustc_hir as hir;
+use rustc_span::sym;
 use smallvec::SmallVec;
 
 use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext};
@@ -82,11 +83,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         (self.arena.alloc_from_iter(stmts), expr)
     }
 
+    /// Return an `ImplTraitContext` that allows impl trait in bindings if
+    /// the feature gate is enabled, or issues a feature error if it is not.
+    fn impl_trait_in_bindings_ctxt(&self, position: ImplTraitPosition) -> ImplTraitContext {
+        if self.tcx.features().impl_trait_in_bindings() {
+            ImplTraitContext::InBinding
+        } else {
+            ImplTraitContext::FeatureGated(position, sym::impl_trait_in_bindings)
+        }
+    }
+
     fn lower_local(&mut self, l: &Local) -> &'hir hir::LetStmt<'hir> {
-        let ty = l
-            .ty
-            .as_ref()
-            .map(|t| self.lower_ty(t, ImplTraitContext::Disallowed(ImplTraitPosition::Variable)));
+        // Let statements are allowed to have impl trait in bindings.
+        let ty = l.ty.as_ref().map(|t| {
+            self.lower_ty(t, self.impl_trait_in_bindings_ctxt(ImplTraitPosition::Variable))
+        });
         let init = l.kind.init().map(|init| self.lower_expr(init));
         let hir_id = self.lower_node_id(l.id);
         let pat = self.lower_pat(&l.pat);

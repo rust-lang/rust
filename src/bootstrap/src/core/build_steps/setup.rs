@@ -209,7 +209,7 @@ pub fn setup(config: &Config, profile: Profile) {
     setup_config_toml(path, profile, config);
 }
 
-fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
+fn setup_config_toml(path: &Path, profile: Profile, config: &Config) {
     if profile == Profile::None {
         return;
     }
@@ -452,24 +452,26 @@ pub struct Hook;
 impl Step for Hook {
     type Output = ();
     const DEFAULT: bool = true;
+
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("hook")
     }
+
     fn make_run(run: RunConfig<'_>) {
-        if run.builder.config.dry_run() {
-            return;
-        }
         if let [cmd] = &run.paths[..] {
             if cmd.assert_single_path().path.as_path().as_os_str() == "hook" {
                 run.builder.ensure(Hook);
             }
         }
     }
+
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let config = &builder.config;
-        if config.dry_run() {
+
+        if config.dry_run() || !config.rust_info.is_managed_git_subrepository() {
             return;
         }
+
         t!(install_git_hook_maybe(builder, config));
     }
 }
@@ -572,6 +574,7 @@ Select which editor you would like to set up [default: None]: ";
                 "828666b021d837a33e78d870b56d34c88a5e2c85de58b693607ec574f0c27000",
                 "811fb3b063c739d261fd8590dd30242e117908f5a095d594fa04585daa18ec4d",
                 "4eecb58a2168b252077369da446c30ed0e658301efe69691979d1ef0443928f4",
+                "c394386e6133bbf29ffd32c8af0bb3d4aac354cba9ee051f29612aa9350f8f8d",
             ],
             EditorKind::Emacs => vec![
                 "51068d4747a13732440d1a8b8f432603badb1864fa431d83d0fd4f8fa57039e0",

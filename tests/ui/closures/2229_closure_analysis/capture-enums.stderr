@@ -26,7 +26,6 @@ LL | |
 LL | |
 LL | |         if let Info::Point(_, _, str) = point {
 ...  |
-LL | |         }
 LL | |     };
    | |_____^
    |
@@ -59,7 +58,6 @@ LL | |
 LL | |
 LL | |         if let Info::Point(_, _, str) = point {
 ...  |
-LL | |         }
 LL | |     };
    | |_____^
    |

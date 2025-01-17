@@ -23,7 +23,6 @@ LL | |
 LL | |
 LL | | #[stable(feature = "a", since = "3.3.3")]
 ...  |
-LL | |
 LL | | fn main() {}
    | |____________^
 

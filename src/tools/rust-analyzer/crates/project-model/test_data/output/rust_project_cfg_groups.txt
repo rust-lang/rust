@@ -479,7 +479,7 @@
     },
     11: CrateData {
         root_file_id: FileId(
-            12,
+            11,
         ),
         edition: Edition2018,
         version: None,

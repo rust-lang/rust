@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `cross_crate::NonConst: ~const cross_crate::MyTrait` is not satisfied
-  --> $DIR/cross-crate.rs:19:5
+  --> $DIR/cross-crate.rs:19:14
    |
 LL |     NonConst.func();
-   |     ^^^^^^^^^^^^^^^
+   |              ^^^^
 
 error: aborting due to 1 previous error
 

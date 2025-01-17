@@ -1,5 +1,5 @@
 warning: `rust_task_is_unwinding` redeclared with a different signature
-  --> $DIR/issue-1866.rs:23:13
+  --> $DIR/issue-1866.rs:22:13
    |
 LL |             pub fn rust_task_is_unwinding(rt: *const rust_task) -> bool;
    |             ------------------------------------------------------------ `rust_task_is_unwinding` previously declared here

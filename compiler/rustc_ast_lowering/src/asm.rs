@@ -7,8 +7,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::kw;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, kw, sym};
 use rustc_target::asm;
 
 use super::LoweringContext;
@@ -82,7 +81,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut clobber_abis = FxIndexMap::default();
         if let Some(asm_arch) = asm_arch {
             for (abi_name, abi_span) in &asm.clobber_abis {
-                match asm::InlineAsmClobberAbi::parse(asm_arch, &self.tcx.sess.target, *abi_name) {
+                match asm::InlineAsmClobberAbi::parse(
+                    asm_arch,
+                    &self.tcx.sess.target,
+                    &self.tcx.sess.unstable_target_features,
+                    *abi_name,
+                ) {
                     Ok(abi) => {
                         // If the abi was already in the list, emit an error
                         match clobber_abis.get(&abi) {
@@ -222,18 +226,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             };
 
                             // Wrap the expression in an AnonConst.
-                            let parent_def_id = self.current_def_id_parent;
+                            let parent_def_id = self.current_hir_id_owner.def_id;
                             let node_id = self.next_node_id();
-                            // HACK(min_generic_const_args): see lower_anon_const
-                            if !expr.is_potential_trivial_const_arg(true) {
-                                self.create_def(
-                                    parent_def_id,
-                                    node_id,
-                                    kw::Empty,
-                                    DefKind::AnonConst,
-                                    *op_sp,
-                                );
-                            }
+                            self.create_def(
+                                parent_def_id,
+                                node_id,
+                                kw::Empty,
+                                DefKind::AnonConst,
+                                *op_sp,
+                            );
                             let anon_const = AnonConst { id: node_id, value: P(expr) };
                             hir::InlineAsmOperand::SymFn {
                                 anon_const: self.lower_anon_const_to_anon_const(&anon_const),

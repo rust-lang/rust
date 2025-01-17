@@ -597,6 +597,13 @@ impl Error for JoinPathsError {
 
 /// Returns the path of the current user's home directory if known.
 ///
+/// This may return `None` if getting the directory fails or if the platform does not have user home directories.
+///
+/// For storing user data and configuration it is often preferable to use more specific directories.
+/// For example, [XDG Base Directories] on Unix or the `LOCALAPPDATA` and `APPDATA` environment variables on Windows.
+///
+/// [XDG Base Directories]: https://specifications.freedesktop.org/basedir-spec/latest/
+///
 /// # Unix
 ///
 /// - Returns the value of the 'HOME' environment variable if it is set
@@ -608,20 +615,16 @@ impl Error for JoinPathsError {
 ///
 /// # Windows
 ///
-/// - Returns the value of the 'HOME' environment variable if it is set
-///   (including to an empty string).
-/// - Otherwise, returns the value of the 'USERPROFILE' environment variable if it is set
-///   (including to an empty string).
-/// - If both do not exist, [`GetUserProfileDirectory`][msdn] is used to return the path.
+/// - Returns the value of the 'USERPROFILE' environment variable if it is set, and is not an empty string.
+/// - Otherwise, [`GetUserProfileDirectory`][msdn] is used to return the path. This may change in the future.
 ///
 /// [msdn]: https://docs.microsoft.com/en-us/windows/win32/api/userenv/nf-userenv-getuserprofiledirectorya
 ///
-/// # Deprecation
+/// In UWP (Universal Windows Platform) targets this function is unimplemented and always returns `None`.
 ///
-/// This function is deprecated because the behavior on Windows is not correct.
-/// The 'HOME' environment variable is not standard on Windows, and may not produce
-/// desired results; for instance, under Cygwin or Mingw it will return `/home/you`
-/// when it should return `C:\Users\you`.
+/// Before Rust 1.85.0, this function used to return the value of the 'HOME' environment variable
+/// on Windows, which in Cygwin or Mingw environments could return non-standard paths like `/home/you`
+/// instead of `C:\Users\you`.
 ///
 /// # Examples
 ///

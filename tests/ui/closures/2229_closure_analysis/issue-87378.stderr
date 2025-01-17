@@ -15,8 +15,7 @@ LL | /     || {
 LL | |
 LL | |
 LL | |        unsafe { u.value }
-LL | |
-LL | |
+...  |
 LL | |     };
    | |_____^
    |
@@ -33,8 +32,7 @@ LL | /     || {
 LL | |
 LL | |
 LL | |        unsafe { u.value }
-LL | |
-LL | |
+...  |
 LL | |     };
    | |_____^
    |

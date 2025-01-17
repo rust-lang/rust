@@ -847,10 +847,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let (instance, mut llfn) = match *callee.layout.ty.kind() {
             ty::FnDef(def_id, args) => (
-                Some(
-                    ty::Instance::expect_resolve(bx.tcx(), bx.typing_env(), def_id, args, fn_span)
-                        .polymorphize(bx.tcx()),
-                ),
+                Some(ty::Instance::expect_resolve(
+                    bx.tcx(),
+                    bx.typing_env(),
+                    def_id,
+                    args,
+                    fn_span,
+                )),
                 None,
             ),
             ty::FnPtr(..) => (None, Some(callee.immediate())),

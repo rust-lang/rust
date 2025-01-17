@@ -60,7 +60,7 @@ use rustc_errors::pluralize;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind};
-use rustc_index::bit_set::{BitMatrix, BitSet, GrowableBitSet};
+use rustc_index::bit_set::{BitMatrix, DenseBitSet, GrowableBitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -70,12 +70,11 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
+    always_storage_live_locals,
 };
-use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor};
-use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::symbol::sym;
+use rustc_span::{Span, sym};
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
@@ -186,13 +185,13 @@ struct TransformVisitor<'tcx> {
     remap: IndexVec<Local, Option<(Ty<'tcx>, VariantIdx, FieldIdx)>>,
 
     // A map from a suspension point in a block to the locals which have live storage at that point
-    storage_liveness: IndexVec<BasicBlock, Option<BitSet<Local>>>,
+    storage_liveness: IndexVec<BasicBlock, Option<DenseBitSet<Local>>>,
 
     // A list of suspension points, generated during the transform
     suspension_points: Vec<SuspensionPoint<'tcx>>,
 
     // The set of locals that have no `StorageLive`/`StorageDead` annotations.
-    always_live_locals: BitSet<Local>,
+    always_live_locals: DenseBitSet<Local>,
 
     // The original RETURN_PLACE local
     old_ret_local: Local,
@@ -634,7 +633,7 @@ struct LivenessInfo {
     saved_locals: CoroutineSavedLocals,
 
     /// The set of saved locals live at each suspension point.
-    live_locals_at_suspension_points: Vec<BitSet<CoroutineSavedLocal>>,
+    live_locals_at_suspension_points: Vec<DenseBitSet<CoroutineSavedLocal>>,
 
     /// Parallel vec to the above with SourceInfo for each yield terminator.
     source_info_at_suspension_points: Vec<SourceInfo>,
@@ -646,7 +645,7 @@ struct LivenessInfo {
 
     /// For every suspending block, the locals which are storage-live across
     /// that suspension point.
-    storage_liveness: IndexVec<BasicBlock, Option<BitSet<Local>>>,
+    storage_liveness: IndexVec<BasicBlock, Option<DenseBitSet<Local>>>,
 }
 
 /// Computes which locals have to be stored in the state-machine for the
@@ -660,7 +659,7 @@ struct LivenessInfo {
 fn locals_live_across_suspend_points<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    always_live_locals: &BitSet<Local>,
+    always_live_locals: &DenseBitSet<Local>,
     movable: bool,
 ) -> LivenessInfo {
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
@@ -676,12 +675,11 @@ fn locals_live_across_suspend_points<'tcx>(
 
     let mut borrowed_locals_cursor = borrowed_locals_results.clone().into_results_cursor(body);
 
-    // Calculate the MIR locals that we actually need to keep storage around
-    // for.
-    let mut requires_storage_cursor =
+    // Calculate the MIR locals that we need to keep storage around for.
+    let mut requires_storage_results =
         MaybeRequiresStorage::new(borrowed_locals_results.into_results_cursor(body))
-            .iterate_to_fixpoint(tcx, body, None)
-            .into_results_cursor(body);
+            .iterate_to_fixpoint(tcx, body, None);
+    let mut requires_storage_cursor = requires_storage_results.as_results_cursor(body);
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut liveness =
@@ -690,15 +688,14 @@ fn locals_live_across_suspend_points<'tcx>(
     let mut storage_liveness_map = IndexVec::from_elem(None, &body.basic_blocks);
     let mut live_locals_at_suspension_points = Vec::new();
     let mut source_info_at_suspension_points = Vec::new();
-    let mut live_locals_at_any_suspension_point = BitSet::new_empty(body.local_decls.len());
+    let mut live_locals_at_any_suspension_point = DenseBitSet::new_empty(body.local_decls.len());
 
     for (block, data) in body.basic_blocks.iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
             let loc = Location { block, statement_index: data.statements.len() };
 
             liveness.seek_to_block_end(block);
-            let mut live_locals: BitSet<_> = BitSet::new_empty(body.local_decls.len());
-            live_locals.union(liveness.get());
+            let mut live_locals = liveness.get().clone();
 
             if !movable {
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
@@ -754,7 +751,7 @@ fn locals_live_across_suspend_points<'tcx>(
         body,
         &saved_locals,
         always_live_locals.clone(),
-        requires_storage_cursor.into_results(),
+        requires_storage_results,
     );
 
     LivenessInfo {
@@ -771,7 +768,7 @@ fn locals_live_across_suspend_points<'tcx>(
 /// `CoroutineSavedLocal` is indexed in terms of the elements in this set;
 /// i.e. `CoroutineSavedLocal::new(1)` corresponds to the second local
 /// included in this set.
-struct CoroutineSavedLocals(BitSet<Local>);
+struct CoroutineSavedLocals(DenseBitSet<Local>);
 
 impl CoroutineSavedLocals {
     /// Returns an iterator over each `CoroutineSavedLocal` along with the `Local` it corresponds
@@ -780,11 +777,11 @@ impl CoroutineSavedLocals {
         self.iter().enumerate().map(|(i, l)| (CoroutineSavedLocal::from(i), l))
     }
 
-    /// Transforms a `BitSet<Local>` that contains only locals saved across yield points to the
-    /// equivalent `BitSet<CoroutineSavedLocal>`.
-    fn renumber_bitset(&self, input: &BitSet<Local>) -> BitSet<CoroutineSavedLocal> {
+    /// Transforms a `DenseBitSet<Local>` that contains only locals saved across yield points to the
+    /// equivalent `DenseBitSet<CoroutineSavedLocal>`.
+    fn renumber_bitset(&self, input: &DenseBitSet<Local>) -> DenseBitSet<CoroutineSavedLocal> {
         assert!(self.superset(input), "{:?} not a superset of {:?}", self.0, input);
-        let mut out = BitSet::new_empty(self.count());
+        let mut out = DenseBitSet::new_empty(self.count());
         for (saved_local, local) in self.iter_enumerated() {
             if input.contains(local) {
                 out.insert(saved_local);
@@ -804,7 +801,7 @@ impl CoroutineSavedLocals {
 }
 
 impl ops::Deref for CoroutineSavedLocals {
-    type Target = BitSet<Local>;
+    type Target = DenseBitSet<Local>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -818,7 +815,7 @@ impl ops::Deref for CoroutineSavedLocals {
 fn compute_storage_conflicts<'mir, 'tcx>(
     body: &'mir Body<'tcx>,
     saved_locals: &'mir CoroutineSavedLocals,
-    always_live_locals: BitSet<Local>,
+    always_live_locals: DenseBitSet<Local>,
     mut requires_storage: Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
 ) -> BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal> {
     assert_eq!(body.local_decls.len(), saved_locals.domain_size());
@@ -836,7 +833,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
         body,
         saved_locals,
         local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len()),
-        eligible_storage_live: BitSet::new_empty(body.local_decls.len()),
+        eligible_storage_live: DenseBitSet::new_empty(body.local_decls.len()),
     };
 
     requires_storage.visit_reachable_with(body, &mut visitor);
@@ -874,26 +871,26 @@ struct StorageConflictVisitor<'a, 'tcx> {
     // benchmarks for coroutines.
     local_conflicts: BitMatrix<Local, Local>,
     // We keep this bitset as a buffer to avoid reallocating memory.
-    eligible_storage_live: BitSet<Local>,
+    eligible_storage_live: DenseBitSet<Local>,
 }
 
 impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, MaybeRequiresStorage<'a, 'tcx>>
     for StorageConflictVisitor<'a, 'tcx>
 {
-    fn visit_statement_before_primary_effect(
+    fn visit_after_early_statement_effect(
         &mut self,
         _results: &mut Results<'tcx, MaybeRequiresStorage<'a, 'tcx>>,
-        state: &BitSet<Local>,
+        state: &DenseBitSet<Local>,
         _statement: &'a Statement<'tcx>,
         loc: Location,
     ) {
         self.apply_state(state, loc);
     }
 
-    fn visit_terminator_before_primary_effect(
+    fn visit_after_early_terminator_effect(
         &mut self,
         _results: &mut Results<'tcx, MaybeRequiresStorage<'a, 'tcx>>,
-        state: &BitSet<Local>,
+        state: &DenseBitSet<Local>,
         _terminator: &'a Terminator<'tcx>,
         loc: Location,
     ) {
@@ -902,7 +899,7 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, MaybeRequiresStorage<'a, 'tcx>>
 }
 
 impl StorageConflictVisitor<'_, '_> {
-    fn apply_state(&mut self, state: &BitSet<Local>, loc: Location) {
+    fn apply_state(&mut self, state: &DenseBitSet<Local>, loc: Location) {
         // Ignore unreachable blocks.
         if let TerminatorKind::Unreachable = self.body.basic_blocks[loc.block].terminator().kind {
             return;
@@ -927,7 +924,7 @@ fn compute_layout<'tcx>(
 ) -> (
     IndexVec<Local, Option<(Ty<'tcx>, VariantIdx, FieldIdx)>>,
     CoroutineLayout<'tcx>,
-    IndexVec<BasicBlock, Option<BitSet<Local>>>,
+    IndexVec<BasicBlock, Option<DenseBitSet<Local>>>,
 ) {
     let LivenessInfo {
         saved_locals,
@@ -1825,9 +1822,6 @@ impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
 fn check_suspend_tys<'tcx>(tcx: TyCtxt<'tcx>, layout: &CoroutineLayout<'tcx>, body: &Body<'tcx>) {
     let mut linted_tys = FxHashSet::default();
 
-    // We want a user-facing param-env.
-    let param_env = tcx.param_env(body.source.def_id());
-
     for (variant, yield_source_info) in
         layout.variant_fields.iter().zip(&layout.variant_source_info)
     {
@@ -1841,7 +1835,7 @@ fn check_suspend_tys<'tcx>(tcx: TyCtxt<'tcx>, layout: &CoroutineLayout<'tcx>, bo
                     continue;
                 };
 
-                check_must_not_suspend_ty(tcx, decl.ty, hir_id, param_env, SuspendCheckData {
+                check_must_not_suspend_ty(tcx, decl.ty, hir_id, SuspendCheckData {
                     source_span: decl.source_info.span,
                     yield_span: yield_source_info.span,
                     plural_len: 1,
@@ -1871,7 +1865,6 @@ fn check_must_not_suspend_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     hir_id: hir::HirId,
-    param_env: ty::ParamEnv<'tcx>,
     data: SuspendCheckData<'_>,
 ) -> bool {
     if ty.is_unit() {
@@ -1886,16 +1879,13 @@ fn check_must_not_suspend_ty<'tcx>(
         ty::Adt(_, args) if ty.is_box() => {
             let boxed_ty = args.type_at(0);
             let allocator_ty = args.type_at(1);
-            check_must_not_suspend_ty(tcx, boxed_ty, hir_id, param_env, SuspendCheckData {
+            check_must_not_suspend_ty(tcx, boxed_ty, hir_id, SuspendCheckData {
                 descr_pre: &format!("{}boxed ", data.descr_pre),
                 ..data
-            }) || check_must_not_suspend_ty(
-                tcx,
-                allocator_ty,
-                hir_id,
-                param_env,
-                SuspendCheckData { descr_pre: &format!("{}allocator ", data.descr_pre), ..data },
-            )
+            }) || check_must_not_suspend_ty(tcx, allocator_ty, hir_id, SuspendCheckData {
+                descr_pre: &format!("{}allocator ", data.descr_pre),
+                ..data
+            })
         }
         ty::Adt(def, _) => check_must_not_suspend_def(tcx, def.did(), hir_id, data),
         // FIXME: support adding the attribute to TAITs
@@ -1940,7 +1930,7 @@ fn check_must_not_suspend_ty<'tcx>(
             let mut has_emitted = false;
             for (i, ty) in fields.iter().enumerate() {
                 let descr_post = &format!(" in tuple element {i}");
-                if check_must_not_suspend_ty(tcx, ty, hir_id, param_env, SuspendCheckData {
+                if check_must_not_suspend_ty(tcx, ty, hir_id, SuspendCheckData {
                     descr_post,
                     ..data
                 }) {
@@ -1951,7 +1941,7 @@ fn check_must_not_suspend_ty<'tcx>(
         }
         ty::Array(ty, len) => {
             let descr_pre = &format!("{}array{} of ", data.descr_pre, plural_suffix);
-            check_must_not_suspend_ty(tcx, ty, hir_id, param_env, SuspendCheckData {
+            check_must_not_suspend_ty(tcx, ty, hir_id, SuspendCheckData {
                 descr_pre,
                 // FIXME(must_not_suspend): This is wrong. We should handle printing unevaluated consts.
                 plural_len: len.try_to_target_usize(tcx).unwrap_or(0) as usize + 1,
@@ -1962,10 +1952,7 @@ fn check_must_not_suspend_ty<'tcx>(
         // may not be considered live across the await point.
         ty::Ref(_region, ty, _mutability) => {
             let descr_pre = &format!("{}reference{} to ", data.descr_pre, plural_suffix);
-            check_must_not_suspend_ty(tcx, ty, hir_id, param_env, SuspendCheckData {
-                descr_pre,
-                ..data
-            })
+            check_must_not_suspend_ty(tcx, ty, hir_id, SuspendCheckData { descr_pre, ..data })
         }
         _ => false,
     }

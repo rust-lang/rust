@@ -16,7 +16,6 @@ LL | / #![feature(staged_api)]
 LL | |
 LL | | pub mod m {}
 ...  |
-LL | |
 LL | | fn main() {}
    | |____________^
 

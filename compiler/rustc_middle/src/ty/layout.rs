@@ -16,8 +16,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
-use rustc_span::symbol::{Symbol, sym};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{
     HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, PanicStrategy, Target, WasmCAbi, X86Abi,
@@ -552,7 +551,10 @@ impl<'tcx> HasWasmCAbiOpt for TyCtxt<'tcx> {
 
 impl<'tcx> HasX86AbiOpt for TyCtxt<'tcx> {
     fn x86_abi_opt(&self) -> X86Abi {
-        X86Abi { regparm: self.sess.opts.unstable_opts.regparm }
+        X86Abi {
+            regparm: self.sess.opts.unstable_opts.regparm,
+            reg_struct_return: self.sess.opts.unstable_opts.reg_struct_return,
+        }
     }
 }
 
@@ -732,21 +734,22 @@ where
         let layout = match this.variants {
             Variants::Single { index }
                 // If all variants but one are uninhabited, the variant layout is the enum layout.
-                if index == variant_index &&
-                // Don't confuse variants of uninhabited enums with the enum itself.
-                // For more details see https://github.com/rust-lang/rust/issues/69763.
-                this.fields != FieldsShape::Primitive =>
+                if index == variant_index =>
             {
                 this.layout
             }
 
-            Variants::Single { index } => {
+            Variants::Single { .. } | Variants::Empty => {
+                // Single-variant and no-variant enums *can* have other variants, but those are
+                // uninhabited. Produce a layout that has the right fields for that variant, so that
+                // the rest of the compiler can project fields etc as usual.
+
                 let tcx = cx.tcx();
                 let typing_env = cx.typing_env();
 
                 // Deny calling for_variant more than once for non-Single enums.
                 if let Ok(original_layout) = tcx.layout_of(typing_env.as_query_input(this.ty)) {
-                    assert_eq!(original_layout.variants, Variants::Single { index });
+                    assert_eq!(original_layout.variants, this.variants);
                 }
 
                 let fields = match this.ty.kind() {
@@ -767,6 +770,7 @@ where
                     size: Size::ZERO,
                     max_repr_align: None,
                     unadjusted_abi_align: tcx.data_layout.i8_align.abi,
+                    randomization_seed: 0,
                 })
             }
 
@@ -811,6 +815,11 @@ where
                 | ty::Pat(_, _)
                 | ty::Dynamic(_, _, ty::Dyn) => {
                     bug!("TyAndLayout::field({:?}): not applicable", this)
+                }
+
+                ty::UnsafeBinder(bound_ty) => {
+                    let ty = tcx.instantiate_bound_regions_with_erased(bound_ty.into());
+                    field_ty_or_layout(TyAndLayout { ty, ..this }, cx, i)
                 }
 
                 // Potentially-wide pointers.
@@ -900,6 +909,7 @@ where
                 ),
 
                 ty::Coroutine(def_id, args) => match this.variants {
+                    Variants::Empty => unreachable!(),
                     Variants::Single { index } => TyMaybeWithLayout::Ty(
                         args.as_coroutine()
                             .state_tys(def_id, tcx)
@@ -925,6 +935,7 @@ where
                             let field = &def.variant(index).fields[FieldIdx::from_usize(i)];
                             TyMaybeWithLayout::Ty(field.ty(tcx, args))
                         }
+                        Variants::Empty => panic!("there is no field in Variants::Empty types"),
 
                         // Discriminant field for enums (where applicable).
                         Variants::Multiple { tag, .. } => {
@@ -1230,6 +1241,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         PtxKernel
         | Msp430Interrupt
         | X86Interrupt
+        | GpuKernel
         | EfiApi
         | AvrInterrupt
         | AvrNonBlockingInterrupt

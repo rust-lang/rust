@@ -8,7 +8,7 @@ use rustc_hir::hir_id::{HirId, HirIdMap};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{
     self as hir, AnonConst, BinOpKind, BindingMode, Body, Expr, ExprKind, FnRetTy, FnSig, GenericArg, ImplItemKind,
-    ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, Safety, TraitFn, TraitItem, TraitItemKind, TyKind,
+    ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, TraitFn, TraitItem, TraitItemKind, TyKind,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
@@ -189,7 +189,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
         let mut parents = hir.parent_iter(body.value.hir_id);
         let (item_id, sig, is_trait_item) = match parents.next() {
             Some((_, Node::Item(i))) => {
-                if let ItemKind::Fn(sig, ..) = &i.kind {
+                if let ItemKind::Fn { sig, .. } = &i.kind {
                     (i.owner_id, sig, false)
                 } else {
                     return;
@@ -475,7 +475,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                                     .def_id,
                                             ),
                                             ty::ReBound(_, r) => r.kind.get_id(),
-                                            ty::ReLateParam(r) => r.bound_region.get_id(),
+                                            ty::ReLateParam(r) => r.kind.get_id(),
                                             ty::ReStatic
                                             | ty::ReVar(_)
                                             | ty::RePlaceholder(_)
@@ -541,9 +541,7 @@ fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Optio
             .collect();
         if let Some(args) = args
             && !args.is_empty()
-            && body.map_or(true, |body| {
-                sig.header.safety == Safety::Unsafe || contains_unsafe_block(cx, body.value)
-            })
+            && body.is_none_or(|body| sig.header.is_unsafe() || contains_unsafe_block(cx, body.value))
         {
             span_lint_and_then(
                 cx,

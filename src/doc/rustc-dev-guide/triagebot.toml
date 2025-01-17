@@ -1,0 +1,8 @@
+[assign]
+
+[relabel]
+allow-unauthenticated = [
+    "waiting-on-review",
+    "waiting-on-author",
+    "blocked",
+]

@@ -36,6 +36,7 @@ error: layout_of(NonZero<u32>) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
   --> $DIR/range_patterns.rs:11:1
    |
@@ -73,6 +74,7 @@ error: layout_of((u32) is 1..=) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
   --> $DIR/range_patterns.rs:13:1
    |
@@ -137,6 +139,7 @@ error: layout_of(Option<(u32) is 1..=>) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
                    },
                    Layout {
                        size: Size(4 bytes),
@@ -176,11 +179,13 @@ error: layout_of(Option<(u32) is 1..=>) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: $SEED,
                    },
                ],
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
   --> $DIR/range_patterns.rs:15:1
    |
@@ -245,6 +250,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
                    },
                    Layout {
                        size: Size(4 bytes),
@@ -284,11 +290,13 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: $SEED,
                    },
                ],
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
   --> $DIR/range_patterns.rs:17:1
    |
@@ -333,6 +341,7 @@ error: layout_of(NonZeroU32New) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
   --> $DIR/range_patterns.rs:19:1
    |

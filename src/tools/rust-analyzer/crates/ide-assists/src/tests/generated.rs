@@ -187,8 +187,8 @@ enum Action { Move { distance: u32 }, Stop }
 
 fn handle(action: Action) {
     match action {
-        $0Action::Move { distance } => todo!(),
-        Action::Stop => todo!(),
+        Action::Move { distance } => ${1:todo!()},
+        Action::Stop => ${2:todo!()},$0
     }
 }
 "#####,
@@ -933,6 +933,24 @@ enum TheEnum {
 }
 
 #[test]
+fn doctest_extract_constant() {
+    check_doc_test(
+        "extract_constant",
+        r#####"
+fn main() {
+    $0(1 + 2)$0 * 4;
+}
+"#####,
+        r#####"
+fn main() {
+    const $0VAR_NAME: i32 = 1 + 2;
+    VAR_NAME * 4;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_extract_expressions_from_format_string() {
     check_doc_test(
         "extract_expressions_from_format_string",
@@ -1001,6 +1019,24 @@ mod modname {
 
 fn bar(name: i32) -> i32 {
     name + 2
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_extract_static() {
+    check_doc_test(
+        "extract_static",
+        r#####"
+fn main() {
+    $0(1 + 2)$0 * 4;
+}
+"#####,
+        r#####"
+fn main() {
+    static $0VAR_NAME: i32 = 1 + 2;
+    VAR_NAME * 4;
 }
 "#####,
     )
@@ -1392,7 +1428,7 @@ pub fn add(a: i32, b: i32) -> i32 { a + b }
 /// # Examples
 ///
 /// ```
-/// use test::add;
+/// use ra_test_fixture::add;
 ///
 /// assert_eq!(add(a, b), );
 /// ```
@@ -2849,7 +2885,7 @@ fn main() {
         r#####"
 fn main() {
     let x = Some(1);
-    if let Some(${0:x}) = x {}
+    if let Some(${0:x1}) = x {}
 }
 "#####,
     )
@@ -3244,7 +3280,7 @@ fn doctest_unnecessary_async() {
     check_doc_test(
         "unnecessary_async",
         r#####"
-pub async f$0n foo() {}
+pub asy$0nc fn foo() {}
 pub async fn bar() { foo().await }
 "#####,
         r#####"

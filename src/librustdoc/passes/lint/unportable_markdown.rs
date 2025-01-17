@@ -49,8 +49,8 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                 | cmarkn::Options::ENABLE_TASKLISTS
                 | cmarkn::Options::ENABLE_SMART_PUNCTUATION
         }
-        let mut parser_new = cmarkn::Parser::new_ext(&dox, main_body_opts_new()).into_offset_iter();
-        while let Some((event, span)) = parser_new.next() {
+        let parser_new = cmarkn::Parser::new_ext(dox, main_body_opts_new()).into_offset_iter();
+        for (event, span) in parser_new {
             if let cmarkn::Event::Start(cmarkn::Tag::BlockQuote(_)) = event {
                 if !dox[span.clone()].starts_with("> ") {
                     spaceless_block_quotes.insert(span.start);
@@ -71,8 +71,8 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                 | cmarko::Options::ENABLE_TASKLISTS
                 | cmarko::Options::ENABLE_SMART_PUNCTUATION
         }
-        let mut parser_old = cmarko::Parser::new_ext(&dox, main_body_opts_old()).into_offset_iter();
-        while let Some((event, span)) = parser_old.next() {
+        let parser_old = cmarko::Parser::new_ext(dox, main_body_opts_old()).into_offset_iter();
+        for (event, span) in parser_old {
             if let cmarko::Event::Start(cmarko::Tag::BlockQuote) = event {
                 if !dox[span.clone()].starts_with("> ") {
                     spaceless_block_quotes.remove(&span.start);
@@ -88,13 +88,13 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
 
     for start in spaceless_block_quotes {
         let (span, precise) =
-            source_span_for_markdown_range(tcx, &dox, &(start..start + 1), &item.attrs.doc_strings)
+            source_span_for_markdown_range(tcx, dox, &(start..start + 1), &item.attrs.doc_strings)
                 .map(|span| (span, true))
                 .unwrap_or_else(|| (item.attr_span(tcx), false));
 
         tcx.node_span_lint(crate::lint::UNPORTABLE_MARKDOWN, hir_id, span, |lint| {
             lint.primary_message("unportable markdown");
-            lint.help(format!("confusing block quote with no space after the `>` marker"));
+            lint.help("confusing block quote with no space after the `>` marker".to_string());
             if precise {
                 lint.span_suggestion(
                     span.shrink_to_hi(),
@@ -113,7 +113,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
     }
     for (_caret, span) in missing_footnote_references {
         let (ref_span, precise) =
-            source_span_for_markdown_range(tcx, &dox, &span, &item.attrs.doc_strings)
+            source_span_for_markdown_range(tcx, dox, &span, &item.attrs.doc_strings)
                 .map(|span| (span, true))
                 .unwrap_or_else(|| (item.attr_span(tcx), false));
 

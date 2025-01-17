@@ -4,11 +4,10 @@ use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::traits::query::type_op::ImpliedOutlivesBounds;
 use rustc_macros::extension;
 use rustc_middle::infer::canonical::{OriginalQueryValues, QueryRegionConstraints};
-use rustc_middle::span_bug;
 pub use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, ParamEnv, Ty, TypeFolder, TypeVisitableExt};
 use rustc_span::def_id::LocalDefId;
-use tracing::{debug, instrument};
+use tracing::instrument;
 
 use crate::infer::InferCtxt;
 use crate::traits::{ObligationCause, ObligationCtxt};
@@ -86,16 +85,12 @@ fn implied_outlives_bounds<'a, 'tcx>(
     bounds.retain(|bound| !bound.has_placeholders());
 
     if !constraints.is_empty() {
-        debug!(?constraints);
-        if !constraints.member_constraints.is_empty() {
-            span_bug!(span, "{:#?}", constraints.member_constraints);
-        }
-
+        let QueryRegionConstraints { outlives } = constraints;
         // Instantiation may have produced new inference variables and constraints on those
         // variables. Process these constraints.
         let ocx = ObligationCtxt::new(infcx);
         let cause = ObligationCause::misc(span, body_id);
-        for &constraint in &constraints.outlives {
+        for &constraint in &outlives {
             ocx.register_obligation(infcx.query_outlives_constraint_to_obligation(
                 constraint,
                 cause.clone(),

@@ -29,8 +29,7 @@ use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::parse::feature_err;
 use rustc_session::{Limit, Session};
 use rustc_span::hygiene::SyntaxContext;
-use rustc_span::symbol::{Ident, sym};
-use rustc_span::{ErrorGuaranteed, FileName, LocalExpnId, Span};
+use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, sym};
 use smallvec::SmallVec;
 
 use crate::base::*;
@@ -723,7 +722,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     item_inner.kind,
                                     ItemKind::Mod(
                                         _,
-                                        ModKind::Unloaded | ModKind::Loaded(_, Inline::No, _),
+                                        ModKind::Unloaded | ModKind::Loaded(_, Inline::No, _, _),
                                     )
                                 ) =>
                         {
@@ -732,7 +731,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         _ => item.to_tokens(),
                     };
                     let attr_item = attr.unwrap_normal_item();
-                    if let AttrArgs::Eq(..) = attr_item.args {
+                    if let AttrArgs::Eq { .. } = attr_item.args {
                         self.cx.dcx().emit_err(UnsupportedKeyValue { span });
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
@@ -889,7 +888,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             fn visit_item(&mut self, item: &'ast ast::Item) {
                 match &item.kind {
                     ItemKind::Mod(_, mod_kind)
-                        if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _)) =>
+                        if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _, _)) =>
                     {
                         feature_err(
                             self.sess,
@@ -990,7 +989,7 @@ pub fn parse_ast_fragment<'a>(
             }
         }
         AstFragmentKind::Ty => AstFragment::Ty(this.parse_ty()?),
-        AstFragmentKind::Pat => AstFragment::Pat(this.parse_pat_allow_top_alt(
+        AstFragmentKind::Pat => AstFragment::Pat(this.parse_pat_allow_top_guard(
             None,
             RecoverComma::No,
             RecoverColon::Yes,
@@ -1195,7 +1194,7 @@ impl InvocationCollectorNode for P<ast::Item> {
 
         let ecx = &mut collector.cx;
         let (file_path, dir_path, dir_ownership) = match mod_kind {
-            ModKind::Loaded(_, inline, _) => {
+            ModKind::Loaded(_, inline, _, _) => {
                 // Inline `mod foo { ... }`, but we still need to push directories.
                 let (dir_path, dir_ownership) = mod_dir_path(
                     ecx.sess,
@@ -1217,15 +1216,21 @@ impl InvocationCollectorNode for P<ast::Item> {
             ModKind::Unloaded => {
                 // We have an outline `mod foo;` so we need to parse the file.
                 let old_attrs_len = attrs.len();
-                let ParsedExternalMod { items, spans, file_path, dir_path, dir_ownership } =
-                    parse_external_mod(
-                        ecx.sess,
-                        ident,
-                        span,
-                        &ecx.current_expansion.module,
-                        ecx.current_expansion.dir_ownership,
-                        &mut attrs,
-                    );
+                let ParsedExternalMod {
+                    items,
+                    spans,
+                    file_path,
+                    dir_path,
+                    dir_ownership,
+                    had_parse_error,
+                } = parse_external_mod(
+                    ecx.sess,
+                    ident,
+                    span,
+                    &ecx.current_expansion.module,
+                    ecx.current_expansion.dir_ownership,
+                    &mut attrs,
+                );
 
                 if let Some(lint_store) = ecx.lint_store {
                     lint_store.pre_expansion_lint(
@@ -1239,7 +1244,7 @@ impl InvocationCollectorNode for P<ast::Item> {
                     );
                 }
 
-                *mod_kind = ModKind::Loaded(items, Inline::No, spans);
+                *mod_kind = ModKind::Loaded(items, Inline::No, spans, had_parse_error);
                 node.attrs = attrs;
                 if node.attrs.len() > old_attrs_len {
                     // If we loaded an out-of-line module and added some inner attributes,
@@ -1907,7 +1912,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     self.cx.current_expansion.lint_node_id,
                     BuiltinLintDiag::UnusedDocComment(attr.span),
                 );
-            } else if rustc_attr::is_builtin_attr(attr) {
+            } else if rustc_attr_parsing::is_builtin_attr(attr) {
                 let attr_name = attr.ident().unwrap().name;
                 // `#[cfg]` and `#[cfg_attr]` are special - they are
                 // eagerly evaluated.

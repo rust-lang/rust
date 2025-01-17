@@ -23,8 +23,8 @@ use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, build_session, filesearch, getopts};
 use rustc_span::edition::{DEFAULT_EDITION, Edition};
 use rustc_span::source_map::{RealFileLoader, SourceMapInputs};
-use rustc_span::symbol::sym;
-use rustc_span::{FileName, SourceFileHashAlgorithm};
+use rustc_span::{FileName, SourceFileHashAlgorithm, sym};
+use rustc_target::abi::Align;
 use rustc_target::spec::{
     CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
     RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel, WasmCAbi,
@@ -583,6 +583,7 @@ fn test_codegen_options_tracking_hash() {
     untracked!(dlltool, Some(PathBuf::from("custom_dlltool.exe")));
     untracked!(extra_filename, String::from("extra-filename"));
     untracked!(incremental, Some(String::from("abc")));
+    untracked!(inline_threshold, Some(0xf007ba11));
     // `link_arg` is omitted because it just forwards to `link_args`.
     untracked!(link_args, vec![String::from("abc"), String::from("def")]);
     untracked!(link_self_contained, LinkSelfContained::on());
@@ -614,7 +615,6 @@ fn test_codegen_options_tracking_hash() {
     tracked!(embed_bitcode, false);
     tracked!(force_frame_pointers, FramePointer::Always);
     tracked!(force_unwind_tables, Some(true));
-    tracked!(inline_threshold, Some(0xf007ba11));
     tracked!(instrument_coverage, InstrumentCoverage::Yes);
     tracked!(link_dead_code, Some(true));
     tracked!(linker_plugin_lto, LinkerPluginLto::LinkerPluginAuto);
@@ -712,7 +712,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(no_analysis, true);
     untracked!(no_leak_check, true);
     untracked!(no_parallel_backend, true);
-    untracked!(parse_only, true);
+    untracked!(parse_crate_root_only, true);
     // `pre_link_arg` is omitted because it just forwards to `pre_link_args`.
     untracked!(pre_link_args, vec![String::from("abc"), String::from("def")]);
     untracked!(print_codegen_stats, true);
@@ -767,10 +767,15 @@ fn test_unstable_options_tracking_hash() {
         })
     );
     tracked!(codegen_backend, Some("abc".to_string()));
-    tracked!(coverage_options, CoverageOptions { level: CoverageLevel::Mcdc, no_mir_spans: true });
+    tracked!(coverage_options, CoverageOptions {
+        level: CoverageLevel::Mcdc,
+        no_mir_spans: true,
+        discard_all_spans_in_codegen: true
+    });
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(cross_crate_inline_threshold, InliningThreshold::Always);
     tracked!(debug_info_for_profiling, true);
+    tracked!(debug_info_type_line_numbers, true);
     tracked!(default_visibility, Some(rustc_target::spec::SymbolVisibility::Hidden));
     tracked!(dep_info_omit_d_target, true);
     tracked!(direct_access_external_data, Some(true));
@@ -778,13 +783,13 @@ fn test_unstable_options_tracking_hash() {
     tracked!(dwarf_version, Some(5));
     tracked!(embed_source, true);
     tracked!(emit_thin_lto, false);
+    tracked!(emscripten_wasm_eh, true);
     tracked!(export_executable_symbols, true);
     tracked!(fewer_names, Some(true));
     tracked!(fixed_x18, true);
     tracked!(flatten_format_args, false);
     tracked!(fmt_debug, FmtDebug::Shallow);
     tracked!(force_unstable_if_unmarked, true);
-    tracked!(fuel, Some(("abc".to_string(), 99)));
     tracked!(function_return, FunctionReturn::ThunkExtern);
     tracked!(function_sections, Some(false));
     tracked!(human_readable_cgu_names, true);
@@ -803,6 +808,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(location_detail, LocationDetail { file: true, line: false, column: false });
     tracked!(maximal_hir_to_mir_coverage, true);
     tracked!(merge_functions, Some(MergeFunctions::Disabled));
+    tracked!(min_function_alignment, Some(Align::EIGHT));
     tracked!(mir_emit_retag, true);
     tracked!(mir_enable_passes, vec![("DestProp".to_string(), false)]);
     tracked!(mir_keep_place_mention, true);
@@ -830,9 +836,9 @@ fn test_unstable_options_tracking_hash() {
     tracked!(plt, Some(true));
     tracked!(polonius, Polonius::Legacy);
     tracked!(precise_enum_drop_elaboration, false);
-    tracked!(print_fuel, Some("abc".to_string()));
     tracked!(profile_sample_use, Some(PathBuf::from("abc")));
     tracked!(profiler_runtime, "abc".to_string());
+    tracked!(reg_struct_return, true);
     tracked!(regparm, Some(3));
     tracked!(relax_elf_relocations, Some(true));
     tracked!(remap_cwd_prefix, Some(PathBuf::from("abc")));
@@ -845,7 +851,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(sanitizer_recover, SanitizerSet::ADDRESS);
     tracked!(saturating_float_casts, Some(true));
     tracked!(share_generics, Some(true));
-    tracked!(show_span, Some(String::from("abc")));
     tracked!(simulate_remapped_rust_src_base, Some(PathBuf::from("/rustc/abc")));
     tracked!(small_data_threshold, Some(16));
     tracked!(split_lto_unit, Some(true));

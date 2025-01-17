@@ -1,8 +1,7 @@
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ElidedLifetimeInPathSubdiag, MultiSpan};
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 use crate::Res;
 use crate::late::PatternSource;

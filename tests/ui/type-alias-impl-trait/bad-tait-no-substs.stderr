@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/bad-tait-no-substs.rs:9:11
+  --> $DIR/bad-tait-no-substs.rs:8:11
    |
 LL |     Tuple(Alias),
    |           ^^^^^ expected named lifetime parameter
@@ -11,7 +11,7 @@ LL ~     Tuple(Alias<'a>),
    |
 
 error[E0107]: missing generics for type alias `Alias`
-  --> $DIR/bad-tait-no-substs.rs:9:11
+  --> $DIR/bad-tait-no-substs.rs:8:11
    |
 LL |     Tuple(Alias),
    |           ^^^^^ expected 1 generic argument
@@ -27,7 +27,7 @@ LL |     Tuple(Alias<U>),
    |                +++
 
 error[E0792]: non-defining opaque type use in defining scope
-  --> $DIR/bad-tait-no-substs.rs:9:11
+  --> $DIR/bad-tait-no-substs.rs:8:11
    |
 LL |     Tuple(Alias),
    |           ^^^^^ argument `'_` is not a generic parameter
@@ -39,7 +39,7 @@ LL | type Alias<'a, U> = impl Trait<U>;
    |                     ^^^^^^^^^^^^^
 
 error: item does not constrain `Alias::{opaque#0}`, but has it in its signature
-  --> $DIR/bad-tait-no-substs.rs:15:4
+  --> $DIR/bad-tait-no-substs.rs:14:4
    |
 LL | fn uwu(x: UninhabitedVariants) {
    |    ^^^
@@ -51,22 +51,14 @@ note: this opaque type is in the signature
 LL | type Alias<'a, U> = impl Trait<U>;
    |                     ^^^^^^^^^^^^^
 
-error: unconstrained opaque type
-  --> $DIR/bad-tait-no-substs.rs:5:21
-   |
-LL | type Alias<'a, U> = impl Trait<U>;
-   |                     ^^^^^^^^^^^^^
-   |
-   = note: `Alias` must be used in combination with a concrete type within the same module
-
 error[E0004]: non-exhaustive patterns: `UninhabitedVariants::Tuple(_)` not covered
-  --> $DIR/bad-tait-no-substs.rs:17:11
+  --> $DIR/bad-tait-no-substs.rs:16:11
    |
 LL |     match x {}
    |           ^ pattern `UninhabitedVariants::Tuple(_)` not covered
    |
 note: `UninhabitedVariants` defined here
-  --> $DIR/bad-tait-no-substs.rs:8:10
+  --> $DIR/bad-tait-no-substs.rs:7:10
    |
 LL | pub enum UninhabitedVariants {
    |          ^^^^^^^^^^^^^^^^^^^
@@ -80,7 +72,7 @@ LL +         UninhabitedVariants::Tuple(_) => todo!(),
 LL +     }
    |
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0004, E0106, E0107, E0792.
 For more information about an error, try `rustc --explain E0004`.

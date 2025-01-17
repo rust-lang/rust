@@ -17,7 +17,9 @@ use super::debuginfo::{
     DebugEmissionKind, DebugNameTableKind,
 };
 
-pub type Bool = c_uint;
+/// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
+/// which has a different ABI from Rust or C++ `bool`.
+pub type Bool = c_int;
 
 pub const True: Bool = 1 as Bool;
 pub const False: Bool = 0 as Bool;
@@ -52,25 +54,6 @@ impl<T: TryFrom<u32>> RawEnum<T> {
 pub enum LLVMRustResult {
     Success,
     Failure,
-}
-
-// Rust version of the C struct with the same name in rustc_llvm/llvm-wrapper/RustWrapper.cpp.
-#[repr(C)]
-pub struct LLVMRustCOFFShortExport {
-    pub name: *const c_char,
-    pub ordinal_present: bool,
-    /// value of `ordinal` only important when `ordinal_present` is true
-    pub ordinal: u16,
-}
-
-impl LLVMRustCOFFShortExport {
-    pub fn new(name: *const c_char, ordinal: Option<u16>) -> LLVMRustCOFFShortExport {
-        LLVMRustCOFFShortExport {
-            name,
-            ordinal_present: ordinal.is_some(),
-            ordinal: ordinal.unwrap_or(0),
-        }
-    }
 }
 
 /// Translation of LLVM's MachineTypes enum, defined in llvm\include\llvm\BinaryFormat\COFF.h.
@@ -116,7 +99,7 @@ pub enum ModuleFlagMergeBehavior {
 /// LLVM CallingConv::ID. Should we wrap this?
 ///
 /// See <https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/IR/CallingConv.h>
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, TryFromU32)]
 #[repr(C)]
 pub enum CallConv {
     CCallConv = 0,
@@ -137,6 +120,7 @@ pub enum CallConv {
     X86_Intr = 83,
     AvrNonBlockingInterrupt = 84,
     AvrInterrupt = 85,
+    AmdgpuKernel = 91,
 }
 
 /// Must match the layout of `LLVMLinkage`.
@@ -543,7 +527,7 @@ pub struct SanitizerOptions {
     pub sanitize_kernel_address_recover: bool,
 }
 
-/// LLVMRelocMode
+/// LLVMRustRelocModel
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub enum RelocModel {
@@ -553,6 +537,15 @@ pub enum RelocModel {
     ROPI,
     RWPI,
     ROPI_RWPI,
+}
+
+/// LLVMRustFloatABI
+#[derive(Copy, Clone, PartialEq)]
+#[repr(C)]
+pub enum FloatAbi {
+    Default,
+    Soft,
+    Hard,
 }
 
 /// LLVMRustCodeModel
@@ -2016,6 +2009,12 @@ unsafe extern "C" {
         AlignInBits: u32,
     ) -> &'a DIDerivedType;
 
+    pub fn LLVMRustDIBuilderCreateQualifiedType<'a>(
+        Builder: &DIBuilder<'a>,
+        Tag: c_uint,
+        Type: &'a DIType,
+    ) -> &'a DIDerivedType;
+
     pub fn LLVMRustDIBuilderCreateLexicalBlock<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
@@ -2179,9 +2178,6 @@ unsafe extern "C" {
         Location: &'a DILocation,
         BD: c_uint,
     ) -> Option<&'a DILocation>;
-    pub fn LLVMRustDIBuilderCreateOpDeref() -> u64;
-    pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> u64;
-    pub fn LLVMRustDIBuilderCreateOpLLVMFragment() -> u64;
 
     pub fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);
     pub fn LLVMRustWriteValueToString(value_ref: &Value, s: &RustString);
@@ -2209,7 +2205,7 @@ unsafe extern "C" {
         Model: CodeModel,
         Reloc: RelocModel,
         Level: CodeGenOptLevel,
-        UseSoftFP: bool,
+        FloatABIType: FloatAbi,
         FunctionSections: bool,
         DataSections: bool,
         UniqueSectionNames: bool,
@@ -2240,6 +2236,7 @@ unsafe extern "C" {
         Output: *const c_char,
         DwoOutput: *const c_char,
         FileType: FileType,
+        VerifyIR: bool,
     ) -> LLVMRustResult;
     pub fn LLVMRustOptimize<'a>(
         M: &'a Module,
@@ -2316,7 +2313,7 @@ unsafe extern "C" {
 
     pub fn LLVMRustGetSMDiagnostic<'a>(
         DI: &'a DiagnosticInfo,
-        cookie_out: &mut c_uint,
+        cookie_out: &mut u64,
     ) -> &'a SMDiagnostic;
 
     pub fn LLVMRustUnpackSMDiagnostic(
@@ -2343,15 +2340,6 @@ unsafe extern "C" {
         Child: Option<&ArchiveChild<'a>>,
     ) -> &'a mut RustArchiveMember<'a>;
     pub fn LLVMRustArchiveMemberFree<'a>(Member: &'a mut RustArchiveMember<'a>);
-
-    pub fn LLVMRustWriteImportLibrary(
-        ImportName: *const c_char,
-        Path: *const c_char,
-        Exports: *const LLVMRustCOFFShortExport,
-        NumExports: usize,
-        Machine: u16,
-        MinGW: bool,
-    ) -> LLVMRustResult;
 
     pub fn LLVMRustSetDataLayoutFromTargetMachine<'a>(M: &'a Module, TM: &'a TargetMachine);
 
@@ -2387,7 +2375,7 @@ unsafe extern "C" {
         Data: &ThinLTOData,
         Module: &Module,
         Target: &TargetMachine,
-    ) -> bool;
+    );
     pub fn LLVMRustPrepareThinLTOResolveWeak(Data: &ThinLTOData, Module: &Module) -> bool;
     pub fn LLVMRustPrepareThinLTOInternalize(Data: &ThinLTOData, Module: &Module) -> bool;
     pub fn LLVMRustPrepareThinLTOImport(

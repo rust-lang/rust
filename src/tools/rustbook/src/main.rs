@@ -6,8 +6,7 @@ use mdbook::MDBook;
 use mdbook::errors::Result as Result3;
 use mdbook_i18n_helpers::preprocessors::Gettext;
 use mdbook_spec::Spec;
-use mdbook_trpl_listing::TrplListing;
-use mdbook_trpl_note::TrplNote;
+use mdbook_trpl::{Figure, Listing, Note};
 
 fn main() {
     let crate_version = concat!("v", crate_version!());
@@ -109,11 +108,15 @@ pub fn build(args: &ArgMatches) -> Result3<()> {
     // preprocessor, or this should modify the config and use
     // MDBook::load_with_config.
     if book.config.get_preprocessor("trpl-note").is_some() {
-        book.with_preprocessor(TrplNote);
+        book.with_preprocessor(Note);
     }
 
     if book.config.get_preprocessor("trpl-listing").is_some() {
-        book.with_preprocessor(TrplListing);
+        book.with_preprocessor(Listing);
+    }
+
+    if book.config.get_preprocessor("trpl-figure").is_some() {
+        book.with_preprocessor(Figure);
     }
 
     if book.config.get_preprocessor("spec").is_some() {

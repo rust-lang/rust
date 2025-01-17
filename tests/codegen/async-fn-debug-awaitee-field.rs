@@ -1,8 +1,12 @@
-// This test makes sure that the coroutine field capturing the awaitee in a `.await` expression
-// is called "__awaitee" in debuginfo. This name must not be changed since debuggers and debugger
-// extensions rely on the field having this name.
-
 // ignore-tidy-linelength
+//! This test makes sure that the coroutine field capturing the awaitee in a `.await` expression
+//! is called `__awaitee` in debuginfo. This name must not be changed since debuggers and debugger
+//! extensions rely on the field having this name.
+
+//@ revisions: MSVC NONMSVC
+//@[MSVC] only-msvc
+//@[NONMSVC] ignore-msvc
+
 //@ compile-flags: -C debuginfo=2 --edition=2018 -Copt-level=0
 
 #![crate_type = "lib"]

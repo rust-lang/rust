@@ -780,7 +780,7 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat:
         return;
     };
 
-    let is_binding_by_move = |ty: Ty<'tcx>| !ty.is_copy_modulo_regions(cx.tcx, cx.typing_env);
+    let is_binding_by_move = |ty: Ty<'tcx>| !cx.tcx.type_is_copy_modulo_regions(cx.typing_env, ty);
 
     let sess = cx.tcx.sess;
 

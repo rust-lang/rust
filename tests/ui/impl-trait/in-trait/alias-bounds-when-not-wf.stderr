@@ -8,10 +8,10 @@ LL | #![feature(lazy_type_alias)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0277]: the trait bound `usize: Foo` is not satisfied
-  --> $DIR/alias-bounds-when-not-wf.rs:16:13
+  --> $DIR/alias-bounds-when-not-wf.rs:16:15
    |
 LL | fn hello(_: W<A<usize>>) {}
-   |             ^^^^^^^^^^^ the trait `Foo` is not implemented for `usize`
+   |               ^^^^^^^^ the trait `Foo` is not implemented for `usize`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/alias-bounds-when-not-wf.rs:6:1

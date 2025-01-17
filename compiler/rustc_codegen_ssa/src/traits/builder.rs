@@ -382,7 +382,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     /// Avoids `alloca`s for Immediates and ScalarPairs.
     ///
     /// FIXME: Maybe do something smarter for Ref types too?
-    /// For now, the `typed_swap` intrinsic just doesn't call this for those
+    /// For now, the `typed_swap_nonoverlapping` intrinsic just doesn't call this for those
     /// cases (in non-debug), preferring the fallback body instead.
     fn typed_place_swap(
         &mut self,

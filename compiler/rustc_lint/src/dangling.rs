@@ -4,8 +4,7 @@ use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, LangItem};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_session::{declare_lint, impl_lint_pass};
-use rustc_span::Span;
-use rustc_span::symbol::sym;
+use rustc_span::{Span, sym};
 
 use crate::lints::DanglingPointersFromTemporaries;
 use crate::{LateContext, LateLintPass};
@@ -130,11 +129,11 @@ impl DanglingPointerSearcher<'_, '_> {
 
 fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let ExprKind::MethodCall(method, receiver, _args, _span) = expr.kind
-        && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-        && cx.tcx.has_attr(fn_id, sym::rustc_as_ptr)
         && is_temporary_rvalue(receiver)
         && let ty = cx.typeck_results().expr_ty(receiver)
         && owns_allocation(cx.tcx, ty)
+        && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+        && cx.tcx.has_attr(fn_id, sym::rustc_as_ptr)
     {
         // FIXME: use `emit_node_lint` when `#[primary_span]` is added.
         cx.tcx.emit_node_span_lint(
@@ -191,6 +190,8 @@ fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
         | ExprKind::Tup(..)
         | ExprKind::DropTemps(..)
         | ExprKind::Let(..) => false,
+
+        ExprKind::UnsafeBinderCast(..) => false,
 
         // Not applicable
         ExprKind::Type(..) | ExprKind::Err(..) => false,

@@ -37,7 +37,7 @@ declare_lint_pass!(NoMangleWithRustAbi => [NO_MANGLE_WITH_RUST_ABI]);
 
 impl<'tcx> LateLintPass<'tcx> for NoMangleWithRustAbi {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        if let ItemKind::Fn(fn_sig, _, _) = &item.kind {
+        if let ItemKind::Fn { sig: fn_sig, .. } = &item.kind {
             let attrs = cx.tcx.hir().attrs(item.hir_id());
             let mut app = Applicability::MaybeIncorrect;
             let fn_snippet = snippet_with_applicability(cx, fn_sig.span.with_hi(item.ident.span.lo()), "..", &mut app);

@@ -90,7 +90,7 @@ pub mod keys {
             map.map.get::<FxHashMap<AstPtr<AST>, ID>>()?.get(key)
         }
         fn is_empty(map: &DynMap) -> bool {
-            map.map.get::<FxHashMap<AstPtr<AST>, ID>>().map_or(true, |it| it.is_empty())
+            map.map.get::<FxHashMap<AstPtr<AST>, ID>>().is_none_or(|it| it.is_empty())
         }
     }
 }
@@ -141,7 +141,7 @@ impl<K: Hash + Eq + 'static, V: 'static> Policy for (K, V) {
         map.map.get::<FxHashMap<K, V>>()?.get(key)
     }
     fn is_empty(map: &DynMap) -> bool {
-        map.map.get::<FxHashMap<K, V>>().map_or(true, |it| it.is_empty())
+        map.map.get::<FxHashMap<K, V>>().is_none_or(|it| it.is_empty())
     }
 }
 

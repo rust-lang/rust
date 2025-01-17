@@ -37,4 +37,25 @@ fn foo() {
 "#,
         );
     }
+
+    #[test]
+    fn no_error_for_async_fn_traits() {
+        check_diagnostics(
+            r#"
+//- minicore: async_fn
+async fn f(it: impl AsyncFn(u32) -> i32) {
+    let fut = it(0);
+    let _: i32 = fut.await;
+}
+async fn g(mut it: impl AsyncFnMut(u32) -> i32) {
+    let fut = it(0);
+    let _: i32 = fut.await;
+}
+async fn h(it: impl AsyncFnOnce(u32) -> i32) {
+    let fut = it(0);
+    let _: i32 = fut.await;
+}
+        "#,
+        );
+    }
 }

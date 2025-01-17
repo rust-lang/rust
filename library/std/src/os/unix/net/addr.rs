@@ -30,14 +30,14 @@ pub(super) fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::s
     let bytes = path.as_os_str().as_bytes();
 
     if bytes.contains(&0) {
-        return Err(io::const_io_error!(
+        return Err(io::const_error!(
             io::ErrorKind::InvalidInput,
             "paths must not contain interior null bytes",
         ));
     }
 
     if bytes.len() >= addr.sun_path.len() {
-        return Err(io::const_io_error!(
+        return Err(io::const_error!(
             io::ErrorKind::InvalidInput,
             "path must be shorter than SUN_LEN",
         ));
@@ -119,7 +119,7 @@ impl SocketAddr {
             // linux returns zero bytes of address
             len = SUN_PATH_OFFSET as libc::socklen_t; // i.e., zero-length address
         } else if addr.sun_family != libc::AF_UNIX as libc::sa_family_t {
-            return Err(io::const_io_error!(
+            return Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
                 "file descriptor did not correspond to a Unix socket",
             ));
@@ -273,7 +273,7 @@ impl linux_ext::addr::SocketAddrExt for SocketAddr {
             addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
 
             if name.len() + 1 > addr.sun_path.len() {
-                return Err(io::const_io_error!(
+                return Err(io::const_error!(
                     io::ErrorKind::InvalidInput,
                     "abstract socket name must be shorter than SUN_LEN",
                 ));

@@ -13,11 +13,15 @@ use std::collections::hash_map::Entry;
 use std::mem::{replace, swap, take};
 
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, visit_opt, walk_list};
+use rustc_ast::visit::{
+    AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, try_visit, visit_opt, walk_list,
+};
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, DiagArgValue, IntoDiagArg, StashKey, Suggestions};
+use rustc_errors::{
+    Applicability, DiagArgValue, ErrorGuaranteed, IntoDiagArg, StashKey, Suggestions,
+};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
@@ -29,8 +33,7 @@ use rustc_session::config::{CrateType, ResolveDocLinks};
 use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::parse::feature_err;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{BytePos, Span, SyntaxContext};
+use rustc_span::{BytePos, Ident, Span, Symbol, SyntaxContext, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument, trace};
 
@@ -262,12 +265,17 @@ impl RibKind<'_> {
 #[derive(Debug)]
 pub(crate) struct Rib<'ra, R = Res> {
     pub bindings: IdentMap<R>,
+    pub patterns_with_skipped_bindings: FxHashMap<DefId, Vec<(Span, Result<(), ErrorGuaranteed>)>>,
     pub kind: RibKind<'ra>,
 }
 
 impl<'ra, R> Rib<'ra, R> {
     fn new(kind: RibKind<'ra>) -> Rib<'ra, R> {
-        Rib { bindings: Default::default(), kind }
+        Rib {
+            bindings: Default::default(),
+            patterns_with_skipped_bindings: Default::default(),
+            kind,
+        }
     }
 }
 
@@ -749,8 +757,8 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
         self.resolve_block(block);
         self.parent_scope.macro_rules = old_macro_rules;
     }
-    fn visit_anon_const(&mut self, _constant: &'ast AnonConst) {
-        bug!("encountered anon const without a manual call to `resolve_anon_const`");
+    fn visit_anon_const(&mut self, constant: &'ast AnonConst) {
+        bug!("encountered anon const without a manual call to `resolve_anon_const`: {constant:#?}");
     }
     fn visit_expr(&mut self, expr: &'ast Expr) {
         self.resolve_expr(expr, None);
@@ -881,6 +889,28 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
                                     &bare_fn.decl.output,
                                 )
                             },
+                        );
+                    },
+                )
+            }
+            TyKind::UnsafeBinder(unsafe_binder) => {
+                // FIXME(unsafe_binder): Better span
+                let span = ty.span;
+                self.with_generic_param_rib(
+                    &unsafe_binder.generic_params,
+                    RibKind::Normal,
+                    LifetimeRibKind::Generics {
+                        binder: ty.id,
+                        kind: LifetimeBinderKind::BareFnType,
+                        span,
+                    },
+                    |this| {
+                        this.visit_generic_params(&unsafe_binder.generic_params, false);
+                        this.with_lifetime_rib(
+                            // We don't allow anonymous `unsafe &'_ ()` binders,
+                            // although I guess we could.
+                            LifetimeRibKind::AnonymousReportError,
+                            |this| this.visit_ty(&unsafe_binder.inner_ty),
                         );
                     },
                 )
@@ -1268,15 +1298,14 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
         debug!("visit_where_predicate {:?}", p);
         let previous_value = replace(&mut self.diag_metadata.current_where_predicate, Some(p));
         self.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
-            if let WherePredicate::BoundPredicate(WhereBoundPredicate {
-                ref bounded_ty,
-                ref bounds,
-                ref bound_generic_params,
-                span: predicate_span,
+            if let WherePredicateKind::BoundPredicate(WhereBoundPredicate {
+                bounded_ty,
+                bounds,
+                bound_generic_params,
                 ..
-            }) = p
+            }) = &p.kind
             {
-                let span = predicate_span.shrink_to_lo().to(bounded_ty.span.shrink_to_lo());
+                let span = p.span.shrink_to_lo().to(bounded_ty.span.shrink_to_lo());
                 this.with_generic_param_rib(
                     bound_generic_params,
                     RibKind::Normal,
@@ -1347,7 +1376,24 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
 
     fn visit_field_def(&mut self, f: &'ast FieldDef) {
         self.resolve_doc_links(&f.attrs, MaybeExported::Ok(f.id));
-        visit::walk_field_def(self, f)
+        let FieldDef {
+            attrs,
+            id: _,
+            span: _,
+            vis,
+            ident,
+            ty,
+            is_placeholder: _,
+            default,
+            safety: _,
+        } = f;
+        walk_list!(self, visit_attribute, attrs);
+        try_visit!(self.visit_vis(vis));
+        visit_opt!(self, visit_ident, ident);
+        try_visit!(self.visit_ty(ty));
+        if let Some(v) = &default {
+            self.resolve_anon_const(v, AnonConstKind::ConstArg(IsRepeatExpr::No));
+        }
     }
 }
 
@@ -3735,6 +3781,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// When a whole or-pattern has been dealt with, the thing happens.
     ///
     /// See the implementation and `fresh_binding` for more details.
+    #[tracing::instrument(skip(self, bindings), level = "debug")]
     fn resolve_pattern_inner(
         &mut self,
         pat: &Pat,
@@ -3743,7 +3790,6 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     ) {
         // Visit all direct subpatterns of this pattern.
         pat.walk(&mut |pat| {
-            debug!("resolve_pattern pat={:?} node={:?}", pat, pat.kind);
             match pat.kind {
                 PatKind::Ident(bmode, ident, ref sub) => {
                     // First try to resolve the identifier as some existing entity,
@@ -3769,8 +3815,9 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 PatKind::Path(ref qself, ref path) => {
                     self.smart_resolve_path(pat.id, qself, path, PathSource::Pat);
                 }
-                PatKind::Struct(ref qself, ref path, ..) => {
+                PatKind::Struct(ref qself, ref path, ref _fields, ref rest) => {
                     self.smart_resolve_path(pat.id, qself, path, PathSource::Struct);
+                    self.record_patterns_with_skipped_bindings(pat, rest);
                 }
                 PatKind::Or(ref ps) => {
                     // Add a new set of bindings to the stack. `Or` here records that when a
@@ -3801,6 +3848,30 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
             true
         });
+    }
+
+    fn record_patterns_with_skipped_bindings(&mut self, pat: &Pat, rest: &ast::PatFieldsRest) {
+        match rest {
+            ast::PatFieldsRest::Rest | ast::PatFieldsRest::Recovered(_) => {
+                // Record that the pattern doesn't introduce all the bindings it could.
+                if let Some(partial_res) = self.r.partial_res_map.get(&pat.id)
+                    && let Some(res) = partial_res.full_res()
+                    && let Some(def_id) = res.opt_def_id()
+                {
+                    self.ribs[ValueNS]
+                        .last_mut()
+                        .unwrap()
+                        .patterns_with_skipped_bindings
+                        .entry(def_id)
+                        .or_default()
+                        .push((pat.span, match rest {
+                            ast::PatFieldsRest::Recovered(guar) => Err(*guar),
+                            _ => Ok(()),
+                        }));
+                }
+            }
+            ast::PatFieldsRest::None => {}
+        }
     }
 
     fn fresh_binding(
@@ -4254,7 +4325,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     #[inline]
     /// If we're actually rustdoc then avoid giving a name resolution error for `cfg()` items or
-    // an invalid `use foo::*;` was found, which can cause unbounded ammounts of "item not found"
+    // an invalid `use foo::*;` was found, which can cause unbounded amounts of "item not found"
     // errors. We silence them all.
     fn should_report_errs(&self) -> bool {
         !(self.r.tcx.sess.opts.actually_rustdoc && self.in_func_body)
@@ -4377,6 +4448,12 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) if !module.is_normal() => {
                 PartialRes::new(module.res().unwrap())
             }
+            // A part of this path references a `mod` that had a parse error. To avoid resolution
+            // errors for each reference to that module, we don't emit an error for them until the
+            // `mod` is fixed. this can have a significant cascade effect.
+            PathResult::Failed { error_implied_by_parse_error: true, .. } => {
+                PartialRes::new(Res::Err)
+            }
             // In `a(::assoc_item)*` `a` cannot be a module. If `a` does resolve to a module we
             // don't report an error right away, but try to fallback to a primitive type.
             // So, we are still able to successfully resolve something like
@@ -4425,6 +4502,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 suggestion,
                 module,
                 segment_name,
+                error_implied_by_parse_error: _,
             } => {
                 return Err(respan(span, ResolutionError::FailedToResolve {
                     segment: Some(segment_name),
@@ -4522,7 +4600,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         );
 
         self.resolve_anon_const_manual(
-            constant.value.is_potential_trivial_const_arg(true),
+            constant.value.is_potential_trivial_const_arg(),
             anon_const_kind,
             |this| this.resolve_expr(&constant.value, None),
         )
@@ -4686,7 +4764,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     // that is how they will be later lowered to HIR.
                     if const_args.contains(&idx) {
                         self.resolve_anon_const_manual(
-                            argument.is_potential_trivial_const_arg(true),
+                            argument.is_potential_trivial_const_arg(),
                             AnonConstKind::ConstArg(IsRepeatExpr::No),
                             |this| this.resolve_expr(argument, None),
                         );
@@ -4941,12 +5019,13 @@ struct ItemInfoCollector<'a, 'ra, 'tcx> {
 }
 
 impl ItemInfoCollector<'_, '_, '_> {
-    fn collect_fn_info(&mut self, sig: &FnSig, id: NodeId) {
+    fn collect_fn_info(&mut self, sig: &FnSig, id: NodeId, attrs: &[Attribute]) {
         let sig = DelegationFnSig {
             header: sig.header,
             param_count: sig.decl.inputs.len(),
             has_self: sig.decl.has_self(),
             c_variadic: sig.decl.c_variadic(),
+            target_feature: attrs.iter().any(|attr| attr.has_name(sym::target_feature)),
         };
         self.r.delegation_fn_sigs.insert(self.r.local_def_id(id), sig);
     }
@@ -4965,7 +5044,7 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
             | ItemKind::Trait(box Trait { ref generics, .. })
             | ItemKind::TraitAlias(ref generics, _) => {
                 if let ItemKind::Fn(box Fn { ref sig, .. }) = &item.kind {
-                    self.collect_fn_info(sig, item.id);
+                    self.collect_fn_info(sig, item.id, &item.attrs);
                 }
 
                 let def_id = self.r.local_def_id(item.id);
@@ -4998,7 +5077,7 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
 
     fn visit_assoc_item(&mut self, item: &'ast AssocItem, ctxt: AssocCtxt) {
         if let AssocItemKind::Fn(box Fn { ref sig, .. }) = &item.kind {
-            self.collect_fn_info(sig, item.id);
+            self.collect_fn_info(sig, item.id, &item.attrs);
         }
         visit::walk_assoc_item(self, item, ctxt);
     }

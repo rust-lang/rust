@@ -450,15 +450,15 @@ lint_invalid_nan_comparisons_eq_ne = incorrect NaN comparison, NaN cannot be dir
 lint_invalid_nan_comparisons_lt_le_gt_ge = incorrect NaN comparison, NaN is not orderable
 
 lint_invalid_reference_casting_assign_to_ref = assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-    .label = casting happend here
+    .label = casting happened here
 
 lint_invalid_reference_casting_bigger_layout = casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
-    .label = casting happend here
+    .label = casting happened here
     .alloc = backing allocation comes from here
     .layout = casting from `{$from_ty}` ({$from_size} bytes) to `{$to_ty}` ({$to_size} bytes)
 
 lint_invalid_reference_casting_borrow_as_mut = casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-    .label = casting happend here
+    .label = casting happened here
 
 lint_invalid_reference_casting_note_book = for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
@@ -535,9 +535,6 @@ lint_non_binding_let_suggestion =
 lint_non_camel_case_type = {$sort} `{$name}` should have an upper camel case name
     .suggestion = convert the identifier to upper camel case
     .label = should have an UpperCamelCase name
-
-lint_non_existent_doc_keyword = found non-existing keyword `{$keyword}` used in `#[doc(keyword = "...")]`
-    .help = only existing keywords are allowed in core/std
 
 lint_non_fmt_panic = panic message is not a string literal
     .note = this usage of `{$name}!()` is deprecated; it will be a hard error in Rust 2021
@@ -733,6 +730,9 @@ lint_renamed_lint = lint `{$name}` has been renamed to `{$replace}`
 
 lint_requested_level = requested on the command line with `{$level} {$lint_name}`
 
+lint_reserved_multihash = reserved token in Rust 2024
+    .suggestion = insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
+
 lint_reserved_prefix = prefix `{$prefix}` is unknown
     .label = unknown prefix
     .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
@@ -772,6 +772,9 @@ lint_suspicious_double_ref_clone =
 lint_suspicious_double_ref_deref =
     using `.deref()` on a double reference, which returns `{$ty}` instead of dereferencing the inner type
 
+lint_symbol_intern_string_literal = using `Symbol::intern` on a string literal
+    .help = consider adding the symbol to `compiler/rustc_span/src/symbol.rs`
+
 lint_trailing_semi_macro = trailing semicolon in macro used in expression position
     .note1 = macro invocations at the end of a block are treated as expressions
     .note2 = to ignore the value produced by the macro, add a semicolon after the invocation of `{$name}`
@@ -800,10 +803,14 @@ lint_unexpected_cfg_add_build_rs_println = or consider adding `{$build_rs_printl
 lint_unexpected_cfg_add_cargo_feature = consider using a Cargo feature instead
 lint_unexpected_cfg_add_cargo_toml_lint_cfg = or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:{$cargo_toml_lint_cfg}
 lint_unexpected_cfg_add_cmdline_arg = to expect this configuration use `{$cmdline_arg}`
+lint_unexpected_cfg_cargo_update = the {$macro_kind} `{$macro_name}` may come from an old version of the `{$crate_name}` crate, try updating your dependency with `cargo update -p {$crate_name}`
+
 lint_unexpected_cfg_define_features = consider defining some features in `Cargo.toml`
 lint_unexpected_cfg_doc_cargo = see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
 lint_unexpected_cfg_doc_rustc = see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
+lint_unexpected_cfg_from_external_macro_origin = using a cfg inside a {$macro_kind} will use the cfgs from the destination crate and not the ones from the defining crate
+lint_unexpected_cfg_from_external_macro_refer = try referring to `{$macro_name}` crate for guidance on how handle this unexpected cfg
 lint_unexpected_cfg_name = unexpected `cfg` condition name: `{$name}`
 lint_unexpected_cfg_name_expected_names = expected names are: {$possibilities}{$and_more ->
         [0] {""}
@@ -878,6 +885,12 @@ lint_unnameable_test_items = cannot test inner items
 
 lint_unnecessary_qualification = unnecessary qualification
     .suggestion = remove the unnecessary path segments
+
+lint_unpredictable_fn_pointer_comparisons = function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
+    .note_duplicated_fn = the address of the same function can vary between different codegen units
+    .note_deduplicated_fn = furthermore, different functions could have the same address after being merged together
+    .note_visit_fn_addr_eq = for more information visit <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
+    .fn_addr_eq_suggestion = refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint
 
 lint_unqualified_local_imports = `use` of a local item without leading `self::`, `super::`, or `crate::`
 

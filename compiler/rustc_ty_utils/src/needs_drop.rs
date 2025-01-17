@@ -202,7 +202,12 @@ where
                         }
                     }
 
-                    _ if component.is_copy_modulo_regions(tcx, self.typing_env) => {}
+                    ty::UnsafeBinder(bound_ty) => {
+                        let ty = self.tcx.instantiate_bound_regions_with_erased(bound_ty.into());
+                        queue_type(self, ty);
+                    }
+
+                    _ if tcx.type_is_copy_modulo_regions(self.typing_env, component) => {}
 
                     ty::Closure(_, args) => {
                         for upvar in args.as_closure().upvar_tys() {

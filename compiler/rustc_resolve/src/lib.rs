@@ -70,8 +70,7 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
@@ -174,7 +173,6 @@ impl<'ra> ParentScope<'ra> {
 #[derive(Copy, Debug, Clone)]
 struct InvocationParent {
     parent_def: LocalDefId,
-    pending_anon_const_info: Option<PendingAnonConstInfo>,
     impl_trait_context: ImplTraitContext,
     in_attr: bool,
 }
@@ -182,32 +180,23 @@ struct InvocationParent {
 impl InvocationParent {
     const ROOT: Self = Self {
         parent_def: CRATE_DEF_ID,
-        pending_anon_const_info: None,
         impl_trait_context: ImplTraitContext::Existential,
         in_attr: false,
     };
 }
 
 #[derive(Copy, Debug, Clone)]
-struct PendingAnonConstInfo {
-    // A const arg is only a "trivial" const arg if it has at *most* one set of braces
-    // around the argument. We track whether we have stripped an outter brace so that
-    // if a macro expands to a braced expression *and* the macro was itself inside of
-    // some braces then we can consider it to be a non-trivial const argument.
-    block_was_stripped: bool,
-    id: NodeId,
-    span: Span,
-}
-
-#[derive(Copy, Debug, Clone)]
 enum ImplTraitContext {
     Existential,
     Universal,
+    InBinding,
 }
 
 /// Used for tracking import use types which will be used for redundant import checking.
+///
 /// ### Used::Scope Example
-///  ```rust,compile_fail
+///
+/// ```rust,compile_fail
 /// #![deny(redundant_imports)]
 /// use std::mem::drop;
 /// fn main() {
@@ -215,6 +204,7 @@ enum ImplTraitContext {
 ///     drop(s);
 /// }
 /// ```
+///
 /// Used::Other is for other situations like module-relative uses.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
 enum Used {
@@ -463,6 +453,7 @@ enum PathResult<'ra> {
         module: Option<ModuleOrUniformRoot<'ra>>,
         /// The segment name of target
         segment_name: Symbol,
+        error_implied_by_parse_error: bool,
     },
 }
 
@@ -471,6 +462,7 @@ impl<'ra> PathResult<'ra> {
         ident: Ident,
         is_error_from_last_segment: bool,
         finalize: bool,
+        error_implied_by_parse_error: bool,
         module: Option<ModuleOrUniformRoot<'ra>>,
         label_and_suggestion: impl FnOnce() -> (String, Option<Suggestion>),
     ) -> PathResult<'ra> {
@@ -483,6 +475,7 @@ impl<'ra> PathResult<'ra> {
             suggestion,
             is_error_from_last_segment,
             module,
+            error_implied_by_parse_error,
         }
     }
 }
@@ -927,10 +920,13 @@ impl<'ra> NameBindingData<'ra> {
     }
 
     fn is_importable(&self) -> bool {
-        !matches!(
-            self.res(),
-            Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _)
-        )
+        !matches!(self.res(), Res::Def(DefKind::AssocTy, _))
+    }
+
+    // FIXME(import_trait_associated_functions): associate `const` or `fn` are not importable unless
+    // the feature `import_trait_associated_functions` is enable
+    fn is_assoc_const_or_fn(&self) -> bool {
+        matches!(self.res(), Res::Def(DefKind::AssocConst | DefKind::AssocFn, _))
     }
 
     fn macro_kind(&self) -> Option<MacroKind> {
@@ -1211,6 +1207,8 @@ pub struct Resolver<'ra, 'tcx> {
     /// This is the `Span` where an `extern crate foo;` suggestion would be inserted, if `foo`
     /// could be a crate that wasn't imported. For diagnostics use only.
     current_crate_outer_attr_insert_span: Span,
+
+    mods_with_parse_errors: FxHashSet<DefId>,
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1556,6 +1554,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             impl_unexpanded_invocations: Default::default(),
             impl_binding_keys: Default::default(),
             current_crate_outer_attr_insert_span,
+            mods_with_parse_errors: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -2270,7 +2269,7 @@ fn module_to_string(module: Module<'_>) -> Option<String> {
                 collect_mod(names, parent);
             }
         } else {
-            names.push(Symbol::intern("<opaque>"));
+            names.push(sym::opaque_module_name_placeholder);
             collect_mod(names, module.parent.unwrap());
         }
     }

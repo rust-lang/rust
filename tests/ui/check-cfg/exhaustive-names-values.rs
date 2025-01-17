@@ -11,7 +11,7 @@
 //~^ WARNING unexpected `cfg` condition name
 pub fn f() {}
 
-#[cfg(test = "value")]
+#[cfg(target_vendor = "value")]
 //~^ WARNING unexpected `cfg` condition value
 pub fn f() {}
 

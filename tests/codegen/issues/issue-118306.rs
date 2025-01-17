@@ -12,7 +12,7 @@ pub fn branchy(input: u64) -> u64 {
     // CHECK-LABEL: @branchy(
     // CHECK-NEXT:  start:
     // CHECK-NEXT:    [[_2:%.*]] = and i64 [[INPUT:%.*]], 3
-    // CHECK-NEXT:    [[SWITCH_GEP:%.*]] = getelementptr inbounds [4 x i64], ptr @switch.table.branchy, i64 0, i64 [[_2]]
+    // CHECK-NEXT:    [[SWITCH_GEP:%.*]] = getelementptr inbounds{{( nuw)?}} [4 x i64], ptr @switch.table.branchy, i64 0, i64 [[_2]]
     // CHECK-NEXT:    [[SWITCH_LOAD:%.*]] = load i64, ptr [[SWITCH_GEP]]
     // CHECK-NEXT:    ret i64 [[SWITCH_LOAD]]
     match input % 4 {

@@ -1,0 +1,29 @@
+// MIR for `src` after PreCodegen
+
+fn src(_1: &&u8) -> bool {
+    debug x => _1;
+    let mut _0: bool;
+    let mut _2: &u8;
+    let _3: u8;
+    let _4: ();
+    let mut _5: &u8;
+    let mut _6: u8;
+    scope 1 {
+        debug y => _3;
+    }
+
+    bb0: {
+        _2 = copy (*_1);
+        _3 = copy (*_2);
+        _4 = unknown() -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        StorageLive(_6);
+        _5 = copy (*_1);
+        _6 = copy (*_5);
+        _0 = Eq(move _6, copy _3);
+        StorageDead(_6);
+        return;
+    }
+}

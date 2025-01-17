@@ -102,13 +102,12 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
                     // Pass a wrapper rather than the function itself as the function itself may not
                     // be exported from the main codegen unit and may thus be unreachable from the
                     // object file created by an external assembler.
-                    let inline_asm_index = fx.cx.inline_asm_index.get();
-                    fx.cx.inline_asm_index.set(inline_asm_index + 1);
                     let wrapper_name = format!(
                         "__inline_asm_{}_wrapper_n{}",
                         fx.cx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
-                        inline_asm_index
+                        fx.cx.inline_asm_index
                     );
+                    fx.cx.inline_asm_index += 1;
                     let sig =
                         get_function_sig(fx.tcx, fx.target_config.default_call_conv, instance);
                     create_wrapper_function(fx.module, sig, &wrapper_name, symbol.name);
@@ -137,7 +136,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
             fx.bcx.ins().jump(destination_block, &[]);
         }
         None => {
-            fx.bcx.ins().trap(TrapCode::user(0 /* unreachable */).unwrap());
+            fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
         }
     }
 }
@@ -167,13 +166,12 @@ pub(crate) fn codegen_inline_asm_inner<'tcx>(
     asm_gen.allocate_registers();
     asm_gen.allocate_stack_slots();
 
-    let inline_asm_index = fx.cx.inline_asm_index.get();
-    fx.cx.inline_asm_index.set(inline_asm_index + 1);
     let asm_name = format!(
         "__inline_asm_{}_n{}",
         fx.cx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
-        inline_asm_index
+        fx.cx.inline_asm_index
     );
+    fx.cx.inline_asm_index += 1;
 
     let generated_asm = asm_gen.generate_asm_wrapper(&asm_name);
     fx.cx.global_asm.push_str(&generated_asm);
@@ -266,13 +264,12 @@ pub(crate) fn codegen_naked_asm<'tcx>(
                     // Pass a wrapper rather than the function itself as the function itself may not
                     // be exported from the main codegen unit and may thus be unreachable from the
                     // object file created by an external assembler.
-                    let inline_asm_index = cx.inline_asm_index.get();
-                    cx.inline_asm_index.set(inline_asm_index + 1);
                     let wrapper_name = format!(
                         "__inline_asm_{}_wrapper_n{}",
                         cx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
-                        inline_asm_index
+                        cx.inline_asm_index
                     );
+                    cx.inline_asm_index += 1;
                     let sig =
                         get_function_sig(tcx, module.target_config().default_call_conv, instance);
                     create_wrapper_function(module, sig, &wrapper_name, symbol.name);
@@ -476,9 +473,14 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         let mut new_slot = |x| new_slot_fn(&mut slot_size, x);
 
         // Allocate stack slots for saving clobbered registers
-        let abi_clobber = InlineAsmClobberAbi::parse(self.arch, &self.tcx.sess.target, sym::C)
-            .unwrap()
-            .clobbered_regs();
+        let abi_clobber = InlineAsmClobberAbi::parse(
+            self.arch,
+            &self.tcx.sess.target,
+            &self.tcx.sess.unstable_target_features,
+            sym::C,
+        )
+        .unwrap()
+        .clobbered_regs();
         for (i, reg) in self.registers.iter().enumerate().filter_map(|(i, r)| r.map(|r| (i, r))) {
             let mut need_save = true;
             // If the register overlaps with a register clobbered by function call, then

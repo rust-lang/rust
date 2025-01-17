@@ -1,5 +1,4 @@
 //@ run-pass
-//@ pretty-expanded FIXME #23616
 
 #![feature(trace_macros, log_syntax)]
 

@@ -1,15 +1,13 @@
 use std::cmp::Ordering;
-use std::collections::VecDeque;
 use std::ops::{Index, IndexMut};
-use std::{iter, mem, slice};
+use std::{mem, slice};
 
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::graph::{self, DirectedGraph, StartNode};
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
-use rustc_middle::bug;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{self, BasicBlock, Terminator, TerminatorKind};
 use tracing::debug;
 
@@ -28,7 +26,7 @@ pub(crate) struct CoverageGraph {
     /// their relative order is consistent but arbitrary.
     dominator_order_rank: IndexVec<BasicCoverageBlock, u32>,
     /// A loop header is a node that dominates one or more of its predecessors.
-    is_loop_header: BitSet<BasicCoverageBlock>,
+    is_loop_header: DenseBitSet<BasicCoverageBlock>,
     /// For each node, the loop header node of its nearest enclosing loop.
     /// This forms a linked list that can be traversed to find all enclosing loops.
     enclosing_loop_header: IndexVec<BasicCoverageBlock, Option<BasicCoverageBlock>>,
@@ -73,7 +71,7 @@ impl CoverageGraph {
             predecessors,
             dominators: None,
             dominator_order_rank: IndexVec::from_elem_n(0, num_nodes),
-            is_loop_header: BitSet::new_empty(num_nodes),
+            is_loop_header: DenseBitSet::new_empty(num_nodes),
             enclosing_loop_header: IndexVec::from_elem_n(None, num_nodes),
         };
         assert_eq!(num_nodes, this.num_nodes());
@@ -210,54 +208,6 @@ impl CoverageGraph {
         b: BasicCoverageBlock,
     ) -> Ordering {
         self.dominator_order_rank[a].cmp(&self.dominator_order_rank[b])
-    }
-
-    /// Returns the source of this node's sole in-edge, if it has exactly one.
-    /// That edge can be assumed to have the same execution count as the node
-    /// itself (in the absence of panics).
-    pub(crate) fn sole_predecessor(
-        &self,
-        to_bcb: BasicCoverageBlock,
-    ) -> Option<BasicCoverageBlock> {
-        // Unlike `simple_successor`, there is no need for extra checks here.
-        if let &[from_bcb] = self.predecessors[to_bcb].as_slice() { Some(from_bcb) } else { None }
-    }
-
-    /// Returns the target of this node's sole out-edge, if it has exactly
-    /// one, but only if that edge can be assumed to have the same execution
-    /// count as the node itself (in the absence of panics).
-    pub(crate) fn simple_successor(
-        &self,
-        from_bcb: BasicCoverageBlock,
-    ) -> Option<BasicCoverageBlock> {
-        // If a node's count is the sum of its out-edges, and it has exactly
-        // one out-edge, then that edge has the same count as the node.
-        if self.bcbs[from_bcb].is_out_summable
-            && let &[to_bcb] = self.successors[from_bcb].as_slice()
-        {
-            Some(to_bcb)
-        } else {
-            None
-        }
-    }
-
-    /// For each loop that contains the given node, yields the "loop header"
-    /// node representing that loop, from innermost to outermost. If the given
-    /// node is itself a loop header, it is yielded first.
-    pub(crate) fn loop_headers_containing(
-        &self,
-        bcb: BasicCoverageBlock,
-    ) -> impl Iterator<Item = BasicCoverageBlock> + Captures<'_> {
-        let self_if_loop_header = self.is_loop_header.contains(bcb).then_some(bcb).into_iter();
-
-        let mut curr = Some(bcb);
-        let strictly_enclosing = iter::from_fn(move || {
-            let enclosing = self.enclosing_loop_header[curr?];
-            curr = enclosing;
-            enclosing
-        });
-
-        self_if_loop_header.chain(strictly_enclosing)
     }
 
     /// For the given node, yields the subset of its predecessor nodes that
@@ -460,138 +410,6 @@ fn bcb_filtered_successors<'a, 'tcx>(terminator: &'a Terminator<'tcx>) -> Covera
     };
 
     CoverageSuccessors { targets, is_yield }
-}
-
-/// Maintains separate worklists for each loop in the BasicCoverageBlock CFG, plus one for the
-/// CoverageGraph outside all loops. This supports traversing the BCB CFG in a way that
-/// ensures a loop is completely traversed before processing Blocks after the end of the loop.
-#[derive(Debug)]
-struct TraversalContext {
-    /// BCB with one or more incoming loop backedges, indicating which loop
-    /// this context is for.
-    ///
-    /// If `None`, this is the non-loop context for the function as a whole.
-    loop_header: Option<BasicCoverageBlock>,
-
-    /// Worklist of BCBs to be processed in this context.
-    worklist: VecDeque<BasicCoverageBlock>,
-}
-
-pub(crate) struct TraverseCoverageGraphWithLoops<'a> {
-    basic_coverage_blocks: &'a CoverageGraph,
-
-    context_stack: Vec<TraversalContext>,
-    visited: BitSet<BasicCoverageBlock>,
-}
-
-impl<'a> TraverseCoverageGraphWithLoops<'a> {
-    pub(crate) fn new(basic_coverage_blocks: &'a CoverageGraph) -> Self {
-        let worklist = VecDeque::from([basic_coverage_blocks.start_node()]);
-        let context_stack = vec![TraversalContext { loop_header: None, worklist }];
-
-        // `context_stack` starts with a `TraversalContext` for the main function context (beginning
-        // with the `start` BasicCoverageBlock of the function). New worklists are pushed to the top
-        // of the stack as loops are entered, and popped off of the stack when a loop's worklist is
-        // exhausted.
-        let visited = BitSet::new_empty(basic_coverage_blocks.num_nodes());
-        Self { basic_coverage_blocks, context_stack, visited }
-    }
-
-    pub(crate) fn next(&mut self) -> Option<BasicCoverageBlock> {
-        debug!(
-            "TraverseCoverageGraphWithLoops::next - context_stack: {:?}",
-            self.context_stack.iter().rev().collect::<Vec<_>>()
-        );
-
-        while let Some(context) = self.context_stack.last_mut() {
-            let Some(bcb) = context.worklist.pop_front() else {
-                // This stack level is exhausted; pop it and try the next one.
-                self.context_stack.pop();
-                continue;
-            };
-
-            if !self.visited.insert(bcb) {
-                debug!("Already visited: {bcb:?}");
-                continue;
-            }
-            debug!("Visiting {bcb:?}");
-
-            if self.basic_coverage_blocks.is_loop_header.contains(bcb) {
-                debug!("{bcb:?} is a loop header! Start a new TraversalContext...");
-                self.context_stack
-                    .push(TraversalContext { loop_header: Some(bcb), worklist: VecDeque::new() });
-            }
-            self.add_successors_to_worklists(bcb);
-            return Some(bcb);
-        }
-
-        None
-    }
-
-    fn add_successors_to_worklists(&mut self, bcb: BasicCoverageBlock) {
-        let successors = &self.basic_coverage_blocks.successors[bcb];
-        debug!("{:?} has {} successors:", bcb, successors.len());
-
-        for &successor in successors {
-            if successor == bcb {
-                debug!(
-                    "{:?} has itself as its own successor. (Note, the compiled code will \
-                    generate an infinite loop.)",
-                    bcb
-                );
-                // Don't re-add this successor to the worklist. We are already processing it.
-                // FIXME: This claims to skip just the self-successor, but it actually skips
-                // all other successors as well. Does that matter?
-                break;
-            }
-
-            // Add successors of the current BCB to the appropriate context. Successors that
-            // stay within a loop are added to the BCBs context worklist. Successors that
-            // exit the loop (they are not dominated by the loop header) must be reachable
-            // from other BCBs outside the loop, and they will be added to a different
-            // worklist.
-            //
-            // Branching blocks (with more than one successor) must be processed before
-            // blocks with only one successor, to prevent unnecessarily complicating
-            // `Expression`s by creating a Counter in a `BasicCoverageBlock` that the
-            // branching block would have given an `Expression` (or vice versa).
-
-            let context = self
-                .context_stack
-                .iter_mut()
-                .rev()
-                .find(|context| match context.loop_header {
-                    Some(loop_header) => {
-                        self.basic_coverage_blocks.dominates(loop_header, successor)
-                    }
-                    None => true,
-                })
-                .unwrap_or_else(|| bug!("should always fall back to the root non-loop context"));
-            debug!("adding to worklist for {:?}", context.loop_header);
-
-            // FIXME: The code below had debug messages claiming to add items to a
-            // particular end of the worklist, but was confused about which end was
-            // which. The existing behaviour has been preserved for now, but it's
-            // unclear what the intended behaviour was.
-
-            if self.basic_coverage_blocks.successors[successor].len() > 1 {
-                context.worklist.push_back(successor);
-            } else {
-                context.worklist.push_front(successor);
-            }
-        }
-    }
-
-    pub(crate) fn is_complete(&self) -> bool {
-        self.visited.count() == self.visited.domain_size()
-    }
-
-    pub(crate) fn unvisited(&self) -> Vec<BasicCoverageBlock> {
-        let mut unvisited_set: BitSet<BasicCoverageBlock> =
-            BitSet::new_filled(self.visited.domain_size());
-        unvisited_set.subtract(&self.visited);
-        unvisited_set.iter().collect::<Vec<_>>()
-    }
 }
 
 /// Wrapper around a [`mir::BasicBlocks`] graph that restricts each node's

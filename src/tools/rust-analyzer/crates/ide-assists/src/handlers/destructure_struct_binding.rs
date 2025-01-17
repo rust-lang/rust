@@ -96,8 +96,7 @@ fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<Str
     let struct_def_path = module.find_path(ctx.db(), struct_def, cfg)?;
 
     let is_non_exhaustive = struct_def.attrs(ctx.db())?.by_key(&sym::non_exhaustive).exists();
-    let is_foreign_crate =
-        struct_def.module(ctx.db()).map_or(false, |m| m.krate() != module.krate());
+    let is_foreign_crate = struct_def.module(ctx.db()).is_some_and(|m| m.krate() != module.krate());
 
     let fields = struct_type.fields(ctx.db());
     let n_fields = fields.len();

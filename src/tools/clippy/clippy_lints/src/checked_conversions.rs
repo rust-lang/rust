@@ -1,6 +1,6 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{SpanlessEq, is_in_const_context, is_integer_literal};
 use rustc_errors::Applicability;

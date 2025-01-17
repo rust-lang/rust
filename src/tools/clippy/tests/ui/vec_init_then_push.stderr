@@ -2,8 +2,7 @@ error: calls to `push` immediately after creation
   --> tests/ui/vec_init_then_push.rs:5:5
    |
 LL | /     let mut def_err: Vec<u32> = Default::default();
-LL | |
-LL | |
+...  |
 LL | |     def_err.push(0);
    | |____________________^ help: consider using the `vec![]` macro: `let def_err: Vec<u32> = vec![..];`
    |

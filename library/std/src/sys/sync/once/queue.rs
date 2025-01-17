@@ -58,7 +58,7 @@
 use crate::cell::Cell;
 use crate::sync::atomic::Ordering::{AcqRel, Acquire, Release};
 use crate::sync::atomic::{AtomicBool, AtomicPtr};
-use crate::sync::once::ExclusiveState;
+use crate::sync::poison::once::ExclusiveState;
 use crate::thread::{self, Thread};
 use crate::{fmt, ptr, sync as public};
 
@@ -116,7 +116,6 @@ fn to_state(current: StateAndQueue) -> usize {
 
 impl Once {
     #[inline]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_once_new", since = "1.32.0"))]
     pub const fn new() -> Once {
         Once { state_and_queue: AtomicPtr::new(ptr::without_provenance_mut(INCOMPLETE)) }
     }

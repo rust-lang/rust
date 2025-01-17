@@ -6,9 +6,9 @@ LL |     foo(true);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: bool and `bool` have similar names, but are actually distinct types
-   = note: bool is a primitive defined by the language
-note: `bool` is defined in the current crate
+   = note: `bool` and `bool` have similar names, but are actually distinct types
+   = note: one `bool` is a primitive defined by the language
+note: the other `bool` is defined in the current crate
   --> $DIR/similar_paths_primitive.rs:3:1
    |
 LL | struct bool;
@@ -20,16 +20,16 @@ LL | fn foo(_: bool) {}
    |    ^^^ -------
 
 error[E0308]: mismatched types
-  --> $DIR/similar_paths_primitive.rs:12:9
+  --> $DIR/similar_paths_primitive.rs:16:9
    |
 LL |     bar("hello");
    |     --- ^^^^^^^ expected `str`, found a different `str`
    |     |
    |     arguments to this function are incorrect
    |
-   = note: str and `str` have similar names, but are actually distinct types
-   = note: str is a primitive defined by the language
-note: `str` is defined in the current crate
+   = note: `str` and `str` have similar names, but are actually distinct types
+   = note: one `str` is a primitive defined by the language
+note: the other `str` is defined in the current crate
   --> $DIR/similar_paths_primitive.rs:4:1
    |
 LL | struct str;

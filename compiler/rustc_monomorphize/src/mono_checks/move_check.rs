@@ -6,9 +6,8 @@ use rustc_middle::mir::{self, Location, traversal};
 use rustc_middle::ty::{self, AssocKind, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_session::Limit;
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
-use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{Ident, sym};
+use rustc_span::{Ident, Span, sym};
 use tracing::{debug, trace};
 
 use crate::errors::LargeAssignmentsLint;

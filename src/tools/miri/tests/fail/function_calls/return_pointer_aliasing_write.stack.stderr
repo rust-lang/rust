@@ -14,7 +14,6 @@ LL | |         {
 LL | |             let _x = 0;
 LL | |             let ptr = &raw mut _x;
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
 help: <TAG> is this argument

@@ -1510,20 +1510,20 @@ impl ExprCollector<'_> {
                         BuiltinShadowMode::Other,
                         None,
                     );
+                    // Funnily enough, record structs/variants *can* be shadowed
+                    // by pattern bindings (but unit or tuple structs/variants
+                    // can't).
                     match resolved.take_values() {
                         Some(ModuleDefId::ConstId(_)) => (None, Pat::Path(name.into())),
-                        Some(ModuleDefId::EnumVariantId(_)) => {
-                            // this is only really valid for unit variants, but
-                            // shadowing other enum variants with a pattern is
-                            // an error anyway
+                        Some(ModuleDefId::EnumVariantId(variant))
+                            if self.db.variant_data(variant.into()).kind()
+                                != StructKind::Record =>
+                        {
                             (None, Pat::Path(name.into()))
                         }
                         Some(ModuleDefId::AdtId(AdtId::StructId(s)))
                             if self.db.struct_data(s).variant_data.kind() != StructKind::Record =>
                         {
-                            // Funnily enough, record structs *can* be shadowed
-                            // by pattern bindings (but unit or tuple structs
-                            // can't).
                             (None, Pat::Path(name.into()))
                         }
                         // shadowing statics is an error as well, so we just ignore that case here
@@ -1957,8 +1957,10 @@ impl ExprCollector<'_> {
             _ => None,
         });
         let mut mappings = vec![];
-        let (fmt, hygiene) = match template.and_then(|it| self.expand_macros_to_string(it)) {
-            Some((s, is_direct_literal)) => {
+        let (fmt, hygiene) = match template.and_then(|template| {
+            self.expand_macros_to_string(template.clone()).map(|it| (it, template))
+        }) {
+            Some(((s, is_direct_literal), template)) => {
                 let call_ctx = self.expander.syntax_context();
                 let hygiene = self.hygiene_id_for(s.syntax().text_range().start());
                 let fmt = format_args::parse(
@@ -1966,8 +1968,18 @@ impl ExprCollector<'_> {
                     fmt_snippet,
                     args,
                     is_direct_literal,
-                    |name| {
+                    |name, range| {
                         let expr_id = self.alloc_expr_desugared(Expr::Path(Path::from(name)));
+                        if let Some(range) = range {
+                            self.source_map
+                                .template_map
+                                .get_or_insert_with(Default::default)
+                                .implicit_capture_to_source
+                                .insert(
+                                    expr_id,
+                                    self.expander.in_file((AstPtr::new(&template), range)),
+                                );
+                        }
                         if !hygiene.is_root() {
                             self.body.expr_hygiene.insert(expr_id, hygiene);
                         }
@@ -2139,7 +2151,7 @@ impl ExprCollector<'_> {
         self.source_map
             .template_map
             .get_or_insert_with(Default::default)
-            .0
+            .format_args_to_captures
             .insert(idx, (hygiene, mappings));
         idx
     }
@@ -2204,11 +2216,11 @@ impl ExprCollector<'_> {
         };
         // This needs to match `Flag` in library/core/src/fmt/rt.rs.
         let flags: u32 = ((sign == Some(FormatSign::Plus)) as u32)
-            | ((sign == Some(FormatSign::Minus)) as u32) << 1
-            | (alternate as u32) << 2
-            | (zero_pad as u32) << 3
-            | ((debug_hex == Some(FormatDebugHex::Lower)) as u32) << 4
-            | ((debug_hex == Some(FormatDebugHex::Upper)) as u32) << 5;
+            | (((sign == Some(FormatSign::Minus)) as u32) << 1)
+            | ((alternate as u32) << 2)
+            | ((zero_pad as u32) << 3)
+            | (((debug_hex == Some(FormatDebugHex::Lower)) as u32) << 4)
+            | (((debug_hex == Some(FormatDebugHex::Upper)) as u32) << 5);
         let flags = self.alloc_expr_desugared(Expr::Literal(Literal::Uint(
             flags as u128,
             Some(BuiltinUint::U32),
@@ -2456,7 +2468,7 @@ impl ExprCollector<'_> {
 
 fn comma_follows_token(t: Option<syntax::SyntaxToken>) -> bool {
     (|| syntax::algo::skip_trivia_token(t?.next_token()?, syntax::Direction::Next))()
-        .map_or(false, |it| it.kind() == syntax::T![,])
+        .is_some_and(|it| it.kind() == syntax::T![,])
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]

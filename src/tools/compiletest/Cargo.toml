@@ -16,7 +16,7 @@ indexmap = "2.0.0"
 miropt-test-tools = { path = "../miropt-test-tools" }
 build_helper = { path = "../../build_helper" }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3.3", default-features = false, features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"] }
+tracing-subscriber = { version = "0.3.3", default-features = false, features = ["ansi", "env-filter", "fmt", "parking_lot", "smallvec"] }
 regex = "1.0"
 semver = { version = "1.0.23", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }

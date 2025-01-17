@@ -58,7 +58,7 @@ impl ModPath {
         convert_path(db, path, span_for_range)
     }
 
-    pub fn from_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModPath> {
+    pub fn from_tt(db: &dyn ExpandDatabase, tt: tt::TokenTreesView<'_>) -> Option<ModPath> {
         convert_path_tt(db, tt)
     }
 
@@ -315,10 +315,10 @@ fn convert_path(
     Some(mod_path)
 }
 
-fn convert_path_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModPath> {
+fn convert_path_tt(db: &dyn ExpandDatabase, tt: tt::TokenTreesView<'_>) -> Option<ModPath> {
     let mut leaves = tt.iter().filter_map(|tt| match tt {
-        tt::TokenTree::Leaf(leaf) => Some(leaf),
-        tt::TokenTree::Subtree(_) => None,
+        tt::TtElement::Leaf(leaf) => Some(leaf),
+        tt::TtElement::Subtree(..) => None,
     });
     let mut segments = smallvec::smallvec![];
     let kind = match leaves.next()? {

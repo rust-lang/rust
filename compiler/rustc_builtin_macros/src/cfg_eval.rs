@@ -12,8 +12,7 @@ use rustc_expand::configure;
 use rustc_feature::Features;
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_session::Session;
-use rustc_span::Span;
-use rustc_span::symbol::sym;
+use rustc_span::{Span, sym};
 use smallvec::SmallVec;
 use tracing::instrument;
 

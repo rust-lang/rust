@@ -13,6 +13,7 @@ i.e., within 0.5 ULP of the true value.
 Adapted from Daniel Lemire's fast_float ``table_generation.py``,
 available here: <https://github.com/fastfloat/fast_float/blob/main/script/table_generation.py>.
 """
+
 from __future__ import print_function
 from math import ceil, floor, log
 from collections import deque
@@ -34,6 +35,7 @@ STATIC_WARNING = """
 // the final binary.
 """
 
+
 def main():
     min_exp = minimum_exponent(10)
     max_exp = maximum_exponent(10)
@@ -41,10 +43,10 @@ def main():
 
     print(HEADER.strip())
     print()
-    print('pub const SMALLEST_POWER_OF_FIVE: i32 = {};'.format(min_exp))
-    print('pub const LARGEST_POWER_OF_FIVE: i32 = {};'.format(max_exp))
-    print('pub const N_POWERS_OF_FIVE: usize = ', end='')
-    print('(LARGEST_POWER_OF_FIVE - SMALLEST_POWER_OF_FIVE + 1) as usize;')
+    print("pub const SMALLEST_POWER_OF_FIVE: i32 = {};".format(min_exp))
+    print("pub const LARGEST_POWER_OF_FIVE: i32 = {};".format(max_exp))
+    print("pub const N_POWERS_OF_FIVE: usize = ", end="")
+    print("(LARGEST_POWER_OF_FIVE - SMALLEST_POWER_OF_FIVE + 1) as usize;")
     print()
     print_proper_powers(min_exp, max_exp, bias)
 
@@ -54,7 +56,7 @@ def minimum_exponent(base):
 
 
 def maximum_exponent(base):
-    return floor(log(1.7976931348623157e+308, base))
+    return floor(log(1.7976931348623157e308, base))
 
 
 def print_proper_powers(min_exp, max_exp, bias):
@@ -64,46 +66,46 @@ def print_proper_powers(min_exp, max_exp, bias):
     # 2^(2b)/(5^−q) with b=64 + int(math.ceil(log2(5^−q)))
     powers = []
     for q in range(min_exp, 0):
-        power5 = 5 ** -q
+        power5 = 5**-q
         z = 0
         while (1 << z) < power5:
             z += 1
         if q >= -27:
             b = z + 127
-            c = 2 ** b // power5 + 1
+            c = 2**b // power5 + 1
             powers.append((c, q))
         else:
             b = 2 * z + 2 * 64
-            c = 2 ** b // power5 + 1
+            c = 2**b // power5 + 1
             # truncate
-            while c >= (1<<128):
+            while c >= (1 << 128):
                 c //= 2
             powers.append((c, q))
 
     # Add positive exponents
     for q in range(0, max_exp + 1):
-        power5 = 5 ** q
+        power5 = 5**q
         # move the most significant bit in position
-        while power5 < (1<<127):
+        while power5 < (1 << 127):
             power5 *= 2
         # *truncate*
-        while power5 >= (1<<128):
+        while power5 >= (1 << 128):
             power5 //= 2
         powers.append((power5, q))
 
     # Print the powers.
     print(STATIC_WARNING.strip())
-    print('#[rustfmt::skip]')
-    typ = '[(u64, u64); N_POWERS_OF_FIVE]'
-    print('pub static POWER_OF_FIVE_128: {} = ['.format(typ))
+    print("#[rustfmt::skip]")
+    typ = "[(u64, u64); N_POWERS_OF_FIVE]"
+    print("pub static POWER_OF_FIVE_128: {} = [".format(typ))
     for c, exp in powers:
-        hi = '0x{:x}'.format(c // (1 << 64))
-        lo = '0x{:x}'.format(c % (1 << 64))
-        value = '    ({}, {}), '.format(hi, lo)
-        comment = '// {}^{}'.format(5, exp)
-        print(value.ljust(46, ' ') + comment)
-    print('];')
+        hi = "0x{:x}".format(c // (1 << 64))
+        lo = "0x{:x}".format(c % (1 << 64))
+        value = "    ({}, {}), ".format(hi, lo)
+        comment = "// {}^{}".format(5, exp)
+        print(value.ljust(46, " ") + comment)
+    print("];")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

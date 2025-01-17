@@ -221,6 +221,7 @@ fn value() -> Option<&'static _> {
 
 const _: Option<_> = map(value);
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+//~| ERROR cannot call non-const function `map::<u8>` in constants
 
 fn evens_squared(n: usize) -> _ {
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types

@@ -207,6 +207,7 @@
 
 use std::path::PathBuf;
 
+use rustc_attr_parsing::InlineAttr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{LRef, MTLock, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -224,15 +225,14 @@ use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::print::{shrunk_instance_name, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt, TypeFoldable,
-    TypeVisitableExt, VtblEntry,
+    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Interner, Ty, TyCtxt,
+    TypeFoldable, TypeVisitableExt, VtblEntry,
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
 use rustc_session::Limit;
 use rustc_session::config::EntryFnType;
 use rustc_span::source_map::{Spanned, dummy_spanned, respan};
-use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument, trace};
 
@@ -895,9 +895,8 @@ fn visit_instance_use<'tcx>(
     if !tcx.should_codegen_locally(instance) {
         return;
     }
-    if let ty::InstanceKind::Intrinsic(def_id) = instance.def {
-        let name = tcx.item_name(def_id);
-        if let Some(_requirement) = ValidityRequirement::from_intrinsic(name) {
+    if let Some(intrinsic) = tcx.intrinsic(instance.def_id()) {
+        if let Some(_requirement) = ValidityRequirement::from_intrinsic(intrinsic.name) {
             // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
             // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
             // of those intrinsics, we need to include a mono item for panic_nounwind, else we may try to
@@ -907,11 +906,12 @@ fn visit_instance_use<'tcx>(
             if tcx.should_codegen_locally(panic_instance) {
                 output.push(create_fn_mono_item(tcx, panic_instance, source));
             }
-        } else if tcx.has_attr(def_id, sym::rustc_intrinsic)
-            && !tcx.has_attr(def_id, sym::rustc_intrinsic_must_be_overridden)
-        {
-            // Codegen the fallback body of intrinsics with fallback bodies
-            let instance = ty::Instance::new(def_id, instance.args);
+        } else if !intrinsic.must_be_overridden {
+            // Codegen the fallback body of intrinsics with fallback bodies.
+            // We explicitly skip this otherwise to ensure we get a linker error
+            // if anyone tries to call this intrinsic and the codegen backend did not
+            // override the implementation.
+            let instance = ty::Instance::new(instance.def_id(), instance.args);
             if tcx.should_codegen_locally(instance) {
                 output.push(create_fn_mono_item(tcx, instance, source));
             }
@@ -960,14 +960,20 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxtAt<'tcx>, instance: Instance<'tcx>) -
         return false;
     }
 
+    if tcx.def_kind(def_id).has_codegen_attrs()
+        && matches!(tcx.codegen_fn_attrs(def_id).inline, InlineAttr::Force { .. })
+    {
+        // `#[rustc_force_inline]` items should never be codegened. This should be caught by
+        // the MIR validator.
+        tcx.delay_bug("attempt to codegen `#[rustc_force_inline]` item");
+    }
+
     if def_id.is_local() {
         // Local items cannot be referred to locally without monomorphizing them locally.
         return true;
     }
 
-    if tcx.is_reachable_non_generic(def_id)
-        || instance.polymorphize(*tcx).upstream_monomorphization(*tcx).is_some()
-    {
+    if tcx.is_reachable_non_generic(def_id) || instance.upstream_monomorphization(*tcx).is_some() {
         // We can link to the item in question, no instance needed in this crate.
         return false;
     }
@@ -1114,7 +1120,7 @@ fn create_fn_mono_item<'tcx>(
         crate::util::dump_closure_profile(tcx, instance);
     }
 
-    respan(source, MonoItem::Fn(instance.polymorphize(tcx)))
+    respan(source, MonoItem::Fn(instance))
 }
 
 /// Creates a `MonoItem` for each method that is referenced by the vtable for
@@ -1371,6 +1377,10 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
             collector.process_impl_item(id);
         }
 
+        for id in crate_items.nested_bodies() {
+            collector.process_nested_body(id);
+        }
+
         collector.push_extra_entry_roots();
     }
 
@@ -1397,20 +1407,37 @@ impl<'v> RootCollector<'_, 'v> {
         match self.tcx.def_kind(id.owner_id) {
             DefKind::Enum | DefKind::Struct | DefKind::Union => {
                 if self.strategy == MonoItemCollectionStrategy::Eager
-                    && self.tcx.generics_of(id.owner_id).is_empty()
+                    && !self.tcx.generics_of(id.owner_id).requires_monomorphization(self.tcx)
                 {
                     debug!("RootCollector: ADT drop-glue for `{id:?}`",);
+                    let id_args =
+                        ty::GenericArgs::for_item(self.tcx, id.owner_id.to_def_id(), |param, _| {
+                            match param.kind {
+                                GenericParamDefKind::Lifetime => {
+                                    self.tcx.lifetimes.re_erased.into()
+                                }
+                                GenericParamDefKind::Type { .. }
+                                | GenericParamDefKind::Const { .. } => {
+                                    unreachable!(
+                                        "`own_requires_monomorphization` check means that \
+                                we should have no type/const params"
+                                    )
+                                }
+                            }
+                        });
 
                     // This type is impossible to instantiate, so we should not try to
                     // generate a `drop_in_place` instance for it.
                     if self.tcx.instantiate_and_check_impossible_predicates((
                         id.owner_id.to_def_id(),
-                        ty::List::empty(),
+                        id_args,
                     )) {
                         return;
                     }
 
-                    let ty = self.tcx.type_of(id.owner_id.to_def_id()).no_bound_vars().unwrap();
+                    let ty =
+                        self.tcx.type_of(id.owner_id.to_def_id()).instantiate(self.tcx, id_args);
+                    assert!(!ty.has_non_region_param());
                     visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.output);
                 }
             }
@@ -1453,10 +1480,39 @@ impl<'v> RootCollector<'_, 'v> {
         }
     }
 
+    fn process_nested_body(&mut self, def_id: LocalDefId) {
+        match self.tcx.def_kind(def_id) {
+            DefKind::Closure => {
+                if self.strategy == MonoItemCollectionStrategy::Eager
+                    && !self
+                        .tcx
+                        .generics_of(self.tcx.typeck_root_def_id(def_id.to_def_id()))
+                        .requires_monomorphization(self.tcx)
+                {
+                    let instance = match *self.tcx.type_of(def_id).instantiate_identity().kind() {
+                        ty::Closure(def_id, args)
+                        | ty::Coroutine(def_id, args)
+                        | ty::CoroutineClosure(def_id, args) => {
+                            Instance::new(def_id, self.tcx.erase_regions(args))
+                        }
+                        _ => unreachable!(),
+                    };
+                    let mono_item = create_fn_mono_item(self.tcx, instance, DUMMY_SP);
+                    if mono_item.node.is_instantiable(self.tcx) {
+                        self.output.push(mono_item);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
     fn is_root(&self, def_id: LocalDefId) -> bool {
         !self.tcx.generics_of(def_id).requires_monomorphization(self.tcx)
             && match self.strategy {
-                MonoItemCollectionStrategy::Eager => true,
+                MonoItemCollectionStrategy::Eager => {
+                    !matches!(self.tcx.codegen_fn_attrs(def_id).inline, InlineAttr::Force { .. })
+                }
                 MonoItemCollectionStrategy::Lazy => {
                     self.entry_fn.and_then(|(id, _)| id.as_local()) == Some(def_id)
                         || self.tcx.is_reachable_non_generic(def_id)

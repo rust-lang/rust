@@ -393,7 +393,7 @@ impl ast::BlockExpr {
             FOR_EXPR | IF_EXPR => parent
                 .children()
                 .find(|it| ast::Expr::can_cast(it.kind()))
-                .map_or(true, |it| it == *self.syntax()),
+                .is_none_or(|it| it == *self.syntax()),
             LET_ELSE | FN | WHILE_EXPR | LOOP_EXPR | CONST_BLOCK_PAT => false,
             _ => true,
         }

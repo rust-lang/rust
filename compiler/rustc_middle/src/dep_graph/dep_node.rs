@@ -64,7 +64,7 @@ pub use rustc_query_system::dep_graph::DepNode;
 use rustc_query_system::dep_graph::FingerprintStyle;
 pub use rustc_query_system::dep_graph::dep_node::DepKind;
 pub(crate) use rustc_query_system::dep_graph::{DepContext, DepNodeParams};
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 
 use crate::mir::mono::MonoItem;
 use crate::ty::TyCtxt;

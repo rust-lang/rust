@@ -2,7 +2,7 @@
 use std::{cell::OnceCell, mem};
 
 use hir_expand::{span_map::SpanMap, AstId, HirFileId, InFile};
-use span::{AstIdMap, AstIdNode};
+use span::{AstIdMap, AstIdNode, Edition, EditionedFileId, FileId, RealSpanMap};
 use stdx::thin_vec::ThinVec;
 use syntax::ast;
 use triomphe::Arc;
@@ -10,7 +10,7 @@ use triomphe::Arc;
 use crate::{
     db::DefDatabase,
     path::Path,
-    type_ref::{TypeBound, TypePtr, TypeRef, TypeRefId, TypesMap, TypesSourceMap},
+    type_ref::{PathId, TypeBound, TypePtr, TypeRef, TypeRefId, TypesMap, TypesSourceMap},
 };
 
 pub struct LowerCtx<'a> {
@@ -56,6 +56,30 @@ impl<'a> LowerCtx<'a> {
             file_id,
             span_map,
             ast_id_map: OnceCell::new(),
+            impl_trait_bounds: Vec::new(),
+            outer_impl_trait: false,
+            types_map,
+            types_source_map,
+        }
+    }
+
+    /// Prepares a `LowerCtx` for synthetic AST that needs to be lowered. This is intended for IDE things.
+    pub fn for_synthetic_ast(
+        db: &'a dyn DefDatabase,
+        ast_id_map: Arc<AstIdMap>,
+        types_map: &'a mut TypesMap,
+        types_source_map: &'a mut TypesSourceMap,
+    ) -> Self {
+        let file_id = EditionedFileId::new(
+            FileId::from_raw(EditionedFileId::MAX_FILE_ID),
+            Edition::Edition2015,
+        );
+        LowerCtx {
+            db,
+            // Make up an invalid file id, so that if we will try to actually access it salsa will panic.
+            file_id: file_id.into(),
+            span_map: SpanMap::RealSpanMap(Arc::new(RealSpanMap::absolute(file_id))).into(),
+            ast_id_map: ast_id_map.into(),
             impl_trait_bounds: Vec::new(),
             outer_impl_trait: false,
             types_map,
@@ -117,5 +141,9 @@ impl<'a> LowerCtx<'a> {
 
     pub(crate) fn alloc_error_type(&mut self) -> TypeRefId {
         self.types_map.types.alloc(TypeRef::Error)
+    }
+
+    pub(crate) fn alloc_path(&mut self, path: Path, node: TypePtr) -> PathId {
+        PathId::from_type_ref_unchecked(self.alloc_type_ref(TypeRef::Path(path), node))
     }
 }

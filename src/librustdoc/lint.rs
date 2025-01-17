@@ -222,7 +222,7 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
 });
 
 pub(crate) fn register_lints(_sess: &Session, lint_store: &mut LintStore) {
-    lint_store.register_lints(&**RUSTDOC_LINTS);
+    lint_store.register_lints(&RUSTDOC_LINTS);
     lint_store.register_group(
         true,
         "rustdoc::all",

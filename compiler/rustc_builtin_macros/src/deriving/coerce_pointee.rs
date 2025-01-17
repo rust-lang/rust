@@ -6,11 +6,11 @@ use rustc_ast::{
     self as ast, GenericArg, GenericBound, GenericParamKind, ItemKind, MetaItem,
     TraitBoundModifiers, VariantData, WherePredicate,
 };
-use rustc_attr as attr;
+use rustc_attr_parsing as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{Ident, sym};
-use rustc_span::{Span, Symbol};
+use rustc_macros::Diagnostic;
+use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::errors;
@@ -38,12 +38,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
                 .any(|r| matches!(r, attr::ReprTransparent))
         });
         if !is_transparent {
-            cx.dcx()
-                .struct_span_err(
-                    span,
-                    "`CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`",
-                )
-                .emit();
+            cx.dcx().emit_err(RequireTransparent { span });
             return;
         }
         if !matches!(
@@ -51,22 +46,12 @@ pub(crate) fn expand_deriving_coerce_pointee(
             VariantData::Struct { fields, recovered: _ } | VariantData::Tuple(fields, _)
                 if !fields.is_empty())
         {
-            cx.dcx()
-                .struct_span_err(
-                    span,
-                    "`CoercePointee` can only be derived on `struct`s with at least one field",
-                )
-                .emit();
+            cx.dcx().emit_err(RequireOneField { span });
             return;
         }
         (aitem.ident, g)
     } else {
-        cx.dcx()
-            .struct_span_err(
-                span,
-                "`CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`",
-            )
-            .emit();
+        cx.dcx().emit_err(RequireTransparent { span });
         return;
     };
 
@@ -95,10 +80,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
 
     let pointee_param_idx = if type_params.is_empty() {
         // `#[derive(CoercePointee)]` requires at least one generic type on the target `struct`
-        cx.dcx().struct_span_err(
-            span,
-            "`CoercePointee` can only be derived on `struct`s that are generic over at least one type",
-        ).emit();
+        cx.dcx().emit_err(RequireOneGeneric { span });
         return;
     } else if type_params.len() == 1 {
         // Regardless of the only type param being designed as `#[pointee]` or not, we can just use it as such
@@ -111,19 +93,11 @@ pub(crate) fn expand_deriving_coerce_pointee(
         match (pointees.next(), pointees.next()) {
             (Some((idx, _span)), None) => idx,
             (None, _) => {
-                cx.dcx().struct_span_err(
-                    span,
-                    "exactly one generic type parameter must be marked as #[pointee] to derive CoercePointee traits",
-                ).emit();
+                cx.dcx().emit_err(RequireOnePointee { span });
                 return;
             }
             (Some((_, one)), Some((_, another))) => {
-                cx.dcx()
-                    .struct_span_err(
-                        vec![one, another],
-                        "only one type parameter can be marked as `#[pointee]` when deriving CoercePointee traits",
-                    )
-                    .emit();
+                cx.dcx().emit_err(TooManyPointees { one, another });
                 return;
             }
         }
@@ -181,15 +155,10 @@ pub(crate) fn expand_deriving_coerce_pointee(
                 pointee_ty_ident.name,
             )
         {
-            cx.dcx()
-                .struct_span_err(
-                    pointee_ty_ident.span,
-                    format!(
-                        "`derive(CoercePointee)` requires {} to be marked `?Sized`",
-                        pointee_ty_ident.name
-                    ),
-                )
-                .emit();
+            cx.dcx().emit_err(RequiresMaybeSized {
+                span: pointee_ty_ident.span,
+                name: pointee_ty_ident.name.to_ident_string(),
+            });
             return;
         }
         let arg = GenericArg::Type(s_ty.clone());
@@ -288,19 +257,18 @@ pub(crate) fn expand_deriving_coerce_pointee(
     //
     // We should also write a few new `where` bounds from `#[pointee] T` to `__S`
     // as well as any bound that indirectly involves the `#[pointee] T` type.
-    for bound in &generics.where_clause.predicates {
-        if let ast::WherePredicate::BoundPredicate(bound) = bound {
+    for predicate in &generics.where_clause.predicates {
+        if let ast::WherePredicateKind::BoundPredicate(bound) = &predicate.kind {
             let mut substitution = TypeSubstitution {
                 from_name: pointee_ty_ident.name,
                 to_ty: &s_ty,
                 rewritten: false,
             };
-            let mut predicate = ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                span: bound.span,
-                bound_generic_params: bound.bound_generic_params.clone(),
-                bounded_ty: bound.bounded_ty.clone(),
-                bounds: bound.bounds.clone(),
-            });
+            let mut predicate = ast::WherePredicate {
+                kind: ast::WherePredicateKind::BoundPredicate(bound.clone()),
+                span: predicate.span,
+                id: ast::DUMMY_NODE_ID,
+            };
             substitution.visit_where_predicate(&mut predicate);
             if substitution.rewritten {
                 impl_generics.where_clause.predicates.push(predicate);
@@ -319,7 +287,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
 
 fn contains_maybe_sized_bound_on_pointee(predicates: &[WherePredicate], pointee: Symbol) -> bool {
     for bound in predicates {
-        if let ast::WherePredicate::BoundPredicate(bound) = bound
+        if let ast::WherePredicateKind::BoundPredicate(bound) = &bound.kind
             && bound.bounded_ty.kind.is_simple_path().is_some_and(|name| name == pointee)
         {
             for bound in &bound.bounds {
@@ -385,8 +353,8 @@ impl<'a> ast::mut_visit::MutVisitor for TypeSubstitution<'a> {
     }
 
     fn visit_where_predicate(&mut self, where_predicate: &mut ast::WherePredicate) {
-        match where_predicate {
-            rustc_ast::WherePredicate::BoundPredicate(bound) => {
+        match &mut where_predicate.kind {
+            rustc_ast::WherePredicateKind::BoundPredicate(bound) => {
                 bound
                     .bound_generic_params
                     .flat_map_in_place(|param| self.flat_map_generic_param(param));
@@ -395,8 +363,8 @@ impl<'a> ast::mut_visit::MutVisitor for TypeSubstitution<'a> {
                     self.visit_param_bound(bound, BoundKind::Bound)
                 }
             }
-            rustc_ast::WherePredicate::RegionPredicate(_)
-            | rustc_ast::WherePredicate::EqPredicate(_) => {}
+            rustc_ast::WherePredicateKind::RegionPredicate(_)
+            | rustc_ast::WherePredicateKind::EqPredicate(_) => {}
         }
     }
 }
@@ -459,4 +427,49 @@ impl<'a, 'b> rustc_ast::visit::Visitor<'a> for AlwaysErrorOnGenericParam<'a, 'b>
             self.cx.dcx().emit_err(errors::NonGenericPointee { span: attr.span });
         }
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_coerce_pointee_requires_transparent)]
+struct RequireTransparent {
+    #[primary_span]
+    span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_coerce_pointee_requires_one_field)]
+struct RequireOneField {
+    #[primary_span]
+    span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_coerce_pointee_requires_one_generic)]
+struct RequireOneGeneric {
+    #[primary_span]
+    span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_coerce_pointee_requires_one_pointee)]
+struct RequireOnePointee {
+    #[primary_span]
+    span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_coerce_pointee_too_many_pointees)]
+struct TooManyPointees {
+    #[primary_span]
+    one: Span,
+    #[label]
+    another: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_coerce_pointee_requires_maybe_sized)]
+struct RequiresMaybeSized {
+    #[primary_span]
+    span: Span,
+    name: String,
 }

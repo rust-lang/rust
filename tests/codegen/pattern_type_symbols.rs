@@ -4,8 +4,7 @@
 //@ compile-flags: -Csymbol-mangling-version=v0 -Copt-level=0 --crate-type=lib
 
 #![feature(pattern_types)]
-#![feature(core_pattern_types)]
-#![feature(core_pattern_type)]
+#![feature(pattern_type_macro)]
 
 use std::pat::pattern_type;
 

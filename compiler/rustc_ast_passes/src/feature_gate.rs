@@ -5,8 +5,7 @@ use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Feat
 use rustc_session::Session;
 use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::abi;
 use thin_vec::ThinVec;
 
@@ -243,7 +242,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Struct(..) => {
+            ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..) => {
                 for attr in attr::filter_by_name(&i.attrs, sym::repr) {
                     for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
                         if item.has_name(sym::simd) {
@@ -264,7 +263,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         &self,
                         negative_impls,
                         span.to(of_trait.as_ref().map_or(span, |t| t.path.span)),
-                        "negative trait bounds are not yet fully implemented; \
+                        "negative trait bounds are not fully implemented; \
                          use marker types for now"
                     );
                 }
@@ -345,8 +344,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_generics(&mut self, g: &'a ast::Generics) {
         for predicate in &g.where_clause.predicates {
-            match predicate {
-                ast::WherePredicate::BoundPredicate(bound_pred) => {
+            match &predicate.kind {
+                ast::WherePredicateKind::BoundPredicate(bound_pred) => {
                     // A type bound (e.g., `for<'c> Foo: Send + Clone + 'c`).
                     self.check_late_bound_lifetime_defs(&bound_pred.bound_generic_params);
                 }
@@ -512,9 +511,9 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     );
     gate_all!(let_chains, "`let` expressions in this position are unstable");
     gate_all!(
-        async_closure,
-        "async closures are unstable",
-        "to use an async block, remove the `||`: `async {`"
+        async_trait_bounds,
+        "`async` trait bounds are unstable",
+        "use the desugared name of the async trait, such as `AsyncFn`"
     );
     gate_all!(async_for_loop, "`for await` loops are experimental");
     gate_all!(
@@ -551,6 +550,8 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(builtin_syntax, "`builtin #` syntax is unstable");
     gate_all!(explicit_tail_calls, "`become` expression is experimental");
     gate_all!(generic_const_items, "generic const items are experimental");
+    gate_all!(guard_patterns, "guard patterns are experimental", "consider using match arm guards");
+    gate_all!(default_field_values, "default values on fields are experimental");
     gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
     gate_all!(postfix_match, "postfix match is experimental");
     gate_all!(mut_ref, "mutable by-reference bindings are experimental");
@@ -558,6 +559,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(return_type_notation, "return type notation is experimental");
     gate_all!(pin_ergonomics, "pinned reference syntax is experimental");
     gate_all!(unsafe_fields, "`unsafe` fields are experimental");
+    gate_all!(unsafe_binders, "unsafe binder types are experimental");
 
     if !visitor.features.never_patterns() {
         if let Some(spans) = spans.get(&sym::never_patterns) {
@@ -690,6 +692,7 @@ fn check_new_solver_banned_features(sess: &Session, features: &Features) {
         .find(|feat| feat.gate_name == sym::generic_const_exprs)
         .map(|feat| feat.attr_sp)
     {
+        #[allow(rustc::symbol_intern_string_literal)]
         sess.dcx().emit_err(errors::IncompatibleFeatures {
             spans: vec![gce_span],
             f1: Symbol::intern("-Znext-solver=globally"),

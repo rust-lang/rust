@@ -1944,6 +1944,11 @@ pub(crate) fn rewrite_struct_field(
     shape: Shape,
     lhs_max_width: usize,
 ) -> RewriteResult {
+    // FIXME(default_field_values): Implement formatting.
+    if field.default.is_some() {
+        return Err(RewriteError::Unknown);
+    }
+
     if contains_skip(&field.attrs) {
         return Ok(context.snippet(field.span()).to_owned());
     }
@@ -3597,7 +3602,7 @@ pub(crate) fn rewrite_extern_crate(
 pub(crate) fn is_mod_decl(item: &ast::Item) -> bool {
     !matches!(
         item.kind,
-        ast::ItemKind::Mod(_, ast::ModKind::Loaded(_, ast::Inline::Yes, _))
+        ast::ItemKind::Mod(_, ast::ModKind::Loaded(_, ast::Inline::Yes, _, _))
     )
 }
 

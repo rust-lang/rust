@@ -8,7 +8,10 @@ mod cargo_metadata;
 
 /// The entry point to the binary.
 ///
-/// You should probably let `bootstrap` execute this program instead of running it directly.
+/// You should probably let `bootstrap` execute this program instead of running
+/// it directly. It assumes that the current working directory is the root of a
+/// Rust git repository checkout, and constructs a bunch of relative paths based
+/// on that assumption.
 ///
 /// Run `x.py run generate-copyright`
 fn main() -> Result<(), Error> {
@@ -57,6 +60,10 @@ fn main() -> Result<(), Error> {
         dependencies: collected_cargo_metadata,
     };
     let output = template.render()?;
+    // Git stores text files with \n, but this file may contain \r\n in files
+    // copied from dependencies. Normalise them before we write them out, for
+    // consistency.
+    let output = output.replace("\r\n", "\n");
     std::fs::write(&dest_file, output)?;
 
     // Output libstd subset file
@@ -65,6 +72,10 @@ fn main() -> Result<(), Error> {
         dependencies: library_collected_cargo_metadata,
     };
     let output = template.render()?;
+    // Git stores text files with \n, but this file may contain \r\n in files
+    // copied from dependencies. Normalise them before we write them out, for
+    // consistency.
+    let output = output.replace("\r\n", "\n");
     std::fs::write(&libstd_dest_file, output)?;
 
     Ok(())

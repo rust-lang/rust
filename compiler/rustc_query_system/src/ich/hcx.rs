@@ -6,8 +6,7 @@ use rustc_hir::definitions::DefPathHash;
 use rustc_session::Session;
 use rustc_session::cstore::Untracked;
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::Symbol;
-use rustc_span::{BytePos, CachingSourceMapView, DUMMY_SP, SourceFile, Span, SpanData};
+use rustc_span::{BytePos, CachingSourceMapView, DUMMY_SP, SourceFile, Span, SpanData, Symbol};
 
 use crate::ich;
 

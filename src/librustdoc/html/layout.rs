@@ -33,7 +33,7 @@ pub(crate) struct Page<'a> {
     pub(crate) rust_logo: bool,
 }
 
-impl<'a> Page<'a> {
+impl Page<'_> {
     pub(crate) fn get_static_root_path(&self) -> String {
         match self.static_root_path {
             Some(s) => s.to_string(),

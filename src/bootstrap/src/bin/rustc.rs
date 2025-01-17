@@ -28,6 +28,9 @@ use shared_helpers::{
 #[path = "../utils/shared_helpers.rs"]
 mod shared_helpers;
 
+#[path = "../utils/proc_macro_deps.rs"]
+mod proc_macro_deps;
+
 fn main() {
     let orig_args = env::args_os().skip(1).collect::<Vec<_>>();
     let mut args = orig_args.clone();
@@ -167,7 +170,7 @@ fn main() {
         // issue https://github.com/rust-lang/rust/issues/100530
         if env::var("RUSTC_TLS_MODEL_INITIAL_EXEC").is_ok()
             && crate_type != Some("proc-macro")
-            && !matches!(crate_name, Some("proc_macro2" | "quote" | "syn" | "synstructure"))
+            && proc_macro_deps::CRATES.binary_search(&crate_name.unwrap_or_default()).is_err()
         {
             cmd.arg("-Ztls-model=initial-exec");
         }

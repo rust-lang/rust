@@ -12,7 +12,6 @@ use tracing::*;
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
 use crate::debuggers::{extract_cdb_version, extract_gdb_version};
 use crate::header::auxiliary::{AuxProps, parse_and_update_aux};
-use crate::header::cfg::{MatchOutcome, parse_cfg_name_directive};
 use crate::header::needs::CachedNeedsConditions;
 use crate::util::static_regex;
 
@@ -115,17 +114,12 @@ pub struct TestProps {
     pub dont_check_compiler_stdout: bool,
     // For UI tests, allows compiler to generate arbitrary output to stderr
     pub dont_check_compiler_stderr: bool,
-    // When checking the output of stdout or stderr check
-    // that the lines of expected output are a subset of the actual output.
-    pub compare_output_lines_by_subset: bool,
     // Don't force a --crate-type=dylib flag on the command line
     //
     // Set this for example if you have an auxiliary test file that contains
     // a proc-macro and needs `#![crate_type = "proc-macro"]`. This ensures
     // that the aux file is compiled as a `proc-macro` and not as a `dylib`.
     pub no_prefer_dynamic: bool,
-    // Run -Zunpretty expanded when running pretty printing tests
-    pub pretty_expanded: bool,
     // Which pretty mode are we testing with, default to 'normal'
     pub pretty_mode: String,
     // Only compare pretty output and don't try compiling
@@ -218,12 +212,12 @@ mod directives {
     pub const DONT_CHECK_COMPILER_STDOUT: &'static str = "dont-check-compiler-stdout";
     pub const DONT_CHECK_COMPILER_STDERR: &'static str = "dont-check-compiler-stderr";
     pub const NO_PREFER_DYNAMIC: &'static str = "no-prefer-dynamic";
-    pub const PRETTY_EXPANDED: &'static str = "pretty-expanded";
     pub const PRETTY_MODE: &'static str = "pretty-mode";
     pub const PRETTY_COMPARE_ONLY: &'static str = "pretty-compare-only";
     pub const AUX_BIN: &'static str = "aux-bin";
     pub const AUX_BUILD: &'static str = "aux-build";
     pub const AUX_CRATE: &'static str = "aux-crate";
+    pub const PROC_MACRO: &'static str = "proc-macro";
     pub const AUX_CODEGEN_BACKEND: &'static str = "aux-codegen-backend";
     pub const EXEC_ENV: &'static str = "exec-env";
     pub const RUSTC_ENV: &'static str = "rustc-env";
@@ -242,7 +236,6 @@ mod directives {
     pub const KNOWN_BUG: &'static str = "known-bug";
     pub const TEST_MIR_PASS: &'static str = "test-mir-pass";
     pub const REMAP_SRC_BASE: &'static str = "remap-src-base";
-    pub const COMPARE_OUTPUT_LINES_BY_SUBSET: &'static str = "compare-output-lines-by-subset";
     pub const LLVM_COV_FLAGS: &'static str = "llvm-cov-flags";
     pub const FILECHECK_FLAGS: &'static str = "filecheck-flags";
     pub const NO_AUTO_CHECK_CFG: &'static str = "no-auto-check-cfg";
@@ -276,9 +269,7 @@ impl TestProps {
             check_run_results: false,
             dont_check_compiler_stdout: false,
             dont_check_compiler_stderr: false,
-            compare_output_lines_by_subset: false,
             no_prefer_dynamic: false,
-            pretty_expanded: false,
             pretty_mode: "normal".to_string(),
             pretty_compare_only: false,
             forbid_output: vec![],
@@ -425,7 +416,6 @@ impl TestProps {
                         &mut self.dont_check_compiler_stderr,
                     );
                     config.set_name_directive(ln, NO_PREFER_DYNAMIC, &mut self.no_prefer_dynamic);
-                    config.set_name_directive(ln, PRETTY_EXPANDED, &mut self.pretty_expanded);
 
                     if let Some(m) = config.parse_name_value_directive(ln, PRETTY_MODE) {
                         self.pretty_mode = m;
@@ -481,11 +471,24 @@ impl TestProps {
 
                     config.set_name_directive(ln, IGNORE_PASS, &mut self.ignore_pass);
 
-                    if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stdout") {
-                        self.normalize_stdout.push(rule);
-                    }
-                    if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stderr") {
-                        self.normalize_stderr.push(rule);
+                    if let Some(NormalizeRule { kind, regex, replacement }) =
+                        config.parse_custom_normalization(ln)
+                    {
+                        let rule_tuple = (regex, replacement);
+                        match kind {
+                            NormalizeKind::Stdout => self.normalize_stdout.push(rule_tuple),
+                            NormalizeKind::Stderr => self.normalize_stderr.push(rule_tuple),
+                            NormalizeKind::Stderr32bit => {
+                                if config.target_cfg().pointer_width == 32 {
+                                    self.normalize_stderr.push(rule_tuple);
+                                }
+                            }
+                            NormalizeKind::Stderr64bit => {
+                                if config.target_cfg().pointer_width == 64 {
+                                    self.normalize_stderr.push(rule_tuple);
+                                }
+                            }
+                        }
                     }
 
                     if let Some(code) = config
@@ -554,11 +557,6 @@ impl TestProps {
                         |s| s.trim().to_string(),
                     );
                     config.set_name_directive(ln, REMAP_SRC_BASE, &mut self.remap_src_base);
-                    config.set_name_directive(
-                        ln,
-                        COMPARE_OUTPUT_LINES_BY_SUBSET,
-                        &mut self.compare_output_lines_by_subset,
-                    );
 
                     if let Some(flags) = config.parse_name_value_directive(ln, LLVM_COV_FLAGS) {
                         self.llvm_cov_flags.extend(split_flags(&flags));
@@ -936,6 +934,9 @@ fn iter_header(
 
 impl Config {
     fn parse_and_update_revisions(&self, testfile: &Path, line: &str, existing: &mut Vec<String>) {
+        const FORBIDDEN_REVISION_NAMES: [&str; 9] =
+            ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
+
         if let Some(raw) = self.parse_name_value_directive(line, "revisions") {
             if self.mode == Mode::RunMake {
                 panic!("`run-make` tests do not support revisions: {}", testfile.display());
@@ -947,6 +948,15 @@ impl Config {
                     panic!(
                         "duplicate revision: `{}` in line `{}`: {}",
                         revision,
+                        raw,
+                        testfile.display()
+                    );
+                } else if matches!(self.mode, Mode::Assembly | Mode::Codegen | Mode::MirOpt)
+                    && FORBIDDEN_REVISION_NAMES.contains(&revision.as_str())
+                {
+                    panic!(
+                        "revision name `{revision}` is not permitted in a test suite that uses `FileCheck` annotations\n\
+                         as it is confusing when used as custom `FileCheck` prefix: `{revision}` in line `{}`: {}",
                         raw,
                         testfile.display()
                     );
@@ -980,20 +990,26 @@ impl Config {
         }
     }
 
-    fn parse_custom_normalization(&self, line: &str, prefix: &str) -> Option<(String, String)> {
-        let parsed = parse_cfg_name_directive(self, line, prefix);
-        if parsed.outcome != MatchOutcome::Match {
-            return None;
-        }
-        let name = parsed.name.expect("successful match always has a name");
+    fn parse_custom_normalization(&self, raw_directive: &str) -> Option<NormalizeRule> {
+        // FIXME(Zalathar): Integrate name/value splitting into `DirectiveLine`
+        // instead of doing it here.
+        let (directive_name, raw_value) = raw_directive.split_once(':')?;
 
-        let Some((regex, replacement)) = parse_normalize_rule(line) else {
+        let kind = match directive_name {
+            "normalize-stdout" => NormalizeKind::Stdout,
+            "normalize-stderr" => NormalizeKind::Stderr,
+            "normalize-stderr-32bit" => NormalizeKind::Stderr32bit,
+            "normalize-stderr-64bit" => NormalizeKind::Stderr64bit,
+            _ => return None,
+        };
+
+        let Some((regex, replacement)) = parse_normalize_rule(raw_value) else {
             panic!(
-                "couldn't parse custom normalization rule: `{line}`\n\
-                help: expected syntax is: `{prefix}-{name}: \"REGEX\" -> \"REPLACEMENT\"`"
+                "couldn't parse custom normalization rule: `{raw_directive}`\n\
+                help: expected syntax is: `{directive_name}: \"REGEX\" -> \"REPLACEMENT\"`"
             );
         };
-        Some((regex, replacement))
+        Some(NormalizeRule { kind, regex, replacement })
     }
 
     fn parse_name_directive(&self, line: &str, directive: &str) -> bool {
@@ -1119,26 +1135,43 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     value
 }
 
+struct NormalizeRule {
+    kind: NormalizeKind,
+    regex: String,
+    replacement: String,
+}
+
+enum NormalizeKind {
+    Stdout,
+    Stderr,
+    Stderr32bit,
+    Stderr64bit,
+}
+
 /// Parses the regex and replacement values of a `//@ normalize-*` header,
 /// in the format:
 /// ```text
-/// normalize-*: "REGEX" -> "REPLACEMENT"
+/// "REGEX" -> "REPLACEMENT"
 /// ```
-fn parse_normalize_rule(header: &str) -> Option<(String, String)> {
+fn parse_normalize_rule(raw_value: &str) -> Option<(String, String)> {
     // FIXME: Support escaped double-quotes in strings.
     let captures = static_regex!(
         r#"(?x) # (verbose mode regex)
         ^
-        [^:\s]+:\s*             # (header name followed by colon)
+        \s*                     # (leading whitespace)
         "(?<regex>[^"]*)"       # "REGEX"
         \s+->\s+                # ->
         "(?<replacement>[^"]*)" # "REPLACEMENT"
         $
         "#
     )
-    .captures(header)?;
+    .captures(raw_value)?;
     let regex = captures["regex"].to_owned();
     let replacement = captures["replacement"].to_owned();
+    // A `\n` sequence in the replacement becomes an actual newline.
+    // FIXME: Do unescaping in a less ad-hoc way, and perhaps support escaped
+    // backslashes and double-quotes.
+    let replacement = replacement.replace("\\n", "\n");
     Some((regex, replacement))
 }
 

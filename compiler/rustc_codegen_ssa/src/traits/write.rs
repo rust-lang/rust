@@ -1,5 +1,7 @@
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_errors::{DiagCtxtHandle, FatalError};
 use rustc_middle::dep_graph::WorkProduct;
+use rustc_middle::ty::TyCtxt;
 
 use crate::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use crate::back::write::{CodegenContext, FatLtoInput, ModuleConfig};
@@ -61,6 +63,13 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         want_summary: bool,
     ) -> (String, Self::ThinBuffer);
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer);
+    fn autodiff(
+        cgcx: &CodegenContext<Self>,
+        tcx: TyCtxt<'_>,
+        module: &ModuleCodegen<Self::Module>,
+        diff_fncs: Vec<AutoDiffItem>,
+        config: &ModuleConfig,
+    ) -> Result<(), FatalError>;
 }
 
 pub trait ThinBufferMethods: Send + Sync {

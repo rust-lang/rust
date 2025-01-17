@@ -16,13 +16,16 @@ use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, S
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
 use tracing::{debug, warn};
 
 use super::command::Command;
 use super::symbol_export;
 use crate::errors;
+
+#[cfg(test)]
+mod tests;
 
 /// Disables non-English messages from localized linkers.
 /// Such messages may cause issues with text encoding on Windows (#35785)
@@ -47,8 +50,7 @@ pub(crate) fn get_linker<'a>(
     self_contained: bool,
     target_cpu: &'a str,
 ) -> Box<dyn Linker + 'a> {
-    // FIXME(cc-rs#1265) pass only target arch to find_tool()
-    let msvc_tool = windows_registry::find_tool(sess.opts.target_triple.tuple(), "link.exe");
+    let msvc_tool = windows_registry::find_tool(&sess.target.arch, "link.exe");
 
     // If our linker looks like a batch script on Windows then to execute this
     // we'll need to spawn `cmd` explicitly. This is primarily done to handle
@@ -178,23 +180,42 @@ fn verbatim_args<L: Linker + ?Sized>(
     }
     l
 }
-/// Arguments for the underlying linker.
-/// Add options to pass them through cc wrapper if `Linker` is a cc wrapper.
-fn link_args<L: Linker + ?Sized>(
-    l: &mut L,
-    args: impl IntoIterator<Item: AsRef<OsStr>, IntoIter: ExactSizeIterator>,
-) -> &mut L {
-    let args = args.into_iter();
-    if !l.is_cc() {
-        verbatim_args(l, args);
-    } else if args.len() != 0 {
-        // FIXME: Support arguments with commas, see `rpaths_to_flags` for the example.
-        let mut combined_arg = OsString::from("-Wl");
-        for arg in args {
+/// Add underlying linker arguments to C compiler command, by wrapping them in
+/// `-Wl` or `-Xlinker`.
+fn convert_link_args_to_cc_args(cmd: &mut Command, args: impl IntoIterator<Item: AsRef<OsStr>>) {
+    let mut combined_arg = OsString::from("-Wl");
+    for arg in args {
+        // If the argument itself contains a comma, we need to emit it
+        // as `-Xlinker`, otherwise we can use `-Wl`.
+        if arg.as_ref().as_encoded_bytes().contains(&b',') {
+            // Emit current `-Wl` argument, if any has been built.
+            if combined_arg != OsStr::new("-Wl") {
+                cmd.arg(combined_arg);
+                // Begin next `-Wl` argument.
+                combined_arg = OsString::from("-Wl");
+            }
+
+            // Emit `-Xlinker` argument.
+            cmd.arg("-Xlinker");
+            cmd.arg(arg);
+        } else {
+            // Append to `-Wl` argument.
             combined_arg.push(",");
             combined_arg.push(arg);
         }
-        l.cmd().arg(combined_arg);
+    }
+    // Emit final `-Wl` argument.
+    if combined_arg != OsStr::new("-Wl") {
+        cmd.arg(combined_arg);
+    }
+}
+/// Arguments for the underlying linker.
+/// Add options to pass them through cc wrapper if `Linker` is a cc wrapper.
+fn link_args<L: Linker + ?Sized>(l: &mut L, args: impl IntoIterator<Item: AsRef<OsStr>>) -> &mut L {
+    if !l.is_cc() {
+        verbatim_args(l, args);
+    } else {
+        convert_link_args_to_cc_args(l.cmd(), args);
     }
     l
 }
@@ -224,7 +245,7 @@ macro_rules! generate_arg_methods {
                 verbatim_args(self, iter::once(arg))
             }
             #[allow(unused)]
-            pub(crate) fn link_args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>, IntoIter: ExactSizeIterator>) -> &mut Self {
+            pub(crate) fn link_args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>>) -> &mut Self {
                 link_args(self, args)
             }
             #[allow(unused)]
@@ -1672,6 +1693,8 @@ impl<'a> Linker for AixLinker<'a> {
 
     fn pgo_gen(&mut self) {
         self.link_arg("-bdbg:namedsects:ss");
+        self.link_arg("-u");
+        self.link_arg("__llvm_profile_runtime");
     }
 
     fn control_flow_guard(&mut self) {}
@@ -1720,15 +1743,10 @@ fn for_each_exported_symbols_include_dep<'tcx>(
     crate_type: CrateType,
     mut callback: impl FnMut(ExportedSymbol<'tcx>, SymbolExportInfo, CrateNum),
 ) {
-    for &(symbol, info) in tcx.exported_symbols(LOCAL_CRATE).iter() {
-        callback(symbol, info, LOCAL_CRATE);
-    }
-
     let formats = tcx.dependency_formats(());
-    let deps = formats.iter().find_map(|(t, list)| (*t == crate_type).then_some(list)).unwrap();
+    let deps = &formats[&crate_type];
 
-    for (index, dep_format) in deps.iter().enumerate() {
-        let cnum = CrateNum::new(index + 1);
+    for (cnum, dep_format) in deps.iter_enumerated() {
         // For each dependency that we are linking to statically ...
         if *dep_format == Linkage::Static {
             for &(symbol, info) in tcx.exported_symbols(cnum).iter() {

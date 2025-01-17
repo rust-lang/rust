@@ -31,8 +31,7 @@ use rustc_serialize::{Decodable, Decoder};
 use rustc_session::Session;
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
-use rustc_span::symbol::kw;
-use rustc_span::{BytePos, DUMMY_SP, Pos, SpanData, SpanDecoder, SyntaxContext};
+use rustc_span::{BytePos, DUMMY_SP, Pos, SpanData, SpanDecoder, SyntaxContext, kw};
 use tracing::debug;
 
 use crate::creader::CStore;
@@ -872,8 +871,9 @@ impl MetadataBlob {
 
                         let def_kind = root.tables.def_kind.get(blob, item).unwrap();
                         let def_key = root.tables.def_keys.get(blob, item).unwrap().decode(blob);
+                        #[allow(rustc::symbol_intern_string_literal)]
                         let def_name = if item == CRATE_DEF_INDEX {
-                            rustc_span::symbol::kw::Crate
+                            kw::Crate
                         } else {
                             def_key
                                 .disambiguated_data
@@ -1103,6 +1103,7 @@ impl<'a> CrateMetadataRef<'a> {
                         name: self.item_name(did.index),
                         vis: self.get_visibility(did.index),
                         safety: self.get_safety(did.index),
+                        value: self.get_default_field(did.index),
                     })
                     .collect(),
                 adt_kind,
@@ -1166,6 +1167,10 @@ impl<'a> CrateMetadataRef<'a> {
 
     fn get_safety(self, id: DefIndex) -> Safety {
         self.root.tables.safety.get(self, id).unwrap_or_else(|| self.missing("safety", id))
+    }
+
+    fn get_default_field(self, id: DefIndex) -> Option<DefId> {
+        self.root.tables.default_fields.get(self, id).map(|d| d.decode(self))
     }
 
     fn get_trait_item_def_id(self, id: DefIndex) -> Option<DefId> {
@@ -1363,7 +1368,7 @@ impl<'a> CrateMetadataRef<'a> {
         self,
         id: DefIndex,
         sess: &'a Session,
-    ) -> impl Iterator<Item = ast::Attribute> + 'a {
+    ) -> impl Iterator<Item = hir::Attribute> + 'a {
         self.root
             .tables
             .attributes
@@ -1469,7 +1474,7 @@ impl<'a> CrateMetadataRef<'a> {
     ) -> &'tcx [(CrateNum, LinkagePreference)] {
         tcx.arena.alloc_from_iter(
             self.root.dylib_dependency_formats.decode(self).enumerate().flat_map(|(i, link)| {
-                let cnum = CrateNum::new(i + 1);
+                let cnum = CrateNum::new(i + 1); // We skipped LOCAL_CRATE when encoding
                 link.map(|link| (self.cnum_map[cnum], link))
             }),
         )

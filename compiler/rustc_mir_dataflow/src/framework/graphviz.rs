@@ -2,19 +2,186 @@
 
 use std::borrow::Cow;
 use std::cell::RefCell;
+use std::ffi::OsString;
+use std::path::PathBuf;
 use std::sync::OnceLock;
 use std::{io, ops, str};
 
 use regex::Regex;
-use rustc_graphviz as dot;
-use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::{self, BasicBlock, Body, Location, graphviz_safe_def_name};
+use rustc_hir::def_id::DefId;
+use rustc_index::bit_set::DenseBitSet;
+use rustc_middle::mir::{
+    self, BasicBlock, Body, Location, create_dump_file, dump_enabled, graphviz_safe_def_name,
+    traversal,
+};
+use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_span::{Symbol, sym};
+use tracing::debug;
+use {rustc_ast as ast, rustc_graphviz as dot};
 
 use super::fmt::{DebugDiffWithAdapter, DebugWithAdapter, DebugWithContext};
 use super::{Analysis, CallReturnPlaces, Direction, Results, ResultsCursor, ResultsVisitor};
+use crate::errors::{
+    DuplicateValuesFor, PathMustEndInFilename, RequiresAnArgument, UnknownFormatter,
+};
+
+/// Writes a DOT file containing the results of a dataflow analysis if the user requested it via
+/// `rustc_mir` attributes and `-Z dump-mir-dataflow`. The `Result` in and the `Results` out are
+/// the same.
+pub(super) fn write_graphviz_results<'tcx, A>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    results: &mut Results<'tcx, A>,
+    pass_name: Option<&'static str>,
+) -> std::io::Result<()>
+where
+    A: Analysis<'tcx>,
+    A::Domain: DebugWithContext<A>,
+{
+    use std::fs;
+    use std::io::Write;
+
+    let def_id = body.source.def_id();
+    let Ok(attrs) = RustcMirAttrs::parse(tcx, def_id) else {
+        // Invalid `rustc_mir` attrs are reported in `RustcMirAttrs::parse`
+        return Ok(());
+    };
+
+    let file = try {
+        match attrs.output_path(A::NAME) {
+            Some(path) => {
+                debug!("printing dataflow results for {:?} to {}", def_id, path.display());
+                if let Some(parent) = path.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                fs::File::create_buffered(&path)?
+            }
+
+            None if dump_enabled(tcx, A::NAME, def_id) => {
+                create_dump_file(tcx, "dot", false, A::NAME, &pass_name.unwrap_or("-----"), body)?
+            }
+
+            _ => return Ok(()),
+        }
+    };
+    let mut file = match file {
+        Ok(f) => f,
+        Err(e) => return Err(e),
+    };
+
+    let style = match attrs.formatter {
+        Some(sym::two_phase) => OutputStyle::BeforeAndAfter,
+        _ => OutputStyle::AfterOnly,
+    };
+
+    let mut buf = Vec::new();
+
+    let graphviz = Formatter::new(body, results, style);
+    let mut render_opts =
+        vec![dot::RenderOption::Fontname(tcx.sess.opts.unstable_opts.graphviz_font.clone())];
+    if tcx.sess.opts.unstable_opts.graphviz_dark_mode {
+        render_opts.push(dot::RenderOption::DarkTheme);
+    }
+    let r = with_no_trimmed_paths!(dot::render_opts(&graphviz, &mut buf, &render_opts));
+
+    let lhs = try {
+        r?;
+        file.write_all(&buf)?;
+    };
+
+    lhs
+}
+
+#[derive(Default)]
+struct RustcMirAttrs {
+    basename_and_suffix: Option<PathBuf>,
+    formatter: Option<Symbol>,
+}
+
+impl RustcMirAttrs {
+    fn parse(tcx: TyCtxt<'_>, def_id: DefId) -> Result<Self, ()> {
+        let mut result = Ok(());
+        let mut ret = RustcMirAttrs::default();
+
+        let rustc_mir_attrs = tcx
+            .get_attrs(def_id, sym::rustc_mir)
+            .flat_map(|attr| attr.meta_item_list().into_iter().flat_map(|v| v.into_iter()));
+
+        for attr in rustc_mir_attrs {
+            let attr_result = if attr.has_name(sym::borrowck_graphviz_postflow) {
+                Self::set_field(&mut ret.basename_and_suffix, tcx, &attr, |s| {
+                    let path = PathBuf::from(s.to_string());
+                    match path.file_name() {
+                        Some(_) => Ok(path),
+                        None => {
+                            tcx.dcx().emit_err(PathMustEndInFilename { span: attr.span() });
+                            Err(())
+                        }
+                    }
+                })
+            } else if attr.has_name(sym::borrowck_graphviz_format) {
+                Self::set_field(&mut ret.formatter, tcx, &attr, |s| match s {
+                    sym::gen_kill | sym::two_phase => Ok(s),
+                    _ => {
+                        tcx.dcx().emit_err(UnknownFormatter { span: attr.span() });
+                        Err(())
+                    }
+                })
+            } else {
+                Ok(())
+            };
+
+            result = result.and(attr_result);
+        }
+
+        result.map(|()| ret)
+    }
+
+    fn set_field<T>(
+        field: &mut Option<T>,
+        tcx: TyCtxt<'_>,
+        attr: &ast::MetaItemInner,
+        mapper: impl FnOnce(Symbol) -> Result<T, ()>,
+    ) -> Result<(), ()> {
+        if field.is_some() {
+            tcx.dcx()
+                .emit_err(DuplicateValuesFor { span: attr.span(), name: attr.name_or_empty() });
+
+            return Err(());
+        }
+
+        if let Some(s) = attr.value_str() {
+            *field = Some(mapper(s)?);
+            Ok(())
+        } else {
+            tcx.dcx()
+                .emit_err(RequiresAnArgument { span: attr.span(), name: attr.name_or_empty() });
+            Err(())
+        }
+    }
+
+    /// Returns the path where dataflow results should be written, or `None`
+    /// `borrowck_graphviz_postflow` was not specified.
+    ///
+    /// This performs the following transformation to the argument of `borrowck_graphviz_postflow`:
+    ///
+    /// "path/suffix.dot" -> "path/analysis_name_suffix.dot"
+    fn output_path(&self, analysis_name: &str) -> Option<PathBuf> {
+        let mut ret = self.basename_and_suffix.as_ref().cloned()?;
+        let suffix = ret.file_name().unwrap(); // Checked when parsing attrs
+
+        let mut file_name: OsString = analysis_name.into();
+        file_name.push("_");
+        file_name.push(suffix);
+        ret.set_file_name(file_name);
+
+        Some(ret)
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum OutputStyle {
+enum OutputStyle {
     AfterOnly,
     BeforeAndAfter,
 }
@@ -28,7 +195,7 @@ impl OutputStyle {
     }
 }
 
-pub(crate) struct Formatter<'mir, 'tcx, A>
+struct Formatter<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
@@ -38,34 +205,30 @@ where
     // the operations that involve the mutation, i.e. within the `borrow_mut`.
     cursor: RefCell<ResultsCursor<'mir, 'tcx, A>>,
     style: OutputStyle,
-    reachable: BitSet<BasicBlock>,
+    reachable: DenseBitSet<BasicBlock>,
 }
 
 impl<'mir, 'tcx, A> Formatter<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    pub(crate) fn new(
+    fn new(
         body: &'mir Body<'tcx>,
-        results: Results<'tcx, A>,
+        results: &'mir mut Results<'tcx, A>,
         style: OutputStyle,
     ) -> Self {
-        let reachable = mir::traversal::reachable_as_bitset(body);
-        Formatter { cursor: results.into_results_cursor(body).into(), style, reachable }
+        let reachable = traversal::reachable_as_bitset(body);
+        Formatter { cursor: results.as_results_cursor(body).into(), style, reachable }
     }
 
     fn body(&self) -> &'mir Body<'tcx> {
         self.cursor.borrow().body()
     }
-
-    pub(crate) fn into_results(self) -> Results<'tcx, A> {
-        self.cursor.into_inner().into_results()
-    }
 }
 
 /// A pair of a basic block and an index into that basic blocks `successors`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub(crate) struct CfgEdge {
+struct CfgEdge {
     source: BasicBlock,
     index: usize,
 }
@@ -524,7 +687,7 @@ struct StateDiffCollector<D> {
 
 impl<D> StateDiffCollector<D> {
     fn run<'tcx, A>(
-        body: &mir::Body<'tcx>,
+        body: &Body<'tcx>,
         block: BasicBlock,
         results: &mut Results<'tcx, A>,
         style: OutputStyle,
@@ -561,7 +724,7 @@ where
         }
     }
 
-    fn visit_statement_before_primary_effect(
+    fn visit_after_early_statement_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
         state: &A::Domain,
@@ -574,7 +737,7 @@ where
         }
     }
 
-    fn visit_statement_after_primary_effect(
+    fn visit_after_primary_statement_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
         state: &A::Domain,
@@ -585,7 +748,7 @@ where
         self.prev_state.clone_from(state)
     }
 
-    fn visit_terminator_before_primary_effect(
+    fn visit_after_early_terminator_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
         state: &A::Domain,
@@ -598,7 +761,7 @@ where
         }
     }
 
-    fn visit_terminator_after_primary_effect(
+    fn visit_after_primary_terminator_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
         state: &A::Domain,

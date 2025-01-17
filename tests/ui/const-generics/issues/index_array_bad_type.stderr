@@ -1,0 +1,8 @@
+error: the constant `N` is not of type `usize`
+  --> $DIR/index_array_bad_type.rs:10:40
+   |
+LL | pub struct BadStruct<const N: i64>(pub [u8; N]);
+   |                                        ^^^^^^^ expected `usize`, found `i64`
+
+error: aborting due to 1 previous error
+

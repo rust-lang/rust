@@ -10,12 +10,11 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{Visitor, walk_ty};
-use rustc_hir::{FnRetTy, GenericParamKind};
+use rustc_hir::{FnRetTy, GenericParamKind, Node};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, TraitRefPrintOnlyTraitPath};
 use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, PolyTraitRef, Region, Ty, TyCtxt};
-use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Ident, Span, Symbol, kw};
 
 use crate::error_reporting::infer::ObligationCauseAsDiagArg;
 use crate::error_reporting::infer::need_type_info::UnderspecifiedArgKind;
@@ -517,17 +516,17 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                 return false;
             };
 
-            let node = self.tcx.hir_node_by_def_id(anon_reg.def_id);
+            let node = self.tcx.hir_node_by_def_id(anon_reg.scope);
             let is_impl = matches!(&node, hir::Node::ImplItem(_));
             let (generics, parent_generics) = match node {
                 hir::Node::Item(&hir::Item {
-                    kind: hir::ItemKind::Fn(_, ref generics, ..),
+                    kind: hir::ItemKind::Fn { ref generics, .. },
                     ..
                 })
                 | hir::Node::TraitItem(&hir::TraitItem { ref generics, .. })
                 | hir::Node::ImplItem(&hir::ImplItem { ref generics, .. }) => (
                     generics,
-                    match self.tcx.parent_hir_node(self.tcx.local_def_id_to_hir_id(anon_reg.def_id))
+                    match self.tcx.parent_hir_node(self.tcx.local_def_id_to_hir_id(anon_reg.scope))
                     {
                         hir::Node::Item(hir::Item {
                             kind: hir::ItemKind::Trait(_, _, ref generics, ..),
@@ -1730,8 +1729,15 @@ pub enum ObligationCauseFailureCode {
         #[primary_span]
         span: Span,
     },
-    #[diag(trait_selection_oc_cant_coerce, code = E0308)]
-    CantCoerce {
+    #[diag(trait_selection_oc_cant_coerce_force_inline, code = E0308)]
+    CantCoerceForceInline {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+    },
+    #[diag(trait_selection_oc_cant_coerce_intrinsic, code = E0308)]
+    CantCoerceIntrinsic {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
@@ -1888,10 +1894,35 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
         .collect::<Vec<_>>()
         .join(", ");
 
-    suggs.push((
-        tcx.def_span(opaque_def_id).shrink_to_hi(),
-        format!(" + use<{concatenated_bounds}>"),
-    ));
+    let opaque_hir_id = tcx.local_def_id_to_hir_id(opaque_def_id);
+    // FIXME: This is a bit too conservative, since it ignores parens already written in AST.
+    let (lparen, rparen) = match tcx
+        .hir()
+        .parent_iter(opaque_hir_id)
+        .nth(1)
+        .expect("expected ty to have a parent always")
+        .1
+    {
+        Node::PathSegment(segment)
+            if segment.args().paren_sugar_output().is_some_and(|ty| ty.hir_id == opaque_hir_id) =>
+        {
+            ("(", ")")
+        }
+        Node::Ty(ty) => match ty.kind {
+            rustc_hir::TyKind::Ptr(_) | rustc_hir::TyKind::Ref(..) => ("(", ")"),
+            // FIXME: RPITs are not allowed to be nested in `impl Fn() -> ...`,
+            // but we eventually could support that, and that would necessitate
+            // making this more sophisticated.
+            _ => ("", ""),
+        },
+        _ => ("", ""),
+    };
+
+    let rpit_span = tcx.def_span(opaque_def_id);
+    if !lparen.is_empty() {
+        suggs.push((rpit_span.shrink_to_lo(), lparen.to_string()));
+    }
+    suggs.push((rpit_span.shrink_to_hi(), format!(" + use<{concatenated_bounds}>{rparen}")));
 
     Some(AddPreciseCapturingForOvercapture { suggs, apit_spans })
 }

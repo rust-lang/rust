@@ -11,10 +11,43 @@
 +     scope 1 (inlined std::ptr::drop_in_place::<Vec<A>> - shim(Some(Vec<A>))) {
 +         let mut _6: &mut std::vec::Vec<A>;
 +         let mut _7: ();
++         scope 2 (inlined <Vec<A> as Drop>::drop) {
++             let mut _8: *mut [A];
++             let mut _9: *mut A;
++             let mut _10: usize;
++             scope 3 (inlined Vec::<A>::as_mut_ptr) {
++                 scope 4 (inlined alloc::raw_vec::RawVec::<A>::ptr) {
++                     scope 5 (inlined alloc::raw_vec::RawVecInner::ptr::<A>) {
++                         scope 6 (inlined alloc::raw_vec::RawVecInner::non_null::<A>) {
++                             let mut _11: std::ptr::NonNull<u8>;
++                             scope 7 (inlined Unique::<u8>::cast::<A>) {
++                                 scope 8 (inlined NonNull::<u8>::cast::<A>) {
++                                     scope 9 (inlined NonNull::<u8>::as_ptr) {
++                                     }
++                                 }
++                             }
++                             scope 10 (inlined Unique::<A>::as_non_null_ptr) {
++                             }
++                         }
++                         scope 11 (inlined NonNull::<A>::as_ptr) {
++                         }
++                     }
++                 }
++             }
++             scope 12 (inlined slice_from_raw_parts_mut::<A>) {
++                 scope 13 (inlined std::ptr::from_raw_parts_mut::<[A], A>) {
++                 }
++             }
++             scope 14 (inlined std::ptr::drop_in_place::<[A]> - shim(Some([A]))) {
++                 let mut _12: usize;
++                 let mut _13: *mut A;
++                 let mut _14: bool;
++             }
++         }
 +     }
-+     scope 2 (inlined std::ptr::drop_in_place::<Option<B>> - shim(Some(Option<B>))) {
-+         let mut _8: isize;
-+         let mut _9: isize;
++     scope 15 (inlined std::ptr::drop_in_place::<Option<B>> - shim(Some(Option<B>))) {
++         let mut _15: isize;
++         let mut _16: isize;
 +     }
   
       bb0: {
@@ -25,7 +58,21 @@
 +         StorageLive(_6);
 +         StorageLive(_7);
 +         _6 = &mut (*_4);
-+         _7 = <Vec<A> as Drop>::drop(move _6) -> [return: bb2, unwind unreachable];
++         StorageLive(_10);
++         StorageLive(_8);
++         StorageLive(_9);
++         StorageLive(_11);
++         _11 = copy (((((*_6).0: alloc::raw_vec::RawVec<A>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
++         _9 = copy _11 as *mut A (Transmute);
++         StorageDead(_11);
++         _10 = copy ((*_6).1: usize);
++         _8 = *mut [A] from (copy _9, copy _10);
++         StorageDead(_9);
++         StorageLive(_12);
++         StorageLive(_13);
++         StorageLive(_14);
++         _12 = const 0_usize;
++         goto -> bb4;
       }
   
       bb1: {
@@ -36,25 +83,41 @@
           StorageLive(_5);
           _5 = copy _2;
 -         _0 = std::ptr::drop_in_place::<Option<B>>(move _5) -> [return: bb2, unwind unreachable];
-+         StorageLive(_8);
-+         StorageLive(_9);
-+         _8 = discriminant((*_5));
-+         switchInt(move _8) -> [0: bb3, otherwise: bb4];
++         StorageLive(_15);
++         StorageLive(_16);
++         _15 = discriminant((*_5));
++         switchInt(move _15) -> [0: bb5, otherwise: bb6];
       }
   
       bb2: {
++         StorageDead(_14);
++         StorageDead(_13);
++         StorageDead(_12);
++         StorageDead(_8);
++         StorageDead(_10);
 +         drop(((*_4).0: alloc::raw_vec::RawVec<A>)) -> [return: bb1, unwind unreachable];
 +     }
 + 
 +     bb3: {
-+         StorageDead(_9);
-+         StorageDead(_8);
++         _13 = &raw mut (*_8)[_12];
++         _12 = Add(move _12, const 1_usize);
++         drop((*_13)) -> [return: bb4, unwind unreachable];
++     }
++ 
++     bb4: {
++         _14 = Eq(copy _12, copy _10);
++         switchInt(move _14) -> [0: bb3, otherwise: bb2];
++     }
++ 
++     bb5: {
++         StorageDead(_16);
++         StorageDead(_15);
           StorageDead(_5);
           return;
 +     }
 + 
-+     bb4: {
-+         drop((((*_5) as Some).0: B)) -> [return: bb3, unwind unreachable];
++     bb6: {
++         drop((((*_5) as Some).0: B)) -> [return: bb5, unwind unreachable];
       }
   }
   

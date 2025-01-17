@@ -31,8 +31,7 @@ note: this definition site has more where clauses than the opaque type
    |
 LL | /     pub fn define_tait() -> Tait
 LL | |     where
-LL | |         // this proves `Bar<()>: Copy`, but `define_tait` is
-LL | |         // now uncallable
+...  |
 LL | |         (): Proj<Assoc = i32>,
    | |______________________________^
 

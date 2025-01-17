@@ -1,3 +1,4 @@
+//@ add-core-stubs
 // FIXME(nagisa): remove the flags below once all targets support `asm!`.
 //@ compile-flags: --target x86_64-unknown-linux-gnu -Copt-level=0
 //@ needs-llvm-components: x86
@@ -5,19 +6,12 @@
 // Verify we sanitize the special tokens for the LLVM inline-assembly, ensuring people won't
 // inadvertently rely on the LLVM-specific syntax and features.
 #![no_core]
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core)]
 #![crate_type = "rlib"]
 #![allow(named_asm_labels)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 pub unsafe fn we_escape_dollar_signs() {
     // CHECK: call void asm sideeffect alignstack inteldialect "banana$$:"

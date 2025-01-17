@@ -38,8 +38,8 @@ pub(super) fn check<'tcx>(
         cx,
         label,
         inner_labels: label.into_iter().collect(),
-        is_finite: false,
         loop_depth: 0,
+        is_finite: false,
     };
     loop_visitor.visit_block(loop_block);
 
@@ -75,7 +75,11 @@ fn get_parent_fn_ret_ty<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option
                 ..
             }) => (),
             Node::Item(hir::Item {
-                kind: hir::ItemKind::Fn(FnSig { decl, .. }, _, _),
+                kind:
+                    hir::ItemKind::Fn {
+                        sig: FnSig { decl, .. },
+                        ..
+                    },
                 ..
             })
             | Node::TraitItem(hir::TraitItem {

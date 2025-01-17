@@ -388,8 +388,8 @@ impl<'tcx> LateLintPass<'tcx> for Types {
 
         self.check_fn_decl(cx, decl, CheckTyContext {
             is_in_trait_impl,
-            is_exported,
             in_body: matches!(fn_kind, FnKind::Closure),
+            is_exported,
             ..CheckTyContext::default()
         });
     }

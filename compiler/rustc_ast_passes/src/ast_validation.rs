@@ -34,8 +34,7 @@ use rustc_session::lint::builtin::{
     PATTERNS_IN_FNS_WITHOUT_BODY,
 };
 use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, kw, sym};
+use rustc_span::{Ident, Span, kw, sym};
 use rustc_target::spec::abi;
 use thin_vec::thin_vec;
 
@@ -342,7 +341,7 @@ impl<'a> AstValidator<'a> {
                     sym::forbid,
                     sym::warn,
                 ];
-                !arr.contains(&attr.name_or_empty()) && rustc_attr::is_builtin_attr(attr)
+                !arr.contains(&attr.name_or_empty()) && rustc_attr_parsing::is_builtin_attr(*attr)
             })
             .for_each(|attr| {
                 if attr.is_doc_comment() {
@@ -921,7 +920,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::Fn(box Fn { defaultness, sig, generics, body }) => {
                 self.check_defaultness(item.span, *defaultness);
 
-                if body.is_none() {
+                let is_intrinsic =
+                    item.attrs.iter().any(|a| a.name_or_empty() == sym::rustc_intrinsic);
+                if body.is_none() && !is_intrinsic {
                     self.dcx().emit_err(errors::FnWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),
@@ -1029,7 +1030,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.dcx().emit_err(errors::UnsafeItem { span, kind: "module" });
                 }
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
-                if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _))
+                if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _, _))
                     && !attr::contains_name(&item.attrs, sym::path)
                 {
                     self.check_mod_file_item_asciionly(item.ident);
@@ -1200,14 +1201,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         validate_generic_param_order(self.dcx(), &generics.params, generics.span);
 
         for predicate in &generics.where_clause.predicates {
-            if let WherePredicate::EqPredicate(predicate) = predicate {
-                deny_equality_constraints(self, predicate, generics);
+            let span = predicate.span;
+            if let WherePredicateKind::EqPredicate(predicate) = &predicate.kind {
+                deny_equality_constraints(self, predicate, span, generics);
             }
         }
         walk_list!(self, visit_generic_param, &generics.params);
         for predicate in &generics.where_clause.predicates {
-            match predicate {
-                WherePredicate::BoundPredicate(bound_pred) => {
+            match &predicate.kind {
+                WherePredicateKind::BoundPredicate(bound_pred) => {
                     // This is slightly complicated. Our representation for poly-trait-refs contains a single
                     // binder and thus we only allow a single level of quantification. However,
                     // the syntax of Rust permits quantification in two places in where clauses,
@@ -1504,9 +1506,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 fn deny_equality_constraints(
     this: &AstValidator<'_>,
     predicate: &WhereEqPredicate,
+    predicate_span: Span,
     generics: &Generics,
 ) {
-    let mut err = errors::EqualityInWhere { span: predicate.span, assoc: None, assoc2: None };
+    let mut err = errors::EqualityInWhere { span: predicate_span, assoc: None, assoc2: None };
 
     // Given `<A as Foo>::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
     if let TyKind::Path(Some(qself), full_path) = &predicate.lhs_ty.kind
@@ -1550,7 +1553,7 @@ fn deny_equality_constraints(
                     }
                 }
                 err.assoc = Some(errors::AssociatedSuggestion {
-                    span: predicate.span,
+                    span: predicate_span,
                     ident: *ident,
                     param: param.ident,
                     path: pprust::path_to_string(&assoc_path),
@@ -1580,23 +1583,23 @@ fn deny_equality_constraints(
                     // We're removing th eonly where bound left, remove the whole thing.
                     generics.where_clause.span
                 } else {
-                    let mut span = predicate.span;
+                    let mut span = predicate_span;
                     let mut prev: Option<Span> = None;
                     let mut preds = generics.where_clause.predicates.iter().peekable();
                     // Find the predicate that shouldn't have been in the where bound list.
                     while let Some(pred) = preds.next() {
-                        if let WherePredicate::EqPredicate(pred) = pred
-                            && pred.span == predicate.span
+                        if let WherePredicateKind::EqPredicate(_) = pred.kind
+                            && pred.span == predicate_span
                         {
                             if let Some(next) = preds.peek() {
                                 // This is the first predicate, remove the trailing comma as well.
-                                span = span.with_hi(next.span().lo());
+                                span = span.with_hi(next.span.lo());
                             } else if let Some(prev) = prev {
                                 // Remove the previous comma as well.
                                 span = span.with_lo(prev.hi());
                             }
                         }
-                        prev = Some(pred.span());
+                        prev = Some(pred.span);
                     }
                     span
                 };
@@ -1613,8 +1616,8 @@ fn deny_equality_constraints(
     if let TyKind::Path(None, full_path) = &predicate.lhs_ty.kind {
         // Given `A: Foo, Foo::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
         for bounds in generics.params.iter().map(|p| &p.bounds).chain(
-            generics.where_clause.predicates.iter().filter_map(|pred| match pred {
-                WherePredicate::BoundPredicate(p) => Some(&p.bounds),
+            generics.where_clause.predicates.iter().filter_map(|pred| match &pred.kind {
+                WherePredicateKind::BoundPredicate(p) => Some(&p.bounds),
                 _ => None,
             }),
         ) {
@@ -1637,8 +1640,8 @@ fn deny_equality_constraints(
         // Given `A: Foo, A::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
         if let [potential_param, potential_assoc] = &full_path.segments[..] {
             for (ident, bounds) in generics.params.iter().map(|p| (p.ident, &p.bounds)).chain(
-                generics.where_clause.predicates.iter().filter_map(|pred| match pred {
-                    WherePredicate::BoundPredicate(p)
+                generics.where_clause.predicates.iter().filter_map(|pred| match &pred.kind {
+                    WherePredicateKind::BoundPredicate(p)
                         if let ast::TyKind::Path(None, path) = &p.bounded_ty.kind
                             && let [segment] = &path.segments[..] =>
                     {

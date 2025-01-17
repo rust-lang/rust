@@ -1,4 +1,4 @@
-//@ compile-flags: -Z parse-only
+//@ compile-flags: -Z parse-crate-root-only
 //@ check-pass
 
 #![feature(const_trait_impl)]

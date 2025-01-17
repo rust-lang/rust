@@ -430,9 +430,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_operand(op)?
             }
 
-            Rvalue::Discriminant(place) | Rvalue::Len(place) => {
-                self.validate_place(place.as_ref())?
-            }
+            Rvalue::Discriminant(place) => self.validate_place(place.as_ref())?,
 
             Rvalue::ThreadLocalRef(_) => return Err(Unpromotable),
 

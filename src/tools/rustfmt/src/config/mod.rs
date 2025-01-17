@@ -29,7 +29,7 @@ pub(crate) mod style_edition;
 // This macro defines configuration options used in rustfmt. Each option
 // is defined as follows:
 //
-// `name: value type, default value, is stable, description;`
+// `name: value type, is stable, description;`
 create_config! {
     // Fundamental stuff
     max_width: MaxWidth, true, "Maximum width of each line";
@@ -149,7 +149,7 @@ create_config! {
     blank_lines_lower_bound: BlankLinesLowerBound, false,
         "Minimum number of blank lines which must be put between items";
     edition: EditionConfig, true, "The edition of the parser (RFC 2052)";
-    style_edition: StyleEditionConfig, false, "The edition of the Style Guide (RFC 3338)";
+    style_edition: StyleEditionConfig, true, "The edition of the Style Guide (RFC 3338)";
     version: VersionConfig, false, "Version of formatting rules";
     inline_attribute_width: InlineAttributeWidth, false,
         "Write an item and its attribute on the same line \

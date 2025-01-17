@@ -7,8 +7,7 @@ use rustc_middle::ty::adjustment::{
     PointerCoercion,
 };
 use rustc_middle::ty::{self, Ty};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, sym};
+use rustc_span::{Ident, Span, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -296,7 +295,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                         };
                         *deref = OverloadedDeref { mutbl, span: deref.span };
-                        self.enforce_context_effects(expr.span, method.def_id, method.args);
+                        self.enforce_context_effects(None, expr.span, method.def_id, method.args);
                         // If this is a union field, also throw an error for `DerefMut` of `ManuallyDrop` (see RFC 2514).
                         // This helps avoid accidental drops.
                         if inside_union

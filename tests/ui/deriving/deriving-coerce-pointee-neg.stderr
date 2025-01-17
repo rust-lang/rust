@@ -30,7 +30,7 @@ LL | #[derive(CoercePointee)]
    |
    = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: exactly one generic type parameter must be marked as #[pointee] to derive CoercePointee traits
+error: exactly one generic type parameter must be marked as `#[pointee]` to derive `CoercePointee` traits
   --> $DIR/deriving-coerce-pointee-neg.rs:31:10
    |
 LL | #[derive(CoercePointee)]
@@ -38,11 +38,11 @@ LL | #[derive(CoercePointee)]
    |
    = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: only one type parameter can be marked as `#[pointee]` when deriving CoercePointee traits
+error: only one type parameter can be marked as `#[pointee]` when deriving `CoercePointee` traits
   --> $DIR/deriving-coerce-pointee-neg.rs:40:39
    |
 LL | struct TooManyPointees<'a, #[pointee] A: ?Sized, #[pointee] B: ?Sized>((&'a A, &'a B));
-   |                                       ^                     ^
+   |                                       ^                     - here another type parameter is marked as `#[pointee]`
 
 error: `CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`
   --> $DIR/deriving-coerce-pointee-neg.rs:43:10
@@ -52,7 +52,7 @@ LL | #[derive(CoercePointee)]
    |
    = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `derive(CoercePointee)` requires T to be marked `?Sized`
+error: `derive(CoercePointee)` requires `T` to be marked `?Sized`
   --> $DIR/deriving-coerce-pointee-neg.rs:51:36
    |
 LL | struct NoMaybeSized<'a, #[pointee] T> {

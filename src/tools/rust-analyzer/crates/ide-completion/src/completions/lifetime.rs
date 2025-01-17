@@ -8,7 +8,6 @@
 //! show up for normal completions, or they won't show completions other than lifetimes depending
 //! on the fixture input.
 use hir::{sym, Name, ScopeDef};
-use syntax::{ast, ToSmolStr, TokenText};
 
 use crate::{
     completions::Completions,
@@ -21,33 +20,24 @@ pub(crate) fn complete_lifetime(
     ctx: &CompletionContext<'_>,
     lifetime_ctx: &LifetimeContext,
 ) {
-    let (lp, lifetime) = match lifetime_ctx {
-        LifetimeContext { kind: LifetimeKind::Lifetime, lifetime } => (None, lifetime),
-        LifetimeContext {
-            kind: LifetimeKind::LifetimeParam { is_decl: false, param },
-            lifetime,
-        } => (Some(param), lifetime),
-        _ => return,
+    let &LifetimeContext { kind: LifetimeKind::Lifetime { in_lifetime_param_bound, def }, .. } =
+        lifetime_ctx
+    else {
+        return;
     };
-    let param_lifetime = match (lifetime, lp.and_then(|lp| lp.lifetime())) {
-        (Some(lt), Some(lp)) if lp == lt.clone() => return,
-        (Some(_), Some(lp)) => Some(lp),
-        _ => None,
-    };
-    let param_lifetime = param_lifetime.as_ref().map(ast::Lifetime::text);
-    let param_lifetime = param_lifetime.as_ref().map(TokenText::as_str);
 
     ctx.process_all_names_raw(&mut |name, res| {
-        if matches!(
-            res,
-            ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_))
-                 if param_lifetime != Some(&*name.display_no_db(ctx.edition).to_smolstr())
-        ) {
+        if matches!(res, ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_))) {
             acc.add_lifetime(ctx, name);
         }
     });
-    if param_lifetime.is_none() {
-        acc.add_lifetime(ctx, Name::new_symbol_root(sym::tick_static.clone()));
+    acc.add_lifetime(ctx, Name::new_symbol_root(sym::tick_static.clone()));
+    if !in_lifetime_param_bound
+        && def.is_some_and(|def| {
+            !matches!(def, hir::GenericDef::Function(_) | hir::GenericDef::Impl(_))
+        })
+    {
+        acc.add_lifetime(ctx, Name::new_symbol_root(sym::tick_underscore.clone()));
     }
 }
 
@@ -222,6 +212,8 @@ fn foo<'footime, 'lifetime: 'a$0>() {}
 "#,
             expect![[r#"
                 lt 'footime
+                lt 'lifetime
+                lt 'static
             "#]],
         );
     }

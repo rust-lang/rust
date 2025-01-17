@@ -18,7 +18,7 @@ use crate::html::markdown::main_body_opts;
 
 pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &str) {
     let report_diag = |cx: &DocContext<'_>, msg: &'static str, range: Range<usize>| {
-        let sp = source_span_for_markdown_range(cx.tcx, &dox, &range, &item.attrs.doc_strings)
+        let sp = source_span_for_markdown_range(cx.tcx, dox, &range, &item.attrs.doc_strings)
             .unwrap_or_else(|| item.attr_span(cx.tcx));
         cx.tcx.node_span_lint(crate::lint::BARE_URLS, hir_id, sp, |lint| {
             lint.primary_message(msg)
@@ -34,14 +34,14 @@ pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
         });
     };
 
-    let mut p = Parser::new_ext(&dox, main_body_opts()).into_offset_iter();
+    let mut p = Parser::new_ext(dox, main_body_opts()).into_offset_iter();
 
     while let Some((event, range)) = p.next() {
         match event {
             Event::Text(s) => find_raw_urls(cx, &s, range, &report_diag),
             // We don't want to check the text inside code blocks or links.
             Event::Start(tag @ (Tag::CodeBlock(_) | Tag::Link { .. })) => {
-                while let Some((event, _)) = p.next() {
+                for (event, _) in p.by_ref() {
                     match event {
                         Event::End(end)
                             if mem::discriminant(&end) == mem::discriminant(&tag.to_end()) =>

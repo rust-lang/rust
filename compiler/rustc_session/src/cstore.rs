@@ -13,8 +13,7 @@ use rustc_hir::def_id::{
 };
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, Definitions};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::{Span, Symbol};
 
 use crate::search_paths::PathKind;
 use crate::utils::NativeLibKind;
@@ -43,7 +42,7 @@ pub enum CrateDepKind {
     /// A dependency that is only used for its macros.
     MacrosOnly,
     /// A dependency that is always injected into the dependency list and so
-    /// doesn't need to be linked to an rlib, e.g., the injected allocator.
+    /// doesn't need to be linked to an rlib, e.g., the injected panic runtime.
     Implicit,
     /// A dependency that is required by an rlib version of this crate.
     /// Ordinary `extern crate`s result in `Explicit` dependencies.

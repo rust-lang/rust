@@ -1,8 +1,0 @@
-error: item has unused generic parameters
-  --> $DIR/promoted-function-1.rs:9:8
-   |
-LL | pub fn test<T>() {
-   |        ^^^^ - generic parameter `T` is unused
-
-error: aborting due to 1 previous error
-

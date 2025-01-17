@@ -1,6 +1,6 @@
-use clippy_config::msrvs::Msrv;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
+use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{
@@ -72,14 +72,13 @@ fn check_arm<'tcx>(
             (Some(a), Some(b)) => SpanlessEq::new(cx).eq_expr(a, b),
         }
         // the binding must not be used in the if guard
-        && outer_guard.map_or(
-            true,
+        && outer_guard.is_none_or(
             |e| !is_local_used(cx, e, binding_id)
         )
         // ...or anywhere in the inner expression
         && match inner {
             IfLetOrMatch::IfLet(_, _, body, els, _) => {
-                !is_local_used(cx, body, binding_id) && els.map_or(true, |e| !is_local_used(cx, e, binding_id))
+                !is_local_used(cx, body, binding_id) && els.is_none_or(|e| !is_local_used(cx, e, binding_id))
             },
             IfLetOrMatch::Match(_, arms, ..) => !arms.iter().any(|arm| is_local_used(cx, arm, binding_id)),
         }

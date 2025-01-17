@@ -26,13 +26,13 @@ error[E0277]: the trait bound `A: const Add42` is not satisfied
   --> $DIR/tilde-const-and-const-params.rs:27:61
    |
 LL | fn bar<A: ~const Add42, const N: usize>(_: Foo<N>) -> Foo<{ A::add(N) }> {
-   |                                                             ^^^^^^^^^
+   |                                                             ^
 
 error[E0277]: the trait bound `A: const Add42` is not satisfied
   --> $DIR/tilde-const-and-const-params.rs:9:44
    |
 LL |     fn add<A: ~const Add42>(self) -> Foo<{ A::add(N) }> {
-   |                                            ^^^^^^^^^
+   |                                            ^
 
 error: aborting due to 4 previous errors
 

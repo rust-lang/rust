@@ -21,7 +21,7 @@ def unwrap_unique_or_non_null(unique_or_nonnull):
 # GDB 14 has a tag class that indicates that extension methods are ok
 # to call.  Use of this tag only requires that printers hide local
 # attributes and methods by prefixing them with "_".
-if hasattr(gdb, 'ValuePrinter'):
+if hasattr(gdb, "ValuePrinter"):
     printer_base = gdb.ValuePrinter
 else:
     printer_base = object
@@ -98,7 +98,7 @@ class StdStrProvider(printer_base):
 
 
 def _enumerate_array_elements(element_ptrs):
-    for (i, element_ptr) in enumerate(element_ptrs):
+    for i, element_ptr in enumerate(element_ptrs):
         key = "[{}]".format(i)
         element = element_ptr.dereference()
 
@@ -173,7 +173,8 @@ class StdVecDequeProvider(printer_base):
 
     def children(self):
         return _enumerate_array_elements(
-            (self._data_ptr + ((self._head + index) % self._cap)) for index in xrange(self._size)
+            (self._data_ptr + ((self._head + index) % self._cap))
+            for index in xrange(self._size)
         )
 
     @staticmethod
@@ -270,7 +271,9 @@ def children_of_btree_map(map):
     # Yields each key/value pair in the node and in any child nodes.
     def children_of_node(node_ptr, height):
         def cast_to_internal(node):
-            internal_type_name = node.type.target().name.replace("LeafNode", "InternalNode", 1)
+            internal_type_name = node.type.target().name.replace(
+                "LeafNode", "InternalNode", 1
+            )
             internal_type = gdb.lookup_type(internal_type_name)
             return node.cast(internal_type.pointer())
 
@@ -293,8 +296,16 @@ def children_of_btree_map(map):
                 # Avoid "Cannot perform pointer math on incomplete type" on zero-sized arrays.
                 key_type_size = keys.type.sizeof
                 val_type_size = vals.type.sizeof
-                key = keys[i]["value"]["value"] if key_type_size > 0 else gdb.parse_and_eval("()")
-                val = vals[i]["value"]["value"] if val_type_size > 0 else gdb.parse_and_eval("()")
+                key = (
+                    keys[i]["value"]["value"]
+                    if key_type_size > 0
+                    else gdb.parse_and_eval("()")
+                )
+                val = (
+                    vals[i]["value"]["value"]
+                    if val_type_size > 0
+                    else gdb.parse_and_eval("()")
+                )
                 yield key, val
 
     if map["length"] > 0:
@@ -352,7 +363,7 @@ class StdOldHashMapProvider(printer_base):
         self._hashes = self._table["hashes"]
         self._hash_uint_type = self._hashes.type
         self._hash_uint_size = self._hashes.type.sizeof
-        self._modulo = 2 ** self._hash_uint_size
+        self._modulo = 2**self._hash_uint_size
         self._data_ptr = self._hashes[ZERO_FIELD]["pointer"]
 
         self._capacity_mask = int(self._table["capacity_mask"])
@@ -382,8 +393,14 @@ class StdOldHashMapProvider(printer_base):
 
         hashes = self._hash_uint_size * self._capacity
         align = self._pair_type_size
-        len_rounded_up = (((((hashes + align) % self._modulo - 1) % self._modulo) & ~(
-                (align - 1) % self._modulo)) % self._modulo - hashes) % self._modulo
+        len_rounded_up = (
+            (
+                (((hashes + align) % self._modulo - 1) % self._modulo)
+                & ~((align - 1) % self._modulo)
+            )
+            % self._modulo
+            - hashes
+        ) % self._modulo
 
         pairs_offset = hashes + len_rounded_up
         pairs_start = gdb.Value(start + pairs_offset).cast(self._pair_type.pointer())

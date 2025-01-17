@@ -1,6 +1,7 @@
-// FIXME run-pass
-//@ known-bug: #110395
+//@ run-pass
+//@ compile-flags: -Znext-solver
 //@ revisions: stock precise
+
 #![feature(const_trait_impl, const_destruct)]
 #![feature(never_type)]
 #![cfg_attr(precise, feature(const_precise_live_drops))]
@@ -64,7 +65,7 @@ mod t {
 
     pub struct ConstDropWithBound<T: const SomeTrait>(pub core::marker::PhantomData<T>);
 
-    impl<T: ~const SomeTrait> const Drop for ConstDropWithBound<T> {
+    impl<T: const SomeTrait> const Drop for ConstDropWithBound<T> {
         fn drop(&mut self) {
             T::foo();
         }

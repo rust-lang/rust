@@ -15,7 +15,6 @@
 
 pub mod args;
 pub mod env;
-#[path = "../unsupported/fs.rs"]
 pub mod fs;
 pub mod helpers;
 #[path = "../unsupported/io.rs"]
@@ -95,7 +94,7 @@ pub const fn unsupported<T>() -> std_io::Result<T> {
 
 #[inline]
 pub const fn unsupported_err() -> std_io::Error {
-    std_io::const_io_error!(std_io::ErrorKind::Unsupported, "operation not supported on UEFI",)
+    std_io::const_error!(std_io::ErrorKind::Unsupported, "operation not supported on UEFI",)
 }
 
 pub fn decode_error_kind(code: RawOsError) -> crate::io::ErrorKind {

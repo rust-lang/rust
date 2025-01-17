@@ -1,7 +1,3 @@
-//@ force-host
-//@ no-prefer-dynamic
-//@ compile-flags: --crate-type proc-macro
-
 extern crate proc_macro;
 
 use proc_macro::*;

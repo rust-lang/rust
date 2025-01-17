@@ -1,17 +1,16 @@
-use rustc_ast::ast;
-use rustc_attr::InstructionSetAttr;
+use rustc_attr_parsing::InstructionSetAttr;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::Applicability;
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_middle::middle::codegen_fn_attrs::TargetFeature;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
-use rustc_target::target_features::{self, Stability};
+use rustc_span::{Span, Symbol, sym};
+use rustc_target::target_features;
 
 use crate::errors;
 
@@ -19,7 +18,7 @@ use crate::errors;
 /// Enabled target features are added to `target_features`.
 pub(crate) fn from_target_feature_attr(
     tcx: TyCtxt<'_>,
-    attr: &ast::Attribute,
+    attr: &hir::Attribute,
     rust_target_features: &UnordMap<String, target_features::Stability>,
     target_features: &mut Vec<TargetFeature>,
 ) {
@@ -33,7 +32,7 @@ pub(crate) fn from_target_feature_attr(
             .emit();
     };
     let rust_features = tcx.features();
-    let mut added_target_features = Vec::new();
+    let abi_feature_constraints = tcx.sess.target.abi_required_features();
     for item in list {
         // Only `enable = ...` is accepted in the meta-item list.
         if !item.has_name(sym::enable) {
@@ -48,7 +47,7 @@ pub(crate) fn from_target_feature_attr(
         };
 
         // We allow comma separation to enable multiple features.
-        added_target_features.extend(value.as_str().split(',').filter_map(|feature| {
+        for feature in value.as_str().split(',') {
             let Some(stability) = rust_target_features.get(feature) else {
                 let msg = format!("the feature named `{feature}` is not valid for this target");
                 let mut err = tcx.dcx().struct_span_err(item.span(), msg);
@@ -60,60 +59,46 @@ pub(crate) fn from_target_feature_attr(
                     }
                 }
                 err.emit();
-                return None;
+                continue;
             };
 
-            // Only allow target features whose feature gates have been enabled.
-            let allowed = match stability {
-                Stability::Forbidden { .. } => false,
-                Stability::Stable => true,
-                Stability::Unstable(name) => rust_features.enabled(*name),
-            };
-            if !allowed {
-                match stability {
-                    Stability::Stable => unreachable!(),
-                    &Stability::Unstable(lang_feature_name) => {
-                        feature_err(
-                            &tcx.sess,
-                            lang_feature_name,
-                            item.span(),
-                            format!("the target feature `{feature}` is currently unstable"),
-                        )
-                        .emit();
-                    }
-                    Stability::Forbidden { reason } => {
+            // Only allow target features whose feature gates have been enabled
+            // and which are permitted to be toggled.
+            if let Err(reason) = stability.toggle_allowed() {
+                tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
+                    span: item.span(),
+                    feature,
+                    reason,
+                });
+            } else if let Some(nightly_feature) = stability.requires_nightly()
+                && !rust_features.enabled(nightly_feature)
+            {
+                feature_err(
+                    &tcx.sess,
+                    nightly_feature,
+                    item.span(),
+                    format!("the target feature `{feature}` is currently unstable"),
+                )
+                .emit();
+            } else {
+                // Add this and the implied features.
+                let feature_sym = Symbol::intern(feature);
+                for &name in tcx.implied_target_features(feature_sym) {
+                    // But ensure the ABI does not forbid enabling this.
+                    // Here we do assume that LLVM doesn't add even more implied features
+                    // we don't know about, at least no features that would have ABI effects!
+                    if abi_feature_constraints.incompatible.contains(&name.as_str()) {
                         tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
                             span: item.span(),
-                            feature,
-                            reason,
+                            feature: name.as_str(),
+                            reason: "this feature is incompatible with the target ABI",
                         });
                     }
+                    target_features.push(TargetFeature { name, implied: name != feature_sym })
                 }
             }
-            Some(Symbol::intern(feature))
-        }));
+        }
     }
-
-    // Add explicit features
-    target_features.extend(
-        added_target_features.iter().copied().map(|name| TargetFeature { name, implied: false }),
-    );
-
-    // Add implied features
-    let mut implied_target_features = UnordSet::new();
-    for feature in added_target_features.iter() {
-        implied_target_features.extend(tcx.implied_target_features(*feature).clone());
-    }
-    for feature in added_target_features.iter() {
-        implied_target_features.remove(feature);
-    }
-    target_features.extend(
-        implied_target_features
-            .into_sorted_stable_ord()
-            .iter()
-            .copied()
-            .map(|name| TargetFeature { name, implied: true }),
-    )
 }
 
 /// Computes the set of target features used in a function for the purposes of
@@ -167,13 +152,17 @@ pub(crate) fn provide(providers: &mut Providers) {
                     .target
                     .rust_target_features()
                     .iter()
-                    .map(|&(a, b, _)| (a.to_string(), b))
+                    .map(|(a, b, _)| (a.to_string(), *b))
                     .collect()
             }
         },
-        implied_target_features: |tcx, feature| {
+        implied_target_features: |tcx, feature: Symbol| {
+            let feature = feature.as_str();
             UnordSet::from(tcx.sess.target.implied_target_features(std::iter::once(feature)))
                 .into_sorted_stable_ord()
+                .into_iter()
+                .map(|s| Symbol::intern(s))
+                .collect()
         },
         asm_target_features,
         ..*providers

@@ -167,9 +167,9 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
         }
 
         let method_name = call.name_ref()?;
-        let assoc_func_call = format!("{receiver_type_adt_name}::{method_name}()");
+        let assoc_func_path = format!("{receiver_type_adt_name}::{method_name}");
 
-        let assoc_func_call = make::expr_path(make::path_from_text(&assoc_func_call));
+        let assoc_func_path = make::expr_path(make::path_from_text(&assoc_func_path));
 
         let args: Vec<_> = if need_to_take_receiver_as_first_arg {
             std::iter::once(receiver).chain(call.arg_list()?.args()).collect()
@@ -178,7 +178,7 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
         };
         let args = make::arg_list(args);
 
-        let assoc_func_call_expr_string = make::expr_call(assoc_func_call, args).to_string();
+        let assoc_func_call_expr_string = make::expr_call(assoc_func_path, args).to_string();
 
         let file_id = ctx.sema.original_range_opt(call.receiver()?.syntax())?.file_id;
 

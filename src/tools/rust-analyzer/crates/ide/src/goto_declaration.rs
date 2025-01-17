@@ -36,7 +36,7 @@ pub(crate) fn goto_declaration(
             let def = match_ast! {
                 match parent {
                     ast::NameRef(name_ref) => match NameRefClass::classify(&sema, &name_ref)? {
-                        NameRefClass::Definition(it) => Some(it),
+                        NameRefClass::Definition(it, _) => Some(it),
                         NameRefClass::FieldShorthand { field_ref, .. } =>
                             return field_ref.try_to_nav(db),
                         NameRefClass::ExternCrateShorthand { decl, .. } =>

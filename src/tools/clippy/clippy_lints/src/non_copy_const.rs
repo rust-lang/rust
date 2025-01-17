@@ -11,7 +11,7 @@ use rustc_hir::{
     BodyId, Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, Lint};
-use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult, GlobalId};
+use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult, GlobalId, ReportedErrorInfo};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
@@ -189,6 +189,8 @@ impl<'tcx> NonCopyConst<'tcx> {
     }
 
     fn is_value_unfrozen_raw_inner(cx: &LateContext<'tcx>, val: ty::ValTree<'tcx>, ty: Ty<'tcx>) -> bool {
+        // No branch that we check (yet) should continue if val isn't a ValTree::Branch
+        let ty::ValTree::Branch(val) = val else { return false };
         match *ty.kind() {
             // the fact that we have to dig into every structs to search enums
             // leads us to the point checking `UnsafeCell` directly is the only option.
@@ -197,12 +199,13 @@ impl<'tcx> NonCopyConst<'tcx> {
             // contained value.
             ty::Adt(def, ..) if def.is_union() => false,
             ty::Array(ty, _) => val
-                .unwrap_branch()
                 .iter()
                 .any(|field| Self::is_value_unfrozen_raw_inner(cx, *field, ty)),
             ty::Adt(def, args) if def.is_enum() => {
-                let (&variant_index, fields) = val.unwrap_branch().split_first().unwrap();
-                let variant_index = VariantIdx::from_u32(variant_index.unwrap_leaf().to_u32());
+                let Some((&ty::ValTree::Leaf(variant_index), fields)) = val.split_first() else {
+                    return false;
+                };
+                let variant_index = VariantIdx::from_u32(variant_index.to_u32());
                 fields
                     .iter()
                     .copied()
@@ -215,12 +218,10 @@ impl<'tcx> NonCopyConst<'tcx> {
                     .any(|(field, ty)| Self::is_value_unfrozen_raw_inner(cx, field, ty))
             },
             ty::Adt(def, args) => val
-                .unwrap_branch()
                 .iter()
                 .zip(def.non_enum_variant().fields.iter().map(|field| field.ty(cx.tcx, args)))
                 .any(|(field, ty)| Self::is_value_unfrozen_raw_inner(cx, *field, ty)),
             ty::Tuple(tys) => val
-                .unwrap_branch()
                 .iter()
                 .zip(tys)
                 .any(|(field, ty)| Self::is_value_unfrozen_raw_inner(cx, *field, ty)),
@@ -278,7 +279,12 @@ impl<'tcx> NonCopyConst<'tcx> {
     fn is_value_unfrozen_expr(cx: &LateContext<'tcx>, hir_id: HirId, def_id: DefId, ty: Ty<'tcx>) -> bool {
         let args = cx.typeck_results().node_args(hir_id);
 
-        let result = Self::const_eval_resolve(cx.tcx, cx.typing_env(), ty::UnevaluatedConst::new(def_id, args), DUMMY_SP);
+        let result = Self::const_eval_resolve(
+            cx.tcx,
+            cx.typing_env(),
+            ty::UnevaluatedConst::new(def_id, args),
+            DUMMY_SP,
+        );
         Self::is_value_unfrozen_raw(cx, result, ty)
     }
 
@@ -297,7 +303,10 @@ impl<'tcx> NonCopyConst<'tcx> {
                 tcx.const_eval_global_id_for_typeck(typing_env, cid, span)
             },
             Ok(None) => Err(ErrorHandled::TooGeneric(span)),
-            Err(err) => Err(ErrorHandled::Reported(err.into(), span)),
+            Err(err) => Err(ErrorHandled::Reported(
+                ReportedErrorInfo::non_const_eval_error(err),
+                span,
+            )),
         }
     }
 }
@@ -335,7 +344,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                 // i.e. having an enum doesn't necessary mean a type has a frozen variant.
                 // And, implementing it isn't a trivial task; it'll probably end up
                 // re-implementing the trait predicate evaluation specific to `Freeze`.
-                && body_id_opt.map_or(true, |body_id| Self::is_value_unfrozen_poly(cx, body_id, normalized))
+                && body_id_opt.is_none_or(|body_id| Self::is_value_unfrozen_poly(cx, body_id, normalized))
             {
                 lint(cx, Source::Assoc { item: trait_item.span });
             }

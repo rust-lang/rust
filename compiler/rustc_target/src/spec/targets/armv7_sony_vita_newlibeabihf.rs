@@ -1,5 +1,5 @@
 use crate::abi::Endian;
-use crate::spec::{Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions, cvs};
+use crate::spec::{Cc, FloatAbi, LinkerFlavor, Lld, RelocModel, Target, TargetOptions, cvs};
 
 /// A base target for PlayStation Vita devices using the VITASDK toolchain (using newlib).
 ///
@@ -32,6 +32,7 @@ pub(crate) fn target() -> Target {
             env: "newlib".into(),
             vendor: "sony".into(),
             abi: "eabihf".into(),
+            llvm_floatabi: Some(FloatAbi::Hard),
             linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),
             no_default_libraries: false,
             cpu: "cortex-a9".into(),

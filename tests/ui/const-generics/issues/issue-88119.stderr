@@ -11,12 +11,30 @@ error[E0284]: type annotations needed: cannot normalize `<&T as ConstName>::{con
    |
 LL | impl<T: ?Sized + ConstName> const ConstName for &T
    |                                                 ^^ cannot normalize `<&T as ConstName>::{constant#0}`
+   |
+note: required for `&T` to implement `~const ConstName`
+  --> $DIR/issue-88119.rs:19:35
+   |
+LL | impl<T: ?Sized + ConstName> const ConstName for &T
+   |                                   ^^^^^^^^^     ^^
+LL | where
+LL |     [(); name_len::<T>()]:,
+   |     --------------------- unsatisfied trait bound introduced here
 
 error[E0284]: type annotations needed: cannot normalize `<&mut T as ConstName>::{constant#0}`
   --> $DIR/issue-88119.rs:26:49
    |
 LL | impl<T: ?Sized + ConstName> const ConstName for &mut T
    |                                                 ^^^^^^ cannot normalize `<&mut T as ConstName>::{constant#0}`
+   |
+note: required for `&mut T` to implement `~const ConstName`
+  --> $DIR/issue-88119.rs:26:35
+   |
+LL | impl<T: ?Sized + ConstName> const ConstName for &mut T
+   |                                   ^^^^^^^^^     ^^^^^^
+LL | where
+LL |     [(); name_len::<T>()]:,
+   |     --------------------- unsatisfied trait bound introduced here
 
 error: aborting due to 3 previous errors
 

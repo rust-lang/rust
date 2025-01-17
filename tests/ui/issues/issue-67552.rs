@@ -1,6 +1,6 @@
 //@ build-fail
 //@ compile-flags: -Copt-level=0
-//@ normalize-stderr-test: ".nll/" -> "/"
+//@ normalize-stderr: ".nll/" -> "/"
 
 fn main() {
     rec(Empty);

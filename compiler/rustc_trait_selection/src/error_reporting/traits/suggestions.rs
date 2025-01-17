@@ -20,7 +20,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
-    CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node, is_range_literal,
+    CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node, expr_needs_parens,
+    is_range_literal,
 };
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_middle::hir::map;
@@ -37,8 +38,9 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, ExpnKind, MacroKind, Span};
+use rustc_span::{
+    BytePos, DUMMY_SP, DesugaringKind, ExpnKind, Ident, MacroKind, Span, Symbol, kw, sym,
+};
 use tracing::{debug, instrument};
 
 use super::{
@@ -309,7 +311,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ..
                 })
                 | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Fn(fn_sig, generics, _), ..
+                    kind: hir::ItemKind::Fn { sig: fn_sig, generics, .. },
+                    ..
                 }) if projection.is_some() => {
                     // Missing restriction on associated type of type parameter (unmet projection).
                     suggest_restriction(
@@ -353,7 +356,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         | hir::ItemKind::Union(_, generics)
                         | hir::ItemKind::Trait(_, _, generics, ..)
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
-                        | hir::ItemKind::Fn(_, generics, _)
+                        | hir::ItemKind::Fn { generics, .. }
                         | hir::ItemKind::TyAlias(_, generics)
                         | hir::ItemKind::Const(_, generics, _)
                         | hir::ItemKind::TraitAlias(generics, _),
@@ -418,7 +421,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         | hir::ItemKind::Union(_, generics)
                         | hir::ItemKind::Trait(_, _, generics, ..)
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
-                        | hir::ItemKind::Fn(_, generics, _)
+                        | hir::ItemKind::Fn { generics, .. }
                         | hir::ItemKind::TyAlias(_, generics)
                         | hir::ItemKind::Const(_, generics, _)
                         | hir::ItemKind::TraitAlias(generics, _),
@@ -443,9 +446,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    /// When after several dereferencing, the reference satisfies the trait
-    /// bound. This function provides dereference suggestion for this
-    /// specific situation.
+    /// Provide a suggestion to dereference arguments to functions and binary operators, if that
+    /// would satisfy trait bounds.
     pub(super) fn suggest_dereferences(
         &self,
         obligation: &PredicateObligation<'tcx>,
@@ -459,127 +461,100 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let Some(arg_ty) = typeck_results.expr_ty_adjusted_opt(expr)
         {
             // Suggest dereferencing the argument to a function/method call if possible
+
+            // Get the root obligation, since the leaf obligation we have may be unhelpful (#87437)
             let mut real_trait_pred = trait_pred;
-            while let Some((parent_code, parent_trait_pred)) = code.parent() {
+            while let Some((parent_code, parent_trait_pred)) = code.parent_with_predicate() {
                 code = parent_code;
                 if let Some(parent_trait_pred) = parent_trait_pred {
                     real_trait_pred = parent_trait_pred;
                 }
+            }
 
-                // We `instantiate_bound_regions_with_erased` here because `make_subregion` does not handle
-                // `ReBound`, and we don't particularly care about the regions.
-                let real_ty =
-                    self.tcx.instantiate_bound_regions_with_erased(real_trait_pred.self_ty());
+            // We `instantiate_bound_regions_with_erased` here because `make_subregion` does not handle
+            // `ReBound`, and we don't particularly care about the regions.
+            let real_ty = self.tcx.instantiate_bound_regions_with_erased(real_trait_pred.self_ty());
+            if !self.can_eq(obligation.param_env, real_ty, arg_ty) {
+                return false;
+            }
 
-                if self.can_eq(obligation.param_env, real_ty, arg_ty)
-                    && let ty::Ref(region, base_ty, mutbl) = *real_ty.kind()
+            // Potentially, we'll want to place our dereferences under a `&`. We don't try this for
+            // `&mut`, since we can't be sure users will get the side-effects they want from it.
+            // If this doesn't work, we'll try removing the `&` in `suggest_remove_reference`.
+            // FIXME(dianne): this misses the case where users need both to deref and remove `&`s.
+            // This method could be combined with `TypeErrCtxt::suggest_remove_reference` to handle
+            // that, similar to what `FnCtxt::suggest_deref_or_ref` does.
+            let (is_under_ref, base_ty, span) = match expr.kind {
+                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, subexpr)
+                    if let &ty::Ref(region, base_ty, hir::Mutability::Not) = real_ty.kind() =>
                 {
-                    let autoderef = (self.autoderef_steps)(base_ty);
-                    if let Some(steps) =
-                        autoderef.into_iter().enumerate().find_map(|(steps, (ty, obligations))| {
-                            // Re-add the `&`
-                            let ty = Ty::new_ref(self.tcx, region, ty, mutbl);
-
-                            // Remapping bound vars here
-                            let real_trait_pred_and_ty = real_trait_pred
-                                .map_bound(|inner_trait_pred| (inner_trait_pred, ty));
-                            let obligation = self.mk_trait_obligation_with_new_self_ty(
-                                obligation.param_env,
-                                real_trait_pred_and_ty,
-                            );
-                            let may_hold = obligations
-                                .iter()
-                                .chain([&obligation])
-                                .all(|obligation| self.predicate_may_hold(obligation))
-                                .then_some(steps);
-
-                            may_hold
-                        })
-                    {
-                        if steps > 0 {
-                            // Don't care about `&mut` because `DerefMut` is used less
-                            // often and user will not expect that an autoderef happens.
-                            if let hir::Node::Expr(hir::Expr {
-                                kind:
-                                    hir::ExprKind::AddrOf(
-                                        hir::BorrowKind::Ref,
-                                        hir::Mutability::Not,
-                                        expr,
-                                    ),
-                                ..
-                            }) = self.tcx.hir_node(*arg_hir_id)
-                            {
-                                let derefs = "*".repeat(steps);
-                                err.span_suggestion_verbose(
-                                    expr.span.shrink_to_lo(),
-                                    "consider dereferencing here",
-                                    derefs,
-                                    Applicability::MachineApplicable,
-                                );
-                                return true;
-                            }
-                        }
-                    } else if real_trait_pred != trait_pred {
-                        // This branch addresses #87437.
-
-                        let span = obligation.cause.span;
-                        // Remapping bound vars here
-                        let real_trait_pred_and_base_ty = real_trait_pred
-                            .map_bound(|inner_trait_pred| (inner_trait_pred, base_ty));
-                        let obligation = self.mk_trait_obligation_with_new_self_ty(
-                            obligation.param_env,
-                            real_trait_pred_and_base_ty,
-                        );
-                        let sized_obligation = Obligation::new(
-                            self.tcx,
-                            obligation.cause.clone(),
-                            obligation.param_env,
-                            ty::TraitRef::new(
-                                self.tcx,
-                                self.tcx.require_lang_item(
-                                    hir::LangItem::Sized,
-                                    Some(obligation.cause.span),
-                                ),
-                                [base_ty],
-                            ),
-                        );
-                        if self.predicate_may_hold(&obligation)
-                            && self.predicate_must_hold_modulo_regions(&sized_obligation)
-                            // Do not suggest * if it is already a reference,
-                            // will suggest removing the borrow instead in that case.
-                            && !matches!(expr.kind, hir::ExprKind::AddrOf(..))
-                        {
-                            let call_node = self.tcx.hir_node(*call_hir_id);
-                            let msg = "consider dereferencing here";
-                            let is_receiver = matches!(
-                                call_node,
-                                Node::Expr(hir::Expr {
-                                    kind: hir::ExprKind::MethodCall(_, receiver_expr, ..),
-                                    ..
-                                })
-                                if receiver_expr.hir_id == *arg_hir_id
-                            );
-                            if is_receiver {
-                                err.multipart_suggestion_verbose(
-                                    msg,
-                                    vec![
-                                        (span.shrink_to_lo(), "(*".to_string()),
-                                        (span.shrink_to_hi(), ")".to_string()),
-                                    ],
-                                    Applicability::MachineApplicable,
-                                )
-                            } else {
-                                err.span_suggestion_verbose(
-                                    span.shrink_to_lo(),
-                                    msg,
-                                    '*',
-                                    Applicability::MachineApplicable,
-                                )
-                            };
-                            return true;
-                        }
-                    }
+                    (Some(region), base_ty, subexpr.span)
                 }
+                // Don't suggest `*&mut`, etc.
+                hir::ExprKind::AddrOf(..) => return false,
+                _ => (None, real_ty, obligation.cause.span),
+            };
+
+            let autoderef = (self.autoderef_steps)(base_ty);
+            let mut is_boxed = base_ty.is_box();
+            if let Some(steps) = autoderef.into_iter().position(|(mut ty, obligations)| {
+                // Ensure one of the following for dereferencing to be valid: we're passing by
+                // reference, `ty` is `Copy`, or we're moving out of a (potentially nested) `Box`.
+                let can_deref = is_under_ref.is_some()
+                    || self.type_is_copy_modulo_regions(obligation.param_env, ty)
+                    || ty.is_numeric() // for inference vars (presumably but not provably `Copy`)
+                    || is_boxed && self.type_is_sized_modulo_regions(obligation.param_env, ty);
+                is_boxed &= ty.is_box();
+
+                // Re-add the `&` if necessary
+                if let Some(region) = is_under_ref {
+                    ty = Ty::new_ref(self.tcx, region, ty, hir::Mutability::Not);
+                }
+
+                // Remapping bound vars here
+                let real_trait_pred_and_ty =
+                    real_trait_pred.map_bound(|inner_trait_pred| (inner_trait_pred, ty));
+                let obligation = self.mk_trait_obligation_with_new_self_ty(
+                    obligation.param_env,
+                    real_trait_pred_and_ty,
+                );
+
+                can_deref
+                    && obligations
+                        .iter()
+                        .chain([&obligation])
+                        .all(|obligation| self.predicate_may_hold(obligation))
+            }) && steps > 0
+            {
+                let derefs = "*".repeat(steps);
+                let msg = "consider dereferencing here";
+                let call_node = self.tcx.hir_node(*call_hir_id);
+                let is_receiver = matches!(
+                    call_node,
+                    Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::MethodCall(_, receiver_expr, ..),
+                        ..
+                    })
+                    if receiver_expr.hir_id == *arg_hir_id
+                );
+                if is_receiver {
+                    err.multipart_suggestion_verbose(
+                        msg,
+                        vec![
+                            (span.shrink_to_lo(), format!("({derefs}")),
+                            (span.shrink_to_hi(), ")".to_string()),
+                        ],
+                        Applicability::MachineApplicable,
+                    )
+                } else {
+                    err.span_suggestion_verbose(
+                        span.shrink_to_lo(),
+                        msg,
+                        derefs,
+                        Applicability::MachineApplicable,
+                    )
+                };
+                return true;
             }
         } else if let (
             ObligationCauseCode::BinOp { lhs_hir_id, rhs_hir_id: Some(rhs_hir_id), .. },
@@ -872,7 +847,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     };
                     name.to_string()
                 }
-                Some(hir::Node::Item(hir::Item { ident, kind: hir::ItemKind::Fn(..), .. })) => {
+                Some(hir::Node::Item(hir::Item {
+                    ident, kind: hir::ItemKind::Fn { .. }, ..
+                })) => {
                     err.span_label(ident.span, "consider calling this function");
                     ident.to_string()
                 }
@@ -1391,13 +1368,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let Some(expr) = expr_finder.result else {
                             return false;
                         };
-                        let needs_parens = match expr.kind {
-                            // parenthesize if needed (Issue #46756)
-                            hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => true,
-                            // parenthesize borrows of range literals (Issue #54505)
-                            _ if is_range_literal(expr) => true,
-                            _ => false,
-                        };
+                        let needs_parens = expr_needs_parens(expr);
 
                         let span = if needs_parens { span } else { span.shrink_to_lo() };
                         let suggestions = if !needs_parens {
@@ -1476,7 +1447,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut span = obligation.cause.span;
         let mut trait_pred = trait_pred;
         let mut code = obligation.cause.code();
-        while let Some((c, Some(parent_trait_pred))) = code.parent() {
+        while let Some((c, Some(parent_trait_pred))) = code.parent_with_predicate() {
             // We want the root obligation, in order to detect properly handle
             // `for _ in &mut &mut vec![] {}`.
             code = c;
@@ -1743,7 +1714,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> bool {
         let hir = self.tcx.hir();
         let node = self.tcx.hir_node_by_def_id(obligation.cause.body_id);
-        if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. }) = node
+        if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn {sig, body: body_id, .. }, .. }) = node
             && let hir::ExprKind::Block(blk, _) = &hir.body(*body_id).value.kind
             && sig.decl.output.span().overlaps(span)
             && blk.expr.is_none()
@@ -1777,7 +1748,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     }
 
     pub(super) fn return_type_span(&self, obligation: &PredicateObligation<'tcx>) -> Option<Span> {
-        let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, ..), .. }) =
+        let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { sig, .. }, .. }) =
             self.tcx.hir_node_by_def_id(obligation.cause.body_id)
         else {
             return None;
@@ -1891,7 +1862,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let hir = self.tcx.hir();
         let node = self.tcx.hir_node_by_def_id(obligation.cause.body_id);
-        if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. }) = node {
+        if let hir::Node::Item(hir::Item {
+            kind: hir::ItemKind::Fn { body: body_id, .. }, ..
+        }) = node
+        {
             let body = hir.body(*body_id);
             // Point at all the `return`s in the function as they have failed trait bounds.
             let mut visitor = ReturnsVisitor::default();
@@ -2803,6 +2777,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::WhereClause(item_def_id, span)
             | ObligationCauseCode::WhereClauseInExpr(item_def_id, span, ..)
+            | ObligationCauseCode::HostEffectInExpr(item_def_id, span, ..)
                 if !span.is_dummy() =>
             {
                 if let ObligationCauseCode::WhereClauseInExpr(_, _, hir_id, pos) = &cause_code {
@@ -2966,7 +2941,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     err.help(help);
                 }
             }
-            ObligationCauseCode::WhereClause(..) | ObligationCauseCode::WhereClauseInExpr(..) => {
+            ObligationCauseCode::WhereClause(..)
+            | ObligationCauseCode::WhereClauseInExpr(..)
+            | ObligationCauseCode::HostEffectInExpr(..) => {
                 // We hold the `DefId` of the item introducing the obligation, but displaying it
                 // doesn't add user usable information. It always point at an associated item.
             }
@@ -2995,12 +2972,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "required for the cast from `{source}` to `{target}`",
                 )));
             }
-            ObligationCauseCode::RepeatElementCopy {
-                is_constable,
-                elt_type: _,
-                elt_span,
-                elt_stmt_span: _,
-            } => {
+            ObligationCauseCode::RepeatElementCopy { is_constable, elt_span } => {
                 err.note(
                     "the `Copy` trait is required because this value will be copied for each element of the array",
                 );
@@ -3498,6 +3470,59 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     )
                 });
             }
+            ObligationCauseCode::ImplDerivedHost(ref data) => {
+                let self_ty =
+                    self.resolve_vars_if_possible(data.derived.parent_host_pred.self_ty());
+                let msg = format!(
+                    "required for `{self_ty}` to implement `{} {}`",
+                    data.derived.parent_host_pred.skip_binder().constness,
+                    data.derived
+                        .parent_host_pred
+                        .map_bound(|pred| pred.trait_ref)
+                        .print_only_trait_path(),
+                );
+                match tcx.hir().get_if_local(data.impl_def_id) {
+                    Some(Node::Item(hir::Item {
+                        kind: hir::ItemKind::Impl(hir::Impl { of_trait, self_ty, .. }),
+                        ..
+                    })) => {
+                        let mut spans = vec![self_ty.span];
+                        spans.extend(of_trait.as_ref().map(|t| t.path.span));
+                        let mut spans: MultiSpan = spans.into();
+                        spans.push_span_label(data.span, "unsatisfied trait bound introduced here");
+                        err.span_note(spans, msg);
+                    }
+                    _ => {
+                        err.note(msg);
+                    }
+                }
+                ensure_sufficient_stack(|| {
+                    self.note_obligation_cause_code(
+                        body_id,
+                        err,
+                        data.derived.parent_host_pred,
+                        param_env,
+                        &data.derived.parent_code,
+                        obligated_types,
+                        seen_requirements,
+                        long_ty_file,
+                    )
+                });
+            }
+            ObligationCauseCode::BuiltinDerivedHost(ref data) => {
+                ensure_sufficient_stack(|| {
+                    self.note_obligation_cause_code(
+                        body_id,
+                        err,
+                        data.parent_host_pred,
+                        param_env,
+                        &data.parent_code,
+                        obligated_types,
+                        seen_requirements,
+                        long_ty_file,
+                    )
+                });
+            }
             ObligationCauseCode::WellFormedDerived(ref data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
                 let parent_predicate = parent_trait_ref;
@@ -3835,6 +3860,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 && self.predicate_must_hold_modulo_regions(&Obligation::misc(
                     tcx, expr.span, body_id, param_env, pred,
                 ))
+                && expr.span.hi() != rcvr.span.hi()
             {
                 err.span_suggestion_verbose(
                     expr.span.with_lo(rcvr.span.hi()),
@@ -4112,6 +4138,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         // the expected is a projection that we need to resolve.
                         // && let Some(tail_ty) = typeck_results.expr_ty_opt(expr)
                         && expected_found.found.is_unit()
+                        // FIXME: this happens with macro calls. Need to figure out why the stmt
+                        // `println!();` doesn't include the `;` in its `Span`. (#133845)
+                        // We filter these out to avoid ICEs with debug assertions on caused by
+                        // empty suggestions.
+                        && expr.span.hi() != stmt.span.hi()
                     {
                         err.span_suggestion_verbose(
                             expr.span.shrink_to_hi().with_hi(stmt.span.hi()),
@@ -4760,7 +4791,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             node: hir::Node<'hir>,
         ) -> Option<(&'hir hir::FnDecl<'hir>, hir::BodyId)> {
             match node {
-                hir::Node::Item(item) if let hir::ItemKind::Fn(sig, _, body_id) = item.kind => {
+                hir::Node::Item(item)
+                    if let hir::ItemKind::Fn { sig, body: body_id, .. } = item.kind =>
+                {
                     Some((sig.decl, body_id))
                 }
                 hir::Node::ImplItem(item)
@@ -5312,9 +5345,10 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
     };
     let name = tcx.item_name(proj.projection_term.def_id);
     let mut predicates = generics.predicates.iter().peekable();
-    let mut prev: Option<&hir::WhereBoundPredicate<'_>> = None;
+    let mut prev: Option<(&hir::WhereBoundPredicate<'_>, Span)> = None;
     while let Some(pred) = predicates.next() {
-        let hir::WherePredicate::BoundPredicate(pred) = pred else {
+        let curr_span = pred.span;
+        let hir::WherePredicateKind::BoundPredicate(pred) = pred.kind else {
             continue;
         };
         let mut bounds = pred.bounds.iter();
@@ -5340,8 +5374,8 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
                         .iter()
                         .filter(|p| {
                             matches!(
-                                p,
-                                hir::WherePredicate::BoundPredicate(p)
+                                p.kind,
+                                hir::WherePredicateKind::BoundPredicate(p)
                                 if hir::PredicateOrigin::WhereClause == p.origin
                             )
                         })
@@ -5351,20 +5385,21 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
                     // There's only one `where` bound, that needs to be removed. Remove the whole
                     // `where` clause.
                     generics.where_clause_span
-                } else if let Some(hir::WherePredicate::BoundPredicate(next)) = predicates.peek()
+                } else if let Some(next_pred) = predicates.peek()
+                    && let hir::WherePredicateKind::BoundPredicate(next) = next_pred.kind
                     && pred.origin == next.origin
                 {
                     // There's another bound, include the comma for the current one.
-                    pred.span.until(next.span)
-                } else if let Some(prev) = prev
+                    curr_span.until(next_pred.span)
+                } else if let Some((prev, prev_span)) = prev
                     && pred.origin == prev.origin
                 {
                     // Last bound, try to remove the previous comma.
-                    prev.span.shrink_to_hi().to(pred.span)
+                    prev_span.shrink_to_hi().to(curr_span)
                 } else if pred.origin == hir::PredicateOrigin::WhereClause {
-                    pred.span.with_hi(generics.where_clause_span.hi())
+                    curr_span.with_hi(generics.where_clause_span.hi())
                 } else {
-                    pred.span
+                    curr_span
                 };
 
                 err.span_suggestion_verbose(
@@ -5417,7 +5452,7 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
                 );
             }
         }
-        prev = Some(pred);
+        prev = Some((pred, curr_span));
     }
 }
 

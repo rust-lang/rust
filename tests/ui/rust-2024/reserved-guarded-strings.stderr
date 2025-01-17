@@ -34,73 +34,73 @@ help: consider inserting whitespace here
 LL |     demo2!(blah# "xx"#);
    |                 +
 
-error: invalid string literal
+error: reserved multi-hash token is forbidden
   --> $DIR/reserved-guarded-strings.rs:49:12
    |
 LL |     demo2!(## "foo");
    |            ^^
    |
-   = note: unprefixed guarded string literals are reserved for future use since Rust 2024
+   = note: sequences of two or more # are reserved for future use since Rust 2024
 help: consider inserting whitespace here
    |
 LL |     demo2!(# # "foo");
    |             +
 
-error: invalid string literal
+error: reserved multi-hash token is forbidden
   --> $DIR/reserved-guarded-strings.rs:50:17
    |
 LL |     demo3!("foo"###);
    |                 ^^
    |
-   = note: unprefixed guarded string literals are reserved for future use since Rust 2024
+   = note: sequences of two or more # are reserved for future use since Rust 2024
 help: consider inserting whitespace here
    |
 LL |     demo3!("foo"# ##);
    |                  +
 
-error: invalid string literal
+error: reserved multi-hash token is forbidden
   --> $DIR/reserved-guarded-strings.rs:51:12
    |
 LL |     demo3!(### "foo");
    |            ^^
    |
-   = note: unprefixed guarded string literals are reserved for future use since Rust 2024
+   = note: sequences of two or more # are reserved for future use since Rust 2024
 help: consider inserting whitespace here
    |
 LL |     demo3!(# ## "foo");
    |             +
 
-error: invalid string literal
+error: reserved multi-hash token is forbidden
   --> $DIR/reserved-guarded-strings.rs:52:12
    |
 LL |     demo3!(## "foo"#);
    |            ^^
    |
-   = note: unprefixed guarded string literals are reserved for future use since Rust 2024
+   = note: sequences of two or more # are reserved for future use since Rust 2024
 help: consider inserting whitespace here
    |
 LL |     demo3!(# # "foo"#);
    |             +
 
-error: invalid string literal
+error: reserved multi-hash token is forbidden
   --> $DIR/reserved-guarded-strings.rs:53:12
    |
 LL |     demo5!(### "foo"###);
    |            ^^
    |
-   = note: unprefixed guarded string literals are reserved for future use since Rust 2024
+   = note: sequences of two or more # are reserved for future use since Rust 2024
 help: consider inserting whitespace here
    |
 LL |     demo5!(# ## "foo"###);
    |             +
 
-error: invalid string literal
+error: reserved multi-hash token is forbidden
   --> $DIR/reserved-guarded-strings.rs:53:21
    |
 LL |     demo5!(### "foo"###);
    |                     ^^
    |
-   = note: unprefixed guarded string literals are reserved for future use since Rust 2024
+   = note: sequences of two or more # are reserved for future use since Rust 2024
 help: consider inserting whitespace here
    |
 LL |     demo5!(### "foo"# ##);
@@ -226,13 +226,13 @@ help: consider inserting whitespace here
 LL |     demo2!(# "foo"###);
    |             +
 
-error: invalid string literal
+error: reserved multi-hash token is forbidden
   --> $DIR/reserved-guarded-strings.rs:66:19
    |
 LL |     demo2!(#"foo"###);
    |                   ^^
    |
-   = note: unprefixed guarded string literals are reserved for future use since Rust 2024
+   = note: sequences of two or more # are reserved for future use since Rust 2024
 help: consider inserting whitespace here
    |
 LL |     demo2!(#"foo"## #);

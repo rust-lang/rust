@@ -15,8 +15,7 @@
 
 pub use rustc_ast_ir::visit::VisitorResult;
 pub use rustc_ast_ir::{try_visit, visit_opt, walk_list, walk_visitable_list};
-use rustc_span::Span;
-use rustc_span::symbol::Ident;
+use rustc_span::{Ident, Span};
 
 use crate::ast::*;
 use crate::ptr::P;
@@ -191,6 +190,9 @@ pub trait Visitor<'ast>: Sized {
     }
     fn visit_where_predicate(&mut self, p: &'ast WherePredicate) -> Self::Result {
         walk_where_predicate(self, p)
+    }
+    fn visit_where_predicate_kind(&mut self, k: &'ast WherePredicateKind) -> Self::Result {
+        walk_where_predicate_kind(self, k)
     }
     fn visit_fn(&mut self, fk: FnKind<'ast>, _: Span, _: NodeId) -> Self::Result {
         walk_fn(self, fk)
@@ -377,7 +379,7 @@ impl WalkItemKind for ItemKind {
                 try_visit!(visitor.visit_fn(kind, span, id));
             }
             ItemKind::Mod(_unsafety, mod_kind) => match mod_kind {
-                ModKind::Loaded(items, _inline, _inner_span) => {
+                ModKind::Loaded(items, _inline, _inner_span, _) => {
                     walk_list!(visitor, visit_item, items);
                 }
                 ModKind::Unloaded => {}
@@ -518,6 +520,10 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
                 &**function_declaration;
             walk_list!(visitor, visit_generic_param, generic_params);
             try_visit!(visitor.visit_fn_decl(decl));
+        }
+        TyKind::UnsafeBinder(binder) => {
+            walk_list!(visitor, visit_generic_param, &binder.generic_params);
+            try_visit!(visitor.visit_ty(&binder.inner_ty));
         }
         TyKind::Path(maybe_qself, path) => {
             try_visit!(visitor.visit_qself(maybe_qself));
@@ -674,10 +680,14 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) -> V::Res
             try_visit!(visitor.visit_ident(ident));
             visit_opt!(visitor, visit_pat, optional_subpattern);
         }
-        PatKind::Lit(expression) => try_visit!(visitor.visit_expr(expression)),
+        PatKind::Expr(expression) => try_visit!(visitor.visit_expr(expression)),
         PatKind::Range(lower_bound, upper_bound, _end) => {
             visit_opt!(visitor, visit_expr, lower_bound);
             visit_opt!(visitor, visit_expr, upper_bound);
+        }
+        PatKind::Guard(subpattern, guard_condition) => {
+            try_visit!(visitor.visit_pat(subpattern));
+            try_visit!(visitor.visit_expr(guard_condition));
         }
         PatKind::Wild | PatKind::Rest | PatKind::Never => {}
         PatKind::Err(_guar) => {}
@@ -794,22 +804,29 @@ pub fn walk_where_predicate<'a, V: Visitor<'a>>(
     visitor: &mut V,
     predicate: &'a WherePredicate,
 ) -> V::Result {
-    match predicate {
-        WherePredicate::BoundPredicate(WhereBoundPredicate {
+    let WherePredicate { kind, id: _, span: _ } = predicate;
+    visitor.visit_where_predicate_kind(kind)
+}
+
+pub fn walk_where_predicate_kind<'a, V: Visitor<'a>>(
+    visitor: &mut V,
+    kind: &'a WherePredicateKind,
+) -> V::Result {
+    match kind {
+        WherePredicateKind::BoundPredicate(WhereBoundPredicate {
             bounded_ty,
             bounds,
             bound_generic_params,
-            span: _,
         }) => {
             walk_list!(visitor, visit_generic_param, bound_generic_params);
             try_visit!(visitor.visit_ty(bounded_ty));
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
         }
-        WherePredicate::RegionPredicate(WhereRegionPredicate { lifetime, bounds, span: _ }) => {
+        WherePredicateKind::RegionPredicate(WhereRegionPredicate { lifetime, bounds }) => {
             try_visit!(visitor.visit_lifetime(lifetime, LifetimeCtxt::Bound));
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
         }
-        WherePredicate::EqPredicate(WhereEqPredicate { lhs_ty, rhs_ty, span: _ }) => {
+        WherePredicateKind::EqPredicate(WhereEqPredicate { lhs_ty, rhs_ty }) => {
             try_visit!(visitor.visit_ty(lhs_ty));
             try_visit!(visitor.visit_ty(rhs_ty));
         }
@@ -961,11 +978,13 @@ pub fn walk_struct_def<'a, V: Visitor<'a>>(
 }
 
 pub fn walk_field_def<'a, V: Visitor<'a>>(visitor: &mut V, field: &'a FieldDef) -> V::Result {
-    let FieldDef { attrs, id: _, span: _, vis, ident, ty, is_placeholder: _, safety: _ } = field;
+    let FieldDef { attrs, id: _, span: _, vis, ident, ty, is_placeholder: _, safety: _, default } =
+        field;
     walk_list!(visitor, visit_attribute, attrs);
     try_visit!(visitor.visit_vis(vis));
     visit_opt!(visitor, visit_ident, ident);
     try_visit!(visitor.visit_ty(ty));
+    visit_opt!(visitor, visit_anon_const, &*default);
     V::Result::output()
 }
 
@@ -1042,7 +1061,7 @@ pub fn walk_inline_asm_sym<'a, V: Visitor<'a>>(
 }
 
 pub fn walk_format_args<'a, V: Visitor<'a>>(visitor: &mut V, fmt: &'a FormatArgs) -> V::Result {
-    let FormatArgs { span: _, template: _, arguments } = fmt;
+    let FormatArgs { span: _, template: _, arguments, uncooked_fmt_str: _ } = fmt;
     for FormatArgument { kind, expr } in arguments.all_args() {
         match kind {
             FormatArgumentKind::Named(ident) | FormatArgumentKind::Captured(ident) => {
@@ -1210,6 +1229,10 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
         ExprKind::TryBlock(body) => try_visit!(visitor.visit_block(body)),
         ExprKind::Lit(_token) => {}
         ExprKind::IncludedBytes(_bytes) => {}
+        ExprKind::UnsafeBinderCast(_kind, expr, ty) => {
+            try_visit!(visitor.visit_expr(expr));
+            visit_opt!(visitor, visit_ty, ty);
+        }
         ExprKind::Err(_guar) => {}
         ExprKind::Dummy => {}
     }
@@ -1263,10 +1286,7 @@ pub fn walk_attr_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a AttrArgs) -
     match args {
         AttrArgs::Empty => {}
         AttrArgs::Delimited(_args) => {}
-        AttrArgs::Eq(_eq_span, AttrArgsEq::Ast(expr)) => try_visit!(visitor.visit_expr(expr)),
-        AttrArgs::Eq(_eq_span, AttrArgsEq::Hir(lit)) => {
-            unreachable!("in literal form when walking mac args eq: {:?}", lit)
-        }
+        AttrArgs::Eq { expr, .. } => try_visit!(visitor.visit_expr(expr)),
     }
     V::Result::output()
 }

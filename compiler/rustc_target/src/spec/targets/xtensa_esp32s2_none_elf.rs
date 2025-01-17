@@ -19,6 +19,7 @@ pub(crate) fn target() -> Target {
             cpu: "esp32-s2".into(),
             linker: Some("xtensa-esp32s2-elf-gcc".into()),
             max_atomic_width: Some(32),
+            features: "+forced-atomics".into(),
             ..xtensa::opts()
         },
     }

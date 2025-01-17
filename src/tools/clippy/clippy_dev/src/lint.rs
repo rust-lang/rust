@@ -1,4 +1,4 @@
-use crate::{cargo_clippy_path, exit_if_err};
+use crate::utils::{cargo_clippy_path, exit_if_err};
 use std::process::{self, Command};
 use std::{env, fs};
 

@@ -7,7 +7,7 @@ LL |     fn foo(self);
 LL |     fn foo<T>(self) {
    |            ^ found 1 type parameter
 
-error[E0015]: cannot call non-const fn `<() as Trait>::foo` in constant functions
+error[E0015]: cannot call non-const method `<() as Trait>::foo` in constant functions
   --> $DIR/inline-incorrect-early-bound-in-ctfe.rs:26:8
    |
 LL |     ().foo();

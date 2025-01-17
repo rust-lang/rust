@@ -1,5 +1,5 @@
 //@ run-pass
-//@ aux-build:attr-cfg.rs
+//@ proc-macro: attr-cfg.rs
 //@ revisions: foo bar
 
 extern crate attr_cfg;

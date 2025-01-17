@@ -65,8 +65,8 @@ fn tag_base_type_opt<'tcx>(
     });
 
     match enum_type_and_layout.layout.variants() {
-        // A single-variant enum has no discriminant.
-        Variants::Single { .. } => None,
+        // A single-variant or no-variant enum has no discriminant.
+        Variants::Single { .. } | Variants::Empty => None,
 
         Variants::Multiple { tag_encoding: TagEncoding::Niche { .. }, tag, .. } => {
             // Niche tags are always normalized to unsized integers of the correct size.

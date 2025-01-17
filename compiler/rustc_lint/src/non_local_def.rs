@@ -5,8 +5,7 @@ use rustc_hir::{Body, HirId, Item, ItemKind, Node, Path, TyKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_span::symbol::kw;
-use rustc_span::{ExpnKind, MacroKind, Span, sym};
+use rustc_span::{ExpnKind, MacroKind, Span, kw, sym};
 
 use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
 use crate::{LateContext, LateLintPass, LintContext, fluent_generated as fluent};

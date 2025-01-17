@@ -2,7 +2,7 @@
 
 extern crate proc_macro;
 
-//@ aux-build:is-available.rs
+//@ proc-macro: is-available.rs
 extern crate is_available;
 
 fn main() {

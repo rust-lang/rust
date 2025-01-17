@@ -89,7 +89,7 @@
 //! Check out the Rust contribution guidelines [here](
 //! https://rustc-dev-guide.rust-lang.org/contributing.html#writing-documentation).
 //! The source for this documentation can be found on
-//! [GitHub](https://github.com/rust-lang/rust).
+//! [GitHub](https://github.com/rust-lang/rust) in the 'library/std/' directory.
 //! To contribute changes, make sure you read the guidelines first, then submit
 //! pull-requests for your suggested changes.
 //!
@@ -251,7 +251,6 @@
 #![allow(explicit_outlives_requirements)]
 #![allow(unused_lifetimes)]
 #![allow(internal_features)]
-#![deny(rustc::existing_doc_keyword)]
 #![deny(fuzzy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(rustdoc::redundant_explicit_links)]
@@ -262,7 +261,6 @@
 #![allow(unused_features)]
 //
 // Features:
-#![cfg_attr(not(bootstrap), feature(autodiff))]
 #![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
@@ -274,13 +272,12 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(strict_provenance))]
-#![cfg_attr(not(bootstrap), feature(strict_provenance_lints))]
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(asm_experimental_arch)]
+#![feature(autodiff)]
 #![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
@@ -292,9 +289,9 @@
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
-#![feature(extended_varargs_abi_support)]
 #![feature(f128)]
 #![feature(f16)]
+#![feature(formatting_options)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(lang_items)]
@@ -314,6 +311,7 @@
 #![feature(rustdoc_internals)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
+#![feature(strict_provenance_lints)]
 #![feature(thread_local)]
 #![feature(try_blocks)]
 #![feature(type_alias_impl_trait)]
@@ -322,7 +320,6 @@
 // Library features (core):
 // tidy-alphabetical-start
 #![feature(array_chunks)]
-#![feature(build_hasher_default_const_new)]
 #![feature(c_str_module)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
@@ -340,16 +337,17 @@
 #![feature(fmt_internals)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
+#![feature(hint_must_use)]
 #![feature(ip)]
 #![feature(lazy_get)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_write_slice)]
+#![feature(nonnull_provenance)]
 #![feature(panic_can_unwind)]
 #![feature(panic_internals)]
 #![feature(pin_coerce_unsized_trait)]
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
-#![feature(prelude_2024)]
 #![feature(ptr_as_uninit)]
 #![feature(ptr_mask)]
 #![feature(random)]
@@ -360,7 +358,9 @@
 #![feature(str_internals)]
 #![feature(strict_provenance_atomic_ptr)]
 #![feature(sync_unsafe_cell)]
+#![feature(temporary_niche_types)]
 #![feature(ub_checks)]
+#![feature(used_with_arg)]
 // tidy-alphabetical-end
 //
 // Library features (alloc):
@@ -374,6 +374,7 @@
 #![feature(thin_box)]
 #![feature(try_reserve_kind)]
 #![feature(try_with_capacity)]
+#![feature(unique_rc_arc)]
 #![feature(vec_into_raw_parts)]
 // tidy-alphabetical-end
 //
@@ -409,8 +410,7 @@
 //
 // Only for const-ness:
 // tidy-alphabetical-start
-#![feature(const_collections_with_hasher)]
-#![feature(thread_local_internals)]
+#![feature(io_const_error)]
 // tidy-alphabetical-end
 //
 #![default_lib_allocator]
@@ -546,6 +546,8 @@ pub use core::u64;
 #[stable(feature = "i128", since = "1.26.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::u128;
+#[unstable(feature = "unsafe_binders", issue = "130516")]
+pub use core::unsafe_binder;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::usize;
@@ -591,7 +593,7 @@ pub mod net;
 pub mod num;
 pub mod os;
 pub mod panic;
-#[unstable(feature = "core_pattern_types", issue = "123646")]
+#[unstable(feature = "pattern_type_macro", issue = "123646")]
 pub mod pat;
 pub mod path;
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
@@ -620,7 +622,6 @@ pub mod simd {
     #[doc(inline)]
     pub use crate::std_float::StdFloat;
 }
-#[cfg(not(bootstrap))]
 #[unstable(feature = "autodiff", issue = "124509")]
 /// This module provides support for automatic differentiation.
 pub mod autodiff {

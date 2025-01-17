@@ -3,7 +3,7 @@
 // MSVC is different because of the individual allocas.
 //@ ignore-msvc
 
-//@ aux-build:macro_def.rs
+//@ proc-macro: macro_def.rs
 
 // Find the variable.
 // CHECK-DAG: ![[#var_dbg:]] = !DILocalVariable(name: "n",{{( arg: 1,)?}} scope: ![[#var_scope:]]

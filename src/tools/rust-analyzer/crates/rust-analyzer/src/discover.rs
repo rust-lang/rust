@@ -1,6 +1,6 @@
 //! Infrastructure for lazy project discovery. Currently only support rust-project.json discovery
 //! via a custom discover command.
-use std::{io, process::Command};
+use std::{io, path::Path};
 
 use crossbeam_channel::Sender;
 use paths::{AbsPathBuf, Utf8Path, Utf8PathBuf};
@@ -43,7 +43,11 @@ impl DiscoverCommand {
     }
 
     /// Spawn the command inside [Discover] and report progress, if any.
-    pub(crate) fn spawn(&self, discover_arg: DiscoverArgument) -> io::Result<DiscoverHandle> {
+    pub(crate) fn spawn(
+        &self,
+        discover_arg: DiscoverArgument,
+        current_dir: &Path,
+    ) -> io::Result<DiscoverHandle> {
         let command = &self.command[0];
         let args = &self.command[1..];
 
@@ -58,7 +62,7 @@ impl DiscoverCommand {
             })
             .collect();
 
-        let mut cmd = Command::new(command);
+        let mut cmd = toolchain::command(command, current_dir);
         cmd.args(args);
 
         Ok(DiscoverHandle {

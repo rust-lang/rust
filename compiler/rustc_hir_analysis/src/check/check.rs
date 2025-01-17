@@ -6,7 +6,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::MultiSpan;
 use rustc_errors::codes::*;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::{Node, Safety, intravisit};
+use rustc_hir::{Node, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode};
 use rustc_lint_defs::builtin::{
@@ -17,7 +17,7 @@ use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
 use rustc_middle::ty::error::TypeErrorToStringExt;
-use rustc_middle::ty::fold::BottomUpFolder;
+use rustc_middle::ty::fold::{BottomUpFolder, fold_regions};
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::util::{Discr, InspectCoroutineFields, IntTypeExt};
 use rustc_middle::ty::{
@@ -31,9 +31,9 @@ use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_type_ir::fold::TypeFoldable;
 use tracing::{debug, instrument};
 use ty::TypingMode;
-use {rustc_attr as attr, rustc_hir as hir};
+use {rustc_attr_parsing as attr, rustc_hir as hir};
 
-use super::compare_impl_item::{check_type_bounds, compare_impl_method, compare_impl_ty};
+use super::compare_impl_item::check_type_bounds;
 use super::*;
 use crate::check::intrinsicck::InlineAsmCtxt;
 
@@ -103,7 +103,7 @@ fn allowed_union_or_unsafe_field<'tcx>(
             // Fallback case: allow `ManuallyDrop` and things that are `Copy`,
             // also no need to report an error if the type is unresolved.
             ty.ty_adt_def().is_some_and(|adt_def| adt_def.is_manually_drop())
-                || ty.is_copy_modulo_regions(tcx, typing_env)
+                || tcx.type_is_copy_modulo_regions(typing_env, ty)
                 || ty.references_error()
         }
     };
@@ -161,7 +161,7 @@ fn check_unsafe_fields(tcx: TyCtxt<'_>, item_def_id: LocalDefId) {
     };
     let typing_env = ty::TypingEnv::non_body_analysis(tcx, item_def_id);
     for field in def.all_fields() {
-        if field.safety != Safety::Unsafe {
+        if !field.safety.is_unsafe() {
             continue;
         }
         let Ok(field_ty) = tcx.try_normalize_erasing_regions(typing_env, field.ty(tcx, args))
@@ -322,8 +322,12 @@ fn check_opaque_meets_bounds<'tcx>(
     };
     let param_env = tcx.param_env(defining_use_anchor);
 
-    // FIXME(#132279): This should eventually use the already defined hidden types.
-    let infcx = tcx.infer_ctxt().build(TypingMode::analysis_in_body(tcx, defining_use_anchor));
+    // FIXME(#132279): Once `PostBorrowckAnalysis` is supported in the old solver, this branch should be removed.
+    let infcx = tcx.infer_ctxt().build(if tcx.next_trait_solver_globally() {
+        TypingMode::post_borrowck_analysis(tcx, defining_use_anchor)
+    } else {
+        TypingMode::analysis_in_body(tcx, defining_use_anchor)
+    });
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     let args = match origin {
@@ -346,7 +350,7 @@ fn check_opaque_meets_bounds<'tcx>(
     // FIXME: Consider wrapping the hidden type in an existential `Binder` and instantiating it
     // here rather than using ReErased.
     let hidden_ty = tcx.type_of(def_id.to_def_id()).instantiate(tcx, args);
-    let hidden_ty = tcx.fold_regions(hidden_ty, |re, _dbi| match re.kind() {
+    let hidden_ty = fold_regions(tcx, hidden_ty, |re, _dbi| match re.kind() {
         ty::ReErased => infcx.next_region_var(RegionVariableOrigin::MiscVariable(span)),
         _ => re,
     });
@@ -417,7 +421,11 @@ fn check_opaque_meets_bounds<'tcx>(
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
     ocx.resolve_regions_and_report_errors(defining_use_anchor, &outlives_env)?;
 
-    if let hir::OpaqueTyOrigin::FnReturn { .. } | hir::OpaqueTyOrigin::AsyncFn { .. } = origin {
+    if infcx.next_trait_solver() {
+        Ok(())
+    } else if let hir::OpaqueTyOrigin::FnReturn { .. } | hir::OpaqueTyOrigin::AsyncFn { .. } =
+        origin
+    {
         // HACK: this should also fall through to the hidden type check below, but the original
         // implementation had a bug where equivalent lifetimes are not identical. This caused us
         // to reject existing stable code that is otherwise completely fine. The real fix is to
@@ -428,9 +436,9 @@ fn check_opaque_meets_bounds<'tcx>(
     } else {
         // Check that any hidden types found during wf checking match the hidden types that `type_of` sees.
         for (mut key, mut ty) in infcx.take_opaque_types() {
-            ty.hidden_type.ty = infcx.resolve_vars_if_possible(ty.hidden_type.ty);
+            ty.ty = infcx.resolve_vars_if_possible(ty.ty);
             key = infcx.resolve_vars_if_possible(key);
-            sanity_check_found_hidden_type(tcx, key, ty.hidden_type)?;
+            sanity_check_found_hidden_type(tcx, key, ty)?;
         }
         Ok(())
     }
@@ -567,7 +575,7 @@ fn sanity_check_found_hidden_type<'tcx>(
     } else {
         let span = tcx.def_span(key.def_id);
         let other = ty::OpaqueHiddenType { ty: hidden_ty, span };
-        Err(ty.build_mismatch_error(&other, key.def_id, tcx)?.emit())
+        Err(ty.build_mismatch_error(&other, tcx)?.emit())
     }
 }
 
@@ -1036,18 +1044,23 @@ fn check_impl_items_against_trait<'tcx>(
             tcx.dcx().span_delayed_bug(tcx.def_span(impl_item), "missing associated item in trait");
             continue;
         };
-        match ty_impl_item.kind {
-            ty::AssocKind::Const => {
-                tcx.ensure().compare_impl_const((
-                    impl_item.expect_local(),
-                    ty_impl_item.trait_item_def_id.unwrap(),
-                ));
-            }
-            ty::AssocKind::Fn => {
-                compare_impl_method(tcx, ty_impl_item, ty_trait_item, trait_ref);
-            }
-            ty::AssocKind::Type => {
-                compare_impl_ty(tcx, ty_impl_item, ty_trait_item, trait_ref);
+
+        let res = tcx.ensure().compare_impl_item(impl_item.expect_local());
+
+        if res.is_ok() {
+            match ty_impl_item.kind {
+                ty::AssocKind::Fn => {
+                    compare_impl_item::refine::check_refining_return_position_impl_trait_in_trait(
+                        tcx,
+                        ty_impl_item,
+                        ty_trait_item,
+                        tcx.impl_trait_ref(ty_impl_item.container_id(tcx))
+                            .unwrap()
+                            .instantiate_identity(),
+                    );
+                }
+                ty::AssocKind::Const => {}
+                ty::AssocKind::Type => {}
             }
         }
 
@@ -1653,7 +1666,7 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
             .collect::<FxIndexMap<_, _>>()
     });
 
-    let mut params_used = BitSet::new_empty(generics.own_params.len());
+    let mut params_used = DenseBitSet::new_empty(generics.own_params.len());
     for leaf in ty.walk() {
         if let GenericArgKind::Type(leaf_ty) = leaf.unpack()
             && let ty::Param(param) = leaf_ty.kind()
@@ -1832,13 +1845,18 @@ pub(super) fn check_coroutine_obligations(
 
     debug!(?typeck_results.coroutine_stalled_predicates);
 
+    let mode = if tcx.next_trait_solver_globally() {
+        TypingMode::post_borrowck_analysis(tcx, def_id)
+    } else {
+        TypingMode::analysis_in_body(tcx, def_id)
+    };
+
     let infcx = tcx
         .infer_ctxt()
         // typeck writeback gives us predicates with their regions erased.
         // As borrowck already has checked lifetimes, we do not need to do it again.
         .ignoring_regions()
-        // FIXME(#132279): This should eventually use the already defined hidden types.
-        .build(TypingMode::analysis_in_body(tcx, def_id));
+        .build(mode);
 
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     for (predicate, cause) in &typeck_results.coroutine_stalled_predicates {
@@ -1851,12 +1869,14 @@ pub(super) fn check_coroutine_obligations(
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
 
-    // Check that any hidden types found when checking these stalled coroutine obligations
-    // are valid.
-    for (key, ty) in infcx.take_opaque_types() {
-        let hidden_type = infcx.resolve_vars_if_possible(ty.hidden_type);
-        let key = infcx.resolve_vars_if_possible(key);
-        sanity_check_found_hidden_type(tcx, key, hidden_type)?;
+    if !tcx.next_trait_solver_globally() {
+        // Check that any hidden types found when checking these stalled coroutine obligations
+        // are valid.
+        for (key, ty) in infcx.take_opaque_types() {
+            let hidden_type = infcx.resolve_vars_if_possible(ty);
+            let key = infcx.resolve_vars_if_possible(key);
+            sanity_check_found_hidden_type(tcx, key, hidden_type)?;
+        }
     }
 
     Ok(())

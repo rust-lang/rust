@@ -10,7 +10,8 @@
           _2 = E::<T>::A;
           discriminant(_2) = 1;
           _1 = discriminant(_2);
-          switchInt(copy _1) -> [0: bb1, otherwise: bb2];
+-         switchInt(copy _1) -> [0: bb1, otherwise: bb2];
++         goto -> bb2;
       }
   
       bb1: {

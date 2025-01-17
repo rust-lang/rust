@@ -20,10 +20,7 @@ error[E0277]: the size for values of type `(dyn Fn() -> u32 + 'static)` cannot b
    |
 LL |       static foo: dyn Fn() -> u32 = || -> u32 {
    |  ___________________________________^
-LL | |
-LL | |
-LL | |
-LL | |
+...  |
 LL | |         0
 LL | |     };
    | |_____^ doesn't have a size known at compile-time
@@ -36,10 +33,7 @@ error[E0308]: mismatched types
    |
 LL |       static foo: dyn Fn() -> u32 = || -> u32 {
    |  ___________________________________^
-LL | |
-LL | |
-LL | |
-LL | |
+...  |
 LL | |         0
 LL | |     };
    | |_____^ expected `dyn Fn`, found closure

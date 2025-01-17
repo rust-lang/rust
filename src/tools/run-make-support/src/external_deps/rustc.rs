@@ -227,6 +227,12 @@ impl Rustc {
         self
     }
 
+    /// Normalize the line number in the stderr output
+    pub fn ui_testing(&mut self) -> &mut Self {
+        self.cmd.arg(format!("-Zui-testing"));
+        self
+    }
+
     /// Specify the target triple, or a path to a custom target json spec file.
     pub fn target<S: AsRef<str>>(&mut self, target: S) -> &mut Self {
         let target = target.as_ref();
@@ -316,6 +322,12 @@ impl Rustc {
     /// Specify the linker flavor
     pub fn linker_flavor(&mut self, linker_flavor: &str) -> &mut Self {
         self.cmd.arg(format!("-Clinker-flavor={linker_flavor}"));
+        self
+    }
+
+    /// Pass the `--verbose` flag.
+    pub fn verbose(&mut self) -> &mut Self {
+        self.cmd.arg("--verbose");
         self
     }
 

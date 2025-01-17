@@ -1,5 +1,6 @@
 use std::mem;
 
+use rustc_attr_parsing::StabilityLevel;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
 use rustc_middle::ty::{self, TyCtxt};
@@ -139,6 +140,7 @@ struct CacheBuilder<'a, 'tcx> {
     /// This field is used to prevent duplicated impl blocks.
     impl_ids: DefIdMap<DefIdSet>,
     tcx: TyCtxt<'tcx>,
+    is_json_output: bool,
 }
 
 impl Cache {
@@ -183,8 +185,13 @@ impl Cache {
         }
 
         let (krate, mut impl_ids) = {
-            let mut cache_builder =
-                CacheBuilder { tcx, cache: &mut cx.cache, impl_ids: Default::default() };
+            let is_json_output = cx.is_json_output();
+            let mut cache_builder = CacheBuilder {
+                tcx,
+                cache: &mut cx.cache,
+                impl_ids: Default::default(),
+                is_json_output,
+            };
             krate = cache_builder.fold_crate(krate);
             (krate, cache_builder.impl_ids)
         };
@@ -203,7 +210,7 @@ impl Cache {
     }
 }
 
-impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
+impl DocFolder for CacheBuilder<'_, '_> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         if item.item_id.is_local() {
             debug!(
@@ -305,7 +312,14 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             | clean::MacroItem(..)
             | clean::ProcMacroItem(..)
             | clean::VariantItem(..) => {
-                if !self.cache.stripped_mod {
+                use rustc_data_structures::fx::IndexEntry as Entry;
+
+                let skip_because_unstable = matches!(
+                    item.stability.map(|stab| stab.level),
+                    Some(StabilityLevel::Stable { allowed_through_unstable_modules: Some(_), .. })
+                );
+
+                if (!self.cache.stripped_mod && !skip_because_unstable) || self.is_json_output {
                     // Re-exported items mean that the same id can show up twice
                     // in the rustdoc ast that we're looking at. We know,
                     // however, that a re-exported item doesn't show up in the
@@ -313,15 +327,15 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // paths map if there was already an entry present and we're
                     // not a public item.
                     let item_def_id = item.item_id.expect_def_id();
-                    if !self.cache.paths.contains_key(&item_def_id)
-                        || self
-                            .cache
-                            .effective_visibilities
-                            .is_directly_public(self.tcx, item_def_id)
-                    {
-                        self.cache
-                            .paths
-                            .insert(item_def_id, (self.cache.stack.clone(), item.type_()));
+                    match self.cache.paths.entry(item_def_id) {
+                        Entry::Vacant(entry) => {
+                            entry.insert((self.cache.stack.clone(), item.type_()));
+                        }
+                        Entry::Occupied(mut entry) => {
+                            if entry.get().0.len() > self.cache.stack.len() {
+                                entry.insert((self.cache.stack.clone(), item.type_()));
+                            }
+                        }
                     }
                 }
             }
@@ -334,12 +348,13 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             clean::ExternCrateItem { .. }
             | clean::ImportItem(..)
             | clean::ImplItem(..)
-            | clean::TyMethodItem(..)
+            | clean::RequiredMethodItem(..)
             | clean::MethodItem(..)
             | clean::StructFieldItem(..)
-            | clean::TyAssocConstItem(..)
-            | clean::AssocConstItem(..)
-            | clean::TyAssocTypeItem(..)
+            | clean::RequiredAssocConstItem(..)
+            | clean::ProvidedAssocConstItem(..)
+            | clean::ImplAssocConstItem(..)
+            | clean::RequiredAssocTypeItem(..)
             | clean::AssocTypeItem(..)
             | clean::StrippedItem(..)
             | clean::KeywordItem => {
@@ -412,7 +427,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             let impl_item = Impl { impl_item: item };
             let impl_did = impl_item.def_id();
             let trait_did = impl_item.trait_did();
-            if trait_did.map_or(true, |d| self.cache.traits.contains_key(&d)) {
+            if trait_did.is_none_or(|d| self.cache.traits.contains_key(&d)) {
                 for did in dids {
                     if self.impl_ids.entry(did).or_default().insert(impl_did) {
                         self.cache.impls.entry(did).or_default().push(impl_item.clone());
@@ -443,15 +458,17 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     let item_def_id = item.item_id.as_def_id().unwrap();
     let (parent_did, parent_path) = match item.kind {
         clean::StrippedItem(..) => return,
-        clean::AssocConstItem(..) | clean::AssocTypeItem(..)
+        clean::ProvidedAssocConstItem(..)
+        | clean::ImplAssocConstItem(..)
+        | clean::AssocTypeItem(..)
             if cache.parent_stack.last().is_some_and(|parent| parent.is_trait_impl()) =>
         {
             // skip associated items in trait impls
             return;
         }
-        clean::TyMethodItem(..)
-        | clean::TyAssocConstItem(..)
-        | clean::TyAssocTypeItem(..)
+        clean::RequiredMethodItem(..)
+        | clean::RequiredAssocConstItem(..)
+        | clean::RequiredAssocTypeItem(..)
         | clean::StructFieldItem(..)
         | clean::VariantItem(..) => {
             // Don't index if containing module is stripped (i.e., private),
@@ -467,7 +484,10 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
             let parent_path = &cache.stack[..cache.stack.len() - 1];
             (Some(parent_did), parent_path)
         }
-        clean::MethodItem(..) | clean::AssocConstItem(..) | clean::AssocTypeItem(..) => {
+        clean::MethodItem(..)
+        | clean::ProvidedAssocConstItem(..)
+        | clean::ImplAssocConstItem(..)
+        | clean::AssocTypeItem(..) => {
             let last = cache.parent_stack.last().expect("parent_stack is empty 2");
             let parent_did = match last {
                 // impl Trait for &T { fn method(self); }

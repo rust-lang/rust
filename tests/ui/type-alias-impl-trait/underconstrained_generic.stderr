@@ -21,7 +21,7 @@ note: this definition site has more where clauses than the opaque type
    |
 LL | fn _defining_use<T: Trait>() -> Converter<T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Trait`
    |
 LL | type Converter<T: Trait> = impl ProofForConversion<T>;
    |                 +++++++

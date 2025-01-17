@@ -84,8 +84,6 @@ session_not_supported = not supported
 
 session_octal_float_literal_not_supported = octal float literal is not supported
 
-session_optimization_fuel_exhausted = optimization-fuel-exhausted: {$msg}
-
 session_profile_sample_use_file_does_not_exist = file `{$path}` passed to `-C profile-sample-use` does not exist
 
 session_profile_use_file_does_not_exist = file `{$path}` passed to `-C profile-use` does not exist
@@ -137,5 +135,6 @@ session_unsupported_crate_type_for_target =
 
 session_unsupported_dwarf_version = requested DWARF version {$dwarf_version} is greater than 5
 
+session_unsupported_reg_struct_return_arch = `-Zreg-struct-return` is only supported on x86
 session_unsupported_regparm = `-Zregparm={$regparm}` is unsupported (valid values 0-3)
 session_unsupported_regparm_arch = `-Zregparm=N` is only supported on x86

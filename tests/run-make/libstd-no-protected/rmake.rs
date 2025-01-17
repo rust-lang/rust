@@ -7,7 +7,7 @@
 use run_make_support::object::Endianness;
 use run_make_support::object::read::archive::ArchiveFile;
 use run_make_support::object::read::elf::{FileHeader as _, SectionHeader as _};
-use run_make_support::rfs::{read, read_dir};
+use run_make_support::rfs::read;
 use run_make_support::{has_prefix, has_suffix, object, path, rustc, shallow_find_files, target};
 
 type FileHeader = run_make_support::object::elf::FileHeader64<Endianness>;

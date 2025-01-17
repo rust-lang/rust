@@ -314,12 +314,13 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
         PatKind::Box(p) => return name_from_pat(p),
         PatKind::Deref(p) => format!("deref!({})", name_from_pat(p)),
         PatKind::Ref(p, _) => return name_from_pat(p),
-        PatKind::Lit(..) => {
+        PatKind::Expr(..) => {
             warn!(
-                "tried to get argument name from PatKind::Lit, which is silly in function arguments"
+                "tried to get argument name from PatKind::Expr, which is silly in function arguments"
             );
             return Symbol::intern("()");
         }
+        PatKind::Guard(p, _) => return name_from_pat(p),
         PatKind::Range(..) => return kw::Underscore,
         PatKind::Slice(begin, ref mid, end) => {
             let begin = begin.iter().map(|p| name_from_pat(p).to_string());
@@ -578,11 +579,10 @@ pub(crate) fn has_doc_flag(tcx: TyCtxt<'_>, did: DefId, flag: Symbol) -> bool {
 }
 
 pub(crate) fn attrs_have_doc_flag<'a>(
-    mut attrs: impl Iterator<Item = &'a ast::Attribute>,
+    mut attrs: impl Iterator<Item = &'a hir::Attribute>,
     flag: Symbol,
 ) -> bool {
-    attrs
-        .any(|attr| attr.meta_item_list().is_some_and(|l| rustc_attr::list_contains_name(&l, flag)))
+    attrs.any(|attr| attr.meta_item_list().is_some_and(|l| ast::attr::list_contains_name(&l, flag)))
 }
 
 /// A link to `doc.rust-lang.org` that includes the channel name. Use this instead of manual links

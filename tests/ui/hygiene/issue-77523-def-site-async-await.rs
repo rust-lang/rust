@@ -1,5 +1,4 @@
 //@ build-pass
-//@ aux-build:opaque-hygiene.rs
 //@ aux-build:def-site-async-await.rs
 
 // Regression test for issue #77523

@@ -1,7 +1,7 @@
 use std::fmt;
 use std::hash::Hash;
 
-use rustc_attr::InlineAttr;
+use rustc_attr_parsing::InlineAttr;
 use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
@@ -13,12 +13,12 @@ use rustc_index::Idx;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
-use rustc_span::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::{Span, Symbol};
 use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
 
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
+use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::{GenericArgs, Instance, InstanceKind, SymbolName, TyCtxt};
 
 /// Describes how a monomorphization will be instantiated in object files.
@@ -104,11 +104,20 @@ impl<'tcx> MonoItem<'tcx> {
                 let entry_def_id = tcx.entry_fn(()).map(|(id, _)| id);
                 // If this function isn't inlined or otherwise has an extern
                 // indicator, then we'll be creating a globally shared version.
-                if tcx.codegen_fn_attrs(instance.def_id()).contains_extern_indicator()
+                let codegen_fn_attrs = tcx.codegen_fn_attrs(instance.def_id());
+                if codegen_fn_attrs.contains_extern_indicator()
+                    || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED)
                     || !instance.def.generates_cgu_internal_copy(tcx)
                     || Some(instance.def_id()) == entry_def_id
                 {
                     return InstantiationMode::GloballyShared { may_conflict: false };
+                }
+
+                if let InlineAttr::Never = tcx.codegen_fn_attrs(instance.def_id()).inline
+                    && self.is_generic_fn()
+                {
+                    // Upgrade inline(never) to a globally shared instance.
+                    return InstantiationMode::GloballyShared { may_conflict: true };
                 }
 
                 // At this point we don't have explicit linkage and we're an
@@ -123,9 +132,10 @@ impl<'tcx> MonoItem<'tcx> {
                 // creating one copy of this `#[inline]` function which may
                 // conflict with upstream crates as it could be an exported
                 // symbol.
-                match tcx.codegen_fn_attrs(instance.def_id()).inline {
-                    InlineAttr::Always => InstantiationMode::LocalCopy,
-                    _ => InstantiationMode::GloballyShared { may_conflict: true },
+                if tcx.codegen_fn_attrs(instance.def_id()).inline.always() {
+                    InstantiationMode::LocalCopy
+                } else {
+                    InstantiationMode::GloballyShared { may_conflict: true }
                 }
             }
             MonoItem::Static(..) | MonoItem::GlobalAsm(..) => {
@@ -284,10 +294,22 @@ pub enum Linkage {
     Common,
 }
 
+/// Specifies the symbol visibility with regards to dynamic linking.
+///
+/// Visibility doesn't have any effect when linkage is internal.
+///
+/// DSO means dynamic shared object, that is a dynamically linked executable or dylib.
 #[derive(Copy, Clone, PartialEq, Debug, HashStable)]
 pub enum Visibility {
+    /// Export the symbol from the DSO and apply overrides of the symbol by outside DSOs to within
+    /// the DSO if the object file format supports this.
     Default,
+    /// Hide the symbol outside of the defining DSO even when external linkage is used to export it
+    /// from the object file.
     Hidden,
+    /// Export the symbol from the DSO, but don't apply overrides of the symbol by outside DSOs to
+    /// within the DSO. Equivalent to default visibility with object file formats that don't support
+    /// overriding exported symbols by another DSO.
     Protected,
 }
 

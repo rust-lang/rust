@@ -298,7 +298,7 @@ pub trait MetadataExt {
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 impl MetadataExt for Metadata {
     fn st_dev(&self) -> u64 {
-        self.as_inner().as_inner().st_fsid as u64
+        self.as_inner().as_inner().st_dev as u64
     }
     fn st_ino(&self) -> u64 {
         self.as_inner().as_inner().st_ino as u64

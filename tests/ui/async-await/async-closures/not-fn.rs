@@ -2,8 +2,6 @@
 
 // FIXME(async_closures): This needs a better error message!
 
-#![feature(async_closure)]
-
 fn main() {
     fn needs_fn<T>(_: impl FnMut() -> T) {}
 

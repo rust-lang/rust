@@ -7,7 +7,7 @@ default-run = "bootstrap"
 
 [features]
 build-metrics = ["sysinfo"]
-bootstrap-self-test = [] # enabled in the bootstrap unit tests
+tracing = ["dep:tracing", "dep:tracing-subscriber", "dep:tracing-tree"]
 
 [lib]
 path = "src/lib.rs"
@@ -47,7 +47,7 @@ fd-lock = "4.0"
 home = "0.5"
 ignore = "0.4"
 libc = "0.2"
-object = { version = "0.36.3", default-features = false, features = ["archive", "coff", "read_core", "unaligned"] }
+object = { version = "0.36.3", default-features = false, features = ["archive", "coff", "read_core", "std", "unaligned"] }
 opener = "0.5"
 semver = "1.0"
 serde = "1.0"
@@ -63,7 +63,12 @@ walkdir = "2.4"
 xz2 = "0.1"
 
 # Dependencies needed by the build-metrics feature
-sysinfo = { version = "0.31.2", default-features = false, optional = true, features = ["system"] }
+sysinfo = { version = "0.33.0", default-features = false, optional = true, features = ["system"] }
+
+# Dependencies needed by the `tracing` feature
+tracing = { version = "0.1", optional = true, features = ["attributes"] }
+tracing-subscriber = { version = "0.3", optional = true, features = ["env-filter", "fmt", "registry", "std"] }
+tracing-tree = { version = "0.4.0", optional = true }
 
 [target.'cfg(windows)'.dependencies.junction]
 version = "1.0.0"

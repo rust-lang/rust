@@ -42,7 +42,7 @@ fn change_assoc_1<'a, 'b>(
 // This tests the default borrow check error, without the special casing for return values.
 fn require_static(_: *const dyn Trait<'static>) {}
 fn extend_to_static<'a>(ptr: *const dyn Trait<'a>) {
-    require_static(ptr as _) //~ error: lifetime may not live long enough
+    require_static(ptr as _) //~ error: borrowed data escapes outside of function
 }
 
 fn main() {}

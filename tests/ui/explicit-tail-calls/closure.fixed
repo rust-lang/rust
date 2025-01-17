@@ -1,0 +1,31 @@
+//@ run-rustfix
+#![expect(incomplete_features)]
+#![feature(explicit_tail_calls)]
+
+fn a() {
+    become ((|| ()) as fn() -> _)();
+    //~^ ERROR: tail calling closures directly is not allowed
+}
+
+fn aa((): ()) {
+    become ((|()| ()) as fn(_) -> _)(());
+    //~^ ERROR: tail calling closures directly is not allowed
+}
+
+fn aaa((): (), _: i32) {
+    become ((|(), _| ()) as fn(_, _) -> _)((), 1);
+    //~^ ERROR: tail calling closures directly is not allowed
+}
+
+fn v((): (), ((), ()): ((), ())) -> (((), ()), ()) {
+    let f = |(), ((), ())| (((), ()), ());
+    become (f as fn(_, _) -> _)((), ((), ()));
+    //~^ ERROR: tail calling closures directly is not allowed
+}
+
+fn main() {
+    a();
+    aa(());
+    aaa((), 1);
+    v((), ((), ()));
+}

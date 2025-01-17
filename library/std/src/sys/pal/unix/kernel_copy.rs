@@ -65,6 +65,7 @@ use crate::process::{ChildStderr, ChildStdin, ChildStdout};
 use crate::ptr;
 use crate::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use crate::sys::cvt;
+use crate::sys::fs::CachedFileMetadata;
 use crate::sys::weak::syscall;
 
 #[cfg(test)]
@@ -192,7 +193,7 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
         let w_cfg = writer.properties();
 
         // before direct operations on file descriptors ensure that all source and sink buffers are empty
-        let mut flush = || -> crate::io::Result<u64> {
+        let mut flush = || -> Result<u64> {
             let bytes = reader.drain_to(writer, u64::MAX)?;
             // BufWriter buffered bytes have already been accounted for in earlier write() calls
             writer.flush()?;
@@ -534,6 +535,18 @@ impl<T: ?Sized + CopyRead> CopyRead for BufReader<T> {
 impl<T: ?Sized + CopyWrite> CopyWrite for BufWriter<T> {
     fn properties(&self) -> CopyParams {
         self.get_ref().properties()
+    }
+}
+
+impl CopyRead for CachedFileMetadata {
+    fn properties(&self) -> CopyParams {
+        CopyParams(FdMeta::Metadata(self.1.clone()), Some(self.0.as_raw_fd()))
+    }
+}
+
+impl CopyWrite for CachedFileMetadata {
+    fn properties(&self) -> CopyParams {
+        CopyParams(FdMeta::Metadata(self.1.clone()), Some(self.0.as_raw_fd()))
     }
 }
 

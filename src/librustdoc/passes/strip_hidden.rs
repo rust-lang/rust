@@ -57,7 +57,7 @@ struct Stripper<'a, 'tcx> {
     last_reexport: Option<LocalDefId>,
 }
 
-impl<'a, 'tcx> Stripper<'a, 'tcx> {
+impl Stripper<'_, '_> {
     fn set_last_reexport_then_fold_item(&mut self, i: Item) -> Item {
         let prev_from_reexport = self.last_reexport;
         if i.inline_stmt_id.is_some() {
@@ -86,7 +86,7 @@ impl<'a, 'tcx> Stripper<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
+impl DocFolder for Stripper<'_, '_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         let has_doc_hidden = i.is_doc_hidden();
         let is_impl_or_exported_macro = match i.kind {

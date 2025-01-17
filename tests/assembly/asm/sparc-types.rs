@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: sparc sparcv8plus sparc64
 //@ assembly-output: emit-asm
 //@[sparc] compile-flags: --target sparc-unknown-none-elf
@@ -8,39 +9,15 @@
 //@[sparc64] needs-llvm-components: sparc
 //@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_experimental_arch)]
+#![feature(no_core, asm_experimental_arch)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! concat {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! stringify {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 type ptr = *const i32;
-
-impl Copy for i8 {}
-impl Copy for u8 {}
-impl Copy for i16 {}
-impl Copy for i32 {}
-impl Copy for i64 {}
-impl Copy for f32 {}
-impl Copy for f64 {}
-impl Copy for ptr {}
 
 extern "C" {
     fn extern_func();

@@ -6,8 +6,9 @@ fn foo(_1: Box<[T]>) -> T {
     let _2: T;
     let mut _3: &T;
     let _4: usize;
-    let mut _5: usize;
-    let mut _6: bool;
+    let mut _5: *const [T];
+    let mut _6: usize;
+    let mut _7: bool;
     scope 1 {
         debug f => _2;
     }
@@ -17,9 +18,10 @@ fn foo(_1: Box<[T]>) -> T {
         StorageLive(_3);
         StorageLive(_4);
         _4 = const 0_usize;
-        _5 = Len((*_1));
-        _6 = Lt(copy _4, copy _5);
-        assert(move _6, "index out of bounds: the length is {} but the index is {}", move _5, copy _4) -> [success: bb1, unwind: bb5];
+        _5 = &raw const (*_1);
+        _6 = PtrMetadata(move _5);
+        _7 = Lt(copy _4, copy _6);
+        assert(move _7, "index out of bounds: the length is {} but the index is {}", move _6, copy _4) -> [success: bb1, unwind: bb5];
     }
 
     bb1: {

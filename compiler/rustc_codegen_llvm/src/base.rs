@@ -23,7 +23,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::mono::{Linkage, Visibility};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
 
 use super::ModuleLlvm;

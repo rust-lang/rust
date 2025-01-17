@@ -1,0 +1,23 @@
+error: default variant must be exhaustive
+  --> $DIR/default-field-values-non_exhaustive.rs:13:5
+   |
+LL |     #[non_exhaustive]
+   |     ----------------- declared `#[non_exhaustive]` here
+LL |     #[default]
+LL |     Baz {
+   |     ^^^
+   |
+   = help: consider a manual implementation of `Default`
+
+error: `#[non_exhaustive]` can't be used to annotate items with default field values
+  --> $DIR/default-field-values-non_exhaustive.rs:4:1
+   |
+LL |   #[non_exhaustive]
+   |   ^^^^^^^^^^^^^^^^^
+LL | / struct Foo {
+LL | |     x: i32 = 42 + 3,
+LL | | }
+   | |_- this struct has default field values
+
+error: aborting due to 2 previous errors
+

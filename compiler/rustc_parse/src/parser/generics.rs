@@ -1,10 +1,10 @@
 use ast::token::Delimiter;
 use rustc_ast::{
-    self as ast, AttrVec, GenericBounds, GenericParam, GenericParamKind, TyKind, WhereClause, token,
+    self as ast, AttrVec, DUMMY_NODE_ID, GenericBounds, GenericParam, GenericParamKind, TyKind,
+    WhereClause, token,
 };
 use rustc_errors::{Applicability, PResult};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, kw};
+use rustc_span::{Ident, Span, kw};
 use thin_vec::ThinVec;
 
 use super::{ForceCollect, Parser, Trailing, UsePreAttrPos};
@@ -13,9 +13,10 @@ use crate::errors::{
     UnexpectedSelfInGenericParameters, WhereClauseBeforeTupleStructBody,
     WhereClauseBeforeTupleStructBodySugg,
 };
+use crate::exp;
 
-enum PredicateOrStructBody {
-    Predicate(ast::WherePredicate),
+enum PredicateKindOrStructBody {
+    PredicateKind(ast::WherePredicateKind),
     StructBody(ThinVec<ast::FieldDef>),
 }
 
@@ -52,7 +53,7 @@ impl<'a> Parser<'a> {
 
         // Parse optional colon and param bounds.
         let mut colon_span = None;
-        let bounds = if self.eat(&token::Colon) {
+        let bounds = if self.eat(exp!(Colon)) {
             colon_span = Some(self.prev_token.span);
             // recover from `impl Trait` in type param bound
             if self.token.is_keyword(kw::Impl) {
@@ -89,7 +90,7 @@ impl<'a> Parser<'a> {
             Vec::new()
         };
 
-        let default = if self.eat(&token::Eq) { Some(self.parse_ty()?) } else { None };
+        let default = if self.eat(exp!(Eq)) { Some(self.parse_ty()?) } else { None };
         Ok(GenericParam {
             ident,
             id: ast::DUMMY_NODE_ID,
@@ -107,13 +108,13 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, GenericParam> {
         let const_span = self.token.span;
 
-        self.expect_keyword(kw::Const)?;
+        self.expect_keyword(exp!(Const))?;
         let ident = self.parse_ident()?;
-        self.expect(&token::Colon)?;
+        self.expect(exp!(Colon))?;
         let ty = self.parse_ty()?;
 
         // Parse optional const generics default value.
-        let default = if self.eat(&token::Eq) { Some(self.parse_const_arg()?) } else { None };
+        let default = if self.eat(exp!(Eq)) { Some(self.parse_const_arg()?) } else { None };
 
         Ok(GenericParam {
             ident,
@@ -132,11 +133,11 @@ impl<'a> Parser<'a> {
         mistyped_const_ident: Ident,
     ) -> PResult<'a, GenericParam> {
         let ident = self.parse_ident()?;
-        self.expect(&token::Colon)?;
+        self.expect(exp!(Colon))?;
         let ty = self.parse_ty()?;
 
         // Parse optional const generics default value.
-        let default = if self.eat(&token::Eq) { Some(self.parse_const_arg()?) } else { None };
+        let default = if self.eat(exp!(Eq)) { Some(self.parse_const_arg()?) } else { None };
 
         self.dcx()
             .struct_span_err(
@@ -177,13 +178,13 @@ impl<'a> Parser<'a> {
                         .emit_err(UnexpectedSelfInGenericParameters { span: this.prev_token.span });
 
                     // Eat a trailing comma, if it exists.
-                    let _ = this.eat(&token::Comma);
+                    let _ = this.eat(exp!(Comma));
                 }
 
                 let param = if this.check_lifetime() {
                     let lifetime = this.expect_lifetime();
                     // Parse lifetime parameter.
-                    let (colon_span, bounds) = if this.eat(&token::Colon) {
+                    let (colon_span, bounds) = if this.eat(exp!(Colon)) {
                         (Some(this.prev_token.span), this.parse_lt_param_bounds())
                     } else {
                         (None, Vec::new())
@@ -209,7 +210,7 @@ impl<'a> Parser<'a> {
                         is_placeholder: false,
                         colon_span,
                     })
-                } else if this.check_keyword(kw::Const) {
+                } else if this.check_keyword(exp!(Const)) {
                     // Parse const parameter.
                     Some(this.parse_const_param(attrs)?)
                 } else if this.check_ident() {
@@ -218,10 +219,11 @@ impl<'a> Parser<'a> {
                 } else if this.token.can_begin_type() {
                     // Trying to write an associated type bound? (#26271)
                     let snapshot = this.create_snapshot_for_diagnostic();
-                    match this.parse_ty_where_predicate() {
-                        Ok(where_predicate) => {
+                    let lo = this.token.span;
+                    match this.parse_ty_where_predicate_kind() {
+                        Ok(_) => {
                             this.dcx().emit_err(errors::BadAssocTypeBounds {
-                                span: where_predicate.span(),
+                                span: lo.to(this.prev_token.span),
                             });
                             // FIXME - try to continue parsing other generics?
                         }
@@ -245,7 +247,7 @@ impl<'a> Parser<'a> {
                     return Ok((None, Trailing::No, UsePreAttrPos::No));
                 };
 
-                if !this.eat(&token::Comma) {
+                if !this.eat(exp!(Comma)) {
                     done = true;
                 }
                 // We just ate the comma, so no need to capture the trailing token.
@@ -323,7 +325,7 @@ impl<'a> Parser<'a> {
         };
         let mut tuple_struct_body = None;
 
-        if !self.eat_keyword(kw::Where) {
+        if !self.eat_keyword(exp!(Where)) {
             return Ok((where_clause, None));
         }
         where_clause.has_where_token = true;
@@ -340,34 +342,36 @@ impl<'a> Parser<'a> {
         loop {
             let where_sp = where_lo.to(self.prev_token.span);
             let pred_lo = self.token.span;
-            if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
+            let kind = if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
                 let lifetime = self.expect_lifetime();
                 // Bounds starting with a colon are mandatory, but possibly empty.
-                self.expect(&token::Colon)?;
+                self.expect(exp!(Colon))?;
                 let bounds = self.parse_lt_param_bounds();
-                where_clause.predicates.push(ast::WherePredicate::RegionPredicate(
-                    ast::WhereRegionPredicate {
-                        span: pred_lo.to(self.prev_token.span),
-                        lifetime,
-                        bounds,
-                    },
-                ));
+                ast::WherePredicateKind::RegionPredicate(ast::WhereRegionPredicate {
+                    lifetime,
+                    bounds,
+                })
             } else if self.check_type() {
-                match self.parse_ty_where_predicate_or_recover_tuple_struct_body(
+                match self.parse_ty_where_predicate_kind_or_recover_tuple_struct_body(
                     struct_, pred_lo, where_sp,
                 )? {
-                    PredicateOrStructBody::Predicate(pred) => where_clause.predicates.push(pred),
-                    PredicateOrStructBody::StructBody(body) => {
+                    PredicateKindOrStructBody::PredicateKind(kind) => kind,
+                    PredicateKindOrStructBody::StructBody(body) => {
                         tuple_struct_body = Some(body);
                         break;
                     }
                 }
             } else {
                 break;
-            }
+            };
+            where_clause.predicates.push(ast::WherePredicate {
+                kind,
+                id: DUMMY_NODE_ID,
+                span: pred_lo.to(self.prev_token.span),
+            });
 
             let prev_token = self.prev_token.span;
-            let ate_comma = self.eat(&token::Comma);
+            let ate_comma = self.eat(exp!(Comma));
 
             if self.eat_keyword_noexpect(kw::Where) {
                 self.dcx().emit_err(MultipleWhereClauses {
@@ -384,12 +388,12 @@ impl<'a> Parser<'a> {
         Ok((where_clause, tuple_struct_body))
     }
 
-    fn parse_ty_where_predicate_or_recover_tuple_struct_body(
+    fn parse_ty_where_predicate_kind_or_recover_tuple_struct_body(
         &mut self,
         struct_: Option<(Ident, Span)>,
         pred_lo: Span,
         where_sp: Span,
-    ) -> PResult<'a, PredicateOrStructBody> {
+    ) -> PResult<'a, PredicateKindOrStructBody> {
         let mut snapshot = None;
 
         if let Some(struct_) = struct_
@@ -399,8 +403,8 @@ impl<'a> Parser<'a> {
             snapshot = Some((struct_, self.create_snapshot_for_diagnostic()));
         };
 
-        match self.parse_ty_where_predicate() {
-            Ok(pred) => Ok(PredicateOrStructBody::Predicate(pred)),
+        match self.parse_ty_where_predicate_kind() {
+            Ok(pred) => Ok(PredicateKindOrStructBody::PredicateKind(pred)),
             Err(type_err) => {
                 let Some(((struct_name, body_insertion_point), mut snapshot)) = snapshot else {
                     return Err(type_err);
@@ -436,7 +440,7 @@ impl<'a> Parser<'a> {
                         });
 
                         self.restore_snapshot(snapshot);
-                        Ok(PredicateOrStructBody::StructBody(body))
+                        Ok(PredicateKindOrStructBody::StructBody(body))
                     }
                     Ok(_) => Err(type_err),
                     Err(body_err) => {
@@ -448,8 +452,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_ty_where_predicate(&mut self) -> PResult<'a, ast::WherePredicate> {
-        let lo = self.token.span;
+    fn parse_ty_where_predicate_kind(&mut self) -> PResult<'a, ast::WherePredicateKind> {
         // Parse optional `for<'a, 'b>`.
         // This `for` is parsed greedily and applies to the whole predicate,
         // the bounded type can have its own `for` applying only to it.
@@ -462,23 +465,18 @@ impl<'a> Parser<'a> {
         // Parse type with mandatory colon and (possibly empty) bounds,
         // or with mandatory equality sign and the second type.
         let ty = self.parse_ty_for_where_clause()?;
-        if self.eat(&token::Colon) {
+        if self.eat(exp!(Colon)) {
             let bounds = self.parse_generic_bounds()?;
-            Ok(ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                span: lo.to(self.prev_token.span),
+            Ok(ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
                 bound_generic_params: lifetime_defs,
                 bounded_ty: ty,
                 bounds,
             }))
         // FIXME: Decide what should be used here, `=` or `==`.
         // FIXME: We are just dropping the binders in lifetime_defs on the floor here.
-        } else if self.eat(&token::Eq) || self.eat(&token::EqEq) {
+        } else if self.eat(exp!(Eq)) || self.eat(exp!(EqEq)) {
             let rhs_ty = self.parse_ty()?;
-            Ok(ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
-                span: lo.to(self.prev_token.span),
-                lhs_ty: ty,
-                rhs_ty,
-            }))
+            Ok(ast::WherePredicateKind::EqPredicate(ast::WhereEqPredicate { lhs_ty: ty, rhs_ty }))
         } else {
             self.maybe_recover_bounds_doubled_colon(&ty)?;
             self.unexpected_any()

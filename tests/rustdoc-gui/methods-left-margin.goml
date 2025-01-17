@@ -1,7 +1,6 @@
 // This test is to ensure that methods are correctly aligned on the left side.
 
 go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
-
 // First we ensure that we have methods with and without documentation.
 assert: ".impl-items > details.method-toggle > summary > section.method"
 assert: ".impl-items > section.method"

@@ -15,8 +15,7 @@ use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, extension};
-use rustc_span::symbol::{Symbol, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::visit::TypeVisitableExt;
 use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind};
@@ -28,7 +27,7 @@ use crate::infer::canonical::Canonical;
 use crate::ty::InferTy::*;
 use crate::ty::{
     self, AdtDef, BoundRegionKind, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv,
-    Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
 };
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
@@ -402,7 +401,7 @@ impl<'tcx> Ty<'tcx> {
     /// The more specific methods will often optimize their creation.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
-    pub fn new(tcx: TyCtxt<'tcx>, st: TyKind<'tcx>) -> Ty<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, st: TyKind<'tcx>) -> Ty<'tcx> {
         tcx.mk_ty_from_kind(st)
     }
 
@@ -614,6 +613,41 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_adt(tcx: TyCtxt<'tcx>, def: AdtDef<'tcx>, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
         tcx.debug_assert_args_compatible(def.did(), args);
+        if cfg!(debug_assertions) {
+            match tcx.def_kind(def.did()) {
+                DefKind::Struct | DefKind::Union | DefKind::Enum => {}
+                DefKind::Mod
+                | DefKind::Variant
+                | DefKind::Trait
+                | DefKind::TyAlias
+                | DefKind::ForeignTy
+                | DefKind::TraitAlias
+                | DefKind::AssocTy
+                | DefKind::TyParam
+                | DefKind::Fn
+                | DefKind::Const
+                | DefKind::ConstParam
+                | DefKind::Static { .. }
+                | DefKind::Ctor(..)
+                | DefKind::AssocFn
+                | DefKind::AssocConst
+                | DefKind::Macro(..)
+                | DefKind::ExternCrate
+                | DefKind::Use
+                | DefKind::ForeignMod
+                | DefKind::AnonConst
+                | DefKind::InlineConst
+                | DefKind::OpaqueTy
+                | DefKind::Field
+                | DefKind::LifetimeParam
+                | DefKind::GlobalAsm
+                | DefKind::Impl { .. }
+                | DefKind::Closure
+                | DefKind::SyntheticCoroutineBody => {
+                    bug!("not an adt: {def:?} ({:?})", tcx.def_kind(def.did()))
+                }
+            }
+        }
         Ty::new(tcx, Adt(def, args))
     }
 
@@ -672,6 +706,11 @@ impl<'tcx> Ty<'tcx> {
     pub fn new_fn_ptr(tcx: TyCtxt<'tcx>, fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
         let (sig_tys, hdr) = fty.split();
         Ty::new(tcx, FnPtr(sig_tys, hdr))
+    }
+
+    #[inline]
+    pub fn new_unsafe_binder(tcx: TyCtxt<'tcx>, b: Binder<'tcx, Ty<'tcx>>) -> Ty<'tcx> {
+        Ty::new(tcx, UnsafeBinder(b.into()))
     }
 
     #[inline]
@@ -768,7 +807,7 @@ impl<'tcx> Ty<'tcx> {
                 }
             }
         });
-        Ty::new(tcx, Adt(adt_def, args))
+        Ty::new_adt(tcx, adt_def, args)
     }
 
     #[inline]
@@ -963,6 +1002,10 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_pat(interner, ty, pat)
     }
 
+    fn new_unsafe_binder(interner: TyCtxt<'tcx>, ty: ty::Binder<'tcx, Ty<'tcx>>) -> Self {
+        Ty::new_unsafe_binder(interner, ty)
+    }
+
     fn new_unit(interner: TyCtxt<'tcx>) -> Self {
         interner.types.unit
     }
@@ -977,6 +1020,10 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
 
     fn async_destructor_ty(self, interner: TyCtxt<'tcx>) -> Ty<'tcx> {
         self.async_destructor_ty(interner)
+    }
+
+    fn has_unsafe_fields(self) -> bool {
+        Ty::has_unsafe_fields(self)
     }
 }
 
@@ -1003,6 +1050,18 @@ impl<'tcx> Ty<'tcx> {
             Tuple(tys) => tys.is_empty(),
             _ => false,
         }
+    }
+
+    /// Check if type is an `usize`.
+    #[inline]
+    pub fn is_usize(self) -> bool {
+        matches!(self.kind(), Uint(UintTy::Usize))
+    }
+
+    /// Check if type is an `usize` or an integral type variable.
+    #[inline]
+    pub fn is_usize_like(self) -> bool {
+        matches!(self.kind(), Uint(UintTy::Usize) | Infer(IntVar(_)))
     }
 
     #[inline]
@@ -1477,6 +1536,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
+            | ty::UnsafeBinder(_)
             | ty::Error(_)
             | ty::Infer(IntVar(_) | FloatVar(_)) => tcx.types.u8,
 
@@ -1656,6 +1716,8 @@ impl<'tcx> Ty<'tcx> {
             // metadata of `tail`.
             ty::Param(_) | ty::Alias(..) => Err(tail),
 
+            | ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
+
             ty::Infer(ty::TyVar(_))
             | ty::Pat(..)
             | ty::Bound(..)
@@ -1816,6 +1878,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Float(_)
             | ty::FnDef(..)
             | ty::FnPtr(..)
+            | ty::UnsafeBinder(_)
             | ty::RawPtr(..)
             | ty::Char
             | ty::Ref(..)
@@ -1895,6 +1958,8 @@ impl<'tcx> Ty<'tcx> {
             // Might be, but not "trivial" so just giving the safe answer.
             ty::Adt(..) | ty::Closure(..) | ty::CoroutineClosure(..) => false,
 
+            ty::UnsafeBinder(_) => false,
+
             // Needs normalization or revealing to determine, so no is the safe answer.
             ty::Alias(..) => false,
 
@@ -1973,7 +2038,8 @@ impl<'tcx> Ty<'tcx> {
             | Coroutine(_, _)
             | CoroutineWitness(..)
             | Never
-            | Tuple(_) => true,
+            | Tuple(_)
+            | UnsafeBinder(_) => true,
             Error(_) | Infer(_) | Alias(_, _) | Param(_) | Bound(_, _) | Placeholder(_) => false,
         }
     }

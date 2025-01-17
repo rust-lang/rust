@@ -1,0 +1,104 @@
+translation,1,0.891
+symbol_name,2658,0.733
+def_symbol_name,2556,0.268
+item_attrs,5566,0.162
+type_of,6922,0.117
+generics_of,8020,0.084
+serialize dep graph,1,0.079
+relevant_trait_impls_for,50,0.063
+def_span,24875,0.061
+expansion,1,0.059
+const checking,1,0.055
+adt_def,1141,0.048
+trait_impls_of,32,0.045
+is_copy_raw,47,0.045
+is_foreign_item,2638,0.042
+fn_sig,2172,0.033
+adt_dtorck_constraint,2,0.023
+impl_trait_ref,2434,0.023
+typeck_tables_of,29,0.022
+item-bodies checking,1,0.017
+typeck_item_bodies,1,0.017
+is_default_impl,2320,0.017
+borrow checking,1,0.014
+borrowck,4,0.014
+mir_validated,4,0.013
+adt_destructor,10,0.012
+layout_raw,258,0.010
+load_dep_graph,1,0.007
+item-types checking,1,0.005
+mir_const,2,0.005
+name resolution,1,0.004
+is_object_safe,35,0.003
+is_sized_raw,89,0.003
+parsing,1,0.003
+is_freeze_raw,11,0.001
+privacy checking,1,0.001
+privacy_access_levels,5,0.001
+resolving dependency formats,1,0.001
+adt_sized_constraint,9,0.001
+wf checking,1,0.001
+liveness checking,1,0.001
+compute_incremental_hashes_map,1,0.001
+match checking,1,0.001
+type collecting,1,0.001
+param_env,31,0.000
+effect checking,1,0.000
+trait_def,140,0.000
+lowering ast -> hir,1,0.000
+predicates_of,70,0.000
+extern_crate,319,0.000
+lifetime resolution,1,0.000
+is_const_fn,6,0.000
+intrinsic checking,1,0.000
+translation item collection,1,0.000
+impl_polarity,15,0.000
+creating allocators,1,0.000
+language item collection,1,0.000
+crate injection,1,0.000
+early lint checks,1,0.000
+indexing hir,1,0.000
+maybe creating a macro crate,1,0.000
+coherence checking,1,0.000
+optimized_mir,6,0.000
+is_panic_runtime,33,0.000
+associated_item_def_ids,7,0.000
+needs_drop_raw,10,0.000
+lint checking,1,0.000
+complete gated feature checking,1,0.000
+stability index,1,0.000
+region_maps,11,0.000
+super_predicates_of,8,0.000
+coherent_trait,2,0.000
+AST validation,1,0.000
+loop checking,1,0.000
+static item recursion checking,1,0.000
+variances_of,11,0.000
+associated_item,5,0.000
+plugin loading,1,0.000
+looking for plugin registrar,1,0.000
+stability checking,1,0.000
+describe_def,15,0.000
+variance testing,1,0.000
+codegen unit partitioning,1,0.000
+looking for entry point,1,0.000
+checking for inline asm in case the target doesn't support it,1,0.000
+inherent_impls,1,0.000
+crate_inherent_impls,1,0.000
+trait_of_item,7,0.000
+crate_inherent_impls_overlap_check,1,0.000
+attribute checking,1,0.000
+internalize symbols,1,0.000
+impl wf inference,1,0.000
+death checking,1,0.000
+reachability checking,1,0.000
+reachable_set,1,0.000
+is_exported_symbol,3,0.000
+is_mir_available,2,0.000
+unused lib feature checking,1,0.000
+maybe building test harness,1,0.000
+recursion limit,1,0.000
+write allocator module,1,0.000
+assert dep graph,1,0.000
+plugin registration,1,0.000
+write metadata,1,0.000

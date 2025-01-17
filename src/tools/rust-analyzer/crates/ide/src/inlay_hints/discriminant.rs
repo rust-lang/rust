@@ -32,7 +32,7 @@ pub(super) fn enum_hints(
         return None;
     }
     // data carrying enums without a primitive repr have no stable discriminants
-    if data_carrying && def.repr(sema.db).map_or(true, |r| r.int.is_none()) {
+    if data_carrying && def.repr(sema.db).is_none_or(|r| r.int.is_none()) {
         return None;
     }
     for variant in enum_.variant_list()?.variants() {

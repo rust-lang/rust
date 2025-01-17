@@ -14,10 +14,10 @@ use rustc_session::lint::builtin::{
     TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
 };
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::Symbol;
-use rustc_span::{BytePos, Pos, Span};
+use rustc_span::{BytePos, Pos, Span, Symbol};
 use tracing::debug;
 
+use crate::lexer::diagnostics::TokenTreeDiagInfo;
 use crate::lexer::unicode_chars::UNICODE_ARRAY;
 use crate::{errors, make_unclosed_delims_error};
 
@@ -56,7 +56,7 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
     }
 
     let cursor = Cursor::new(src);
-    let string_reader = StringReader {
+    let mut lexer = Lexer {
         psess,
         start_pos,
         pos: start_pos,
@@ -65,34 +65,37 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
         override_span,
         nbsp_is_whitespace: false,
         last_lifetime: None,
+        token: Token::dummy(),
+        diag_info: TokenTreeDiagInfo::default(),
     };
-    let (stream, res, unmatched_delims) =
-        tokentrees::TokenTreesReader::lex_all_token_trees(string_reader);
+    let res = lexer.lex_token_trees(/* is_delimited */ false);
+
+    let mut unmatched_delims: Vec<_> = lexer
+        .diag_info
+        .unmatched_delims
+        .into_iter()
+        .filter_map(|unmatched_delim| make_unclosed_delims_error(unmatched_delim, psess))
+        .collect();
+
     match res {
-        Ok(()) if unmatched_delims.is_empty() => Ok(stream),
-        _ => {
-            // Return error if there are unmatched delimiters or unclosed delimiters.
+        Ok((_open_spacing, stream)) => {
+            if unmatched_delims.is_empty() {
+                Ok(stream)
+            } else {
+                // Return error if there are unmatched delimiters or unclosed delimiters.
+                Err(unmatched_delims)
+            }
+        }
+        Err(errs) => {
             // We emit delimiter mismatch errors first, then emit the unclosing delimiter mismatch
             // because the delimiter mismatch is more likely to be the root cause of error
-
-            let mut buffer = Vec::with_capacity(1);
-            for unmatched in unmatched_delims {
-                if let Some(err) = make_unclosed_delims_error(unmatched, psess) {
-                    buffer.push(err);
-                }
-            }
-            if let Err(errs) = res {
-                // Add unclosing delimiter or diff marker errors
-                for err in errs {
-                    buffer.push(err);
-                }
-            }
-            Err(buffer)
+            unmatched_delims.extend(errs);
+            Err(unmatched_delims)
         }
     }
 }
 
-struct StringReader<'psess, 'src> {
+struct Lexer<'psess, 'src> {
     psess: &'psess ParseSess,
     /// Initial position, read-only.
     start_pos: BytePos,
@@ -111,9 +114,14 @@ struct StringReader<'psess, 'src> {
     /// Track the `Span` for the leading `'` of the last lifetime. Used for
     /// diagnostics to detect possible typo where `"` was meant.
     last_lifetime: Option<Span>,
+
+    /// The current token.
+    token: Token,
+
+    diag_info: TokenTreeDiagInfo,
 }
 
-impl<'psess, 'src> StringReader<'psess, 'src> {
+impl<'psess, 'src> Lexer<'psess, 'src> {
     fn dcx(&self) -> DiagCtxtHandle<'psess> {
         self.psess.dcx()
     }
@@ -124,7 +132,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
 
     /// Returns the next token, paired with a bool indicating if the token was
     /// preceded by whitespace.
-    fn next_token(&mut self) -> (Token, bool) {
+    fn next_token_from_cursor(&mut self) -> (Token, bool) {
         let mut preceded_by_whitespace = false;
         let mut swallow_next_invalid = 0;
         // Skip trivial (whitespace & comments) tokens
@@ -231,7 +239,8 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                         .push(span);
                     token::Ident(sym, IdentIsRaw::No)
                 }
-                // split up (raw) c string literals to an ident and a string literal when edition < 2021.
+                // split up (raw) c string literals to an ident and a string literal when edition <
+                // 2021.
                 rustc_lexer::TokenKind::Literal {
                     kind: kind @ (LiteralKind::CStr { .. } | LiteralKind::RawCStr { .. }),
                     suffix_start: _,
@@ -252,7 +261,9 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     let prefix_span = self.mk_sp(start, lit_start);
                     return (Token::new(self.ident(start), prefix_span), preceded_by_whitespace);
                 }
-                rustc_lexer::TokenKind::GuardedStrPrefix => self.maybe_report_guarded_str(start, str_before),
+                rustc_lexer::TokenKind::GuardedStrPrefix => {
+                    self.maybe_report_guarded_str(start, str_before)
+                }
                 rustc_lexer::TokenKind::Literal { kind, suffix_start } => {
                     let suffix_start = start + BytePos(suffix_start);
                     let (kind, symbol) = self.cook_lexer_literal(start, suffix_start, kind);
@@ -294,15 +305,42 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     let prefix_span = self.mk_sp(start, ident_start);
 
                     if prefix_span.at_least_rust_2021() {
+                        // If the raw lifetime is followed by \' then treat it a normal
+                        // lifetime followed by a \', which is to interpret it as a character
+                        // literal. In this case, it's always an invalid character literal
+                        // since the literal must necessarily have >3 characters (r#...) inside
+                        // of it, which is invalid.
+                        if self.cursor.as_str().starts_with('\'') {
+                            let lit_span = self.mk_sp(start, self.pos + BytePos(1));
+                            let contents = self.str_from_to(start + BytePos(1), self.pos);
+                            emit_unescape_error(
+                                self.dcx(),
+                                contents,
+                                lit_span,
+                                lit_span,
+                                Mode::Char,
+                                0..contents.len(),
+                                EscapeError::MoreThanOneChar,
+                            )
+                            .expect("expected error");
+                        }
+
                         let span = self.mk_sp(start, self.pos);
 
-                        let lifetime_name_without_tick = Symbol::intern(&self.str_from(ident_start));
+                        let lifetime_name_without_tick =
+                            Symbol::intern(&self.str_from(ident_start));
                         if !lifetime_name_without_tick.can_be_raw() {
-                            self.dcx().emit_err(errors::CannotBeRawLifetime { span, ident: lifetime_name_without_tick });
+                            self.dcx().emit_err(
+                                errors::CannotBeRawLifetime {
+                                    span,
+                                    ident: lifetime_name_without_tick
+                                }
+                            );
                         }
 
                         // Put the `'` back onto the lifetime name.
-                        let mut lifetime_name = String::with_capacity(lifetime_name_without_tick.as_str().len() + 1);
+                        let mut lifetime_name =
+                            String::with_capacity(lifetime_name_without_tick.as_str().len() + 1);
                         lifetime_name.push('\'');
                         lifetime_name += lifetime_name_without_tick.as_str();
                         let sym = Symbol::intern(&lifetime_name);
@@ -358,8 +396,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                 rustc_lexer::TokenKind::Caret => token::BinOp(token::Caret),
                 rustc_lexer::TokenKind::Percent => token::BinOp(token::Percent),
 
-                rustc_lexer::TokenKind::Unknown
-                | rustc_lexer::TokenKind::InvalidIdent => {
+                rustc_lexer::TokenKind::Unknown | rustc_lexer::TokenKind::InvalidIdent => {
                     // Don't emit diagnostics for sequences of the same invalid token
                     if swallow_next_invalid > 0 {
                         swallow_next_invalid -= 1;
@@ -790,7 +827,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
 
     /// Detect guarded string literal syntax
     ///
-    /// RFC 3598 reserved this syntax for future use. As of Rust 2024,
+    /// RFC 3593 reserved this syntax for future use. As of Rust 2024,
     /// using this syntax produces an error. In earlier editions, however, it
     /// only results in an (allowed by default) lint, and is treated as
     /// separate tokens.
@@ -803,7 +840,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
 
         let mut cursor = Cursor::new(str_before);
 
-        let (span, unterminated) = match cursor.guarded_double_quoted_string() {
+        let (is_string, span, unterminated) = match cursor.guarded_double_quoted_string() {
             Some(rustc_lexer::GuardedStr { n_hashes, terminated, token_len }) => {
                 let end = start + BytePos(token_len);
                 let span = self.mk_sp(start, end);
@@ -816,13 +853,13 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
 
                 let unterminated = if terminated { None } else { Some(str_start) };
 
-                (span, unterminated)
+                (true, span, unterminated)
             }
-            _ => {
+            None => {
                 // We should only get here in the `##+` case.
                 debug_assert_eq!(self.str_from_to(start, start + BytePos(2)), "##");
 
-                (span, None)
+                (false, span, None)
             }
         };
         if edition2024 {
@@ -844,7 +881,11 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
             };
 
             // In Edition 2024 and later, emit a hard error.
-            let err = self.dcx().emit_err(errors::ReservedString { span, sugg });
+            let err = if is_string {
+                self.dcx().emit_err(errors::ReservedString { span, sugg })
+            } else {
+                self.dcx().emit_err(errors::ReservedMultihash { span, sugg })
+            };
 
             token::Literal(token::Lit {
                 kind: token::Err(err),
@@ -857,7 +898,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                 RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
                 span,
                 ast::CRATE_NODE_ID,
-                BuiltinLintDiag::ReservedString(space_span),
+                BuiltinLintDiag::ReservedString { is_string, suggestion: space_span },
             );
 
             // For backwards compatibility, roll back to after just the first `#`

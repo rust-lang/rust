@@ -1,5 +1,5 @@
 // `S` is infinitely recursing so it's not possible to generate a finite
-// drop impl (ignoring polymorphization).
+// drop impl.
 //
 // Dropck should therefore detect that this is the case and eagerly error.
 

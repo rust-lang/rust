@@ -1,6 +1,4 @@
-use rustc_middle::mir::coverage::{CounterId, CovTerm, ExpressionId, SourceRegion};
-
-use crate::coverageinfo::mapgen::LocalFileId;
+use rustc_middle::mir::coverage::{CounterId, CovTerm, ExpressionId};
 
 /// Must match the layout of `LLVMRustCounterKind`.
 #[derive(Copy, Clone, Debug)]
@@ -126,29 +124,43 @@ pub(crate) struct CoverageSpan {
     /// Local index into the function's local-to-global file ID table.
     /// The value at that index is itself an index into the coverage filename
     /// table in the CGU's `__llvm_covmap` section.
-    file_id: u32,
+    pub(crate) file_id: u32,
 
     /// 1-based starting line of the source code span.
-    start_line: u32,
+    pub(crate) start_line: u32,
     /// 1-based starting column of the source code span.
-    start_col: u32,
+    pub(crate) start_col: u32,
     /// 1-based ending line of the source code span.
-    end_line: u32,
+    pub(crate) end_line: u32,
     /// 1-based ending column of the source code span. High bit must be unset.
-    end_col: u32,
+    pub(crate) end_col: u32,
 }
 
-impl CoverageSpan {
-    pub(crate) fn from_source_region(
-        local_file_id: LocalFileId,
-        code_region: &SourceRegion,
-    ) -> Self {
-        let file_id = local_file_id.as_u32();
-        let &SourceRegion { start_line, start_col, end_line, end_col } = code_region;
-        // Internally, LLVM uses the high bit of `end_col` to distinguish between
-        // code regions and gap regions, so it can't be used by the column number.
-        assert!(end_col & (1u32 << 31) == 0, "high bit of `end_col` must be unset: {end_col:#X}");
-        Self { file_id, start_line, start_col, end_line, end_col }
+/// Holds tables of the various region types in one struct.
+///
+/// Don't pass this struct across FFI; pass the individual region tables as
+/// pointer/length pairs instead.
+///
+/// Each field name has a `_regions` suffix for improved readability after
+/// exhaustive destructing, which ensures that all region types are handled.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Regions {
+    pub(crate) code_regions: Vec<CodeRegion>,
+    pub(crate) branch_regions: Vec<BranchRegion>,
+    pub(crate) mcdc_branch_regions: Vec<MCDCBranchRegion>,
+    pub(crate) mcdc_decision_regions: Vec<MCDCDecisionRegion>,
+}
+
+impl Regions {
+    /// Returns true if none of this structure's tables contain any regions.
+    pub(crate) fn has_no_regions(&self) -> bool {
+        let Self { code_regions, branch_regions, mcdc_branch_regions, mcdc_decision_regions } =
+            self;
+
+        code_regions.is_empty()
+            && branch_regions.is_empty()
+            && mcdc_branch_regions.is_empty()
+            && mcdc_decision_regions.is_empty()
     }
 }
 
@@ -156,7 +168,7 @@ impl CoverageSpan {
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub(crate) struct CodeRegion {
-    pub(crate) span: CoverageSpan,
+    pub(crate) cov_span: CoverageSpan,
     pub(crate) counter: Counter,
 }
 
@@ -164,7 +176,7 @@ pub(crate) struct CodeRegion {
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub(crate) struct BranchRegion {
-    pub(crate) span: CoverageSpan,
+    pub(crate) cov_span: CoverageSpan,
     pub(crate) true_counter: Counter,
     pub(crate) false_counter: Counter,
 }
@@ -173,7 +185,7 @@ pub(crate) struct BranchRegion {
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub(crate) struct MCDCBranchRegion {
-    pub(crate) span: CoverageSpan,
+    pub(crate) cov_span: CoverageSpan,
     pub(crate) true_counter: Counter,
     pub(crate) false_counter: Counter,
     pub(crate) mcdc_branch_params: mcdc::BranchParameters,
@@ -183,6 +195,6 @@ pub(crate) struct MCDCBranchRegion {
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub(crate) struct MCDCDecisionRegion {
-    pub(crate) span: CoverageSpan,
+    pub(crate) cov_span: CoverageSpan,
     pub(crate) mcdc_decision_params: mcdc::DecisionParameters,
 }

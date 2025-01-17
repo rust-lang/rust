@@ -1,4 +1,4 @@
-error[E0015]: cannot call non-const fn `bar` in statics
+error[E0015]: cannot call non-const function `bar` in statics
   --> $DIR/mir_check_nonconst.rs:8:19
    |
 LL | static foo: Foo = bar();

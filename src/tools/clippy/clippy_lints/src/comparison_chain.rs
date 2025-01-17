@@ -1,6 +1,8 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{SpanlessEq, if_sequence, is_else_clause, is_in_const_context};
+use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -120,13 +122,19 @@ impl<'tcx> LateLintPass<'tcx> for ComparisonChain {
                 return;
             }
         }
-        span_lint_and_help(
+        let ExprKind::Binary(_, lhs, rhs) = conds[0].kind else {
+            unreachable!();
+        };
+        let lhs = Sugg::hir(cx, lhs, "..").maybe_par();
+        let rhs = Sugg::hir(cx, rhs, "..").addr();
+        span_lint_and_sugg(
             cx,
             COMPARISON_CHAIN,
             expr.span,
             "`if` chain can be rewritten with `match`",
-            None,
-            "consider rewriting the `if` chain to use `cmp` and `match`",
+            "consider rewriting the `if` chain with `match`",
+            format!("match {lhs}.cmp({rhs}) {{...}}"),
+            Applicability::HasPlaceholders,
         );
     }
 }

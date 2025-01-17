@@ -4,8 +4,7 @@
 #![feature(iter_next_chunk)]
 #![feature(repr_simd)]
 #![feature(slice_partition_dedup)]
-#![cfg_attr(bootstrap, feature(strict_provenance))]
-#![cfg_attr(not(bootstrap), feature(strict_provenance_lints))]
+#![feature(strict_provenance_lints)]
 #![feature(test)]
 #![deny(fuzzy_provenance_casts)]
 

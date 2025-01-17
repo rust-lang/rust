@@ -34,7 +34,7 @@ pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<Na
     if let Some(m) = &module {
         if !m
             .item_list()
-            .map_or(false, |it| it.syntax().text_range().contains_inclusive(position.offset))
+            .is_some_and(|it| it.syntax().text_range().contains_inclusive(position.offset))
         {
             cov_mark::hit!(test_resolve_parent_module_on_module_decl);
             module = m.syntax().ancestors().skip(1).find_map(ast::Module::cast);

@@ -6,9 +6,9 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::{fs, io, mem, str, thread};
 
-use jobserver::{Acquired, Client};
 use rustc_ast::attr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::jobserver::{self, Acquired};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_errors::emitter::Emitter;
@@ -33,8 +33,7 @@ use rustc_session::config::{
     self, CrateType, Lto, OutFileName, OutputFilenames, OutputType, Passes, SwitchWithOptPath,
 };
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::sym;
-use rustc_span::{BytePos, FileName, InnerSpan, Pos, Span};
+use rustc_span::{FileName, InnerSpan, Span, SpanData, sym};
 use rustc_target::spec::{MergeFunctions, SanitizerSet};
 use tracing::debug;
 
@@ -456,7 +455,6 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
     metadata_module: Option<CompiledModule>,
 ) -> OngoingCodegen<B> {
     let (coordinator_send, coordinator_receive) = channel();
-    let sess = tcx.sess;
 
     let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
     let no_builtins = attr::contains_name(crate_attrs, sym::no_builtins);
@@ -477,7 +475,6 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
         shared_emitter,
         codegen_worker_send,
         coordinator_receive,
-        sess.jobserver.clone(),
         Arc::new(regular_config),
         Arc::new(metadata_config),
         Arc::new(allocator_config),
@@ -1093,7 +1090,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
     shared_emitter: SharedEmitter,
     codegen_worker_send: Sender<CguMessage>,
     coordinator_receive: Receiver<Box<dyn Any + Send>>,
-    jobserver: Client,
     regular_config: Arc<ModuleConfig>,
     metadata_config: Arc<ModuleConfig>,
     allocator_config: Arc<ModuleConfig>,
@@ -1145,7 +1141,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // get tokens on `coordinator_receive` which will
     // get managed in the main loop below.
     let coordinator_send2 = coordinator_send.clone();
-    let helper = jobserver
+    let helper = jobserver::client()
         .into_helper_thread(move |token| {
             drop(coordinator_send2.send(Box::new(Message::Token::<B>(token))));
         })
@@ -1837,7 +1833,7 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
 
 enum SharedEmitterMessage {
     Diagnostic(Diagnostic),
-    InlineAsmError(u32, String, Level, Option<(String, Vec<InnerSpan>)>),
+    InlineAsmError(SpanData, String, Level, Option<(String, Vec<InnerSpan>)>),
     Fatal(String),
 }
 
@@ -1859,12 +1855,12 @@ impl SharedEmitter {
 
     pub fn inline_asm_error(
         &self,
-        cookie: u32,
+        span: SpanData,
         msg: String,
         level: Level,
         source: Option<(String, Vec<InnerSpan>)>,
     ) {
-        drop(self.sender.send(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)));
+        drop(self.sender.send(SharedEmitterMessage::InlineAsmError(span, msg, level, source)));
     }
 
     fn fatal(&self, msg: &str) {
@@ -1883,7 +1879,11 @@ impl Translate for SharedEmitter {
 }
 
 impl Emitter for SharedEmitter {
-    fn emit_diagnostic(&mut self, mut diag: rustc_errors::DiagInner) {
+    fn emit_diagnostic(
+        &mut self,
+        mut diag: rustc_errors::DiagInner,
+        _registry: &rustc_errors::registry::Registry,
+    ) {
         // Check that we aren't missing anything interesting when converting to
         // the cut-down local `DiagInner`.
         assert_eq!(diag.span, MultiSpan::new());
@@ -1949,17 +1949,12 @@ impl SharedEmitterMain {
                     dcx.emit_diagnostic(d);
                     sess.dcx().abort_if_errors();
                 }
-                Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
+                Ok(SharedEmitterMessage::InlineAsmError(span, msg, level, source)) => {
                     assert_matches!(level, Level::Error | Level::Warning | Level::Note);
-                    let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
                     let mut err = Diag::<()>::new(sess.dcx(), level, msg);
-
-                    // If the cookie is 0 then we don't have span information.
-                    if cookie != 0 {
-                        let pos = BytePos::from_u32(cookie);
-                        let span = Span::with_root_ctxt(pos, pos);
-                        err.span(span);
-                    };
+                    if !span.is_dummy() {
+                        err.span(span.span());
+                    }
 
                     // Point to the generated assembly if it is available.
                     if let Some((buffer, spans)) = source {
@@ -2028,8 +2023,6 @@ pub struct OngoingCodegen<B: ExtraBackendMethods> {
 
 impl<B: ExtraBackendMethods> OngoingCodegen<B> {
     pub fn join(self, sess: &Session) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
-        let _timer = sess.timer("finish_ongoing_codegen");
-
         self.shared_emitter_main.check(sess, true);
         let compiled_modules = sess.time("join_worker_thread", || match self.coordinator.join() {
             Ok(Ok(compiled_modules)) => compiled_modules,

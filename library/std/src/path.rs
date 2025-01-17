@@ -298,7 +298,7 @@ where
 }
 
 // Detect scheme on Redox
-fn has_redox_scheme(s: &[u8]) -> bool {
+pub(crate) fn has_redox_scheme(s: &[u8]) -> bool {
     cfg!(target_os = "redox") && s.contains(&b':')
 }
 
@@ -1158,6 +1158,7 @@ impl FusedIterator for Ancestors<'_> {}
 /// Note that `PathBuf` does not always sanitize arguments, for example
 /// [`push`] allows paths built from strings which include separators:
 ///
+/// ```
 /// use std::path::PathBuf;
 ///
 /// let mut path = PathBuf::new();
@@ -1166,6 +1167,7 @@ impl FusedIterator for Ancestors<'_> {}
 /// path.push("windows");
 /// path.push(r"..\otherdir");
 /// path.push("system32");
+/// ```
 ///
 /// The behavior of `PathBuf` may be changed to a panic on such inputs
 /// in the future. [`Extend::extend`] should be used to add multi-part paths.
@@ -1762,7 +1764,7 @@ impl From<&Path> for Box<Path> {
     }
 }
 
-#[stable(feature = "box_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "box_from_mut_slice", since = "1.84.0")]
 impl From<&mut Path> for Box<Path> {
     /// Creates a boxed [`Path`] from a reference.
     ///
@@ -2000,7 +2002,7 @@ impl From<&Path> for Arc<Path> {
     }
 }
 
-#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
 impl From<&mut Path> for Arc<Path> {
     /// Converts a [`Path`] into an [`Arc`] by copying the [`Path`] data into a new [`Arc`] buffer.
     #[inline]
@@ -2030,7 +2032,7 @@ impl From<&Path> for Rc<Path> {
     }
 }
 
-#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
 impl From<&mut Path> for Rc<Path> {
     /// Converts a [`Path`] into an [`Rc`] by copying the [`Path`] data into a new [`Rc`] buffer.
     #[inline]
@@ -2153,7 +2155,7 @@ impl Path {
         unsafe { Path::new(OsStr::from_encoded_bytes_unchecked(s)) }
     }
     // The following (private!) function reveals the byte encoding used for OsStr.
-    fn as_u8_slice(&self) -> &[u8] {
+    pub(crate) fn as_u8_slice(&self) -> &[u8] {
         self.inner.as_encoded_bytes()
     }
 
@@ -2321,12 +2323,7 @@ impl Path {
     #[must_use]
     #[allow(deprecated)]
     pub fn is_absolute(&self) -> bool {
-        if cfg!(target_os = "redox") {
-            // FIXME: Allow Redox prefixes
-            self.has_root() || has_redox_scheme(self.as_u8_slice())
-        } else {
-            self.has_root() && (cfg!(any(unix, target_os = "wasi")) || self.prefix().is_some())
-        }
+        sys::path::is_absolute(self)
     }
 
     /// Returns `true` if the `Path` is relative, i.e., not absolute.
@@ -2349,7 +2346,7 @@ impl Path {
         !self.is_absolute()
     }
 
-    fn prefix(&self) -> Option<Prefix<'_>> {
+    pub(crate) fn prefix(&self) -> Option<Prefix<'_>> {
         self.components().prefix
     }
 
@@ -2504,6 +2501,7 @@ impl Path {
     /// assert_eq!(path.strip_prefix("/test/haha/foo.txt/"), Ok(Path::new("")));
     ///
     /// assert!(path.strip_prefix("test").is_err());
+    /// assert!(path.strip_prefix("/te").is_err());
     /// assert!(path.strip_prefix("/haha").is_err());
     ///
     /// let prefix = PathBuf::from("/test/");
@@ -3580,7 +3578,7 @@ impl Error for StripPrefixError {
 pub fn absolute<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     let path = path.as_ref();
     if path.as_os_str().is_empty() {
-        Err(io::const_io_error!(io::ErrorKind::InvalidInput, "cannot make an empty path absolute",))
+        Err(io::const_error!(io::ErrorKind::InvalidInput, "cannot make an empty path absolute",))
     } else {
         sys::path::absolute(path)
     }

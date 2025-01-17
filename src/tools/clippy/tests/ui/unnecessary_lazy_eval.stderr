@@ -434,11 +434,7 @@ error: unnecessary closure used to substitute value for `Result::Err`
    |
 LL |       let _: Result<usize, usize> = res.
    |  ___________________________________^
-LL | |     // some lines
-LL | |     // some lines
-LL | |     // some lines
 ...  |
-LL | |     // some lines
 LL | |     or_else(|_| Ok(ext_str.some_field));
    | |_______________________________________^
    |

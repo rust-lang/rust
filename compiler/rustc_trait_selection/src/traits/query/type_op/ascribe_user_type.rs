@@ -3,7 +3,7 @@ use rustc_infer::traits::Obligation;
 use rustc_middle::traits::query::NoSolution;
 pub use rustc_middle::traits::query::type_op::AscribeUserType;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
-use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, UserArgs, UserSelfTy, UserType};
+use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, UserArgs, UserSelfTy, UserTypeKind};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
@@ -46,12 +46,18 @@ pub fn type_op_ascribe_user_type_with_span<'tcx>(
     let (param_env, AscribeUserType { mir_ty, user_ty }) = key.into_parts();
     debug!("type_op_ascribe_user_type: mir_ty={:?} user_ty={:?}", mir_ty, user_ty);
     let span = span.unwrap_or(DUMMY_SP);
-    match user_ty {
-        UserType::Ty(user_ty) => relate_mir_and_user_ty(ocx, param_env, span, mir_ty, user_ty)?,
-        UserType::TypeOf(def_id, user_args) => {
+    match user_ty.kind {
+        UserTypeKind::Ty(user_ty) => relate_mir_and_user_ty(ocx, param_env, span, mir_ty, user_ty)?,
+        UserTypeKind::TypeOf(def_id, user_args) => {
             relate_mir_and_user_args(ocx, param_env, span, mir_ty, def_id, user_args)?
         }
     };
+
+    // Enforce any bounds that come from impl trait in bindings.
+    ocx.register_obligations(user_ty.bounds.iter().map(|clause| {
+        Obligation::new(ocx.infcx.tcx, ObligationCause::dummy_with_span(span), param_env, clause)
+    }));
+
     Ok(())
 }
 

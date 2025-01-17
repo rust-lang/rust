@@ -7,9 +7,7 @@ extern crate std;
 // issue#97006
 
 macro_rules! m { ($attr_path: path) => { #[$attr_path] fn f() {} } }
-#[
-
-inline]
+#[inline]
 fn f() { }
 
 fn main() { }

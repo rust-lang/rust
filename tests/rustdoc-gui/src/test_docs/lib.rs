@@ -156,7 +156,7 @@ pub enum AnEnum {
     WithVariants { and: usize, sub: usize, variants: usize },
 }
 
-#[doc(keyword = "CookieMonster")]
+#[doc(keyword = "for")]
 /// Some keyword.
 pub mod keyword {}
 
@@ -651,4 +651,43 @@ pub mod long_list {
     //!   a type
     //! * [`FromBytes`](#a) indicates that a type may safely be converted from an arbitrary byte
     //!   sequence
+}
+
+pub struct ImplDoc;
+
+/// bla sondfosdnf sdfasd fadsd fdsa f ads fad sf sad f sad fasdfsafsa df dsafasdasd fsa dfadsfasd
+/// fads fadfadd
+///
+/// bla
+impl ImplDoc {
+    pub fn bar() {}
+}
+
+/// bla
+///
+/// bla
+impl ImplDoc {
+    pub fn bar2() {}
+}
+
+// ignore-tidy-linelength
+/// | this::is::a::kinda::very::long::header::number::one | this::is::a::kinda::very::long::header::number::two | this::is::a::kinda::very::long::header::number::three |
+/// |-|-|-|
+/// | bla | bli | blob |
+impl ImplDoc {
+    pub fn bar3() {}
+}
+
+/// # h1
+///
+/// bla
+impl ImplDoc {
+    pub fn bar4() {}
+}
+
+/// * list
+/// * list
+/// * list
+impl ImplDoc {
+    pub fn bar5() {}
 }

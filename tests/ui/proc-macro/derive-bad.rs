@@ -1,4 +1,4 @@
-//@ aux-build:derive-bad.rs
+//@ proc-macro: derive-bad.rs
 
 #[macro_use]
 extern crate derive_bad;

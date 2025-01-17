@@ -94,6 +94,21 @@ builtin_macros_cfg_accessible_indeterminate = cannot determine whether the path 
 builtin_macros_cfg_accessible_literal_path = `cfg_accessible` path cannot be a literal
 builtin_macros_cfg_accessible_multiple_paths = multiple `cfg_accessible` paths are specified
 builtin_macros_cfg_accessible_unspecified_path = `cfg_accessible` path is not specified
+
+builtin_macros_coerce_pointee_requires_maybe_sized = `derive(CoercePointee)` requires `{$name}` to be marked `?Sized`
+
+builtin_macros_coerce_pointee_requires_one_field = `CoercePointee` can only be derived on `struct`s with at least one field
+
+builtin_macros_coerce_pointee_requires_one_generic = `CoercePointee` can only be derived on `struct`s that are generic over at least one type
+
+builtin_macros_coerce_pointee_requires_one_pointee = exactly one generic type parameter must be marked as `#[pointee]` to derive `CoercePointee` traits
+
+builtin_macros_coerce_pointee_requires_transparent = `CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`
+
+builtin_macros_coerce_pointee_too_many_pointees = only one type parameter can be marked as `#[pointee]` when deriving `CoercePointee` traits
+    .label = here another type parameter is marked as `#[pointee]`
+
+
 builtin_macros_concat_bytes_array = cannot concatenate doubly nested array
     .note = byte strings are treated as arrays of bytes
     .help = try flattening the array
@@ -182,6 +197,8 @@ builtin_macros_format_redundant_args = redundant {$n ->
 
 builtin_macros_format_remove_raw_ident = remove the `r#`
 
+builtin_macros_format_reorder_format_parameter = did you mean `{$replacement}`?
+
 builtin_macros_format_requires_string = requires at least a format string argument
 
 builtin_macros_format_string_invalid = invalid format string: {$desc}
@@ -234,9 +251,9 @@ builtin_macros_naked_functions_testing_attribute =
     .label = function marked with testing attribute here
     .naked_attribute = `#[naked]` is incompatible with testing attributes
 
-builtin_macros_no_default_variant = no default declared
-    .help = make a unit variant default by placing `#[default]` above it
-    .suggestion = make `{$ident}` default
+builtin_macros_no_default_variant = `#[derive(Default)]` on enum with no `#[default]`
+    .label = this enum needs a unit variant marked with `#[default]`
+    .suggestion = make this unit variant default by placing `#[default]` on it
 
 builtin_macros_non_abi = at least one abi must be provided as an argument to `clobber_abi`
 
@@ -246,7 +263,7 @@ builtin_macros_non_exhaustive_default = default variant must be exhaustive
 
 builtin_macros_non_generic_pointee = the `#[pointee]` attribute may only be used on generic parameters
 
-builtin_macros_non_unit_default = the `#[default]` attribute may only be used on unit enum variants
+builtin_macros_non_unit_default = the `#[default]` attribute may only be used on unit enum variants{$post}
     .help = consider a manual implementation of `Default`
 
 builtin_macros_only_one_argument = {$name} takes 1 argument

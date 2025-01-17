@@ -1,4 +1,4 @@
-//@ compile-flags: -g -Copt-level=0
+//@ compile-flags: -g -Copt-level=0 -Z verify-llvm-ir
 //@ known-bug: #34127
 //@ only-x86_64
 

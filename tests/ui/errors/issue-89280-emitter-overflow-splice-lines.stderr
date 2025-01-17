@@ -3,8 +3,7 @@ warning: anonymous parameters are deprecated and will be removed in the next edi
    |
 LL |       fn test(x: u32, (
    |  _____________________^
-LL | |
-LL | |
+...  |
 LL | |     )) {}
    | |_____^
    |

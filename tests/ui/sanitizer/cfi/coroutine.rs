@@ -16,7 +16,6 @@
 
 #![feature(coroutines, stmt_expr_attributes)]
 #![feature(coroutine_trait)]
-#![feature(noop_waker)]
 #![feature(gen_blocks)]
 #![feature(async_iterator)]
 

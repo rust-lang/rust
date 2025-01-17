@@ -10,8 +10,7 @@ use rustc_ast::token::{self, LitKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AstDeref, ExprKind, GenericArg, Mutability};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Symbol, kw, sym};
 use thin_vec::thin_vec;
 
 use crate::errors;

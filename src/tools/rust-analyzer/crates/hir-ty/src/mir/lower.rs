@@ -2023,11 +2023,11 @@ pub fn mir_body_for_closure_query(
     ctx.result.locals.alloc(Local { ty: infer[*root].clone() });
     let closure_local = ctx.result.locals.alloc(Local {
         ty: match kind {
-            FnTrait::FnOnce => infer[expr].clone(),
-            FnTrait::FnMut => {
+            FnTrait::FnOnce | FnTrait::AsyncFnOnce => infer[expr].clone(),
+            FnTrait::FnMut | FnTrait::AsyncFnMut => {
                 TyKind::Ref(Mutability::Mut, error_lifetime(), infer[expr].clone()).intern(Interner)
             }
-            FnTrait::Fn => {
+            FnTrait::Fn | FnTrait::AsyncFn => {
                 TyKind::Ref(Mutability::Not, error_lifetime(), infer[expr].clone()).intern(Interner)
             }
         },
@@ -2055,8 +2055,10 @@ pub fn mir_body_for_closure_query(
     let mut err = None;
     let closure_local = ctx.result.locals.iter().nth(1).unwrap().0;
     let closure_projection = match kind {
-        FnTrait::FnOnce => vec![],
-        FnTrait::FnMut | FnTrait::Fn => vec![ProjectionElem::Deref],
+        FnTrait::FnOnce | FnTrait::AsyncFnOnce => vec![],
+        FnTrait::FnMut | FnTrait::Fn | FnTrait::AsyncFnMut | FnTrait::AsyncFn => {
+            vec![ProjectionElem::Deref]
+        }
     };
     ctx.result.walk_places(|p, store| {
         if let Some(it) = upvar_map.get(&p.local) {

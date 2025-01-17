@@ -4,11 +4,5 @@ error: missing type for `const` item
 LL |     const FIRST:  = 10;
    |                 ^ help: provide a type for the associated constant: `u8`
 
-error: could not evaluate constant pattern
-  --> $DIR/missing_assoc_const_type.rs:19:9
-   |
-LL |         TwoDigits::FIRST..=TwoDigits::LAST => 0,
-   |         ^^^^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 

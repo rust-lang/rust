@@ -1,7 +1,6 @@
 //! Detecting usage of the `#[debugger_visualizer]` attribute.
 
 use rustc_ast::Attribute;
-use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::resolve_path;
 use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
 use rustc_middle::query::{LocalCrate, Providers};
@@ -49,10 +48,10 @@ impl DebuggerVisualizerCollector<'_> {
                 }
             };
 
-            match std::fs::read(&file) {
-                Ok(contents) => {
+            match self.sess.source_map().load_binary_file(&file) {
+                Ok((source, _)) => {
                     self.visualizers.push(DebuggerVisualizerFile::new(
-                        Lrc::from(contents),
+                        source,
                         visualizer_type,
                         file,
                     ));

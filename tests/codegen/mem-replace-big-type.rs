@@ -25,9 +25,10 @@ pub fn replace_big(dst: &mut Big, src: Big) -> Big {
 // CHECK-NOT: call void @llvm.memcpy
 
 // For a large type, we expect exactly three `memcpy`s
-// CHECK-LABEL: define internal void @{{.+}}mem{{.+}}replace{{.+}}sret([56 x i8])
+// CHECK-LABEL: define internal void @{{.+}}mem{{.+}}replace{{.+}}(ptr
+// CHECK-SAME: sret([56 x i8]){{.+}}[[RESULT:%.+]], ptr{{.+}}%dest, ptr{{.+}}%src)
 // CHECK-NOT: call void @llvm.memcpy
-// CHECK: call void @llvm.memcpy.{{.+}}(ptr align 8 %result, ptr align 8 %dest, i{{.*}} 56, i1 false)
+// CHECK: call void @llvm.memcpy.{{.+}}(ptr align 8 [[RESULT]], ptr align 8 %dest, i{{.*}} 56, i1 false)
 // CHECK-NOT: call void @llvm.memcpy
 // CHECK: call void @llvm.memcpy.{{.+}}(ptr align 8 %dest, ptr align 8 %src, i{{.*}} 56, i1 false)
 // CHECK-NOT: call void @llvm.memcpy

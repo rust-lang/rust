@@ -32,10 +32,10 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_errors::{Diag, ErrorGuaranteed, StashKey};
+use rustc_errors::{Diag, ErrorGuaranteed};
+use rustc_hir::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
-use rustc_hir::{LangItem, Safety};
 use rustc_index::IndexVec;
 use rustc_macros::{
     Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
@@ -46,13 +46,12 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{ExpnId, ExpnKind, Span};
+use rustc_span::{ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
 pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::*;
 use tracing::{debug, instrument};
 pub use vtable::*;
-use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+use {rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
 
 pub use self::closure::{
     BorrowKind, CAPTURE_STRUCT_LOCAL, CaptureInfo, CapturedPlace, ClosureTypeInfo,
@@ -84,7 +83,8 @@ pub use self::predicate::{
     TypeOutlivesPredicate,
 };
 pub use self::region::{
-    BoundRegion, BoundRegionKind, EarlyParamRegion, LateParamRegion, Region, RegionKind, RegionVid,
+    BoundRegion, BoundRegionKind, EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region,
+    RegionKind, RegionVid,
 };
 pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::{
@@ -95,7 +95,7 @@ pub use self::sty::{
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, IsIdentity,
-    TypeckResults, UserType, UserTypeAnnotationIndex,
+    TypeckResults, UserType, UserTypeAnnotationIndex, UserTypeKind,
 };
 pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
@@ -146,6 +146,7 @@ mod opaque_types;
 mod parameterized;
 mod predicate;
 mod region;
+mod return_position_impl_trait_in_trait;
 mod rvalue_scopes;
 mod structural_impls;
 #[allow(hidden_glob_reexports)]
@@ -221,6 +222,7 @@ pub struct DelegationFnSig {
     pub param_count: usize,
     pub has_self: bool,
     pub c_variadic: bool,
+    pub target_feature: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -253,6 +255,7 @@ pub struct ImplTraitHeader<'tcx> {
     pub trait_ref: ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>>,
     pub polarity: ImplPolarity,
     pub safety: hir::Safety,
+    pub constness: hir::Constness,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
@@ -780,18 +783,8 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
     pub fn build_mismatch_error(
         &self,
         other: &Self,
-        opaque_def_id: LocalDefId,
         tcx: TyCtxt<'tcx>,
     ) -> Result<Diag<'tcx>, ErrorGuaranteed> {
-        // We used to cancel here for slightly better error messages, but
-        // cancelling stashed diagnostics is no longer allowed because it
-        // causes problems when tracking whether errors have actually
-        // occurred.
-        tcx.sess.dcx().try_steal_modify_and_emit_err(
-            tcx.def_span(opaque_def_id),
-            StashKey::OpaqueHiddenTypeMismatch,
-            |_err| {},
-        );
         (self.ty, other.ty).error_reported()?;
         // Found different concrete types for the opaque type.
         let sub_diag = if self.span == other.span {
@@ -970,7 +963,7 @@ pub struct ParamEnv<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
-    fn caller_bounds(self) -> impl IntoIterator<Item = ty::Clause<'tcx>> {
+    fn caller_bounds(self) -> impl inherent::SliceLike<Item = ty::Clause<'tcx>> {
         self.caller_bounds()
     }
 }
@@ -1279,7 +1272,7 @@ impl VariantDef {
 
     /// Returns whether this variant has unsafe fields.
     pub fn has_unsafe_fields(&self) -> bool {
-        self.fields.iter().any(|x| x.safety == Safety::Unsafe)
+        self.fields.iter().any(|x| x.safety.is_unsafe())
     }
 }
 
@@ -1364,6 +1357,7 @@ pub struct FieldDef {
     pub name: Symbol,
     pub vis: Visibility<DefId>,
     pub safety: hir::Safety,
+    pub value: Option<DefId>,
 }
 
 impl PartialEq for FieldDef {
@@ -1376,9 +1370,9 @@ impl PartialEq for FieldDef {
         // of `FieldDef` changes, a compile-error will be produced, reminding
         // us to revisit this assumption.
 
-        let Self { did: lhs_did, name: _, vis: _, safety: _ } = &self;
+        let Self { did: lhs_did, name: _, vis: _, safety: _, value: _ } = &self;
 
-        let Self { did: rhs_did, name: _, vis: _, safety: _ } = other;
+        let Self { did: rhs_did, name: _, vis: _, safety: _, value: _ } = other;
 
         let res = lhs_did == rhs_did;
 
@@ -1405,7 +1399,7 @@ impl Hash for FieldDef {
         // of `FieldDef` changes, a compile-error will be produced, reminding
         // us to revisit this assumption.
 
-        let Self { did, name: _, vis: _, safety: _ } = &self;
+        let Self { did, name: _, vis: _, safety: _, value: _ } = &self;
 
         did.hash(s)
     }
@@ -1414,8 +1408,8 @@ impl Hash for FieldDef {
 impl<'tcx> FieldDef {
     /// Returns the type of this field. The resulting type is not normalized. The `arg` is
     /// typically obtained via the second field of [`TyKind::Adt`].
-    pub fn ty(&self, tcx: TyCtxt<'tcx>, arg: GenericArgsRef<'tcx>) -> Ty<'tcx> {
-        tcx.type_of(self.did).instantiate(tcx, arg)
+    pub fn ty(&self, tcx: TyCtxt<'tcx>, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
+        tcx.type_of(self.did).instantiate(tcx, args)
     }
 
     /// Computes the `Ident` of this variant by looking up the `Span`
@@ -1558,10 +1552,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let is_box = self.is_lang_item(did.to_def_id(), LangItem::OwnedBox);
 
         // This is here instead of layout because the choice must make it into metadata.
-        if is_box
-            || !self
-                .consider_optimizing(|| format!("Reorder fields of {:?}", self.def_path_str(did)))
-        {
+        if is_box {
             flags.insert(ReprFlags::IS_LINEAR);
         }
 
@@ -1745,11 +1736,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     // FIXME(@lcnr): Remove this function.
-    pub fn get_attrs_unchecked(self, did: DefId) -> &'tcx [ast::Attribute] {
+    pub fn get_attrs_unchecked(self, did: DefId) -> &'tcx [hir::Attribute] {
         if let Some(did) = did.as_local() {
             self.hir().attrs(self.local_def_id_to_hir_id(did))
         } else {
-            self.item_attrs(did)
+            self.attrs_for_def(did)
         }
     }
 
@@ -1758,14 +1749,14 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         did: impl Into<DefId>,
         attr: Symbol,
-    ) -> impl Iterator<Item = &'tcx ast::Attribute> {
+    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
         let did: DefId = did.into();
-        let filter_fn = move |a: &&ast::Attribute| a.has_name(attr);
+        let filter_fn = move |a: &&hir::Attribute| a.has_name(attr);
         if let Some(did) = did.as_local() {
             self.hir().attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else {
             debug_assert!(rustc_feature::encode_cross_crate(attr));
-            self.item_attrs(did).iter().filter(filter_fn)
+            self.attrs_for_def(did).iter().filter(filter_fn)
         }
     }
 
@@ -1781,7 +1772,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         did: impl Into<DefId>,
         attr: Symbol,
-    ) -> Option<&'tcx ast::Attribute> {
+    ) -> Option<&'tcx hir::Attribute> {
         let did: DefId = did.into();
         if did.as_local().is_some() {
             // it's a crate local item, we need to check feature flags
@@ -1794,7 +1785,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // we filter out unstable diagnostic attributes before
             // encoding attributes
             debug_assert!(rustc_feature::encode_cross_crate(attr));
-            self.item_attrs(did)
+            self.attrs_for_def(did)
                 .iter()
                 .find(|a| matches!(a.path().as_ref(), [sym::diagnostic, a] if *a == attr))
         }
@@ -1804,19 +1795,19 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         did: DefId,
         attr: &'attr [Symbol],
-    ) -> impl Iterator<Item = &'tcx ast::Attribute> + 'attr
+    ) -> impl Iterator<Item = &'tcx hir::Attribute> + 'attr
     where
         'tcx: 'attr,
     {
-        let filter_fn = move |a: &&ast::Attribute| a.path_matches(attr);
+        let filter_fn = move |a: &&hir::Attribute| a.path_matches(attr);
         if let Some(did) = did.as_local() {
             self.hir().attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else {
-            self.item_attrs(did).iter().filter(filter_fn)
+            self.attrs_for_def(did).iter().filter(filter_fn)
         }
     }
 
-    pub fn get_attr(self, did: impl Into<DefId>, attr: Symbol) -> Option<&'tcx ast::Attribute> {
+    pub fn get_attr(self, did: impl Into<DefId>, attr: Symbol) -> Option<&'tcx hir::Attribute> {
         if cfg!(debug_assertions) && !rustc_feature::is_valid_for_get_attr(attr) {
             let did: DefId = did.into();
             bug!("get_attr: unexpected called with DefId `{:?}`, attr `{:?}`", did, attr);
@@ -2006,17 +1997,25 @@ impl<'tcx> TyCtxt<'tcx> {
         let def_id: DefId = def_id.into();
         match self.def_kind(def_id) {
             DefKind::Impl { of_trait: true } => {
-                self.constness(def_id) == hir::Constness::Const
-                    && self.is_const_trait(
-                        self.trait_id_of_impl(def_id)
-                            .expect("expected trait for trait implementation"),
-                    )
+                let header = self.impl_trait_header(def_id).unwrap();
+                header.constness == hir::Constness::Const
+                    && self.is_const_trait(header.trait_ref.skip_binder().def_id)
             }
             DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) => {
                 self.constness(def_id) == hir::Constness::Const
             }
             DefKind::Trait => self.is_const_trait(def_id),
-            DefKind::AssocTy | DefKind::AssocFn => {
+            DefKind::AssocTy => {
+                let parent_def_id = self.parent(def_id);
+                match self.def_kind(parent_def_id) {
+                    DefKind::Impl { of_trait: false } => false,
+                    DefKind::Impl { of_trait: true } | DefKind::Trait => {
+                        self.is_conditionally_const(parent_def_id)
+                    }
+                    _ => bug!("unexpected parent item of associated type: {parent_def_id:?}"),
+                }
+            }
+            DefKind::AssocFn => {
                 let parent_def_id = self.parent(def_id);
                 match self.def_kind(parent_def_id) {
                     DefKind::Impl { of_trait: false } => {
@@ -2025,7 +2024,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     DefKind::Impl { of_trait: true } | DefKind::Trait => {
                         self.is_conditionally_const(parent_def_id)
                     }
-                    _ => bug!("unexpected parent item of associated item: {parent_def_id:?}"),
+                    _ => bug!("unexpected parent item of associated fn: {parent_def_id:?}"),
                 }
             }
             DefKind::OpaqueTy => match self.opaque_ty_origin(def_id) {

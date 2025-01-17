@@ -1,8 +1,6 @@
 // Test that we can deduce when projections like `T::Item` outlive the
 // function body. Test that this does not imply that `T: 'a` holds.
 
-//@ compile-flags:-Zverbose-internals
-
 use std::cell::Cell;
 
 fn twice<F, T>(mut value: T, mut f: F)

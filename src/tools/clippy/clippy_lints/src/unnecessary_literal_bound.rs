@@ -17,7 +17,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     ///
-    /// This leaves the caller unable to use the `&str` as `&'static str`, causing unneccessary allocations or confusion.
+    /// This leaves the caller unable to use the `&str` as `&'static str`, causing unnecessary allocations or confusion.
     /// This is also most likely what you meant to write.
     ///
     /// ### Example
@@ -47,7 +47,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.83.0"]
+    #[clippy::version = "1.84.0"]
     pub UNNECESSARY_LITERAL_BOUND,
     pedantic,
     "detects &str that could be &'static str in function return types"

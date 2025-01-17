@@ -10,6 +10,7 @@
 #![feature(assert_matches)]
 
 extern crate rustc_hir;
+extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_smir;
 extern crate rustc_driver;

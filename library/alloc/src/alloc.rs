@@ -10,9 +10,6 @@ use core::hint;
 #[cfg(not(test))]
 use core::ptr::{self, NonNull};
 
-#[cfg(test)]
-mod tests;
-
 extern "Rust" {
     // These are the magic symbols to call the global allocator. rustc generates
     // them to call `__rg_alloc` etc. if there is a `#[global_allocator]` attribute
@@ -342,7 +339,7 @@ unsafe impl Allocator for Global {
     }
 }
 
-/// The allocator for unique pointers.
+/// The allocator for `Box`.
 #[cfg(all(not(no_global_oom_handling), not(test)))]
 #[lang = "exchange_malloc"]
 #[inline]

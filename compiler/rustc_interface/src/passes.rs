@@ -19,7 +19,7 @@ use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
-use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
+use rustc_middle::ty::{self, CurrentGcx, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_parse::{
     new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal, validate_attr,
@@ -32,16 +32,15 @@ use rustc_session::cstore::Untracked;
 use rustc_session::output::{collect_crate_types, filename_for_input, find_crate_name};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
-use rustc_span::symbol::{Symbol, sym};
-use rustc_span::{FileName, SourceFileHash, SourceFileHashAlgorithm};
+use rustc_span::{ErrorGuaranteed, FileName, SourceFileHash, SourceFileHashAlgorithm, Symbol, sym};
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
 use tracing::{info, instrument};
 
-use crate::interface::{Compiler, Result};
+use crate::interface::Compiler;
 use crate::{errors, proc_macro_decls, util};
 
-pub(crate) fn parse<'a>(sess: &'a Session) -> Result<ast::Crate> {
+pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
     let krate = sess
         .time("parse_crate", || {
             let mut parser = unwrap_or_emit_fatal(match &sess.io.input {
@@ -52,17 +51,16 @@ pub(crate) fn parse<'a>(sess: &'a Session) -> Result<ast::Crate> {
             });
             parser.parse_crate_mod()
         })
-        .map_err(|parse_error| parse_error.emit())?;
-
-    if let Some(ref s) = sess.opts.unstable_opts.show_span {
-        rustc_ast_passes::show_span::run(sess.dcx(), s, &krate);
-    }
+        .unwrap_or_else(|parse_error| {
+            let guar: ErrorGuaranteed = parse_error.emit();
+            guar.raise_fatal();
+        });
 
     if sess.opts.unstable_opts.input_stats {
         input_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS", "ast-stats-1");
     }
 
-    Ok(krate)
+    krate
 }
 
 fn pre_expansion_lint<'a>(
@@ -77,6 +75,7 @@ fn pre_expansion_lint<'a>(
         || {
             rustc_lint::check_ast_node(
                 sess,
+                None,
                 features,
                 true,
                 lint_store,
@@ -311,6 +310,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let lint_store = unerased_lint_store(tcx.sess);
     rustc_lint::check_ast_node(
         sess,
+        Some(tcx),
         tcx.features(),
         false,
         lint_store,
@@ -689,10 +689,12 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);
     rustc_borrowck::provide(providers);
+    rustc_incremental::provide(providers);
     rustc_mir_build::provide(providers);
     rustc_mir_transform::provide(providers);
     rustc_monomorphize::provide(providers);
     rustc_privacy::provide(providers);
+    rustc_query_impl::provide(providers);
     rustc_resolve::provide(providers);
     rustc_hir_analysis::provide(providers);
     rustc_hir_typeck::provide(providers);
@@ -708,13 +710,11 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     *providers
 });
 
-pub(crate) fn create_global_ctxt<'tcx>(
-    compiler: &'tcx Compiler,
+pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
+    compiler: &Compiler,
     mut krate: rustc_ast::Crate,
-    gcx_cell: &'tcx OnceLock<GlobalCtxt<'tcx>>,
-    arena: &'tcx WorkerLocal<Arena<'tcx>>,
-    hir_arena: &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
-) -> Result<&'tcx GlobalCtxt<'tcx>> {
+    f: F,
+) -> T {
     let sess = &compiler.sess;
 
     rustc_builtin_macros::cmdline_attrs::inject(
@@ -735,7 +735,7 @@ pub(crate) fn create_global_ctxt<'tcx>(
         sess.cfg_version,
     );
     let outputs = util::build_output_filenames(&pre_configured_attrs, sess);
-    let dep_graph = setup_dep_graph(sess)?;
+    let dep_graph = setup_dep_graph(sess);
 
     let cstore =
         FreezeLock::new(Box::new(CStore::new(compiler.codegen_backend.metadata_loader())) as _);
@@ -762,44 +762,63 @@ pub(crate) fn create_global_ctxt<'tcx>(
 
     let incremental = dep_graph.is_fully_enabled();
 
-    sess.time("setup_global_ctxt", || {
-        let qcx = gcx_cell.get_or_init(move || {
-            TyCtxt::create_global_ctxt(
-                sess,
-                crate_types,
-                stable_crate_id,
-                arena,
-                hir_arena,
-                untracked,
-                dep_graph,
-                rustc_query_impl::query_callbacks(arena),
-                rustc_query_impl::query_system(
-                    providers.queries,
-                    providers.extern_queries,
-                    query_result_on_disk_cache,
-                    incremental,
-                ),
-                providers.hooks,
-                compiler.current_gcx.clone(),
-            )
-        });
+    let gcx_cell = OnceLock::new();
+    let arena = WorkerLocal::new(|_| Arena::default());
+    let hir_arena = WorkerLocal::new(|_| rustc_hir::Arena::default());
 
-        qcx.enter(|tcx| {
-            let feed = tcx.create_crate_num(stable_crate_id).unwrap();
-            assert_eq!(feed.key(), LOCAL_CRATE);
-            feed.crate_name(crate_name);
+    // This closure is necessary to force rustc to perform the correct lifetime
+    // subtyping for GlobalCtxt::enter to be allowed.
+    let inner: Box<
+        dyn for<'tcx> FnOnce(
+            &'tcx Session,
+            CurrentGcx,
+            &'tcx OnceLock<GlobalCtxt<'tcx>>,
+            &'tcx WorkerLocal<Arena<'tcx>>,
+            &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
+            F,
+        ) -> T,
+    > = Box::new(move |sess, current_gcx, gcx_cell, arena, hir_arena, f| {
+        TyCtxt::create_global_ctxt(
+            gcx_cell,
+            sess,
+            crate_types,
+            stable_crate_id,
+            arena,
+            hir_arena,
+            untracked,
+            dep_graph,
+            rustc_query_impl::query_callbacks(arena),
+            rustc_query_impl::query_system(
+                providers.queries,
+                providers.extern_queries,
+                query_result_on_disk_cache,
+                incremental,
+            ),
+            providers.hooks,
+            current_gcx,
+            |tcx| {
+                let feed = tcx.create_crate_num(stable_crate_id).unwrap();
+                assert_eq!(feed.key(), LOCAL_CRATE);
+                feed.crate_name(crate_name);
 
-            let feed = tcx.feed_unit_query();
-            feed.features_query(tcx.arena.alloc(rustc_expand::config::features(
-                sess,
-                &pre_configured_attrs,
-                crate_name,
-            )));
-            feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
-            feed.output_filenames(Arc::new(outputs));
-        });
-        Ok(qcx)
-    })
+                let feed = tcx.feed_unit_query();
+                feed.features_query(tcx.arena.alloc(rustc_expand::config::features(
+                    tcx.sess,
+                    &pre_configured_attrs,
+                    crate_name,
+                )));
+                feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
+                feed.output_filenames(Arc::new(outputs));
+
+                let res = f(tcx);
+                // FIXME maybe run finish even when a fatal error occured? or at least tcx.alloc_self_profile_query_strings()?
+                tcx.finish();
+                res
+            },
+        )
+    });
+
+    inner(&compiler.sess, compiler.current_gcx.clone(), &gcx_cell, &arena, &hir_arena, f)
 }
 
 /// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
@@ -828,7 +847,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                     tcx.ensure().check_mod_attrs(module);
                     tcx.ensure().check_mod_naked_functions(module);
                     tcx.ensure().check_mod_unstable_api_usage(module);
-                    tcx.ensure().check_mod_const_bodies(module);
                 });
             },
             {
@@ -879,7 +897,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 || tcx.hir().body_const_context(def_id).is_some()
             {
                 tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
-                tcx.ensure().unused_generic_params(ty::InstanceKind::Item(def_id.to_def_id()));
             }
         }
     });
@@ -898,8 +915,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // If `-Zvalidate-mir` is set, we also want to compute the final MIR for each item
     // (either its `mir_for_ctfe` or `optimized_mir`) since that helps uncover any bugs
     // in MIR optimizations that may only be reachable through codegen, or other codepaths
-    // that requires the optimized/ctfe MIR, such as polymorphization, coroutine bodies,
-    // or evaluating consts.
+    // that requires the optimized/ctfe MIR, coroutine bodies, or evaluating consts.
     if tcx.sess.opts.unstable_opts.validate_mir {
         sess.time("ensuring_final_MIR_is_computable", || {
             tcx.hir().par_body_owners(|def_id| {
@@ -911,7 +927,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 
 /// Runs the type-checking, region checking and other miscellaneous analysis
 /// passes on the crate.
-fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
+fn analysis(tcx: TyCtxt<'_>, (): ()) {
     run_required_analyses(tcx);
 
     let sess = tcx.sess;
@@ -925,7 +941,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     // But we exclude lint errors from this, because lint errors are typically
     // less serious and we're more likely to want to continue (#87337).
     if let Some(guar) = sess.dcx().has_errors_excluding_lint_errors() {
-        return Err(guar);
+        guar.raise_fatal();
     }
 
     sess.time("misc_checking_3", || {
@@ -1053,8 +1069,6 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
             })
         }
     }
-
-    Ok(())
 }
 
 /// Check for the `#[rustc_error]` annotation, which forces an error in codegen. This is used
@@ -1096,12 +1110,12 @@ fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
 pub(crate) fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
-) -> Result<Box<dyn Any>> {
+) -> Box<dyn Any> {
     // Don't do code generation if there were any errors. Likewise if
     // there were any delayed bugs, because codegen will likely cause
     // more ICEs, obscuring the original problem.
     if let Some(guar) = tcx.sess.dcx().has_errors_or_delayed_bugs() {
-        return Err(guar);
+        guar.raise_fatal();
     }
 
     // Hook for UI tests.
@@ -1129,7 +1143,19 @@ pub(crate) fn start_codegen<'tcx>(
         }
     }
 
-    Ok(codegen)
+    // This must run after monomorphization so that all generic types
+    // have been instantiated.
+    if tcx.sess.opts.unstable_opts.print_type_sizes {
+        tcx.sess.code_stats.print_type_sizes();
+    }
+
+    if tcx.sess.opts.unstable_opts.print_vtable_sizes {
+        let crate_name = tcx.crate_name(LOCAL_CRATE);
+
+        tcx.sess.code_stats.print_vtable_sizes(crate_name);
+    }
+
+    codegen
 }
 
 fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit {

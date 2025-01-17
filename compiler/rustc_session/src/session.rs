@@ -4,15 +4,13 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::SeqCst;
 use std::{env, fmt, io};
 
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{
-    AtomicU64, DynSend, DynSync, Lock, Lrc, MappedReadGuard, ReadGuard, RwLock,
+    DynSend, DynSync, Lock, Lrc, MappedReadGuard, ReadGuard, RwLock,
 };
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
@@ -20,7 +18,6 @@ use rustc_errors::emitter::{
     DynEmitter, HumanEmitter, HumanReadableErrorType, OutputTheme, stderr_destination,
 };
 use rustc_errors::json::JsonEmitter;
-use rustc_errors::registry::Registry;
 use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
     FluentBundle, LazyFallbackBundle, TerminalUrl, fallback_fluent_bundle,
@@ -48,13 +45,6 @@ use crate::filesearch::FileSearch;
 use crate::parse::{ParseSess, add_feature_diagnostics};
 use crate::search_paths::SearchPath;
 use crate::{errors, filesearch, lint};
-
-struct OptimizationFuel {
-    /// If `-zfuel=crate=n` is specified, initially set to `n`, otherwise `0`.
-    remaining: u64,
-    /// We're rejecting all further optimizations.
-    out_of_fuel: bool,
-}
 
 /// The behavior of the CTFE engine when an error occurs with regards to backtraces.
 #[derive(Clone, Copy)]
@@ -163,21 +153,8 @@ pub struct Session {
     /// Data about code being compiled, gathered during compilation.
     pub code_stats: CodeStats,
 
-    /// Tracks fuel info if `-zfuel=crate=n` is specified.
-    optimization_fuel: Lock<OptimizationFuel>,
-
-    /// Always set to zero and incremented so that we can print fuel expended by a crate.
-    pub print_fuel: AtomicU64,
-
-    /// Loaded up early on in the initialization of this `Session` to avoid
-    /// false positives about a job server in our environment.
-    pub jobserver: Client,
-
     /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
     pub lint_store: Option<Lrc<dyn LintStoreMarker>>,
-
-    /// Should be set if any lints are registered in `lint_store`.
-    pub registered_lints: bool,
 
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -290,11 +267,11 @@ impl Session {
     }
 
     /// Invoked all the way at the end to finish off diagnostics printing.
-    pub fn finish_diagnostics(&self, registry: &Registry) -> Option<ErrorGuaranteed> {
+    pub fn finish_diagnostics(&self) -> Option<ErrorGuaranteed> {
         let mut guar = None;
         guar = guar.or(self.check_miri_unleashed_features());
         guar = guar.or(self.dcx().emit_stashed_diagnostics());
-        self.dcx().print_error_count(registry);
+        self.dcx().print_error_count();
         if self.opts.json_future_incompat {
             self.dcx().emit_future_breakage_report();
         }
@@ -373,6 +350,11 @@ impl Session {
     /// True if `-Zcoverage-options=no-mir-spans` was passed.
     pub fn coverage_no_mir_spans(&self) -> bool {
         self.opts.unstable_opts.coverage_options.no_mir_spans
+    }
+
+    /// True if `-Zcoverage-options=discard-all-spans-in-codegen` was passed.
+    pub fn coverage_discard_all_spans_in_codegen(&self) -> bool {
+        self.opts.unstable_opts.coverage_options.discard_all_spans_in_codegen
     }
 
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
@@ -530,41 +512,6 @@ impl Session {
 
     pub fn incr_comp_session_dir_opt(&self) -> Option<MappedReadGuard<'_, PathBuf>> {
         self.opts.incremental.as_ref().map(|_| self.incr_comp_session_dir())
-    }
-
-    /// We want to know if we're allowed to do an optimization for crate foo from -z fuel=foo=n.
-    /// This expends fuel if applicable, and records fuel if applicable.
-    pub fn consider_optimizing(
-        &self,
-        get_crate_name: impl Fn() -> Symbol,
-        msg: impl Fn() -> String,
-    ) -> bool {
-        let mut ret = true;
-        if let Some((ref c, _)) = self.opts.unstable_opts.fuel {
-            if c == get_crate_name().as_str() {
-                assert_eq!(self.threads(), 1);
-                let mut fuel = self.optimization_fuel.lock();
-                ret = fuel.remaining != 0;
-                if fuel.remaining == 0 && !fuel.out_of_fuel {
-                    if self.dcx().can_emit_warnings() {
-                        // We only call `msg` in case we can actually emit warnings.
-                        // Otherwise, this could cause a `must_produce_diag` ICE
-                        // (issue #79546).
-                        self.dcx().emit_warn(errors::OptimisationFuelExhausted { msg: msg() });
-                    }
-                    fuel.out_of_fuel = true;
-                } else if fuel.remaining > 0 {
-                    fuel.remaining -= 1;
-                }
-            }
-        }
-        if let Some(ref c) = self.opts.unstable_opts.print_fuel {
-            if c == get_crate_name().as_str() {
-                assert_eq!(self.threads(), 1);
-                self.print_fuel.fetch_add(1, SeqCst);
-            }
-        }
-        ret
     }
 
     /// Is this edition 2015?
@@ -929,7 +876,6 @@ impl Session {
 #[allow(rustc::bad_opt_access)]
 fn default_emitter(
     sopts: &config::Options,
-    registry: rustc_errors::registry::Registry,
     source_map: Lrc<SourceMap>,
     bundle: Option<Lrc<FluentBundle>>,
     fallback_bundle: LazyFallbackBundle,
@@ -992,7 +938,6 @@ fn default_emitter(
                 json_rendered,
                 color_config,
             )
-            .registry(Some(registry))
             .fluent_bundle(bundle)
             .ui_testing(sopts.unstable_opts.ui_testing)
             .ignored_directories_in_source_blocks(
@@ -1048,11 +993,11 @@ pub fn build_session(
         sopts.unstable_opts.translate_directionality_markers,
     );
     let source_map = rustc_span::source_map::get_source_map().unwrap();
-    let emitter =
-        default_emitter(&sopts, registry, Lrc::clone(&source_map), bundle, fallback_bundle);
+    let emitter = default_emitter(&sopts, Lrc::clone(&source_map), bundle, fallback_bundle);
 
-    let mut dcx =
-        DiagCtxt::new(emitter).with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings));
+    let mut dcx = DiagCtxt::new(emitter)
+        .with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings))
+        .with_registry(registry);
     if let Some(ice_file) = ice_file {
         dcx = dcx.with_ice_file(ice_file);
     }
@@ -1097,12 +1042,6 @@ pub fn build_session(
         Lrc::new(SearchPath::from_sysroot_and_triple(&sysroot, target_triple))
     };
 
-    let optimization_fuel = Lock::new(OptimizationFuel {
-        remaining: sopts.unstable_opts.fuel.as_ref().map_or(0, |&(_, i)| i),
-        out_of_fuel: false,
-    });
-    let print_fuel = AtomicU64::new(0);
-
     let prof = SelfProfilerRef::new(
         self_profiler,
         sopts.unstable_opts.time_passes.then(|| sopts.unstable_opts.time_passes_format),
@@ -1130,11 +1069,7 @@ pub fn build_session(
         incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),
         prof,
         code_stats: Default::default(),
-        optimization_fuel,
-        print_fuel,
-        jobserver: jobserver::client(),
         lint_store: None,
-        registered_lints: false,
         driver_lint_caps,
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),
@@ -1362,6 +1297,11 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             sess.dcx().emit_err(errors::UnsupportedRegparmArch);
         }
     }
+    if sess.opts.unstable_opts.reg_struct_return {
+        if sess.target.arch != "x86" {
+            sess.dcx().emit_err(errors::UnsupportedRegStructReturnArch);
+        }
+    }
 
     // The code model check applies to `thunk` and `thunk-extern`, but not `thunk-inline`, so it is
     // kept as a `match` to force a change if new ones are added, even if we currently only support
@@ -1380,7 +1320,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     if sess.opts.cg.soft_float {
-        if sess.target.arch == "arm" && sess.target.abi == "eabihf" {
+        if sess.target.arch == "arm" {
             sess.dcx().emit_warn(errors::SoftFloatDeprecated);
         } else {
             // All `use_softfp` does is the equivalent of `-mfloat-abi` in GCC/clang, which only exists on ARM targets.
@@ -1413,6 +1353,12 @@ enum IncrCompSession {
 /// A wrapper around an [`DiagCtxt`] that is used for early error emissions.
 pub struct EarlyDiagCtxt {
     dcx: DiagCtxt,
+}
+
+impl Default for EarlyDiagCtxt {
+    fn default() -> Self {
+        Self::new(ErrorOutputType::default())
+    }
 }
 
 impl EarlyDiagCtxt {

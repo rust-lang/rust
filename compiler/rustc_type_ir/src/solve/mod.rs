@@ -68,6 +68,10 @@ pub enum GoalSource {
     /// FIXME(-Znext-solver=coinductive): Explain how and why this
     /// changes whether cycles are coinductive.
     ImplWhereBound,
+    /// Const conditions that need to hold for `~const` alias bounds to hold.
+    ///
+    /// FIXME(-Znext-solver=coinductive): Are these even coinductive?
+    AliasBoundConstCondition,
     /// Instantiating a higher-ranked goal and re-proving it.
     InstantiateHigherRanked,
     /// Predicate required for an alias projection to be well-formed.
@@ -173,8 +177,9 @@ pub enum BuiltinImplSource {
     /// A built-in implementation of `Upcast` for trait objects to other trait objects.
     ///
     /// This can be removed when `feature(dyn_upcasting)` is stabilized, since we only
-    /// use it to detect when upcasting traits in hir typeck.
-    TraitUpcasting,
+    /// use it to detect when upcasting traits in hir typeck. The index is only used
+    /// for winnowing.
+    TraitUpcasting(usize),
     /// Unsizing a tuple like `(A, B, ..., X)` to `(A, B, ..., Y)` if `X` unsizes to `Y`.
     ///
     /// This can be removed when `feature(tuple_unsizing)` is stabilized, since we only

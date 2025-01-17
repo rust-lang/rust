@@ -6,9 +6,7 @@ use clippy_utils::{has_non_exhaustive_attr, is_lint_allowed, match_def_path, pat
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn, walk_item};
-use rustc_hir::{
-    self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, Impl, Item, ItemKind, Safety, UnsafeSource,
-};
+use rustc_hir::{self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, Impl, Item, ItemKind, UnsafeSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{
@@ -421,7 +419,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
         id: LocalDefId,
     ) -> Self::Result {
         if let Some(header) = kind.header()
-            && header.safety == Safety::Unsafe
+            && header.is_unsafe()
         {
             ControlFlow::Break(())
         } else {
@@ -453,7 +451,7 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
         && cx.tcx.is_diagnostic_item(sym::PartialEq, def_id)
         && !has_non_exhaustive_attr(cx.tcx, *adt)
         && !ty_implements_eq_trait(cx.tcx, ty, eq_trait_def_id)
-        && let typing_env = typing_env_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
+        && let typing_env = typing_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
         && let Some(local_def_id) = adt.did().as_local()
         // If all of our fields implement `Eq`, we can implement `Eq` too
         && adt
@@ -484,7 +482,7 @@ fn ty_implements_eq_trait<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, eq_trait_id: De
 }
 
 /// Creates the `ParamEnv` used for the give type's derived `Eq` impl.
-fn typing_env_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> ty::TypingEnv<'_> {
+fn typing_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> ty::TypingEnv<'_> {
     // Initial map from generic index to param def.
     // Vec<(param_def, needs_eq)>
     let mut params = tcx
@@ -505,17 +503,15 @@ fn typing_env_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId
         }
     }
 
-    let param_env = ParamEnv::new(
-        tcx.mk_clauses_from_iter(ty_predicates.iter().map(|&(p, _)| p).chain(
-            params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
-                ClauseKind::Trait(TraitPredicate {
-                    trait_ref: ty::TraitRef::new(tcx, eq_trait_id, [tcx.mk_param_from_def(param)]),
-                    polarity: ty::PredicatePolarity::Positive,
-                })
-                .upcast(tcx)
-            }),
-        )),
-    );
+    let param_env = ParamEnv::new(tcx.mk_clauses_from_iter(ty_predicates.iter().map(|&(p, _)| p).chain(
+        params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
+            ClauseKind::Trait(TraitPredicate {
+                trait_ref: ty::TraitRef::new(tcx, eq_trait_id, [tcx.mk_param_from_def(param)]),
+                polarity: ty::PredicatePolarity::Positive,
+            })
+            .upcast(tcx)
+        }),
+    )));
     ty::TypingEnv {
         typing_mode: ty::TypingMode::non_body_analysis(),
         param_env,

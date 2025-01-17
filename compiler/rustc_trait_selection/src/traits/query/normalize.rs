@@ -216,9 +216,9 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
             ty::Opaque => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.infcx.typing_mode() {
-                    TypingMode::Coherence | TypingMode::Analysis { defining_opaque_types: _ } => {
-                        ty.try_super_fold_with(self)?
-                    }
+                    TypingMode::Coherence
+                    | TypingMode::Analysis { .. }
+                    | TypingMode::PostBorrowckAnalysis { .. } => ty.try_super_fold_with(self)?,
 
                     TypingMode::PostAnalysis => {
                         let args = data.args.try_fold_with(self)?;

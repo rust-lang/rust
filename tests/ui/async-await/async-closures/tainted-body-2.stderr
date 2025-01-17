@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `missing` in this scope
-  --> $DIR/tainted-body-2.rs:9:5
+  --> $DIR/tainted-body-2.rs:7:5
    |
 LL |     missing;
    |     ^^^^^^^ not found in this scope

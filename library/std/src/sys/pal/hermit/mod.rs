@@ -42,7 +42,7 @@ pub fn unsupported<T>() -> crate::io::Result<T> {
 }
 
 pub fn unsupported_err() -> crate::io::Error {
-    crate::io::const_io_error!(
+    crate::io::const_error!(
         crate::io::ErrorKind::Unsupported,
         "operation not supported on HermitCore yet",
     )
@@ -85,7 +85,7 @@ pub unsafe extern "C" fn runtime_entry(
     }
 
     // initialize environment
-    os::init_environment(env as *const *const i8);
+    os::init_environment(env);
 
     let result = unsafe { main(argc as isize, argv) };
 

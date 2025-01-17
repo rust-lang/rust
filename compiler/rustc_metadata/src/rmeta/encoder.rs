@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 
-use rustc_ast::Attribute;
+use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::sync::{Lrc, join, par_for_each_in};
@@ -27,9 +27,9 @@ use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::{CrateType, OptLevel};
 use rustc_span::hygiene::HygieneEncodeContext;
-use rustc_span::symbol::sym;
 use rustc_span::{
     ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId, SyntaxContext,
+    sym,
 };
 use tracing::{debug, instrument, trace};
 
@@ -710,15 +710,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
                 has_alloc_error_handler: tcx.has_alloc_error_handler(LOCAL_CRATE),
                 has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
-                has_default_lib_allocator: attr::contains_name(attrs, sym::default_lib_allocator),
+                has_default_lib_allocator: ast::attr::contains_name(
+                    attrs,
+                    sym::default_lib_allocator,
+                ),
                 proc_macro_data,
                 debugger_visualizers,
-                compiler_builtins: attr::contains_name(attrs, sym::compiler_builtins),
-                needs_allocator: attr::contains_name(attrs, sym::needs_allocator),
-                needs_panic_runtime: attr::contains_name(attrs, sym::needs_panic_runtime),
-                no_builtins: attr::contains_name(attrs, sym::no_builtins),
-                panic_runtime: attr::contains_name(attrs, sym::panic_runtime),
-                profiler_runtime: attr::contains_name(attrs, sym::profiler_runtime),
+                compiler_builtins: ast::attr::contains_name(attrs, sym::compiler_builtins),
+                needs_allocator: ast::attr::contains_name(attrs, sym::needs_allocator),
+                needs_panic_runtime: ast::attr::contains_name(attrs, sym::needs_panic_runtime),
+                no_builtins: ast::attr::contains_name(attrs, sym::no_builtins),
+                panic_runtime: ast::attr::contains_name(attrs, sym::panic_runtime),
+                profiler_runtime: ast::attr::contains_name(attrs, sym::profiler_runtime),
                 symbol_mangling_version: tcx.sess.opts.get_symbol_mangling_version(),
 
                 crate_deps,
@@ -814,7 +817,7 @@ struct AnalyzeAttrState<'a> {
 /// visibility: this is a piece of data that can be computed once per defid, and not once per
 /// attribute. Some attributes would only be usable downstream if they are public.
 #[inline]
-fn analyze_attr(attr: &Attribute, state: &mut AnalyzeAttrState<'_>) -> bool {
+fn analyze_attr(attr: &impl AttributeExt, state: &mut AnalyzeAttrState<'_>) -> bool {
     let mut should_encode = false;
     if !rustc_feature::encode_cross_crate(attr.name_or_empty()) {
         // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
@@ -1264,12 +1267,7 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
 
 fn should_encode_constness(def_kind: DefKind) -> bool {
     match def_kind {
-        DefKind::Fn
-        | DefKind::AssocFn
-        | DefKind::Closure
-        | DefKind::Impl { of_trait: true }
-        | DefKind::Variant
-        | DefKind::Ctor(..) => true,
+        DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Ctor(_, CtorKind::Fn) => true,
 
         DefKind::Struct
         | DefKind::Union
@@ -1281,7 +1279,7 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::Static { .. }
         | DefKind::TyAlias
         | DefKind::OpaqueTy
-        | DefKind::Impl { of_trait: false }
+        | DefKind::Impl { .. }
         | DefKind::ForeignTy
         | DefKind::ConstParam
         | DefKind::InlineConst
@@ -1296,6 +1294,8 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
         | DefKind::ExternCrate
+        | DefKind::Ctor(_, CtorKind::Const)
+        | DefKind::Variant
         | DefKind::SyntheticCoroutineBody => false,
     }
 }
@@ -1357,7 +1357,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             .hir()
             .attrs(tcx.local_def_id_to_hir_id(def_id))
             .iter()
-            .filter(|attr| analyze_attr(attr, &mut state));
+            .filter(|attr| analyze_attr(*attr, &mut state));
 
         record_array!(self.tables.attributes[def_id.to_def_id()] <- attr_iter);
 
@@ -1383,6 +1383,31 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let def_id = local_id.to_def_id();
             let def_kind = tcx.def_kind(local_id);
             self.tables.def_kind.set_some(def_id.index, def_kind);
+
+            // The `DefCollector` will sometimes create unnecessary `DefId`s
+            // for trivial const arguments which are directly lowered to
+            // `ConstArgKind::Path`. We never actually access this `DefId`
+            // anywhere so we don't need to encode it for other crates.
+            if def_kind == DefKind::AnonConst
+                && match tcx.hir_node_by_def_id(local_id) {
+                    hir::Node::ConstArg(hir::ConstArg { kind, .. }) => match kind {
+                        // Skip encoding defs for these as they should not have had a `DefId` created
+                        hir::ConstArgKind::Path(..) | hir::ConstArgKind::Infer(..) => true,
+                        hir::ConstArgKind::Anon(..) => false,
+                    },
+                    _ => false,
+                }
+            {
+                continue;
+            }
+
+            if def_kind == DefKind::Field
+                && let hir::Node::Field(field) = tcx.hir_node_by_def_id(local_id)
+                && let Some(anon) = field.default
+            {
+                record!(self.tables.default_fields[def_id] <- anon.def_id.to_def_id());
+            }
+
             if should_encode_span(def_kind) {
                 let def_span = tcx.def_span(local_id);
                 record!(self.tables.def_span[def_id] <- def_span);
@@ -1749,10 +1774,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             {
                 record!(self.tables.mir_coroutine_witnesses[def_id.to_def_id()] <- witnesses);
             }
-
-            let instance = ty::InstanceKind::Item(def_id.to_def_id());
-            let unused = tcx.unused_generic_params(instance);
-            self.tables.unused_generic_params.set(def_id.local_def_index, unused);
         }
 
         // Encode all the deduced parameter attributes for everything that has MIR, even for items
@@ -1899,11 +1920,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
                 let attrs = hir.attrs(proc_macro);
-                let macro_kind = if attr::contains_name(attrs, sym::proc_macro) {
+                let macro_kind = if ast::attr::contains_name(attrs, sym::proc_macro) {
                     MacroKind::Bang
-                } else if attr::contains_name(attrs, sym::proc_macro_attribute) {
+                } else if ast::attr::contains_name(attrs, sym::proc_macro_attribute) {
                     MacroKind::Attr
-                } else if let Some(attr) = attr::find_by_name(attrs, sym::proc_macro_derive) {
+                } else if let Some(attr) = ast::attr::find_by_name(attrs, sym::proc_macro_derive) {
                     // This unwrap chain should have been checked by the proc-macro harness.
                     name = attr.meta_item_list().unwrap()[0]
                         .meta_item()
@@ -2143,16 +2164,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_dylib_dependency_formats(&mut self) -> LazyArray<Option<LinkagePreference>> {
         empty_proc_macro!(self);
         let formats = self.tcx.dependency_formats(());
-        for (ty, arr) in formats.iter() {
-            if *ty != CrateType::Dylib {
-                continue;
-            }
-            return self.lazy_array(arr.iter().map(|slot| match *slot {
-                Linkage::NotLinked | Linkage::IncludedFromDylib => None,
+        if let Some(arr) = formats.get(&CrateType::Dylib) {
+            return self.lazy_array(arr.iter().skip(1 /* skip LOCAL_CRATE */).map(
+                |slot| match *slot {
+                    Linkage::NotLinked | Linkage::IncludedFromDylib => None,
 
-                Linkage::Dynamic => Some(LinkagePreference::RequireDynamic),
-                Linkage::Static => Some(LinkagePreference::RequireStatic),
-            }));
+                    Linkage::Dynamic => Some(LinkagePreference::RequireDynamic),
+                    Linkage::Static => Some(LinkagePreference::RequireStatic),
+                },
+            ));
         }
         LazyArray::default()
     }

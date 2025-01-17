@@ -28,6 +28,7 @@
 //! expression, `e as U2` is not necessarily so (in fact it will only be valid if
 //! `U1` coerces to `U2`).
 
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
@@ -42,8 +43,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, VariantDe
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::symbol::sym;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
@@ -115,6 +115,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None => Some(PointerKind::Thin),
                 Some(&f) => self.pointer_kind(f, span)?,
             },
+
+            ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
 
             // Pointers to foreign types are thin, despite being unsized
             ty::Foreign(..) => Some(PointerKind::Thin),
@@ -721,13 +723,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         use rustc_middle::ty::cast::IntTy::*;
 
         if self.cast_ty.is_dyn_star() {
-            if fcx.tcx.features().dyn_star() {
-                span_bug!(self.span, "should be handled by `coerce`");
-            } else {
-                // Report "casting is invalid" rather than "non-primitive cast"
-                // if the feature is not enabled.
-                return Err(CastError::IllegalCast);
-            }
+            // This coercion will fail if the feature is not enabled, OR
+            // if the coercion is (currently) illegal (e.g. `dyn* Foo + Send`
+            // to `dyn* Foo`). Report "casting is invalid" rather than
+            // "non-primitive cast".
+            return Err(CastError::IllegalCast);
         }
 
         let (t_from, t_cast) = match (CastTy::from_ty(self.expr_ty), CastTy::from_ty(self.cast_ty))
@@ -1107,8 +1107,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn lossy_provenance_ptr2int_lint(&self, fcx: &FnCtxt<'a, 'tcx>, t_c: ty::cast::IntTy) {
-        let expr_prec = self.expr.precedence().order();
-        let needs_parens = expr_prec < rustc_ast::util::parser::PREC_UNAMBIGUOUS;
+        let expr_prec = self.expr.precedence();
+        let needs_parens = expr_prec < ExprPrecedence::Unambiguous;
 
         let needs_cast = !matches!(t_c, ty::cast::IntTy::U(ty::UintTy::Usize));
         let cast_span = self.expr_span.shrink_to_hi().to(self.cast_span);

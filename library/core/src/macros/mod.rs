@@ -224,6 +224,7 @@ pub macro assert_matches {
 ///     }
 /// }
 /// ```
+#[cfg(bootstrap)]
 #[unstable(feature = "cfg_match", issue = "115585")]
 #[rustc_diagnostic_item = "cfg_match"]
 pub macro cfg_match {
@@ -282,6 +283,57 @@ pub macro cfg_match {
     (@__identity $($tokens:tt)*) => {
         $($tokens)*
     }
+}
+
+/// A macro for defining `#[cfg]` match-like statements.
+///
+/// It is similar to the `if/elif` C preprocessor macro by allowing definition of a cascade of
+/// `#[cfg]` cases, emitting the implementation which matches first.
+///
+/// This allows you to conveniently provide a long list `#[cfg]`'d blocks of code
+/// without having to rewrite each clause multiple times.
+///
+/// Trailing `_` wildcard match arms are **optional** and they indicate a fallback branch when
+/// all previous declarations do not evaluate to true.
+///
+/// # Example
+///
+/// ```
+/// #![feature(cfg_match)]
+///
+/// cfg_match! {
+///     unix => {
+///         fn foo() { /* unix specific functionality */ }
+///     }
+///     target_pointer_width = "32" => {
+///         fn foo() { /* non-unix, 32-bit functionality */ }
+///     }
+///     _ => {
+///         fn foo() { /* fallback implementation */ }
+///     }
+/// }
+/// ```
+#[cfg(not(bootstrap))]
+#[unstable(feature = "cfg_match", issue = "115585")]
+#[rustc_diagnostic_item = "cfg_match"]
+pub macro cfg_match {
+    ({ $($tt:tt)* }) => {{
+        cfg_match! { $($tt)* }
+    }},
+    (_ => { $($output:tt)* }) => {
+        $($output)*
+    },
+    (
+        $cfg:meta => $output:tt
+        $($( $rest:tt )+)?
+    ) => {
+        #[cfg($cfg)]
+        cfg_match! { _ => $output }
+        $(
+            #[cfg(not($cfg))]
+            cfg_match! { $($rest)+ }
+        )?
+    },
 }
 
 /// Asserts that a boolean expression is `true` at runtime.
@@ -1549,12 +1601,11 @@ pub(crate) mod builtin {
     /// NAME is a string that represents a valid function name.
     /// MODE is any of Forward, Reverse, ForwardFirst, ReverseFirst.
     /// INPUT_ACTIVITIES consists of one valid activity for each input parameter.
-    /// OUTPUT_ACTIVITY must not be set if we implicitely return nothing (or explicitely return
+    /// OUTPUT_ACTIVITY must not be set if we implicitly return nothing (or explicitly return
     /// `-> ()`). Otherwise it must be set to one of the allowed activities.
     #[unstable(feature = "autodiff", issue = "124509")]
     #[allow_internal_unstable(rustc_attrs)]
     #[rustc_builtin_macro]
-    #[cfg(not(bootstrap))]
     pub macro autodiff($item:item) {
         /* compiler built-in */
     }

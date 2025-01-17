@@ -351,7 +351,8 @@ trait Tr<'a, T: 'a>: Super where Self: for<'a> Tr<'a, T> {}
             where
                 T: Copy,
                 T: 'a,
-                T: 'b
+                T: 'b,
+                'b: 'a
             {
                 pub(self) field: &'a &'b T,
             }
@@ -370,7 +371,8 @@ trait Tr<'a, T: 'a>: Super where Self: for<'a> Tr<'a, T> {}
             where
                 T: Copy,
                 T: 'a,
-                T: 'b
+                T: 'b,
+                'b: 'a
             {
                 // AstId: 9
                 pub(self) fn f<G>(

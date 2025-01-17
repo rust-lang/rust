@@ -182,13 +182,12 @@ pub(crate) use StaticFields::*;
 pub(crate) use SubstructureFields::*;
 use rustc_ast::ptr::P;
 use rustc_ast::{
-    self as ast, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
-    Mutability, PatKind, VariantData,
+    self as ast, AnonConst, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind,
+    Generics, Mutability, PatKind, VariantData,
 };
-use rustc_attr as attr;
+use rustc_attr_parsing as attr;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use ty::{Bounds, Path, Ref, Self_, Ty};
 
@@ -296,7 +295,7 @@ pub(crate) enum StaticFields {
     /// Tuple and unit structs/enum variants like this.
     Unnamed(Vec<Span>, IsTuple),
     /// Normal structs/struct variants.
-    Named(Vec<(Ident, Span)>),
+    Named(Vec<(Ident, Span, Option<AnonConst>)>),
 }
 
 /// A summary of the possible sets of fields.
@@ -690,25 +689,10 @@ impl<'a> TraitDef<'a> {
 
         // and similarly for where clauses
         where_clause.predicates.extend(generics.where_clause.predicates.iter().map(|clause| {
-            match clause {
-                ast::WherePredicate::BoundPredicate(wb) => {
-                    let span = wb.span.with_ctxt(ctxt);
-                    ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                        span,
-                        ..wb.clone()
-                    })
-                }
-                ast::WherePredicate::RegionPredicate(wr) => {
-                    let span = wr.span.with_ctxt(ctxt);
-                    ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
-                        span,
-                        ..wr.clone()
-                    })
-                }
-                ast::WherePredicate::EqPredicate(we) => {
-                    let span = we.span.with_ctxt(ctxt);
-                    ast::WherePredicate::EqPredicate(ast::WhereEqPredicate { span, ..we.clone() })
-                }
+            ast::WherePredicate {
+                kind: clause.kind.clone(),
+                id: ast::DUMMY_NODE_ID,
+                span: clause.span.with_ctxt(ctxt),
             }
         }));
 
@@ -757,13 +741,14 @@ impl<'a> TraitDef<'a> {
 
                     if !bounds.is_empty() {
                         let predicate = ast::WhereBoundPredicate {
-                            span: self.span,
                             bound_generic_params: field_ty_param.bound_generic_params,
                             bounded_ty: field_ty_param.ty,
                             bounds,
                         };
 
-                        let predicate = ast::WherePredicate::BoundPredicate(predicate);
+                        let kind = ast::WherePredicateKind::BoundPredicate(predicate);
+                        let predicate =
+                            ast::WherePredicate { kind, id: ast::DUMMY_NODE_ID, span: self.span };
                         where_clause.predicates.push(predicate);
                     }
                 }
@@ -1449,7 +1434,7 @@ impl<'a> TraitDef<'a> {
         for field in struct_def.fields() {
             let sp = field.span.with_ctxt(self.span.ctxt());
             match field.ident {
-                Some(ident) => named_idents.push((ident, sp)),
+                Some(ident) => named_idents.push((ident, sp, field.default.clone())),
                 _ => just_spans.push(sp),
             }
         }

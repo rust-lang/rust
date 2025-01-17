@@ -38,6 +38,12 @@ pub struct Baz {
 pub fn vec_iterator_cast_primitive(vec: Vec<i8>) -> Vec<u8> {
     // CHECK-NOT: loop
     // CHECK-NOT: call
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
+    // CHECK-NOT: loop
+    // CHECK-NOT: call
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
+    // CHECK-NOT: loop
+    // CHECK-NOT: call
     vec.into_iter().map(|e| e as u8).collect()
 }
 
@@ -46,12 +52,41 @@ pub fn vec_iterator_cast_primitive(vec: Vec<i8>) -> Vec<u8> {
 pub fn vec_iterator_cast_wrapper(vec: Vec<u8>) -> Vec<Wrapper<u8>> {
     // CHECK-NOT: loop
     // CHECK-NOT: call
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
+    // CHECK-NOT: loop
+    // CHECK-NOT: call
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
+    // CHECK-NOT: loop
+    // CHECK-NOT: call
     vec.into_iter().map(|e| Wrapper(e)).collect()
+}
+
+// CHECK-LABEL: @vec_iterator_cast_signed
+#[no_mangle]
+pub fn vec_iterator_cast_signed(vec: Vec<i32>) -> Vec<u32> {
+    // CHECK-NOT: and i{{[0-9]+}} %{{.*}}, {{[0-9]+}}
+    vec.into_iter().map(|e| u32::from_ne_bytes(e.to_ne_bytes())).collect()
+}
+
+// CHECK-LABEL: @vec_iterator_cast_signed_nested
+#[no_mangle]
+pub fn vec_iterator_cast_signed_nested(vec: Vec<Vec<i32>>) -> Vec<Vec<u32>> {
+    // CHECK-NOT: br i1 %{{.*}}, label %{{.*}}, label %{{.*}}
+    // CHECK-NOT: %{{.*}} = udiv
+    vec.into_iter()
+        .map(|e| e.into_iter().map(|e| u32::from_ne_bytes(e.to_ne_bytes())).collect())
+        .collect()
 }
 
 // CHECK-LABEL: @vec_iterator_cast_unwrap
 #[no_mangle]
 pub fn vec_iterator_cast_unwrap(vec: Vec<Wrapper<u8>>) -> Vec<u8> {
+    // CHECK-NOT: loop
+    // CHECK-NOT: call
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
+    // CHECK-NOT: loop
+    // CHECK-NOT: call
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
     // CHECK-NOT: loop
     // CHECK-NOT: call
     vec.into_iter().map(|e| e.0).collect()
@@ -62,12 +97,24 @@ pub fn vec_iterator_cast_unwrap(vec: Vec<Wrapper<u8>>) -> Vec<u8> {
 pub fn vec_iterator_cast_aggregate(vec: Vec<[u64; 4]>) -> Vec<Foo> {
     // CHECK-NOT: loop
     // CHECK-NOT: call
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
+    // CHECK-NOT: loop
+    // CHECK-NOT: call
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
+    // CHECK-NOT: loop
+    // CHECK-NOT: call
     vec.into_iter().map(|e| unsafe { std::mem::transmute(e) }).collect()
 }
 
 // CHECK-LABEL: @vec_iterator_cast_deaggregate_tra
 #[no_mangle]
 pub fn vec_iterator_cast_deaggregate_tra(vec: Vec<Bar>) -> Vec<[u64; 4]> {
+    // CHECK-NOT: loop
+    // CHECK-NOT: call
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
+    // CHECK-NOT: loop
+    // CHECK-NOT: call
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
     // CHECK-NOT: loop
     // CHECK-NOT: call
 
@@ -83,6 +130,12 @@ pub fn vec_iterator_cast_deaggregate_tra(vec: Vec<Bar>) -> Vec<[u64; 4]> {
 pub fn vec_iterator_cast_deaggregate_fold(vec: Vec<Baz>) -> Vec<[u64; 4]> {
     // CHECK-NOT: loop
     // CHECK-NOT: call
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
+    // CHECK-NOT: loop
+    // CHECK-NOT: call
+    // CHECK: call{{.+}}void @llvm.assume(i1 %{{.+}})
+    // CHECK-NOT: loop
+    // CHECK-NOT: call
 
     // Safety: For the purpose of this test we assume that Bar layout matches [u64; 4].
     // This currently is not guaranteed for repr(Rust) types, but it happens to work here and
@@ -95,6 +148,17 @@ pub fn vec_iterator_cast_deaggregate_fold(vec: Vec<Baz>) -> Vec<[u64; 4]> {
 #[no_mangle]
 pub fn vec_iterator_cast_unwrap_drop(vec: Vec<Wrapper<String>>) -> Vec<String> {
     // CHECK-NOT: br i1 %{{.*}}, label %{{.*}}, label %{{.*}}
+    // CHECK-NOT: %{{.*}} = mul
+    // CHECK-NOT: %{{.*}} = udiv
+    // CHECK: call
+    // CHECK-SAME: void @llvm.assume(i1 %{{.+}})
+    // CHECK-NOT: br i1 %{{.*}}, label %{{.*}}, label %{{.*}}
+    // CHECK-NOT: call
+    // CHECK-NOT: %{{.*}} = mul
+    // CHECK-NOT: %{{.*}} = udiv
+    // CHECK: call
+    // CHECK-SAME: void @llvm.assume(i1 %{{.+}})
+    // CHECK-NOT: br i1 %{{.*}}, label %{{.*}}, label %{{.*}}
     // CHECK-NOT: call
     // CHECK-NOT: %{{.*}} = mul
     // CHECK-NOT: %{{.*}} = udiv
@@ -106,9 +170,21 @@ pub fn vec_iterator_cast_unwrap_drop(vec: Vec<Wrapper<String>>) -> Vec<String> {
 #[no_mangle]
 pub fn vec_iterator_cast_wrap_drop(vec: Vec<String>) -> Vec<Wrapper<String>> {
     // CHECK-NOT: br i1 %{{.*}}, label %{{.*}}, label %{{.*}}
+    // CHECK-NOT: %{{.*}} = mul
+    // CHECK-NOT: %{{.*}} = udiv
+    // CHECK: call
+    // CHECK-SAME: void @llvm.assume(i1 %{{.+}})
+    // CHECK-NOT: br i1 %{{.*}}, label %{{.*}}, label %{{.*}}
     // CHECK-NOT: call
     // CHECK-NOT: %{{.*}} = mul
     // CHECK-NOT: %{{.*}} = udiv
+    // CHECK: call
+    // CHECK-SAME: void @llvm.assume(i1 %{{.+}})
+    // CHECK-NOT: br i1 %{{.*}}, label %{{.*}}, label %{{.*}}
+    // CHECK-NOT: call
+    // CHECK-NOT: %{{.*}} = mul
+    // CHECK-NOT: %{{.*}} = udiv
+    // CHECK: ret void
 
     vec.into_iter().map(Wrapper).collect()
 }

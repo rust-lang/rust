@@ -1,7 +1,6 @@
 //@ edition: 2024
 
 #![feature(gen_blocks)]
-#![feature(async_closure)]
 
 async fn async_fn() {
     break; //~ ERROR `break` inside `async` function

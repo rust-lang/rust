@@ -17,7 +17,7 @@ use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt;
 use rustc_trait_selection::traits::{ObligationCtxt, elaborate, normalize_param_env_or_error};
 
 /// Check that an implementation does not refine an RPITIT from a trait method signature.
-pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
+pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: ty::AssocItem,
     trait_m: ty::AssocItem,
@@ -289,11 +289,16 @@ fn report_mismatched_rpitit_signature<'tcx>(
         tcx.fn_sig(trait_m_def_id).skip_binder().bound_vars(),
         tcx.fn_sig(impl_m_def_id).skip_binder().bound_vars(),
     )
-    .filter_map(|(impl_bv, trait_bv)| {
+    .enumerate()
+    .filter_map(|(idx, (impl_bv, trait_bv))| {
         if let ty::BoundVariableKind::Region(impl_bv) = impl_bv
             && let ty::BoundVariableKind::Region(trait_bv) = trait_bv
         {
-            Some((impl_bv, trait_bv))
+            let var = ty::BoundVar::from_usize(idx);
+            Some((
+                ty::LateParamRegionKind::from_bound(var, impl_bv),
+                ty::LateParamRegionKind::from_bound(var, trait_bv),
+            ))
         } else {
             None
         }
@@ -301,7 +306,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
     .collect();
 
     let mut return_ty =
-        trait_m_sig.output().fold_with(&mut super::RemapLateBound { tcx, mapping: &mapping });
+        trait_m_sig.output().fold_with(&mut super::RemapLateParam { tcx, mapping: &mapping });
 
     if tcx.asyncness(impl_m_def_id).is_async() && tcx.asyncness(trait_m_def_id).is_async() {
         let ty::Alias(ty::Projection, future_ty) = return_ty.kind() else {

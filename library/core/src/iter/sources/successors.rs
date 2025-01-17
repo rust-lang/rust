@@ -5,6 +5,7 @@ use crate::iter::FusedIterator;
 ///
 /// The iterator starts with the given first item (if any)
 /// and calls the given `FnMut(&T) -> Option<T>` closure to compute each item’s successor.
+/// The iterator will yield the `T`s returned from the closure.
 ///
 /// ```
 /// use std::iter::successors;

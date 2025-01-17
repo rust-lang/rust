@@ -1,7 +1,7 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::mir::{PossibleBorrowerMap, enclosing_mir, expr_local, local_assignments, used_exactly_once};
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::{DefinedTy, ExprUseNode, expr_use_ctxt, peel_n_hir_expr_refs};
@@ -9,7 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{Body, Expr, ExprKind, Mutability, Path, QPath};
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::{Rvalue, StatementKind};
@@ -362,7 +362,7 @@ fn referent_used_exactly_once<'tcx>(
         let body_owner_local_def_id = cx.tcx.hir().enclosing_body_owner(reference.hir_id);
         if possible_borrowers
             .last()
-            .map_or(true, |&(local_def_id, _)| local_def_id != body_owner_local_def_id)
+            .is_none_or(|&(local_def_id, _)| local_def_id != body_owner_local_def_id)
         {
             possible_borrowers.push((body_owner_local_def_id, PossibleBorrowerMap::new(cx, mir)));
         }
@@ -390,7 +390,7 @@ fn replace_types<'tcx>(
     projection_predicates: &[ProjectionPredicate<'tcx>],
     args: &mut [GenericArg<'tcx>],
 ) -> bool {
-    let mut replaced = BitSet::new_empty(args.len());
+    let mut replaced = DenseBitSet::new_empty(args.len());
 
     let mut deque = VecDeque::with_capacity(args.len());
     deque.push_back((param_ty, new_ty));

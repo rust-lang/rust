@@ -22,7 +22,7 @@ LL |         std::intrinsics::floorf32,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot coerce intrinsics to function pointers
    |
    = note: expected fn pointer `unsafe extern "rust-intrinsic" fn(_) -> _`
-                 found fn item `unsafe extern "rust-intrinsic" fn(_) -> _ {floorf32}`
+                 found fn item `unsafe fn(_) -> _ {floorf32}`
 
 error: aborting due to 3 previous errors
 

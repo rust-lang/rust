@@ -5,8 +5,8 @@ use serde::Serialize;
 use crate::compiler_interface::with;
 use crate::mir::pretty::function_body;
 use crate::ty::{
-    AdtDef, ClosureDef, CoroutineDef, GenericArgs, MirConst, Movability, Region, RigidTy, Ty,
-    TyConst, TyKind, VariantIdx,
+    AdtDef, ClosureDef, CoroutineClosureDef, CoroutineDef, GenericArgs, MirConst, Movability,
+    Region, RigidTy, Ty, TyConst, TyKind, VariantIdx,
 };
 use crate::{Error, Opaque, Span, Symbol};
 
@@ -617,6 +617,9 @@ impl Rvalue {
                 AggregateKind::Coroutine(def, ref args, mov) => {
                     Ok(Ty::new_coroutine(def, args.clone(), mov))
                 }
+                AggregateKind::CoroutineClosure(def, ref args) => {
+                    Ok(Ty::new_coroutine_closure(def, args.clone()))
+                }
                 AggregateKind::RawPtr(ty, mutability) => Ok(Ty::new_ptr(ty, mutability)),
             },
             Rvalue::ShallowInitBox(_, ty) => Ok(Ty::new_box(*ty)),
@@ -633,6 +636,7 @@ pub enum AggregateKind {
     Closure(ClosureDef, GenericArgs),
     // FIXME(stable_mir): Movability here is redundant
     Coroutine(CoroutineDef, GenericArgs, Movability),
+    CoroutineClosure(CoroutineClosureDef, GenericArgs),
     RawPtr(Ty, Mutability),
 }
 

@@ -1,12 +1,3 @@
-error: use of a disallowed macro `std::vec`
-  --> tests/ui-toml/disallowed_macros/disallowed_macros.rs:16:5
-   |
-LL |     vec![1, 2, 3];
-   |     ^^^^^^^^^^^^^
-   |
-   = note: `-D clippy::disallowed-macros` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::disallowed_macros)]`
-
 error: use of a disallowed macro `serde::Serialize`
   --> tests/ui-toml/disallowed_macros/disallowed_macros.rs:18:14
    |
@@ -14,6 +5,8 @@ LL |     #[derive(Serialize)]
    |              ^^^^^^^^^
    |
    = note: no serializing
+   = note: `-D clippy::disallowed-macros` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_macros)]`
 
 error: use of a disallowed macro `macros::attr`
   --> tests/ui-toml/disallowed_macros/disallowed_macros.rs:31:1
@@ -46,6 +39,12 @@ error: use of a disallowed macro `std::cfg`
    |
 LL |     cfg!(unix);
    |     ^^^^^^^^^^
+
+error: use of a disallowed macro `std::vec`
+  --> tests/ui-toml/disallowed_macros/disallowed_macros.rs:16:5
+   |
+LL |     vec![1, 2, 3];
+   |     ^^^^^^^^^^^^^
 
 error: use of a disallowed macro `macros::expr`
   --> tests/ui-toml/disallowed_macros/disallowed_macros.rs:21:13

@@ -2,9 +2,10 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{
     self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Upcast,
 };
@@ -35,6 +36,8 @@ fn sized_constraint_for_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'
         | CoroutineWitness(..)
         | Never
         | Dynamic(_, _, ty::DynStar) => None,
+
+        UnsafeBinder(_) => todo!(),
 
         // these are never sized
         Str | Slice(..) | Dynamic(_, _, ty::Dyn) | Foreign(..) => Some(ty),
@@ -197,7 +200,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             // We have entered some binders as we've walked into the
             // bounds of the RPITIT. Shift these binders back out when
             // constructing the top-level projection predicate.
-            let shifted_alias_ty = self.tcx.fold_regions(unshifted_alias_ty, |re, depth| {
+            let shifted_alias_ty = fold_regions(self.tcx, unshifted_alias_ty, |re, depth| {
                 if let ty::ReBound(index, bv) = re.kind() {
                     if depth != ty::INNERMOST {
                         return ty::Region::new_error_with_message(
@@ -314,7 +317,7 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Asyncness {
     })
 }
 
-fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32> {
+fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> DenseBitSet<u32> {
     let def = tcx.adt_def(def_id);
     let num_params = tcx.generics_of(def_id).count();
 
@@ -335,10 +338,10 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32
 
     // The last field of the structure has to exist and contain type/const parameters.
     let Some((tail_field, prefix_fields)) = def.non_enum_variant().fields.raw.split_last() else {
-        return BitSet::new_empty(num_params);
+        return DenseBitSet::new_empty(num_params);
     };
 
-    let mut unsizing_params = BitSet::new_empty(num_params);
+    let mut unsizing_params = DenseBitSet::new_empty(num_params);
     for arg in tcx.type_of(tail_field.did).instantiate_identity().walk() {
         if let Some(i) = maybe_unsizing_param_idx(arg) {
             unsizing_params.insert(i);

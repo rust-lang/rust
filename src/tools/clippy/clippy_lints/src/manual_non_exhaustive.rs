@@ -1,7 +1,7 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::is_doc_hidden;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_indent;
 use itertools::Itertools;
 use rustc_ast::attr;

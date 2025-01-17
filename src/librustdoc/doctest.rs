@@ -13,10 +13,10 @@ use std::{panic, str};
 
 pub(crate) use make::DocTestBuilder;
 pub(crate) use markdown::test as test_markdown;
-use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_errors::{ColorConfig, DiagCtxtHandle, ErrorGuaranteed, FatalError};
+use rustc_errors::{ColorConfig, DiagCtxtHandle};
+use rustc_hir as hir;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::interface;
@@ -50,6 +50,46 @@ pub(crate) struct GlobalTestOptions {
     pub(crate) args_file: PathBuf,
 }
 
+/// Function used to split command line arguments just like a shell would.
+fn split_args(args: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut iter = args.chars();
+    let mut current = String::new();
+
+    while let Some(c) = iter.next() {
+        if c == '\\' {
+            if let Some(c) = iter.next() {
+                // If it's escaped, even a quote or a whitespace will be ignored.
+                current.push(c);
+            }
+        } else if c == '"' || c == '\'' {
+            while let Some(new_c) = iter.next() {
+                if new_c == c {
+                    break;
+                } else if new_c == '\\' {
+                    if let Some(c) = iter.next() {
+                        // If it's escaped, even a quote will be ignored.
+                        current.push(c);
+                    }
+                } else {
+                    current.push(new_c);
+                }
+            }
+        } else if " \n\t\r".contains(c) {
+            if !current.is_empty() {
+                out.push(current.clone());
+                current.clear();
+            }
+        } else {
+            current.push(c);
+        }
+    }
+    if !current.is_empty() {
+        out.push(current);
+    }
+    out
+}
+
 pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> Result<(), String> {
     let mut file = File::create(file_path)
         .map_err(|error| format!("failed to create args file: {error:?}"))?;
@@ -78,6 +118,10 @@ pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> 
         content.push(format!("-Z{unstable_option_str}"));
     }
 
+    for compilation_args in &options.doctest_compilation_args {
+        content.extend(split_args(compilation_args));
+    }
+
     let content = content.join("\n");
 
     file.write_all(content.as_bytes())
@@ -89,11 +133,7 @@ fn get_doctest_dir() -> io::Result<TempDir> {
     TempFileBuilder::new().prefix("rustdoctest").tempdir()
 }
 
-pub(crate) fn run(
-    dcx: DiagCtxtHandle<'_>,
-    input: Input,
-    options: RustdocOptions,
-) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions) {
     let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
     // See core::create_config for what's going on here.
@@ -167,7 +207,7 @@ pub(crate) fn run(
         Err(error) => return crate::wrap_return(dcx, Err(error)),
     };
     let args_path = temp_dir.path().join("rustdoc-cfgs");
-    crate::wrap_return(dcx, generate_args_file(&args_path, &options))?;
+    crate::wrap_return(dcx, generate_args_file(&args_path, &options));
 
     let CreateRunnableDocTests {
         standalone_tests,
@@ -178,31 +218,29 @@ pub(crate) fn run(
         compiling_test_count,
         ..
     } = interface::run_compiler(config, |compiler| {
-        compiler.enter(|queries| {
-            let collector = queries.global_ctxt()?.enter(|tcx| {
-                let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
-                let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
-                let opts = scrape_test_config(crate_name, crate_attrs, args_path);
-                let enable_per_target_ignores = options.enable_per_target_ignores;
+        let krate = rustc_interface::passes::parse(&compiler.sess);
 
-                let mut collector = CreateRunnableDocTests::new(options, opts);
-                let hir_collector = HirCollector::new(
-                    ErrorCodes::from(compiler.sess.opts.unstable_features.is_nightly_build()),
-                    enable_per_target_ignores,
-                    tcx,
-                );
-                let tests = hir_collector.collect_crate();
-                tests.into_iter().for_each(|t| collector.add_test(t));
+        let collector = rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
+            let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
+            let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
+            let opts = scrape_test_config(crate_name, crate_attrs, args_path);
+            let enable_per_target_ignores = options.enable_per_target_ignores;
 
-                collector
-            });
-            if compiler.sess.dcx().has_errors().is_some() {
-                FatalError.raise();
-            }
+            let mut collector = CreateRunnableDocTests::new(options, opts);
+            let hir_collector = HirCollector::new(
+                ErrorCodes::from(compiler.sess.opts.unstable_features.is_nightly_build()),
+                enable_per_target_ignores,
+                tcx,
+            );
+            let tests = hir_collector.collect_crate();
+            tests.into_iter().for_each(|t| collector.add_test(t));
 
-            Ok(collector)
-        })
-    })?;
+            collector
+        });
+        compiler.sess.dcx().abort_if_errors();
+
+        collector
+    });
 
     run_tests(opts, &rustdoc_options, &unused_extern_reports, standalone_tests, mergeable_tests);
 
@@ -246,8 +284,6 @@ pub(crate) fn run(
             eprintln!("{unused_extern_json}");
         }
     }
-
-    Ok(())
 }
 
 pub(crate) fn run_tests(
@@ -333,7 +369,7 @@ pub(crate) fn run_tests(
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
 fn scrape_test_config(
     crate_name: String,
-    attrs: &[ast::Attribute],
+    attrs: &[hir::Attribute],
     args_file: PathBuf,
 ) -> GlobalTestOptions {
     use rustc_ast_pretty::pprust;
@@ -700,7 +736,7 @@ impl IndividualTestOptions {
     fn new(options: &RustdocOptions, test_id: &Option<String>, test_path: PathBuf) -> Self {
         let outdir = if let Some(ref path) = options.persist_doctests {
             let mut path = path.clone();
-            path.push(&test_id.as_deref().unwrap_or("<doctest>"));
+            path.push(test_id.as_deref().unwrap_or("<doctest>"));
 
             if let Err(err) = std::fs::create_dir_all(&path) {
                 eprintln!("Couldn't create directory for doctest executables: {err}");

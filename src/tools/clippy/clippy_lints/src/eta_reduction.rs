@@ -182,7 +182,7 @@ fn check_clousure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tc
                 // will succeed iff `T: 'static`. But the region of `T` is always erased by `typeck.expr_ty()` when
                 // T is a generic type. For example, return type of `Option<String>::as_deref()` is a generic.
                 // So we have a hack like this.
-                && generic_args.len() > 0
+                && !generic_args.is_empty()
             {
                 return;
             }
@@ -276,12 +276,12 @@ fn check_inputs(
             && typeck
                 .expr_adjustments(arg)
                 .last()
-                .map_or(true, |a| a.target == typeck.expr_ty(arg))
+                .is_none_or(|a| a.target == typeck.expr_ty(arg))
         })
 }
 
 fn check_sig<'tcx>(closure_sig: FnSig<'tcx>, call_sig: FnSig<'tcx>) -> bool {
-    call_sig.safety == Safety::Safe && !has_late_bound_to_non_late_bound_regions(closure_sig, call_sig)
+    call_sig.safety.is_safe() && !has_late_bound_to_non_late_bound_regions(closure_sig, call_sig)
 }
 
 /// This walks through both signatures and checks for any time a late-bound region is expected by an

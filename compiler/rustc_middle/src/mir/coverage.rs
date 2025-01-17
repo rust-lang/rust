@@ -3,6 +3,7 @@
 use std::fmt::{self, Debug, Formatter};
 
 use rustc_index::IndexVec;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
 
@@ -28,7 +29,6 @@ rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[encodable]
     #[orderable]
-    #[max = 0xFFFF_FFFF]
     #[debug_format = "CounterId({})"]
     pub struct CounterId {}
 }
@@ -46,7 +46,6 @@ rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[encodable]
     #[orderable]
-    #[max = 0xFFFF_FFFF]
     #[debug_format = "ExpressionId({})"]
     pub struct ExpressionId {}
 }
@@ -155,22 +154,6 @@ impl Debug for CoverageKind {
     }
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub struct SourceRegion {
-    pub start_line: u32,
-    pub start_col: u32,
-    pub end_line: u32,
-    pub end_col: u32,
-}
-
-impl Debug for SourceRegion {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        let &Self { start_line, start_col, end_line, end_col } = self;
-        write!(fmt, "{start_line}:{start_col} - {end_line}:{end_col}")
-    }
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 #[derive(TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum Op {
@@ -232,7 +215,7 @@ impl MappingKind {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Mapping {
     pub kind: MappingKind,
-    pub source_region: SourceRegion,
+    pub span: Span,
 }
 
 /// Stores per-function coverage information attached to a `mir::Body`,
@@ -311,4 +294,42 @@ pub struct MCDCDecisionSpan {
     pub end_markers: Vec<BlockMarkerId>,
     pub decision_depth: u16,
     pub num_conditions: usize,
+}
+
+/// Summarizes coverage IDs inserted by the `InstrumentCoverage` MIR pass
+/// (for compiler option `-Cinstrument-coverage`), after MIR optimizations
+/// have had a chance to potentially remove some of them.
+///
+/// Used by the `coverage_ids_info` query.
+#[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable)]
+pub struct CoverageIdsInfo {
+    pub counters_seen: DenseBitSet<CounterId>,
+    pub zero_expressions: DenseBitSet<ExpressionId>,
+}
+
+impl CoverageIdsInfo {
+    /// Coverage codegen needs to know how many coverage counters are ever
+    /// incremented within a function, so that it can set the `num-counters`
+    /// argument of the `llvm.instrprof.increment` intrinsic.
+    ///
+    /// This may be less than the highest counter ID emitted by the
+    /// InstrumentCoverage MIR pass, if the highest-numbered counter increments
+    /// were removed by MIR optimizations.
+    pub fn num_counters_after_mir_opts(&self) -> u32 {
+        // FIXME(Zalathar): Currently this treats an unused counter as "used"
+        // if its ID is less than that of the highest counter that really is
+        // used. Fixing this would require adding a renumbering step somewhere.
+        self.counters_seen.last_set_in(..).map_or(0, |max| max.as_u32() + 1)
+    }
+
+    /// Returns `true` if the given term is known to have a value of zero, taking
+    /// into account knowledge of which counters are unused and which expressions
+    /// are always zero.
+    pub fn is_zero_term(&self, term: CovTerm) -> bool {
+        match term {
+            CovTerm::Zero => true,
+            CovTerm::Counter(id) => !self.counters_seen.contains(id),
+            CovTerm::Expression(id) => self.zero_expressions.contains(id),
+        }
+    }
 }

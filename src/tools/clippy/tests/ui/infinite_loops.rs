@@ -3,7 +3,6 @@
 
 #![allow(clippy::never_loop)]
 #![warn(clippy::infinite_loop)]
-#![feature(async_closure)]
 
 extern crate proc_macros;
 use proc_macros::{external, with_span};

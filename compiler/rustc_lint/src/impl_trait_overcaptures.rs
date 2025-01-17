@@ -99,7 +99,7 @@ declare_lint! {
     /// To fix this, remove the `use<'a>`, since the lifetime is already captured
     /// since it is in scope.
     pub IMPL_TRAIT_REDUNDANT_CAPTURES,
-    Warn,
+    Allow,
     "redundant precise-capturing `use<...>` syntax on an `impl Trait`",
 }
 
@@ -112,7 +112,7 @@ declare_lint_pass!(
 impl<'tcx> LateLintPass<'tcx> for ImplTraitOvercaptures {
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx hir::Item<'tcx>) {
         match &it.kind {
-            hir::ItemKind::Fn(..) => check_fn(cx.tcx, it.owner_id.def_id),
+            hir::ItemKind::Fn { .. } => check_fn(cx.tcx, it.owner_id.def_id),
             _ => {}
         }
     }
@@ -177,7 +177,7 @@ fn check_fn(tcx: TyCtxt<'_>, parent_def_id: LocalDefId) {
         // Lazily compute these two, since they're likely a bit expensive.
         variances: LazyCell::new(|| {
             let mut functional_variances = FunctionalVariances {
-                tcx: tcx,
+                tcx,
                 variances: FxHashMap::default(),
                 ambient_variance: ty::Covariant,
                 generics: tcx.generics_of(parent_def_id),
@@ -325,7 +325,7 @@ where
                         ParamKind::Free(def_id, name) => ty::Region::new_late_param(
                             self.tcx,
                             self.parent_def_id.to_def_id(),
-                            ty::BoundRegionKind::Named(def_id, name),
+                            ty::LateParamRegionKind::Named(def_id, name),
                         ),
                         // Totally ignore late bound args from binders.
                         ParamKind::Late => return true,
@@ -475,7 +475,7 @@ fn extract_def_id_from_arg<'tcx>(
             )
             | ty::ReLateParam(ty::LateParamRegion {
                 scope: _,
-                bound_region: ty::BoundRegionKind::Named(def_id, ..),
+                kind: ty::LateParamRegionKind::Named(def_id, ..),
             }) => def_id,
             _ => unreachable!(),
         },
@@ -544,7 +544,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for FunctionalVariances<'tcx> {
             )
             | ty::ReLateParam(ty::LateParamRegion {
                 scope: _,
-                bound_region: ty::BoundRegionKind::Named(def_id, ..),
+                kind: ty::LateParamRegionKind::Named(def_id, ..),
             }) => def_id,
             _ => {
                 return Ok(a);

@@ -5,6 +5,7 @@
 use std::intrinsics as rusti;
 
 #[cfg(any(
+    target_os = "aix",
     target_os = "android",
     target_os = "dragonfly",
     target_os = "freebsd",

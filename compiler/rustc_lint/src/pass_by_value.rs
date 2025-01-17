@@ -3,7 +3,7 @@ use rustc_hir::def::Res;
 use rustc_hir::{GenericArg, PathSegment, QPath, TyKind};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use crate::lints::PassByValueDiag;
 use crate::{LateContext, LateLintPass, LintContext};

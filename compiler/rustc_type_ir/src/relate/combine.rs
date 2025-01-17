@@ -136,9 +136,9 @@ where
                     relation.register_predicates([ty::Binder::dummy(ty::PredicateKind::Ambiguous)]);
                     Ok(a)
                 }
-                TypingMode::Analysis { .. } | TypingMode::PostAnalysis => {
-                    structurally_relate_tys(relation, a, b)
-                }
+                TypingMode::Analysis { .. }
+                | TypingMode::PostBorrowckAnalysis { .. }
+                | TypingMode::PostAnalysis => structurally_relate_tys(relation, a, b),
             }
         }
 

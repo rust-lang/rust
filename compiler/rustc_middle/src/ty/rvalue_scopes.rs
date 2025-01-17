@@ -35,7 +35,7 @@ impl RvalueScopes {
         // if there's one. Static items, for instance, won't
         // have an enclosing scope, hence no scope will be
         // returned.
-        let mut id = Scope { id: expr_id, data: ScopeData::Node };
+        let mut id = Scope { local_id: expr_id, data: ScopeData::Node };
         let mut backwards_incompatible = None;
 
         while let Some(&(p, _)) = region_scope_tree.parent_map.get(&id) {
@@ -60,7 +60,7 @@ impl RvalueScopes {
                     if backwards_incompatible.is_none() {
                         backwards_incompatible = region_scope_tree
                             .backwards_incompatible_scope
-                            .get(&p.item_local_id())
+                            .get(&p.local_id)
                             .copied();
                     }
                     id = p
@@ -76,7 +76,7 @@ impl RvalueScopes {
     pub fn record_rvalue_scope(&mut self, var: hir::ItemLocalId, lifetime: Option<Scope>) {
         debug!("record_rvalue_scope(var={var:?}, lifetime={lifetime:?})");
         if let Some(lifetime) = lifetime {
-            assert!(var != lifetime.item_local_id());
+            assert!(var != lifetime.local_id);
         }
         self.map.insert(var, lifetime);
     }

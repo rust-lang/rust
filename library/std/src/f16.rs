@@ -228,6 +228,7 @@ impl f16 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    #[doc(alias = "fmaf16", alias = "fusedMultiplyAdd")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn mul_add(self, a: f16, b: f16) -> f16 {
         unsafe { intrinsics::fmaf16(self, a, b) }
@@ -384,6 +385,7 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
+    #[doc(alias = "squareRoot")]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]

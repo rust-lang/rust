@@ -43,19 +43,6 @@ macro_rules! impl_zeroable_primitive {
                 issue = "none"
             )]
             pub trait Sealed {}
-
-            $(
-                #[derive(Debug, Clone, Copy, PartialEq)]
-                #[repr(transparent)]
-                #[rustc_layout_scalar_valid_range_start(1)]
-                #[rustc_nonnull_optimization_guaranteed]
-                #[unstable(
-                    feature = "nonzero_internals",
-                    reason = "implementation detail which may disappear or be replaced at any time",
-                    issue = "none"
-                )]
-                pub struct $NonZeroInner($primitive);
-            )+
         }
 
         $(
@@ -72,7 +59,7 @@ macro_rules! impl_zeroable_primitive {
                 issue = "none"
             )]
             unsafe impl ZeroablePrimitive for $primitive {
-                type NonZeroInner = private::$NonZeroInner;
+                type NonZeroInner = super::niche_types::$NonZeroInner;
             }
         )+
     };
@@ -139,9 +126,9 @@ impl_nonzero_fmt! {
     LowerHex
     #[stable(feature = "nonzero", since = "1.28.0")]
     UpperHex
-    #[stable(feature = "nonzero_fmt_exp", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "nonzero_fmt_exp", since = "1.84.0")]
     LowerExp
-    #[stable(feature = "nonzero_fmt_exp", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "nonzero_fmt_exp", since = "1.84.0")]
     UpperExp
 }
 
@@ -172,7 +159,7 @@ where
 {
     #[inline]
     fn clone(&self) -> Self {
-        Self(self.0)
+        *self
     }
 }
 
@@ -440,15 +427,21 @@ where
     #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
     #[inline]
     pub const fn get(self) -> T {
-        // FIXME: This can be changed to simply `self.0` once LLVM supports `!range` metadata
-        // for function arguments: https://github.com/llvm/llvm-project/issues/76628
-        //
         // Rustc can set range metadata only if it loads `self` from
         // memory somewhere. If the value of `self` was from by-value argument
         // of some not-inlined function, LLVM don't have range metadata
         // to understand that the value cannot be zero.
         //
-        // For now, using the transmute `assume`s the range at runtime.
+        // Using the transmute `assume`s the range at runtime.
+        //
+        // Even once LLVM supports `!range` metadata for function arguments
+        // (see <https://github.com/llvm/llvm-project/issues/76628>), this can't
+        // be `.0` because MCP#807 bans field-projecting into `scalar_valid_range`
+        // types, and it arguably wouldn't want to be anyway because if this is
+        // MIR-inlined, there's no opportunity to put that argument metadata anywhere.
+        //
+        // The good answer here will eventually be pattern types, which will hopefully
+        // allow it to go back to `.0`, maybe with a cast of some sort.
         //
         // SAFETY: `ZeroablePrimitive` guarantees that the size and bit validity
         // of `.0` is such that this transmute is sound.
@@ -614,7 +607,6 @@ macro_rules! nonzero_integer {
             /// ```
             ///
             #[unstable(feature = "non_zero_count_ones", issue = "120287")]
-            #[rustc_const_unstable(feature = "non_zero_count_ones", issue = "120287")]
             #[doc(alias = "popcount")]
             #[doc(alias = "popcnt")]
             #[must_use = "this returns the result of the operation, \
@@ -1509,8 +1501,6 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Examples
         ///
         /// ```
-        /// #![feature(num_midpoint)]
-        ///
         /// # use std::num::NonZero;
         /// #
         /// # fn main() { test().unwrap(); }
@@ -1524,7 +1514,8 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Some(())
         /// # }
         /// ```
-        #[unstable(feature = "num_midpoint", issue = "110840")]
+        #[stable(feature = "num_midpoint", since = "1.85.0")]
+        #[rustc_const_stable(feature = "num_midpoint", since = "1.85.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1587,8 +1578,8 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Some(())
         /// # }
         /// ```
-        #[stable(feature = "isqrt", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "isqrt", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "isqrt", since = "1.84.0")]
+        #[rustc_const_stable(feature = "isqrt", since = "1.84.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]

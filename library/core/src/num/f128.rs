@@ -807,7 +807,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// #![feature(num_midpoint)]
     /// # // Using aarch64 because `reliable_f128_math` is needed
     /// # #[cfg(all(target_arch = "aarch64", target_os = "linux"))] {
     ///
@@ -817,8 +816,8 @@ impl f128 {
     /// ```
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]
-    // #[unstable(feature = "num_midpoint", issue = "110840")]
-    pub fn midpoint(self, other: f128) -> f128 {
+    #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    pub const fn midpoint(self, other: f128) -> f128 {
         const LO: f128 = f128::MIN_POSITIVE * 2.;
         const HI: f128 = f128::MAX / 2.;
 

@@ -34,7 +34,6 @@ LL | | #![warn(missing_docs)]
 LL | |
 LL | | #[macro_use]
 ...  |
-LL | |
 LL | | fn main() {}
    | |____________^
    |

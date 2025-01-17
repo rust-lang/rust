@@ -252,6 +252,8 @@ pub fn alloc_self_profile_query_strings(tcx: TyCtxt<'_>) {
         return;
     }
 
+    let _prof_timer = tcx.sess.prof.generic_activity("self_profile_alloc_query_strings");
+
     let mut string_cache = QueryKeyStringCache::new();
 
     for alloc in super::ALLOC_SELF_PROFILE_QUERY_STRINGS.iter() {

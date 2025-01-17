@@ -340,10 +340,6 @@ pub struct NoPanicStrategy {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_profiler_builtins_needs_core)]
-pub struct ProfilerBuiltinsNeedsCore;
-
-#[derive(Diagnostic)]
 #[diag(metadata_not_profiler_runtime)]
 pub struct NotProfilerRuntime {
     pub crate_name: Symbol,

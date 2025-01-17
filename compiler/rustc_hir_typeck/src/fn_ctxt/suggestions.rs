@@ -2,7 +2,7 @@ use core::cmp::min;
 use core::iter;
 
 use hir::def_id::LocalDefId;
-use rustc_ast::util::parser::{ExprPrecedence, PREC_UNAMBIGUOUS};
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
@@ -10,7 +10,7 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId,
-    Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
+    Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicateKind, expr_needs_parens,
 };
 use rustc_hir_analysis::collect::suggest_impl_trait;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
@@ -24,8 +24,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{Ident, sym};
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -35,7 +34,6 @@ use tracing::{debug, instrument};
 
 use super::FnCtxt;
 use crate::fn_ctxt::rustc_span::BytePos;
-use crate::hir::is_range_literal;
 use crate::method::probe;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use crate::{errors, fluent_generated as fluent};
@@ -398,7 +396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // so we remove the user's `clone` call.
                     {
                         vec![(receiver_method.ident.span, conversion_method.name.to_string())]
-                    } else if expr.precedence().order() < ExprPrecedence::MethodCall.order() {
+                    } else if expr.precedence() < ExprPrecedence::Unambiguous {
                         vec![
                             (expr.span.shrink_to_lo(), "(".to_string()),
                             (expr.span.shrink_to_hi(), format!(").{}()", conversion_method.name)),
@@ -983,14 +981,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let hir::Node::Item(hir::Item {
             kind:
-                hir::ItemKind::Fn(
-                    hir::FnSig {
-                        decl: hir::FnDecl { inputs: fn_parameters, output: fn_return, .. },
-                        ..
-                    },
-                    hir::Generics { params, predicates, .. },
-                    _body_id,
-                ),
+                hir::ItemKind::Fn {
+                    sig:
+                        hir::FnSig {
+                            decl: hir::FnDecl { inputs: fn_parameters, output: fn_return, .. },
+                            ..
+                        },
+                    generics: hir::Generics { params, predicates, .. },
+                    ..
+                },
             ..
         }) = fn_node
         else {
@@ -1004,8 +1003,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // get all where BoundPredicates here, because they are used in two cases below
         let where_predicates = predicates
             .iter()
-            .filter_map(|p| match p {
-                WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+            .filter_map(|p| match p.kind {
+                WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                     bounds,
                     bounded_ty,
                     ..
@@ -1321,14 +1320,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let span = expr.span.shrink_to_hi();
                 let subdiag = if self.type_is_copy_modulo_regions(self.param_env, ty) {
                     errors::OptionResultRefMismatch::Copied { span, def_path }
-                } else if let Some(clone_did) = self.tcx.lang_items().clone_trait()
-                    && rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions(
-                        self,
-                        self.param_env,
-                        ty,
-                        clone_did,
-                    )
-                {
+                } else if self.type_is_clone_modulo_regions(self.param_env, ty) {
                     errors::OptionResultRefMismatch::Cloned { span, def_path }
                 } else {
                     return false;
@@ -1376,7 +1368,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             let span = expr.span.find_oldest_ancestor_in_same_ctxt();
 
-            let mut sugg = if expr.precedence().order() >= PREC_UNAMBIGUOUS {
+            let mut sugg = if expr.precedence() >= ExprPrecedence::Unambiguous {
                 vec![(span.shrink_to_hi(), ".into()".to_owned())]
             } else {
                 vec![
@@ -2183,6 +2175,87 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Suggest replacing comma with semicolon in incorrect repeat expressions
+    /// like `["_", 10]` or `vec![String::new(), 10]`.
+    pub(crate) fn suggest_semicolon_in_repeat_expr(
+        &self,
+        err: &mut Diag<'_>,
+        expr: &hir::Expr<'_>,
+        expr_ty: Ty<'tcx>,
+    ) -> bool {
+        // Check if `expr` is contained in array of two elements
+        if let hir::Node::Expr(array_expr) = self.tcx.parent_hir_node(expr.hir_id)
+            && let hir::ExprKind::Array(elements) = array_expr.kind
+            && let [first, second] = &elements[..]
+            && second.hir_id == expr.hir_id
+        {
+            // Span between the two elements of the array
+            let comma_span = first.span.between(second.span);
+
+            // Check if `expr` is a constant value of type `usize`.
+            // This can only detect const variable declarations and
+            // calls to const functions.
+
+            // Checking this here instead of rustc_hir::hir because
+            // this check needs access to `self.tcx` but rustc_hir
+            // has no access to `TyCtxt`.
+            let expr_is_const_usize = expr_ty.is_usize()
+                && match expr.kind {
+                    ExprKind::Path(QPath::Resolved(
+                        None,
+                        Path { res: Res::Def(DefKind::Const, _), .. },
+                    )) => true,
+                    ExprKind::Call(
+                        Expr {
+                            kind:
+                                ExprKind::Path(QPath::Resolved(
+                                    None,
+                                    Path { res: Res::Def(DefKind::Fn, fn_def_id), .. },
+                                )),
+                            ..
+                        },
+                        _,
+                    ) => self.tcx.is_const_fn(*fn_def_id),
+                    _ => false,
+                };
+
+            // Type of the first element is guaranteed to be checked
+            // when execution reaches here because `mismatched types`
+            // error occurs only when type of second element of array
+            // is not the same as type of first element.
+            let first_ty = self.typeck_results.borrow().expr_ty(first);
+
+            // `array_expr` is from a macro `vec!["a", 10]` if
+            // 1. array expression's span is imported from a macro
+            // 2. first element of array implements `Clone` trait
+            // 3. second element is an integer literal or is an expression of `usize` like type
+            if self.tcx.sess.source_map().is_imported(array_expr.span)
+                && self.type_is_clone_modulo_regions(self.param_env, first_ty)
+                && (expr.is_size_lit() || expr_ty.is_usize_like())
+            {
+                err.subdiagnostic(errors::ReplaceCommaWithSemicolon {
+                    comma_span,
+                    descr: "a vector",
+                });
+                return true;
+            }
+
+            // `array_expr` is from an array `["a", 10]` if
+            // 1. first element of array implements `Copy` trait
+            // 2. second element is an integer literal or is a const value of type `usize`
+            if self.type_is_copy_modulo_regions(self.param_env, first_ty)
+                && (expr.is_size_lit() || expr_is_const_usize)
+            {
+                err.subdiagnostic(errors::ReplaceCommaWithSemicolon {
+                    comma_span,
+                    descr: "an array",
+                });
+                return true;
+            }
+        }
+        false
+    }
+
     /// If the expected type is an enum (Issue #55250) with any variants whose
     /// sole field is of the found type, suggest such variants. (Issue #42764)
     pub(crate) fn suggest_compatible_variants(
@@ -2609,6 +2682,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     if let hir::ExprKind::Unary(hir::UnOp::Deref, inner) = expr.kind
                         && let Some(1) = self.deref_steps_for_suggestion(expected, checked_ty)
+                        && self.typeck_results.borrow().expr_ty(inner).is_ref()
                     {
                         // We have `*&T`, check if what was expected was `&T`.
                         // If so, we may want to suggest removing a `*`.
@@ -2648,7 +2722,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     let make_sugg = |expr: &Expr<'_>, span: Span, sugg: &str| {
-                        if self.needs_parentheses(expr) {
+                        if expr_needs_parens(expr) {
                             (
                                 vec![
                                     (span.shrink_to_lo(), format!("{prefix}{sugg}(")),
@@ -2861,7 +2935,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return None;
                         }
 
-                        if self.needs_parentheses(expr) {
+                        if expr_needs_parens(expr) {
                             return Some((
                                 vec![
                                     (span, format!("{suggestion}(")),
@@ -2900,16 +2974,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         false
-    }
-
-    fn needs_parentheses(&self, expr: &hir::Expr<'_>) -> bool {
-        match expr.kind {
-            // parenthesize if needed (Issue #46756)
-            hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => true,
-            // parenthesize borrows of range literals (Issue #54505)
-            _ if is_range_literal(expr) => true,
-            _ => false,
-        }
     }
 
     pub(crate) fn suggest_cast(
@@ -3000,7 +3064,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "change the type of the numeric literal from `{checked_ty}` to `{expected_ty}`",
         );
 
-        let close_paren = if expr.precedence().order() < PREC_UNAMBIGUOUS {
+        let close_paren = if expr.precedence() < ExprPrecedence::Unambiguous {
             sugg.push((expr.span.shrink_to_lo(), "(".to_string()));
             ")"
         } else {
@@ -3025,7 +3089,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let len = src.trim_end_matches(&checked_ty.to_string()).len();
                 expr.span.with_lo(expr.span.lo() + BytePos(len as u32))
             },
-            if expr.precedence().order() < PREC_UNAMBIGUOUS {
+            if expr.precedence() < ExprPrecedence::Unambiguous {
                 // Readd `)`
                 format!("{expected_ty})")
             } else {
@@ -3394,7 +3458,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Some(ty) = self.node_ty_opt(tail_expr.hir_id) else {
             return;
         };
-        if self.can_eq(self.param_env, expected_ty, ty) {
+        if self.can_eq(self.param_env, expected_ty, ty)
+            // FIXME: this happens with macro calls. Need to figure out why the stmt
+            // `println!();` doesn't include the `;` in its `Span`. (#133845)
+            // We filter these out to avoid ICEs with debug assertions on caused by
+            // empty suggestions.
+            && stmt.span.hi() != tail_expr.span.hi()
+        {
             err.span_suggestion_short(
                 stmt.span.with_lo(tail_expr.span.hi()),
                 "remove this semicolon",

@@ -407,6 +407,11 @@
                             "$rustc"
                         ],
                         "markdownDescription": "Problem matchers to use for `rust-analyzer.run` command, eg `[\"$rustc\", \"$rust-panic\"]`."
+                    },
+                    "rust-analyzer.runnables.askBeforeUpdateTest": {
+                        "type": "boolean",
+                        "default": true,
+                        "markdownDescription": "Ask before updating the test when running it."
                     }
                 }
             },
@@ -425,6 +430,56 @@
                         ],
                         "default": "openLogs",
                         "markdownDescription": "Action to run when clicking the extension status bar item."
+                    },
+                    "rust-analyzer.statusBar.showStatusBar": {
+                        "markdownDescription": "When to show the extension status bar.\n\n`\"always\"` Always show the status bar.\n\n`\"never\"` Never show the status bar.\n\n`{ documentSelector: <DocumentSelector>[] }` Show the status bar if the open file matches any of the given document selectors.\n\nSee [VS Code -- DocumentSelector](https://code.visualstudio.com/api/references/document-selector) for more information.",
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "always",
+                                    "never"
+                                ]
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "documentSelector": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "language": {
+                                                    "type": "string"
+                                                },
+                                                "notebookType": {
+                                                    "type": "string"
+                                                },
+                                                "scheme": {
+                                                    "type": "string"
+                                                },
+                                                "pattern": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "default": {
+                            "documentSelector": [
+                                {
+                                    "language": "rust"
+                                },
+                                {
+                                    "pattern": "**/Cargo.toml"
+                                },
+                                {
+                                    "pattern": "**/Cargo.lock"
+                                }
+                            ]
+                        }
                     }
                 }
             },
@@ -833,7 +888,7 @@
                 "title": "cargo",
                 "properties": {
                     "rust-analyzer.cargo.target": {
-                        "markdownDescription": "Compilation target override (target triple).",
+                        "markdownDescription": "Compilation target override (target tuple).",
                         "default": null,
                         "type": [
                             "null",
@@ -1045,7 +1100,7 @@
                 "title": "check",
                 "properties": {
                     "rust-analyzer.check.workspace": {
-                        "markdownDescription": "Whether `--workspace` should be passed to `cargo check`.\nIf false, `-p <package>` will be passed instead.",
+                        "markdownDescription": "Whether `--workspace` should be passed to `cargo check`.\nIf false, `-p <package>` will be passed instead if applicable. In case it is not, no\ncheck will be performed.",
                         "default": true,
                         "type": "boolean"
                     }
@@ -1068,6 +1123,51 @@
                         "markdownDescription": "Toggles the additional completions that automatically add imports when completed.\nNote that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.",
                         "default": true,
                         "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "completion",
+                "properties": {
+                    "rust-analyzer.completion.autoimport.exclude": {
+                        "markdownDescription": "A list of full paths to items to exclude from auto-importing completions.\n\nTraits in this list won't have their methods suggested in completions unless the trait\nis in scope.\n\nYou can either specify a string path which defaults to type \"always\" or use the more verbose\nform `{ \"path\": \"path::to::item\", type: \"always\" }`.\n\nFor traits the type \"methods\" can be used to only exclude the methods but not the trait itself.\n\nThis setting also inherits `#rust-analyzer.completion.excludeTraits#`.",
+                        "default": [
+                            {
+                                "path": "core::borrow::Borrow",
+                                "type": "methods"
+                            },
+                            {
+                                "path": "core::borrow::BorrowMut",
+                                "type": "methods"
+                            }
+                        ],
+                        "type": "array",
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "path": {
+                                            "type": "string"
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                            "enum": [
+                                                "always",
+                                                "methods"
+                                            ],
+                                            "enumDescriptions": [
+                                                "Do not show this item or its methods (if it is a trait) in auto-import completions.",
+                                                "Do not show this traits methods in auto-import completions."
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
                     }
                 }
             },
@@ -1098,6 +1198,19 @@
                             "Add call parentheses.",
                             "Do no snippet completions for callables."
                         ]
+                    }
+                }
+            },
+            {
+                "title": "completion",
+                "properties": {
+                    "rust-analyzer.completion.excludeTraits": {
+                        "markdownDescription": "A list of full paths to traits whose methods to exclude from completion.\n\nMethods from these traits won't be completed, even if the trait is in scope. However, they will still be suggested on expressions whose type is `dyn Trait`, `impl Trait` or `T where T: Trait`.\n\nNote that the trait themselves can still be completed.",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 }
             },
@@ -1450,6 +1563,16 @@
             {
                 "title": "hover",
                 "properties": {
+                    "rust-analyzer.hover.actions.updateTest.enable": {
+                        "markdownDescription": "Whether to show `Update Test` action. Only applies when\n`#rust-analyzer.hover.actions.enable#` and `#rust-analyzer.hover.actions.run.enable#` are set.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "hover",
+                "properties": {
                     "rust-analyzer.hover.documentation.enable": {
                         "markdownDescription": "Whether to show documentation on hover.",
                         "default": true,
@@ -1474,6 +1597,29 @@
                         "markdownDescription": "Use markdown syntax for links on hover.",
                         "default": true,
                         "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "hover",
+                "properties": {
+                    "rust-analyzer.hover.maxSubstitutionLength": {
+                        "markdownDescription": "Whether to show what types are used as generic arguments in calls etc. on hover, and what is their max length to show such types, beyond it they will be shown with ellipsis.\n\nThis can take three values: `null` means \"unlimited\", the string `\"hide\"` means to not show generic substitutions at all, and a number means to limit them to X characters.\n\nThe default is 20 characters.",
+                        "default": 20,
+                        "anyOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "hide"
+                                ]
+                            },
+                            {
+                                "type": "integer"
+                            }
+                        ]
                     }
                 }
             },
@@ -2205,6 +2351,16 @@
                 }
             },
             {
+                "title": "lens",
+                "properties": {
+                    "rust-analyzer.lens.updateTest.enable": {
+                        "markdownDescription": "Whether to show `Update Test` lens. Only applies when\n`#rust-analyzer.lens.enable#` and `#rust-analyzer.lens.run.enable#` are set.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
                 "title": "general",
                 "properties": {
                     "rust-analyzer.linkedProjects": {
@@ -2552,10 +2708,13 @@
             {
                 "title": "typing",
                 "properties": {
-                    "rust-analyzer.typing.autoClosingAngleBrackets.enable": {
-                        "markdownDescription": "Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.",
-                        "default": false,
-                        "type": "boolean"
+                    "rust-analyzer.typing.excludeChars": {
+                        "markdownDescription": "Specify the characters to exclude from triggering typing assists. The default trigger characters are `.`, `=`, `<`, `>`, `{`, and `(`.",
+                        "default": "|<",
+                        "type": [
+                            "null",
+                            "string"
+                        ]
                     }
                 }
             },

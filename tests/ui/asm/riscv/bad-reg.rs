@@ -18,8 +18,7 @@
 // usage in the asm! API (in, out, inout, etc.).
 
 #![crate_type = "lib"]
-#![feature(no_core, rustc_attrs)]
-#![feature(asm_experimental_arch)]
+#![feature(no_core)]
 #![no_core]
 
 extern crate minicore;

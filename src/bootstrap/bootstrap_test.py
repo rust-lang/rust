@@ -16,8 +16,9 @@ from shutil import rmtree
 bootstrap_dir = os.path.dirname(os.path.abspath(__file__))
 # For the import below, have Python search in src/bootstrap first.
 sys.path.insert(0, bootstrap_dir)
-import bootstrap # noqa: E402
-import configure # noqa: E402
+import bootstrap  # noqa: E402
+import configure  # noqa: E402
+
 
 def serialize_and_parse(configure_args, bootstrap_args=None):
     from io import StringIO
@@ -32,15 +33,20 @@ def serialize_and_parse(configure_args, bootstrap_args=None):
 
     try:
         import tomllib
+
         # Verify this is actually valid TOML.
         tomllib.loads(build.config_toml)
     except ImportError:
-        print("WARNING: skipping TOML validation, need at least python 3.11", file=sys.stderr)
+        print(
+            "WARNING: skipping TOML validation, need at least python 3.11",
+            file=sys.stderr,
+        )
     return build
 
 
 class VerifyTestCase(unittest.TestCase):
     """Test Case for verify"""
+
     def setUp(self):
         self.container = tempfile.mkdtemp()
         self.src = os.path.join(self.container, "src.txt")
@@ -68,14 +74,14 @@ class VerifyTestCase(unittest.TestCase):
 
 class ProgramOutOfDate(unittest.TestCase):
     """Test if a program is out of date"""
+
     def setUp(self):
         self.container = tempfile.mkdtemp()
         os.mkdir(os.path.join(self.container, "stage0"))
         self.build = bootstrap.RustBuild()
         self.build.date = "2017-06-15"
         self.build.build_dir = self.container
-        self.rustc_stamp_path = os.path.join(self.container, "stage0",
-                                             ".rustc-stamp")
+        self.rustc_stamp_path = os.path.join(self.container, "stage0", ".rustc-stamp")
         self.key = self.build.date + str(None)
 
     def tearDown(self):
@@ -97,11 +103,14 @@ class ProgramOutOfDate(unittest.TestCase):
         """Return False both dates match"""
         with open(self.rustc_stamp_path, "w") as rustc_stamp:
             rustc_stamp.write("2017-06-15None")
-        self.assertFalse(self.build.program_out_of_date(self.rustc_stamp_path, self.key))
+        self.assertFalse(
+            self.build.program_out_of_date(self.rustc_stamp_path, self.key)
+        )
 
 
 class ParseArgsInConfigure(unittest.TestCase):
     """Test if `parse_args` function in `configure.py` works properly"""
+
     @patch("configure.err")
     def test_unknown_args(self, err):
         # It should be print an error message if the argument doesn't start with '--'
@@ -148,28 +157,35 @@ class ParseArgsInConfigure(unittest.TestCase):
 
 class GenerateAndParseConfig(unittest.TestCase):
     """Test that we can serialize and deserialize a config.toml file"""
+
     def test_no_args(self):
         build = serialize_and_parse([])
-        self.assertEqual(build.get_toml("profile"), 'dist')
+        self.assertEqual(build.get_toml("profile"), "dist")
         self.assertIsNone(build.get_toml("llvm.download-ci-llvm"))
 
     def test_set_section(self):
         build = serialize_and_parse(["--set", "llvm.download-ci-llvm"])
-        self.assertEqual(build.get_toml("download-ci-llvm", section="llvm"), 'true')
+        self.assertEqual(build.get_toml("download-ci-llvm", section="llvm"), "true")
 
     def test_set_target(self):
         build = serialize_and_parse(["--set", "target.x86_64-unknown-linux-gnu.cc=gcc"])
-        self.assertEqual(build.get_toml("cc", section="target.x86_64-unknown-linux-gnu"), 'gcc')
+        self.assertEqual(
+            build.get_toml("cc", section="target.x86_64-unknown-linux-gnu"), "gcc"
+        )
 
     def test_set_top_level(self):
         build = serialize_and_parse(["--set", "profile=compiler"])
-        self.assertEqual(build.get_toml("profile"), 'compiler')
+        self.assertEqual(build.get_toml("profile"), "compiler")
 
     def test_set_codegen_backends(self):
         build = serialize_and_parse(["--set", "rust.codegen-backends=cranelift"])
-        self.assertNotEqual(build.config_toml.find("codegen-backends = ['cranelift']"), -1)
+        self.assertNotEqual(
+            build.config_toml.find("codegen-backends = ['cranelift']"), -1
+        )
         build = serialize_and_parse(["--set", "rust.codegen-backends=cranelift,llvm"])
-        self.assertNotEqual(build.config_toml.find("codegen-backends = ['cranelift', 'llvm']"), -1)
+        self.assertNotEqual(
+            build.config_toml.find("codegen-backends = ['cranelift', 'llvm']"), -1
+        )
         build = serialize_and_parse(["--enable-full-tools"])
         self.assertNotEqual(build.config_toml.find("codegen-backends = ['llvm']"), -1)
 
@@ -223,7 +239,7 @@ class BuildBootstrap(unittest.TestCase):
         self.assertTrue("--timings" in args)
 
     def test_warnings(self):
-        for toml_warnings in ['false', 'true', None]:
+        for toml_warnings in ["false", "true", None]:
             configure_args = []
             if toml_warnings is not None:
                 configure_args = ["--set", "rust.deny-warnings=" + toml_warnings]

@@ -148,8 +148,16 @@ async function getDebugConfiguration(
         return path.normalize(p).replace(wsFolder, `\${workspaceFolder${workspaceQualifier}}`);
     }
 
-    const env = prepareEnv(inheritEnv, runnable.label, runnableArgs, config.runnablesExtraEnv);
-    const executable = await getDebugExecutable(runnableArgs, env);
+    const executable = await getDebugExecutable(
+        runnableArgs,
+        prepareEnv(true, {}, config.runnablesExtraEnv(runnable.label)),
+    );
+
+    const env = prepareEnv(
+        inheritEnv,
+        runnableArgs.environment,
+        config.runnablesExtraEnv(runnable.label),
+    );
     let sourceFileMap = debugOptions.sourceFileMap;
 
     if (sourceFileMap === "auto") {

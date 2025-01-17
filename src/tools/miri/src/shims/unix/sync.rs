@@ -1,5 +1,3 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-
 use rustc_abi::Size;
 
 use crate::concurrency::sync::LAZY_INIT_COOKIE;
@@ -136,8 +134,7 @@ fn mutex_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size>
 
     // Sanity-check this against PTHREAD_MUTEX_INITIALIZER (but only once):
     // the `init` field must start out not equal to INIT_COOKIE.
-    static SANITY: AtomicBool = AtomicBool::new(false);
-    if !SANITY.swap(true, Ordering::Relaxed) {
+    if !ecx.machine.pthread_mutex_sanity.replace(true) {
         let check_static_initializer = |name| {
             let static_initializer = ecx.eval_path(&["libc", name]);
             let init_field =
@@ -248,8 +245,7 @@ fn rwlock_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size
 
     // Sanity-check this against PTHREAD_RWLOCK_INITIALIZER (but only once):
     // the `init` field must start out not equal to LAZY_INIT_COOKIE.
-    static SANITY: AtomicBool = AtomicBool::new(false);
-    if !SANITY.swap(true, Ordering::Relaxed) {
+    if !ecx.machine.pthread_rwlock_sanity.replace(true) {
         let static_initializer = ecx.eval_path(&["libc", "PTHREAD_RWLOCK_INITIALIZER"]);
         let init_field = static_initializer.offset(offset, ecx.machine.layouts.u32, ecx).unwrap();
         let init = ecx.read_scalar(&init_field).unwrap().to_u32().unwrap();
@@ -357,8 +353,7 @@ fn cond_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size> 
 
     // Sanity-check this against PTHREAD_COND_INITIALIZER (but only once):
     // the `init` field must start out not equal to LAZY_INIT_COOKIE.
-    static SANITY: AtomicBool = AtomicBool::new(false);
-    if !SANITY.swap(true, Ordering::Relaxed) {
+    if !ecx.machine.pthread_condvar_sanity.replace(true) {
         let static_initializer = ecx.eval_path(&["libc", "PTHREAD_COND_INITIALIZER"]);
         let init_field = static_initializer.offset(offset, ecx.machine.layouts.u32, ecx).unwrap();
         let init = ecx.read_scalar(&init_field).unwrap().to_u32().unwrap();

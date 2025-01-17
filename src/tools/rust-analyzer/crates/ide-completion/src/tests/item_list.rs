@@ -13,7 +13,7 @@ fn in_mod_item_list() {
     check(
         r#"mod tests { $0 }"#,
         expect![[r#"
-            ma makro!(…)           macro_rules! makro
+            ma makro!(…) macro_rules! makro
             kw async
             kw const
             kw crate::
@@ -46,7 +46,7 @@ fn in_source_file_item_list() {
     check(
         r#"$0"#,
         expect![[r#"
-            ma makro!(…)           macro_rules! makro
+            ma makro!(…) macro_rules! makro
             md module
             kw async
             kw const
@@ -79,7 +79,7 @@ fn in_item_list_after_attr() {
     check(
         r#"#[attr] $0"#,
         expect![[r#"
-            ma makro!(…)           macro_rules! makro
+            ma makro!(…) macro_rules! makro
             md module
             kw async
             kw const
@@ -182,7 +182,7 @@ fn in_impl_assoc_item_list() {
     check(
         r#"impl Struct { $0 }"#,
         expect![[r#"
-            ma makro!(…)  macro_rules! makro
+            ma makro!(…) macro_rules! makro
             md module
             kw async
             kw const
@@ -202,7 +202,7 @@ fn in_impl_assoc_item_list_after_attr() {
     check(
         r#"impl Struct { #[attr] $0 }"#,
         expect![[r#"
-            ma makro!(…)  macro_rules! makro
+            ma makro!(…) macro_rules! makro
             md module
             kw async
             kw const
@@ -315,7 +315,7 @@ impl Test for () {
             fn async fn function2()
             fn fn function1()
             fn fn function2()
-            ma makro!(…)            macro_rules! makro
+            ma makro!(…) macro_rules! makro
             md module
             ta type Type1 =
             kw crate::
@@ -381,7 +381,7 @@ fn after_unit_struct() {
     check(
         r#"struct S; f$0"#,
         expect![[r#"
-            ma makro!(…)           macro_rules! makro
+            ma makro!(…) macro_rules! makro
             md module
             kw async
             kw const
@@ -503,7 +503,7 @@ fn inside_extern_blocks() {
     check(
         r#"extern { $0 }"#,
         expect![[r#"
-            ma makro!(…)  macro_rules! makro
+            ma makro!(…) macro_rules! makro
             md module
             kw crate::
             kw fn
@@ -520,7 +520,7 @@ fn inside_extern_blocks() {
     check(
         r#"unsafe extern { $0 }"#,
         expect![[r#"
-            ma makro!(…)  macro_rules! makro
+            ma makro!(…) macro_rules! makro
             md module
             kw crate::
             kw fn

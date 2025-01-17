@@ -596,6 +596,8 @@ pub use core::fmt::{Arguments, write};
 pub use core::fmt::{Binary, Octal};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{Debug, Display};
+#[unstable(feature = "formatting_options", issue = "118117")]
+pub use core::fmt::{DebugAsHex, FormattingOptions, Sign};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 #[stable(feature = "rust1", since = "1.0.0")]

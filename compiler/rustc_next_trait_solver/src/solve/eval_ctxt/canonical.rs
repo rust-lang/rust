@@ -18,7 +18,7 @@ use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::{self as ty, Canonical, CanonicalVarValues, InferCtxtLike, Interner};
 use tracing::{debug, instrument, trace};
 
-use crate::canonicalizer::{CanonicalizeMode, Canonicalizer};
+use crate::canonicalizer::Canonicalizer;
 use crate::delegate::SolverDelegate;
 use crate::resolve::EagerResolver;
 use crate::solve::eval_ctxt::NestedGoals;
@@ -60,17 +60,13 @@ where
             (goal, opaque_types).fold_with(&mut EagerResolver::new(self.delegate));
 
         let mut orig_values = Default::default();
-        let canonical = Canonicalizer::canonicalize(
-            self.delegate,
-            CanonicalizeMode::Input,
-            &mut orig_values,
-            QueryInput {
+        let canonical =
+            Canonicalizer::canonicalize_input(self.delegate, &mut orig_values, QueryInput {
                 goal,
                 predefined_opaques_in_body: self
                     .cx()
                     .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
-            },
-        );
+            });
         let query_input = ty::CanonicalQueryInput { canonical, typing_mode: self.typing_mode() };
         (orig_values, query_input)
     }
@@ -148,9 +144,9 @@ where
             .region_constraints
             .retain(|outlives| outlives.0.as_region().map_or(true, |re| re != outlives.1));
 
-        let canonical = Canonicalizer::canonicalize(
+        let canonical = Canonicalizer::canonicalize_response(
             self.delegate,
-            CanonicalizeMode::Response { max_input_universe: self.max_input_universe },
+            self.max_input_universe,
             &mut Default::default(),
             Response {
                 var_values,
@@ -428,12 +424,7 @@ where
     let var_values = CanonicalVarValues { var_values: delegate.cx().mk_args(var_values) };
     let state = inspect::State { var_values, data };
     let state = state.fold_with(&mut EagerResolver::new(delegate));
-    Canonicalizer::canonicalize(
-        delegate,
-        CanonicalizeMode::Response { max_input_universe },
-        &mut vec![],
-        state,
-    )
+    Canonicalizer::canonicalize_response(delegate, max_input_universe, &mut vec![], state)
 }
 
 // FIXME: needs to be pub to be accessed by downstream

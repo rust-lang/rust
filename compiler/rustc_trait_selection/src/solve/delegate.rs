@@ -123,8 +123,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             )
         });
 
-        assert_eq!(region_constraints.member_constraints, vec![]);
-
         let mut seen = FxHashSet::default();
         region_constraints
             .outlives
@@ -192,9 +190,8 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         goal_trait_ref: ty::TraitRef<'tcx>,
         trait_assoc_def_id: DefId,
         impl_def_id: DefId,
-    ) -> Result<Option<DefId>, NoSolution> {
-        let node_item = specialization_graph::assoc_def(self.tcx, impl_def_id, trait_assoc_def_id)
-            .map_err(|ErrorGuaranteed { .. }| NoSolution)?;
+    ) -> Result<Option<DefId>, ErrorGuaranteed> {
+        let node_item = specialization_graph::assoc_def(self.tcx, impl_def_id, trait_assoc_def_id)?;
 
         let eligible = if node_item.is_final() {
             // Non-specializable items are always projectable.
@@ -205,7 +202,9 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             // transmute checking and polymorphic MIR optimizations could
             // get a result which isn't correct for all monomorphizations.
             match self.typing_mode() {
-                TypingMode::Coherence | TypingMode::Analysis { .. } => false,
+                TypingMode::Coherence
+                | TypingMode::Analysis { .. }
+                | TypingMode::PostBorrowckAnalysis { .. } => false,
                 TypingMode::PostAnalysis => {
                     let poly_trait_ref = self.resolve_vars_if_possible(goal_trait_ref);
                     !poly_trait_ref.still_further_specializable()

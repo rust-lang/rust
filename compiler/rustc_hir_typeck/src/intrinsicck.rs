@@ -40,13 +40,25 @@ fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    /// FIXME: Move this check out of typeck, since it'll easily cycle when revealing opaques,
+    /// and we shouldn't need to check anything here if the typeck results are tainted.
     pub(crate) fn check_transmute(&self, from: Ty<'tcx>, to: Ty<'tcx>, hir_id: HirId) {
         let tcx = self.tcx;
         let dl = &tcx.data_layout;
         let span = tcx.hir().span(hir_id);
         let normalize = |ty| {
             let ty = self.resolve_vars_if_possible(ty);
-            self.tcx.normalize_erasing_regions(self.typing_env(self.param_env), ty)
+            if let Ok(ty) =
+                self.tcx.try_normalize_erasing_regions(self.typing_env(self.param_env), ty)
+            {
+                ty
+            } else {
+                Ty::new_error_with_message(
+                    tcx,
+                    span,
+                    "tried to normalize non-wf type in check_transmute",
+                )
+            }
         };
         let from = normalize(from);
         let to = normalize(to);

@@ -3,7 +3,7 @@ use rustc_hir::{Expr, ExprKind};
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use crate::context::LintContext;
 use crate::lints::{

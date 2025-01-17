@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::visitors::{Descend, Visitable, for_each_expr};
 use core::ops::ControlFlow::Continue;
 use hir::def::{DefKind, Res};
-use hir::{BlockCheckMode, ExprKind, QPath, Safety, UnOp};
+use hir::{BlockCheckMode, ExprKind, QPath, UnOp};
 use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -133,7 +133,7 @@ fn collect_unsafe_exprs<'tcx>(
                     ty::FnPtr(sig_tys, hdr) => sig_tys.with(hdr),
                     _ => return Continue(Descend::Yes),
                 };
-                if sig.safety() == Safety::Unsafe {
+                if sig.safety().is_unsafe() {
                     unsafe_ops.push(("unsafe function call occurs here", expr.span));
                 }
             },
@@ -144,7 +144,7 @@ fn collect_unsafe_exprs<'tcx>(
                     .type_dependent_def_id(expr.hir_id)
                     .map(|def_id| cx.tcx.fn_sig(def_id))
                 {
-                    if sig.skip_binder().safety() == Safety::Unsafe {
+                    if sig.skip_binder().safety().is_unsafe() {
                         unsafe_ops.push(("unsafe method call occurs here", expr.span));
                     }
                 }

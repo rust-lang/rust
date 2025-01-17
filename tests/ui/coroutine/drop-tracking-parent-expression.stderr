@@ -7,7 +7,6 @@ LL |               assert_send(g);
 LL | /     type_combinations!(
 LL | |         // OK
 LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
-LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
 ...  |
 LL | |         };
 LL | |     );
@@ -26,7 +25,6 @@ LL |                   _ => yield,
 LL | /     type_combinations!(
 LL | |         // OK
 LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
-LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
 ...  |
 LL | |         };
 LL | |     );
@@ -47,7 +45,6 @@ LL |               assert_send(g);
 LL | /     type_combinations!(
 LL | |         // OK
 LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
-LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
 ...  |
 LL | |         };
 LL | |     );
@@ -66,7 +63,6 @@ LL |                   _ => yield,
 LL | /     type_combinations!(
 LL | |         // OK
 LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
-LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
 ...  |
 LL | |         };
 LL | |     );
@@ -87,7 +83,6 @@ LL |               assert_send(g);
 LL | /     type_combinations!(
 LL | |         // OK
 LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
-LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
 ...  |
 LL | |         };
 LL | |     );
@@ -106,7 +101,6 @@ LL |                   _ => yield,
 LL | /     type_combinations!(
 LL | |         // OK
 LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
-LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
 ...  |
 LL | |         };
 LL | |     );

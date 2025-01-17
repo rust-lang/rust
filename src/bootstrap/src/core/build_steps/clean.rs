@@ -10,6 +10,7 @@ use std::io::{self, ErrorKind};
 use std::path::Path;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, crate_description};
+use crate::utils::build_stamp::BuildStamp;
 use crate::utils::helpers::t;
 use crate::{Build, Compiler, Kind, Mode, Subcommand};
 
@@ -146,7 +147,7 @@ fn clean_default(build: &Build) {
     rm_rf(&build.out.join("dist"));
     rm_rf(&build.out.join("bootstrap").join(".last-warned-change-id"));
     rm_rf(&build.out.join("bootstrap-shims-dump"));
-    rm_rf(&build.out.join("rustfmt.stamp"));
+    rm_rf(BuildStamp::new(&build.out).with_prefix("rustfmt").path());
 
     let mut hosts: Vec<_> = build.hosts.iter().map(|t| build.out.join(t)).collect();
     // After cross-compilation, artifacts of the host architecture (which may differ from build.host)
@@ -203,10 +204,8 @@ fn rm_rf(path: &Path) {
 
             do_op(path, "remove dir", |p| match fs::remove_dir(p) {
                 // Check for dir not empty on Windows
-                // FIXME: Once `ErrorKind::DirectoryNotEmpty` is stabilized,
-                // match on `e.kind()` instead.
                 #[cfg(windows)]
-                Err(e) if e.raw_os_error() == Some(145) => Ok(()),
+                Err(e) if e.kind() == ErrorKind::DirectoryNotEmpty => Ok(()),
                 r => r,
             });
         }

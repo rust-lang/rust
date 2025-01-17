@@ -11,8 +11,7 @@ use rustc_feature::Features;
 use rustc_session::Session;
 use rustc_span::hygiene::AstPass;
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::smallvec;
 use thin_vec::{ThinVec, thin_vec};
 

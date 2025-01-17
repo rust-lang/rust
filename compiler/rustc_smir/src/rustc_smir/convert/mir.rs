@@ -181,7 +181,6 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
             RawPtr(mutability, place) => {
                 stable_mir::mir::Rvalue::AddressOf(mutability.stable(tables), place.stable(tables))
             }
-            Len(place) => stable_mir::mir::Rvalue::Len(place.stable(tables)),
             Cast(cast_kind, op, ty) => stable_mir::mir::Rvalue::Cast(
                 cast_kind.stable(tables),
                 op.stable(tables),
@@ -565,8 +564,11 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
                     tables.tcx.coroutine_movability(*def_id).stable(tables),
                 )
             }
-            mir::AggregateKind::CoroutineClosure(..) => {
-                todo!("FIXME(async_closures): Lower these to SMIR")
+            mir::AggregateKind::CoroutineClosure(def_id, generic_args) => {
+                stable_mir::mir::AggregateKind::CoroutineClosure(
+                    tables.coroutine_closure_def(*def_id),
+                    generic_args.stable(tables),
+                )
             }
             mir::AggregateKind::RawPtr(ty, mutability) => {
                 stable_mir::mir::AggregateKind::RawPtr(ty.stable(tables), mutability.stable(tables))

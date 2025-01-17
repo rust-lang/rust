@@ -199,7 +199,6 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
 ///
 /// ```rust
 /// #![feature(local_waker)]
-/// #![feature(noop_waker)]
 /// use std::task::{LocalWake, ContextBuilder, LocalWaker, Waker};
 /// use std::future::Future;
 /// use std::pin::Pin;

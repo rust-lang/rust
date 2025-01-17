@@ -28,30 +28,31 @@ use hir_expand::{
     hygiene::SyntaxContextExt as _,
     inert_attr_macro::find_builtin_attr_idx,
     name::AsName,
-    FileRange, InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
+    ExpandResult, FileRange, InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
 };
-use intern::Symbol;
+use intern::{sym, Symbol};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
-use span::{EditionedFileId, FileId, HirFileIdRepr, SyntaxContextId};
+use span::{AstIdMap, EditionedFileId, FileId, HirFileIdRepr, SyntaxContextId};
 use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
-    ast::{self, HasAttrs as _, HasGenericParams, IsString as _},
-    AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
-    TextSize,
+    ast::{self, HasAttrs as _, HasGenericParams},
+    AstNode, AstToken, Direction, SmolStr, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken,
+    TextRange, TextSize,
 };
+use triomphe::Arc;
 
 use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{name_hygiene, resolve_hir_path, SourceAnalyzer},
     Access, Adjust, Adjustment, Adt, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const,
-    ConstParam, Crate, DeriveHelper, Enum, Field, Function, HasSource, HirFileId, Impl, InFile,
-    InlineAsmOperand, ItemInNs, Label, LifetimeParam, Local, Macro, Module, ModuleDef, Name,
-    OverloadedDeref, Path, ScopeDef, Static, Struct, ToolModule, Trait, TraitAlias, TupleField,
-    Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
+    ConstParam, Crate, DeriveHelper, Enum, Field, Function, GenericSubstitution, HasSource,
+    HirFileId, Impl, InFile, InlineAsmOperand, ItemInNs, Label, LifetimeParam, Local, Macro,
+    Module, ModuleDef, Name, OverloadedDeref, Path, ScopeDef, Static, Struct, ToolModule, Trait,
+    TraitAlias, TupleField, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
 };
 
 const CONTINUE_NO_BREAKS: ControlFlow<Infallible, ()> = ControlFlow::Continue(());
@@ -245,59 +246,59 @@ impl<DB: HirDatabase> Semantics<'_, DB> {
     }
 
     pub fn to_adt_def(&self, a: &ast::Adt) -> Option<Adt> {
-        self.imp.to_def(a).map(Adt::from)
+        self.imp.to_def(a)
     }
 
     pub fn to_const_def(&self, c: &ast::Const) -> Option<Const> {
-        self.imp.to_def(c).map(Const::from)
+        self.imp.to_def(c)
     }
 
     pub fn to_enum_def(&self, e: &ast::Enum) -> Option<Enum> {
-        self.imp.to_def(e).map(Enum::from)
+        self.imp.to_def(e)
     }
 
     pub fn to_enum_variant_def(&self, v: &ast::Variant) -> Option<Variant> {
-        self.imp.to_def(v).map(Variant::from)
+        self.imp.to_def(v)
     }
 
     pub fn to_fn_def(&self, f: &ast::Fn) -> Option<Function> {
-        self.imp.to_def(f).map(Function::from)
+        self.imp.to_def(f)
     }
 
     pub fn to_impl_def(&self, i: &ast::Impl) -> Option<Impl> {
-        self.imp.to_def(i).map(Impl::from)
+        self.imp.to_def(i)
     }
 
     pub fn to_macro_def(&self, m: &ast::Macro) -> Option<Macro> {
-        self.imp.to_def(m).map(Macro::from)
+        self.imp.to_def(m)
     }
 
     pub fn to_module_def(&self, m: &ast::Module) -> Option<Module> {
-        self.imp.to_def(m).map(Module::from)
+        self.imp.to_def(m)
     }
 
     pub fn to_static_def(&self, s: &ast::Static) -> Option<Static> {
-        self.imp.to_def(s).map(Static::from)
+        self.imp.to_def(s)
     }
 
     pub fn to_struct_def(&self, s: &ast::Struct) -> Option<Struct> {
-        self.imp.to_def(s).map(Struct::from)
+        self.imp.to_def(s)
     }
 
     pub fn to_trait_alias_def(&self, t: &ast::TraitAlias) -> Option<TraitAlias> {
-        self.imp.to_def(t).map(TraitAlias::from)
+        self.imp.to_def(t)
     }
 
     pub fn to_trait_def(&self, t: &ast::Trait) -> Option<Trait> {
-        self.imp.to_def(t).map(Trait::from)
+        self.imp.to_def(t)
     }
 
     pub fn to_type_alias_def(&self, t: &ast::TypeAlias) -> Option<TypeAlias> {
-        self.imp.to_def(t).map(TypeAlias::from)
+        self.imp.to_def(t)
     }
 
     pub fn to_union_def(&self, u: &ast::Union) -> Option<Union> {
-        self.imp.to_def(u).map(Union::from)
+        self.imp.to_def(u)
     }
 }
 
@@ -380,7 +381,13 @@ impl<'db> SemanticsImpl<'db> {
         node
     }
 
-    pub fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
+    pub fn expand(&self, file_id: MacroFileId) -> ExpandResult<SyntaxNode> {
+        let res = self.db.parse_macro_expansion(file_id).map(|it| it.0.syntax_node());
+        self.cache(res.value.clone(), file_id.into());
+        res
+    }
+
+    pub fn expand_macro_call(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
         let sa = self.analyze_no_infer(macro_call.syntax())?;
 
         let macro_call = InFile::new(sa.file_id, macro_call);
@@ -411,7 +418,10 @@ impl<'db> SemanticsImpl<'db> {
 
     /// Expands the macro if it isn't one of the built-in ones that expand to custom syntax or dummy
     /// expansions.
-    pub fn expand_allowed_builtins(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
+    pub fn expand_allowed_builtins(
+        &self,
+        macro_call: &ast::MacroCall,
+    ) -> Option<ExpandResult<SyntaxNode>> {
         let sa = self.analyze_no_infer(macro_call.syntax())?;
 
         let macro_call = InFile::new(sa.file_id, macro_call);
@@ -433,6 +443,7 @@ impl<'db> SemanticsImpl<'db> {
                     | BuiltinFnLikeExpander::ModulePath
                     | BuiltinFnLikeExpander::Asm
                     | BuiltinFnLikeExpander::GlobalAsm
+                    | BuiltinFnLikeExpander::NakedAsm
                     | BuiltinFnLikeExpander::LogSyntax
                     | BuiltinFnLikeExpander::TraceMacros
                     | BuiltinFnLikeExpander::FormatArgs
@@ -446,15 +457,15 @@ impl<'db> SemanticsImpl<'db> {
             return None;
         }
 
-        let node = self.parse_or_expand(file_id.into());
+        let node = self.expand(file_id);
         Some(node)
     }
 
     /// If `item` has an attribute macro attached to it, expands it.
-    pub fn expand_attr_macro(&self, item: &ast::Item) -> Option<SyntaxNode> {
+    pub fn expand_attr_macro(&self, item: &ast::Item) -> Option<ExpandResult<SyntaxNode>> {
         let src = self.wrap_node_infile(item.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(src.as_ref()))?;
-        Some(self.parse_or_expand(macro_call_id.as_file()))
+        Some(self.expand(macro_call_id.as_macro_file()))
     }
 
     pub fn expand_derive_as_pseudo_attr_macro(&self, attr: &ast::Attr) -> Option<SyntaxNode> {
@@ -478,15 +489,16 @@ impl<'db> SemanticsImpl<'db> {
         })
     }
 
-    pub fn expand_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<SyntaxNode>> {
+    pub fn expand_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<ExpandResult<SyntaxNode>>> {
         let res: Vec<_> = self
             .derive_macro_calls(attr)?
             .into_iter()
             .flat_map(|call| {
-                let file_id = call?.as_file();
-                let node = self.db.parse_or_expand(file_id);
-                self.cache(node.clone(), file_id);
-                Some(node)
+                let file_id = call?.as_macro_file();
+                let ExpandResult { value, err } = self.db.parse_macro_expansion(file_id);
+                let root_node = value.0.syntax_node();
+                self.cache(root_node.clone(), file_id.into());
+                Some(ExpandResult { value: root_node, err })
             })
             .collect();
         Some(res)
@@ -507,6 +519,22 @@ impl<'db> SemanticsImpl<'db> {
         let file_id = self.find_file(adt.syntax()).file_id;
         let adt = InFile::new(file_id, adt);
         self.with_ctx(|ctx| ctx.has_derives(adt))
+    }
+
+    pub fn derive_helpers_in_scope(&self, adt: &ast::Adt) -> Option<Vec<(Symbol, Symbol)>> {
+        let sa = self.analyze_no_infer(adt.syntax())?;
+        let id = self.db.ast_id_map(sa.file_id).ast_id(adt);
+        let result = sa
+            .resolver
+            .def_map()
+            .derive_helpers_in_scope(InFile::new(sa.file_id, id))?
+            .iter()
+            .map(|(name, macro_, _)| {
+                let macro_name = Macro::from(*macro_).name(self.db).symbol().clone();
+                (name.symbol().clone(), macro_name)
+            })
+            .collect();
+        Some(result)
     }
 
     pub fn derive_helper(&self, attr: &ast::Attr) -> Option<Vec<(Macro, MacroFileId)>> {
@@ -538,12 +566,12 @@ impl<'db> SemanticsImpl<'db> {
 
     /// Expand the macro call with a different token tree, mapping the `token_to_map` down into the
     /// expansion. `token_to_map` should be a token from the `speculative args` node.
-    pub fn speculative_expand(
+    pub fn speculative_expand_macro_call(
         &self,
         actual_macro_call: &ast::MacroCall,
         speculative_args: &ast::TokenTree,
         token_to_map: SyntaxToken,
-    ) -> Option<(SyntaxNode, SyntaxToken)> {
+    ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         let SourceAnalyzer { file_id, resolver, .. } =
             self.analyze_no_infer(actual_macro_call.syntax())?;
         let macro_call = InFile::new(file_id, actual_macro_call);
@@ -564,7 +592,7 @@ impl<'db> SemanticsImpl<'db> {
         macro_file: MacroFileId,
         speculative_args: &SyntaxNode,
         token_to_map: SyntaxToken,
-    ) -> Option<(SyntaxNode, SyntaxToken)> {
+    ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         hir_expand::db::expand_speculative(
             self.db.upcast(),
             macro_file.macro_call_id,
@@ -580,7 +608,7 @@ impl<'db> SemanticsImpl<'db> {
         actual_macro_call: &ast::Item,
         speculative_args: &ast::Item,
         token_to_map: SyntaxToken,
-    ) -> Option<(SyntaxNode, SyntaxToken)> {
+    ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         let macro_call = self.wrap_node_infile(actual_macro_call.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(macro_call.as_ref()))?;
         hir_expand::db::expand_speculative(
@@ -596,7 +624,7 @@ impl<'db> SemanticsImpl<'db> {
         actual_macro_call: &ast::Attr,
         speculative_args: &ast::Attr,
         token_to_map: SyntaxToken,
-    ) -> Option<(SyntaxNode, SyntaxToken)> {
+    ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         let attr = self.wrap_node_infile(actual_macro_call.clone());
         let adt = actual_macro_call.syntax().parent().and_then(ast::Adt::cast)?;
         let macro_call_id = self.with_ctx(|ctx| {
@@ -615,8 +643,7 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         string: &ast::String,
     ) -> Option<Vec<(TextRange, Option<Either<PathResolution, InlineAsmOperand>>)>> {
-        let quote = string.open_quote_text_range()?;
-
+        let string_start = string.syntax().text_range().start();
         let token = self.wrap_token_infile(string.syntax().clone()).into_real_file().ok()?;
         self.descend_into_macros_breakable(token, |token, _| {
             (|| {
@@ -630,7 +657,7 @@ impl<'db> SemanticsImpl<'db> {
                     let format_args = self.wrap_node_infile(format_args);
                     let res = source_analyzer
                         .as_format_args_parts(self.db, format_args.as_ref())?
-                        .map(|(range, res)| (range + quote.end(), res.map(Either::Left)))
+                        .map(|(range, res)| (range + string_start, res.map(Either::Left)))
                         .collect();
                     Some(res)
                 } else {
@@ -644,7 +671,7 @@ impl<'db> SemanticsImpl<'db> {
                         .iter()
                         .map(|&(range, index)| {
                             (
-                                range + quote.end(),
+                                range + string_start,
                                 Some(Either::Right(InlineAsmOperand { owner, expr, index })),
                             )
                         })
@@ -662,17 +689,16 @@ impl<'db> SemanticsImpl<'db> {
         original_token: SyntaxToken,
         offset: TextSize,
     ) -> Option<(TextRange, Option<Either<PathResolution, InlineAsmOperand>>)> {
-        let original_string = ast::String::cast(original_token.clone())?;
+        let string_start = original_token.text_range().start();
         let original_token = self.wrap_token_infile(original_token).into_real_file().ok()?;
-        let quote = original_string.open_quote_text_range()?;
         self.descend_into_macros_breakable(original_token, |token, _| {
             (|| {
                 let token = token.value;
                 self.resolve_offset_in_format_args(
                     ast::String::cast(token)?,
-                    offset.checked_sub(quote.end())?,
+                    offset.checked_sub(string_start)?,
                 )
-                .map(|(range, res)| (range + quote.end(), res))
+                .map(|(range, res)| (range + string_start, res))
             })()
             .map_or(ControlFlow::Continue(()), ControlFlow::Break)
         })
@@ -785,10 +811,37 @@ impl<'db> SemanticsImpl<'db> {
             item.attrs().any(|attr| {
                 let Some(meta) = attr.meta() else { return false };
                 let Some(path) = meta.path() else { return false };
-                let Some(attr_name) = path.as_single_name_ref() else { return true };
-                let attr_name = attr_name.text();
-                let attr_name = attr_name.as_str();
-                attr_name == "derive" || find_builtin_attr_idx(&Symbol::intern(attr_name)).is_none()
+                if let Some(attr_name) = path.as_single_name_ref() {
+                    let attr_name = attr_name.text();
+                    let attr_name = Symbol::intern(attr_name.as_str());
+                    if attr_name == sym::derive {
+                        return true;
+                    }
+                    // We ignore `#[test]` and friends in the def map, so we cannot expand them.
+                    // FIXME: We match by text. This is both hacky and incorrect (people can, and do, create
+                    // other macros named `test`). We cannot fix that unfortunately because we use this method
+                    // for speculative expansion in completion, which we cannot analyze. Fortunately, most macros
+                    // named `test` are test-like, meaning their expansion is not terribly important for IDE.
+                    if attr_name == sym::test
+                        || attr_name == sym::bench
+                        || attr_name == sym::test_case
+                        || find_builtin_attr_idx(&attr_name).is_some()
+                    {
+                        return false;
+                    }
+                }
+                let mut segments = path.segments();
+                let mut next_segment_text = || segments.next().and_then(|it| it.name_ref());
+                // `#[core::prelude::rust_2024::test]` or `#[std::prelude::rust_2024::test]`.
+                if next_segment_text().is_some_and(|it| matches!(&*it.text(), "core" | "std"))
+                    && next_segment_text().is_some_and(|it| it.text() == "prelude")
+                    && next_segment_text().is_some()
+                    && next_segment_text()
+                        .is_some_and(|it| matches!(&*it.text(), "test" | "bench" | "test_case"))
+                {
+                    return false;
+                }
+                true
             })
         })
     }
@@ -1180,7 +1233,6 @@ impl<'db> SemanticsImpl<'db> {
         node.original_file_range_opt(self.db.upcast())
             .filter(|(_, ctx)| ctx.is_root())
             .map(TupleExt::head)
-            .map(Into::into)
     }
 
     /// Attempts to map the node out of macro expanded files.
@@ -1387,7 +1439,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn resolve_method_call_fallback(
         &self,
         call: &ast::MethodCallExpr,
-    ) -> Option<Either<Function, Field>> {
+    ) -> Option<(Either<Function, Field>, Option<GenericSubstitution>)> {
         self.analyze(call.syntax())?.resolve_method_call_fallback(self.db, call)
     }
 
@@ -1430,7 +1482,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn resolve_field_fallback(
         &self,
         field: &ast::FieldExpr,
-    ) -> Option<Either<Either<Field, TupleField>, Function>> {
+    ) -> Option<(Either<Either<Field, TupleField>, Function>, Option<GenericSubstitution>)> {
         self.analyze(field.syntax())?.resolve_field_fallback(self.db, field)
     }
 
@@ -1438,10 +1490,25 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         field: &ast::RecordExprField,
     ) -> Option<(Field, Option<Local>, Type)> {
+        self.resolve_record_field_with_substitution(field)
+            .map(|(field, local, ty, _)| (field, local, ty))
+    }
+
+    pub fn resolve_record_field_with_substitution(
+        &self,
+        field: &ast::RecordExprField,
+    ) -> Option<(Field, Option<Local>, Type, GenericSubstitution)> {
         self.analyze(field.syntax())?.resolve_record_field(self.db, field)
     }
 
     pub fn resolve_record_pat_field(&self, field: &ast::RecordPatField) -> Option<(Field, Type)> {
+        self.resolve_record_pat_field_with_subst(field).map(|(field, ty, _)| (field, ty))
+    }
+
+    pub fn resolve_record_pat_field_with_subst(
+        &self,
+        field: &ast::RecordPatField,
+    ) -> Option<(Field, Type, GenericSubstitution)> {
         self.analyze(field.syntax())?.resolve_record_pat_field(self.db, field)
     }
 
@@ -1459,7 +1526,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn is_proc_macro_call(&self, macro_call: &ast::MacroCall) -> bool {
         self.resolve_macro_call(macro_call)
-            .map_or(false, |m| matches!(m.id, MacroId::ProcMacroId(..)))
+            .is_some_and(|m| matches!(m.id, MacroId::ProcMacroId(..)))
     }
 
     pub fn resolve_macro_call_arm(&self, macro_call: &ast::MacroCall) -> Option<u32> {
@@ -1497,7 +1564,18 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
+        self.resolve_path_with_subst(path).map(|(it, _)| it)
+    }
+
+    pub fn resolve_path_with_subst(
+        &self,
+        path: &ast::Path,
+    ) -> Option<(PathResolution, Option<GenericSubstitution>)> {
         self.analyze(path.syntax())?.resolve_path(self.db, path)
+    }
+
+    pub fn resolve_use_type_arg(&self, name: &ast::NameRef) -> Option<TypeParam> {
+        self.analyze(name.syntax())?.resolve_use_type_arg(name)
     }
 
     pub fn resolve_mod_path(
@@ -1507,6 +1585,21 @@ impl<'db> SemanticsImpl<'db> {
     ) -> Option<impl Iterator<Item = ItemInNs>> {
         let analyze = self.analyze(scope)?;
         let items = analyze.resolver.resolve_module_path_in_items(self.db.upcast(), path);
+        Some(items.iter_items().map(|(item, _)| item.into()))
+    }
+
+    pub fn resolve_mod_path_relative(
+        &self,
+        to: Module,
+        segments: impl IntoIterator<Item = SmolStr>,
+    ) -> Option<impl Iterator<Item = ItemInNs>> {
+        let items = to.id.resolver(self.db.upcast()).resolve_module_path_in_items(
+            self.db.upcast(),
+            &ModPath::from_segments(
+                hir_def::path::PathKind::Plain,
+                segments.into_iter().map(|it| Name::new(&it, SyntaxContextId::ROOT)),
+            ),
+        );
         Some(items.iter_items().map(|(item, _)| item.into()))
     }
 
@@ -1973,10 +2066,16 @@ impl SemanticsScope<'_> {
     /// Resolve a path as-if it was written at the given scope. This is
     /// necessary a heuristic, as it doesn't take hygiene into account.
     pub fn speculative_resolve(&self, ast_path: &ast::Path) -> Option<PathResolution> {
+        let root = ast_path.syntax().ancestors().last().unwrap();
+        let ast_id_map = Arc::new(AstIdMap::from_source(&root));
         let (mut types_map, mut types_source_map) =
             (TypesMap::default(), TypesSourceMap::default());
-        let mut ctx =
-            LowerCtx::new(self.db.upcast(), self.file_id, &mut types_map, &mut types_source_map);
+        let mut ctx = LowerCtx::for_synthetic_ast(
+            self.db.upcast(),
+            ast_id_map,
+            &mut types_map,
+            &mut types_source_map,
+        );
         let path = Path::from_src(&mut ctx, ast_path.clone())?;
         resolve_hir_path(
             self.db,
@@ -1985,6 +2084,11 @@ impl SemanticsScope<'_> {
             name_hygiene(self.db, InFile::new(self.file_id, ast_path.syntax())),
             &types_map,
         )
+    }
+
+    pub fn resolve_mod_path(&self, path: &ModPath) -> impl Iterator<Item = ItemInNs> {
+        let items = self.resolver.resolve_module_path_in_items(self.db.upcast(), path);
+        items.iter_items().map(|(item, _)| item.into())
     }
 
     /// Iterates over associated types that may be specified after the given path (using
@@ -2001,6 +2105,10 @@ impl SemanticsScope<'_> {
             resolution.in_type_ns()?,
             |name, id| cb(name, id.into()),
         )
+    }
+
+    pub fn generic_def(&self) -> Option<crate::GenericDef> {
+        self.resolver.generic_def().map(|id| id.into())
     }
 
     pub fn extern_crates(&self) -> impl Iterator<Item = (Name, Module)> + '_ {

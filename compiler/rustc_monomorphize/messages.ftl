@@ -41,6 +41,4 @@ monomorphize_symbol_already_defined = symbol `{$symbol}` is already defined
 monomorphize_unknown_cgu_collection_mode =
     unknown codegen-item collection mode '{$mode}', falling back to 'lazy' mode
 
-monomorphize_unused_generic_params = item has unused generic parameters
-
 monomorphize_written_to_path = the full type name has been written to '{$path}'

@@ -1114,6 +1114,25 @@ fn test(x: Option<lib::PrivatelyUninhabited>) {
         }
     }
 
+    #[test]
+    fn non_exhaustive_may_be_empty() {
+        check_diagnostics_no_bails(
+            r"
+//- /main.rs crate:main deps:dep
+// In a different crate
+fn empty_match_on_empty_struct<T>(x: dep::UninhabitedStruct) -> T {
+    match x {}
+}
+//- /dep.rs crate:dep
+#[non_exhaustive]
+pub struct UninhabitedStruct {
+    pub never: !,
+    // other fields
+}
+",
+        );
+    }
+
     mod false_negatives {
         //! The implementation of match checking here is a work in progress. As we roll this out, we
         //! prefer false negatives to false positives (ideally there would be no false positives). This

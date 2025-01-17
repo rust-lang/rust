@@ -13,6 +13,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_macros::LintDiagnostic;
+use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -22,8 +23,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::{Ident, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::misc::{
@@ -43,6 +43,7 @@ use {rustc_ast as ast, rustc_hir as hir};
 use crate::autoderef::Autoderef;
 use crate::collect::CollectItemTypesVisitor;
 use crate::constrained_generic_params::{Parameter, identify_constrained_generic_params};
+use crate::errors::InvalidReceiverTyHint;
 use crate::{errors, fluent_generated as fluent};
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
@@ -116,13 +117,12 @@ where
     }
     f(&mut wfcx)?;
 
-    let assumed_wf_types = wfcx.ocx.assumed_wf_types_and_report_errors(param_env, body_def_id)?;
-
     let errors = wfcx.select_all_or_error();
     if !errors.is_empty() {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
 
+    let assumed_wf_types = wfcx.ocx.assumed_wf_types_and_report_errors(param_env, body_def_id)?;
     debug!(?assumed_wf_types);
 
     let infcx_compat = infcx.fork();
@@ -293,7 +293,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
             }
             res
         }
-        hir::ItemKind::Fn(ref sig, ..) => {
+        hir::ItemKind::Fn { sig, .. } => {
             check_item_fn(tcx, def_id, item.ident, item.span, sig.decl)
         }
         hir::ItemKind::Static(ty, ..) => {
@@ -1104,6 +1104,25 @@ fn check_type_defn<'tcx>(
         for variant in variants.iter() {
             // All field types must be well-formed.
             for field in &variant.fields {
+                if let Some(def_id) = field.value
+                    && let Some(_ty) = tcx.type_of(def_id).no_bound_vars()
+                {
+                    // FIXME(generic_const_exprs, default_field_values): this is a hack and needs to
+                    // be refactored to check the instantiate-ability of the code better.
+                    if let Some(def_id) = def_id.as_local()
+                        && let hir::Node::AnonConst(anon) = tcx.hir_node_by_def_id(def_id)
+                        && let expr = &tcx.hir().body(anon.body).value
+                        && let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
+                        && let Res::Def(DefKind::ConstParam, _def_id) = path.res
+                    {
+                        // Do not evaluate bare `const` params, as those would ICE and are only
+                        // usable if `#![feature(generic_const_exprs)]` is enabled.
+                    } else {
+                        // Evaluate the constant proactively, to emit an error if the constant has
+                        // an unconditional error. We only do so if the const has no type params.
+                        let _ = tcx.const_eval_poly(def_id);
+                    }
+                }
                 let field_id = field.did.expect_local();
                 let hir::FieldDef { ty: hir_ty, .. } =
                     tcx.hir_node_by_def_id(field_id).expect_field();
@@ -1170,19 +1189,13 @@ fn check_type_defn<'tcx>(
 
             // Explicit `enum` discriminant values must const-evaluate successfully.
             if let ty::VariantDiscr::Explicit(discr_def_id) = variant.discr {
-                let cause = traits::ObligationCause::new(
-                    tcx.def_span(discr_def_id),
-                    wfcx.body_def_id,
-                    ObligationCauseCode::Misc,
-                );
-                wfcx.register_obligation(Obligation::new(
-                    tcx,
-                    cause,
-                    wfcx.param_env,
-                    ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(
-                        ty::Const::from_anon_const(tcx, discr_def_id.expect_local()),
-                    ))),
-                ));
+                match tcx.const_eval_poly(discr_def_id) {
+                    Ok(_) => {}
+                    Err(ErrorHandled::Reported(..)) => {}
+                    Err(ErrorHandled::TooGeneric(sp)) => {
+                        span_bug!(sp, "enum variant discr was too generic to eval")
+                    }
+                }
             }
         }
 
@@ -1735,8 +1748,25 @@ fn check_method_receiver<'tcx>(
             // Report error; would not have worked with `arbitrary_self_types[_pointers]`.
             {
                 match receiver_validity_err {
+                    ReceiverValidityError::DoesNotDeref if arbitrary_self_types_level.is_some() => {
+                        let hint = match receiver_ty
+                            .builtin_deref(false)
+                            .unwrap_or(receiver_ty)
+                            .ty_adt_def()
+                            .and_then(|adt_def| tcx.get_diagnostic_name(adt_def.did()))
+                        {
+                            Some(sym::RcWeak | sym::ArcWeak) => Some(InvalidReceiverTyHint::Weak),
+                            Some(sym::NonNull) => Some(InvalidReceiverTyHint::NonNull),
+                            _ => None,
+                        };
+
+                        tcx.dcx().emit_err(errors::InvalidReceiverTy { span, receiver_ty, hint })
+                    }
                     ReceiverValidityError::DoesNotDeref => {
-                        tcx.dcx().emit_err(errors::InvalidReceiverTy { span, receiver_ty })
+                        tcx.dcx().emit_err(errors::InvalidReceiverTyNoArbitrarySelfTypes {
+                            span,
+                            receiver_ty,
+                        })
                     }
                     ReceiverValidityError::MethodGenericParamUsed => {
                         tcx.dcx().emit_err(errors::InvalidGenericReceiverTy { span, receiver_ty })
@@ -1808,12 +1838,17 @@ fn receiver_is_valid<'tcx>(
 
     let mut autoderef = Autoderef::new(infcx, wfcx.param_env, wfcx.body_def_id, span, receiver_ty);
 
+    // The `arbitrary_self_types` feature allows custom smart pointer
+    // types to be method receivers, as identified by following the Receiver<Target=T>
+    // chain.
+    if arbitrary_self_types_enabled.is_some() {
+        autoderef = autoderef.use_receiver_trait();
+    }
+
     // The `arbitrary_self_types_pointers` feature allows raw pointer receivers like `self: *const Self`.
     if arbitrary_self_types_enabled == Some(ArbitrarySelfTypesLevel::WithPointers) {
         autoderef = autoderef.include_raw_pointers();
     }
-
-    let receiver_trait_def_id = tcx.require_lang_item(LangItem::LegacyReceiver, Some(span));
 
     // Keep dereferencing `receiver_ty` until we get to `self_ty`.
     while let Some((potential_self_ty, _)) = autoderef.next() {
@@ -1836,11 +1871,13 @@ fn receiver_is_valid<'tcx>(
         }
 
         // Without `feature(arbitrary_self_types)`, we require that each step in the
-        // deref chain implement `receiver`.
+        // deref chain implement `LegacyReceiver`.
         if arbitrary_self_types_enabled.is_none() {
-            if !receiver_is_implemented(
+            let legacy_receiver_trait_def_id =
+                tcx.require_lang_item(LangItem::LegacyReceiver, Some(span));
+            if !legacy_receiver_is_implemented(
                 wfcx,
-                receiver_trait_def_id,
+                legacy_receiver_trait_def_id,
                 cause.clone(),
                 potential_self_ty,
             ) {
@@ -1853,7 +1890,7 @@ fn receiver_is_valid<'tcx>(
                 cause.clone(),
                 wfcx.param_env,
                 potential_self_ty,
-                receiver_trait_def_id,
+                legacy_receiver_trait_def_id,
             );
         }
     }
@@ -1862,14 +1899,14 @@ fn receiver_is_valid<'tcx>(
     Err(ReceiverValidityError::DoesNotDeref)
 }
 
-fn receiver_is_implemented<'tcx>(
+fn legacy_receiver_is_implemented<'tcx>(
     wfcx: &WfCheckingCtxt<'_, 'tcx>,
-    receiver_trait_def_id: DefId,
+    legacy_receiver_trait_def_id: DefId,
     cause: ObligationCause<'tcx>,
     receiver_ty: Ty<'tcx>,
 ) -> bool {
     let tcx = wfcx.tcx();
-    let trait_ref = ty::TraitRef::new(tcx, receiver_trait_def_id, [receiver_ty]);
+    let trait_ref = ty::TraitRef::new(tcx, legacy_receiver_trait_def_id, [receiver_ty]);
 
     let obligation = Obligation::new(tcx, cause, wfcx.param_env, trait_ref);
 
@@ -1877,7 +1914,7 @@ fn receiver_is_implemented<'tcx>(
         true
     } else {
         debug!(
-            "receiver_is_implemented: type `{:?}` does not implement `Receiver` trait",
+            "receiver_is_implemented: type `{:?}` does not implement `LegacyReceiver` trait",
             receiver_ty
         );
         false
@@ -1921,8 +1958,8 @@ fn check_variances_for_type_defn<'tcx>(
         hir_generics
             .predicates
             .iter()
-            .filter_map(|predicate| match predicate {
-                hir::WherePredicate::BoundPredicate(predicate) => {
+            .filter_map(|predicate| match predicate.kind {
+                hir::WherePredicateKind::BoundPredicate(predicate) => {
                     match icx.lower_ty(predicate.bounded_ty).kind() {
                         ty::Param(data) => Some(Parameter(data.index)),
                         _ => None,
@@ -1970,7 +2007,10 @@ fn check_variances_for_type_defn<'tcx>(
         }
 
         match hir_param.name {
-            hir::ParamName::Error => {}
+            hir::ParamName::Error(_) => {
+                // Don't report a bivariance error for a lifetime that isn't
+                // even valid to name.
+            }
             _ => {
                 let has_explicit_bounds = explicitly_bounded_params.contains(&parameter);
                 report_bivariance(tcx, hir_param, has_explicit_bounds, item);
@@ -2202,8 +2242,8 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                     span = predicates
                         .iter()
                         // There seems to be no better way to find out which predicate we are in
-                        .find(|pred| pred.span().contains(obligation_span))
-                        .map(|pred| pred.span())
+                        .find(|pred| pred.span.contains(obligation_span))
+                        .map(|pred| pred.span)
                         .unwrap_or(obligation_span);
                 }
 
@@ -2302,8 +2342,11 @@ fn lint_redundant_lifetimes<'tcx>(
     );
     // If we are in a function, add its late-bound lifetimes too.
     if matches!(def_kind, DefKind::Fn | DefKind::AssocFn) {
-        for var in tcx.fn_sig(owner_id).instantiate_identity().bound_vars() {
+        for (idx, var) in
+            tcx.fn_sig(owner_id).instantiate_identity().bound_vars().iter().enumerate()
+        {
             let ty::BoundVariableKind::Region(kind) = var else { continue };
+            let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);
             lifetimes.push(ty::Region::new_late_param(tcx, owner_id.to_def_id(), kind));
         }
     }

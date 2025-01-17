@@ -6,8 +6,7 @@ LL |       let _ = while false {
 LL |
 LL |       } else {
    |  _______^
-LL | |
-LL | |
+...  |
 LL | |     };
    | |_____^
    |

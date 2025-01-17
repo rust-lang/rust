@@ -1,5 +1,5 @@
 error[E0733]: recursion in an async fn requires boxing
-  --> $DIR/post-mono-layout-cycle-2.rs:30:5
+  --> $DIR/post-mono-layout-cycle-2.rs:28:5
    |
 LL | /     async fn iter<T>(&mut self, iterator: T)
 LL | |
@@ -13,7 +13,7 @@ LL |           Blah::iter(self, iterator).await
    = note: a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future
 
 note: the above error was encountered while instantiating `fn Wrap::<()>::ice`
-  --> $DIR/post-mono-layout-cycle-2.rs:56:9
+  --> $DIR/post-mono-layout-cycle-2.rs:54:9
    |
 LL |         t.ice();
    |         ^^^^^^^

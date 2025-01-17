@@ -311,9 +311,8 @@
 # Indicate whether the vendored sources are used for Rust dependencies or not.
 #
 # Vendoring requires additional setup. We recommend using the pre-generated source tarballs if you
-# want to use vendoring. See
-# https://forge.rust-lang.org/infra/other-installation-methods.html#source-code.
-#vendor = false
+# want to use vendoring. See https://forge.rust-lang.org/infra/other-installation-methods.html#source-code.
+#vendor = if "is a tarball source" && "vendor" dir exists && ".cargo/config.toml" file exists { true } else { false }
 
 # Typically the build system will build the Rust compiler twice. The second
 # compiler, however, will simply use its own libraries to link against. If you
@@ -922,6 +921,15 @@
 # execute the program `foo` with the first argument as `bar` and the second
 # argument as the test binary.
 #runner = <none> (string)
+
+# Use the optimized LLVM C intrinsics for `compiler_builtins`, rather than Rust intrinsics
+# on this target.
+# Requires the LLVM submodule to be managed by bootstrap (i.e. not external) so that `compiler-rt`
+# sources are available.
+#
+# Setting this to `false` generates slower code, but removes the requirement for a C toolchain in
+# order to run `x check`.
+#optimized-compiler-builtins = build.optimized-compiler-builtins (bool)
 
 # =============================================================================
 # Distribution options

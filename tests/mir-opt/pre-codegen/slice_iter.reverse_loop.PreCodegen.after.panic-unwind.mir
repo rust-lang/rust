@@ -18,7 +18,7 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         scope 2 {
             debug x => _17;
         }
-        scope 18 (inlined <Rev<std::slice::Iter<'_, T>> as Iterator>::next) {
+        scope 19 (inlined <Rev<std::slice::Iter<'_, T>> as Iterator>::next) {
             let mut _14: &mut std::slice::Iter<'_, T>;
         }
     }
@@ -35,10 +35,12 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                     scope 7 {
                     }
                     scope 12 (inlined without_provenance::<T>) {
+                        scope 13 (inlined without_provenance_mut::<T>) {
+                        }
                     }
-                    scope 13 (inlined NonNull::<T>::as_ptr) {
+                    scope 14 (inlined NonNull::<T>::as_ptr) {
                     }
-                    scope 14 (inlined std::ptr::mut_ptr::<impl *mut T>::add) {
+                    scope 15 (inlined std::ptr::mut_ptr::<impl *mut T>::add) {
                     }
                 }
                 scope 8 (inlined <NonNull<[T]> as From<&[T]>>::from) {
@@ -54,11 +56,11 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
             }
         }
     }
-    scope 15 (inlined <std::slice::Iter<'_, T> as Iterator>::rev) {
-        scope 16 (inlined Rev::<std::slice::Iter<'_, T>>::new) {
+    scope 16 (inlined <std::slice::Iter<'_, T> as Iterator>::rev) {
+        scope 17 (inlined Rev::<std::slice::Iter<'_, T>>::new) {
         }
     }
-    scope 17 (inlined <Rev<std::slice::Iter<'_, T>> as IntoIterator>::into_iter) {
+    scope 18 (inlined <Rev<std::slice::Iter<'_, T>> as IntoIterator>::into_iter) {
     }
 
     bb0: {
@@ -66,11 +68,12 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageLive(_3);
         StorageLive(_6);
         StorageLive(_4);
-        StorageLive(_5);
         _3 = PtrMetadata(copy _1);
         _4 = &raw const (*_1);
+        StorageLive(_5);
         _5 = copy _4 as *const T (PtrToPtr);
-        _6 = NonNull::<T> { pointer: copy _5 };
+        _6 = NonNull::<T> { pointer: move _5 };
+        StorageDead(_5);
         StorageLive(_9);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
     }
@@ -97,7 +100,6 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         _11 = std::slice::Iter::<'_, T> { ptr: copy _6, end_or_len: move _10, _marker: const ZeroSized: PhantomData<&T> };
         StorageDead(_10);
         StorageDead(_9);
-        StorageDead(_5);
         StorageDead(_4);
         StorageDead(_6);
         StorageDead(_3);

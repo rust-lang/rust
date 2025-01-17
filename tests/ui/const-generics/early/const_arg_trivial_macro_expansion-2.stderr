@@ -2,10 +2,7 @@ error: free constant item without body
   --> $DIR/const_arg_trivial_macro_expansion-2.rs:12:1
    |
 LL | / const _: A<
-LL | |
-LL | |
-LL | |     {
-LL | |         y! { test.tou8 }
+...  |
 LL | |     },
 LL | | >;
    | |  ^ help: provide a definition for the constant: `= <expr>;`

@@ -14,7 +14,7 @@
 // CHECK-LABEL: @slice_iter_next(
 #[no_mangle]
 pub fn slice_iter_next<'a>(it: &mut std::slice::Iter<'a, u32>) -> Option<&'a u32> {
-    // CHECK: %[[ENDP:.+]] = getelementptr inbounds i8, ptr %it, {{i32 4|i64 8}}
+    // CHECK: %[[ENDP:.+]] = getelementptr inbounds{{( nuw)?}} i8, ptr %it, {{i32 4|i64 8}}
     // CHECK: %[[END:.+]] = load ptr, ptr %[[ENDP]]
     // CHECK-SAME: !nonnull
     // CHECK-SAME: !noundef
@@ -31,7 +31,7 @@ pub fn slice_iter_next<'a>(it: &mut std::slice::Iter<'a, u32>) -> Option<&'a u32
 // CHECK-LABEL: @slice_iter_next_back(
 #[no_mangle]
 pub fn slice_iter_next_back<'a>(it: &mut std::slice::Iter<'a, u32>) -> Option<&'a u32> {
-    // CHECK: %[[ENDP:.+]] = getelementptr inbounds i8, ptr %it, {{i32 4|i64 8}}
+    // CHECK: %[[ENDP:.+]] = getelementptr inbounds{{( nuw)?}} i8, ptr %it, {{i32 4|i64 8}}
     // CHECK: %[[END:.+]] = load ptr, ptr %[[ENDP]]
     // CHECK-SAME: !nonnull
     // CHECK-SAME: !noundef
@@ -55,7 +55,7 @@ pub fn slice_iter_next_back<'a>(it: &mut std::slice::Iter<'a, u32>) -> Option<&'
 #[no_mangle]
 pub fn slice_iter_new(slice: &[u32]) -> std::slice::Iter<'_, u32> {
     // CHECK-NOT: slice
-    // CHECK: %[[END:.+]] = getelementptr inbounds i32{{.+}} %slice.0{{.+}} %slice.1
+    // CHECK: %[[END:.+]] = getelementptr inbounds{{( nuw)?}} i32{{.+}} %slice.0{{.+}} %slice.1
     // CHECK-NOT: slice
     // CHECK: insertvalue {{.+}} ptr %slice.0, 0
     // CHECK-NOT: slice
@@ -70,7 +70,7 @@ pub fn slice_iter_new(slice: &[u32]) -> std::slice::Iter<'_, u32> {
 #[no_mangle]
 pub fn slice_iter_mut_new(slice: &mut [u32]) -> std::slice::IterMut<'_, u32> {
     // CHECK-NOT: slice
-    // CHECK: %[[END:.+]] = getelementptr inbounds i32{{.+}} %slice.0{{.+}} %slice.1
+    // CHECK: %[[END:.+]] = getelementptr inbounds{{( nuw)?}} i32{{.+}} %slice.0{{.+}} %slice.1
     // CHECK-NOT: slice
     // CHECK: insertvalue {{.+}} ptr %slice.0, 0
     // CHECK-NOT: slice
@@ -83,7 +83,7 @@ pub fn slice_iter_mut_new(slice: &mut [u32]) -> std::slice::IterMut<'_, u32> {
 // CHECK-LABEL: @slice_iter_is_empty
 #[no_mangle]
 pub fn slice_iter_is_empty(it: &std::slice::Iter<'_, u32>) -> bool {
-    // CHECK: %[[ENDP:.+]] = getelementptr inbounds i8, ptr %it, {{i32 4|i64 8}}
+    // CHECK: %[[ENDP:.+]] = getelementptr inbounds{{( nuw)?}} i8, ptr %it, {{i32 4|i64 8}}
     // CHECK: %[[END:.+]] = load ptr, ptr %[[ENDP]]
     // CHECK-SAME: !nonnull
     // CHECK-SAME: !noundef
@@ -99,7 +99,7 @@ pub fn slice_iter_is_empty(it: &std::slice::Iter<'_, u32>) -> bool {
 // CHECK-LABEL: @slice_iter_len
 #[no_mangle]
 pub fn slice_iter_len(it: &std::slice::Iter<'_, u32>) -> usize {
-    // CHECK: %[[ENDP:.+]] = getelementptr inbounds i8, ptr %it, {{i32 4|i64 8}}
+    // CHECK: %[[ENDP:.+]] = getelementptr inbounds{{( nuw)?}} i8, ptr %it, {{i32 4|i64 8}}
     // CHECK: %[[END:.+]] = load ptr, ptr %[[ENDP]]
     // CHECK-SAME: !nonnull
     // CHECK-SAME: !noundef

@@ -29,7 +29,7 @@ pub enum TypeError<I: Interner> {
     Mutability,
     ArgumentMutability(usize),
     TupleSize(ExpectedFound<usize>),
-    FixedArraySize(ExpectedFound<u64>),
+    ArraySize(ExpectedFound<I::Const>),
     ArgCount,
 
     RegionsDoesNotOutlive(I::Region, I::Region),
@@ -51,6 +51,9 @@ pub enum TypeError<I: Interner> {
     ConstMismatch(ExpectedFound<I::Const>),
 
     IntrinsicCast,
+    /// `#[rustc_force_inline]` functions must be inlined and must not be codegened independently,
+    /// so casting to a function pointer must be prohibited.
+    ForceInlineCast,
     /// Safe `#[target_feature]` functions are not assignable to safe function pointers.
     TargetFeatureCast(I::DefId),
 }
@@ -69,7 +72,7 @@ impl<I: Interner> TypeError<I> {
         use self::TypeError::*;
         match self {
             CyclicTy(_) | CyclicConst(_) | SafetyMismatch(_) | PolarityMismatch(_) | Mismatch
-            | AbiMismatch(_) | FixedArraySize(_) | ArgumentSorts(..) | Sorts(_)
+            | AbiMismatch(_) | ArraySize(_) | ArgumentSorts(..) | Sorts(_)
             | VariadicMismatch(_) | TargetFeatureCast(_) => false,
 
             Mutability
@@ -83,6 +86,7 @@ impl<I: Interner> TypeError<I> {
             | ProjectionMismatched(_)
             | ExistentialMismatch(_)
             | ConstMismatch(_)
+            | ForceInlineCast
             | IntrinsicCast => true,
         }
     }

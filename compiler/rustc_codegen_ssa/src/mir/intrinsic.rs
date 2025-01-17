@@ -75,7 +75,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // If we're swapping something that's *not* an `OperandValue::Ref`,
         // then we can do it directly and avoid the alloca.
         // Otherwise, we'll let the fallback MIR body take care of it.
-        if let sym::typed_swap = name {
+        if let sym::typed_swap_nonoverlapping = name {
             let pointee_ty = fn_args.type_at(0);
             let pointee_layout = bx.layout_of(pointee_ty);
             if !bx.is_backend_ref(pointee_layout)

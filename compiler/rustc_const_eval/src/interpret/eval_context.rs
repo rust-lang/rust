@@ -268,7 +268,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
         // do not continue if typeck errors occurred (can only occur in local crate)
         if let Some(err) = body.tainted_by_errors {
-            throw_inval!(AlreadyReported(ReportedErrorInfo::tainted_by_errors(err)));
+            throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(err)));
         }
         interp_ok(body)
     }
@@ -317,7 +317,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Ok(None) => throw_inval!(TooGeneric),
 
             // FIXME(eddyb) this could be a bit more specific than `AlreadyReported`.
-            Err(error_reported) => throw_inval!(AlreadyReported(error_reported.into())),
+            Err(error_guaranteed) => throw_inval!(AlreadyReported(
+                ReportedErrorInfo::non_const_eval_error(error_guaranteed)
+            )),
         }
     }
 
@@ -585,13 +587,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     match err {
                         ErrorHandled::TooGeneric(..) => {},
                         ErrorHandled::Reported(reported, span) => {
-                            if reported.is_tainted_by_errors() {
-                                // const-eval will return "tainted" errors if e.g. the layout cannot
-                                // be computed as the type references non-existing names.
-                                // See <https://github.com/rust-lang/rust/issues/124348>.
-                            } else if reported.can_be_spurious() {
+                            if reported.is_allowed_in_infallible() {
                                 // These errors can just sometimes happen, even when the expression
-                                // is nominally "infallible", e.g. when running out of memory.
+                                // is nominally "infallible", e.g. when running out of memory
+                                // or when some layout could not be computed.
                             } else {
                                 // Looks like the const is not captured by `required_consts`, that's bad.
                                 span_bug!(span, "interpret const eval failure of {val:?} which is not in required_consts");

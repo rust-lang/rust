@@ -1,4 +1,6 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions, cvs};
+use crate::spec::{
+    Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions, cvs,
+};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -17,10 +19,11 @@ pub(crate) fn target() -> Target {
             os: "rtems".into(),
             families: cvs!["unix"],
             abi: "eabihf".into(),
+            llvm_floatabi: Some(FloatAbi::Hard),
             linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),
             linker: None,
             relocation_model: RelocModel::Static,
-            panic_strategy: PanicStrategy::Abort,
+            panic_strategy: PanicStrategy::Unwind,
             features: "+thumb2,+neon,+vfp3".into(),
             max_atomic_width: Some(64),
             emit_debug_gdb_scripts: false,

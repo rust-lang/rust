@@ -26,11 +26,6 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUnneededDrops {
                 if ty.ty.needs_drop(tcx, typing_env) {
                     continue;
                 }
-                if !tcx.consider_optimizing(|| {
-                    format!("RemoveUnneededDrops {:?}", body.source.def_id())
-                }) {
-                    continue;
-                }
                 debug!("SUCCESS: replacing `drop` with goto({:?})", target);
                 terminator.kind = TerminatorKind::Goto { target };
                 should_simplify = true;

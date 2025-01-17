@@ -252,6 +252,7 @@ use core::intrinsics::abort;
 use core::iter;
 use core::marker::{PhantomData, Unsize};
 use core::mem::{self, ManuallyDrop, align_of_val_raw};
+use core::num::NonZeroUsize;
 use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 #[cfg(not(no_global_oom_handling))]
@@ -307,7 +308,7 @@ fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
 /// `value.get_mut()`. This avoids conflicts with methods of the inner type `T`.
 ///
 /// [get_mut]: Rc::get_mut
-#[cfg_attr(not(bootstrap), doc(search_unbox))]
+#[doc(search_unbox)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Rc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
@@ -795,7 +796,7 @@ impl<T, A: Allocator> Rc<T, A> {
         let uninit_ptr: NonNull<_> = (unsafe { &mut *uninit_raw_ptr }).into();
         let init_ptr: NonNull<RcInner<T>> = uninit_ptr.cast();
 
-        let weak = Weak { ptr: init_ptr, alloc: alloc };
+        let weak = Weak { ptr: init_ptr, alloc };
 
         // It's important we don't give up ownership of the weak pointer, or
         // else the memory might be freed by the time `data_fn` returns. If
@@ -1082,6 +1083,26 @@ impl<T> Rc<[T]> {
                         as *mut RcInner<[mem::MaybeUninit<T>]>
                 },
             ))
+        }
+    }
+
+    /// Converts the reference-counted slice into a reference-counted array.
+    ///
+    /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
+    ///
+    /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
+    #[unstable(feature = "slice_as_array", issue = "133508")]
+    #[inline]
+    #[must_use]
+    pub fn into_array<const N: usize>(self) -> Option<Rc<[T; N]>> {
+        if self.len() == N {
+            let ptr = Self::into_raw(self) as *const [T; N];
+
+            // SAFETY: The underlying array of a slice has the exact same layout as an actual array `[T; N]` if `N` is equal to the slice's length.
+            let me = unsafe { Rc::from_raw(ptr) };
+            Some(me)
+        } else {
+            None
         }
     }
 }
@@ -1769,7 +1790,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// let x: Rc<&str> = Rc::new("Hello, world!");
     /// {
     ///     let s = String::from("Oh, no!");
-    ///     let mut y: Rc<&str> = x.clone().into();
+    ///     let mut y: Rc<&str> = x.clone();
     ///     unsafe {
     ///         // this is Undefined Behavior, because x's inner type
     ///         // is &'long str, not &'short str
@@ -2232,11 +2253,19 @@ impl<T: ?Sized, A: Allocator> Deref for Rc<T, A> {
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Rc<T, A> {}
 
+//#[unstable(feature = "unique_rc_arc", issue = "112566")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for UniqueRc<T, A> {}
+
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Weak<T, A> {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for Rc<T, A> {}
+
+//#[unstable(feature = "unique_rc_arc", issue = "112566")]
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl<T: ?Sized, A: Allocator> DerefPure for UniqueRc<T, A> {}
 
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
 impl<T: ?Sized> LegacyReceiver for Rc<T> {}
@@ -2659,7 +2688,7 @@ impl<T: Clone> From<&[T]> for Rc<[T]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
 impl<T: Clone> From<&mut [T]> for Rc<[T]> {
     /// Allocates a reference-counted slice and fills it by cloning `v`'s items.
     ///
@@ -2698,7 +2727,7 @@ impl From<&str> for Rc<str> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
 impl From<&mut str> for Rc<str> {
     /// Allocates a reference-counted string slice and copies `v` into it.
     ///
@@ -2999,12 +3028,7 @@ impl<T> Weak<T> {
     #[rustc_const_stable(feature = "const_weak_new", since = "1.73.0")]
     #[must_use]
     pub const fn new() -> Weak<T> {
-        Weak {
-            ptr: unsafe {
-                NonNull::new_unchecked(ptr::without_provenance_mut::<RcInner<T>>(usize::MAX))
-            },
-            alloc: Global,
-        }
+        Weak { ptr: NonNull::without_provenance(NonZeroUsize::MAX), alloc: Global }
     }
 }
 
@@ -3026,12 +3050,7 @@ impl<T, A: Allocator> Weak<T, A> {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn new_in(alloc: A) -> Weak<T, A> {
-        Weak {
-            ptr: unsafe {
-                NonNull::new_unchecked(ptr::without_provenance_mut::<RcInner<T>>(usize::MAX))
-            },
-            alloc,
-        }
+        Weak { ptr: NonNull::without_provenance(NonZeroUsize::MAX), alloc }
     }
 }
 
@@ -3684,20 +3703,264 @@ fn data_offset_align(align: usize) -> usize {
 /// previous example, `UniqueRc` allows for more flexibility in the construction of cyclic data,
 /// including fallible or async constructors.
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
-#[derive(Debug)]
 pub struct UniqueRc<
     T: ?Sized,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
     ptr: NonNull<RcInner<T>>,
-    phantom: PhantomData<RcInner<T>>,
+    // Define the ownership of `RcInner<T>` for drop-check
+    _marker: PhantomData<RcInner<T>>,
+    // Invariance is necessary for soundness: once other `Weak`
+    // references exist, we already have a form of shared mutability!
+    _marker2: PhantomData<*mut T>,
     alloc: A,
 }
+
+// Not necessary for correctness since `UniqueRc` contains `NonNull`,
+// but having an explicit negative impl is nice for documentation purposes
+// and results in nicer error messages.
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> !Send for UniqueRc<T, A> {}
+
+// Not necessary for correctness since `UniqueRc` contains `NonNull`,
+// but having an explicit negative impl is nice for documentation purposes
+// and results in nicer error messages.
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> !Sync for UniqueRc<T, A> {}
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<UniqueRc<U, A>>
     for UniqueRc<T, A>
 {
+}
+
+//#[unstable(feature = "unique_rc_arc", issue = "112566")]
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<UniqueRc<U>> for UniqueRc<T> {}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + fmt::Display, A: Allocator> fmt::Display for UniqueRc<T, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&**self, f)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + fmt::Debug, A: Allocator> fmt::Debug for UniqueRc<T, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&**self, f)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> fmt::Pointer for UniqueRc<T, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Pointer::fmt(&(&raw const **self), f)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> borrow::Borrow<T> for UniqueRc<T, A> {
+    fn borrow(&self) -> &T {
+        &**self
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> borrow::BorrowMut<T> for UniqueRc<T, A> {
+    fn borrow_mut(&mut self) -> &mut T {
+        &mut **self
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> AsRef<T> for UniqueRc<T, A> {
+    fn as_ref(&self) -> &T {
+        &**self
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> AsMut<T> for UniqueRc<T, A> {
+    fn as_mut(&mut self) -> &mut T {
+        &mut **self
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> Unpin for UniqueRc<T, A> {}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + PartialEq, A: Allocator> PartialEq for UniqueRc<T, A> {
+    /// Equality for two `UniqueRc`s.
+    ///
+    /// Two `UniqueRc`s are equal if their inner values are equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five == UniqueRc::new(5));
+    /// ```
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        PartialEq::eq(&**self, &**other)
+    }
+
+    /// Inequality for two `UniqueRc`s.
+    ///
+    /// Two `UniqueRc`s are not equal if their inner values are not equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five != UniqueRc::new(6));
+    /// ```
+    #[inline]
+    fn ne(&self, other: &Self) -> bool {
+        PartialEq::ne(&**self, &**other)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for UniqueRc<T, A> {
+    /// Partial comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `partial_cmp()` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    /// use std::cmp::Ordering;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert_eq!(Some(Ordering::Less), five.partial_cmp(&UniqueRc::new(6)));
+    /// ```
+    #[inline(always)]
+    fn partial_cmp(&self, other: &UniqueRc<T, A>) -> Option<Ordering> {
+        (**self).partial_cmp(&**other)
+    }
+
+    /// Less-than comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `<` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five < UniqueRc::new(6));
+    /// ```
+    #[inline(always)]
+    fn lt(&self, other: &UniqueRc<T, A>) -> bool {
+        **self < **other
+    }
+
+    /// 'Less than or equal to' comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `<=` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five <= UniqueRc::new(5));
+    /// ```
+    #[inline(always)]
+    fn le(&self, other: &UniqueRc<T, A>) -> bool {
+        **self <= **other
+    }
+
+    /// Greater-than comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `>` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five > UniqueRc::new(4));
+    /// ```
+    #[inline(always)]
+    fn gt(&self, other: &UniqueRc<T, A>) -> bool {
+        **self > **other
+    }
+
+    /// 'Greater than or equal to' comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `>=` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five >= UniqueRc::new(5));
+    /// ```
+    #[inline(always)]
+    fn ge(&self, other: &UniqueRc<T, A>) -> bool {
+        **self >= **other
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + Ord, A: Allocator> Ord for UniqueRc<T, A> {
+    /// Comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `cmp()` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    /// use std::cmp::Ordering;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert_eq!(Ordering::Less, five.cmp(&UniqueRc::new(6)));
+    /// ```
+    #[inline]
+    fn cmp(&self, other: &UniqueRc<T, A>) -> Ordering {
+        (**self).cmp(&**other)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + Eq, A: Allocator> Eq for UniqueRc<T, A> {}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + Hash, A: Allocator> Hash for UniqueRc<T, A> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        (**self).hash(state);
+    }
 }
 
 // Depends on A = Global
@@ -3735,7 +3998,7 @@ impl<T, A: Allocator> UniqueRc<T, A> {
             },
             alloc,
         ));
-        Self { ptr: ptr.into(), phantom: PhantomData, alloc }
+        Self { ptr: ptr.into(), _marker: PhantomData, _marker2: PhantomData, alloc }
     }
 }
 
@@ -3790,9 +4053,6 @@ impl<T: ?Sized, A: Allocator> Deref for UniqueRc<T, A> {
         unsafe { &self.ptr.as_ref().value }
     }
 }
-
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for UniqueRc<T> {}
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> DerefMut for UniqueRc<T, A> {

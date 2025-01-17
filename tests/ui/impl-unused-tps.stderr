@@ -7,6 +7,12 @@ LL | impl<T> Foo<T> for [isize; 0] {
 LL | impl<T, U> Foo<T> for U {
    | ^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `[isize; 0]`
 
+error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/impl-unused-tps.rs:32:9
+   |
+LL | impl<T, U> Bar for T {
+   |         ^ unconstrained type parameter
+
 error[E0119]: conflicting implementations of trait `Bar`
   --> $DIR/impl-unused-tps.rs:40:1
    |
@@ -44,12 +50,6 @@ error[E0207]: the type parameter `U` is not constrained by the impl trait, self 
   --> $DIR/impl-unused-tps.rs:13:9
    |
 LL | impl<T, U> Foo<T> for [isize; 1] {
-   |         ^ unconstrained type parameter
-
-error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/impl-unused-tps.rs:32:9
-   |
-LL | impl<T, U> Bar for T {
    |         ^ unconstrained type parameter
 
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates

@@ -112,7 +112,7 @@ pub(crate) fn find_all_refs(
         Some(name) => {
             let def = match NameClass::classify(sema, &name)? {
                 NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                NameClass::PatFieldShorthand { local_def: _, field_ref } => {
+                NameClass::PatFieldShorthand { local_def: _, field_ref, adt_subst: _ } => {
                     Definition::Field(field_ref)
                 }
             };
@@ -156,10 +156,12 @@ pub(crate) fn find_defs<'a>(
                 let def = match name_like {
                     ast::NameLike::NameRef(name_ref) => {
                         match NameRefClass::classify(sema, &name_ref)? {
-                            NameRefClass::Definition(def) => def,
-                            NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
-                                Definition::Local(local_ref)
-                            }
+                            NameRefClass::Definition(def, _) => def,
+                            NameRefClass::FieldShorthand {
+                                local_ref,
+                                field_ref: _,
+                                adt_subst: _,
+                            } => Definition::Local(local_ref),
                             NameRefClass::ExternCrateShorthand { decl, .. } => {
                                 Definition::ExternCrateDecl(decl)
                             }
@@ -167,14 +169,14 @@ pub(crate) fn find_defs<'a>(
                     }
                     ast::NameLike::Name(name) => match NameClass::classify(sema, &name)? {
                         NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                        NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
+                        NameClass::PatFieldShorthand { local_def, field_ref: _, adt_subst: _ } => {
                             Definition::Local(local_def)
                         }
                     },
                     ast::NameLike::Lifetime(lifetime) => {
                         NameRefClass::classify_lifetime(sema, &lifetime)
                             .and_then(|class| match class {
-                                NameRefClass::Definition(it) => Some(it),
+                                NameRefClass::Definition(it, _) => Some(it),
                                 _ => None,
                             })
                             .or_else(|| {
@@ -203,14 +205,14 @@ fn retain_adt_literal_usages(
                     reference
                         .name
                         .as_name_ref()
-                        .map_or(false, |name_ref| is_enum_lit_name_ref(sema, enum_, name_ref))
+                        .is_some_and(|name_ref| is_enum_lit_name_ref(sema, enum_, name_ref))
                 })
             });
             usages.references.retain(|_, it| !it.is_empty());
         }
         Definition::Adt(_) | Definition::Variant(_) => {
             refs.for_each(|it| {
-                it.retain(|reference| reference.name.as_name_ref().map_or(false, is_lit_name_ref))
+                it.retain(|reference| reference.name.as_name_ref().is_some_and(is_lit_name_ref))
             });
             usages.references.retain(|_, it| !it.is_empty());
         }

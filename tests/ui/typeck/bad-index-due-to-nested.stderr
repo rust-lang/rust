@@ -12,7 +12,7 @@ LL | impl<K, V> Index<&K> for HashMap<K, V>
 LL | where
 LL |     K: Hash,
    |        ---- unsatisfied trait bound introduced here
-help: consider restricting type parameter `K`
+help: consider restricting type parameter `K` with trait `Hash`
    |
 LL | fn index<'a, K: std::hash::Hash, V>(map: &'a HashMap<K, V>, k: K) -> &'a V {
    |               +++++++++++++++++
@@ -31,7 +31,7 @@ LL | impl<K, V> Index<&K> for HashMap<K, V>
 ...
 LL |     V: Copy,
    |        ---- unsatisfied trait bound introduced here
-help: consider restricting type parameter `V`
+help: consider restricting type parameter `V` with trait `Copy`
    |
 LL | fn index<'a, K, V: std::marker::Copy>(map: &'a HashMap<K, V>, k: K) -> &'a V {
    |                  +++++++++++++++++++

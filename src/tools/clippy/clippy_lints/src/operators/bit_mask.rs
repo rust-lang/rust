@@ -1,5 +1,6 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::is_from_proc_macro;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_span::Span;
@@ -35,9 +36,9 @@ fn invert_cmp(cmp: BinOpKind) -> BinOpKind {
     }
 }
 
-fn check_compare(cx: &LateContext<'_>, bit_op: &Expr<'_>, cmp_op: BinOpKind, cmp_value: u128, span: Span) {
+fn check_compare<'a>(cx: &LateContext<'a>, bit_op: &Expr<'a>, cmp_op: BinOpKind, cmp_value: u128, span: Span) {
     if let ExprKind::Binary(op, left, right) = &bit_op.kind {
-        if op.node != BinOpKind::BitAnd && op.node != BinOpKind::BitOr {
+        if op.node != BinOpKind::BitAnd && op.node != BinOpKind::BitOr || is_from_proc_macro(cx, bit_op) {
             return;
         }
         if let Some(mask) = fetch_int_literal(cx, right).or_else(|| fetch_int_literal(cx, left)) {

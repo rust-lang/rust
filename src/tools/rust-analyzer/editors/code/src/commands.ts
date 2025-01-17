@@ -1139,10 +1139,36 @@ export function peekTests(ctx: CtxInit): Cmd {
     };
 }
 
+function isUpdatingTest(runnable: ra.Runnable): boolean {
+    if (!isCargoRunnableArgs(runnable.args)) {
+        return false;
+    }
+
+    const env = runnable.args.environment;
+    return env ? ["UPDATE_EXPECT", "INSTA_UPDATE", "SNAPSHOTS"].some((key) => key in env) : false;
+}
+
 export function runSingle(ctx: CtxInit): Cmd {
     return async (runnable: ra.Runnable) => {
         const editor = ctx.activeRustEditor;
         if (!editor) return;
+
+        if (isUpdatingTest(runnable) && ctx.config.askBeforeUpdateTest) {
+            const selection = await vscode.window.showInformationMessage(
+                "rust-analyzer",
+                { detail: "Do you want to update tests?", modal: true },
+                "Update Now",
+                "Update (and Don't ask again)",
+            );
+
+            if (selection !== "Update Now" && selection !== "Update (and Don't ask again)") {
+                return;
+            }
+
+            if (selection === "Update (and Don't ask again)") {
+                await ctx.config.setAskBeforeUpdateTest(false);
+            }
+        }
 
         const task = await createTaskFromRunnable(runnable, ctx.config);
         task.group = vscode.TaskGroup.Build;

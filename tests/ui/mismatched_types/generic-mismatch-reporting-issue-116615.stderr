@@ -14,7 +14,7 @@ LL | fn foo<T>(a: T, b: T) {}
    |    ^^^ -  ----  ---- this parameter needs to match the integer type of `a`
    |        |  |
    |        |  `b` needs to match the integer type of this parameter
-   |        `a` and `b` all reference this parameter T
+   |        `a` and `b` both reference this parameter `T`
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/generic-mismatch-reporting-issue-116615.rs:8:5
@@ -38,7 +38,7 @@ LL | fn foo_multi_same<T>(a: T, b: T, c: T, d: T, e: T, f: i32) {}
    |                   |  |     |     this parameter needs to match the `&str` type of `a` and `b`
    |                   |  |     `c`, `d` and `e` need to match the `&str` type of this parameter
    |                   |  `c`, `d` and `e` need to match the `&str` type of this parameter
-   |                   `a`, `b`, `c`, `d` and `e` all reference this parameter T
+   |                   `a`, `b`, `c`, `d` and `e` all reference this parameter `T`
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/generic-mismatch-reporting-issue-116615.rs:10:5
@@ -65,8 +65,8 @@ LL | fn foo_multi_generics<S, T>(a: T, b: T, c: T, d: T, e: T, f: S, g: S) {}
    |                       |  |  |     |     `d` and `e` need to match the `&str` type of this parameter
    |                       |  |  |     `d` and `e` need to match the `&str` type of this parameter
    |                       |  |  `d` and `e` need to match the `&str` type of this parameter
-   |                       |  `a`, `b`, `c`, `d` and `e` all reference this parameter T
-   |                       `f` and `g` all reference this parameter S
+   |                       |  `a`, `b`, `c`, `d` and `e` all reference this parameter `T`
+   |                       `f` and `g` both reference this parameter `S`
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/generic-mismatch-reporting-issue-116615.rs:12:5
@@ -90,7 +90,7 @@ LL | fn foo_multi_same<T>(a: T, b: T, c: T, d: T, e: T, f: i32) {}
    |                   |  |     |     this parameter needs to match the `&str` type of `a`, `d` and `e`
    |                   |  |     this parameter needs to match the `&str` type of `a`, `d` and `e`
    |                   |  `b` and `c` need to match the `&str` type of this parameter
-   |                   `a`, `b`, `c`, `d` and `e` all reference this parameter T
+   |                   `a`, `b`, `c`, `d` and `e` all reference this parameter `T`
 
 error: aborting due to 4 previous errors
 

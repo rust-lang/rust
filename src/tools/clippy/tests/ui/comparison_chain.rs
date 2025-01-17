@@ -1,3 +1,4 @@
+//@no-rustfix
 #![allow(dead_code)]
 #![warn(clippy::comparison_chain)]
 
@@ -235,6 +236,18 @@ const fn sign_i8(n: i8) -> Sign {
         Sign::Positive
     } else {
         Sign::Negative
+    }
+}
+
+fn needs_parens() -> &'static str {
+    let (x, y) = (1, 2);
+    if x + 1 > y * 2 {
+        //~^ ERROR: `if` chain can be rewritten with `match`
+        "aa"
+    } else if x + 1 < y * 2 {
+        "bb"
+    } else {
+        "cc"
     }
 }
 

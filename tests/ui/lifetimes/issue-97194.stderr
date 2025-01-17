@@ -7,10 +7,7 @@ LL |       fn bget(&self, index: [usize; Self::DIM]) -> bool {
    |  ________^^^^___________________________________________-
    | |        |
    | |        cannot have a body
-LL | |
-LL | |
-LL | |
-LL | |         type T<'a> = &'a str;
+...  |
 LL | |     }
    | |_____- help: remove the invalid body: `;`
    |

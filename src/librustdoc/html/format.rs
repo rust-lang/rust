@@ -9,12 +9,13 @@
 
 use std::borrow::Cow;
 use std::cell::Cell;
+use std::cmp::Ordering;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
 
 use itertools::Itertools;
 use rustc_abi::ExternAbi;
-use rustc_attr::{ConstStability, StabilityLevel, StableSince};
+use rustc_attr_parsing::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -281,7 +282,8 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
 
                     match pred {
                         clean::WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
-                            print_higher_ranked_params_with_space(bound_params, cx).fmt(f)?;
+                            print_higher_ranked_params_with_space(bound_params, cx, "for")
+                                .fmt(f)?;
                             ty.print(cx).fmt(f)?;
                             f.write_str(":")?;
                             if !bounds.is_empty() {
@@ -385,7 +387,7 @@ impl clean::ConstantKind {
 impl clean::PolyTrait {
     fn print<'a, 'tcx: 'a>(&'a self, cx: &'a Context<'tcx>) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
-            print_higher_ranked_params_with_space(&self.generic_params, cx).fmt(f)?;
+            print_higher_ranked_params_with_space(&self.generic_params, cx, "for").fmt(f)?;
             self.trait_.print(cx).fmt(f)
         })
     }
@@ -785,16 +787,20 @@ pub(crate) fn href_relative_parts<'fqp>(
             );
         }
     }
-    // e.g. linking to std::sync::atomic from std::sync
-    if relative_to_fqp.len() < fqp.len() {
-        Box::new(fqp[relative_to_fqp.len()..fqp.len()].iter().copied())
-    // e.g. linking to std::sync from std::sync::atomic
-    } else if fqp.len() < relative_to_fqp.len() {
-        let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
-        Box::new(iter::repeat(sym::dotdot).take(dissimilar_part_count))
-    // linking to the same module
-    } else {
-        Box::new(iter::empty())
+    match relative_to_fqp.len().cmp(&fqp.len()) {
+        Ordering::Less => {
+            // e.g. linking to std::sync::atomic from std::sync
+            Box::new(fqp[relative_to_fqp.len()..fqp.len()].iter().copied())
+        }
+        Ordering::Greater => {
+            // e.g. linking to std::sync from std::sync::atomic
+            let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
+            Box::new(iter::repeat(sym::dotdot).take(dissimilar_part_count))
+        }
+        Ordering::Equal => {
+            // linking to the same module
+            Box::new(iter::empty())
+        }
     }
 }
 
@@ -963,10 +969,12 @@ fn tybounds<'a, 'tcx: 'a>(
 fn print_higher_ranked_params_with_space<'a, 'tcx: 'a>(
     params: &'a [clean::GenericParamDef],
     cx: &'a Context<'tcx>,
+    keyword: &'static str,
 ) -> impl Display + 'a + Captures<'tcx> {
     display_fn(move |f| {
         if !params.is_empty() {
-            f.write_str(if f.alternate() { "for<" } else { "for&lt;" })?;
+            f.write_str(keyword)?;
+            f.write_str(if f.alternate() { "<" } else { "&lt;" })?;
             comma_sep(params.iter().map(|lt| lt.print(cx)), true).fmt(f)?;
             f.write_str(if f.alternate() { "> " } else { "&gt; " })?;
         }
@@ -1022,7 +1030,7 @@ fn fmt_type(
             primitive_link(f, prim, format_args!("{}", prim.as_sym().as_str()), cx)
         }
         clean::BareFunction(ref decl) => {
-            print_higher_ranked_params_with_space(&decl.generic_params, cx).fmt(f)?;
+            print_higher_ranked_params_with_space(&decl.generic_params, cx, "for").fmt(f)?;
             decl.safety.print_with_space().fmt(f)?;
             print_abi_with_space(decl.abi).fmt(f)?;
             if f.alternate() {
@@ -1031,6 +1039,10 @@ fn fmt_type(
                 primitive_link(f, PrimitiveType::Fn, format_args!("fn"), cx)?;
             }
             decl.decl.print(cx).fmt(f)
+        }
+        clean::UnsafeBinder(ref binder) => {
+            print_higher_ranked_params_with_space(&binder.generic_params, cx, "unsafe").fmt(f)?;
+            binder.ty.print(cx).fmt(f)
         }
         clean::Tuple(ref typs) => match &typs[..] {
             &[] => primitive_link(f, PrimitiveType::Unit, format_args!("()"), cx),
@@ -1349,7 +1361,7 @@ impl clean::Impl {
             // Hardcoded anchor library/core/src/primitive_docs.rs
             // Link should match `# Trait implementations`
 
-            print_higher_ranked_params_with_space(&bare_fn.generic_params, cx).fmt(f)?;
+            print_higher_ranked_params_with_space(&bare_fn.generic_params, cx, "for").fmt(f)?;
             bare_fn.safety.print_with_space().fmt(f)?;
             print_abi_with_space(bare_fn.abi).fmt(f)?;
             let ellipsis = if bare_fn.decl.c_variadic { ", ..." } else { "" };
@@ -1384,7 +1396,7 @@ impl clean::Impl {
                 write!(f, ">")?;
             }
         } else {
-            fmt_type(&type_, f, use_absolute, cx)?;
+            fmt_type(type_, f, use_absolute, cx)?;
         }
         Ok(())
     }
@@ -1531,14 +1543,14 @@ impl clean::FnDecl {
                 (None, Some(last_i)) if i != last_i => write!(f, ", ")?,
                 (None, Some(_)) => (),
                 (Some(n), Some(last_i)) if i != last_i => write!(f, ",\n{}", Indent(n + 4))?,
-                (Some(_), Some(_)) => write!(f, ",\n")?,
+                (Some(_), Some(_)) => writeln!(f, ",")?,
             }
         }
 
         if self.c_variadic {
             match line_wrapping_indent {
                 None => write!(f, ", ...")?,
-                Some(n) => write!(f, "{}...\n", Indent(n + 4))?,
+                Some(n) => writeln!(f, "{}...", Indent(n + 4))?,
             };
         }
 
@@ -1621,9 +1633,15 @@ pub(crate) trait PrintWithSpace {
 
 impl PrintWithSpace for hir::Safety {
     fn print_with_space(&self) -> &str {
+        self.prefix_str()
+    }
+}
+
+impl PrintWithSpace for hir::HeaderSafety {
+    fn print_with_space(&self) -> &str {
         match self {
-            hir::Safety::Unsafe => "unsafe ",
-            hir::Safety::Safe => "",
+            hir::HeaderSafety::SafeTargetFeatures => "",
+            hir::HeaderSafety::Normal(safety) => safety.print_with_space(),
         }
     }
 }

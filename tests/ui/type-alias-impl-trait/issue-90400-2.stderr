@@ -21,7 +21,7 @@ note: this definition site has more where clauses than the opaque type
    |
 LL |     fn foo<B: Bar>(&self, bar: B) -> Self::FooFn<B> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: consider restricting type parameter `B`
+help: consider restricting type parameter `B` with trait `Bar`
    |
 LL |     type FooFn<B: Bar> = impl Baz;
    |                 +++++

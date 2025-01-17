@@ -17,9 +17,9 @@ Target triples available so far:
 ## Requirements
 
 The easiest way to obtain these targets is cross-compilation, but native build from `x86_64-pc-windows-gnu` is possible with few hacks which I don't recommend.
-Std support is expected to be on pair with `*-pc-windows-gnu`.
+Std support is expected to be on par with `*-pc-windows-gnu`.
 
-Binaries for this target should be at least on pair with `*-pc-windows-gnu` in terms of requirements and functionality.
+Binaries for this target should be at least on par with `*-pc-windows-gnu` in terms of requirements and functionality.
 
 Those targets follow Windows calling convention for `extern "C"`.
 

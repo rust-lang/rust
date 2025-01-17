@@ -1733,7 +1733,7 @@ m!(C("0"));
 macro_rules! m {
     ($k:expr) => { fn f() { K::$k; } }
 }
-/* parse error: expected identifier */
+/* parse error: expected identifier, `self`, `super`, `crate`, or `Self` */
 /* parse error: expected SEMICOLON */
 /* parse error: expected SEMICOLON */
 /* parse error: expected expression, item or let statement */
@@ -1759,8 +1759,9 @@ fn f() {
 //                   NAME_REF@6..7
 //                     IDENT@6..7 "K"
 //               COLON2@7..9 "::"
-//               ERROR@9..10
-//                 L_PAREN@9..10 "("
+//               PATH_SEGMENT@9..10
+//                 ERROR@9..10
+//                   L_PAREN@9..10 "("
 //         EXPR_STMT@10..16
 //           CALL_EXPR@10..16
 //             PATH_EXPR@10..11

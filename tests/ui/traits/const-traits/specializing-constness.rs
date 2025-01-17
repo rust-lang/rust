@@ -21,8 +21,7 @@ impl<T: ~const Spec> const A for T {
 }
 
 impl<T: Spec + Sup> A for T {
-//~^ ERROR: cannot specialize
-//FIXME(const_trait_impl) ~| ERROR: missing `~const` qualifier
+    //~^ ERROR conflicting implementations of trait `A`
     fn a() -> u32 {
         3
     }

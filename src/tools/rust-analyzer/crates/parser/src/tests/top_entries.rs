@@ -30,22 +30,20 @@ fn source_file() {
         TopEntryPoint::SourceFile,
         "@error@",
         expect![[r#"
-        SOURCE_FILE
-          ERROR
-            AT "@"
-          MACRO_CALL
-            PATH
-              PATH_SEGMENT
-                NAME_REF
-                  IDENT "error"
-          ERROR
-            AT "@"
-        error 0: expected an item
-        error 6: expected BANG
-        error 6: expected `{`, `[`, `(`
-        error 6: expected SEMICOLON
-        error 6: expected an item
-    "#]],
+            SOURCE_FILE
+              ERROR
+                AT "@"
+              ERROR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "error"
+              ERROR
+                AT "@"
+            error 0: expected an item
+            error 6: expected an item
+            error 6: expected an item
+        "#]],
     );
 }
 

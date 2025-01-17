@@ -370,12 +370,10 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// // example code where clippy issues a warning
     /// let _ = "str".to_string();
     /// ```
     /// Use instead:
     /// ```no_run
-    /// // example code which does not raise clippy warning
     /// let _ = "str".to_owned();
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -424,13 +422,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// // example code where clippy issues a warning
     /// let msg = String::from("Hello World");
     /// let _ = msg.to_string();
     /// ```
     /// Use instead:
     /// ```no_run
-    /// // example code which does not raise clippy warning
     /// let msg = String::from("Hello World");
     /// let _ = msg.clone();
     /// ```

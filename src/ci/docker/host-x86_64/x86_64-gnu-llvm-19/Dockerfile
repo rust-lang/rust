@@ -54,10 +54,18 @@ ENV RUST_CONFIGURE_ARGS \
       --set rust.randomize-layout=true \
       --set rust.thin-lto-import-instr-limit=10
 
-COPY host-x86_64/dist-x86_64-linux/shared.sh /scripts/
-COPY host-x86_64/dist-x86_64-linux/build-gccjit.sh /scripts/
+COPY scripts/shared.sh /scripts/
+COPY scripts/build-gccjit.sh /scripts/
 
 RUN /scripts/build-gccjit.sh /scripts
 
-COPY scripts/x86_64-gnu-llvm.sh /tmp/script.sh
-ENV SCRIPT /tmp/script.sh
+ARG SCRIPT_ARG
+
+COPY scripts/add_dummy_commit.sh /tmp/
+COPY scripts/x86_64-gnu-llvm.sh /tmp/
+COPY scripts/x86_64-gnu-llvm2.sh /tmp/
+COPY scripts/x86_64-gnu-llvm3.sh /tmp/
+COPY scripts/stage_2_test_set1.sh /tmp/
+COPY scripts/stage_2_test_set2.sh /tmp/
+
+ENV SCRIPT "/tmp/add_dummy_commit.sh && /tmp/${SCRIPT_ARG}"

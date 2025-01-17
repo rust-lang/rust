@@ -1,5 +1,4 @@
 //@ run-pass
-//@ pretty-expanded FIXME #23616
 
 trait A {
     fn dummy(&self) { } //~ WARN method `dummy` is never used

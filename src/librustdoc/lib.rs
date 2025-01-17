@@ -36,7 +36,7 @@ extern crate pulldown_cmark;
 extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
-extern crate rustc_attr;
+extern crate rustc_attr_parsing;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_errors;
@@ -68,7 +68,7 @@ extern crate test;
 // See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
 // about jemalloc.
 #[cfg(feature = "jemalloc")]
-extern crate jemalloc_sys;
+extern crate tikv_jemalloc_sys as jemalloc_sys;
 
 use std::env::{self, VarError};
 use std::io::{self, IsTerminal};
@@ -76,7 +76,7 @@ use std::process;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
-use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, FatalError};
+use rustc_errors::DiagCtxtHandle;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_option};
@@ -179,7 +179,8 @@ pub fn main() {
 
     let exit_code = rustc_driver::catch_with_exit_code(|| {
         let at_args = rustc_driver::args::raw_args(&early_dcx)?;
-        main_args(&mut early_dcx, &at_args, using_internal_features)
+        main_args(&mut early_dcx, &at_args, using_internal_features);
+        Ok(())
     });
     process::exit(exit_code);
 }
@@ -641,8 +642,24 @@ fn opts() -> Vec<RustcOptGroup> {
             "Includes trait implementations and other crate info from provided path. Only use with --merge=finalize",
             "path/to/doc.parts/<crate-name>",
         ),
+        opt(Unstable, Flag, "", "html-no-source", "Disable HTML source code pages generation", ""),
+        opt(
+            Unstable,
+            Multi,
+            "",
+            "doctest-compilation-args",
+            "",
+            "add arguments to be used when compiling doctests",
+        ),
+        opt(
+            Unstable,
+            FlagMulti,
+            "",
+            "disable-minification",
+            "disable the minification of CSS/JS files (perma-unstable, do not use with cached files)",
+            "",
+        ),
         // deprecated / removed options
-        opt(Unstable, FlagMulti, "", "disable-minification", "removed", ""),
         opt(
             Stable,
             Multi,
@@ -683,7 +700,6 @@ fn opts() -> Vec<RustcOptGroup> {
             "removed, see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information",
             "[rust]",
         ),
-        opt(Unstable, Flag, "", "html-no-source", "Disable HTML source code pages generation", ""),
     ]
 }
 
@@ -699,13 +715,10 @@ fn usage(argv0: &str) {
     );
 }
 
-/// A result type used by several functions under `main()`.
-type MainResult = Result<(), ErrorGuaranteed>;
-
-pub(crate) fn wrap_return(dcx: DiagCtxtHandle<'_>, res: Result<(), String>) -> MainResult {
+pub(crate) fn wrap_return(dcx: DiagCtxtHandle<'_>, res: Result<(), String>) {
     match res {
-        Ok(()) => dcx.has_errors().map_or(Ok(()), Err),
-        Err(err) => Err(dcx.err(err)),
+        Ok(()) => dcx.abort_if_errors(),
+        Err(err) => dcx.fatal(err),
     }
 }
 
@@ -714,17 +727,17 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     renderopts: config::RenderOptions,
     cache: formats::cache::Cache,
     tcx: TyCtxt<'tcx>,
-) -> MainResult {
+) {
     match formats::run_format::<T>(krate, renderopts, cache, tcx) {
-        Ok(_) => tcx.dcx().has_errors().map_or(Ok(()), Err),
+        Ok(_) => tcx.dcx().abort_if_errors(),
         Err(e) => {
             let mut msg =
-                tcx.dcx().struct_err(format!("couldn't generate documentation: {}", e.error));
+                tcx.dcx().struct_fatal(format!("couldn't generate documentation: {}", e.error));
             let file = e.file.display().to_string();
             if !file.is_empty() {
                 msg.note(format!("failed to create or modify \"{file}\""));
             }
-            Err(msg.emit())
+            msg.emit();
         }
     }
 }
@@ -759,7 +772,7 @@ fn main_args(
     early_dcx: &mut EarlyDiagCtxt,
     at_args: &[String],
     using_internal_features: Arc<AtomicBool>,
-) -> MainResult {
+) {
     // Throw away the first argument, the name of the binary.
     // In case of at_args being empty, as might be the case by
     // passing empty argument array to execve under some platforms,
@@ -770,7 +783,7 @@ fn main_args(
     // the compiler with @empty_file as argv[0] and no more arguments.
     let at_args = at_args.get(1..).unwrap_or_default();
 
-    let args = rustc_driver::args::arg_expand_all(early_dcx, at_args)?;
+    let args = rustc_driver::args::arg_expand_all(early_dcx, at_args);
 
     let mut options = getopts::Options::new();
     for option in opts() {
@@ -788,7 +801,7 @@ fn main_args(
     let (input, options, render_options) =
         match config::Options::from_matches(early_dcx, &matches, args) {
             Some(opts) => opts,
-            None => return Ok(()),
+            None => return,
         };
 
     let dcx =
@@ -848,58 +861,51 @@ fn main_args(
 
     let config = core::create_config(input, options, &render_options, using_internal_features);
 
+    let registered_lints = config.register_lints.is_some();
+
     interface::run_compiler(config, |compiler| {
         let sess = &compiler.sess;
 
         if sess.opts.describe_lints {
-            rustc_driver::describe_lints(sess);
-            return Ok(());
+            rustc_driver::describe_lints(sess, registered_lints);
+            return;
         }
 
-        compiler.enter(|queries| {
-            let Ok(mut gcx) = queries.global_ctxt() else { FatalError.raise() };
+        let krate = rustc_interface::passes::parse(sess);
+        rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
             if sess.dcx().has_errors().is_some() {
                 sess.dcx().fatal("Compilation failed, aborting rustdoc");
             }
 
-            gcx.enter(|tcx| {
-                let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {
-                    core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
-                })?;
-                info!("finished with rustc");
+            let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {
+                core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
+            });
+            info!("finished with rustc");
 
-                if let Some(options) = scrape_examples_options {
-                    return scrape_examples::run(
-                        krate,
-                        render_opts,
-                        cache,
-                        tcx,
-                        options,
-                        bin_crate,
-                    );
-                }
+            if let Some(options) = scrape_examples_options {
+                return scrape_examples::run(krate, render_opts, cache, tcx, options, bin_crate);
+            }
 
-                cache.crate_version = crate_version;
+            cache.crate_version = crate_version;
 
-                if show_coverage {
-                    // if we ran coverage, bail early, we don't need to also generate docs at this point
-                    // (also we didn't load in any of the useful passes)
-                    return Ok(());
-                } else if run_check {
-                    // Since we're in "check" mode, no need to generate anything beyond this point.
-                    return Ok(());
-                }
+            if show_coverage {
+                // if we ran coverage, bail early, we don't need to also generate docs at this point
+                // (also we didn't load in any of the useful passes)
+                return;
+            } else if run_check {
+                // Since we're in "check" mode, no need to generate anything beyond this point.
+                return;
+            }
 
-                info!("going to format");
-                match output_format {
-                    config::OutputFormat::Html => sess.time("render_html", || {
-                        run_renderer::<html::render::Context<'_>>(krate, render_opts, cache, tcx)
-                    }),
-                    config::OutputFormat::Json => sess.time("render_json", || {
-                        run_renderer::<json::JsonRenderer<'_>>(krate, render_opts, cache, tcx)
-                    }),
-                }
-            })
+            info!("going to format");
+            match output_format {
+                config::OutputFormat::Html => sess.time("render_html", || {
+                    run_renderer::<html::render::Context<'_>>(krate, render_opts, cache, tcx)
+                }),
+                config::OutputFormat::Json => sess.time("render_json", || {
+                    run_renderer::<json::JsonRenderer<'_>>(krate, render_opts, cache, tcx)
+                }),
+            }
         })
     })
 }

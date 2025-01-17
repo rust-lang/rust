@@ -7,7 +7,7 @@ use std::ops::ControlFlow;
 use base_db::CrateId;
 use chalk_ir::{cast::Cast, UniverseIndex, WithKind};
 use hir_def::{
-    data::{adt::StructFlags, ImplData},
+    data::{adt::StructFlags, ImplData, TraitFlags},
     nameres::DefMap,
     AssocItemId, BlockId, ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup,
     ModuleId, TraitId,
@@ -377,7 +377,7 @@ pub(crate) fn incoherent_inherent_impl_crates(
 
     for krate in crate_graph.transitive_deps(krate) {
         let impls = db.inherent_impls_in_crate(krate);
-        if impls.map.get(&fp).map_or(false, |v| !v.is_empty()) {
+        if impls.map.get(&fp).is_some_and(|v| !v.is_empty()) {
             res.push(krate);
         }
     }
@@ -419,11 +419,17 @@ pub fn def_crates(
         }
         TyKind::Dyn(_) => {
             let trait_id = ty.dyn_trait()?;
-            Some(if db.trait_data(trait_id).rustc_has_incoherent_inherent_impls {
-                db.incoherent_inherent_impl_crates(cur_crate, TyFingerprint::Dyn(trait_id))
-            } else {
-                smallvec![trait_id.module(db.upcast()).krate()]
-            })
+            Some(
+                if db
+                    .trait_data(trait_id)
+                    .flags
+                    .contains(TraitFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS)
+                {
+                    db.incoherent_inherent_impl_crates(cur_crate, TyFingerprint::Dyn(trait_id))
+                } else {
+                    smallvec![trait_id.module(db.upcast()).krate()]
+                },
+            )
         }
         // for primitives, there may be impls in various places (core and alloc
         // mostly). We just check the whole crate graph for crates with impls
@@ -805,8 +811,8 @@ fn is_inherent_impl_coherent(
         | TyKind::Scalar(_) => def_map.is_rustc_coherence_is_core(),
 
         &TyKind::Adt(AdtId(adt), _) => adt.module(db.upcast()).krate() == def_map.krate(),
-        TyKind::Dyn(it) => it.principal().map_or(false, |trait_ref| {
-            from_chalk_trait_id(trait_ref.trait_id).module(db.upcast()).krate() == def_map.krate()
+        TyKind::Dyn(it) => it.principal_id().is_some_and(|trait_id| {
+            from_chalk_trait_id(trait_id).module(db.upcast()).krate() == def_map.krate()
         }),
 
         _ => true,
@@ -834,9 +840,10 @@ fn is_inherent_impl_coherent(
                     .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL),
                 hir_def::AdtId::EnumId(it) => db.enum_data(it).rustc_has_incoherent_inherent_impls,
             },
-            TyKind::Dyn(it) => it.principal().map_or(false, |trait_ref| {
-                db.trait_data(from_chalk_trait_id(trait_ref.trait_id))
-                    .rustc_has_incoherent_inherent_impls
+            TyKind::Dyn(it) => it.principal_id().is_some_and(|trait_id| {
+                db.trait_data(from_chalk_trait_id(trait_id))
+                    .flags
+                    .contains(TraitFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS)
             }),
 
             _ => false,
@@ -896,8 +903,8 @@ pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
         match unwrap_fundamental(ty).kind(Interner) {
             &TyKind::Adt(AdtId(id), _) => is_local(id.module(db.upcast()).krate()),
             TyKind::Error => true,
-            TyKind::Dyn(it) => it.principal().map_or(false, |trait_ref| {
-                is_local(from_chalk_trait_id(trait_ref.trait_id).module(db.upcast()).krate())
+            TyKind::Dyn(it) => it.principal_id().is_some_and(|trait_id| {
+                is_local(from_chalk_trait_id(trait_id).module(db.upcast()).krate())
             }),
             _ => false,
         }
@@ -914,7 +921,7 @@ pub fn iterate_path_candidates(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
-    callback: &mut dyn FnMut(AssocItemId) -> ControlFlow<()>,
+    callback: &mut dyn MethodCandidateCallback,
 ) -> ControlFlow<()> {
     iterate_method_candidates_dyn(
         ty,
@@ -925,7 +932,7 @@ pub fn iterate_path_candidates(
         name,
         LookupMode::Path,
         // the adjustments are not relevant for path lookup
-        &mut |_, id, _| callback(id),
+        callback,
     )
 }
 
@@ -937,7 +944,7 @@ pub fn iterate_method_candidates_dyn(
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
     mode: LookupMode,
-    callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
+    callback: &mut dyn MethodCandidateCallback,
 ) -> ControlFlow<()> {
     let _p = tracing::info_span!(
         "iterate_method_candidates_dyn",
@@ -1007,7 +1014,7 @@ fn iterate_method_candidates_with_autoref(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
+    callback: &mut dyn MethodCandidateCallback,
 ) -> ControlFlow<()> {
     if receiver_ty.value.is_general_var(Interner, &receiver_ty.binders) {
         // don't try to resolve methods on unknown types
@@ -1022,7 +1029,7 @@ fn iterate_method_candidates_with_autoref(
             traits_in_scope,
             visible_from_module,
             name,
-            &mut callback,
+            callback,
         )
     };
 
@@ -1052,6 +1059,45 @@ fn iterate_method_candidates_with_autoref(
     iterate_method_candidates_by_receiver(ref_muted, first_adjustment.with_autoref(Mutability::Mut))
 }
 
+pub trait MethodCandidateCallback {
+    fn on_inherent_method(
+        &mut self,
+        adjustments: ReceiverAdjustments,
+        item: AssocItemId,
+        is_visible: bool,
+    ) -> ControlFlow<()>;
+
+    fn on_trait_method(
+        &mut self,
+        adjustments: ReceiverAdjustments,
+        item: AssocItemId,
+        is_visible: bool,
+    ) -> ControlFlow<()>;
+}
+
+impl<F> MethodCandidateCallback for F
+where
+    F: FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
+{
+    fn on_inherent_method(
+        &mut self,
+        adjustments: ReceiverAdjustments,
+        item: AssocItemId,
+        is_visible: bool,
+    ) -> ControlFlow<()> {
+        self(adjustments, item, is_visible)
+    }
+
+    fn on_trait_method(
+        &mut self,
+        adjustments: ReceiverAdjustments,
+        item: AssocItemId,
+        is_visible: bool,
+    ) -> ControlFlow<()> {
+        self(adjustments, item, is_visible)
+    }
+}
+
 #[tracing::instrument(skip_all, fields(name = ?name))]
 fn iterate_method_candidates_by_receiver(
     table: &mut InferenceTable<'_>,
@@ -1060,7 +1106,7 @@ fn iterate_method_candidates_by_receiver(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
+    callback: &mut dyn MethodCandidateCallback,
 ) -> ControlFlow<()> {
     let receiver_ty = table.instantiate_canonical(receiver_ty);
     // We're looking for methods with *receiver* type receiver_ty. These could
@@ -1076,7 +1122,9 @@ fn iterate_method_candidates_by_receiver(
                 Some(&receiver_ty),
                 Some(receiver_adjustments.clone()),
                 visible_from_module,
-                &mut callback,
+                &mut |adjustments, item, is_visible| {
+                    callback.on_inherent_method(adjustments, item, is_visible)
+                },
             )?
         }
         ControlFlow::Continue(())
@@ -1096,7 +1144,9 @@ fn iterate_method_candidates_by_receiver(
                 name,
                 Some(&receiver_ty),
                 Some(receiver_adjustments.clone()),
-                &mut callback,
+                &mut |adjustments, item, is_visible| {
+                    callback.on_trait_method(adjustments, item, is_visible)
+                },
             )?
         }
         ControlFlow::Continue(())
@@ -1111,7 +1161,7 @@ fn iterate_method_candidates_for_self_ty(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
+    callback: &mut dyn MethodCandidateCallback,
 ) -> ControlFlow<()> {
     let mut table = InferenceTable::new(db, env);
     let self_ty = table.instantiate_canonical(self_ty.clone());
@@ -1122,7 +1172,9 @@ fn iterate_method_candidates_for_self_ty(
         None,
         None,
         visible_from_module,
-        &mut callback,
+        &mut |adjustments, item, is_visible| {
+            callback.on_inherent_method(adjustments, item, is_visible)
+        },
     )?;
     iterate_trait_method_candidates(
         &self_ty,
@@ -1131,7 +1183,9 @@ fn iterate_method_candidates_for_self_ty(
         name,
         None,
         None,
-        callback,
+        &mut |adjustments, item, is_visible| {
+            callback.on_trait_method(adjustments, item, is_visible)
+        },
     )
 }
 
@@ -1158,7 +1212,7 @@ fn iterate_trait_method_candidates(
         // 2021.
         // This is to make `[a].into_iter()` not break code with the new `IntoIterator` impl for
         // arrays.
-        if data.skip_array_during_method_dispatch
+        if data.flags.contains(TraitFlags::SKIP_ARRAY_DURING_METHOD_DISPATCH)
             && matches!(self_ty.kind(Interner), TyKind::Array(..))
         {
             // FIXME: this should really be using the edition of the method name's span, in case it
@@ -1167,7 +1221,7 @@ fn iterate_trait_method_candidates(
                 continue;
             }
         }
-        if data.skip_boxed_slice_during_method_dispatch
+        if data.flags.contains(TraitFlags::SKIP_BOXED_SLICE_DURING_METHOD_DISPATCH)
             && matches!(
                 self_ty.kind(Interner), TyKind::Adt(AdtId(def), subst)
                 if is_box(table.db, *def)
@@ -1427,7 +1481,7 @@ fn is_valid_impl_method_candidate(
         AssocItemId::ConstId(c) => {
             let db = table.db;
             check_that!(receiver_ty.is_none());
-            check_that!(name.map_or(true, |n| db.const_data(c).name.as_ref() == Some(n)));
+            check_that!(name.is_none_or(|n| db.const_data(c).name.as_ref() == Some(n)));
 
             if let Some(from_module) = visible_from_module {
                 if !db.const_visibility(c).is_visible_from(db.upcast(), from_module) {
@@ -1465,7 +1519,7 @@ fn is_valid_trait_method_candidate(
         AssocItemId::FunctionId(fn_id) => {
             let data = db.function_data(fn_id);
 
-            check_that!(name.map_or(true, |n| n == &data.name));
+            check_that!(name.is_none_or(|n| n == &data.name));
 
             table.run_in_snapshot(|table| {
                 let impl_subst = TyBuilder::subst_for_def(db, trait_id, None)
@@ -1494,7 +1548,7 @@ fn is_valid_trait_method_candidate(
         }
         AssocItemId::ConstId(c) => {
             check_that!(receiver_ty.is_none());
-            check_that!(name.map_or(true, |n| db.const_data(c).name.as_ref() == Some(n)));
+            check_that!(name.is_none_or(|n| db.const_data(c).name.as_ref() == Some(n)));
 
             IsValidCandidate::Yes
         }
@@ -1515,7 +1569,7 @@ fn is_valid_impl_fn_candidate(
     let db = table.db;
     let data = db.function_data(fn_id);
 
-    check_that!(name.map_or(true, |n| n == &data.name));
+    check_that!(name.is_none_or(|n| n == &data.name));
     if let Some(from_module) = visible_from_module {
         if !db.function_visibility(fn_id).is_visible_from(db.upcast(), from_module) {
             cov_mark::hit!(autoderef_candidate_not_visible);

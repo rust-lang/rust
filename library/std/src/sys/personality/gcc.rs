@@ -5,7 +5,7 @@
 //! documents linked from it.
 //! These are also good reads:
 //!  * <https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html>
-//!  * <https://monoinfinito.wordpress.com/series/exception-handling-in-c/>
+//!  * <https://nicolasbrailo.github.io/blog/projects_texts/13exceptionsunderthehood.html>
 //!  * <https://www.airs.com/blog/index.php?s=exception+frames>
 //!
 //! ## A brief summary

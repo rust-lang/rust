@@ -1,4 +1,4 @@
-//@ normalize-stderr-test: "\d+ bytes" -> "$$BYTES bytes"
+//@ normalize-stderr: "\d+ bytes" -> "$$BYTES bytes"
 #![feature(const_ptr_sub_ptr)]
 #![feature(core_intrinsics)]
 

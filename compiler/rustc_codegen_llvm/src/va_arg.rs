@@ -10,6 +10,15 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 
+fn round_up_to_alignment<'ll>(
+    bx: &mut Builder<'_, 'll, '_>,
+    mut value: &'ll Value,
+    align: Align,
+) -> &'ll Value {
+    value = bx.add(value, bx.cx().const_i32(align.bytes() as i32 - 1));
+    return bx.and(value, bx.cx().const_i32(-(align.bytes() as i32)));
+}
+
 fn round_pointer_up_to_alignment<'ll>(
     bx: &mut Builder<'_, 'll, '_>,
     addr: &'ll Value,
@@ -17,8 +26,7 @@ fn round_pointer_up_to_alignment<'ll>(
     ptr_ty: &'ll Type,
 ) -> &'ll Value {
     let mut ptr_as_int = bx.ptrtoint(addr, bx.cx().type_isize());
-    ptr_as_int = bx.add(ptr_as_int, bx.cx().const_i32(align.bytes() as i32 - 1));
-    ptr_as_int = bx.and(ptr_as_int, bx.cx().const_i32(-(align.bytes() as i32)));
+    ptr_as_int = round_up_to_alignment(bx, ptr_as_int, align);
     bx.inttoptr(ptr_as_int, ptr_ty)
 }
 
@@ -270,6 +278,106 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     bx.load(val_type, val_addr, layout.align.abi)
 }
 
+fn emit_xtensa_va_arg<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    list: OperandRef<'tcx, &'ll Value>,
+    target_ty: Ty<'tcx>,
+) -> &'ll Value {
+    // Implementation of va_arg for Xtensa. There doesn't seem to be an authoritative source for
+    // this, other than "what GCC does".
+    //
+    // The va_list type has three fields:
+    // struct __va_list_tag {
+    //   int32_t *va_stk; // Arguments passed on the stack
+    //   int32_t *va_reg; // Arguments passed in registers, saved to memory by the prologue.
+    //   int32_t va_ndx; // Offset into the arguments, in bytes
+    // };
+    //
+    // The first 24 bytes (equivalent to 6 registers) come from va_reg, the rest from va_stk.
+    // Thus if va_ndx is less than 24, the next va_arg *may* read from va_reg,
+    // otherwise it must come from va_stk.
+    //
+    // Primitive arguments are never split between registers and the stack. For example, if loading an 8 byte
+    // primitive value and va_ndx = 20, we instead bump the offset and read everything from va_stk.
+    let va_list_addr = list.immediate();
+    // FIXME: handle multi-field structs that split across regsave/stack?
+    let layout = bx.cx.layout_of(target_ty);
+    let from_stack = bx.append_sibling_block("va_arg.from_stack");
+    let from_regsave = bx.append_sibling_block("va_arg.from_regsave");
+    let end = bx.append_sibling_block("va_arg.end");
+
+    // (*va).va_ndx
+    let va_reg_offset = 4;
+    let va_ndx_offset = va_reg_offset + 4;
+    let offset_ptr =
+        bx.inbounds_gep(bx.type_i8(), va_list_addr, &[bx.cx.const_usize(va_ndx_offset)]);
+
+    let offset = bx.load(bx.type_i32(), offset_ptr, bx.tcx().data_layout.i32_align.abi);
+    let offset = round_up_to_alignment(bx, offset, layout.align.abi);
+
+    let slot_size = layout.size.align_to(Align::from_bytes(4).unwrap()).bytes() as i32;
+
+    // Update the offset in va_list, by adding the slot's size.
+    let offset_next = bx.add(offset, bx.const_i32(slot_size));
+
+    // Figure out where to look for our value. We do that by checking the end of our slot (offset_next).
+    // If that is within the regsave area, then load from there. Otherwise load from the stack area.
+    let regsave_size = bx.const_i32(24);
+    let use_regsave = bx.icmp(IntPredicate::IntULE, offset_next, regsave_size);
+    bx.cond_br(use_regsave, from_regsave, from_stack);
+
+    bx.switch_to_block(from_regsave);
+    // update va_ndx
+    bx.store(offset_next, offset_ptr, bx.tcx().data_layout.pointer_align.abi);
+
+    // (*va).va_reg
+    let regsave_area_ptr =
+        bx.inbounds_gep(bx.type_i8(), va_list_addr, &[bx.cx.const_usize(va_reg_offset)]);
+    let regsave_area =
+        bx.load(bx.type_ptr(), regsave_area_ptr, bx.tcx().data_layout.pointer_align.abi);
+    let regsave_value_ptr = bx.inbounds_gep(bx.type_i8(), regsave_area, &[offset]);
+    bx.br(end);
+
+    bx.switch_to_block(from_stack);
+
+    // The first time we switch from regsave to stack we needs to adjust our offsets a bit.
+    // va_stk is set up such that the first stack argument is always at va_stk + 32.
+    // The corrected offset is written back into the va_list struct.
+
+    // let offset_corrected = cmp::max(offset, 32);
+    let stack_offset_start = bx.const_i32(32);
+    let needs_correction = bx.icmp(IntPredicate::IntULE, offset, stack_offset_start);
+    let offset_corrected = bx.select(needs_correction, stack_offset_start, offset);
+
+    // let offset_next_corrected = offset_corrected + slot_size;
+    // va_ndx = offset_next_corrected;
+    let offset_next_corrected = bx.add(offset_next, bx.const_i32(slot_size));
+    // update va_ndx
+    bx.store(offset_next_corrected, offset_ptr, bx.tcx().data_layout.pointer_align.abi);
+
+    // let stack_value_ptr = unsafe { (*va).va_stk.byte_add(offset_corrected) };
+    let stack_area_ptr = bx.inbounds_gep(bx.type_i8(), va_list_addr, &[bx.cx.const_usize(0)]);
+    let stack_area = bx.load(bx.type_ptr(), stack_area_ptr, bx.tcx().data_layout.pointer_align.abi);
+    let stack_value_ptr = bx.inbounds_gep(bx.type_i8(), stack_area, &[offset_corrected]);
+    bx.br(end);
+
+    bx.switch_to_block(end);
+
+    // On big-endian, for values smaller than the slot size we'd have to align the read to the end
+    // of the slot rather than the start. While the ISA and GCC support big-endian, all the Xtensa
+    // targets supported by rustc are litte-endian so don't worry about it.
+
+    // if from_regsave {
+    //     unsafe { *regsave_value_ptr }
+    // } else {
+    //     unsafe { *stack_value_ptr }
+    // }
+    assert!(bx.tcx().sess.target.endian == Endian::Little);
+    let value_ptr =
+        bx.phi(bx.type_ptr(), &[regsave_value_ptr, stack_value_ptr], &[from_regsave, from_stack]);
+    return bx.load(layout.llvm_type(bx), value_ptr, layout.align.abi);
+}
+
 pub(super) fn emit_va_arg<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     addr: OperandRef<'tcx, &'ll Value>,
@@ -302,6 +410,7 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             let indirect: bool = target_ty_size > 8 || !target_ty_size.is_power_of_two();
             emit_ptr_va_arg(bx, addr, target_ty, indirect, Align::from_bytes(8).unwrap(), false)
         }
+        "xtensa" => emit_xtensa_va_arg(bx, addr, target_ty),
         // For all other architecture/OS combinations fall back to using
         // the LLVM va_arg instruction.
         // https://llvm.org/docs/LangRef.html#va-arg-instruction

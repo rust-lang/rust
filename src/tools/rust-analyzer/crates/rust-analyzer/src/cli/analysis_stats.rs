@@ -13,8 +13,9 @@ use hir::{
     ModuleDef, Name,
 };
 use hir_def::{
-    body::{BodySourceMap, SyntheticSyntax},
+    body::BodySourceMap,
     hir::{ExprId, PatId},
+    SyntheticSyntax,
 };
 use hir_ty::{Interner, Substitution, TyExt, TypeFlags};
 use ide::{
@@ -326,8 +327,8 @@ impl flags::AnalysisStats {
         let mut fail = 0;
         for &b in bodies {
             let res = match b {
-                DefWithBody::Const(c) => c.render_eval(db, Edition::LATEST),
-                DefWithBody::Static(s) => s.render_eval(db, Edition::LATEST),
+                DefWithBody::Const(c) => c.eval(db),
+                DefWithBody::Static(s) => s.eval(db),
                 _ => continue,
             };
             all += 1;

@@ -26,14 +26,14 @@ impl DeclarativeMacroExpander {
     pub fn expand(
         &self,
         db: &dyn ExpandDatabase,
-        tt: tt::Subtree,
+        tt: tt::TopSubtree,
         call_id: MacroCallId,
         span: Span,
-    ) -> ExpandResult<(tt::Subtree, Option<u32>)> {
+    ) -> ExpandResult<(tt::TopSubtree, Option<u32>)> {
         let loc = db.lookup_intern_macro_call(call_id);
         match self.mac.err() {
             Some(_) => ExpandResult::new(
-                (tt::Subtree::empty(tt::DelimSpan { open: span, close: span }), None),
+                (tt::TopSubtree::empty(tt::DelimSpan { open: span, close: span }), None),
                 ExpandError::new(span, ExpandErrorKind::MacroDefinition),
             ),
             None => self
@@ -50,13 +50,13 @@ impl DeclarativeMacroExpander {
 
     pub fn expand_unhygienic(
         &self,
-        tt: tt::Subtree,
+        tt: tt::TopSubtree,
         call_site: Span,
         def_site_edition: Edition,
-    ) -> ExpandResult<tt::Subtree> {
+    ) -> ExpandResult<tt::TopSubtree> {
         match self.mac.err() {
             Some(_) => ExpandResult::new(
-                tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
+                tt::TopSubtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
                 ExpandError::new(call_site, ExpandErrorKind::MacroDefinition),
             ),
             None => self
@@ -78,7 +78,7 @@ impl DeclarativeMacroExpander {
         let transparency = |node| {
             // ... would be nice to have the item tree here
             let attrs = RawAttrs::new(db, node, map.as_ref()).filter(db, def_crate);
-            match &*attrs
+            match attrs
                 .iter()
                 .find(|it| {
                     it.path
@@ -87,7 +87,8 @@ impl DeclarativeMacroExpander {
                         .unwrap_or(false)
                 })?
                 .token_tree_value()?
-                .token_trees
+                .token_trees()
+                .flat_tokens()
             {
                 [tt::TokenTree::Leaf(tt::Leaf::Ident(i)), ..] => match &i.sym {
                     s if *s == sym::transparent => Some(Transparency::Transparent),

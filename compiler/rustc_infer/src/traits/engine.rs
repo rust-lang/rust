@@ -84,6 +84,8 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
         self.collect_remaining_errors(infcx)
     }
 
+    fn has_pending_obligations(&self) -> bool;
+
     fn pending_obligations(&self) -> PredicateObligations<'tcx>;
 
     /// Among all pending obligations, collect those are stalled on a inference variable which has

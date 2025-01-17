@@ -443,6 +443,7 @@ pub trait AsMut<T: ?Sized> {
 /// [`Vec`]: ../../std/vec/struct.Vec.html
 #[rustc_diagnostic_item = "Into"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(search_unbox)]
 pub trait Into<T>: Sized {
     /// Converts this type into the (usually inferred) input type.
     #[must_use]
@@ -577,6 +578,7 @@ pub trait Into<T>: Sized {
     all(_Self = "&str", T = "alloc::string::String"),
     note = "to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
 ))]
+#[doc(search_unbox)]
 pub trait From<T>: Sized {
     /// Converts to this type from the input type.
     #[rustc_diagnostic_item = "from_fn"]

@@ -92,10 +92,9 @@ fn replace<T: AstNode + PartialEq>(
     fields: impl Iterator<Item = T>,
     sorted_fields: impl IntoIterator<Item = T>,
 ) {
-    fields.zip(sorted_fields).for_each(|(field, sorted_field)| {
-        // FIXME: remove `clone_for_update` when `SyntaxEditor` handles it for us
-        editor.replace(field.syntax(), sorted_field.syntax().clone_for_update())
-    });
+    fields
+        .zip(sorted_fields)
+        .for_each(|(field, sorted_field)| editor.replace(field.syntax(), sorted_field.syntax()));
 }
 
 fn compute_fields_ranks(

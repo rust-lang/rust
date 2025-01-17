@@ -41,7 +41,7 @@ fn pass_f32_pair_Rust(x: (f32, f32)) -> (f32, f32) {
     x
 }
 
-// CHECK: void @pass_f64_pair_Rust(ptr {{[^,]*}}, ptr {{[^,]*}})
+// CHECK: void @pass_f64_pair_Rust(ptr {{.*}}%{{[^ ]+}}, ptr {{.*}}%{{[^ ]+}})
 #[no_mangle]
 fn pass_f64_pair_Rust(x: (f64, f64)) -> (f64, f64) {
     x

@@ -110,7 +110,7 @@ impl<T: Clone> From<&[T]> for Box<[T]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "box_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "box_from_mut_slice", since = "1.84.0")]
 impl<T: Clone> From<&mut [T]> for Box<[T]> {
     /// Converts a `&mut [T]` into a `Box<[T]>`
     ///
@@ -171,7 +171,7 @@ impl From<&str> for Box<str> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "box_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "box_from_mut_slice", since = "1.84.0")]
 impl From<&mut str> for Box<str> {
     /// Converts a `&mut str` into a `Box<str>`
     ///

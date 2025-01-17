@@ -200,7 +200,7 @@ impl Params {
                 if self
                     .get_by_fn(param.fn_id, usage.idx)
                     // If the parameter can't be found, then it's used for more than just recursion.
-                    .map_or(true, |p| self.try_disable_lint_for_param(p, eval_stack))
+                    .is_none_or(|p| self.try_disable_lint_for_param(p, eval_stack))
                 {
                     param.apply_lint.set(false);
                     eval_stack.pop();

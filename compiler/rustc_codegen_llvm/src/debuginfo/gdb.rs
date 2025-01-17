@@ -7,7 +7,7 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerType;
 use rustc_session::config::{CrateType, DebugInfo};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use crate::builder::Builder;
 use crate::common::CodegenCx;

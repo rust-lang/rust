@@ -19,8 +19,7 @@ use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TypeVisitableExt,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::Ident;
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Ident, Span};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, NormalizeExt};
 use tracing::{debug, instrument};

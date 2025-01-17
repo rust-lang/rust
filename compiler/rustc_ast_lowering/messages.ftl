@@ -45,10 +45,6 @@ ast_lowering_bad_return_type_notation_output =
 
 ast_lowering_bad_return_type_notation_position = return type notation not allowed in this position yet
 
-ast_lowering_base_expression_double_dot =
-    base expression required after `..`
-    .suggestion = add a base expression here
-
 ast_lowering_clobber_abi_not_supported =
     `clobber_abi` is not supported on this target
 
@@ -56,6 +52,9 @@ ast_lowering_closure_cannot_be_static = closures cannot be static
 
 ast_lowering_coroutine_too_many_parameters =
     too many parameters for a coroutine (expected 0 or 1 parameters)
+
+ast_lowering_default_field_in_tuple = default fields are not supported in tuple structs
+    .label = default fields are only supported on structs
 
 ast_lowering_does_not_support_modifiers =
     the `{$class_name}` register class does not support template modifiers

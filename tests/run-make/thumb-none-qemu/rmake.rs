@@ -27,7 +27,6 @@ fn main() {
     std::env::set_current_dir(CRATE).unwrap();
 
     let target_dir = path("target");
-    let manifest_path = path("Cargo.toml");
 
     // Debug
     cargo()

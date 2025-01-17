@@ -39,7 +39,7 @@
 </tspan>
     <tspan x="10px" y="172px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">= </tspan><tspan class="bold">note</tspan><tspan>: expected fn pointer `</tspan><tspan class="fg-magenta bold">for&lt;'a&gt; </tspan><tspan>fn(Box&lt;</tspan><tspan class="fg-magenta bold">(dyn Any + Send + 'a)</tspan><tspan>&gt;) -&gt; Pin&lt;_&gt;`</tspan>
 </tspan>
-    <tspan x="10px" y="190px"><tspan>                 found fn item `fn(Box&lt;</tspan><tspan class="fg-magenta bold">(dyn Any + Send + 'static)</tspan><tspan>&gt;) -&gt; Pin&lt;_&gt; {wrapped_fn}`</tspan>
+    <tspan x="10px" y="190px"><tspan>                 found fn item `fn(Box&lt;</tspan><tspan class="fg-magenta bold">(dyn Any + Send + 'static)</tspan><tspan>&gt;) -&gt; Pin&lt;_&gt;</tspan><tspan class="fg-magenta bold"> {wrapped_fn}</tspan><tspan>`</tspan>
 </tspan>
     <tspan x="10px" y="208px"><tspan class="fg-ansi256-010 bold">note</tspan><tspan>: function defined here</tspan>
 </tspan>

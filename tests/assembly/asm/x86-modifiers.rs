@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: x86_64 i686
 //@ assembly-output: emit-asm
 //@ compile-flags: -O -C panic=abort
@@ -9,30 +10,13 @@
 //@ compile-flags: -C target-feature=+avx512bw
 //@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! concat {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! stringify {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
-
-impl Copy for i32 {}
+extern crate minicore;
+use minicore::*;
 
 macro_rules! check {
     ($func:ident $modifier:literal $reg:ident $mov:literal) => {

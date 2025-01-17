@@ -20,13 +20,10 @@ LL |         (1, .., 3) => 42,
    |         ^^^^^^^^^^^^^^^^
    |
    = help: try changing either arm body
-help: or try merging the arm patterns
+help: or try merging the arm patterns and removing the obsolete arm
    |
-LL |         (1, .., 3) | (.., 3) => 42,
-   |         ~~~~~~~~~~~~~~~~~~~~
-help: and remove this obsolete arm
-   |
-LL -         (.., 3) => 42,
+LL ~         (1, .., 3) | (.., 3) => 42,
+LL ~         _ => 0,
    |
 
 error: this match arm has an identical body to another arm
@@ -36,13 +33,11 @@ LL |         51 => 1,
    |         ^^^^^^^
    |
    = help: try changing either arm body
-help: or try merging the arm patterns
-   |
-LL |         51 | 42 => 1,
-   |         ~~~~~~~
-help: and remove this obsolete arm
+help: or try merging the arm patterns and removing the obsolete arm
    |
 LL -         42 => 1,
+LL -         51 => 1,
+LL +         51 | 42 => 1,
    |
 
 error: this match arm has an identical body to another arm
@@ -52,13 +47,10 @@ LL |         41 => 2,
    |         ^^^^^^^
    |
    = help: try changing either arm body
-help: or try merging the arm patterns
+help: or try merging the arm patterns and removing the obsolete arm
    |
-LL |         41 | 52 => 2,
-   |         ~~~~~~~
-help: and remove this obsolete arm
-   |
-LL -         52 => 2,
+LL ~         41 | 52 => 2,
+LL ~         _ => 0,
    |
 
 error: this match arm has an identical body to another arm
@@ -68,13 +60,11 @@ LL |         2 => 2,
    |         ^^^^^^
    |
    = help: try changing either arm body
-help: or try merging the arm patterns
-   |
-LL |         2 | 1 => 2,
-   |         ~~~~~
-help: and remove this obsolete arm
+help: or try merging the arm patterns and removing the obsolete arm
    |
 LL -         1 => 2,
+LL -         2 => 2,
+LL +         2 | 1 => 2,
    |
 
 error: this match arm has an identical body to another arm
@@ -84,13 +74,11 @@ LL |         3 => 2,
    |         ^^^^^^
    |
    = help: try changing either arm body
-help: or try merging the arm patterns
+help: or try merging the arm patterns and removing the obsolete arm
    |
-LL |         3 | 1 => 2,
-   |         ~~~~~
-help: and remove this obsolete arm
-   |
-LL -         1 => 2,
+LL ~         2 => 2,
+LL |
+LL ~         3 | 1 => 2,
    |
 
 error: this match arm has an identical body to another arm
@@ -100,14 +88,11 @@ LL |         2 => 2,
    |         ^^^^^^
    |
    = help: try changing either arm body
-help: or try merging the arm patterns
+help: or try merging the arm patterns and removing the obsolete arm
    |
-LL |         2 | 3 => 2,
-   |         ~~~~~
-help: and remove this obsolete arm
-   |
-LL -         3 => 2,
-LL +
+LL ~         2 | 3 => 2,
+LL |
+LL ~
    |
 
 error: this match arm has an identical body to another arm
@@ -117,13 +102,11 @@ LL |                 CommandInfo::External { name, .. } => name.to_string(),
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try changing either arm body
-help: or try merging the arm patterns
-   |
-LL |                 CommandInfo::External { name, .. } | CommandInfo::BuiltIn { name, .. } => name.to_string(),
-   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-help: and remove this obsolete arm
+help: or try merging the arm patterns and removing the obsolete arm
    |
 LL -                 CommandInfo::BuiltIn { name, .. } => name.to_string(),
+LL -                 CommandInfo::External { name, .. } => name.to_string(),
+LL +                 CommandInfo::External { name, .. } | CommandInfo::BuiltIn { name, .. } => name.to_string(),
    |
 
 error: aborting due to 8 previous errors

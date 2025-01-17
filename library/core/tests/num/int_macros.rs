@@ -1,7 +1,9 @@
 macro_rules! int_module {
-    ($T:ident) => {
+    ($T:ident, $U:ident) => {
         use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
         use core::$T::*;
+
+        const UMAX: $U = $U::MAX;
 
         use crate::num;
 
@@ -353,6 +355,102 @@ macro_rules! int_module {
                 assert_eq_const_safe!(MAX.borrowing_sub(-1, true), (MAX, false)); // no intermediate overflow
                 assert_eq_const_safe!((0 as $T).borrowing_sub(MIN, false), (MIN, true));
                 assert_eq_const_safe!((0 as $T).borrowing_sub(MIN, true), (MAX, false));
+            }
+
+            fn test_widening_mul() {
+                assert_eq_const_safe!(MAX.widening_mul(MAX), (1, MAX / 2));
+                assert_eq_const_safe!(MIN.widening_mul(MAX), (MIN as $U, MIN / 2));
+                assert_eq_const_safe!(MIN.widening_mul(MIN), (0, MAX / 2 + 1));
+            }
+
+            fn test_carrying_mul() {
+                assert_eq_const_safe!(MAX.carrying_mul(MAX, 0), (1, MAX / 2));
+                assert_eq_const_safe!(
+                    MAX.carrying_mul(MAX, MAX),
+                    (UMAX / 2 + 1, MAX / 2)
+                );
+                assert_eq_const_safe!(
+                    MAX.carrying_mul(MAX, MIN),
+                    (UMAX / 2 + 2, MAX / 2 - 1)
+                );
+                assert_eq_const_safe!(MIN.carrying_mul(MAX, 0), (MIN as $U, MIN / 2));
+                assert_eq_const_safe!(MIN.carrying_mul(MAX, MAX), (UMAX, MIN / 2));
+                assert_eq_const_safe!(MIN.carrying_mul(MAX, MIN), (0, MIN / 2));
+                assert_eq_const_safe!(MIN.carrying_mul(MIN, 0), (0, MAX / 2 + 1));
+                assert_eq_const_safe!(
+                    MIN.carrying_mul(MIN, MAX),
+                    (UMAX / 2, MAX / 2 + 1)
+                );
+                assert_eq_const_safe!(
+                    MIN.carrying_mul(MIN, MIN),
+                    (UMAX / 2 + 1, MAX / 2)
+                );
+            }
+
+            fn test_carrying_mul_add() {
+                assert_eq_const_safe!(MAX.carrying_mul_add(MAX, 0, 0), (1, MAX / 2));
+                assert_eq_const_safe!(
+                    MAX.carrying_mul_add(MAX, MAX, 0),
+                    (UMAX / 2 + 1, MAX / 2)
+                );
+                assert_eq_const_safe!(
+                    MAX.carrying_mul_add(MAX, MIN, 0),
+                    (UMAX / 2 + 2, MAX / 2 - 1)
+                );
+                assert_eq_const_safe!(
+                    MAX.carrying_mul_add(MAX, MAX, MAX),
+                    (UMAX, MAX / 2)
+                );
+                assert_eq_const_safe!(
+                    MAX.carrying_mul_add(MAX, MAX, MIN),
+                    (0, MAX / 2)
+                );
+                assert_eq_const_safe!(
+                    MAX.carrying_mul_add(MAX, MIN, MIN),
+                    (1, MAX / 2 - 1)
+                );
+                assert_eq_const_safe!(
+                    MIN.carrying_mul_add(MAX, 0, 0),
+                    (MIN as $U, MIN / 2)
+                );
+                assert_eq_const_safe!(
+                    MIN.carrying_mul_add(MAX, MAX, 0),
+                    (UMAX, MIN / 2)
+                );
+                assert_eq_const_safe!(MIN.carrying_mul_add(MAX, MIN, 0), (0, MIN / 2));
+                assert_eq_const_safe!(
+                    MIN.carrying_mul_add(MAX, MAX, MAX),
+                    (UMAX / 2 - 1, MIN / 2 + 1)
+                );
+                assert_eq_const_safe!(
+                    MIN.carrying_mul_add(MAX, MAX, MIN),
+                    (UMAX / 2, MIN / 2)
+                );
+                assert_eq_const_safe!(
+                    MIN.carrying_mul_add(MAX, MIN, MIN),
+                    (UMAX / 2 + 1, MIN / 2 - 1)
+                );
+                assert_eq_const_safe!(MIN.carrying_mul_add(MIN, 0, 0), (0, MAX / 2 + 1));
+                assert_eq_const_safe!(
+                    MIN.carrying_mul_add(MIN, MAX, 0),
+                    (UMAX / 2, MAX / 2 + 1)
+                );
+                assert_eq_const_safe!(
+                    MIN.carrying_mul_add(MIN, MIN, 0),
+                    (UMAX / 2 + 1, MAX / 2)
+                );
+                assert_eq_const_safe!(
+                    MIN.carrying_mul_add(MIN, MAX, MAX),
+                    (UMAX - 1, MAX / 2 + 1)
+                );
+                assert_eq_const_safe!(
+                    MIN.carrying_mul_add(MIN, MAX, MIN),
+                    (UMAX, MAX / 2)
+                );
+                assert_eq_const_safe!(
+                    MIN.carrying_mul_add(MIN, MIN, MIN),
+                    (0, MAX / 2)
+                );
             }
 
             fn test_midpoint() {

@@ -27,8 +27,7 @@ use rustc_middle::ty::{
     self, ToPolyTraitRef, TraitRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::sym;
-use rustc_span::{BytePos, DUMMY_SP, Span, Symbol};
+use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
 use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote};
@@ -115,7 +114,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         //
                         // We rely on a few heuristics to identify cases where this root
                         // obligation is more important than the leaf obligation:
-                        let (main_trait_predicate, o) = if let ty::PredicateKind::Clause(
+                        let (main_trait_predicate, main_obligation) = if let ty::PredicateKind::Clause(
                             ty::ClauseKind::Trait(root_pred)
                         ) = root_obligation.predicate.kind().skip_binder()
                             && !leaf_trait_predicate.self_ty().skip_binder().has_escaping_bound_vars()
@@ -200,7 +199,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             notes,
                             parent_label,
                             append_const_msg,
-                        } = self.on_unimplemented_note(main_trait_predicate, o, &mut long_ty_file);
+                        } = self.on_unimplemented_note(main_trait_predicate, main_obligation, &mut long_ty_file);
 
                         let have_alt_message = message.is_some() || label.is_some();
                         let is_try_conversion = self.is_try_conversion(span, main_trait_ref.def_id());
@@ -521,7 +520,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             match obligation.cause.span.ctxt().outer_expn_data().macro_def_id {
                                 Some(macro_def_id) => {
                                     let crate_name = tcx.crate_name(macro_def_id.krate);
-                                    crate_name == sym::std || crate_name == sym::core
+                                    STDLIB_STABLE_CRATES.contains(&crate_name)
                                 }
                                 None => false,
                             };
@@ -539,23 +538,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
 
                     ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
-                        // FIXME(const_trait_impl): We should recompute the predicate with `~const`
-                        // if it's `const`, and if it holds, explain that this bound only
-                        // *conditionally* holds. If that fails, we should also do selection
-                        // to drill this down to an impl or built-in source, so we can
-                        // point at it and explain that while the trait *is* implemented,
-                        // that implementation is not const.
-                        let err_msg = self.get_standard_error_message(
-                            bound_predicate.rebind(ty::TraitPredicate {
-                                trait_ref: predicate.trait_ref,
-                                polarity: ty::PredicatePolarity::Positive,
-                            }),
-                            None,
-                            Some(predicate.constness),
-                            None,
-                            String::new(),
-                        );
-                        struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg)
+                        self.report_host_effect_error(bound_predicate.rebind(predicate), obligation.param_env, span)
                     }
 
                     ty::PredicateKind::Subtype(predicate) => {
@@ -754,7 +737,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     applied_do_not_recommend = true;
                 }
             }
-            if let Some((parent_cause, _parent_pred)) = base_cause.parent() {
+            if let Some(parent_cause) = base_cause.parent() {
                 base_cause = parent_cause.clone();
             } else {
                 break;
@@ -762,6 +745,41 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         applied_do_not_recommend
+    }
+
+    fn report_host_effect_error(
+        &self,
+        predicate: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+        param_env: ty::ParamEnv<'tcx>,
+        span: Span,
+    ) -> Diag<'a> {
+        // FIXME(const_trait_impl): We should recompute the predicate with `~const`
+        // if it's `const`, and if it holds, explain that this bound only
+        // *conditionally* holds. If that fails, we should also do selection
+        // to drill this down to an impl or built-in source, so we can
+        // point at it and explain that while the trait *is* implemented,
+        // that implementation is not const.
+        let trait_ref = predicate.map_bound(|predicate| ty::TraitPredicate {
+            trait_ref: predicate.trait_ref,
+            polarity: ty::PredicatePolarity::Positive,
+        });
+        let err_msg = self.get_standard_error_message(
+            trait_ref,
+            None,
+            Some(predicate.constness()),
+            None,
+            String::new(),
+        );
+        let mut diag = struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg);
+        if !self.predicate_may_hold(&Obligation::new(
+            self.tcx,
+            ObligationCause::dummy(),
+            param_env,
+            trait_ref,
+        )) {
+            diag.downgrade_to_delayed_bug();
+        }
+        diag
     }
 
     fn emit_specialized_closure_kind_error(
@@ -779,7 +797,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 trait_ref.skip_binder().args.type_at(1).to_opt_closure_kind()
             && !found_kind.extends(expected_kind)
         {
-            if let Some((_, Some(parent))) = obligation.cause.code().parent() {
+            if let Some((_, Some(parent))) = obligation.cause.code().parent_with_predicate() {
                 // If we have a derived obligation, then the parent will be a `AsyncFn*` goal.
                 trait_ref = parent.to_poly_trait_ref();
             } else if let &ObligationCauseCode::FunctionArg { arg_hir_id, .. } =
@@ -794,7 +812,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     closure_def_id,
                     found_kind,
                     expected_kind,
-                    "async ",
+                    "Async",
                 );
                 self.note_obligation_cause(&mut err, &obligation);
                 self.point_at_returns_when_relevant(&mut err, &obligation);
@@ -914,7 +932,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
         let hir_id = self.tcx.local_def_id_to_hir_id(obligation.cause.body_id);
         let body_id = match self.tcx.hir_node(hir_id) {
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. }) => body_id,
+            hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Fn { body: body_id, .. }, ..
+            }) => body_id,
             _ => return false,
         };
         let ControlFlow::Break(expr) = (FindMethodSubexprOfTry { search_span: span })
@@ -925,7 +945,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let Some(typeck) = &self.typeck_results else {
             return false;
         };
-        let Some((ObligationCauseCode::QuestionMark, Some(y))) = obligation.cause.code().parent()
+        let Some((ObligationCauseCode::QuestionMark, Some(y))) =
+            obligation.cause.code().parent_with_predicate()
         else {
             return false;
         };
@@ -1178,7 +1199,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let mut code = obligation.cause.code();
         let mut pred = obligation.predicate.as_trait_clause();
-        while let Some((next_code, next_pred)) = code.parent() {
+        while let Some((next_code, next_pred)) = code.parent_with_predicate() {
             if let Some(pred) = pred {
                 self.enter_forall(pred, |pred| {
                     diag.note(format!(
@@ -1533,6 +1554,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::CoroutineWitness(..) => Some(20),
                 ty::CoroutineClosure(..) => Some(21),
                 ty::Pat(..) => Some(22),
+                ty::UnsafeBinder(..) => Some(23),
                 ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
             }
         }
@@ -1731,6 +1753,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             span.push_span_label(self.tcx.def_span(trait_def_id), "this is the required trait");
             for (sp, label) in [trait_def_id, other_trait_def_id]
                 .iter()
+                // The current crate-version might depend on another version of the same crate
+                // (Think "semver-trick"). Do not call `extern_crate` in that case for the local
+                // crate as that doesn't make sense and ICEs (#133563).
+                .filter(|def_id| !def_id.is_local())
                 .filter_map(|def_id| self.tcx.extern_crate(def_id.krate))
                 .map(|data| {
                     let dependency = if data.dependency_of == LOCAL_CRATE {
@@ -1741,9 +1767,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     };
                     (
                         data.span,
-                        format!(
-                            "one version of crate `{crate_name}` is used here, as a {dependency}"
-                        ),
+                        format!("one version of crate `{crate_name}` used here, as a {dependency}"),
                     )
                 })
             {
@@ -1803,24 +1827,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 StringPart::highlighted("cargo tree".to_string()),
                 StringPart::normal("` to explore your dependency tree".to_string()),
             ]);
-
-            // FIXME: this is a giant hack for the benefit of this specific diagnostic. Because
-            // we're so nested in method calls before the error gets emitted, bubbling a single bit
-            // flag informing the top level caller to stop adding extra detail to the diagnostic,
-            // would actually be harder to follow. So we do something naughty here: we consume the
-            // diagnostic, emit it and leave in its place a "delayed bug" that will continue being
-            // modified but won't actually be printed to end users. This *is not ideal*, but allows
-            // us to reduce the verbosity of an error that is already quite verbose and increase its
-            // specificity. Below we modify the main message as well, in a way that *could* break if
-            // the implementation of Diagnostics change significantly, but that would be caught with
-            // a make test failure when this diagnostic is tested.
-            err.primary_message(format!(
-                "{} because the trait comes from a different crate version",
-                err.messages[0].0.as_str().unwrap(),
-            ));
-            let diag = err.clone();
-            err.downgrade_to_delayed_bug();
-            self.tcx.dcx().emit_diagnostic(diag);
             return true;
         }
 
@@ -2109,7 +2115,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut code = obligation.cause.code();
         let mut trait_pred = trait_predicate;
         let mut peeled = false;
-        while let Some((parent_code, parent_trait_pred)) = code.parent() {
+        while let Some((parent_code, parent_trait_pred)) = code.parent_with_predicate() {
             code = parent_code;
             if let Some(parent_trait_pred) = parent_trait_pred {
                 trait_pred = parent_trait_pred;
@@ -2183,7 +2189,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let required_trait_path = self.tcx.def_path_str(trait_ref.def_id());
         let traits_with_same_path: UnordSet<_> = self
             .tcx
-            .all_traits()
+            .visible_traits()
             .filter(|trait_def_id| *trait_def_id != trait_ref.def_id())
             .map(|trait_def_id| (self.tcx.def_path_str(trait_def_id), trait_def_id))
             .filter(|(p, _)| *p == required_trait_path)
@@ -2926,7 +2932,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     })
                     .collect::<Option<Vec<ArgKind>>>()?,
             ),
-            Node::Item(&hir::Item { kind: hir::ItemKind::Fn(ref sig, ..), .. })
+            Node::Item(&hir::Item { kind: hir::ItemKind::Fn { ref sig, .. }, .. })
             | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(ref sig, _), .. })
             | Node::TraitItem(&hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(ref sig, _), ..

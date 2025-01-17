@@ -2,6 +2,7 @@
 
 use rustc_abi::VariantIdx;
 use rustc_middle::query::{Key, TyCtxtAt};
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use tracing::instrument;
@@ -85,5 +86,6 @@ pub fn tag_for_variant_provider<'tcx>(
         crate::const_eval::DummyMachine,
     );
 
-    ecx.tag_for_variant(ty, variant_index).unwrap().map(|(tag, _tag_field)| tag)
+    let layout = ecx.layout_of(ty).unwrap();
+    ecx.tag_for_variant(layout, variant_index).unwrap().map(|(tag, _tag_field)| tag)
 }

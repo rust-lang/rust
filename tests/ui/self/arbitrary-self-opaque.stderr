@@ -1,5 +1,5 @@
 error[E0307]: invalid `self` parameter type: `Bar`
-  --> $DIR/arbitrary-self-opaque.rs:8:18
+  --> $DIR/arbitrary-self-opaque.rs:7:18
    |
 LL |     fn foo(self: Bar) {}
    |                  ^^^
@@ -8,7 +8,7 @@ LL |     fn foo(self: Bar) {}
    = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error: item does not constrain `Bar::{opaque#0}`, but has it in its signature
-  --> $DIR/arbitrary-self-opaque.rs:8:8
+  --> $DIR/arbitrary-self-opaque.rs:7:8
    |
 LL |     fn foo(self: Bar) {}
    |        ^^^
@@ -20,14 +20,6 @@ note: this opaque type is in the signature
 LL | type Bar = impl Sized;
    |            ^^^^^^^^^^
 
-error: unconstrained opaque type
-  --> $DIR/arbitrary-self-opaque.rs:4:12
-   |
-LL | type Bar = impl Sized;
-   |            ^^^^^^^^^^
-   |
-   = note: `Bar` must be used in combination with a concrete type within the same module
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0307`.

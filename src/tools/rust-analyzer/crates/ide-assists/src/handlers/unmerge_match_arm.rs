@@ -65,7 +65,7 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
             let mut pipe_index = pipe_token.index();
             if pipe_token
                 .prev_sibling_or_token()
-                .map_or(false, |it| it.kind() == SyntaxKind::WHITESPACE)
+                .is_some_and(|it| it.kind() == SyntaxKind::WHITESPACE)
             {
                 pipe_index -= 1;
             }

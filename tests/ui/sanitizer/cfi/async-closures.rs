@@ -13,7 +13,6 @@
 //@ [kcfi] compile-flags: -C panic=abort -Z panic-abort-tests -C prefer-dynamic=off
 //@ run-pass
 
-#![feature(async_closure)]
 #![feature(async_fn_traits)]
 
 use std::ops::AsyncFn;

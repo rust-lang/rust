@@ -7,7 +7,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::intravisit::{self, Visitor, walk_block, walk_expr};
 use rustc_hir::{
     AnonConst, Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId, ItemKind, LetExpr, Pat, QPath,
-    Safety, Stmt, UnOp, UnsafeSource,
+    Stmt, StructTailExpr, UnOp, UnsafeSource,
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
@@ -426,15 +426,15 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
                         .cx
                         .typeck_results()
                         .type_dependent_def_id(e.hir_id)
-                        .is_some_and(|id| self.cx.tcx.fn_sig(id).skip_binder().safety() == Safety::Unsafe) =>
+                        .is_some_and(|id| self.cx.tcx.fn_sig(id).skip_binder().safety().is_unsafe()) =>
                 {
                     ControlFlow::Break(())
                 },
                 ExprKind::Call(func, _) => match *self.cx.typeck_results().expr_ty(func).peel_refs().kind() {
-                    ty::FnDef(id, _) if self.cx.tcx.fn_sig(id).skip_binder().safety() == Safety::Unsafe => {
+                    ty::FnDef(id, _) if self.cx.tcx.fn_sig(id).skip_binder().safety().is_unsafe() => {
                         ControlFlow::Break(())
                     },
-                    ty::FnPtr(_, hdr) if hdr.safety == Safety::Unsafe => ControlFlow::Break(()),
+                    ty::FnPtr(_, hdr) if hdr.safety.is_unsafe() => ControlFlow::Break(()),
                     _ => walk_expr(self, e),
                 },
                 ExprKind::Path(ref p)
@@ -458,7 +458,7 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
         }
         fn visit_nested_item(&mut self, id: ItemId) -> Self::Result {
             if let ItemKind::Impl(i) = &self.cx.tcx.hir().item(id).kind
-                && i.safety == Safety::Unsafe
+                && i.safety.is_unsafe()
             {
                 ControlFlow::Break(())
             } else {
@@ -663,7 +663,7 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
                 for field in fields {
                     helper(typeck, true, field.expr, f)?;
                 }
-                if let Some(default) = default {
+                if let StructTailExpr::Base(default) = default {
                     helper(typeck, false, default, f)?;
                 }
             },
@@ -675,6 +675,9 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
                 }
             },
             ExprKind::Type(e, _) => {
+                helper(typeck, consume, e, f)?;
+            },
+            ExprKind::UnsafeBinderCast(_, e, _) => {
                 helper(typeck, consume, e, f)?;
             },
 

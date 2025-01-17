@@ -2,7 +2,7 @@
 //@ aux-build:svh-a-base.rs
 //@ aux-build:svh-b.rs
 //@ aux-build:svh-a-change-trait-bound.rs
-//@ normalize-stderr-test: "(crate `(\w+)`:) .*" -> "$1 $$PATH_$2"
+//@ normalize-stderr: "(crate `(\w+)`:) .*" -> "$1 $$PATH_$2"
 
 extern crate a;
 extern crate b; //~ ERROR: found possibly newer version of crate `a` which `b` depends on

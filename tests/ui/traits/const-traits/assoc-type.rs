@@ -1,4 +1,5 @@
-//@ compile-flags: -Znext-solver
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
 
 #![feature(const_trait_impl)]
 

@@ -379,7 +379,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         // Make sure this is actually a SIMD vector.
         let idx_ty = args[2].layout.ty;
         let n: u64 = if idx_ty.is_simd()
-            && matches!(idx_ty.simd_size_and_type(bx.cx.tcx).1.kind(), ty::Uint(ty::UintTy::U32))
+            && matches!(*idx_ty.simd_size_and_type(bx.cx.tcx).1.kind(), ty::Uint(ty::UintTy::U32))
         {
             idx_ty.simd_size_and_type(bx.cx.tcx).0
         } else {
@@ -772,6 +772,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             sym::simd_flog => "log",
             sym::simd_floor => "floor",
             sym::simd_fma => "fma",
+            sym::simd_relaxed_fma => "fma", // FIXME: this should relax to non-fused multiply-add when necessary
             sym::simd_fpowi => "__builtin_powi",
             sym::simd_fpow => "pow",
             sym::simd_fsin => "sin",
@@ -828,6 +829,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             | sym::simd_flog
             | sym::simd_floor
             | sym::simd_fma
+            | sym::simd_relaxed_fma
             | sym::simd_fpow
             | sym::simd_fpowi
             | sym::simd_fsin

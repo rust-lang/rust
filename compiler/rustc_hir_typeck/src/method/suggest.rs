@@ -8,13 +8,13 @@ use std::borrow::Cow;
 
 use hir::Expr;
 use rustc_ast::ast::Mutability;
-use rustc_attr::parse_confusables;
+use rustc_attr_parsing::parse_confusables;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, MultiSpan, StashKey, pluralize, struct_span_code_err};
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::lang_items::LangItem;
@@ -27,9 +27,9 @@ use rustc_middle::ty::print::{
 };
 use rustc_middle::ty::{self, GenericArgKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::DefIdSet;
-use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{
-    DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, MacroKind, Span, Symbol, edit_distance,
+    DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, Ident, MacroKind, Span, Symbol, edit_distance,
+    kw, sym,
 };
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedNote;
@@ -105,8 +105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         };
         let trait_ref = ty::TraitRef::new(self.tcx, into_iterator_trait, [ty]);
-        let cause = ObligationCause::new(span, self.body_id, ObligationCauseCode::Misc);
-        let obligation = Obligation::new(self.tcx, cause, self.param_env, trait_ref);
+        let obligation = Obligation::new(self.tcx, self.misc(span), self.param_env, trait_ref);
         if !self.predicate_must_hold_modulo_regions(&obligation) {
             return false;
         }
@@ -168,6 +167,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Path(QPath::TypeRelative(rcvr, segment)),
+                span,
+                ..
+            })
+            | hir::Node::PatExpr(&hir::PatExpr {
+                kind: hir::PatExprKind::Path(QPath::TypeRelative(rcvr, segment)),
                 span,
                 ..
             })
@@ -664,7 +668,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let is_write = sugg_span.ctxt().outer_expn_data().macro_def_id.is_some_and(|def_id| {
             tcx.is_diagnostic_item(sym::write_macro, def_id)
                 || tcx.is_diagnostic_item(sym::writeln_macro, def_id)
-        }) && item_name.name == Symbol::intern("write_fmt");
+        }) && item_name.name == sym::write_fmt;
         let mut err = if is_write && let SelfSource::MethodCall(rcvr_expr) = source {
             self.suggest_missing_writer(rcvr_ty, rcvr_expr)
         } else {
@@ -688,6 +692,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     item_name,
                     &ty_str_reported,
                     &mut err,
+                );
+            }
+
+            // Check if we wrote `Self::Assoc(1)` as if it were a tuple ctor.
+            if let SelfSource::QPath(ty) = source
+                && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind
+                && let Res::SelfTyAlias { alias_to: impl_def_id, .. } = path.res
+                && let DefKind::Impl { .. } = self.tcx.def_kind(impl_def_id)
+                && let Some(candidate) = tcx.associated_items(impl_def_id).find_by_name_and_kind(
+                    self.tcx,
+                    item_name,
+                    ty::AssocKind::Type,
+                    impl_def_id,
+                )
+                && let Some(adt_def) = tcx.type_of(candidate.def_id).skip_binder().ty_adt_def()
+                && adt_def.is_struct()
+                && adt_def.non_enum_variant().ctor_kind() == Some(CtorKind::Fn)
+            {
+                let def_path = tcx.def_path_str(adt_def.did());
+                err.span_suggestion(
+                    ty.span.to(item_name.span),
+                    format!("to construct a value of type `{}`, use the explicit path", def_path),
+                    def_path,
+                    Applicability::MachineApplicable,
                 );
             }
 
@@ -1068,7 +1096,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                 ) {
                     continue;
-                };
+                }
 
                 match self.tcx.hir().get_if_local(item_def_id) {
                     // Unmet obligation comes from a `derive` macro, point at it once to
@@ -1182,8 +1210,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         entry.1.insert((cause_span, "unsatisfied trait bound introduced here"));
                         entry.2.push(p);
                     }
-                    Some(node) => unreachable!("encountered `{node:?}` due to `{cause:#?}`"),
-                    None => (),
+                    _ => {
+                        // It's possible to use well-formedness clauses to get obligations
+                        // which point arbitrary items like ADTs, so there's no use in ICEing
+                        // here if we find that the obligation originates from some other
+                        // node that we don't handle.
+                    }
                 }
             }
             let mut spanned_predicates: Vec<_> = spanned_predicates.into_iter().collect();
@@ -3489,7 +3521,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let pred = ty::TraitRef::new(self.tcx, unpin_trait, [*rcvr_ty]);
                 let unpin = self.predicate_must_hold_considering_regions(&Obligation::new(
                     self.tcx,
-                    ObligationCause::misc(rcvr.span, self.body_id),
+                    self.misc(rcvr.span),
                     self.param_env,
                     pred,
                 ));

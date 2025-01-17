@@ -8,8 +8,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::RemapFileNameExt;
 use rustc_session::config::{CrateType, EntryFnType, RemapPathScopeComponents, sigpipe};
-use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 
 use crate::errors::{
     AttrOnlyInFunctions, ExternMain, MultipleRustcMain, MultipleStartFunctions, NoMainErr,

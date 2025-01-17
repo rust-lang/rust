@@ -1,8 +1,3 @@
-//@ force-host
-//@ no-prefer-dynamic
-
-#![crate_type = "proc-macro"]
-
 extern crate proc_macro;
 use proc_macro::{TokenStream, TokenTree as Tt};
 use std::str::FromStr;

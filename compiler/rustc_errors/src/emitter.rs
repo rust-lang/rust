@@ -19,6 +19,7 @@ use derive_setters::Setters;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{DynSend, IntoDynSyncSend, Lrc};
 use rustc_error_messages::{FluentArgs, SpanLabel};
+use rustc_lexer;
 use rustc_lint_defs::pluralize;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
@@ -27,6 +28,7 @@ use termcolor::{Buffer, BufferWriter, Color, ColorChoice, ColorSpec, StandardStr
 use tracing::{debug, instrument, trace, warn};
 
 use crate::diagnostic::DiagLocation;
+use crate::registry::Registry;
 use crate::snippet::{
     Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
 };
@@ -181,7 +183,7 @@ pub type DynEmitter = dyn Emitter + DynSend;
 /// Emitter trait for emitting errors.
 pub trait Emitter: Translate {
     /// Emit a structured diagnostic.
-    fn emit_diagnostic(&mut self, diag: DiagInner);
+    fn emit_diagnostic(&mut self, diag: DiagInner, registry: &Registry);
 
     /// Emit a notification that an artifact has been output.
     /// Currently only supported for the JSON format.
@@ -189,7 +191,7 @@ pub trait Emitter: Translate {
 
     /// Emit a report about future breakage.
     /// Currently only supported for the JSON format.
-    fn emit_future_breakage_report(&mut self, _diags: Vec<DiagInner>) {}
+    fn emit_future_breakage_report(&mut self, _diags: Vec<DiagInner>, _registry: &Registry) {}
 
     /// Emit list of unused externs.
     /// Currently only supported for the JSON format.
@@ -500,7 +502,7 @@ impl Emitter for HumanEmitter {
         self.sm.as_deref()
     }
 
-    fn emit_diagnostic(&mut self, mut diag: DiagInner) {
+    fn emit_diagnostic(&mut self, mut diag: DiagInner, _registry: &Registry) {
         let fluent_args = to_fluent_args(diag.args.iter());
 
         let mut suggestions = diag.suggestions.unwrap_tag();
@@ -561,7 +563,7 @@ impl Emitter for SilentEmitter {
         None
     }
 
-    fn emit_diagnostic(&mut self, mut diag: DiagInner) {
+    fn emit_diagnostic(&mut self, mut diag: DiagInner, _registry: &Registry) {
         if self.emit_fatal_diagnostic && diag.level == Level::Fatal {
             if let Some(fatal_note) = &self.fatal_note {
                 diag.sub(Level::Note, fatal_note.clone(), MultiSpan::new());
@@ -1697,9 +1699,14 @@ impl HumanEmitter {
                     if let Some(source_string) =
                         line.line_index.checked_sub(1).and_then(|l| file.get_line(l))
                     {
+                        // Whitespace can only be removed (aka considered leading)
+                        // if the lexer considers it whitespace.
+                        // non-rustc_lexer::is_whitespace() chars are reported as an
+                        // error (ex. no-break-spaces \u{a0}), and thus can't be considered
+                        // for removal during error reporting.
                         let leading_whitespace = source_string
                             .chars()
-                            .take_while(|c| c.is_whitespace())
+                            .take_while(|c| rustc_lexer::is_whitespace(*c))
                             .map(|c| {
                                 match c {
                                     // Tabs are displayed as 4 spaces
@@ -1708,7 +1715,7 @@ impl HumanEmitter {
                                 }
                             })
                             .sum();
-                        if source_string.chars().any(|c| !c.is_whitespace()) {
+                        if source_string.chars().any(|c| !rustc_lexer::is_whitespace(c)) {
                             whitespace_margin = min(whitespace_margin, leading_whitespace);
                         }
                     }
@@ -2209,6 +2216,11 @@ impl HumanEmitter {
                 show_code_change
             {
                 for part in parts {
+                    let snippet = if let Ok(snippet) = sm.span_to_snippet(part.span) {
+                        snippet
+                    } else {
+                        String::new()
+                    };
                     let span_start_pos = sm.lookup_char_pos(part.span.lo()).col_display;
                     let span_end_pos = sm.lookup_char_pos(part.span.hi()).col_display;
 
@@ -2256,13 +2268,80 @@ impl HumanEmitter {
                     }
                     if let DisplaySuggestion::Diff = show_code_change {
                         // Colorize removal with red in diff format.
-                        buffer.set_style_range(
-                            row_num - 2,
-                            (padding as isize + span_start_pos as isize) as usize,
-                            (padding as isize + span_end_pos as isize) as usize,
-                            Style::Removal,
-                            true,
-                        );
+
+                        // Below, there's some tricky buffer indexing going on. `row_num` at this
+                        // point corresponds to:
+                        //
+                        //    |
+                        // LL | CODE
+                        //    | ++++  <- `row_num`
+                        //
+                        // in the buffer. When we have a diff format output, we end up with
+                        //
+                        //    |
+                        // LL - OLDER   <- row_num - 2
+                        // LL + NEWER
+                        //    |         <- row_num
+                        //
+                        // The `row_num - 2` is to select the buffer line that has the "old version
+                        // of the diff" at that point. When the removal is a single line, `i` is
+                        // `0`, `newlines` is `1` so `(newlines - i - 1)` ends up being `0`, so row
+                        // points at `LL - OLDER`. When the removal corresponds to multiple lines,
+                        // we end up with `newlines > 1` and `i` being `0..newlines - 1`.
+                        //
+                        //    |
+                        // LL - OLDER   <- row_num - 2 - (newlines - last_i - 1)
+                        // LL - CODE
+                        // LL - BEING
+                        // LL - REMOVED <- row_num - 2 - (newlines - first_i - 1)
+                        // LL + NEWER
+                        //    |         <- row_num
+
+                        let newlines = snippet.lines().count();
+                        if newlines > 0 && row_num > newlines {
+                            // Account for removals where the part being removed spans multiple
+                            // lines.
+                            // FIXME: We check the number of rows because in some cases, like in
+                            // `tests/ui/lint/invalid-nan-comparison-suggestion.rs`, the rendered
+                            // suggestion will only show the first line of code being replaced. The
+                            // proper way of doing this would be to change the suggestion rendering
+                            // logic to show the whole prior snippet, but the current output is not
+                            // too bad to begin with, so we side-step that issue here.
+                            for (i, line) in snippet.lines().enumerate() {
+                                let line = normalize_whitespace(line);
+                                let row = row_num - 2 - (newlines - i - 1);
+                                // On the first line, we highlight between the start of the part
+                                // span, and the end of that line.
+                                // On the last line, we highlight between the start of the line, and
+                                // the column of the part span end.
+                                // On all others, we highlight the whole line.
+                                let start = if i == 0 {
+                                    (padding as isize + span_start_pos as isize) as usize
+                                } else {
+                                    padding
+                                };
+                                let end = if i == 0 {
+                                    (padding as isize
+                                        + span_start_pos as isize
+                                        + line.len() as isize)
+                                        as usize
+                                } else if i == newlines - 1 {
+                                    (padding as isize + span_end_pos as isize) as usize
+                                } else {
+                                    (padding as isize + line.len() as isize) as usize
+                                };
+                                buffer.set_style_range(row, start, end, Style::Removal, true);
+                            }
+                        } else {
+                            // The removed code fits all in one line.
+                            buffer.set_style_range(
+                                row_num - 2,
+                                (padding as isize + span_start_pos as isize) as usize,
+                                (padding as isize + span_end_pos as isize) as usize,
+                                Style::Removal,
+                                true,
+                            );
+                        }
                     }
 
                     // length of the code after substitution
@@ -2522,7 +2601,7 @@ impl HumanEmitter {
                     buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
                 }
                 [] => {
-                    // FIXME: needed? Doesn't get excercised in any test.
+                    // FIXME: needed? Doesn't get exercised in any test.
                     self.draw_col_separator_no_space(buffer, *row_num, max_line_num_len + 1);
                 }
                 _ => {
@@ -3047,11 +3126,19 @@ impl FileWithAnnotatedLines {
                 // working correctly.
                 let middle = min(ann.line_start + 4, ann.line_end);
                 // We'll show up to 4 lines past the beginning of the multispan start.
-                // We will *not* include the tail of lines that are only whitespace.
+                // We will *not* include the tail of lines that are only whitespace, a comment or
+                // a bare delimiter.
+                let filter = |s: &str| {
+                    let s = s.trim();
+                    // Consider comments as empty, but don't consider docstrings to be empty.
+                    !(s.starts_with("//") && !(s.starts_with("///") || s.starts_with("//!")))
+                        // Consider lines with nothing but whitespace, a single delimiter as empty.
+                        && !["", "{", "}", "(", ")", "[", "]"].contains(&s)
+                };
                 let until = (ann.line_start..middle)
                     .rev()
                     .filter_map(|line| file.get_line(line - 1).map(|s| (line + 1, s)))
-                    .find(|(_, s)| !s.trim().is_empty())
+                    .find(|(_, s)| filter(s))
                     .map(|(line, _)| line)
                     .unwrap_or(ann.line_start);
                 for line in ann.line_start + 1..until {
@@ -3059,7 +3146,8 @@ impl FileWithAnnotatedLines {
                     add_annotation_to_file(&mut output, Lrc::clone(&file), line, ann.as_line());
                 }
                 let line_end = ann.line_end - 1;
-                if middle < line_end {
+                let end_is_empty = file.get_line(line_end - 1).map_or(false, |s| !filter(&s));
+                if middle < line_end && !end_is_empty {
                     add_annotation_to_file(&mut output, Lrc::clone(&file), line_end, ann.as_line());
                 }
             } else {

@@ -1,4 +1,4 @@
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{
     self, CallReturnPlaces, Local, Location, Place, StatementKind, TerminatorEdges,
@@ -26,47 +26,47 @@ use crate::{Analysis, Backward, GenKill};
 pub struct MaybeLiveLocals;
 
 impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
-    type Domain = BitSet<Local>;
+    type Domain = DenseBitSet<Local>;
     type Direction = Backward;
 
     const NAME: &'static str = "liveness";
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
         // bottom = not live
-        BitSet::new_empty(body.local_decls.len())
+        DenseBitSet::new_empty(body.local_decls.len())
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
         // No variables are live until we observe a use
     }
 
-    fn apply_statement_effect(
+    fn apply_primary_statement_effect(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
-        TransferFunction(trans).visit_statement(statement, location);
+        TransferFunction(state).visit_statement(statement, location);
     }
 
-    fn apply_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect<'mir>(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        TransferFunction(trans).visit_terminator(terminator, location);
+        TransferFunction(state).visit_terminator(terminator, location);
         terminator.edges()
     }
 
     fn apply_call_return_effect(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
         if let CallReturnPlaces::Yield(resume_place) = return_places {
-            YieldResumeEffect(trans).visit_place(
+            YieldResumeEffect(state).visit_place(
                 &resume_place,
                 PlaceContext::MutatingUse(MutatingUseContext::Yield),
                 Location::START,
@@ -74,14 +74,14 @@ impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
         } else {
             return_places.for_each(|place| {
                 if let Some(local) = place.as_local() {
-                    trans.kill(local);
+                    state.kill(local);
                 }
             });
         }
     }
 }
 
-pub struct TransferFunction<'a>(pub &'a mut BitSet<Local>);
+pub struct TransferFunction<'a>(pub &'a mut DenseBitSet<Local>);
 
 impl<'tcx> Visitor<'tcx> for TransferFunction<'_> {
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
@@ -117,7 +117,7 @@ impl<'tcx> Visitor<'tcx> for TransferFunction<'_> {
     }
 }
 
-struct YieldResumeEffect<'a>(&'a mut BitSet<Local>);
+struct YieldResumeEffect<'a>(&'a mut DenseBitSet<Local>);
 
 impl<'tcx> Visitor<'tcx> for YieldResumeEffect<'_> {
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
@@ -137,10 +137,10 @@ enum DefUse {
 }
 
 impl DefUse {
-    fn apply(trans: &mut BitSet<Local>, place: Place<'_>, context: PlaceContext) {
+    fn apply(state: &mut DenseBitSet<Local>, place: Place<'_>, context: PlaceContext) {
         match DefUse::for_place(place, context) {
-            Some(DefUse::Def) => trans.kill(place.local),
-            Some(DefUse::Use) => trans.gen_(place.local),
+            Some(DefUse::Def) => state.kill(place.local),
+            Some(DefUse::Use) => state.gen_(place.local),
             None => {}
         }
     }
@@ -204,7 +204,7 @@ impl DefUse {
 ///
 /// All of the caveats of `MaybeLiveLocals` apply.
 pub struct MaybeTransitiveLiveLocals<'a> {
-    always_live: &'a BitSet<Local>,
+    always_live: &'a DenseBitSet<Local>,
 }
 
 impl<'a> MaybeTransitiveLiveLocals<'a> {
@@ -212,29 +212,29 @@ impl<'a> MaybeTransitiveLiveLocals<'a> {
     /// considered live.
     ///
     /// This should include at least all locals that are ever borrowed.
-    pub fn new(always_live: &'a BitSet<Local>) -> Self {
+    pub fn new(always_live: &'a DenseBitSet<Local>) -> Self {
         MaybeTransitiveLiveLocals { always_live }
     }
 }
 
 impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
-    type Domain = BitSet<Local>;
+    type Domain = DenseBitSet<Local>;
     type Direction = Backward;
 
     const NAME: &'static str = "transitive liveness";
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
         // bottom = not live
-        BitSet::new_empty(body.local_decls.len())
+        DenseBitSet::new_empty(body.local_decls.len())
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
         // No variables are live until we observe a use
     }
 
-    fn apply_statement_effect(
+    fn apply_primary_statement_effect(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
@@ -258,34 +258,34 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         };
         if let Some(destination) = destination {
             if !destination.is_indirect()
-                && !trans.contains(destination.local)
+                && !state.contains(destination.local)
                 && !self.always_live.contains(destination.local)
             {
                 // This store is dead
                 return;
             }
         }
-        TransferFunction(trans).visit_statement(statement, location);
+        TransferFunction(state).visit_statement(statement, location);
     }
 
-    fn apply_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect<'mir>(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        TransferFunction(trans).visit_terminator(terminator, location);
+        TransferFunction(state).visit_terminator(terminator, location);
         terminator.edges()
     }
 
     fn apply_call_return_effect(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
         if let CallReturnPlaces::Yield(resume_place) = return_places {
-            YieldResumeEffect(trans).visit_place(
+            YieldResumeEffect(state).visit_place(
                 &resume_place,
                 PlaceContext::MutatingUse(MutatingUseContext::Yield),
                 Location::START,
@@ -293,7 +293,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         } else {
             return_places.for_each(|place| {
                 if let Some(local) = place.as_local() {
-                    trans.remove(local);
+                    state.remove(local);
                 }
             });
         }

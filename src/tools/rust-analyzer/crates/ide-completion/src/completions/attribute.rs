@@ -86,9 +86,20 @@ pub(crate) fn complete_attribute_path(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
-    &AttrCtx { kind, annotated_item_kind }: &AttrCtx,
+    &AttrCtx { kind, annotated_item_kind, ref derive_helpers }: &AttrCtx,
 ) {
     let is_inner = kind == AttrKind::Inner;
+
+    for (derive_helper, derive_name) in derive_helpers {
+        let mut item = CompletionItem::new(
+            SymbolKind::Attribute,
+            ctx.source_range(),
+            derive_helper.as_str(),
+            ctx.edition,
+        );
+        item.detail(format!("derive helper of `{derive_name}`"));
+        item.add_to(acc, ctx.db);
+    }
 
     match qualified {
         Qualified::With {

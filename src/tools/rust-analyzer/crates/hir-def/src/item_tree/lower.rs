@@ -34,7 +34,7 @@ use crate::{
     lower::LowerCtx,
     path::AssociatedTypeBinding,
     type_ref::{
-        LifetimeRef, RefType, TraitBoundModifier, TraitRef, TypeBound, TypeRef, TypeRefId,
+        LifetimeRef, PathId, RefType, TraitBoundModifier, TraitRef, TypeBound, TypeRef, TypeRefId,
         TypesMap, TypesSourceMap,
     },
     visibility::RawVisibility,
@@ -514,7 +514,7 @@ impl<'a> Ctx<'a> {
         };
 
         let ret_type = if func.async_token().is_some() {
-            let future_impl = desugar_future_path(ret_type);
+            let future_impl = desugar_future_path(&mut body_ctx, ret_type);
             let ty_bound = TypeBound::Path(future_impl, TraitBoundModifier::None);
             body_ctx.alloc_type_ref_desugared(TypeRef::ImplTrait(ThinVec::from_iter([ty_bound])))
         } else {
@@ -936,7 +936,7 @@ impl<'a> Ctx<'a> {
     }
 }
 
-fn desugar_future_path(orig: TypeRefId) -> Path {
+fn desugar_future_path(ctx: &mut LowerCtx<'_>, orig: TypeRefId) -> PathId {
     let path = path![core::future::Future];
     let mut generic_args: Vec<_> =
         std::iter::repeat(None).take(path.segments().len() - 1).collect();
@@ -948,7 +948,8 @@ fn desugar_future_path(orig: TypeRefId) -> Path {
     };
     generic_args.push(Some(GenericArgs { bindings: Box::new([binding]), ..GenericArgs::empty() }));
 
-    Path::from_known_path(path, generic_args)
+    let path = Path::from_known_path(path, generic_args);
+    PathId::from_type_ref_unchecked(ctx.alloc_type_ref_desugared(TypeRef::Path(path)))
 }
 
 enum HasImplicitSelf {

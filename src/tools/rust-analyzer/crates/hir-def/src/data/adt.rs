@@ -10,6 +10,7 @@ use intern::sym;
 use la_arena::Arena;
 use rustc_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
 use triomphe::Arc;
+use tt::iter::TtElement;
 
 use crate::{
     builtin_type::{BuiltinInt, BuiltinUint},
@@ -20,7 +21,7 @@ use crate::{
     },
     lang_item::LangItem,
     nameres::diagnostics::{DefDiagnostic, DefDiagnostics},
-    tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree},
+    tt::{Delimiter, DelimiterKind, Leaf, TopSubtree},
     type_ref::{TypeRefId, TypesMap},
     visibility::RawVisibility,
     EnumId, EnumVariantId, LocalFieldId, LocalModuleId, Lookup, StructId, UnionId, VariantId,
@@ -95,8 +96,8 @@ fn repr_from_value(
     item_tree.attrs(db, krate, of).by_key(&sym::repr).tt_values().find_map(parse_repr_tt)
 }
 
-fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
-    match tt.delimiter {
+fn parse_repr_tt(tt: &TopSubtree) -> Option<ReprOptions> {
+    match tt.top_subtree().delimiter {
         Delimiter { kind: DelimiterKind::Parenthesis, .. } => {}
         _ => return None,
     }
@@ -106,14 +107,14 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
     let mut max_align: Option<Align> = None;
     let mut min_pack: Option<Align> = None;
 
-    let mut tts = tt.token_trees.iter().peekable();
+    let mut tts = tt.iter();
     while let Some(tt) = tts.next() {
-        if let TokenTree::Leaf(Leaf::Ident(ident)) = tt {
+        if let TtElement::Leaf(Leaf::Ident(ident)) = tt {
             flags.insert(match &ident.sym {
                 s if *s == sym::packed => {
-                    let pack = if let Some(TokenTree::Subtree(tt)) = tts.peek() {
+                    let pack = if let Some(TtElement::Subtree(_, mut tt_iter)) = tts.peek() {
                         tts.next();
-                        if let Some(TokenTree::Leaf(Leaf::Literal(lit))) = tt.token_trees.first() {
+                        if let Some(TtElement::Leaf(Leaf::Literal(lit))) = tt_iter.next() {
                             lit.symbol.as_str().parse().unwrap_or_default()
                         } else {
                             0
@@ -127,9 +128,9 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
                     ReprFlags::empty()
                 }
                 s if *s == sym::align => {
-                    if let Some(TokenTree::Subtree(tt)) = tts.peek() {
+                    if let Some(TtElement::Subtree(_, mut tt_iter)) = tts.peek() {
                         tts.next();
-                        if let Some(TokenTree::Leaf(Leaf::Literal(lit))) = tt.token_trees.first() {
+                        if let Some(TtElement::Leaf(Leaf::Literal(lit))) = tt_iter.next() {
                             if let Ok(align) = lit.symbol.as_str().parse() {
                                 let align = Align::from_bytes(align).ok();
                                 max_align = max_align.max(align);

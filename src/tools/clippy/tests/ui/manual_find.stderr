@@ -6,7 +6,6 @@ LL | |
 LL | |
 LL | |         if s == String::new() {
 ...  |
-LL | |     }
 LL | |     None
    | |________^ help: replace with an iterator: `strings.into_iter().find(|s| s == String::new())`
    |
@@ -22,7 +21,6 @@ LL | |
 LL | |
 LL | |         if s == String::new() {
 ...  |
-LL | |     }
 LL | |     None
    | |________^ help: replace with an iterator: `arr.into_iter().map(|(s, _)| s).find(|s| s == String::new())`
    |

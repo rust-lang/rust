@@ -9,7 +9,7 @@ rustc_ast = { path = "../rustc_ast" }
 rustc_ast_lowering = { path = "../rustc_ast_lowering" }
 rustc_ast_passes = { path = "../rustc_ast_passes" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
-rustc_attr = { path = "../rustc_attr" }
+rustc_attr_parsing = { path = "../rustc_attr_parsing" }
 rustc_borrowck = { path = "../rustc_borrowck" }
 rustc_builtin_macros = { path = "../rustc_builtin_macros" }
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }

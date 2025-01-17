@@ -11,8 +11,8 @@ impl Xyz {
         &'a self, foo: &dyn Foo
     ) -> &dyn Foo  //~ WARNING elided lifetime has a name
     {
-        //~^ ERROR explicit lifetime required in the type of `foo` [E0621]
         foo
+        //~^ ERROR explicit lifetime required in the type of `foo` [E0621]
     }
 }
 

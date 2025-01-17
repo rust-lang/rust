@@ -271,7 +271,7 @@ pub(crate) fn print_type_bounds(
                     TraitBoundModifier::None => (),
                     TraitBoundModifier::Maybe => write!(buf, "?")?,
                 }
-                print_path(db, path, map, buf, edition)?;
+                print_path(db, &map[*path], map, buf, edition)?;
             }
             TypeBound::ForLifetime(lifetimes, path) => {
                 write!(
@@ -279,7 +279,7 @@ pub(crate) fn print_type_bounds(
                     "for<{}> ",
                     lifetimes.iter().map(|it| it.display(db.upcast(), edition)).format(", ")
                 )?;
-                print_path(db, path, map, buf, edition)?;
+                print_path(db, &map[*path], map, buf, edition)?;
             }
             TypeBound::Lifetime(lt) => write!(buf, "{}", lt.name.display(db.upcast(), edition))?,
             TypeBound::Use(args) => {

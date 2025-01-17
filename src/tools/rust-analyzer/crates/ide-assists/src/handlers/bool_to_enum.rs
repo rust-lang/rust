@@ -512,9 +512,11 @@ fn make_bool_enum(make_pub: bool) -> ast::Enum {
     let enum_def = make::enum_(
         if make_pub { Some(make::visibility_pub()) } else { None },
         make::name("Bool"),
+        None,
+        None,
         make::variant_list(vec![
-            make::variant(make::name("True"), None),
-            make::variant(make::name("False"), None),
+            make::variant(None, make::name("True"), None, None),
+            make::variant(None, make::name("False"), None, None),
         ]),
     )
     .clone_for_update();

@@ -107,6 +107,10 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::ty::CoroutineDef(self.create_def_id(did))
     }
 
+    pub fn coroutine_closure_def(&mut self, did: DefId) -> stable_mir::ty::CoroutineClosureDef {
+        stable_mir::ty::CoroutineClosureDef(self.create_def_id(did))
+    }
+
     pub fn alias_def(&mut self, did: DefId) -> stable_mir::ty::AliasDef {
         stable_mir::ty::AliasDef(self.create_def_id(did))
     }
@@ -313,7 +317,8 @@ macro_rules! optional {
 macro_rules! run_driver {
     ($args:expr, $callback:expr $(, $with_tcx:ident)?) => {{
         use rustc_driver::{Callbacks, Compilation, RunCompiler};
-        use rustc_interface::{interface, Queries};
+        use rustc_middle::ty::TyCtxt;
+        use rustc_interface::interface;
         use stable_mir::CompilerError;
         use std::ops::ControlFlow;
 
@@ -341,8 +346,9 @@ macro_rules! run_driver {
 
             /// Runs the compiler against given target and tests it with `test_function`
             pub fn run(&mut self) -> Result<C, CompilerError<B>> {
-                let compiler_result = rustc_driver::catch_fatal_errors(|| {
-                    RunCompiler::new(&self.args.clone(), self).run()
+                let compiler_result = rustc_driver::catch_fatal_errors(|| -> interface::Result::<()> {
+                    RunCompiler::new(&self.args.clone(), self).run();
+                    Ok(())
                 });
                 match (compiler_result, self.result.take()) {
                     (Ok(Ok(())), Some(ControlFlow::Continue(value))) => Ok(value),
@@ -373,23 +379,21 @@ macro_rules! run_driver {
             fn after_analysis<'tcx>(
                 &mut self,
                 _compiler: &interface::Compiler,
-                queries: &'tcx Queries<'tcx>,
+                tcx: TyCtxt<'tcx>,
             ) -> Compilation {
-                queries.global_ctxt().unwrap().enter(|tcx| {
-                    if let Some(callback) = self.callback.take() {
-                        rustc_internal::run(tcx, || {
-                            self.result = Some(callback($(optional!($with_tcx tcx))?));
-                        })
-                        .unwrap();
-                        if self.result.as_ref().is_some_and(|val| val.is_continue()) {
-                            Compilation::Continue
-                        } else {
-                            Compilation::Stop
-                        }
-                    } else {
+                if let Some(callback) = self.callback.take() {
+                    rustc_internal::run(tcx, || {
+                        self.result = Some(callback($(optional!($with_tcx tcx))?));
+                    })
+                    .unwrap();
+                    if self.result.as_ref().is_some_and(|val| val.is_continue()) {
                         Compilation::Continue
+                    } else {
+                        Compilation::Stop
                     }
-                })
+                } else {
+                    Compilation::Continue
+                }
             }
         }
 

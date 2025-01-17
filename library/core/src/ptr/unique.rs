@@ -92,7 +92,6 @@ impl<T: ?Sized> Unique<T> {
 
     /// Creates a new `Unique` if `ptr` is non-null.
     #[inline]
-    #[rustc_const_unstable(feature = "ptr_internals", issue = "none")]
     pub const fn new(ptr: *mut T) -> Option<Self> {
         if let Some(pointer) = NonNull::new(ptr) {
             Some(Unique { pointer, _marker: PhantomData })

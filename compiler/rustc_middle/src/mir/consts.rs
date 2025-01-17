@@ -5,9 +5,10 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_session::RemapFileNameExt;
 use rustc_session::config::RemapPathScopeComponents;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::visit::TypeVisitableExt;
 
+use super::interpret::ReportedErrorInfo;
 use crate::mir::interpret::{AllocId, ConstAllocation, ErrorHandled, Scalar, alloc_range};
 use crate::mir::{Promoted, pretty_print_const_value};
 use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
@@ -331,7 +332,10 @@ impl<'tcx> Const<'tcx> {
                     ConstKind::Expr(_) => {
                         bug!("Normalization of `ty::ConstKind::Expr` is unimplemented")
                     }
-                    _ => Err(tcx.dcx().delayed_bug("Unevaluated `ty::Const` in MIR body").into()),
+                    _ => Err(ReportedErrorInfo::non_const_eval_error(
+                        tcx.dcx().delayed_bug("Unevaluated `ty::Const` in MIR body"),
+                    )
+                    .into()),
                 }
             }
             Const::Unevaluated(uneval, _) => {
@@ -463,6 +467,9 @@ impl<'tcx> Const<'tcx> {
                 let const_val = tcx.valtree_to_const_val((ty, valtree));
                 Self::Val(const_val, ty)
             }
+            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args }) => {
+                Self::Unevaluated(UnevaluatedConst { def, args, promoted: None }, ty)
+            }
             _ => Self::Ty(ty, c),
         }
     }
@@ -562,7 +569,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.sess.source_map().lookup_char_pos(topmost.lo());
         self.const_caller_location(
-            rustc_span::symbol::Symbol::intern(
+            Symbol::intern(
                 &caller
                     .file
                     .name

@@ -15,8 +15,7 @@ LL | /     || {
 LL | |
 LL | |
 LL | |         println!("{}", pent.points[5].x);
-LL | |
-LL | |
+...  |
 LL | |     };
    | |_____^
    |
@@ -33,8 +32,7 @@ LL | /     || {
 LL | |
 LL | |
 LL | |         println!("{}", pent.points[5].x);
-LL | |
-LL | |
+...  |
 LL | |     };
    | |_____^
    |

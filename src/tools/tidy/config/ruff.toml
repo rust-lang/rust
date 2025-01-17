@@ -19,6 +19,9 @@ extend-exclude = [
     "src/tools/enzyme/",
     "src/tools/rustc-perf/",
     "src/gcc/",
+    "compiler/rustc_codegen_gcc",
+    "src/tools/clippy",
+    "src/tools/miri",
     # Hack: CI runs from a subdirectory under the main checkout
     "../src/doc/nomicon/",
     "../src/tools/cargo/",
@@ -34,6 +37,9 @@ extend-exclude = [
     "../src/tools/enzyme/",
     "../src/tools/rustc-perf/",
     "../src/gcc/",
+    "../compiler/rustc_codegen_gcc",
+    "../src/tools/clippy",
+    "../src/tools/miri",
 ]
 
 [lint]

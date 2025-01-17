@@ -1,4 +1,4 @@
-//@ compile-flags:-Zprint-mono-items=eager -Zpolymorphize=on -Zinline-mir=no
+//@ compile-flags:-Zprint-mono-items=eager -Zinline-mir=no
 
 #![deny(dead_code)]
 #![feature(start)]
@@ -29,7 +29,7 @@ impl SomeGenericTrait<u64> for i32 {
 
     // For the non-generic foo(), we should generate a codegen-item even if it
     // is not called anywhere
-    //~ MONO_ITEM fn <i32 as SomeGenericTrait<T1>>::foo
+    //~ MONO_ITEM fn <i32 as SomeGenericTrait<u64>>::foo
 }
 
 // Non-generic impl of generic trait
