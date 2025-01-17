@@ -58,6 +58,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `cssc`
 `d`
 `d32`
+`deflate-conversion`
 `dit`
 `doloop`
 `dotprod`
@@ -72,6 +73,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `ecv`
 `edsp`
 `elrw`
+`enhanced-sort`
 `ermsb`
 `exception-handling`
 `extended-const`
@@ -109,11 +111,13 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `frintts`
 `fxsr`
 `gfni`
+`guarded-storage`
 `hard-float`
 `hard-float-abi`
 `hard-tp`
 `hbc`
 `high-registers`
+`high-word`
 `hvx`
 `hvx-length128b`
 `hwdiv`
@@ -150,6 +154,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `multivalue`
 `mutable-globals`
 `neon`
+`nnp-assist`
 `nontrapping-fptoint`
 `nvic`
 `paca`
@@ -228,6 +233,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `thumb-mode`
 `thumb2`
 `tme`
+`transactional-execution`
 `trust`
 `trustzone`
 `ual`
@@ -261,6 +267,11 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `vdspv1`
 `vdspv2`
 `vector`
+`vector-enhancements-1`
+`vector-enhancements-2`
+`vector-packed-decimal`
+`vector-packed-decimal-enhancement`
+`vector-packed-decimal-enhancement-2`
 `vfp2`
 `vfp3`
 `vfp4`
