@@ -2181,6 +2181,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // tidy-keep-sync-with=tidy-ticket-rustc_parse-can_begin_literal_maybe_minus
     /// Matches `'-' lit | lit` (cf. `ast_validation::AstValidator::check_expr_within_pat`).
     /// Keep this in sync with `Token::can_begin_literal_maybe_minus`.
     pub fn parse_literal_maybe_minus(&mut self) -> PResult<'a, P<Expr>> {
@@ -2216,6 +2217,7 @@ impl<'a> Parser<'a> {
             Ok(expr)
         }
     }
+    // tidy-keep-sync-with=tidy-ticket-rustc_parse-can_begin_literal_maybe_minus
 
     fn is_array_like_block(&mut self) -> bool {
         self.look_ahead(1, |t| matches!(t.kind, TokenKind::Ident(..) | TokenKind::Literal(_)))

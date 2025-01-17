@@ -7,6 +7,7 @@
 #![allow(path_statements, unused_allocation)]
 #![feature(core_intrinsics, generic_assert)]
 
+// tidy-keep-sync-with=tidy-ticket-all-expr-kinds
 macro_rules! test {
   (
     let mut $elem_ident:ident = $elem_expr:expr;
@@ -118,3 +119,4 @@ fn main() {
     [ -elem == -3 ] => "Assertion failed: -elem == -3\nWith captures:\n  elem = 1\n"
   );
 }
+// tidy-keep-sync-with=tidy-ticket-all-expr-kinds

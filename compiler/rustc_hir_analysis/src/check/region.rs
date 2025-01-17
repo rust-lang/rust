@@ -116,6 +116,7 @@ fn resolve_block<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, blk: &'tcx hi
     visitor.cx.var_parent = visitor.cx.parent;
 
     {
+        // FIXME: sync with exactly where?
         // This block should be kept approximately in sync with
         // `intravisit::walk_block`. (We manually walk the block, rather
         // than call `walk_block`, in order to maintain precise

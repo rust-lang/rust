@@ -782,11 +782,14 @@ impl<Cx: PatCx> Constructor<Cx> {
         }
     }
 
+    // tidy-keep-sync-with=tidy-ticket-arity
     /// The number of fields for this constructor. This must be kept in sync with
     /// `Fields::wildcards`.
+    // FIXME: this comment long ago desynced
     pub(crate) fn arity(&self, cx: &Cx, ty: &Cx::Ty) -> usize {
         cx.ctor_arity(self, ty)
     }
+    // tidy-keep-sync-with=tidy-ticket-arity
 
     /// Returns whether `self` is covered by `other`, i.e. whether `self` is a subset of `other`.
     /// For the simple cases, this is simply checking for equality. For the "grouped" constructors,
