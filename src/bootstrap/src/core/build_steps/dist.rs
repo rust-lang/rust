@@ -1008,6 +1008,8 @@ impl Step for PlainSourceTarball {
             "README.md",
             "RELEASES.md",
             "REUSE.toml",
+            "x",
+            "x.ps1",
             "x.py",
             // tidy-alphabetical-end
         ];
