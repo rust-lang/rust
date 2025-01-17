@@ -386,19 +386,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // since it's never passed to something with parameter metadata (especially
         // after MIR inlining) so the only way to tell the backend about the
         // constraint that the `transmute` introduced is to `assume` it.
-        self.assume_scalar_range(bx, imm, to_scalar, to_backend_ty);
+        self.assume_scalar_range(bx, imm, to_scalar);
 
         imm = bx.to_immediate_scalar(imm, to_scalar);
         imm
     }
 
-    fn assume_scalar_range(
-        &self,
-        bx: &mut Bx,
-        imm: Bx::Value,
-        scalar: abi::Scalar,
-        backend_ty: Bx::Type,
-    ) {
+    fn assume_scalar_range(&self, bx: &mut Bx, imm: Bx::Value, scalar: abi::Scalar) {
         if matches!(self.cx.sess().opts.optimize, OptLevel::No)
             // For now, the critical niches are all over `Int`eger values.
             // Should floating-point values or pointers ever get more complex
@@ -409,31 +403,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
 
-        let abi::WrappingRange { start, end } = scalar.valid_range(self.cx);
-
-        if start <= end {
-            if start > 0 {
-                let low = bx.const_uint_big(backend_ty, start);
-                let cmp = bx.icmp(IntPredicate::IntUGE, imm, low);
-                bx.assume(cmp);
-            }
-
-            let type_max = scalar.size(self.cx).unsigned_int_max();
-            if end < type_max {
-                let high = bx.const_uint_big(backend_ty, end);
-                let cmp = bx.icmp(IntPredicate::IntULE, imm, high);
-                bx.assume(cmp);
-            }
-        } else {
-            let low = bx.const_uint_big(backend_ty, start);
-            let cmp_low = bx.icmp(IntPredicate::IntUGE, imm, low);
-
-            let high = bx.const_uint_big(backend_ty, end);
-            let cmp_high = bx.icmp(IntPredicate::IntULE, imm, high);
-
-            let or = bx.or(cmp_low, cmp_high);
-            bx.assume(or);
-        }
+        let range = scalar.valid_range(self.cx);
+        bx.assume_integer_range(imm, range);
     }
 
     pub(crate) fn codegen_rvalue_unsized(

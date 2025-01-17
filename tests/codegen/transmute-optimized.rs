@@ -94,15 +94,10 @@ pub enum OneTwoThree {
 // CHECK-SAME: range(i8 -1, 2){{.+}}%x
 #[no_mangle]
 pub unsafe fn ordering_transmute_onetwothree(x: std::cmp::Ordering) -> OneTwoThree {
-    // FIXME: this *should* just be `ret i8 1`, but that's not happening today.
-    // cc <https://github.com/llvm/llvm-project/issues/123278>
-
-    // CHECK: %[[TEMP1:.+]] = icmp ne i8 %x, 0
-    // CHECK: tail call void @llvm.assume(i1 %[[TEMP1]])
-    // CHECK: %[[TEMP2:.+]] = icmp ult i8 %x, 4
+    // CHECK: %[[TEMP1:.+]] = add nsw i8 %x, -1
+    // CHECK: %[[TEMP2:.+]] = icmp ult i8 %[[TEMP1]], 3
     // CHECK: tail call void @llvm.assume(i1 %[[TEMP2]])
-
-    // CHECK: ret i8 %x
+    // CHECK: ret i8 1
     std::mem::transmute(x)
 }
 
