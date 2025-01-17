@@ -318,7 +318,8 @@ impl Marker {
             _ => unreachable!(),
         }
         p.push_event(Event::Finish);
-        CompletedMarker::new(self.pos, kind)
+        let end_pos = p.events.len() as u32;
+        CompletedMarker::new(self.pos, end_pos, kind)
     }
 
     /// Abandons the syntax tree node. All its children
@@ -336,13 +337,14 @@ impl Marker {
 }
 
 pub(crate) struct CompletedMarker {
-    pos: u32,
+    start_pos: u32,
+    end_pos: u32,
     kind: SyntaxKind,
 }
 
 impl CompletedMarker {
-    fn new(pos: u32, kind: SyntaxKind) -> Self {
-        CompletedMarker { pos, kind }
+    fn new(start_pos: u32, end_pos: u32, kind: SyntaxKind) -> Self {
+        CompletedMarker { start_pos, end_pos, kind }
     }
 
     /// This method allows to create a new node which starts
@@ -360,10 +362,10 @@ impl CompletedMarker {
     /// distance to `NEWSTART` into forward_parent(=2 in this case);
     pub(crate) fn precede(self, p: &mut Parser<'_>) -> Marker {
         let new_pos = p.start();
-        let idx = self.pos as usize;
+        let idx = self.start_pos as usize;
         match &mut p.events[idx] {
             Event::Start { forward_parent, .. } => {
-                *forward_parent = Some(new_pos.pos - self.pos);
+                *forward_parent = Some(new_pos.pos - self.start_pos);
             }
             _ => unreachable!(),
         }
@@ -376,7 +378,7 @@ impl CompletedMarker {
         let idx = m.pos as usize;
         match &mut p.events[idx] {
             Event::Start { forward_parent, .. } => {
-                *forward_parent = Some(self.pos - m.pos);
+                *forward_parent = Some(self.start_pos - m.pos);
             }
             _ => unreachable!(),
         }
@@ -385,5 +387,14 @@ impl CompletedMarker {
 
     pub(crate) fn kind(&self) -> SyntaxKind {
         self.kind
+    }
+
+    pub(crate) fn last_token(&self, p: &Parser<'_>) -> Option<SyntaxKind> {
+        let end_pos = self.end_pos as usize;
+        debug_assert_eq!(p.events[end_pos - 1], Event::Finish);
+        p.events[..end_pos].iter().rev().find_map(|event| match event {
+            Event::Token { kind, .. } => Some(*kind),
+            _ => None,
+        })
     }
 }
