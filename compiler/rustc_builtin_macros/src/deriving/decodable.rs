@@ -1,7 +1,7 @@
 //! The compiler code necessary for `#[derive(RustcDecodable)]`. See encodable.rs for more.
 
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Expr, MetaItem, Mutability};
+use rustc_ast::{self as ast, Expr, MetaItem, Mutability, Safety};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -58,6 +58,7 @@ pub(crate) fn expand_deriving_rustc_decodable(
         }],
         associated_types: Vec::new(),
         is_const,
+        safety: Safety::Default,
     };
 
     trait_def.expand(cx, mitem, item, push)
