@@ -1,6 +1,6 @@
-use crate::cell::RefCell;
-use crate::collections::HashMap;
-use crate::thread_local;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::thread_local;
 
 #[test]
 fn smoke() {
