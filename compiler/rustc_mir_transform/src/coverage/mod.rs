@@ -89,8 +89,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
         return;
     }
 
-    let coverage_counters =
-        CoverageCounters::make_bcb_counters(&graph, &bcbs_with_counter_mappings);
+    let coverage_counters = counters::make_bcb_counters(&graph, &bcbs_with_counter_mappings);
 
     let mappings = create_mappings(&extracted_mappings, &coverage_counters);
     if mappings.is_empty() {

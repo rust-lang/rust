@@ -20,6 +20,96 @@ mod iter_nodes;
 mod node_flow;
 mod union_find;
 
+/// Ensures that each BCB node needing a counter has one, by creating physical
+/// counters or counter expressions for nodes as required.
+pub(super) fn make_bcb_counters(
+    graph: &CoverageGraph,
+    bcb_needs_counter: &DenseBitSet<BasicCoverageBlock>,
+) -> CoverageCounters {
+    let balanced_graph = BalancedFlowGraph::for_graph(graph, |n| !graph[n].is_out_summable);
+    let merged_graph = MergedNodeFlowGraph::for_balanced_graph(&balanced_graph);
+
+    let nodes = make_node_counter_priority_list(graph, balanced_graph);
+    let node_counters = merged_graph.make_node_counters(&nodes);
+
+    transcribe_counters(&node_counters, bcb_needs_counter)
+}
+
+fn make_node_counter_priority_list(
+    graph: &CoverageGraph,
+    balanced_graph: BalancedFlowGraph<&CoverageGraph>,
+) -> Vec<BasicCoverageBlock> {
+    // A "reloop" node has exactly one out-edge, which jumps back to the top
+    // of an enclosing loop. Reloop nodes are typically visited more times
+    // than loop-exit nodes, so try to avoid giving them physical counters.
+    let is_reloop_node = IndexVec::from_fn_n(
+        |node| match graph.successors[node].as_slice() {
+            &[succ] => graph.dominates(succ, node),
+            _ => false,
+        },
+        graph.num_nodes(),
+    );
+
+    let mut nodes = balanced_graph.iter_nodes().rev().collect::<Vec<_>>();
+    // The first node is the sink, which must not get a physical counter.
+    assert_eq!(nodes[0], balanced_graph.sink);
+    // Sort the real nodes, such that earlier (lesser) nodes take priority
+    // in being given a counter expression instead of a physical counter.
+    nodes[1..].sort_by(|&a, &b| {
+        // Start with a dummy `Equal` to make the actual tests line up nicely.
+        Ordering::Equal
+            // Prefer a physical counter for return/yield nodes.
+            .then_with(|| Ord::cmp(&graph[a].is_out_summable, &graph[b].is_out_summable))
+            // Prefer an expression for reloop nodes (see definition above).
+            .then_with(|| Ord::cmp(&is_reloop_node[a], &is_reloop_node[b]).reverse())
+            // Otherwise, prefer a physical counter for dominating nodes.
+            .then_with(|| graph.cmp_in_dominator_order(a, b).reverse())
+    });
+    nodes
+}
+
+fn transcribe_counters(
+    old: &NodeCounters<BasicCoverageBlock>,
+    bcb_needs_counter: &DenseBitSet<BasicCoverageBlock>,
+) -> CoverageCounters {
+    let mut new = CoverageCounters::with_num_bcbs(bcb_needs_counter.domain_size());
+
+    for bcb in bcb_needs_counter.iter() {
+        let (mut pos, mut neg): (Vec<_>, Vec<_>) =
+            old.counter_expr(bcb).iter().partition_map(|&CounterTerm { node, op }| match op {
+                Op::Add => Either::Left(node),
+                Op::Subtract => Either::Right(node),
+            });
+
+        if pos.is_empty() {
+            // If we somehow end up with no positive terms, fall back to
+            // creating a physical counter. There's no known way for this
+            // to happen, but we can avoid an ICE if it does.
+            debug_assert!(false, "{bcb:?} has no positive counter terms");
+            pos = vec![bcb];
+            neg = vec![];
+        }
+
+        pos.sort();
+        neg.sort();
+
+        let mut new_counters_for_sites = |sites: Vec<BasicCoverageBlock>| {
+            sites.into_iter().map(|node| new.ensure_phys_counter(node)).collect::<Vec<_>>()
+        };
+        let mut pos = new_counters_for_sites(pos);
+        let mut neg = new_counters_for_sites(neg);
+
+        pos.sort();
+        neg.sort();
+
+        let pos_counter = new.make_sum(&pos).expect("`pos` should not be empty");
+        let new_counter = new.make_subtracted_sum(pos_counter, &neg);
+        new.set_node_counter(bcb, new_counter);
+    }
+
+    new
+}
+
 /// The coverage counter or counter expression associated with a particular
 /// BCB node or BCB edge.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -73,46 +163,6 @@ pub(super) struct CoverageCounters {
 }
 
 impl CoverageCounters {
-    /// Ensures that each BCB node needing a counter has one, by creating physical
-    /// counters or counter expressions for nodes and edges as required.
-    pub(super) fn make_bcb_counters(
-        graph: &CoverageGraph,
-        bcb_needs_counter: &DenseBitSet<BasicCoverageBlock>,
-    ) -> Self {
-        let balanced_graph = BalancedFlowGraph::for_graph(graph, |n| !graph[n].is_out_summable);
-        let merged_graph = MergedNodeFlowGraph::for_balanced_graph(&balanced_graph);
-
-        // A "reloop" node has exactly one out-edge, which jumps back to the top
-        // of an enclosing loop. Reloop nodes are typically visited more times
-        // than loop-exit nodes, so try to avoid giving them physical counters.
-        let is_reloop_node = IndexVec::from_fn_n(
-            |node| match graph.successors[node].as_slice() {
-                &[succ] => graph.dominates(succ, node),
-                _ => false,
-            },
-            graph.num_nodes(),
-        );
-
-        let mut nodes = balanced_graph.iter_nodes().rev().collect::<Vec<_>>();
-        // The first node is the sink, which must not get a physical counter.
-        assert_eq!(nodes[0], balanced_graph.sink);
-        // Sort the real nodes, such that earlier (lesser) nodes take priority
-        // in being given a counter expression instead of a physical counter.
-        nodes[1..].sort_by(|&a, &b| {
-            // Start with a dummy `Equal` to make the actual tests line up nicely.
-            Ordering::Equal
-                // Prefer a physical counter for return/yield nodes.
-                .then_with(|| Ord::cmp(&graph[a].is_out_summable, &graph[b].is_out_summable))
-                // Prefer an expression for reloop nodes (see definition above).
-                .then_with(|| Ord::cmp(&is_reloop_node[a], &is_reloop_node[b]).reverse())
-                // Otherwise, prefer a physical counter for dominating nodes.
-                .then_with(|| graph.cmp_in_dominator_order(a, b).reverse())
-        });
-        let node_counters = merged_graph.make_node_counters(&nodes);
-
-        Transcriber::new(graph.num_nodes(), node_counters).transcribe_counters(bcb_needs_counter)
-    }
-
     fn with_num_bcbs(num_bcbs: usize) -> Self {
         Self {
             phys_counter_for_node: FxIndexMap::default(),
@@ -214,58 +264,5 @@ impl CoverageCounters {
         // accidentally invalidate them by changing its length.
         assert_eq!(old_len, expressions.len());
         expressions
-    }
-}
-
-struct Transcriber {
-    old: NodeCounters<BasicCoverageBlock>,
-    new: CoverageCounters,
-}
-
-impl Transcriber {
-    fn new(num_nodes: usize, old: NodeCounters<BasicCoverageBlock>) -> Self {
-        Self { old, new: CoverageCounters::with_num_bcbs(num_nodes) }
-    }
-
-    fn transcribe_counters(
-        mut self,
-        bcb_needs_counter: &DenseBitSet<BasicCoverageBlock>,
-    ) -> CoverageCounters {
-        for bcb in bcb_needs_counter.iter() {
-            let (mut pos, mut neg): (Vec<_>, Vec<_>) =
-                self.old.counter_expr(bcb).iter().partition_map(
-                    |&CounterTerm { node, op }| match op {
-                        Op::Add => Either::Left(node),
-                        Op::Subtract => Either::Right(node),
-                    },
-                );
-
-            if pos.is_empty() {
-                // If we somehow end up with no positive terms, fall back to
-                // creating a physical counter. There's no known way for this
-                // to happen, but we can avoid an ICE if it does.
-                debug_assert!(false, "{bcb:?} has no positive counter terms");
-                pos = vec![bcb];
-                neg = vec![];
-            }
-
-            pos.sort();
-            neg.sort();
-
-            let mut new_counters_for_sites = |sites: Vec<BasicCoverageBlock>| {
-                sites.into_iter().map(|node| self.new.ensure_phys_counter(node)).collect::<Vec<_>>()
-            };
-            let mut pos = new_counters_for_sites(pos);
-            let mut neg = new_counters_for_sites(neg);
-
-            pos.sort();
-            neg.sort();
-
-            let pos_counter = self.new.make_sum(&pos).expect("`pos` should not be empty");
-            let new_counter = self.new.make_subtracted_sum(pos_counter, &neg);
-            self.new.set_node_counter(bcb, new_counter);
-        }
-
-        self.new
     }
 }
