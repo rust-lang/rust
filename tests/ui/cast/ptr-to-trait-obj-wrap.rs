@@ -1,3 +1,4 @@
+//@ check-pass
 #![allow(unused)]
 
 trait A {}
@@ -7,14 +8,10 @@ struct X<T: ?Sized>(T);
 
 fn unwrap(a: *const W<dyn A>) -> *const dyn A {
     a as _
-    //~^ error
-    //~| error
 }
 
 fn unwrap_nested(a: *const W<W<dyn A>>) -> *const W<dyn A> {
     a as _
-    //~^ error
-    //~| error
 }
 
 fn rewrap(a: *const W<dyn A>) -> *const X<dyn A> {
