@@ -788,16 +788,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                     }
                 }
-                ExprKind::Path(..) | ExprKind::Lit(_) if parent_is_closure => {
+                ExprKind::Path(..) | ExprKind::Lit(_)
+                    if parent_is_closure && !in_external_macro(self.tcx.sess, expression.span) =>
+                {
                     err.span_suggestion_verbose(
                         expression.span.shrink_to_lo(),
                         "consider ignoring the value",
                         "_ = ",
-                        if in_external_macro(self.tcx.sess, expression.span) {
-                            Applicability::MaybeIncorrect
-                        } else {
-                            Applicability::MachineApplicable
-                        },
+                        Applicability::MachineApplicable,
                     );
                 }
                 _ => (),
