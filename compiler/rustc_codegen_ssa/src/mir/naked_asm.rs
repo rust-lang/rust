@@ -1,12 +1,14 @@
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind};
 use rustc_attr_parsing::InstructionSetAttr;
+use rustc_hir::def_id::DefId;
 use rustc_middle::mir::mono::{Linkage, MonoItem, MonoItemData, Visibility};
 use rustc_middle::mir::{Body, InlineAsmOperand};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{Instance, Ty, TyCtxt};
-use rustc_middle::{bug, ty};
+use rustc_middle::{bug, span_bug, ty};
 use rustc_span::sym;
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
+use rustc_target::spec::WasmCAbi;
 
 use crate::common;
 use crate::traits::{AsmCodegenMethods, BuilderMethods, GlobalAsmOperandRef, MiscCodegenMethods};
@@ -285,7 +287,12 @@ fn prefix_and_suffix<'tcx>(
                 writeln!(begin, "{}", arch_prefix).unwrap();
             }
             writeln!(begin, "{asm_name}:").unwrap();
-            writeln!(begin, ".functype {asm_name} {}", wasm_functype(tcx, fn_abi)).unwrap();
+            writeln!(
+                begin,
+                ".functype {asm_name} {}",
+                wasm_functype(tcx, fn_abi, instance.def_id())
+            )
+            .unwrap();
 
             writeln!(end).unwrap();
             // .size is ignored for function symbols, so we can skip it
@@ -299,7 +306,7 @@ fn prefix_and_suffix<'tcx>(
 /// The webassembly type signature for the given function.
 ///
 /// Used by the `.functype` directive on wasm targets.
-fn wasm_functype<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> String {
+fn wasm_functype<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, def_id: DefId) -> String {
     let mut signature = String::with_capacity(64);
 
     let ptr_type = match tcx.data_layout.pointer_size.bits() {
@@ -308,8 +315,18 @@ fn wasm_functype<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Str
         other => bug!("wasm pointer size cannot be {other} bits"),
     };
 
-    let hidden_return =
-        matches!(fn_abi.ret.mode, PassMode::Indirect { .. } | PassMode::Pair { .. });
+    // FIXME: remove this once the wasm32-unknown-unknown ABI is fixed
+    // please also add `wasm32-unknown-unknown` back in `tests/assembly/wasm32-naked-fn.rs`
+    // basically the commit introducing this comment should be reverted
+    if let PassMode::Pair { .. } = fn_abi.ret.mode {
+        let _ = WasmCAbi::Legacy;
+        span_bug!(
+            tcx.def_span(def_id),
+            "cannot return a pair (the wasm32-unknown-unknown ABI is broken, see https://github.com/rust-lang/rust/issues/115666"
+        );
+    }
+
+    let hidden_return = matches!(fn_abi.ret.mode, PassMode::Indirect { .. });
 
     signature.push('(');
 
@@ -322,7 +339,7 @@ fn wasm_functype<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Str
 
     let mut it = fn_abi.args.iter().peekable();
     while let Some(arg_abi) = it.next() {
-        wasm_type(&mut signature, arg_abi, ptr_type);
+        wasm_type(tcx, &mut signature, arg_abi, ptr_type, def_id);
         if it.peek().is_some() {
             signature.push_str(", ");
         }
@@ -331,7 +348,7 @@ fn wasm_functype<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Str
     signature.push_str(") -> (");
 
     if !hidden_return {
-        wasm_type(&mut signature, &fn_abi.ret, ptr_type);
+        wasm_type(tcx, &mut signature, &fn_abi.ret, ptr_type, def_id);
     }
 
     signature.push(')');
@@ -339,13 +356,27 @@ fn wasm_functype<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Str
     signature
 }
 
-fn wasm_type<'tcx>(signature: &mut String, arg_abi: &ArgAbi<'_, Ty<'tcx>>, ptr_type: &'static str) {
+fn wasm_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    signature: &mut String,
+    arg_abi: &ArgAbi<'_, Ty<'tcx>>,
+    ptr_type: &'static str,
+    def_id: DefId,
+) {
     match arg_abi.mode {
         PassMode::Ignore => { /* do nothing */ }
         PassMode::Direct(_) => {
             let direct_type = match arg_abi.layout.backend_repr {
                 BackendRepr::Scalar(scalar) => wasm_primitive(scalar.primitive(), ptr_type),
                 BackendRepr::Vector { .. } => "v128",
+                BackendRepr::Memory { .. } => {
+                    // FIXME: remove this branch once the wasm32-unknown-unknown ABI is fixed
+                    let _ = WasmCAbi::Legacy;
+                    span_bug!(
+                        tcx.def_span(def_id),
+                        "cannot use memory args (the wasm32-unknown-unknown ABI is broken, see https://github.com/rust-lang/rust/issues/115666"
+                    );
+                }
                 other => unreachable!("unexpected BackendRepr: {:?}", other),
             };
 

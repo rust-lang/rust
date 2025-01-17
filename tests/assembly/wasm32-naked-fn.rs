@@ -1,10 +1,10 @@
-//@ revisions: wasm32-unknown wasm64-unknown wasm32-wasip1
+// FIXME: add wasm32-unknown when the wasm32-unknown-unknown ABI is fixed
+// see https://github.com/rust-lang/rust/issues/115666
+//@ revisions: wasm64-unknown wasm32-wasip1
 //@ add-core-stubs
 //@ assembly-output: emit-asm
-//@ [wasm32-unknown] compile-flags: --target wasm32-unknown-unknown
 //@ [wasm64-unknown] compile-flags: --target wasm64-unknown-unknown
 //@ [wasm32-wasip1] compile-flags: --target wasm32-wasip1
-//@ [wasm32-unknown] needs-llvm-components: webassembly
 //@ [wasm64-unknown] needs-llvm-components: webassembly
 //@ [wasm32-wasip1] needs-llvm-components: webassembly
 
@@ -97,7 +97,7 @@ unsafe extern "C" fn fn_i64_i64(num: i64) -> i64 {
 }
 
 // CHECK-LABEL: fn_i128_i128:
-// wasm32-unknown,wasm32-wasip1: .functype fn_i128_i128 (i32, i64, i64) -> ()
+// wasm32-wasip1: .functype fn_i128_i128 (i32, i64, i64) -> ()
 // wasm64-unknown: .functype fn_i128_i128 (i64, i64, i64) -> ()
 #[allow(improper_ctypes_definitions)]
 #[no_mangle]
@@ -114,7 +114,7 @@ unsafe extern "C" fn fn_i128_i128(num: i128) -> i128 {
 }
 
 // CHECK-LABEL: fn_f128_f128:
-// wasm32-unknown,wasm32-wasip1: .functype fn_f128_f128 (i32, i64, i64) -> ()
+// wasm32-wasip1: .functype fn_f128_f128 (i32, i64, i64) -> ()
 // wasm64-unknown: .functype fn_f128_f128 (i64, i64, i64) -> ()
 #[no_mangle]
 #[naked]
@@ -137,18 +137,19 @@ struct Compound {
 
 // CHECK-LABEL: fn_compound_compound:
 // wasm32-wasip1: .functype fn_compound_compound (i32, i32) -> ()
-// wasm32-unknown: .functype fn_compound_compound (i32, i32, i64) -> ()
 // wasm64-unknown: .functype fn_compound_compound (i64, i64) -> ()
 #[no_mangle]
 #[naked]
 unsafe extern "C" fn fn_compound_compound(_: Compound) -> Compound {
-    // this is the wasm32-unknown-unknown assembly
+    // this is the wasm32-wasip1 assembly
     naked_asm!(
         "local.get       0",
-        "local.get       2",
+        "local.get       1",
+        "i64.load        8",
         "i64.store       8",
         "local.get       0",
         "local.get       1",
+        "i32.load16_u    0",
         "i32.store16     0",
     )
 }
