@@ -10,9 +10,6 @@
 
 #![stable(feature = "env", since = "1.0.0")]
 
-#[cfg(test)]
-mod tests;
-
 use crate::error::Error;
 use crate::ffi::{OsStr, OsString};
 use crate::path::{Path, PathBuf};
