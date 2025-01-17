@@ -44,7 +44,7 @@ runners:
     <<: *base-job
 
   - &job-aarch64-linux
-    os: ubuntu-22.04-arm64-8core-32gb
+    os: ubuntu-22.04-arm
 
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
