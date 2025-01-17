@@ -1,4 +1,4 @@
-use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind};
+use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind, Safety};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, sym};
 use thin_vec::thin_vec;
@@ -64,6 +64,7 @@ pub(crate) fn expand_deriving_partial_ord(
         methods: vec![partial_cmp_def],
         associated_types: Vec::new(),
         is_const,
+        safety: Safety::Default,
     };
     trait_def.expand(cx, mitem, item, push)
 }
