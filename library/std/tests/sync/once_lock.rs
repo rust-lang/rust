@@ -1,8 +1,8 @@
-use crate::sync::OnceLock;
-use crate::sync::atomic::AtomicUsize;
-use crate::sync::atomic::Ordering::SeqCst;
-use crate::sync::mpsc::channel;
-use crate::{panic, thread};
+use std::sync::OnceLock;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering::SeqCst;
+use std::sync::mpsc::channel;
+use std::{panic, thread};
 
 fn spawn_and_wait<R: Send + 'static>(f: impl FnOnce() -> R + Send + 'static) -> R {
     thread::spawn(f).join().unwrap()
@@ -31,15 +31,6 @@ fn sync_once_cell_get_mut() {
     c.set(90).unwrap();
     *c.get_mut().unwrap() += 2;
     assert_eq!(c.get_mut(), Some(&mut 92));
-}
-
-#[test]
-fn sync_once_cell_get_unchecked() {
-    let c = OnceLock::new();
-    c.set(92).unwrap();
-    unsafe {
-        assert_eq!(c.get_unchecked(), &92);
-    }
 }
 
 #[test]
@@ -88,7 +79,6 @@ fn get_or_try_init() {
 
     let res = panic::catch_unwind(|| cell.get_or_try_init(|| -> Result<_, ()> { panic!() }));
     assert!(res.is_err());
-    assert!(!cell.is_initialized());
     assert!(cell.get().is_none());
 
     assert_eq!(cell.get_or_try_init(|| Err(())), Err(()));

@@ -1,15 +1,15 @@
-use rand::Rng;
-
-use crate::fmt::Debug;
-use crate::ops::FnMut;
-use crate::panic::{self, AssertUnwindSafe};
-use crate::sync::atomic::{AtomicUsize, Ordering};
-use crate::sync::mpsc::channel;
-use crate::sync::{
+use std::fmt::Debug;
+use std::ops::FnMut;
+use std::panic::{self, AssertUnwindSafe};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc::channel;
+use std::sync::{
     Arc, MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
     TryLockError,
 };
-use crate::{hint, mem, thread};
+use std::{hint, mem, thread};
+
+use rand::Rng;
 
 #[derive(Eq, PartialEq, Debug)]
 struct NonCopy(i32);
@@ -57,7 +57,7 @@ fn frob() {
         let tx = tx.clone();
         let r = r.clone();
         thread::spawn(move || {
-            let mut rng = crate::test_helpers::test_rng();
+            let mut rng = crate::common::test_rng();
             for _ in 0..M {
                 if rng.gen_bool(1.0 / (N as f64)) {
                     drop(r.write().unwrap());
@@ -704,7 +704,7 @@ fn test_downgrade_atomic() {
 
     // Wait for a good amount of time so that evil threads go to sleep.
     // Note: this is not strictly necessary...
-    let eternity = crate::time::Duration::from_millis(42);
+    let eternity = std::time::Duration::from_millis(42);
     thread::sleep(eternity);
 
     // Once everyone is asleep, set the value to `NEW_VALUE`.

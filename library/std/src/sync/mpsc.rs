@@ -137,12 +137,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
-mod tests;
-
-#[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
-mod sync_tests;
-
 // MPSC channels are built as a wrapper around MPMC channels, which
 // were ported from the `crossbeam-channel` crate. MPMC channels are
 // not exposed publicly, but if you are curious about the implementation,
@@ -737,9 +731,10 @@ impl<T> SyncSender<T> {
     // Attempts to send for a value on this receiver, returning an error if the
     // corresponding channel has hung up, or if it waits more than `timeout`.
     //
-    // This method is currently private and only used for tests.
-    #[allow(unused)]
-    fn send_timeout(&self, t: T, timeout: Duration) -> Result<(), mpmc::SendTimeoutError<T>> {
+    // This method is currently only used for tests.
+    #[unstable(issue = "none", feature = "std_internals")]
+    #[doc(hidden)]
+    pub fn send_timeout(&self, t: T, timeout: Duration) -> Result<(), mpmc::SendTimeoutError<T>> {
         self.inner.send_timeout(t, timeout)
     }
 }

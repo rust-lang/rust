@@ -1,7 +1,8 @@
-use super::*;
-use crate::rc::Rc;
-use crate::sync::mpmc::SendTimeoutError;
-use crate::{env, thread};
+use std::rc::Rc;
+use std::sync::mpmc::SendTimeoutError;
+use std::sync::mpsc::*;
+use std::time::Duration;
+use std::{env, thread};
 
 pub fn stress_factor() -> usize {
     match env::var("RUST_TEST_STRESS") {

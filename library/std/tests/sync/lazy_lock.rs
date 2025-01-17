@@ -1,8 +1,8 @@
-use crate::cell::LazyCell;
-use crate::sync::atomic::AtomicUsize;
-use crate::sync::atomic::Ordering::SeqCst;
-use crate::sync::{LazyLock, Mutex, OnceLock};
-use crate::{panic, thread};
+use std::cell::LazyCell;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering::SeqCst;
+use std::sync::{LazyLock, Mutex, OnceLock};
+use std::{panic, thread};
 
 fn spawn_and_wait<R: Send + 'static>(f: impl FnOnce() -> R + Send + 'static) -> R {
     thread::spawn(f).join().unwrap()
@@ -149,7 +149,7 @@ fn is_sync_send() {
 #[should_panic = "has previously been poisoned"]
 fn lazy_force_mut_panic() {
     let mut lazy = LazyLock::<String>::new(|| panic!());
-    crate::panic::catch_unwind(crate::panic::AssertUnwindSafe(|| {
+    panic::catch_unwind(panic::AssertUnwindSafe(|| {
         let _ = LazyLock::force_mut(&mut lazy);
     }))
     .unwrap_err();

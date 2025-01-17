@@ -1,9 +1,9 @@
-use super::Once;
-use crate::sync::atomic::AtomicBool;
-use crate::sync::atomic::Ordering::Relaxed;
-use crate::sync::mpsc::channel;
-use crate::time::Duration;
-use crate::{panic, thread};
+use std::sync::Once;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
+use std::sync::mpsc::channel;
+use std::time::Duration;
+use std::{panic, thread};
 
 #[test]
 fn smoke_once() {
