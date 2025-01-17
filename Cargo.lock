@@ -5435,6 +5435,8 @@ dependencies = [
  "rustc-hash 2.1.0",
  "semver",
  "serde",
+ "serde_derive",
+ "serde_json",
  "similar",
  "termcolor",
  "walkdir",

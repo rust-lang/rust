@@ -146,7 +146,7 @@ fn main() {
 
         check!(x_version, &root_path, &cargo);
 
-        check!(watcher, &root_path);
+        check!(watcher, &root_path, bless);
 
         let collected = {
             drain_handles(&mut handles);
