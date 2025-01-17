@@ -5429,6 +5429,7 @@ dependencies = [
  "cargo_metadata 0.19.1",
  "fluent-syntax",
  "ignore",
+ "md-5",
  "miropt-test-tools",
  "regex",
  "rustc-hash 2.1.0",
