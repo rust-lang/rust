@@ -138,6 +138,7 @@ impl<'tcx> Predicate<'tcx> {
     /// unsoundly accept some programs. See #91068.
     #[inline]
     pub fn allow_normalization(self) -> bool {
+        // FIXME: sync me
         // Keep this in sync with the one in `rustc_type_ir::inherent`!
         match self.kind().skip_binder() {
             PredicateKind::Clause(ClauseKind::WellFormed(_))
