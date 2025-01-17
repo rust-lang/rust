@@ -1,10 +1,7 @@
 use crate::io;
 use crate::sys::anonymous_pipe::{AnonPipe, pipe as pipe_inner};
 
-/// Create anonymous pipe that is close-on-exec and blocking.
-///
-/// This function provides support for anonymous OS pipes, like [pipe] on Linux or [CreatePipe] on
-/// Windows.
+/// Create an anonymous pipe.
 ///
 /// # Behavior
 ///
@@ -16,6 +13,13 @@ use crate::sys::anonymous_pipe::{AnonPipe, pipe as pipe_inner};
 /// * When all copies of a [`PipeWriter`] are closed, a read on the corresponding [`PipeReader`]
 ///   returns EOF.
 /// * [`PipeReader`] can be shared, but only one process will consume the data in the pipe.
+///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `pipe` function on Unix and the
+/// `CreatePipe` function on Windows.
+///
+/// Note that this [may change in the future][changes].
 ///
 /// # Capacity
 ///
@@ -32,10 +36,10 @@ use crate::sys::anonymous_pipe::{AnonPipe, pipe as pipe_inner};
 /// # #[cfg(miri)] fn main() {}
 /// # #[cfg(not(miri))]
 /// # fn main() -> std::io::Result<()> {
-/// # use std::process::Command;
-/// # use std::io::{Read, Write};
-/// let (ping_rx, mut ping_tx) = std::pipe::pipe()?;
-/// let (mut pong_rx, pong_tx) = std::pipe::pipe()?;
+/// use std::process::Command;
+/// use std::io::{pipe, Read, Write};
+/// let (ping_rx, mut ping_tx) = pipe()?;
+/// let (mut pong_rx, pong_tx) = pipe()?;
 ///
 /// // Spawn a process that echoes its input.
 /// let mut echo_server = Command::new("cat").stdin(ping_rx).stdout(pong_tx).spawn()?;
@@ -53,8 +57,7 @@ use crate::sys::anonymous_pipe::{AnonPipe, pipe as pipe_inner};
 /// # Ok(())
 /// # }
 /// ```
-/// [pipe]: https://man7.org/linux/man-pages/man2/pipe.2.html
-/// [CreatePipe]: https://learn.microsoft.com/en-us/windows/win32/api/namedpipeapi/nf-namedpipeapi-createpipe
+/// [changes]: io#platform-specific-behavior
 /// [man page]: https://man7.org/linux/man-pages/man7/pipe.7.html
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 #[inline]
@@ -82,15 +85,15 @@ impl PipeReader {
     /// # #[cfg(miri)] fn main() {}
     /// # #[cfg(not(miri))]
     /// # fn main() -> std::io::Result<()> {
-    /// # use std::fs;
-    /// # use std::io::Write;
-    /// # use std::process::Command;
+    /// use std::fs;
+    /// use std::io::{pipe, Write};
+    /// use std::process::Command;
     /// const NUM_SLOT: u8 = 2;
     /// const NUM_PROC: u8 = 5;
     /// const OUTPUT: &str = "work.txt";
     ///
     /// let mut jobs = vec![];
-    /// let (reader, mut writer) = std::pipe::pipe()?;
+    /// let (reader, mut writer) = pipe()?;
     ///
     /// // Write NUM_SLOT characters the pipe.
     /// writer.write_all(&[b'|'; NUM_SLOT as usize])?;
@@ -142,9 +145,9 @@ impl PipeWriter {
     /// # #[cfg(miri)] fn main() {}
     /// # #[cfg(not(miri))]
     /// # fn main() -> std::io::Result<()> {
-    /// # use std::process::Command;
-    /// # use std::io::Read;
-    /// let (mut reader, writer) = std::pipe::pipe()?;
+    /// use std::process::Command;
+    /// use std::io::{pipe, Read};
+    /// let (mut reader, writer) = pipe()?;
     ///
     /// // Spawn a process that writes to stdout and stderr.
     /// let mut peer = Command::new("bash")
@@ -221,11 +224,9 @@ impl io::Write for &PipeWriter {
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
-
     fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
     }
-
     #[inline]
     fn is_write_vectored(&self) -> bool {
         self.0.is_write_vectored()
@@ -241,11 +242,9 @@ impl io::Write for PipeWriter {
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
-
     fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
     }
-
     #[inline]
     fn is_write_vectored(&self) -> bool {
         self.0.is_write_vectored()
