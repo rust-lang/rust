@@ -140,10 +140,8 @@ macro_rules! item_template_methods {
     };
 }
 
-const ITEM_TABLE_OPEN: &str = "<ul class=\"item-table\">";
-const ITEM_TABLE_CLOSE: &str = "</ul>";
-const ITEM_TABLE_ROW_OPEN: &str = "<li>";
-const ITEM_TABLE_ROW_CLOSE: &str = "</li>";
+const ITEM_TABLE_OPEN: &str = "<dl class=\"item-table\">";
+const ITEM_TABLE_CLOSE: &str = "</dl>";
 
 // A component in a `use` path, like `string` in std::string::ToString
 struct PathComponent {
@@ -413,24 +411,22 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
             clean::ExternCrateItem { ref src } => {
                 use crate::html::format::anchor;
 
-                w.write_str(ITEM_TABLE_ROW_OPEN);
                 match *src {
                     Some(src) => write!(
                         w,
-                        "<div class=\"item-name\"><code>{}extern crate {} as {};",
+                        "<dt class=\"item-name\"><code>{}extern crate {} as {};",
                         visibility_print_with_space(myitem, cx),
                         anchor(myitem.item_id.expect_def_id(), src, cx),
                         EscapeBodyTextWithWbr(myitem.name.unwrap().as_str()),
                     ),
                     None => write!(
                         w,
-                        "<div class=\"item-name\"><code>{}extern crate {};",
+                        "<dt class=\"item-name\"><code>{}extern crate {};",
                         visibility_print_with_space(myitem, cx),
                         anchor(myitem.item_id.expect_def_id(), myitem.name.unwrap(), cx),
                     ),
                 }
-                w.write_str("</code></div>");
-                w.write_str(ITEM_TABLE_ROW_CLOSE);
+                w.write_str("</code></dt>");
             }
 
             clean::ImportItem(ref import) => {
@@ -438,7 +434,6 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     extra_info_tags(tcx, myitem, item, Some(import_def_id)).to_string()
                 });
 
-                w.write_str(ITEM_TABLE_ROW_OPEN);
                 let id = match import.kind {
                     clean::ImportKind::Simple(s) => {
                         format!(" id=\"{}\"", cx.derive_id(format!("reexport.{s}")))
@@ -448,18 +443,17 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 let (stab_tags_before, stab_tags_after) = if stab_tags.is_empty() {
                     ("", "")
                 } else {
-                    ("<div class=\"desc docblock-short\">", "</div>")
+                    ("<dd class=\"desc docblock-short\">", "</dd>")
                 };
                 write!(
                     w,
-                    "<div class=\"item-name\"{id}>\
+                    "<dt class=\"item-name\"{id}>\
                          <code>{vis}{imp}</code>\
-                     </div>\
+                     </dt>\
                      {stab_tags_before}{stab_tags}{stab_tags_after}",
                     vis = visibility_print_with_space(myitem, cx),
                     imp = import.print(cx),
                 );
-                w.write_str(ITEM_TABLE_ROW_CLOSE);
             }
 
             _ => {
@@ -492,22 +486,21 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     _ => "",
                 };
 
-                w.write_str(ITEM_TABLE_ROW_OPEN);
                 let docs =
                     MarkdownSummaryLine(&myitem.doc_value(), &myitem.links(cx)).into_string();
                 let (docs_before, docs_after) = if docs.is_empty() {
                     ("", "")
                 } else {
-                    ("<div class=\"desc docblock-short\">", "</div>")
+                    ("<dd class=\"desc docblock-short\">", "</dd>")
                 };
                 write!(
                     w,
-                    "<div class=\"item-name\">\
+                    "<dt class=\"item-name\">\
                         <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
                         {visibility_and_hidden}\
                         {unsafety_flag}\
                         {stab_tags}\
-                     </div>\
+                     </dt>\
                      {docs_before}{docs}{docs_after}",
                     name = EscapeBodyTextWithWbr(myitem.name.unwrap().as_str()),
                     visibility_and_hidden = visibility_and_hidden,
@@ -521,7 +514,6 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                         .collect::<Vec<_>>()
                         .join(" "),
                 );
-                w.write_str(ITEM_TABLE_ROW_CLOSE);
             }
         }
     }

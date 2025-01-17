@@ -1102,19 +1102,16 @@ table,
 }
 
 .item-table {
-	display: table;
 	padding: 0;
 	margin: 0;
 	width: 100%;
 }
-.item-table > li {
-	display: table-row;
-}
-.item-table > li > div {
-	display: table-cell;
-}
-.item-table > li > .item-name {
+.item-table > .item-name {
 	padding-right: 1.25rem;
+}
+.item-table > dd {
+	margin-inline-start: 0;
+	margin-left: 0;
 }
 
 .search-results-title {
@@ -2476,8 +2473,7 @@ in src-script.js and main.js
 	}
 
 	/* Display an alternating layout on tablets and phones */
-	.item-table, .item-row, .item-table > li, .item-table > li > div,
-	.search-results > a, .search-results > a > div {
+	.item-row, .search-results > a, .search-results > a > div {
 		display: block;
 	}
 
@@ -2485,7 +2481,7 @@ in src-script.js and main.js
 	.search-results > a {
 		padding: 5px 0px;
 	}
-	.search-results > a > div.desc, .item-table > li > div.desc {
+	.search-results > a > div.desc, .item-table dd.desc {
 		padding-left: 2em;
 	}
 	.search-results .result-name {
@@ -2546,11 +2542,19 @@ in src-script.js and main.js
 		box-shadow: 0 0 4px var(--main-background-color);
 	}
 
-	.item-table > li > .item-name {
-		width: 33%;
+	/* Since the screen is wide enough, we show items on their description on the same line. */
+	.item-table {
+		display: grid;
+		grid-template-columns: 33% 67%;
 	}
-	.item-table > li > div {
+	.item-table > dt, .item-table > dd {
 		overflow-wrap: anywhere;
+	}
+	.item-table > dt {
+		grid-column-start: 1;
+	}
+	.item-table > dd {
+		grid-column-start: 2;
 	}
 }
 
