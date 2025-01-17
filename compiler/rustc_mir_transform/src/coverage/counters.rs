@@ -53,21 +53,12 @@ struct BcbExpression {
     rhs: BcbCounter,
 }
 
-/// Enum representing either a node or an edge in the coverage graph.
-///
-/// FIXME(#135481): This enum is no longer needed now that we only instrument
-/// nodes and not edges. It can be removed in a subsequent PR.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(super) enum Site {
-    Node { bcb: BasicCoverageBlock },
-}
-
 /// Generates and stores coverage counter and coverage expression information
-/// associated with nodes/edges in the BCB graph.
+/// associated with nodes in the coverage graph.
 pub(super) struct CoverageCounters {
     /// List of places where a counter-increment statement should be injected
     /// into MIR, each with its corresponding counter ID.
-    counter_increment_sites: IndexVec<CounterId, Site>,
+    counter_increment_sites: IndexVec<CounterId, BasicCoverageBlock>,
 
     /// Coverage counters/expressions that are associated with individual BCBs.
     node_counters: IndexVec<BasicCoverageBlock, Option<BcbCounter>>,
@@ -130,9 +121,9 @@ impl CoverageCounters {
         }
     }
 
-    /// Creates a new physical counter for a BCB node or edge.
-    fn make_phys_counter(&mut self, site: Site) -> BcbCounter {
-        let id = self.counter_increment_sites.push(site);
+    /// Creates a new physical counter for a BCB node.
+    fn make_phys_counter(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
+        let id = self.counter_increment_sites.push(bcb);
         BcbCounter::Counter { id }
     }
 
@@ -177,12 +168,12 @@ impl CoverageCounters {
         self.node_counters[bcb].map(|counter| counter.as_term())
     }
 
-    /// Returns an iterator over all the nodes/edges in the coverage graph that
+    /// Returns an iterator over all the nodes in the coverage graph that
     /// should have a counter-increment statement injected into MIR, along with
     /// each site's corresponding counter ID.
     pub(super) fn counter_increment_sites(
         &self,
-    ) -> impl Iterator<Item = (CounterId, Site)> + Captures<'_> {
+    ) -> impl Iterator<Item = (CounterId, BasicCoverageBlock)> + Captures<'_> {
         self.counter_increment_sites.iter_enumerated().map(|(id, &site)| (id, site))
     }
 
@@ -221,7 +212,7 @@ impl CoverageCounters {
 struct Transcriber {
     old: NodeCounters<BasicCoverageBlock>,
     new: CoverageCounters,
-    phys_counter_for_site: FxHashMap<Site, BcbCounter>,
+    phys_counter_for_node: FxHashMap<BasicCoverageBlock, BcbCounter>,
 }
 
 impl Transcriber {
@@ -229,7 +220,7 @@ impl Transcriber {
         Self {
             old,
             new: CoverageCounters::with_num_bcbs(num_nodes),
-            phys_counter_for_site: FxHashMap::default(),
+            phys_counter_for_node: FxHashMap::default(),
         }
     }
 
@@ -238,7 +229,6 @@ impl Transcriber {
         bcb_needs_counter: &DenseBitSet<BasicCoverageBlock>,
     ) -> CoverageCounters {
         for bcb in bcb_needs_counter.iter() {
-            let site = Site::Node { bcb };
             let (mut pos, mut neg): (Vec<_>, Vec<_>) =
                 self.old.counter_expr(bcb).iter().partition_map(
                     |&CounterTerm { node, op }| match op {
@@ -251,7 +241,7 @@ impl Transcriber {
                 // If we somehow end up with no positive terms, fall back to
                 // creating a physical counter. There's no known way for this
                 // to happen, but we can avoid an ICE if it does.
-                debug_assert!(false, "{site:?} has no positive counter terms");
+                debug_assert!(false, "{bcb:?} has no positive counter terms");
                 pos = vec![bcb];
                 neg = vec![];
             }
@@ -260,10 +250,7 @@ impl Transcriber {
             neg.sort();
 
             let mut new_counters_for_sites = |sites: Vec<BasicCoverageBlock>| {
-                sites
-                    .into_iter()
-                    .map(|node| self.ensure_phys_counter(Site::Node { bcb: node }))
-                    .collect::<Vec<_>>()
+                sites.into_iter().map(|node| self.ensure_phys_counter(node)).collect::<Vec<_>>()
             };
             let mut pos = new_counters_for_sites(pos);
             let mut neg = new_counters_for_sites(neg);
@@ -279,7 +266,7 @@ impl Transcriber {
         self.new
     }
 
-    fn ensure_phys_counter(&mut self, site: Site) -> BcbCounter {
-        *self.phys_counter_for_site.entry(site).or_insert_with(|| self.new.make_phys_counter(site))
+    fn ensure_phys_counter(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
+        *self.phys_counter_for_node.entry(bcb).or_insert_with(|| self.new.make_phys_counter(bcb))
     }
 }
