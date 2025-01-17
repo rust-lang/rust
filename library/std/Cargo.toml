@@ -134,6 +134,10 @@ harness = false
 name = "floats"
 path = "tests/floats/lib.rs"
 
+[[test]]
+name = "thread_local"
+path = "tests/thread_local/lib.rs"
+
 [[bench]]
 name = "stdbenches"
 path = "benches/lib.rs"

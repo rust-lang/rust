@@ -1,8 +1,8 @@
-use crate::cell::{Cell, UnsafeCell};
-use crate::sync::atomic::{AtomicU8, Ordering};
-use crate::sync::{Arc, Condvar, Mutex};
-use crate::thread::{self, Builder, LocalKey};
-use crate::thread_local;
+use std::cell::{Cell, UnsafeCell};
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::{Arc, Condvar, Mutex};
+use std::thread::{self, Builder, LocalKey};
+use std::thread_local;
 
 #[derive(Clone, Default)]
 struct Signal(Arc<(Mutex<bool>, Condvar)>);

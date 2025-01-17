@@ -2,12 +2,6 @@
 
 #![unstable(feature = "thread_local_internals", issue = "none")]
 
-#[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
-mod tests;
-
-#[cfg(test)]
-mod dynamic_tests;
-
 use crate::cell::{Cell, RefCell};
 use crate::error::Error;
 use crate::fmt;
