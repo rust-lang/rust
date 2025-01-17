@@ -7,6 +7,9 @@ pub mod git;
 pub mod metrics;
 pub mod stage0_parser;
 pub mod util;
+pub mod compiletest;
+#[cfg(test)]
+mod tests;
 
 /// The default set of crates for opt-dist to collect LLVM profiles.
 pub const LLVM_PGO_CRATES: &[&str] = &[
