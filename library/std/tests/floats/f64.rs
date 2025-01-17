@@ -1,5 +1,5 @@
-use crate::f64::consts;
-use crate::num::{FpCategory as Fp, *};
+use std::f64::consts;
+use std::num::FpCategory as Fp;
 
 /// Smallest number
 const TINY_BITS: u64 = 0x1;
@@ -35,7 +35,7 @@ macro_rules! assert_f64_biteq {
 
 #[test]
 fn test_num_f64() {
-    test_num(10f64, 2f64);
+    crate::test_num(10f64, 2f64);
 }
 
 #[test]
@@ -680,7 +680,6 @@ fn test_ln_gamma() {
 
 #[test]
 fn test_real_consts() {
-    use super::consts;
     let pi: f64 = consts::PI;
     let frac_pi_2: f64 = consts::FRAC_PI_2;
     let frac_pi_3: f64 = consts::FRAC_PI_3;

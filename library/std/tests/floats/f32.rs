@@ -1,5 +1,5 @@
-use crate::f32::consts;
-use crate::num::{FpCategory as Fp, *};
+use std::f32::consts;
+use std::num::FpCategory as Fp;
 
 /// Smallest number
 const TINY_BITS: u32 = 0x1;
@@ -35,7 +35,7 @@ macro_rules! assert_f32_biteq {
 
 #[test]
 fn test_num_f32() {
-    test_num(10f32, 2f32);
+    crate::test_num(10f32, 2f32);
 }
 
 #[test]
@@ -700,8 +700,6 @@ fn test_ln_gamma() {
 
 #[test]
 fn test_real_consts() {
-    use super::consts;
-
     let pi: f32 = consts::PI;
     let frac_pi_2: f32 = consts::FRAC_PI_2;
     let frac_pi_3: f32 = consts::FRAC_PI_3;
