@@ -7,6 +7,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/rust.git"
 description = "The Rust Standard Library"
 edition = "2021"
+autobenches = false
 
 [lib]
 crate-type = ["dylib", "rlib"]
@@ -129,6 +130,18 @@ heap_size = 0x8000000
 name = "pipe-subprocess"
 path = "tests/pipe_subprocess.rs"
 harness = false
+
+[[test]]
+name = "sync"
+path = "tests/sync/lib.rs"
+
+[[test]]
+name = "floats"
+path = "tests/floats/lib.rs"
+
+[[test]]
+name = "thread_local"
+path = "tests/thread_local/lib.rs"
 
 [[bench]]
 name = "stdbenches"
