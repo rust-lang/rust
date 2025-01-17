@@ -2,7 +2,7 @@ error[E0282]: type annotations needed
   --> $DIR/closures_in_branches.rs:7:10
    |
 LL |         |x| x.len()
-   |          ^  - type must be known at this point
+   |          ^    --- type must be known at this point
    |
 help: consider giving this closure parameter an explicit type
    |
@@ -13,7 +13,7 @@ error[E0282]: type annotations needed
   --> $DIR/closures_in_branches.rs:21:10
    |
 LL |         |x| x.len()
-   |          ^  - type must be known at this point
+   |          ^    --- type must be known at this point
    |
 help: consider giving this closure parameter an explicit type
    |

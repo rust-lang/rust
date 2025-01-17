@@ -10,14 +10,15 @@ use rustc_hir::HirId;
 use rustc_hir::def::DefKind;
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
-use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
-use rustc_infer::traits::ObligationCauseCode;
+use rustc_infer::infer::{self, DefineOpaqueTypes, InferCtxt, InferOk, TyCtxtInferExt};
+use rustc_infer::traits::solve::Goal;
+use rustc_infer::traits::{ObligationCauseCode, PredicateObligation};
 use rustc_middle::middle::stability;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::{
     self, AssocItem, AssocItemContainer, GenericArgs, GenericArgsRef, GenericParamDefKind,
-    ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt, Upcast,
+    ParamEnvAnd, PredicateKind, Ty, TyCtxt, TypeVisitableExt, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -28,6 +29,9 @@ use rustc_span::edit_distance::{
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::solve::inspect::{
+    InspectConfig, InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor,
+};
 use rustc_trait_selection::traits::query::CanonicalTyGoal;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::method_autoderef::{
@@ -438,7 +442,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If we encountered an `_` type or an error type during autoderef, this is
         // ambiguous.
         if let Some(bad_ty) = &steps.opt_bad_ty {
-            if is_suggestion.0 {
+            // Ended up encountering a type variable when doing autoderef,
+            // but it may not be a type variable after processing obligations
+            // in our local `FnCtxt`, so don't call `structurally_resolve_type`.
+            let ty = &bad_ty.ty;
+            let ty = self
+                .probe_instantiate_query_response(span, &orig_values, ty)
+                .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
+            if bad_ty.is_opaque_type
+                || final_ty_is_opaque(
+                    &self.infcx,
+                    &self.fulfillment_cx.borrow().pending_obligations(),
+                    ty.value,
+                )
+            {
+                // FIXME(-Znext-solver): This isn't really what we want :<
+                assert!(self.tcx.next_trait_solver_globally());
+            } else if is_suggestion.0 {
                 // Ambiguity was encountered during a suggestion. There's really
                 // not much use in suggesting methods in this case.
                 return Err(MethodError::NoMatch(NoMatchData {
@@ -464,13 +484,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     },
                 );
             } else {
-                // Ended up encountering a type variable when doing autoderef,
-                // but it may not be a type variable after processing obligations
-                // in our local `FnCtxt`, so don't call `structurally_resolve_type`.
-                let ty = &bad_ty.ty;
-                let ty = self
-                    .probe_instantiate_query_response(span, &orig_values, ty)
-                    .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
                 let ty = self.resolve_vars_if_possible(ty.value);
                 let guar = match *ty.kind() {
                     ty::Infer(ty::TyVar(_)) => {
@@ -578,60 +591,78 @@ fn method_autoderef_steps<'tcx>(
     let mut reached_raw_pointer = false;
     let arbitrary_self_types_enabled =
         tcx.features().arbitrary_self_types() || tcx.features().arbitrary_self_types_pointers();
-    let (mut steps, reached_recursion_limit): (Vec<_>, bool) = if arbitrary_self_types_enabled {
-        let reachable_via_deref =
-            autoderef_via_deref.by_ref().map(|_| true).chain(std::iter::repeat(false));
+    let (mut steps, final_ty, reached_recursion_limit, obligations) =
+        if arbitrary_self_types_enabled {
+            let reachable_via_deref =
+                autoderef_via_deref.by_ref().map(|_| true).chain(std::iter::repeat(false));
 
-        let mut autoderef_via_receiver =
-            Autoderef::new(infcx, param_env, hir::def_id::CRATE_DEF_ID, DUMMY_SP, self_ty)
-                .include_raw_pointers()
-                .use_receiver_trait()
-                .silence_errors();
-        let steps = autoderef_via_receiver
-            .by_ref()
-            .zip(reachable_via_deref)
-            .map(|((ty, d), reachable_via_deref)| {
-                let step = CandidateStep {
-                    self_ty: infcx
-                        .make_query_response_ignoring_pending_obligations(inference_vars, ty),
-                    autoderefs: d,
-                    from_unsafe_deref: reached_raw_pointer,
-                    unsize: false,
-                    reachable_via_deref,
-                };
-                if ty.is_unsafe_ptr() {
-                    // all the subsequent steps will be from_unsafe_deref
-                    reached_raw_pointer = true;
-                }
-                step
-            })
-            .collect();
-        (steps, autoderef_via_receiver.reached_recursion_limit())
-    } else {
-        let steps = autoderef_via_deref
-            .by_ref()
-            .map(|(ty, d)| {
-                let step = CandidateStep {
-                    self_ty: infcx
-                        .make_query_response_ignoring_pending_obligations(inference_vars, ty),
-                    autoderefs: d,
-                    from_unsafe_deref: reached_raw_pointer,
-                    unsize: false,
-                    reachable_via_deref: true,
-                };
-                if ty.is_unsafe_ptr() {
-                    // all the subsequent steps will be from_unsafe_deref
-                    reached_raw_pointer = true;
-                }
-                step
-            })
-            .collect();
-        (steps, autoderef_via_deref.reached_recursion_limit())
-    };
-    let final_ty = autoderef_via_deref.final_ty(true);
+            let mut autoderef_via_receiver =
+                Autoderef::new(infcx, param_env, hir::def_id::CRATE_DEF_ID, DUMMY_SP, self_ty)
+                    .include_raw_pointers()
+                    .use_receiver_trait()
+                    .silence_errors();
+            let steps: Vec<_> = autoderef_via_receiver
+                .by_ref()
+                .zip(reachable_via_deref)
+                .map(|((ty, d), reachable_via_deref)| {
+                    let step = CandidateStep {
+                        self_ty: infcx
+                            .make_query_response_ignoring_pending_obligations(inference_vars, ty),
+                        autoderefs: d,
+                        from_unsafe_deref: reached_raw_pointer,
+                        unsize: false,
+                        reachable_via_deref,
+                    };
+                    if ty.is_unsafe_ptr() {
+                        // all the subsequent steps will be from_unsafe_deref
+                        reached_raw_pointer = true;
+                    }
+                    step
+                })
+                .collect();
+            (
+                steps,
+                // FIXME(arbitrary_self_types): Why do we look at the final type of
+                // the `deref` chain here?
+                autoderef_via_deref.final_ty(true),
+                autoderef_via_receiver.reached_recursion_limit(),
+                autoderef_via_receiver.into_obligations(),
+            )
+        } else {
+            let steps = autoderef_via_deref
+                .by_ref()
+                .map(|(ty, d)| {
+                    let step = CandidateStep {
+                        self_ty: infcx
+                            .make_query_response_ignoring_pending_obligations(inference_vars, ty),
+                        autoderefs: d,
+                        from_unsafe_deref: reached_raw_pointer,
+                        unsize: false,
+                        reachable_via_deref: true,
+                    };
+                    if ty.is_unsafe_ptr() {
+                        // all the subsequent steps will be from_unsafe_deref
+                        reached_raw_pointer = true;
+                    }
+                    step
+                })
+                .collect();
+            (
+                steps,
+                autoderef_via_deref.final_ty(true),
+                autoderef_via_deref.reached_recursion_limit(),
+                autoderef_via_deref.into_obligations(),
+            )
+        };
     let opt_bad_ty = match final_ty.kind() {
-        ty::Infer(ty::TyVar(_)) | ty::Error(_) => Some(MethodAutoderefBadTy {
+        ty::Infer(ty::TyVar(_)) => Some(MethodAutoderefBadTy {
             reached_raw_pointer,
+            is_opaque_type: final_ty_is_opaque(infcx, &obligations, final_ty),
+            ty: infcx.make_query_response_ignoring_pending_obligations(inference_vars, final_ty),
+        }),
+        ty::Error(_) => Some(MethodAutoderefBadTy {
+            reached_raw_pointer,
+            is_opaque_type: false,
             ty: infcx.make_query_response_ignoring_pending_obligations(inference_vars, final_ty),
         }),
         ty::Array(elem_ty, _) => {
@@ -661,6 +692,71 @@ fn method_autoderef_steps<'tcx>(
         steps: tcx.arena.alloc_from_iter(steps),
         opt_bad_ty: opt_bad_ty.map(|ty| &*tcx.arena.alloc(ty)),
         reached_recursion_limit,
+    }
+}
+
+/// Returns `true` in case the final type is the hidden type of an opaque.
+#[instrument(level = "debug", skip(infcx), ret)]
+fn final_ty_is_opaque<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    obligations: &[PredicateObligation<'tcx>],
+    final_ty: Ty<'tcx>,
+) -> bool {
+    // nyaaaa~
+    if infcx.next_trait_solver() {
+        for obligation in obligations {
+            let mut visitor = FinalTyIsOpaque { final_ty, is_opaque_ty: false };
+            let goal = Goal::new(infcx.tcx, obligation.param_env, obligation.predicate);
+            infcx.visit_proof_tree(goal, &mut visitor);
+            if visitor.is_opaque_ty {
+                return true;
+            }
+        }
+
+        let opaque_types = infcx.clone_opaque_types();
+        for (key, hidden_ty) in &opaque_types {
+            if infcx.shallow_resolve(hidden_ty.ty) == final_ty {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+struct FinalTyIsOpaque<'tcx> {
+    final_ty: Ty<'tcx>,
+    is_opaque_ty: bool,
+}
+
+impl<'tcx> ProofTreeVisitor<'tcx> for FinalTyIsOpaque<'tcx> {
+    fn span(&self) -> Span {
+        DUMMY_SP
+    }
+
+    fn config(&self) -> InspectConfig {
+        // Using an intentionally low depth to avoid potential hangs
+        // due to exponentially growing proof trees.
+        InspectConfig { max_depth: 5 }
+    }
+
+    fn visit_goal(&mut self, inspect_goal: &InspectGoal<'_, 'tcx>) {
+        let infcx = inspect_goal.infcx();
+        let goal = inspect_goal.goal();
+        if let PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term }) =
+            goal.predicate.kind().skip_binder()
+        {
+            debug!(?alias, ?term, "visiting normalizes-to goal");
+            if term.as_type().is_some_and(|ty| ty == self.final_ty)
+                && alias.kind(infcx.tcx) == ty::AliasTermKind::OpaqueTy
+            {
+                self.is_opaque_ty = true;
+            }
+        }
+
+        if let Some(candidate) = inspect_goal.unique_applicable_candidate() {
+            candidate.visit_nested_in_probe(self)
+        }
     }
 }
 
@@ -1879,31 +1975,39 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
                     xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
-                    match self_ty.kind() {
-                        // HACK: opaque types will match anything for which their bounds hold.
-                        // Thus we need to prevent them from trying to match the `&_` autoref
-                        // candidates that get created for `&self` trait methods.
-                        ty::Alias(ty::Opaque, alias_ty)
-                            if !self.next_trait_solver()
-                                && self.infcx.can_define_opaque_ty(alias_ty.def_id)
-                                && !xform_self_ty.is_ty_var() =>
-                        {
-                            return ProbeResult::NoMatch;
-                        }
-                        _ => match ocx.relate(
-                            cause,
-                            self.param_env,
-                            self.variance(),
-                            self_ty,
-                            xform_self_ty,
-                        ) {
-                            Ok(()) => {}
-                            Err(err) => {
-                                debug!("--> cannot relate self-types {:?}", err);
+
+                    // HACK: opaque types will match anything for which their bounds hold.
+                    // Thus we need to prevent them from trying to match the `&_` autoref
+                    // candidates that get created for `&self` trait methods.
+                    if self.mode == Mode::MethodCall {
+                        match self_ty.kind() {
+                            ty::Infer(ty::TyVar(_)) => {
+                                assert!(self.infcx.next_trait_solver());
+                                if !xform_self_ty.is_ty_var() {
+                                    return ProbeResult::NoMatch;
+                                }
+                            }
+                            ty::Alias(ty::Opaque, alias_ty)
+                                if !self.infcx.next_trait_solver()
+                                    && self.infcx.can_define_opaque_ty(alias_ty.def_id)
+                                    && !xform_self_ty.is_ty_var() =>
+                            {
+                                assert!(!self.infcx.next_trait_solver());
                                 return ProbeResult::NoMatch;
                             }
-                        },
+                            _ => {}
+                        }
                     }
+
+                    match ocx.relate(cause, self.param_env, self.variance(), self_ty, xform_self_ty)
+                    {
+                        Ok(()) => {}
+                        Err(err) => {
+                            debug!("--> cannot relate self-types {:?}", err);
+                            return ProbeResult::NoMatch;
+                        }
+                    }
+
                     let obligation = traits::Obligation::new(
                         self.tcx,
                         cause.clone(),
