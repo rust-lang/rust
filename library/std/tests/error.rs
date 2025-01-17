@@ -1,7 +1,8 @@
-use core::error::Request;
+#![feature(error_generic_member_access, error_reporter)]
 
-use super::Error;
-use crate::fmt;
+use std::backtrace::Backtrace;
+use std::error::{Error, Report, Request};
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 struct A;
@@ -37,9 +38,6 @@ fn downcasting() {
         Err(e) => assert_eq!(*e.downcast::<A>().unwrap(), A),
     }
 }
-
-use crate::backtrace::Backtrace;
-use crate::error::Report;
 
 #[derive(Debug)]
 struct SuperError {
