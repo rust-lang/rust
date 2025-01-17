@@ -93,4 +93,16 @@ fi
 # You can change arguments to the build by setting KEEP_CHECKOUT=1 above and
 # modifying them in build_fuchsia_from_rust_ci.sh.
 echo "running build_fuchsia_from_rust_ci.sh" && df -h /
+
+# Start background monitoring of disk space
+(
+    while true; do
+        df -h /
+        sleep 20
+    done
+) &
+MONITOR_PID=$!
+
 bash scripts/rust/build_fuchsia_from_rust_ci.sh
+
+kill $MONITOR_PID
