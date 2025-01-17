@@ -31,9 +31,6 @@
 
 #![stable(feature = "time", since = "1.3.0")]
 
-#[cfg(test)]
-mod tests;
-
 #[stable(feature = "time", since = "1.3.0")]
 pub use core::time::Duration;
 #[stable(feature = "duration_checked_float", since = "1.66.0")]
