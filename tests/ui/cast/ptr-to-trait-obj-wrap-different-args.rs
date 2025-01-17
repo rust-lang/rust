@@ -10,14 +10,12 @@ struct X<T: ?Sized>(T);
 
 fn unwrap<F, G>(a: *const W<dyn A<F>>) -> *const dyn A<G> {
     a as _
-    //~^ error
-    //~| error
+    //~^ error casting `*const W<(dyn A<F> + 'static)>` as `*const dyn A<G>` is invalid
 }
 
 fn unwrap_nested<F, G>(a: *const W<W<dyn A<F>>>) -> *const W<dyn A<G>> {
     a as _
-    //~^ error
-    //~| error
+    //~^ error casting `*const W<W<(dyn A<F> + 'static)>>` as `*const W<dyn A<G>>` is invalid
 }
 
 fn rewrap<F, G>(a: *const W<dyn A<F>>) -> *const X<dyn A<G>> {

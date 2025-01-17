@@ -10,16 +10,12 @@ struct X<T: ?Sized>(T);
 
 fn unwrap(a: *const W<dyn A>) -> *const (dyn A + Send) {
     a as _
-    //~^ error
-    //~| error
-    //~| error
+    //~^ error: cannot add auto trait `Send` to dyn bound via pointer cast
 }
 
 fn unwrap_nested(a: *const W<W<dyn A>>) -> *const W<dyn A + Send> {
     a as _
-    //~^ error
-    //~| error
-    //~| error
+    //~^ error: cannot add auto trait `Send` to dyn bound via pointer cast
 }
 
 fn rewrap(a: *const W<dyn A>) -> *const X<dyn A + Send> {

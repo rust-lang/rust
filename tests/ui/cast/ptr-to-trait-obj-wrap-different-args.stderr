@@ -1,59 +1,21 @@
-error[E0277]: the trait bound `W<(dyn A<F> + 'static)>: A<G>` is not satisfied
+error[E0606]: casting `*const W<(dyn A<F> + 'static)>` as `*const dyn A<G>` is invalid
   --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:12:5
    |
 LL |     a as _
-   |     ^ the trait `A<G>` is not implemented for `W<(dyn A<F> + 'static)>`
+   |     ^^^^^^
    |
-help: this trait has no implementations, consider adding one
-  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:6:1
-   |
-LL | trait A<T> {}
-   | ^^^^^^^^^^
-   = note: required for the cast from `*const W<(dyn A<F> + 'static)>` to `*const dyn A<G>`
+   = note: the trait objects may have different vtables
 
-error[E0277]: the size for values of type `(dyn A<F> + 'static)` cannot be known at compilation time
-  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:12:5
+error[E0606]: casting `*const W<W<(dyn A<F> + 'static)>>` as `*const W<dyn A<G>>` is invalid
+  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:17:5
    |
 LL |     a as _
-   |     ^ doesn't have a size known at compile-time
+   |     ^^^^^^
    |
-   = help: within `W<(dyn A<F> + 'static)>`, the trait `Sized` is not implemented for `(dyn A<F> + 'static)`
-note: required because it appears within the type `W<(dyn A<F> + 'static)>`
-  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:8:8
-   |
-LL | struct W<T: ?Sized>(T);
-   |        ^
-   = note: required for the cast from `*const W<(dyn A<F> + 'static)>` to `*const dyn A<G>`
-
-error[E0277]: the trait bound `W<(dyn A<F> + 'static)>: A<G>` is not satisfied
-  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:18:5
-   |
-LL |     a as _
-   |     ^ the trait `A<G>` is not implemented for `W<(dyn A<F> + 'static)>`
-   |
-help: this trait has no implementations, consider adding one
-  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:6:1
-   |
-LL | trait A<T> {}
-   | ^^^^^^^^^^
-   = note: required for the cast from `*const W<W<(dyn A<F> + 'static)>>` to `*const W<dyn A<G>>`
-
-error[E0277]: the size for values of type `(dyn A<F> + 'static)` cannot be known at compilation time
-  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:18:5
-   |
-LL |     a as _
-   |     ^ doesn't have a size known at compile-time
-   |
-   = help: within `W<(dyn A<F> + 'static)>`, the trait `Sized` is not implemented for `(dyn A<F> + 'static)`
-note: required because it appears within the type `W<(dyn A<F> + 'static)>`
-  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:8:8
-   |
-LL | struct W<T: ?Sized>(T);
-   |        ^
-   = note: required for the cast from `*const W<W<(dyn A<F> + 'static)>>` to `*const W<dyn A<G>>`
+   = note: the trait objects may have different vtables
 
 error[E0606]: casting `*const W<(dyn A<F> + 'static)>` as `*const X<dyn A<G>>` is invalid
-  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:24:5
+  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:22:5
    |
 LL |     a as _
    |     ^^^^^^
@@ -61,7 +23,7 @@ LL |     a as _
    = note: the trait objects may have different vtables
 
 error[E0606]: casting `*const W<W<(dyn A<F> + 'static)>>` as `*const W<X<dyn A<G>>>` is invalid
-  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:29:5
+  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:27:5
    |
 LL |     a as _
    |     ^^^^^^
@@ -69,14 +31,13 @@ LL |     a as _
    = note: the trait objects may have different vtables
 
 error[E0606]: casting `*const (dyn A<F> + 'static)` as `*const W<dyn A<G>>` is invalid
-  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:34:5
+  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:32:5
    |
 LL |     a as _
    |     ^^^^^^
    |
    = note: the trait objects may have different vtables
 
-error: aborting due to 7 previous errors
+error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0277, E0606.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0606`.

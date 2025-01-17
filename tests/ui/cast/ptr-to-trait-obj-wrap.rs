@@ -3,6 +3,7 @@
 // structure, so these casts *are* fine.
 //
 // `unwrap` and `unwrap_nested` currently don't work due to a compiler limitation.
+//@ check-pass
 
 trait A {}
 
@@ -11,14 +12,10 @@ struct X<T: ?Sized>(T);
 
 fn unwrap(a: *const W<dyn A>) -> *const dyn A {
     a as _
-    //~^ error
-    //~| error
 }
 
 fn unwrap_nested(a: *const W<W<dyn A>>) -> *const W<dyn A> {
     a as _
-    //~^ error
-    //~| error
 }
 
 fn rewrap(a: *const W<dyn A>) -> *const X<dyn A> {
