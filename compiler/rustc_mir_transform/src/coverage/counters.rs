@@ -1,5 +1,4 @@
 use std::cmp::Ordering;
-use std::fmt::{self, Debug};
 
 use either::Either;
 use itertools::Itertools;
@@ -110,39 +109,6 @@ fn transcribe_counters(
     new
 }
 
-/// The coverage counter or counter expression associated with a particular
-/// BCB node or BCB edge.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum BcbCounter {
-    Counter { id: CounterId },
-    Expression { id: ExpressionId },
-}
-
-impl BcbCounter {
-    fn as_term(&self) -> CovTerm {
-        match *self {
-            BcbCounter::Counter { id, .. } => CovTerm::Counter(id),
-            BcbCounter::Expression { id, .. } => CovTerm::Expression(id),
-        }
-    }
-}
-
-impl Debug for BcbCounter {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Counter { id, .. } => write!(fmt, "Counter({:?})", id.index()),
-            Self::Expression { id } => write!(fmt, "Expression({:?})", id.index()),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-struct BcbExpression {
-    lhs: BcbCounter,
-    op: Op,
-    rhs: BcbCounter,
-}
-
 /// Generates and stores coverage counter and coverage expression information
 /// associated with nodes in the coverage graph.
 pub(super) struct CoverageCounters {
@@ -152,14 +118,14 @@ pub(super) struct CoverageCounters {
     next_counter_id: CounterId,
 
     /// Coverage counters/expressions that are associated with individual BCBs.
-    node_counters: IndexVec<BasicCoverageBlock, Option<BcbCounter>>,
+    node_counters: IndexVec<BasicCoverageBlock, Option<CovTerm>>,
 
     /// Table of expression data, associating each expression ID with its
     /// corresponding operator (+ or -) and its LHS/RHS operands.
-    expressions: IndexVec<ExpressionId, BcbExpression>,
+    expressions: IndexVec<ExpressionId, Expression>,
     /// Remember expressions that have already been created (or simplified),
     /// so that we don't create unnecessary duplicates.
-    expressions_memo: FxHashMap<BcbExpression, BcbCounter>,
+    expressions_memo: FxHashMap<Expression, CovTerm>,
 }
 
 impl CoverageCounters {
@@ -174,27 +140,27 @@ impl CoverageCounters {
     }
 
     /// Returns the physical counter for the given node, creating it if necessary.
-    fn ensure_phys_counter(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
+    fn ensure_phys_counter(&mut self, bcb: BasicCoverageBlock) -> CovTerm {
         let id = *self.phys_counter_for_node.entry(bcb).or_insert_with(|| {
             let id = self.next_counter_id;
             self.next_counter_id = id + 1;
             id
         });
-        BcbCounter::Counter { id }
+        CovTerm::Counter(id)
     }
 
-    fn make_expression(&mut self, lhs: BcbCounter, op: Op, rhs: BcbCounter) -> BcbCounter {
-        let new_expr = BcbExpression { lhs, op, rhs };
-        *self.expressions_memo.entry(new_expr).or_insert_with(|| {
+    fn make_expression(&mut self, lhs: CovTerm, op: Op, rhs: CovTerm) -> CovTerm {
+        let new_expr = Expression { lhs, op, rhs };
+        *self.expressions_memo.entry(new_expr.clone()).or_insert_with(|| {
             let id = self.expressions.push(new_expr);
-            BcbCounter::Expression { id }
+            CovTerm::Expression(id)
         })
     }
 
     /// Creates a counter that is the sum of the given counters.
     ///
     /// Returns `None` if the given list of counters was empty.
-    fn make_sum(&mut self, counters: &[BcbCounter]) -> Option<BcbCounter> {
+    fn make_sum(&mut self, counters: &[CovTerm]) -> Option<CovTerm> {
         counters
             .iter()
             .copied()
@@ -202,7 +168,7 @@ impl CoverageCounters {
     }
 
     /// Creates a counter whose value is `lhs - SUM(rhs)`.
-    fn make_subtracted_sum(&mut self, lhs: BcbCounter, rhs: &[BcbCounter]) -> BcbCounter {
+    fn make_subtracted_sum(&mut self, lhs: CovTerm, rhs: &[CovTerm]) -> CovTerm {
         let Some(rhs_sum) = self.make_sum(rhs) else { return lhs };
         self.make_expression(lhs, Op::Subtract, rhs_sum)
     }
@@ -213,7 +179,7 @@ impl CoverageCounters {
         num_counters
     }
 
-    fn set_node_counter(&mut self, bcb: BasicCoverageBlock, counter: BcbCounter) -> BcbCounter {
+    fn set_node_counter(&mut self, bcb: BasicCoverageBlock, counter: CovTerm) -> CovTerm {
         let existing = self.node_counters[bcb].replace(counter);
         assert!(
             existing.is_none(),
@@ -223,7 +189,7 @@ impl CoverageCounters {
     }
 
     pub(super) fn term_for_bcb(&self, bcb: BasicCoverageBlock) -> Option<CovTerm> {
-        self.node_counters[bcb].map(|counter| counter.as_term())
+        self.node_counters[bcb]
     }
 
     /// Returns an iterator over all the nodes in the coverage graph that
@@ -242,27 +208,13 @@ impl CoverageCounters {
     ) -> impl Iterator<Item = (BasicCoverageBlock, ExpressionId)> + Captures<'_> {
         self.node_counters.iter_enumerated().filter_map(|(bcb, &counter)| match counter {
             // Yield the BCB along with its associated expression ID.
-            Some(BcbCounter::Expression { id }) => Some((bcb, id)),
+            Some(CovTerm::Expression(id)) => Some((bcb, id)),
             // This BCB is associated with a counter or nothing, so skip it.
-            Some(BcbCounter::Counter { .. }) | None => None,
+            Some(CovTerm::Counter { .. } | CovTerm::Zero) | None => None,
         })
     }
 
     pub(super) fn into_expressions(self) -> IndexVec<ExpressionId, Expression> {
-        let old_len = self.expressions.len();
-        let expressions = self
-            .expressions
-            .into_iter()
-            .map(|BcbExpression { lhs, op, rhs }| Expression {
-                lhs: lhs.as_term(),
-                op,
-                rhs: rhs.as_term(),
-            })
-            .collect::<IndexVec<ExpressionId, _>>();
-
-        // Expression IDs are indexes into this vector, so make sure we didn't
-        // accidentally invalidate them by changing its length.
-        assert_eq!(old_len, expressions.len());
-        expressions
+        self.expressions
     }
 }
