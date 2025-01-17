@@ -1,9 +1,6 @@
 #![doc = include_str!("../../core/src/error.md")]
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(test)]
-mod tests;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::error::Error;
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
