@@ -14,16 +14,11 @@ fn main() {
     let warnings = run_rustc().link_arg("run_make_warn").run();
     warnings.assert_stderr_contains("warning: linker stderr: bar");
 
-    // Make sure it shows stdout, but only when --verbose is passed
+    // Make sure it shows stdout
     run_rustc()
         .link_arg("run_make_info")
-        .verbose()
         .run()
         .assert_stderr_contains("warning: linker stdout: foo");
-    run_rustc()
-        .link_arg("run_make_info")
-        .run()
-        .assert_stderr_not_contains("warning: linker stdout: foo");
 
     // Make sure we short-circuit this new path if the linker exits with an error
     // (so the diagnostic is less verbose)

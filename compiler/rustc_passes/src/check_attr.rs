@@ -2338,11 +2338,20 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             })
         {
             if hir_id != CRATE_HIR_ID {
-                let err = match attr.style {
-                    ast::AttrStyle::Outer => errors::OuterCrateLevelAttr,
-                    ast::AttrStyle::Inner => errors::OuterCrateLevelAttr,
+                match attr.style {
+                    ast::AttrStyle::Outer => self.tcx.emit_node_span_lint(
+                        UNUSED_ATTRIBUTES,
+                        hir_id,
+                        attr.span,
+                        errors::OuterCrateLevelAttr,
+                    ),
+                    ast::AttrStyle::Inner => self.tcx.emit_node_span_lint(
+                        UNUSED_ATTRIBUTES,
+                        hir_id,
+                        attr.span,
+                        errors::InnerCrateLevelAttr,
+                    ),
                 };
-                self.tcx.emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, err);
                 return;
             } else {
                 let never_needs_link = self

@@ -1040,6 +1040,11 @@ fn link_natively(
                 sess.dcx().abort_if_errors();
             }
 
+            let stderr = escape_string(&prog.stderr);
+            let stdout = escape_string(&prog.stdout);
+            info!("linker stderr:\n{}", &stderr);
+            info!("linker stdout:\n{}", &stdout);
+
             let (level, src) = codegen_results.crate_info.lint_levels.linker_messages;
             let lint = |msg| {
                 lint_level(sess, LINKER_MESSAGES, level, src, None, |diag| {
@@ -1049,16 +1054,14 @@ fn link_natively(
 
             if !prog.stderr.is_empty() {
                 // We already print `warning:` at the start of the diagnostic. Remove it from the linker output if present.
-                let stderr = escape_string(&prog.stderr);
-                debug!("original stderr: {stderr}");
                 let stderr = stderr
                     .strip_prefix("warning: ")
                     .unwrap_or(&stderr)
                     .replace(": warning: ", ": ");
                 lint(format!("linker stderr: {stderr}"));
             }
-            if !prog.stdout.is_empty() && sess.opts.verbose {
-                lint(format!("linker stdout: {}", escape_string(&prog.stdout)))
+            if !prog.stdout.is_empty() {
+                lint(format!("linker stdout: {}", stdout))
             }
         }
         Err(e) => {
