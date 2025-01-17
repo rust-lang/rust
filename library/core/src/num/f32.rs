@@ -726,7 +726,6 @@ impl f32 {
     /// is finite `x == x.next_up().next_down()` also holds.
     ///
     /// ```rust
-    /// #![feature(float_next_up_down)]
     /// // f32::EPSILON is the difference between 1.0 and the next number up.
     /// assert_eq!(1.0f32.next_up(), 1.0 + f32::EPSILON);
     /// // But not for most numbers.
@@ -739,7 +738,8 @@ impl f32 {
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
     #[inline]
-    #[unstable(feature = "float_next_up_down", issue = "91399")]
+    #[stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
     pub const fn next_up(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -774,7 +774,6 @@ impl f32 {
     /// is finite `x == x.next_down().next_up()` also holds.
     ///
     /// ```rust
-    /// #![feature(float_next_up_down)]
     /// let x = 1.0f32;
     /// // Clamp value into range [0, 1).
     /// let clamped = x.clamp(0.0, 1.0f32.next_down());
@@ -787,7 +786,8 @@ impl f32 {
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
     #[inline]
-    #[unstable(feature = "float_next_up_down", issue = "91399")]
+    #[stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
     pub const fn next_down(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here

@@ -497,7 +497,6 @@ impl f16 {
     ///
     /// ```rust
     /// #![feature(f16)]
-    /// #![feature(float_next_up_down)]
     /// # // FIXME(f16_f128): ABI issues on MSVC
     /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
@@ -515,7 +514,6 @@ impl f16 {
     /// [`MAX`]: Self::MAX
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    // #[unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_up(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -551,7 +549,6 @@ impl f16 {
     ///
     /// ```rust
     /// #![feature(f16)]
-    /// #![feature(float_next_up_down)]
     /// # // FIXME(f16_f128): ABI issues on MSVC
     /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
@@ -569,7 +566,6 @@ impl f16 {
     /// [`MAX`]: Self::MAX
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    // #[unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_down(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
