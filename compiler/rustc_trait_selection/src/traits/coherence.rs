@@ -6,7 +6,7 @@
 
 use std::fmt::Debug;
 
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -627,6 +627,7 @@ fn compute_intercrate_ambiguity_causes<'tcx>(
 }
 
 struct AmbiguityCausesVisitor<'a, 'tcx> {
+    cache: FxHashSet<Goal<'tcx, ty::Predicate<'tcx>>>,
     causes: &'a mut FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
 }
 
@@ -636,6 +637,10 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
     }
 
     fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) {
+        if !self.cache.insert(goal.goal()) {
+            return;
+        }
+
         let infcx = goal.infcx();
         for cand in goal.candidates() {
             cand.visit_nested_in_probe(self);
@@ -760,5 +765,10 @@ fn search_ambiguity_causes<'tcx>(
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
     causes: &mut FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
 ) {
-    infcx.probe(|_| infcx.visit_proof_tree(goal, &mut AmbiguityCausesVisitor { causes }));
+    infcx.probe(|_| {
+        infcx.visit_proof_tree(goal, &mut AmbiguityCausesVisitor {
+            cache: Default::default(),
+            causes,
+        })
+    });
 }
