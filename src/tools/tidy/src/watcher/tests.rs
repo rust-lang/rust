@@ -4,21 +4,30 @@ use super::*;
 fn test_span_hash_one_line() {
     let source = "some text\ntidy-tag\ncheckme=42\ntidy-tag\n";
     let tag = "tidy-tag";
-    assert_eq!("42258eba764c3f94a24de379e5715dc8", span_hash(source, tag, &mut true).unwrap());
+    assert_eq!(
+        "42258eba764c3f94a24de379e5715dc8",
+        span_hash(source, tag, &mut true, Path::new("")).unwrap()
+    );
 }
 
 #[test]
 fn test_span_hash_multiple_lines() {
     let source = "some text\ntidy-tag\ncheckme=42\nother line\ntidy-tag\n";
     let tag = "tidy-tag";
-    assert_eq!("49cb23dc2032ceea671ca48092750a1c", span_hash(source, tag, &mut true).unwrap());
+    assert_eq!(
+        "49cb23dc2032ceea671ca48092750a1c",
+        span_hash(source, tag, &mut true, Path::new("")).unwrap()
+    );
 }
 
 #[test]
 fn test_span_hash_has_some_text_in_line_with_tag() {
     let source = "some text\ntidy-tag ignore me\ncheckme=42\nother line\ntidy-tag\n";
     let tag = "tidy-tag";
-    assert_eq!("49cb23dc2032ceea671ca48092750a1c", span_hash(source, tag, &mut true).unwrap());
+    assert_eq!(
+        "49cb23dc2032ceea671ca48092750a1c",
+        span_hash(source, tag, &mut true, Path::new("")).unwrap()
+    );
 }
 
 #[test]
@@ -35,5 +44,8 @@ RUN curl -LS -o perf.zip https://github.com/rust-lang/rustc-perf/archive/$PERF_C
     mv rustc-perf-$PERF_COMMIT rustc-perf && \
     rm perf.zip"#;
     let tag = "tidy-ticket-perf-commit";
-    assert_eq!("76c8d9783e38e25a461355f82fcd7955", span_hash(source, tag, &mut true).unwrap());
+    assert_eq!(
+        "76c8d9783e38e25a461355f82fcd7955",
+        span_hash(source, tag, &mut true, Path::new("")).unwrap()
+    );
 }
