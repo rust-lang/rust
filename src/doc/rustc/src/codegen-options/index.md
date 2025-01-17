@@ -172,6 +172,25 @@ values:
 
 The default if not specified depends on the target.
 
+## hint-mostly-unused
+
+This flag hints to the compiler that most of the crate will probably go unused.
+The compiler can optimize its operation based on this assumption, in order to
+compile faster. This is a hint, and does not guarantee any particular behavior.
+
+This option can substantially speed up compilation if applied to a large
+dependency where the majority of the dependency does not get used. This flag
+may slow down compilation in other cases.
+
+Currently, this option makes the compiler defer as much code generation as
+possible from functions in the crate, until later crates invoke those
+functions. Functions that never get invoked will never have code generated for
+them. For instance, if a crate provides thousands of functions, but only a few
+of them will get called, this flag will result in the compiler only doing code
+generation for the called functions. (This uses the same mechanisms as
+cross-crate inlining of functions.) This does not affect `extern` functions, or
+functions marked as `#[inline(never)]`.
+
 ## incremental
 
 This flag allows you to enable incremental compilation, which allows `rustc`
