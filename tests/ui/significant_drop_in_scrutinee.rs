@@ -850,4 +850,18 @@ async fn should_not_trigger_lint_in_async_expansion(mutex: Mutex<i32>) -> i32 {
     }
 }
 
+fn should_trigger_lint_in_match_expr() {
+    let mutex = Mutex::new(State {});
+
+    // Should trigger lint because the lifetime of the temporary MutexGuard is surprising because it
+    // is preserved until the end of the match, but there is no clear indication that this is the
+    // case.
+    let _ = match mutex.lock().unwrap().foo() {
+        //~^ ERROR: temporary with significant `Drop` in `match` scrutinee will live until the
+        //~| NOTE: this might lead to deadlocks or other unexpected behavior
+        true => 0,
+        false => 1,
+    };
+}
+
 fn main() {}
