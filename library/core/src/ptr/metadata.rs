@@ -58,10 +58,12 @@ use crate::ptr::NonNull;
 pub trait Pointee {
     /// The type for metadata in pointers and references to `Self`.
     #[lang = "metadata_type"]
+    // tidy-keep-sync-with=tidy-ticket-static_assert_expected_bounds_for_metadata
     // NOTE: Keep trait bounds in `static_assert_expected_bounds_for_metadata`
-    // in `library/core/src/ptr/metadata.rs`
+    // in `library/core/tests/ptr.rs`
     // in sync with those here:
     type Metadata: fmt::Debug + Copy + Send + Sync + Ord + Hash + Unpin + Freeze;
+    // tidy-keep-sync-with=tidy-ticket-static_assert_expected_bounds_for_metadata
 }
 
 /// Pointers to types implementing this trait alias are “thin”.

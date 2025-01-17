@@ -754,6 +754,7 @@ impl<B: WriteBackendMethods> WorkItem<B> {
         }
     }
 
+    // tidy-keep-sync-with=tidy-ticket-short_description
     /// Generate a short description of this work item suitable for use as a thread name.
     fn short_description(&self) -> String {
         // `pthread_setname()` on *nix ignores anything beyond the first 15
@@ -801,6 +802,7 @@ impl<B: WriteBackendMethods> WorkItem<B> {
             WorkItem::LTO(m) => desc("lto", "LTO module", m.name()),
         }
     }
+    // tidy-keep-sync-with=tidy-ticket-short_description
 }
 
 /// A result produced by the backend.

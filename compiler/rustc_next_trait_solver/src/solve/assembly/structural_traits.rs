@@ -255,6 +255,7 @@ where
     }
 }
 
+// tidy-keep-sync-with=tidy-ticket-extract_tupled_inputs_and_output_from_callable
 // Returns a binder of the tupled inputs types and output type from a builtin callable type.
 pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Interner>(
     cx: I,
@@ -393,6 +394,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
         }
     }
 }
+// tidy-keep-sync-with=tidy-ticket-extract_tupled_inputs_and_output_from_callable
 
 /// Relevant types for an async callable, including its inputs, output,
 /// and the return type you get from awaiting the output.

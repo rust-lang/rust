@@ -340,6 +340,7 @@ impl CheckCfg {
         // The exceptions are where control flow forces things out of order.
         //
         // NOTE: This should be kept in sync with `default_configuration`.
+        // FIXME: what exactly sync there?
         // Note that symbols inserted conditionally in `default_configuration`
         // are inserted unconditionally here.
         //

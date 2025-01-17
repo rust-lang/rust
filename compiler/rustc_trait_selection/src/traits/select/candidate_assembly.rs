@@ -503,6 +503,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    // tidy-keep-sync-with=tidy-ticket-assemble_fn_pointer_candidates
     /// Implements one of the `Fn()` family for a fn pointer.
     fn assemble_fn_pointer_candidates(
         &mut self,
@@ -542,6 +543,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => {}
         }
     }
+    // tidy-keep-sync-with=tidy-ticket-assemble_fn_pointer_candidates
 
     /// Searches for impls that might apply to `obligation`.
     #[instrument(level = "debug", skip(self, candidates))]

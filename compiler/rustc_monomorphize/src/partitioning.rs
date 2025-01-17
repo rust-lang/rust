@@ -500,6 +500,8 @@ fn merge_codegen_units<'tcx>(
         codegen_units.sort_by_key(|cgu| cmp::Reverse(cgu.size_estimate()));
         let num_digits = codegen_units.len().ilog10() as usize + 1;
         for (index, cgu) in codegen_units.iter_mut().enumerate() {
+            // tidy-keep-sync-with=tidy-ticket-short_description
+            // FIXME: is it sync?
             // Note: `WorkItem::short_description` depends on this name ending
             // with `-cgu.` followed by a numeric suffix. Please keep it in
             // sync with this code.
@@ -507,6 +509,7 @@ fn merge_codegen_units<'tcx>(
             let numbered_codegen_unit_name =
                 cgu_name_builder.build_cgu_name_no_mangle(LOCAL_CRATE, &["cgu"], Some(suffix));
             cgu.set_name(numbered_codegen_unit_name);
+            // tidy-keep-sync-with=tidy-ticket-short_description
         }
     }
 }
