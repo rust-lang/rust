@@ -1,8 +1,8 @@
-use crate::sync::atomic::{AtomicBool, Ordering};
-use crate::sync::mpsc::channel;
-use crate::sync::{Arc, Condvar, Mutex};
-use crate::thread;
-use crate::time::Duration;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::channel;
+use std::sync::{Arc, Condvar, Mutex};
+use std::thread;
+use std::time::Duration;
 
 #[test]
 fn smoke() {

@@ -1,7 +1,6 @@
-use super::ReentrantLock;
-use crate::cell::RefCell;
-use crate::sync::Arc;
-use crate::thread;
+use std::cell::RefCell;
+use std::sync::{Arc, ReentrantLock};
+use std::thread;
 
 #[test]
 fn smoke() {

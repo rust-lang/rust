@@ -1,6 +1,6 @@
-use crate::sync::mpsc::{TryRecvError, channel};
-use crate::sync::{Arc, Barrier};
-use crate::thread;
+use std::sync::mpsc::{TryRecvError, channel};
+use std::sync::{Arc, Barrier};
+use std::thread;
 
 #[test]
 #[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads

@@ -1,6 +1,3 @@
-#[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
-mod tests;
-
 use cfg_if::cfg_if;
 
 use crate::cell::UnsafeCell;
@@ -324,7 +321,10 @@ impl<T: ?Sized> ReentrantLock<T> {
     /// Otherwise, an RAII guard is returned.
     ///
     /// This function does not block.
-    pub(crate) fn try_lock(&self) -> Option<ReentrantLockGuard<'_, T>> {
+    // FIXME maybe make it a public part of the API?
+    #[unstable(issue = "none", feature = "std_internals")]
+    #[doc(hidden)]
+    pub fn try_lock(&self) -> Option<ReentrantLockGuard<'_, T>> {
         let this_thread = current_id();
         // Safety: We only touch lock_count when we own the inner mutex.
         // Additionally, we only call `self.owner.set()` while holding

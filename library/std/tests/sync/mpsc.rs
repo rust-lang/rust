@@ -1,5 +1,6 @@
-use super::*;
-use crate::{env, thread};
+use std::sync::mpsc::*;
+use std::time::{Duration, Instant};
+use std::{env, thread};
 
 pub fn stress_factor() -> usize {
     match env::var("RUST_TEST_STRESS") {

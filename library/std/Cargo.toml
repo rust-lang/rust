@@ -131,6 +131,10 @@ path = "tests/pipe_subprocess.rs"
 harness = false
 
 [[test]]
+name = "sync"
+path = "tests/sync/lib.rs"
+
+[[test]]
 name = "floats"
 path = "tests/floats/lib.rs"
 

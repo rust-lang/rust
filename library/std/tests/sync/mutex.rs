@@ -1,10 +1,10 @@
-use crate::fmt::Debug;
-use crate::ops::FnMut;
-use crate::panic::{self, AssertUnwindSafe};
-use crate::sync::atomic::{AtomicUsize, Ordering};
-use crate::sync::mpsc::channel;
-use crate::sync::{Arc, Condvar, MappedMutexGuard, Mutex, MutexGuard, TryLockError};
-use crate::{hint, mem, thread};
+use std::fmt::Debug;
+use std::ops::FnMut;
+use std::panic::{self, AssertUnwindSafe};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc::channel;
+use std::sync::{Arc, Condvar, MappedMutexGuard, Mutex, MutexGuard, TryLockError};
+use std::{hint, mem, thread};
 
 struct Packet<T>(Arc<(Mutex<T>, Condvar)>);
 
