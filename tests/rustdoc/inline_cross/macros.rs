@@ -6,10 +6,8 @@
 
 extern crate macros;
 
-//@ has foo/index.html '//*[@class="item-name"]/span[@class="stab deprecated"]' \
-//         Deprecated
-//@ has - '//*[@class="item-name"]/span[@class="stab unstable"]' \
-//         Experimental
+//@ has foo/index.html '//dt/span[@class="stab deprecated"]' Deprecated
+//@ has - '//dt/span[@class="stab unstable"]' Experimental
 
 //@ has foo/macro.my_macro.html
 //@ has - '//*[@class="docblock"]' 'docs for my_macro'

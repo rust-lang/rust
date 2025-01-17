@@ -412,14 +412,14 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 match *src {
                     Some(src) => write!(
                         w,
-                        "<dt class=\"item-name\"><code>{}extern crate {} as {};",
+                        "<dt><code>{}extern crate {} as {};",
                         visibility_print_with_space(myitem, cx),
                         anchor(myitem.item_id.expect_def_id(), src, cx),
                         EscapeBodyTextWithWbr(myitem.name.unwrap().as_str()),
                     ),
                     None => write!(
                         w,
-                        "<dt class=\"item-name\"><code>{}extern crate {};",
+                        "<dt><code>{}extern crate {};",
                         visibility_print_with_space(myitem, cx),
                         anchor(myitem.item_id.expect_def_id(), myitem.name.unwrap(), cx),
                     ),
@@ -438,17 +438,11 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     }
                     clean::ImportKind::Glob => String::new(),
                 };
-                let (stab_tags_before, stab_tags_after) = if stab_tags.is_empty() {
-                    ("", "")
-                } else {
-                    ("<dd class=\"desc docblock-short\">", "</dd>")
-                };
                 write!(
                     w,
-                    "<dt class=\"item-name\"{id}>\
-                         <code>{vis}{imp}</code>\
-                     </dt>\
-                     {stab_tags_before}{stab_tags}{stab_tags_after}",
+                    "<dt{id}>\
+                         <code>{vis}{imp}</code>{stab_tags}\
+                     </dt>",
                     vis = visibility_print_with_space(myitem, cx),
                     imp = import.print(cx),
                 );
@@ -486,14 +480,11 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
 
                 let docs =
                     MarkdownSummaryLine(&myitem.doc_value(), &myitem.links(cx)).into_string();
-                let (docs_before, docs_after) = if docs.is_empty() {
-                    ("", "")
-                } else {
-                    ("<dd class=\"desc docblock-short\">", "</dd>")
-                };
+                let (docs_before, docs_after) =
+                    if docs.is_empty() { ("", "") } else { ("<dd>", "</dd>") };
                 write!(
                     w,
-                    "<dt class=\"item-name\">\
+                    "<dt>\
                         <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
                         {visibility_and_hidden}\
                         {unsafety_flag}\
