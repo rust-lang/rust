@@ -66,4 +66,3 @@ fn is_test_test() {
     assert!(!is_test(&OsString::from("#a_dog_gif")));
     assert!(!is_test(&OsString::from("~a_temp_file")));
 }
-

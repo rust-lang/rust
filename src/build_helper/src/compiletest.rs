@@ -1,7 +1,8 @@
 //! Types representing arguments to compiletest.
 
-use std::str::FromStr;
 use std::fmt;
+use std::str::FromStr;
+
 pub use self::Mode::*;
 
 macro_rules! string_enum {
@@ -46,7 +47,7 @@ macro_rules! string_enum {
 pub(crate) use string_enum;
 
 string_enum! {
-    #[derive(Clone, Copy, PartialEq, Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
     pub enum Mode {
         Pretty => "pretty",
         DebugInfo => "debuginfo",

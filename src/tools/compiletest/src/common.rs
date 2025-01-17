@@ -1,18 +1,17 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ffi::OsString;
+use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
-use std::iter;
 
+pub use build_helper::compiletest::*;
 use build_helper::git::GitConfig;
 use semver::Version;
 use serde::de::{Deserialize, Deserializer, Error as _};
 use test::{ColorConfig, OutputFormat};
 
 use crate::util::{PathBufExt, add_dylib_path};
-pub use build_helper::compiletest::*;
-
 
 #[derive(Clone, Copy, Debug, PartialEq, Default, serde::Deserialize)]
 #[serde(rename_all = "kebab-case")]

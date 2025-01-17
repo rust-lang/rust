@@ -8,6 +8,7 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::{env, fs, iter};
 
+use build_helper::compiletest::Mode as CtMode;
 use clap_complete::shells;
 
 use crate::core::build_steps::compile::run_cargo;
@@ -915,7 +916,7 @@ impl Step for RustdocJSNotStd {
         builder.ensure(Compiletest {
             compiler: self.compiler,
             target: self.target,
-            mode: "rustdoc-js",
+            mode: CtMode::RustdocJs,
             suite: "rustdoc-js",
             path: "tests/rustdoc-js",
             compare_mode: None,
@@ -1347,29 +1348,29 @@ impl Step for CrateBuildHelper {
     }
 }
 
-test!(Ui { path: "tests/ui", mode: "ui", suite: "ui", default: true });
+test!(Ui { path: "tests/ui", mode: CtMode::Ui, suite: "ui", default: true });
 
-test!(Crashes { path: "tests/crashes", mode: "crashes", suite: "crashes", default: true });
+test!(Crashes { path: "tests/crashes", mode: CtMode::Crashes, suite: "crashes", default: true });
 
-test!(Codegen { path: "tests/codegen", mode: "codegen", suite: "codegen", default: true });
+test!(Codegen { path: "tests/codegen", mode: CtMode::Codegen, suite: "codegen", default: true });
 
 test!(CodegenUnits {
     path: "tests/codegen-units",
-    mode: "codegen-units",
+    mode: CtMode::CodegenUnits,
     suite: "codegen-units",
     default: true,
 });
 
 test!(Incremental {
     path: "tests/incremental",
-    mode: "incremental",
+    mode: CtMode::Incremental,
     suite: "incremental",
     default: true,
 });
 
 test!(Debuginfo {
     path: "tests/debuginfo",
-    mode: "debuginfo",
+    mode: CtMode::DebugInfo,
     suite: "debuginfo",
     default: true,
     compare_mode: Some("split-dwarf"),
@@ -1377,7 +1378,7 @@ test!(Debuginfo {
 
 test!(UiFullDeps {
     path: "tests/ui-fulldeps",
-    mode: "ui",
+    mode: CtMode::Ui,
     suite: "ui-fulldeps",
     default: true,
     only_hosts: true,
@@ -1385,14 +1386,14 @@ test!(UiFullDeps {
 
 test!(Rustdoc {
     path: "tests/rustdoc",
-    mode: "rustdoc",
+    mode: CtMode::Rustdoc,
     suite: "rustdoc",
     default: true,
     only_hosts: true,
 });
 test!(RustdocUi {
     path: "tests/rustdoc-ui",
-    mode: "ui",
+    mode: CtMode::Ui,
     suite: "rustdoc-ui",
     default: true,
     only_hosts: true,
@@ -1400,7 +1401,7 @@ test!(RustdocUi {
 
 test!(RustdocJson {
     path: "tests/rustdoc-json",
-    mode: "rustdoc-json",
+    mode: CtMode::RustdocJson,
     suite: "rustdoc-json",
     default: true,
     only_hosts: true,
@@ -1408,7 +1409,7 @@ test!(RustdocJson {
 
 test!(Pretty {
     path: "tests/pretty",
-    mode: "pretty",
+    mode: CtMode::Pretty,
     suite: "pretty",
     default: true,
     only_hosts: true,
@@ -1441,7 +1442,7 @@ impl Step for RunMake {
         builder.ensure(Compiletest {
             compiler: self.compiler,
             target: self.target,
-            mode: "run-make",
+            mode: CtMode::RunMake,
             suite: "run-make",
             path: "tests/run-make",
             compare_mode: None,
@@ -1449,7 +1450,12 @@ impl Step for RunMake {
     }
 }
 
-test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly", default: true });
+test!(Assembly {
+    path: "tests/assembly",
+    mode: CtMode::Assembly,
+    suite: "assembly",
+    default: true
+});
 
 /// Runs the coverage test suite at `tests/coverage` in some or all of the
 /// coverage test modes.
@@ -1536,7 +1542,7 @@ impl Step for Coverage {
         builder.ensure(Compiletest {
             compiler,
             target,
-            mode,
+            mode: mode.parse().unwrap(),
             suite: Self::SUITE,
             path: Self::PATH,
             compare_mode: None,
@@ -1546,7 +1552,7 @@ impl Step for Coverage {
 
 test!(CoverageRunRustdoc {
     path: "tests/coverage-run-rustdoc",
-    mode: "coverage-run",
+    mode: CtMode::CoverageRun,
     suite: "coverage-run-rustdoc",
     default: true,
     only_hosts: true,
@@ -1578,7 +1584,7 @@ impl Step for MirOpt {
             builder.ensure(Compiletest {
                 compiler: self.compiler,
                 target,
-                mode: "mir-opt",
+                mode: CtMode::MirOpt,
                 suite: "mir-opt",
                 path: "tests/mir-opt",
                 compare_mode: None,
@@ -1615,7 +1621,7 @@ impl Step for MirOpt {
 struct Compiletest {
     compiler: Compiler,
     target: TargetSelection,
-    mode: &'static str,
+    mode: CtMode,
     suite: &'static str,
     path: &'static str,
     compare_mode: Option<&'static str>,
@@ -1729,7 +1735,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         let is_rustdoc = suite == "rustdoc-ui" || suite == "rustdoc-js";
 
-        if mode == "run-make" {
+        if mode == CtMode::RunMake {
             let cargo_path = if builder.top_stage == 0 {
                 // If we're using `--stage 0`, we should provide the bootstrap cargo.
                 builder.initial_cargo.clone()
@@ -1752,17 +1758,17 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         // Avoid depending on rustdoc when we don't need it.
-        if mode == "rustdoc"
-            || mode == "run-make"
-            || (mode == "ui" && is_rustdoc)
-            || mode == "rustdoc-js"
-            || mode == "rustdoc-json"
+        if mode == CtMode::Rustdoc
+            || mode == CtMode::RunMake
+            || (mode == CtMode::Ui && is_rustdoc)
+            || mode == CtMode::RustdocJs
+            || mode == CtMode::RustdocJson
             || suite == "coverage-run-rustdoc"
         {
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
         }
 
-        if mode == "rustdoc-json" {
+        if mode == CtMode::RustdocJson {
             // Use the beta compiler for jsondocck
             let json_compiler = compiler.with_stage(0);
             cmd.arg("--jsondocck-path")
@@ -1771,7 +1777,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 .arg(builder.ensure(tool::JsonDocLint { compiler: json_compiler, target }));
         }
 
-        if matches!(mode, "coverage-map" | "coverage-run") {
+        if matches!(mode, CtMode::CoverageMap | CtMode::CoverageRun) {
             let coverage_dump = builder.tool_exe(Tool::CoverageDump);
             cmd.arg("--coverage-dump-path").arg(coverage_dump);
         }
@@ -1789,7 +1795,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--sysroot-base").arg(sysroot);
         cmd.arg("--stage-id").arg(stage_id);
         cmd.arg("--suite").arg(suite);
-        cmd.arg("--mode").arg(mode);
+        cmd.arg("--mode").arg(mode.to_str());
         cmd.arg("--target").arg(target.rustc_target_arg());
         cmd.arg("--host").arg(&*compiler.host.triple);
         cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.build));
@@ -1827,7 +1833,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         if let Some(ref nodejs) = builder.config.nodejs {
             cmd.arg("--nodejs").arg(nodejs);
-        } else if mode == "rustdoc-js" {
+        } else if mode == CtMode::RustdocJs {
             panic!("need nodejs to run rustdoc-js suite");
         }
         if let Some(ref npm) = builder.config.npm {
@@ -1985,7 +1991,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 cmd.env("RUSTFLAGS", rustflags);
             }
 
-            if !builder.config.dry_run() && matches!(mode, "run-make" | "coverage-run") {
+            if !builder.config.dry_run() && matches!(mode, CtMode::RunMake | CtMode::CoverageRun) {
                 // The llvm/bin directory contains many useful cross-platform
                 // tools. Pass the path to run-make tests so they can use them.
                 // (The coverage-run tests also need these tools to process
@@ -1997,7 +2003,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 cmd.arg("--llvm-bin-dir").arg(llvm_bin_path);
             }
 
-            if !builder.config.dry_run() && mode == "run-make" {
+            if !builder.config.dry_run() && mode == CtMode::RunMake {
                 // If LLD is available, add it to the PATH
                 if builder.config.lld_enabled {
                     let lld_install_root =
@@ -2017,7 +2023,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         // Only pass correct values for these flags for the `run-make` suite as it
         // requires that a C++ compiler was configured which isn't always the case.
-        if !builder.config.dry_run() && mode == "run-make" {
+        if !builder.config.dry_run() && mode == CtMode::RunMake {
             cmd.arg("--cc")
                 .arg(builder.cc(target))
                 .arg("--cxx")
