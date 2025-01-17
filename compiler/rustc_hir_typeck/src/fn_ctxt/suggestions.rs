@@ -791,7 +791,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 ExprKind::Path(..) | ExprKind::Lit(_) if parent_is_closure => {
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         expression.span.shrink_to_lo(),
                         "consider ignoring the value",
                         "_ = ",
