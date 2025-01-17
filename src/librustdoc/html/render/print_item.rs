@@ -141,6 +141,7 @@ macro_rules! item_template_methods {
 }
 
 const ITEM_TABLE_OPEN: &str = "<dl class=\"item-table\">";
+const REEXPORTS_TABLE_OPEN: &str = "<dl class=\"item-table reexports\">";
 const ITEM_TABLE_CLOSE: &str = "</dl>";
 
 // A component in a `use` path, like `string` in std::string::ToString
@@ -398,13 +399,10 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 w.write_str(ITEM_TABLE_CLOSE);
             }
             last_section = Some(my_section);
-            write_section_heading(
-                w,
-                my_section.name(),
-                &cx.derive_id(my_section.id()),
-                None,
-                ITEM_TABLE_OPEN,
-            );
+            let section_id = my_section.id();
+            let tag =
+                if section_id == "reexports" { REEXPORTS_TABLE_OPEN } else { ITEM_TABLE_OPEN };
+            write_section_heading(w, my_section.name(), &cx.derive_id(section_id), None, tag);
         }
 
         match myitem.kind {

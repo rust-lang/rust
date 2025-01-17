@@ -2543,7 +2543,7 @@ in src-script.js and main.js
 	}
 
 	/* Since the screen is wide enough, we show items on their description on the same line. */
-	.item-table {
+	.item-table:not(.reexports) {
 		display: grid;
 		grid-template-columns: 33% 67%;
 	}
