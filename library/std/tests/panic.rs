@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
-use crate::cell::RefCell;
-use crate::panic::{AssertUnwindSafe, UnwindSafe};
-use crate::rc::Rc;
-use crate::sync::{Arc, Mutex, RwLock};
+use std::cell::RefCell;
+use std::panic::{AssertUnwindSafe, UnwindSafe};
+use std::rc::Rc;
+use std::sync::{Arc, Mutex, RwLock};
 
 struct Foo {
     a: i32,
