@@ -3,7 +3,7 @@ struct T;
 
 impl IntoIterator for &S {
     type Item = &T;
-    //~^ ERROR in the trait associated type
+    //~^ ERROR missing lifetime in associated type
     type IntoIter = std::collections::btree_map::Values<i32, T>;
     //~^ ERROR missing lifetime specifier
 
