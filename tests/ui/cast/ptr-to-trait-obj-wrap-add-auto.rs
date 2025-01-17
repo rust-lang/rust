@@ -12,16 +12,14 @@ struct X<T: ?Sized>(T);
 
 fn unwrap(a: *const W<dyn A>) -> *const (dyn A + Send) {
     a as _
-    //~^ error
-    //~| error
-    //~| error
+    //~^ error: adding an auto trait `Send` to a trait object in a pointer cast may cause UB later on
+    //~| warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 }
 
 fn unwrap_nested(a: *const W<W<dyn A>>) -> *const W<dyn A + Send> {
     a as _
-    //~^ error
-    //~| error
-    //~| error
+    //~^ error: adding an auto trait `Send` to a trait object in a pointer cast may cause UB later on
+    //~| warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 }
 
 fn rewrap(a: *const W<dyn A>) -> *const X<dyn A + Send> {
