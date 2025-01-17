@@ -34,6 +34,7 @@ use crate::intravisit::FnKind;
 
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
 pub struct Lifetime {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
 
     /// Either "`'a`", referring to a named lifetime definition,
@@ -214,6 +215,7 @@ impl Path<'_> {
 pub struct PathSegment<'hir> {
     /// The identifier portion of this path segment.
     pub ident: Ident,
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub res: Res,
 
@@ -304,6 +306,7 @@ pub enum ConstArgKind<'hir> {
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub struct InferArg {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub span: Span,
 }
@@ -592,6 +595,7 @@ pub enum GenericParamKind<'hir> {
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct GenericParam<'hir> {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub name: ParamName,
@@ -850,6 +854,7 @@ impl<'hir> Generics<'hir> {
 /// A single predicate in a where-clause.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct WherePredicate<'hir> {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     pub kind: &'hir WherePredicateKind<'hir>,
@@ -1521,6 +1526,7 @@ impl fmt::Debug for DotDotPos {
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct PatExpr<'hir> {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     pub kind: PatExprKind<'hir>,
@@ -1610,6 +1616,7 @@ pub enum PatKind<'hir> {
 /// A statement.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Stmt<'hir> {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub kind: StmtKind<'hir>,
     pub span: Span,
@@ -1641,6 +1648,7 @@ pub struct LetStmt<'hir> {
     pub init: Option<&'hir Expr<'hir>>,
     /// Else block for a `let...else` binding.
     pub els: Option<&'hir Block<'hir>>,
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     /// Can be `ForLoopDesugar` if the `let` statement is part of a `for` loop
@@ -1937,6 +1945,7 @@ pub type Lit = Spanned<LitKind>;
 /// `const N: usize = { ... }` with `tcx.hir().opt_const_param_default_param_def_id(..)`
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub struct AnonConst {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub body: BodyId,
@@ -1946,6 +1955,7 @@ pub struct AnonConst {
 /// An inline constant expression `const { something }`.
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub struct ConstBlock {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub body: BodyId,
@@ -1961,6 +1971,7 @@ pub struct ConstBlock {
 /// [rust lang reference]: https://doc.rust-lang.org/reference/expressions.html
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Expr<'hir> {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub kind: ExprKind<'hir>,
     pub span: Span,
@@ -2839,6 +2850,7 @@ pub enum ImplItemKind<'hir> {
 /// * the `f(..): Bound` in `Trait<f(..): Bound>` (feature `return_type_notation`)
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct AssocItemConstraint<'hir> {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub ident: Ident,
     pub gen_args: &'hir GenericArgs<'hir>,
@@ -2907,6 +2919,7 @@ impl<'hir> AssocItemConstraintKind<'hir> {
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Ty<'hir> {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub kind: TyKind<'hir>,
     pub span: Span,
@@ -3102,6 +3115,7 @@ pub struct UnsafeBinderTy<'hir> {
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct OpaqueTy<'hir> {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub bounds: GenericBounds<'hir>,
@@ -3138,6 +3152,7 @@ impl PreciseCapturingArg<'_> {
 /// since resolve_bound_vars operates on `Lifetime`s.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct PreciseCapturingNonLifetimeArg {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub ident: Ident,
     pub res: Res,
@@ -3311,6 +3326,7 @@ impl InlineAsm<'_> {
 /// Represents a parameter in a function header.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Param<'hir> {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub pat: &'hir Pat<'hir>,
     pub ty_span: Span,
@@ -3468,6 +3484,7 @@ pub struct Variant<'hir> {
     /// Name of the variant.
     pub ident: Ident,
     /// Id of the variant (not the constructor, see `VariantData::ctor_hir_id()`).
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     /// Fields and constructor id of the variant.
@@ -3540,6 +3557,7 @@ pub struct FieldDef<'hir> {
     pub span: Span,
     pub vis_span: Span,
     pub ident: Ident,
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub ty: &'hir Ty<'hir>,
@@ -3564,11 +3582,11 @@ pub enum VariantData<'hir> {
     /// A tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
-    Tuple(&'hir [FieldDef<'hir>], HirId, LocalDefId),
+    Tuple(&'hir [FieldDef<'hir>], #[stable_hasher(ignore)] HirId, LocalDefId),
     /// A unit variant.
     ///
     /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
-    Unit(HirId, LocalDefId),
+    Unit(#[stable_hasher(ignore)] HirId, LocalDefId),
 }
 
 impl<'hir> VariantData<'hir> {
