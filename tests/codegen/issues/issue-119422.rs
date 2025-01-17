@@ -2,6 +2,7 @@
 //! for `NonZero` integer types.
 //!
 //@ compile-flags: -O --edition=2021 -Zmerge-functions=disabled
+//@ min-llvm-version: 19 (for range parameter metadata)
 //@ only-64bit (because the LLVM type of i64 for usize shows up)
 #![crate_type = "lib"]
 

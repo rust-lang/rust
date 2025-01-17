@@ -1,4 +1,5 @@
 //@ compile-flags: -O -Z merge-functions=disabled
+//@ min-llvm-version: 19 (for range parameter metadata)
 #![crate_type = "lib"]
 
 // This tests that LLVM can optimize based on the niches in the source or
@@ -90,9 +91,18 @@ pub enum OneTwoThree {
 }
 
 // CHECK-LABEL: i8 @ordering_transmute_onetwothree(i8
+// CHECK-SAME: range(i8 -1, 2){{.+}}%x
 #[no_mangle]
 pub unsafe fn ordering_transmute_onetwothree(x: std::cmp::Ordering) -> OneTwoThree {
-    // CHECK: ret i8 1
+    // FIXME: this *should* just be `ret i8 1`, but that's not happening today.
+    // cc <https://github.com/llvm/llvm-project/issues/123278>
+
+    // CHECK: %[[TEMP1:.+]] = icmp ne i8 %x, 0
+    // CHECK: tail call void @llvm.assume(i1 %[[TEMP1]])
+    // CHECK: %[[TEMP2:.+]] = icmp ult i8 %x, 4
+    // CHECK: tail call void @llvm.assume(i1 %[[TEMP2]])
+
+    // CHECK: ret i8 %x
     std::mem::transmute(x)
 }
 
@@ -108,5 +118,13 @@ pub unsafe fn onetwothree_transmute_ordering(x: OneTwoThree) -> std::cmp::Orderi
 pub fn char_is_negative(c: char) -> bool {
     // CHECK: ret i1 false
     let x: i32 = unsafe { std::mem::transmute(c) };
+    x < 0
+}
+
+// CHECK-LABEL: i1 @transmute_to_char_is_negative(i32
+#[no_mangle]
+pub fn transmute_to_char_is_negative(x: i32) -> bool {
+    // CHECK: ret i1 false
+    let _c: char = unsafe { std::mem::transmute(x) };
     x < 0
 }

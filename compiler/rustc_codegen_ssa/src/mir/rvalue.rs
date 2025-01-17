@@ -257,13 +257,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 if let OperandValueKind::Immediate(to_scalar) = cast_kind
                     && from_scalar.size(self.cx) == to_scalar.size(self.cx)
                 {
-                    let from_backend_ty = bx.backend_type(operand.layout);
                     let to_backend_ty = bx.backend_type(cast);
                     Some(OperandValue::Immediate(self.transmute_immediate(
                         bx,
                         imm,
                         from_scalar,
-                        from_backend_ty,
                         to_scalar,
                         to_backend_ty,
                     )))
@@ -279,13 +277,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     && in_a.size(self.cx) == out_a.size(self.cx)
                     && in_b.size(self.cx) == out_b.size(self.cx)
                 {
-                    let in_a_ibty = bx.scalar_pair_element_backend_type(operand.layout, 0, false);
-                    let in_b_ibty = bx.scalar_pair_element_backend_type(operand.layout, 1, false);
                     let out_a_ibty = bx.scalar_pair_element_backend_type(cast, 0, false);
                     let out_b_ibty = bx.scalar_pair_element_backend_type(cast, 1, false);
                     Some(OperandValue::Pair(
-                        self.transmute_immediate(bx, imm_a, in_a, in_a_ibty, out_a, out_a_ibty),
-                        self.transmute_immediate(bx, imm_b, in_b, in_b_ibty, out_b, out_b_ibty),
+                        self.transmute_immediate(bx, imm_a, in_a, out_a, out_a_ibty),
+                        self.transmute_immediate(bx, imm_b, in_b, out_b, out_b_ibty),
                     ))
                 } else {
                     None
@@ -308,12 +304,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         to_backend_ty: Bx::Type,
     ) -> Option<Bx::Value> {
         use abi::Primitive::*;
-
-        // When scalars are passed by value, there's no metadata recording their
-        // valid ranges. For example, `char`s are passed as just `i32`, with no
-        // way for LLVM to know that they're 0x10FFFF at most. Thus we assume
-        // the range of the input value too, not just the output range.
-        self.assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
 
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
             (Int(_, is_signed), Int(..)) => bx.intcast(imm, to_backend_ty, is_signed),
@@ -356,7 +346,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         mut imm: Bx::Value,
         from_scalar: abi::Scalar,
-        from_backend_ty: Bx::Type,
         to_scalar: abi::Scalar,
         to_backend_ty: Bx::Type,
     ) -> Bx::Value {
@@ -365,11 +354,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         use abi::Primitive::*;
         imm = bx.from_immediate(imm);
 
-        // When scalars are passed by value, there's no metadata recording their
-        // valid ranges. For example, `char`s are passed as just `i32`, with no
-        // way for LLVM to know that they're 0x10FFFF at most. Thus we assume
-        // the range of the input value too, not just the output range.
-        self.assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
+        // We used to `assume` the `from_scalar` here too, but that's no longer needed
+        // because if we have a scalar, we must already know its range. Either
+        // 1) It's a parameter with `range` parameter metadata,
+        // 2) It's something we `load`ed with `!range` metadata, or
+        // 3) It's something we transmuted and already `assume`d the range.
+        // And thus in all those cases another `assume` is just wasteful.
+        // (Case 1 didn't used to be covered, and thus the `assume` was needed.)
 
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
             (Int(..) | Float(_), Int(..) | Float(_)) => bx.bitcast(imm, to_backend_ty),
@@ -389,7 +380,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.bitcast(int_imm, to_backend_ty)
             }
         };
+
+        // This `assume` remains important for cases like
+        //    transmute::<u32, NonZeroU32>(x) == 0
+        // since it's never passed to something with parameter metadata (especially
+        // after MIR inlining) so the only way to tell the backend about the
+        // constraint that the `transmute` introduced is to `assume` it.
         self.assume_scalar_range(bx, imm, to_scalar, to_backend_ty);
+
         imm = bx.to_immediate_scalar(imm, to_scalar);
         imm
     }
