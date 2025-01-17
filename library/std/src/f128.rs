@@ -4,9 +4,6 @@
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
 
-#[cfg(test)]
-mod tests;
-
 #[unstable(feature = "f128", issue = "116909")]
 pub use core::f128::consts;
 

@@ -1,8 +1,8 @@
 // FIXME(f16_f128): only tested on platforms that have symbols and aren't buggy
 #![cfg(reliable_f16)]
 
-use crate::f16::consts;
-use crate::num::{FpCategory as Fp, *};
+use std::f16::consts;
+use std::num::FpCategory as Fp;
 
 /// Tolerance for results on the order of 10.0e-2
 #[allow(unused)]
@@ -54,7 +54,7 @@ macro_rules! assert_f16_biteq {
 
 #[test]
 fn test_num_f16() {
-    test_num(10f16, 2f16);
+    crate::test_num(10f16, 2f16);
 }
 
 #[test]
@@ -734,7 +734,6 @@ fn test_ln_gamma() {
 #[test]
 fn test_real_consts() {
     // FIXME(f16_f128): add math tests when available
-    use super::consts;
 
     let pi: f16 = consts::PI;
     let frac_pi_2: f16 = consts::FRAC_PI_2;

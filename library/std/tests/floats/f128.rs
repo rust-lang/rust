@@ -1,11 +1,11 @@
 // FIXME(f16_f128): only tested on platforms that have symbols and aren't buggy
 #![cfg(reliable_f128)]
 
-use crate::f128::consts;
-use crate::num::FpCategory as Fp;
+use std::f128::consts;
+use std::num::FpCategory as Fp;
 #[cfg(reliable_f128_math)]
-use crate::ops::Rem;
-use crate::ops::{Add, Div, Mul, Sub};
+use std::ops::Rem;
+use std::ops::{Add, Div, Mul, Sub};
 
 // Note these tolerances make sense around zero, but not for more extreme exponents.
 
@@ -762,8 +762,6 @@ fn test_ln_gamma() {
 
 #[test]
 fn test_real_consts() {
-    use super::consts;
-
     let pi: f128 = consts::PI;
     let frac_pi_2: f128 = consts::FRAC_PI_2;
     let frac_pi_3: f128 = consts::FRAC_PI_3;

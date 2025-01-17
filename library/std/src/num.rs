@@ -29,28 +29,3 @@ pub use core::num::{FpCategory, ParseFloatError, ParseIntError, TryFromIntError}
 pub use core::num::{NonZeroI8, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI128, NonZeroIsize};
 #[stable(feature = "nonzero", since = "1.28.0")]
 pub use core::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, NonZeroUsize};
-
-#[cfg(test)]
-use crate::fmt;
-#[cfg(test)]
-use crate::ops::{Add, Div, Mul, Rem, Sub};
-
-/// Helper function for testing numeric operations
-#[cfg(test)]
-pub fn test_num<T>(ten: T, two: T)
-where
-    T: PartialEq
-        + Add<Output = T>
-        + Sub<Output = T>
-        + Mul<Output = T>
-        + Div<Output = T>
-        + Rem<Output = T>
-        + fmt::Debug
-        + Copy,
-{
-    assert_eq!(ten.add(two), ten + two);
-    assert_eq!(ten.sub(two), ten - two);
-    assert_eq!(ten.mul(two), ten * two);
-    assert_eq!(ten.div(two), ten / two);
-    assert_eq!(ten.rem(two), ten % two);
-}

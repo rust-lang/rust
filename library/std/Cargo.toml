@@ -130,6 +130,10 @@ name = "pipe-subprocess"
 path = "tests/pipe_subprocess.rs"
 harness = false
 
+[[test]]
+name = "floats"
+path = "tests/floats/lib.rs"
+
 [[bench]]
 name = "stdbenches"
 path = "benches/lib.rs"
