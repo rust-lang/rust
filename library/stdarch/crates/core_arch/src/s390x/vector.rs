@@ -131,9 +131,16 @@ mod sealed {
 
         impl_add!(va_double, vector_double, vfadb);
 
+        #[inline]
+        #[target_feature(enable = "vector")]
         // FIXME: "vfasb" is part of vector enhancements 1, add a test for it when possible
+        // #[cfg_attr(test, assert_instr(vfasb))]
+        pub unsafe fn va_float(a: vector_float, b: vector_float) -> vector_float {
+            transmute(simd_add(a, b))
+        }
+
         #[unstable(feature = "stdarch_s390x", issue = "135681")]
-        impl VectorAdd<Self> for f32 {
+        impl VectorAdd<Self> for vector_float {
             type Result = Self;
 
             #[inline]
@@ -145,7 +152,7 @@ mod sealed {
     }
 }
 
-/// Vector add.
+/// Vector pointwise addition.
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
