@@ -16,7 +16,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{DefineOpaqueTypes, HigherRankedType, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
-use rustc_middle::ty::{self, GenericArgsRef, ToPolyTraitRef, Ty, TyCtxt, Upcast};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_type_ir::elaborate;
@@ -458,8 +458,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         ensure_sufficient_stack(|| {
             let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
 
-            let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
-            let trait_ref = self.infcx.enter_forall_and_leak_universe(poly_trait_ref);
+            assert_eq!(obligation.predicate.polarity(), ty::PredicatePolarity::Positive);
+            let trait_ref =
+                self.infcx.enter_forall_and_leak_universe(obligation.predicate).trait_ref;
             let trait_obligations = self.impl_or_trait_obligations(
                 &cause,
                 obligation.recursion_depth + 1,
