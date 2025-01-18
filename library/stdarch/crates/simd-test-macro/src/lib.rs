@@ -79,6 +79,7 @@ pub fn simd_test(
             "is_mips64_feature_detected"
         }
         "loongarch64" => "is_loongarch_feature_detected",
+        "s390x" => "is_s390x_feature_detected",
         t => panic!("unknown target: {t}"),
     };
     let macro_test = Ident::new(macro_test, Span::call_site());

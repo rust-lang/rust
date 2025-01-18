@@ -25,6 +25,7 @@
     avx512_target_feature,
     mips_target_feature,
     powerpc_target_feature,
+    s390x_target_feature,
     loongarch_target_feature,
     wasm_target_feature,
     abi_unadjusted,
@@ -69,6 +70,7 @@
     feature(
         stdarch_arm_feature_detection,
         stdarch_powerpc_feature_detection,
+        stdarch_s390x_feature_detection,
         stdarch_loongarch_feature_detection
     )
 )]
