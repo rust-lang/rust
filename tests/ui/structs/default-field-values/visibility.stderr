@@ -1,0 +1,27 @@
+error[E0451]: field `x` of struct `S` is private
+  --> $DIR/visibility.rs:24:9
+   |
+LL |         ..
+   |         ^^ field `x` is private
+
+error[E0451]: field `x` of struct `S` is private
+  --> $DIR/visibility.rs:27:9
+   |
+LL |         x: 0,
+   |         ^^^^ private field
+
+error[E0451]: field `beta` of struct `Alpha` is private
+  --> $DIR/visibility.rs:11:37
+   |
+LL |         let x = crate::foo::Alpha { .. };
+   |                                     ^^ field `beta` is private
+
+error[E0451]: field `gamma` of struct `Alpha` is private
+  --> $DIR/visibility.rs:11:37
+   |
+LL |         let x = crate::foo::Alpha { .. };
+   |                                     ^^ field `gamma` is private
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0451`.
