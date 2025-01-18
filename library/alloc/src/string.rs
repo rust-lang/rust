@@ -2531,6 +2531,7 @@ macro_rules! impl_eq {
 
 impl_eq! { String, str }
 impl_eq! { String, &'a str }
+impl_eq! { String, &String }
 impl_eq! { &String, str }
 #[cfg(not(no_global_oom_handling))]
 impl_eq! { Cow<'a, str>, str }
@@ -2566,6 +2567,7 @@ macro_rules! impl_ord {
 impl_ord! { String, str }
 impl_ord! { String, &'a str }
 impl_ord! { &String, str }
+impl_ord! { String, &String }
 #[cfg(not(no_global_oom_handling))]
 impl_ord! { Cow<'a, str>, str }
 #[cfg(not(no_global_oom_handling))]
