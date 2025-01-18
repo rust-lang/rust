@@ -1,0 +1,8 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `foo`
+  --> $DIR/return-expr.rs:11:10
+   |
+LL |     &raw foo::A
+   |          ^^^ expected one of 8 possible tokens
+
+error: aborting due to 1 previous error
+

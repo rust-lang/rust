@@ -1,0 +1,13 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `else`, `{`, or an operator, found `foo`
+  --> $DIR/let-stmt.rs:8:18
+   |
+LL |     let _ = &raw foo;
+   |                  ^^^ expected one of 8 possible tokens
+   |
+help: you might have meant to write a field access
+   |
+LL |     let _ = &raw.foo;
+   |                 +
+
+error: aborting due to 1 previous error
+
