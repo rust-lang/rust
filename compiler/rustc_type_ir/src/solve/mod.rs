@@ -169,6 +169,9 @@ pub enum CandidateSource<I: Interner> {
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext, TyEncodable, TyDecodable))]
 pub enum BuiltinImplSource {
+    /// A built-in impl that is considered trivial, without any nested requirements. They
+    /// are preferred over where-clauses, and we want to track them explicitly.
+    Trivial,
     /// Some built-in impl we don't need to differentiate. This should be used
     /// unless more specific information is necessary.
     Misc,

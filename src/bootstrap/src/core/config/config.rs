@@ -42,6 +42,8 @@ use crate::utils::helpers::{self, exe, output, t};
 #[rustfmt::skip] // We don't want rustfmt to oneline this list
 pub(crate) const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
     ":!src/tools",
+    ":!src/librustdoc",
+    ":!src/rustdoc-json-types",
     ":!tests",
     ":!triagebot.toml",
 ];
