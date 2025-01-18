@@ -2639,7 +2639,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.49.0"]
     pub MANUAL_OK_OR,
-    pedantic,
+    style,
     "finds patterns that can be encoded more concisely with `Option::ok_or`"
 }
 
