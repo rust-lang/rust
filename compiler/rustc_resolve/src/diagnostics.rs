@@ -2242,14 +2242,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
-        match (path.get(0), path.get(1)) {
+        match path[..] {
             // `{{root}}::ident::...` on both editions.
             // On 2015 `{{root}}` is usually added implicitly.
-            (Some(fst), Some(snd))
-                if fst.ident.name == kw::PathRoot && !snd.ident.is_path_segment_keyword() => {}
+            [first, second, ..]
+                if first.ident.name == kw::PathRoot && !second.ident.is_path_segment_keyword() => {}
             // `ident::...` on 2018.
-            (Some(fst), _)
-                if fst.ident.span.at_least_rust_2018() && !fst.ident.is_path_segment_keyword() =>
+            [first, ..]
+                if first.ident.span.at_least_rust_2018()
+                    && !first.ident.is_path_segment_keyword() =>
             {
                 // Insert a placeholder that's later replaced by `self`/`super`/etc.
                 path.insert(0, Segment::from_ident(Ident::empty()));
