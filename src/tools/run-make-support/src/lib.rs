@@ -90,7 +90,7 @@ pub use artifact_names::{
 /// Path-related helpers.
 pub use path_helpers::{
     cwd, filename_contains, filename_not_in_denylist, has_extension, has_prefix, has_suffix,
-    not_contains, path, shallow_find_files, source_root,
+    not_contains, path, shallow_find_files, build_root, source_root,
 };
 
 /// Helpers for scoped test execution where certain properties are attempted to be maintained.
