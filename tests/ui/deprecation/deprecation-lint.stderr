@@ -743,7 +743,7 @@ LL |         let _ = nested::DeprecatedStruct {
    |                 ------------------------ in this type
 LL |
 LL |             i: 0
-   |             ^^^^ private field
+   |             ^ private field
 
 error: aborting due to 123 previous errors
 
