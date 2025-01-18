@@ -371,7 +371,9 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     ) -> Self::Result {
         self.visit_id(inf_id);
 
-        // Ignore cases where the inference is a const.
+        // We don't currently write inference results of const infer vars to
+        // the typeck results as there is not yet any part of the compiler that
+        // needs this information.
         if let Some(ty) = self.fcx.node_ty_opt(inf_id) {
             let ty = self.resolve(ty, &inf_span);
             self.write_ty_to_typeck_results(inf_id, ty);
