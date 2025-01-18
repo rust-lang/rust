@@ -5,7 +5,9 @@ LL | type Foo = extern "C" fn(::std::ffi::CStr);
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
    = note: the function pointer to `extern "C" fn(CStr)` is FFI-unsafe due to `CStr`
-   = help: consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
+   = help: consider passing a `*const std::ffi::c_char` or `*mut std::ffi::c_char` instead,
+           and use `CString::into_raw()` then `CString::from_raw()` or a dedicated buffer
+           (note that `CString::into_raw()`'s output must not be `libc::free()`'d)
    = note: `CStr`/`CString` do not have a guaranteed layout
    = note: `#[warn(improper_ctypes_definitions)]` on by default
 
@@ -16,7 +18,9 @@ LL |     fn meh(blah: Foo);
    |                  ^^^ not FFI-safe
    |
    = note: the function pointer to `extern "C" fn(CStr)` is FFI-unsafe due to `CStr`
-   = help: consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
+   = help: consider passing a `*const std::ffi::c_char` or `*mut std::ffi::c_char` instead,
+           and use `CString::into_raw()` then `CString::from_raw()` or a dedicated buffer
+           (note that `CString::into_raw()`'s output must not be `libc::free()`'d)
    = note: `CStr`/`CString` do not have a guaranteed layout
    = note: `#[warn(improper_ctypes)]` on by default
 

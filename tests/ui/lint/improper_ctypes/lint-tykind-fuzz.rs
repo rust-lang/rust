@@ -47,10 +47,10 @@ impl<T: std::ops::Add+Copy> TemplateStruct<T> {
 
 extern "C" fn tstruct_sum<T: std::ops::Add+Copy>(
     // Ref[Struct]
-    slf: &TemplateStruct<T>
-    // Alias<Projection>   ...not Inherent. dangit
-) -> TemplateStruct<T>::Out {
-    slf.one + slf.two
+    slf: Option<&TemplateStruct<T>>
+    // Option<Alias<Projection>>   ...not Inherent. dangit
+) -> Option<Box<TemplateStruct<T>::Out>> {
+    Some(Box::new(slf?.one + slf?.two))
 }
 
 #[repr(C)]
@@ -87,7 +87,7 @@ pub trait TimesTwo: std::ops::Add<Self> + Sized + Clone
    //}
    extern "C" fn t2_box(
        // Box[Param]
-       self: Box<Self>
+       self: Box<Self>,
        // Alias<Projection>
    ) -> <Box<Self> as std::ops::Add<Box<Self>>>::Output {
        self.clone() + self
@@ -161,36 +161,35 @@ extern "C" fn all_ty_kinds<'a,const N:usize,T>(
     3_usize
 }
 
-extern "C" {
-fn all_ty_kinds_in_ptr(
+extern "C" fn all_ty_kinds_in_ptr<const N:usize, T>(
   // Ptr[UInt], Ptr[Int], Ptr[Float], Ptr[Bool]
   u: *const u8, i: *const i8, f: *const f64, b: *const bool,
   // Ptr[Struct]
-  s: *const String,  //~ ERROR: uses type `String`
+  s: *const String,
   // Ptr[Str]
   s2: *const str, //~ ERROR: uses type `*const str`
   // Ptr[Char]
-  c: *const  char, //~ ERROR: uses type `char`
+  c: *const char,
   // Ptr[Slice]
   s3: *const [u8], //~ ERROR: uses type `*const [u8]`
-  // deactivated here, because this is a function *declaration* (param N unacceptable)
-  // s4: *const [u8;N],
+  // Ptr[Array] (this gets caught outside of the code we want to test)
+  s4: *const [u8;N],
   // Ptr[Tuple]
-  p: *const (u8,u8), //~ ERROR: uses type `(u8, u8)`
-  // deactivated here, because this is a function *declaration* (pattern unacceptable)
-  // (p2, p3):(*const u8, *const u8),
+  p: *const (u8,u8),
+  // Tuple
+  (p2, p3):(*const u8, *const u8),
   // Pat
   nz: *const pattern_type!(u32 is 1..), //~ ERROR: uses type `(u32) is 1..=`
-  // deactivated here, because this is a function *declaration* (pattern unacceptable)
-  //SomeStruct{b: ref p4,..}: & SomeStruct,
+  // Ptr[Struct]
+  SomeStruct{b: ref p4,..}: & SomeStruct,
   // Ptr[Union]
   u2: *const SomeUnion,
   // Ptr[Enum],
   e: *const SomeEnum,
-  // deactivated here, because this is a function *declaration* (impl type unacceptable)
-  //d: *const impl Clone,
-  // deactivated here, because this is a function *declaration* (type param unacceptable)
-  //t: *const T,
+  // Param
+  d: *const impl Clone,
+  // Param
+  t: *const T,
   // Ptr[Foreign]
   e2: *mut ExtType,
   // Ptr[Struct]
@@ -199,46 +198,48 @@ fn all_ty_kinds_in_ptr(
   x: *const !,
   //r1: &u8, r2: *const u8, r3: Box<u8>,
   // Ptr[FnPtr]
-  f2: *const fn(u8)->u8, //~ ERROR: uses type `fn(u8) -> u8`
+  f2: *const fn(u8)->u8,
   // Ptr[Dynamic]
   f3: *const dyn Fn(u8)->u8, //~ ERROR: uses type `*const dyn Fn(u8) -> u8`
   // Ptr[Dynamic]
   d2: *const dyn std::cmp::PartialOrd<u8>, //~ ERROR: uses type `*const dyn PartialOrd<u8>`
-  // deactivated here, because this is a function *declaration*  (impl type unacceptable)
-  //a: *const impl async Fn(u8)->u8,
+  // Ptr[Param],
+  a: *const impl async Fn(u8)->u8,
   // Alias<Opaque> (this gets caught outside of the code we want to test)
-) -> *const dyn std::fmt::Debug; //~ ERROR: uses type `*const dyn Debug`
+) -> *const dyn std::fmt::Debug { //~ ERROR: uses type `*const dyn Debug`
+    todo!()
 }
 
-extern "C" fn all_ty_kinds_in_ref<'a, const N:usize,T>(
+extern "C" {
+fn all_ty_kinds_in_ref<'a>(
   // Ref[UInt], Ref[Int], Ref[Float], Ref[Bool]
   u: &u8, i: &'a i8, f: &f64, b: &bool,
   // Ref[Struct]
-  s: &String,
+  s: &String, //~ ERROR: uses type `String`
   // Ref[Str]
   s2: &str, //~ ERROR: uses type `&str`
   // Ref[Char]
-  c: &char,
+  c: &char, //~ ERROR: uses type `char`
   // Ref[Slice]
   s3: &[u8], //~ ERROR: uses type `&[u8]`
-  // Ref[Array] (this gets caught outside of the code we want to test)
-  s4: &[u8;N],
+  // deactivated here, because this is a function *declaration* (param N unacceptable)
+  // s4: &[u8;N],
   // Ref[Tuple]
-  p: &(u8, u8),
-  // also Tuple
-  (p2, p3):(&u8, &u8), //~ ERROR: uses type `(&u8, &u8)`
+  p: &(u8, u8), //~ ERROR: uses type `(u8, u8)`
+  // deactivated here, because this is a function *declaration* (patterns unacceptable)
+  // (p2, p3):(&u8, &u8), //~ ERROR: uses type `(&u8, &u8)`
   // Pat
   nz: &pattern_type!(u32 is 1..),
-  // Ref[Struct]
-  SomeStruct{b: ref p4,..}: &SomeStruct,
+  // deactivated here, because this is a function *declaration* (pattern unacceptable)
+  // SomeStruct{b: ref p4,..}: &SomeStruct,
   // Ref[Union]
   u2:  &SomeUnion,
   // Ref[Enum],
   e:  &SomeEnum,
-  // Ref[Param]
-  d:  &impl Clone,
-  // Ref[Param]
-  t:  &T,
+  // deactivated here, because this is a function *declaration* (impl type unacceptable)
+  // d: &impl Clone,
+  // deactivated here, because this is a function *declaration* (type param unacceptable)
+  // t: &T,
   // Ref[Foreign]
   e2: &ExtType,
   // Ref[Struct]
@@ -247,65 +248,65 @@ extern "C" fn all_ty_kinds_in_ref<'a, const N:usize,T>(
   x: &!,
   //r1: &u8, r2:  &u8, r3: Box<u8>,
   // Ref[FnPtr]
-  f2: &fn(u8)->u8,
+  f2: &fn(u8)->u8, //~ ERROR: uses type `fn(u8) -> u8`
   // Ref[Dynamic]
   f3: &dyn Fn(u8)->u8, //~ ERROR: uses type `&dyn Fn(u8) -> u8`
   // Ref[Dynamic]
   d2: &dyn std::cmp::PartialOrd<u8>, //~ ERROR: uses type `&dyn PartialOrd<u8>`
-  // Ref[Param],
-  a: &impl async Fn(u8)->u8,
+  // deactivated here, because this is a function *declaration*  (impl type unacceptable)
+  // a: &impl async Fn(u8)->u8,
   // Ref[Dynamic] (this gets caught outside of the code we want to test)
-) -> &'a dyn std::fmt::Debug { //~ ERROR: uses type `&dyn Debug`
-    i
+) -> &'a dyn std::fmt::Debug; //~ ERROR: uses type `&dyn Debug`
 }
 
 extern "C" fn all_ty_kinds_in_box<const N:usize,T>(
   // Box[UInt], Box[Int], Box[Float], Box[Bool]
-  u: Box<u8>, i: Box<i8>, f: Box<f64>, b: Box<bool>,
+  u: Option<Box<u8>>, i: Option<Box<i8>>, f: Option<Box<f64>>, b: Option<Box<bool>>,
   // Box[Struct]
-  s: Box<String>,
+  s: Option<Box<String>>,
   // Box[Str]
   s2: Box<str>, //~ ERROR: uses type `Box<str>`
   // Box[Char]
-  c: Box<char>,
+  c: Box<char>, //~ ERROR: uses type `Box<char>`
   // Box[Slice]
   s3: Box<[u8]>, //~ ERROR: uses type `Box<[u8]>`
   // Box[Array] (this gets caught outside of the code we want to test)
-  s4: Box<[u8;N]>,
+  s4: Option<Box<[u8;N]>>,
   // Box[Tuple]
-  p: Box<(u8,u8)>,
+  p: Option<Box<(u8,u8)>>,
   // also Tuple
   (p2,p3):(Box<u8>, Box<u8>), //~ ERROR: uses type `(Box<u8>, Box<u8>)`
   // Pat
-  nz: Box<pattern_type!(u32 is 1..)>,
+  nz: Option<Box<pattern_type!(u32 is 1..)>>,
   // Ref[Struct]
   SomeStruct{b: ref p4,..}: &SomeStruct,
   // Box[Union]
-  u2:  Box<SomeUnion>,
+  u2: Option<Box<SomeUnion>>,
   // Box[Enum],
-  e:  Box<SomeEnum>,
+  e: Option<Box<SomeEnum>>,
   // Box[Param]
-  d:  Box<impl Clone>,
+  d: Option<Box<impl Clone>>,
   // Box[Param]
-  t:  Box<T>,
+  t: Option<Box<T>>,
   // Box[Foreign]
-  e2: Box<ExtType>,
+  e2: Option<Box<ExtType>>,
   // Box[Struct]
   e3: Box<StructWithDyn>, //~ ERROR: uses type `Box<StructWithDyn>`
   // Box[Never]
-  x: Box<!>,
+  // (considered FFI-unsafe because of null pointers, not the litteral uninhabited type. smh.)
+  x: Box<!>, //~ ERROR: uses type `Box<!>`
   //r1: Box<u8, r2:  Box<u8, r3: Box<u8>,
   // Box[FnPtr]
-  f2: Box<fn(u8)->u8>,
+  f2: Box<fn(u8)->u8>,  //~ ERROR: uses type `Box<fn(u8) -> u8>`
   // Box[Dynamic]
   f3: Box<dyn Fn(u8)->u8>,  //~ ERROR: uses type `Box<dyn Fn(u8) -> u8>`
   // Box[Dynamic]
   d2: Box<dyn std::cmp::PartialOrd<u8>>, //~ ERROR: uses type `Box<dyn PartialOrd<u8>>`
-  // Box[Param],
-  a: Box<impl async Fn(u8)->u8>,
+  // Option[Box[Param]],
+  a: Option<Box<impl async Fn(u8)->u8>>,
   // Box[Dynamic] (this gets caught outside of the code we want to test)
 ) -> Box<dyn std::fmt::Debug> { //~ ERROR: uses type `Box<dyn Debug>`
-    i
+    u.unwrap()
 }
 
 fn main() {}

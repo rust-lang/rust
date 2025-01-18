@@ -74,8 +74,10 @@ pub extern "C" fn str_type(p: &str) { }
 //~^ ERROR: uses type `&str`
 
 pub extern "C" fn box_type(p: Box<u32>) { }
+//~^ ERROR: uses type `Box<u32>`
 
 pub extern "C" fn opt_box_type(p: Option<Box<u32>>) { }
+// no error here!
 
 pub extern "C" fn boxed_slice(p: Box<[u8]>) { }
 //~^ ERROR: uses type `Box<[u8]>`
@@ -130,11 +132,15 @@ pub extern "C" fn transparent_fn(p: TransparentBadFn) { }
 
 pub extern "C" fn good3(fptr: Option<extern "C" fn()>) { }
 
-pub extern "C" fn good4(aptr: &[u8; 4 as usize]) { }
+pub extern "C" fn argument_with_assumptions_4(aptr: &[u8; 4 as usize]) { }
+//~^ ERROR: uses type `&[u8; 4]`
 
 pub extern "C" fn good5(s: StructWithProjection) { }
 
-pub extern "C" fn good6(s: StructWithProjectionAndLifetime) { }
+pub extern "C" fn argument_with_assumptions_6(s: StructWithProjectionAndLifetime) { }
+//~^ ERROR: uses type `&mut StructWithProjectionAndLifetime<'_>`
+// note: the type translation might be a little eager for
+// `<StructWithProjectionAndLifetime as Mirror>::It`
 
 pub extern "C" fn good7(fptr: extern "C" fn() -> ()) { }
 
@@ -150,7 +156,8 @@ pub extern "C" fn good12(size: usize) { }
 
 pub extern "C" fn good13(n: TransparentInt) { }
 
-pub extern "C" fn good14(p: TransparentRef) { }
+pub extern "C" fn argument_with_assumptions_14(p: TransparentRef) { }
+//~^ ERROR: uses type `&TransparentInt`
 
 pub extern "C" fn good15(p: TransparentLifetime) { }
 
