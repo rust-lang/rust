@@ -2245,13 +2245,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Option<(Vec<Segment>, Option<String>)> {
         debug!("make_path_suggestion: span={:?} path={:?}", span, path);
 
-        match (path.get(0), path.get(1)) {
+        match path[..] {
             // `{{root}}::ident::...` on both editions.
             // On 2015 `{{root}}` is usually added implicitly.
-            (Some(fst), Some(snd))
+            [fst, snd, ..]
                 if fst.ident.name == kw::PathRoot && !snd.ident.is_path_segment_keyword() => {}
             // `ident::...` on 2018.
-            (Some(fst), _)
+            [fst, ..]
                 if fst.ident.span.at_least_rust_2018() && !fst.ident.is_path_segment_keyword() =>
             {
                 // Insert a placeholder that's later replaced by `self`/`super`/etc.
