@@ -10,25 +10,54 @@ use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc_span::Span;
 
 use crate::errors::UnconditionalRecursion;
+use crate::pass_manager::MirLint;
 
-pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
-    check_call_recursion(tcx, body);
+pub(super) struct CheckCallRecursion;
+
+impl<'tcx> MirLint<'tcx> for CheckCallRecursion {
+    fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
+        let def_id = body.source.def_id().expect_local();
+
+        if let DefKind::Fn | DefKind::AssocFn = tcx.def_kind(def_id) {
+            // If this is trait/impl method, extract the trait's args.
+            let trait_args = match tcx.trait_of_item(def_id.to_def_id()) {
+                Some(trait_def_id) => {
+                    let trait_args_count = tcx.generics_of(trait_def_id).count();
+                    &GenericArgs::identity_for_item(tcx, def_id)[..trait_args_count]
+                }
+                _ => &[],
+            };
+
+            check_recursion(tcx, body, CallRecursion { trait_args })
+        }
+    }
 }
 
-fn check_call_recursion<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
-    let def_id = body.source.def_id().expect_local();
+/// Requires drop elaboration to have been performed.
+pub(super) struct CheckDropRecursion;
 
-    if let DefKind::Fn | DefKind::AssocFn = tcx.def_kind(def_id) {
-        // If this is trait/impl method, extract the trait's args.
-        let trait_args = match tcx.trait_of_item(def_id.to_def_id()) {
-            Some(trait_def_id) => {
-                let trait_args_count = tcx.generics_of(trait_def_id).count();
-                &GenericArgs::identity_for_item(tcx, def_id)[..trait_args_count]
+impl<'tcx> MirLint<'tcx> for CheckDropRecursion {
+    fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
+        let def_id = body.source.def_id().expect_local();
+
+        // First check if `body` is an `fn drop()` of `Drop`
+        if let DefKind::AssocFn = tcx.def_kind(def_id)
+        && let Some(trait_ref) =
+            tcx.impl_of_method(def_id.to_def_id()).and_then(|def_id| tcx.impl_trait_ref(def_id))
+        && let Some(drop_trait) = tcx.lang_items().drop_trait()
+        && drop_trait == trait_ref.instantiate_identity().def_id
+        // avoid erroneous `Drop` impls from causing ICEs below
+        && let sig = tcx.fn_sig(def_id).instantiate_identity()
+        && sig.inputs().skip_binder().len() == 1
+        {
+            // It was. Now figure out for what type `Drop` is implemented and then
+            // check for recursion.
+            if let ty::Ref(_, dropped_ty, _) =
+                tcx.liberate_late_bound_regions(def_id.to_def_id(), sig.input(0)).kind()
+            {
+                check_recursion(tcx, body, RecursiveDrop { drop_for: *dropped_ty });
             }
-            _ => &[],
-        };
-
-        check_recursion(tcx, body, CallRecursion { trait_args })
+        }
     }
 }
 
@@ -58,30 +87,6 @@ fn check_recursion<'tcx>(
             span: sp,
             call_sites: vis.reachable_recursive_calls,
         });
-    }
-}
-
-/// Requires drop elaboration to have been performed first.
-pub fn check_drop_recursion<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
-    let def_id = body.source.def_id().expect_local();
-
-    // First check if `body` is an `fn drop()` of `Drop`
-    if let DefKind::AssocFn = tcx.def_kind(def_id)
-        && let Some(trait_ref) =
-            tcx.impl_of_method(def_id.to_def_id()).and_then(|def_id| tcx.impl_trait_ref(def_id))
-        && let Some(drop_trait) = tcx.lang_items().drop_trait()
-        && drop_trait == trait_ref.instantiate_identity().def_id
-        // avoid erroneous `Drop` impls from causing ICEs below
-        && let sig = tcx.fn_sig(def_id).instantiate_identity()
-        && sig.inputs().skip_binder().len() == 1
-    {
-        // It was. Now figure out for what type `Drop` is implemented and then
-        // check for recursion.
-        if let ty::Ref(_, dropped_ty, _) =
-            tcx.liberate_late_bound_regions(def_id.to_def_id(), sig.input(0)).kind()
-        {
-            check_recursion(tcx, body, RecursiveDrop { drop_for: *dropped_ty });
-        }
     }
 }
 

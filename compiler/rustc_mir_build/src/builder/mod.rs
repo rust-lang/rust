@@ -26,10 +26,8 @@ use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt, TypingMode
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
 
-use super::lints;
 use crate::builder::expr::as_place::PlaceBuilder;
 use crate::builder::scope::DropKind;
-use crate::check_inline;
 
 pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -48,7 +46,7 @@ pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
 }
 
 /// Construct the MIR for a given `DefId`.
-pub(crate) fn mir_build<'tcx>(tcx: TyCtxtAt<'tcx>, def: LocalDefId) -> Body<'tcx> {
+pub(crate) fn build_mir<'tcx>(tcx: TyCtxtAt<'tcx>, def: LocalDefId) -> Body<'tcx> {
     let tcx = tcx.tcx;
     tcx.ensure_with_value().thir_abstract_const(def);
     if let Err(e) = tcx.check_match(def) {
@@ -79,9 +77,6 @@ pub(crate) fn mir_build<'tcx>(tcx: TyCtxtAt<'tcx>, def: LocalDefId) -> Body<'tcx
             build_mir(&thir.borrow())
         }
     };
-
-    lints::check(tcx, &body);
-    check_inline::check_force_inline(tcx, &body);
 
     // The borrow checker will replace all the regions here with its own
     // inference variables. There's no point having non-erased regions here.
