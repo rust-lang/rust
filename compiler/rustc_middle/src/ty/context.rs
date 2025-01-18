@@ -2028,7 +2028,7 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         let mut v = TraitObjectVisitor(vec![], self.hir());
-        v.visit_unambig_ty(hir_output);
+        v.visit_ty_unambig(hir_output);
         v.0
     }
 
@@ -2050,7 +2050,7 @@ impl<'tcx> TyCtxt<'tcx> {
             && let Some(alias_ty) = self.hir_node_by_def_id(local_id).alias_ty() // it is type alias
             && let Some(alias_generics) = self.hir_node_by_def_id(local_id).generics()
         {
-            v.visit_unambig_ty(alias_ty);
+            v.visit_ty_unambig(alias_ty);
             if !v.0.is_empty() {
                 return Some((
                     v.0,

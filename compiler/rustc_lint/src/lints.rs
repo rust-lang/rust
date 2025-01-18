@@ -294,7 +294,7 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
         // avoid doing throwaway work in case the lint ends up getting suppressed.
         let mut collector = ShorthandAssocTyCollector { qselves: Vec::new() };
         if let Some(ty) = self.ty {
-            collector.visit_unambig_ty(ty);
+            collector.visit_ty_unambig(ty);
         }
 
         let affect_object_lifetime_defaults = self

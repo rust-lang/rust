@@ -499,7 +499,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                             ControlFlow::Break(inf_span)
                         }
                     }
-                    FindInferInClosureWithBinder.visit_unambig_ty(ty).break_value()
+                    FindInferInClosureWithBinder.visit_ty_unambig(ty).break_value()
                 }
 
                 let infer_in_rt_sp = match fn_decl.output {
@@ -853,7 +853,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     lifetime: self.map.defs.get(&lifetime_ref.hir_id.local_id).cloned(),
                     s: self.scope,
                 };
-                self.with(scope, |this| this.visit_unambig_ty(mt.ty));
+                self.with(scope, |this| this.visit_ty_unambig(mt.ty));
             }
             hir::TyKind::TraitAscription(bounds) => {
                 let scope = Scope::TraitRefBoundary { s: self.scope };
@@ -895,7 +895,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         this.visit_param_bound(bound);
                     }
                     if let Some(ty) = ty {
-                        this.visit_unambig_ty(ty);
+                        this.visit_ty_unambig(ty);
                     }
                 })
             }
@@ -914,7 +914,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             }),
             Type(ty) => self.visit_early(impl_item.hir_id(), impl_item.generics, |this| {
                 this.visit_generics(impl_item.generics);
-                this.visit_unambig_ty(ty);
+                this.visit_ty_unambig(ty);
             }),
             Const(_, _) => self.visit_early(impl_item.hir_id(), impl_item.generics, |this| {
                 intravisit::walk_impl_item(this, impl_item)
@@ -1023,7 +1023,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 };
                 self.with(scope, |this| {
                     walk_list!(this, visit_generic_param, bound_generic_params);
-                    this.visit_unambig_ty(bounded_ty);
+                    this.visit_ty_unambig(bounded_ty);
                     walk_list!(this, visit_param_bound, bounds);
                 })
             }
@@ -1038,8 +1038,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             &hir::WherePredicateKind::EqPredicate(hir::WhereEqPredicate {
                 lhs_ty, rhs_ty, ..
             }) => {
-                self.visit_unambig_ty(lhs_ty);
-                self.visit_unambig_ty(rhs_ty);
+                self.visit_ty_unambig(lhs_ty);
+                self.visit_ty_unambig(rhs_ty);
             }
         }
     }
@@ -1072,13 +1072,13 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             GenericParamKind::Lifetime { .. } => {}
             GenericParamKind::Type { default, .. } => {
                 if let Some(ty) = default {
-                    self.visit_unambig_ty(ty);
+                    self.visit_ty_unambig(ty);
                 }
             }
             GenericParamKind::Const { ty, default, .. } => {
-                self.visit_unambig_ty(ty);
+                self.visit_ty_unambig(ty);
                 if let Some(default) = default {
-                    self.visit_unambig_const_arg(default);
+                    self.visit_const_arg_unambig(default);
                 }
             }
         }
@@ -1987,15 +1987,15 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             },
             |this| {
                 for input in inputs {
-                    this.visit_unambig_ty(input);
+                    this.visit_ty_unambig(input);
                 }
                 if !in_closure && let Some(output) = output {
-                    this.visit_unambig_ty(output);
+                    this.visit_ty_unambig(output);
                 }
             },
         );
         if in_closure && let Some(output) = output {
-            self.visit_unambig_ty(output);
+            self.visit_ty_unambig(output);
         }
     }
 
@@ -2313,7 +2313,7 @@ fn is_late_bound_map(
 
     let mut constrained_by_input = ConstrainedCollector { regions: Default::default(), tcx };
     for arg_ty in sig.decl.inputs {
-        constrained_by_input.visit_unambig_ty(arg_ty);
+        constrained_by_input.visit_ty_unambig(arg_ty);
     }
 
     let mut appears_in_output =

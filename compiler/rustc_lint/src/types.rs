@@ -1501,7 +1501,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         let mut visitor = FnPtrFinder { visitor: self, spans: Vec::new(), tys: Vec::new() };
         ty.visit_with(&mut visitor);
-        visitor.visit_unambig_ty(hir_ty);
+        visitor.visit_ty_unambig(hir_ty);
 
         iter::zip(visitor.tys.drain(..), visitor.spans.drain(..)).collect()
     }

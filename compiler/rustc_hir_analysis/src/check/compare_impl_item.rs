@@ -1624,7 +1624,7 @@ fn compare_synthetic_generics<'tcx>(
 
                     let span = input_tys
                         .iter()
-                        .find_map(|ty| Visitor(impl_def_id).visit_unambig_ty(ty).break_value())?;
+                        .find_map(|ty| Visitor(impl_def_id).visit_ty_unambig(ty).break_value())?;
 
                     let bounds = impl_m.generics.bounds_for_param(impl_def_id).next()?.bounds;
                     let bounds = bounds.first()?.span().to(bounds.last()?.span());

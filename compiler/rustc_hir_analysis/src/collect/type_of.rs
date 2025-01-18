@@ -450,7 +450,7 @@ fn infer_placeholder_type<'tcx>(
             let mut visitor = HirPlaceholderCollector::default();
             let node = tcx.hir_node_by_def_id(def_id);
             if let Some(ty) = node.ty() {
-                visitor.visit_unambig_ty(ty);
+                visitor.visit_ty_unambig(ty);
             }
             // If we have just one span, let's try to steal a const `_` feature error.
             let try_steal_span = if !tcx.features().generic_arg_infer() && visitor.spans.len() == 1
@@ -532,5 +532,5 @@ pub(crate) fn type_alias_is_lazy<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) ->
             }
         }
     }
-    HasTait.visit_unambig_ty(tcx.hir().expect_item(def_id).expect_ty_alias().0).is_break()
+    HasTait.visit_ty_unambig(tcx.hir().expect_item(def_id).expect_ty_alias().0).is_break()
 }

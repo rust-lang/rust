@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 // 1. We collect all the `hir::Path` from the `Self` type and `Trait` ref
                 // of the `impl` definition
                 let mut collector = PathCollector { paths: Vec::new() };
-                collector.visit_unambig_ty(&impl_.self_ty);
+                collector.visit_ty_unambig(&impl_.self_ty);
                 if let Some(of_trait) = &impl_.of_trait {
                     collector.visit_trait_ref(of_trait);
                 }

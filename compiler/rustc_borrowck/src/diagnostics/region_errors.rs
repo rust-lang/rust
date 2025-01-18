@@ -987,7 +987,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         for found_did in found_dids {
             let mut traits = vec![];
             let mut hir_v = HirTraitObjectVisitor(&mut traits, *found_did);
-            hir_v.visit_unambig_ty(self_ty);
+            hir_v.visit_ty_unambig(self_ty);
             debug!("trait spans found: {:?}", traits);
             for span in &traits {
                 let mut multi_span: MultiSpan = vec![*span].into();

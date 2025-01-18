@@ -201,7 +201,7 @@ fn diagnostic_hir_wf_check<'tcx>(
         }
     };
     for ty in tys {
-        visitor.visit_unambig_ty(ty);
+        visitor.visit_ty_unambig(ty);
     }
     visitor.cause
 }

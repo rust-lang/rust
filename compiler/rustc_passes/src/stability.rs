@@ -801,7 +801,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     )) = stab
                     {
                         let mut c = CheckTraitImplStable { tcx: self.tcx, fully_stable: true };
-                        c.visit_unambig_ty(self_ty);
+                        c.visit_ty_unambig(self_ty);
                         c.visit_trait_ref(t);
 
                         // do not lint when the trait isn't resolved, since resolution error should
@@ -1041,12 +1041,12 @@ impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
 
     fn visit_fn_decl(&mut self, fd: &'tcx hir::FnDecl<'tcx>) {
         for ty in fd.inputs {
-            self.visit_unambig_ty(ty)
+            self.visit_ty_unambig(ty)
         }
         if let hir::FnRetTy::Return(output_ty) = fd.output {
             match output_ty.kind {
                 TyKind::Never => {} // `-> !` is stable
-                _ => self.visit_unambig_ty(output_ty),
+                _ => self.visit_ty_unambig(output_ty),
             }
         }
     }

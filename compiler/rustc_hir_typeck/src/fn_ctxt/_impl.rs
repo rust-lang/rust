@@ -480,7 +480,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut clauses = CollectClauses { clauses: vec![], fcx: self };
-        clauses.visit_unambig_ty(hir_ty);
+        clauses.visit_ty_unambig(hir_ty);
         self.tcx.mk_clauses(&clauses.clauses)
     }
 

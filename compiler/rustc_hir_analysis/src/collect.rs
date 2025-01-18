@@ -576,7 +576,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                 }
 
                 // Only visit the type looking for `_` if we didn't fix the type above
-                visitor.visit_unambig_ty(a);
+                visitor.visit_ty_unambig(a);
                 self.lowerer().lower_arg_ty(a, None)
             })
             .collect();
@@ -590,7 +590,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                     infer_replacements.push((output.span, suggested_ty.to_string()));
                     Ty::new_error_with_message(tcx, output.span, suggested_ty.to_string())
                 } else {
-                    visitor.visit_unambig_ty(output);
+                    visitor.visit_ty_unambig(output);
                     self.lower_ty(output)
                 }
             }
@@ -1436,7 +1436,7 @@ fn recover_infer_ret_ty<'tcx>(
     });
 
     let mut visitor = HirPlaceholderCollector::default();
-    visitor.visit_unambig_ty(infer_ret_ty);
+    visitor.visit_ty_unambig(infer_ret_ty);
 
     let mut diag = bad_placeholder(icx.lowerer(), visitor.spans, "return type");
     let ret_ty = fn_sig.output();

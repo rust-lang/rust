@@ -905,7 +905,7 @@ fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
         }
     }
     let mut v = V(false);
-    v.visit_unambig_ty(ty);
+    v.visit_ty_unambig(ty);
     v.0
 }
 

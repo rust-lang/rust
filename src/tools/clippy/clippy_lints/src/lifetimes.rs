@@ -232,11 +232,11 @@ fn could_use_elision<'tcx>(
 
     // extract lifetimes in input argument types
     for arg in func.inputs {
-        input_visitor.visit_unambig_ty(arg);
+        input_visitor.visit_ty_unambig(arg);
     }
     // extract lifetimes in output type
     if let Return(ty) = func.output {
-        output_visitor.visit_unambig_ty(ty);
+        output_visitor.visit_ty_unambig(ty);
     }
     for lt in named_generics {
         input_visitor.visit_generic_param(lt);
@@ -340,7 +340,7 @@ fn explicit_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: 
         && let Some(self_ty) = func.inputs.first()
     {
         let mut visitor = RefVisitor::new(cx);
-        visitor.visit_unambig_ty(self_ty);
+        visitor.visit_ty_unambig(self_ty);
 
         !visitor.all_lts().is_empty()
     } else {
@@ -541,7 +541,7 @@ where
         try_visit!(self.visit_id(hir_id));
 
         self.bounded_ty_depth += 1;
-        try_visit!(self.visit_unambig_ty(bounded_ty));
+        try_visit!(self.visit_ty_unambig(bounded_ty));
         self.bounded_ty_depth -= 1;
 
         walk_list!(self, visit_param_bound, bounds);

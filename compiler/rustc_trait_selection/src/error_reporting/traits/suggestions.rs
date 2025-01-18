@@ -178,7 +178,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
         let mut ty_spans = vec![];
         for input in fn_sig.decl.inputs {
             ReplaceImplTraitVisitor { ty_spans: &mut ty_spans, param_did: param.def_id }
-                .visit_unambig_ty(input);
+                .visit_ty_unambig(input);
         }
         // The type param `T: Trait` we will suggest to introduce.
         let type_param = format!("{type_param_name}: {bound_str}");

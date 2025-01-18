@@ -641,16 +641,16 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
             if let Some(fn_decl) = node.fn_decl()
                 && let hir::FnRetTy::Return(ty) = fn_decl.output
             {
-                visitor.visit_unambig_ty(ty);
+                visitor.visit_ty_unambig(ty);
             }
             if visitor.suggestions.is_empty() {
                 // Do not suggest constraining the `&self` param, but rather the return type.
                 // If that is wrong (because it is not sufficient), a follow up error will tell the
                 // user to fix it. This way we lower the chances of *over* constraining, but still
                 // get the cake of "correctly" contrained in two steps.
-                visitor.visit_unambig_ty(self.ty_sup);
+                visitor.visit_ty_unambig(self.ty_sup);
             }
-            visitor.visit_unambig_ty(self.ty_sub);
+            visitor.visit_ty_unambig(self.ty_sub);
             if visitor.suggestions.is_empty() {
                 return false;
             }

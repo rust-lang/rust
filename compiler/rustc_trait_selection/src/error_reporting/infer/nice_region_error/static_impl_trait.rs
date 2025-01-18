@@ -153,7 +153,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     let mut add_label = true;
                     if let hir::FnRetTy::Return(ty) = fn_decl.output {
                         let mut v = StaticLifetimeVisitor(vec![], tcx.hir());
-                        v.visit_unambig_ty(ty);
+                        v.visit_ty_unambig(ty);
                         if !v.0.is_empty() {
                             span = v.0.clone().into();
                             spans = v.0;
@@ -500,7 +500,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             // In that case, only the first one will get suggestions.
                             let mut traits = vec![];
                             let mut hir_v = HirTraitObjectVisitor(&mut traits, *did);
-                            hir_v.visit_unambig_ty(self_ty);
+                            hir_v.visit_ty_unambig(self_ty);
                             !traits.is_empty()
                         })
                     {
@@ -560,7 +560,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         for found_did in found_dids {
             let mut traits = vec![];
             let mut hir_v = HirTraitObjectVisitor(&mut traits, *found_did);
-            hir_v.visit_unambig_ty(self_ty);
+            hir_v.visit_ty_unambig(self_ty);
             for &span in &traits {
                 let subdiag = DynTraitConstraintSuggestion { span, ident };
                 subdiag.add_to_diag(err);

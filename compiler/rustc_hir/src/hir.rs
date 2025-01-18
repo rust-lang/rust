@@ -3067,7 +3067,7 @@ impl<'hir> Ty<'hir> {
         }
 
         let mut my_visitor = MyVisitor(vec![]);
-        my_visitor.visit_unambig_ty(self);
+        my_visitor.visit_ty_unambig(self);
         my_visitor.0
     }
 

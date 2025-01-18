@@ -540,7 +540,7 @@ impl<'v> Visitor<'v> for AnonConstInParamTyDetector {
         if let GenericParamKind::Const { ty, default: _, synthetic: _ } = p.kind {
             let prev = self.in_param_ty;
             self.in_param_ty = true;
-            let res = self.visit_unambig_ty(ty);
+            let res = self.visit_ty_unambig(ty);
             self.in_param_ty = prev;
             res
         } else {

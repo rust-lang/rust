@@ -48,7 +48,7 @@ fn find_component_for_bound_region<'tcx>(
     region_def_id: DefId,
 ) -> Option<&'tcx hir::Ty<'tcx>> {
     FindNestedTypeVisitor { tcx, region_def_id, current_index: ty::INNERMOST }
-        .visit_unambig_ty(arg)
+        .visit_ty_unambig(arg)
         .break_value()
 }
 
