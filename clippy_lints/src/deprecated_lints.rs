@@ -40,6 +40,8 @@ declare_with_version! { DEPRECATED(DEPRECATED_VERSION): &[(&str, &str)] = &[
     ("clippy::pub_enum_variant_names", "`clippy::enum_variant_names` now covers this case via the `avoid-breaking-exported-api` config"),
     #[clippy::version = "1.54.0"]
     ("clippy::wrong_pub_self_convention", "`clippy::wrong_self_convention` now covers this case via the `avoid-breaking-exported-api` config"),
+    #[clippy::version = "1.86.0"]
+    ("clippy::option_map_or_err_ok", "`clippy::manual_ok_or` covers this case"),
     // end deprecated lints. used by `cargo dev deprecate_lint`
 ]}
 
