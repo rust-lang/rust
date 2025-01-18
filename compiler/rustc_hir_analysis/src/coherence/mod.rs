@@ -13,6 +13,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_session::parse::feature_err;
 use rustc_span::{ErrorGuaranteed, sym};
+use rustc_type_ir::elaborate;
 use tracing::debug;
 
 use crate::errors;
@@ -205,7 +206,7 @@ fn check_object_overlap<'tcx>(
                 // With the feature enabled, the trait is not implemented automatically,
                 // so this is valid.
             } else {
-                let mut supertrait_def_ids = tcx.supertrait_def_ids(component_def_id);
+                let mut supertrait_def_ids = elaborate::supertrait_def_ids(tcx, component_def_id);
                 if supertrait_def_ids
                     .any(|d| d == trait_def_id && tcx.trait_def(d).implement_via_object)
                 {

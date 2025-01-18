@@ -18,7 +18,7 @@ use rustc_infer::traits::{
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
-use rustc_type_ir::Interner;
+use rustc_type_ir::{Interner, elaborate};
 use tracing::{debug, instrument, trace};
 
 use super::SelectionCandidate::*;
@@ -1003,8 +1003,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let a_auto_traits: FxIndexSet<DefId> = a_data
                         .auto_traits()
                         .chain(principal_def_id_a.into_iter().flat_map(|principal_def_id| {
-                            self.tcx()
-                                .supertrait_def_ids(principal_def_id)
+                            elaborate::supertrait_def_ids(self.tcx(), principal_def_id)
                                 .filter(|def_id| self.tcx().trait_is_auto(*def_id))
                         }))
                         .collect();
