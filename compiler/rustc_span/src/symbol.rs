@@ -1624,6 +1624,7 @@ symbols! {
         quote,
         range_inclusive_new,
         raw_dylib,
+        raw_dylib_elf,
         raw_eq,
         raw_identifiers,
         raw_ref_op,
