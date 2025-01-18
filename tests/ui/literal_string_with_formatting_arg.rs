@@ -19,6 +19,13 @@ fn compiler_macro() {
     assert!(format!("{value}").is_ascii());
 }
 
+// Regression test for <https://github.com/rust-lang/rust-clippy/issues/14007>.
+fn regression_14007() {
+    let s = "{и}";
+    let ш = 12;
+    let s = "{ш}"; //~ literal_string_with_formatting_args
+}
+
 fn main() {
     let x: Option<usize> = None;
     let y = "hello";

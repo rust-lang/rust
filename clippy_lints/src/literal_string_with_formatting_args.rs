@@ -128,7 +128,11 @@ impl<'tcx> LateLintPass<'tcx> for LiteralStringWithFormattingArg {
                     pos.start += diff_len;
                     pos.end += diff_len;
 
-                    let start = fmt_str[..pos.start].rfind('{').unwrap_or(pos.start);
+                    let mut start = pos.start;
+                    while start < fmt_str.len() && !fmt_str.is_char_boundary(start) {
+                        start += 1;
+                    }
+                    let start = fmt_str[..start].rfind('{').unwrap_or(start);
                     // If this is a unicode character escape, we don't want to lint.
                     if start > 1 && fmt_str[..start].ends_with("\\u") {
                         continue;
