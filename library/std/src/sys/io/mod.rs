@@ -38,3 +38,7 @@ mod is_terminal {
 
 pub use io_slice::{IoSlice, IoSliceMut};
 pub use is_terminal::is_terminal;
+
+// Bare metal platforms usually have very small amounts of RAM
+// (in the order of hundreds of KB)
+pub const DEFAULT_BUF_SIZE: usize = if cfg!(target_os = "espidf") { 512 } else { 8 * 1024 };
