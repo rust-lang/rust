@@ -9,16 +9,21 @@ use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::points::PointIndex;
 
 use super::{LiveLoans, LocalizedOutlivesConstraintSet};
+use crate::constraints::OutlivesConstraint;
 use crate::dataflow::BorrowIndex;
 use crate::region_infer::values::LivenessValues;
+use crate::type_check::Locations;
 use crate::{BorrowSet, PlaceConflictBias, places_conflict};
 
-/// With the full graph of constraints, we can compute loan reachability, stop at kills, and trace
-/// loan liveness throughout the CFG.
+/// Compute loan reachability, stop at kills, and trace loan liveness throughout the CFG, by
+/// traversing the full graph of constraints that combines:
+/// - the localized constraints (the physical edges),
+/// - with the constraints that hold at all points (the logical edges).
 pub(super) fn compute_loan_liveness<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     liveness: &LivenessValues,
+    outlives_constraints: impl Iterator<Item = OutlivesConstraint<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
     localized_outlives_constraints: &LocalizedOutlivesConstraintSet,
 ) -> LiveLoans {
@@ -29,7 +34,11 @@ pub(super) fn compute_loan_liveness<'tcx>(
     // edges when visualizing the constraint graph anyways.
     let kills = collect_kills(body, tcx, borrow_set);
 
-    let graph = index_constraints(&localized_outlives_constraints);
+    // Create the full graph with the physical edges we've localized earlier, and the logical edges
+    // of constraints that hold at all points.
+    let logical_constraints =
+        outlives_constraints.filter(|c| matches!(c.locations, Locations::All(_)));
+    let graph = LocalizedConstraintGraph::new(&localized_outlives_constraints, logical_constraints);
     let mut visited = FxHashSet::default();
     let mut stack = Vec::new();
 
@@ -108,7 +117,7 @@ pub(super) fn compute_loan_liveness<'tcx>(
             let is_loan_killed =
                 kills.get(&current_location).is_some_and(|kills| kills.contains(&loan_idx));
 
-            for succ in outgoing_edges(&graph, node) {
+            for succ in graph.outgoing_edges(node) {
                 // If the loan is killed at this point, it is killed _on exit_. But only during
                 // forward traversal.
                 if is_loan_killed {
@@ -125,9 +134,17 @@ pub(super) fn compute_loan_liveness<'tcx>(
     live_loans
 }
 
-/// The localized constraint graph is currently the per-node map of its physical edges. In the
-/// future, we'll add logical edges to model constraints that hold at all points in the CFG.
-type LocalizedConstraintGraph = FxHashMap<LocalizedNode, FxIndexSet<LocalizedNode>>;
+/// The localized constraint graph indexes the physical and logical edges to compute a given node's
+/// successors during traversal.
+struct LocalizedConstraintGraph {
+    /// The actual, physical, edges we have recorded for a given node.
+    edges: FxHashMap<LocalizedNode, FxIndexSet<LocalizedNode>>,
+
+    /// The logical edges representing the outlives constraints that hold at all points in the CFG,
+    /// which we don't localize to avoid creating a lot of unnecessary edges in the graph. Some CFGs
+    /// can be big, and we don't need to create such a physical edge for every point in the CFG.
+    logical_edges: FxHashMap<RegionVid, FxIndexSet<RegionVid>>,
+}
 
 /// A node in the graph to be traversed, one of the two vertices of a localized outlives constraint.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -136,24 +153,44 @@ struct LocalizedNode {
     point: PointIndex,
 }
 
-/// Traverses the constraints and returns the indexable graph of edges per node.
-fn index_constraints(constraints: &LocalizedOutlivesConstraintSet) -> LocalizedConstraintGraph {
-    let mut edges = LocalizedConstraintGraph::default();
-    for constraint in &constraints.outlives {
-        let source = LocalizedNode { region: constraint.source, point: constraint.from };
-        let target = LocalizedNode { region: constraint.target, point: constraint.to };
-        edges.entry(source).or_default().insert(target);
+impl LocalizedConstraintGraph {
+    /// Traverses the constraints and returns the indexed graph of edges per node.
+    fn new<'tcx>(
+        constraints: &LocalizedOutlivesConstraintSet,
+        logical_constraints: impl Iterator<Item = OutlivesConstraint<'tcx>>,
+    ) -> Self {
+        let mut edges: FxHashMap<_, FxIndexSet<_>> = FxHashMap::default();
+        for constraint in &constraints.outlives {
+            let source = LocalizedNode { region: constraint.source, point: constraint.from };
+            let target = LocalizedNode { region: constraint.target, point: constraint.to };
+            edges.entry(source).or_default().insert(target);
+        }
+
+        let mut logical_edges: FxHashMap<_, FxIndexSet<_>> = FxHashMap::default();
+        for constraint in logical_constraints {
+            logical_edges.entry(constraint.sup).or_default().insert(constraint.sub);
+        }
+
+        LocalizedConstraintGraph { edges, logical_edges }
     }
 
-    edges
-}
-
-/// Returns the outgoing edges of a given node, not its transitive closure.
-fn outgoing_edges(
-    graph: &LocalizedConstraintGraph,
-    node: LocalizedNode,
-) -> impl Iterator<Item = LocalizedNode> + use<'_> {
-    graph.get(&node).into_iter().flat_map(|edges| edges.iter().copied())
+    /// Returns the outgoing edges of a given node, not its transitive closure.
+    fn outgoing_edges(&self, node: LocalizedNode) -> impl Iterator<Item = LocalizedNode> + use<'_> {
+        // The outgoing edges are:
+        // - the physical edges present at this node,
+        // - the materialized logical edges that exist virtually at all points for this node's
+        //   region, localized at this point.
+        let physical_edges =
+            self.edges.get(&node).into_iter().flat_map(|targets| targets.iter().copied());
+        let materialized_edges =
+            self.logical_edges.get(&node.region).into_iter().flat_map(move |targets| {
+                targets
+                    .iter()
+                    .copied()
+                    .map(move |target| LocalizedNode { point: node.point, region: target })
+            });
+        physical_edges.chain(materialized_edges)
+    }
 }
 
 /// Traverses the MIR and collects kills.

@@ -333,7 +333,6 @@
 #![feature(extend_one)]
 #![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
-#![feature(float_next_up_down)]
 #![feature(fmt_internals)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
@@ -596,8 +595,6 @@ pub mod panic;
 #[unstable(feature = "pattern_type_macro", issue = "123646")]
 pub mod pat;
 pub mod path;
-#[unstable(feature = "anonymous_pipe", issue = "127154")]
-pub mod pipe;
 pub mod process;
 #[unstable(feature = "random", issue = "130703")]
 pub mod random;

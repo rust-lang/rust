@@ -334,6 +334,7 @@ lint_any!(
     CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri";
     Clippy, "src/tools/clippy", "clippy";
     CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
+    CodegenGcc, "compiler/rustc_codegen_gcc", "rustc-codegen-gcc";
     Compiletest, "src/tools/compiletest", "compiletest";
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
     Jsondocck, "src/tools/jsondocck", "jsondocck";
@@ -400,6 +401,12 @@ impl Step for CI {
             ],
             forbid: vec![],
         };
+        builder.ensure(Std {
+            target: self.target,
+            config: self.config.merge(&library_clippy_cfg),
+            crates: vec![],
+        });
+
         let compiler_clippy_cfg = LintConfig {
             allow: vec!["clippy::all".into()],
             warn: vec![],
@@ -419,16 +426,21 @@ impl Step for CI {
             ],
             forbid: vec![],
         };
-
-        builder.ensure(Std {
-            target: self.target,
-            config: self.config.merge(&library_clippy_cfg),
-            crates: vec![],
-        });
         builder.ensure(Rustc {
             target: self.target,
             config: self.config.merge(&compiler_clippy_cfg),
             crates: vec![],
+        });
+
+        let rustc_codegen_gcc = LintConfig {
+            allow: vec![],
+            warn: vec![],
+            deny: vec!["warnings".into()],
+            forbid: vec![],
+        };
+        builder.ensure(CodegenGcc {
+            target: self.target,
+            config: self.config.merge(&rustc_codegen_gcc),
         });
     }
 }
