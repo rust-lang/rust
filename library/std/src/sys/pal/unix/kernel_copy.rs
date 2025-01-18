@@ -52,15 +52,14 @@ use crate::cmp::min;
 use crate::fs::{File, Metadata};
 use crate::io::copy::generic_copy;
 use crate::io::{
-    BufRead, BufReader, BufWriter, Error, Read, Result, StderrLock, StdinLock, StdoutLock, Take,
-    Write,
+    BufRead, BufReader, BufWriter, Error, PipeReader, PipeWriter, Read, Result, StderrLock,
+    StdinLock, StdoutLock, Take, Write,
 };
 use crate::mem::ManuallyDrop;
 use crate::net::TcpStream;
 use crate::os::unix::fs::FileTypeExt;
 use crate::os::unix::io::{AsRawFd, FromRawFd, RawFd};
 use crate::os::unix::net::UnixStream;
-use crate::pipe::{PipeReader, PipeWriter};
 use crate::process::{ChildStderr, ChildStdin, ChildStdout};
 use crate::ptr;
 use crate::sync::atomic::{AtomicBool, AtomicU8, Ordering};
