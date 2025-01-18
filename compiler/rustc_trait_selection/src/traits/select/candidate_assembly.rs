@@ -16,7 +16,7 @@ use rustc_infer::traits::{
     Obligation, ObligationCause, PolyTraitObligation, PredicateObligations, SelectionError,
 };
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, ToPolyTraitRef, Ty, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_type_ir::Interner;
 use tracing::{debug, instrument, trace};
@@ -186,10 +186,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     selcx.infcx.probe(|_| {
+                        // We checked the polarity already
                         match selcx.match_normalize_trait_ref(
                             obligation,
                             placeholder_trait_predicate.trait_ref,
-                            bound.to_poly_trait_ref(),
+                            bound.map_bound(|pred| pred.trait_ref),
                         ) {
                             Ok(None) => {
                                 candidates.vec.push(ProjectionCandidate(idx));
