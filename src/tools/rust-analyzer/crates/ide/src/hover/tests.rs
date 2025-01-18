@@ -1357,7 +1357,7 @@ fn hover_enum_limit() {
 
             ---
 
-            size = 12 (0xC), align = 4, niches = 4294967288
+            size = 12 (0xC), align = 4, niches = really rather quite large
         "#]],
     );
 }
