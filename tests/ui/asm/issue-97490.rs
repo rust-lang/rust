@@ -2,6 +2,8 @@
 //@ only-x86_64
 //@ needs-asm-support
 
+#[allow(improper_ctypes_definitions)]  // it's worried about invalid pointers being given as the
+                                       // argument value
 pub type Yes = extern "sysv64" fn(&'static u8) -> !;
 
 fn main() {

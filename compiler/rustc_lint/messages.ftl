@@ -411,8 +411,13 @@ lint_improper_ctypes_only_phantomdata = composed only of `PhantomData`
 
 lint_improper_ctypes_opaque = opaque types have no C equivalent
 
-lint_improper_ctypes_pat_help = consider using the base type instead
-lint_improper_ctypes_pat_reason = pattern types have no C equivalent
+lint_improper_ctypes_pat_intrange_help = consider using the base type instead
+lint_improper_ctypes_pat_intrange_reason = integers constrained to a given range cannot have their value be provided by non-rust code
+
+lint_improper_ctypes_ptr_validity_help = consider using a raw pointer, or wrapping `{$ty}` in an `Option<_>`
+lint_improper_ctypes_ptr_validity_reason =
+    boxes and references are assumed to be valid (non-null, non-dangling, aligned) pointers,
+    which cannot be garanteed if their values are produced by non-rust code
 
 lint_improper_ctypes_sized_ptr_to_unsafe_type =
     this reference (`{$ty}`) is ABI-compatible with a C pointer, but `{$inner_ty}` itself does not have a C layout
