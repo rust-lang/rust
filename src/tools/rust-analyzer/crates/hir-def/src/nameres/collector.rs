@@ -717,8 +717,8 @@ impl DefCollector<'_> {
                 }
             }
             None => {
-                for (name, def) in root_scope.macros() {
-                    self.def_map.macro_use_prelude.insert(name.clone(), (def, extern_crate));
+                for (name, it) in root_scope.macros() {
+                    self.def_map.macro_use_prelude.insert(name.clone(), (it.def, extern_crate));
                 }
             }
         }

@@ -476,9 +476,9 @@ use Macro as ItemLikeMacro;
 use Macro as Trait; // overlay namespaces
 //- /b_mod.rs
 struct StructInModB;
-use super::Macro as SuperItemLikeMacro;
-use crate::b_mod::StructInModB as ThisStruct;
-use crate::Trait as IsThisJustATrait;
+pub(self) use super::Macro as SuperItemLikeMacro;
+pub(self) use crate::b_mod::StructInModB as ThisStruct;
+pub(self) use crate::Trait as IsThisJustATrait;
 "#,
         );
 

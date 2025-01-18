@@ -1746,7 +1746,7 @@ fn intrinsics() {
     fn function() {
             transmute$0
     }
-    "#,
+"#,
         expect![[r#"
             fn transmute(…) (use core::mem::transmute) unsafe fn(Src) -> Dst
         "#]],
@@ -1767,7 +1767,9 @@ fn function() {
         mem::transmute$0
 }
 "#,
-        expect![""],
+        expect![[r#"
+            fn transmute(…) (use core::mem) unsafe fn(Src) -> Dst
+        "#]],
     );
 }
 

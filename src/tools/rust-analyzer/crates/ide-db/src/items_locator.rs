@@ -108,6 +108,7 @@ pub fn items_with_name_in_module<'a>(
         }
     };
     let mut local_results = Vec::new();
+    // FIXME: This using module_symbols is likely wrong?
     local_query.search(&[sema.db.module_symbols(module)], |local_candidate| {
         local_results.push(match local_candidate.def {
             hir::ModuleDef::Macro(macro_def) => ItemInNs::Macros(macro_def),

@@ -350,6 +350,9 @@ fn path_applicable_imports(
             .take(DEFAULT_QUERY_SEARCH_LIMIT.inner())
             .collect()
         }
+        // we have some unresolved qualifier that we search an import for
+        // The key here is that whatever we import must form a resolved path for the remainder of
+        // what follows
         [first_qsegment, qualifier_rest @ ..] => items_locator::items_with_name(
             sema,
             current_crate,
@@ -357,14 +360,16 @@ fn path_applicable_imports(
             AssocSearchMode::Exclude,
         )
         .filter_map(|item| {
-            import_for_item(
+            // we found imports for `first_qsegment`, now we need to filter these imports by whether
+            // they result in resolving the rest of the path successfully
+            validate_resolvable(
                 sema,
                 scope,
                 mod_path,
+                scope_filter,
                 &path_candidate.name,
                 item,
                 qualifier_rest,
-                scope_filter,
             )
         })
         .take(DEFAULT_QUERY_SEARCH_LIMIT.inner())
@@ -372,14 +377,16 @@ fn path_applicable_imports(
     }
 }
 
-fn import_for_item(
+/// Validates and builds an import for `resolved_qualifier` if the `unresolved_qualifier` appended
+/// to it resolves and there is a validate `candidate` after that.
+fn validate_resolvable(
     sema: &Semantics<'_, RootDatabase>,
     scope: &SemanticsScope<'_>,
     mod_path: impl Fn(ItemInNs) -> Option<ModPath>,
+    scope_filter: impl Fn(ItemInNs) -> bool,
     candidate: &NameToImport,
     resolved_qualifier: ItemInNs,
     unresolved_qualifier: &[SmolStr],
-    scope_filter: impl Fn(ItemInNs) -> bool,
 ) -> Option<LocatedImport> {
     let _p = tracing::info_span!("ImportAssets::import_for_item").entered();
 

@@ -1,21 +1,27 @@
 //! File symbol extraction.
 
+use either::Either;
 use hir_def::{
     db::DefDatabase,
-    item_scope::ItemInNs,
+    item_scope::{ImportId, ImportOrExternCrate},
+    per_ns::Item,
     src::{HasChildSource, HasSource},
-    AdtId, AssocItemId, DefWithBodyId, HasModule, ImplId, Lookup, MacroId, ModuleDefId, ModuleId,
-    TraitId,
+    visibility::{Visibility, VisibilityExplicitness},
+    AdtId, AssocItemId, DefWithBodyId, ExternCrateId, HasModule, ImplId, Lookup, MacroId,
+    ModuleDefId, ModuleId, TraitId,
 };
-use hir_expand::HirFileId;
+use hir_expand::{name::Name, HirFileId};
 use hir_ty::{
     db::HirDatabase,
     display::{hir_display_with_types_map, HirDisplay},
 };
+use rustc_hash::FxHashMap;
 use span::Edition;
 use syntax::{ast::HasName, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, ToSmolStr};
 
 use crate::{Module, ModuleDef, Semantics};
+
+pub type FxIndexSet<T> = indexmap::IndexSet<T, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
 
 /// The actual data that is stored in the index. It should be as compact as
 /// possible.
@@ -37,7 +43,7 @@ pub struct DeclarationLocation {
     /// This points to the whole syntax node of the declaration.
     pub ptr: SyntaxNodePtr,
     /// This points to the [`syntax::ast::Name`] identifier of the declaration.
-    pub name_ptr: AstPtr<syntax::ast::Name>,
+    pub name_ptr: AstPtr<Either<syntax::ast::Name, syntax::ast::NameRef>>,
 }
 
 impl DeclarationLocation {
@@ -55,7 +61,7 @@ struct SymbolCollectorWork {
 
 pub struct SymbolCollector<'a> {
     db: &'a dyn HirDatabase,
-    symbols: Vec<FileSymbol>,
+    symbols: FxIndexSet<FileSymbol>,
     work: Vec<SymbolCollectorWork>,
     current_container_name: Option<SmolStr>,
     edition: Edition,
@@ -87,7 +93,7 @@ impl<'a> SymbolCollector<'a> {
     }
 
     pub fn finish(self) -> Vec<FileSymbol> {
-        self.symbols
+        self.symbols.into_iter().collect()
     }
 
     pub fn collect_module(db: &dyn HirDatabase, module: Module) -> Vec<FileSymbol> {
@@ -104,83 +110,161 @@ impl<'a> SymbolCollector<'a> {
     }
 
     fn collect_from_module(&mut self, module_id: ModuleId) {
-        let def_map = module_id.def_map(self.db.upcast());
-        let scope = &def_map[module_id.local_id].scope;
-
-        for module_def_id in scope.declarations() {
-            match module_def_id {
-                ModuleDefId::ModuleId(id) => self.push_module(id),
+        let push_decl = |this: &mut Self, def| {
+            match def {
+                ModuleDefId::ModuleId(id) => this.push_module(id),
                 ModuleDefId::FunctionId(id) => {
-                    self.push_decl(id, false);
-                    self.collect_from_body(id);
+                    this.push_decl(id, false);
+                    this.collect_from_body(id);
                 }
-                ModuleDefId::AdtId(AdtId::StructId(id)) => self.push_decl(id, false),
-                ModuleDefId::AdtId(AdtId::EnumId(id)) => self.push_decl(id, false),
-                ModuleDefId::AdtId(AdtId::UnionId(id)) => self.push_decl(id, false),
+                ModuleDefId::AdtId(AdtId::StructId(id)) => this.push_decl(id, false),
+                ModuleDefId::AdtId(AdtId::EnumId(id)) => this.push_decl(id, false),
+                ModuleDefId::AdtId(AdtId::UnionId(id)) => this.push_decl(id, false),
                 ModuleDefId::ConstId(id) => {
-                    self.push_decl(id, false);
-                    self.collect_from_body(id);
+                    this.push_decl(id, false);
+                    this.collect_from_body(id);
                 }
                 ModuleDefId::StaticId(id) => {
-                    self.push_decl(id, false);
-                    self.collect_from_body(id);
+                    this.push_decl(id, false);
+                    this.collect_from_body(id);
                 }
                 ModuleDefId::TraitId(id) => {
-                    self.push_decl(id, false);
-                    self.collect_from_trait(id);
+                    this.push_decl(id, false);
+                    this.collect_from_trait(id);
                 }
                 ModuleDefId::TraitAliasId(id) => {
-                    self.push_decl(id, false);
+                    this.push_decl(id, false);
                 }
                 ModuleDefId::TypeAliasId(id) => {
-                    self.push_decl(id, false);
+                    this.push_decl(id, false);
                 }
                 ModuleDefId::MacroId(id) => match id {
-                    MacroId::Macro2Id(id) => self.push_decl(id, false),
-                    MacroId::MacroRulesId(id) => self.push_decl(id, false),
-                    MacroId::ProcMacroId(id) => self.push_decl(id, false),
+                    MacroId::Macro2Id(id) => this.push_decl(id, false),
+                    MacroId::MacroRulesId(id) => this.push_decl(id, false),
+                    MacroId::ProcMacroId(id) => this.push_decl(id, false),
                 },
                 // Don't index these.
                 ModuleDefId::BuiltinType(_) => {}
                 ModuleDefId::EnumVariantId(_) => {}
             }
-        }
+        };
+
+        // Nested trees are very common, so a cache here will hit a lot.
+        let import_child_source_cache = &mut FxHashMap::default();
+
+        let mut push_import = |this: &mut Self, i: ImportId, name: &Name, def: ModuleDefId| {
+            let source = import_child_source_cache
+                .entry(i.import)
+                .or_insert_with(|| i.import.child_source(this.db.upcast()));
+            let Some(use_tree_src) = source.value.get(i.idx) else { return };
+            let Some(name_ptr) = use_tree_src
+                .rename()
+                .and_then(|rename| rename.name())
+                .map(Either::Left)
+                .or_else(|| use_tree_src.path()?.segment()?.name_ref().map(Either::Right))
+                .map(|it| AstPtr::new(&it))
+            else {
+                return;
+            };
+            let dec_loc = DeclarationLocation {
+                hir_file_id: source.file_id,
+                ptr: SyntaxNodePtr::new(use_tree_src.syntax()),
+                name_ptr,
+            };
+            this.symbols.insert(FileSymbol {
+                name: name.as_str().into(),
+                def: def.into(),
+                container_name: this.current_container_name.clone(),
+                loc: dec_loc,
+                is_alias: false,
+                is_assoc: false,
+            });
+        };
+
+        let push_extern_crate =
+            |this: &mut Self, i: ExternCrateId, name: &Name, def: ModuleDefId| {
+                let loc = i.lookup(this.db.upcast());
+                let source = loc.source(this.db.upcast());
+                let Some(name_ptr) = source
+                    .value
+                    .rename()
+                    .and_then(|rename| rename.name())
+                    .map(Either::Left)
+                    .or_else(|| source.value.name_ref().map(Either::Right))
+                    .map(|it| AstPtr::new(&it))
+                else {
+                    return;
+                };
+                let dec_loc = DeclarationLocation {
+                    hir_file_id: source.file_id,
+                    ptr: SyntaxNodePtr::new(source.value.syntax()),
+                    name_ptr,
+                };
+                this.symbols.insert(FileSymbol {
+                    name: name.as_str().into(),
+                    def: def.into(),
+                    container_name: this.current_container_name.clone(),
+                    loc: dec_loc,
+                    is_alias: false,
+                    is_assoc: false,
+                });
+            };
+
+        let is_explicit_import = |vis| {
+            match vis {
+                Visibility::Module(_, VisibilityExplicitness::Explicit) => true,
+                Visibility::Module(_, VisibilityExplicitness::Implicit) => {
+                    // consider imports in the crate root explicit, as these are visibly
+                    // crate-wide anyways
+                    module_id.is_crate_root()
+                }
+                Visibility::Public => true,
+            }
+        };
+
+        let def_map = module_id.def_map(self.db.upcast());
+        let scope = &def_map[module_id.local_id].scope;
 
         for impl_id in scope.impls() {
             self.collect_from_impl(impl_id);
         }
 
-        // Record renamed imports.
-        // FIXME: In case it imports multiple items under different namespaces we just pick one arbitrarily
-        // for now.
-        for id in scope.imports() {
-            let source = id.import.child_source(self.db.upcast());
-            let Some(use_tree_src) = source.value.get(id.idx) else { continue };
-            let Some(rename) = use_tree_src.rename() else { continue };
-            let Some(name) = rename.name() else { continue };
-
-            let res = scope.fully_resolve_import(self.db.upcast(), id);
-            res.iter_items().for_each(|(item, _)| {
-                let def = match item {
-                    ItemInNs::Types(def) | ItemInNs::Values(def) => def,
-                    ItemInNs::Macros(def) => ModuleDefId::from(def),
+        for (name, Item { def, vis, import }) in scope.types() {
+            if let Some(i) = import {
+                if is_explicit_import(vis) {
+                    match i {
+                        ImportOrExternCrate::Import(i) => push_import(self, i, name, def),
+                        ImportOrExternCrate::ExternCrate(i) => {
+                            push_extern_crate(self, i, name, def)
+                        }
+                    }
                 }
-                .into();
-                let dec_loc = DeclarationLocation {
-                    hir_file_id: source.file_id,
-                    ptr: SyntaxNodePtr::new(use_tree_src.syntax()),
-                    name_ptr: AstPtr::new(&name),
-                };
+                continue;
+            }
+            // self is a declaration
+            push_decl(self, def)
+        }
 
-                self.symbols.push(FileSymbol {
-                    name: name.text().into(),
-                    def,
-                    container_name: self.current_container_name.clone(),
-                    loc: dec_loc,
-                    is_alias: false,
-                    is_assoc: false,
-                });
-            });
+        for (name, Item { def, vis, import }) in scope.macros() {
+            if let Some(i) = import {
+                if is_explicit_import(vis) {
+                    push_import(self, i, name, def.into());
+                }
+                continue;
+            }
+            // self is a declaration
+            push_decl(self, def.into())
+        }
+
+        for (name, Item { def, vis, import }) in scope.values() {
+            if let Some(i) = import {
+                if is_explicit_import(vis) {
+                    push_import(self, i, name, def);
+                }
+                continue;
+            }
+            // self is a declaration
+            push_decl(self, def)
         }
 
         for const_id in scope.unnamed_consts() {
@@ -287,12 +371,12 @@ impl<'a> SymbolCollector<'a> {
         let dec_loc = DeclarationLocation {
             hir_file_id: source.file_id,
             ptr: SyntaxNodePtr::new(source.value.syntax()),
-            name_ptr: AstPtr::new(&name_node),
+            name_ptr: AstPtr::new(&name_node).wrap_left(),
         };
 
         if let Some(attrs) = def.attrs(self.db) {
             for alias in attrs.doc_aliases() {
-                self.symbols.push(FileSymbol {
+                self.symbols.insert(FileSymbol {
                     name: alias.as_str().into(),
                     def,
                     loc: dec_loc.clone(),
@@ -303,7 +387,7 @@ impl<'a> SymbolCollector<'a> {
             }
         }
 
-        self.symbols.push(FileSymbol {
+        self.symbols.insert(FileSymbol {
             name: name_node.text().into(),
             def,
             container_name: self.current_container_name.clone(),
@@ -322,14 +406,14 @@ impl<'a> SymbolCollector<'a> {
         let dec_loc = DeclarationLocation {
             hir_file_id: declaration.file_id,
             ptr: SyntaxNodePtr::new(module.syntax()),
-            name_ptr: AstPtr::new(&name_node),
+            name_ptr: AstPtr::new(&name_node).wrap_left(),
         };
 
         let def = ModuleDef::Module(module_id.into());
 
         if let Some(attrs) = def.attrs(self.db) {
             for alias in attrs.doc_aliases() {
-                self.symbols.push(FileSymbol {
+                self.symbols.insert(FileSymbol {
                     name: alias.as_str().into(),
                     def,
                     loc: dec_loc.clone(),
@@ -340,7 +424,7 @@ impl<'a> SymbolCollector<'a> {
             }
         }
 
-        self.symbols.push(FileSymbol {
+        self.symbols.insert(FileSymbol {
             name: name_node.text().into(),
             def: ModuleDef::Module(module_id.into()),
             container_name: self.current_container_name.clone(),

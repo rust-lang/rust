@@ -523,6 +523,7 @@ dependencies = [
  "hir-def",
  "hir-expand",
  "hir-ty",
+ "indexmap",
  "intern",
  "itertools",
  "rustc-hash 2.0.0",
