@@ -201,6 +201,56 @@
           "tag": "tidy-ticket-sess-time-item_types_checking"
         }
       ]
+    },
+    {
+      "name": "group_14",
+      "tags": [
+        {
+          "path": "library/core/src/panicking.rs",
+          "hash": "b5387987dd6c927acf5ddfa33fdf3090",
+          "tag": "tidy-ticket-panic-message-nounwind"
+        },
+        {
+          "path": "library/core/src/panicking.rs",
+          "hash": "f07f9a5af83a08e7287cd81226be8834",
+          "tag": "tidy-ticket-panic-message-nobacktrace"
+        },
+        {
+          "path": "compiler/rustc_middle/src/mir/terminator.rs",
+          "hash": "110baa63da1da4d6ae54938b4bbd070f",
+          "tag": "tidy-ticket-panic-message"
+        }
+      ]
+    },
+    {
+      "name": "group_15",
+      "tags": [
+        {
+          "path": "compiler/rustc_next_trait_solver/src/solve/assembly/structural_traits.rs",
+          "hash": "50a549340456169ab3119d1dfecb6f96",
+          "tag": "tidy-ticket-evaluate_host_effect_for_destruct_goal"
+        },
+        {
+          "path": "compiler/rustc_trait_selection/src/traits/effects.rs",
+          "hash": "a280510e2a7424dd874f14ad2180a938",
+          "tag": "tidy-ticket-evaluate_host_effect_for_destruct_goal"
+        }
+      ]
+    },
+    {
+      "name": "group_16",
+      "tags": [
+        {
+          "path": "compiler/rustc_metadata/src/native_libs.rs",
+          "hash": "332941877827af57790ac82c2a40177f",
+          "tag": "tidy-ticket-copy_third_party_objects"
+        },
+        {
+          "path": "src/bootstrap/src/core/build_steps/compile.rs",
+          "hash": "ea843d88787238a509fdc5cb4ad3915b",
+          "tag": "tidy-ticket-copy_third_party_objects"
+        }
+      ]
     }
   ]
 }

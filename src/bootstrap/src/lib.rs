@@ -681,6 +681,8 @@ impl Build {
             features.push("llvm");
         }
         // keep in sync with `bootstrap/compile.rs:rustc_cargo_env`
+        // FIXME: this comment is leftover from https://github.com/rust-lang/rust/pull/93787,
+        // remove it?
         if self.config.rust_randomize_layout {
             features.push("rustc_randomized_layouts");
         }

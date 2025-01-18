@@ -244,8 +244,8 @@ fn evaluate_host_effect_from_builtin_impls<'tcx>(
     }
 }
 
+// tidy-keep-sync-with=tidy-ticket-evaluate_host_effect_for_destruct_goal
 // NOTE: Keep this in sync with `const_conditions_for_destruct` in the new solver.
-// FIXME: sync me
 fn evaluate_host_effect_for_destruct_goal<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
@@ -332,6 +332,7 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
         })
         .collect())
 }
+// tidy-keep-sync-with=tidy-ticket-evaluate_host_effect_for_destruct_goal
 
 fn evaluate_host_effect_from_selection_candiate<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,

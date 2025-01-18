@@ -1520,6 +1520,7 @@ impl Config {
             // Allows creating alias for profile names, allowing
             // profiles to be renamed while maintaining back compatibility
             // Keep in sync with `profile_aliases` in bootstrap.py
+            // FIXME: sync me
             let profile_aliases = HashMap::from([("user", "dist")]);
             let include = match profile_aliases.get(include.as_str()) {
                 Some(alias) => alias,

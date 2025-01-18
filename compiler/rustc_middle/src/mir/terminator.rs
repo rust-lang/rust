@@ -135,12 +135,13 @@ impl UnwindAction {
 
 impl UnwindTerminateReason {
     pub fn as_str(self) -> &'static str {
+        // tidy-keep-sync-with=tidy-tidy-ticket-panic-message
         // Keep this in sync with the messages in `core/src/panicking.rs`.
-        // FIXME: sync me
         match self {
             UnwindTerminateReason::Abi => "panic in a function that cannot unwind",
             UnwindTerminateReason::InCleanup => "panic in a destructor during cleanup",
         }
+        // tidy-keep-sync-with=tidy-tidy-ticket-panic-message
     }
 
     /// A short representation of this used for MIR printing.
