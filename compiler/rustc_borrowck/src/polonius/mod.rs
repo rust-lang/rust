@@ -130,6 +130,7 @@ impl PoloniusContext {
             tcx,
             body,
             regioncx.liveness_constraints(),
+            regioncx.outlives_constraints(),
             borrow_set,
             &localized_outlives_constraints,
         );
