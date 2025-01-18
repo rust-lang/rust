@@ -231,6 +231,7 @@ impl Config {
         // options should be kept in sync with
         // src/bootstrap/src/core/download.rs
         // for consistency
+        // FIXME: sync with what?
         let mut curl = command("curl");
         curl.args([
             // follow redirect

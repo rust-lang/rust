@@ -291,6 +291,7 @@ fn copy_llvm_libunwind(builder: &Builder<'_>, target: TargetSelection, libdir: &
     libunwind_target
 }
 
+// tidy-keep-sync-with=tidy-ticket-copy_third_party_objects
 /// Copies third party objects needed by various targets.
 fn copy_third_party_objects(
     builder: &Builder<'_>,
@@ -320,6 +321,7 @@ fn copy_third_party_objects(
 
     target_deps
 }
+// tidy-keep-sync-with=tidy-ticket-copy_third_party_objects
 
 /// Copies third party objects needed by various targets for self-contained linkage.
 fn copy_self_contained_objects(

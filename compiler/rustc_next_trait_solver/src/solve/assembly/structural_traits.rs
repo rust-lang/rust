@@ -714,9 +714,9 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
     }
 }
 
+// tidy-keep-sync-with=tidy-ticket-evaluate_host_effect_for_destruct_goal
 // NOTE: Keep this in sync with `evaluate_host_effect_for_destruct_goal` in
 // the old solver, for as long as that exists.
-// FIXME: sync me
 pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
     cx: I,
     self_ty: I::Ty,
@@ -792,6 +792,7 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
         }
     }
 }
+// tidy-keep-sync-with=tidy-ticket-evaluate_host_effect_for_destruct_goal
 
 /// Assemble a list of predicates that would be present on a theoretical
 /// user impl for an object type. These predicates must be checked any time
