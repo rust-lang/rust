@@ -775,29 +775,16 @@ impl Module {
                     AssocItemId::ConstId(id) => !db.const_data(id).has_body,
                     AssocItemId::TypeAliasId(it) => db.type_alias_data(it).type_ref.is_none(),
                 });
-                impl_assoc_items_scratch.extend(db.impl_data(impl_def.id).items.iter().filter_map(
-                    |&item| {
-                        Some((
-                            item,
-                            match item {
-                                AssocItemId::FunctionId(it) => db.function_data(it).name.clone(),
-                                AssocItemId::ConstId(it) => {
-                                    db.const_data(it).name.as_ref()?.clone()
-                                }
-                                AssocItemId::TypeAliasId(it) => db.type_alias_data(it).name.clone(),
-                            },
-                        ))
-                    },
-                ));
+                impl_assoc_items_scratch.extend(db.impl_data(impl_def.id).items.iter().cloned());
 
                 let redundant = impl_assoc_items_scratch
                     .iter()
-                    .filter(|(id, name)| {
+                    .filter(|(name, id)| {
                         !items.iter().any(|(impl_name, impl_item)| {
                             discriminant(impl_item) == discriminant(id) && impl_name == name
                         })
                     })
-                    .map(|(item, name)| (name.clone(), AssocItem::from(*item)));
+                    .map(|(name, item)| (name.clone(), AssocItem::from(*item)));
                 for (name, assoc_item) in redundant {
                     acc.push(
                         TraitImplRedundantAssocItems {
@@ -812,7 +799,7 @@ impl Module {
 
                 let missing: Vec<_> = required_items
                     .filter(|(name, id)| {
-                        !impl_assoc_items_scratch.iter().any(|(impl_item, impl_name)| {
+                        !impl_assoc_items_scratch.iter().any(|(impl_name, impl_item)| {
                             discriminant(impl_item) == discriminant(id) && impl_name == name
                         })
                     })
@@ -844,7 +831,7 @@ impl Module {
                 source_map,
             );
 
-            for &item in db.impl_data(impl_def.id).items.iter() {
+            for &(_, item) in db.impl_data(impl_def.id).items.iter() {
                 AssocItem::from(item).diagnostics(db, acc, style_lints);
             }
         }
@@ -4307,7 +4294,7 @@ impl Impl {
     }
 
     pub fn items(self, db: &dyn HirDatabase) -> Vec<AssocItem> {
-        db.impl_data(self.id).items.iter().map(|&it| it.into()).collect()
+        db.impl_data(self.id).items.iter().map(|&(_, it)| it.into()).collect()
     }
 
     pub fn is_negative(self, db: &dyn HirDatabase) -> bool {
@@ -5165,7 +5152,7 @@ impl Type {
             let impls = db.inherent_impls_in_crate(krate);
 
             for impl_def in impls.for_self_ty(&self.ty) {
-                for &item in db.impl_data(*impl_def).items.iter() {
+                for &(_, item) in db.impl_data(*impl_def).items.iter() {
                     if callback(item) {
                         return;
                     }

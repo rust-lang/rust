@@ -56,7 +56,7 @@ impl ChildBySource for ImplId {
                 res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db.upcast()), call_id);
             },
         );
-        data.items.iter().for_each(|&item| {
+        data.items.iter().for_each(|&(_, item)| {
             add_assoc_item(db, res, file_id, item);
         });
     }

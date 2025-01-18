@@ -435,7 +435,7 @@ pub(crate) fn visit_module(
     visit_scope(db, crate_def_map, &crate_def_map[module_id].scope, cb);
     for impl_id in crate_def_map[module_id].scope.impls() {
         let impl_data = db.impl_data(impl_id);
-        for &item in impl_data.items.iter() {
+        for &(_, item) in impl_data.items.iter() {
             match item {
                 AssocItemId::FunctionId(it) => {
                     let body = db.body(it.into());

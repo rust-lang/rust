@@ -252,8 +252,8 @@ impl Hash for SymbolIndex {
 impl SymbolIndex {
     fn new(mut symbols: Box<[FileSymbol]>) -> SymbolIndex {
         fn cmp(lhs: &FileSymbol, rhs: &FileSymbol) -> Ordering {
-            let lhs_chars = lhs.name.chars().map(|c| c.to_ascii_lowercase());
-            let rhs_chars = rhs.name.chars().map(|c| c.to_ascii_lowercase());
+            let lhs_chars = lhs.name.as_str().chars().map(|c| c.to_ascii_lowercase());
+            let rhs_chars = rhs.name.as_str().chars().map(|c| c.to_ascii_lowercase());
             lhs_chars.cmp(rhs_chars)
         }
 
@@ -374,10 +374,11 @@ impl Query {
                         continue;
                     }
                     // Hide symbols that start with `__` unless the query starts with `__`
-                    if ignore_underscore_prefixed && symbol.name.starts_with("__") {
+                    let symbol_name = symbol.name.as_str();
+                    if ignore_underscore_prefixed && symbol_name.starts_with("__") {
                         continue;
                     }
-                    if self.mode.check(&self.query, self.case_sensitive, &symbol.name) {
+                    if self.mode.check(&self.query, self.case_sensitive, symbol_name) {
                         cb(symbol);
                     }
                 }
@@ -484,7 +485,7 @@ pub(self) use crate::Trait as IsThisJustATrait;
             .into_iter()
             .map(|module_id| {
                 let mut symbols = SymbolCollector::collect_module(&db, module_id);
-                symbols.sort_by_key(|it| it.name.clone());
+                symbols.sort_by_key(|it| it.name.as_str().to_owned());
                 (module_id, symbols)
             })
             .collect();
@@ -511,7 +512,7 @@ struct Duplicate;
             .into_iter()
             .map(|module_id| {
                 let mut symbols = SymbolCollector::collect_module(&db, module_id);
-                symbols.sort_by_key(|it| it.name.clone());
+                symbols.sort_by_key(|it| it.name.as_str().to_owned());
                 (module_id, symbols)
             })
             .collect();
