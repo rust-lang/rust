@@ -1,3 +1,5 @@
+use std::cmp::Reverse;
+
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
@@ -2243,13 +2245,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Option<(Vec<Segment>, Option<String>)> {
         debug!("make_path_suggestion: span={:?} path={:?}", span, path);
 
-        match (path.get(0), path.get(1)) {
+        match path[..] {
             // `{{root}}::ident::...` on both editions.
             // On 2015 `{{root}}` is usually added implicitly.
-            (Some(fst), Some(snd))
+            [fst, snd, ..]
                 if fst.ident.name == kw::PathRoot && !snd.ident.is_path_segment_keyword() => {}
             // `ident::...` on 2018.
-            (Some(fst), _)
+            [fst, ..]
                 if fst.ident.span.at_least_rust_2018() && !fst.ident.is_path_segment_keyword() =>
             {
                 // Insert a placeholder that's later replaced by `self`/`super`/etc.
@@ -2357,7 +2359,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // 2) `std` suggestions before `core` suggestions.
         let mut extern_crate_names =
             self.extern_prelude.keys().map(|ident| ident.name).collect::<Vec<_>>();
-        extern_crate_names.sort_by(|a, b| b.as_str().partial_cmp(a.as_str()).unwrap());
+        extern_crate_names.sort_by_key(|&name| Reverse(name));
 
         for name in extern_crate_names.into_iter() {
             // Replace first ident with a crate name and check if that is valid.
