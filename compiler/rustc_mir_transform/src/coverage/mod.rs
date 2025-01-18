@@ -21,7 +21,7 @@ use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use tracing::{debug, debug_span, trace};
 
-use crate::coverage::counters::{CoverageCounters, Site};
+use crate::coverage::counters::CoverageCounters;
 use crate::coverage::graph::CoverageGraph;
 use crate::coverage::mappings::ExtractedMappings;
 
@@ -89,8 +89,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
         return;
     }
 
-    let coverage_counters =
-        CoverageCounters::make_bcb_counters(&graph, &bcbs_with_counter_mappings);
+    let coverage_counters = counters::make_bcb_counters(&graph, &bcbs_with_counter_mappings);
 
     let mappings = create_mappings(&extracted_mappings, &coverage_counters);
     if mappings.is_empty() {
@@ -239,14 +238,8 @@ fn inject_coverage_statements<'tcx>(
     coverage_counters: &CoverageCounters,
 ) {
     // Inject counter-increment statements into MIR.
-    for (id, site) in coverage_counters.counter_increment_sites() {
-        // Determine the block to inject a counter-increment statement into.
-        // For BCB nodes this is just their first block, but for edges we need
-        // to create a new block between the two BCBs, and inject into that.
-        let target_bb = match site {
-            Site::Node { bcb } => graph[bcb].leader_bb(),
-        };
-
+    for (id, bcb) in coverage_counters.counter_increment_sites() {
+        let target_bb = graph[bcb].leader_bb();
         inject_statement(mir_body, CoverageKind::CounterIncrement { id }, target_bb);
     }
 
