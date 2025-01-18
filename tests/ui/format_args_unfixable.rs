@@ -2,7 +2,7 @@
 #![allow(unused)]
 #![allow(clippy::assertions_on_constants, clippy::eq_op, clippy::uninlined_format_args)]
 
-use std::io::{Error, ErrorKind, Write, stdout};
+use std::io::{Error, Write, stdout};
 use std::ops::Deref;
 use std::panic::Location;
 
@@ -20,7 +20,7 @@ macro_rules! my_other_macro {
 }
 
 fn main() {
-    let error = Error::new(ErrorKind::Other, "bad thing");
+    let error = Error::other("bad thing");
     let x = 'x';
 
     println!("error: {}", format!("something failed at {}", Location::caller()));
@@ -115,7 +115,7 @@ macro_rules! my_println2_args {
 }
 
 fn test2() {
-    let error = Error::new(ErrorKind::Other, "bad thing");
+    let error = Error::other("bad thing");
 
     // None of these should be linted without the config change
     my_println2!(true, "error: {}", format!("something failed at {}", Location::caller()));
@@ -145,7 +145,7 @@ macro_rules! usr_println {
 }
 
 fn user_format() {
-    let error = Error::new(ErrorKind::Other, "bad thing");
+    let error = Error::other("bad thing");
     let x = 'x';
 
     usr_println!(true, "error: {}", format!("boom at {}", Location::caller()));

@@ -36,6 +36,7 @@ mod implicit_clone;
 mod inefficient_to_string;
 mod inspect_for_each;
 mod into_iter_on_ref;
+mod io_other_error;
 mod is_digit_ascii_radix;
 mod is_empty;
 mod iter_cloned_collect;
@@ -4461,6 +4462,28 @@ declare_clippy_lint! {
     "unnecessary `iter().any()` on slices that can be replaced with `contains()`"
 }
 
+declare_clippy_lint! {
+    /// This lint warns on calling `io::Error::new(..)` with a kind of
+    /// `io::ErrorKind::Other`.
+    ///
+    /// ### Why is this bad?
+    /// Since Rust 1.74, there's the `io::Error::other(_)` shortcut.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::io;
+    /// let _ = io::Error::new(io::ErrorKind::Other, "bad".to_string());
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let _ = std::io::Error::other("bad".to_string());
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub IO_OTHER_ERROR,
+    style,
+    "calling `std::io::Error::new(std::io::ErrorKind::Other, _)`"
+}
+
 #[expect(clippy::struct_excessive_bools)]
 pub struct Methods {
     avoid_breaking_exported_api: bool,
@@ -4637,6 +4660,7 @@ impl_lint_pass!(Methods => [
     RETURN_AND_THEN,
     UNBUFFERED_BYTES,
     MANUAL_CONTAINS,
+    IO_OTHER_ERROR,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4666,6 +4690,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 unnecessary_fallible_conversions::check_function(cx, expr, func);
                 manual_c_str_literals::check(cx, expr, func, args, &self.msrv);
                 useless_nonzero_new_unchecked::check(cx, expr, func, args, &self.msrv);
+                io_other_error::check(cx, expr, func, args, &self.msrv);
             },
             ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;
