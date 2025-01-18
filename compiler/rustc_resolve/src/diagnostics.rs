@@ -3042,7 +3042,6 @@ impl<'tcx> visit::Visitor<'tcx> for UsePlacementFinder {
                 self.first_legal_span = Some(inject);
             }
             self.first_use_span = search_for_any_use_in_items(&c.items);
-            return;
         } else {
             visit::walk_crate(self, c);
         }
@@ -3056,7 +3055,6 @@ impl<'tcx> visit::Visitor<'tcx> for UsePlacementFinder {
                     self.first_legal_span = Some(inject);
                 }
                 self.first_use_span = search_for_any_use_in_items(items);
-                return;
             }
         } else {
             visit::walk_item(self, item);
