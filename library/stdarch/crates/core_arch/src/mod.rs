@@ -284,7 +284,7 @@ pub mod arch {
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "s390x", doc))]
     #[doc(cfg(target_arch = "s390x"))]
-    #[unstable(feature = "stdarch_s390x", issue = "1")]
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub mod s390x {
         pub use crate::core_arch::s390x::*;
     }
