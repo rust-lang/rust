@@ -181,15 +181,15 @@ impl Message {
 
         Ok(Some(msg))
     }
-    pub fn write(self, w: &mut impl Write) -> io::Result<()> {
+    pub fn write(&self, w: &mut impl Write) -> io::Result<()> {
         self._write(w)
     }
-    fn _write(self, w: &mut dyn Write) -> io::Result<()> {
+    fn _write(&self, w: &mut dyn Write) -> io::Result<()> {
         #[derive(Serialize)]
-        struct JsonRpc {
+        struct JsonRpc<'a> {
             jsonrpc: &'static str,
             #[serde(flatten)]
-            msg: Message,
+            msg: &'a Message,
         }
         let text = serde_json::to_string(&JsonRpc { jsonrpc: "2.0", msg: self })?;
         write_msg_text(w, &text)
