@@ -4,7 +4,7 @@ use rustc_abi::{BackendRepr, TagEncoding, Variants, WrappingRange};
 use rustc_hir::{Expr, ExprKind, HirId, LangItem};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, AdtKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
@@ -922,6 +922,38 @@ fn get_nullable_type_from_pat<'tcx>(
             }
             Some(first)
         }
+    }
+}
+
+/// determines wether or not `outer_ty` is an option-like enum, with the same size as its contained type, `ty`.
+/// this ASSUMES that `ty` is a type that is already 'inside' of `outer_ty`.
+fn is_outer_optionlike_around_ty<'tcx>(
+    cx: &LateContext<'tcx>,
+    outer_ty: Ty<'tcx>,
+    ty: Ty<'tcx>,
+) -> bool {
+    // three things to check to be sure outer_ty is option-like (since we know we reached the current ty from there)
+    // That outer_ty is an enum, that this enum doesn't have a defined discriminant representation,
+    // and the the outer_ty's size is that of ty.
+    if let ty::Adt(def, _) = outer_ty.kind() {
+        if !matches!(def.adt_kind(), AdtKind::Enum)
+            || def.repr().c()
+            || def.repr().transparent()
+            || def.repr().int.is_none()
+        {
+            false
+        } else {
+            let (tcx, typing_env) = (cx.tcx, cx.typing_env());
+
+            // see the insides of super::repr_nullable_ptr()
+            let compute_size_skeleton = |t| SizeSkeleton::compute(t, tcx, typing_env).ok();
+            match (compute_size_skeleton(ty), compute_size_skeleton(outer_ty)) {
+                (Some(sk1), Some(sk2)) => sk1.same_size(sk2),
+                _ => false,
+            }
+        }
+    } else {
+        false
     }
 }
 

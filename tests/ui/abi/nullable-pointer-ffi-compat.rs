@@ -14,6 +14,7 @@
 
 use std::mem;
 
+#[allow(improper_ctypes_definitions)]  // it's worried about invalid pointers given as values of x
 #[inline(never)]
 extern "C" fn foo(x: &isize) -> Option<&isize> { Some(x) }
 
