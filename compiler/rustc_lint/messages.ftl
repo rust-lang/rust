@@ -424,13 +424,13 @@ lint_improper_ctypes_ptr_validity_reason =
 lint_improper_ctypes_sized_ptr_to_unsafe_type =
     this reference (`{$ty}`) is ABI-compatible with a C pointer, but `{$inner_ty}` itself does not have a C layout
 
-lint_improper_ctypes_struct_dueto = this struct/enum/union (`{$ty}`) is FFI-unsafe due to a `{$inner_ty}` field
 lint_improper_ctypes_slice_help = consider using a raw pointer to the slice's first element (and a length) instead
-
 lint_improper_ctypes_slice_reason = slices have no C equivalent
-lint_improper_ctypes_str_help = consider using `*const u8` and a length instead
 
+lint_improper_ctypes_str_help = consider using `*const u8` and a length instead
 lint_improper_ctypes_str_reason = string slices have no C equivalent
+
+lint_improper_ctypes_struct_dueto = this struct/enum/union (`{$ty}`) is FFI-unsafe due to a `{$inner_ty}` field
 lint_improper_ctypes_struct_fieldless_help = consider adding a member to this struct
 
 lint_improper_ctypes_struct_fieldless_reason = this struct has no fields

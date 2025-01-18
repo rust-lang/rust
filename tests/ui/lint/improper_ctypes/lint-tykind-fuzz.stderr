@@ -307,6 +307,7 @@ LL |   c: Box<char>,
    = help: consider using a raw pointer, or wrapping `Box<char>` in an `Option<_>`
    = note: boxes and references are assumed to be valid (non-null, non-dangling, aligned) pointers,
            which cannot be garanteed if their values are produced by non-rust code
+
 error: `extern` fn uses type `Box<[u8]>`, which is not FFI-safe
   --> $DIR/lint-tykind-fuzz.rs:272:7
    |
@@ -352,6 +353,7 @@ LL |   x: Box<!>,
    = help: consider using a raw pointer, or wrapping `Box<!>` in an `Option<_>`
    = note: boxes and references are assumed to be valid (non-null, non-dangling, aligned) pointers,
            which cannot be garanteed if their values are produced by non-rust code
+
 error: `extern` fn uses type `Box<fn(u8) -> u8>`, which is not FFI-safe
   --> $DIR/lint-tykind-fuzz.rs:300:7
    |
