@@ -136,16 +136,13 @@ fn library_symbols(db: &dyn SymbolsDatabase, source_root_id: SourceRootId) -> Ar
         // the module or crate indices for those in salsa unless we need to.
         .for_each(|module| symbol_collector.collect(module));
 
-    let mut symbols = symbol_collector.finish();
-    symbols.shrink_to_fit();
-    Arc::new(SymbolIndex::new(symbols))
+    Arc::new(SymbolIndex::new(symbol_collector.finish()))
 }
 
 fn module_symbols(db: &dyn SymbolsDatabase, module: Module) -> Arc<SymbolIndex> {
     let _p = tracing::info_span!("module_symbols").entered();
 
-    let symbols = SymbolCollector::collect_module(db.upcast(), module);
-    Arc::new(SymbolIndex::new(symbols))
+    Arc::new(SymbolIndex::new(SymbolCollector::collect_module(db.upcast(), module)))
 }
 
 pub fn crate_symbols(db: &dyn SymbolsDatabase, krate: Crate) -> Box<[Arc<SymbolIndex>]> {
@@ -228,7 +225,7 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
 
 #[derive(Default)]
 pub struct SymbolIndex {
-    symbols: Vec<FileSymbol>,
+    symbols: Box<[FileSymbol]>,
     map: fst::Map<Vec<u8>>,
 }
 
@@ -253,7 +250,7 @@ impl Hash for SymbolIndex {
 }
 
 impl SymbolIndex {
-    fn new(mut symbols: Vec<FileSymbol>) -> SymbolIndex {
+    fn new(mut symbols: Box<[FileSymbol]>) -> SymbolIndex {
         fn cmp(lhs: &FileSymbol, rhs: &FileSymbol) -> Ordering {
             let lhs_chars = lhs.name.chars().map(|c| c.to_ascii_lowercase());
             let rhs_chars = rhs.name.chars().map(|c| c.to_ascii_lowercase());

@@ -92,11 +92,11 @@ impl<'a> SymbolCollector<'a> {
         }
     }
 
-    pub fn finish(self) -> Vec<FileSymbol> {
+    pub fn finish(self) -> Box<[FileSymbol]> {
         self.symbols.into_iter().collect()
     }
 
-    pub fn collect_module(db: &dyn HirDatabase, module: Module) -> Vec<FileSymbol> {
+    pub fn collect_module(db: &dyn HirDatabase, module: Module) -> Box<[FileSymbol]> {
         let mut symbol_collector = SymbolCollector::new(db);
         symbol_collector.collect(module);
         symbol_collector.finish()
