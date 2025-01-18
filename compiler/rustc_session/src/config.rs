@@ -2441,6 +2441,12 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         }
     }
 
+    if cg.hint_mostly_unused && !unstable_opts.unstable_options {
+        early_dcx.early_fatal(
+            "`-C hint-mostly-unused` requires `-Zunstable-options` and a nightly compiler",
+        )
+    }
+
     if !nightly_options::is_unstable_enabled(matches)
         && cg.force_frame_pointers == FramePointer::NonLeaf
     {
