@@ -58,10 +58,26 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 }
 @font-face {
 	font-family: 'Fira Sans';
+	font-style: italic;
+	font-weight: 400;
+	src: local('Fira Sans Italic'),
+		url("FiraSans-Italic-81dc35de.woff2") format("woff2");
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Fira Sans';
 	font-style: normal;
 	font-weight: 500;
 	src: local('Fira Sans Medium'),
 		url("FiraSans-Medium-e1aa3f0a.woff2") format("woff2");
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Fira Sans';
+	font-style: normal;
+	font-weight: 500;
+	src: local('Fira Sans Medium Italic'),
+		url("FiraSans-MediumItalic-ccf7e434.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -273,7 +289,7 @@ summary.hideme,
 .rustdoc-breadcrumbs,
 /* This selector is for the items listed in the "all items" page. */
 ul.all-items {
-	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
+	font-family: var(--font-family);
 }
 
 #toggle-all-docs,
@@ -403,7 +419,7 @@ details:not(.toggle) summary {
 }
 
 code, pre, .code-header, .type-signature {
-	font-family: var(--font-family-code)
+	font-family: var(--font-family-code);
 }
 .docblock code, .item-table dd code {
 	border-radius: 3px;
