@@ -697,7 +697,7 @@ fn debug_print() {
 #[test]
 #[cfg(windows)]
 fn run_bat_script() {
-    let tempdir = crate::sys_common::io::test::tmpdir();
+    let tempdir = crate::test_helpers::tmpdir();
     let script_path = tempdir.join("hello.cmd");
 
     crate::fs::write(&script_path, "@echo Hello, %~1!").unwrap();
@@ -716,7 +716,7 @@ fn run_bat_script() {
 #[test]
 #[cfg(windows)]
 fn run_canonical_bat_script() {
-    let tempdir = crate::sys_common::io::test::tmpdir();
+    let tempdir = crate::test_helpers::tmpdir();
     let script_path = tempdir.join("hello.cmd");
 
     crate::fs::write(&script_path, "@echo Hello, %~1!").unwrap();
