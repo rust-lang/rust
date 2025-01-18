@@ -25,6 +25,7 @@ use std::{
     fmt,
     hash::{Hash, Hasher},
     mem,
+    ops::ControlFlow,
 };
 
 use base_db::{
@@ -219,7 +220,7 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
     };
 
     let mut res = vec![];
-    query.search(&indices, |f| res.push(f.clone()));
+    query.search::<()>(&indices, |f| ControlFlow::Continue(res.push(f.clone())));
     res
 }
 
@@ -313,11 +314,11 @@ impl SymbolIndex {
 }
 
 impl Query {
-    pub(crate) fn search<'sym>(
+    pub(crate) fn search<'sym, T>(
         self,
         indices: &'sym [Arc<SymbolIndex>],
-        cb: impl FnMut(&'sym FileSymbol),
-    ) {
+        cb: impl FnMut(&'sym FileSymbol) -> ControlFlow<T>,
+    ) -> Option<T> {
         let _p = tracing::info_span!("symbol_index::Query::search").entered();
         let mut op = fst::map::OpBuilder::new();
         match self.mode {
@@ -348,12 +349,12 @@ impl Query {
         }
     }
 
-    fn search_maps<'sym>(
+    fn search_maps<'sym, T>(
         &self,
         indices: &'sym [Arc<SymbolIndex>],
         mut stream: fst::map::Union<'_>,
-        mut cb: impl FnMut(&'sym FileSymbol),
-    ) {
+        mut cb: impl FnMut(&'sym FileSymbol) -> ControlFlow<T>,
+    ) -> Option<T> {
         let ignore_underscore_prefixed = !self.query.starts_with("__");
         while let Some((_, indexed_values)) = stream.next() {
             for &IndexedValue { index, value } in indexed_values {
@@ -379,11 +380,14 @@ impl Query {
                         continue;
                     }
                     if self.mode.check(&self.query, self.case_sensitive, symbol_name) {
-                        cb(symbol);
+                        if let Some(b) = cb(symbol).break_value() {
+                            return Some(b);
+                        }
                     }
                 }
             }
         }
+        None
     }
 
     fn matches_assoc_mode(&self, is_trait_assoc_item: bool) -> bool {

@@ -1,5 +1,7 @@
 //! Look up accessible paths for items.
 
+use std::ops::ControlFlow;
+
 use hir::{
     db::HirDatabase, AsAssocItem, AssocItem, AssocItemContainer, Crate, HasCrate, ImportPathConfig,
     ItemInNs, ModPath, Module, ModuleDef, PathResolution, PrefixKind, ScopeDef, Semantics,
@@ -353,6 +355,7 @@ fn path_applicable_imports(
         // we have some unresolved qualifier that we search an import for
         // The key here is that whatever we import must form a resolved path for the remainder of
         // what follows
+        // FIXME: This doesn't handle visibility
         [first_qsegment, qualifier_rest @ ..] => items_locator::items_with_name(
             sema,
             current_crate,
@@ -417,8 +420,11 @@ fn validate_resolvable(
                 module,
                 candidate.clone(),
                 AssocSearchMode::Exclude,
+                |it| match scope_filter(it) {
+                    true => ControlFlow::Break(it),
+                    false => ControlFlow::Continue(()),
+                },
             )
-            .find(|&it| scope_filter(it))
             .map(|item| LocatedImport::new(import_path_candidate, resolved_qualifier, item))
         }
         // FIXME
