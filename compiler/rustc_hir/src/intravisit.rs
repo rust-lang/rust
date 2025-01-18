@@ -909,7 +909,8 @@ pub fn walk_expr_field<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v ExprField
     try_visit!(visitor.visit_ident(field.ident));
     visitor.visit_expr(field.expr)
 }
-
+/// We track whether an infer var is from a [`Ty`], [`ConstArg`], or [`GenericArg`] so that
+/// HIR visitors overriding [`Visitor::visit_infer`] can determine what kind of infer is being visited
 pub enum InferKind<'hir> {
     Ty(&'hir Ty<'hir>),
     Const(&'hir ConstArg<'hir>),
