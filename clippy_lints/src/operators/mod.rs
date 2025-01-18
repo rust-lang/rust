@@ -872,7 +872,7 @@ impl Operators {
             arithmetic_context: numeric_arithmetic::Context::default(),
             verbose_bit_mask_threshold: conf.verbose_bit_mask_threshold,
             modulo_arithmetic_allow_comparison_to_zero: conf.allow_comparison_to_zero,
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
         }
     }
 }
@@ -922,7 +922,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                     identity_op::check(cx, e, op.node, lhs, rhs);
                     needless_bitwise_bool::check(cx, e, op.node, lhs, rhs);
                     ptr_eq::check(cx, e, op.node, lhs, rhs);
-                    manual_midpoint::check(cx, e, op.node, lhs, rhs, &self.msrv);
+                    manual_midpoint::check(cx, e, op.node, lhs, rhs, self.msrv);
                 }
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);
                 bit_mask::check(cx, e, op.node, lhs, rhs);
@@ -973,8 +973,6 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
     fn check_body_post(&mut self, cx: &LateContext<'tcx>, b: &Body<'_>) {
         self.arithmetic_context.body_post(cx, b);
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 fn macro_with_not_op(e: &Expr<'_>) -> bool {

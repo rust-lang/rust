@@ -130,9 +130,7 @@ pub struct Lifetimes {
 
 impl Lifetimes {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -151,7 +149,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
             ..
         } = item.kind
         {
-            check_fn_inner(cx, sig, Some(id), None, generics, item.span, true, &self.msrv);
+            check_fn_inner(cx, sig, Some(id), None, generics, item.span, true, self.msrv);
         } else if let ItemKind::Impl(impl_) = item.kind {
             if !item.span.from_expansion() {
                 report_extra_impl_lifetimes(cx, impl_);
@@ -170,7 +168,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
                 item.generics,
                 item.span,
                 report_extra_lifetimes,
-                &self.msrv,
+                self.msrv,
             );
         }
     }
@@ -181,11 +179,9 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
                 TraitFn::Required(sig) => (None, Some(sig)),
                 TraitFn::Provided(id) => (Some(id), None),
             };
-            check_fn_inner(cx, sig, body, trait_sig, item.generics, item.span, true, &self.msrv);
+            check_fn_inner(cx, sig, body, trait_sig, item.generics, item.span, true, self.msrv);
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -197,7 +193,7 @@ fn check_fn_inner<'tcx>(
     generics: &'tcx Generics<'_>,
     span: Span,
     report_extra_lifetimes: bool,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     if span.in_external_macro(cx.sess().source_map()) || has_where_lifetimes(cx, generics) {
         return;
@@ -270,7 +266,7 @@ fn could_use_elision<'tcx>(
     body: Option<BodyId>,
     trait_sig: Option<&[Ident]>,
     named_generics: &'tcx [GenericParam<'_>],
-    msrv: &Msrv,
+    msrv: Msrv,
 ) -> Option<(Vec<LocalDefId>, Vec<Lifetime>)> {
     // There are two scenarios where elision works:
     // * no output references, all input references have different LT
@@ -388,17 +384,12 @@ fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxIndexSet<LocalDefI
 }
 
 // elision doesn't work for explicit self types before Rust 1.81, see rust-lang/rust#69064
-fn non_elidable_self_type<'tcx>(
-    cx: &LateContext<'tcx>,
-    func: &FnDecl<'tcx>,
-    ident: Option<Ident>,
-    msrv: &Msrv,
-) -> bool {
-    if !msrv.meets(msrvs::EXPLICIT_SELF_TYPE_ELISION)
-        && let Some(ident) = ident
+fn non_elidable_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: Option<Ident>, msrv: Msrv) -> bool {
+    if let Some(ident) = ident
         && ident.name == kw::SelfLower
         && !func.implicit_self.has_implicit_self()
         && let Some(self_ty) = func.inputs.first()
+        && !msrv.meets(cx, msrvs::EXPLICIT_SELF_TYPE_ELISION)
     {
         let mut visitor = RefVisitor::new(cx);
         visitor.visit_ty_unambig(self_ty);

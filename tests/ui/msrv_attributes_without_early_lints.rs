@@ -1,3 +1,5 @@
+//@check-pass
+
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, clippy::nursery)]
 #![forbid(clippy::ptr_as_ptr)]
 

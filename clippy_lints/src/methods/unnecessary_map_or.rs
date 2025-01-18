@@ -42,7 +42,7 @@ pub(super) fn check<'a>(
     def: &Expr<'_>,
     map: &Expr<'_>,
     method_span: Span,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     let ExprKind::Lit(def_kind) = def.kind else {
         return;
@@ -119,14 +119,14 @@ pub(super) fn check<'a>(
         .into_string();
 
         (vec![(expr.span, sugg)], "a standard comparison", app)
-    } else if !def_bool && msrv.meets(msrvs::OPTION_RESULT_IS_VARIANT_AND) {
+    } else if !def_bool && msrv.meets(cx, msrvs::OPTION_RESULT_IS_VARIANT_AND) {
         let suggested_name = variant.method_name();
         (
             vec![(method_span, suggested_name.into()), (ext_def_span, String::default())],
             suggested_name,
             Applicability::MachineApplicable,
         )
-    } else if def_bool && matches!(variant, Variant::Some) && msrv.meets(msrvs::IS_NONE_OR) {
+    } else if def_bool && matches!(variant, Variant::Some) && msrv.meets(cx, msrvs::IS_NONE_OR) {
         (
             vec![(method_span, "is_none_or".into()), (ext_def_span, String::default())],
             "is_none_or",

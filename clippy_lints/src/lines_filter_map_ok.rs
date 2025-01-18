@@ -15,9 +15,7 @@ pub struct LinesFilterMapOk {
 
 impl LinesFilterMapOk {
     pub fn new(conf: &Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -74,13 +72,13 @@ impl_lint_pass!(LinesFilterMapOk => [LINES_FILTER_MAP_OK]);
 
 impl LateLintPass<'_> for LinesFilterMapOk {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if self.msrv.meets(msrvs::MAP_WHILE)
-            && let ExprKind::MethodCall(fm_method, fm_receiver, fm_args, fm_span) = expr.kind
+        if let ExprKind::MethodCall(fm_method, fm_receiver, fm_args, fm_span) = expr.kind
             && is_trait_method(cx, expr, sym::Iterator)
             && let fm_method_str = fm_method.ident.as_str()
             && matches!(fm_method_str, "filter_map" | "flat_map" | "flatten")
             && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty_adjusted(fm_receiver), sym::IoLines)
             && should_lint(cx, fm_args, fm_method_str)
+            && self.msrv.meets(cx, msrvs::MAP_WHILE)
         {
             span_lint_and_then(
                 cx,
@@ -101,8 +99,6 @@ impl LateLintPass<'_> for LinesFilterMapOk {
             );
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 fn should_lint(cx: &LateContext<'_>, args: &[Expr<'_>], method_str: &str) -> bool {

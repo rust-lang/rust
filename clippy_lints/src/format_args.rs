@@ -215,7 +215,7 @@ impl<'tcx> FormatArgs<'tcx> {
         let ty_msrv_map = make_ty_msrv_map(tcx);
         Self {
             format_args,
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
             ignore_mixed: conf.allow_mixed_uninlined_format_args,
             ty_msrv_map,
         }
@@ -240,13 +240,11 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs<'tcx> {
 
             linter.check_templates();
 
-            if self.msrv.meets(msrvs::FORMAT_ARGS_CAPTURE) {
+            if self.msrv.meets(cx, msrvs::FORMAT_ARGS_CAPTURE) {
                 linter.check_uninlined_args();
             }
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 struct FormatArgsExpr<'a, 'tcx> {
@@ -542,7 +540,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         let ty = ty.peel_refs();
 
         if let Some(msrv) = self.ty_msrv_map.get(&ty)
-            && msrv.is_none_or(|msrv| self.msrv.meets(msrv))
+            && msrv.is_none_or(|msrv| self.msrv.meets(self.cx, msrv))
         {
             return true;
         }
@@ -553,7 +551,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
             && implements_trait(self.cx, ty, deref_trait_id, &[])
             && let Some(target_ty) = self.cx.get_associated_type(ty, deref_trait_id, "Target")
             && let Some(msrv) = self.ty_msrv_map.get(&target_ty)
-            && msrv.is_none_or(|msrv| self.msrv.meets(msrv))
+            && msrv.is_none_or(|msrv| self.msrv.meets(self.cx, msrv))
         {
             return true;
         }
