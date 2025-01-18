@@ -20,7 +20,6 @@ pub mod fs;
 #[allow(unused)]
 #[path = "../wasm/atomics/futex.rs"]
 pub mod futex;
-pub mod io;
 
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
