@@ -93,4 +93,5 @@ pub mod unit_tests;
 pub mod unknown_revision;
 pub mod unstable_book;
 pub mod walk;
+pub mod watcher;
 pub mod x_version;

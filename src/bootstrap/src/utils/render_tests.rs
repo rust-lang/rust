@@ -167,6 +167,7 @@ impl<'a> Renderer<'a> {
         if let Outcome::Ignored { reason } = outcome {
             self.ignored_tests += 1;
             // Keep this in sync with the "up-to-date" ignore message inserted by compiletest.
+            // FIXME: sync me
             if reason == Some("up-to-date") {
                 self.up_to_date_tests += 1;
             }

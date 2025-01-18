@@ -303,8 +303,10 @@ fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
 #[lang = "panic_cannot_unwind"] // needed by codegen for panic in nounwind function
 #[rustc_nounwind]
 fn panic_cannot_unwind() -> ! {
+    // tidy-keep-sync-with=tidy-ticket-panic-message-nounwind
     // Keep the text in sync with `UnwindTerminateReason::as_str` in `rustc_middle`.
     panic_nounwind("panic in a function that cannot unwind")
+    // tidy-keep-sync-with=tidy-ticket-panic-message-nounwind
 }
 
 /// Panics because we are unwinding out of a destructor during cleanup.
@@ -319,8 +321,10 @@ fn panic_cannot_unwind() -> ! {
 #[lang = "panic_in_cleanup"] // needed by codegen for panic in nounwind function
 #[rustc_nounwind]
 fn panic_in_cleanup() -> ! {
+    // tidy-keep-sync-with=tidy-ticket-panic-message-nobacktrace
     // Keep the text in sync with `UnwindTerminateReason::as_str` in `rustc_middle`.
     panic_nounwind_nobacktrace("panic in a destructor during cleanup")
+    // tidy-keep-sync-with=tidy-ticket-panic-message-nobacktrace
 }
 
 /// This function is used instead of panic_fmt in const eval.

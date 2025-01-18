@@ -117,6 +117,7 @@ fn resolve_associated_item<'tcx>(
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
     Ok(match vtbl {
+        // tidy-keep-sync-with=tidy-ticket-resolve_associated_item-UserDefined
         traits::ImplSource::UserDefined(impl_data) => {
             debug!(
                 "resolving ImplSource::UserDefined: {:?}, {:?}, {:?}, {:?}",
@@ -230,6 +231,7 @@ fn resolve_associated_item<'tcx>(
 
             Some(ty::Instance::new(leaf_def.item.def_id, args))
         }
+        // tidy-keep-sync-with=tidy-ticket-resolve_associated_item-UserDefined
         traits::ImplSource::Builtin(BuiltinImplSource::Object(_), _) => {
             let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_args);
             if trait_ref.has_non_region_infer() || trait_ref.has_non_region_param() {
