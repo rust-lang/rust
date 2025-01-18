@@ -148,61 +148,25 @@ impl<'tcx> FfiResult<'tcx> {
 }
 
 impl<'tcx> std::ops::AddAssign<FfiResult<'tcx>> for FfiResult<'tcx> {
-    fn add_assign(&mut self, mut other: Self) {
+    fn add_assign(&mut self, other: Self) {
         // note: we shouldn't really encounter FfiPhantoms here, they should be dealt with beforehand
         // still, this function deals with them in a reasonable way, I think
 
-        // this function is awful to look but that's because matching mutable references consumes them (?!)
-        // the function itself imitates the following piece of non-compiling code:
-
-        // match (self, other) {
-        //     (Self::FfiUnsafe(_), _) => {
-        //         // nothing to do
-        //     },
-        //     (_, Self::FfiUnsafe(_)) => {
-        //         *self = other;
-        //     },
-        //     (Self::FfiPhantom(ref ty1),Self::FfiPhantom(ty2)) => {
-        //         println!("whoops, both FfiPhantom: self({:?}) += other({:?})", ty1, ty2);
-        //     },
-        //     (Self::FfiSafe,Self::FfiPhantom(_)) => {
-        //         *self = other;
-        //     },
-        //     (_, Self::FfiSafe) => {
-        //         // nothing to do
-        //     },
-        // }
-
-        let s_disc = std::mem::discriminant(self);
-        let o_disc = std::mem::discriminant(&other);
-        if s_disc == o_disc {
-            match (self, &mut other) {
-                (Self::FfiUnsafe(s_inner), Self::FfiUnsafe(o_inner)) => {
-                    s_inner.append(o_inner);
-                }
-                (Self::FfiPhantom(ty1), Self::FfiPhantom(ty2)) => {
-                    debug!("whoops: both FfiPhantom, self({:?}) += other({:?})", ty1, ty2);
-                }
-                (Self::FfiSafe, Self::FfiSafe) => {}
-                _ => unreachable!(),
+        match (self, other) {
+            (Self::FfiUnsafe(_), _) => {
+                // nothing to do
             }
-        } else {
-            if let Self::FfiUnsafe(_) = self {
-                return;
+            (myself, other @ Self::FfiUnsafe(_)) => {
+                *myself = other;
             }
-            match other {
-                Self::FfiUnsafe(o_inner) => {
-                    // self is Safe or Phantom: Unsafe wins
-                    *self = Self::FfiUnsafe(o_inner);
-                }
-                Self::FfiSafe => {
-                    // self is always "wins"
-                    return;
-                }
-                Self::FfiPhantom(o_inner) => {
-                    // self is Safe: Phantom wins
-                    *self = Self::FfiPhantom(o_inner);
-                }
+            (Self::FfiPhantom(ty1), Self::FfiPhantom(ty2)) => {
+                debug!("whoops, both FfiPhantom: self({:?}) += other({:?})", ty1, ty2);
+            }
+            (myself @ Self::FfiSafe, other @ Self::FfiPhantom(_)) => {
+                *myself = other;
+            }
+            (_, Self::FfiSafe) => {
+                // nothing to do
             }
         }
     }
@@ -215,7 +179,7 @@ impl<'tcx> std::ops::Add<FfiResult<'tcx>> for FfiResult<'tcx> {
     }
 }
 
-/// Determine if a type is sized or not, and wether it affects references/pointers/boxes to it
+/// Determine if a type is sized or not, and whether it affects references/pointers/boxes to it
 #[derive(Clone, Copy)]
 enum TypeSizedness {
     /// type of definite size (pointers are C-compatible)
@@ -354,39 +318,51 @@ fn get_type_sizedness<'tcx, 'a>(cx: &'a LateContext<'tcx>, ty: Ty<'tcx>) -> Type
     }
 }
 
+#[allow(non_snake_case)]
+mod CTypesVisitorStateFlags {
+    pub(super) const NO_FLAGS: u8 = 0b0000;
+    /// for static variables (not used in functions)
+    pub(super) const STATIC: u8 = 0b0010;
+    /// for variables in function returns (implicitly: not for static variables)
+    pub(super) const FN_RETURN: u8 = 0b0100;
+    /// for variables in functions which are defined in rust (implicitly: not for static variables)
+    pub(super) const FN_DECLARED: u8 = 0b1000;
+}
+
 #[repr(u8)]
 #[derive(Clone, Copy, Debug)]
 enum CTypesVisitorState {
-    // bitflags:
-    // 0010: static
-    // 0100: function return
-    // 1000: used in declared function
-    StaticTy = 0b0010,
-    ArgumentTyInDefinition = 0b1000,
-    ReturnTyInDefinition = 0b1100,
-    ArgumentTyInDeclaration = 0b0000,
-    ReturnTyInDeclaration = 0b0100,
+    // uses bitflags from CTypesVisitorStateFlags
+    StaticTy = CTypesVisitorStateFlags::STATIC,
+    ArgumentTyInDefinition = CTypesVisitorStateFlags::FN_DECLARED,
+    ReturnTyInDefinition =
+        CTypesVisitorStateFlags::FN_DECLARED | CTypesVisitorStateFlags::FN_RETURN,
+    ArgumentTyInDeclaration = CTypesVisitorStateFlags::NO_FLAGS,
+    ReturnTyInDeclaration = CTypesVisitorStateFlags::FN_RETURN,
 }
 
 impl CTypesVisitorState {
-    /// wether the type is used (directly or not) in a static variable
+    /// whether the type is used (directly or not) in a static variable
     fn is_in_static(self) -> bool {
-        ((self as u8) & 0b0010) != 0
+        use CTypesVisitorStateFlags::*;
+        ((self as u8) & STATIC) != 0
     }
-    /// wether the type is used (directly or not) in a function, in return position
+    /// whether the type is used (directly or not) in a function, in return position
     fn is_in_function_return(self) -> bool {
-        let ret = ((self as u8) & 0b0100) != 0;
+        use CTypesVisitorStateFlags::*;
+        let ret = ((self as u8) & FN_RETURN) != 0;
         #[cfg(debug_assertions)]
         if ret {
             assert!(!self.is_in_static());
         }
         ret
     }
-    /// wether the type is used (directly or not) in a defined function
-    /// in other words, wether or not we allow non-FFI-safe types behind a C pointer,
+    /// whether the type is used (directly or not) in a defined function
+    /// in other words, whether or not we allow non-FFI-safe types behind a C pointer,
     /// to be treated as an opaque type on the other side of the FFI boundary
     fn is_in_defined_function(self) -> bool {
-        let ret = ((self as u8) & 0b1000) != 0;
+        use CTypesVisitorStateFlags::*;
+        let ret = ((self as u8) & FN_DECLARED) != 0;
         #[cfg(debug_assertions)]
         if ret {
             assert!(!self.is_in_static());
@@ -394,11 +370,11 @@ impl CTypesVisitorState {
         ret
     }
 
-    /// wether the value for that type might come from the non-rust side of a FFI boundary
+    /// whether the value for that type might come from the non-rust side of a FFI boundary
     fn value_may_be_unchecked(self) -> bool {
         // function declarations are assumed to be rust-caller, non-rust-callee
         // function definitions are assumed to be maybe-not-rust-caller, rust-callee
-        // FnPtrs are... well, nothing's certain about anything. (TODO need more flags in enum?)
+        // FnPtrs are... well, nothing's certain about anything. (FIXME need more flags in enum?)
         // Same with statics.
         if self.is_in_static() {
             true
@@ -411,7 +387,7 @@ impl CTypesVisitorState {
 }
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
-    /// Checks wether an `extern "ABI" fn` function pointer is indeed FFI-safe to call
+    /// Checks whether an `extern "ABI" fn` function pointer is indeed FFI-safe to call
     fn visit_fnptr(&mut self, mode: CItemKind, ty: Ty<'tcx>, sig: Sig<'tcx>) -> FfiResult<'tcx> {
         use FfiResult::*;
         debug_assert!(!sig.abi().is_rustic_abi());
@@ -534,7 +510,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // there are three remaining concerns with the pointer:
         // - is the pointer compatible with a C pointer in the first place? (if not, only send that error message)
         // - is the pointee FFI-safe? (it might not matter, see mere lines below)
-        // - does the pointer type contain a non-zero assumption, but a value given by non-rust code?
+        // - does the pointer type contain a non-zero assumption, but has a value given by non-rust code?
         // this block deals with the first two.
         let mut ffi_res = match get_type_sizedness(self.cx, inner_ty) {
             TypeSizedness::UnsizedWithExternType | TypeSizedness::Definite => {
@@ -583,7 +559,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 // 'fake' declarations (in traits, needed to be implemented elsewhere), and definitions.
                 // (for instance, definitions should worry about &self with Self:?Sized, but fake declarations shouldn't)
 
-                // wether they are FFI-safe or not does not depend on the indirections involved (&Self, &T, Box<impl Trait>),
+                // whether they are FFI-safe or not does not depend on the indirections involved (&Self, &T, Box<impl Trait>),
                 // so let's not wrap the current context around a potential FfiUnsafe type param.
                 self.visit_type(state, Some(ty), inner_ty)
             }
@@ -603,6 +579,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         };
 
         // and now the third concern (does the pointer type contain a non-zero assumption, and is the value given by non-rust code?)
+        // technically, pointers with non-rust-given values could also be misaligned, pointing to the wrong thing, or outright dangling, but we assume they never are
         ffi_res += if state.value_may_be_unchecked() {
             let has_nonnull_assumption = match indirection_type {
                 IndirectionType::RawPtr => false,
@@ -758,18 +735,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         if def.variants().is_empty() {
             // Empty enums are implicitely handled as the never type:
-            // TODO think about the FFI-safety of functions that use that
+            // FIXME think about the FFI-safety of functions that use that
             return FfiSafe;
         }
         // Check for a repr() attribute to specify the size of the
         // discriminant.
         if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none() {
             // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
-            if let Some(inner_ty) = repr_nullable_ptr(
-                self.cx.tcx,
-                self.cx.typing_env(),
-                ty,
-            ) {
+            if let Some(inner_ty) = repr_nullable_ptr(self.cx.tcx, self.cx.typing_env(), ty) {
                 return self.visit_type(state, Some(ty), inner_ty);
             }
 
@@ -781,11 +754,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         if let Some(IntegerType::Fixed(Integer::I128, _)) = def.repr().int {
-            return FfiResult::new_with_reason(
-                ty,
-                fluent::lint_improper_ctypes_128bit,
-                None,
-            );
+            return FfiResult::new_with_reason(ty, fluent::lint_improper_ctypes_128bit, None);
         }
 
         let non_exhaustive = def.variant_list_has_applicable_non_exhaustive();
@@ -811,7 +780,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 .iter()
                 .map(|variant| {
                     self.visit_variant_fields(state, ty, def, variant, args)
-                        // TODO: check that enums allow any (up to all) variants to be phantoms?
+                        // FIXME: check that enums allow any (up to all) variants to be phantoms?
                         // (previous code says no, but I don't know why? the problem with phantoms is that they're ZSTs, right?)
                         .forbid_phantom()
                 })
@@ -856,11 +825,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
                 match def.adt_kind() {
                     AdtKind::Struct | AdtKind::Union => {
-                        // I thought CStr (not CString) could not be reached here:
-                        //   - not using an indirection would cause a compile error prior to this lint
+                        // I thought CStr (not CString) here could only be reached in non-compiling code:
+                        //   - not using an indirection would cause a compile error (this lint *currently* seems to not get triggered on such non-compiling code)
                         //   - and using one would cause the lint to catch on the indirection before reaching its pointee
-                        // but for some reason one can just go and write function *pointers* like that:
-                        // `type Foo = extern "C" fn(::std::ffi::CStr);`
+                        // but function *pointers* don't seem to have the same no-unsized-parameters requirement to compile
                         if let Some(sym::cstring_type | sym::cstr_type) =
                             tcx.get_diagnostic_name(def.did())
                         {
@@ -1107,10 +1075,7 @@ struct ImproperCTypesLint<'c, 'tcx> {
 }
 
 impl<'c, 'tcx> ImproperCTypesLint<'c, 'tcx> {
-    fn check_arg_for_power_alignment(
-        &mut self,
-        ty: Ty<'tcx>,
-    ) -> bool {
+    fn check_arg_for_power_alignment(&mut self, ty: Ty<'tcx>) -> bool {
         let tcx = self.cx.tcx;
         assert!(tcx.sess.target.os == "aix");
         // Structs (under repr(C)) follow the power alignment rule if:
@@ -1141,10 +1106,7 @@ impl<'c, 'tcx> ImproperCTypesLint<'c, 'tcx> {
         return false;
     }
 
-    fn check_struct_for_power_alignment(
-        &mut self,
-        item: &'tcx hir::Item<'tcx>,
-    ) {
+    fn check_struct_for_power_alignment(&mut self, item: &'tcx hir::Item<'tcx>) {
         let tcx = self.cx.tcx;
         let adt_def = tcx.adt_def(item.owner_id.to_def_id());
         // repr(C) structs also with packed or aligned representation
@@ -1228,7 +1190,7 @@ impl<'c, 'tcx> ImproperCTypesLint<'c, 'tcx> {
                 (span, ffi_res)
             })
             // even in function *definitions*, `FnPtr`s are always function declarations ...right?
-            // (TODO: we can't do that yet because one of rustc's crates can't compile if we do)
+            // (FIXME: we can't do that yet because one of rustc's crates can't compile if we do)
             .for_each(|(span, ffi_res)| self.process_ffi_result(span, ffi_res, fn_mode));
         //.drain();
     }
@@ -1316,12 +1278,8 @@ impl<'c, 'tcx> ImproperCTypesLint<'c, 'tcx> {
 
                     // this whole while block converts the arbitrarily-deep
                     // FfiResult stack to an ImproperCTypesLayer Vec
-                    while let ControlFlow::Continue(FfiUnsafeReason {
-                        ty,
-                        reason,
-                        help,
-                        inner,
-                    }) = ffiresult_recursor
+                    while let ControlFlow::Continue(FfiUnsafeReason { ty, reason, help, inner }) =
+                        ffiresult_recursor
                     {
                         if let Some(layer) = cimproper_layers.last_mut() {
                             layer.inner_ty = Some(ty.clone());
@@ -1384,7 +1342,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
 
         match it.kind {
             hir::ForeignItemKind::Fn(sig, _, _) => {
-                if abi.is_rustic_abi()  {
+                if abi.is_rustic_abi() {
                     lint.check_fn_for_external_abi_fnptr(
                         CItemKind::Declaration,
                         it.owner_id.def_id,
@@ -1426,7 +1384,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
             // Structs are checked based on if they follow the power alignment
             // rule (under repr(C)).
             hir::ItemKind::Struct(..) => {
-                ImproperCTypesLint{cx}.check_struct_for_power_alignment(item);
+                ImproperCTypesLint { cx }.check_struct_for_power_alignment(item);
             }
             // See `check_field_def`..
             hir::ItemKind::Union(..) | hir::ItemKind::Enum(..) => {}

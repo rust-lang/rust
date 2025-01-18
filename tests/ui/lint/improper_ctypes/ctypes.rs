@@ -94,11 +94,13 @@ extern "C" {
     pub fn transparent_str(p: TransparentStr); //~ ERROR: uses type `&str`
     pub fn transparent_fn(p: TransparentBoxFn);
     pub fn raw_array(arr: [u8; 8]); //~ ERROR: uses type `[u8; 8]`
-    pub fn multi_errors_per_arg(f: for<'a> extern "C" fn(a:char, b:&dyn Debug, c: Box<TwoBadTypes<'a>>));
-    //~^ ERROR: uses type `char`
-    //~^^ ERROR: uses type `&dyn Debug`
+    pub fn multi_errors_per_arg(
+        f: for<'a> extern "C" fn(a:char, b:&dyn Debug, c: Box<TwoBadTypes<'a>>)
+    );
+    //~^^ ERROR: uses type `char`
+    //~^^^ ERROR: uses type `&dyn Debug`
     // (possible FIXME: the in-struct `char` field doesn't get a warning due ^^)
-    //~^^^^ ERROR: uses type `&[u8]`
+    //~^^^^^ ERROR: uses type `&[u8]`
 
     pub fn struct_unsized_ptr_no_metadata(p: &UnsizedStructBecauseForeign);
     pub fn struct_unsized_ptr_has_metadata(p: &UnsizedStructBecauseDyn); //~ ERROR uses type `&UnsizedStructBecauseDyn`
