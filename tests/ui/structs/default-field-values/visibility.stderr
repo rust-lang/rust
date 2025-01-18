@@ -1,12 +1,16 @@
 error[E0451]: field `x` of struct `S` is private
   --> $DIR/visibility.rs:24:9
    |
+LL |     let a = baz::S {
+   |             ------ in this type
 LL |         ..
    |         ^^ field `x` is private
 
 error[E0451]: field `x` of struct `S` is private
   --> $DIR/visibility.rs:27:9
    |
+LL |     let b = baz::S {
+   |             ------ in this type
 LL |         x: 0,
    |         ^^^^ private field
 

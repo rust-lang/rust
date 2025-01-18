@@ -925,6 +925,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
         def: ty::AdtDef<'tcx>, // definition of the struct or enum
         field: &'tcx ty::FieldDef,
         in_update_syntax: bool,
+        struct_span: Span,
     ) {
         if def.is_enum() {
             return;
@@ -936,6 +937,11 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
         if !field.vis.is_accessible_from(def_id, self.tcx) {
             self.tcx.dcx().emit_err(FieldIsPrivate {
                 span,
+                struct_span: if self.tcx.sess.source_map().is_multiline(span.between(struct_span)) {
+                    Some(struct_span)
+                } else {
+                    None
+                },
                 field_name: field.name,
                 variant_descr: def.variant_descr(),
                 def_path_str: self.tcx.def_path_str(def.did()),
@@ -955,6 +961,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
         fields: &[hir::ExprField<'tcx>],
         hir_id: hir::HirId,
         span: Span,
+        struct_span: Span,
     ) {
         for (vf_index, variant_field) in variant.fields.iter_enumerated() {
             let field =
@@ -963,7 +970,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
                 Some(field) => (field.hir_id, field.ident.span, field.span),
                 None => (hir_id, span, span),
             };
-            self.check_field(hir_id, use_ctxt, span, adt, variant_field, true);
+            self.check_field(hir_id, use_ctxt, span, adt, variant_field, true, struct_span);
         }
     }
 }
@@ -990,10 +997,24 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                     // If the expression uses FRU we need to make sure all the unmentioned fields
                     // are checked for privacy (RFC 736). Rather than computing the set of
                     // unmentioned fields, just check them all.
-                    self.check_expanded_fields(adt, variant, fields, base.hir_id, base.span);
+                    self.check_expanded_fields(
+                        adt,
+                        variant,
+                        fields,
+                        base.hir_id,
+                        base.span,
+                        qpath.span(),
+                    );
                 }
                 hir::StructTailExpr::DefaultFields(span) => {
-                    self.check_expanded_fields(adt, variant, fields, expr.hir_id, span);
+                    self.check_expanded_fields(
+                        adt,
+                        variant,
+                        fields,
+                        expr.hir_id,
+                        span,
+                        qpath.span(),
+                    );
                 }
                 hir::StructTailExpr::None => {
                     for field in fields {
@@ -1006,6 +1027,7 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                             adt,
                             &variant.fields[index],
                             false,
+                            qpath.span(),
                         );
                     }
                 }
@@ -1023,7 +1045,15 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
             for field in fields {
                 let (hir_id, use_ctxt, span) = (field.hir_id, field.ident.span, field.span);
                 let index = self.typeck_results().field_index(field.hir_id);
-                self.check_field(hir_id, use_ctxt, span, adt, &variant.fields[index], false);
+                self.check_field(
+                    hir_id,
+                    use_ctxt,
+                    span,
+                    adt,
+                    &variant.fields[index],
+                    false,
+                    qpath.span(),
+                );
             }
         }
 

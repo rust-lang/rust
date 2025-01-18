@@ -1,4 +1,5 @@
 privacy_field_is_private = field `{$field_name}` of {$variant_descr} `{$def_path_str}` is private
+    .label = in this type
 privacy_field_is_private_is_update_syntax_label = field `{$field_name}` is private
 privacy_field_is_private_label = private field
 

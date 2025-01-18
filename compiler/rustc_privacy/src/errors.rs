@@ -8,6 +8,8 @@ use rustc_span::{Span, Symbol};
 pub(crate) struct FieldIsPrivate {
     #[primary_span]
     pub span: Span,
+    #[label]
+    pub struct_span: Option<Span>,
     pub field_name: Symbol,
     pub variant_descr: &'static str,
     pub def_path_str: String,
