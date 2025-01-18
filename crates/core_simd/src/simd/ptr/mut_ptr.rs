@@ -39,7 +39,7 @@ pub trait SimdMutPtr: Copy + Sealed {
     /// Equivalent to calling [`pointer::addr`] on each element.
     fn addr(self) -> Self::Usize;
 
-    /// Convert an address to a pointer without giving it any provenance.
+    /// Converts an address to a pointer without giving it any provenance.
     ///
     /// Without provenance, this pointer is not associated with any actual allocation. Such a
     /// no-provenance pointer may be used for zero-sized memory accesses (if suitably aligned), but
@@ -64,7 +64,7 @@ pub trait SimdMutPtr: Copy + Sealed {
     /// [`Self::with_exposed_provenance`] and returns the "address" portion.
     fn expose_provenance(self) -> Self::Usize;
 
-    /// Convert an address back to a pointer, picking up a previously "exposed" provenance.
+    /// Converts an address back to a pointer, picking up a previously "exposed" provenance.
     ///
     /// Equivalent to calling [`core::ptr::with_exposed_provenance_mut`] on each element.
     fn with_exposed_provenance(addr: Self::Usize) -> Self;

@@ -1,10 +1,6 @@
 #![no_std]
 #![feature(
     const_eval_select,
-    const_intrinsic_copy,
-    const_refs_to_cell,
-    const_maybe_uninit_as_mut_ptr,
-    const_mut_refs,
     convert_float_to_int,
     core_intrinsics,
     decl_macro,
@@ -12,7 +8,6 @@
     repr_simd,
     simd_ffi,
     staged_api,
-    strict_provenance,
     prelude_import,
     ptr_metadata
 )]

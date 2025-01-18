@@ -2,6 +2,7 @@
 //! Ideally, Rust would take care of this itself,
 //! and method calls usually handle the LHS implicitly.
 //! But this is not the case with arithmetic ops.
+
 use super::*;
 
 macro_rules! deref_lhs {
