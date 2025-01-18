@@ -25,15 +25,21 @@ pub(super) fn make_bcb_counters(
     graph: &CoverageGraph,
     bcb_needs_counter: &DenseBitSet<BasicCoverageBlock>,
 ) -> CoverageCounters {
+    // Create the derived graphs that are necessary for subsequent steps.
     let balanced_graph = BalancedFlowGraph::for_graph(graph, |n| !graph[n].is_out_summable);
     let merged_graph = MergedNodeFlowGraph::for_balanced_graph(&balanced_graph);
 
+    // Use those graphs to determine which nodes get physical counters, and how
+    // to compute the execution counts of other nodes from those counters.
     let nodes = make_node_counter_priority_list(graph, balanced_graph);
     let node_counters = merged_graph.make_node_counters(&nodes);
 
+    // Convert the counters into a form suitable for embedding into MIR.
     transcribe_counters(&node_counters, bcb_needs_counter)
 }
 
+/// Arranges the nodes in `balanced_graph` into a list, such that earlier nodes
+/// take priority in being given a counter expression instead of a physical counter.
 fn make_node_counter_priority_list(
     graph: &CoverageGraph,
     balanced_graph: BalancedFlowGraph<&CoverageGraph>,
@@ -67,6 +73,7 @@ fn make_node_counter_priority_list(
     nodes
 }
 
+// Converts node counters into a form suitable for embedding into MIR.
 fn transcribe_counters(
     old: &NodeCounters<BasicCoverageBlock>,
     bcb_needs_counter: &DenseBitSet<BasicCoverageBlock>,
@@ -74,6 +81,9 @@ fn transcribe_counters(
     let mut new = CoverageCounters::with_num_bcbs(bcb_needs_counter.domain_size());
 
     for bcb in bcb_needs_counter.iter() {
+        // Our counter-creation algorithm doesn't guarantee that a counter
+        // expression starts or ends with a positive term, so partition the
+        // counters into "positive" and "negative" lists for easier handling.
         let (mut pos, mut neg): (Vec<_>, Vec<_>) =
             old.counter_expr(bcb).iter().partition_map(|&CounterTerm { node, op }| match op {
                 Op::Add => Either::Left(node),
@@ -89,6 +99,10 @@ fn transcribe_counters(
             neg = vec![];
         }
 
+        // These intermediate sorts are not strictly necessary, but were helpful
+        // in reducing churn when switching to the current counter-creation scheme.
+        // They also help to slightly decrease the overall size of the expression
+        // table, due to more subexpressions being shared.
         pos.sort();
         neg.sort();
 
@@ -98,6 +112,7 @@ fn transcribe_counters(
         let mut pos = new_counters_for_sites(pos);
         let mut neg = new_counters_for_sites(neg);
 
+        // These sorts are also not strictly necessary; see above.
         pos.sort();
         neg.sort();
 
