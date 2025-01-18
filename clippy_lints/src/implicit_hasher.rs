@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use rustc_errors::{Applicability, Diag};
-use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty, walk_body, walk_expr};
+use rustc_hir::intravisit::{Visitor, VisitorExt, walk_body, walk_expr, walk_ty};
 use rustc_hir::{self as hir, AmbigArg, Body, Expr, ExprKind, GenericArg, Item, ItemKind, QPath, TyKind};
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
@@ -111,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
         match item.kind {
             ItemKind::Impl(impl_) => {
                 let mut vis = ImplicitHasherTypeVisitor::new(cx);
-                vis.visit_unambig_ty(impl_.self_ty);
+                vis.visit_ty_unambig(impl_.self_ty);
 
                 for target in &vis.found {
                     if !item.span.eq_ctxt(target.span()) {
@@ -158,7 +158,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
 
                 for ty in sig.decl.inputs {
                     let mut vis = ImplicitHasherTypeVisitor::new(cx);
-                    vis.visit_unambig_ty(ty);
+                    vis.visit_ty_unambig(ty);
 
                     for target in &vis.found {
                         if generics.span.from_expansion() {

@@ -10,7 +10,7 @@ use super::TYPE_COMPLEXITY;
 pub(super) fn check(cx: &LateContext<'_>, ty: &hir::Ty<'_>, type_complexity_threshold: u64) -> bool {
     let score = {
         let mut visitor = TypeComplexityVisitor { score: 0, nest: 1 };
-        visitor.visit_unambig_ty(ty);
+        visitor.visit_ty_unambig(ty);
         visitor.score
     };
 

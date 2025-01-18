@@ -109,7 +109,7 @@ fn given_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match cx.tcx.parent_hir_node(expr.hir_id) {
         Node::LetStmt(LetStmt { ty: Some(ty), .. }) => {
             let mut v = InferVisitor::default();
-            v.visit_unambig_ty(ty);
+            v.visit_ty_unambig(ty);
             !v.0
         },
         Node::Expr(Expr {

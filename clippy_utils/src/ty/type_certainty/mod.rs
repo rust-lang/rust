@@ -140,7 +140,7 @@ fn type_certainty(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Certainty {
     }
 
     let mut visitor = CertaintyVisitor::new(cx);
-    visitor.visit_unambig_ty(ty);
+    visitor.visit_ty_unambig(ty);
     visitor.certainty
 }
 

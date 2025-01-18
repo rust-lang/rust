@@ -179,7 +179,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             for (impl_hir_ty, trait_sem_ty) in impl_inputs_outputs.zip(trait_method_sig.inputs_and_output) {
                 if trait_sem_ty.walk().any(|inner| inner == self_ty.into()) {
                     let mut visitor = SkipTyCollector::default();
-                    visitor.visit_unambig_ty(impl_hir_ty);
+                    visitor.visit_ty_unambig(impl_hir_ty);
                     types_to_skip.extend(visitor.types_to_skip);
                 }
             }
