@@ -101,6 +101,16 @@ impl PartialConstStability {
     }
 }
 
+#[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
+#[derive(HashStable_Generic)]
+pub enum AllowedThroughUnstableModules {
+    /// This does not get a deprecation warning. We still generally would prefer people to use the
+    /// fully stable path, and a warning will likely be emitted in the future.
+    WithoutDeprecation,
+    /// Emit the given deprecation warning.
+    WithDeprecation(Symbol),
+}
+
 /// The available stability levels.
 #[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
 #[derive(HashStable_Generic)]
@@ -137,9 +147,8 @@ pub enum StabilityLevel {
     Stable {
         /// Rust release which stabilized this feature.
         since: StableSince,
-        /// Is this item allowed to be referred to on stable, despite being contained in unstable
-        /// modules?
-        allowed_through_unstable_modules: bool,
+        /// This is `Some` if this item allowed to be referred to on stable via unstable modules.
+        allowed_through_unstable_modules: Option<AllowedThroughUnstableModules>,
     },
 }
 

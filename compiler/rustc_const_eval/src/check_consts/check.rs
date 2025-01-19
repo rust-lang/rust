@@ -35,6 +35,12 @@ use crate::errors;
 type QualifResults<'mir, 'tcx, Q> =
     rustc_mir_dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'mir, 'mir, 'tcx, Q>>;
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum ConstConditionsHold {
+    Yes,
+    No,
+}
+
 #[derive(Default)]
 pub(crate) struct Qualifs<'mir, 'tcx> {
     has_mut_interior: Option<QualifResults<'mir, 'tcx, HasMutInterior>>,
@@ -376,15 +382,15 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         callee: DefId,
         callee_args: ty::GenericArgsRef<'tcx>,
         call_span: Span,
-    ) -> bool {
+    ) -> Option<ConstConditionsHold> {
         let tcx = self.tcx;
         if !tcx.is_conditionally_const(callee) {
-            return false;
+            return None;
         }
 
         let const_conditions = tcx.const_conditions(callee).instantiate(tcx, callee_args);
         if const_conditions.is_empty() {
-            return false;
+            return None;
         }
 
         let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(self.body.typing_env(tcx));
@@ -413,12 +419,13 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         }));
 
         let errors = ocx.select_all_or_error();
-        if !errors.is_empty() {
+        if errors.is_empty() {
+            Some(ConstConditionsHold::Yes)
+        } else {
             tcx.dcx()
                 .span_delayed_bug(call_span, "this should have reported a ~const error in HIR");
+            Some(ConstConditionsHold::No)
         }
-
-        true
     }
 
     pub fn check_drop_terminator(
@@ -706,7 +713,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     trace!("attempting to call a trait method");
                     let trait_is_const = tcx.is_const_trait(trait_did);
 
-                    if trait_is_const {
+                    // Only consider a trait to be const if the const conditions hold.
+                    // Otherwise, it's really misleading to call something "conditionally"
+                    // const when it's very obviously not conditionally const.
+                    if trait_is_const && has_const_conditions == Some(ConstConditionsHold::Yes) {
                         // Trait calls are always conditionally-const.
                         self.check_op(ops::ConditionallyConstCall {
                             callee,
@@ -730,7 +740,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
 
                 // Even if we know the callee, ensure we can use conditionally-const calls.
-                if has_const_conditions {
+                if has_const_conditions.is_some() {
                     self.check_op(ops::ConditionallyConstCall {
                         callee,
                         args: fn_args,

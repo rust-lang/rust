@@ -743,7 +743,6 @@ impl f64 {
     /// is finite `x == x.next_up().next_down()` also holds.
     ///
     /// ```rust
-    /// #![feature(float_next_up_down)]
     /// // f64::EPSILON is the difference between 1.0 and the next number up.
     /// assert_eq!(1.0f64.next_up(), 1.0 + f64::EPSILON);
     /// // But not for most numbers.
@@ -751,12 +750,16 @@ impl f64 {
     /// assert_eq!(9007199254740992f64.next_up(), 9007199254740994.0);
     /// ```
     ///
+    /// This operation corresponds to IEEE-754 `nextUp`.
+    ///
     /// [`NEG_INFINITY`]: Self::NEG_INFINITY
     /// [`INFINITY`]: Self::INFINITY
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
     #[inline]
-    #[unstable(feature = "float_next_up_down", issue = "91399")]
+    #[doc(alias = "nextUp")]
+    #[stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
     pub const fn next_up(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -791,7 +794,6 @@ impl f64 {
     /// is finite `x == x.next_down().next_up()` also holds.
     ///
     /// ```rust
-    /// #![feature(float_next_up_down)]
     /// let x = 1.0f64;
     /// // Clamp value into range [0, 1).
     /// let clamped = x.clamp(0.0, 1.0f64.next_down());
@@ -799,12 +801,16 @@ impl f64 {
     /// assert_eq!(clamped.next_up(), 1.0);
     /// ```
     ///
+    /// This operation corresponds to IEEE-754 `nextDown`.
+    ///
     /// [`NEG_INFINITY`]: Self::NEG_INFINITY
     /// [`INFINITY`]: Self::INFINITY
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
     #[inline]
-    #[unstable(feature = "float_next_up_down", issue = "91399")]
+    #[doc(alias = "nextDown")]
+    #[stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
     pub const fn next_down(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here

@@ -1,8 +1,8 @@
 error: incorrect function inside `extern` block
   --> $DIR/issue-91370-foreign-fn-block-impl.rs:5:8
    |
-LL |   extern {
-   |   ------ `extern` blocks define existing foreign functions and functions inside of them cannot have a body
+LL |   extern "C" {
+   |   ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
 LL |
 LL |       fn f() {
    |  ________^___-

@@ -35,7 +35,7 @@ error: expected `;`, found keyword `extern`
    |
 LL |     let foo = 3
    |                ^ help: add `;` here
-LL |     extern fn foo() {}
+LL |     extern "C" fn foo() {}
    |     ------ unexpected token
 
 error: expected `;`, found keyword `impl`

@@ -186,8 +186,7 @@ fn generate_item_with_correct_attrs(
         // For glob re-exports the item may or may not exist to be re-exported (potentially the cfgs
         // on the path up until the glob can be removed, and only cfgs on the globbed item itself
         // matter), for non-inlined re-exports see #85043.
-        let is_inline = inline::load_attrs(cx, import_id.to_def_id())
-            .lists(sym::doc)
+        let is_inline = hir_attr_lists(inline::load_attrs(cx, import_id.to_def_id()), sym::doc)
             .get_word_attr(sym::inline)
             .is_some()
             || (is_glob_import(cx.tcx, import_id)
@@ -199,8 +198,14 @@ fn generate_item_with_correct_attrs(
         // We only keep the item's attributes.
         target_attrs.iter().map(|attr| (Cow::Borrowed(attr), None)).collect()
     };
-
-    let cfg = attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
+    let cfg = extract_cfg_from_attrs(
+        attrs.iter().map(move |(attr, _)| match attr {
+            Cow::Borrowed(attr) => *attr,
+            Cow::Owned(attr) => attr,
+        }),
+        cx.tcx,
+        &cx.cache.hidden_cfg,
+    );
     let attrs = Attributes::from_hir_iter(attrs.iter().map(|(attr, did)| (&**attr, *did)), false);
 
     let name = renamed.or(Some(name));
@@ -979,13 +984,14 @@ fn clean_proc_macro<'tcx>(
 ) -> ItemKind {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
     if kind == MacroKind::Derive
-        && let Some(derive_name) = attrs.lists(sym::proc_macro_derive).find_map(|mi| mi.ident())
+        && let Some(derive_name) =
+            hir_attr_lists(attrs, sym::proc_macro_derive).find_map(|mi| mi.ident())
     {
         *name = derive_name.name;
     }
 
     let mut helpers = Vec::new();
-    for mi in attrs.lists(sym::proc_macro_derive) {
+    for mi in hir_attr_lists(attrs, sym::proc_macro_derive) {
         if !mi.has_name(sym::attributes) {
             continue;
         }
@@ -2985,7 +2991,7 @@ fn clean_use_statement_inner<'tcx>(
 
     let visibility = cx.tcx.visibility(import.owner_id);
     let attrs = cx.tcx.hir().attrs(import.hir_id());
-    let inline_attr = attrs.lists(sym::doc).get_word_attr(sym::inline);
+    let inline_attr = hir_attr_lists(attrs, sym::doc).get_word_attr(sym::inline);
     let pub_underscore = visibility.is_public() && name == kw::Underscore;
     let current_mod = cx.tcx.parent_module_from_def_id(import.owner_id.def_id);
     let import_def_id = import.owner_id.def_id;
@@ -3094,7 +3100,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
         let kind = match item.kind {
             hir::ForeignItemKind::Fn(sig, names, generics) => ForeignFunctionItem(
                 clean_function(cx, &sig, generics, FunctionArgs::Names(names)),
-                sig.header.safety,
+                sig.header.safety(),
             ),
             hir::ForeignItemKind::Static(ty, mutability, safety) => ForeignStaticItem(
                 Static { type_: Box::new(clean_ty(ty, cx)), mutability, expr: None },

@@ -1,6 +1,6 @@
 // Regression test for issue #91370.
 
-extern {
+extern "C" {
     //~^ `extern` blocks define existing foreign functions
     fn f() {
         //~^ incorrect function inside `extern` block

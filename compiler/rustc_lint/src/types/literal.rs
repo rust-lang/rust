@@ -204,17 +204,32 @@ fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<&'static 
     match t.kind() {
         ty::Uint(ty::UintTy::Usize) | ty::Int(ty::IntTy::Isize) => None,
         ty::Uint(_) => Some(Integer::fit_unsigned(val).uint_ty_str()),
-        ty::Int(_) if negative => Some(Integer::fit_signed(-(val as i128)).int_ty_str()),
-        ty::Int(int) => {
-            let signed = Integer::fit_signed(val as i128);
-            let unsigned = Integer::fit_unsigned(val);
-            Some(if Some(unsigned.size().bits()) == int.bit_width() {
-                unsigned.uint_ty_str()
+        ty::Int(_) => {
+            let signed = literal_to_i128(val, negative).map(Integer::fit_signed);
+            if negative {
+                signed.map(Integer::int_ty_str)
             } else {
-                signed.int_ty_str()
-            })
+                let unsigned = Integer::fit_unsigned(val);
+                Some(if let Some(signed) = signed {
+                    if unsigned.size() < signed.size() {
+                        unsigned.uint_ty_str()
+                    } else {
+                        signed.int_ty_str()
+                    }
+                } else {
+                    unsigned.uint_ty_str()
+                })
+            }
         }
         _ => None,
+    }
+}
+
+fn literal_to_i128(val: u128, negative: bool) -> Option<i128> {
+    if negative {
+        (val <= i128::MAX as u128 + 1).then(|| val.wrapping_neg() as i128)
+    } else {
+        val.try_into().ok()
     }
 }
 

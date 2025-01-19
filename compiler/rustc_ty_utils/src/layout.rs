@@ -105,21 +105,27 @@ fn map_error<'tcx>(
             // See `tests/ui/layout/trivial-bounds-sized.rs` for an example.
             assert!(field.layout.is_unsized(), "invalid layout error {err:#?}");
             if !field.ty.is_sized(cx.tcx(), cx.typing_env) {
-                cx.tcx().dcx().delayed_bug(format!(
+                let guar = cx.tcx().dcx().delayed_bug(format!(
                     "encountered unexpected unsized field in layout of {ty:?}: {field:#?}"
                 ));
+                LayoutError::ReferencesError(guar)
+            } else {
+                LayoutError::Unknown(ty)
             }
-            LayoutError::Unknown(ty)
         }
         LayoutCalculatorError::EmptyUnion => {
             // This is always a compile error.
-            cx.tcx().dcx().delayed_bug(format!("computed layout of empty union: {ty:?}"));
-            LayoutError::Unknown(ty)
+            let guar =
+                cx.tcx().dcx().delayed_bug(format!("computed layout of empty union: {ty:?}"));
+            LayoutError::ReferencesError(guar)
         }
         LayoutCalculatorError::ReprConflict => {
             // packed enums are the only known trigger of this, but others might arise
-            cx.tcx().dcx().delayed_bug(format!("computed impossible repr (packed enum?): {ty:?}"));
-            LayoutError::Unknown(ty)
+            let guar = cx
+                .tcx()
+                .dcx()
+                .delayed_bug(format!("computed impossible repr (packed enum?): {ty:?}"));
+            LayoutError::ReferencesError(guar)
         }
     };
     error(cx, err)
@@ -432,8 +438,10 @@ fn layout_of_uncached<'tcx>(
         ty::Adt(def, args) if def.repr().simd() => {
             if !def.is_struct() {
                 // Should have yielded E0517 by now.
-                tcx.dcx().delayed_bug("#[repr(simd)] was applied to an ADT that is not a struct");
-                return Err(error(cx, LayoutError::Unknown(ty)));
+                let guar = tcx
+                    .dcx()
+                    .delayed_bug("#[repr(simd)] was applied to an ADT that is not a struct");
+                return Err(error(cx, LayoutError::ReferencesError(guar)));
             }
 
             let fields = &def.non_enum_variant().fields;
@@ -459,10 +467,10 @@ fn layout_of_uncached<'tcx>(
             // (should be caught by typeck)
             for fi in fields {
                 if fi.ty(tcx, args) != f0_ty {
-                    tcx.dcx().delayed_bug(
+                    let guar = tcx.dcx().delayed_bug(
                         "#[repr(simd)] was applied to an ADT with heterogeneous field type",
                     );
-                    return Err(error(cx, LayoutError::Unknown(ty)));
+                    return Err(error(cx, LayoutError::ReferencesError(guar)));
                 }
             }
 
@@ -567,11 +575,11 @@ fn layout_of_uncached<'tcx>(
 
             if def.is_union() {
                 if def.repr().pack.is_some() && def.repr().align.is_some() {
-                    tcx.dcx().span_delayed_bug(
+                    let guar = tcx.dcx().span_delayed_bug(
                         tcx.def_span(def.did()),
                         "union cannot be packed and aligned",
                     );
-                    return Err(error(cx, LayoutError::Unknown(ty)));
+                    return Err(error(cx, LayoutError::ReferencesError(guar)));
                 }
 
                 return Ok(tcx.mk_layout(

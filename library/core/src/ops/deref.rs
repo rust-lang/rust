@@ -134,6 +134,7 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Deref"]
 #[const_trait]
+#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
 pub trait Deref {
     /// The resulting type after dereferencing.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -263,6 +264,7 @@ impl<T: ?Sized> const Deref for &mut T {
 #[doc(alias = "*")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[const_trait]
+#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
 pub trait DerefMut: ~const Deref {
     /// Mutably dereferences the value.
     #[stable(feature = "rust1", since = "1.0.0")]

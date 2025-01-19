@@ -469,7 +469,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
 
                 let unsafety_flag = match myitem.kind {
                     clean::FunctionItem(_) | clean::ForeignFunctionItem(..)
-                        if myitem.fn_header(tcx).unwrap().safety.is_unsafe() =>
+                        if myitem.fn_header(tcx).unwrap().is_unsafe() =>
                     {
                         "<sup title=\"unsafe function\">⚠</sup>"
                     }

@@ -31,6 +31,7 @@ use crate::constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstra
 use crate::dataflow::BorrowIndex;
 use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
 use crate::member_constraints::{MemberConstraintSet, NllMemberConstraintIndex};
+use crate::polonius::LiveLoans;
 use crate::polonius::legacy::PoloniusOutput;
 use crate::region_infer::reverse_sccs::ReverseSccGraph;
 use crate::region_infer::values::{LivenessValues, RegionElement, RegionValues, ToElementIndex};
@@ -2171,28 +2172,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.constraint_graph.region_graph(&self.constraints, self.universal_regions().fr_static)
     }
 
-    /// Returns whether the given region is considered live at all points: whether it is a
-    /// placeholder or a free region.
-    pub(crate) fn is_region_live_at_all_points(&self, region: RegionVid) -> bool {
-        // FIXME: there must be a cleaner way to find this information. At least, when
-        // higher-ranked subtyping is abstracted away from the borrowck main path, we'll only
-        // need to check whether this is a universal region.
-        let origin = self.region_definition(region).origin;
-        let live_at_all_points = matches!(
-            origin,
-            NllRegionVariableOrigin::Placeholder(_) | NllRegionVariableOrigin::FreeRegion
-        );
-        live_at_all_points
-    }
-
-    /// Returns whether the `loan_idx` is live at the given `location`: whether its issuing
-    /// region is contained within the type of a variable that is live at this point.
-    /// Note: for now, the sets of live loans is only available when using `-Zpolonius=next`.
-    pub(crate) fn is_loan_live_at(&self, loan_idx: BorrowIndex, location: Location) -> bool {
-        let point = self.liveness_constraints.point_from_location(location);
-        self.liveness_constraints.is_loan_live_at(loan_idx, point)
-    }
-
     /// Returns the representative `RegionVid` for a given SCC.
     /// See `RegionTracker` for how a region variable ID is chosen.
     ///
@@ -2207,6 +2186,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     pub(crate) fn liveness_constraints(&self) -> &LivenessValues {
         &self.liveness_constraints
+    }
+
+    /// When using `-Zpolonius=next`, records the given live loans for the loan scopes and active
+    /// loans dataflow computations.
+    pub(crate) fn record_live_loans(&mut self, live_loans: LiveLoans) {
+        self.liveness_constraints.record_live_loans(live_loans);
+    }
+
+    /// Returns whether the `loan_idx` is live at the given `location`: whether its issuing
+    /// region is contained within the type of a variable that is live at this point.
+    /// Note: for now, the sets of live loans is only available when using `-Zpolonius=next`.
+    pub(crate) fn is_loan_live_at(&self, loan_idx: BorrowIndex, location: Location) -> bool {
+        let point = self.liveness_constraints.point_from_location(location);
+        self.liveness_constraints.is_loan_live_at(loan_idx, point)
     }
 }
 

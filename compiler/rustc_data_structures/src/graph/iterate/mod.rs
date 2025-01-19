@@ -125,6 +125,16 @@ where
     pub fn visited(&self, node: G::Node) -> bool {
         self.visited.contains(node)
     }
+
+    /// Returns a reference to the set of nodes that have been visited, with
+    /// the same caveats as [`Self::visited`].
+    ///
+    /// When incorporating the visited nodes into another bitset, using bulk
+    /// operations like `union` or `intersect` can be more efficient than
+    /// processing each node individually.
+    pub fn visited_set(&self) -> &DenseBitSet<G::Node> {
+        &self.visited
+    }
 }
 
 impl<G> std::fmt::Debug for DepthFirstSearch<G>

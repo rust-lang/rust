@@ -256,7 +256,7 @@ async function runSearch(query, expected, doSearch, loadedFile, queryName) {
                                 JSON.stringify(results[key][index]) + "'");
             } else if (ignore_order === false && entry_pos < prev_pos) {
                 error_text.push(queryName + "==> '" + JSON.stringify(elem) + "' was supposed " +
-                                "to be before '" + JSON.stringify(results[key][entry_pos]) + "'");
+                                "to be before '" + JSON.stringify(results[key][prev_pos]) + "'");
             } else {
                 prev_pos = entry_pos;
             }

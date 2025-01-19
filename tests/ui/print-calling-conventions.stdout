@@ -12,6 +12,7 @@ cdecl-unwind
 efiapi
 fastcall
 fastcall-unwind
+gpu-kernel
 msp430-interrupt
 ptx-kernel
 riscv-interrupt-m

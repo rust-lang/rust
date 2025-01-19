@@ -8,6 +8,7 @@ use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::solve::CanonicalResponse;
 use rustc_type_ir::visit::TypeVisitableExt as _;
 use rustc_type_ir::{self as ty, Interner, TraitPredicate, TypingMode, Upcast as _, elaborate};
+use smallvec::SmallVec;
 use tracing::{instrument, trace};
 
 use crate::delegate::SolverDelegate;
@@ -225,7 +226,7 @@ where
         }
 
         ecx.probe_and_evaluate_goal_for_constituent_tys(
-            CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial),
             goal,
             structural_traits::instantiate_constituent_tys_for_sized_trait,
         )
@@ -741,12 +742,14 @@ where
                 a_data.principal(),
             ));
         } else if let Some(a_principal) = a_data.principal() {
-            for new_a_principal in
-                elaborate::supertraits(self.cx(), a_principal.with_self_ty(cx, a_ty)).skip(1)
+            for (idx, new_a_principal) in
+                elaborate::supertraits(self.cx(), a_principal.with_self_ty(cx, a_ty))
+                    .enumerate()
+                    .skip(1)
             {
                 responses.extend(self.consider_builtin_upcast_to_principal(
                     goal,
-                    CandidateSource::BuiltinImpl(BuiltinImplSource::TraitUpcasting),
+                    CandidateSource::BuiltinImpl(BuiltinImplSource::TraitUpcasting(idx)),
                     a_data,
                     a_region,
                     b_data,
@@ -1192,7 +1195,30 @@ where
             };
         }
 
-        // FIXME: prefer trivial builtin impls
+        // We prefer trivial builtin candidates, i.e. builtin impls without any
+        // nested requirements, over all others. This is a fix for #53123 and
+        // prevents where-bounds from accidentally extending the lifetime of a
+        // variable.
+        if candidates
+            .iter()
+            .any(|c| matches!(c.source, CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial)))
+        {
+            let trivial_builtin_impls: SmallVec<[_; 1]> = candidates
+                .iter()
+                .filter(|c| {
+                    matches!(c.source, CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial))
+                })
+                .map(|c| c.result)
+                .collect();
+            // There should only ever be a single trivial builtin candidate
+            // as they would otherwise overlap.
+            assert_eq!(trivial_builtin_impls.len(), 1);
+            return if let Some(response) = self.try_merge_responses(&trivial_builtin_impls) {
+                Ok((response, Some(TraitGoalProvenVia::Misc)))
+            } else {
+                Ok((self.bail_with_ambiguity(&trivial_builtin_impls), None))
+            };
+        }
 
         // If there are non-global where-bounds, prefer where-bounds
         // (including global ones) over everything else.

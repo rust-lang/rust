@@ -942,6 +942,8 @@ rustdoc-toolbar {
 pre, .rustdoc.src .example-wrap, .example-wrap .src-line-numbers {
 	background-color: var(--code-block-background-color);
 	border-radius: var(--code-block-border-radius);
+	/* code blocks within links (such as in most intra-doc links) should be underlined */
+	text-decoration: inherit;
 }
 
 #main-content {
