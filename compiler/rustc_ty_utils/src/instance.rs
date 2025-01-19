@@ -248,7 +248,7 @@ fn resolve_associated_item<'tcx>(
                 })
             }
         }
-        traits::ImplSource::Builtin(BuiltinImplSource::Misc, _) => {
+        traits::ImplSource::Builtin(BuiltinImplSource::Misc | BuiltinImplSource::Trivial, _) => {
             if tcx.is_lang_item(trait_ref.def_id, LangItem::Clone) {
                 // FIXME(eddyb) use lang items for methods instead of names.
                 let name = tcx.item_name(trait_item_id);

@@ -5,6 +5,7 @@ go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // This is needed so that the text color is computed.
 show-text: true
 
+// First we check the links of the different items.
 define-function: (
     "check-colors",
     [theme, mod, macro, struct, enum, trait, fn, type, union, keyword,
@@ -35,6 +36,11 @@ define-function: (
                 "font-weight": "500",
             },
             ALL,
+        )
+        move-cursor-to: ".desc a[href='long_code_block_link/index.html']"
+        assert-css: (
+            ".desc a[href='long_code_block_link/index.html']",
+            {"text-decoration": "underline solid " + |mod|},
         )
     },
 )

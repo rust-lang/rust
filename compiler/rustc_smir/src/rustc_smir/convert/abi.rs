@@ -113,6 +113,7 @@ impl<'tcx> Stable<'tcx> for callconv::Conv {
             Conv::X86VectorCall => CallConvention::X86VectorCall,
             Conv::X86_64SysV => CallConvention::X86_64SysV,
             Conv::X86_64Win64 => CallConvention::X86_64Win64,
+            Conv::GpuKernel => CallConvention::GpuKernel,
             Conv::AvrInterrupt => CallConvention::AvrInterrupt,
             Conv::AvrNonBlockingInterrupt => CallConvention::AvrNonBlockingInterrupt,
             Conv::RiscvInterrupt { .. } => CallConvention::RiscvInterrupt,

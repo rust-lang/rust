@@ -1,7 +1,6 @@
 use std::cmp::Ordering;
-use std::collections::VecDeque;
 use std::ops::{Index, IndexMut};
-use std::{iter, mem, slice};
+use std::{mem, slice};
 
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
@@ -209,54 +208,6 @@ impl CoverageGraph {
         b: BasicCoverageBlock,
     ) -> Ordering {
         self.dominator_order_rank[a].cmp(&self.dominator_order_rank[b])
-    }
-
-    /// Returns the source of this node's sole in-edge, if it has exactly one.
-    /// That edge can be assumed to have the same execution count as the node
-    /// itself (in the absence of panics).
-    pub(crate) fn sole_predecessor(
-        &self,
-        to_bcb: BasicCoverageBlock,
-    ) -> Option<BasicCoverageBlock> {
-        // Unlike `simple_successor`, there is no need for extra checks here.
-        if let &[from_bcb] = self.predecessors[to_bcb].as_slice() { Some(from_bcb) } else { None }
-    }
-
-    /// Returns the target of this node's sole out-edge, if it has exactly
-    /// one, but only if that edge can be assumed to have the same execution
-    /// count as the node itself (in the absence of panics).
-    pub(crate) fn simple_successor(
-        &self,
-        from_bcb: BasicCoverageBlock,
-    ) -> Option<BasicCoverageBlock> {
-        // If a node's count is the sum of its out-edges, and it has exactly
-        // one out-edge, then that edge has the same count as the node.
-        if self.bcbs[from_bcb].is_out_summable
-            && let &[to_bcb] = self.successors[from_bcb].as_slice()
-        {
-            Some(to_bcb)
-        } else {
-            None
-        }
-    }
-
-    /// For each loop that contains the given node, yields the "loop header"
-    /// node representing that loop, from innermost to outermost. If the given
-    /// node is itself a loop header, it is yielded first.
-    pub(crate) fn loop_headers_containing(
-        &self,
-        bcb: BasicCoverageBlock,
-    ) -> impl Iterator<Item = BasicCoverageBlock> + Captures<'_> {
-        let self_if_loop_header = self.is_loop_header.contains(bcb).then_some(bcb).into_iter();
-
-        let mut curr = Some(bcb);
-        let strictly_enclosing = iter::from_fn(move || {
-            let enclosing = self.enclosing_loop_header[curr?];
-            curr = enclosing;
-            enclosing
-        });
-
-        self_if_loop_header.chain(strictly_enclosing)
     }
 
     /// For the given node, yields the subset of its predecessor nodes that
@@ -487,128 +438,5 @@ impl<'a, 'tcx> graph::DirectedGraph for CoverageRelevantSubgraph<'a, 'tcx> {
 impl<'a, 'tcx> graph::Successors for CoverageRelevantSubgraph<'a, 'tcx> {
     fn successors(&self, bb: Self::Node) -> impl Iterator<Item = Self::Node> {
         self.coverage_successors(bb).into_iter()
-    }
-}
-
-/// State of a node in the coverage graph during ready-first traversal.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum ReadyState {
-    /// This node has not yet been added to the fallback queue or ready queue.
-    Unqueued,
-    /// This node is currently in the fallback queue.
-    InFallbackQueue,
-    /// This node's predecessors have all been visited, so it is in the ready queue.
-    /// (It might also have a stale entry in the fallback queue.)
-    InReadyQueue,
-    /// This node has been visited.
-    /// (It might also have a stale entry in the fallback queue.)
-    Visited,
-}
-
-/// Iterator that visits nodes in the coverage graph, in an order that always
-/// prefers "ready" nodes whose predecessors have already been visited.
-pub(crate) struct ReadyFirstTraversal<'a> {
-    graph: &'a CoverageGraph,
-
-    /// For each node, the number of its predecessor nodes that haven't been visited yet.
-    n_unvisited_preds: IndexVec<BasicCoverageBlock, u32>,
-    /// Indicates whether a node has been visited, or which queue it is in.
-    state: IndexVec<BasicCoverageBlock, ReadyState>,
-
-    /// Holds unvisited nodes whose predecessors have all been visited.
-    ready_queue: VecDeque<BasicCoverageBlock>,
-    /// Holds unvisited nodes with some unvisited predecessors.
-    /// Also contains stale entries for nodes that were upgraded to ready.
-    fallback_queue: VecDeque<BasicCoverageBlock>,
-}
-
-impl<'a> ReadyFirstTraversal<'a> {
-    pub(crate) fn new(graph: &'a CoverageGraph) -> Self {
-        let num_nodes = graph.num_nodes();
-
-        let n_unvisited_preds =
-            IndexVec::from_fn_n(|node| graph.predecessors[node].len() as u32, num_nodes);
-        let mut state = IndexVec::from_elem_n(ReadyState::Unqueued, num_nodes);
-
-        // We know from coverage graph construction that the start node is the
-        // only node with no predecessors.
-        debug_assert!(
-            n_unvisited_preds.iter_enumerated().all(|(node, &n)| (node == START_BCB) == (n == 0))
-        );
-        let ready_queue = VecDeque::from(vec![START_BCB]);
-        state[START_BCB] = ReadyState::InReadyQueue;
-
-        Self { graph, state, n_unvisited_preds, ready_queue, fallback_queue: VecDeque::new() }
-    }
-
-    /// Returns the next node from the ready queue, or else the next unvisited
-    /// node from the fallback queue.
-    fn next_inner(&mut self) -> Option<BasicCoverageBlock> {
-        // Always prefer to yield a ready node if possible.
-        if let Some(node) = self.ready_queue.pop_front() {
-            assert_eq!(self.state[node], ReadyState::InReadyQueue);
-            return Some(node);
-        }
-
-        while let Some(node) = self.fallback_queue.pop_front() {
-            match self.state[node] {
-                // This entry in the fallback queue is not stale, so yield it.
-                ReadyState::InFallbackQueue => return Some(node),
-                // This node was added to the fallback queue, but later became
-                // ready and was visited via the ready queue. Ignore it here.
-                ReadyState::Visited => {}
-                // Unqueued nodes can't be in the fallback queue, by definition.
-                // We know that the ready queue is empty at this point.
-                ReadyState::Unqueued | ReadyState::InReadyQueue => unreachable!(
-                    "unexpected state for {node:?} in the fallback queue: {:?}",
-                    self.state[node]
-                ),
-            }
-        }
-
-        None
-    }
-
-    fn mark_visited_and_enqueue_successors(&mut self, node: BasicCoverageBlock) {
-        assert!(self.state[node] < ReadyState::Visited);
-        self.state[node] = ReadyState::Visited;
-
-        // For each of this node's successors, decrease the successor's
-        // "unvisited predecessors" count, and enqueue it if appropriate.
-        for &succ in &self.graph.successors[node] {
-            let is_unqueued = match self.state[succ] {
-                ReadyState::Unqueued => true,
-                ReadyState::InFallbackQueue => false,
-                ReadyState::InReadyQueue => {
-                    unreachable!("nodes in the ready queue have no unvisited predecessors")
-                }
-                // The successor was already visited via one of its other predecessors.
-                ReadyState::Visited => continue,
-            };
-
-            self.n_unvisited_preds[succ] -= 1;
-            if self.n_unvisited_preds[succ] == 0 {
-                // This node's predecessors have all been visited, so add it to
-                // the ready queue. If it's already in the fallback queue, that
-                // fallback entry will be ignored later.
-                self.state[succ] = ReadyState::InReadyQueue;
-                self.ready_queue.push_back(succ);
-            } else if is_unqueued {
-                // This node has unvisited predecessors, so add it to the
-                // fallback queue in case we run out of ready nodes later.
-                self.state[succ] = ReadyState::InFallbackQueue;
-                self.fallback_queue.push_back(succ);
-            }
-        }
-    }
-}
-
-impl<'a> Iterator for ReadyFirstTraversal<'a> {
-    type Item = BasicCoverageBlock;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let node = self.next_inner()?;
-        self.mark_visited_and_enqueue_successors(node);
-        Some(node)
     }
 }

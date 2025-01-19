@@ -2682,6 +2682,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     if let hir::ExprKind::Unary(hir::UnOp::Deref, inner) = expr.kind
                         && let Some(1) = self.deref_steps_for_suggestion(expected, checked_ty)
+                        && self.typeck_results.borrow().expr_ty(inner).is_ref()
                     {
                         // We have `*&T`, check if what was expected was `&T`.
                         // If so, we may want to suggest removing a `*`.

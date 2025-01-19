@@ -135,7 +135,7 @@ hir_analysis_dispatch_from_dyn_multi = implementing the `DispatchFromDyn` trait 
 
 hir_analysis_dispatch_from_dyn_repr = structs implementing `DispatchFromDyn` may not have `#[repr(packed)]` or `#[repr(C)]`
 
-hir_analysis_dispatch_from_dyn_zst = the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment, and nothing else
+hir_analysis_dispatch_from_dyn_zst = the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment that don't mention type/const generics, and nothing else
     .note = extra field `{$name}` of type `{$ty}` is not allowed
 
 hir_analysis_drop_impl_negative = negative `Drop` impls are not supported

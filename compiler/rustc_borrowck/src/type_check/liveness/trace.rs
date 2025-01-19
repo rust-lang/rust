@@ -16,7 +16,7 @@ use rustc_trait_selection::traits::query::type_op::{DropckOutlives, TypeOp, Type
 use tracing::debug;
 
 use crate::polonius;
-use crate::region_infer::values::{self, LiveLoans};
+use crate::region_infer::values;
 use crate::type_check::liveness::local_use_map::LocalUseMap;
 use crate::type_check::{NormalizeLocation, TypeChecker};
 
@@ -44,37 +44,6 @@ pub(super) fn trace<'a, 'tcx>(
     boring_locals: Vec<Local>,
 ) {
     let local_use_map = &LocalUseMap::build(&relevant_live_locals, location_map, body);
-
-    // When using `-Zpolonius=next`, compute the set of loans that can reach a given region.
-    if typeck.tcx().sess.opts.unstable_opts.polonius.is_next_enabled() {
-        let borrow_set = &typeck.borrow_set;
-        let mut live_loans = LiveLoans::new(borrow_set.len());
-        let outlives_constraints = &typeck.constraints.outlives_constraints;
-        let graph = outlives_constraints.graph(typeck.infcx.num_region_vars());
-        let region_graph =
-            graph.region_graph(outlives_constraints, typeck.universal_regions.fr_static);
-
-        // Traverse each issuing region's constraints, and record the loan as flowing into the
-        // outlived region.
-        for (loan, issuing_region_data) in borrow_set.iter_enumerated() {
-            for succ in rustc_data_structures::graph::depth_first_search(
-                &region_graph,
-                issuing_region_data.region,
-            ) {
-                // We don't need to mention that a loan flows into its issuing region.
-                if succ == issuing_region_data.region {
-                    continue;
-                }
-
-                live_loans.inflowing_loans.insert(succ, loan);
-            }
-        }
-
-        // Store the inflowing loans in the liveness constraints: they will be used to compute live
-        // loans when liveness data is recorded there.
-        typeck.constraints.liveness_constraints.loans = Some(live_loans);
-    };
-
     let cx = LivenessContext {
         typeck,
         body,

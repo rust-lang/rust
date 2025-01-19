@@ -10,3 +10,9 @@ pub async fn async_fn() {}
 pub fn closure() {
     let _ = || {};
 }
+
+//~ MONO_ITEM fn A::{constant#0}::{closure#0} @@
+trait A where
+    [(); (|| {}, 1).1]: Sized,
+{
+}

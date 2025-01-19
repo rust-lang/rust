@@ -6,7 +6,7 @@
 
 use std::fmt::Debug;
 
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -116,28 +116,39 @@ pub fn overlapping_impls(
         return None;
     }
 
-    let _overlap_with_bad_diagnostics = overlap(
-        tcx,
-        TrackAmbiguityCauses::No,
-        skip_leak_check,
-        impl1_def_id,
-        impl2_def_id,
-        overlap_mode,
-    )?;
+    if tcx.next_trait_solver_in_coherence() {
+        overlap(
+            tcx,
+            TrackAmbiguityCauses::Yes,
+            skip_leak_check,
+            impl1_def_id,
+            impl2_def_id,
+            overlap_mode,
+        )
+    } else {
+        let _overlap_with_bad_diagnostics = overlap(
+            tcx,
+            TrackAmbiguityCauses::No,
+            skip_leak_check,
+            impl1_def_id,
+            impl2_def_id,
+            overlap_mode,
+        )?;
 
-    // In the case where we detect an error, run the check again, but
-    // this time tracking intercrate ambiguity causes for better
-    // diagnostics. (These take time and can lead to false errors.)
-    let overlap = overlap(
-        tcx,
-        TrackAmbiguityCauses::Yes,
-        skip_leak_check,
-        impl1_def_id,
-        impl2_def_id,
-        overlap_mode,
-    )
-    .unwrap();
-    Some(overlap)
+        // In the case where we detect an error, run the check again, but
+        // this time tracking intercrate ambiguity causes for better
+        // diagnostics. (These take time and can lead to false errors.)
+        let overlap = overlap(
+            tcx,
+            TrackAmbiguityCauses::Yes,
+            skip_leak_check,
+            impl1_def_id,
+            impl2_def_id,
+            overlap_mode,
+        )
+        .unwrap();
+        Some(overlap)
+    }
 }
 
 fn fresh_impl_header<'tcx>(infcx: &InferCtxt<'tcx>, impl_def_id: DefId) -> ty::ImplHeader<'tcx> {
@@ -615,6 +626,7 @@ fn compute_intercrate_ambiguity_causes<'tcx>(
 }
 
 struct AmbiguityCausesVisitor<'a, 'tcx> {
+    cache: FxHashSet<Goal<'tcx, ty::Predicate<'tcx>>>,
     causes: &'a mut FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
 }
 
@@ -624,6 +636,10 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
     }
 
     fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) {
+        if !self.cache.insert(goal.goal()) {
+            return;
+        }
+
         let infcx = goal.infcx();
         for cand in goal.candidates() {
             cand.visit_nested_in_probe(self);
@@ -748,5 +764,10 @@ fn search_ambiguity_causes<'tcx>(
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
     causes: &mut FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
 ) {
-    infcx.probe(|_| infcx.visit_proof_tree(goal, &mut AmbiguityCausesVisitor { causes }));
+    infcx.probe(|_| {
+        infcx.visit_proof_tree(goal, &mut AmbiguityCausesVisitor {
+            cache: Default::default(),
+            causes,
+        })
+    });
 }

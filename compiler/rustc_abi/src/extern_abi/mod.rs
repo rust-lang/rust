@@ -45,6 +45,9 @@ pub enum ExternAbi {
     PtxKernel,
     Msp430Interrupt,
     X86Interrupt,
+    /// An entry-point function called by the GPU's host
+    // FIXME: should not be callable from Rust on GPU targets, is for host's use only
+    GpuKernel,
     EfiApi,
     AvrInterrupt,
     AvrNonBlockingInterrupt,
@@ -122,6 +125,7 @@ const AbiDatas: &[AbiData] = &[
     AbiData { abi: Abi::PtxKernel, name: "ptx-kernel" },
     AbiData { abi: Abi::Msp430Interrupt, name: "msp430-interrupt" },
     AbiData { abi: Abi::X86Interrupt, name: "x86-interrupt" },
+    AbiData { abi: Abi::GpuKernel, name: "gpu-kernel" },
     AbiData { abi: Abi::EfiApi, name: "efiapi" },
     AbiData { abi: Abi::AvrInterrupt, name: "avr-interrupt" },
     AbiData { abi: Abi::AvrNonBlockingInterrupt, name: "avr-non-blocking-interrupt" },
@@ -239,6 +243,10 @@ pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
             feature: sym::abi_x86_interrupt,
             explain: "x86-interrupt ABI is experimental and subject to change",
         }),
+        "gpu-kernel" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_gpu_kernel,
+            explain: "gpu-kernel ABI is experimental and subject to change",
+        }),
         "avr-interrupt" | "avr-non-blocking-interrupt" => Err(AbiDisabled::Unstable {
             feature: sym::abi_avr_interrupt,
             explain: "avr-interrupt and avr-non-blocking-interrupt ABIs are experimental and subject to change",
@@ -293,20 +301,21 @@ impl Abi {
             PtxKernel => 19,
             Msp430Interrupt => 20,
             X86Interrupt => 21,
-            EfiApi => 22,
-            AvrInterrupt => 23,
-            AvrNonBlockingInterrupt => 24,
-            CCmseNonSecureCall => 25,
-            CCmseNonSecureEntry => 26,
+            GpuKernel => 22,
+            EfiApi => 23,
+            AvrInterrupt => 24,
+            AvrNonBlockingInterrupt => 25,
+            CCmseNonSecureCall => 26,
+            CCmseNonSecureEntry => 27,
             // Cross-platform ABIs
-            System { unwind: false } => 27,
-            System { unwind: true } => 28,
-            RustIntrinsic => 29,
-            RustCall => 30,
-            Unadjusted => 31,
-            RustCold => 32,
-            RiscvInterruptM => 33,
-            RiscvInterruptS => 34,
+            System { unwind: false } => 28,
+            System { unwind: true } => 29,
+            RustIntrinsic => 30,
+            RustCall => 31,
+            Unadjusted => 32,
+            RustCold => 33,
+            RiscvInterruptM => 34,
+            RiscvInterruptS => 35,
         };
         debug_assert!(
             AbiDatas

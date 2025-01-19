@@ -316,7 +316,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
 
                 let skip_because_unstable = matches!(
                     item.stability.map(|stab| stab.level),
-                    Some(StabilityLevel::Stable { allowed_through_unstable_modules: true, .. })
+                    Some(StabilityLevel::Stable { allowed_through_unstable_modules: Some(_), .. })
                 );
 
                 if (!self.cache.stripped_mod && !skip_because_unstable) || self.is_json_output {

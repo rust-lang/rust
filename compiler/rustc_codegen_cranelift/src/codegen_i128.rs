@@ -76,20 +76,22 @@ pub(crate) fn maybe_codegen_mul_checked<'tcx>(
     }
 
     let is_signed = type_sign(lhs.layout().ty);
-
-    let out_ty = Ty::new_tup(fx.tcx, &[lhs.layout().ty, fx.tcx.types.bool]);
-    let out_place = CPlace::new_stack_slot(fx, fx.layout_of(out_ty));
+    let oflow_out_place = CPlace::new_stack_slot(fx, fx.layout_of(fx.tcx.types.i32));
     let param_types = vec![
-        AbiParam::special(fx.pointer_type, ArgumentPurpose::StructReturn),
         AbiParam::new(types::I128),
         AbiParam::new(types::I128),
+        AbiParam::special(fx.pointer_type, ArgumentPurpose::Normal),
     ];
-    let args = [out_place.to_ptr().get_addr(fx), lhs.load_scalar(fx), rhs.load_scalar(fx)];
-    fx.lib_call(
+    let args = [lhs.load_scalar(fx), rhs.load_scalar(fx), oflow_out_place.to_ptr().get_addr(fx)];
+    let ret = fx.lib_call(
         if is_signed { "__rust_i128_mulo" } else { "__rust_u128_mulo" },
         param_types,
-        vec![],
+        vec![AbiParam::new(types::I128)],
         &args,
     );
-    Some(out_place.to_cvalue(fx))
+    let mul = ret[0];
+    let oflow = oflow_out_place.to_cvalue(fx).load_scalar(fx);
+    let oflow = clif_intcast(fx, oflow, types::I8, false);
+    let layout = fx.layout_of(Ty::new_tup(fx.tcx, &[lhs.layout().ty, fx.tcx.types.bool]));
+    Some(CValue::by_val_pair(mul, oflow, layout))
 }
