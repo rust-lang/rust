@@ -3194,8 +3194,8 @@ impl<T> [T] {
     }
 
     /// Reorders the slice with a key extraction function such that the element at `index` is at a
-    /// sort-order position. All elements before `index` will have keys `<=` the key at `index`, and
-    /// all elements after will have keys `>=`.
+    /// sort-order position. All elements before `index` will have keys `<=` to the key at `index`, and
+    /// all elements after will have keys `>=` to it.
     ///
     /// This reordering is unstable (i.e. any element that compares equal to the nth element may end
     /// up at that position), in-place (i.e.  does not allocate), and runs in *O*(*n*) time. This
