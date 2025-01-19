@@ -2453,7 +2453,7 @@ impl Path {
     /// If the path is a normal file, this is the file name. If it's the path of a directory, this
     /// is the directory name.
     ///
-    /// Returns [`None`] if the path terminates in `..`.
+    /// Returns [`None`] if the path cannot be named (without accessing the filesystem)
     ///
     /// # Examples
     ///
