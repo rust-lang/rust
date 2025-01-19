@@ -992,6 +992,11 @@ fn link_natively(
 
     match prog {
         Ok(prog) => {
+            let is_msvc_link_exe = sess.target.is_like_msvc
+                && flavor == LinkerFlavor::Msvc(Lld::No)
+                // Match exactly "link.exe"
+                && linker_path.to_str() == Some("link.exe");
+
             if !prog.status.success() {
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
@@ -1008,16 +1013,9 @@ fn link_natively(
                 // is not a Microsoft LNK error then suggest a way to fix or
                 // install the Visual Studio build tools.
                 if let Some(code) = prog.status.code() {
-                    if sess.target.is_like_msvc
-                        && flavor == LinkerFlavor::Msvc(Lld::No)
-                        // Respect the command line override
-                        && sess.opts.cg.linker.is_none()
-                        // Match exactly "link.exe"
-                        && linker_path.to_str() == Some("link.exe")
-                        // All Microsoft `link.exe` linking error codes are
-                        // four digit numbers in the range 1000 to 9999 inclusive
-                        && (code < 1000 || code > 9999)
-                    {
+                    // All Microsoft `link.exe` linking ror codes are
+                    // four digit numbers in the range 1000 to 9999 inclusive
+                    if is_msvc_link_exe && (code < 1000 || code > 9999) {
                         let is_vs_installed = windows_registry::find_vs_version().is_ok();
                         let has_linker =
                             windows_registry::find_tool(&sess.target.arch, "link.exe").is_some();
@@ -1041,9 +1039,28 @@ fn link_natively(
             }
 
             let stderr = escape_string(&prog.stderr);
-            let stdout = escape_string(&prog.stdout);
+            let mut stdout = escape_string(&prog.stdout);
             info!("linker stderr:\n{}", &stderr);
             info!("linker stdout:\n{}", &stdout);
+
+            // Hide some progress messages from link.exe that we don't care about.
+            // See https://github.com/chromium/chromium/blob/bfa41e41145ffc85f041384280caf2949bb7bd72/build/toolchain/win/tool_wrapper.py#L144-L146
+            if is_msvc_link_exe {
+                if let Ok(str) = str::from_utf8(&prog.stdout) {
+                    let mut output = String::with_capacity(str.len());
+                    for line in stdout.lines() {
+                        if line.starts_with("   Creating library")
+                            || line.starts_with("Generating code")
+                            || line.starts_with("Finished generating code")
+                        {
+                            continue;
+                        }
+                        output += line;
+                        output += "\r\n"
+                    }
+                    stdout = escape_string(output.trim().as_bytes())
+                }
+            }
 
             let (level, src) = codegen_results.crate_info.lint_levels.linker_messages;
             let lint = |msg| {
@@ -1060,7 +1077,7 @@ fn link_natively(
                     .replace(": warning: ", ": ");
                 lint(format!("linker stderr: {stderr}"));
             }
-            if !prog.stdout.is_empty() {
+            if !stdout.is_empty() {
                 lint(format!("linker stdout: {}", stdout))
             }
         }
