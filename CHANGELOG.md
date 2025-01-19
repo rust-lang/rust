@@ -6067,6 +6067,7 @@ Released 2018-09-13
 [`single_element_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_element_loop
 [`single_match`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_match
 [`single_match_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_match_else
+[`single_option_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_option_map
 [`single_range_in_vec_init`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_range_in_vec_init
 [`size_of_in_element_count`]: https://rust-lang.github.io/rust-clippy/master/index.html#size_of_in_element_count
 [`size_of_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#size_of_ref

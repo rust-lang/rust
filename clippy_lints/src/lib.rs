@@ -339,6 +339,7 @@ mod significant_drop_tightening;
 mod single_call_fn;
 mod single_char_lifetime_names;
 mod single_component_path_imports;
+mod single_option_map;
 mod single_range_in_vec_init;
 mod size_of_in_element_count;
 mod size_of_ref;
@@ -978,5 +979,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::<unnecessary_semicolon::UnnecessarySemicolon>::default());
     store.register_late_pass(move |_| Box::new(non_std_lazy_statics::NonStdLazyStatic::new(conf)));
     store.register_late_pass(|_| Box::new(manual_option_as_slice::ManualOptionAsSlice::new(conf)));
+    store.register_late_pass(|_| Box::new(single_option_map::SingleOptionMap));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
