@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.83.0"]
     pub LITERAL_STRING_WITH_FORMATTING_ARGS,
-    suspicious,
+    nursery,
     "Checks if string literals have formatting arguments"
 }
 
