@@ -332,6 +332,7 @@ fn ip_properties() {
     check!("ff08::", global | multicast);
     check!("ff0e::", global | multicast);
     check!("2001:db8:85a3::8a2e:370:7334", doc);
+    check!("3fff:fff:ffff:ffff:ffff:ffff:ffff:ffff", doc);
     check!("2001:2::ac32:23ff:21", benchmarking);
     check!("102:304:506:708:90a:b0c:d0e:f10", global);
 }
@@ -787,6 +788,15 @@ fn ipv6_properties() {
     check!(
         "2001:db8:85a3::8a2e:370:7334",
         &[0x20, 1, 0xd, 0xb8, 0x85, 0xa3, 0, 0, 0, 0, 0x8a, 0x2e, 3, 0x70, 0x73, 0x34],
+        documentation
+    );
+
+    check!(
+        "3fff:fff:ffff:ffff:ffff:ffff:ffff:ffff",
+        &[
+            0x3f, 0xff, 0x0f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff
+        ],
         documentation
     );
 
