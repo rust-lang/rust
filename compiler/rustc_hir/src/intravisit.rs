@@ -510,11 +510,17 @@ pub trait Visitor<'v>: Sized {
 pub trait VisitorExt<'v>: Visitor<'v> {
     /// Extension trait method to visit types in unambiguous positions, this is not
     /// directly on the [`Visitor`] trait as this method should never be overridden.
+    ///
+    /// Named `visit_ty_unambig` instead of `visit_unambig_ty` to aid in discovery
+    /// by IDes when `v.visit_ty` is written.
     fn visit_ty_unambig(&mut self, t: &'v Ty<'v>) -> Self::Result {
         walk_unambig_ty(self, t)
     }
     /// Extension trait method to visit consts in unambiguous positions, this is not
     /// directly on the [`Visitor`] trait as this method should never be overridden.
+    ///
+    /// Named `visit_const_arg_unambig` instead of `visit_unambig_const_arg` to aid in
+    /// discovery by IDes when `v.visit_const_arg` is written.
     fn visit_const_arg_unambig(&mut self, c: &'v ConstArg<'v>) -> Self::Result {
         walk_const_arg(self, c)
     }
