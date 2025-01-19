@@ -822,7 +822,7 @@ class StdVecSyntheticProvider:
 
 
 class StdSliceSyntheticProvider:
-    __slots__ = ["valobj", "length", "ptr", "element_type", "element_size"]
+    __slots__ = ["valobj", "length", "data_ptr", "element_type", "element_size"]
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
