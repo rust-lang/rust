@@ -2574,9 +2574,11 @@ impl<T, A: Allocator> Vec<T, A> {
         self.len += count;
     }
 
-    /// Removes the specified range from the vector in bulk, returning all
-    /// removed elements as an iterator. If the iterator is dropped before
-    /// being fully consumed, it drops the remaining removed elements.
+    /// Removes the subslice indicated by the given range from the vector,
+    /// returning a double-ended iterator over the removed subslice.
+    /// 
+    /// If the iterator is dropped before being fully consumed,
+    /// it drops the remaining removed elements.
     ///
     /// The returned iterator keeps a mutable borrow on the vector to optimize
     /// its implementation.
