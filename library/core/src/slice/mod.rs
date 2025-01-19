@@ -3070,7 +3070,8 @@ impl<T> [T] {
     }
 
     /// Reorders the slice such that the element at `index` is at a sort-order position. All
-    /// elements before `index` will be `<=` to this value, and all elements after will be `>=` to it.
+    /// elements before `index` will be `<=` to this value, and all elements after will be `>=` to
+    /// it.
     ///
     /// This reordering is unstable (i.e. any element that compares equal to the nth element may end
     /// up at that position), in-place (i.e.  does not allocate), and runs in *O*(*n*) time. This
@@ -3079,7 +3080,9 @@ impl<T> [T] {
     /// Returns a triple that partitions the reordered slice:
     ///
     /// * The unsorted subslice before `index`, whose elements all satisfy `x <= self[index]`.
+    ///
     /// * The element at `index`.
+    ///
     /// * The unsorted subslice after `index`, whose elements all satisfy `x >= self[index]`.
     ///
     /// # Current implementation
@@ -3129,8 +3132,8 @@ impl<T> [T] {
     }
 
     /// Reorders the slice with a comparator function such that the element at `index` is at a
-    /// sort-order position. All elements before `index` will be `<=` to this value, and all elements
-    /// after will be `>=` to it, according to the comparator function.
+    /// sort-order position. All elements before `index` will be `<=` to this value, and all
+    /// elements after will be `>=` to it, according to the comparator function.
     ///
     /// This reordering is unstable (i.e. any element that compares equal to the nth element may end
     /// up at that position), in-place (i.e.  does not allocate), and runs in *O*(*n*) time. This
@@ -3138,9 +3141,13 @@ impl<T> [T] {
     ///
     /// Returns a triple partitioning the reordered slice:
     ///
-    /// * The unsorted subslice before `index`, whose elements all satisfy `compare(x, self[index]).is_le()`.
+    /// * The unsorted subslice before `index`, whose elements all satisfy
+    ///   `compare(x, self[index]).is_le()`.
+    ///
     /// * The element at `index`.
-    /// * The unsorted subslice after `index`, whose elements all satisfy `compare(x, self[index]).is_ge()`.
+    ///
+    /// * The unsorted subslice after `index`, whose elements all satisfy
+    ///   `compare(x, self[index]).is_ge()`.
     ///
     /// # Current implementation
     ///
@@ -3194,8 +3201,8 @@ impl<T> [T] {
     }
 
     /// Reorders the slice with a key extraction function such that the element at `index` is at a
-    /// sort-order position. All elements before `index` will have keys `<=` to the key at `index`, and
-    /// all elements after will have keys `>=` to it.
+    /// sort-order position. All elements before `index` will have keys `<=` to the key at `index`,
+    /// and all elements after will have keys `>=` to it.
     ///
     /// This reordering is unstable (i.e. any element that compares equal to the nth element may end
     /// up at that position), in-place (i.e.  does not allocate), and runs in *O*(*n*) time. This
@@ -3204,7 +3211,9 @@ impl<T> [T] {
     /// Returns a triple partitioning the reordered slice:
     ///
     /// * The unsorted subslice before `index`, whose elements all satisfy `f(x) <= f(self[index])`.
+    ///
     /// * The element at `index`.
+    ///
     /// * The unsorted subslice after `index`, whose elements all satisfy `f(x) >= f(self[index])`.
     ///
     /// # Current implementation
@@ -3227,7 +3236,8 @@ impl<T> [T] {
     /// ```
     /// let mut v = [-5i32, 4, 1, -3, 2];
     ///
-    /// // Find the items `<=` to the absolute median, the absolute median itself, and the items `>=` to it.
+    /// // Find the items `<=` to the absolute median, the absolute median itself, and the items
+    /// // `>=` to it.
     /// let (lesser, median, greater) = v.select_nth_unstable_by_key(2, |a| a.abs());
     ///
     /// assert!(lesser == [1, 2] || lesser == [2, 1]);
