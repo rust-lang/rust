@@ -135,7 +135,7 @@ impl CoverageGraph {
                 bb_to_bcb[bb] = Some(bcb);
             }
 
-            let is_out_summable = basic_blocks.last().map_or(false, |&bb| {
+            let is_out_summable = basic_blocks.last().is_some_and(|&bb| {
                 bcb_filtered_successors(mir_body[bb].terminator()).is_out_summable()
             });
             let bcb_data = BasicCoverageBlockData { basic_blocks, is_out_summable };
