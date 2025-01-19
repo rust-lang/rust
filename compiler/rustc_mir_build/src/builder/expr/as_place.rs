@@ -11,7 +11,7 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, AdtDef, CanonicalUserTypeAnnotation, Ty, Variance};
 use rustc_middle::{bug, span_bug};
-use rustc_span::{DesugaringKind, Span};
+use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 
 use crate::builder::ForGuard::{OutsideGuard, RefWithinGuard};
@@ -643,8 +643,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         source_info: SourceInfo,
     ) -> Operand<'tcx> {
         let place_ty = place.ty(&self.local_decls, self.tcx).ty;
-        let usize_ty = self.tcx.types.usize;
-
         match place_ty.kind() {
             ty::Array(_elem_ty, len_const) => {
                 // We know how long an array is, so just use that as a constant
@@ -668,27 +666,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // the MIR we're building here needs to pass NLL later.
                     Operand::Copy(Place::from(place.local))
                 } else {
-                    let len_span = self.tcx.with_stable_hashing_context(|hcx| {
-                        let span = source_info.span;
-                        span.mark_with_reason(
-                            None,
-                            DesugaringKind::IndexBoundsCheckReborrow,
-                            span.edition(),
-                            hcx,
-                        )
-                    });
                     let ptr_ty = Ty::new_imm_ptr(self.tcx, place_ty);
                     let slice_ptr = self.temp(ptr_ty, span);
                     self.cfg.push_assign(
                         block,
-                        SourceInfo { span: len_span, ..source_info },
+                        source_info,
                         slice_ptr,
-                        Rvalue::RawPtr(Mutability::Not, place),
+                        Rvalue::RawPtr(RawPtrKind::FakeForPtrMetadata, place),
                     );
                     Operand::Move(slice_ptr)
                 };
 
-                let len = self.temp(usize_ty, span);
+                let len = self.temp(self.tcx.types.usize, span);
                 self.cfg.push_assign(
                     block,
                     source_info,

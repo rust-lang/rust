@@ -125,7 +125,7 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
                     source_info,
                     kind: StatementKind::Assign(Box::new((
                         dst,
-                        Rvalue::RawPtr(Mutability::Mut, *lhs),
+                        Rvalue::RawPtr(RawPtrKind::Mut, *lhs),
                     ))),
                 };
 
@@ -146,7 +146,7 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
                     source_info,
                     kind: StatementKind::Assign(Box::new((
                         src,
-                        Rvalue::RawPtr(Mutability::Not, *rhs),
+                        Rvalue::RawPtr(RawPtrKind::Const, *rhs),
                     ))),
                 };
 

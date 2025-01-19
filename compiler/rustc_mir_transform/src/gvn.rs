@@ -192,7 +192,7 @@ enum AggregateTy<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 enum AddressKind {
     Ref(BorrowKind),
-    Address(Mutability),
+    Address(RawPtrKind),
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -504,7 +504,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                         mplace.layout.ty,
                         bk.to_mutbl_lossy(),
                     ),
-                    AddressKind::Address(mutbl) => Ty::new_ptr(self.tcx, mplace.layout.ty, mutbl),
+                    AddressKind::Address(mutbl) => {
+                        Ty::new_ptr(self.tcx, mplace.layout.ty, mutbl.to_mutbl_lossy())
+                    }
                 };
                 let layout = self.ecx.layout_of(ty).ok()?;
                 ImmTy::from_immediate(pointer, layout).into()

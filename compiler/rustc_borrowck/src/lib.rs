@@ -1284,15 +1284,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 );
             }
 
-            &Rvalue::RawPtr(mutability, place) => {
-                let access_kind = match mutability {
-                    Mutability::Mut => (
+            &Rvalue::RawPtr(kind, place) => {
+                let access_kind = match kind {
+                    RawPtrKind::Mut => (
                         Deep,
                         Write(WriteKind::MutableBorrow(BorrowKind::Mut {
                             kind: MutBorrowKind::Default,
                         })),
                     ),
-                    Mutability::Not => (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
+                    RawPtrKind::Const => (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
+                    RawPtrKind::FakeForPtrMetadata => {
+                        (Shallow(Some(ArtificialField::ArrayLength)), Read(ReadKind::Copy))
+                    }
                 };
 
                 self.access_place(

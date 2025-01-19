@@ -3,11 +3,7 @@ use std::ops::ControlFlow;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::{
-    self, BasicBlock, Body, BorrowKind, FakeBorrowKind, InlineAsmOperand, Location, Mutability,
-    NonDivergingIntrinsic, Operand, Place, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind,
-};
+use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 
@@ -60,7 +56,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
             StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => {
                 self.consume_operand(location, op);
             }
-            StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(mir::CopyNonOverlapping {
+            StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
                 src,
                 dst,
                 count,
@@ -273,15 +269,18 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                 self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
             }
 
-            &Rvalue::RawPtr(mutability, place) => {
-                let access_kind = match mutability {
-                    Mutability::Mut => (
+            &Rvalue::RawPtr(kind, place) => {
+                let access_kind = match kind {
+                    RawPtrKind::Mut => (
                         Deep,
                         Write(WriteKind::MutableBorrow(BorrowKind::Mut {
-                            kind: mir::MutBorrowKind::Default,
+                            kind: MutBorrowKind::Default,
                         })),
                     ),
-                    Mutability::Not => (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
+                    RawPtrKind::Const => (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
+                    RawPtrKind::FakeForPtrMetadata => {
+                        (Shallow(Some(ArtificialField::ArrayLength)), Read(ReadKind::Copy))
+                    }
                 };
 
                 self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
