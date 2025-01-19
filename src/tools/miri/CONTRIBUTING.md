@@ -290,7 +290,7 @@ We use the [`josh` proxy](https://github.com/josh-project/josh) to transmit chan
 rustc and Miri repositories. You can install it as follows:
 
 ```sh
-RUSTFLAGS="--cap-lints=warn" cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r23.12.04
+cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r24.10.04
 ```
 
 Josh will automatically be started and stopped by `./miri`.

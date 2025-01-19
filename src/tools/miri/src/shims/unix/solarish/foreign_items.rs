@@ -3,6 +3,8 @@ use rustc_span::Symbol;
 use rustc_target::callconv::{Conv, FnAbi};
 
 use crate::shims::unix::foreign_items::EvalContextExt as _;
+use crate::shims::unix::linux_like::epoll::EvalContextExt as _;
+use crate::shims::unix::linux_like::eventfd::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -21,6 +23,32 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         match link_name.as_str() {
+            // epoll, eventfd (NOT available on Solaris!)
+            "epoll_create1" => {
+                this.assert_target_os("illumos", "epoll_create1");
+                let [flag] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let result = this.epoll_create1(flag)?;
+                this.write_scalar(result, dest)?;
+            }
+            "epoll_ctl" => {
+                this.assert_target_os("illumos", "epoll_ctl");
+                let [epfd, op, fd, event] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let result = this.epoll_ctl(epfd, op, fd, event)?;
+                this.write_scalar(result, dest)?;
+            }
+            "epoll_wait" => {
+                this.assert_target_os("illumos", "epoll_wait");
+                let [epfd, events, maxevents, timeout] =
+                    this.check_shim(abi, Conv::C, link_name, args)?;
+                this.epoll_wait(epfd, events, maxevents, timeout, dest)?;
+            }
+            "eventfd" => {
+                this.assert_target_os("illumos", "eventfd");
+                let [val, flag] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let result = this.eventfd(val, flag)?;
+                this.write_scalar(result, dest)?;
+            }
+
             // Threading
             "pthread_setname_np" => {
                 let [thread, name] = this.check_shim(abi, Conv::C, link_name, args)?;
@@ -75,6 +103,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "readdir" => {
                 let [dirp] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let result = this.linux_solarish_readdir64("dirent", dirp)?;
+                this.write_scalar(result, dest)?;
+            }
+
+            // Sockets and pipes
+            "__xnet_socketpair" => {
+                let [domain, type_, protocol, sv] =
+                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let result = this.socketpair(domain, type_, protocol, sv)?;
                 this.write_scalar(result, dest)?;
             }
 

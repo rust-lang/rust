@@ -423,7 +423,7 @@ impl Command {
                 .map(|path| path.into_os_string().into_string().unwrap())
                 .collect()
         } else {
-            benches.into_iter().map(Into::into).collect()
+            benches.into_iter().collect()
         };
         let target_flag = if let Some(target) = target {
             let mut flag = OsString::from("--target=");
@@ -563,6 +563,10 @@ impl Command {
         // Forward information to test harness.
         if bless {
             e.sh.set_var("RUSTC_BLESS", "Gesundheit");
+        }
+        if e.sh.var("MIRI_TEST_TARGET").is_ok() {
+            // Avoid trouble due to an incorrectly set env var.
+            bail!("MIRI_TEST_TARGET must not be set when invoking `./miri test`");
         }
         if let Some(target) = target {
             // Tell the harness which target to test.
