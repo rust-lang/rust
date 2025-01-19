@@ -10,7 +10,7 @@ use rustc_hir::{AttrArgs, AttrKind, Attribute};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::bug;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
-use rustc_middle::ty::{self, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, GenericParamDefKind, TyCtxt};
 use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::{Span, Symbol, kw, sym};
@@ -42,18 +42,18 @@ static ALLOWED_FORMAT_SYMBOLS: &[Symbol] = &[
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn impl_similar_to(
         &self,
-        trait_ref: ty::PolyTraitRef<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) -> Option<(DefId, GenericArgsRef<'tcx>)> {
         let tcx = self.tcx;
         let param_env = obligation.param_env;
-        self.enter_forall(trait_ref, |trait_ref| {
-            let trait_self_ty = trait_ref.self_ty();
+        self.enter_forall(trait_pred, |trait_pred| {
+            let trait_self_ty = trait_pred.self_ty();
 
             let mut self_match_impls = vec![];
             let mut fuzzy_match_impls = vec![];
 
-            self.tcx.for_each_relevant_impl(trait_ref.def_id, trait_self_ty, |def_id| {
+            self.tcx.for_each_relevant_impl(trait_pred.def_id(), trait_self_ty, |def_id| {
                 let impl_args = self.fresh_args_for_item(obligation.cause.span, def_id);
                 let impl_trait_ref =
                     tcx.impl_trait_ref(def_id).unwrap().instantiate(tcx, impl_args);
@@ -64,7 +64,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     self_match_impls.push((def_id, impl_args));
 
                     if iter::zip(
-                        trait_ref.args.types().skip(1),
+                        trait_pred.trait_ref.args.types().skip(1),
                         impl_trait_ref.args.types().skip(1),
                     )
                     .all(|(u, v)| self.fuzzy_match_tys(u, v, false).is_some())
@@ -117,7 +117,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         let (def_id, args) = self
-            .impl_similar_to(trait_pred.to_poly_trait_ref(), obligation)
+            .impl_similar_to(trait_pred, obligation)
             .unwrap_or_else(|| (trait_pred.def_id(), trait_pred.skip_binder().trait_ref.args));
         let trait_pred = trait_pred.skip_binder();
 

@@ -172,14 +172,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let bound_predicate = predicate.kind();
         let mut err = match bound_predicate.skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
-                let trait_ref = bound_predicate.rebind(data.trait_ref);
-                debug!(?trait_ref);
+                let trait_pred = bound_predicate.rebind(data);
+                debug!(?trait_pred);
 
                 if let Err(e) = predicate.error_reported() {
                     return e;
                 }
 
-                if let Err(guar) = self.tcx.ensure().coherent_trait(trait_ref.def_id()) {
+                if let Err(guar) = self.tcx.ensure().coherent_trait(trait_pred.def_id()) {
                     // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
                     // other `Foo` impls are incoherent.
                     return guar;
@@ -200,13 +200,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // avoid inundating the user with unnecessary errors, but we now
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
-                if self.tcx.is_lang_item(trait_ref.def_id(), LangItem::Sized) {
+                if self.tcx.is_lang_item(trait_pred.def_id(), LangItem::Sized) {
                     match self.tainted_by_errors() {
                         None => {
                             let err = self.emit_inference_failure_err(
                                 obligation.cause.body_id,
                                 span,
-                                trait_ref.self_ty().skip_binder().into(),
+                                trait_pred.self_ty().skip_binder().into(),
                                 TypeAnnotationNeeded::E0282,
                                 false,
                             );
@@ -251,10 +251,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                 let mut ambiguities = compute_applicable_impls_for_diagnostics(
                     self.infcx,
-                    &obligation.with(self.tcx, trait_ref),
+                    &obligation.with(self.tcx, trait_pred),
                 );
-                let has_non_region_infer =
-                    trait_ref.skip_binder().args.types().any(|t| !t.is_ty_or_numeric_infer());
+                let has_non_region_infer = trait_pred
+                    .skip_binder()
+                    .trait_ref
+                    .args
+                    .types()
+                    .any(|t| !t.is_ty_or_numeric_infer());
                 // It doesn't make sense to talk about applicable impls if there are more than a
                 // handful of them. If there are a lot of them, but only a few of them have no type
                 // params, we only show those, as they are more likely to be useful/intended.
@@ -294,7 +298,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     if impl_candidates.len() < 40 {
                         self.report_similar_impl_candidates(
                             impl_candidates.as_slice(),
-                            trait_ref,
+                            trait_pred,
                             obligation.cause.body_id,
                             &mut err,
                             false,
@@ -306,7 +310,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if let ObligationCauseCode::WhereClause(def_id, _)
                 | ObligationCauseCode::WhereClauseInExpr(def_id, ..) = *obligation.cause.code()
                 {
-                    self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
+                    self.suggest_fully_qualified_path(&mut err, def_id, span, trait_pred.def_id());
                 }
 
                 if let Some(ty::GenericArgKind::Type(_)) = arg.map(|arg| arg.unpack())
