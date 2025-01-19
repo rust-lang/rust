@@ -2473,7 +2473,7 @@ in src-script.js and main.js
 	}
 
 	/* Display an alternating layout on tablets and phones */
-	.item-row, .search-results > a, .search-results > a > div {
+	.search-results > a, .search-results > a > div {
 		display: block;
 	}
 

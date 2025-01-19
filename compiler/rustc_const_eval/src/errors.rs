@@ -123,12 +123,19 @@ pub(crate) struct UnstableConstFn {
 
 #[derive(Diagnostic)]
 #[diag(const_eval_unstable_intrinsic)]
-#[help]
 pub(crate) struct UnstableIntrinsic {
     #[primary_span]
     pub span: Span,
     pub name: Symbol,
     pub feature: Symbol,
+    #[suggestion(
+        const_eval_unstable_intrinsic_suggestion,
+        code = "#![feature({feature})]\n",
+        applicability = "machine-applicable"
+    )]
+    pub suggestion: Option<Span>,
+    #[help(const_eval_unstable_intrinsic_suggestion)]
+    pub help: bool,
 }
 
 #[derive(Diagnostic)]
