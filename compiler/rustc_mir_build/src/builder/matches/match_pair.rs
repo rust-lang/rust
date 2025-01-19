@@ -40,19 +40,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         suffix: &'pat [Box<Pat<'tcx>>],
     ) {
         let tcx = self.tcx;
-        let (min_length, exact_size) = if let Some(place_resolved) = place.try_to_place(self) {
-            match place_resolved.ty(&self.local_decls, tcx).ty.kind() {
-                ty::Array(_, length) => (
-                    length
-                        .try_to_target_usize(tcx)
-                        .expect("expected len of array pat to be definite"),
-                    true,
-                ),
-                _ => ((prefix.len() + suffix.len()).try_into().unwrap(), false),
-            }
+
+        // Minimum length of the sequence being matched, needed by projections.
+        // If `exact_size` is true, that "minimum" is actually an exact length.
+        //
+        // The caller of `prefix_slice_suffix` is responsible for enforcing
+        // that length if necessary, e.g. by checking the scrutinee's length.
+        let min_length: u64;
+        let exact_size: bool;
+
+        if let Some(place_resolved) = place.try_to_place(self)
+            && let ty::Array(_, length) = place_resolved.ty(&self.local_decls, tcx).ty.kind()
+        {
+            min_length =
+                length.try_to_target_usize(tcx).expect("expected len of array pat to be definite");
+            exact_size = true;
         } else {
-            ((prefix.len() + suffix.len()).try_into().unwrap(), false)
-        };
+            min_length = u64::try_from(prefix.len() + suffix.len()).unwrap();
+            exact_size = false;
+        }
 
         match_pairs.extend(prefix.iter().enumerate().map(|(idx, subpattern)| {
             let elem =
