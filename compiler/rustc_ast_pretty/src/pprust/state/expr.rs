@@ -357,6 +357,10 @@ impl<'a> State<'a> {
                 self.word_nbsp("raw");
                 self.print_mutability(mutability, true);
             }
+            ast::BorrowKind::Pin => {
+                self.word_nbsp("pin");
+                self.print_mutability(mutability, true);
+            }
         }
         self.print_expr_cond_paren(
             expr,

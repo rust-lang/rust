@@ -479,6 +479,31 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 ExprKind::RawBorrow { mutability, arg: self.mirror_expr(arg) }
             }
 
+            // Make `&pin mut $expr` and `&pin const $expr` into
+            // `Pin { __pointer: &mut $expr }` and `Pin { __pointer: &$expr }`.
+            hir::ExprKind::AddrOf(hir::BorrowKind::Pin, mutbl, arg) => match expr_ty.kind() {
+                &ty::Adt(adt_def, args)
+                    if tcx.is_lang_item(adt_def.did(), rustc_hir::LangItem::Pin) =>
+                {
+                    let arg = self.mirror_expr(arg);
+                    let expr = self.thir.exprs.push(Expr {
+                        temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+                        ty: args.type_at(0),
+                        span: expr.span,
+                        kind: ExprKind::Borrow { borrow_kind: mutbl.to_borrow_kind(), arg },
+                    });
+                    ExprKind::Adt(Box::new(AdtExpr {
+                        adt_def,
+                        variant_index: FIRST_VARIANT,
+                        args,
+                        fields: Box::new([FieldExpr { name: FieldIdx::from(0u32), expr }]),
+                        user_ty: None,
+                        base: AdtExprBase::None,
+                    }))
+                }
+                _ => span_bug!(expr.span, "unexpected type for pinned borrow: {:?}", expr_ty),
+            },
+
             hir::ExprKind::Block(blk, _) => ExprKind::Block { block: self.mirror_block(blk) },
 
             hir::ExprKind::Assign(lhs, rhs, _) => {
