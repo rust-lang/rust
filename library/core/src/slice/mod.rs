@@ -3076,7 +3076,7 @@ impl<T> [T] {
     /// up at that position), in-place (i.e.  does not allocate), and runs in *O*(*n*) time. This
     /// function is also known as "kth element" in other libraries.
     ///
-    /// Returns a triple partitioning the reordered slice:
+    /// Returns a triple that partitions the reordered slice:
     ///
     /// * The unsorted subslice before `index`, whose elements all satisfy `x <= self[index]`.
     /// * The element at `index`.
