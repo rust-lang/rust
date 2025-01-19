@@ -16,7 +16,7 @@
                       }
                       scope 8 (inlined NonZero::<usize>::get) {
                       }
-                      scope 9 (inlined without_provenance::<u8>) {
+                      scope 9 (inlined std::ptr::without_provenance::<u8>) {
                           scope 10 (inlined without_provenance_mut::<u8>) {
                           }
                       }
