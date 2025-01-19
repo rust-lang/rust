@@ -2480,7 +2480,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     // To support cases like `|| { v.call(|this| v.get()) }`
                     // FIXME: actually support such cases (need to figure out how to move from the
                     // capture place to original local).
-                    && self.res.as_ref().map_or(true, |(prev_res, _)| prev_res.span.contains(ex.span))
+                    && self.res.as_ref().is_none_or(|(prev_res, _)| prev_res.span.contains(ex.span))
                 {
                     self.res = Some((ex, closure));
                 }

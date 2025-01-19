@@ -612,7 +612,7 @@ impl MaybeExported<'_> {
                 return vis.kind.is_pub();
             }
         };
-        def_id.map_or(true, |def_id| r.effective_visibilities.is_exported(def_id))
+        def_id.is_none_or(|def_id| r.effective_visibilities.is_exported(def_id))
     }
 }
 
@@ -5104,7 +5104,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 fn def_id_matches_path(tcx: TyCtxt<'_>, mut def_id: DefId, expected_path: &[&str]) -> bool {
     let mut path = expected_path.iter().rev();
     while let (Some(parent), Some(next_step)) = (tcx.opt_parent(def_id), path.next()) {
-        if !tcx.opt_item_name(def_id).map_or(false, |n| n.as_str() == *next_step) {
+        if !tcx.opt_item_name(def_id).is_some_and(|n| n.as_str() == *next_step) {
             return false;
         }
         def_id = parent;

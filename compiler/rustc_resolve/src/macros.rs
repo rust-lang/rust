@@ -1055,7 +1055,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         span: Span,
     ) {
         if let Some(Res::NonMacroAttr(kind)) = res {
-            if kind != NonMacroAttrKind::Tool && binding.map_or(true, |b| b.is_import()) {
+            if kind != NonMacroAttrKind::Tool && binding.is_none_or(|b| b.is_import()) {
                 let binding_span = binding.map(|binding| binding.span);
                 self.dcx().emit_err(errors::CannotUseThroughAnImport {
                     span,

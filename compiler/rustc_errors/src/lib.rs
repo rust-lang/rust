@@ -1717,7 +1717,7 @@ impl DiagCtxtInner {
         let bugs: Vec<_> =
             std::mem::take(&mut self.delayed_bugs).into_iter().map(|(b, _)| b).collect();
 
-        let backtrace = std::env::var_os("RUST_BACKTRACE").map_or(true, |x| &x != "0");
+        let backtrace = std::env::var_os("RUST_BACKTRACE").is_none_or(|x| &x != "0");
         let decorate = backtrace || self.ice_file.is_none();
         let mut out = self
             .ice_file

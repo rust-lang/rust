@@ -289,7 +289,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         if let ImportKind::Glob { ref max_vis, .. } = import.kind {
             if vis == import_vis
-                || max_vis.get().map_or(true, |max_vis| vis.is_at_least(max_vis, self.tcx))
+                || max_vis.get().is_none_or(|max_vis| vis.is_at_least(max_vis, self.tcx))
             {
                 max_vis.set(Some(vis.expect_local()))
             }

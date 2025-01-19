@@ -675,7 +675,7 @@ impl OutputTypes {
 
     /// Returns `true` if user specified a name and not just produced type
     pub fn contains_explicit_name(&self, key: &OutputType) -> bool {
-        self.0.get(key).map_or(false, |f| f.is_some())
+        self.0.get(key).is_some_and(|f| f.is_some())
     }
 
     pub fn iter(&self) -> BTreeMapIter<'_, OutputType, Option<OutFileName>> {

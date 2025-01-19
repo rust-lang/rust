@@ -322,7 +322,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let duplicate = new_binding.res().opt_def_id() == old_binding.res().opt_def_id();
         let has_dummy_span = new_binding.span.is_dummy() || old_binding.span.is_dummy();
         let from_item =
-            self.extern_prelude.get(&ident).map_or(true, |entry| entry.introduced_by_item);
+            self.extern_prelude.get(&ident).is_none_or(|entry| entry.introduced_by_item);
         // Only suggest removing an import if both bindings are to the same def, if both spans
         // aren't dummy spans. Further, if both bindings are imports, then the ident must have
         // been introduced by an item.
@@ -537,7 +537,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) {
         module.for_each_child(self, |_this, ident, _ns, binding| {
             let res = binding.res();
-            if filter_fn(res) && ctxt.map_or(true, |ctxt| ctxt == ident.span.ctxt()) {
+            if filter_fn(res) && ctxt.is_none_or(|ctxt| ctxt == ident.span.ctxt()) {
                 names.push(TypoSuggestion::typo_from_ident(ident, res));
             }
         });
@@ -1229,7 +1229,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     _ => res.opt_def_id(),
                 };
                 let child_doc_visible = doc_visible
-                    && (did.map_or(true, |did| did.is_local() || !this.tcx.is_doc_hidden(did)));
+                    && did.is_none_or(|did| did.is_local() || !this.tcx.is_doc_hidden(did));
 
                 // collect results based on the filter function
                 // avoid suggesting anything from the same module in which we are resolving

@@ -417,7 +417,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // Any descendants of `std` should be private. These crates are usually not marked
         // private in metadata, so we ignore that field.
         if extern_private.is_none()
-            && dep_root.map_or(false, |d| STDLIB_STABLE_CRATES.contains(&d.name))
+            && dep_root.is_some_and(|d| STDLIB_STABLE_CRATES.contains(&d.name))
         {
             return true;
         }
