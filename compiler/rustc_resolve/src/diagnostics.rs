@@ -30,7 +30,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, Ident, Span, Symbol, SyntaxContext, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::errors::{
     self, AddedMacroUse, ChangeImportBinding, ChangeImportBindingSuggestion, ConsiderAddingADerive,
@@ -2235,14 +2235,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     /// Adds suggestions for a path that cannot be resolved.
+    #[instrument(level = "debug", skip(self, parent_scope))]
     pub(crate) fn make_path_suggestion(
         &mut self,
         span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
-        debug!("make_path_suggestion: span={:?} path={:?}", span, path);
-
         match (path.get(0), path.get(1)) {
             // `{{root}}::ident::...` on both editions.
             // On 2015 `{{root}}` is usually added implicitly.
@@ -2271,6 +2270,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// LL | use foo::Bar;
     ///    |     ^^^ did you mean `self::foo`?
     /// ```
+    #[instrument(level = "debug", skip(self, parent_scope))]
     fn make_missing_self_suggestion(
         &mut self,
         mut path: Vec<Segment>,
@@ -2279,7 +2279,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Replace first ident with `self` and check if that is valid.
         path[0].ident.name = kw::SelfLower;
         let result = self.maybe_resolve_path(&path, None, parent_scope, None);
-        debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
+        debug!(?path, ?result);
         if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
 
@@ -2290,6 +2290,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// LL | use foo::Bar;
     ///    |     ^^^ did you mean `crate::foo`?
     /// ```
+    #[instrument(level = "debug", skip(self, parent_scope))]
     fn make_missing_crate_suggestion(
         &mut self,
         mut path: Vec<Segment>,
@@ -2298,7 +2299,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Crate;
         let result = self.maybe_resolve_path(&path, None, parent_scope, None);
-        debug!("make_missing_crate_suggestion:  path={:?} result={:?}", path, result);
+        debug!(?path, ?result);
         if let PathResult::Module(..) = result {
             Some((
                 path,
@@ -2321,6 +2322,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// LL | use foo::Bar;
     ///    |     ^^^ did you mean `super::foo`?
     /// ```
+    #[instrument(level = "debug", skip(self, parent_scope))]
     fn make_missing_super_suggestion(
         &mut self,
         mut path: Vec<Segment>,
@@ -2329,7 +2331,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Super;
         let result = self.maybe_resolve_path(&path, None, parent_scope, None);
-        debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
+        debug!(?path, ?result);
         if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
 
@@ -2343,6 +2345,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ///
     /// Used when importing a submodule of an external crate but missing that crate's
     /// name as the first part of path.
+    #[instrument(level = "debug", skip(self, parent_scope))]
     fn make_external_crate_suggestion(
         &mut self,
         mut path: Vec<Segment>,
@@ -2363,10 +2366,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // Replace first ident with a crate name and check if that is valid.
             path[0].ident.name = name;
             let result = self.maybe_resolve_path(&path, None, parent_scope, None);
-            debug!(
-                "make_external_crate_suggestion: name={:?} path={:?} result={:?}",
-                name, path, result
-            );
+            debug!(?path, ?name, ?result);
             if let PathResult::Module(..) = result {
                 return Some((path, None));
             }
@@ -2433,10 +2433,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     import.span,
                     import.use_span,
                 );
-                debug!(
-                    "check_for_module_export_macro: found_closing_brace={:?} binding_span={:?}",
-                    found_closing_brace, binding_span
-                );
+                debug!(found_closing_brace, ?binding_span);
 
                 let mut removal_span = binding_span;
                 if found_closing_brace {
@@ -2450,11 +2447,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     if let Some(previous_span) =
                         extend_span_to_previous_binding(self.tcx.sess, binding_span)
                     {
-                        debug!("check_for_module_export_macro: previous_span={:?}", previous_span);
+                        debug!(?previous_span);
                         removal_span = removal_span.with_lo(previous_span.lo());
                     }
                 }
-                debug!("check_for_module_export_macro: removal_span={:?}", removal_span);
+                debug!(?removal_span);
 
                 // Remove the `removal_span`.
                 corrections.push((removal_span, "".to_string()));
@@ -2470,10 +2467,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     module_name,
                     import.use_span,
                 );
-                debug!(
-                    "check_for_module_export_macro: has_nested={:?} after_crate_name={:?}",
-                    has_nested, after_crate_name
-                );
+                debug!(has_nested, ?after_crate_name);
 
                 let source_map = self.tcx.sess.source_map();
 
@@ -2677,15 +2671,12 @@ fn extend_span_to_previous_binding(sess: &Session, binding_span: Span) -> Option
 /// use foo::{a, b::{c, d}};
 /// //       ^^^^^^^^^^^^^^^ -- true
 /// ```
+#[instrument(level = "debug", skip(sess))]
 fn find_span_immediately_after_crate_name(
     sess: &Session,
     module_name: Symbol,
     use_span: Span,
 ) -> (bool, Span) {
-    debug!(
-        "find_span_immediately_after_crate_name: module_name={:?} use_span={:?}",
-        module_name, use_span
-    );
     let source_map = sess.source_map();
 
     // Using `use issue_59764::foo::{baz, makro};` as an example throughout..
