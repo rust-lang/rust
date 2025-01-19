@@ -133,8 +133,11 @@ pub(crate) fn complete_trait_impl_item_by_name(
             acc,
             ctx,
             ImplCompletionKind::All,
-            match name_ref {
-                Some(name) => name.syntax().text_range(),
+            match name_ref
+                .as_ref()
+                .and_then(|name| ctx.sema.original_syntax_node_rooted(name.syntax()))
+            {
+                Some(name) => name.text_range(),
                 None => ctx.source_range(),
             },
             impl_,
@@ -516,7 +519,7 @@ fn function_declaration(
 mod tests {
     use expect_test::expect;
 
-    use crate::tests::{check_edit, check_no_kw};
+    use crate::tests::{check, check_edit, check_no_kw};
 
     #[test]
     fn no_completion_inside_fn() {
@@ -1637,6 +1640,33 @@ impl DesugaredAsyncTrait for () {
 }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn within_attr_macro() {
+        check(
+            r#"
+//- proc_macros: identity
+trait Trait {
+    fn foo(&self) {}
+    fn bar(&self) {}
+    fn baz(&self) {}
+}
+
+#[proc_macros::identity]
+impl Trait for () {
+    f$0
+}
+        "#,
+            expect![[r#"
+                me fn bar(..)
+                me fn baz(..)
+                me fn foo(..)
+                md proc_macros
+                kw crate::
+                kw self::
+            "#]],
         );
     }
 }
