@@ -12,6 +12,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::traits::ObligationCause;
+use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, AdtDef, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, sym};
@@ -251,6 +252,10 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             //  ^^^
                             let (into_iter_recv, depth) = into_iter_deep_call(cx, into_iter_recv);
 
+                            // The receiver may not implement `IntoIterator`, it may have been
+                            // auto-dereferenced.
+                            let adjustments = adjustments(cx, into_iter_recv);
+
                             let plural = if depth == 0 { "" } else { "s" };
                             let mut applicability = Applicability::MachineApplicable;
                             let sugg = snippet_with_applicability(
@@ -258,8 +263,8 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                                 into_iter_recv.span.source_callsite(),
                                 "<expr>",
                                 &mut applicability,
-                            )
-                            .into_owned();
+                            );
+                            let sugg = format!("{adjustments}{sugg}");
                             span_lint_and_then(
                                 cx,
                                 USELESS_CONVERSION,
@@ -430,4 +435,17 @@ fn has_eligible_receiver(cx: &LateContext<'_>, recv: &Expr<'_>, expr: &Expr<'_>)
         return true;
     }
     false
+}
+
+fn adjustments(cx: &LateContext<'_>, expr: &Expr<'_>) -> String {
+    let mut prefix = String::new();
+    for adj in cx.typeck_results().expr_adjustments(expr) {
+        match adj.kind {
+            Adjust::Deref(_) => prefix = format!("*{prefix}"),
+            Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })) => prefix = format!("&mut {prefix}"),
+            Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)) => prefix = format!("&{prefix}"),
+            _ => {},
+        }
+    }
+    prefix
 }

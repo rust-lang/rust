@@ -274,5 +274,65 @@ error: useless conversion to the same type: `T`
 LL |     x.into_iter().map(Into::into).collect()
    |                  ^^^^^^^^^^^^^^^^ help: consider removing
 
-error: aborting due to 36 previous errors
+error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
+  --> tests/ui/useless_conversion.rs:358:29
+   |
+LL |             takes_into_iter(self.my_field.into_iter());
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing the `.into_iter()`: `&self.my_field`
+   |
+note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
+  --> tests/ui/useless_conversion.rs:347:32
+   |
+LL |     fn takes_into_iter(_: impl IntoIterator<Item = String>) {}
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
+  --> tests/ui/useless_conversion.rs:366:29
+   |
+LL |             takes_into_iter(self.my_field.into_iter());
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing the `.into_iter()`: `&mut self.my_field`
+   |
+note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
+  --> tests/ui/useless_conversion.rs:347:32
+   |
+LL |     fn takes_into_iter(_: impl IntoIterator<Item = String>) {}
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
+  --> tests/ui/useless_conversion.rs:375:29
+   |
+LL |             takes_into_iter(self.my_field.into_iter());
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing the `.into_iter()`: `*self.my_field`
+   |
+note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
+  --> tests/ui/useless_conversion.rs:347:32
+   |
+LL |     fn takes_into_iter(_: impl IntoIterator<Item = String>) {}
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
+  --> tests/ui/useless_conversion.rs:384:29
+   |
+LL |             takes_into_iter(self.my_field.into_iter());
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing the `.into_iter()`: `&*self.my_field`
+   |
+note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
+  --> tests/ui/useless_conversion.rs:347:32
+   |
+LL |     fn takes_into_iter(_: impl IntoIterator<Item = String>) {}
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
+  --> tests/ui/useless_conversion.rs:393:29
+   |
+LL |             takes_into_iter(self.my_field.into_iter());
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing the `.into_iter()`: `&mut *self.my_field`
+   |
+note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
+  --> tests/ui/useless_conversion.rs:347:32
+   |
+LL |     fn takes_into_iter(_: impl IntoIterator<Item = String>) {}
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 41 previous errors
 
