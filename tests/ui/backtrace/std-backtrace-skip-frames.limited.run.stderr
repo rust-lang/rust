@@ -120,7 +120,7 @@ stack backtrace:
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
       [... omitted N frames ...]
    1: std::panic::catch_unwind
-             at $SRC_DIR/std/src/panicking.rs:LL:COL
+             at $SRC_DIR/std/src/panic.rs:LL:COL
    2: std_backtrace_skip_frames::check_all_panics
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
    3: std_backtrace_skip_frames::main

@@ -9,11 +9,9 @@
 //@ ignore-sgx no processes
 //@ ignore-i686-pc-windows-msvc see #62897 and `backtrace-debuginfo.rs` test
 //@ ignore-fuchsia Backtraces not symbolized
+//@ needs-unwind
 
-// this is run-fail for cranelift, which doesn't support unwinding
-//@ run-fail
 //@ check-run-results
-//@ normalize-stderr: "fatal runtime error: failed to initiate panic, error 5\n" -> ""
 //@ normalize-stderr: "omitted [0-9]+ frames?" -> "omitted N frames"
 //@ normalize-stderr: ".rs:[0-9]+:[0-9]+" -> ".rs:LL:CC"
 //@ error-pattern:stack backtrace:
@@ -27,7 +25,7 @@
 //@ edition:2021
 //@ compile-flags:-Cstrip=none -Cdebug-assertions=true
 //@ revisions:line-tables limited full no-split packed unpacked
-//@[no-split] ignore-msvc
+//@[no-split] ignore-msvc ignore-macos
 //@[unpacked] ignore-msvc
 
 //@[no-split] compile-flags:-Cdebuginfo=line-tables-only -Csplit-debuginfo=off
@@ -54,7 +52,6 @@ fn main() {
     let func = match env::args().skip(1).next().as_deref() {
         None => {
             check_all_panics();
-            return;
         }
         Some(UNWRAP_RESULT) => unwrap_result,
         Some(EXPECT_RESULT) => expect_result,

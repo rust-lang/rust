@@ -3,9 +3,9 @@ thread 'main' panicked at $DIR/std-backtrace-skip-frames.rs:LL:CC:
 called `Result::unwrap()` on an `Err` value: ()
 stack backtrace:
       [... omitted N frames ...]
-   0: core::result::Result<T,E>::unwrap
+   0: unwrap<(), ()>
              at $SRC_DIR/core/src/result.rs:LL:COL
-   1: std_backtrace_skip_frames::unwrap_result
+   1: unwrap_result
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
    2: std_backtrace_skip_frames::main
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
@@ -31,9 +31,9 @@ thread 'main' panicked at $DIR/std-backtrace-skip-frames.rs:LL:CC:
 called `Option::unwrap()` on a `None` value
 stack backtrace:
       [... omitted N frames ...]
-   0: core::option::Option<T>::unwrap
+   0: unwrap<()>
              at $SRC_DIR/core/src/option.rs:LL:COL
-   1: std_backtrace_skip_frames::unwrap_option
+   1: unwrap_option
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
    2: std_backtrace_skip_frames::main
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
@@ -100,7 +100,7 @@ stack backtrace:
       [... omitted N frames ...]
    0: <usize as core::slice::index::SliceIndex<[T]>>::get_unchecked::precondition_check
              at $SRC_DIR/core/src/ub_checks.rs:LL:COL
-   1: <usize as core::slice::index::SliceIndex<[T]>>::get_unchecked
+   1: get_unchecked<i32>
              at $SRC_DIR/core/src/ub_checks.rs:LL:COL
    2: core::slice::<impl [T]>::get_unchecked
              at $SRC_DIR/core/src/slice/mod.rs:LL:COL
@@ -119,9 +119,9 @@ stack backtrace:
    0: std_backtrace_skip_frames::check_all_panics::{{closure}}
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
       [... omitted N frames ...]
-   1: std::panic::catch_unwind
-             at $SRC_DIR/std/src/panicking.rs:LL:COL
-   2: std_backtrace_skip_frames::check_all_panics
+   1: catch_unwind<std_backtrace_skip_frames::check_all_panics::{closure_env#0}, ()>
+             at $SRC_DIR/std/src/panic.rs:LL:COL
+   2: check_all_panics
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
    3: std_backtrace_skip_frames::main
              at $DIR/std-backtrace-skip-frames.rs:LL:CC

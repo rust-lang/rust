@@ -98,6 +98,10 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
                         if sym.contains("__rust_begin_short_backtrace") {
                             print = false
                         }
+                        if sym.ends_with("__rust_try") {
+                            // Generating short_backtrace info for this is ... hard.
+                            skip = true;
+                        }
                     }
 
                     if let Some(short_backtrace) = symbol.short_backtrace() {
