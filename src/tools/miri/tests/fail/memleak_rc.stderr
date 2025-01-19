@@ -1,10 +1,14 @@
 error: memory leaked: ALLOC (Rust heap, SIZE, ALIGN), allocated here:
-  --> RUSTLIB/alloc/src/rc.rs:LL:CC
+  --> RUSTLIB/alloc/src/raw_rc.rs:LL:CC
    |
-LL |                 Box::leak(Box::new(RcInner { strong: Cell::new(1), weak: Cell::new(1), value }))
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |             alloc.allocate(rc_layout.allocation_layout),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: BACKTRACE:
+   = note: inside `alloc::raw_rc::allocate_uninit_for_rc::<std::alloc::Global, 1>` at RUSTLIB/alloc/src/raw_rc.rs:LL:CC
+   = note: inside `alloc::raw_rc::RawWeak::<std::cell::RefCell<std::option::Option<Dummy>>, std::alloc::Global>::new_uninit_in::<TAG>` at RUSTLIB/alloc/src/raw_rc.rs:LL:CC
+   = note: inside `alloc::raw_rc::RawWeak::<std::cell::RefCell<std::option::Option<Dummy>>, std::alloc::Global>::new_uninit::<TAG>` at RUSTLIB/alloc/src/raw_rc.rs:LL:CC
+   = note: inside `alloc::raw_rc::RawRc::<std::cell::RefCell<std::option::Option<Dummy>>, std::alloc::Global>::new` at RUSTLIB/alloc/src/raw_rc.rs:LL:CC
    = note: inside `std::rc::Rc::<std::cell::RefCell<std::option::Option<Dummy>>>::new` at RUSTLIB/alloc/src/rc.rs:LL:CC
 note: inside `main`
   --> tests/fail/memleak_rc.rs:LL:CC
