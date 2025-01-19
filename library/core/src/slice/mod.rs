@@ -3078,9 +3078,9 @@ impl<T> [T] {
     ///
     /// Returns a triple partitioning the reordered slice:
     ///
-    /// * The unsorted subslice before `index` (elements all pass `x <= self[index]`)
-    /// * The element at `index`
-    /// * The unsorted subslice after `index` (elements all pass `x >= self[index]`)
+    /// * The unsorted subslice before `index`, whose elements all satisfy `x <= self[index]`.
+    /// * The element at `index`.
+    /// * The unsorted subslice after `index`, whose elements all satisfy `x >= self[index]`.
     ///
     /// # Current implementation
     ///
