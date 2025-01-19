@@ -21,8 +21,8 @@ use tracing::{debug, instrument, trace, trace_span};
 use crate::cost_checker::CostChecker;
 use crate::deref_separator::deref_finder;
 use crate::simplify::simplify_cfg;
-use crate::util;
 use crate::validate::validate_types;
+use crate::{check_inline, util};
 
 pub(crate) mod cycle;
 
@@ -575,7 +575,7 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
     check_mir_is_available(inliner, caller_body, callsite.callee)?;
 
     let callee_attrs = tcx.codegen_fn_attrs(callsite.callee.def_id());
-    rustc_mir_build::check_inline::is_inline_valid_on_fn(tcx, callsite.callee.def_id())?;
+    check_inline::is_inline_valid_on_fn(tcx, callsite.callee.def_id())?;
     check_codegen_attributes(inliner, callsite, callee_attrs)?;
 
     let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
@@ -590,7 +590,7 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
     }
 
     let callee_body = try_instance_mir(tcx, callsite.callee.def)?;
-    rustc_mir_build::check_inline::is_inline_valid_on_body(tcx, callee_body)?;
+    check_inline::is_inline_valid_on_body(tcx, callee_body)?;
     inliner.check_callee_mir_body(callsite, callee_body, callee_attrs)?;
 
     let Ok(callee_body) = callsite.callee.try_instantiate_mir_and_normalize_erasing_regions(

@@ -12,16 +12,6 @@ use rustc_span::{Span, Symbol};
 use crate::fluent_generated as fluent;
 
 #[derive(LintDiagnostic)]
-#[diag(mir_build_unconditional_recursion)]
-#[help]
-pub(crate) struct UnconditionalRecursion {
-    #[label]
-    pub(crate) span: Span,
-    #[label(mir_build_unconditional_recursion_call_site_label)]
-    pub(crate) call_sites: Vec<Span>,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(mir_build_call_to_deprecated_safe_fn_requires_unsafe)]
 pub(crate) struct CallToDeprecatedSafeFnRequiresUnsafe {
     #[label]
@@ -1106,16 +1096,4 @@ impl<'a> Subdiagnostic for Rust2024IncompatiblePatSugg<'a> {
             applicability,
         );
     }
-}
-
-#[derive(Diagnostic)]
-#[diag(mir_build_force_inline)]
-#[note]
-pub(crate) struct InvalidForceInline {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label(mir_build_callee)]
-    pub callee_span: Span,
-    pub callee: String,
-    pub reason: &'static str,
 }

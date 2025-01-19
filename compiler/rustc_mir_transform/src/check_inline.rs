@@ -1,3 +1,6 @@
+//! Check that a body annotated with `#[rustc_force_inline]` will not fail to inline based on its
+//! definition alone (irrespective of any specific caller).
+
 use rustc_attr_parsing::InlineAttr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -6,30 +9,37 @@ use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::sym;
 
-/// Check that a body annotated with `#[rustc_force_inline]` will not fail to inline based on its
-/// definition alone (irrespective of any specific caller).
-pub(crate) fn check_force_inline<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
-    let def_id = body.source.def_id();
-    if !tcx.hir().body_owner_kind(def_id).is_fn_or_closure() || !def_id.is_local() {
-        return;
-    }
-    let InlineAttr::Force { attr_span, .. } = tcx.codegen_fn_attrs(def_id).inline else {
-        return;
-    };
+use crate::pass_manager::MirLint;
 
-    if let Err(reason) =
-        is_inline_valid_on_fn(tcx, def_id).and_then(|_| is_inline_valid_on_body(tcx, body))
-    {
-        tcx.dcx().emit_err(crate::errors::InvalidForceInline {
-            attr_span,
-            callee_span: tcx.def_span(def_id),
-            callee: tcx.def_path_str(def_id),
-            reason,
-        });
+pub(super) struct CheckForceInline;
+
+impl<'tcx> MirLint<'tcx> for CheckForceInline {
+    fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
+        let def_id = body.source.def_id();
+        if !tcx.hir().body_owner_kind(def_id).is_fn_or_closure() || !def_id.is_local() {
+            return;
+        }
+        let InlineAttr::Force { attr_span, .. } = tcx.codegen_fn_attrs(def_id).inline else {
+            return;
+        };
+
+        if let Err(reason) =
+            is_inline_valid_on_fn(tcx, def_id).and_then(|_| is_inline_valid_on_body(tcx, body))
+        {
+            tcx.dcx().emit_err(crate::errors::InvalidForceInline {
+                attr_span,
+                callee_span: tcx.def_span(def_id),
+                callee: tcx.def_path_str(def_id),
+                reason,
+            });
+        }
     }
 }
 
-pub fn is_inline_valid_on_fn<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Result<(), &'static str> {
+pub(super) fn is_inline_valid_on_fn<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> Result<(), &'static str> {
     let codegen_attrs = tcx.codegen_fn_attrs(def_id);
     if tcx.has_attr(def_id, sym::rustc_no_mir_inline) {
         return Err("#[rustc_no_mir_inline]");
@@ -65,7 +75,7 @@ pub fn is_inline_valid_on_fn<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Result<(
     Ok(())
 }
 
-pub fn is_inline_valid_on_body<'tcx>(
+pub(super) fn is_inline_valid_on_body<'tcx>(
     _: TyCtxt<'tcx>,
     body: &Body<'tcx>,
 ) -> Result<(), &'static str> {
