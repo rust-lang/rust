@@ -3070,7 +3070,7 @@ impl<T> [T] {
     }
 
     /// Reorders the slice such that the element at `index` is at a sort-order position. All
-    /// elements before `index` will be `<=` this value, and all elements after will be `>=`.
+    /// elements before `index` will be `<=` to this value, and all elements after will be `>=` to it.
     ///
     /// This reordering is unstable (i.e. any element that compares equal to the nth element may end
     /// up at that position), in-place (i.e.  does not allocate), and runs in *O*(*n*) time. This
