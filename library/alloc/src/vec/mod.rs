@@ -2576,7 +2576,7 @@ impl<T, A: Allocator> Vec<T, A> {
 
     /// Removes the subslice indicated by the given range from the vector,
     /// returning a double-ended iterator over the removed subslice.
-    /// 
+    ///
     /// If the iterator is dropped before being fully consumed,
     /// it drops the remaining removed elements.
     ///
