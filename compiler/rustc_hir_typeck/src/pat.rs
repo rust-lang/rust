@@ -2290,6 +2290,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // NB: This assumes that `&` patterns can match against mutable references
                         // (RFC 3627, Rule 5). If we implement a pattern typing ruleset with Rule 4E
                         // but not Rule 5, we'll need to check that here.
+                        debug_assert!(ref_pat_matches_mut_ref);
                         let err_msg = "mismatched types";
                         let err = if let Some(span) = pat_prefix_span {
                             let mut err = self.dcx().struct_span_err(span, err_msg);
@@ -2326,6 +2327,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // NB: This assumes that `&` patterns can match against mutable
                             // references (RFC 3627, Rule 5). If we implement a pattern typing
                             // ruleset with Rule 4 but not Rule 5, we'll need to check that here.
+                            debug_assert!(ref_pat_matches_mut_ref);
                         } else {
                             pat_info.binding_mode = ByRef::No;
                             self.typeck_results
