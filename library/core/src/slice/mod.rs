@@ -3162,8 +3162,8 @@ impl<T> [T] {
     /// ```
     /// let mut v = [-5i32, 4, 2, -3, 1];
     ///
-    /// // Find the items `>=` the median, the median, and `<=` the median, by using a reversed
-    /// // comparator.
+    /// // Find the items `>=` to the median, the median itself, and the items `<=` to it, by using
+    /// // a reversed comparator.
     /// let (before, median, after) = v.select_nth_unstable_by(2, |a, b| b.cmp(a));
     ///
     /// assert!(before == [4, 2] || before == [2, 4]);
