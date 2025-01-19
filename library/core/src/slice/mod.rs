@@ -3203,9 +3203,9 @@ impl<T> [T] {
     ///
     /// Returns a triple partitioning the reordered slice:
     ///
-    /// * The unsorted subslice before `index` (elements all pass `f(x) <= f(self[index])`)
-    /// * The element at `index`
-    /// * The unsorted subslice after `index` (elements all pass `f(x) >= f(self[index])`)
+    /// * The unsorted subslice before `index`, whose elements all satisfy `f(x) <= f(self[index])`.
+    /// * The element at `index`.
+    /// * The unsorted subslice after `index`, whose elements all satisfy `f(x) >= f(self[index])`.
     ///
     /// # Current implementation
     ///
