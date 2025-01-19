@@ -57,7 +57,7 @@ pub(super) fn check(
                 diag.span_suggestion_verbose(
                     span.shrink_to_hi(),
                     "indent this line",
-                    std::iter::repeat(" ").take(indent).join(""),
+                    std::iter::repeat_n(" ", indent).join(""),
                     Applicability::MaybeIncorrect,
                 );
                 diag.help("if this is supposed to be its own paragraph, add a blank line");

@@ -1,4 +1,5 @@
-#![allow(clippy::useless_vec)]
+#![allow(clippy::useless_vec, clippy::manual_repeat_n)]
+
 use std::iter::repeat;
 fn main() {
     resize_vector();

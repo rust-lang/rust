@@ -88,7 +88,7 @@ use core::mem;
 use core::ops::ControlFlow;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
-use std::iter::{once, repeat};
+use std::iter::{once, repeat_n};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use itertools::Itertools;
@@ -3420,7 +3420,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
             }))
             .join("::")
     } else {
-        repeat(String::from("super")).take(go_up_by).chain(path).join("::")
+        repeat_n(String::from("super"), go_up_by).chain(path).join("::")
     }
 }
 
