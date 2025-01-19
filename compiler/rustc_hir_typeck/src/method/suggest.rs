@@ -3761,18 +3761,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         hir::TraitFn::Required([ident, ..]) => {
                                             ident.name == kw::SelfLower
                                         }
-                                        hir::TraitFn::Provided(body_id) => {
-                                            self.tcx.hir().body(*body_id).params.first().map_or(
-                                                false,
-                                                |param| {
-                                                    matches!(
-                                                        param.pat.kind,
-                                                        hir::PatKind::Binding(_, _, ident, _)
-                                                            if ident.name == kw::SelfLower
-                                                    )
-                                                },
-                                            )
-                                        }
+                                        hir::TraitFn::Provided(body_id) => self
+                                            .tcx
+                                            .hir()
+                                            .body(*body_id)
+                                            .params
+                                            .first()
+                                            .is_some_and(|param| {
+                                                matches!(
+                                                    param.pat.kind,
+                                                    hir::PatKind::Binding(_, _, ident, _)
+                                                        if ident.name == kw::SelfLower
+                                                )
+                                            }),
                                         _ => false,
                                     };
 

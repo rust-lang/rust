@@ -83,7 +83,7 @@ impl<'a> PostExpansionVisitor<'a> {
                 feature_err_issue(&self.sess, feature, span, GateIssue::Language, explain).emit();
             }
             Err(abi::AbiDisabled::Unrecognized) => {
-                if self.sess.opts.pretty.map_or(true, |ppm| ppm.needs_hir()) {
+                if self.sess.opts.pretty.is_none_or(|ppm| ppm.needs_hir()) {
                     self.sess.dcx().span_delayed_bug(
                         span,
                         format!(

@@ -1758,7 +1758,7 @@ impl<T> Option<T> {
     where
         P: FnOnce(&mut T) -> bool,
     {
-        if self.as_mut().map_or(false, predicate) { self.take() } else { None }
+        if self.as_mut().is_some_and(predicate) { self.take() } else { None }
     }
 
     /// Replaces the actual value in the option by the value given in parameter,

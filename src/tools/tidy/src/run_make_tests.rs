@@ -52,7 +52,7 @@ pub fn check(tests_path: &Path, src_path: &Path, bless: bool, bad: &mut bool) {
         &[tests_path.join("run-make").as_ref()],
         |_, _| false,
         &mut |entry| {
-            if entry.file_type().map_or(true, |t| t.is_dir()) {
+            if entry.file_type().is_none_or(|t| t.is_dir()) {
                 return;
             }
 

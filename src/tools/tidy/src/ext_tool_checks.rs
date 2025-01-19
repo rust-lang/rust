@@ -56,8 +56,8 @@ fn check_impl(
     extra_checks: Option<&str>,
     pos_args: &[String],
 ) -> Result<(), Error> {
-    let show_diff = std::env::var("TIDY_PRINT_DIFF")
-        .map_or(false, |v| v.eq_ignore_ascii_case("true") || v == "1");
+    let show_diff =
+        std::env::var("TIDY_PRINT_DIFF").is_ok_and(|v| v.eq_ignore_ascii_case("true") || v == "1");
 
     // Split comma-separated args up
     let lint_args = match extra_checks {
