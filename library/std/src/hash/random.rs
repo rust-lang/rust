@@ -2,9 +2,6 @@
 //! [`collections`] module without actually publicly exporting them, so that parts of that
 //! implementation can more easily be moved to the [`alloc`] crate.
 //!
-//! Although its items are public and contain stability attributes, they can't actually be accessed
-//! outside this crate.
-//!
 //! [`collections`]: crate::collections
 
 #[allow(deprecated)]
