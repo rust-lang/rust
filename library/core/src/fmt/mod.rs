@@ -845,6 +845,8 @@ impl Display for Arguments<'_> {
 /// assert_eq!(format!("The origin is: {origin:#?}"), expected);
 /// ```
 
+#[const_trait]
+#[rustc_const_unstable(feature = "const_debug", issue = "none")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
