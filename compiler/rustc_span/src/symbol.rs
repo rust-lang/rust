@@ -1287,6 +1287,7 @@ symbols! {
         mir_drop,
         mir_field,
         mir_goto,
+        mir_len,
         mir_make_place,
         mir_move,
         mir_offset,
