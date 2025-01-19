@@ -215,6 +215,10 @@ impl MutblCap {
 }
 
 /// Variations on RFC 3627's Rule 4: when do reference patterns match against inherited references?
+///
+/// "Inherited reference" designates the `&`/`&mut` types that arise from using match ergonomics, i.e.
+/// from matching a reference type with a non-reference pattern. E.g. when `Some(x)` matches on
+/// `&mut Option<&T>`, `x` gets type `&mut &T` and the outer `&mut` is considered "inherited".
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum InheritedRefMatchRule {
     /// Reference patterns try to consume the inherited reference first.
@@ -223,7 +227,7 @@ enum InheritedRefMatchRule {
     /// Reference patterns consume inherited references if matching against a non-reference type.
     /// This assumes reference patterns can always match against an inherited reference.
     EatInner,
-    /// Reference patterns consume both layers of reference.
+    /// Reference patterns consume both layers of reference, i.e. reset the binding mode when consuming a reference type.
     /// Currently, this assumes the stable Rust behavior of not allowing reference patterns to eat
     /// an inherited reference alone. This will need an additional field or variant to represent the
     /// planned edition <= 2021 behavior of experimental match ergonomics, which does allow that.
