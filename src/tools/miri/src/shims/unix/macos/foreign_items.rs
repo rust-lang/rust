@@ -2,12 +2,20 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::{Conv, FnAbi};
 
-use super::sync::EvalContextExt as _;
+use super::sync::{EvalContextExt as _, MacOsFutexTimeout};
 use crate::shims::unix::*;
 use crate::*;
 
-pub fn is_dyn_sym(_name: &str) -> bool {
-    false
+pub fn is_dyn_sym(name: &str) -> bool {
+    match name {
+        // These only became available with macOS 11.0, so std looks them up dynamically.
+        "os_sync_wait_on_address"
+        | "os_sync_wait_on_address_with_deadline"
+        | "os_sync_wait_on_address_with_timeout"
+        | "os_sync_wake_by_address_any"
+        | "os_sync_wake_by_address_all" => true,
+        _ => false,
+    }
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -212,6 +220,58 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ThreadNameResult::ThreadNotFound => this.eval_libc("ESRCH"),
                 };
                 this.write_scalar(res, dest)?;
+            }
+
+            // Futex primitives
+            "os_sync_wait_on_address" => {
+                let [addr_op, value_op, size_op, flags_op] =
+                    this.check_shim(abi, Conv::C, link_name, args)?;
+                this.os_sync_wait_on_address(
+                    addr_op,
+                    value_op,
+                    size_op,
+                    flags_op,
+                    MacOsFutexTimeout::None,
+                    dest,
+                )?;
+            }
+            "os_sync_wait_on_address_with_deadline" => {
+                let [addr_op, value_op, size_op, flags_op, clock_op, timeout_op] =
+                    this.check_shim(abi, Conv::C, link_name, args)?;
+                this.os_sync_wait_on_address(
+                    addr_op,
+                    value_op,
+                    size_op,
+                    flags_op,
+                    MacOsFutexTimeout::Absolute { clock_op, timeout_op },
+                    dest,
+                )?;
+            }
+            "os_sync_wait_on_address_with_timeout" => {
+                let [addr_op, value_op, size_op, flags_op, clock_op, timeout_op] =
+                    this.check_shim(abi, Conv::C, link_name, args)?;
+                this.os_sync_wait_on_address(
+                    addr_op,
+                    value_op,
+                    size_op,
+                    flags_op,
+                    MacOsFutexTimeout::Relative { clock_op, timeout_op },
+                    dest,
+                )?;
+            }
+            "os_sync_wake_by_address_any" => {
+                let [addr_op, size_op, flags_op] =
+                    this.check_shim(abi, Conv::C, link_name, args)?;
+                this.os_sync_wake_by_address(
+                    addr_op, size_op, flags_op, /* all */ false, dest,
+                )?;
+            }
+            "os_sync_wake_by_address_all" => {
+                let [addr_op, size_op, flags_op] =
+                    this.check_shim(abi, Conv::C, link_name, args)?;
+                this.os_sync_wake_by_address(
+                    addr_op, size_op, flags_op, /* all */ true, dest,
+                )?;
             }
 
             "os_unfair_lock_lock" => {
