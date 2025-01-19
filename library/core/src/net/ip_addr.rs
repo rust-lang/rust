@@ -1581,6 +1581,8 @@ impl Ipv6Addr {
             // IANA says N/A.
             || matches!(self.segments(), [0x2002, _, _, _, _, _, _, _])
             || self.is_documentation()
+            // Segment Routing (SRv6) SIDs (`5f00::/16`)
+            || matches!(self.segments(), [0x5f00, ..])
             || self.is_unique_local()
             || self.is_unicast_link_local())
     }
@@ -1773,6 +1775,8 @@ impl Ipv6Addr {
             && !self.is_unspecified()
             && !self.is_documentation()
             && !self.is_benchmarking()
+            // Segment Routing (SRv6) SIDs (`5f00::/16`)
+            && !matches!(self.segments(), [0x5f00, ..])
     }
 
     /// Returns the address's multicast scope if the address is multicast.

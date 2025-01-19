@@ -603,6 +603,7 @@ fn ipv6_properties() {
         }
     }
 
+    let none: u32 = 0;
     let unspecified: u32 = 1 << 0;
     let loopback: u32 = 1 << 1;
     let unique_local: u32 = 1 << 2;
@@ -687,6 +688,8 @@ fn ipv6_properties() {
     );
 
     check!("2002::", &[0x20, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_global);
+
+    check!("5f00::", &[0x5f, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], none);
 
     check!("fc00::", &[0xfc, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unique_local);
 
