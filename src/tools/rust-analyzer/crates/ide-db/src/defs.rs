@@ -20,6 +20,7 @@ use hir::{
 };
 use span::Edition;
 use stdx::{format_to, impl_from};
+use syntax::ToSmolStr;
 use syntax::{
     ast::{self, AstNode},
     match_ast, SyntaxKind, SyntaxNode, SyntaxToken,
@@ -365,6 +366,7 @@ impl IdentClass {
         sema: &Semantics<'_, RootDatabase>,
         node: &SyntaxNode,
     ) -> Option<IdentClass> {
+        dbg!(&node.to_smolstr());
         match_ast! {
             match node {
                 ast::Name(name) => NameClass::classify(sema, &name).map(IdentClass::NameClass),
@@ -521,7 +523,7 @@ impl NameClass {
         let definition = match_ast! {
             match parent {
                 ast::Item(it) => classify_item(sema, it)?,
-                ast::IdentPat(it) => return classify_ident_pat(sema, it),
+                ast::IdentPat(it) => return dbg!(classify_ident_pat(sema, it)),
                 ast::Rename(it) => classify_rename(sema, it)?,
                 ast::SelfParam(it) => Definition::Local(sema.to_def(&it)?),
                 ast::RecordField(it) => Definition::Field(sema.to_def(&it)?),
@@ -574,7 +576,7 @@ impl NameClass {
                 return Some(NameClass::ConstReference(Definition::from(def)));
             }
 
-            let local = sema.to_def(&ident_pat)?;
+            let local = dbg!(sema.to_def(&ident_pat))?;
             let pat_parent = ident_pat.syntax().parent();
             if let Some(record_pat_field) = pat_parent.and_then(ast::RecordPatField::cast) {
                 if record_pat_field.name_ref().is_none() {

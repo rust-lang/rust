@@ -55,10 +55,24 @@ impl ExprOrPatId {
         }
     }
 
+    pub fn is_expr(&self) -> bool {
+        match self {
+            Self::ExprId(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn as_pat(self) -> Option<PatId> {
         match self {
             Self::PatId(v) => Some(v),
             _ => None,
+        }
+    }
+
+    pub fn is_pat(&self) -> bool {
+        match self {
+            Self::PatId(_) => true,
+            _ => false,
         }
     }
 }

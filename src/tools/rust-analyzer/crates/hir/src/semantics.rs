@@ -1640,6 +1640,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn to_def<T: ToDef>(&self, src: &T) -> Option<T::Def> {
+        dbg!(std::any::type_name::<T>());
         let src = self.find_file(src.syntax()).with_value(src);
         T::to_def(self, src)
     }

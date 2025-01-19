@@ -1,10 +1,12 @@
 mod block;
 
+use base_db::Upcast;
 use expect_test::{expect, Expect};
 use la_arena::RawIdx;
 use test_fixture::WithFixture;
+use tracing::Instrument;
 
-use crate::{test_db::TestDB, ModuleDefId};
+use crate::{db::InternDatabase, test_db::TestDB, ModuleDefId};
 
 use super::*;
 
@@ -446,7 +448,6 @@ fn foo() {
     );
 }
 
-#[test]
 fn skip_skips_body() {
     let (db, body, owner) = lower(
         r#"
@@ -461,7 +462,45 @@ async fn foo(a: (), b: i32) -> u32 {
         .assert_eq(&printed);
 }
 
-fn abc() {
+fn test1() {
+    let (db, body, owner) = lower(
+        r#"
+pub const L: i32 = 6;
+mod x {
+    pub const R: i32 = 100;
+}
+const fn f(x: i32) -> i32 {
+    match x {
+        L..=x::R => x * 100,
+        -1..=5 => x * 10,
+        _ => x,
+    }
+}"#,
+    );
+
+    let pat = body
+        .pats
+        .iter()
+        .find_map(|pat| {
+            if let Pat::Range { .. } = pat.1 {
+                return Some(pat.1);
+            }
+
+            None
+        })
+        .unwrap();
+
+    match pat {
+        Pat::Range { start, end } => {
+            dbg!(&body.exprs[start.unwrap()]);
+            dbg!(&body.exprs[end.unwrap()]);
+        }
+        _ => {}
+    }
+}
+
+#[test]
+fn test2() {
     let (db, body, owner) = lower(
         r#"
 pub const L: i32 = 6;
@@ -471,8 +510,49 @@ mod x {
 const fn f(x: i32) -> i32 {
     match x {
         -1..=5 => x * 10,
-        L..=x::R => x * 100,
+        ::std::i32::MIN..=x::R => x * 100,
         _ => x,
+    }
+}"#,
+    );
+
+    for (pat_id, pat) in body.pats.iter() {
+        match pat {
+            Pat::Range { start, end } => {
+                let pretty = body.pretty_print_pat(&db, owner, pat_id, false, Edition::Edition2021);
+                eprintln!("RANGE {}", pretty);
+
+                if let Some(start) = start {
+                    eprintln!("START");
+                    let expr = body.exprs[*start].clone();
+                    dbg!(expr);
+                } else {
+                    eprintln!("START is None");
+                }
+
+                if let Some(end) = end {
+                    eprintln!("END");
+                    let expr = body.exprs[*end].clone();
+                    dbg!(expr);
+                } else {
+                    eprintln!("END is None");
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+#[test]
+fn test3() {
+    let (db, body, owner) = lower(
+        r#"
+const A: u32 = 0;
+
+fn bar(v: u32) {
+    match v {
+        0..=A => {}
+        _ => {}
     }
 }"#,
     );

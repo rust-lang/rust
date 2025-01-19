@@ -1795,24 +1795,27 @@ impl ExprCollector<'_> {
                     p.and_then(|it| {
                         let ptr = PatPtr::new(&it);
                         match &it {
-                            ast::Pat::LiteralPat(it) => {
-                                // Some(Box::new(LiteralOrConst::Literal(pat_literal_to_hir(it)?.0)))
-                                Some(self.alloc_expr_from_pat(
-                                    Expr::Literal(pat_literal_to_hir(it)?.0),
-                                    ptr,
-                                ))
-                            }
-                            ast::Pat::IdentPat(_) => Some(self.missing_expr()),
-                            ast::Pat::PathPat(p) => {
-                                if let Some(path) = p.path() {
-                                    if let Some(parsed) = self.parse_path(path) {
-                                        return Some(
-                                            self.alloc_expr_from_pat(Expr::Path(parsed), ptr),
-                                        );
-                                    }
+                            ast::Pat::LiteralPat(it) => Some(self.alloc_expr_from_pat(
+                                Expr::Literal(pat_literal_to_hir(it)?.0),
+                                ptr,
+                            )),
+                            ast::Pat::IdentPat(ident) => {
+                                if ident.is_simple_ident() {
+                                    return ident
+                                        .name()
+                                        .and_then(|name| Some(name.as_name()))
+                                        .and_then(|hir_name| Some(Path::from(hir_name)))
+                                        .and_then(|path| {
+                                            Some(self.alloc_expr_from_pat(Expr::Path(path), ptr))
+                                        });
                                 }
-                                Some(self.missing_expr())
+
+                                None
                             }
+                            ast::Pat::PathPat(p) => p
+                                .path()
+                                .and_then(|path| self.parse_path(path))
+                                .map(|parsed| self.alloc_expr_from_pat(Expr::Path(parsed), ptr)),
                             _ => None,
                         }
                     })
