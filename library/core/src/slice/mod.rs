@@ -3138,9 +3138,9 @@ impl<T> [T] {
     ///
     /// Returns a triple partitioning the reordered slice:
     ///
-    /// * The unsorted subslice before `index` (elements all pass `compare(x, self[index]).is_le()`)
-    /// * The element at `index`
-    /// * The unsorted subslice after `index` (elements all pass `compare(x, self[index]).is_ge()`)
+    /// * The unsorted subslice before `index`, whose elements all satisfy `compare(x, self[index]).is_le()`.
+    /// * The element at `index`.
+    /// * The unsorted subslice after `index`, whose elements all satisfy `compare(x, self[index]).is_ge()`.
     ///
     /// # Current implementation
     ///
