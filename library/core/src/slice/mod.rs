@@ -3227,8 +3227,7 @@ impl<T> [T] {
     /// ```
     /// let mut v = [-5i32, 4, 1, -3, 2];
     ///
-    /// // Find the items <= the median absolute value, the median absolute value, and >= the median
-    /// // absolute value.
+    /// // Find the items `<=` to the absolute median, the absolute median itself, and the items `>=` to it.
     /// let (lesser, median, greater) = v.select_nth_unstable_by_key(2, |a| a.abs());
     ///
     /// assert!(lesser == [1, 2] || lesser == [2, 1]);
