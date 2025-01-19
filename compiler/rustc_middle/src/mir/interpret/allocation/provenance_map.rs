@@ -97,7 +97,7 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         debug_assert!(prov.len() <= 1);
         if let Some(entry) = prov.first() {
             // If it overlaps with this byte, it is on this byte.
-            debug_assert!(self.bytes.as_ref().is_none_or(|b| b.get(&offset).is_none()));
+            debug_assert!(self.bytes.as_ref().is_none_or(|b| !b.contains_key(&offset)));
             Some(entry.1)
         } else {
             // Look up per-byte provenance.

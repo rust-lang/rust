@@ -675,7 +675,7 @@ impl OutputTypes {
 
     /// Returns `true` if user specified a name and not just produced type
     pub fn contains_explicit_name(&self, key: &OutputType) -> bool {
-        self.0.get(key).is_some_and(|f| f.is_some())
+        matches!(self.0.get(key), Some(Some(..)))
     }
 
     pub fn iter(&self) -> BTreeMapIter<'_, OutputType, Option<OutFileName>> {
@@ -1951,7 +1951,7 @@ fn collect_print_requests(
     matches: &getopts::Matches,
 ) -> Vec<PrintRequest> {
     let mut prints = Vec::<PrintRequest>::new();
-    if cg.target_cpu.as_ref().is_some_and(|s| s == "help") {
+    if cg.target_cpu.as_deref() == Some("help") {
         prints.push(PrintRequest { kind: PrintKind::TargetCPUs, out: OutFileName::Stdout });
         cg.target_cpu = None;
     };
