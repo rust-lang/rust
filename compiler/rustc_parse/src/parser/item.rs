@@ -2959,9 +2959,20 @@ impl<'a> Parser<'a> {
             this.is_keyword_ahead(n, &[kw::SelfLower])
                 && this.look_ahead(n + 1, |t| t != &token::PathSep)
         };
+        // Is `pin const self` `n` tokens ahead?
+        let is_isolated_pin_const_self = |this: &Self, n| {
+            this.look_ahead(n, |token| token.is_ident_named(sym::pin))
+                && this.is_keyword_ahead(n + 1, &[kw::Const])
+                && is_isolated_self(this, n + 2)
+        };
         // Is `mut self` `n` tokens ahead?
         let is_isolated_mut_self =
             |this: &Self, n| this.is_keyword_ahead(n, &[kw::Mut]) && is_isolated_self(this, n + 1);
+        // Is `pin mut self` `n` tokens ahead?
+        let is_isolated_pin_mut_self = |this: &Self, n| {
+            this.look_ahead(n, |token| token.is_ident_named(sym::pin))
+                && is_isolated_mut_self(this, n + 1)
+        };
         // Parse `self` or `self: TYPE`. We already know the current token is `self`.
         let parse_self_possibly_typed = |this: &mut Self, m| {
             let eself_ident = expect_self_ident(this);
@@ -3021,6 +3032,20 @@ impl<'a> Parser<'a> {
                     self.bump();
                     self.bump();
                     SelfKind::Region(None, Mutability::Mut)
+                } else if is_isolated_pin_const_self(self, 1) {
+                    // `&pin const self`
+                    self.bump(); // &
+                    self.psess.gated_spans.gate(sym::pin_ergonomics, self.token.span);
+                    self.bump(); // pin
+                    self.bump(); // const
+                    SelfKind::Pinned(None, Mutability::Not)
+                } else if is_isolated_pin_mut_self(self, 1) {
+                    // `&pin mut self`
+                    self.bump(); // &
+                    self.psess.gated_spans.gate(sym::pin_ergonomics, self.token.span);
+                    self.bump(); // pin
+                    self.bump(); // mut
+                    SelfKind::Pinned(None, Mutability::Mut)
                 } else if self.look_ahead(1, |t| t.is_lifetime()) && is_isolated_self(self, 2) {
                     // `&'lt self`
                     self.bump();
@@ -3032,6 +3057,26 @@ impl<'a> Parser<'a> {
                     let lt = self.expect_lifetime();
                     self.bump();
                     SelfKind::Region(Some(lt), Mutability::Mut)
+                } else if self.look_ahead(1, |t| t.is_lifetime())
+                    && is_isolated_pin_const_self(self, 2)
+                {
+                    // `&'lt pin const self`
+                    self.bump(); // &
+                    let lt = self.expect_lifetime();
+                    self.psess.gated_spans.gate(sym::pin_ergonomics, self.token.span);
+                    self.bump(); // pin
+                    self.bump(); // const
+                    SelfKind::Pinned(Some(lt), Mutability::Not)
+                } else if self.look_ahead(1, |t| t.is_lifetime())
+                    && is_isolated_pin_mut_self(self, 2)
+                {
+                    // `&'lt pin mut self`
+                    self.bump(); // &
+                    let lt = self.expect_lifetime();
+                    self.psess.gated_spans.gate(sym::pin_ergonomics, self.token.span);
+                    self.bump(); // pin
+                    self.bump(); // mut
+                    SelfKind::Pinned(Some(lt), Mutability::Mut)
                 } else {
                     // `&not_self`
                     return Ok(None);
