@@ -25,14 +25,14 @@ fn main() {
     let out = run_rustc().link_arg("run_make_error").verbose().run_fail();
     out.assert_stderr_contains_regex("fake-linker.*run_make_error")
         .assert_stderr_not_contains("object files omitted")
-        .assert_stderr_contains("PATH=\"")
+        .assert_stderr_contains(r".rcgu.o")
         .assert_stderr_contains_regex(r"lib(/|\\\\)libstd");
 
     let out = run_rustc().link_arg("run_make_error").run_fail();
     out.assert_stderr_contains("fake-linker")
         .assert_stderr_contains("object files omitted")
         .assert_stderr_contains_regex(r"\{")
-        .assert_stderr_not_contains("PATH=\"")
+        .assert_stderr_not_contains(r".rcgu.o")
         .assert_stderr_not_contains_regex(r"lib(/|\\\\)libstd");
 
     // FIXME: we should have a version of this for mac and windows
