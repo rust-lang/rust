@@ -1,0 +1,31 @@
+//@ run-rustfix
+
+#[derive(Clone)]
+struct A {
+    x: String
+}
+
+struct B {
+    x: String
+}
+
+impl From<A> for B {
+    fn from(a: A) -> Self {
+        B { x: a.x }
+    }
+}
+
+impl B {
+    pub fn from_many<T: Into<B> + Clone>(v: Vec<T>) -> Self {
+        B { x: v.iter().map(|e| B::from(e.clone()).x).collect::<Vec<String>>().join(" ") }
+        //~^ ERROR the trait bound `B: From<T>` is not satisfied
+    }
+}
+
+fn main() {
+    let _b: B = B { x: "foobar".to_string() };
+    let a: A = A { x: "frob".to_string() };
+    let ab: B = a.into();
+    println!("Hello, {}!", ab.x);
+    let _c: B = B::from_many(vec![A { x: "x".to_string() }]);
+}
