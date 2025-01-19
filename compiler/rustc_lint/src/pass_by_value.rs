@@ -77,7 +77,7 @@ fn gen_args(cx: &LateContext<'_>, segment: &PathSegment<'_>) -> String {
                     .tcx
                     .sess
                     .source_map()
-                    .span_to_snippet(c.as_unambig_ct().span())
+                    .span_to_snippet(c.span())
                     .unwrap_or_else(|_| "_".into()),
                 GenericArg::Infer(_) => String::from("_"),
             })

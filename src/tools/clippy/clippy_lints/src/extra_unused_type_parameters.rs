@@ -197,7 +197,7 @@ impl<'tcx> Visitor<'tcx> for TypeWalker<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_ty(&mut self, t: &'tcx Ty<'tcx, AmbigArg>) {
-        if let Some((def_id, _)) = t.as_unambig_ty().peel_refs().as_generic_param() {
+        if let Some((def_id, _)) = t.peel_refs().as_generic_param() {
             self.ty_params.remove(&def_id);
         } else {
             walk_ty(self, t);

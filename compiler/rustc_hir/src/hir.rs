@@ -315,7 +315,7 @@ impl<'hir> ConstArg<'hir> {
     }
 }
 
-impl<'hir> ConstArg<'hir> {
+impl<'hir, Unambig> ConstArg<'hir, Unambig> {
     pub fn anon_const_hir_id(&self) -> Option<HirId> {
         match self.kind {
             ConstArgKind::Anon(ac) => Some(ac.hir_id),
@@ -383,7 +383,7 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Lifetime(l) => l.ident.span,
             GenericArg::Type(t) => t.span,
-            GenericArg::Const(c) => c.as_unambig_ct().span(),
+            GenericArg::Const(c) => c.span(),
             GenericArg::Infer(i) => i.span,
         }
     }
@@ -3022,7 +3022,25 @@ impl<'hir> Ty<'hir> {
     }
 }
 
+impl<'hir> Ty<'hir, AmbigArg> {
+    pub fn peel_refs(&self) -> &Ty<'hir> {
+        let mut final_ty = self.as_unambig_ty();
+        while let TyKind::Ref(_, MutTy { ty, .. }) = &final_ty.kind {
+            final_ty = ty;
+        }
+        final_ty
+    }
+}
+
 impl<'hir> Ty<'hir> {
+    pub fn peel_refs(&self) -> &Self {
+        let mut final_ty = self;
+        while let TyKind::Ref(_, MutTy { ty, .. }) = &final_ty.kind {
+            final_ty = ty;
+        }
+        final_ty
+    }
+
     /// Returns `true` if `param_def_id` matches the `bounded_ty` of this predicate.
     pub fn as_generic_param(&self) -> Option<(DefId, Ident)> {
         let TyKind::Path(QPath::Resolved(None, path)) = self.kind else {
@@ -3037,14 +3055,6 @@ impl<'hir> Ty<'hir> {
             }
             _ => None,
         }
-    }
-
-    pub fn peel_refs(&self) -> &Self {
-        let mut final_ty = self;
-        while let TyKind::Ref(_, MutTy { ty, .. }) = &final_ty.kind {
-            final_ty = ty;
-        }
-        final_ty
     }
 
     pub fn find_self_aliases(&self) -> Vec<Span> {
