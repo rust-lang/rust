@@ -2395,6 +2395,33 @@ fn rewrite_explicit_self(
                 )?),
             }
         }
+        ast::SelfKind::Pinned(lt, m) => {
+            let mut_str = m.ptr_str();
+            match lt {
+                Some(ref l) => {
+                    let lifetime_str = l.rewrite_result(
+                        context,
+                        Shape::legacy(context.config.max_width(), Indent::empty()),
+                    )?;
+                    Ok(combine_strs_with_missing_comments(
+                        context,
+                        param_attrs,
+                        &format!("&{lifetime_str} pin {mut_str} self"),
+                        span,
+                        shape,
+                        !has_multiple_attr_lines,
+                    )?)
+                }
+                None => Ok(combine_strs_with_missing_comments(
+                    context,
+                    param_attrs,
+                    &format!("&pin {mut_str} self"),
+                    span,
+                    shape,
+                    !has_multiple_attr_lines,
+                )?),
+            }
+        }
         ast::SelfKind::Explicit(ref ty, mutability) => {
             let type_str = ty.rewrite_result(
                 context,
