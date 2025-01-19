@@ -11,6 +11,7 @@
 //@ ignore-fuchsia Backtraces not symbolized
 //@ needs-unwind
 
+//@ run-pass
 //@ check-run-results
 //@ normalize-stderr: "omitted [0-9]+ frames?" -> "omitted N frames"
 //@ normalize-stderr: ".rs:[0-9]+:[0-9]+" -> ".rs:LL:CC"
@@ -25,7 +26,8 @@
 //@ edition:2021
 //@ compile-flags:-Cstrip=none -Cdebug-assertions=true
 //@ revisions:line-tables limited full no-split packed unpacked
-//@[no-split] ignore-msvc ignore-macos
+//@[no-split] ignore-msvc
+//@[no-split] ignore-macos
 //@[unpacked] ignore-msvc
 
 //@[no-split] compile-flags:-Cdebuginfo=line-tables-only -Csplit-debuginfo=off
@@ -52,6 +54,7 @@ fn main() {
     let func = match env::args().skip(1).next().as_deref() {
         None => {
             check_all_panics();
+            return;
         }
         Some(UNWRAP_RESULT) => unwrap_result,
         Some(EXPECT_RESULT) => expect_result,

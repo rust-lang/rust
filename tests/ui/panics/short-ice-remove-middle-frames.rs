@@ -1,4 +1,4 @@
-//@ compile-flags:-Cstrip=none
+//@ compile-flags:-Cstrip=none -Cdebuginfo=line-tables-only
 //@ run-fail
 //@ check-run-results
 //@ exec-env:RUST_BACKTRACE=1
@@ -10,33 +10,17 @@
 //@ ignore-fuchsia Backtraces not symbolized
 //@ ignore-msvc the `__rust_{begin,end}_short_backtrace` symbols aren't reliable.
 
-// This is needed to avoid test output differences across std being built with v0 symbols vs legacy
-// symbols.
-//@ normalize-stderr: "begin_panic::<&str>" -> "begin_panic"
-// This variant occurs on macOS with `rust.debuginfo-level = "line-tables-only"` (#133997)
-//@ normalize-stderr: " begin_panic<&str>" -> " std::panicking::begin_panic"
-// And this is for differences between std with and without debuginfo.
-//@ normalize-stderr: "\n +at [^\n]+" -> ""
+#![feature(rustc_attrs)]
 
-#[inline(never)]
-fn __rust_begin_short_backtrace<T, F: FnOnce() -> T>(f: F) -> T {
-    let result = f();
-    std::hint::black_box(result)
-}
-
-#[inline(never)]
-fn __rust_end_short_backtrace<T, F: FnOnce() -> T>(f: F) -> T {
-    let result = f();
-    std::hint::black_box(result)
-}
-
+// do not take effect since we already has a inner call of __rust_end_short_backtrace
+#[rustc_end_short_backtrace]
 fn first() {
-    __rust_end_short_backtrace(|| second());
-    // do not take effect since we already has a inner call of __rust_end_short_backtrace
+    second();
 }
 
+#[rustc_end_short_backtrace]
 fn second() {
-    __rust_end_short_backtrace(|| third());
+    third(); // won't show up in backtrace
 }
 
 fn third() {
@@ -47,8 +31,9 @@ fn fourth() {
     fifth(); // won't show up in backtrace
 }
 
+#[rustc_start_short_backtrace]
 fn fifth() {
-    __rust_begin_short_backtrace(|| sixth());
+    sixth();
 }
 
 fn sixth() {

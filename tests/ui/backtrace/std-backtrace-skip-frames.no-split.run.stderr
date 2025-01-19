@@ -7,7 +7,7 @@ stack backtrace:
              at $SRC_DIR/core/src/result.rs:LL:COL
    1: unwrap_result
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
-   2: std_backtrace_skip_frames::main
+   2: main
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
       [... omitted N frames ...]
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
@@ -17,11 +17,11 @@ thread 'main' panicked at $DIR/std-backtrace-skip-frames.rs:LL:CC:
 oops: ()
 stack backtrace:
       [... omitted N frames ...]
-   0: core::result::Result<T,E>::expect
+   0: expect<(), ()>
              at $SRC_DIR/core/src/result.rs:LL:COL
-   1: std_backtrace_skip_frames::expect_result
+   1: expect_result
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
-   2: std_backtrace_skip_frames::main
+   2: main
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
       [... omitted N frames ...]
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
@@ -35,7 +35,7 @@ stack backtrace:
              at $SRC_DIR/core/src/option.rs:LL:COL
    1: unwrap_option
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
-   2: std_backtrace_skip_frames::main
+   2: main
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
       [... omitted N frames ...]
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
@@ -45,11 +45,11 @@ thread 'main' panicked at $DIR/std-backtrace-skip-frames.rs:LL:CC:
 oops
 stack backtrace:
       [... omitted N frames ...]
-   0: core::option::Option<T>::expect
+   0: expect<()>
              at $SRC_DIR/core/src/option.rs:LL:COL
-   1: std_backtrace_skip_frames::expect_option
+   1: expect_option
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
-   2: std_backtrace_skip_frames::main
+   2: main
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
       [... omitted N frames ...]
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
@@ -61,7 +61,7 @@ stack backtrace:
       [... omitted N frames ...]
    0: std_backtrace_skip_frames::explicit_panic
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
-   1: std_backtrace_skip_frames::main
+   1: main
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
       [... omitted N frames ...]
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
@@ -71,9 +71,9 @@ thread 'main' panicked at $DIR/std-backtrace-skip-frames.rs:LL:CC:
 oopsie
 stack backtrace:
       [... omitted N frames ...]
-   0: std_backtrace_skip_frames::literal_panic
+   0: literal_panic
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
-   1: std_backtrace_skip_frames::main
+   1: main
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
       [... omitted N frames ...]
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
@@ -83,12 +83,12 @@ thread 'main' panicked at $DIR/std-backtrace-skip-frames.rs:LL:CC:
 3
 stack backtrace:
       [... omitted N frames ...]
-   0: std_backtrace_skip_frames::panic_fmt
+   0: panic_fmt
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
-   1: std_backtrace_skip_frames::main::{{closure}}
+   1: {closure#0}
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
       [... omitted N frames ...]
-   2: std_backtrace_skip_frames::main
+   2: main
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
       [... omitted N frames ...]
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
@@ -102,11 +102,11 @@ stack backtrace:
              at $SRC_DIR/core/src/ub_checks.rs:LL:COL
    1: get_unchecked<i32>
              at $SRC_DIR/core/src/ub_checks.rs:LL:COL
-   2: core::slice::<impl [T]>::get_unchecked
+   2: get_unchecked<i32, usize>
              at $SRC_DIR/core/src/slice/mod.rs:LL:COL
-   3: std_backtrace_skip_frames::panic_nounwind
+   3: panic_nounwind
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
-   4: std_backtrace_skip_frames::main
+   4: main
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
       [... omitted N frames ...]
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
@@ -116,14 +116,14 @@ thread 'main' panicked at $DIR/std-backtrace-skip-frames.rs:LL:CC:
 explicit panic
 stack backtrace:
       [... omitted N frames ...]
-   0: std_backtrace_skip_frames::check_all_panics::{{closure}}
+   0: {closure#0}
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
       [... omitted N frames ...]
    1: catch_unwind<std_backtrace_skip_frames::check_all_panics::{closure_env#0}, ()>
              at $SRC_DIR/std/src/panic.rs:LL:COL
    2: check_all_panics
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
-   3: std_backtrace_skip_frames::main
+   3: main
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
       [... omitted N frames ...]
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.

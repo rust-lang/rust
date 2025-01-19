@@ -582,6 +582,17 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     });
 
     codegen_fn_attrs.skip_short_backtrace = SkipShortBacktrace::lookup(tcx, did);
+    match codegen_fn_attrs.skip_short_backtrace {
+        Some(SkipShortBacktrace::Start | SkipShortBacktrace::End) => {
+            if !matches!(codegen_fn_attrs.inline, InlineAttr::Never | InlineAttr::None) {
+                struct_span_code_err!(tcx.dcx(), tcx.get_attr(did, sym::inline).unwrap().span(), E0535, "invalid argument")
+                    .with_note("`#[rustc_{start,end}_short_backtrace]` functions must always be `#[inline(never)]`")
+                    .emit();
+            }
+            codegen_fn_attrs.inline = InlineAttr::Never;
+        }
+        Some(SkipShortBacktrace::ThisFrameOnly) | None => {}
+    }
 
     // #73631: closures inherit `#[target_feature]` annotations
     //

@@ -108,10 +108,10 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
                         match short_backtrace {
                             ShortBacktrace::ThisFrameOnly => skip = true,
                             ShortBacktrace::Start => print = false,
-                            ShortBacktrace::End => {
-                                print = true;
-                                skip = true;
-                            }
+                            // NOTE: Unlike the symbol name case, this implies the frame with this attribute
+                            // *will* be printed. We want that, because unlike `end_short_backtrace`,
+                            // it could be a useful name.
+                            ShortBacktrace::End => print = true,
                         }
                     }
 

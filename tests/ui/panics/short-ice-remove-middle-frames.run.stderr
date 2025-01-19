@@ -1,14 +1,17 @@
-thread 'main' panicked at $DIR/short-ice-remove-middle-frames.rs:59:5:
+thread 'main' panicked at $DIR/short-ice-remove-middle-frames.rs:44:5:
 debug!!!
 stack backtrace:
-   0: std::panicking::begin_panic
-   1: short_ice_remove_middle_frames::seven
-   2: short_ice_remove_middle_frames::sixth
-   3: short_ice_remove_middle_frames::fifth::{{closure}}
-      [... omitted 4 frames ...]
-   4: short_ice_remove_middle_frames::second
-   5: short_ice_remove_middle_frames::first::{{closure}}
-   6: short_ice_remove_middle_frames::first
-   7: short_ice_remove_middle_frames::main
-   8: core::ops::function::FnOnce::call_once
+      [... omitted 14 frames ...]
+   0: short_ice_remove_middle_frames::seven
+             at $DIR/short-ice-remove-middle-frames.rs:44:5
+   1: short_ice_remove_middle_frames::sixth
+             at $DIR/short-ice-remove-middle-frames.rs:40:5
+      [... omitted 3 frames ...]
+   2: second
+             at $DIR/short-ice-remove-middle-frames.rs:23:5
+   3: first
+             at $DIR/short-ice-remove-middle-frames.rs:18:5
+   4: short_ice_remove_middle_frames::main
+             at $DIR/short-ice-remove-middle-frames.rs:48:5
+      [... omitted 16 frames ...]
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.

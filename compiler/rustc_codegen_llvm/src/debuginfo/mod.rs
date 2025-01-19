@@ -380,7 +380,8 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         if let Some(s) = skip {
             tracing::info!(
                 "generate short backtrace {s:?} for {}",
-                tcx.item_name(instance.def_id())
+                tcx.opt_item_name(instance.def_id())
+                    .map_or_else(|| tcx.def_path_str(instance.def_id()), |s| s.to_string())
             );
         }
         let skip = ShortBacktraceKind::from_generic(skip);

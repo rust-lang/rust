@@ -777,7 +777,7 @@ pub mod debuginfo {
         }
     }
 
-    /// LLVMRustDebugEmissionKind
+    /// LLVMRustShortBacktrace
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
     pub enum ShortBacktraceKind {
