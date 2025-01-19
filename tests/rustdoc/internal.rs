@@ -8,7 +8,7 @@
 //@ !matches internal/index.html \
 //      '//*[@class="desc docblock-short"]/span[@class="stab internal"]' \
 //      ''
-//@ matches - '//*[@class="desc docblock-short"]' 'Docs'
+//@ matches - '//dd' 'Docs'
 
 //@ !has internal/struct.S.html '//*[@class="stab unstable"]' ''
 //@ !has internal/struct.S.html '//*[@class="stab internal"]' ''
