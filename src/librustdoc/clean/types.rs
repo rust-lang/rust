@@ -796,6 +796,11 @@ impl Item {
                 }
             })
             .collect();
+
+        if !keep_as_is && self.is_doc_hidden() {
+            attrs.push("#[doc(hidden)]".into());
+        }
+
         if !keep_as_is
             && let Some(def_id) = self.def_id()
             && let ItemType::Struct | ItemType::Enum | ItemType::Union = self.type_()
@@ -858,6 +863,7 @@ impl Item {
                 attrs.push(format!("#[repr({})]", out.join(", ")));
             }
         }
+
         attrs
     }
 
