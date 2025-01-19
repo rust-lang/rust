@@ -1163,6 +1163,9 @@ pub enum DesugaringKind {
     WhileLoop,
     /// `async Fn()` bound modifier
     BoundModifier,
+    /// Marks a `&raw const *_1` needed as part of getting the length of a mutable
+    /// slice for the bounds check, so that MIRI's retag handling can recognize it.
+    IndexBoundsCheckReborrow,
 }
 
 impl DesugaringKind {
@@ -1179,6 +1182,7 @@ impl DesugaringKind {
             DesugaringKind::ForLoop => "`for` loop",
             DesugaringKind::WhileLoop => "`while` loop",
             DesugaringKind::BoundModifier => "trait bound modifier",
+            DesugaringKind::IndexBoundsCheckReborrow => "slice indexing",
         }
     }
 }
