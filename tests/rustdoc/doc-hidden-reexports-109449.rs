@@ -26,7 +26,7 @@ pub mod single_reexport {
     //@ has 'foo/single_reexport/index.html'
 
     // First we check that we have 4 type aliases.
-    //@ count - '//*[@id="main-content"]/*[@class="item-table"]//code' 4
+    //@ count - '//*[@id="main-content"]/*[@class="item-table reexports"]//code' 4
 
     // Then we check that we have the correct link for each re-export.
 
@@ -131,10 +131,10 @@ mod private {
 pub mod doc_hidden_reexport {
     //@ has 'foo/doc_hidden_reexport/index.html'
     // Ensure there is only one item in this page and that it's a struct.
-    //@ count - '//*[@class="item-name"]' 1
+    //@ count - '//dt' 1
     //@ has - '//a[@class="struct"]' 'Reexport'
     // Check that the `#[doc(hidden)]` re-export's attributes are not taken into account.
-    //@ has - '//*[@class="desc docblock-short"]' 'Visible. Original.'
+    //@ has - '//dd' 'Visible. Original.'
     /// Visible.
     pub use self::Bar3 as Reexport;
     /// Hidden.

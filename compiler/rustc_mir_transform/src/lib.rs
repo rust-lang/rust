@@ -114,6 +114,8 @@ declare_passes! {
     mod add_moves_for_packed_drops : AddMovesForPackedDrops;
     mod add_retag : AddRetag;
     mod add_subtyping_projections : Subtyper;
+    mod check_inline : CheckForceInline;
+    mod check_call_recursion : CheckCallRecursion, CheckDropRecursion;
     mod check_alignment : CheckAlignment;
     mod check_const_item_mutation : CheckConstItemMutation;
     mod check_packed_ref : CheckPackedRef;
@@ -375,6 +377,8 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
         &mut body,
         &[
             // MIR-level lints.
+            &Lint(check_inline::CheckForceInline),
+            &Lint(check_call_recursion::CheckCallRecursion),
             &Lint(check_packed_ref::CheckPackedRef),
             &Lint(check_const_item_mutation::CheckConstItemMutation),
             &Lint(function_item_references::FunctionItemReferences),
@@ -505,10 +509,6 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
 
     run_analysis_to_runtime_passes(tcx, &mut body);
 
-    // Now that drop elaboration has been performed, we can check for
-    // unconditional drop recursion.
-    rustc_mir_build::lints::check_drop_recursion(tcx, &body);
-
     tcx.alloc_steal_mir(body)
 }
 
@@ -570,6 +570,8 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // Calling this after `PostAnalysisNormalize` ensures that we don't deal with opaque types.
         &add_subtyping_projections::Subtyper,
         &elaborate_drops::ElaborateDrops,
+        // Needs to happen after drop elaboration.
+        &Lint(check_call_recursion::CheckDropRecursion),
         // This will remove extraneous landing pads which are no longer
         // necessary as well as forcing any call in a non-unwinding
         // function calling a possibly-unwinding function to abort the process.
