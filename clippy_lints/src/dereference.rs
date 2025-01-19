@@ -331,7 +331,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                     deref_count += 1;
                                 },
                                 None => break None,
-                            };
+                            }
                         };
 
                         let use_node = use_cx.use_node(cx);

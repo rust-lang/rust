@@ -251,7 +251,7 @@ impl<'a> PanicExpn<'a> {
         // This has no argument
         if name == "panic_cold_explicit" {
             return Some(Self::Empty);
-        };
+        }
 
         let [arg, rest @ ..] = args else {
             return None;

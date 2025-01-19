@@ -191,7 +191,7 @@ impl SlowVectorInit {
             InitializationType::Extend(e) | InitializationType::Resize(e) => {
                 Self::emit_lint(cx, e, vec_alloc, "slow zero-filling initialization");
             },
-        };
+        }
     }
 
     fn emit_lint(cx: &LateContext<'_>, slow_fill: &Expr<'_>, vec_alloc: &VecAllocation<'_>, msg: &'static str) {

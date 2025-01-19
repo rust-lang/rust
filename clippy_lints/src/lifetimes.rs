@@ -784,7 +784,7 @@ fn report_elidable_lifetimes(
         |diag| {
             if !include_suggestions {
                 return;
-            };
+            }
 
             if let Some(suggestions) = elision_suggestions(cx, generics, elidable_lts, usages) {
                 diag.multipart_suggestion("elide the lifetimes", suggestions, Applicability::MachineApplicable);

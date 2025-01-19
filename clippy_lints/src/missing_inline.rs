@@ -135,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::Impl { .. }
             | hir::ItemKind::Use(..) => {},
-        };
+        }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {

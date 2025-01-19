@@ -251,7 +251,7 @@ impl LiteralDigitGrouping {
                     );
                     if !consistent {
                         return Err(WarningType::InconsistentDigitGrouping);
-                    };
+                    }
                 }
 
                 Ok(())

@@ -815,7 +815,7 @@ fn projection_stack<'a, 'hir>(mut e: &'a Expr<'hir>) -> (Vec<&'a Expr<'hir>>, &'
                 e = ep;
             },
             _ => break e,
-        };
+        }
     };
     result.reverse();
     (result, root)
@@ -2045,7 +2045,7 @@ pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'t
         {
             return Some(expr);
         }
-    };
+    }
     None
 }
 
