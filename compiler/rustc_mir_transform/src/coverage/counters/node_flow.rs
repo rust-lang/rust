@@ -12,7 +12,7 @@ use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::coverage::Op;
 
 use crate::coverage::counters::iter_nodes::IterNodes;
-use crate::coverage::counters::union_find::{FrozenUnionFind, UnionFind};
+use crate::coverage::counters::union_find::UnionFind;
 
 #[cfg(test)]
 mod tests;
@@ -32,7 +32,7 @@ mod tests;
 pub(crate) struct MergedNodeFlowGraph<Node: Idx> {
     /// Maps each node to the supernode that contains it, indicated by some
     /// arbitrary "root" node that is part of that supernode.
-    supernodes: FrozenUnionFind<Node>,
+    supernodes: IndexVec<Node, Node>,
     /// For each node, stores the single supernode that all of its successors
     /// have been merged into.
     ///
@@ -66,11 +66,11 @@ impl<Node: Idx> MergedNodeFlowGraph<Node> {
             })
             .collect::<IndexVec<G::Node, G::Node>>();
 
-        // Now that unification is complete, freeze the supernode forest,
+        // Now that unification is complete, take a snapshot of the supernode forest,
         // and resolve each arbitrarily-chosen successor to its canonical root.
         // (This avoids having to explicitly resolve them later.)
-        let supernodes = supernodes.freeze();
-        let succ_supernodes = successors.into_iter().map(|succ| supernodes.find(succ)).collect();
+        let supernodes = supernodes.snapshot();
+        let succ_supernodes = successors.into_iter().map(|succ| supernodes[succ]).collect();
 
         Self { supernodes, succ_supernodes }
     }
@@ -80,7 +80,7 @@ impl<Node: Idx> MergedNodeFlowGraph<Node> {
     }
 
     fn is_supernode(&self, node: Node) -> bool {
-        self.supernodes.find(node) == node
+        self.supernodes[node] == node
     }
 
     /// Using the information in this merged graph, together with a given
@@ -225,7 +225,7 @@ impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
 
         // Get the supernode containing `this`, and make it the root of its
         // component of the spantree.
-        let this_supernode = self.graph.supernodes.find(this);
+        let this_supernode = self.graph.supernodes[this];
         self.yank_to_spantree_root(this_supernode);
 
         // Get the supernode containing all of this's successors.
