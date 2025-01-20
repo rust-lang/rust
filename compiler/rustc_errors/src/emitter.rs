@@ -3146,7 +3146,7 @@ impl FileWithAnnotatedLines {
                     add_annotation_to_file(&mut output, Lrc::clone(&file), line, ann.as_line());
                 }
                 let line_end = ann.line_end - 1;
-                let end_is_empty = file.get_line(line_end - 1).map_or(false, |s| !filter(&s));
+                let end_is_empty = file.get_line(line_end - 1).is_some_and(|s| !filter(&s));
                 if middle < line_end && !end_is_empty {
                     add_annotation_to_file(&mut output, Lrc::clone(&file), line_end, ann.as_line());
                 }

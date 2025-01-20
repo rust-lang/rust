@@ -166,7 +166,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &impl AttributeExt) -> Vec<ReprAttr
                 // the `check_mod_attrs` pass, but this pass doesn't always run
                 // (e.g. if we only pretty-print the source), so we have to gate
                 // the `span_delayed_bug` call as follows:
-                if sess.opts.pretty.map_or(true, |pp| pp.needs_analysis()) {
+                if sess.opts.pretty.is_none_or(|pp| pp.needs_analysis()) {
                     dcx.span_delayed_bug(item.span(), "unrecognized representation hint");
                 }
             }
