@@ -8,7 +8,6 @@ use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::solve::CanonicalResponse;
 use rustc_type_ir::visit::TypeVisitableExt as _;
 use rustc_type_ir::{self as ty, Interner, TraitPredicate, TypingMode, Upcast as _, elaborate};
-use smallvec::SmallVec;
 use tracing::{instrument, trace};
 
 use crate::delegate::SolverDelegate;
@@ -1199,25 +1198,14 @@ where
         // nested requirements, over all others. This is a fix for #53123 and
         // prevents where-bounds from accidentally extending the lifetime of a
         // variable.
-        if candidates
-            .iter()
-            .any(|c| matches!(c.source, CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial)))
-        {
-            let trivial_builtin_impls: SmallVec<[_; 1]> = candidates
-                .iter()
-                .filter(|c| {
-                    matches!(c.source, CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial))
-                })
-                .map(|c| c.result)
-                .collect();
+        let mut trivial_builtin_impls = candidates.iter().filter(|c| {
+            matches!(c.source, CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial))
+        });
+        if let Some(candidate) = trivial_builtin_impls.next() {
             // There should only ever be a single trivial builtin candidate
             // as they would otherwise overlap.
-            assert_eq!(trivial_builtin_impls.len(), 1);
-            return if let Some(response) = self.try_merge_responses(&trivial_builtin_impls) {
-                Ok((response, Some(TraitGoalProvenVia::Misc)))
-            } else {
-                Ok((self.bail_with_ambiguity(&trivial_builtin_impls), None))
-            };
+            assert!(trivial_builtin_impls.next().is_none());
+            return Ok((candidate.result, Some(TraitGoalProvenVia::Misc)));
         }
 
         // If there are non-global where-bounds, prefer where-bounds
