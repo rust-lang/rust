@@ -7,7 +7,7 @@ use rustc_ast::token::CommentKind;
 use rustc_ast::util::parser::{AssocOp, ExprPrecedence};
 use rustc_ast::{
     self as ast, AttrId, AttrStyle, DelimArgs, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece,
-    IntTy, Label, LitKind, MetaItemInner, MetaItemLit, TraitObjectSyntax, UintTy,
+    IntTy, Label, LitIntType, LitKind, MetaItemInner, MetaItemLit, TraitObjectSyntax, UintTy,
 };
 pub use rustc_ast::{
     BinOp, BinOpKind, BindingMode, BorrowKind, BoundConstness, BoundPolarity, ByRef, CaptureBy,
@@ -34,6 +34,7 @@ use crate::intravisit::FnKind;
 
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
 pub struct Lifetime {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
 
     /// Either "`'a`", referring to a named lifetime definition,
@@ -214,6 +215,7 @@ impl Path<'_> {
 pub struct PathSegment<'hir> {
     /// The identifier portion of this path segment.
     pub ident: Ident,
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub res: Res,
 
@@ -304,6 +306,7 @@ pub enum ConstArgKind<'hir> {
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub struct InferArg {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub span: Span,
 }
@@ -592,6 +595,7 @@ pub enum GenericParamKind<'hir> {
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct GenericParam<'hir> {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub name: ParamName,
@@ -850,6 +854,7 @@ impl<'hir> Generics<'hir> {
 /// A single predicate in a where-clause.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct WherePredicate<'hir> {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     pub kind: &'hir WherePredicateKind<'hir>,
@@ -1386,7 +1391,7 @@ impl<'hir> Pat<'hir> {
 
         use PatKind::*;
         match self.kind {
-            Wild | Never | Lit(_) | Range(..) | Binding(.., None) | Path(_) | Err(_) => true,
+            Wild | Never | Expr(_) | Range(..) | Binding(.., None) | Path(_) | Err(_) => true,
             Box(s) | Deref(s) | Ref(s, _) | Binding(.., Some(s)) | Guard(s, _) => s.walk_short_(it),
             Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk_short_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().all(|p| p.walk_short_(it)),
@@ -1413,7 +1418,7 @@ impl<'hir> Pat<'hir> {
 
         use PatKind::*;
         match self.kind {
-            Wild | Never | Lit(_) | Range(..) | Binding(.., None) | Path(_) | Err(_) => {}
+            Wild | Never | Expr(_) | Range(..) | Binding(.., None) | Path(_) | Err(_) => {}
             Box(s) | Deref(s) | Ref(s, _) | Binding(.., Some(s)) | Guard(s, _) => s.walk_(it),
             Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().for_each(|p| p.walk_(it)),
@@ -1520,6 +1525,27 @@ impl fmt::Debug for DotDotPos {
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub struct PatExpr<'hir> {
+    #[stable_hasher(ignore)]
+    pub hir_id: HirId,
+    pub span: Span,
+    pub kind: PatExprKind<'hir>,
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub enum PatExprKind<'hir> {
+    Lit {
+        lit: &'hir Lit,
+        // FIXME: move this into `Lit` and handle negated literal expressions
+        // once instead of matching on unop neg expressions everywhere.
+        negated: bool,
+    },
+    ConstBlock(ConstBlock),
+    /// A path pattern for a unit struct/variant or a (maybe-associated) constant.
+    Path(QPath<'hir>),
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum PatKind<'hir> {
     /// Represents a wildcard pattern (i.e., `_`).
     Wild,
@@ -1563,14 +1589,14 @@ pub enum PatKind<'hir> {
     /// A reference pattern (e.g., `&mut (a, b)`).
     Ref(&'hir Pat<'hir>, Mutability),
 
-    /// A literal.
-    Lit(&'hir Expr<'hir>),
+    /// A literal, const block or path.
+    Expr(&'hir PatExpr<'hir>),
 
     /// A guard pattern (e.g., `x if guard(x)`).
     Guard(&'hir Pat<'hir>, &'hir Expr<'hir>),
 
     /// A range pattern (e.g., `1..=2` or `1..2`).
-    Range(Option<&'hir Expr<'hir>>, Option<&'hir Expr<'hir>>, RangeEnd),
+    Range(Option<&'hir PatExpr<'hir>>, Option<&'hir PatExpr<'hir>>, RangeEnd),
 
     /// A slice pattern, `[before_0, ..., before_n, (slice, after_0, ..., after_n)?]`.
     ///
@@ -1590,6 +1616,7 @@ pub enum PatKind<'hir> {
 /// A statement.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Stmt<'hir> {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub kind: StmtKind<'hir>,
     pub span: Span,
@@ -1621,6 +1648,7 @@ pub struct LetStmt<'hir> {
     pub init: Option<&'hir Expr<'hir>>,
     /// Else block for a `let...else` binding.
     pub els: Option<&'hir Block<'hir>>,
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     /// Can be `ForLoopDesugar` if the `let` statement is part of a `for` loop
@@ -1917,6 +1945,7 @@ pub type Lit = Spanned<LitKind>;
 /// `const N: usize = { ... }` with `tcx.hir().opt_const_param_default_param_def_id(..)`
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub struct AnonConst {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub body: BodyId,
@@ -1926,6 +1955,7 @@ pub struct AnonConst {
 /// An inline constant expression `const { something }`.
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub struct ConstBlock {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub body: BodyId,
@@ -1941,6 +1971,7 @@ pub struct ConstBlock {
 /// [rust lang reference]: https://doc.rust-lang.org/reference/expressions.html
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Expr<'hir> {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub kind: ExprKind<'hir>,
     pub span: Span,
@@ -2072,6 +2103,18 @@ impl Expr<'_> {
             | ExprKind::DropTemps(..)
             | ExprKind::Err(_) => false,
         }
+    }
+
+    /// Check if expression is an integer literal that can be used
+    /// where `usize` is expected.
+    pub fn is_size_lit(&self) -> bool {
+        matches!(
+            self.kind,
+            ExprKind::Lit(Lit {
+                node: LitKind::Int(_, LitIntType::Unsuffixed | LitIntType::Unsigned(UintTy::Usize)),
+                ..
+            })
+        )
     }
 
     /// If `Self.kind` is `ExprKind::DropTemps(expr)`, drill down until we get a non-`DropTemps`
@@ -2807,6 +2850,7 @@ pub enum ImplItemKind<'hir> {
 /// * the `f(..): Bound` in `Trait<f(..): Bound>` (feature `return_type_notation`)
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct AssocItemConstraint<'hir> {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub ident: Ident,
     pub gen_args: &'hir GenericArgs<'hir>,
@@ -2875,6 +2919,7 @@ impl<'hir> AssocItemConstraintKind<'hir> {
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Ty<'hir> {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub kind: TyKind<'hir>,
     pub span: Span,
@@ -3070,6 +3115,7 @@ pub struct UnsafeBinderTy<'hir> {
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct OpaqueTy<'hir> {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub bounds: GenericBounds<'hir>,
@@ -3106,6 +3152,7 @@ impl PreciseCapturingArg<'_> {
 /// since resolve_bound_vars operates on `Lifetime`s.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct PreciseCapturingNonLifetimeArg {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub ident: Ident,
     pub res: Res,
@@ -3279,6 +3326,7 @@ impl InlineAsm<'_> {
 /// Represents a parameter in a function header.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Param<'hir> {
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub pat: &'hir Pat<'hir>,
     pub ty_span: Span,
@@ -3436,6 +3484,7 @@ pub struct Variant<'hir> {
     /// Name of the variant.
     pub ident: Ident,
     /// Id of the variant (not the constructor, see `VariantData::ctor_hir_id()`).
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     /// Fields and constructor id of the variant.
@@ -3508,6 +3557,7 @@ pub struct FieldDef<'hir> {
     pub span: Span,
     pub vis_span: Span,
     pub ident: Ident,
+    #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub ty: &'hir Ty<'hir>,
@@ -3532,11 +3582,11 @@ pub enum VariantData<'hir> {
     /// A tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
-    Tuple(&'hir [FieldDef<'hir>], HirId, LocalDefId),
+    Tuple(&'hir [FieldDef<'hir>], #[stable_hasher(ignore)] HirId, LocalDefId),
     /// A unit variant.
     ///
     /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
-    Unit(HirId, LocalDefId),
+    Unit(#[stable_hasher(ignore)] HirId, LocalDefId),
 }
 
 impl<'hir> VariantData<'hir> {
@@ -3730,9 +3780,30 @@ impl fmt::Display for Constness {
     }
 }
 
+/// The actualy safety specified in syntax. We may treat
+/// its safety different within the type system to create a
+/// "sound by default" system that needs checking this enum
+/// explicitly to allow unsafe operations.
+#[derive(Copy, Clone, Debug, HashStable_Generic, PartialEq, Eq)]
+pub enum HeaderSafety {
+    /// A safe function annotated with `#[target_features]`.
+    /// The type system treats this function as an unsafe function,
+    /// but safety checking will check this enum to treat it as safe
+    /// and allowing calling other safe target feature functions with
+    /// the same features without requiring an additional unsafe block.
+    SafeTargetFeatures,
+    Normal(Safety),
+}
+
+impl From<Safety> for HeaderSafety {
+    fn from(v: Safety) -> Self {
+        Self::Normal(v)
+    }
+}
+
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub struct FnHeader {
-    pub safety: Safety,
+    pub safety: HeaderSafety,
     pub constness: Constness,
     pub asyncness: IsAsync,
     pub abi: ExternAbi,
@@ -3748,7 +3819,18 @@ impl FnHeader {
     }
 
     pub fn is_unsafe(&self) -> bool {
-        self.safety.is_unsafe()
+        self.safety().is_unsafe()
+    }
+
+    pub fn is_safe(&self) -> bool {
+        self.safety().is_safe()
+    }
+
+    pub fn safety(&self) -> Safety {
+        match self.safety {
+            HeaderSafety::SafeTargetFeatures => Safety::Unsafe,
+            HeaderSafety::Normal(safety) => safety,
+        }
     }
 }
 
@@ -4144,6 +4226,10 @@ pub enum Node<'hir> {
     OpaqueTy(&'hir OpaqueTy<'hir>),
     Pat(&'hir Pat<'hir>),
     PatField(&'hir PatField<'hir>),
+    /// Needed as its own node with its own HirId for tracking
+    /// the unadjusted type of literals within patterns
+    /// (e.g. byte str literals not being of slice type).
+    PatExpr(&'hir PatExpr<'hir>),
     Arm(&'hir Arm<'hir>),
     Block(&'hir Block<'hir>),
     LetStmt(&'hir LetStmt<'hir>),
@@ -4200,6 +4286,7 @@ impl<'hir> Node<'hir> {
             | Node::Block(..)
             | Node::Ctor(..)
             | Node::Pat(..)
+            | Node::PatExpr(..)
             | Node::Arm(..)
             | Node::LetStmt(..)
             | Node::Crate(..)

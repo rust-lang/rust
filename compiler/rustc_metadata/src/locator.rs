@@ -262,7 +262,7 @@ pub(crate) struct CrateLocator<'a> {
 
 #[derive(Clone)]
 pub(crate) struct CratePaths {
-    name: Symbol,
+    pub(crate) name: Symbol,
     source: CrateSource,
 }
 
@@ -765,10 +765,10 @@ impl<'a> CrateLocator<'a> {
         self.extract_lib(rlibs, rmetas, dylibs).map(|opt| opt.map(|(_, lib)| lib))
     }
 
-    pub(crate) fn into_error(self, root: Option<CratePaths>) -> CrateError {
+    pub(crate) fn into_error(self, dep_root: Option<CratePaths>) -> CrateError {
         CrateError::LocatorCombined(Box::new(CombinedLocatorError {
             crate_name: self.crate_name,
-            root,
+            dep_root,
             triple: self.tuple,
             dll_prefix: self.target.dll_prefix.to_string(),
             dll_suffix: self.target.dll_suffix.to_string(),
@@ -914,7 +914,7 @@ struct CrateRejections {
 /// otherwise they are ignored.
 pub(crate) struct CombinedLocatorError {
     crate_name: Symbol,
-    root: Option<CratePaths>,
+    dep_root: Option<CratePaths>,
     triple: TargetTuple,
     dll_prefix: String,
     dll_suffix: String,
@@ -987,7 +987,7 @@ impl CrateError {
             }
             CrateError::LocatorCombined(locator) => {
                 let crate_name = locator.crate_name;
-                let add_info = match &locator.root {
+                let add_info = match &locator.dep_root {
                     None => String::new(),
                     Some(r) => format!(" which `{}` depends on", r.name),
                 };
@@ -1012,7 +1012,7 @@ impl CrateError {
                             path.display()
                         ));
                     }
-                    if let Some(r) = locator.root {
+                    if let Some(r) = locator.dep_root {
                         for path in r.source.paths() {
                             found_crates.push_str(&format!(
                                 "\ncrate `{}`: {}",

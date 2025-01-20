@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
@@ -132,7 +132,7 @@ fn compute_replacement<'tcx>(
     let mut targets = IndexVec::from_elem(Value::Unknown, &body.local_decls);
     // Set of locals for which we will remove their storage statement. This is useful for
     // reborrowed references.
-    let mut storage_to_remove = BitSet::new_empty(body.local_decls.len());
+    let mut storage_to_remove = DenseBitSet::new_empty(body.local_decls.len());
 
     let fully_replacable_locals = fully_replacable_locals(ssa);
 
@@ -324,8 +324,8 @@ fn compute_replacement<'tcx>(
 ///
 /// We consider a local to be replacable iff it's only used in a `Deref` projection `*_local` or
 /// non-use position (like storage statements and debuginfo).
-fn fully_replacable_locals(ssa: &SsaLocals) -> BitSet<Local> {
-    let mut replacable = BitSet::new_empty(ssa.num_locals());
+fn fully_replacable_locals(ssa: &SsaLocals) -> DenseBitSet<Local> {
+    let mut replacable = DenseBitSet::new_empty(ssa.num_locals());
 
     // First pass: for each local, whether its uses can be fully replaced.
     for local in ssa.locals() {
@@ -344,7 +344,7 @@ fn fully_replacable_locals(ssa: &SsaLocals) -> BitSet<Local> {
 struct Replacer<'tcx> {
     tcx: TyCtxt<'tcx>,
     targets: IndexVec<Local, Value<'tcx>>,
-    storage_to_remove: BitSet<Local>,
+    storage_to_remove: DenseBitSet<Local>,
     allowed_replacements: FxHashSet<(Local, Location)>,
     any_replacement: bool,
 }

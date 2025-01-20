@@ -78,7 +78,7 @@ impl<T> ArenaChunk<T> {
             // been initialized.
             unsafe {
                 let slice = self.storage.as_mut();
-                ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(&mut slice[..len]));
+                slice[..len].assume_init_drop();
             }
         }
     }

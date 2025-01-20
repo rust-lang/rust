@@ -27,7 +27,7 @@ use rustc_query_system::query::{
     QueryCache, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffects, QueryStackFrame,
     force_query,
 };
-use rustc_query_system::{LayoutOfDepth, QueryOverflow};
+use rustc_query_system::{QueryOverflow, QueryOverflowNote};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
@@ -153,14 +153,7 @@ impl QueryContext for QueryCtxt<'_> {
     }
 
     fn depth_limit_error(self, job: QueryJobId) {
-        let mut span = None;
-        let mut layout_of_depth = None;
-        if let Some((info, depth)) =
-            job.try_find_layout_root(self.collect_active_jobs(), dep_kinds::layout_of)
-        {
-            span = Some(info.job.span);
-            layout_of_depth = Some(LayoutOfDepth { desc: info.query.description, depth });
-        }
+        let (info, depth) = job.find_dep_kind_root(self.collect_active_jobs());
 
         let suggested_limit = match self.recursion_limit() {
             Limit(0) => Limit(2),
@@ -168,8 +161,8 @@ impl QueryContext for QueryCtxt<'_> {
         };
 
         self.sess.dcx().emit_fatal(QueryOverflow {
-            span,
-            layout_of_depth,
+            span: info.job.span,
+            note: QueryOverflowNote { desc: info.query.description, depth },
             suggested_limit,
             crate_name: self.crate_name(LOCAL_CRATE),
         });

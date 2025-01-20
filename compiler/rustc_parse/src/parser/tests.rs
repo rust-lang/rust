@@ -1,4 +1,4 @@
-#![cfg_attr(not(bootstrap), allow(rustc::symbol_intern_string_literal))]
+#![allow(rustc::symbol_intern_string_literal)]
 
 use std::assert_matches::assert_matches;
 use std::io::prelude::*;
@@ -2366,8 +2366,7 @@ fn string_to_tts_1() {
                         token::Ident(sym::i32, IdentIsRaw::No),
                         sp(8, 11),
                     ),
-                ])
-                .into(),
+                ]),
             ),
             TokenTree::Delimited(
                 DelimSpan::from_pair(sp(13, 14), sp(18, 19)),
@@ -2383,8 +2382,7 @@ fn string_to_tts_1() {
                     ),
                     // `Alone` because the `;` is followed by whitespace.
                     TokenTree::token_alone(token::Semi, sp(16, 17)),
-                ])
-                .into(),
+                ]),
             ),
         ]);
 

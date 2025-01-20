@@ -39,6 +39,9 @@
 //@ revisions: i686_uwp_windows_gnu
 //@ [i686_uwp_windows_gnu] compile-flags: --target i686-uwp-windows-gnu
 //@ [i686_uwp_windows_gnu] needs-llvm-components: x86
+//@ revisions: i686_win7_windows_gnu
+//@ [i686_win7_windows_gnu] compile-flags: --target i686-win7-windows-gnu
+//@ [i686_win7_windows_gnu] needs-llvm-components: x86
 //@ revisions: i686_unknown_uefi
 //@ [i686_unknown_uefi] compile-flags: --target i686-unknown-uefi
 //@ [i686_unknown_uefi] needs-llvm-components: x86
@@ -72,6 +75,9 @@
 //@ revisions: x86_64_uwp_windows_gnu
 //@ [x86_64_uwp_windows_gnu] compile-flags: --target x86_64-uwp-windows-gnu
 //@ [x86_64_uwp_windows_gnu] needs-llvm-components: x86
+//@ revisions: x86_64_win7_windows_gnu
+//@ [x86_64_win7_windows_gnu] compile-flags: --target x86_64-win7-windows-gnu
+//@ [x86_64_win7_windows_gnu] needs-llvm-components: x86
 //@ revisions: x86_64_uwp_windows_msvc
 //@ [x86_64_uwp_windows_msvc] compile-flags: --target x86_64-uwp-windows-msvc
 //@ [x86_64_uwp_windows_msvc] needs-llvm-components: x86

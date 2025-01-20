@@ -653,7 +653,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
                 }
             }
         }
-        PredicateFilter::SelfAndAssociatedTypeBounds => {
+        PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {
             for &(pred, span) in implied_bounds {
                 debug!("superbound: {:?}", pred);
                 if let ty::ClauseKind::Trait(bound) = pred.kind().skip_binder()
@@ -1036,7 +1036,7 @@ pub(super) fn const_conditions<'tcx>(
 
         icx.lowerer().lower_bounds(
             tcx.types.self_param,
-            supertraits.into_iter(),
+            supertraits,
             &mut bounds,
             ty::List::empty(),
             PredicateFilter::ConstIfConst,

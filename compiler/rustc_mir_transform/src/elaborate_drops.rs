@@ -2,7 +2,7 @@ use std::fmt;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
@@ -96,10 +96,10 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
 fn compute_dead_unwinds<'a, 'tcx>(
     body: &'a Body<'tcx>,
     flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
-) -> BitSet<BasicBlock> {
+) -> DenseBitSet<BasicBlock> {
     // We only need to do this pass once, because unwind edges can only
     // reach cleanup blocks, which can't have unwind edges themselves.
-    let mut dead_unwinds = BitSet::new_empty(body.basic_blocks.len());
+    let mut dead_unwinds = DenseBitSet::new_empty(body.basic_blocks.len());
     for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
         let TerminatorKind::Drop { place, unwind: UnwindAction::Cleanup(_), .. } =
             bb_data.terminator().kind

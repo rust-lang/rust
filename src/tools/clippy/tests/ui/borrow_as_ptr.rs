@@ -16,4 +16,12 @@ fn main() {
 
     let mut val_mut = 1;
     let _p_mut = &mut val_mut as *mut i32;
+
+    let mut x: [i32; 2] = [42, 43];
+    let _raw = (&mut x[1] as *mut i32).wrapping_offset(-1);
+}
+
+fn issue_13882() {
+    let mut x: [i32; 2] = [42, 43];
+    let _raw = (&mut x[1] as *mut i32).wrapping_offset(-1);
 }

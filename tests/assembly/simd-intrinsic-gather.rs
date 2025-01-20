@@ -38,6 +38,6 @@ pub unsafe extern "C" fn gather_f64x4(mask: m64x4, ptrs: pf64x4) -> f64x4 {
     // x86-avx512: vpsllq ymm0, ymm0, 63
     // x86-avx512-NEXT: vpmovq2m k1, ymm0
     // x86-avx512-NEXT: vpxor xmm0, xmm0, xmm0
-    // x86-avx512-NEXT: vgatherqpd ymm0 {k1}, ymmword ptr [1*ymm1]
+    // x86-avx512-NEXT: vgatherqpd ymm0 {k1}, {{(ymmword)|(qword)}} ptr [1*ymm1]
     simd_gather(f64x4([0_f64, 0_f64, 0_f64, 0_f64]), ptrs, mask)
 }

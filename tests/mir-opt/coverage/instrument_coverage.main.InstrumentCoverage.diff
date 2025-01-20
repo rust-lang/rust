@@ -8,11 +8,11 @@
       let mut _3: !;
   
 +     coverage body span: $DIR/instrument_coverage.rs:10:11: 16:2 (#0)
-+     coverage ExpressionId(0) => Expression { lhs: Counter(0), op: Add, rhs: Counter(1) };
++     coverage ExpressionId(0) => Expression { lhs: Counter(1), op: Subtract, rhs: Counter(0) };
 +     coverage Code(Counter(0)) => $DIR/instrument_coverage.rs:10:1: 10:11 (#0);
-+     coverage Code(Expression(0)) => $DIR/instrument_coverage.rs:12:12: 12:17 (#0);
++     coverage Code(Counter(1)) => $DIR/instrument_coverage.rs:12:12: 12:17 (#0);
 +     coverage Code(Counter(0)) => $DIR/instrument_coverage.rs:13:13: 13:18 (#0);
-+     coverage Code(Counter(1)) => $DIR/instrument_coverage.rs:14:10: 14:10 (#0);
++     coverage Code(Expression(0)) => $DIR/instrument_coverage.rs:14:10: 14:10 (#0);
 +     coverage Code(Counter(0)) => $DIR/instrument_coverage.rs:16:2: 16:2 (#0);
 + 
       bb0: {
@@ -21,7 +21,7 @@
       }
   
       bb1: {
-+         Coverage::ExpressionUsed(0);
++         Coverage::CounterIncrement(1);
           falseUnwind -> [real: bb2, unwind: bb6];
       }
   
@@ -41,7 +41,7 @@
       }
   
       bb5: {
-+         Coverage::CounterIncrement(1);
++         Coverage::ExpressionUsed(0);
           _1 = const ();
           StorageDead(_2);
           goto -> bb1;

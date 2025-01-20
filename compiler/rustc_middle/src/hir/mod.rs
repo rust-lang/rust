@@ -30,6 +30,7 @@ pub struct ModuleItems {
     foreign_items: Box<[ForeignItemId]>,
     opaques: Box<[LocalDefId]>,
     body_owners: Box<[LocalDefId]>,
+    nested_bodies: Box<[LocalDefId]>,
 }
 
 impl ModuleItems {
@@ -68,6 +69,10 @@ impl ModuleItems {
 
     pub fn opaques(&self) -> impl Iterator<Item = LocalDefId> + '_ {
         self.opaques.iter().copied()
+    }
+
+    pub fn nested_bodies(&self) -> impl Iterator<Item = LocalDefId> + '_ {
+        self.nested_bodies.iter().copied()
     }
 
     pub fn definitions(&self) -> impl Iterator<Item = LocalDefId> + '_ {

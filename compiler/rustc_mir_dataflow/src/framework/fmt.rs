@@ -4,7 +4,7 @@
 use std::fmt;
 
 use rustc_index::Idx;
-use rustc_index::bit_set::{BitSet, ChunkedBitSet, MixedBitSet};
+use rustc_index::bit_set::{ChunkedBitSet, DenseBitSet, MixedBitSet};
 
 use super::lattice::MaybeReachable;
 
@@ -73,7 +73,7 @@ where
 
 // Impls
 
-impl<T, C> DebugWithContext<C> for BitSet<T>
+impl<T, C> DebugWithContext<C> for DenseBitSet<T>
 where
     T: Idx + DebugWithContext<C>,
 {

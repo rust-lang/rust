@@ -472,7 +472,7 @@ macro_rules! spec_tuple_impl {
             #[doc(fake_variadic)]
             #[doc = "This trait is implemented for tuples up to twelve items long. The `impl`s for \
                      1- and 3- through 12-ary tuples were stabilized after 2-tuples, in \
-                     CURRENT_RUSTC_VERSION."]
+                     1.85.0."]
             => ($ty_name, $var_name, $extend_ty_name, $cnt),
         );
     };

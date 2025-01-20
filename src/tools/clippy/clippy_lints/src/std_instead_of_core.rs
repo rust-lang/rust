@@ -180,7 +180,7 @@ fn is_stable(cx: &LateContext<'_>, mut def_id: DefId, msrv: &Msrv) -> bool {
         if let Some(stability) = cx.tcx.lookup_stability(def_id)
             && let StabilityLevel::Stable {
                 since,
-                allowed_through_unstable_modules: false,
+                allowed_through_unstable_modules: None,
             } = stability.level
         {
             let stable = match since {

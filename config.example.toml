@@ -922,6 +922,15 @@
 # argument as the test binary.
 #runner = <none> (string)
 
+# Use the optimized LLVM C intrinsics for `compiler_builtins`, rather than Rust intrinsics
+# on this target.
+# Requires the LLVM submodule to be managed by bootstrap (i.e. not external) so that `compiler-rt`
+# sources are available.
+#
+# Setting this to `false` generates slower code, but removes the requirement for a C toolchain in
+# order to run `x check`.
+#optimized-compiler-builtins = build.optimized-compiler-builtins (bool)
+
 # =============================================================================
 # Distribution options
 #

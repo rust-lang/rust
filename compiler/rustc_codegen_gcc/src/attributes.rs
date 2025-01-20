@@ -20,7 +20,7 @@ fn inline_attr<'gcc, 'tcx>(
 ) -> Option<FnAttribute<'gcc>> {
     match inline {
         InlineAttr::Hint => Some(FnAttribute::Inline),
-        InlineAttr::Always => Some(FnAttribute::AlwaysInline),
+        InlineAttr::Always | InlineAttr::Force { .. } => Some(FnAttribute::AlwaysInline),
         InlineAttr::Never => {
             if cx.sess().target.arch != "amdgpu" {
                 Some(FnAttribute::NoInline)

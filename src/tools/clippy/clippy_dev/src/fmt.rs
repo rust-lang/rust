@@ -179,8 +179,8 @@ fn fmt_conf(check: bool) -> Result<(), Error> {
                 #[expect(clippy::drain_collect)]
                 fields.push(ClippyConf {
                     name,
-                    lints: lints.drain(..).collect(),
                     attrs: &conf[attrs_start..attrs_end],
+                    lints: lints.drain(..).collect(),
                     field: conf[field_start..i].trim_end(),
                 });
                 attrs_start = i;
@@ -191,8 +191,8 @@ fn fmt_conf(check: bool) -> Result<(), Error> {
                 #[expect(clippy::drain_collect)]
                 fields.push(ClippyConf {
                     name,
-                    lints: lints.drain(..).collect(),
                     attrs: &conf[attrs_start..attrs_end],
+                    lints: lints.drain(..).collect(),
                     field: conf[field_start..i].trim_end(),
                 });
                 attrs_start = i;
@@ -220,8 +220,8 @@ fn fmt_conf(check: bool) -> Result<(), Error> {
     }
     fields.push(ClippyConf {
         name,
-        lints,
         attrs: &conf[attrs_start..attrs_end],
+        lints,
         field: conf[field_start..].trim_end(),
     });
 

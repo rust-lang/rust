@@ -2451,10 +2451,10 @@ fn add_order_independent_options(
     }
 
     if sess.target.os == "emscripten" {
-        cmd.cc_arg(if sess.panic_strategy() == PanicStrategy::Abort {
-            "-sDISABLE_EXCEPTION_CATCHING=1"
-        } else if sess.opts.unstable_opts.emscripten_wasm_eh {
+        cmd.cc_arg(if sess.opts.unstable_opts.emscripten_wasm_eh {
             "-fwasm-exceptions"
+        } else if sess.panic_strategy() == PanicStrategy::Abort {
+            "-sDISABLE_EXCEPTION_CATCHING=1"
         } else {
             "-sDISABLE_EXCEPTION_CATCHING=0"
         });

@@ -40,7 +40,7 @@ use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::Visitor;
@@ -121,7 +121,7 @@ struct TOFinder<'a, 'tcx> {
     ecx: InterpCx<'tcx, DummyMachine>,
     body: &'a Body<'tcx>,
     map: Map<'tcx>,
-    loop_headers: BitSet<BasicBlock>,
+    loop_headers: DenseBitSet<BasicBlock>,
     /// We use an arena to avoid cloning the slices when cloning `state`.
     arena: &'a DroplessArena,
     opportunities: Vec<ThreadingOpportunity>,
@@ -832,8 +832,8 @@ enum Update {
 /// at least a predecessor which it dominates. This definition is only correct for reducible CFGs.
 /// But if the CFG is already irreducible, there is no point in trying much harder.
 /// is already irreducible.
-fn loop_headers(body: &Body<'_>) -> BitSet<BasicBlock> {
-    let mut loop_headers = BitSet::new_empty(body.basic_blocks.len());
+fn loop_headers(body: &Body<'_>) -> DenseBitSet<BasicBlock> {
+    let mut loop_headers = DenseBitSet::new_empty(body.basic_blocks.len());
     let dominators = body.basic_blocks.dominators();
     // Only visit reachable blocks.
     for (bb, bbdata) in traversal::preorder(body) {

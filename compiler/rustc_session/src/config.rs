@@ -132,13 +132,6 @@ pub enum LtoCli {
 }
 
 /// The different settings that the `-C instrument-coverage` flag can have.
-///
-/// Coverage instrumentation now supports combining `-C instrument-coverage`
-/// with compiler and linker optimization (enabled with `-O` or `-C opt-level=1`
-/// and higher). Nevertheless, there are many variables, depending on options
-/// selected, code structure, and enabled attributes. If errors are encountered,
-/// either while compiling or when generating `llvm-cov show` reports, consider
-/// lowering the optimization level, or including/excluding `-C link-dead-code`.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum InstrumentCoverage {
     /// `-C instrument-coverage=no` (or `off`, `false` etc.)
@@ -2892,6 +2885,7 @@ pub(crate) mod dep_tracking {
     use std::num::NonZero;
     use std::path::PathBuf;
 
+    use rustc_abi::Align;
     use rustc_data_structures::fx::FxIndexMap;
     use rustc_data_structures::stable_hasher::Hash64;
     use rustc_errors::LanguageIdentifier;
@@ -3012,6 +3006,7 @@ pub(crate) mod dep_tracking {
         InliningThreshold,
         FunctionReturn,
         WasmCAbi,
+        Align,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)

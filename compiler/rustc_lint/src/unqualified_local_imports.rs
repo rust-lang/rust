@@ -12,6 +12,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,edition2018
+    /// #![feature(unqualified_local_imports)]
     /// #![warn(unqualified_local_imports)]
     ///
     /// mod localmod {

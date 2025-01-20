@@ -1,0 +1,11 @@
+error: queries overflow the depth limit!
+  --> $DIR/recursive-block.rs:2:11
+   |
+LL |     const { foo::<&T>() }
+   |           ^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`recursive_block`)
+   = note: query depth increased by 1 when computing layout of `foo<&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&i32>`
+
+error: aborting due to 1 previous error
+

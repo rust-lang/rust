@@ -7,8 +7,22 @@ LL |
 LL |     fn foo(&self) {}
    |     ------------- not an `unsafe` function
 
+error[E0053]: method `foo` has an incompatible type for trait
+  --> $DIR/trait-impl.rs:15:5
+   |
+LL |     fn foo(&self) {}
+   |     ^^^^^^^^^^^^^ expected safe fn, found unsafe fn
+   |
+note: type in trait
+  --> $DIR/trait-impl.rs:6:5
+   |
+LL |     fn foo(&self);
+   |     ^^^^^^^^^^^^^^
+   = note: expected signature `fn(&Bar)`
+              found signature `#[target_features] fn(&Bar)`
+
 error: `#[target_feature(..)]` cannot be applied to safe trait method
-  --> $DIR/trait-impl.rs:22:5
+  --> $DIR/trait-impl.rs:23:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be applied to safe trait method
@@ -16,5 +30,6 @@ LL |
 LL |     fn foo(&self) {}
    |     ------------- not an `unsafe` function
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0053`.

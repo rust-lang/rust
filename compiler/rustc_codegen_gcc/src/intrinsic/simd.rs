@@ -379,7 +379,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         // Make sure this is actually a SIMD vector.
         let idx_ty = args[2].layout.ty;
         let n: u64 = if idx_ty.is_simd()
-            && matches!(idx_ty.simd_size_and_type(bx.cx.tcx).1.kind(), ty::Uint(ty::UintTy::U32))
+            && matches!(*idx_ty.simd_size_and_type(bx.cx.tcx).1.kind(), ty::Uint(ty::UintTy::U32))
         {
             idx_ty.simd_size_and_type(bx.cx.tcx).0
         } else {
@@ -829,6 +829,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             | sym::simd_flog
             | sym::simd_floor
             | sym::simd_fma
+            | sym::simd_relaxed_fma
             | sym::simd_fpow
             | sym::simd_fpowi
             | sym::simd_fsin

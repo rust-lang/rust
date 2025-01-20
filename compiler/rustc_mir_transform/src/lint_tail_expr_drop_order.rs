@@ -691,7 +691,7 @@ impl Subdiagnostic for LocalLabel<'_> {
         for dtor in self.destructors {
             dtor.add_to_diag_with(diag, f);
         }
-        let msg = f(diag, crate::fluent_generated::mir_transform_label_local_epilogue.into());
+        let msg = f(diag, crate::fluent_generated::mir_transform_label_local_epilogue);
         diag.span_label(self.span, msg);
     }
 }

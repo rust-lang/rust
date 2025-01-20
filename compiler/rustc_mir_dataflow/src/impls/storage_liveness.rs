@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 
@@ -10,8 +10,8 @@ use crate::{Analysis, GenKill, ResultsCursor};
 /// The set of locals in a MIR body that do not have `StorageLive`/`StorageDead` annotations.
 ///
 /// These locals have fixed storage for the duration of the body.
-pub fn always_storage_live_locals(body: &Body<'_>) -> BitSet<Local> {
-    let mut always_live_locals = BitSet::new_filled(body.local_decls.len());
+pub fn always_storage_live_locals(body: &Body<'_>) -> DenseBitSet<Local> {
+    let mut always_live_locals = DenseBitSet::new_filled(body.local_decls.len());
 
     for block in &*body.basic_blocks {
         for statement in &block.statements {
@@ -25,23 +25,23 @@ pub fn always_storage_live_locals(body: &Body<'_>) -> BitSet<Local> {
 }
 
 pub struct MaybeStorageLive<'a> {
-    always_live_locals: Cow<'a, BitSet<Local>>,
+    always_live_locals: Cow<'a, DenseBitSet<Local>>,
 }
 
 impl<'a> MaybeStorageLive<'a> {
-    pub fn new(always_live_locals: Cow<'a, BitSet<Local>>) -> Self {
+    pub fn new(always_live_locals: Cow<'a, DenseBitSet<Local>>) -> Self {
         MaybeStorageLive { always_live_locals }
     }
 }
 
 impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageLive<'a> {
-    type Domain = BitSet<Local>;
+    type Domain = DenseBitSet<Local>;
 
     const NAME: &'static str = "maybe_storage_live";
 
     fn bottom_value(&self, body: &Body<'tcx>) -> Self::Domain {
         // bottom = dead
-        BitSet::new_empty(body.local_decls.len())
+        DenseBitSet::new_empty(body.local_decls.len())
     }
 
     fn initialize_start_block(&self, body: &Body<'tcx>, state: &mut Self::Domain) {
@@ -67,23 +67,23 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageLive<'a> {
 }
 
 pub struct MaybeStorageDead<'a> {
-    always_live_locals: Cow<'a, BitSet<Local>>,
+    always_live_locals: Cow<'a, DenseBitSet<Local>>,
 }
 
 impl<'a> MaybeStorageDead<'a> {
-    pub fn new(always_live_locals: Cow<'a, BitSet<Local>>) -> Self {
+    pub fn new(always_live_locals: Cow<'a, DenseBitSet<Local>>) -> Self {
         MaybeStorageDead { always_live_locals }
     }
 }
 
 impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageDead<'a> {
-    type Domain = BitSet<Local>;
+    type Domain = DenseBitSet<Local>;
 
     const NAME: &'static str = "maybe_storage_dead";
 
     fn bottom_value(&self, body: &Body<'tcx>) -> Self::Domain {
         // bottom = live
-        BitSet::new_empty(body.local_decls.len())
+        DenseBitSet::new_empty(body.local_decls.len())
     }
 
     fn initialize_start_block(&self, body: &Body<'tcx>, state: &mut Self::Domain) {
@@ -125,13 +125,13 @@ impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
 }
 
 impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
-    type Domain = BitSet<Local>;
+    type Domain = DenseBitSet<Local>;
 
     const NAME: &'static str = "requires_storage";
 
     fn bottom_value(&self, body: &Body<'tcx>) -> Self::Domain {
         // bottom = dead
-        BitSet::new_empty(body.local_decls.len())
+        DenseBitSet::new_empty(body.local_decls.len())
     }
 
     fn initialize_start_block(&self, body: &Body<'tcx>, state: &mut Self::Domain) {
@@ -304,7 +304,7 @@ impl<'tcx> MaybeRequiresStorage<'_, 'tcx> {
 
 struct MoveVisitor<'a, 'mir, 'tcx> {
     borrowed_locals: &'a mut BorrowedLocalsResults<'mir, 'tcx>,
-    state: &'a mut BitSet<Local>,
+    state: &'a mut DenseBitSet<Local>,
 }
 
 impl<'tcx> Visitor<'tcx> for MoveVisitor<'_, '_, 'tcx> {

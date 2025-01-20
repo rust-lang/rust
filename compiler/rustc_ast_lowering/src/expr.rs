@@ -102,17 +102,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             let kind = match &e.kind {
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
-                ExprKind::ConstBlock(c) => {
-                    let c = self.with_new_scopes(c.value.span, |this| {
-                        let def_id = this.local_def_id(c.id);
-                        hir::ConstBlock {
-                            def_id,
-                            hir_id: this.lower_node_id(c.id),
-                            body: this.lower_const_body(c.value.span, Some(&c.value)),
-                        }
-                    });
-                    hir::ExprKind::ConstBlock(c)
-                }
+                ExprKind::ConstBlock(c) => hir::ExprKind::ConstBlock(self.lower_const_block(c)),
                 ExprKind::Repeat(expr, count) => {
                     let expr = self.lower_expr(expr);
                     let count = self.lower_array_length_to_const_arg(count);
@@ -153,18 +143,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let ohs = self.lower_expr(ohs);
                     hir::ExprKind::Unary(op, ohs)
                 }
-                ExprKind::Lit(token_lit) => {
-                    let lit_kind = match LitKind::from_token_lit(*token_lit) {
-                        Ok(lit_kind) => lit_kind,
-                        Err(err) => {
-                            let guar =
-                                report_lit_error(&self.tcx.sess.psess, err, *token_lit, e.span);
-                            LitKind::Err(guar)
-                        }
-                    };
-                    let lit = self.arena.alloc(respan(self.lower_span(e.span), lit_kind));
-                    hir::ExprKind::Lit(lit)
-                }
+                ExprKind::Lit(token_lit) => hir::ExprKind::Lit(self.lower_lit(token_lit, e.span)),
                 ExprKind::IncludedBytes(bytes) => {
                     let lit = self.arena.alloc(respan(
                         self.lower_span(e.span),
@@ -401,6 +380,32 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             hir::Expr { hir_id: expr_hir_id, kind, span: self.lower_span(e.span) }
         })
+    }
+
+    pub(crate) fn lower_const_block(&mut self, c: &AnonConst) -> hir::ConstBlock {
+        self.with_new_scopes(c.value.span, |this| {
+            let def_id = this.local_def_id(c.id);
+            hir::ConstBlock {
+                def_id,
+                hir_id: this.lower_node_id(c.id),
+                body: this.lower_const_body(c.value.span, Some(&c.value)),
+            }
+        })
+    }
+
+    pub(crate) fn lower_lit(
+        &mut self,
+        token_lit: &token::Lit,
+        span: Span,
+    ) -> &'hir Spanned<LitKind> {
+        let lit_kind = match LitKind::from_token_lit(*token_lit) {
+            Ok(lit_kind) => lit_kind,
+            Err(err) => {
+                let guar = report_lit_error(&self.tcx.sess.psess, err, *token_lit, span);
+                LitKind::Err(guar)
+            }
+        };
+        self.arena.alloc(respan(self.lower_span(span), lit_kind))
     }
 
     fn lower_unop(&mut self, u: UnOp) -> hir::UnOp {

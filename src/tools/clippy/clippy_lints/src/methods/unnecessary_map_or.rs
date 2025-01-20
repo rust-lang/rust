@@ -7,7 +7,7 @@ use clippy_utils::source::snippet_opt;
 use clippy_utils::sugg::{Sugg, make_binop};
 use clippy_utils::ty::{get_type_diagnostic_name, implements_trait};
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{is_from_proc_macro, path_to_local_id};
+use clippy_utils::{get_parent_expr, is_from_proc_macro, path_to_local_id};
 use rustc_ast::LitKind::Bool;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PatKind};
@@ -96,11 +96,25 @@ pub(super) fn check<'a>(
             Sugg::hir(cx, non_binding_location, "")
         )));
 
-        let binop = make_binop(op.node, &Sugg::hir(cx, recv, ".."), &inner_non_binding)
-            .maybe_par()
-            .into_string();
+        let mut app = Applicability::MachineApplicable;
+        let binop = make_binop(
+            op.node,
+            &Sugg::hir_with_applicability(cx, recv, "..", &mut app),
+            &inner_non_binding,
+        );
 
-        (binop, "a standard comparison", Applicability::MaybeIncorrect)
+        let sugg = if let Some(parent_expr) = get_parent_expr(cx, expr) {
+            match parent_expr.kind {
+                ExprKind::Binary(..) | ExprKind::Unary(..) | ExprKind::Cast(..) => binop.maybe_par(),
+                ExprKind::MethodCall(_, receiver, _, _) if receiver.hir_id == expr.hir_id => binop.maybe_par(),
+                _ => binop,
+            }
+        } else {
+            binop
+        }
+        .into_string();
+
+        (sugg, "a standard comparison", app)
     } else if !def_bool
         && msrv.meets(msrvs::OPTION_RESULT_IS_VARIANT_AND)
         && let Some(recv_callsite) = snippet_opt(cx, recv.span.source_callsite())

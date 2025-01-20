@@ -120,6 +120,7 @@ pub enum CallConv {
     X86_Intr = 83,
     AvrNonBlockingInterrupt = 84,
     AvrInterrupt = 85,
+    AmdgpuKernel = 91,
 }
 
 /// Must match the layout of `LLVMLinkage`.

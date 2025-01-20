@@ -1,3 +1,15 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/hkl_forbidden4.rs:12:1
+   |
+LL | async fn operation(_: &mut ()) -> () {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `FutNothing<'_>`, got `{async fn body of operation()}`
+   |
+note: previous use here
+  --> $DIR/hkl_forbidden4.rs:14:5
+   |
+LL |     call(operation).await
+   |     ^^^^^^^^^^^^^^^
+
 error: item does not constrain `FutNothing::{opaque#0}`, but has it in its signature
   --> $DIR/hkl_forbidden4.rs:18:10
    |
@@ -32,18 +44,6 @@ error[E0792]: expected generic lifetime parameter, found `'any`
 LL | async fn operation(_: &mut ()) -> () {
    |                       - this generic parameter must be used with a generic lifetime parameter
 LL |
-LL |     call(operation).await
-   |     ^^^^^^^^^^^^^^^
-
-error: concrete type differs from previous defining opaque type use
-  --> $DIR/hkl_forbidden4.rs:12:1
-   |
-LL | async fn operation(_: &mut ()) -> () {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `FutNothing<'_>`, got `{async fn body of operation()}`
-   |
-note: previous use here
-  --> $DIR/hkl_forbidden4.rs:14:5
-   |
 LL |     call(operation).await
    |     ^^^^^^^^^^^^^^^
 

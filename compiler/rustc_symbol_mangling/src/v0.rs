@@ -233,23 +233,44 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 
         let self_ty = self.tcx.type_of(impl_def_id);
         let impl_trait_ref = self.tcx.impl_trait_ref(impl_def_id);
-        let (typing_env, mut self_ty, mut impl_trait_ref) =
-            if self.tcx.generics_of(impl_def_id).count() <= args.len() {
-                (
-                    ty::TypingEnv::fully_monomorphized(),
-                    self_ty.instantiate(self.tcx, args),
-                    impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate(self.tcx, args)),
-                )
-            } else {
-                // We are probably printing a nested item inside of an impl.
-                // Use the identity substitutions for the impl. We also need
-                // a well-formed param-env, so let's use post-analysis.
-                (
-                    ty::TypingEnv::post_analysis(self.tcx, impl_def_id),
-                    self_ty.instantiate_identity(),
-                    impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate_identity()),
-                )
-            };
+        let generics = self.tcx.generics_of(impl_def_id);
+        // We have two cases to worry about here:
+        // 1. We're printing a nested item inside of an impl item, like an inner
+        // function inside of a method. Due to the way that def path printing works,
+        // we'll render this something like `<Ty as Trait>::method::inner_fn`
+        // but we have no substs for this impl since it's not really inheriting
+        // generics from the outer item. We need to use the identity substs, and
+        // to normalize we need to use the correct param-env too.
+        // 2. We're mangling an item with identity substs. This seems to only happen
+        // when generating coverage, since we try to generate coverage for unused
+        // items too, and if something isn't monomorphized then we necessarily don't
+        // have anything to substitute the instance with.
+        // NOTE: We don't support mangling partially substituted but still polymorphic
+        // instances, like `impl<A> Tr<A> for ()` where `A` is substituted w/ `(T,)`.
+        let (typing_env, mut self_ty, mut impl_trait_ref) = if generics.count() > args.len()
+            || &args[..generics.count()]
+                == self
+                    .tcx
+                    .erase_regions(ty::GenericArgs::identity_for_item(self.tcx, impl_def_id))
+                    .as_slice()
+        {
+            (
+                ty::TypingEnv::post_analysis(self.tcx, impl_def_id),
+                self_ty.instantiate_identity(),
+                impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate_identity()),
+            )
+        } else {
+            assert!(
+                !args.has_non_region_param(),
+                "should not be mangling partially substituted \
+                polymorphic instance: {impl_def_id:?} {args:?}"
+            );
+            (
+                ty::TypingEnv::fully_monomorphized(),
+                self_ty.instantiate(self.tcx, args),
+                impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate(self.tcx, args)),
+            )
+        };
 
         match &mut impl_trait_ref {
             Some(impl_trait_ref) => {

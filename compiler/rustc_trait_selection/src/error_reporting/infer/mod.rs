@@ -620,6 +620,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }) => {
                 let then_span = self.find_block_span_from_hir_id(then_id);
                 let else_span = self.find_block_span_from_hir_id(else_id);
+                if let hir::Node::Expr(e) = self.tcx.hir_node(else_id)
+                    && let hir::ExprKind::If(_cond, _then, None) = e.kind
+                    && else_ty.is_unit()
+                {
+                    // Account for `let x = if a { 1 } else if b { 2 };`
+                    err.note("`if` expressions without `else` evaluate to `()`");
+                    err.note("consider adding an `else` block that evaluates to the expected type");
+                }
                 err.span_label(then_span, "expected because of this");
                 if let Some(sp) = outer_span {
                     err.span_label(sp, "`if` and `else` have incompatible types");
@@ -824,9 +832,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn cmp_fn_sig(
         &self,
         sig1: &ty::PolyFnSig<'tcx>,
-        fn_def1: Option<(DefId, &'tcx [ty::GenericArg<'tcx>])>,
+        fn_def1: Option<(DefId, Option<&'tcx [ty::GenericArg<'tcx>]>)>,
         sig2: &ty::PolyFnSig<'tcx>,
-        fn_def2: Option<(DefId, &'tcx [ty::GenericArg<'tcx>])>,
+        fn_def2: Option<(DefId, Option<&'tcx [ty::GenericArg<'tcx>]>)>,
     ) -> (DiagStyledString, DiagStyledString) {
         let sig1 = &(self.normalize_fn_sig)(*sig1);
         let sig2 = &(self.normalize_fn_sig)(*sig2);
@@ -850,8 +858,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         // ^^^^^^
-        values.0.push(sig1.safety.prefix_str(), sig1.safety != sig2.safety);
-        values.1.push(sig2.safety.prefix_str(), sig1.safety != sig2.safety);
+        let safety = |fn_def, sig: ty::FnSig<'_>| match fn_def {
+            None => sig.safety.prefix_str(),
+            Some((did, _)) => {
+                if self.tcx.codegen_fn_attrs(did).safe_target_features {
+                    "#[target_features] "
+                } else {
+                    sig.safety.prefix_str()
+                }
+            }
+        };
+        let safety1 = safety(fn_def1, sig1);
+        let safety2 = safety(fn_def2, sig2);
+        values.0.push(safety1, safety1 != safety2);
+        values.1.push(safety2, safety1 != safety2);
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //        ^^^^^^^^^^
@@ -932,23 +952,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             (values.1).0.extend(x2.0);
         }
 
-        let fmt = |(did, args)| format!(" {{{}}}", self.tcx.def_path_str_with_args(did, args));
+        let fmt = |did, args| format!(" {{{}}}", self.tcx.def_path_str_with_args(did, args));
 
         match (fn_def1, fn_def2) {
-            (None, None) => {}
-            (Some(fn_def1), Some(fn_def2)) => {
-                let path1 = fmt(fn_def1);
-                let path2 = fmt(fn_def2);
+            (Some((fn_def1, Some(fn_args1))), Some((fn_def2, Some(fn_args2)))) => {
+                let path1 = fmt(fn_def1, fn_args1);
+                let path2 = fmt(fn_def2, fn_args2);
                 let same_path = path1 == path2;
                 values.0.push(path1, !same_path);
                 values.1.push(path2, !same_path);
             }
-            (Some(fn_def1), None) => {
-                values.0.push_highlighted(fmt(fn_def1));
+            (Some((fn_def1, Some(fn_args1))), None) => {
+                values.0.push_highlighted(fmt(fn_def1, fn_args1));
             }
-            (None, Some(fn_def2)) => {
-                values.1.push_highlighted(fmt(fn_def2));
+            (None, Some((fn_def2, Some(fn_args2)))) => {
+                values.1.push_highlighted(fmt(fn_def2, fn_args2));
             }
+            _ => {}
         }
 
         values
@@ -1339,17 +1359,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
                 let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1);
                 let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2);
-                self.cmp_fn_sig(&sig1, Some((*did1, args1)), &sig2, Some((*did2, args2)))
+                self.cmp_fn_sig(
+                    &sig1,
+                    Some((*did1, Some(args1))),
+                    &sig2,
+                    Some((*did2, Some(args2))),
+                )
             }
 
             (ty::FnDef(did1, args1), ty::FnPtr(sig_tys2, hdr2)) => {
                 let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1);
-                self.cmp_fn_sig(&sig1, Some((*did1, args1)), &sig_tys2.with(*hdr2), None)
+                self.cmp_fn_sig(&sig1, Some((*did1, Some(args1))), &sig_tys2.with(*hdr2), None)
             }
 
             (ty::FnPtr(sig_tys1, hdr1), ty::FnDef(did2, args2)) => {
                 let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2);
-                self.cmp_fn_sig(&sig_tys1.with(*hdr1), None, &sig2, Some((*did2, args2)))
+                self.cmp_fn_sig(&sig_tys1.with(*hdr1), None, &sig2, Some((*did2, Some(args2))))
             }
 
             (ty::FnPtr(sig_tys1, hdr1), ty::FnPtr(sig_tys2, hdr2)) => {
@@ -1531,7 +1556,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         (false, Mismatch::Fixed("existential projection"))
                     }
                 };
-                let Some(vals) = self.values_str(values) else {
+                let Some(vals) = self.values_str(values, cause) else {
                     // Derived error. Cancel the emitter.
                     // NOTE(eddyb) this was `.cancel()`, but `diag`
                     // is borrowed, so we can't fully defuse it.
@@ -1956,7 +1981,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         })
         | ObligationCauseCode::BlockTailExpression(.., source)) = code
             && let hir::MatchSource::TryDesugar(_) = source
-            && let Some((expected_ty, found_ty, _)) = self.values_str(trace.values)
+            && let Some((expected_ty, found_ty, _)) = self.values_str(trace.values, &trace.cause)
         {
             suggestions.push(TypeErrorAdditionalDiags::TryCannotConvert {
                 found: found_ty.content(),
@@ -2085,6 +2110,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn values_str(
         &self,
         values: ValuePairs<'tcx>,
+        cause: &ObligationCause<'tcx>,
     ) -> Option<(DiagStyledString, DiagStyledString, Option<PathBuf>)> {
         match values {
             ValuePairs::Regions(exp_found) => self.expected_found_str(exp_found),
@@ -2109,7 +2135,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if exp_found.references_error() {
                     return None;
                 }
-                let (exp, fnd) = self.cmp_fn_sig(&exp_found.expected, None, &exp_found.found, None);
+                let (fn_def1, fn_def2) = if let ObligationCauseCode::CompareImplItem {
+                    impl_item_def_id,
+                    trait_item_def_id,
+                    ..
+                } = *cause.code()
+                {
+                    (Some((trait_item_def_id, None)), Some((impl_item_def_id.to_def_id(), None)))
+                } else {
+                    (None, None)
+                };
+
+                let (exp, fnd) =
+                    self.cmp_fn_sig(&exp_found.expected, fn_def1, &exp_found.found, fn_def2);
                 Some((exp, fnd, None))
             }
         }
@@ -2294,7 +2332,7 @@ impl<'tcx> ObligationCause<'tcx> {
                 {
                     FailureCode::Error0644
                 }
-                TypeError::IntrinsicCast => FailureCode::Error0308,
+                TypeError::IntrinsicCast | TypeError::ForceInlineCast => FailureCode::Error0308,
                 _ => FailureCode::Error0308,
             },
         }
@@ -2360,8 +2398,11 @@ impl<'tcx> ObligationCause<'tcx> {
                 {
                     ObligationCauseFailureCode::ClosureSelfref { span }
                 }
+                TypeError::ForceInlineCast => {
+                    ObligationCauseFailureCode::CantCoerceForceInline { span, subdiags }
+                }
                 TypeError::IntrinsicCast => {
-                    ObligationCauseFailureCode::CantCoerce { span, subdiags }
+                    ObligationCauseFailureCode::CantCoerceIntrinsic { span, subdiags }
                 }
                 _ => ObligationCauseFailureCode::Generic { span, subdiags },
             },

@@ -20,7 +20,7 @@ use rustc_middle::bug;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
-    self, AggregateKind, BindingForm, BorrowKind, CallSource, ClearCrossCrate, ConstraintCategory,
+    self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
     FakeBorrowKind, FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, MutBorrowKind,
     Operand, Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
     TerminatorKind, VarBindingForm, VarDebugInfoContents,
@@ -30,13 +30,13 @@ use rustc_middle::ty::{
     self, PredicateKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,
     suggest_constraining_type_params,
 };
-use rustc_middle::util::CallKind;
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{BytePos, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
+use rustc_trait_selection::error_reporting::traits::call_kind::CallKind;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
@@ -46,7 +46,7 @@ use super::explain_borrow::{BorrowExplanation, LaterUseKind};
 use super::{DescribePlaceOpt, RegionName, RegionNameSource, UseSpans};
 use crate::borrow_set::{BorrowData, TwoPhaseActivation};
 use crate::diagnostics::conflict_errors::StorageDeadOrDrop::LocalStorageDead;
-use crate::diagnostics::{CapturedMessageOpt, Instance, find_all_local_uses};
+use crate::diagnostics::{CapturedMessageOpt, call_kind, find_all_local_uses};
 use crate::prefixes::IsPrefixOf;
 use crate::{InitializationRequiringAction, MirBorrowckCtxt, WriteKind, borrowck_errors};
 
@@ -305,7 +305,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
 
             if let UseSpans::FnSelfUse {
-                kind: CallKind::DerefCoercion { deref_target, deref_target_ty, .. },
+                kind: CallKind::DerefCoercion { deref_target_span, deref_target_ty, .. },
                 ..
             } = use_spans
             {
@@ -315,8 +315,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 ));
 
                 // Check first whether the source is accessible (issue #87060)
-                if self.infcx.tcx.sess.source_map().is_span_accessible(deref_target) {
-                    err.span_note(deref_target, "deref defined here");
+                if let Some(deref_target_span) = deref_target_span
+                    && self.infcx.tcx.sess.source_map().is_span_accessible(deref_target_span)
+                {
+                    err.span_note(deref_target_span, "deref defined here");
                 }
             }
 
@@ -2680,22 +2682,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 return;
             }
 
-            let mut sugg = vec![];
             let sm = self.infcx.tcx.sess.source_map();
-
-            if let Some(span) = finder.closure_arg_span {
-                sugg.push((sm.next_point(span.shrink_to_lo()).shrink_to_hi(), finder.suggest_arg));
-            }
-            for span in finder.closure_change_spans {
-                sugg.push((span, "this".to_string()));
-            }
-
-            for (span, suggest) in finder.closure_call_changes {
-                sugg.push((span, suggest));
-            }
+            let sugg = finder
+                .closure_arg_span
+                .map(|span| (sm.next_point(span.shrink_to_lo()).shrink_to_hi(), finder.suggest_arg))
+                .into_iter()
+                .chain(
+                    finder.closure_change_spans.into_iter().map(|span| (span, "this".to_string())),
+                )
+                .chain(finder.closure_call_changes)
+                .collect();
 
             err.multipart_suggestion_verbose(
-                "try explicitly pass `&Self` into the Closure as an argument",
+                "try explicitly passing `&Self` into the closure as an argument",
                 sugg,
                 Applicability::MachineApplicable,
             );
@@ -3768,38 +3767,27 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
     fn explain_deref_coercion(&mut self, loan: &BorrowData<'tcx>, err: &mut Diag<'_>) {
         let tcx = self.infcx.tcx;
-        if let (
-            Some(Terminator {
-                kind: TerminatorKind::Call { call_source: CallSource::OverloadedOperator, .. },
-                ..
-            }),
-            Some((method_did, method_args)),
-        ) = (
-            &self.body[loan.reserve_location.block].terminator,
-            rustc_middle::util::find_self_call(
+        if let Some(Terminator { kind: TerminatorKind::Call { call_source, fn_span, .. }, .. }) =
+            &self.body[loan.reserve_location.block].terminator
+            && let Some((method_did, method_args)) = rustc_middle::util::find_self_call(
                 tcx,
                 self.body,
                 loan.assigned_place.local,
                 loan.reserve_location.block,
-            ),
-        ) {
-            if tcx.is_diagnostic_item(sym::deref_method, method_did) {
-                let deref_target =
-                    tcx.get_diagnostic_item(sym::deref_target).and_then(|deref_target| {
-                        Instance::try_resolve(
-                            tcx,
-                            self.infcx.typing_env(self.infcx.param_env),
-                            deref_target,
-                            method_args,
-                        )
-                        .transpose()
-                    });
-                if let Some(Ok(instance)) = deref_target {
-                    let deref_target_ty =
-                        instance.ty(tcx, self.infcx.typing_env(self.infcx.param_env));
-                    err.note(format!("borrow occurs due to deref coercion to `{deref_target_ty}`"));
-                    err.span_note(tcx.def_span(instance.def_id()), "deref defined here");
-                }
+            )
+            && let CallKind::DerefCoercion { deref_target_span, deref_target_ty, .. } = call_kind(
+                self.infcx.tcx,
+                self.infcx.typing_env(self.infcx.param_env),
+                method_did,
+                method_args,
+                *fn_span,
+                call_source.from_hir_call(),
+                Some(self.infcx.tcx.fn_arg_names(method_did)[0]),
+            )
+        {
+            err.note(format!("borrow occurs due to deref coercion to `{deref_target_ty}`"));
+            if let Some(deref_target_span) = deref_target_span {
+                err.span_note(deref_target_span, "deref defined here");
             }
         }
     }

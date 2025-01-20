@@ -62,9 +62,8 @@ pub(crate) fn maybe_codegen<'tcx>(
     }
 }
 
-pub(crate) fn maybe_codegen_checked<'tcx>(
+pub(crate) fn maybe_codegen_mul_checked<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    bin_op: BinOp,
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
 ) -> Option<CValue<'tcx>> {
@@ -77,33 +76,22 @@ pub(crate) fn maybe_codegen_checked<'tcx>(
     }
 
     let is_signed = type_sign(lhs.layout().ty);
-
-    match bin_op {
-        BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => unreachable!(),
-        BinOp::Add | BinOp::Sub => None,
-        BinOp::Mul => {
-            let out_ty = Ty::new_tup(fx.tcx, &[lhs.layout().ty, fx.tcx.types.bool]);
-            let out_place = CPlace::new_stack_slot(fx, fx.layout_of(out_ty));
-            let param_types = vec![
-                AbiParam::special(fx.pointer_type, ArgumentPurpose::StructReturn),
-                AbiParam::new(types::I128),
-                AbiParam::new(types::I128),
-            ];
-            let args = [out_place.to_ptr().get_addr(fx), lhs.load_scalar(fx), rhs.load_scalar(fx)];
-            fx.lib_call(
-                if is_signed { "__rust_i128_mulo" } else { "__rust_u128_mulo" },
-                param_types,
-                vec![],
-                &args,
-            );
-            Some(out_place.to_cvalue(fx))
-        }
-        BinOp::AddUnchecked | BinOp::SubUnchecked | BinOp::MulUnchecked => unreachable!(),
-        BinOp::AddWithOverflow | BinOp::SubWithOverflow | BinOp::MulWithOverflow => unreachable!(),
-        BinOp::Offset => unreachable!("offset should only be used on pointers, not 128bit ints"),
-        BinOp::Div | BinOp::Rem => unreachable!(),
-        BinOp::Cmp => unreachable!(),
-        BinOp::Lt | BinOp::Le | BinOp::Eq | BinOp::Ge | BinOp::Gt | BinOp::Ne => unreachable!(),
-        BinOp::Shl | BinOp::ShlUnchecked | BinOp::Shr | BinOp::ShrUnchecked => unreachable!(),
-    }
+    let oflow_out_place = CPlace::new_stack_slot(fx, fx.layout_of(fx.tcx.types.i32));
+    let param_types = vec![
+        AbiParam::new(types::I128),
+        AbiParam::new(types::I128),
+        AbiParam::special(fx.pointer_type, ArgumentPurpose::Normal),
+    ];
+    let args = [lhs.load_scalar(fx), rhs.load_scalar(fx), oflow_out_place.to_ptr().get_addr(fx)];
+    let ret = fx.lib_call(
+        if is_signed { "__rust_i128_mulo" } else { "__rust_u128_mulo" },
+        param_types,
+        vec![AbiParam::new(types::I128)],
+        &args,
+    );
+    let mul = ret[0];
+    let oflow = oflow_out_place.to_cvalue(fx).load_scalar(fx);
+    let oflow = clif_intcast(fx, oflow, types::I8, false);
+    let layout = fx.layout_of(Ty::new_tup(fx.tcx, &[lhs.layout().ty, fx.tcx.types.bool]));
+    Some(CValue::by_val_pair(mul, oflow, layout))
 }

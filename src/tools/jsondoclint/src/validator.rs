@@ -303,6 +303,12 @@ impl<'a> Validator<'a> {
             PathKind::Trait => self.add_trait_or_alias_id(&x.id),
             PathKind::Type => self.add_type_id(&x.id),
         }
+
+        // FIXME: More robust support for checking things in $.index also exist in $.paths
+        if !self.krate.paths.contains_key(&x.id) {
+            self.fail(&x.id, ErrorKind::Custom(format!("No entry in '$.paths' for {x:?}")));
+        }
+
         if let Some(args) = &x.args {
             self.check_generic_args(&**args);
         }

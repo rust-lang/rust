@@ -2,10 +2,10 @@
 
 use crate::prelude::*;
 
-pub(crate) fn bin_op_to_intcc(bin_op: BinOp, signed: bool) -> Option<IntCC> {
+pub(crate) fn bin_op_to_intcc(bin_op: BinOp, signed: bool) -> IntCC {
     use BinOp::*;
     use IntCC::*;
-    Some(match bin_op {
+    match bin_op {
         Eq => Equal,
         Lt => {
             if signed {
@@ -36,8 +36,8 @@ pub(crate) fn bin_op_to_intcc(bin_op: BinOp, signed: bool) -> Option<IntCC> {
                 UnsignedGreaterThan
             }
         }
-        _ => return None,
-    })
+        _ => unreachable!(),
+    }
 }
 
 fn codegen_three_way_compare<'tcx>(
@@ -48,8 +48,8 @@ fn codegen_three_way_compare<'tcx>(
 ) -> CValue<'tcx> {
     // This emits `(lhs > rhs) - (lhs < rhs)`, which is cranelift's preferred form per
     // <https://github.com/bytecodealliance/wasmtime/blob/8052bb9e3b792503b225f2a5b2ba3bc023bff462/cranelift/codegen/src/prelude_opt.isle#L41-L47>
-    let gt_cc = crate::num::bin_op_to_intcc(BinOp::Gt, signed).unwrap();
-    let lt_cc = crate::num::bin_op_to_intcc(BinOp::Lt, signed).unwrap();
+    let gt_cc = crate::num::bin_op_to_intcc(BinOp::Gt, signed);
+    let lt_cc = crate::num::bin_op_to_intcc(BinOp::Lt, signed);
     let gt = fx.bcx.ins().icmp(gt_cc, lhs, rhs);
     let lt = fx.bcx.ins().icmp(lt_cc, lhs, rhs);
     let val = fx.bcx.ins().isub(gt, lt);
@@ -63,11 +63,7 @@ fn codegen_compare_bin_op<'tcx>(
     lhs: Value,
     rhs: Value,
 ) -> CValue<'tcx> {
-    if bin_op == BinOp::Cmp {
-        return codegen_three_way_compare(fx, signed, lhs, rhs);
-    }
-
-    let intcc = crate::num::bin_op_to_intcc(bin_op, signed).unwrap();
+    let intcc = crate::num::bin_op_to_intcc(bin_op, signed);
     let val = fx.bcx.ins().icmp(intcc, lhs, rhs);
     CValue::by_val(val, fx.layout_of(fx.tcx.types.bool))
 }
@@ -79,7 +75,7 @@ pub(crate) fn codegen_binop<'tcx>(
     in_rhs: CValue<'tcx>,
 ) -> CValue<'tcx> {
     match bin_op {
-        BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt | BinOp::Cmp => {
+        BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt => {
             match in_lhs.layout().ty.kind() {
                 ty::Bool | ty::Uint(_) | ty::Int(_) | ty::Char => {
                     let signed = type_sign(in_lhs.layout().ty);
@@ -91,6 +87,16 @@ pub(crate) fn codegen_binop<'tcx>(
                 _ => {}
             }
         }
+        BinOp::Cmp => match in_lhs.layout().ty.kind() {
+            ty::Bool | ty::Uint(_) | ty::Int(_) | ty::Char => {
+                let signed = type_sign(in_lhs.layout().ty);
+                let lhs = in_lhs.load_scalar(fx);
+                let rhs = in_rhs.load_scalar(fx);
+
+                return codegen_three_way_compare(fx, signed, lhs, rhs);
+            }
+            _ => {}
+        },
         _ => {}
     }
 
@@ -200,10 +206,6 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
     let lhs = in_lhs.load_scalar(fx);
     let rhs = in_rhs.load_scalar(fx);
 
-    if let Some(res) = crate::codegen_i128::maybe_codegen_checked(fx, bin_op, in_lhs, in_rhs) {
-        return res;
-    }
-
     let signed = type_sign(in_lhs.layout().ty);
 
     let (res, has_overflow) = match bin_op {
@@ -236,6 +238,10 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
             (val, has_overflow)
         }
         BinOp::Mul => {
+            if let Some(res) = crate::codegen_i128::maybe_codegen_mul_checked(fx, in_lhs, in_rhs) {
+                return res;
+            }
+
             let ty = fx.bcx.func.dfg.value_type(lhs);
             match ty {
                 types::I8 | types::I16 | types::I32 if !signed => {
@@ -357,14 +363,12 @@ pub(crate) fn codegen_float_binop<'tcx>(
                 _ => bug!(),
             };
 
-            let ret_val = fx.lib_call(
+            fx.lib_call(
                 name,
                 vec![AbiParam::new(ty), AbiParam::new(ty)],
                 vec![AbiParam::new(ty)],
                 &[lhs, rhs],
-            )[0];
-
-            return CValue::by_val(ret_val, in_lhs.layout());
+            )[0]
         }
         BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt => {
             let fltcc = match bin_op {
@@ -431,13 +435,9 @@ pub(crate) fn codegen_ptr_binop<'tcx>(
             BinOp::Lt | BinOp::Le | BinOp::Ge | BinOp::Gt => {
                 let ptr_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_ptr, rhs_ptr);
 
-                let ptr_cmp =
-                    fx.bcx.ins().icmp(bin_op_to_intcc(bin_op, false).unwrap(), lhs_ptr, rhs_ptr);
-                let extra_cmp = fx.bcx.ins().icmp(
-                    bin_op_to_intcc(bin_op, false).unwrap(),
-                    lhs_extra,
-                    rhs_extra,
-                );
+                let ptr_cmp = fx.bcx.ins().icmp(bin_op_to_intcc(bin_op, false), lhs_ptr, rhs_ptr);
+                let extra_cmp =
+                    fx.bcx.ins().icmp(bin_op_to_intcc(bin_op, false), lhs_extra, rhs_extra);
 
                 fx.bcx.ins().select(ptr_eq, extra_cmp, ptr_cmp)
             }

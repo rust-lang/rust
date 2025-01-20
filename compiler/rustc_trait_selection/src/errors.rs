@@ -1729,8 +1729,15 @@ pub enum ObligationCauseFailureCode {
         #[primary_span]
         span: Span,
     },
-    #[diag(trait_selection_oc_cant_coerce, code = E0308)]
-    CantCoerce {
+    #[diag(trait_selection_oc_cant_coerce_force_inline, code = E0308)]
+    CantCoerceForceInline {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+    },
+    #[diag(trait_selection_oc_cant_coerce_intrinsic, code = E0308)]
+    CantCoerceIntrinsic {
         #[primary_span]
         span: Span,
         #[subdiagnostic]

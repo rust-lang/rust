@@ -32,24 +32,32 @@ mod trace;
 pub(super) fn generate<'a, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
-    elements: &DenseLocationMap,
+    location_map: &DenseLocationMap,
     flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) {
     debug!("liveness::generate");
 
-    let free_regions = regions_that_outlive_free_regions(
-        typeck.infcx.num_region_vars(),
-        &typeck.universal_regions,
-        &typeck.constraints.outlives_constraints,
-    );
+    // NLLs can avoid computing some liveness data here because its constraints are
+    // location-insensitive, but that doesn't work in polonius: locals whose type contains a region
+    // that outlives a free region are not necessarily live everywhere in a flow-sensitive setting,
+    // unlike NLLs.
+    let free_regions = if !typeck.tcx().sess.opts.unstable_opts.polonius.is_next_enabled() {
+        regions_that_outlive_free_regions(
+            typeck.infcx.num_region_vars(),
+            &typeck.universal_regions,
+            &typeck.constraints.outlives_constraints,
+        )
+    } else {
+        typeck.universal_regions.universal_regions_iter().collect()
+    };
     let (relevant_live_locals, boring_locals) =
         compute_relevant_live_locals(typeck.tcx(), &free_regions, body);
 
     trace::trace(
         typeck,
         body,
-        elements,
+        location_map,
         flow_inits,
         move_data,
         relevant_live_locals,
