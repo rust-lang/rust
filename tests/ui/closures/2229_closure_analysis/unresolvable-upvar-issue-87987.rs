@@ -1,3 +1,13 @@
+//! When a closure syntactically captures a place, but doesn't actually capture
+//! it, make sure MIR building doesn't ICE when handling that place.
+//!
+//! Under the Rust 2021 disjoint capture rules, this sort of non-capture can
+//! occur when a place is only inspected by infallible non-binding patterns.
+
+// FIXME(#135985): On its own, this test should probably just be check-pass.
+// But there are few/no other tests that use non-binding array patterns and
+// invoke the later parts of the compiler, so building/running has some value.
+
 //@ run-pass
 //@ edition:2021
 
@@ -20,8 +30,16 @@ fn main() {
 
     let mref = &mut arr;
 
+    // These array patterns don't need to inspect the array, so the array
+    // isn't captured.
     let _c = || match arr {
-        [_, _, _, _] => println!("A"),
+        [_, _, _, _] => println!("C"),
+    };
+    let _d = || match arr {
+        [_, .., _] => println!("D"),
+    };
+    let _e = || match arr {
+        [_, ..] => println!("E"),
     };
 
     println!("{:#?}", mref);
