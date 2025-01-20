@@ -183,7 +183,7 @@ impl<'cx, 'tcx> TypeWalker<'cx, 'tcx> {
                     .collect()
             };
             self.emit_sugg(spans, msg, help);
-        };
+        }
     }
 }
 

@@ -757,6 +757,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::unnecessary_map_on_constructor::UNNECESSARY_MAP_ON_CONSTRUCTOR_INFO,
     crate::unnecessary_owned_empty_strings::UNNECESSARY_OWNED_EMPTY_STRINGS_INFO,
     crate::unnecessary_self_imports::UNNECESSARY_SELF_IMPORTS_INFO,
+    crate::unnecessary_semicolon::UNNECESSARY_SEMICOLON_INFO,
     crate::unnecessary_struct_initialization::UNNECESSARY_STRUCT_INITIALIZATION_INFO,
     crate::unnecessary_wraps::UNNECESSARY_WRAPS_INFO,
     crate::unneeded_struct_pattern::UNNEEDED_STRUCT_PATTERN_INFO,

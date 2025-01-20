@@ -118,7 +118,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                                     if contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen) {
                                         return true;
                                     }
-                                };
+                                }
                             },
                             _ => (),
                         }

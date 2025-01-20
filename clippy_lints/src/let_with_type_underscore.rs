@@ -41,6 +41,6 @@ impl<'tcx> LateLintPass<'tcx> for UnderscoreTyped {
                 Some(ty.span.with_lo(local.pat.span.hi())),
                 "remove the explicit type `_` declaration",
             );
-        };
+        }
     }
 }

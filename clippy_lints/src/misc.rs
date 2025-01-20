@@ -214,7 +214,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
                     );
                 },
             );
-        };
+        }
         if let StmtKind::Semi(expr) = stmt.kind
             && let ExprKind::Binary(ref binop, a, b) = expr.kind
             && (binop.node == BinOpKind::And || binop.node == BinOpKind::Or)
@@ -236,7 +236,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
                     );
                 },
             );
-        };
+        }
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

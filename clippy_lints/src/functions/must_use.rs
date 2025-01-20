@@ -160,7 +160,7 @@ fn check_needless_must_use(
                 && !is_must_use_ty(cx, future_ty)
             {
                 return;
-            };
+            }
         }
 
         span_lint_and_help(

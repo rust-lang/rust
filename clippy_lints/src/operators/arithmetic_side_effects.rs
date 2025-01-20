@@ -104,7 +104,7 @@ impl ArithmeticSideEffects {
 
             if !tcx.is_diagnostic_item(sym::NonZero, adt.did()) {
                 return false;
-            };
+            }
 
             let int_type = substs.type_at(0);
             let unsigned_int_types = [
@@ -214,7 +214,7 @@ impl ArithmeticSideEffects {
                 | hir::BinOpKind::Sub
         ) {
             return;
-        };
+        }
         let (mut actual_lhs, lhs_ref_counter) = peel_hir_expr_refs(lhs);
         let (mut actual_rhs, rhs_ref_counter) = peel_hir_expr_refs(rhs);
         actual_lhs = expr_or_init(cx, actual_lhs);
