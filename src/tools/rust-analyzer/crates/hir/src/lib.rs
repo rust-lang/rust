@@ -152,7 +152,7 @@ pub use {
         layout::LayoutError,
         method_resolution::TyFingerprint,
         mir::{MirEvalError, MirLowerError},
-        CastError, FnAbi, PointerCast, Safety, Variance,
+        CastError, DropGlue, FnAbi, PointerCast, Safety, Variance,
     },
     // FIXME: Properly encapsulate mir
     hir_ty::{mir, Interner as ChalkTyInterner},
@@ -1391,6 +1391,10 @@ impl Struct {
         Type::from_def(db, self.id)
     }
 
+    pub fn ty_placeholders(self, db: &dyn HirDatabase) -> Type {
+        Type::from_def_placeholders(db, self.id)
+    }
+
     pub fn constructor_ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_value_def(db, self.id)
     }
@@ -1434,6 +1438,10 @@ impl Union {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id)
+    }
+
+    pub fn ty_placeholders(self, db: &dyn HirDatabase) -> Type {
+        Type::from_def_placeholders(db, self.id)
     }
 
     pub fn constructor_ty(self, db: &dyn HirDatabase) -> Type {
@@ -1488,6 +1496,10 @@ impl Enum {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id)
+    }
+
+    pub fn ty_placeholders(self, db: &dyn HirDatabase) -> Type {
+        Type::from_def_placeholders(db, self.id)
     }
 
     /// The type of the enum variant bodies.
@@ -2927,6 +2939,10 @@ impl TypeAlias {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id)
+    }
+
+    pub fn ty_placeholders(self, db: &dyn HirDatabase) -> Type {
+        Type::from_def_placeholders(db, self.id)
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
@@ -4708,6 +4724,19 @@ impl Type {
         Type::new(db, def, ty.substitute(Interner, &substs))
     }
 
+    fn from_def_placeholders(db: &dyn HirDatabase, def: impl Into<TyDefId> + HasResolver) -> Type {
+        let ty = db.ty(def.into());
+        let substs = TyBuilder::placeholder_subst(
+            db,
+            match def.into() {
+                TyDefId::AdtId(it) => GenericDefId::AdtId(it),
+                TyDefId::TypeAliasId(it) => GenericDefId::TypeAliasId(it),
+                TyDefId::BuiltinType(_) => return Type::new(db, def, ty.skip_binders().clone()),
+            },
+        );
+        Type::new(db, def, ty.substitute(Interner, &substs))
+    }
+
     fn from_value_def(db: &dyn HirDatabase, def: impl Into<ValueTyDefId> + HasResolver) -> Type {
         let Some(ty) = db.value_ty(def.into()) else {
             return Type::new(db, def, TyKind::Error.intern(Interner));
@@ -5736,6 +5765,10 @@ impl Type {
     pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
         db.layout_of_ty(self.ty.clone(), self.env.clone())
             .map(|layout| Layout(layout, db.target_data_layout(self.env.krate).unwrap()))
+    }
+
+    pub fn drop_glue(&self, db: &dyn HirDatabase) -> DropGlue {
+        db.has_drop_glue(self.ty.clone(), self.env.clone())
     }
 }
 

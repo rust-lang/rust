@@ -187,6 +187,7 @@ impl StaticIndex<'_> {
             max_fields_count: Some(5),
             max_enum_variants_count: Some(5),
             max_subst_ty_len: SubstTyLen::Unlimited,
+            show_drop_glue: true,
         };
         let tokens = tokens.filter(|token| {
             matches!(

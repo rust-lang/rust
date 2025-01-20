@@ -3,7 +3,7 @@ use std::{env, mem, ops::Not};
 
 use either::Either;
 use hir::{
-    db::ExpandDatabase, Adt, AsAssocItem, AsExternAssocItem, CaptureKind,
+    db::ExpandDatabase, Adt, AsAssocItem, AsExternAssocItem, CaptureKind, DropGlue,
     DynCompatibilityViolation, HasCrate, HasSource, HirDisplay, Layout, LayoutError,
     MethodViolationCode, Name, Semantics, Symbol, Trait, Type, TypeInfo, VariantDef,
 };
@@ -629,6 +629,89 @@ pub(super) fn definition(
         _ => None,
     };
 
+    let drop_info = || {
+        if !config.show_drop_glue {
+            return None;
+        }
+        let drop_info = match def {
+            Definition::Field(field) => {
+                DropInfo { drop_glue: field.ty(db).drop_glue(db), has_dtor: None }
+            }
+            Definition::Adt(Adt::Struct(strukt)) => {
+                let struct_drop_glue = strukt.ty_placeholders(db).drop_glue(db);
+                let mut fields_drop_glue = strukt
+                    .fields(db)
+                    .iter()
+                    .map(|field| field.ty(db).drop_glue(db))
+                    .max()
+                    .unwrap_or(DropGlue::None);
+                let has_dtor = match (fields_drop_glue, struct_drop_glue) {
+                    (DropGlue::None, _) => struct_drop_glue != DropGlue::None,
+                    (_, DropGlue::None) => {
+                        // This is `ManuallyDrop`.
+                        fields_drop_glue = DropGlue::None;
+                        false
+                    }
+                    (_, _) => struct_drop_glue > fields_drop_glue,
+                };
+                DropInfo { drop_glue: fields_drop_glue, has_dtor: Some(has_dtor) }
+            }
+            // Unions cannot have fields with drop glue.
+            Definition::Adt(Adt::Union(union)) => DropInfo {
+                drop_glue: DropGlue::None,
+                has_dtor: Some(union.ty_placeholders(db).drop_glue(db) != DropGlue::None),
+            },
+            Definition::Adt(Adt::Enum(enum_)) => {
+                let enum_drop_glue = enum_.ty_placeholders(db).drop_glue(db);
+                let fields_drop_glue = enum_
+                    .variants(db)
+                    .iter()
+                    .map(|variant| {
+                        variant
+                            .fields(db)
+                            .iter()
+                            .map(|field| field.ty(db).drop_glue(db))
+                            .max()
+                            .unwrap_or(DropGlue::None)
+                    })
+                    .max()
+                    .unwrap_or(DropGlue::None);
+                DropInfo {
+                    drop_glue: fields_drop_glue,
+                    has_dtor: Some(enum_drop_glue > fields_drop_glue),
+                }
+            }
+            Definition::Variant(variant) => {
+                let fields_drop_glue = variant
+                    .fields(db)
+                    .iter()
+                    .map(|field| field.ty(db).drop_glue(db))
+                    .max()
+                    .unwrap_or(DropGlue::None);
+                DropInfo { drop_glue: fields_drop_glue, has_dtor: None }
+            }
+            Definition::TypeAlias(type_alias) => {
+                DropInfo { drop_glue: type_alias.ty_placeholders(db).drop_glue(db), has_dtor: None }
+            }
+            Definition::Local(local) => {
+                DropInfo { drop_glue: local.ty(db).drop_glue(db), has_dtor: None }
+            }
+            _ => return None,
+        };
+        let rendered_drop_glue = match drop_info.drop_glue {
+            DropGlue::None => "does not contain types with destructors (drop glue)",
+            DropGlue::DependOnParams => {
+                "may contain types with destructors (drop glue) depending on type parameters"
+            }
+            DropGlue::HasDropGlue => "contain types with destructors (drop glue)",
+        };
+        Some(match drop_info.has_dtor {
+            Some(true) => format!("{}; has a destructor", rendered_drop_glue),
+            Some(false) => format!("{}; doesn't have a destructor", rendered_drop_glue),
+            None => rendered_drop_glue.to_owned(),
+        })
+    };
+
     let dyn_compatibility_info = || match def {
         Definition::Trait(it) => {
             let mut dyn_compatibility_info = String::new();
@@ -660,6 +743,10 @@ pub(super) fn definition(
         if let Some(dyn_compatibility_info) = dyn_compatibility_info() {
             extra.push_str("\n___\n");
             extra.push_str(&dyn_compatibility_info);
+        }
+        if let Some(drop_info) = drop_info() {
+            extra.push_str("\n___\n");
+            extra.push_str(&drop_info);
         }
     }
     let mut desc = String::new();
@@ -701,6 +788,12 @@ pub(super) fn definition(
         mod_path,
         subst_types,
     )
+}
+
+#[derive(Debug)]
+struct DropInfo {
+    drop_glue: DropGlue,
+    has_dtor: Option<bool>,
 }
 
 pub(super) fn literal(

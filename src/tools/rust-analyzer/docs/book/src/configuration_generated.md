@@ -559,6 +559,11 @@ also need to add the folders to Code's `files.watcherExclude`.
 `#rust-analyzer.hover.documentation.enable#` is set.
 
 
+**rust-analyzer.hover.dropGlue.enable** (default: true)
+
+ Whether to show drop glue information on hover.
+
+
 **rust-analyzer.hover.links.enable** (default: true)
 
  Use markdown syntax for links on hover.
