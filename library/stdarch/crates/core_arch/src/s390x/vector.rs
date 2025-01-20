@@ -308,7 +308,6 @@ mod sealed {
         impl_mul!(vml_double, vector_double, vfmdb);
     }
 
-
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorMax<Other> {
         type Result;
@@ -344,6 +343,48 @@ mod sealed {
     test_impl! { vec_vmnslg (a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> vector_unsigned_long_long [vmnlg, vmnlg] }
 
     impl_vec_trait! { [VectorMin vec_min] ~(vmxlb, vmxb, vmxlh, vmxh, vmxlf, vmxf, vmxlg, vmxg) }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorAbs {
+        unsafe fn vec_abs(self) -> Self;
+    }
+
+    macro_rules! impl_abs {
+        ($name:ident, $ty:ident, $instr:ident) => {
+            #[inline]
+            #[target_feature(enable = "vector")]
+            #[cfg_attr(test, assert_instr($instr))]
+            unsafe fn $name(v: s_t_l!($ty)) -> s_t_l!($ty) {
+                v.vec_max(-v)
+            }
+
+            impl_vec_trait! { [VectorAbs vec_abs] $name (s_t_l!($ty)) }
+        };
+    }
+
+    impl_abs! { vec_abs_i8, i8x16 }
+    impl_abs! { vec_abs_i16, i16x8 }
+    impl_abs! { vec_abs_i32, i32x4 }
+    impl_abs! { vec_abs_i64, i64x2 }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    unsafe fn vec_abs_f32(v: vector_float) -> vector_float {
+        let v: u32x4 = transmute(v);
+
+        transmute(simd_and(v, u32x4::splat(0x7FFFFFFF)))
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    unsafe fn vec_abs_f64(v: vector_double) -> vector_double {
+        let v: u64x2 = transmute(v);
+
+        transmute(simd_and(v, u64x2::splat(0x7FFFFFFF_FFFFFFFF)))
+    }
+
+    impl_vec_trait! { [VectorAbs vec_abs] vec_abs_f32 (vector_float) }
+    impl_vec_trait! { [VectorAbs vec_abs] vec_abs_f64 (vector_double) }
 }
 
 /// Vector pointwise addition.
@@ -405,6 +446,17 @@ where
     T: sealed::VectorMin<U>,
 {
     a.vec_min(b)
+}
+
+/// Vector abs.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_abs<T>(a: T) -> T
+where
+    T: sealed::VectorAbs,
+{
+    a.vec_abs()
 }
 
 #[cfg(test)]
