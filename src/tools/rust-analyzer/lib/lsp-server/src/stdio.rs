@@ -11,14 +11,23 @@ use crate::Message;
 
 /// Creates an LSP connection via stdio.
 pub(crate) fn stdio_transport() -> (Sender<Message>, Receiver<Message>, IoThreads) {
+    let (drop_sender, drop_receiver) = bounded::<Message>(0);
     let (writer_sender, writer_receiver) = bounded::<Message>(0);
     let writer = thread::Builder::new()
         .name("LspServerWriter".to_owned())
         .spawn(move || {
             let stdout = stdout();
             let mut stdout = stdout.lock();
-            writer_receiver.into_iter().try_for_each(|it| it.write(&mut stdout))
+            writer_receiver.into_iter().try_for_each(|it| {
+                let result = it.write(&mut stdout);
+                let _ = drop_sender.send(it);
+                result
+            })
         })
+        .unwrap();
+    let dropper = thread::Builder::new()
+        .name("LspMessageDropper".to_owned())
+        .spawn(move || drop_receiver.into_iter().for_each(drop))
         .unwrap();
     let (reader_sender, reader_receiver) = bounded::<Message>(0);
     let reader = thread::Builder::new()
@@ -41,7 +50,7 @@ pub(crate) fn stdio_transport() -> (Sender<Message>, Receiver<Message>, IoThread
             Ok(())
         })
         .unwrap();
-    let threads = IoThreads { reader, writer };
+    let threads = IoThreads { reader, writer, dropper };
     (writer_sender, reader_receiver, threads)
 }
 
@@ -49,13 +58,15 @@ pub(crate) fn stdio_transport() -> (Sender<Message>, Receiver<Message>, IoThread
 pub(crate) fn make_io_threads(
     reader: thread::JoinHandle<io::Result<()>>,
     writer: thread::JoinHandle<io::Result<()>>,
+    dropper: thread::JoinHandle<()>,
 ) -> IoThreads {
-    IoThreads { reader, writer }
+    IoThreads { reader, writer, dropper }
 }
 
 pub struct IoThreads {
     reader: thread::JoinHandle<io::Result<()>>,
     writer: thread::JoinHandle<io::Result<()>>,
+    dropper: thread::JoinHandle<()>,
 }
 
 impl IoThreads {
@@ -63,6 +74,12 @@ impl IoThreads {
         match self.reader.join() {
             Ok(r) => r?,
             Err(err) => std::panic::panic_any(err),
+        }
+        match self.dropper.join() {
+            Ok(_) => (),
+            Err(err) => {
+                std::panic::panic_any(err);
+            }
         }
         match self.writer.join() {
             Ok(r) => r,

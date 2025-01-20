@@ -509,7 +509,12 @@ mod tests {
         }
     }
 
-    fn check_search(ra_fixture: &str, crate_name: &str, query: Query, expect: Expect) {
+    fn check_search(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        crate_name: &str,
+        query: Query,
+        expect: Expect,
+    ) {
         let db = TestDB::with_files(ra_fixture);
         let crate_graph = db.crate_graph();
         let krate = crate_graph
@@ -587,7 +592,7 @@ mod tests {
         ))
     }
 
-    fn check(ra_fixture: &str, expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let db = TestDB::with_files(ra_fixture);
         let crate_graph = db.crate_graph();
 

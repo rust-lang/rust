@@ -4,18 +4,17 @@ use expect_test::{expect, Expect};
 use crate::{
     config::AutoImportExclusionType,
     tests::{
-        check_edit, check_empty, completion_list, completion_list_with_config, BASE_ITEMS_FIXTURE,
+        check, check_edit, check_with_base_items, completion_list_with_config, BASE_ITEMS_FIXTURE,
         TEST_CONFIG,
     },
     CompletionConfig,
 };
 
-fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(&format!("{BASE_ITEMS_FIXTURE}{ra_fixture}"));
-    expect.assert_eq(&actual)
-}
-
-fn check_with_config(config: CompletionConfig<'_>, ra_fixture: &str, expect: Expect) {
+fn check_with_config(
+    config: CompletionConfig<'_>,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    expect: Expect,
+) {
     let actual = completion_list_with_config(
         config,
         &format!("{BASE_ITEMS_FIXTURE}{ra_fixture}"),
@@ -28,7 +27,7 @@ fn check_with_config(config: CompletionConfig<'_>, ra_fixture: &str, expect: Exp
 #[test]
 fn complete_literal_struct_with_a_private_field() {
     // `FooDesc.bar` is private, the completion should not be triggered.
-    check(
+    check_with_base_items(
         r#"
 mod _69latrick {
     pub struct FooDesc { pub six: bool, pub neuf: Vec<String>, bar: bool }
@@ -67,6 +66,7 @@ fn baz() {
             kw loop
             kw match
             kw mut
+            kw raw
             kw return
             kw self::
             kw true
@@ -79,7 +79,7 @@ fn baz() {
 
 #[test]
 fn completes_various_bindings() {
-    check_empty(
+    check(
         r#"
 fn func(param0 @ (param1, param2): (i32, i32)) {
     let letlocal = 92;
@@ -125,7 +125,7 @@ fn func(param0 @ (param1, param2): (i32, i32)) {
 
 #[test]
 fn completes_all_the_things_in_fn_body() {
-    check(
+    check_with_base_items(
         r#"
 use non_existent::Unresolved;
 mod qualified { pub enum Enum { Variant } }
@@ -191,7 +191,7 @@ impl Unit {
             ?? Unresolved
         "#]],
     );
-    check(
+    check_with_base_items(
         r#"
 use non_existent::Unresolved;
 mod qualified { pub enum Enum { Variant } }
@@ -224,7 +224,7 @@ impl Unit {
 
 #[test]
 fn complete_in_block() {
-    check_empty(
+    check(
         r#"
     fn foo() {
         if true {
@@ -273,7 +273,7 @@ fn complete_in_block() {
 
 #[test]
 fn complete_after_if_expr() {
-    check_empty(
+    check(
         r#"
     fn foo() {
         if true {}
@@ -321,7 +321,7 @@ fn complete_after_if_expr() {
 
 #[test]
 fn complete_in_match_arm() {
-    check_empty(
+    check(
         r#"
     fn foo() {
         match () {
@@ -351,7 +351,7 @@ fn complete_in_match_arm() {
 
 #[test]
 fn completes_in_loop_ctx() {
-    check_empty(
+    check(
         r"fn my() { loop { $0 } }",
         expect![[r#"
             fn my()   fn()
@@ -390,7 +390,7 @@ fn completes_in_loop_ctx() {
             sn ppd
         "#]],
     );
-    check_empty(
+    check(
         r"fn my() { loop { foo.$0 } }",
         expect![[r#"
             sn box  Box::new(expr)
@@ -415,7 +415,7 @@ fn completes_in_loop_ctx() {
 
 #[test]
 fn completes_in_let_initializer() {
-    check_empty(
+    check(
         r#"fn main() { let _ = $0 }"#,
         expect![[r#"
             fn main() fn()
@@ -438,8 +438,116 @@ fn completes_in_let_initializer() {
 }
 
 #[test]
+fn completes_after_ref_expr() {
+    check(
+        r#"fn main() { let _ = &$0 }"#,
+        expect![[r#"
+            fn main() fn()
+            bt u32     u32
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw mut
+            kw raw
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+    check(
+        r#"fn main() { let _ = &raw $0 }"#,
+        expect![[r#"
+            fn main() fn()
+            bt u32     u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw mut
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+    check(
+        r#"fn main() { let _ = &raw const $0 }"#,
+        expect![[r#"
+            fn main() fn()
+            bt u32     u32
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+    check(
+        r#"fn main() { let _ = &raw mut $0 }"#,
+        expect![[r#"
+            fn main() fn()
+            bt u32     u32
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+    check(
+        r#"fn main() { let _ = &mut $0 }"#,
+        expect![[r#"
+            fn main() fn()
+            bt u32     u32
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    )
+}
+
+#[test]
 fn struct_initializer_field_expr() {
-    check_empty(
+    check(
         r#"
 struct Foo {
     pub f: i32,
@@ -475,7 +583,7 @@ fn foo() {
 fn shadowing_shows_single_completion() {
     cov_mark::check!(shadowing_shows_single_completion);
 
-    check_empty(
+    check(
         r#"
 fn foo() {
     let bar = 92;
@@ -508,7 +616,7 @@ fn foo() {
 
 #[test]
 fn in_macro_expr_frag() {
-    check_empty(
+    check(
         r#"
 macro_rules! m { ($e:expr) => { $e } }
 fn quux(x: i32) {
@@ -535,7 +643,7 @@ fn quux(x: i32) {
             kw while let
         "#]],
     );
-    check_empty(
+    check(
         r"
 macro_rules! m { ($e:expr) => { $e } }
 fn quux(x: i32) {
@@ -562,7 +670,7 @@ fn quux(x: i32) {
             kw while let
         "#]],
     );
-    check_empty(
+    check(
         r#"
 macro_rules! m { ($e:expr) => { $e } }
 fn quux(x: i32) {
@@ -595,7 +703,7 @@ fn quux(x: i32) {
 
 #[test]
 fn enum_qualified() {
-    check(
+    check_with_base_items(
         r#"
 impl Enum {
     type AssocType = ();
@@ -619,7 +727,7 @@ fn func() {
 
 #[test]
 fn ty_qualified_no_drop() {
-    check_empty(
+    check(
         r#"
 //- minicore: drop
 struct Foo;
@@ -636,7 +744,7 @@ fn func() {
 
 #[test]
 fn with_parens() {
-    check_empty(
+    check(
         r#"
 enum Enum {
     Variant()
@@ -657,7 +765,7 @@ fn func() {
 
 #[test]
 fn detail_impl_trait_in_return_position() {
-    check_empty(
+    check(
         r"
 //- minicore: sized
 trait Trait<T> {}
@@ -676,7 +784,7 @@ fn main() {
 
 #[test]
 fn detail_async_fn() {
-    check_empty(
+    check(
         r#"
 //- minicore: future, sized
 trait Trait<T> {}
@@ -697,7 +805,7 @@ fn main() {
 
 #[test]
 fn detail_impl_trait_in_argument_position() {
-    check_empty(
+    check(
         r"
 //- minicore: sized
 trait Trait<T> {}
@@ -717,7 +825,7 @@ fn main() {
 
 #[test]
 fn complete_record_expr_path() {
-    check(
+    check_with_base_items(
         r#"
 struct Zulu;
 impl Zulu {
@@ -738,7 +846,7 @@ fn main() {
 
 #[test]
 fn variant_with_struct() {
-    check_empty(
+    check(
         r#"
 pub struct YoloVariant {
     pub f: usize
@@ -813,7 +921,7 @@ fn return_value_no_block() {
 
 #[test]
 fn else_completion_after_if() {
-    check_empty(
+    check(
         r#"
 fn foo() { if foo {} $0 }
 "#,
@@ -854,7 +962,7 @@ fn foo() { if foo {} $0 }
             sn ppd
         "#]],
     );
-    check_empty(
+    check(
         r#"
 fn foo() { if foo {} el$0 }
 "#,
@@ -895,7 +1003,7 @@ fn foo() { if foo {} el$0 }
             sn ppd
         "#]],
     );
-    check_empty(
+    check(
         r#"
 fn foo() { bar(if foo {} $0) }
 "#,
@@ -919,7 +1027,7 @@ fn foo() { bar(if foo {} $0) }
             kw while let
         "#]],
     );
-    check_empty(
+    check(
         r#"
 fn foo() { bar(if foo {} el$0) }
 "#,
@@ -943,7 +1051,7 @@ fn foo() { bar(if foo {} el$0) }
             kw while let
         "#]],
     );
-    check_empty(
+    check(
         r#"
 fn foo() { if foo {} $0 let x = 92; }
 "#,
@@ -984,7 +1092,7 @@ fn foo() { if foo {} $0 let x = 92; }
             sn ppd
         "#]],
     );
-    check_empty(
+    check(
         r#"
 fn foo() { if foo {} el$0 let x = 92; }
 "#,
@@ -1025,7 +1133,7 @@ fn foo() { if foo {} el$0 let x = 92; }
             sn ppd
         "#]],
     );
-    check_empty(
+    check(
         r#"
 fn foo() { if foo {} el$0 { let x = 92; } }
 "#,
@@ -1070,7 +1178,7 @@ fn foo() { if foo {} el$0 { let x = 92; } }
 
 #[test]
 fn expr_no_unstable_item_on_stable() {
-    check_empty(
+    check(
         r#"
 //- /main.rs crate:main deps:std
 use std::*;
@@ -1121,7 +1229,7 @@ pub struct UnstableThisShouldNotBeListed;
 
 #[test]
 fn expr_unstable_item_on_nightly() {
-    check_empty(
+    check(
         r#"
 //- toolchain:nightly
 //- /main.rs crate:main deps:std
@@ -1174,7 +1282,7 @@ pub struct UnstableButWeAreOnNightlyAnyway;
 
 #[test]
 fn inside_format_args_completions_work() {
-    check_empty(
+    check(
         r#"
 //- minicore: fmt
 struct Foo;
@@ -1200,7 +1308,7 @@ fn main() {
             sn unsafe    unsafe {}
         "#]],
     );
-    check_empty(
+    check(
         r#"
 //- minicore: fmt
 struct Foo;
@@ -1230,7 +1338,7 @@ fn main() {
 
 #[test]
 fn inside_faulty_format_args_completions_work() {
-    check_empty(
+    check(
         r#"
 //- minicore: fmt
 struct Foo;
@@ -1256,7 +1364,7 @@ fn main() {
             sn unsafe    unsafe {}
         "#]],
     );
-    check_empty(
+    check(
         r#"
 //- minicore: fmt
 struct Foo;
@@ -1282,7 +1390,7 @@ fn main() {
             sn unsafe    unsafe {}
         "#]],
     );
-    check_empty(
+    check(
         r#"
 //- minicore: fmt
 struct Foo;
@@ -1308,7 +1416,7 @@ fn main() {
             sn unsafe    unsafe {}
         "#]],
     );
-    check_empty(
+    check(
         r#"
 //- minicore: fmt
 struct Foo;
@@ -1340,7 +1448,7 @@ fn main() {
 
 #[test]
 fn macro_that_ignores_completion_marker() {
-    check(
+    check_with_base_items(
         r#"
 macro_rules! helper {
     ($v:ident) => {};
@@ -1788,7 +1896,7 @@ fn foo<T: ExcludedTrait>() {
 
 #[test]
 fn hide_ragennew_synthetic_identifiers() {
-    check_empty(
+    check(
         r#"
 //- minicore: iterator
 fn bar() {

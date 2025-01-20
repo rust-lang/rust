@@ -269,7 +269,7 @@ mod tests {
     };
 
     #[track_caller]
-    fn check_params(ra_fixture: &str) {
+    fn check_params(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(
             InlayHintsConfig { parameter_hints: true, ..DISABLED_CONFIG },
             ra_fixture,

@@ -518,7 +518,7 @@ mod test {
     use test_fixture::ChangeFixture;
     use vfs::VfsPath;
 
-    fn position(ra_fixture: &str) -> (AnalysisHost, FilePosition) {
+    fn position(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (AnalysisHost, FilePosition) {
         let mut host = AnalysisHost::default();
         let change_fixture = ChangeFixture::parse(ra_fixture);
         host.raw_database_mut().apply_change(change_fixture.change);
@@ -530,7 +530,7 @@ mod test {
 
     /// If expected == "", then assert that there are no symbols (this is basically local symbol)
     #[track_caller]
-    fn check_symbol(ra_fixture: &str, expected: &str) {
+    fn check_symbol(#[rust_analyzer::rust_fixture] ra_fixture: &str, expected: &str) {
         let (host, position) = position(ra_fixture);
 
         let analysis = host.analysis();

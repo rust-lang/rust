@@ -109,11 +109,6 @@
         ],
         "commands": [
             {
-                "command": "rust-analyzer.syntaxTree",
-                "title": "Show Syntax Tree",
-                "category": "rust-analyzer (debug command)"
-            },
-            {
                 "command": "rust-analyzer.viewHir",
                 "title": "View Hir",
                 "category": "rust-analyzer (debug command)"
@@ -289,6 +284,30 @@
                 "category": "rust-analyzer"
             },
             {
+                "command": "rust-analyzer.syntaxTreeReveal",
+                "title": "Reveal Syntax Element",
+                "icon": "$(search)",
+                "category": "rust-analyzer (syntax tree)"
+            },
+            {
+                "command": "rust-analyzer.syntaxTreeCopy",
+                "title": "Copy",
+                "icon": "$(copy)",
+                "category": "rust-analyzer (syntax tree)"
+            },
+            {
+                "command": "rust-analyzer.syntaxTreeHideWhitespace",
+                "title": "Hide Whitespace",
+                "icon": "$(filter)",
+                "category": "rust-analyzer (syntax tree)"
+            },
+            {
+                "command": "rust-analyzer.syntaxTreeShowWhitespace",
+                "title": "Show Whitespace",
+                "icon": "$(filter-filled)",
+                "category": "rust-analyzer (syntax tree)"
+            },
+            {
                 "command": "rust-analyzer.viewMemoryLayout",
                 "title": "View Memory Layout",
                 "category": "rust-analyzer"
@@ -343,6 +362,11 @@
                     "rust-analyzer.showDependenciesExplorer": {
                         "markdownDescription": "Whether to show the dependencies view.",
                         "default": true,
+                        "type": "boolean"
+                    },
+                    "rust-analyzer.showSyntaxTree": {
+                        "markdownDescription": "Whether to show the syntax tree view.",
+                        "default": false,
                         "type": "boolean"
                     },
                     "rust-analyzer.testExplorer": {
@@ -791,11 +815,14 @@
                 "properties": {
                     "rust-analyzer.cargo.cfgs": {
                         "markdownDescription": "List of cfg options to enable with the given values.",
-                        "default": {
-                            "miri": null,
-                            "debug_assertions": null
-                        },
-                        "type": "object"
+                        "default": [
+                            "debug_assertions",
+                            "miri"
+                        ],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 }
             },
@@ -2081,6 +2108,16 @@
             {
                 "title": "inlayHints",
                 "properties": {
+                    "rust-analyzer.inlayHints.implicitSizedBoundHints.enable": {
+                        "markdownDescription": "Whether to show inlay hints for the implied type parameter `Sized` bound.",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "inlayHints",
+                "properties": {
                     "rust-analyzer.inlayHints.lifetimeElisionHints.enable": {
                         "markdownDescription": "Whether to show inlay type hints for elided lifetimes in function signatures.",
                         "default": "never",
@@ -2708,13 +2745,26 @@
             {
                 "title": "typing",
                 "properties": {
-                    "rust-analyzer.typing.excludeChars": {
-                        "markdownDescription": "Specify the characters to exclude from triggering typing assists. The default trigger characters are `.`, `=`, `<`, `>`, `{`, and `(`.",
-                        "default": "|<",
+                    "rust-analyzer.typing.triggerChars": {
+                        "markdownDescription": "Specify the characters allowed to invoke special on typing triggers.\n- typing `=` after `let` tries to smartly add `;` if `=` is followed by an existing expression\n- typing `=` between two expressions adds `;` when in statement position\n- typing `=` to turn an assignment into an equality comparison removes `;` when in expression position\n- typing `.` in a chain method call auto-indents\n- typing `{` or `(` in front of an expression inserts a closing `}` or `)` after the expression\n- typing `{` in a use item adds a closing `}` in the right place\n- typing `>` to complete a return type `->` will insert a whitespace after it\n- typing `<` in a path or type position inserts a closing `>` after the path or type.",
+                        "default": "=.",
                         "type": [
                             "null",
                             "string"
                         ]
+                    }
+                }
+            },
+            {
+                "title": "vfs",
+                "properties": {
+                    "rust-analyzer.vfs.extraIncludes": {
+                        "markdownDescription": "Additional paths to include in the VFS. Generally for code that is\ngenerated or otherwise managed by a build system outside of Cargo,\nthough Cargo might be the eventual consumer.",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 }
             },
@@ -2926,17 +2976,6 @@
                     "endsPattern": "^\\[Finished running\\b"
                 },
                 "pattern": "$rustc"
-            }
-        ],
-        "colors": [
-            {
-                "id": "rust_analyzer.syntaxTreeBorder",
-                "description": "Color of the border displayed in the Rust source code for the selected syntax node (see \"Show Syntax Tree\" command)",
-                "defaults": {
-                    "dark": "#ffffff",
-                    "light": "#b700ff",
-                    "highContrast": "#b700ff"
-                }
             }
         ],
         "semanticTokenTypes": [
@@ -3259,10 +3298,6 @@
         "menus": {
             "commandPalette": [
                 {
-                    "command": "rust-analyzer.syntaxTree",
-                    "when": "inRustProject"
-                },
-                {
                     "command": "rust-analyzer.viewHir",
                     "when": "inRustProject"
                 },
@@ -3344,6 +3379,22 @@
                 },
                 {
                     "command": "rust-analyzer.openWalkthrough"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeReveal",
+                    "when": "false"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeCopy",
+                    "when": "false"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeHideWhitespace",
+                    "when": "false"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeShowWhitespace",
+                    "when": "false"
                 }
             ],
             "editor/context": [
@@ -3357,6 +3408,30 @@
                     "when": "inRustProject && editorTextFocus && editorLangId == rust",
                     "group": "navigation@1001"
                 }
+            ],
+            "view/title": [
+                {
+                    "command": "rust-analyzer.syntaxTreeHideWhitespace",
+                    "group": "navigation",
+                    "when": "view == rustSyntaxTree && !rustSyntaxTree.hideWhitespace"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeShowWhitespace",
+                    "group": "navigation",
+                    "when": "view == rustSyntaxTree && rustSyntaxTree.hideWhitespace"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "rust-analyzer.syntaxTreeCopy",
+                    "group": "inline",
+                    "when": "view == rustSyntaxTree"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeReveal",
+                    "group": "inline",
+                    "when": "view == rustSyntaxTree"
+                }
             ]
         },
         "views": {
@@ -3365,6 +3440,22 @@
                     "id": "rustDependencies",
                     "name": "Rust Dependencies",
                     "when": "inRustProject && config.rust-analyzer.showDependenciesExplorer"
+                }
+            ],
+            "rustSyntaxTreeContainer": [
+                {
+                    "id": "rustSyntaxTree",
+                    "name": "Rust Syntax Tree",
+                    "when": "inRustProject && config.rust-analyzer.showSyntaxTree"
+                }
+            ]
+        },
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "rustSyntaxTreeContainer",
+                    "title": "Rust Syntax Tree",
+                    "icon": "$(list-tree)"
                 }
             ]
         },

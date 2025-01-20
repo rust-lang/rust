@@ -692,7 +692,9 @@ mod tests {
     use crate::RootDatabase;
 
     /// Creates analysis from a multi-file fixture, returns positions marked with $0.
-    pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
+    pub(crate) fn position(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    ) -> (RootDatabase, FilePosition) {
         let change_fixture = ChangeFixture::parse(ra_fixture);
         let mut database = RootDatabase::default();
         database.apply_change(change_fixture.change);
@@ -703,7 +705,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn check(ra_fixture: &str, expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let fixture = format!(
             r#"
 //- minicore: sized, fn

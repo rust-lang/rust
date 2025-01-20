@@ -173,7 +173,7 @@ mod tests {
 
     fn check_hierarchy(
         exclude_tests: bool,
-        ra_fixture: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
         expected_nav: Expect,
         expected_incoming: Expect,
         expected_outgoing: Expect,

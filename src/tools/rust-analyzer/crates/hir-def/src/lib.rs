@@ -502,7 +502,7 @@ impl ModuleId {
     }
 
     /// Whether this module represents the crate root module
-    fn is_crate_root(&self) -> bool {
+    pub fn is_crate_root(&self) -> bool {
         self.local_id == DefMap::ROOT && self.block.is_none()
     }
 }

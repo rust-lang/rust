@@ -5,7 +5,8 @@ use std::fmt;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
 pub enum Edition {
-    Edition2015,
+    // The syntax context stuff needs the discriminants to start from 0 and be consecutive.
+    Edition2015 = 0,
     Edition2018,
     Edition2021,
     Edition2024,

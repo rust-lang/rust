@@ -77,7 +77,11 @@ pub(crate) fn with_single_file(text: &str) -> (RootDatabase, EditionedFileId) {
 }
 
 #[track_caller]
-pub(crate) fn check_assist(assist: Handler, ra_fixture_before: &str, ra_fixture_after: &str) {
+pub(crate) fn check_assist(
+    assist: Handler,
+    #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+) {
     let ra_fixture_after = trim_indent(ra_fixture_after);
     check(assist, ra_fixture_before, ExpectedResult::After(&ra_fixture_after), None);
 }
@@ -85,8 +89,8 @@ pub(crate) fn check_assist(assist: Handler, ra_fixture_before: &str, ra_fixture_
 #[track_caller]
 pub(crate) fn check_assist_no_snippet_cap(
     assist: Handler,
-    ra_fixture_before: &str,
-    ra_fixture_after: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
 ) {
     let ra_fixture_after = trim_indent(ra_fixture_after);
     check_with_config(
@@ -101,8 +105,8 @@ pub(crate) fn check_assist_no_snippet_cap(
 #[track_caller]
 pub(crate) fn check_assist_import_one(
     assist: Handler,
-    ra_fixture_before: &str,
-    ra_fixture_after: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
 ) {
     let ra_fixture_after = trim_indent(ra_fixture_after);
     check_with_config(
@@ -118,8 +122,8 @@ pub(crate) fn check_assist_import_one(
 // so this is here to allow you choose.
 pub(crate) fn check_assist_by_label(
     assist: Handler,
-    ra_fixture_before: &str,
-    ra_fixture_after: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
     label: &str,
 ) {
     let ra_fixture_after = trim_indent(ra_fixture_after);
@@ -130,22 +134,36 @@ pub(crate) fn check_assist_by_label(
 // `extract_ranges` and mark the target as `<target> </target>` in the
 // fixture?
 #[track_caller]
-pub(crate) fn check_assist_target(assist: Handler, ra_fixture: &str, target: &str) {
+pub(crate) fn check_assist_target(
+    assist: Handler,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    target: &str,
+) {
     check(assist, ra_fixture, ExpectedResult::Target(target), None);
 }
 
 #[track_caller]
-pub(crate) fn check_assist_not_applicable(assist: Handler, ra_fixture: &str) {
+pub(crate) fn check_assist_not_applicable(
+    assist: Handler,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+) {
     check(assist, ra_fixture, ExpectedResult::NotApplicable, None);
 }
 
 #[track_caller]
-pub(crate) fn check_assist_not_applicable_by_label(assist: Handler, ra_fixture: &str, label: &str) {
+pub(crate) fn check_assist_not_applicable_by_label(
+    assist: Handler,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    label: &str,
+) {
     check(assist, ra_fixture, ExpectedResult::NotApplicable, Some(label));
 }
 
 #[track_caller]
-pub(crate) fn check_assist_not_applicable_for_import_one(assist: Handler, ra_fixture: &str) {
+pub(crate) fn check_assist_not_applicable_for_import_one(
+    assist: Handler,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+) {
     check_with_config(
         TEST_CONFIG_IMPORT_ONE,
         assist,
@@ -157,7 +175,10 @@ pub(crate) fn check_assist_not_applicable_for_import_one(assist: Handler, ra_fix
 
 /// Check assist in unresolved state. Useful to check assists for lazy computation.
 #[track_caller]
-pub(crate) fn check_assist_unresolved(assist: Handler, ra_fixture: &str) {
+pub(crate) fn check_assist_unresolved(
+    assist: Handler,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+) {
     check(assist, ra_fixture, ExpectedResult::Unresolved, None);
 }
 

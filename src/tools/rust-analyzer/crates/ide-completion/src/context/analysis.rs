@@ -123,10 +123,11 @@ fn expand(
 ) -> Option<ExpansionResult> {
     let _p = tracing::info_span!("CompletionContext::expand").entered();
 
+    // Left biased since there may already be an identifier token there, and we appended to it.
     if !sema.might_be_inside_macro_call(&fake_ident_token)
         && original_file
             .token_at_offset(original_offset + relative_offset)
-            .right_biased()
+            .left_biased()
             .is_some_and(|original_token| !sema.might_be_inside_macro_call(&original_token))
     {
         // Recursion base case.
@@ -1150,6 +1151,9 @@ fn classify_name_ref(
         let after_if_expr = after_if_expr(it.clone());
         let ref_expr_parent =
             path.as_single_name_ref().and_then(|_| it.parent()).and_then(ast::RefExpr::cast);
+        let after_amp = non_trivia_sibling(it.clone().into(), Direction::Prev)
+            .map(|it| it.kind() == SyntaxKind::AMP)
+            .unwrap_or(false);
         let (innermost_ret_ty, self_param) = {
             let find_ret_ty = |it: SyntaxNode| {
                 if let Some(item) = ast::Item::cast(it.clone()) {
@@ -1219,6 +1223,7 @@ fn classify_name_ref(
                 after_if_expr,
                 in_condition,
                 ref_expr_parent,
+                after_amp,
                 is_func_update,
                 innermost_ret_ty,
                 self_param,

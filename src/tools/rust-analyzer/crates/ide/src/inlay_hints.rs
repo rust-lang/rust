@@ -1,6 +1,6 @@
 use std::{
     fmt::{self, Write},
-    mem::take,
+    mem::{self, take},
 };
 
 use either::Either;
@@ -24,6 +24,7 @@ use crate::{navigation_target::TryToNav, FileId};
 mod adjustment;
 mod bind_pat;
 mod binding_mode;
+mod bounds;
 mod chaining;
 mod closing_brace;
 mod closure_captures;
@@ -110,6 +111,9 @@ pub(crate) fn inlay_hints(
             continue;
         }
         hints(event);
+    }
+    if let Some(range_limit) = range_limit {
+        acc.retain(|hint| range_limit.contains_range(hint.range));
     }
     acc
 }
@@ -264,6 +268,7 @@ fn hints(
                 ast::Type::PathType(path) => lifetime::fn_path_hints(hints, ctx, famous_defs, config, file_id, path),
                 _ => Some(()),
             },
+            ast::GenericParamList(it) => bounds::hints(hints, famous_defs, config, file_id, it),
             _ => Some(()),
         }
     };
@@ -273,6 +278,7 @@ fn hints(
 pub struct InlayHintsConfig {
     pub render_colons: bool,
     pub type_hints: bool,
+    pub sized_bound: bool,
     pub discriminant_hints: DiscriminantHints,
     pub parameter_hints: bool,
     pub generic_parameter_hints: GenericParameterHints,
@@ -293,6 +299,36 @@ pub struct InlayHintsConfig {
     pub max_length: Option<usize>,
     pub closing_brace_hints_min_lines: Option<usize>,
     pub fields_to_resolve: InlayFieldsToResolve,
+}
+impl InlayHintsConfig {
+    fn lazy_text_edit(&self, finish: impl FnOnce() -> TextEdit) -> Lazy<TextEdit> {
+        if self.fields_to_resolve.resolve_text_edits {
+            Lazy::Lazy
+        } else {
+            let edit = finish();
+            never!(edit.is_empty(), "inlay hint produced an empty text edit");
+            Lazy::Computed(edit)
+        }
+    }
+
+    fn lazy_tooltip(&self, finish: impl FnOnce() -> InlayTooltip) -> Lazy<InlayTooltip> {
+        if self.fields_to_resolve.resolve_hint_tooltip
+            && self.fields_to_resolve.resolve_label_tooltip
+        {
+            Lazy::Lazy
+        } else {
+            let tooltip = finish();
+            never!(
+                match &tooltip {
+                    InlayTooltip::String(s) => s,
+                    InlayTooltip::Markdown(s) => s,
+                }
+                .is_empty(),
+                "inlay hint produced an empty tooltip"
+            );
+            Lazy::Computed(tooltip)
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -405,10 +441,30 @@ pub struct InlayHint {
     /// The actual label to show in the inlay hint.
     pub label: InlayHintLabel,
     /// Text edit to apply when "accepting" this inlay hint.
-    pub text_edit: Option<TextEdit>,
+    pub text_edit: Option<Lazy<TextEdit>>,
     /// Range to recompute inlay hints when trying to resolve for this hint. If this is none, the
     /// hint does not support resolving.
     pub resolve_parent: Option<TextRange>,
+}
+
+/// A type signaling that a value is either computed, or is available for computation.
+#[derive(Clone, Debug)]
+pub enum Lazy<T> {
+    Computed(T),
+    Lazy,
+}
+
+impl<T> Lazy<T> {
+    pub fn computed(self) -> Option<T> {
+        match self {
+            Lazy::Computed(it) => Some(it),
+            _ => None,
+        }
+    }
+
+    pub fn is_lazy(&self) -> bool {
+        matches!(self, Self::Lazy)
+    }
 }
 
 impl std::hash::Hash for InlayHint {
@@ -419,7 +475,7 @@ impl std::hash::Hash for InlayHint {
         self.pad_right.hash(state);
         self.kind.hash(state);
         self.label.hash(state);
-        self.text_edit.is_some().hash(state);
+        mem::discriminant(&self.text_edit).hash(state);
     }
 }
 
@@ -435,10 +491,6 @@ impl InlayHint {
             pad_right: false,
             resolve_parent: None,
         }
-    }
-
-    pub fn needs_resolve(&self) -> Option<TextRange> {
-        self.resolve_parent.filter(|_| self.text_edit.is_some() || self.label.needs_resolve())
     }
 }
 
@@ -456,7 +508,7 @@ pub struct InlayHintLabel {
 impl InlayHintLabel {
     pub fn simple(
         s: impl Into<String>,
-        tooltip: Option<InlayTooltip>,
+        tooltip: Option<Lazy<InlayTooltip>>,
         linked_location: Option<FileRange>,
     ) -> InlayHintLabel {
         InlayHintLabel {
@@ -500,10 +552,6 @@ impl InlayHintLabel {
         }
         self.parts.push(part);
     }
-
-    pub fn needs_resolve(&self) -> bool {
-        self.parts.iter().any(|part| part.linked_location.is_some() || part.tooltip.is_some())
-    }
 }
 
 impl From<String> for InlayHintLabel {
@@ -538,7 +586,6 @@ impl fmt::Debug for InlayHintLabel {
     }
 }
 
-#[derive(Hash)]
 pub struct InlayHintLabelPart {
     pub text: String,
     /// Source location represented by this label part. The client will use this to fetch the part's
@@ -549,13 +596,21 @@ pub struct InlayHintLabelPart {
     pub linked_location: Option<FileRange>,
     /// The tooltip to show when hovering over the inlay hint, this may invoke other actions like
     /// hover requests to show.
-    pub tooltip: Option<InlayTooltip>,
+    pub tooltip: Option<Lazy<InlayTooltip>>,
+}
+
+impl std::hash::Hash for InlayHintLabelPart {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.text.hash(state);
+        self.linked_location.hash(state);
+        self.tooltip.is_some().hash(state);
+    }
 }
 
 impl fmt::Debug for InlayHintLabelPart {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self { text, linked_location: None, tooltip: None } => text.fmt(f),
+            Self { text, linked_location: None, tooltip: None | Some(Lazy::Lazy) } => text.fmt(f),
             Self { text, linked_location, tooltip } => f
                 .debug_struct("InlayHintLabelPart")
                 .field("text", text)
@@ -563,7 +618,8 @@ impl fmt::Debug for InlayHintLabelPart {
                 .field(
                     "tooltip",
                     &tooltip.as_ref().map_or("", |it| match it {
-                        InlayTooltip::String(it) | InlayTooltip::Markdown(it) => it,
+                        Lazy::Computed(InlayTooltip::String(it) | InlayTooltip::Markdown(it)) => it,
+                        Lazy::Lazy => "",
                     }),
                 )
                 .finish(),
@@ -722,19 +778,22 @@ fn hint_iterator(
 
 fn ty_to_text_edit(
     sema: &Semantics<'_, RootDatabase>,
+    config: &InlayHintsConfig,
     node_for_hint: &SyntaxNode,
     ty: &hir::Type,
     offset_to_insert: TextSize,
-    prefix: String,
-) -> Option<TextEdit> {
-    let scope = sema.scope(node_for_hint)?;
+    prefix: impl Into<String>,
+) -> Option<Lazy<TextEdit>> {
     // FIXME: Limit the length and bail out on excess somehow?
-    let rendered = ty.display_source_code(scope.db, scope.module().into(), false).ok()?;
-
-    let mut builder = TextEdit::builder();
-    builder.insert(offset_to_insert, prefix);
-    builder.insert(offset_to_insert, rendered);
-    Some(builder.finish())
+    let rendered = sema
+        .scope(node_for_hint)
+        .and_then(|scope| ty.display_source_code(scope.db, scope.module().into(), false).ok())?;
+    Some(config.lazy_text_edit(|| {
+        let mut builder = TextEdit::builder();
+        builder.insert(offset_to_insert, prefix.into());
+        builder.insert(offset_to_insert, rendered);
+        builder.finish()
+    }))
 }
 
 fn closure_has_block_body(closure: &ast::ClosureExpr) -> bool {
@@ -760,6 +819,7 @@ mod tests {
         render_colons: false,
         type_hints: false,
         parameter_hints: false,
+        sized_bound: false,
         generic_parameter_hints: GenericParameterHints {
             type_hints: false,
             lifetime_hints: false,
@@ -794,12 +854,15 @@ mod tests {
     };
 
     #[track_caller]
-    pub(super) fn check(ra_fixture: &str) {
+    pub(super) fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(TEST_CONFIG, ra_fixture);
     }
 
     #[track_caller]
-    pub(super) fn check_with_config(config: InlayHintsConfig, ra_fixture: &str) {
+    pub(super) fn check_with_config(
+        config: InlayHintsConfig,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    ) {
         let (analysis, file_id) = fixture::file(ra_fixture);
         let mut expected = extract_annotations(&analysis.file_text(file_id).unwrap());
         let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
@@ -814,16 +877,33 @@ mod tests {
         assert_eq!(expected, actual, "\nExpected:\n{expected:#?}\n\nActual:\n{actual:#?}");
     }
 
+    #[track_caller]
+    pub(super) fn check_expect(
+        config: InlayHintsConfig,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+    ) {
+        let (analysis, file_id) = fixture::file(ra_fixture);
+        let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
+        let filtered =
+            inlay_hints.into_iter().map(|hint| (hint.range, hint.label)).collect::<Vec<_>>();
+        expect.assert_debug_eq(&filtered)
+    }
+
     /// Computes inlay hints for the fixture, applies all the provided text edits and then runs
     /// expect test.
     #[track_caller]
-    pub(super) fn check_edit(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
+    pub(super) fn check_edit(
+        config: InlayHintsConfig,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+    ) {
         let (analysis, file_id) = fixture::file(ra_fixture);
         let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
 
         let edits = inlay_hints
             .into_iter()
-            .filter_map(|hint| hint.text_edit)
+            .filter_map(|hint| hint.text_edit?.computed())
             .reduce(|mut acc, next| {
                 acc.union(next).expect("merging text edits failed");
                 acc
@@ -836,11 +916,15 @@ mod tests {
     }
 
     #[track_caller]
-    pub(super) fn check_no_edit(config: InlayHintsConfig, ra_fixture: &str) {
+    pub(super) fn check_no_edit(
+        config: InlayHintsConfig,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    ) {
         let (analysis, file_id) = fixture::file(ra_fixture);
         let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
 
-        let edits: Vec<_> = inlay_hints.into_iter().filter_map(|hint| hint.text_edit).collect();
+        let edits: Vec<_> =
+            inlay_hints.into_iter().filter_map(|hint| hint.text_edit?.computed()).collect();
 
         assert!(edits.is_empty(), "unexpected edits: {edits:?}");
     }
@@ -866,6 +950,19 @@ fn main() {
 fn foo() {
     let
     loop {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn regression_18898() {
+        check(
+            r#"
+//- proc_macros: issue_18898
+#[proc_macros::issue_18898]
+fn foo() {
+    let
 }
 "#,
         );

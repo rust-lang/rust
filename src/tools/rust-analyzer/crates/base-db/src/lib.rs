@@ -136,7 +136,7 @@ pub trait SourceRootDatabase: SourceDatabase {
     #[ra_salsa::input]
     fn source_root(&self, id: SourceRootId) -> Arc<SourceRoot>;
 
-    /// Crates whose root fool is in `id`.
+    /// Crates whose root file is in `id`.
     fn source_root_crates(&self, id: SourceRootId) -> Arc<[CrateId]>;
 }
 
