@@ -85,13 +85,15 @@ macro_rules! impl_vec_trait {
         impl_vec_trait!{ [$Trait $m] $fun ($a, $b) -> $r }
         impl_vec_trait!{ [$Trait $m] $fun ($b, $a) -> $r }
     };
-    ([$Trait:ident $m:ident] ~($ub:ident, $sb:ident, $uh:ident, $sh:ident, $uw:ident, $sw:ident)) => {
+    ([$Trait:ident $m:ident] ~($ub:ident, $sb:ident, $uh:ident, $sh:ident, $uw:ident, $sw:ident, $ug:ident, $sg:ident)) => {
         impl_vec_trait!{ [$Trait $m] $ub (vector_unsigned_char, ~vector_bool_char) -> vector_unsigned_char }
         impl_vec_trait!{ [$Trait $m] $sb (vector_signed_char, ~vector_bool_char) -> vector_signed_char }
         impl_vec_trait!{ [$Trait $m] $uh (vector_unsigned_short, ~vector_bool_short) -> vector_unsigned_short }
         impl_vec_trait!{ [$Trait $m] $sh (vector_signed_short, ~vector_bool_short) -> vector_signed_short }
         impl_vec_trait!{ [$Trait $m] $uw (vector_unsigned_int, ~vector_bool_int) -> vector_unsigned_int }
         impl_vec_trait!{ [$Trait $m] $sw (vector_signed_int, ~vector_bool_int) -> vector_signed_int }
+        impl_vec_trait!{ [$Trait $m] $ug (vector_unsigned_long_long, ~vector_bool_long_long) -> vector_unsigned_long_long }
+        impl_vec_trait!{ [$Trait $m] $sg (vector_signed_long_long, ~vector_bool_long_long) -> vector_signed_long_long }
     };
     ([$Trait:ident $m:ident] ~($fn:ident)) => {
         impl_vec_trait!{ [$Trait $m] ~($fn, $fn, $fn, $fn, $fn, $fn) }
