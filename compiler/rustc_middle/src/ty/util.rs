@@ -20,6 +20,7 @@ use tracing::{debug, instrument};
 
 use super::TypingEnv;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::mir;
 use crate::query::Providers;
 use crate::ty::fold::fold_regions;
 use crate::ty::layout::{FloatExt, IntegerExt};
@@ -1183,18 +1184,18 @@ impl<'tcx> Ty<'tcx> {
 
     /// Returns the maximum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
-    pub fn numeric_max_val(self, tcx: TyCtxt<'tcx>) -> Option<ty::Const<'tcx>> {
+    pub fn numeric_max_val(self, tcx: TyCtxt<'tcx>) -> Option<mir::Const<'tcx>> {
         let typing_env = TypingEnv::fully_monomorphized();
         self.numeric_min_and_max_as_bits(tcx)
-            .map(|(_, max)| ty::Const::from_bits(tcx, max, typing_env, self))
+            .map(|(_, max)| mir::Const::from_bits(tcx, max, typing_env, self))
     }
 
     /// Returns the minimum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
-    pub fn numeric_min_val(self, tcx: TyCtxt<'tcx>) -> Option<ty::Const<'tcx>> {
+    pub fn numeric_min_val(self, tcx: TyCtxt<'tcx>) -> Option<mir::Const<'tcx>> {
         let typing_env = TypingEnv::fully_monomorphized();
         self.numeric_min_and_max_as_bits(tcx)
-            .map(|(min, _)| ty::Const::from_bits(tcx, min, typing_env, self))
+            .map(|(min, _)| mir::Const::from_bits(tcx, min, typing_env, self))
     }
 
     /// Checks whether values of this type `T` have a size known at

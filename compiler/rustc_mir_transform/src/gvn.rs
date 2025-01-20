@@ -1174,11 +1174,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             ) if let ty::Slice(..) = to.builtin_deref(true).unwrap().kind()
                 && let ty::Array(_, len) = from.builtin_deref(true).unwrap().kind() =>
             {
-                return self.insert_constant(Const::from_ty_const(
-                    *len,
-                    self.tcx.types.usize,
-                    self.tcx,
-                ));
+                return self.insert_constant(Const::Ty(self.tcx.types.usize, *len));
             }
             _ => Value::UnaryOp(op, arg_index),
         };
@@ -1488,11 +1484,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         // Trivial case: we are fetching a statically known length.
         let place_ty = place.ty(self.local_decls, self.tcx).ty;
         if let ty::Array(_, len) = place_ty.kind() {
-            return self.insert_constant(Const::from_ty_const(
-                *len,
-                self.tcx.types.usize,
-                self.tcx,
-            ));
+            return self.insert_constant(Const::Ty(self.tcx.types.usize, *len));
         }
 
         let mut inner = self.simplify_place_value(place, location)?;
@@ -1514,11 +1506,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             && let Some(to) = to.builtin_deref(true)
             && let ty::Slice(..) = to.kind()
         {
-            return self.insert_constant(Const::from_ty_const(
-                *len,
-                self.tcx.types.usize,
-                self.tcx,
-            ));
+            return self.insert_constant(Const::Ty(self.tcx.types.usize, *len));
         }
 
         // Fallback: a symbolic `Len`.
