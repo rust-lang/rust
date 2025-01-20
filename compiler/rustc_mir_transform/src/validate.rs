@@ -323,7 +323,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 // FIXME(JakobDegen) The validator should check that `self.mir_phase <
                 // DropsLowered`. However, this causes ICEs with generation of drop shims, which
                 // seem to fail to set their `MirPhase` correctly.
-                if matches!(kind, RetagKind::TwoPhase) {
+                if matches!(kind, RetagKind::TwoPhase) && !self.tcx.sess.is_sanitizer_borrow_enabled() {
                     self.fail(location, format!("explicit `{kind:?}` is forbidden"));
                 }
             }
@@ -1485,7 +1485,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 // FIXME(JakobDegen) The validator should check that `self.mir_phase <
                 // DropsLowered`. However, this causes ICEs with generation of drop shims, which
                 // seem to fail to set their `MirPhase` correctly.
-                if matches!(kind, RetagKind::TwoPhase) {
+                if matches!(kind, RetagKind::TwoPhase) && !self.tcx.sess.is_sanitizer_borrow_enabled(){
                     self.fail(location, format!("explicit `{kind:?}` is forbidden"));
                 }
             }

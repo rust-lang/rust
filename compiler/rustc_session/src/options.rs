@@ -454,6 +454,7 @@ mod desc {
     pub(crate) const parse_wasm_c_abi: &str = "`legacy` or `spec`";
     pub(crate) const parse_mir_include_spans: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
+    pub(crate) const parse_aliasing_model: &str = "either 'tree' (default) or 'stack'";
 }
 
 pub mod parse {
@@ -1534,6 +1535,15 @@ pub mod parse {
 
         true
     }
+
+    pub(crate) fn parse_aliasing_model(slot: &mut AliasingModel, v: Option<&str>) -> bool {
+        *slot = match v {
+            Some("tree") => AliasingModel::Tree,
+            Some("stack") => AliasingModel::Stack,
+            _ => return false,
+        };
+        true
+    }
 }
 
 options! {
@@ -1680,6 +1690,8 @@ options! {
     // - src/doc/unstable-book/src/compiler-flags
 
     // tidy-alphabetical-start
+    aliasing_model: AliasingModel = (AliasingModel::Tree, parse_aliasing_model, [TRACKED],
+        "set the aliasing model ('tree' (default), 'stack')."),
     allow_features: Option<Vec<String>> = (None, parse_opt_comma_list, [TRACKED],
         "only allow the listed language features to be enabled in code (comma separated)"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],

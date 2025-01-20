@@ -375,6 +375,10 @@ impl Session {
         self.opts.unstable_opts.coverage_options.no_mir_spans
     }
 
+    pub fn is_sanitizer_borrow_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer.contains(SanitizerSet::BORROW)
+    }
+
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
         self.opts.unstable_opts.sanitizer.contains(SanitizerSet::CFI)
     }
