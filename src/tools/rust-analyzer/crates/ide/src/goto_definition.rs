@@ -3063,6 +3063,30 @@ fn f() {
     }
 
     #[test]
+    fn into_call_to_from_definition_with_trait_bounds() {
+        check(
+            r#"
+//- minicore: from, iterator
+struct A;
+
+impl<T> From<T> for A
+where
+    T: IntoIterator<Item = i64>,
+{
+    fn from(value: T) -> Self {
+     //^^^^
+        A
+    }
+}
+
+fn f() {
+    let a: A = [1, 2, 3].into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
     fn goto_into_definition_if_exists() {
         check(
             r#"
