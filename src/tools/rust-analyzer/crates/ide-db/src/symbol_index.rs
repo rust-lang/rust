@@ -220,7 +220,10 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
     };
 
     let mut res = vec![];
-    query.search::<()>(&indices, |f| ControlFlow::Continue(res.push(f.clone())));
+    query.search::<()>(&indices, |f| {
+        res.push(f.clone());
+        ControlFlow::Continue(())
+    });
     res
 }
 

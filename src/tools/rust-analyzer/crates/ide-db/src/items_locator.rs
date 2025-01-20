@@ -141,10 +141,11 @@ fn find_items<'a>(
     // Query the local crate using the symbol index.
     let mut local_results = Vec::new();
     local_query.search(&symbol_index::crate_symbols(db, krate), |local_candidate| {
-        ControlFlow::<()>::Continue(local_results.push(match local_candidate.def {
+        local_results.push(match local_candidate.def {
             hir::ModuleDef::Macro(macro_def) => ItemInNs::Macros(macro_def),
             def => ItemInNs::from(def),
-        }))
+        });
+        ControlFlow::<()>::Continue(())
     });
     local_results.into_iter().chain(external_importables)
 }

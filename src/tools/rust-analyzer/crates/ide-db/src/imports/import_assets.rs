@@ -4,14 +4,14 @@ use std::ops::ControlFlow;
 
 use hir::{
     db::HirDatabase, AsAssocItem, AssocItem, AssocItemContainer, Crate, HasCrate, ImportPathConfig,
-    ItemInNs, ModPath, Module, ModuleDef, PathResolution, PrefixKind, ScopeDef, Semantics,
+    ItemInNs, ModPath, Module, ModuleDef, Name, PathResolution, PrefixKind, ScopeDef, Semantics,
     SemanticsScope, Trait, TyFingerprint, Type,
 };
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     ast::{self, make, HasName},
-    AstNode, SmolStr, SyntaxNode,
+    AstNode, SyntaxNode,
 };
 
 use crate::{
@@ -53,7 +53,7 @@ pub struct TraitImportCandidate {
 #[derive(Debug)]
 pub struct PathImportCandidate {
     /// Optional qualifier before name.
-    pub qualifier: Vec<SmolStr>,
+    pub qualifier: Vec<Name>,
     /// The name the item (struct, trait, enum, etc.) should have.
     pub name: NameToImport,
 }
@@ -72,10 +72,18 @@ pub enum NameToImport {
 
 impl NameToImport {
     pub fn exact_case_sensitive(s: String) -> NameToImport {
+        let s = match s.strip_prefix("r#") {
+            Some(s) => s.to_owned(),
+            None => s,
+        };
         NameToImport::Exact(s, true)
     }
 
     pub fn fuzzy(s: String) -> NameToImport {
+        let s = match s.strip_prefix("r#") {
+            Some(s) => s.to_owned(),
+            None => s,
+        };
         // unless all chars are lowercase, we do a case sensitive search
         let case_sensitive = s.chars().any(|c| c.is_uppercase());
         NameToImport::Fuzzy(s, case_sensitive)
@@ -359,7 +367,7 @@ fn path_applicable_imports(
         [first_qsegment, qualifier_rest @ ..] => items_locator::items_with_name(
             sema,
             current_crate,
-            NameToImport::Exact(first_qsegment.to_string(), true),
+            NameToImport::Exact(first_qsegment.as_str().to_owned(), true),
             AssocSearchMode::Exclude,
         )
         .filter_map(|item| {
@@ -389,7 +397,7 @@ fn validate_resolvable(
     scope_filter: impl Fn(ItemInNs) -> bool,
     candidate: &NameToImport,
     resolved_qualifier: ItemInNs,
-    unresolved_qualifier: &[SmolStr],
+    unresolved_qualifier: &[Name],
 ) -> Option<LocatedImport> {
     let _p = tracing::info_span!("ImportAssets::import_for_item").entered();
 
@@ -722,7 +730,7 @@ fn path_import_candidate(
                 if qualifier.first_qualifier().is_none_or(|it| sema.resolve_path(&it).is_none()) {
                     let qualifier = qualifier
                         .segments()
-                        .map(|seg| seg.name_ref().map(|name| SmolStr::new(name.text())))
+                        .map(|seg| seg.name_ref().map(|name| Name::new_root(&name.text())))
                         .collect::<Option<Vec<_>>>()?;
                     ImportCandidate::Path(PathImportCandidate { qualifier, name })
                 } else {
