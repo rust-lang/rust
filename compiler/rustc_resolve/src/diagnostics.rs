@@ -225,10 +225,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let (name, span) =
             (ident.name, self.tcx.sess.source_map().guess_head_span(new_binding.span));
 
-        if let Some(s) = self.name_already_seen.get(&name) {
-            if s == &span {
-                return;
-            }
+        if self.name_already_seen.get(&name) == Some(&span) {
+            return;
         }
 
         let old_kind = match (ns, old_binding.module()) {
@@ -380,20 +378,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 suggestion = Some(format!("self as {suggested_name}"))
             }
             ImportKind::Single { source, .. } => {
-                if let Some(pos) =
-                    source.span.hi().0.checked_sub(binding_span.lo().0).map(|pos| pos as usize)
+                if let Some(pos) = source.span.hi().0.checked_sub(binding_span.lo().0)
+                    && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(binding_span)
+                    && pos as usize <= snippet.len()
                 {
-                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(binding_span) {
-                        if pos <= snippet.len() {
-                            span = binding_span
-                                .with_lo(binding_span.lo() + BytePos(pos as u32))
-                                .with_hi(
-                                    binding_span.hi()
-                                        - BytePos(if snippet.ends_with(';') { 1 } else { 0 }),
-                                );
-                            suggestion = Some(format!(" as {suggested_name}"));
-                        }
-                    }
+                    span = binding_span.with_lo(binding_span.lo() + BytePos(pos)).with_hi(
+                        binding_span.hi() - BytePos(if snippet.ends_with(';') { 1 } else { 0 }),
+                    );
+                    suggestion = Some(format!(" as {suggested_name}"));
                 }
             }
             ImportKind::ExternCrate { source, target, .. } => {
@@ -510,13 +502,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // If the first element of our path was actually resolved to an
         // `ExternCrate` (also used for `crate::...`) then no need to issue a
         // warning, this looks all good!
-        if let Some(binding) = second_binding {
-            if let NameBindingKind::Import { import, .. } = binding.kind {
-                // Careful: we still want to rewrite paths from renamed extern crates.
-                if let ImportKind::ExternCrate { source: None, .. } = import.kind {
-                    return;
-                }
-            }
+        if let Some(binding) = second_binding
+            && let NameBindingKind::Import { import, .. } = binding.kind
+            // Careful: we still want to rewrite paths from renamed extern crates.
+            && let ImportKind::ExternCrate { source: None, .. } = import.kind
+        {
+            return;
         }
 
         let diag = BuiltinLintDiag::AbsPathWithModule(root_span);
@@ -1215,12 +1206,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
 
                 // #90113: Do not count an inaccessible reexported item as a candidate.
-                if let NameBindingKind::Import { binding, .. } = name_binding.kind {
-                    if this.is_accessible_from(binding.vis, parent_scope.module)
-                        && !this.is_accessible_from(name_binding.vis, parent_scope.module)
-                    {
-                        return;
-                    }
+                if let NameBindingKind::Import { binding, .. } = name_binding.kind
+                    && this.is_accessible_from(binding.vis, parent_scope.module)
+                    && !this.is_accessible_from(name_binding.vis, parent_scope.module)
+                {
+                    return;
                 }
 
                 let res = name_binding.res();
@@ -1253,14 +1243,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     segms.push(ast::PathSegment::from_ident(ident));
                     let path = Path { span: name_binding.span, segments: segms, tokens: None };
 
-                    if child_accessible {
+                    if child_accessible
                         // Remove invisible match if exists
-                        if let Some(idx) = candidates
+                        && let Some(idx) = candidates
                             .iter()
                             .position(|v: &ImportSuggestion| v.did == did && !v.accessible)
-                        {
-                            candidates.remove(idx);
-                        }
+                    {
+                        candidates.remove(idx);
                     }
 
                     if candidates.iter().all(|v: &ImportSuggestion| v.did != did) {
@@ -1545,19 +1534,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         macro_kind.descr_expected(),
                     ),
                 };
-                if let crate::NameBindingKind::Import { import, .. } = binding.kind {
-                    if !import.span.is_dummy() {
-                        let note = errors::IdentImporterHereButItIsDesc {
-                            span: import.span,
-                            imported_ident: ident,
-                            imported_ident_desc: &desc,
-                        };
-                        err.subdiagnostic(note);
-                        // Silence the 'unused import' warning we might get,
-                        // since this diagnostic already covers that import.
-                        self.record_use(ident, binding, Used::Other);
-                        return;
-                    }
+                if let crate::NameBindingKind::Import { import, .. } = binding.kind
+                    && !import.span.is_dummy()
+                {
+                    let note = errors::IdentImporterHereButItIsDesc {
+                        span: import.span,
+                        imported_ident: ident,
+                        imported_ident_desc: &desc,
+                    };
+                    err.subdiagnostic(note);
+                    // Silence the 'unused import' warning we might get,
+                    // since this diagnostic already covers that import.
+                    self.record_use(ident, binding, Used::Other);
+                    return;
                 }
                 let note = errors::IdentInScopeButItIsDesc {
                     imported_ident: ident,
@@ -2436,20 +2425,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 debug!(found_closing_brace, ?binding_span);
 
                 let mut removal_span = binding_span;
-                if found_closing_brace {
-                    // If the binding span ended with a closing brace, as in the below example:
-                    //   ie. `use a::b::{c, d};`
-                    //                      ^
-                    // Then expand the span of characters to remove to include the previous
-                    // binding's trailing comma.
-                    //   ie. `use a::b::{c, d};`
-                    //                    ^^^
-                    if let Some(previous_span) =
+
+                // If the binding span ended with a closing brace, as in the below example:
+                //   ie. `use a::b::{c, d};`
+                //                      ^
+                // Then expand the span of characters to remove to include the previous
+                // binding's trailing comma.
+                //   ie. `use a::b::{c, d};`
+                //                    ^^^
+                if found_closing_brace
+                    && let Some(previous_span) =
                         extend_span_to_previous_binding(self.tcx.sess, binding_span)
-                    {
-                        debug!(?previous_span);
-                        removal_span = removal_span.with_lo(previous_span.lo());
-                    }
+                {
+                    debug!(?previous_span);
+                    removal_span = removal_span.with_lo(previous_span.lo());
                 }
                 debug!(?removal_span);
 
@@ -3064,16 +3053,16 @@ impl<'tcx> visit::Visitor<'tcx> for UsePlacementFinder {
 
 fn search_for_any_use_in_items(items: &[P<ast::Item>]) -> Option<Span> {
     for item in items {
-        if let ItemKind::Use(..) = item.kind {
-            if is_span_suitable_for_use_injection(item.span) {
-                let mut lo = item.span.lo();
-                for attr in &item.attrs {
-                    if attr.span.eq_ctxt(item.span) {
-                        lo = std::cmp::min(lo, attr.span.lo());
-                    }
+        if let ItemKind::Use(..) = item.kind
+            && is_span_suitable_for_use_injection(item.span)
+        {
+            let mut lo = item.span.lo();
+            for attr in &item.attrs {
+                if attr.span.eq_ctxt(item.span) {
+                    lo = std::cmp::min(lo, attr.span.lo());
                 }
-                return Some(Span::new(lo, lo, item.span.ctxt(), item.span.parent()));
             }
+            return Some(Span::new(lo, lo, item.span.ctxt(), item.span.parent()));
         }
     }
     None

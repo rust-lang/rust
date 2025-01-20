@@ -468,16 +468,12 @@ impl<'a> PathSource<'a> {
                     {
                         "external crate"
                     }
-                    ExprKind::Path(_, path) => {
-                        let mut msg = "function";
-                        if let Some(segment) = path.segments.iter().last() {
-                            if let Some(c) = segment.ident.to_string().chars().next() {
-                                if c.is_uppercase() {
-                                    msg = "function, tuple struct or tuple variant";
-                                }
-                            }
-                        }
-                        msg
+                    ExprKind::Path(_, path)
+                        if let Some(segment) = path.segments.last()
+                            && let Some(c) = segment.ident.to_string().chars().next()
+                            && c.is_uppercase() =>
+                    {
+                        "function, tuple struct or tuple variant"
                     }
                     _ => "function",
                 },
@@ -1182,32 +1178,27 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
                 // namespace first, and if that fails we try again in the value namespace. If
                 // resolution in the value namespace succeeds, we have an generic const argument on
                 // our hands.
-                if let TyKind::Path(None, ref path) = ty.kind {
+                if let TyKind::Path(None, ref path) = ty.kind
                     // We cannot disambiguate multi-segment paths right now as that requires type
                     // checking.
-                    if path.is_potential_trivial_const_arg() {
-                        let mut check_ns = |ns| {
-                            self.maybe_resolve_ident_in_lexical_scope(path.segments[0].ident, ns)
-                                .is_some()
-                        };
-                        if !check_ns(TypeNS) && check_ns(ValueNS) {
-                            self.resolve_anon_const_manual(
-                                true,
-                                AnonConstKind::ConstArg(IsRepeatExpr::No),
-                                |this| {
-                                    this.smart_resolve_path(
-                                        ty.id,
-                                        &None,
-                                        path,
-                                        PathSource::Expr(None),
-                                    );
-                                    this.visit_path(path, ty.id);
-                                },
-                            );
+                    && path.is_potential_trivial_const_arg()
+                {
+                    let mut check_ns = |ns| {
+                        self.maybe_resolve_ident_in_lexical_scope(path.segments[0].ident, ns)
+                            .is_some()
+                    };
+                    if !check_ns(TypeNS) && check_ns(ValueNS) {
+                        self.resolve_anon_const_manual(
+                            true,
+                            AnonConstKind::ConstArg(IsRepeatExpr::No),
+                            |this| {
+                                this.smart_resolve_path(ty.id, &None, path, PathSource::Expr(None));
+                                this.visit_path(path, ty.id);
+                            },
+                        );
 
-                            self.diag_metadata.currently_processing_generic_args = prev;
-                            return;
-                        }
+                        self.diag_metadata.currently_processing_generic_args = prev;
+                        return;
                     }
                 }
 
@@ -2460,12 +2451,12 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         for i in (0..self.label_ribs.len()).rev() {
             let rib = &self.label_ribs[i];
 
-            if let RibKind::MacroDefinition(def) = rib.kind {
+            if let RibKind::MacroDefinition(def) = rib.kind
                 // If an invocation of this macro created `ident`, give up on `ident`
                 // and switch to `ident`'s source from the macro definition.
-                if def == self.r.macro_def(label.span.ctxt()) {
-                    label.span.remove_mark();
-                }
+                && def == self.r.macro_def(label.span.ctxt())
+            {
+                label.span.remove_mark();
             }
 
             let ident = label.normalize_to_macro_rules();

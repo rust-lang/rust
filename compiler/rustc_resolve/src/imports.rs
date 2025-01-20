@@ -287,12 +287,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             binding.vis
         };
 
-        if let ImportKind::Glob { ref max_vis, .. } = import.kind {
-            if vis == import_vis
-                || max_vis.get().is_none_or(|max_vis| vis.is_at_least(max_vis, self.tcx))
-            {
-                max_vis.set(Some(vis.expect_local()))
-            }
+        if let ImportKind::Glob { ref max_vis, .. } = import.kind
+            && (vis == import_vis
+                || max_vis.get().is_none_or(|max_vis| vis.is_at_least(max_vis, self.tcx)))
+        {
+            max_vis.set(Some(vis.expect_local()))
         }
 
         self.arenas.alloc_name_binding(NameBindingData {
@@ -546,13 +545,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if let Some(err) = unresolved_import_error {
                 glob_error |= import.is_glob();
 
-                if let ImportKind::Single { source, ref source_bindings, .. } = import.kind {
-                    if source.name == kw::SelfLower {
-                        // Silence `unresolved import` error if E0429 is already emitted
-                        if let Err(Determined) = source_bindings.value_ns.get() {
-                            continue;
-                        }
-                    }
+                if let ImportKind::Single { source, ref source_bindings, .. } = import.kind
+                    && source.name == kw::SelfLower
+                    // Silence `unresolved import` error if E0429 is already emitted
+                    && let Err(Determined) = source_bindings.value_ns.get()
+                {
+                    continue;
                 }
 
                 if prev_root_id != NodeId::ZERO
@@ -1006,21 +1004,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         self.lint_if_path_starts_with_module(Some(finalize), &full_path, None);
                     }
 
-                    if let ModuleOrUniformRoot::Module(module) = module {
-                        if module == import.parent_scope.module {
-                            // Importing a module into itself is not allowed.
-                            return Some(UnresolvedImportError {
-                                span: import.span,
-                                label: Some(String::from(
-                                    "cannot glob-import a module into itself",
-                                )),
-                                note: None,
-                                suggestion: None,
-                                candidates: None,
-                                segment: None,
-                                module: None,
-                            });
-                        }
+                    if let ModuleOrUniformRoot::Module(module) = module
+                        && module == import.parent_scope.module
+                    {
+                        // Importing a module into itself is not allowed.
+                        return Some(UnresolvedImportError {
+                            span: import.span,
+                            label: Some(String::from("cannot glob-import a module into itself")),
+                            note: None,
+                            suggestion: None,
+                            candidates: None,
+                            segment: None,
+                            module: None,
+                        });
                     }
                     if !is_prelude
                         && let Some(max_vis) = max_vis.get()
@@ -1081,18 +1077,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // Consistency checks, analogous to `finalize_macro_resolutions`.
                         let initial_res = source_bindings[ns].get().map(|initial_binding| {
                             all_ns_err = false;
-                            if let Some(target_binding) = target_bindings[ns].get() {
-                                if target.name == kw::Underscore
-                                    && initial_binding.is_extern_crate()
-                                    && !initial_binding.is_import()
-                                {
-                                    let used = if import.module_path.is_empty() {
-                                        Used::Scope
-                                    } else {
-                                        Used::Other
-                                    };
-                                    this.record_use(ident, target_binding, used);
-                                }
+                            if let Some(target_binding) = target_bindings[ns].get()
+                                && target.name == kw::Underscore
+                                && initial_binding.is_extern_crate()
+                                && !initial_binding.is_import()
+                            {
+                                let used = if import.module_path.is_empty() {
+                                    Used::Scope
+                                } else {
+                                    Used::Other
+                                };
+                                this.record_use(ident, target_binding, used);
                             }
                             initial_binding.res()
                         });
@@ -1250,10 +1245,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if let Ok(binding) = source_bindings[ns].get() {
                 if !binding.vis.is_at_least(import.vis, this.tcx) {
                     reexport_error = Some((ns, binding));
-                    if let ty::Visibility::Restricted(binding_def_id) = binding.vis {
-                        if binding_def_id.is_top_level_module() {
-                            crate_private_reexport = true;
-                        }
+                    if let ty::Visibility::Restricted(binding_def_id) = binding.vis
+                        && binding_def_id.is_top_level_module()
+                    {
+                        crate_private_reexport = true;
                     }
                 } else {
                     any_successful_reexport = true;
