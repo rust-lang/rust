@@ -4,9 +4,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{
-    ExprKind, HirId, Item, ItemKind, Mod, Node, Pat, PatExpr, PatExprKind, PatKind, QPath,
-};
+use rustc_hir::{ExprKind, HirId, Item, ItemKind, Mod, Node, QPath};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::MacroKind;
@@ -189,31 +187,6 @@ impl SpanMapVisitor<'_> {
             self.matches.insert(span, link);
         }
     }
-
-    fn handle_pat(&mut self, p: &Pat<'_>) {
-        let mut check_qpath = |qpath, hir_id| match qpath {
-            QPath::TypeRelative(_, path) if matches!(path.res, Res::Err) => {
-                self.infer_id(path.hir_id, Some(hir_id), qpath.span());
-            }
-            QPath::Resolved(_, path) => self.handle_path(path),
-            _ => {}
-        };
-        match p.kind {
-            PatKind::Binding(_, _, _, Some(p)) => self.handle_pat(p),
-            PatKind::Struct(qpath, _, _) | PatKind::TupleStruct(qpath, _, _) => {
-                check_qpath(qpath, p.hir_id)
-            }
-            PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, .. }) => {
-                check_qpath(*qpath, *hir_id)
-            }
-            PatKind::Or(pats) => {
-                for pat in pats {
-                    self.handle_pat(pat);
-                }
-            }
-            _ => {}
-        }
-    }
 }
 
 impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
@@ -231,8 +204,36 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         intravisit::walk_path(self, path);
     }
 
-    fn visit_pat(&mut self, p: &Pat<'tcx>) {
-        self.handle_pat(p);
+    fn visit_qpath(&mut self, qpath: &QPath<'tcx>, id: HirId, span: Span) {
+        match *qpath {
+            QPath::TypeRelative(qself, path) => {
+                if matches!(path.res, Res::Err) {
+                    let tcx = self.tcx;
+                    let hir = tcx.hir();
+                    let body_id = hir.enclosing_body_owner(id);
+                    let typeck_results = tcx.typeck_body(hir.body_owned_by(body_id).id());
+                    let path = rustc_hir::Path {
+                        // We change the span to not include parens.
+                        span: span.with_hi(path.ident.span.hi()),
+                        res: typeck_results.qpath_res(qpath, id),
+                        segments: &[],
+                    };
+                    self.handle_path(&path);
+                } else {
+                    self.infer_id(path.hir_id, Some(id), span);
+                }
+
+                rustc_ast::visit::try_visit!(self.visit_ty(qself));
+                self.visit_path_segment(path);
+            }
+            QPath::Resolved(maybe_qself, path) => {
+                self.handle_path(path);
+
+                rustc_ast::visit::visit_opt!(self, visit_ty, maybe_qself);
+                self.visit_path(path, id)
+            }
+            _ => {}
+        }
     }
 
     fn visit_mod(&mut self, m: &'tcx Mod<'tcx>, span: Span, id: HirId) {
