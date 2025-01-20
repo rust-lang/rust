@@ -764,6 +764,8 @@ parse_suffixed_literal_in_attribute = suffixed literals are not allowed in attri
 
 parse_sugg_add_let_for_stmt = you might have meant to introduce a new binding
 
+parse_sugg_add_mut_or_const_in_raw_ref = you might have meant to use a raw reference
+
 parse_sugg_add_semi = add `;` here
 parse_sugg_change_inner_attr_to_outer = to annotate the {$item}, change the attribute from inner to outer style
 

@@ -1303,6 +1303,22 @@ impl<'a> Parser<'a> {
         Err(e)
     }
 
+    /// When writing `&raw` that is missing the following `mut` or `const`, we will
+    /// encounter a parse error when encountering the next expression.
+    pub(super) fn suggest_add_mut_or_const_in_raw_ref(&mut self, e: &mut Diag<'_>, expr: &P<Expr>) {
+        if let ExprKind::AddrOf(ast::BorrowKind::Ref, ast::Mutability::Not, r) = &expr.kind
+            && let ast::ExprKind::Path(_, p) = &r.kind
+            && *p == Symbol::intern("raw")
+        {
+            e.span_suggestions(
+                expr.span.shrink_to_hi(),
+                fluent::parse_sugg_add_mut_or_const_in_raw_ref,
+                [" mut".to_string(), " const".to_string()],
+                Applicability::HasPlaceholders,
+            );
+        }
+    }
+
     /// Suggest add the missing `let` before the identifier in stmt
     /// `a: Ty = 1` -> `let a: Ty = 1`
     pub(super) fn suggest_add_missing_let_for_stmt(&mut self, err: &mut Diag<'a>) {

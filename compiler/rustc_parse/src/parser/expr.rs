@@ -1581,7 +1581,10 @@ impl<'a> Parser<'a> {
                 ExprKind::Array(exprs)
             } else {
                 // Vector with one element
-                self.expect(close)?;
+                self.expect(close).map_err(|mut e| {
+                    self.suggest_add_mut_or_const_in_raw_ref(&mut e, &first_expr);
+                    e
+                })?;
                 ExprKind::Array(thin_vec![first_expr])
             }
         };

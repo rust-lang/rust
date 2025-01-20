@@ -897,6 +897,7 @@ impl<'a> Parser<'a> {
                                 res?
                             } else {
                                 res.unwrap_or_else(|mut e| {
+                                    self.suggest_add_mut_or_const_in_raw_ref(&mut e, expr);
                                     self.recover_missing_dot(&mut e);
                                     let guar = e.emit();
                                     self.recover_stmt();
@@ -920,6 +921,7 @@ impl<'a> Parser<'a> {
                     LocalKind::Init(expr) | LocalKind::InitElse(expr, _) => {
                         self.check_mistyped_turbofish_with_multiple_type_params(e, expr).map_err(
                             |mut e| {
+                                self.suggest_add_mut_or_const_in_raw_ref(&mut e, expr);
                                 self.recover_missing_dot(&mut e);
                                 e
                             },
