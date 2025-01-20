@@ -18,6 +18,7 @@ The following external projects are managed using some form of a `subtree`:
 
 * [clippy](https://github.com/rust-lang/rust-clippy)
 * [miri](https://github.com/rust-lang/miri)
+* [portable-simd](https://github.com/rust-lang/portable-simd)
 * [rustfmt](https://github.com/rust-lang/rustfmt)
 * [rust-analyzer](https://github.com/rust-lang/rust-analyzer)
 * [rustc_codegen_cranelift](https://github.com/rust-lang/rustc_codegen_cranelift)
@@ -34,6 +35,7 @@ implement a new tool feature or test, that should happen in one collective rustc
 
 * Using `git subtree`
   * `clippy` ([sync guide](https://doc.rust-lang.org/nightly/clippy/development/infrastructure/sync.html#performing-the-sync-from-rust-langrust-to-clippy))
+  * `portable-simd` ([sync script](https://github.com/rust-lang/portable-simd/blob/master/subtree-sync.sh))
   * `rustfmt`
   * `rustc_codegen_cranelift` ([sync script](https://github.com/rust-lang/rustc_codegen_cranelift/blob/113af154d459e41b3dc2c5d7d878e3d3a8f33c69/scripts/rustup.sh#L7))
 * Using the [josh] tool
