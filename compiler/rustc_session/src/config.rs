@@ -1346,8 +1346,12 @@ pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
     user_cfg
 }
 
-pub fn build_target_config(early_dcx: &EarlyDiagCtxt, opts: &Options, sysroot: &Path) -> Target {
-    match Target::search(&opts.target_triple, sysroot) {
+pub fn build_target_config(
+    early_dcx: &EarlyDiagCtxt,
+    target: &TargetTuple,
+    sysroot: &Path,
+) -> Target {
+    match Target::search(target, sysroot) {
         Ok((target, warnings)) => {
             for warning in warnings.warning_messages() {
                 early_dcx.early_warn(warning)

@@ -53,7 +53,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::config::{
     CG_OPTIONS, ErrorOutputType, Input, OptionDesc, OutFileName, OutputType, UnstableOptions,
-    Z_OPTIONS, nightly_options,
+    Z_OPTIONS, nightly_options, parse_target_triple,
 };
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
@@ -916,13 +916,7 @@ pub fn version_at_macro_invocation(
         safe_println!("host: {}", config::host_tuple());
         safe_println!("release: {release}");
 
-        let debug_flags = matches.opt_strs("Z");
-        let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
-        let opts = config::Options::default();
-        let sysroot = filesearch::materialize_sysroot(opts.maybe_sysroot.clone());
-        let target = config::build_target_config(early_dcx, &opts, &sysroot);
-
-        get_codegen_backend(early_dcx, &sysroot, backend_name, &target).print_version();
+        get_backend_from_raw_matches(early_dcx, matches).print_version();
     }
 }
 
@@ -1125,17 +1119,30 @@ pub fn describe_flag_categories(early_dcx: &EarlyDiagCtxt, matches: &Matches) ->
     }
 
     if cg_flags.iter().any(|x| *x == "passes=list") {
-        let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
-
-        let opts = config::Options::default();
-        let sysroot = filesearch::materialize_sysroot(opts.maybe_sysroot.clone());
-        let target = config::build_target_config(early_dcx, &opts, &sysroot);
-
-        get_codegen_backend(early_dcx, &sysroot, backend_name, &target).print_passes();
+        get_backend_from_raw_matches(early_dcx, matches).print_passes();
         return true;
     }
 
     false
+}
+
+/// Get the codegen backend based on the raw [`Matches`].
+///
+/// `rustc -vV` and `rustc -Cpasses=list` need to get the codegen backend before we have parsed all
+/// arguments and created a [`Session`]. This function reads `-Zcodegen-backend`, `--target` and
+/// `--sysroot` without validating any other arguments and loads the codegen backend based on these
+/// arguments.
+fn get_backend_from_raw_matches(
+    early_dcx: &EarlyDiagCtxt,
+    matches: &Matches,
+) -> Box<dyn CodegenBackend> {
+    let debug_flags = matches.opt_strs("Z");
+    let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
+    let target = parse_target_triple(early_dcx, matches);
+    let sysroot = filesearch::materialize_sysroot(matches.opt_str("sysroot").map(PathBuf::from));
+    let target = config::build_target_config(early_dcx, &target, &sysroot);
+
+    get_codegen_backend(early_dcx, &sysroot, backend_name, &target)
 }
 
 fn describe_debug_flags() {

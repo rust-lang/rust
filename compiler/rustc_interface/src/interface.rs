@@ -383,7 +383,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     crate::callbacks::setup_callbacks();
 
     let sysroot = filesearch::materialize_sysroot(config.opts.maybe_sysroot.clone());
-    let target = config::build_target_config(&early_dcx, &config.opts, &sysroot);
+    let target = config::build_target_config(&early_dcx, &config.opts.target_triple, &sysroot);
     let file_loader = config.file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
     let path_mapping = config.opts.file_path_mapping();
     let hash_kind = config.opts.unstable_opts.src_hash_algorithm(&target);
