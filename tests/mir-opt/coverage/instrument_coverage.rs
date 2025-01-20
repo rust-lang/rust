@@ -8,7 +8,7 @@
 // EMIT_MIR instrument_coverage.main.InstrumentCoverage.diff
 // CHECK-LABEL: fn main()
 // CHECK: coverage body span:
-// CHECK: coverage Code(Counter({{[0-9]+}})) =>
+// CHECK: coverage Code { bcb: bcb{{[0-9]+}} } =>
 // CHECK: bb0:
 // CHECK: Coverage::CounterIncrement
 fn main() {
@@ -22,7 +22,7 @@ fn main() {
 // EMIT_MIR instrument_coverage.bar.InstrumentCoverage.diff
 // CHECK-LABEL: fn bar()
 // CHECK: coverage body span:
-// CHECK: coverage Code(Counter({{[0-9]+}})) =>
+// CHECK: coverage Code { bcb: bcb{{[0-9]+}} } =>
 // CHECK: bb0:
 // CHECK: Coverage::CounterIncrement
 #[inline(never)]

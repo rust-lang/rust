@@ -179,32 +179,17 @@ pub struct Expression {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum MappingKind {
     /// Associates a normal region of code with a counter/expression/zero.
-    Code(CovTerm),
+    Code { bcb: BasicCoverageBlock },
     /// Associates a branch region with separate counters for true and false.
-    Branch { true_term: CovTerm, false_term: CovTerm },
+    Branch { true_bcb: BasicCoverageBlock, false_bcb: BasicCoverageBlock },
     /// Associates a branch region with separate counters for true and false.
-    MCDCBranch { true_term: CovTerm, false_term: CovTerm, mcdc_params: ConditionInfo },
+    MCDCBranch {
+        true_bcb: BasicCoverageBlock,
+        false_bcb: BasicCoverageBlock,
+        mcdc_params: ConditionInfo,
+    },
     /// Associates a decision region with a bitmap and number of conditions.
     MCDCDecision(DecisionInfo),
-}
-
-impl MappingKind {
-    /// Returns a copy of this mapping kind, in which all coverage terms have
-    /// been replaced with ones returned by the given function.
-    pub fn map_terms(&self, map_fn: impl Fn(CovTerm) -> CovTerm) -> Self {
-        match *self {
-            Self::Code(term) => Self::Code(map_fn(term)),
-            Self::Branch { true_term, false_term } => {
-                Self::Branch { true_term: map_fn(true_term), false_term: map_fn(false_term) }
-            }
-            Self::MCDCBranch { true_term, false_term, mcdc_params } => Self::MCDCBranch {
-                true_term: map_fn(true_term),
-                false_term: map_fn(false_term),
-                mcdc_params,
-            },
-            Self::MCDCDecision(param) => Self::MCDCDecision(param),
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -222,10 +207,14 @@ pub struct Mapping {
 pub struct FunctionCoverageInfo {
     pub function_source_hash: u64,
     pub body_span: Span,
+
     pub num_counters: usize,
-    pub mcdc_bitmap_bits: usize,
     pub expressions: IndexVec<ExpressionId, Expression>,
+
     pub mappings: Vec<Mapping>,
+    pub term_for_bcb: IndexVec<BasicCoverageBlock, Option<CovTerm>>,
+
+    pub mcdc_bitmap_bits: usize,
     /// The depth of the deepest decision is used to know how many
     /// temp condbitmaps should be allocated for the function.
     pub mcdc_num_condition_bitmaps: usize,
@@ -327,5 +316,21 @@ impl CoverageIdsInfo {
             CovTerm::Counter(id) => !self.counters_seen.contains(id),
             CovTerm::Expression(id) => self.zero_expressions.contains(id),
         }
+    }
+}
+
+rustc_index::newtype_index! {
+    /// During the `InstrumentCoverage` MIR pass, a BCB is a node in the
+    /// "coverage graph", which is a refinement of the MIR control-flow graph
+    /// that merges or omits some blocks that aren't relevant to coverage.
+    ///
+    /// After that pass is complete, the coverage graph no longer exists, so a
+    /// BCB is effectively an opaque ID.
+    #[derive(HashStable)]
+    #[encodable]
+    #[orderable]
+    #[debug_format = "bcb{}"]
+    pub struct BasicCoverageBlock {
+        const START_BCB = 0;
     }
 }

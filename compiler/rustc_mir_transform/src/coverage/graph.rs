@@ -8,6 +8,7 @@ use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::graph::{self, DirectedGraph, StartNode};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
+pub(crate) use rustc_middle::mir::coverage::{BasicCoverageBlock, START_BCB};
 use rustc_middle::mir::{self, BasicBlock, Terminator, TerminatorKind};
 use tracing::debug;
 
@@ -266,15 +267,6 @@ impl graph::Predecessors for CoverageGraph {
     #[inline]
     fn predecessors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node> {
         self.predecessors[node].iter().copied()
-    }
-}
-
-rustc_index::newtype_index! {
-    /// A node in the control-flow graph of CoverageGraph.
-    #[orderable]
-    #[debug_format = "bcb{}"]
-    pub(crate) struct BasicCoverageBlock {
-        const START_BCB = 0;
     }
 }
 

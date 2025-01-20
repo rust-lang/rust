@@ -133,7 +133,7 @@ pub(super) struct CoverageCounters {
     next_counter_id: CounterId,
 
     /// Coverage counters/expressions that are associated with individual BCBs.
-    node_counters: IndexVec<BasicCoverageBlock, Option<CovTerm>>,
+    pub(crate) node_counters: IndexVec<BasicCoverageBlock, Option<CovTerm>>,
 
     /// Table of expression data, associating each expression ID with its
     /// corresponding operator (+ or -) and its LHS/RHS operands.
@@ -201,10 +201,6 @@ impl CoverageCounters {
             "node {bcb:?} already has a counter: {existing:?} => {counter:?}"
         );
         counter
-    }
-
-    pub(super) fn term_for_bcb(&self, bcb: BasicCoverageBlock) -> Option<CovTerm> {
-        self.node_counters[bcb]
     }
 
     /// Returns an iterator over all the nodes in the coverage graph that
