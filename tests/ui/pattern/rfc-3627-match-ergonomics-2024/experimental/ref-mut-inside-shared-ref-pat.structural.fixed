@@ -1,7 +1,11 @@
 //@ edition: 2024
 //@ run-rustfix
+//@ revisions: classic structural
+//! Tests for `&` patterns matched against `&mut` reference types where the inner pattern attempts
+//! to bind by mutable reference.
 #![allow(incomplete_features)]
-#![feature(ref_pat_eat_one_layer_2024)]
+#![cfg_attr(classic, feature(ref_pat_eat_one_layer_2024))]
+#![cfg_attr(structural, feature(ref_pat_eat_one_layer_2024_structural))]
 
 pub fn main() {
     if let Some(&mut Some(ref mut x)) = &mut Some(Some(0)) {
