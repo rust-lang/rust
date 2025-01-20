@@ -1,6 +1,6 @@
 use super::{DocHeaders, MISSING_ERRORS_DOC, MISSING_PANICS_DOC, MISSING_SAFETY_DOC, UNNECESSARY_SAFETY_DOC};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
-use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
+use clippy_utils::ty::{implements_trait_with_env, is_type_diagnostic_item};
 use clippy_utils::{is_doc_hidden, return_ty};
 use rustc_hir::{BodyId, FnSig, OwnerId, Safety};
 use rustc_lint::LateContext;
@@ -32,7 +32,7 @@ pub fn check(
     }
 
     let span = cx.tcx.def_span(owner_id);
-    match (headers.safety, sig.header.safety) {
+    match (headers.safety, sig.header.safety()) {
         (false, Safety::Unsafe) => span_lint(
             cx,
             MISSING_SAFETY_DOC,
@@ -70,7 +70,14 @@ pub fn check(
             && let typeck = cx.tcx.typeck_body(body_id)
             && let body = cx.tcx.hir().body(body_id)
             && let ret_ty = typeck.expr_ty(body.value)
-            && implements_trait(cx, ret_ty, future, &[])
+            && implements_trait_with_env(
+                cx.tcx,
+                ty::TypingEnv::non_body_analysis(cx.tcx, owner_id.def_id),
+                ret_ty,
+                future,
+                Some(owner_id.def_id.to_def_id()),
+                &[],
+            )
             && let ty::Coroutine(_, subs) = ret_ty.kind()
             && is_type_diagnostic_item(cx, subs.as_coroutine().return_ty(), sym::Result)
         {

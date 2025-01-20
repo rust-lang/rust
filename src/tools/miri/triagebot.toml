@@ -1,3 +1,6 @@
+## See <https://forge.rust-lang.org/triagebot/index.html> for documentation
+## of these options.
+
 [relabel]
 allow-unauthenticated = [
     "A-*",
@@ -29,6 +32,11 @@ review_labels = ["S-waiting-on-review"]
 remove_labels = ["S-waiting-on-author"]
 # Those labels are added when PR author requests a review from an assignee
 add_labels = ["S-waiting-on-review"]
+
+[merge-conflicts]
+remove = []
+add = ["S-waiting-on-author"]
+unless = ["S-blocked", "S-waiting-on-team", "S-waiting-on-review"]
 
 # Automatically close and reopen PRs made by bots to run CI on them
 [bot-pull-requests]

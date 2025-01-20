@@ -120,8 +120,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
             let mut visitor = AsyncFnVisitor {
                 cx,
                 found_await: false,
-                async_depth: 0,
                 await_in_async_block: None,
+                async_depth: 0,
             };
             walk_fn(&mut visitor, fn_kind, fn_decl, body.id(), def_id);
             if !visitor.found_await {
@@ -129,9 +129,9 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
                 // The actual linting happens in `check_crate_post`, once we've found all
                 // uses of local async functions that do require asyncness to pass typeck
                 self.unused_async_fns.push(UnusedAsyncFn {
-                    await_in_async_block: visitor.await_in_async_block,
-                    fn_span: span,
                     def_id,
+                    fn_span: span,
+                    await_in_async_block: visitor.await_in_async_block,
                 });
             }
         }

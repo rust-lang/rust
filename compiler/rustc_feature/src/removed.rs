@@ -120,7 +120,7 @@ declare_features! (
     /// Allows defining generators.
     (removed, generators, "1.21.0", Some(43122), Some("renamed to `coroutines`")),
     /// An extension to the `generic_associated_types` feature, allowing incomplete features.
-    (removed, generic_associated_types_extended, "CURRENT_RUSTC_VERSION", Some(95451),
+    (removed, generic_associated_types_extended, "1.85.0", Some(95451),
         Some(
             "feature needs overhaul and reimplementation pending \
             better implied higher-ranked implied bounds support"

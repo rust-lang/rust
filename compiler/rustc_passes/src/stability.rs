@@ -5,8 +5,8 @@ use std::mem::replace;
 use std::num::NonZero;
 
 use rustc_attr_parsing::{
-    self as attr, ConstStability, DeprecatedSince, Stability, StabilityLevel, StableSince,
-    UnstableReason, VERSION_PLACEHOLDER,
+    self as attr, AllowedThroughUnstableModules, ConstStability, DeprecatedSince, Stability,
+    StabilityLevel, StableSince, UnstableReason, VERSION_PLACEHOLDER,
 };
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
@@ -20,11 +20,16 @@ use rustc_hir::{FieldDef, Item, ItemKind, TraitRef, Ty, TyKind, Variant};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
-use rustc_middle::middle::stability::{AllowUnstable, DeprecationEntry, Index};
+use rustc_middle::middle::stability::{
+    AllowUnstable, Deprecated, DeprecationEntry, EvalResult, Index,
+};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint;
-use rustc_session::lint::builtin::{INEFFECTIVE_UNSTABLE_TRAIT_IMPL, USELESS_DEPRECATED};
+use rustc_session::lint::builtin::{
+    DEPRECATED, INEFFECTIVE_UNSTABLE_TRAIT_IMPL, USELESS_DEPRECATED,
+};
 use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, info};
 
@@ -593,9 +598,11 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
     }
 
     fn check_missing_const_stability(&self, def_id: LocalDefId, span: Span) {
-        let is_const = self.tcx.is_const_fn(def_id.to_def_id());
+        let is_const = self.tcx.is_const_fn(def_id.to_def_id())
+            || (self.tcx.def_kind(def_id.to_def_id()) == DefKind::Trait
+                && self.tcx.is_const_trait(def_id.to_def_id()));
 
-        // Reachable const fn must have a stability attribute.
+        // Reachable const fn/trait must have a stability attribute.
         if is_const
             && self.effective_visibilities.is_reachable(def_id)
             && self.tcx.lookup_const_stability(def_id).is_none()
@@ -772,7 +779,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref t), self_ty, items, .. }) => {
+            hir::ItemKind::Impl(hir::Impl {
+                of_trait: Some(ref t),
+                self_ty,
+                items,
+                constness,
+                ..
+            }) => {
                 let features = self.tcx.features();
                 if features.staged_api() {
                     let attrs = self.tcx.hir().attrs(item.hir_id());
@@ -814,6 +827,16 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     }
                 }
 
+                match constness {
+                    rustc_hir::Constness::Const => {
+                        if let Some(def_id) = t.trait_def_id() {
+                            // FIXME(const_trait_impl): Improve the span here.
+                            self.tcx.check_const_stability(def_id, t.path.span, t.path.span);
+                        }
+                    }
+                    rustc_hir::Constness::NotConst => {}
+                }
+
                 for impl_item_ref in *items {
                     let impl_item = self.tcx.associated_item(impl_item_ref.id.owner_id);
 
@@ -827,6 +850,18 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             _ => (/* pass */),
         }
         intravisit::walk_item(self, item);
+    }
+
+    fn visit_poly_trait_ref(&mut self, t: &'tcx hir::PolyTraitRef<'tcx>) {
+        match t.modifiers.constness {
+            hir::BoundConstness::Always(span) | hir::BoundConstness::Maybe(span) => {
+                if let Some(def_id) = t.trait_ref.trait_def_id() {
+                    self.tcx.check_const_stability(def_id, t.trait_ref.path.span, span);
+                }
+            }
+            hir::BoundConstness::Never => {}
+        }
+        intravisit::walk_poly_trait_ref(self, t);
     }
 
     fn visit_path(&mut self, path: &hir::Path<'tcx>, id: hir::HirId) {
@@ -844,42 +879,95 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 },
             );
 
-            let is_allowed_through_unstable_modules = |def_id| {
-                self.tcx.lookup_stability(def_id).is_some_and(|stab| match stab.level {
-                    StabilityLevel::Stable { allowed_through_unstable_modules, .. } => {
-                        allowed_through_unstable_modules
-                    }
-                    _ => false,
-                })
-            };
+            if item_is_allowed {
+                // The item itself is allowed; check whether the path there is also allowed.
+                let is_allowed_through_unstable_modules: Option<AllowedThroughUnstableModules> =
+                    self.tcx.lookup_stability(def_id).and_then(|stab| match stab.level {
+                        StabilityLevel::Stable { allowed_through_unstable_modules, .. } => {
+                            allowed_through_unstable_modules
+                        }
+                        _ => None,
+                    });
 
-            if item_is_allowed && !is_allowed_through_unstable_modules(def_id) {
-                // Check parent modules stability as well if the item the path refers to is itself
-                // stable. We only emit warnings for unstable path segments if the item is stable
-                // or allowed because stability is often inherited, so the most common case is that
-                // both the segments and the item are unstable behind the same feature flag.
-                //
-                // We check here rather than in `visit_path_segment` to prevent visiting the last
-                // path segment twice
-                //
-                // We include special cases via #[rustc_allowed_through_unstable_modules] for items
-                // that were accidentally stabilized through unstable paths before this check was
-                // added, such as `core::intrinsics::transmute`
-                let parents = path.segments.iter().rev().skip(1);
-                for path_segment in parents {
-                    if let Some(def_id) = path_segment.res.opt_def_id() {
-                        // use `None` for id to prevent deprecation check
-                        self.tcx.check_stability_allow_unstable(
-                            def_id,
-                            None,
-                            path.span,
-                            None,
-                            if is_unstable_reexport(self.tcx, id) {
-                                AllowUnstable::Yes
-                            } else {
-                                AllowUnstable::No
-                            },
-                        );
+                if is_allowed_through_unstable_modules.is_none() {
+                    // Check parent modules stability as well if the item the path refers to is itself
+                    // stable. We only emit warnings for unstable path segments if the item is stable
+                    // or allowed because stability is often inherited, so the most common case is that
+                    // both the segments and the item are unstable behind the same feature flag.
+                    //
+                    // We check here rather than in `visit_path_segment` to prevent visiting the last
+                    // path segment twice
+                    //
+                    // We include special cases via #[rustc_allowed_through_unstable_modules] for items
+                    // that were accidentally stabilized through unstable paths before this check was
+                    // added, such as `core::intrinsics::transmute`
+                    let parents = path.segments.iter().rev().skip(1);
+                    for path_segment in parents {
+                        if let Some(def_id) = path_segment.res.opt_def_id() {
+                            // use `None` for id to prevent deprecation check
+                            self.tcx.check_stability_allow_unstable(
+                                def_id,
+                                None,
+                                path.span,
+                                None,
+                                if is_unstable_reexport(self.tcx, id) {
+                                    AllowUnstable::Yes
+                                } else {
+                                    AllowUnstable::No
+                                },
+                            );
+                        }
+                    }
+                } else if let Some(AllowedThroughUnstableModules::WithDeprecation(deprecation)) =
+                    is_allowed_through_unstable_modules
+                {
+                    // Similar to above, but we cannot use `check_stability_allow_unstable` as that would
+                    // immediately show the stability error. We just want to know the result and disaplay
+                    // our own kind of error.
+                    let parents = path.segments.iter().rev().skip(1);
+                    for path_segment in parents {
+                        if let Some(def_id) = path_segment.res.opt_def_id() {
+                            // use `None` for id to prevent deprecation check
+                            let eval_result = self.tcx.eval_stability_allow_unstable(
+                                def_id,
+                                None,
+                                path.span,
+                                None,
+                                if is_unstable_reexport(self.tcx, id) {
+                                    AllowUnstable::Yes
+                                } else {
+                                    AllowUnstable::No
+                                },
+                            );
+                            let is_allowed = matches!(eval_result, EvalResult::Allow);
+                            if !is_allowed {
+                                // Calculating message for lint involves calling `self.def_path_str`,
+                                // which will by default invoke the expensive `visible_parent_map` query.
+                                // Skip all that work if the lint is allowed anyway.
+                                if self.tcx.lint_level_at_node(DEPRECATED, id).0
+                                    == lint::Level::Allow
+                                {
+                                    return;
+                                }
+                                // Show a deprecation message.
+                                let def_path =
+                                    with_no_trimmed_paths!(self.tcx.def_path_str(def_id));
+                                let def_kind = self.tcx.def_descr(def_id);
+                                let diag = Deprecated {
+                                    sub: None,
+                                    kind: def_kind.to_owned(),
+                                    path: def_path,
+                                    note: Some(deprecation),
+                                    since_kind: lint::DeprecatedSinceKind::InEffect,
+                                };
+                                self.tcx.emit_node_span_lint(
+                                    DEPRECATED,
+                                    id,
+                                    method_span.unwrap_or(path.span),
+                                    diag,
+                                );
+                            }
+                        }
                     }
                 }
             }

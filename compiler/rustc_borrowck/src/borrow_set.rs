@@ -2,7 +2,7 @@ use std::fmt;
 use std::ops::Index;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Body, Local, Location, traversal};
 use rustc_middle::span_bug;
@@ -131,7 +131,7 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
 
 pub enum LocalsStateAtExit {
     AllAreInvalidated,
-    SomeAreInvalidated { has_storage_dead_or_moved: BitSet<Local> },
+    SomeAreInvalidated { has_storage_dead_or_moved: DenseBitSet<Local> },
 }
 
 impl LocalsStateAtExit {
@@ -140,7 +140,7 @@ impl LocalsStateAtExit {
         body: &Body<'tcx>,
         move_data: &MoveData<'tcx>,
     ) -> Self {
-        struct HasStorageDead(BitSet<Local>);
+        struct HasStorageDead(DenseBitSet<Local>);
 
         impl<'tcx> Visitor<'tcx> for HasStorageDead {
             fn visit_local(&mut self, local: Local, ctx: PlaceContext, _: Location) {
@@ -153,7 +153,8 @@ impl LocalsStateAtExit {
         if locals_are_invalidated_at_exit {
             LocalsStateAtExit::AllAreInvalidated
         } else {
-            let mut has_storage_dead = HasStorageDead(BitSet::new_empty(body.local_decls.len()));
+            let mut has_storage_dead =
+                HasStorageDead(DenseBitSet::new_empty(body.local_decls.len()));
             has_storage_dead.visit_body(body);
             let mut has_storage_dead_or_moved = has_storage_dead.0;
             for move_out in &move_data.moves {

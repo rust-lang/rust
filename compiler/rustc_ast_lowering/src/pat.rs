@@ -1,9 +1,12 @@
+use std::sync::Arc;
+
 use rustc_ast::ptr::P;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_span::source_map::Spanned;
+use rustc_middle::span_bug;
+use rustc_span::source_map::{Spanned, respan};
 use rustc_span::{Ident, Span};
 
 use super::errors::{
@@ -35,8 +38,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             lower_sub,
                         );
                     }
-                    PatKind::Lit(e) => {
-                        break hir::PatKind::Lit(self.lower_expr_within_pat(e, false));
+                    PatKind::Expr(e) => {
+                        break hir::PatKind::Expr(self.lower_expr_within_pat(e, false));
                     }
                     PatKind::TupleStruct(qself, path, pats) => {
                         let qpath = self.lower_qpath(
@@ -367,24 +370,54 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // }
     // m!(S);
     // ```
-    fn lower_expr_within_pat(&mut self, expr: &Expr, allow_paths: bool) -> &'hir hir::Expr<'hir> {
-        match &expr.kind {
-            ExprKind::Lit(..)
-            | ExprKind::ConstBlock(..)
-            | ExprKind::IncludedBytes(..)
-            | ExprKind::Err(_)
-            | ExprKind::Dummy => {}
-            ExprKind::Path(..) if allow_paths => {}
-            ExprKind::Unary(UnOp::Neg, inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
+    fn lower_expr_within_pat(
+        &mut self,
+        expr: &Expr,
+        allow_paths: bool,
+    ) -> &'hir hir::PatExpr<'hir> {
+        let err = |guar| hir::PatExprKind::Lit {
+            lit: self.arena.alloc(respan(self.lower_span(expr.span), LitKind::Err(guar))),
+            negated: false,
+        };
+        let kind = match &expr.kind {
+            ExprKind::Lit(lit) => {
+                hir::PatExprKind::Lit { lit: self.lower_lit(lit, expr.span), negated: false }
+            }
+            ExprKind::ConstBlock(c) => hir::PatExprKind::ConstBlock(self.lower_const_block(c)),
+            ExprKind::IncludedBytes(bytes) => hir::PatExprKind::Lit {
+                lit: self.arena.alloc(respan(
+                    self.lower_span(expr.span),
+                    LitKind::ByteStr(Arc::clone(bytes), StrStyle::Cooked),
+                )),
+                negated: false,
+            },
+            ExprKind::Err(guar) => err(*guar),
+            ExprKind::Dummy => span_bug!(expr.span, "lowered ExprKind::Dummy"),
+            ExprKind::Path(qself, path) if allow_paths => hir::PatExprKind::Path(self.lower_qpath(
+                expr.id,
+                qself,
+                path,
+                ParamMode::Optional,
+                AllowReturnTypeNotation::No,
+                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                None,
+            )),
+            ExprKind::Unary(UnOp::Neg, inner) if let ExprKind::Lit(lit) = &inner.kind => {
+                hir::PatExprKind::Lit { lit: self.lower_lit(lit, expr.span), negated: true }
+            }
             _ => {
                 let pattern_from_macro = expr.is_approximately_pattern();
                 let guar = self.dcx().emit_err(ArbitraryExpressionInPattern {
                     span: expr.span,
                     pattern_from_macro_note: pattern_from_macro,
                 });
-                return self.arena.alloc(self.expr_err(expr.span, guar));
+                err(guar)
             }
-        }
-        self.lower_expr(expr)
+        };
+        self.arena.alloc(hir::PatExpr {
+            hir_id: self.lower_node_id(expr.id),
+            span: expr.span,
+            kind,
+        })
     }
 }

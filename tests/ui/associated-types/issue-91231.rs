@@ -3,7 +3,7 @@
 #![feature(extern_types)]
 #![allow(dead_code)]
 
-extern {
+extern "C" {
     type Extern;
 }
 

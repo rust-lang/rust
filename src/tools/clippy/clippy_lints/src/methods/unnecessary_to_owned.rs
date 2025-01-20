@@ -494,7 +494,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
     for (_, node) in cx.tcx.hir().parent_iter(expr.hir_id) {
         match node {
             Node::Stmt(_) => return true,
-            Node::Block(..) => continue,
+            Node::Block(..) => {},
             Node::Item(item) => {
                 if let ItemKind::Fn { body: body_id, .. } = &item.kind
                     && let output_ty = return_ty(cx, item.owner_id)

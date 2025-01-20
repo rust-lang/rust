@@ -13,7 +13,7 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{self as hir, ByRef, Mutability, RangeEnd};
 use rustc_index::Idx;
 use rustc_lint as lint;
-use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
+use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::thir::{
     Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
@@ -154,7 +154,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
     fn lower_pattern_range_endpoint(
         &mut self,
-        expr: Option<&'tcx hir::Expr<'tcx>>,
+        expr: Option<&'tcx hir::PatExpr<'tcx>>,
     ) -> Result<
         (Option<PatRangeBoundary<'tcx>>, Option<Ascription<'tcx>>, Option<LocalDefId>),
         ErrorGuaranteed,
@@ -200,13 +200,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// This is only called when the range is already known to be malformed.
     fn error_on_literal_overflow(
         &self,
-        expr: Option<&'tcx hir::Expr<'tcx>>,
+        expr: Option<&'tcx hir::PatExpr<'tcx>>,
         ty: Ty<'tcx>,
     ) -> Result<(), ErrorGuaranteed> {
-        use hir::{ExprKind, UnOp};
         use rustc_ast::ast::LitKind;
 
-        let Some(mut expr) = expr else {
+        let Some(expr) = expr else {
             return Ok(());
         };
         let span = expr.span;
@@ -214,12 +213,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // We need to inspect the original expression, because if we only inspect the output of
         // `eval_bits`, an overflowed value has already been wrapped around.
         // We mostly copy the logic from the `rustc_lint::OVERFLOWING_LITERALS` lint.
-        let mut negated = false;
-        if let ExprKind::Unary(UnOp::Neg, sub_expr) = expr.kind {
-            negated = true;
-            expr = sub_expr;
-        }
-        let ExprKind::Lit(lit) = expr.kind else {
+        let hir::PatExprKind::Lit { lit, negated } = expr.kind else {
             return Ok(());
         };
         let LitKind::Int(lit_val, _) = lit.node else {
@@ -248,8 +242,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
     fn lower_pattern_range(
         &mut self,
-        lo_expr: Option<&'tcx hir::Expr<'tcx>>,
-        hi_expr: Option<&'tcx hir::Expr<'tcx>>,
+        lo_expr: Option<&'tcx hir::PatExpr<'tcx>>,
+        hi_expr: Option<&'tcx hir::PatExpr<'tcx>>,
         end: RangeEnd,
         ty: Ty<'tcx>,
         span: Span,
@@ -330,7 +324,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             hir::PatKind::Never => PatKind::Never,
 
-            hir::PatKind::Lit(value) => self.lower_lit(value),
+            hir::PatKind::Expr(value) => self.lower_lit(value),
 
             hir::PatKind::Range(ref lo_expr, ref hi_expr, end) => {
                 let (lo_expr, hi_expr) = (lo_expr.as_deref(), hi_expr.as_deref());
@@ -662,31 +656,21 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// The special case for negation exists to allow things like `-128_i8`
     /// which would overflow if we tried to evaluate `128_i8` and then negate
     /// afterwards.
-    fn lower_lit(&mut self, expr: &'tcx hir::Expr<'tcx>) -> PatKind<'tcx> {
-        let (lit, neg) = match expr.kind {
-            hir::ExprKind::Path(ref qpath) => {
+    fn lower_lit(&mut self, expr: &'tcx hir::PatExpr<'tcx>) -> PatKind<'tcx> {
+        let (lit, neg) = match &expr.kind {
+            hir::PatExprKind::Path(qpath) => {
                 return self.lower_path(qpath, expr.hir_id, expr.span).kind;
             }
-            hir::ExprKind::ConstBlock(ref anon_const) => {
+            hir::PatExprKind::ConstBlock(anon_const) => {
                 return self.lower_inline_const(anon_const, expr.hir_id, expr.span);
             }
-            hir::ExprKind::Lit(ref lit) => (lit, false),
-            hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => {
-                let hir::ExprKind::Lit(ref lit) = expr.kind else {
-                    span_bug!(expr.span, "not a literal: {:?}", expr);
-                };
-                (lit, true)
-            }
-            _ => span_bug!(expr.span, "not a literal: {:?}", expr),
+            hir::PatExprKind::Lit { lit, negated } => (lit, *negated),
         };
 
-        let ct_ty = self.typeck_results.expr_ty(expr);
+        let ct_ty = self.typeck_results.node_type(expr.hir_id);
         let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty, neg };
-        match self.tcx.at(expr.span).lit_to_const(lit_input) {
-            Ok(constant) => self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind,
-            Err(LitToConstError::Reported(e)) => PatKind::Error(e),
-            Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
-        }
+        let constant = self.tcx.at(expr.span).lit_to_const(lit_input);
+        self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind
     }
 }
 

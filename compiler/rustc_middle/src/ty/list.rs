@@ -21,7 +21,7 @@ use crate::arena::Arena;
 ///   pointer.
 /// - Because of this, you cannot get a `List<T>` that is a sub-list of another
 ///   `List<T>`. You can get a sub-slice `&[T]`, however.
-/// - `List<T>` can be used with `CopyTaggedPtr`, which is useful within
+/// - `List<T>` can be used with `TaggedRef`, which is useful within
 ///   structs whose size must be minimized.
 /// - Because of the uniqueness assumption, we can use the address of a
 ///   `List<T>` for faster equality comparisons and hashing.

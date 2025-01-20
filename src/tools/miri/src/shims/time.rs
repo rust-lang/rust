@@ -331,8 +331,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
             callback!(
                 @capture<'tcx> {}
-                @unblock = |_this| { panic!("sleeping thread unblocked before time is up") }
-                @timeout = |_this| { interp_ok(()) }
+                |_this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::TimedOut);
+                    interp_ok(())
+                }
             ),
         );
         interp_ok(Scalar::from_i32(0))
@@ -353,8 +355,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
             callback!(
                 @capture<'tcx> {}
-                @unblock = |_this| { panic!("sleeping thread unblocked before time is up") }
-                @timeout = |_this| { interp_ok(()) }
+                |_this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::TimedOut);
+                    interp_ok(())
+                }
             ),
         );
         interp_ok(())

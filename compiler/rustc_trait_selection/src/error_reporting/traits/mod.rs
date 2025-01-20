@@ -1,4 +1,5 @@
 pub mod ambiguity;
+pub mod call_kind;
 mod fulfillment_errors;
 pub mod on_unimplemented;
 mod overflow;

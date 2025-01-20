@@ -680,7 +680,7 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) -> V::Res
             try_visit!(visitor.visit_ident(ident));
             visit_opt!(visitor, visit_pat, optional_subpattern);
         }
-        PatKind::Lit(expression) => try_visit!(visitor.visit_expr(expression)),
+        PatKind::Expr(expression) => try_visit!(visitor.visit_expr(expression)),
         PatKind::Range(lower_bound, upper_bound, _end) => {
             visit_opt!(visitor, visit_expr, lower_bound);
             visit_opt!(visitor, visit_expr, upper_bound);

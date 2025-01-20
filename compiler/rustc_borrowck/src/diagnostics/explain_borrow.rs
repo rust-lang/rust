@@ -16,9 +16,9 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
-use rustc_middle::util::CallKind;
 use rustc_span::{DesugaringKind, Span, kw, sym};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
+use rustc_trait_selection::error_reporting::traits::call_kind::CallKind;
 use tracing::{debug, instrument};
 
 use super::{RegionName, UseSpans, find_use};

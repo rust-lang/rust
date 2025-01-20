@@ -1812,9 +1812,11 @@ supported_targets! {
     ("aarch64-unknown-illumos", aarch64_unknown_illumos),
 
     ("x86_64-pc-windows-gnu", x86_64_pc_windows_gnu),
+    ("x86_64-uwp-windows-gnu", x86_64_uwp_windows_gnu),
+    ("x86_64-win7-windows-gnu", x86_64_win7_windows_gnu),
     ("i686-pc-windows-gnu", i686_pc_windows_gnu),
     ("i686-uwp-windows-gnu", i686_uwp_windows_gnu),
-    ("x86_64-uwp-windows-gnu", x86_64_uwp_windows_gnu),
+    ("i686-win7-windows-gnu", i686_win7_windows_gnu),
 
     ("aarch64-pc-windows-gnullvm", aarch64_pc_windows_gnullvm),
     ("i686-pc-windows-gnullvm", i686_pc_windows_gnullvm),
@@ -2813,12 +2815,17 @@ impl Target {
             Abi::EfiApi if self.arch == "x86_64" => Abi::Win64 { unwind: false },
             Abi::EfiApi => Abi::C { unwind: false },
 
-            // See commentary in `is_abi_supported`.
-            Abi::Stdcall { .. } | Abi::Thiscall { .. } if self.arch == "x86" => abi,
-            Abi::Stdcall { unwind } | Abi::Thiscall { unwind } => Abi::C { unwind },
-            Abi::Fastcall { .. } if self.arch == "x86" => abi,
+            // See commentary in `is_abi_supported`: we map these ABIs to "C" when they do not make sense.
+            Abi::Stdcall { .. } | Abi::Thiscall { .. } | Abi::Fastcall { .. }
+                if self.arch == "x86" =>
+            {
+                abi
+            }
             Abi::Vectorcall { .. } if ["x86", "x86_64"].contains(&&self.arch[..]) => abi,
-            Abi::Fastcall { unwind } | Abi::Vectorcall { unwind } => Abi::C { unwind },
+            Abi::Stdcall { unwind }
+            | Abi::Thiscall { unwind }
+            | Abi::Fastcall { unwind }
+            | Abi::Vectorcall { unwind } => Abi::C { unwind },
 
             // The Windows x64 calling convention we use for `extern "Rust"`
             // <https://learn.microsoft.com/en-us/cpp/build/x64-software-conventions#register-volatility-and-preservation>
@@ -2853,6 +2860,7 @@ impl Target {
             }
             Win64 { .. } | SysV64 { .. } => self.arch == "x86_64",
             PtxKernel => self.arch == "nvptx64",
+            GpuKernel => ["amdgpu", "nvptx64"].contains(&&self.arch[..]),
             Msp430Interrupt => self.arch == "msp430",
             RiscvInterruptM | RiscvInterruptS => ["riscv32", "riscv64"].contains(&&self.arch[..]),
             AvrInterrupt | AvrNonBlockingInterrupt => self.arch == "avr",

@@ -1,42 +1,3 @@
-error: associated item referring to unboxed trait object for its own trait
-  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:4:13
-   |
-LL | trait A: Sized {
-   |       - in this trait
-LL |     fn f(a: A) -> A;
-   |             ^     ^
-   |
-help: you might have meant to use `Self` to refer to the implementing type
-   |
-LL |     fn f(a: Self) -> Self;
-   |             ~~~~     ~~~~
-
-error: associated item referring to unboxed trait object for its own trait
-  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:10:13
-   |
-LL | trait B {
-   |       - in this trait
-LL |     fn f(b: B) -> B;
-   |             ^     ^
-   |
-help: you might have meant to use `Self` to refer to the implementing type
-   |
-LL |     fn f(b: Self) -> Self;
-   |             ~~~~     ~~~~
-
-error: associated item referring to unboxed trait object for its own trait
-  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:16:20
-   |
-LL | trait C {
-   |       - in this trait
-LL |     fn f(&self, c: C) -> C;
-   |                    ^     ^
-   |
-help: you might have meant to use `Self` to refer to the implementing type
-   |
-LL |     fn f(&self, c: Self) -> Self;
-   |                    ~~~~     ~~~~
-
 error[E0782]: expected a type, found a trait
   --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:4:13
    |
@@ -117,6 +78,45 @@ help: `C` is dyn-incompatible, use `impl C` to return an opaque type, as long as
    |
 LL |     fn f(&self, c: C) -> impl C;
    |                          ++++
+
+error: associated item referring to unboxed trait object for its own trait
+  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:4:13
+   |
+LL | trait A: Sized {
+   |       - in this trait
+LL |     fn f(a: A) -> A;
+   |             ^     ^
+   |
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL |     fn f(a: Self) -> Self;
+   |             ~~~~     ~~~~
+
+error: associated item referring to unboxed trait object for its own trait
+  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:10:13
+   |
+LL | trait B {
+   |       - in this trait
+LL |     fn f(b: B) -> B;
+   |             ^     ^
+   |
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL |     fn f(b: Self) -> Self;
+   |             ~~~~     ~~~~
+
+error: associated item referring to unboxed trait object for its own trait
+  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:16:20
+   |
+LL | trait C {
+   |       - in this trait
+LL |     fn f(&self, c: C) -> C;
+   |                    ^     ^
+   |
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL |     fn f(&self, c: Self) -> Self;
+   |                    ~~~~     ~~~~
 
 error: aborting due to 9 previous errors
 

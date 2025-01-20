@@ -486,7 +486,7 @@ impl<'a> ExtCtxt<'a> {
         self.pat(span, PatKind::Wild)
     }
     pub fn pat_lit(&self, span: Span, expr: P<ast::Expr>) -> P<ast::Pat> {
-        self.pat(span, PatKind::Lit(expr))
+        self.pat(span, PatKind::Expr(expr))
     }
     pub fn pat_ident(&self, span: Span, ident: Ident) -> P<ast::Pat> {
         self.pat_ident_binding_mode(span, ident, ast::BindingMode::NONE)

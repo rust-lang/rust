@@ -7,7 +7,7 @@ use rustc_arena::DroplessArena;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Arm, Expr, ExprKind, HirId, HirIdMap, HirIdMapEntry, HirIdSet, Pat, PatKind, RangeEnd};
+use rustc_hir::{Arm, Expr, HirId, HirIdMap, HirIdMapEntry, HirIdSet, Pat, PatExprKind, PatKind, RangeEnd};
 use rustc_lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty;
@@ -311,9 +311,9 @@ impl<'a> NormalizedPat<'a> {
                 );
                 Self::Tuple(None, pats)
             },
-            PatKind::Lit(e) => match &e.kind {
+            PatKind::Expr(e) => match &e.kind {
                 // TODO: Handle negative integers. They're currently treated as a wild match.
-                ExprKind::Lit(lit) => match lit.node {
+                PatExprKind::Lit { lit, negated: false } => match lit.node {
                     LitKind::Str(sym, _) => Self::LitStr(sym),
                     LitKind::ByteStr(ref bytes, _) | LitKind::CStr(ref bytes, _) => Self::LitBytes(bytes),
                     LitKind::Byte(val) => Self::LitInt(val.into()),
@@ -330,7 +330,7 @@ impl<'a> NormalizedPat<'a> {
                 let start = match start {
                     None => 0,
                     Some(e) => match &e.kind {
-                        ExprKind::Lit(lit) => match lit.node {
+                        PatExprKind::Lit { lit, negated: false } => match lit.node {
                             LitKind::Int(val, _) => val.get(),
                             LitKind::Char(val) => val.into(),
                             LitKind::Byte(val) => val.into(),
@@ -342,7 +342,7 @@ impl<'a> NormalizedPat<'a> {
                 let (end, bounds) = match end {
                     None => (u128::MAX, RangeEnd::Included),
                     Some(e) => match &e.kind {
-                        ExprKind::Lit(lit) => match lit.node {
+                        PatExprKind::Lit { lit, negated: false } => match lit.node {
                             LitKind::Int(val, _) => (val.get(), bounds),
                             LitKind::Char(val) => (val.into(), bounds),
                             LitKind::Byte(val) => (val.into(), bounds),

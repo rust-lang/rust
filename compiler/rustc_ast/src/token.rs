@@ -909,7 +909,8 @@ impl Token {
         self.is_keyword(kw)
             || (case == Case::Insensitive
                 && self.is_non_raw_ident_where(|id| {
-                    id.name.as_str().to_lowercase() == kw.as_str().to_lowercase()
+                    // Do an ASCII case-insensitive match, because all keywords are ASCII.
+                    id.name.as_str().eq_ignore_ascii_case(kw.as_str())
                 }))
     }
 

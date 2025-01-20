@@ -16,16 +16,6 @@ help: the `Box` type always has a statically known size and allocates its conten
 LL |     a: Box<[u8]>,
    |        ++++    +
 
-error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/base-layout-is-sized-ice-123078.rs:10:23
-   |
-LL | const C: S = unsafe { std::mem::transmute(()) };
-   |                       ^^^^^^^^^^^^^^^^^^^
-   |
-   = note: source type: `()` (0 bits)
-   = note: target type: `S` (size can vary because of [u8])
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0277, E0512.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0277`.

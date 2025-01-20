@@ -25,7 +25,7 @@ enum Binary {
 }
 
 fn check_broken_pipe_handled_gracefully(bin: Binary, mut cmd: Command) {
-    let (reader, writer) = std::pipe::pipe().unwrap();
+    let (reader, writer) = std::io::pipe().unwrap();
     drop(reader); // close read-end
     cmd.stdout(writer).stderr(Stdio::piped());
 

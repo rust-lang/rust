@@ -3,7 +3,7 @@ use std::process::Command;
 use super::TestCx;
 
 impl TestCx<'_> {
-    pub(super) fn run_js_doc_test(&self) {
+    pub(super) fn run_rustdoc_js_test(&self) {
         if let Some(nodejs) = &self.config.nodejs {
             let out_dir = self.output_base_dir();
 

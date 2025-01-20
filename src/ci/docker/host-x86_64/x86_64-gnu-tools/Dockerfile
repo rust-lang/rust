@@ -89,8 +89,8 @@ ENV HOST_TARGET x86_64-unknown-linux-gnu
 # assertions enabled! Therefore, we cannot force download CI rustc.
 #ENV FORCE_CI_RUSTC 1
 
-COPY host-x86_64/dist-x86_64-linux/shared.sh /scripts/
-COPY host-x86_64/dist-x86_64-linux/build-gccjit.sh /scripts/
+COPY scripts/shared.sh /scripts/
+COPY scripts/build-gccjit.sh /scripts/
 
 RUN /scripts/build-gccjit.sh /scripts
 

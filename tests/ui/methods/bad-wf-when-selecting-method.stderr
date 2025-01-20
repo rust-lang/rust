@@ -1,0 +1,54 @@
+error[E0277]: the trait bound `T: Wf` is not satisfied
+  --> $DIR/bad-wf-when-selecting-method.rs:12:13
+   |
+LL |     Wrapper(t).needs_sized();
+   |     ------- ^ the trait `Wf` is not implemented for `T`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `Wrapper`
+  --> $DIR/bad-wf-when-selecting-method.rs:5:19
+   |
+LL | struct Wrapper<T: Wf<Assoc = U>, U>(T);
+   |                   ^^^^^^^^^^^^^ required by this bound in `Wrapper`
+help: consider restricting type parameter `T` with trait `Wf`
+   |
+LL | fn test<T: Wf>(t: T) {
+   |          ++++
+
+error[E0277]: the trait bound `T: Wf` is not satisfied
+  --> $DIR/bad-wf-when-selecting-method.rs:12:5
+   |
+LL |     Wrapper(t).needs_sized();
+   |     ^^^^^^^^^^ the trait `Wf` is not implemented for `T`
+   |
+note: required by a bound in `Wrapper`
+  --> $DIR/bad-wf-when-selecting-method.rs:5:19
+   |
+LL | struct Wrapper<T: Wf<Assoc = U>, U>(T);
+   |                   ^^^^^^^^^^^^^ required by this bound in `Wrapper`
+help: consider restricting type parameter `T` with trait `Wf`
+   |
+LL | fn test<T: Wf>(t: T) {
+   |          ++++
+
+error[E0599]: the method `needs_sized` exists for struct `Wrapper<T, _>`, but its trait bounds were not satisfied
+  --> $DIR/bad-wf-when-selecting-method.rs:12:16
+   |
+LL | struct Wrapper<T: Wf<Assoc = U>, U>(T);
+   | ----------------------------------- method `needs_sized` not found for this struct
+...
+LL |     Wrapper(t).needs_sized();
+   |                ^^^^^^^^^^^ method cannot be called on `Wrapper<T, _>` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `T: Wf`
+help: consider restricting the type parameter to satisfy the trait bound
+   |
+LL | fn test<T>(t: T) where T: Wf {
+   |                  +++++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.

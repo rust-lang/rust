@@ -30,6 +30,7 @@
 //@[bin] check-pass
 
 //@[proc_dash_macro] ignore-wasm (proc-macro is not supported)
+//@[proc_dash_macro] needs-unwind (panic=abort causes warning to be emitted)
 //@[proc_dash_macro] compile-flags: --crate-type=proc-macro
 //@[proc_dash_macro] check-pass
 

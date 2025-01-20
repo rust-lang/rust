@@ -4,10 +4,32 @@ use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::{self, Lint};
-use rustc_span::Span;
 use rustc_span::def_id::DefId;
+use rustc_span::{Span, Symbol};
 
 use crate::fluent_generated as fluent;
+
+#[derive(LintDiagnostic)]
+#[diag(mir_transform_unconditional_recursion)]
+#[help]
+pub(crate) struct UnconditionalRecursion {
+    #[label]
+    pub(crate) span: Span,
+    #[label(mir_transform_unconditional_recursion_call_site_label)]
+    pub(crate) call_sites: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_transform_force_inline_attr)]
+#[note]
+pub(crate) struct InvalidForceInline {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label(mir_transform_callee)]
+    pub callee_span: Span,
+    pub callee: String,
+    pub reason: &'static str,
+}
 
 #[derive(LintDiagnostic)]
 pub(crate) enum ConstMutate {
@@ -142,3 +164,29 @@ pub(crate) struct MustNotSuspendReason {
 #[note(mir_transform_note2)]
 #[help]
 pub(crate) struct UndefinedTransmute;
+
+#[derive(Diagnostic)]
+#[diag(mir_transform_force_inline)]
+#[note]
+pub(crate) struct ForceInlineFailure {
+    #[label(mir_transform_caller)]
+    pub caller_span: Span,
+    #[label(mir_transform_callee)]
+    pub callee_span: Span,
+    #[label(mir_transform_attr)]
+    pub attr_span: Span,
+    #[primary_span]
+    #[label(mir_transform_call)]
+    pub call_span: Span,
+    pub callee: String,
+    pub caller: String,
+    pub reason: &'static str,
+    #[subdiagnostic]
+    pub justification: Option<ForceInlineJustification>,
+}
+
+#[derive(Subdiagnostic)]
+#[note(mir_transform_force_inline_justification)]
+pub(crate) struct ForceInlineJustification {
+    pub sym: Symbol,
+}

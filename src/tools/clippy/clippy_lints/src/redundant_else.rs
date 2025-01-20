@@ -69,7 +69,6 @@ impl EarlyLintPass for RedundantElse {
                 ExprKind::If(_, next_then, Some(next_els)) => {
                     then = next_then;
                     els = next_els;
-                    continue;
                 },
                 // else if without else
                 ExprKind::If(..) => return,

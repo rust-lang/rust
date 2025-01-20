@@ -30,6 +30,14 @@ pub enum StabilityLevel {
     Stable,
 }
 
+#[derive(Copy, Clone)]
+pub enum UnstableKind {
+    /// Enforcing regular stability of an item
+    Regular,
+    /// Enforcing const stability of an item
+    Const(Span),
+}
+
 /// An entry in the `depr_map`.
 #[derive(Copy, Clone, HashStable, Debug, Encodable, Decodable)]
 pub struct DeprecationEntry {
@@ -108,10 +116,16 @@ pub fn report_unstable(
     is_soft: bool,
     span: Span,
     soft_handler: impl FnOnce(&'static Lint, Span, String),
+    kind: UnstableKind,
 ) {
+    let qual = match kind {
+        UnstableKind::Regular => "",
+        UnstableKind::Const(_) => " const",
+    };
+
     let msg = match reason {
-        Some(r) => format!("use of unstable library feature `{feature}`: {r}"),
-        None => format!("use of unstable library feature `{feature}`"),
+        Some(r) => format!("use of unstable{qual} library feature `{feature}`: {r}"),
+        None => format!("use of unstable{qual} library feature `{feature}`"),
     };
 
     if is_soft {
@@ -120,6 +134,9 @@ pub fn report_unstable(
         let mut err = feature_err_issue(sess, feature, span, GateIssue::Library(issue), msg);
         if let Some((inner_types, msg, sugg, applicability)) = suggestion {
             err.span_suggestion(inner_types, msg, sugg, applicability);
+        }
+        if let UnstableKind::Const(kw) = kind {
+            err.span_label(kw, "trait is not stable as const yet");
         }
         err.emit();
     }
@@ -232,9 +249,18 @@ fn late_report_deprecation(
         return;
     }
 
+    let is_in_effect = depr.is_in_effect();
+    let lint = deprecation_lint(is_in_effect);
+
+    // Calculating message for lint involves calling `self.def_path_str`,
+    // which will by default invoke the expensive `visible_parent_map` query.
+    // Skip all that work if the lint is allowed anyway.
+    if tcx.lint_level_at_node(lint, hir_id).0 == Level::Allow {
+        return;
+    }
+
     let def_path = with_no_trimmed_paths!(tcx.def_path_str(def_id));
     let def_kind = tcx.def_descr(def_id);
-    let is_in_effect = depr.is_in_effect();
 
     let method_span = method_span.unwrap_or(span);
     let suggestion =
@@ -250,7 +276,7 @@ fn late_report_deprecation(
         note: depr.note,
         since_kind: deprecated_since_kind(is_in_effect, depr.since),
     };
-    tcx.emit_node_span_lint(deprecation_lint(is_in_effect), hir_id, method_span, diag);
+    tcx.emit_node_span_lint(lint, hir_id, method_span, diag);
 }
 
 /// Result of `TyCtxt::eval_stability`.
@@ -360,13 +386,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // hierarchy.
                 let depr_attr = &depr_entry.attr;
                 if !skip || depr_attr.is_since_rustc_version() {
-                    // Calculating message for lint involves calling `self.def_path_str`.
-                    // Which by default to calculate visible path will invoke expensive `visible_parent_map` query.
-                    // So we skip message calculation altogether, if lint is allowed.
-                    let lint = deprecation_lint(depr_attr.is_in_effect());
-                    if self.lint_level_at_node(lint, id).0 != Level::Allow {
-                        late_report_deprecation(self, depr_attr, span, method_span, id, def_id);
-                    }
+                    late_report_deprecation(self, depr_attr, span, method_span, id, def_id);
                 }
             };
         }
@@ -587,11 +607,79 @@ impl<'tcx> TyCtxt<'tcx> {
                 is_soft,
                 span,
                 soft_handler,
+                UnstableKind::Regular,
             ),
             EvalResult::Unmarked => unmarked(span, def_id),
         }
 
         is_allowed
+    }
+
+    /// This function is analogous to `check_optional_stability` but with the logic in
+    /// `eval_stability_allow_unstable` inlined, and which operating on const stability
+    /// instead of regular stability.
+    ///
+    /// This enforces *syntactical* const stability of const traits. In other words,
+    /// it enforces the ability to name `~const`/`const` traits in trait bounds in various
+    /// syntax positions in HIR (including in the trait of an impl header).
+    pub fn check_const_stability(self, def_id: DefId, span: Span, const_kw_span: Span) {
+        let is_staged_api = self.lookup_stability(def_id.krate.as_def_id()).is_some();
+        if !is_staged_api {
+            return;
+        }
+
+        // Only the cross-crate scenario matters when checking unstable APIs
+        let cross_crate = !def_id.is_local();
+        if !cross_crate {
+            return;
+        }
+
+        let stability = self.lookup_const_stability(def_id);
+        debug!(
+            "stability: \
+                inspecting def_id={:?} span={:?} of stability={:?}",
+            def_id, span, stability
+        );
+
+        match stability {
+            Some(ConstStability {
+                level: attr::StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. },
+                feature,
+                ..
+            }) => {
+                assert!(!is_soft);
+
+                if span.allows_unstable(feature) {
+                    debug!("body stability: skipping span={:?} since it is internal", span);
+                    return;
+                }
+                if self.features().enabled(feature) {
+                    return;
+                }
+
+                // If this item was previously part of a now-stabilized feature which is still
+                // enabled (i.e. the user hasn't removed the attribute for the stabilized feature
+                // yet) then allow use of this item.
+                if let Some(implied_by) = implied_by
+                    && self.features().enabled(implied_by)
+                {
+                    return;
+                }
+
+                report_unstable(
+                    self.sess,
+                    feature,
+                    reason.to_opt_reason(),
+                    issue,
+                    None,
+                    false,
+                    span,
+                    |_, _, _| {},
+                    UnstableKind::Const(const_kw_span),
+                );
+            }
+            Some(_) | None => {}
+        }
     }
 
     pub fn lookup_deprecation(self, id: DefId) -> Option<Deprecation> {

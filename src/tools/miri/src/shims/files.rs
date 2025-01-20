@@ -1,6 +1,7 @@
 use std::any::Any;
 use std::collections::BTreeMap;
 use std::io::{IsTerminal, Read, SeekFrom, Write};
+use std::marker::CoercePointee;
 use std::ops::Deref;
 use std::rc::{Rc, Weak};
 use std::{fs, io};
@@ -10,16 +11,132 @@ use rustc_abi::Size;
 use crate::shims::unix::UnixFileDescription;
 use crate::*;
 
+/// A unique id for file descriptions. While we could use the address, considering that
+/// is definitely unique, the address would expose interpreter internal state when used
+/// for sorting things. So instead we generate a unique id per file description is the name
+/// for all `dup`licates and is never reused.
+#[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd)]
+pub struct FdId(usize);
+
+#[derive(Debug, Clone)]
+struct FdIdWith<T: ?Sized> {
+    id: FdId,
+    inner: T,
+}
+
+/// A refcounted pointer to a file description, also tracking the
+/// globally unique ID of this file description.
+#[repr(transparent)]
+#[derive(CoercePointee, Debug)]
+pub struct FileDescriptionRef<T: ?Sized>(Rc<FdIdWith<T>>);
+
+impl<T: ?Sized> Clone for FileDescriptionRef<T> {
+    fn clone(&self) -> Self {
+        FileDescriptionRef(self.0.clone())
+    }
+}
+
+impl<T: ?Sized> Deref for FileDescriptionRef<T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.0.inner
+    }
+}
+
+impl<T: ?Sized> FileDescriptionRef<T> {
+    pub fn id(&self) -> FdId {
+        self.0.id
+    }
+}
+
+/// Holds a weak reference to the actual file description.
+#[derive(Debug)]
+pub struct WeakFileDescriptionRef<T: ?Sized>(Weak<FdIdWith<T>>);
+
+impl<T: ?Sized> Clone for WeakFileDescriptionRef<T> {
+    fn clone(&self) -> Self {
+        WeakFileDescriptionRef(self.0.clone())
+    }
+}
+
+impl<T: ?Sized> FileDescriptionRef<T> {
+    pub fn downgrade(this: &Self) -> WeakFileDescriptionRef<T> {
+        WeakFileDescriptionRef(Rc::downgrade(&this.0))
+    }
+}
+
+impl<T: ?Sized> WeakFileDescriptionRef<T> {
+    pub fn upgrade(&self) -> Option<FileDescriptionRef<T>> {
+        self.0.upgrade().map(FileDescriptionRef)
+    }
+}
+
+impl<T> VisitProvenance for WeakFileDescriptionRef<T> {
+    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
+        // A weak reference can never be the only reference to some pointer or place.
+        // Since the actual file description is tracked by strong ref somewhere,
+        // it is ok to make this a NOP operation.
+    }
+}
+
+/// A helper trait to indirectly allow downcasting on `Rc<FdIdWith<dyn _>>`.
+/// Ideally we'd just add a `FdIdWith<Self>: Any` bound to the `FileDescription` trait,
+/// but that does not allow upcasting.
+pub trait FileDescriptionExt: 'static {
+    fn into_rc_any(self: FileDescriptionRef<Self>) -> Rc<dyn Any>;
+
+    /// We wrap the regular `close` function generically, so both handle `Rc::into_inner`
+    /// and epoll interest management.
+    fn close_ref<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<()>>;
+}
+
+impl<T: FileDescription + 'static> FileDescriptionExt for T {
+    fn into_rc_any(self: FileDescriptionRef<Self>) -> Rc<dyn Any> {
+        self.0
+    }
+
+    fn close_ref<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<()>> {
+        match Rc::into_inner(self.0) {
+            Some(fd) => {
+                // Remove entry from the global epoll_event_interest table.
+                ecx.machine.epoll_interests.remove(fd.id);
+
+                fd.inner.close(communicate_allowed, ecx)
+            }
+            None => {
+                // Not the last reference.
+                interp_ok(Ok(()))
+            }
+        }
+    }
+}
+
+pub type DynFileDescriptionRef = FileDescriptionRef<dyn FileDescription>;
+
+impl FileDescriptionRef<dyn FileDescription> {
+    pub fn downcast<T: FileDescription + 'static>(self) -> Option<FileDescriptionRef<T>> {
+        let inner = self.into_rc_any().downcast::<FdIdWith<T>>().ok()?;
+        Some(FileDescriptionRef(inner))
+    }
+}
+
 /// Represents an open file description.
-pub trait FileDescription: std::fmt::Debug + Any {
+pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
     fn name(&self) -> &'static str;
 
     /// Reads as much as possible into the given buffer `ptr`.
     /// `len` indicates how many bytes we should try to read.
     /// `dest` is where the return value should be stored: number of bytes read, or `-1` in case of error.
     fn read<'tcx>(
-        &self,
-        _self_ref: &FileDescriptionRef,
+        self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         _ptr: Pointer,
         _len: usize,
@@ -33,8 +150,7 @@ pub trait FileDescription: std::fmt::Debug + Any {
     /// `len` indicates how many bytes we should try to write.
     /// `dest` is where the return value should be stored: number of bytes written, or `-1` in case of error.
     fn write<'tcx>(
-        &self,
-        _self_ref: &FileDescriptionRef,
+        self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         _ptr: Pointer,
         _len: usize,
@@ -54,11 +170,15 @@ pub trait FileDescription: std::fmt::Debug + Any {
         throw_unsup_format!("cannot seek on {}", self.name());
     }
 
+    /// Close the file descriptor.
     fn close<'tcx>(
-        self: Box<Self>,
+        self,
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
+    ) -> InterpResult<'tcx, io::Result<()>>
+    where
+        Self: Sized,
+    {
         throw_unsup_format!("cannot close {}", self.name());
     }
 
@@ -77,21 +197,13 @@ pub trait FileDescription: std::fmt::Debug + Any {
     }
 }
 
-impl dyn FileDescription {
-    #[inline(always)]
-    pub fn downcast<T: Any>(&self) -> Option<&T> {
-        (self as &dyn Any).downcast_ref()
-    }
-}
-
 impl FileDescription for io::Stdin {
     fn name(&self) -> &'static str {
         "stdin"
     }
 
     fn read<'tcx>(
-        &self,
-        _self_ref: &FileDescriptionRef,
+        self: FileDescriptionRef<Self>,
         communicate_allowed: bool,
         ptr: Pointer,
         len: usize,
@@ -103,7 +215,7 @@ impl FileDescription for io::Stdin {
             // We want isolation mode to be deterministic, so we have to disallow all reads, even stdin.
             helpers::isolation_abort_error("`read` from stdin")?;
         }
-        let result = Read::read(&mut { self }, &mut bytes);
+        let result = Read::read(&mut &*self, &mut bytes);
         match result {
             Ok(read_size) => ecx.return_read_success(ptr, &bytes, read_size, dest),
             Err(e) => ecx.set_last_error_and_return(e, dest),
@@ -121,8 +233,7 @@ impl FileDescription for io::Stdout {
     }
 
     fn write<'tcx>(
-        &self,
-        _self_ref: &FileDescriptionRef,
+        self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         ptr: Pointer,
         len: usize,
@@ -131,7 +242,7 @@ impl FileDescription for io::Stdout {
     ) -> InterpResult<'tcx> {
         let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
         // We allow writing to stderr even with isolation enabled.
-        let result = Write::write(&mut { self }, bytes);
+        let result = Write::write(&mut &*self, bytes);
         // Stdout is buffered, flush to make sure it appears on the
         // screen.  This is the write() syscall of the interpreted
         // program, we want it to correspond to a write() syscall on
@@ -155,8 +266,7 @@ impl FileDescription for io::Stderr {
     }
 
     fn write<'tcx>(
-        &self,
-        _self_ref: &FileDescriptionRef,
+        self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         ptr: Pointer,
         len: usize,
@@ -166,7 +276,7 @@ impl FileDescription for io::Stderr {
         let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
         // We allow writing to stderr even with isolation enabled.
         // No need to flush, stderr is not buffered.
-        let result = Write::write(&mut { self }, bytes);
+        let result = Write::write(&mut &*self, bytes);
         match result {
             Ok(write_size) => ecx.return_write_success(write_size, dest),
             Err(e) => ecx.set_last_error_and_return(e, dest),
@@ -188,8 +298,7 @@ impl FileDescription for NullOutput {
     }
 
     fn write<'tcx>(
-        &self,
-        _self_ref: &FileDescriptionRef,
+        self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         _ptr: Pointer,
         len: usize,
@@ -201,91 +310,10 @@ impl FileDescription for NullOutput {
     }
 }
 
-/// Structure contains both the file description and its unique identifier.
-#[derive(Clone, Debug)]
-pub struct FileDescWithId<T: FileDescription + ?Sized> {
-    id: FdId,
-    file_description: Box<T>,
-}
-
-#[derive(Clone, Debug)]
-pub struct FileDescriptionRef(Rc<FileDescWithId<dyn FileDescription>>);
-
-impl Deref for FileDescriptionRef {
-    type Target = dyn FileDescription;
-
-    fn deref(&self) -> &Self::Target {
-        &*self.0.file_description
-    }
-}
-
-impl FileDescriptionRef {
-    fn new(fd: impl FileDescription, id: FdId) -> Self {
-        FileDescriptionRef(Rc::new(FileDescWithId { id, file_description: Box::new(fd) }))
-    }
-
-    pub fn close<'tcx>(
-        self,
-        communicate_allowed: bool,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        // Destroy this `Rc` using `into_inner` so we can call `close` instead of
-        // implicitly running the destructor of the file description.
-        let id = self.get_id();
-        match Rc::into_inner(self.0) {
-            Some(fd) => {
-                // Remove entry from the global epoll_event_interest table.
-                ecx.machine.epoll_interests.remove(id);
-
-                fd.file_description.close(communicate_allowed, ecx)
-            }
-            None => interp_ok(Ok(())),
-        }
-    }
-
-    pub fn downgrade(&self) -> WeakFileDescriptionRef {
-        WeakFileDescriptionRef { weak_ref: Rc::downgrade(&self.0) }
-    }
-
-    pub fn get_id(&self) -> FdId {
-        self.0.id
-    }
-}
-
-/// Holds a weak reference to the actual file description.
-#[derive(Clone, Debug, Default)]
-pub struct WeakFileDescriptionRef {
-    weak_ref: Weak<FileDescWithId<dyn FileDescription>>,
-}
-
-impl WeakFileDescriptionRef {
-    pub fn upgrade(&self) -> Option<FileDescriptionRef> {
-        if let Some(file_desc_with_id) = self.weak_ref.upgrade() {
-            return Some(FileDescriptionRef(file_desc_with_id));
-        }
-        None
-    }
-}
-
-impl VisitProvenance for WeakFileDescriptionRef {
-    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
-        // A weak reference can never be the only reference to some pointer or place.
-        // Since the actual file description is tracked by strong ref somewhere,
-        // it is ok to make this a NOP operation.
-    }
-}
-
-/// A unique id for file descriptions. While we could use the address, considering that
-/// is definitely unique, the address would expose interpreter internal state when used
-/// for sorting things. So instead we generate a unique id per file description is the name
-/// for all `dup`licates and is never reused.
-#[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd)]
-pub struct FdId(usize);
-
 /// The file descriptor table
 #[derive(Debug)]
 pub struct FdTable {
-    pub fds: BTreeMap<i32, FileDescriptionRef>,
+    pub fds: BTreeMap<i32, DynFileDescriptionRef>,
     /// Unique identifier for file description, used to differentiate between various file description.
     next_file_description_id: FdId,
 }
@@ -313,8 +341,9 @@ impl FdTable {
         fds
     }
 
-    pub fn new_ref(&mut self, fd: impl FileDescription) -> FileDescriptionRef {
-        let file_handle = FileDescriptionRef::new(fd, self.next_file_description_id);
+    pub fn new_ref<T: FileDescription>(&mut self, fd: T) -> FileDescriptionRef<T> {
+        let file_handle =
+            FileDescriptionRef(Rc::new(FdIdWith { id: self.next_file_description_id, inner: fd }));
         self.next_file_description_id = FdId(self.next_file_description_id.0.strict_add(1));
         file_handle
     }
@@ -325,12 +354,16 @@ impl FdTable {
         self.insert(fd_ref)
     }
 
-    pub fn insert(&mut self, fd_ref: FileDescriptionRef) -> i32 {
+    pub fn insert(&mut self, fd_ref: DynFileDescriptionRef) -> i32 {
         self.insert_with_min_num(fd_ref, 0)
     }
 
     /// Insert a file description, giving it a file descriptor that is at least `min_fd_num`.
-    pub fn insert_with_min_num(&mut self, file_handle: FileDescriptionRef, min_fd_num: i32) -> i32 {
+    pub fn insert_with_min_num(
+        &mut self,
+        file_handle: DynFileDescriptionRef,
+        min_fd_num: i32,
+    ) -> i32 {
         // Find the lowest unused FD, starting from min_fd. If the first such unused FD is in
         // between used FDs, the find_map combinator will return it. If the first such unused FD
         // is after all other used FDs, the find_map combinator will return None, and we will use
@@ -356,12 +389,12 @@ impl FdTable {
         new_fd_num
     }
 
-    pub fn get(&self, fd_num: i32) -> Option<FileDescriptionRef> {
+    pub fn get(&self, fd_num: i32) -> Option<DynFileDescriptionRef> {
         let fd = self.fds.get(&fd_num)?;
         Some(fd.clone())
     }
 
-    pub fn remove(&mut self, fd_num: i32) -> Option<FileDescriptionRef> {
+    pub fn remove(&mut self, fd_num: i32) -> Option<DynFileDescriptionRef> {
         self.fds.remove(&fd_num)
     }
 

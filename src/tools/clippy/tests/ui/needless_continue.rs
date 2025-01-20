@@ -87,6 +87,14 @@ fn simple_loop4() {
     }
 }
 
+fn simple_loop5() {
+    loop {
+        println!("bleh");
+        { continue }
+        //~^ ERROR: this `continue` expression is redundant
+    }
+}
+
 mod issue_2329 {
     fn condition() -> bool {
         unimplemented!()
@@ -166,5 +174,62 @@ fn issue_13641() {
             continue 'b;
             //~^ ERROR: this `continue` expression is redundant
         }
+    }
+}
+
+mod issue_4077 {
+    fn main() {
+        'outer: loop {
+            'inner: loop {
+                do_something();
+                if some_expr() {
+                    println!("bar-7");
+                    continue 'outer;
+                } else if !some_expr() {
+                    println!("bar-8");
+                    continue 'inner;
+                } else {
+                    println!("bar-9");
+                    continue 'inner;
+                }
+            }
+        }
+
+        for _ in 0..10 {
+            match "foo".parse::<i32>() {
+                Ok(_) => do_something(),
+                Err(_) => {
+                    println!("bar-10");
+                    continue;
+                },
+            }
+        }
+
+        loop {
+            if true {
+            } else {
+                // redundant `else`
+                continue; // redundant `continue`
+            }
+        }
+
+        loop {
+            if some_expr() {
+                continue;
+            } else {
+                do_something();
+            }
+        }
+    }
+
+    // The contents of these functions are irrelevant, the purpose of this file is
+    // shown in main.
+
+    fn do_something() {
+        std::process::exit(0);
+    }
+
+    fn some_expr() -> bool {
+        true
     }
 }

@@ -23,6 +23,7 @@ use crate::core::build_steps::vendor::default_paths_to_vendor;
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
+use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::channel::{self, Info};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
@@ -47,7 +48,7 @@ fn should_build_extended_tool(builder: &Builder<'_>, tool: &str) -> bool {
     if !builder.config.extended {
         return false;
     }
-    builder.config.tools.as_ref().map_or(true, |tools| tools.contains(tool))
+    builder.config.tools.as_ref().is_none_or(|tools| tools.contains(tool))
 }
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
@@ -410,7 +411,7 @@ impl Step for Rustc {
                 .config
                 .tools
                 .as_ref()
-                .map_or(true, |tools| tools.iter().any(|tool| tool == "rustdoc"))
+                .is_none_or(|tools| tools.iter().any(|tool| tool == "rustdoc"))
             {
                 let rustdoc = builder.rustdoc(compiler);
                 builder.install(&rustdoc, &image.join("bin"), 0o755);
@@ -503,14 +504,22 @@ impl Step for Rustc {
             // Debugger scripts
             builder.ensure(DebuggerScripts { sysroot: image.to_owned(), host });
 
-            // Misc license info
-            let cp = |file: &str| {
-                builder.install(&builder.src.join(file), &image.join("share/doc/rust"), 0o644);
+            // HTML copyright files
+            let file_list = builder.ensure(super::run::GenerateCopyright);
+            for file in file_list {
+                builder.install(&file, &image.join("share/doc/rust"), 0o644);
+            }
+
+            // README
+            builder.install(&builder.src.join("README.md"), &image.join("share/doc/rust"), 0o644);
+
+            // The REUSE-managed license files
+            let license = |path: &Path| {
+                builder.install(path, &image.join("share/doc/rust/licences"), 0o644);
             };
-            cp("COPYRIGHT");
-            cp("LICENSE-APACHE");
-            cp("LICENSE-MIT");
-            cp("README.md");
+            for entry in t!(std::fs::read_dir(builder.src.join("LICENSES"))).flatten() {
+                license(&entry.path());
+            }
         }
     }
 }
@@ -584,7 +593,7 @@ fn skip_host_target_lib(builder: &Builder<'_>, compiler: Compiler) -> bool {
 /// Check that all objects in rlibs for UEFI targets are COFF. This
 /// ensures that the C compiler isn't producing ELF objects, which would
 /// not link correctly with the COFF objects.
-fn verify_uefi_rlib_format(builder: &Builder<'_>, target: TargetSelection, stamp: &Path) {
+fn verify_uefi_rlib_format(builder: &Builder<'_>, target: TargetSelection, stamp: &BuildStamp) {
     if !target.ends_with("-uefi") {
         return;
     }
@@ -615,7 +624,12 @@ fn verify_uefi_rlib_format(builder: &Builder<'_>, target: TargetSelection, stamp
 }
 
 /// Copy stamped files into an image's `target/lib` directory.
-fn copy_target_libs(builder: &Builder<'_>, target: TargetSelection, image: &Path, stamp: &Path) {
+fn copy_target_libs(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    image: &Path,
+    stamp: &BuildStamp,
+) {
     let dst = image.join("lib/rustlib").join(target).join("lib");
     let self_contained_dst = dst.join("self-contained");
     t!(fs::create_dir_all(&dst));
@@ -668,7 +682,7 @@ impl Step for Std {
         tarball.include_target_in_component_name(true);
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
-        let stamp = compile::libstd_stamp(builder, compiler_to_use, target);
+        let stamp = build_stamp::libstd_stamp(builder, compiler_to_use, target);
         verify_uefi_rlib_format(builder, target, &stamp);
         copy_target_libs(builder, target, tarball.image_dir(), &stamp);
 
@@ -718,7 +732,7 @@ impl Step for RustcDev {
         let tarball = Tarball::new(builder, "rustc-dev", &target.triple);
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
-        let stamp = compile::librustc_stamp(builder, compiler_to_use, target);
+        let stamp = build_stamp::librustc_stamp(builder, compiler_to_use, target);
         copy_target_libs(builder, target, tarball.image_dir(), &stamp);
 
         let src_files = &["Cargo.lock"];
@@ -980,20 +994,26 @@ impl Step for PlainSourceTarball {
 
         // This is the set of root paths which will become part of the source package
         let src_files = [
+            // tidy-alphabetical-start
+            ".gitmodules",
+            "Cargo.lock",
+            "Cargo.toml",
+            "config.example.toml",
+            "configure",
+            "CONTRIBUTING.md",
             "COPYRIGHT",
             "LICENSE-APACHE",
+            "license-metadata.json",
             "LICENSE-MIT",
-            "CONTRIBUTING.md",
             "README.md",
             "RELEASES.md",
-            "configure",
+            "REUSE.toml",
+            "x",
+            "x.ps1",
             "x.py",
-            "config.example.toml",
-            "Cargo.toml",
-            "Cargo.lock",
-            ".gitmodules",
+            // tidy-alphabetical-end
         ];
-        let src_dirs = ["src", "compiler", "library", "tests"];
+        let src_dirs = ["src", "compiler", "library", "tests", "LICENSES"];
 
         copy_src_dirs(builder, &builder.src, &src_dirs, &[], plain_dst_src);
 
@@ -1592,15 +1612,9 @@ impl Step for Extended {
             prepare("cargo");
             prepare("rust-std");
             prepare("rust-analysis");
-
-            for tool in &[
-                "clippy",
-                "rustfmt",
-                "rust-analyzer",
-                "rust-docs",
-                "miri",
-                "rustc-codegen-cranelift",
-            ] {
+            prepare("clippy");
+            prepare("rust-analyzer");
+            for tool in &["rust-docs", "miri", "rustc-codegen-cranelift"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1640,8 +1654,6 @@ impl Step for Extended {
                     "rust-analyzer-preview".to_string()
                 } else if name == "clippy" {
                     "clippy-preview".to_string()
-                } else if name == "rustfmt" {
-                    "rustfmt-preview".to_string()
                 } else if name == "miri" {
                     "miri-preview".to_string()
                 } else if name == "rustc-codegen-cranelift" {
@@ -1661,7 +1673,7 @@ impl Step for Extended {
             prepare("cargo");
             prepare("rust-analysis");
             prepare("rust-std");
-            for tool in &["clippy", "rustfmt", "rust-analyzer", "rust-docs", "miri"] {
+            for tool in &["clippy", "rust-analyzer", "rust-docs", "miri"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1779,24 +1791,6 @@ impl Step for Extended {
                     .arg(etc.join("msi/remove-duplicates.xsl"))
                     .run(builder);
             }
-            if built_tools.contains("rustfmt") {
-                command(&heat)
-                    .current_dir(&exe)
-                    .arg("dir")
-                    .arg("rustfmt")
-                    .args(heat_flags)
-                    .arg("-cg")
-                    .arg("RustFmtGroup")
-                    .arg("-dr")
-                    .arg("RustFmt")
-                    .arg("-var")
-                    .arg("var.RustFmtDir")
-                    .arg("-out")
-                    .arg(exe.join("RustFmtGroup.wxs"))
-                    .arg("-t")
-                    .arg(etc.join("msi/remove-duplicates.xsl"))
-                    .run(builder);
-            }
             if built_tools.contains("miri") {
                 command(&heat)
                     .current_dir(&exe)
@@ -1868,9 +1862,6 @@ impl Step for Extended {
                 if built_tools.contains("clippy") {
                     cmd.arg("-dClippyDir=clippy");
                 }
-                if built_tools.contains("rustfmt") {
-                    cmd.arg("-dRustFmtDir=rustfmt");
-                }
                 if built_tools.contains("rust-docs") {
                     cmd.arg("-dDocsDir=rust-docs");
                 }
@@ -1896,9 +1887,6 @@ impl Step for Extended {
             candle("StdGroup.wxs".as_ref());
             if built_tools.contains("clippy") {
                 candle("ClippyGroup.wxs".as_ref());
-            }
-            if built_tools.contains("rustfmt") {
-                candle("RustFmtGroup.wxs".as_ref());
             }
             if built_tools.contains("miri") {
                 candle("MiriGroup.wxs".as_ref());
@@ -1937,9 +1925,6 @@ impl Step for Extended {
 
             if built_tools.contains("clippy") {
                 cmd.arg("ClippyGroup.wixobj");
-            }
-            if built_tools.contains("rustfmt") {
-                cmd.arg("RustFmtGroup.wixobj");
             }
             if built_tools.contains("miri") {
                 cmd.arg("MiriGroup.wixobj");

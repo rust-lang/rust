@@ -339,7 +339,7 @@ pub enum ErrorKind {
     #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     NotSeekable,
     /// Filesystem quota or some other kind of quota was exceeded.
-    #[stable(feature = "io_error_quota_exceeded", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "io_error_quota_exceeded", since = "1.85.0")]
     QuotaExceeded,
     /// File larger than allowed or supported.
     ///
@@ -364,7 +364,7 @@ pub enum ErrorKind {
     #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     Deadlock,
     /// Cross-device or cross-filesystem (hard) link or rename.
-    #[stable(feature = "io_error_crosses_devices", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "io_error_crosses_devices", since = "1.85.0")]
     CrossesDevices,
     /// Too many (hard) links to the same filesystem object.
     ///

@@ -170,6 +170,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span,
                 ..
             })
+            | hir::Node::PatExpr(&hir::PatExpr {
+                kind: hir::PatExprKind::Path(QPath::TypeRelative(rcvr, segment)),
+                span,
+                ..
+            })
             | hir::Node::Pat(&hir::Pat {
                 kind:
                     hir::PatKind::Path(QPath::TypeRelative(rcvr, segment))
@@ -1091,7 +1096,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                 ) {
                     continue;
-                };
+                }
 
                 match self.tcx.hir().get_if_local(item_def_id) {
                     // Unmet obligation comes from a `derive` macro, point at it once to
@@ -1205,8 +1210,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         entry.1.insert((cause_span, "unsatisfied trait bound introduced here"));
                         entry.2.push(p);
                     }
-                    Some(node) => unreachable!("encountered `{node:?}` due to `{cause:#?}`"),
-                    None => (),
+                    _ => {
+                        // It's possible to use well-formedness clauses to get obligations
+                        // which point arbitrary items like ADTs, so there's no use in ICEing
+                        // here if we find that the obligation originates from some other
+                        // node that we don't handle.
+                    }
                 }
             }
             let mut spanned_predicates: Vec<_> = spanned_predicates.into_iter().collect();

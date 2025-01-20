@@ -240,7 +240,7 @@ fn parenthesized_word() {}
 /// UXes
 fn plural_acronym_test() {}
 
-extern {
+extern "C" {
     /// foo()
     fn in_extern();
 }

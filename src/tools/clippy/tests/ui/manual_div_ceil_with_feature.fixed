@@ -23,3 +23,30 @@ fn main() {
 
     let _ = (x + (y - 1)) / z;
 }
+
+fn issue_13843() {
+    let x = 3usize;
+    let _ = 2048_usize.div_ceil(x);
+
+    let x = 5usize;
+    let _ = 2048usize.div_ceil(x);
+
+    let x = 5usize;
+    let _ = 2048_usize.div_ceil(x);
+
+    let x = 2048usize;
+    let _ = x.div_ceil(4);
+
+    let _ = 2048_i32.div_ceil(4);
+
+    let _: u32 = 2048_u32.div_ceil(6);
+    let _: usize = 2048_usize.div_ceil(6);
+    let _: u32 = 0x2048_u32.div_ceil(0x6);
+
+    let _ = 2048_u32.div_ceil(6u32);
+
+    let x = -2;
+    let _ = (-2048_i32).div_ceil(x);
+
+    let _ = 1_000_000_u32.div_ceil(6u32);
+}

@@ -28,7 +28,7 @@ use rustc_errors::LintDiagnostic;
 use rustc_hir as hir;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::bit_set::{BitSet, MixedBitSet};
+use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::{
     InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
@@ -60,7 +60,7 @@ use crate::diagnostics::{
 use crate::path_utils::*;
 use crate::place_ext::PlaceExt;
 use crate::places_conflict::{PlaceConflictBias, places_conflict};
-use crate::polonius::legacy::{LocationTable, PoloniusOutput};
+use crate::polonius::legacy::{PoloniusLocationTable, PoloniusOutput};
 use crate::prefixes::PrefixSet;
 use crate::region_infer::RegionInferenceContext;
 use crate::renumber::RegionCtxt;
@@ -179,12 +179,9 @@ fn do_mir_borrowck<'tcx>(
         infcx.register_predefined_opaques_for_next_solver(def);
     }
 
-    let location_table = LocationTable::new(body);
+    let location_table = PoloniusLocationTable::new(body);
 
     let move_data = MoveData::gather_moves(body, tcx, |_| true);
-    let promoted_move_data = promoted
-        .iter_enumerated()
-        .map(|(idx, body)| (idx, MoveData::gather_moves(body, tcx, |_| true)));
 
     let flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
         .iterate_to_fixpoint(tcx, body, Some("borrowck"))
@@ -242,15 +239,20 @@ fn do_mir_borrowck<'tcx>(
         false
     };
 
-    for (idx, move_data) in promoted_move_data {
+    // While promoteds should mostly be correct by construction, we need to check them for
+    // invalid moves to detect moving out of arrays:`struct S; fn main() { &([S][0]); }`.
+    for promoted_body in &promoted {
         use rustc_middle::mir::visit::Visitor;
-
-        let promoted_body = &promoted[idx];
+        // This assumes that we won't use some of the fields of the `promoted_mbcx`
+        // when detecting and reporting move errors. While it would be nice to move
+        // this check out of `MirBorrowckCtxt`, actually doing so is far from trivial.
+        let move_data = MoveData::gather_moves(promoted_body, tcx, |_| true);
         let mut promoted_mbcx = MirBorrowckCtxt {
             infcx: &infcx,
             body: promoted_body,
             move_data: &move_data,
-            location_table: &location_table, // no need to create a real one for the promoted, it is not used
+            // no need to create a real location table for the promoted, it is not used
+            location_table: &location_table,
             movable_coroutine,
             fn_self_span_reported: Default::default(),
             locals_are_invalidated_at_exit,
@@ -269,9 +271,6 @@ fn do_mir_borrowck<'tcx>(
             move_errors: Vec::new(),
             diags_buffer,
         };
-        MoveVisitor { ctxt: &mut promoted_mbcx }.visit_body(promoted_body);
-        promoted_mbcx.report_move_errors();
-
         struct MoveVisitor<'a, 'b, 'infcx, 'tcx> {
             ctxt: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
         }
@@ -283,6 +282,8 @@ fn do_mir_borrowck<'tcx>(
                 }
             }
         }
+        MoveVisitor { ctxt: &mut promoted_mbcx }.visit_body(promoted_body);
+        promoted_mbcx.report_move_errors();
     }
 
     let mut mbcx = MirBorrowckCtxt {
@@ -516,7 +517,7 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
 
     /// Map from MIR `Location` to `LocationIndex`; created
     /// when MIR borrowck begins.
-    location_table: &'a LocationTable,
+    location_table: &'a PoloniusLocationTable,
 
     movable_coroutine: bool,
     /// This keeps track of whether local variables are free-ed when the function
@@ -828,6 +829,7 @@ use self::ReadOrWrite::{Activation, Read, Reservation, Write};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum ArtificialField {
+    ArrayLength,
     FakeBorrow,
 }
 
@@ -1016,11 +1018,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         &self,
         location: Location,
         state: &'s BorrowckDomain,
-    ) -> Cow<'s, BitSet<BorrowIndex>> {
+    ) -> Cow<'s, DenseBitSet<BorrowIndex>> {
         if let Some(polonius) = &self.polonius_output {
             // Use polonius output if it has been enabled.
             let location = self.location_table.start_index(location);
-            let mut polonius_output = BitSet::new_empty(self.borrow_set.len());
+            let mut polonius_output = DenseBitSet::new_empty(self.borrow_set.len());
             for &idx in polonius.errors_at(location) {
                 polonius_output.insert(idx);
             }
@@ -1337,11 +1339,16 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 );
             }
 
-            &Rvalue::Discriminant(place) => {
+            &(Rvalue::Len(place) | Rvalue::Discriminant(place)) => {
+                let af = match *rvalue {
+                    Rvalue::Len(..) => Some(ArtificialField::ArrayLength),
+                    Rvalue::Discriminant(..) => None,
+                    _ => unreachable!(),
+                };
                 self.access_place(
                     location,
                     (place, span),
-                    (Shallow(None), Read(ReadKind::Copy)),
+                    (Shallow(af), Read(ReadKind::Copy)),
                     LocalMutationIsAllowed::No,
                     state,
                 );

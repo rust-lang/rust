@@ -47,11 +47,12 @@ ENV PKG_CONFIG_PATH=/rustroot/lib/pkgconfig
 # Clang needs to access GCC headers to enable linker plugin LTO
 WORKDIR /tmp
 RUN mkdir /home/user
-COPY host-x86_64/dist-x86_64-linux/shared.sh /tmp/
+COPY scripts/shared.sh /tmp/
 
 # Need at least GCC 5.1 to compile LLVM nowadays
-COPY host-x86_64/dist-x86_64-linux/build-gcc.sh /tmp/
+COPY scripts/build-gcc.sh /tmp/
 ENV GCC_VERSION=9.5.0
+ENV GCC_BUILD_TARGET=x86_64-pc-linux-gnu
 RUN ./build-gcc.sh && yum remove -y gcc gcc-c++
 
 # LLVM 17 needs cmake 3.20 or higher.
@@ -60,12 +61,13 @@ RUN ./cmake.sh
 
 # Now build LLVM+Clang, afterwards configuring further compilations to use the
 # clang/clang++ compilers.
-COPY host-x86_64/dist-x86_64-linux/build-clang.sh /tmp/
+COPY scripts/build-clang.sh /tmp/
+ENV LLVM_BUILD_TARGETS=X86
 RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
 
 # Build zstd to enable `llvm.libzstd`.
-COPY host-x86_64/dist-x86_64-linux/build-zstd.sh /tmp/
+COPY scripts/build-zstd.sh /tmp/
 RUN ./build-zstd.sh
 
 COPY scripts/sccache.sh /scripts/

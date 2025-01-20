@@ -262,6 +262,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })
     }
 
+    /// Helper function to get a `libc` constant as an `u64`.
+    fn eval_libc_u64(&self, name: &str) -> u64 {
+        // TODO: Cache the result.
+        self.eval_libc(name).to_u64().unwrap_or_else(|_err| {
+            panic!("required libc item has unexpected type (not `u64`): {name}")
+        })
+    }
+
     /// Helper function to get a `windows` constant as a `Scalar`.
     fn eval_windows(&self, module: &str, name: &str) -> Scalar {
         self.eval_context_ref().eval_path_scalar(&["std", "sys", "pal", "windows", module, name])

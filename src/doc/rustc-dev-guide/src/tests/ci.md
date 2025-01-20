@@ -299,8 +299,7 @@ platform’s custom [Docker container]. This has a lot of advantages for us:
 - We can avoid reinstalling tools (like QEMU or the Android emulator) every time
   thanks to Docker image caching.
 - Users can run the same tests in the same environment locally by just running
-  `src/ci/docker/run.sh image-name`, which is awesome to debug failures. Note
-  that there are only linux docker images available locally due to licensing and
+  `python3 src/ci/github-actions/ci.py run-local <job-name>`, which is awesome to debug failures. Note that there are only linux docker images available locally due to licensing and
   other restrictions.
 
 The docker images prefixed with `dist-` are used for building artifacts while
