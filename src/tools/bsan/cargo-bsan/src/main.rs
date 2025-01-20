@@ -1,15 +1,5 @@
 #![feature(rustc_private)]
-#![warn(
-    clippy::all,
-    clippy::restriction,
-    clippy::pedantic,
-    clippy::nursery,
-    clippy::cargo
-)]
-extern crate rustc_driver;
-extern crate rustc_interface;
-extern crate rustc_middle;
-extern crate rustc_session;
+#![warn(clippy::pedantic)]
 
 mod arg;
 mod phases;
