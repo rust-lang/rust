@@ -2349,6 +2349,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.report_missing_fields(
                     adt_ty,
                     path_span,
+                    expr.span,
                     remaining_fields,
                     variant,
                     hir_fields,
@@ -2386,6 +2387,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         adt_ty: Ty<'tcx>,
         span: Span,
+        full_span: Span,
         remaining_fields: UnordMap<Ident, (FieldIdx, &ty::FieldDef)>,
         variant: &'tcx ty::VariantDef,
         hir_fields: &'tcx [hir::ExprField<'tcx>],
@@ -2424,6 +2426,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             adt_ty
         );
         err.span_label(span, format!("missing {remaining_fields_names}{truncated_fields_error}"));
+
+        if remaining_fields.items().all(|(_, (_, field))| field.value.is_some())
+            && self.tcx.sess.is_nightly_build()
+        {
+            let msg = format!(
+                "all remaining fields have default values, {you_can} use those values with `..`",
+                you_can = if self.tcx.features().default_field_values() {
+                    "you can"
+                } else {
+                    "if you added `#![feature(default_field_values)]` to your crate you could"
+                },
+            );
+            if let Some(hir_field) = hir_fields.last() {
+                err.span_suggestion_verbose(
+                    hir_field.span.shrink_to_hi(),
+                    msg,
+                    ", ..".to_string(),
+                    Applicability::MachineApplicable,
+                );
+            } else if hir_fields.is_empty() {
+                err.span_suggestion_verbose(
+                    span.shrink_to_hi().with_hi(full_span.hi()),
+                    msg,
+                    " { .. }".to_string(),
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
 
         if let Some(hir_field) = hir_fields.last() {
             self.suggest_fru_from_range_and_emit(hir_field, variant, args, err);
