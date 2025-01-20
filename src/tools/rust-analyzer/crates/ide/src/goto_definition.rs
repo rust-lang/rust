@@ -141,15 +141,35 @@ fn find_definition_for_known_blanket_dual_impls(
     let method_call = ast::MethodCallExpr::cast(original_token.parent()?.parent()?)?;
     let callable = sema.resolve_method_call_as_callable(&method_call)?;
     let CallableKind::Function(f) = callable.kind() else { return None };
-    let t = f.as_assoc_item(sema.db)?.container_trait(sema.db)?;
+    let assoc = f.as_assoc_item(sema.db)?;
 
     let return_type = callable.return_type();
     let fd = FamousDefs(sema, return_type.krate(sema.db));
+
+    let t = match assoc.container(sema.db) {
+        hir::AssocItemContainer::Trait(t) => t,
+        hir::AssocItemContainer::Impl(impl_)
+            if impl_.self_ty(sema.db).is_str() && f.name(sema.db) == sym::parse =>
+        {
+            let t = fd.core_convert_FromStr()?;
+            let t_f = t.function(sema.db, &sym::from_str)?;
+            return sema
+                .resolve_trait_impl_method(
+                    return_type.clone(),
+                    t,
+                    t_f,
+                    [return_type.type_arguments().next()?],
+                )
+                .map(|f| def_to_nav(sema.db, f.into()));
+        }
+        hir::AssocItemContainer::Impl(_) => return None,
+    };
+
     let fn_name = f.name(sema.db);
     let f = if fn_name == sym::into && fd.core_convert_Into() == Some(t) {
         let dual = fd.core_convert_From()?;
         let dual_f = dual.function(sema.db, &sym::from)?;
-        sema.resolve_impl_method(
+        sema.resolve_trait_impl_method(
             return_type.clone(),
             dual,
             dual_f,
@@ -158,7 +178,7 @@ fn find_definition_for_known_blanket_dual_impls(
     } else if fn_name == sym::try_into && fd.core_convert_TryInto() == Some(t) {
         let dual = fd.core_convert_TryFrom()?;
         let dual_f = dual.function(sema.db, &sym::try_from)?;
-        sema.resolve_impl_method(
+        sema.resolve_trait_impl_method(
             return_type.clone(),
             dual,
             dual_f,
@@ -3191,6 +3211,26 @@ impl TryInto<B> for A {
 fn f() {
     let a = A;
     let b: Result<B, _> = a.try_into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn parse_call_to_from_str_definition() {
+        check(
+            r#"
+//- minicore: from, str
+struct A;
+impl FromStr for A {
+    type Error = String;
+    fn from_str(value: &str) -> Result<Self, Self::Error> {
+     //^^^^^^^^
+        Ok(A)
+    }
+}
+fn f() {
+    let a: Result<A, _> = "aaaaaa".parse$0();
 }
         "#,
         );

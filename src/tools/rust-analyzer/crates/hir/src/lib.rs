@@ -4682,6 +4682,10 @@ impl Type {
         matches!(self.ty.kind(Interner), TyKind::Scalar(Scalar::Bool))
     }
 
+    pub fn is_str(&self) -> bool {
+        matches!(self.ty.kind(Interner), TyKind::Str)
+    }
+
     pub fn is_never(&self) -> bool {
         matches!(self.ty.kind(Interner), TyKind::Never)
     }

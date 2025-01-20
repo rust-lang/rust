@@ -243,6 +243,7 @@ define_symbols! {
     from,
     From,
     FromStr,
+    from_str,
     from_output,
     from_residual,
     from_usize,

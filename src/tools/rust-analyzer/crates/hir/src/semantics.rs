@@ -1441,7 +1441,7 @@ impl<'db> SemanticsImpl<'db> {
 
     /// Env is used to derive the trait environment
     // FIXME: better api for the trait environment
-    pub fn resolve_impl_method(
+    pub fn resolve_trait_impl_method(
         &self,
         env: Type,
         trait_: Trait,
