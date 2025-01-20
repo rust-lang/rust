@@ -1268,6 +1268,11 @@ def bootstrap(args):
         config_toml = ""
 
     profile = RustBuild.get_toml_static(config_toml, "profile")
+    is_non_git_source = not os.path.exists(os.path.join(rust_root, ".git"))
+
+    if profile is None and is_non_git_source:
+        profile = "dist"
+
     if profile is not None:
         # Allows creating alias for profile names, allowing
         # profiles to be renamed while maintaining back compatibility
