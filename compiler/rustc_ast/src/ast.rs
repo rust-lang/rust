@@ -288,6 +288,7 @@ impl ParenthesizedArgs {
     }
 }
 
+use crate::AstDeref;
 pub use crate::node_id::{CRATE_NODE_ID, DUMMY_NODE_ID, NodeId};
 
 /// Modifiers on a trait bound like `~const`, `?` and `!`.
@@ -2165,6 +2166,14 @@ impl Ty {
             final_ty = ty;
         }
         final_ty
+    }
+
+    pub fn is_maybe_parenthesised_infer(&self) -> bool {
+        match &self.kind {
+            TyKind::Infer => true,
+            TyKind::Paren(inner) => inner.ast_deref().is_maybe_parenthesised_infer(),
+            _ => false,
+        }
     }
 }
 

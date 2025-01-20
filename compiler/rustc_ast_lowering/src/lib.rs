@@ -1084,17 +1084,22 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         match arg {
             ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(lt)),
             ast::GenericArg::Type(ty) => {
+                // We cannot just match on `TyKind::Infer` as `(_)` is represented as
+                // `TyKind::Paren(TyKind::Infer)` and should also be lowered to `GenericArg::Infer`
+                if ty.is_maybe_parenthesised_infer() {
+                    return GenericArg::Infer(hir::InferArg {
+                        hir_id: self.lower_node_id(ty.id),
+                        span: self.lower_span(ty.span),
+                    });
+                }
+
                 match &ty.kind {
-                    TyKind::Infer => {
-                        return GenericArg::Infer(hir::InferArg {
-                            hir_id: self.lower_node_id(ty.id),
-                            span: self.lower_span(ty.span),
-                        });
-                    }
                     // We parse const arguments as path types as we cannot distinguish them during
                     // parsing. We try to resolve that ambiguity by attempting resolution in both the
                     // type and value namespaces. If we resolved the path in the value namespace, we
                     // transform it into a generic const argument.
+                    //
+                    // FIXME: Should we be handling `(PATH_TO_CONST)`?
                     TyKind::Path(None, path) => {
                         if let Some(res) = self
                             .resolver
