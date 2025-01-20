@@ -1574,15 +1574,6 @@ pub mod str {
     pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
         ""
     }
-    pub trait FromStr: Sized {
-        type Err;
-        fn from_str(s: &str) -> Result<Self, Self::Err>;
-    }
-    impl str {
-        pub fn parse<F: FromStr>(&self) -> Result<F, F::Err> {
-            FromStr::from_str(self)
-        }
-    }
 }
 // endregion:str
 
@@ -1857,7 +1848,6 @@ pub mod prelude {
             option::Option::{self, None, Some},      // :option
             panic,                                   // :panic
             result::Result::{self, Err, Ok},         // :result
-            str::FromStr,                            // :str
         };
     }
 

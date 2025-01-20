@@ -51,9 +51,21 @@ impl PartialEq<Symbol> for Name {
     }
 }
 
+impl PartialEq<&Symbol> for Name {
+    fn eq(&self, &sym: &&Symbol) -> bool {
+        self.symbol == *sym
+    }
+}
+
 impl PartialEq<Name> for Symbol {
     fn eq(&self, name: &Name) -> bool {
         *self == name.symbol
+    }
+}
+
+impl PartialEq<Name> for &Symbol {
+    fn eq(&self, name: &Name) -> bool {
+        **self == name.symbol
     }
 }
 

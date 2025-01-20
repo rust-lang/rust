@@ -46,12 +46,24 @@ impl FamousDefs<'_, '_> {
         self.find_trait("core:cmp:Ord")
     }
 
+    pub fn core_convert_FromStr(&self) -> Option<Trait> {
+        self.find_trait("core:str:FromStr")
+    }
+
     pub fn core_convert_From(&self) -> Option<Trait> {
         self.find_trait("core:convert:From")
     }
 
     pub fn core_convert_Into(&self) -> Option<Trait> {
         self.find_trait("core:convert:Into")
+    }
+
+    pub fn core_convert_TryFrom(&self) -> Option<Trait> {
+        self.find_trait("core:convert:TryFrom")
+    }
+
+    pub fn core_convert_TryInto(&self) -> Option<Trait> {
+        self.find_trait("core:convert:TryInto")
     }
 
     pub fn core_convert_Index(&self) -> Option<Trait> {

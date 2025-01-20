@@ -910,6 +910,7 @@ pub enum AssocItemId {
     ConstId(ConstId),
     TypeAliasId(TypeAliasId),
 }
+
 // FIXME: not every function, ... is actually an assoc item. maybe we should make
 // sure that you can only turn actual assoc items into AssocItemIds. This would
 // require not implementing From, and instead having some checked way of
