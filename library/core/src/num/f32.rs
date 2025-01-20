@@ -493,13 +493,13 @@ impl f32 {
     pub const NEG_INFINITY: f32 = -1.0_f32 / 0.0_f32;
 
     /// Sign bit
-    const SIGN_MASK: u32 = 0x8000_0000;
+    pub(crate) const SIGN_MASK: u32 = 0x8000_0000;
 
     /// Exponent mask
-    const EXP_MASK: u32 = 0x7f80_0000;
+    pub(crate) const EXP_MASK: u32 = 0x7f80_0000;
 
     /// Mantissa mask
-    const MAN_MASK: u32 = 0x007f_ffff;
+    pub(crate) const MAN_MASK: u32 = 0x007f_ffff;
 
     /// Minimum representable positive value (min subnormal)
     const TINY_BITS: u32 = 0x1;

@@ -1,15 +1,17 @@
-use core::num::dec2flt::number::Number;
+use core::num::dec2flt::decimal::Decimal;
 use core::num::dec2flt::parse::parse_number;
 use core::num::dec2flt::{dec2flt, pfe_invalid};
 
-fn new_number(e: i64, m: u64) -> Number {
-    Number { exponent: e, mantissa: m, negative: false, many_digits: false }
+fn new_dec(e: i64, m: u64) -> Decimal {
+    Decimal { exponent: e, mantissa: m, negative: false, many_digits: false }
 }
 
 #[test]
 fn missing_pieces() {
     let permutations = &[".e", "1e", "e4", "e", ".12e", "321.e", "32.12e+", "12.32e-"];
     for &s in permutations {
+        assert_eq!(dec2flt::<f16>(s), Err(pfe_invalid()));
+        assert_eq!(dec2flt::<f32>(s), Err(pfe_invalid()));
         assert_eq!(dec2flt::<f64>(s), Err(pfe_invalid()));
     }
 }
@@ -17,37 +19,52 @@ fn missing_pieces() {
 #[test]
 fn invalid_chars() {
     let invalid = "r,?<j";
-    let error = Err(pfe_invalid());
     let valid_strings = &["123", "666.", ".1", "5e1", "7e-3", "0.0e+1"];
+
     for c in invalid.chars() {
         for s in valid_strings {
             for i in 0..s.len() {
                 let mut input = String::new();
                 input.push_str(s);
                 input.insert(i, c);
-                assert!(dec2flt::<f64>(&input) == error, "did not reject invalid {:?}", input);
+
+                assert_eq!(
+                    dec2flt::<f16>(&input),
+                    Err(pfe_invalid()),
+                    "f16 did not reject invalid {input:?}",
+                );
+                assert_eq!(
+                    dec2flt::<f32>(&input),
+                    Err(pfe_invalid()),
+                    "f32 did not reject invalid {input:?}",
+                );
+                assert_eq!(
+                    dec2flt::<f64>(&input),
+                    Err(pfe_invalid()),
+                    "f64 did not reject invalid {input:?}",
+                );
             }
         }
     }
 }
 
-fn parse_positive(s: &[u8]) -> Option<Number> {
+fn parse_positive(s: &[u8]) -> Option<Decimal> {
     parse_number(s)
 }
 
 #[test]
 fn valid() {
-    assert_eq!(parse_positive(b"123.456e789"), Some(new_number(786, 123456)));
-    assert_eq!(parse_positive(b"123.456e+789"), Some(new_number(786, 123456)));
-    assert_eq!(parse_positive(b"123.456e-789"), Some(new_number(-792, 123456)));
-    assert_eq!(parse_positive(b".050"), Some(new_number(-3, 50)));
-    assert_eq!(parse_positive(b"999"), Some(new_number(0, 999)));
-    assert_eq!(parse_positive(b"1.e300"), Some(new_number(300, 1)));
-    assert_eq!(parse_positive(b".1e300"), Some(new_number(299, 1)));
-    assert_eq!(parse_positive(b"101e-33"), Some(new_number(-33, 101)));
+    assert_eq!(parse_positive(b"123.456e789"), Some(new_dec(786, 123456)));
+    assert_eq!(parse_positive(b"123.456e+789"), Some(new_dec(786, 123456)));
+    assert_eq!(parse_positive(b"123.456e-789"), Some(new_dec(-792, 123456)));
+    assert_eq!(parse_positive(b".050"), Some(new_dec(-3, 50)));
+    assert_eq!(parse_positive(b"999"), Some(new_dec(0, 999)));
+    assert_eq!(parse_positive(b"1.e300"), Some(new_dec(300, 1)));
+    assert_eq!(parse_positive(b".1e300"), Some(new_dec(299, 1)));
+    assert_eq!(parse_positive(b"101e-33"), Some(new_dec(-33, 101)));
     let zeros = "0".repeat(25);
     let s = format!("1.5e{zeros}");
-    assert_eq!(parse_positive(s.as_bytes()), Some(new_number(-1, 15)));
+    assert_eq!(parse_positive(s.as_bytes()), Some(new_dec(-1, 15)));
 }
 
 macro_rules! assert_float_result_bits_eq {

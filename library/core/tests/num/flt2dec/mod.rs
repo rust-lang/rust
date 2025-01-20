@@ -75,6 +75,10 @@ macro_rules! try_fixed {
     })
 }
 
+// fn ldexp_f16(a: f16, b: i32) -> f16 {
+//     ldexp_f64(a as f64, b) as f16
+// }
+
 fn ldexp_f32(a: f32, b: i32) -> f32 {
     ldexp_f64(a as f64, b) as f32
 }
@@ -176,6 +180,12 @@ trait TestableFloat: DecodableFloat + fmt::Display {
     fn ldexpi(f: i64, exp: isize) -> Self;
 }
 
+// impl TestableFloat for f16 {
+//     fn ldexpi(f: i64, exp: isize) -> Self {
+//         f as Self * (exp as Self).exp2()
+//     }
+// }
+
 impl TestableFloat for f32 {
     fn ldexpi(f: i64, exp: isize) -> Self {
         f as Self * (exp as Self).exp2()
@@ -225,6 +235,97 @@ macro_rules! check_exact_one {
 //
 // [1] Vern Paxson, A Program for Testing IEEE Decimal-Binary Conversion
 //     ftp://ftp.ee.lbl.gov/testbase-report.ps.Z
+
+// pub fn f16_shortest_sanity_test<F>(mut f: F)
+// where
+//     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
+// {
+//     // 0.0999999940395355224609375
+//     // 0.100000001490116119384765625
+//     // 0.10000000894069671630859375
+//     check_shortest!(f(0.1f16) => b"1", 0);
+
+//     // 0.333333313465118408203125
+//     // 0.3333333432674407958984375 (1/3 in the default rounding)
+//     // 0.33333337306976318359375
+//     check_shortest!(f(1.0f16/3.0) => b"33333334", 0);
+
+//     // 10^1 * 0.31415917873382568359375
+//     // 10^1 * 0.31415920257568359375
+//     // 10^1 * 0.31415922641754150390625
+//     check_shortest!(f(3.141592f16) => b"3141592", 1);
+
+//     // 10^18 * 0.31415916243714048
+//     // 10^18 * 0.314159196796878848
+//     // 10^18 * 0.314159231156617216
+//     check_shortest!(f(3.141592e17f16) => b"3141592", 18);
+
+//     // regression test for decoders
+//     // 10^8 * 0.3355443
+//     // 10^8 * 0.33554432
+//     // 10^8 * 0.33554436
+//     check_shortest!(f(ldexp_f16(1.0, 25)) => b"33554432", 8);
+
+//     // 10^39 * 0.340282326356119256160033759537265639424
+//     // 10^39 * 0.34028234663852885981170418348451692544
+//     // 10^39 * 0.340282366920938463463374607431768211456
+//     check_shortest!(f(f16::MAX) => b"34028235", 39);
+
+//     // 10^-37 * 0.1175494210692441075487029444849287348827...
+//     // 10^-37 * 0.1175494350822287507968736537222245677818...
+//     // 10^-37 * 0.1175494490952133940450443629595204006810...
+//     check_shortest!(f(f16::MIN_POSITIVE) => b"11754944", -37);
+
+//     // 10^-44 * 0
+//     // 10^-44 * 0.1401298464324817070923729583289916131280...
+//     // 10^-44 * 0.2802596928649634141847459166579832262560...
+//     let minf16 = ldexp_f16(1.0, -149);
+//     check_shortest!(f(minf16) => b"1", -44);
+// }
+
+// pub fn f16_exact_sanity_test<F>(mut f: F)
+// where
+//     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
+// {
+//     let minf16 = ldexp_f16(1.0, -149);
+
+//     check_exact!(f(0.1f16)            => b"100000001490116119384765625             ", 0);
+//     check_exact!(f(0.5f16)            => b"5                                       ", 0);
+//     check_exact!(f(1.0f16/3.0)        => b"3333333432674407958984375               ", 0);
+//     check_exact!(f(3.141592f16)       => b"31415920257568359375                    ", 1);
+//     check_exact!(f(3.141592e17f16)    => b"314159196796878848                      ", 18);
+//     check_exact!(f(f16::MAX)          => b"34028234663852885981170418348451692544  ", 39);
+//     check_exact!(f(f16::MIN_POSITIVE) => b"1175494350822287507968736537222245677818", -37);
+//     check_exact!(f(minf16)            => b"1401298464324817070923729583289916131280", -44);
+
+//     // [1], Table 16: Stress Inputs for Converting 24-bit Binary to Decimal, < 1/2 ULP
+//     check_exact_one!(f(12676506, -102; f16) => b"2",            -23);
+//     check_exact_one!(f(12676506, -103; f16) => b"12",           -23);
+//     check_exact_one!(f(15445013,   86; f16) => b"119",           34);
+//     check_exact_one!(f(13734123, -138; f16) => b"3941",         -34);
+//     check_exact_one!(f(12428269, -130; f16) => b"91308",        -32);
+//     check_exact_one!(f(15334037, -146; f16) => b"171900",       -36);
+//     check_exact_one!(f(11518287,  -41; f16) => b"5237910",       -5);
+//     check_exact_one!(f(12584953, -145; f16) => b"28216440",     -36);
+//     check_exact_one!(f(15961084, -125; f16) => b"375243281",    -30);
+//     check_exact_one!(f(14915817, -146; f16) => b"1672120916",   -36);
+//     check_exact_one!(f(10845484, -102; f16) => b"21388945814",  -23);
+//     check_exact_one!(f(16431059,  -61; f16) => b"712583594561", -11);
+
+//     // [1], Table 17: Stress Inputs for Converting 24-bit Binary to Decimal, > 1/2 ULP
+//     check_exact_one!(f(16093626,   69; f16) => b"1",             29);
+//     check_exact_one!(f( 9983778,   25; f16) => b"34",            15);
+//     check_exact_one!(f(12745034,  104; f16) => b"259",           39);
+//     check_exact_one!(f(12706553,   72; f16) => b"6001",          29);
+//     check_exact_one!(f(11005028,   45; f16) => b"38721",         21);
+//     check_exact_one!(f(15059547,   71; f16) => b"355584",        29);
+//     check_exact_one!(f(16015691,  -99; f16) => b"2526831",      -22);
+//     check_exact_one!(f( 8667859,   56; f16) => b"62458507",      24);
+//     check_exact_one!(f(14855922,  -82; f16) => b"307213267",    -17);
+//     check_exact_one!(f(14855922,  -83; f16) => b"1536066333",   -17);
+//     check_exact_one!(f(10144164, -110; f16) => b"78147796834",  -26);
+//     check_exact_one!(f(13248074,   95; f16) => b"524810279937",  36);
+// }
 
 pub fn f32_shortest_sanity_test<F>(mut f: F)
 where
