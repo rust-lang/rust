@@ -827,7 +827,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     if tcx.sess.opts.unstable_opts.input_stats {
         rustc_passes::input_stats::print_hir_stats(tcx);
     }
-    #[cfg(debug_assertions)]
+    #[cfg(all(not(doc), debug_assertions))]
     rustc_passes::hir_id_validator::check_crate(tcx);
     let sess = tcx.sess;
     sess.time("misc_checking_1", || {
