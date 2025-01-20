@@ -1,5 +1,5 @@
 #![crate_type = "rlib"]
 
-pub fn hello() {
+pub fn hrhello() {
     println!("hello rlib");
 }
