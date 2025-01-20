@@ -1,0 +1,27 @@
+error[E0535]: invalid argument
+  --> $DIR/short-backtrace-attr-errors.rs:4:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^
+   |
+   = note: `#[rustc_{start,end}_short_backtrace]` functions must always be `#[inline(never)]`
+
+error[E0535]: invalid argument
+  --> $DIR/short-backtrace-attr-errors.rs:8:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^
+   |
+   = note: `#[rustc_{start,end}_short_backtrace]` functions must always be `#[inline(never)]`
+
+error[E0535]: invalid argument
+  --> $DIR/short-backtrace-attr-errors.rs:12:1
+   |
+LL | #[inline(always)]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[rustc_{start,end}_short_backtrace]` functions must always be `#[inline(never)]`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0535`.
