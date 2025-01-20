@@ -69,7 +69,7 @@ impl BuiltinFnLikeExpander {
         tt: &tt::TopSubtree,
         span: Span,
     ) -> ExpandResult<tt::TopSubtree> {
-        let span = span_with_def_site_ctxt(db, span, id);
+        let span = span_with_def_site_ctxt(db, span, id, Edition::CURRENT);
         self.expander()(db, id, tt, span)
     }
 
@@ -86,7 +86,7 @@ impl EagerExpander {
         tt: &tt::TopSubtree,
         span: Span,
     ) -> ExpandResult<tt::TopSubtree> {
-        let span = span_with_def_site_ctxt(db, span, id);
+        let span = span_with_def_site_ctxt(db, span, id, Edition::CURRENT);
         self.expander()(db, id, tt, span)
     }
 
@@ -221,7 +221,7 @@ fn assert_expand(
     tt: &tt::TopSubtree,
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
-    let call_site_span = span_with_call_site_ctxt(db, span, id);
+    let call_site_span = span_with_call_site_ctxt(db, span, id, Edition::CURRENT);
 
     let mut iter = tt.iter();
 
@@ -342,7 +342,7 @@ fn panic_expand(
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
     let dollar_crate = dollar_crate(span);
-    let call_site_span = span_with_call_site_ctxt(db, span, id);
+    let call_site_span = span_with_call_site_ctxt(db, span, id, Edition::CURRENT);
 
     let mac = if use_panic_2021(db, call_site_span) {
         sym::panic_2021.clone()
@@ -373,7 +373,7 @@ fn unreachable_expand(
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
     let dollar_crate = dollar_crate(span);
-    let call_site_span = span_with_call_site_ctxt(db, span, id);
+    let call_site_span = span_with_call_site_ctxt(db, span, id, Edition::CURRENT);
 
     let mac = if use_panic_2021(db, call_site_span) {
         sym::unreachable_2021.clone()

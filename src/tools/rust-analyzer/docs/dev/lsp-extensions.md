@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: 6dd762ae19630ec0
+lsp/ext.rs hash: 2d8604825c458288
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -709,6 +709,23 @@ interface SyntaxTreeParams {
 
 Returns textual representation of a parse tree for the file/selected region.
 Primarily for debugging, but very useful for all people working on rust-analyzer itself.
+
+## View Syntax Tree
+
+**Method:** `rust-analyzer/viewSyntaxTree`
+
+**Request:**
+
+```typescript
+interface ViewSyntaxTreeParams {
+    textDocument: TextDocumentIdentifier,
+}
+```
+
+**Response:** `string`
+
+Returns json representation of the file's syntax tree.
+Used to create a treeView for debugging and working on rust-analyzer itself.
 
 ## View Hir
 

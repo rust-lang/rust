@@ -18,7 +18,7 @@ use ide_db::{
     imports::import_assets::LocatedImport,
     RootDatabase, SnippetCap, SymbolKind,
 };
-use syntax::{ast, format_smolstr, AstNode, Edition, SmolStr, SyntaxKind, TextRange, ToSmolStr};
+use syntax::{ast, format_smolstr, AstNode, SmolStr, SyntaxKind, TextRange, ToSmolStr};
 
 use crate::{
     context::{DotAccess, DotAccessKind, PathCompletionCtx, PathKind, PatternContext},
@@ -28,7 +28,8 @@ use crate::{
         literal::render_variant_lit,
         macro_::{render_macro, render_macro_pat},
     },
-    CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance,
+    CompletionContext, CompletionItem, CompletionItemKind, CompletionItemRefMode,
+    CompletionRelevance,
 };
 /// Interface for data and methods required for items rendering.
 #[derive(Debug, Clone)]
@@ -122,7 +123,7 @@ impl<'a> RenderContext<'a> {
 pub(crate) fn render_field(
     ctx: RenderContext<'_>,
     dot_access: &DotAccess,
-    receiver: Option<hir::Name>,
+    receiver: Option<SmolStr>,
     field: hir::Field,
     ty: &hir::Type,
 ) -> CompletionItem {
@@ -136,7 +137,7 @@ pub(crate) fn render_field(
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
-        field_with_receiver(db, receiver.as_ref(), &name, ctx.completion.edition),
+        field_with_receiver(receiver.as_deref(), &name),
         ctx.completion.edition,
     );
     item.set_relevance(CompletionRelevance {
@@ -158,8 +159,7 @@ pub(crate) fn render_field(
 
         builder.replace(
             ctx.source_range(),
-            field_with_receiver(db, receiver.as_ref(), &escaped_name, ctx.completion.edition)
-                .into(),
+            field_with_receiver(receiver.as_deref(), &escaped_name).into(),
         );
 
         let expected_fn_type =
@@ -183,17 +183,12 @@ pub(crate) fn render_field(
 
         item.text_edit(builder.finish());
     } else {
-        item.insert_text(field_with_receiver(
-            db,
-            receiver.as_ref(),
-            &escaped_name,
-            ctx.completion.edition,
-        ));
+        item.insert_text(field_with_receiver(receiver.as_deref(), &escaped_name));
     }
     if let Some(receiver) = &dot_access.receiver {
         if let Some(original) = ctx.completion.sema.original_ast_node(receiver.clone()) {
-            if let Some(ref_match) = compute_ref_match(ctx.completion, ty) {
-                item.ref_match(ref_match, original.syntax().text_range().start());
+            if let Some(ref_mode) = compute_ref_match(ctx.completion, ty) {
+                item.ref_match(ref_mode, original.syntax().text_range().start());
             }
         }
     }
@@ -201,33 +196,21 @@ pub(crate) fn render_field(
     item.build(db)
 }
 
-fn field_with_receiver(
-    db: &RootDatabase,
-    receiver: Option<&hir::Name>,
-    field_name: &str,
-    edition: Edition,
-) -> SmolStr {
-    receiver.map_or_else(
-        || field_name.into(),
-        |receiver| format_smolstr!("{}.{field_name}", receiver.display(db, edition)),
-    )
+fn field_with_receiver(receiver: Option<&str>, field_name: &str) -> SmolStr {
+    receiver
+        .map_or_else(|| field_name.into(), |receiver| format_smolstr!("{}.{field_name}", receiver))
 }
 
 pub(crate) fn render_tuple_field(
     ctx: RenderContext<'_>,
-    receiver: Option<hir::Name>,
+    receiver: Option<SmolStr>,
     field: usize,
     ty: &hir::Type,
 ) -> CompletionItem {
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
-        field_with_receiver(
-            ctx.db(),
-            receiver.as_ref(),
-            &field.to_string(),
-            ctx.completion.edition,
-        ),
+        field_with_receiver(receiver.as_deref(), &field.to_string()),
         ctx.completion.edition,
     );
     item.detail(ty.display(ctx.db(), ctx.completion.edition).to_string())
@@ -440,7 +423,7 @@ fn render_resolution_path(
 
     let name = local_name.display_no_db(ctx.completion.edition).to_smolstr();
     let mut item = render_resolution_simple_(ctx, &local_name, import_to_add, resolution);
-    if local_name.is_escaped(completion.edition) {
+    if local_name.needs_escape(completion.edition) {
         item.insert_text(local_name.display_no_db(completion.edition).to_smolstr());
     }
     // Add `<>` for generic types
@@ -638,20 +621,34 @@ fn compute_exact_name_match(ctx: &CompletionContext<'_>, completion_name: &str) 
 fn compute_ref_match(
     ctx: &CompletionContext<'_>,
     completion_ty: &hir::Type,
-) -> Option<hir::Mutability> {
+) -> Option<CompletionItemRefMode> {
     let expected_type = ctx.expected_type.as_ref()?;
-    if completion_ty != expected_type {
-        let expected_type_without_ref = expected_type.remove_ref()?;
-        if completion_ty.autoderef(ctx.db).any(|deref_ty| deref_ty == expected_type_without_ref) {
+    let expected_without_ref = expected_type.remove_ref();
+    let completion_without_ref = completion_ty.remove_ref();
+
+    if completion_ty == expected_type {
+        return None;
+    }
+
+    if let Some(expected_without_ref) = &expected_without_ref {
+        if completion_ty.autoderef(ctx.db).any(|ty| ty == *expected_without_ref) {
             cov_mark::hit!(suggest_ref);
             let mutability = if expected_type.is_mutable_reference() {
                 hir::Mutability::Mut
             } else {
                 hir::Mutability::Shared
             };
-            return Some(mutability);
-        };
+            return Some(CompletionItemRefMode::Reference(mutability));
+        }
     }
+
+    if let Some(completion_without_ref) = completion_without_ref {
+        if completion_without_ref == *expected_type && completion_without_ref.is_copy(ctx.db) {
+            cov_mark::hit!(suggest_deref);
+            return Some(CompletionItemRefMode::Dereference);
+        }
+    }
+
     None
 }
 
@@ -664,16 +661,16 @@ fn path_ref_match(
     if let Some(original_path) = &path_ctx.original_path {
         // At least one char was typed by the user already, in that case look for the original path
         if let Some(original_path) = completion.sema.original_ast_node(original_path.clone()) {
-            if let Some(ref_match) = compute_ref_match(completion, ty) {
-                item.ref_match(ref_match, original_path.syntax().text_range().start());
+            if let Some(ref_mode) = compute_ref_match(completion, ty) {
+                item.ref_match(ref_mode, original_path.syntax().text_range().start());
             }
         }
     } else {
         // completion requested on an empty identifier, there is no path here yet.
         // FIXME: This might create inconsistent completions where we show a ref match in macro inputs
         // as long as nothing was typed yet
-        if let Some(ref_match) = compute_ref_match(completion, ty) {
-            item.ref_match(ref_match, completion.position.offset);
+        if let Some(ref_mode) = compute_ref_match(completion, ty) {
+            item.ref_match(ref_mode, completion.position.offset);
         }
     }
 }
@@ -693,20 +690,28 @@ mod tests {
     };
 
     #[track_caller]
-    fn check(ra_fixture: &str, kind: impl Into<CompletionItemKind>, expect: Expect) {
+    fn check(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        kind: impl Into<CompletionItemKind>,
+        expect: Expect,
+    ) {
         let actual = do_completion(ra_fixture, kind.into());
         expect.assert_debug_eq(&actual);
     }
 
     #[track_caller]
-    fn check_kinds(ra_fixture: &str, kinds: &[CompletionItemKind], expect: Expect) {
+    fn check_kinds(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        kinds: &[CompletionItemKind],
+        expect: Expect,
+    ) {
         let actual: Vec<_> =
             kinds.iter().flat_map(|&kind| do_completion(ra_fixture, kind)).collect();
         expect.assert_debug_eq(&actual);
     }
 
     #[track_caller]
-    fn check_function_relevance(ra_fixture: &str, expect: Expect) {
+    fn check_function_relevance(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let actual: Vec<_> =
             do_completion(ra_fixture, CompletionItemKind::SymbolKind(SymbolKind::Method))
                 .into_iter()
@@ -717,7 +722,11 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_relevance_for_kinds(ra_fixture: &str, kinds: &[CompletionItemKind], expect: Expect) {
+    fn check_relevance_for_kinds(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        kinds: &[CompletionItemKind],
+        expect: Expect,
+    ) {
         let mut actual = get_all_items(TEST_CONFIG, ra_fixture, None);
         actual.retain(|it| kinds.contains(&it.kind));
         actual.sort_by_key(|it| cmp::Reverse(it.relevance.score()));
@@ -725,7 +734,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_relevance(ra_fixture: &str, expect: Expect) {
+    fn check_relevance(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let mut actual = get_all_items(TEST_CONFIG, ra_fixture, None);
         actual.retain(|it| it.kind != CompletionItemKind::Snippet);
         actual.retain(|it| it.kind != CompletionItemKind::Keyword);
@@ -2053,7 +2062,42 @@ fn main() {
     }
 
     #[test]
-    fn suggest_deref() {
+    fn suggest_deref_copy() {
+        cov_mark::check!(suggest_deref);
+        check_relevance(
+            r#"
+//- minicore: copy
+struct Foo;
+
+impl Copy for Foo {}
+impl Clone for Foo {
+    fn clone(&self) -> Self { *self }
+}
+
+fn bar(x: Foo) {}
+
+fn main() {
+    let foo = &Foo;
+    bar($0);
+}
+"#,
+            expect![[r#"
+                st Foo Foo [type]
+                st Foo Foo [type]
+                ex Foo  [type]
+                lc foo &Foo [local]
+                lc *foo [type+local]
+                fn bar(…) fn(Foo) []
+                fn main() fn() []
+                md core  []
+                tt Clone  []
+                tt Copy  []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn suggest_deref_trait() {
         check_relevance(
             r#"
 //- minicore: deref

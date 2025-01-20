@@ -345,7 +345,7 @@ mod tests {
         }
     }
 
-    fn do_check(ra_fixture: &str, expected: &[&str]) {
+    fn do_check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expected: &[&str]) {
         let (offset, code) = extract_offset(ra_fixture);
         let code = {
             let mut buf = String::new();
@@ -509,7 +509,7 @@ fn foo() {
         );
     }
 
-    fn do_check_local_name(ra_fixture: &str, expected_offset: u32) {
+    fn do_check_local_name(#[rust_analyzer::rust_fixture] ra_fixture: &str, expected_offset: u32) {
         let (db, position) = TestDB::with_position(ra_fixture);
         let file_id = position.file_id;
         let offset = position.offset;

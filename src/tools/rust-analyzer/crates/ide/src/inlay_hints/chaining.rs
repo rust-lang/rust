@@ -81,28 +81,19 @@ mod tests {
 
     use crate::{
         fixture,
-        inlay_hints::tests::{check_with_config, DISABLED_CONFIG, TEST_CONFIG},
+        inlay_hints::tests::{check_expect, check_with_config, DISABLED_CONFIG, TEST_CONFIG},
         InlayHintsConfig,
     };
 
     #[track_caller]
-    fn check_chains(ra_fixture: &str) {
+    fn check_chains(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG }, ra_fixture);
-    }
-
-    #[track_caller]
-    pub(super) fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
-        let (analysis, file_id) = fixture::file(ra_fixture);
-        let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
-        let filtered =
-            inlay_hints.into_iter().map(|hint| (hint.range, hint.label)).collect::<Vec<_>>();
-        expect.assert_debug_eq(&filtered)
     }
 
     #[track_caller]
     pub(super) fn check_expect_clear_loc(
         config: InlayHintsConfig,
-        ra_fixture: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
         expect: Expect,
     ) {
         let (analysis, file_id) = fixture::file(ra_fixture);

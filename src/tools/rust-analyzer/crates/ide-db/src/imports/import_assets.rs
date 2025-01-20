@@ -1,15 +1,17 @@
 //! Look up accessible paths for items.
 
+use std::ops::ControlFlow;
+
 use hir::{
     db::HirDatabase, AsAssocItem, AssocItem, AssocItemContainer, Crate, HasCrate, ImportPathConfig,
-    ItemInNs, ModPath, Module, ModuleDef, PathResolution, PrefixKind, ScopeDef, Semantics,
+    ItemInNs, ModPath, Module, ModuleDef, Name, PathResolution, PrefixKind, ScopeDef, Semantics,
     SemanticsScope, Trait, TyFingerprint, Type,
 };
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     ast::{self, make, HasName},
-    AstNode, SmolStr, SyntaxNode,
+    AstNode, SyntaxNode,
 };
 
 use crate::{
@@ -51,7 +53,7 @@ pub struct TraitImportCandidate {
 #[derive(Debug)]
 pub struct PathImportCandidate {
     /// Optional qualifier before name.
-    pub qualifier: Vec<SmolStr>,
+    pub qualifier: Vec<Name>,
     /// The name the item (struct, trait, enum, etc.) should have.
     pub name: NameToImport,
 }
@@ -70,10 +72,18 @@ pub enum NameToImport {
 
 impl NameToImport {
     pub fn exact_case_sensitive(s: String) -> NameToImport {
+        let s = match s.strip_prefix("r#") {
+            Some(s) => s.to_owned(),
+            None => s,
+        };
         NameToImport::Exact(s, true)
     }
 
     pub fn fuzzy(s: String) -> NameToImport {
+        let s = match s.strip_prefix("r#") {
+            Some(s) => s.to_owned(),
+            None => s,
+        };
         // unless all chars are lowercase, we do a case sensitive search
         let case_sensitive = s.chars().any(|c| c.is_uppercase());
         NameToImport::Fuzzy(s, case_sensitive)
@@ -350,21 +360,27 @@ fn path_applicable_imports(
             .take(DEFAULT_QUERY_SEARCH_LIMIT.inner())
             .collect()
         }
+        // we have some unresolved qualifier that we search an import for
+        // The key here is that whatever we import must form a resolved path for the remainder of
+        // what follows
+        // FIXME: This doesn't handle visibility
         [first_qsegment, qualifier_rest @ ..] => items_locator::items_with_name(
             sema,
             current_crate,
-            NameToImport::Exact(first_qsegment.to_string(), true),
+            NameToImport::Exact(first_qsegment.as_str().to_owned(), true),
             AssocSearchMode::Exclude,
         )
         .filter_map(|item| {
-            import_for_item(
+            // we found imports for `first_qsegment`, now we need to filter these imports by whether
+            // they result in resolving the rest of the path successfully
+            validate_resolvable(
                 sema,
                 scope,
                 mod_path,
+                scope_filter,
                 &path_candidate.name,
                 item,
                 qualifier_rest,
-                scope_filter,
             )
         })
         .take(DEFAULT_QUERY_SEARCH_LIMIT.inner())
@@ -372,14 +388,16 @@ fn path_applicable_imports(
     }
 }
 
-fn import_for_item(
+/// Validates and builds an import for `resolved_qualifier` if the `unresolved_qualifier` appended
+/// to it resolves and there is a validate `candidate` after that.
+fn validate_resolvable(
     sema: &Semantics<'_, RootDatabase>,
     scope: &SemanticsScope<'_>,
     mod_path: impl Fn(ItemInNs) -> Option<ModPath>,
+    scope_filter: impl Fn(ItemInNs) -> bool,
     candidate: &NameToImport,
     resolved_qualifier: ItemInNs,
-    unresolved_qualifier: &[SmolStr],
-    scope_filter: impl Fn(ItemInNs) -> bool,
+    unresolved_qualifier: &[Name],
 ) -> Option<LocatedImport> {
     let _p = tracing::info_span!("ImportAssets::import_for_item").entered();
 
@@ -410,8 +428,11 @@ fn import_for_item(
                 module,
                 candidate.clone(),
                 AssocSearchMode::Exclude,
+                |it| match scope_filter(it) {
+                    true => ControlFlow::Break(it),
+                    false => ControlFlow::Continue(()),
+                },
             )
-            .find(|&it| scope_filter(it))
             .map(|item| LocatedImport::new(import_path_candidate, resolved_qualifier, item))
         }
         // FIXME
@@ -709,7 +730,7 @@ fn path_import_candidate(
                 if qualifier.first_qualifier().is_none_or(|it| sema.resolve_path(&it).is_none()) {
                     let qualifier = qualifier
                         .segments()
-                        .map(|seg| seg.name_ref().map(|name| SmolStr::new(name.text())))
+                        .map(|seg| seg.name_ref().map(|name| Name::new_root(&name.text())))
                         .collect::<Option<Vec<_>>>()?;
                     ImportCandidate::Path(PathImportCandidate { qualifier, name })
                 } else {
