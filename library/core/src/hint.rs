@@ -517,8 +517,8 @@ pub const fn must_use<T>(value: T) -> T {
 ///
 /// It can be used with `if` or boolean `match` expressions.
 ///
-/// When used outside of a branch condition, it may still work if there is a branch close by, but
-/// it is not guaranteed to have any effect.
+/// When used outside of a branch condition, it may still influence a nearby branch, but
+/// probably will not have any effect.
 ///
 /// It can also be applied to parts of expressions, such as `likely(a) && unlikely(b)`, or to
 /// compound expressions, such as `likely(a && b)`. When applied to compound expressions, it has
@@ -549,8 +549,7 @@ pub const fn must_use<T>(value: T) -> T {
 ///         false => println!("this branch is unlikely to be taken"),
 ///     }
 ///
-///     // Use outside of a branch condition. This may still work if there is a branch close by,
-///     // but it is not guaranteed to have any effect
+///     // Use outside of a branch condition may still influence a nearby branch
 ///     let cond = likely(x != 0);
 ///     if cond {
 ///         println!("this branch is likely to be taken");
@@ -560,7 +559,6 @@ pub const fn must_use<T>(value: T) -> T {
 ///
 ///
 #[unstable(feature = "likely_unlikely", issue = "26179")]
-#[rustc_nounwind]
 #[inline(always)]
 pub const fn likely(b: bool) -> bool {
     crate::intrinsics::likely(b)
@@ -571,8 +569,8 @@ pub const fn likely(b: bool) -> bool {
 ///
 /// It can be used with `if` or boolean `match` expressions.
 ///
-/// When used outside of a branch condition, it may still work if there is a branch close by, but
-/// it is not guaranteed to have any effect.
+/// When used outside of a branch condition, it may still influence a nearby branch, but
+/// probably will not have any effect.
 ///
 /// It can also be applied to parts of expressions, such as `likely(a) && unlikely(b)`, or to
 /// compound expressions, such as `unlikely(a && b)`. When applied to compound expressions, it has
@@ -603,8 +601,7 @@ pub const fn likely(b: bool) -> bool {
 ///         false => println!("this branch is likely to be taken"),
 ///     }
 ///
-///     // Use outside of a branch condition. This may still work if there is a branch close by,
-///     // but it is not guaranteed to have any effect
+///     // Use outside of a branch condition may still influence a nearby branch
 ///     let cond = unlikely(x != 0);
 ///     if cond {
 ///         println!("this branch is likely to be taken");
@@ -612,7 +609,6 @@ pub const fn likely(b: bool) -> bool {
 /// }
 /// ```
 #[unstable(feature = "likely_unlikely", issue = "26179")]
-#[rustc_nounwind]
 #[inline(always)]
 pub const fn unlikely(b: bool) -> bool {
     crate::intrinsics::unlikely(b)
@@ -646,7 +642,6 @@ pub const fn unlikely(b: bool) -> bool {
 /// }
 /// ```
 #[unstable(feature = "cold_path", issue = "26179")]
-#[rustc_nounwind]
 #[inline(always)]
 pub const fn cold_path() {
     crate::intrinsics::cold_path()
