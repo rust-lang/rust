@@ -1862,12 +1862,19 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let mut hostflags = flags.clone();
         hostflags.push(format!("-Lnative={}", builder.test_helpers_out(compiler.host).display()));
         hostflags.extend(linker_flags(builder, compiler.host, LldThreads::No));
-        for flag in hostflags {
-            cmd.arg("--host-rustcflags").arg(flag);
-        }
 
         let mut targetflags = flags;
         targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
+
+        // FIXME: on macOS, we get linker warnings about duplicate `-lm` flags. We should investigate why this happens.
+        if suite == "ui-fulldeps" && target.ends_with("darwin") {
+            hostflags.push("-Alinker_messages".into());
+            targetflags.push("-Alinker_messages".into());
+        }
+
+        for flag in hostflags {
+            cmd.arg("--host-rustcflags").arg(flag);
+        }
         for flag in targetflags {
             cmd.arg("--target-rustcflags").arg(flag);
         }
