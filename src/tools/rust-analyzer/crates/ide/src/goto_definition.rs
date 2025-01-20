@@ -81,6 +81,10 @@ pub(crate) fn goto_definition(
         return Some(RangeInfo::new(original_token.text_range(), navs));
     }
 
+    if let Some(navs) = find_definition_for_known_blanket_dual_impls(sema, &original_token) {
+        return Some(RangeInfo::new(original_token.text_range(), navs));
+    }
+
     let navs = sema
         .descend_into_macros_no_opaque(original_token.clone())
         .into_iter()
@@ -123,6 +127,18 @@ pub(crate) fn goto_definition(
         .collect::<Vec<NavigationTarget>>();
 
     Some(RangeInfo::new(original_token.text_range(), navs))
+}
+
+// If the token is into(), try_into(), parse(), search the definition of From, TryFrom, FromStr.
+fn find_definition_for_known_blanket_dual_impls(
+    sema: &Semantics<'_, RootDatabase>,
+    original_token: &SyntaxToken,
+) -> Option<Vec<NavigationTarget>> {
+    let method_call = ast::MethodCallExpr::cast(original_token.parent()?.parent()?)?;
+    let target_method = sema.resolve_known_blanket_dual_impls(&method_call)?;
+
+    let def = Definition::from(target_method);
+    Some(def_to_nav(sema.db, def))
 }
 
 fn try_lookup_include_path(
@@ -3020,6 +3036,152 @@ fn foo() {
     }
 }
 "#,
+        );
+    }
+    #[test]
+    fn into_call_to_from_definition() {
+        check(
+            r#"
+//- minicore: from
+struct A;
+
+struct B;
+
+impl From<A> for B {
+    fn from(value: A) -> Self {
+     //^^^^
+        B
+    }
+}
+
+fn f() {
+    let a = A;
+    let b: B = a.into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn into_call_to_from_definition_with_trait_bounds() {
+        check(
+            r#"
+//- minicore: from, iterator
+struct A;
+
+impl<T> From<T> for A
+where
+    T: IntoIterator<Item = i64>,
+{
+    fn from(value: T) -> Self {
+     //^^^^
+        A
+    }
+}
+
+fn f() {
+    let a: A = [1, 2, 3].into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn goto_into_definition_if_exists() {
+        check(
+            r#"
+//- minicore: from
+struct A;
+
+struct B;
+
+impl Into<B> for A {
+    fn into(self) -> B {
+     //^^^^
+        B
+    }
+}
+
+fn f() {
+    let a = A;
+    let b: B = a.into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn try_into_call_to_try_from_definition() {
+        check(
+            r#"
+//- minicore: from
+struct A;
+
+struct B;
+
+impl TryFrom<A> for B {
+    type Error = String;
+
+    fn try_from(value: A) -> Result<Self, Self::Error> {
+     //^^^^^^^^
+        Ok(B)
+    }
+}
+
+fn f() {
+    let a = A;
+    let b: Result<B, _> = a.try_into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn goto_try_into_definition_if_exists() {
+        check(
+            r#"
+//- minicore: from
+struct A;
+
+struct B;
+
+impl TryInto<B> for A {
+    type Error = String;
+
+    fn try_into(self) -> Result<B, Self::Error> {
+     //^^^^^^^^
+        Ok(B)
+    }
+}
+
+fn f() {
+    let a = A;
+    let b: Result<B, _> = a.try_into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn parse_call_to_from_str_definition() {
+        check(
+            r#"
+//- minicore: from, str
+struct A;
+
+impl FromStr for A {
+    type Error = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Error> {
+     //^^^^^^^^
+        Ok(A)
+    }
+}
+
+fn f() {
+    let a: Result<A, _> = "aaaaaa".parse$0();
+}
+        "#,
         );
     }
 }

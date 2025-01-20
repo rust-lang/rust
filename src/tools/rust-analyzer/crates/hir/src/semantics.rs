@@ -1439,6 +1439,10 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(call.syntax())?.resolve_method_call_fallback(self.db, call)
     }
 
+    pub fn resolve_known_blanket_dual_impls(&self, call: &ast::MethodCallExpr) -> Option<Function> {
+        self.analyze(call.syntax())?.resolve_known_blanket_dual_impls(self.db, call)
+    }
+
     fn resolve_range_pat(&self, range_pat: &ast::RangePat) -> Option<StructId> {
         self.analyze(range_pat.syntax())?.resolve_range_pat(self.db, range_pat)
     }

@@ -398,6 +398,9 @@ macro_rules! __known_path {
     (core::fmt::Debug) => {};
     (std::fmt::format) => {};
     (core::ops::Try) => {};
+    (core::convert::From) => {};
+    (core::convert::TryFrom) => {};
+    (core::str::FromStr) => {};
     ($path:path) => {
         compile_error!("Please register your known path in the path module")
     };

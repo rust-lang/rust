@@ -32,7 +32,7 @@
 //!     error: fmt
 //!     fmt: option, result, transmute, coerce_unsized, copy, clone, derive
 //!     fn: tuple
-//!     from: sized
+//!     from: sized, result
 //!     future: pin
 //!     coroutine: pin
 //!     dispatch_from_dyn: unsize, pin
@@ -330,6 +330,25 @@ pub mod convert {
     impl<T> From<T> for T {
         fn from(t: T) -> T {
             t
+        }
+    }
+
+    pub trait TryFrom<T>: Sized {
+        type Error;
+        fn try_from(value: T) -> Result<Self, Self::Error>;
+    }
+    pub trait TryInto<T>: Sized {
+        type Error;
+        fn try_into(self) -> Result<T, Self::Error>;
+    }
+
+    impl<T, U> TryInto<U> for T
+    where
+        U: TryFrom<T>,
+    {
+        type Error = U::Error;
+        fn try_into(self) -> Result<U, U::Error> {
+            U::try_from(self)
         }
     }
     // endregion:from
@@ -1555,6 +1574,15 @@ pub mod str {
     pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
         ""
     }
+    pub trait FromStr: Sized {
+        type Err;
+        fn from_str(s: &str) -> Result<Self, Self::Err>;
+    }
+    impl str {
+        pub fn parse<F: FromStr>(&self) -> Result<F, F::Err> {
+            FromStr::from_str(self)
+        }
+    }
 }
 // endregion:str
 
@@ -1814,7 +1842,7 @@ pub mod prelude {
             cmp::{Eq, PartialEq},                    // :eq
             cmp::{Ord, PartialOrd},                  // :ord
             convert::AsRef,                          // :as_ref
-            convert::{From, Into},                   // :from
+            convert::{From, Into, TryFrom, TryInto}, // :from
             default::Default,                        // :default
             iter::{IntoIterator, Iterator},          // :iterator
             macros::builtin::{derive, derive_const}, // :derive
@@ -1829,6 +1857,7 @@ pub mod prelude {
             option::Option::{self, None, Some},      // :option
             panic,                                   // :panic
             result::Result::{self, Err, Ok},         // :result
+            str::FromStr,                            // :str
         };
     }
 
