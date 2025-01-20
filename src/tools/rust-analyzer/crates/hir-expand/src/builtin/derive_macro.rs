@@ -4,7 +4,7 @@ use intern::sym;
 use itertools::{izip, Itertools};
 use parser::SyntaxKind;
 use rustc_hash::FxHashSet;
-use span::{MacroCallId, Span, SyntaxContextId};
+use span::{Edition, MacroCallId, Span, SyntaxContextId};
 use stdx::never;
 use syntax_bridge::DocCommentDesugarMode;
 use tracing::debug;
@@ -33,7 +33,7 @@ macro_rules! register_builtin {
         }
 
         impl BuiltinDeriveExpander {
-            pub fn expander(&self) -> fn(Span, &tt::TopSubtree) -> ExpandResult<tt::TopSubtree>  {
+            pub fn expander(&self) -> fn(&dyn ExpandDatabase, Span, &tt::TopSubtree) -> ExpandResult<tt::TopSubtree>  {
                 match *self {
                     $( BuiltinDeriveExpander::$trait => $expand, )*
                 }
@@ -58,8 +58,8 @@ impl BuiltinDeriveExpander {
         tt: &tt::TopSubtree,
         span: Span,
     ) -> ExpandResult<tt::TopSubtree> {
-        let span = span_with_def_site_ctxt(db, span, id);
-        self.expander()(span, tt)
+        let span = span_with_def_site_ctxt(db, span, id, Edition::CURRENT);
+        self.expander()(db, span, tt)
     }
 }
 
@@ -226,8 +226,12 @@ struct AdtParam {
 }
 
 // FIXME: This whole thing needs a refactor. Each derive requires its special values, and the result is a mess.
-fn parse_adt(tt: &tt::TopSubtree, call_site: Span) -> Result<BasicAdtInfo, ExpandError> {
-    let (adt, tm) = to_adt_syntax(tt, call_site)?;
+fn parse_adt(
+    db: &dyn ExpandDatabase,
+    tt: &tt::TopSubtree,
+    call_site: Span,
+) -> Result<BasicAdtInfo, ExpandError> {
+    let (adt, tm) = to_adt_syntax(db, tt, call_site)?;
     parse_adt_from_syntax(&adt, &tm, call_site)
 }
 
@@ -382,12 +386,14 @@ fn parse_adt_from_syntax(
 }
 
 fn to_adt_syntax(
+    db: &dyn ExpandDatabase,
     tt: &tt::TopSubtree,
     call_site: Span,
 ) -> Result<(ast::Adt, span::SpanMap<SyntaxContextId>), ExpandError> {
-    let (parsed, tm) = syntax_bridge::token_tree_to_syntax_node(
+    let (parsed, tm) = crate::db::token_tree_to_syntax_node(
+        db,
         tt,
-        syntax_bridge::TopEntryPoint::MacroItems,
+        crate::ExpandTo::Items,
         parser::Edition::CURRENT_FIXME,
     );
     let macro_items = ast::MacroItems::cast(parsed.syntax_node())
@@ -446,12 +452,13 @@ fn name_to_token(
 /// where B1, ..., BN are the bounds given by `bounds_paths`. Z is a phantom type, and
 /// therefore does not get bound by the derived trait.
 fn expand_simple_derive(
+    db: &dyn ExpandDatabase,
     invoc_span: Span,
     tt: &tt::TopSubtree,
     trait_path: tt::TopSubtree,
     make_trait_body: impl FnOnce(&BasicAdtInfo) -> tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
-    let info = match parse_adt(tt, invoc_span) {
+    let info = match parse_adt(db, tt, invoc_span) {
         Ok(info) => info,
         Err(e) => {
             return ExpandResult::new(
@@ -520,14 +527,22 @@ fn expand_simple_derive_with_parsed(
     }
 }
 
-fn copy_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
+fn copy_expand(
+    db: &dyn ExpandDatabase,
+    span: Span,
+    tt: &tt::TopSubtree,
+) -> ExpandResult<tt::TopSubtree> {
     let krate = dollar_crate(span);
-    expand_simple_derive(span, tt, quote! {span => #krate::marker::Copy }, |_| quote! {span =>})
+    expand_simple_derive(db, span, tt, quote! {span => #krate::marker::Copy }, |_| quote! {span =>})
 }
 
-fn clone_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
+fn clone_expand(
+    db: &dyn ExpandDatabase,
+    span: Span,
+    tt: &tt::TopSubtree,
+) -> ExpandResult<tt::TopSubtree> {
     let krate = dollar_crate(span);
-    expand_simple_derive(span, tt, quote! {span => #krate::clone::Clone }, |adt| {
+    expand_simple_derive(db, span, tt, quote! {span => #krate::clone::Clone }, |adt| {
         if matches!(adt.shape, AdtShape::Union) {
             let star = tt::Punct { char: '*', spacing: ::tt::Spacing::Alone, span };
             return quote! {span =>
@@ -576,9 +591,13 @@ fn and_and(span: Span) -> tt::TopSubtree {
     quote! {span => #and& }
 }
 
-fn default_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
+fn default_expand(
+    db: &dyn ExpandDatabase,
+    span: Span,
+    tt: &tt::TopSubtree,
+) -> ExpandResult<tt::TopSubtree> {
     let krate = &dollar_crate(span);
-    expand_simple_derive(span, tt, quote! {span => #krate::default::Default }, |adt| {
+    expand_simple_derive(db, span, tt, quote! {span => #krate::default::Default }, |adt| {
         let body = match &adt.shape {
             AdtShape::Struct(fields) => {
                 let name = &adt.name;
@@ -615,9 +634,13 @@ fn default_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtre
     })
 }
 
-fn debug_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
+fn debug_expand(
+    db: &dyn ExpandDatabase,
+    span: Span,
+    tt: &tt::TopSubtree,
+) -> ExpandResult<tt::TopSubtree> {
     let krate = &dollar_crate(span);
-    expand_simple_derive(span, tt, quote! {span => #krate::fmt::Debug }, |adt| {
+    expand_simple_derive(db, span, tt, quote! {span => #krate::fmt::Debug }, |adt| {
         let for_variant = |name: String, v: &VariantShape| match v {
             VariantShape::Struct(fields) => {
                 let for_fields = fields.iter().map(|it| {
@@ -687,9 +710,13 @@ fn debug_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree>
     })
 }
 
-fn hash_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
+fn hash_expand(
+    db: &dyn ExpandDatabase,
+    span: Span,
+    tt: &tt::TopSubtree,
+) -> ExpandResult<tt::TopSubtree> {
     let krate = &dollar_crate(span);
-    expand_simple_derive(span, tt, quote! {span => #krate::hash::Hash }, |adt| {
+    expand_simple_derive(db, span, tt, quote! {span => #krate::hash::Hash }, |adt| {
         if matches!(adt.shape, AdtShape::Union) {
             // FIXME: Return expand error here
             return quote! {span =>};
@@ -734,14 +761,22 @@ fn hash_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> 
     })
 }
 
-fn eq_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
+fn eq_expand(
+    db: &dyn ExpandDatabase,
+    span: Span,
+    tt: &tt::TopSubtree,
+) -> ExpandResult<tt::TopSubtree> {
     let krate = dollar_crate(span);
-    expand_simple_derive(span, tt, quote! {span => #krate::cmp::Eq }, |_| quote! {span =>})
+    expand_simple_derive(db, span, tt, quote! {span => #krate::cmp::Eq }, |_| quote! {span =>})
 }
 
-fn partial_eq_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
+fn partial_eq_expand(
+    db: &dyn ExpandDatabase,
+    span: Span,
+    tt: &tt::TopSubtree,
+) -> ExpandResult<tt::TopSubtree> {
     let krate = dollar_crate(span);
-    expand_simple_derive(span, tt, quote! {span => #krate::cmp::PartialEq }, |adt| {
+    expand_simple_derive(db, span, tt, quote! {span => #krate::cmp::PartialEq }, |adt| {
         if matches!(adt.shape, AdtShape::Union) {
             // FIXME: Return expand error here
             return quote! {span =>};
@@ -811,9 +846,13 @@ fn self_and_other_patterns(
     (self_patterns, other_patterns)
 }
 
-fn ord_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
+fn ord_expand(
+    db: &dyn ExpandDatabase,
+    span: Span,
+    tt: &tt::TopSubtree,
+) -> ExpandResult<tt::TopSubtree> {
     let krate = &dollar_crate(span);
-    expand_simple_derive(span, tt, quote! {span => #krate::cmp::Ord }, |adt| {
+    expand_simple_derive(db, span, tt, quote! {span => #krate::cmp::Ord }, |adt| {
         fn compare(
             krate: &tt::Ident,
             left: tt::TopSubtree,
@@ -869,9 +908,13 @@ fn ord_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
     })
 }
 
-fn partial_ord_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
+fn partial_ord_expand(
+    db: &dyn ExpandDatabase,
+    span: Span,
+    tt: &tt::TopSubtree,
+) -> ExpandResult<tt::TopSubtree> {
     let krate = &dollar_crate(span);
-    expand_simple_derive(span, tt, quote! {span => #krate::cmp::PartialOrd }, |adt| {
+    expand_simple_derive(db, span, tt, quote! {span => #krate::cmp::PartialOrd }, |adt| {
         fn compare(
             krate: &tt::Ident,
             left: tt::TopSubtree,
@@ -932,8 +975,12 @@ fn partial_ord_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSu
     })
 }
 
-fn coerce_pointee_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
-    let (adt, _span_map) = match to_adt_syntax(tt, span) {
+fn coerce_pointee_expand(
+    db: &dyn ExpandDatabase,
+    span: Span,
+    tt: &tt::TopSubtree,
+) -> ExpandResult<tt::TopSubtree> {
+    let (adt, _span_map) = match to_adt_syntax(db, tt, span) {
         Ok(it) => it,
         Err(err) => {
             return ExpandResult::new(tt::TopSubtree::empty(tt::DelimSpan::from_single(span)), err);

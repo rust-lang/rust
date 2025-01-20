@@ -59,14 +59,9 @@ pub(crate) fn complete_label(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::expect;
 
-    use crate::tests::{check_edit, completion_list};
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture);
-        expect.assert_eq(&actual);
-    }
+    use crate::tests::{check, check_edit};
 
     #[test]
     fn check_lifetime_edit() {

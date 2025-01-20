@@ -15,7 +15,7 @@ use hir_expand::{name::Name, ExpandError, InFile};
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use span::{Edition, MacroFileId};
+use span::{Edition, MacroFileId, SyntaxContextData};
 use syntax::{ast, AstPtr, SyntaxNodePtr};
 use triomphe::Arc;
 use tt::TextRange;
@@ -37,13 +37,20 @@ use crate::{
 
 /// A wrapper around [`span::SyntaxContextId`] that is intended only for comparisons.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct HygieneId(pub(crate) span::SyntaxContextId);
+pub struct HygieneId(span::SyntaxContextId);
 
 impl HygieneId {
-    pub const ROOT: Self = Self(span::SyntaxContextId::ROOT);
+    // The edition doesn't matter here, we only use this for comparisons and to lookup the macro.
+    pub const ROOT: Self = Self(span::SyntaxContextId::root(Edition::Edition2015));
 
-    pub fn new(ctx: span::SyntaxContextId) -> Self {
+    pub fn new(mut ctx: span::SyntaxContextId) -> Self {
+        // See `Name` for why we're doing that.
+        ctx.remove_root_edition();
         Self(ctx)
+    }
+
+    pub(crate) fn lookup(self, db: &dyn DefDatabase) -> SyntaxContextData {
+        db.lookup_intern_syntax_context(self.0)
     }
 
     pub(crate) fn is_root(self) -> bool {

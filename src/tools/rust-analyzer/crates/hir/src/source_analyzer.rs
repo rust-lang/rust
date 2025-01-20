@@ -322,6 +322,68 @@ impl SourceAnalyzer {
         }
     }
 
+    // If the method is into(), try_into(), parse(), resolve it to from, try_from, from_str.
+    pub(crate) fn resolve_known_blanket_dual_impls(
+        &self,
+        db: &dyn HirDatabase,
+        call: &ast::MethodCallExpr,
+    ) -> Option<Function> {
+        // e.g. if the method call is let b = a.into(),
+        // - receiver_type is A (type of a)
+        // - return_type is B (type of b)
+        // We will find the definition of B::from(a: A).
+        let callable = self.resolve_method_call_as_callable(db, call)?;
+        let (_, receiver_type) = callable.receiver_param(db)?;
+        let return_type = callable.return_type();
+        let (search_method, substs) = match call.name_ref()?.text().as_str() {
+            "into" => {
+                let trait_ =
+                    self.resolver.resolve_known_trait(db.upcast(), &path![core::convert::From])?;
+                (
+                    self.trait_fn(db, trait_, "from")?,
+                    hir_ty::TyBuilder::subst_for_def(db, trait_, None)
+                        .push(return_type.ty)
+                        .push(receiver_type.ty)
+                        .build(),
+                )
+            }
+            "try_into" => {
+                let trait_ = self
+                    .resolver
+                    .resolve_known_trait(db.upcast(), &path![core::convert::TryFrom])?;
+                (
+                    self.trait_fn(db, trait_, "try_from")?,
+                    hir_ty::TyBuilder::subst_for_def(db, trait_, None)
+                        // If the method is try_into() or parse(), return_type is Result<T, Error>.
+                        // Get T from type arguments of Result<T, Error>.
+                        .push(return_type.type_arguments().next()?.ty)
+                        .push(receiver_type.ty)
+                        .build(),
+                )
+            }
+            "parse" => {
+                let trait_ =
+                    self.resolver.resolve_known_trait(db.upcast(), &path![core::str::FromStr])?;
+                (
+                    self.trait_fn(db, trait_, "from_str")?,
+                    hir_ty::TyBuilder::subst_for_def(db, trait_, None)
+                        .push(return_type.type_arguments().next()?.ty)
+                        .build(),
+                )
+            }
+            _ => return None,
+        };
+
+        let found_method = self.resolve_impl_method_or_trait_def(db, search_method, substs);
+        // If found_method == search_method, the method in trait itself is resolved.
+        // It means the blanket dual impl is not found.
+        if found_method == search_method {
+            None
+        } else {
+            Some(found_method.into())
+        }
+    }
+
     pub(crate) fn resolve_expr_as_callable(
         &self,
         db: &dyn HirDatabase,
@@ -1245,6 +1307,18 @@ impl SourceAnalyzer {
         let trait_id = db.lang_item(self.resolver.krate(), lang_trait)?.as_trait()?;
         let fn_id = db.trait_data(trait_id).method_by_name(method_name)?;
         Some((trait_id, fn_id))
+    }
+
+    fn trait_fn(
+        &self,
+        db: &dyn HirDatabase,
+        trait_id: TraitId,
+        method_name: &str,
+    ) -> Option<FunctionId> {
+        db.trait_data(trait_id).items.iter().find_map(|(item_name, item)| match item {
+            AssocItemId::FunctionId(t) if item_name.as_str() == method_name => Some(*t),
+            _ => None,
+        })
     }
 
     fn ty_of_expr(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<&Ty> {

@@ -41,7 +41,7 @@ pub(crate) fn inactive_code(
 mod tests {
     use crate::{tests::check_diagnostics_with_config, DiagnosticsConfig};
 
-    pub(crate) fn check(ra_fixture: &str) {
+    pub(crate) fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let config = DiagnosticsConfig {
             disabled: std::iter::once("unlinked-file".to_owned()).collect(),
             ..DiagnosticsConfig::test_sample()

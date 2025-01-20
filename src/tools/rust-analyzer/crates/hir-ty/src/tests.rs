@@ -69,27 +69,32 @@ fn setup_tracing() -> Option<tracing::subscriber::DefaultGuard> {
 }
 
 #[track_caller]
-fn check_types(ra_fixture: &str) {
+fn check_types(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     check_impl(ra_fixture, false, true, false)
 }
 
 #[track_caller]
-fn check_types_source_code(ra_fixture: &str) {
+fn check_types_source_code(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     check_impl(ra_fixture, false, true, true)
 }
 
 #[track_caller]
-fn check_no_mismatches(ra_fixture: &str) {
+fn check_no_mismatches(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     check_impl(ra_fixture, true, false, false)
 }
 
 #[track_caller]
-fn check(ra_fixture: &str) {
+fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     check_impl(ra_fixture, false, false, false)
 }
 
 #[track_caller]
-fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_source: bool) {
+fn check_impl(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    allow_none: bool,
+    only_types: bool,
+    display_source: bool,
+) {
     let _tracing = setup_tracing();
     let (db, files) = TestDB::with_many_files(ra_fixture);
 
@@ -282,7 +287,7 @@ fn pat_node(
     })
 }
 
-fn infer(ra_fixture: &str) -> String {
+fn infer(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {
     infer_with_mismatches(ra_fixture, false)
 }
 
@@ -430,7 +435,7 @@ pub(crate) fn visit_module(
     visit_scope(db, crate_def_map, &crate_def_map[module_id].scope, cb);
     for impl_id in crate_def_map[module_id].scope.impls() {
         let impl_data = db.impl_data(impl_id);
-        for &item in impl_data.items.iter() {
+        for &(_, item) in impl_data.items.iter() {
             match item {
                 AssocItemId::FunctionId(it) => {
                     let body = db.body(it.into());
@@ -520,13 +525,13 @@ fn ellipsize(mut text: String, max_len: usize) -> String {
     text
 }
 
-fn check_infer(ra_fixture: &str, expect: Expect) {
+fn check_infer(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let mut actual = infer(ra_fixture);
     actual.push('\n');
     expect.assert_eq(&actual);
 }
 
-fn check_infer_with_mismatches(ra_fixture: &str, expect: Expect) {
+fn check_infer_with_mismatches(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let mut actual = infer_with_mismatches(ra_fixture, true);
     actual.push('\n');
     expect.assert_eq(&actual);

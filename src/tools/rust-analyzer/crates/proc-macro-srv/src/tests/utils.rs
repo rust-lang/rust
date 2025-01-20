@@ -28,13 +28,18 @@ fn parse_string_spanned(
     ))
 }
 
-pub fn assert_expand(macro_name: &str, ra_fixture: &str, expect: Expect, expect_s: Expect) {
+pub fn assert_expand(
+    macro_name: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    expect: Expect,
+    expect_s: Expect,
+) {
     assert_expand_impl(macro_name, ra_fixture, None, expect, expect_s);
 }
 
 pub fn assert_expand_attr(
     macro_name: &str,
-    ra_fixture: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
     attr_args: &str,
     expect: Expect,
     expect_s: Expect,
@@ -76,7 +81,7 @@ fn assert_expand_impl(
             file_id: EditionedFileId::current_edition(FileId::from_raw(41)),
             ast_id: ErasedFileAstId::from_raw(1),
         },
-        ctx: SyntaxContextId::ROOT,
+        ctx: SyntaxContextId::root(span::Edition::CURRENT),
     };
     let call_site = Span {
         range: TextRange::new(0.into(), 100.into()),
@@ -84,7 +89,7 @@ fn assert_expand_impl(
             file_id: EditionedFileId::current_edition(FileId::from_raw(42)),
             ast_id: ErasedFileAstId::from_raw(2),
         },
-        ctx: SyntaxContextId::ROOT,
+        ctx: SyntaxContextId::root(span::Edition::CURRENT),
     };
     let mixed_site = call_site;
 

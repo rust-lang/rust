@@ -604,4 +604,23 @@ fn bar() {
         "#,
         );
     }
+
+    #[test]
+    fn enum_variant_type_ns() {
+        check_diagnostics(
+            r#"
+enum KvnDeserializerErr<I> {
+    UnexpectedKeyword { found: I, expected: I },
+}
+
+fn foo() {
+    let _x: KvnDeserializerErr<()> =
+        KvnDeserializerErr::<()>::UnexpectedKeyword { found: (), expected: () };
+    let _x: KvnDeserializerErr<()> =
+        KvnDeserializerErr::<()>::UnexpectedKeyword::<()> { found: (), expected: () };
+                                                // ^^^^^^ 💡 error: you can specify generic arguments on either the enum or the variant, but not both
+}
+        "#,
+        );
+    }
 }

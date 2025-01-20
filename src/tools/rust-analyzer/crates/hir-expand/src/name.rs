@@ -11,7 +11,7 @@ use syntax::utils::is_raw_identifier;
 /// and declarations. In theory, names should also carry hygiene info, but we are
 /// not there yet!
 ///
-/// Note that the rawness (`r#`) of names does not depend on whether they are written raw.
+/// Note that the rawness (`r#`) of names is not preserved. Names are always stored without a `r#` prefix.
 /// This is because we want to show (in completions etc.) names as raw depending on the needs
 /// of the current crate, for example if it is edition 2021 complete `gen` even if the defining
 /// crate is in edition 2024 and wrote `r#gen`, and the opposite holds as well.
@@ -77,20 +77,49 @@ impl Name {
     /// Hopefully, this should allow us to integrate hygiene cleaner in the
     /// future, and to switch to interned representation of names.
     fn new_text(text: &str) -> Name {
+        debug_assert!(!text.starts_with("r#"));
         Name { symbol: Symbol::intern(text), ctx: () }
     }
 
-    pub fn new(text: &str, ctx: SyntaxContextId) -> Name {
+    pub fn new(text: &str, mut ctx: SyntaxContextId) -> Name {
+        // For comparisons etc. we remove the edition, because sometimes we search for some `Name`
+        // and we don't know which edition it came from.
+        // Can't do that for all `SyntaxContextId`s because it breaks Salsa.
+        ctx.remove_root_edition();
         _ = ctx;
         Self::new_text(text)
     }
 
+    pub fn new_root(text: &str) -> Name {
+        // The edition doesn't matter for hygiene.
+        Self::new(text.trim_start_matches("r#"), SyntaxContextId::root(Edition::Edition2015))
+    }
+
     pub fn new_tuple_field(idx: usize) -> Name {
-        Name { symbol: Symbol::intern(&idx.to_string()), ctx: () }
+        let symbol = match idx {
+            0 => sym::INTEGER_0.clone(),
+            1 => sym::INTEGER_1.clone(),
+            2 => sym::INTEGER_2.clone(),
+            3 => sym::INTEGER_3.clone(),
+            4 => sym::INTEGER_4.clone(),
+            5 => sym::INTEGER_5.clone(),
+            6 => sym::INTEGER_6.clone(),
+            7 => sym::INTEGER_7.clone(),
+            8 => sym::INTEGER_8.clone(),
+            9 => sym::INTEGER_9.clone(),
+            10 => sym::INTEGER_10.clone(),
+            11 => sym::INTEGER_11.clone(),
+            12 => sym::INTEGER_12.clone(),
+            13 => sym::INTEGER_13.clone(),
+            14 => sym::INTEGER_14.clone(),
+            15 => sym::INTEGER_15.clone(),
+            _ => Symbol::intern(&idx.to_string()),
+        };
+        Name { symbol, ctx: () }
     }
 
     pub fn new_lifetime(lt: &ast::Lifetime) -> Name {
-        Name { symbol: Symbol::intern(lt.text().as_str()), ctx: () }
+        Self::new_text(lt.text().as_str().trim_start_matches("r#"))
     }
 
     /// Resolve a name from the text of token.
@@ -133,15 +162,18 @@ impl Name {
     }
 
     /// Returns the text this name represents if it isn't a tuple field.
+    ///
+    /// Do not use this for user-facing text, use `display` instead to handle editions properly.
     pub fn as_str(&self) -> &str {
         self.symbol.as_str()
     }
 
+    // FIXME: Remove this
     pub fn unescaped(&self) -> UnescapedName<'_> {
         UnescapedName(self)
     }
 
-    pub fn is_escaped(&self, edition: Edition) -> bool {
+    pub fn needs_escape(&self, edition: Edition) -> bool {
         is_raw_identifier(self.symbol.as_str(), edition)
     }
 
@@ -164,16 +196,19 @@ impl Name {
         &self.symbol
     }
 
-    pub const fn new_symbol(symbol: Symbol, ctx: SyntaxContextId) -> Self {
+    pub fn new_symbol(symbol: Symbol, ctx: SyntaxContextId) -> Self {
+        debug_assert!(!symbol.as_str().starts_with("r#"));
         _ = ctx;
         Self { symbol, ctx: () }
     }
 
     // FIXME: This needs to go once we have hygiene
-    pub const fn new_symbol_root(sym: Symbol) -> Self {
+    pub fn new_symbol_root(sym: Symbol) -> Self {
+        debug_assert!(!sym.as_str().starts_with("r#"));
         Self { symbol: sym, ctx: () }
     }
 
+    // FIXME: Remove this
     #[inline]
     pub fn eq_ident(&self, ident: &str) -> bool {
         self.as_str() == ident.trim_start_matches("r#")

@@ -208,7 +208,10 @@ mod tests {
         Some(actual)
     }
 
-    fn do_check(ra_fixture_before: &str, ra_fixture_after: &str) {
+    fn do_check(
+        #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+    ) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let actual = apply_on_enter(ra_fixture_before).unwrap();
         assert_eq_text!(ra_fixture_after, &actual);

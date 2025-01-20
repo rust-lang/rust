@@ -2,6 +2,8 @@
 //! by its name and a few criteria.
 //! The main reason for this module to exist is the fact that project's items and dependencies' items
 //! are located in different caches, with different APIs.
+use std::ops::ControlFlow;
+
 use either::Either;
 use hir::{import_map, Crate, ItemInNs, Module, Semantics};
 use limit::Limit;
@@ -17,6 +19,7 @@ pub static DEFAULT_QUERY_SEARCH_LIMIT: Limit = Limit::new(100);
 
 pub use import_map::AssocSearchMode;
 
+// FIXME: Do callbacks instead to avoid allocations.
 /// Searches for importable items with the given name in the crate and its dependencies.
 pub fn items_with_name<'a>(
     sema: &'a Semantics<'_, RootDatabase>,
@@ -70,12 +73,13 @@ pub fn items_with_name<'a>(
 }
 
 /// Searches for importable items with the given name in the crate and its dependencies.
-pub fn items_with_name_in_module<'a>(
-    sema: &'a Semantics<'_, RootDatabase>,
+pub fn items_with_name_in_module<T>(
+    sema: &Semantics<'_, RootDatabase>,
     module: Module,
     name: NameToImport,
     assoc_item_search: AssocSearchMode,
-) -> impl Iterator<Item = ItemInNs> + 'a {
+    mut cb: impl FnMut(ItemInNs) -> ControlFlow<T>,
+) -> Option<T> {
     let _p = tracing::info_span!("items_with_name_in", name = name.text(), assoc_item_search = ?assoc_item_search, ?module)
         .entered();
 
@@ -107,14 +111,12 @@ pub fn items_with_name_in_module<'a>(
             local_query
         }
     };
-    let mut local_results = Vec::new();
     local_query.search(&[sema.db.module_symbols(module)], |local_candidate| {
-        local_results.push(match local_candidate.def {
+        cb(match local_candidate.def {
             hir::ModuleDef::Macro(macro_def) => ItemInNs::Macros(macro_def),
             def => ItemInNs::from(def),
         })
-    });
-    local_results.into_iter()
+    })
 }
 
 fn find_items<'a>(
@@ -142,7 +144,8 @@ fn find_items<'a>(
         local_results.push(match local_candidate.def {
             hir::ModuleDef::Macro(macro_def) => ItemInNs::Macros(macro_def),
             def => ItemInNs::from(def),
-        })
+        });
+        ControlFlow::<()>::Continue(())
     });
     local_results.into_iter().chain(external_importables)
 }

@@ -1,16 +1,11 @@
 //! Completion tests for pattern position.
-use expect_test::{expect, Expect};
+use expect_test::expect;
 
-use crate::tests::{check_edit, check_empty, completion_list, BASE_ITEMS_FIXTURE};
-
-fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(&format!("{BASE_ITEMS_FIXTURE}\n{ra_fixture}"));
-    expect.assert_eq(&actual)
-}
+use crate::tests::{check, check_edit, check_with_base_items};
 
 #[test]
 fn wildcard() {
-    check(
+    check_with_base_items(
         r#"
 fn quux() {
     let _$0
@@ -22,7 +17,7 @@ fn quux() {
 
 #[test]
 fn ident_rebind_pat() {
-    check_empty(
+    check(
         r#"
 fn quux() {
     let en$0 @ x
@@ -37,7 +32,7 @@ fn quux() {
 
 #[test]
 fn ident_ref_pat() {
-    check_empty(
+    check(
         r#"
 fn quux() {
     let ref en$0
@@ -47,7 +42,7 @@ fn quux() {
             kw mut
         "#]],
     );
-    check_empty(
+    check(
         r#"
 fn quux() {
     let ref en$0 @ x
@@ -61,7 +56,7 @@ fn quux() {
 
 #[test]
 fn ident_ref_mut_pat() {
-    check_empty(
+    check(
         r#"
 fn quux() {
     let ref mut en$0
@@ -69,7 +64,7 @@ fn quux() {
 "#,
         expect![[r#""#]],
     );
-    check_empty(
+    check(
         r#"
 fn quux() {
     let ref mut en$0 @ x
@@ -81,7 +76,7 @@ fn quux() {
 
 #[test]
 fn ref_pat() {
-    check_empty(
+    check(
         r#"
 fn quux() {
     let &en$0
@@ -91,7 +86,7 @@ fn quux() {
             kw mut
         "#]],
     );
-    check_empty(
+    check(
         r#"
 fn quux() {
     let &mut en$0
@@ -99,7 +94,7 @@ fn quux() {
 "#,
         expect![[r#""#]],
     );
-    check_empty(
+    check(
         r#"
 fn foo() {
     for &$0 in () {}
@@ -113,7 +108,7 @@ fn foo() {
 
 #[test]
 fn refutable() {
-    check(
+    check_with_base_items(
         r#"
 fn foo() {
     if let a$0
@@ -139,7 +134,7 @@ fn foo() {
 
 #[test]
 fn irrefutable() {
-    check(
+    check_with_base_items(
         r#"
 enum SingleVariantEnum {
     Variant
@@ -168,7 +163,7 @@ fn foo() {
 
 #[test]
 fn in_param() {
-    check(
+    check_with_base_items(
         r#"
 fn foo(a$0) {
 }
@@ -185,7 +180,7 @@ fn foo(a$0) {
             kw ref
         "#]],
     );
-    check(
+    check_with_base_items(
         r#"
 fn foo(a$0: Tuple) {
 }
@@ -207,7 +202,7 @@ fn foo(a$0: Tuple) {
 
 #[test]
 fn only_fn_like_macros() {
-    check_empty(
+    check(
         r#"
 macro_rules! m { ($e:expr) => { $e } }
 
@@ -228,7 +223,7 @@ fn foo() {
 
 #[test]
 fn in_simple_macro_call() {
-    check_empty(
+    check(
         r#"
 macro_rules! m { ($e:expr) => { $e } }
 enum E { X }
@@ -249,7 +244,7 @@ fn foo() {
 
 #[test]
 fn omits_private_fields_pat() {
-    check_empty(
+    check(
         r#"
 mod foo {
     pub struct Record { pub field: i32, _field: i32 }
@@ -277,7 +272,7 @@ fn outer() {
 
 #[test]
 fn completes_self_pats() {
-    check_empty(
+    check(
         r#"
 struct Foo(i32);
 impl Foo {
@@ -301,7 +296,7 @@ impl Foo {
 
 #[test]
 fn enum_qualified() {
-    check(
+    check_with_base_items(
         r#"
 impl Enum {
     type AssocType = ();
@@ -323,7 +318,7 @@ fn func() {
 
 #[test]
 fn completes_in_record_field_pat() {
-    check_empty(
+    check(
         r#"
 struct Foo { bar: Bar }
 struct Bar(u32);
@@ -342,7 +337,7 @@ fn outer(Foo { bar: $0 }: Foo) {}
 
 #[test]
 fn skips_in_record_field_pat_name() {
-    check_empty(
+    check(
         r#"
 struct Foo { bar: Bar }
 struct Bar(u32);
@@ -357,7 +352,7 @@ fn outer(Foo { bar$0 }: Foo) {}
 
 #[test]
 fn completes_in_record_field_pat_with_generic_type_alias() {
-    check_empty(
+    check(
         r#"
 type Wrap<T> = T;
 
@@ -386,7 +381,7 @@ fn main() {
 
 #[test]
 fn completes_in_fn_param() {
-    check_empty(
+    check(
         r#"
 struct Foo { bar: Bar }
 struct Bar(u32);
@@ -405,7 +400,7 @@ fn foo($0) {}
 
 #[test]
 fn completes_in_closure_param() {
-    check_empty(
+    check(
         r#"
 struct Foo { bar: Bar }
 struct Bar(u32);
@@ -426,7 +421,7 @@ fn foo() {
 
 #[test]
 fn completes_no_delims_if_existing() {
-    check_empty(
+    check(
         r#"
 struct Bar(u32);
 fn foo() {
@@ -441,7 +436,7 @@ fn foo() {
             kw self::
         "#]],
     );
-    check_empty(
+    check(
         r#"
 struct Foo { bar: u32 }
 fn foo() {
@@ -456,7 +451,7 @@ fn foo() {
             kw self::
         "#]],
     );
-    check_empty(
+    check(
         r#"
 enum Enum {
     TupleVariant(u32)
@@ -471,7 +466,7 @@ fn foo() {
             bn TupleVariant TupleVariant
         "#]],
     );
-    check_empty(
+    check(
         r#"
 enum Enum {
     RecordVariant { field: u32 }
@@ -519,7 +514,7 @@ fn foo() {
 #[test]
 fn completes_enum_variant_pat_escape() {
     cov_mark::check!(enum_variant_pattern_path);
-    check_empty(
+    check(
         r#"
 enum Enum {
     A,
@@ -544,7 +539,7 @@ fn foo() {
         "#]],
     );
 
-    check_empty(
+    check(
         r#"
 enum Enum {
     A,
@@ -569,7 +564,7 @@ fn foo() {
 
 #[test]
 fn completes_associated_const() {
-    check_empty(
+    check(
         r#"
 #[derive(PartialEq, Eq)]
 struct Ty(u8);
@@ -590,7 +585,7 @@ fn f(t: Ty) {
         "#]],
     );
 
-    check_empty(
+    check(
         r#"
 enum MyEnum {}
 
@@ -612,7 +607,7 @@ fn f(e: MyEnum) {
         "#]],
     );
 
-    check_empty(
+    check(
         r#"
 union U {
     i: i32,
@@ -637,7 +632,7 @@ fn f(u: U) {
         "#]],
     );
 
-    check_empty(
+    check(
         r#"
 #![rustc_coherence_is_core]
 #[lang = "u32"]
@@ -659,7 +654,7 @@ fn f(v: u32) {
 
 #[test]
 fn in_method_param() {
-    check_empty(
+    check(
         r#"
 struct Ty(u8);
 
@@ -680,7 +675,7 @@ impl Ty {
             kw ref
         "#]],
     );
-    check_empty(
+    check(
         r#"
 struct Ty(u8);
 
@@ -701,7 +696,7 @@ impl Ty {
             kw ref
         "#]],
     );
-    check_empty(
+    check(
         r#"
 struct Ty(u8);
 
@@ -722,7 +717,7 @@ impl Ty {
             kw ref
         "#]],
     );
-    check_empty(
+    check(
         r#"
 struct Ty(u8);
 
@@ -743,7 +738,7 @@ impl Ty {
 
 #[test]
 fn through_alias() {
-    check_empty(
+    check(
         r#"
 enum Enum<T> {
     Unit,
@@ -770,7 +765,7 @@ fn f(x: EnumAlias<u8>) {
 
 #[test]
 fn pat_no_unstable_item_on_stable() {
-    check_empty(
+    check(
         r#"
 //- /main.rs crate:main deps:std
 use std::*;
@@ -795,7 +790,7 @@ pub enum Enum {
 
 #[test]
 fn pat_unstable_item_on_nightly() {
-    check_empty(
+    check(
         r#"
 //- toolchain:nightly
 //- /main.rs crate:main deps:std
@@ -908,7 +903,7 @@ fn foo() {
     );
 
     // Do not suggest reserved keywords
-    check_empty(
+    check(
         r#"
 struct Struct;
 
@@ -926,7 +921,7 @@ fn foo() {
 
 #[test]
 fn private_item_in_module_in_function_body() {
-    check_empty(
+    check(
         r#"
 fn main() {
     mod foo {

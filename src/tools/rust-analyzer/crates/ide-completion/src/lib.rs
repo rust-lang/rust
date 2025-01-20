@@ -33,8 +33,9 @@ use crate::{
 pub use crate::{
     config::{AutoImportExclusionType, CallableSnippets, CompletionConfig},
     item::{
-        CompletionItem, CompletionItemKind, CompletionRelevance, CompletionRelevancePostfixMatch,
-        CompletionRelevanceReturnType, CompletionRelevanceTypeMatch,
+        CompletionItem, CompletionItemKind, CompletionItemRefMode, CompletionRelevance,
+        CompletionRelevancePostfixMatch, CompletionRelevanceReturnType,
+        CompletionRelevanceTypeMatch,
     },
     snippet::{Snippet, SnippetScope},
 };

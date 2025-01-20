@@ -665,7 +665,7 @@ mod tests {
     /// module the cursor is in.
     #[track_caller]
     fn check_found_path_(
-        ra_fixture: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
         path: &str,
         prefer_prelude: bool,
         prefer_absolute: bool,
@@ -727,19 +727,35 @@ mod tests {
         expect.assert_eq(&res);
     }
 
-    fn check_found_path(ra_fixture: &str, path: &str, expect: Expect) {
+    fn check_found_path(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        path: &str,
+        expect: Expect,
+    ) {
         check_found_path_(ra_fixture, path, false, false, false, expect);
     }
 
-    fn check_found_path_prelude(ra_fixture: &str, path: &str, expect: Expect) {
+    fn check_found_path_prelude(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        path: &str,
+        expect: Expect,
+    ) {
         check_found_path_(ra_fixture, path, true, false, false, expect);
     }
 
-    fn check_found_path_absolute(ra_fixture: &str, path: &str, expect: Expect) {
+    fn check_found_path_absolute(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        path: &str,
+        expect: Expect,
+    ) {
         check_found_path_(ra_fixture, path, false, true, false, expect);
     }
 
-    fn check_found_path_prefer_no_std(ra_fixture: &str, path: &str, expect: Expect) {
+    fn check_found_path_prefer_no_std(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        path: &str,
+        expect: Expect,
+    ) {
         check_found_path_(ra_fixture, path, false, false, true, expect);
     }
 

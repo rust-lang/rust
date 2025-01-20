@@ -63,6 +63,9 @@ pub mod ext {
         Some(expr)
     }
 
+    pub fn expr_unit() -> ast::Expr {
+        expr_tuple([]).into()
+    }
     pub fn expr_unreachable() -> ast::Expr {
         expr_from_text("unreachable!()")
     }
@@ -546,10 +549,6 @@ pub fn hacky_block_expr(
     ast_from_text(&format!("fn f() {buf}"))
 }
 
-pub fn expr_unit() -> ast::Expr {
-    expr_from_text("()")
-}
-
 pub fn expr_literal(text: &str) -> ast::Literal {
     assert_eq!(text.trim(), text);
     ast_from_text(&format!("fn f() {{ let _ = {text}; }}"))
@@ -559,8 +558,8 @@ pub fn expr_const_value(text: &str) -> ast::ConstArg {
     ast_from_text(&format!("trait Foo<const N: usize = {text}> {{}}"))
 }
 
-pub fn expr_empty_block() -> ast::Expr {
-    expr_from_text("{}")
+pub fn expr_empty_block() -> ast::BlockExpr {
+    ast_from_text("const C: () = {};")
 }
 pub fn expr_path(path: ast::Path) -> ast::Expr {
     expr_from_text(&path.to_string())
@@ -600,14 +599,14 @@ pub fn expr_try(expr: ast::Expr) -> ast::Expr {
 pub fn expr_await(expr: ast::Expr) -> ast::Expr {
     expr_from_text(&format!("{expr}.await"))
 }
-pub fn expr_match(expr: ast::Expr, match_arm_list: ast::MatchArmList) -> ast::Expr {
+pub fn expr_match(expr: ast::Expr, match_arm_list: ast::MatchArmList) -> ast::MatchExpr {
     expr_from_text(&format!("match {expr} {match_arm_list}"))
 }
 pub fn expr_if(
     condition: ast::Expr,
     then_branch: ast::BlockExpr,
     else_branch: Option<ast::ElseBranch>,
-) -> ast::Expr {
+) -> ast::IfExpr {
     let else_branch = match else_branch {
         Some(ast::ElseBranch::Block(block)) => format!("else {block}"),
         Some(ast::ElseBranch::IfExpr(if_expr)) => format!("else {if_expr}"),
@@ -623,7 +622,7 @@ pub fn expr_loop(block: ast::BlockExpr) -> ast::Expr {
     expr_from_text(&format!("loop {block}"))
 }
 
-pub fn expr_prefix(op: SyntaxKind, expr: ast::Expr) -> ast::Expr {
+pub fn expr_prefix(op: SyntaxKind, expr: ast::Expr) -> ast::PrefixExpr {
     let token = token(op);
     expr_from_text(&format!("{token}{expr}"))
 }
@@ -656,14 +655,14 @@ pub fn expr_field(receiver: ast::Expr, field: &str) -> ast::Expr {
 pub fn expr_paren(expr: ast::Expr) -> ast::Expr {
     expr_from_text(&format!("({expr})"))
 }
-pub fn expr_tuple(elements: impl IntoIterator<Item = ast::Expr>) -> ast::Expr {
+pub fn expr_tuple(elements: impl IntoIterator<Item = ast::Expr>) -> ast::TupleExpr {
     let expr = elements.into_iter().format(", ");
     expr_from_text(&format!("({expr})"))
 }
 pub fn expr_assignment(lhs: ast::Expr, rhs: ast::Expr) -> ast::Expr {
     expr_from_text(&format!("{lhs} = {rhs}"))
 }
-fn expr_from_text(text: &str) -> ast::Expr {
+fn expr_from_text<E: Into<ast::Expr> + AstNode>(text: &str) -> E {
     ast_from_text(&format!("const C: () = {text};"))
 }
 pub fn expr_let(pattern: ast::Pat, expr: ast::Expr) -> ast::LetExpr {
@@ -788,15 +787,21 @@ pub fn path_pat(path: ast::Path) -> ast::Pat {
     }
 }
 
-pub fn match_arm(
-    pats: impl IntoIterator<Item = ast::Pat>,
-    guard: Option<ast::Expr>,
-    expr: ast::Expr,
-) -> ast::MatchArm {
-    let pats_str = pats.into_iter().join(" | ");
+/// Returns a `Pat` if the path has just one segment, an `OrPat` otherwise.
+pub fn or_pat(pats: impl IntoIterator<Item = ast::Pat>, leading_pipe: bool) -> ast::Pat {
+    let leading_pipe = if leading_pipe { "| " } else { "" };
+    let pats = pats.into_iter().join(" | ");
+
+    return from_text(&format!("{leading_pipe}{pats}"));
+    fn from_text(text: &str) -> ast::Pat {
+        ast_from_text(&format!("fn f({text}: ())"))
+    }
+}
+
+pub fn match_arm(pat: ast::Pat, guard: Option<ast::MatchGuard>, expr: ast::Expr) -> ast::MatchArm {
     return match guard {
-        Some(guard) => from_text(&format!("{pats_str} if {guard} => {expr}")),
-        None => from_text(&format!("{pats_str} => {expr}")),
+        Some(guard) => from_text(&format!("{pat} {guard} => {expr}")),
+        None => from_text(&format!("{pat} => {expr}")),
     };
 
     fn from_text(text: &str) -> ast::MatchArm {
@@ -814,6 +819,14 @@ pub fn match_arm_with_guard(
 
     fn from_text(text: &str) -> ast::MatchArm {
         ast_from_text(&format!("fn f() {{ match () {{{text}}} }}"))
+    }
+}
+
+pub fn match_guard(condition: ast::Expr) -> ast::MatchGuard {
+    return from_text(&format!("if {condition}"));
+
+    fn from_text(text: &str) -> ast::MatchGuard {
+        ast_from_text(&format!("fn f() {{ match () {{() {text} => () }}"))
     }
 }
 
