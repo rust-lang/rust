@@ -96,6 +96,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
     }
 }
 
+// FIXME: needs to be an EARLY LINT. all attribute lints should be
 #[allow(clippy::too_many_arguments)]
 fn check_needless_must_use(
     cx: &LateContext<'_>,
@@ -118,7 +119,7 @@ fn check_needless_must_use(
                 fn_header_span,
                 "this unit-returning function has a `#[must_use]` attribute",
                 |diag| {
-                    diag.span_suggestion(attr.span, "remove the attribute", "", Applicability::MachineApplicable);
+                    diag.span_suggestion(attr.span(), "remove the attribute", "", Applicability::MachineApplicable);
                 },
             );
         } else {
@@ -131,7 +132,7 @@ fn check_needless_must_use(
                 "this unit-returning function has a `#[must_use]` attribute",
                 |diag| {
                     let mut attrs_without_must_use = attrs.to_vec();
-                    attrs_without_must_use.retain(|a| a.id != attr.id);
+                    attrs_without_must_use.retain(|a| a.id() != attr.id());
                     let sugg_str = attrs_without_must_use
                         .iter()
                         .map(|a| {
@@ -144,7 +145,7 @@ fn check_needless_must_use(
                         .join(", ");
 
                     diag.span_suggestion(
-                        attrs[0].span.with_hi(attrs[attrs.len() - 1].span.hi()),
+                        attrs[0].span().with_hi(attrs[attrs.len() - 1].span().hi()),
                         "change these attributes to",
                         sugg_str,
                         Applicability::MachineApplicable,

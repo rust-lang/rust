@@ -2,10 +2,11 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{SpanRangeExt, snippet_indent};
 use clippy_utils::tokenize_with_text;
 use itertools::Itertools;
-use rustc_ast::AttrStyle;
 use rustc_ast::token::CommentKind;
+use rustc_ast::AttrStyle;
 use rustc_errors::{Applicability, Diag, SuggestionStyle};
-use rustc_hir::{AttrKind, Attribute, ItemKind, Node};
+use rustc_hir::{Attribute, ItemKind, Node};
+use rustc_attr_parsing::AttributeKind;
 use rustc_lexer::TokenKind;
 use rustc_lint::LateContext;
 use rustc_span::{BytePos, ExpnKind, InnerSpan, Span, SpanData};
@@ -67,14 +68,14 @@ impl Stop {
     }
 
     fn from_attr(cx: &LateContext<'_>, attr: &Attribute) -> Option<Self> {
-        let SpanData { lo, hi, .. } = attr.span.data();
+        let SpanData { lo, hi, .. } = attr.span().data();
         let file = cx.tcx.sess.source_map().lookup_source_file(lo);
 
         Some(Self {
-            span: attr.span,
-            kind: match attr.kind {
-                AttrKind::Normal(_) => StopKind::Attr,
-                AttrKind::DocComment(comment_kind, _) => StopKind::Doc(comment_kind),
+            span: attr.span(),
+            kind: match attr {
+                Attribute::Parsed(AttributeKind::DocComment{kind, ..}) => StopKind::Doc(*kind),
+                _ => StopKind::Attr,
             },
             first: file.lookup_line(file.relative_position(lo))?,
             last: file.lookup_line(file.relative_position(hi))?,
@@ -300,7 +301,7 @@ fn check_gaps(cx: &LateContext<'_>, gaps: &[Gap<'_>]) -> bool {
 pub(super) fn check(cx: &LateContext<'_>, attrs: &[Attribute]) -> bool {
     let mut outer = attrs
         .iter()
-        .filter(|attr| attr.style == AttrStyle::Outer && !attr.span.from_expansion())
+        .filter(|attr| attr.style() == AttrStyle::Outer && !attr.span().from_expansion())
         .map(|attr| Stop::from_attr(cx, attr))
         .collect::<Option<Vec<_>>>()
         .unwrap_or_default();
