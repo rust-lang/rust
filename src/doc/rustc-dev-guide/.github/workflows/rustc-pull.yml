@@ -10,6 +10,8 @@ jobs:
   pull:
     if: github.repository == 'rust-lang/rustc-dev-guide'
     runs-on: ubuntu-latest
+    outputs:
+      pr_url: ${{ steps.update-pr.outputs.pr_url }}
     permissions:
       contents: write
       pull-requests: write
@@ -40,6 +42,7 @@ jobs:
           git switch -c $BRANCH
           git push -u origin $BRANCH --force
       - name: Create pull request
+        id: update-pr
         run: |
           # Check if an open pull request for an rustc pull update already exists
           # If it does, the previous push has just updated it
@@ -47,9 +50,36 @@ jobs:
           RESULT=`gh pr list --author github-actions[bot] --state open -q 'map(select(.title=="Rustc pull update")) | length' --json title`
           if [[ "$RESULT" -eq 0 ]]; then
             echo "Creating new pull request"
-            gh pr create -B master --title 'Rustc pull update' --body 'Latest update from rustc.'
+            PR_URL=gh pr create -B master --title 'Rustc pull update' --body 'Latest update from rustc.'
+            echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
           else
-            echo "Updated existing pull request"
+            PR_URL=gh pr list --author github-actions[bot] --state open -q 'map(select(.title=="Rustc pull update")) | .[0].url' --json url,title
+            echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  send-zulip-message:
+    needs: [pull]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compute message
+        id: message
+        run: |
+          if [ "${{ needs.pull.result }}" == "failure" ];
+          then
+            WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "message=Rustc pull sync failed. Check out the [workflow URL]($WORKFLOW_URL)." >> $GITHUB_OUTPUT
+          else
+            echo "message=Rustc pull sync succeeded. Check out the [PR](${{ needs.pull.outputs.pr_url }})." >> $GITHUB_OUTPUT
+          fi
+      - name: Send a Zulip message about updated PR
+        uses: zulip/github-actions-zulip/send-message@e4c8f27c732ba9bd98ac6be0583096dea82feea5
+        with:
+          api-key: ${{ secrets.ZULIP_API_TOKEN }}
+          email: "rustc-dev-guide-gha-notif-bot@rust-lang.zulipchat.com"
+          organization-url: "https://rust-lang.zulipchat.com"
+          to: 196385
+          type: "stream"
+          topic: "Subtree sync automation"
+          content: ${{ steps.message.outputs.message }}
