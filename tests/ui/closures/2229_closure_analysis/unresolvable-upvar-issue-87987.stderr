@@ -1,5 +1,5 @@
 warning: fields `field_1` and `field_2` are never read
-  --> $DIR/issue-87987.rs:5:5
+  --> $DIR/unresolvable-upvar-issue-87987.rs:11:5
    |
 LL | struct Props {
    |        ----- fields in this struct

@@ -1,6 +1,12 @@
 //@ run-pass
 //@ edition:2021
 
+// When a closure syntactically captures a place, but doesn't actually capture
+// it, make sure MIR building doesn't ICE when handling that place.
+//
+// Under the Rust 2021 disjoint capture rules, this sort of non-capture can
+// occur when a place is only inspected by infallible non-binding patterns.
+
 struct Props {
     field_1: u32, //~ WARNING: fields `field_1` and `field_2` are never read
     field_2: u32,
