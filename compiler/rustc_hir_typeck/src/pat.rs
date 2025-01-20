@@ -221,16 +221,17 @@ impl MutblCap {
 /// `&mut Option<&T>`, `x` gets type `&mut &T` and the outer `&mut` is considered "inherited".
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum InheritedRefMatchRule {
-    /// Reference patterns try to consume the inherited reference first.
-    /// This assumes reference patterns can always match against an inherited reference.
+    /// Reference patterns consume only the inherited reference if possible, regardless of whether
+    /// the underlying type being matched against is a reference type. If there is no inherited
+    /// reference, a reference will be consumed from the underlying type.
     EatOuter,
-    /// Reference patterns consume inherited references if matching against a non-reference type.
-    /// This assumes reference patterns can always match against an inherited reference.
+    /// Reference patterns consume only a reference from the underlying type if possible. If the
+    /// underlying type is not a reference type, the inherited reference will be consumed.
     EatInner,
-    /// Reference patterns consume both layers of reference, i.e. reset the binding mode when consuming a reference type.
-    /// Currently, this assumes the stable Rust behavior of not allowing reference patterns to eat
-    /// an inherited reference alone. This will need an additional field or variant to represent the
-    /// planned edition <= 2021 behavior of experimental match ergonomics, which does allow that.
+    /// When the underlying type is a reference type, reference patterns consume both layers of
+    /// reference, i.e. they both reset the binding mode and consume the reference type. Reference
+    /// patterns are not permitted when there is no underlying reference type, i.e. they can't eat
+    /// only an inherited reference. This is the current stable Rust behavior.
     EatBoth,
 }
 
