@@ -542,30 +542,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // resolution for it so that later resolve stages won't complain.
             self.import_dummy_binding(*import, is_indeterminate);
 
-            if let Some(err) = unresolved_import_error {
-                glob_error |= import.is_glob();
+            let Some(err) = unresolved_import_error else { continue };
 
-                if let ImportKind::Single { source, ref source_bindings, .. } = import.kind
-                    && source.name == kw::SelfLower
-                    // Silence `unresolved import` error if E0429 is already emitted
-                    && let Err(Determined) = source_bindings.value_ns.get()
-                {
-                    continue;
-                }
+            glob_error |= import.is_glob();
 
-                if prev_root_id != NodeId::ZERO
-                    && prev_root_id != import.root_id
-                    && !errors.is_empty()
-                {
-                    // In the case of a new import line, throw a diagnostic message
-                    // for the previous line.
-                    self.throw_unresolved_import_error(errors, glob_error);
-                    errors = vec![];
-                }
-                if seen_spans.insert(err.span) {
-                    errors.push((*import, err));
-                    prev_root_id = import.root_id;
-                }
+            if let ImportKind::Single { source, ref source_bindings, .. } = import.kind
+                && source.name == kw::SelfLower
+                // Silence `unresolved import` error if E0429 is already emitted
+                && let Err(Determined) = source_bindings.value_ns.get()
+            {
+                continue;
+            }
+
+            if prev_root_id != NodeId::ZERO && prev_root_id != import.root_id && !errors.is_empty()
+            {
+                // In the case of a new import line, throw a diagnostic message
+                // for the previous line.
+                self.throw_unresolved_import_error(errors, glob_error);
+                errors = vec![];
+            }
+            if seen_spans.insert(err.span) {
+                errors.push((*import, err));
+                prev_root_id = import.root_id;
             }
         }
 
@@ -607,59 +605,59 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             for (key, resolution) in self.resolutions(*module).borrow().iter() {
                 let resolution = resolution.borrow();
 
-                if let Some(binding) = resolution.binding {
-                    if let NameBindingKind::Import { import, .. } = binding.kind
-                        && let Some((amb_binding, _)) = binding.ambiguity
-                        && binding.res() != Res::Err
-                        && exported_ambiguities.contains(&binding)
+                let Some(binding) = resolution.binding else { continue };
+
+                if let NameBindingKind::Import { import, .. } = binding.kind
+                    && let Some((amb_binding, _)) = binding.ambiguity
+                    && binding.res() != Res::Err
+                    && exported_ambiguities.contains(&binding)
+                {
+                    self.lint_buffer.buffer_lint(
+                        AMBIGUOUS_GLOB_REEXPORTS,
+                        import.root_id,
+                        import.root_span,
+                        BuiltinLintDiag::AmbiguousGlobReexports {
+                            name: key.ident.to_string(),
+                            namespace: key.ns.descr().to_string(),
+                            first_reexport_span: import.root_span,
+                            duplicate_reexport_span: amb_binding.span,
+                        },
+                    );
+                }
+
+                if let Some(glob_binding) = resolution.shadowed_glob {
+                    let binding_id = match binding.kind {
+                        NameBindingKind::Res(res) => {
+                            Some(self.def_id_to_node_id[res.def_id().expect_local()])
+                        }
+                        NameBindingKind::Module(module) => {
+                            Some(self.def_id_to_node_id[module.def_id().expect_local()])
+                        }
+                        NameBindingKind::Import { import, .. } => import.id(),
+                    };
+
+                    if binding.res() != Res::Err
+                        && glob_binding.res() != Res::Err
+                        && let NameBindingKind::Import { import: glob_import, .. } =
+                            glob_binding.kind
+                        && let Some(binding_id) = binding_id
+                        && let Some(glob_import_id) = glob_import.id()
+                        && let glob_import_def_id = self.local_def_id(glob_import_id)
+                        && self.effective_visibilities.is_exported(glob_import_def_id)
+                        && glob_binding.vis.is_public()
+                        && !binding.vis.is_public()
                     {
                         self.lint_buffer.buffer_lint(
-                            AMBIGUOUS_GLOB_REEXPORTS,
-                            import.root_id,
-                            import.root_span,
-                            BuiltinLintDiag::AmbiguousGlobReexports {
-                                name: key.ident.to_string(),
-                                namespace: key.ns.descr().to_string(),
-                                first_reexport_span: import.root_span,
-                                duplicate_reexport_span: amb_binding.span,
+                            HIDDEN_GLOB_REEXPORTS,
+                            binding_id,
+                            binding.span,
+                            BuiltinLintDiag::HiddenGlobReexports {
+                                name: key.ident.name.to_string(),
+                                namespace: key.ns.descr().to_owned(),
+                                glob_reexport_span: glob_binding.span,
+                                private_item_span: binding.span,
                             },
                         );
-                    }
-
-                    if let Some(glob_binding) = resolution.shadowed_glob {
-                        let binding_id = match binding.kind {
-                            NameBindingKind::Res(res) => {
-                                Some(self.def_id_to_node_id[res.def_id().expect_local()])
-                            }
-                            NameBindingKind::Module(module) => {
-                                Some(self.def_id_to_node_id[module.def_id().expect_local()])
-                            }
-                            NameBindingKind::Import { import, .. } => import.id(),
-                        };
-
-                        if binding.res() != Res::Err
-                            && glob_binding.res() != Res::Err
-                            && let NameBindingKind::Import { import: glob_import, .. } =
-                                glob_binding.kind
-                            && let Some(binding_id) = binding_id
-                            && let Some(glob_import_id) = glob_import.id()
-                            && let glob_import_def_id = self.local_def_id(glob_import_id)
-                            && self.effective_visibilities.is_exported(glob_import_def_id)
-                            && glob_binding.vis.is_public()
-                            && !binding.vis.is_public()
-                        {
-                            self.lint_buffer.buffer_lint(
-                                HIDDEN_GLOB_REEXPORTS,
-                                binding_id,
-                                binding.span,
-                                BuiltinLintDiag::HiddenGlobReexports {
-                                    name: key.ident.name.to_string(),
-                                    namespace: key.ns.descr().to_owned(),
-                                    glob_reexport_span: glob_binding.span,
-                                    private_item_span: binding.span,
-                                },
-                            );
-                        }
                     }
                 }
             }
@@ -1242,17 +1240,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut any_successful_reexport = false;
         let mut crate_private_reexport = false;
         self.per_ns(|this, ns| {
-            if let Ok(binding) = source_bindings[ns].get() {
-                if !binding.vis.is_at_least(import.vis, this.tcx) {
-                    reexport_error = Some((ns, binding));
-                    if let ty::Visibility::Restricted(binding_def_id) = binding.vis
-                        && binding_def_id.is_top_level_module()
-                    {
-                        crate_private_reexport = true;
-                    }
-                } else {
-                    any_successful_reexport = true;
+            let Ok(binding) = source_bindings[ns].get() else {
+                return;
+            };
+
+            if !binding.vis.is_at_least(import.vis, this.tcx) {
+                reexport_error = Some((ns, binding));
+                if let ty::Visibility::Restricted(binding_def_id) = binding.vis
+                    && binding_def_id.is_top_level_module()
+                {
+                    crate_private_reexport = true;
                 }
+            } else {
+                any_successful_reexport = true;
             }
         });
 
@@ -1469,28 +1469,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Since import resolution is finished, globs will not define any more names.
         *module.globs.borrow_mut() = Vec::new();
 
-        if let Some(def_id) = module.opt_def_id() {
-            let mut children = Vec::new();
+        let Some(def_id) = module.opt_def_id() else { return };
 
-            module.for_each_child(self, |this, ident, _, binding| {
-                let res = binding.res().expect_non_local();
-                let error_ambiguity = binding.is_ambiguity_recursive() && !binding.warn_ambiguity;
-                if res != def::Res::Err && !error_ambiguity {
-                    let mut reexport_chain = SmallVec::new();
-                    let mut next_binding = binding;
-                    while let NameBindingKind::Import { binding, import, .. } = next_binding.kind {
-                        reexport_chain.push(import.simplify(this));
-                        next_binding = binding;
-                    }
+        let mut children = Vec::new();
 
-                    children.push(ModChild { ident, res, vis: binding.vis, reexport_chain });
+        module.for_each_child(self, |this, ident, _, binding| {
+            let res = binding.res().expect_non_local();
+            let error_ambiguity = binding.is_ambiguity_recursive() && !binding.warn_ambiguity;
+            if res != def::Res::Err && !error_ambiguity {
+                let mut reexport_chain = SmallVec::new();
+                let mut next_binding = binding;
+                while let NameBindingKind::Import { binding, import, .. } = next_binding.kind {
+                    reexport_chain.push(import.simplify(this));
+                    next_binding = binding;
                 }
-            });
 
-            if !children.is_empty() {
-                // Should be fine because this code is only called for local modules.
-                self.module_children.insert(def_id.expect_local(), children);
+                children.push(ModChild { ident, res, vis: binding.vis, reexport_chain });
             }
+        });
+
+        if !children.is_empty() {
+            // Should be fine because this code is only called for local modules.
+            self.module_children.insert(def_id.expect_local(), children);
         }
     }
 }
