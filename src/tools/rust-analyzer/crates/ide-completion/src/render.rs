@@ -141,6 +141,7 @@ pub(crate) fn render_field(
     item.set_relevance(CompletionRelevance {
         type_match: compute_type_match(ctx.completion, ty),
         exact_name_match: compute_exact_name_match(ctx.completion, &name),
+        is_skipping_completion: receiver.is_some(),
         ..CompletionRelevance::default()
     });
     item.detail(ty.display(db, ctx.completion.edition).to_string())
@@ -213,6 +214,10 @@ pub(crate) fn render_tuple_field(
     );
     item.detail(ty.display(ctx.db(), ctx.completion.edition).to_string())
         .lookup_by(field.to_string());
+    item.set_relevance(CompletionRelevance {
+        is_skipping_completion: receiver.is_some(),
+        ..ctx.completion_relevance()
+    });
     item.build(ctx.db())
 }
 
@@ -1333,6 +1338,7 @@ fn main() { let _: m::Spam = S$0 }
                             is_private_editable: false,
                             postfix_match: None,
                             function: None,
+                            is_skipping_completion: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1362,6 +1368,7 @@ fn main() { let _: m::Spam = S$0 }
                             is_private_editable: false,
                             postfix_match: None,
                             function: None,
+                            is_skipping_completion: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1451,6 +1458,7 @@ fn foo() { A { the$0 } }
                             is_private_editable: false,
                             postfix_match: None,
                             function: None,
+                            is_skipping_completion: false,
                         },
                     },
                 ]
@@ -1509,6 +1517,7 @@ impl S {
                                     return_type: Other,
                                 },
                             ),
+                            is_skipping_completion: false,
                         },
                     },
                     CompletionItem {
@@ -1651,6 +1660,7 @@ fn foo(s: S) { s.$0 }
                                     return_type: Other,
                                 },
                             ),
+                            is_skipping_completion: false,
                         },
                     },
                 ]
@@ -1862,6 +1872,7 @@ fn f() -> i32 {
                             is_private_editable: false,
                             postfix_match: None,
                             function: None,
+                            is_skipping_completion: false,
                         },
                     },
                 ]
@@ -2622,6 +2633,7 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                                     return_type: Other,
                                 },
                             ),
+                            is_skipping_completion: false,
                         },
                         ref_match: "&@107",
                     },
@@ -2707,6 +2719,7 @@ fn foo() {
                             is_private_editable: false,
                             postfix_match: None,
                             function: None,
+                            is_skipping_completion: false,
                         },
                     },
                 ]
@@ -2764,6 +2777,7 @@ fn main() {
                                     return_type: Other,
                                 },
                             ),
+                            is_skipping_completion: false,
                         },
                         ref_match: "&@92",
                     },
@@ -3138,6 +3152,7 @@ fn main() {
                             is_private_editable: false,
                             postfix_match: None,
                             function: None,
+                            is_skipping_completion: false,
                         },
                     },
                     CompletionItem {
@@ -3171,6 +3186,7 @@ fn main() {
                             is_private_editable: false,
                             postfix_match: None,
                             function: None,
+                            is_skipping_completion: false,
                         },
                     },
                 ]
