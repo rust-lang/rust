@@ -24,8 +24,8 @@ use crate::core::config::flags::{Subcommand, get_completion};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
-    self, LldThreads, add_link_lib_path, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var,
-    linker_args, linker_flags, t, target_supports_cranelift_backend, up_to_date,
+    self, LldThreads, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var, linker_args,
+    linker_flags, t, target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
 use crate::{CLang, DocTests, GitRepo, Mode, PathSet, envify};
@@ -915,7 +915,7 @@ impl Step for RustdocJSNotStd {
         builder.ensure(Compiletest {
             compiler: self.compiler,
             target: self.target,
-            mode: "js-doc-test",
+            mode: "rustdoc-js",
             suite: "rustdoc-js",
             path: "tests/rustdoc-js",
             compare_mode: None,
@@ -1638,10 +1638,7 @@ impl Step for Compiletest {
             return;
         }
 
-        if builder.top_stage == 0
-            && env::var("COMPILETEST_FORCE_STAGE0").is_err()
-            && self.mode != "js-doc-test"
-        {
+        if builder.top_stage == 0 && env::var("COMPILETEST_FORCE_STAGE0").is_err() {
             eprintln!("\
 ERROR: `--stage 0` runs compiletest on the beta compiler, not your local changes, and will almost always cause tests to fail
 HELP: to test the compiler, use `--stage 1` instead
@@ -1730,7 +1727,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--minicore-path")
             .arg(builder.src.join("tests").join("auxiliary").join("minicore.rs"));
 
-        let is_rustdoc = suite.ends_with("rustdoc-ui") || suite.ends_with("rustdoc-js");
+        let is_rustdoc = suite == "rustdoc-ui" || suite == "rustdoc-js";
 
         if mode == "run-make" {
             let cargo_path = if builder.top_stage == 0 {
@@ -1758,7 +1755,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         if mode == "rustdoc"
             || mode == "run-make"
             || (mode == "ui" && is_rustdoc)
-            || mode == "js-doc-test"
+            || mode == "rustdoc-js"
             || mode == "rustdoc-json"
             || suite == "coverage-run-rustdoc"
         {
@@ -1830,8 +1827,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         if let Some(ref nodejs) = builder.config.nodejs {
             cmd.arg("--nodejs").arg(nodejs);
-        } else if mode == "js-doc-test" {
-            panic!("need nodejs to run js-doc-test suite");
+        } else if mode == "rustdoc-js" {
+            panic!("need nodejs to run rustdoc-js suite");
         }
         if let Some(ref npm) = builder.config.npm {
             cmd.arg("--npm").arg(npm);
@@ -1975,11 +1972,17 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             // Tests that use compiler libraries may inherit the `-lLLVM` link
             // requirement, but the `-L` library path is not propagated across
             // separate compilations. We can add LLVM's library path to the
-            // platform-specific environment variable as a workaround.
+            // rustc args as a workaround.
             if !builder.config.dry_run() && suite.ends_with("fulldeps") {
                 let llvm_libdir =
                     command(&llvm_config).arg("--libdir").run_capture_stdout(builder).stdout();
-                add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cmd);
+                let mut rustflags = env::var("RUSTFLAGS").unwrap_or_default();
+                if target.is_msvc() {
+                    rustflags.push_str(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
+                } else {
+                    rustflags.push_str(&format!("-Clink-arg=-L{llvm_libdir}"));
+                }
+                cmd.env("RUSTFLAGS", rustflags);
             }
 
             if !builder.config.dry_run() && matches!(mode, "run-make" | "coverage-run") {

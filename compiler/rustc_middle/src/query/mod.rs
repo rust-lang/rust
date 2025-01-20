@@ -1164,8 +1164,7 @@ rustc_queries! {
     }
 
     /// Check whether the function has any recursion that could cause the inliner to trigger
-    /// a cycle. Returns the call stack causing the cycle. The call stack does not contain the
-    /// current function, just all intermediate functions.
+    /// a cycle.
     query mir_callgraph_reachable(key: (ty::Instance<'tcx>, LocalDefId)) -> bool {
         fatal_cycle
         desc { |tcx|
@@ -1243,6 +1242,7 @@ rustc_queries! {
             "simplifying constant for the type system `{}`",
             key.value.display(tcx)
         }
+        depth_limit
         cache_on_disk_if { true }
     }
 
@@ -2128,6 +2128,8 @@ rustc_queries! {
         eval_always
         desc { "calculating the stability index for the local crate" }
     }
+    /// All available crates in the graph, including those that should not be user-facing
+    /// (such as private crates).
     query crates(_: ()) -> &'tcx [CrateNum] {
         eval_always
         desc { "fetching all foreign CrateNum instances" }

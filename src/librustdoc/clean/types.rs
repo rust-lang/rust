@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::hash::Hash;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock as OnceCell};
@@ -6,7 +5,9 @@ use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use rustc_abi::{ExternAbi, VariantIdx};
-use rustc_attr_parsing::{ConstStability, Deprecation, Stability, StableSince};
+use rustc_attr_parsing::{
+    AllowedThroughUnstableModules, ConstStability, Deprecation, Stability, StableSince,
+};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
@@ -406,15 +407,19 @@ impl Item {
             // were never supposed to work at all.
             let stab = self.stability(tcx)?;
             if let rustc_attr_parsing::StabilityLevel::Stable {
-                allowed_through_unstable_modules: true,
+                allowed_through_unstable_modules: Some(note),
                 ..
             } = stab.level
             {
+                let note = match note {
+                    AllowedThroughUnstableModules::WithDeprecation(note) => Some(note),
+                    // FIXME: Would be better to say *something* here about the *path* being
+                    // deprecated rather than the item.
+                    AllowedThroughUnstableModules::WithoutDeprecation => None,
+                };
                 Some(Deprecation {
-                    // FIXME(#131676, #135003): when a note is added to this stability tag,
-                    // translate it here
                     since: rustc_attr_parsing::DeprecatedSince::Unspecified,
-                    note: None,
+                    note,
                     suggestion: None,
                 })
             } else {
@@ -479,7 +484,7 @@ impl Item {
             name,
             kind,
             Attributes::from_hir(hir_attrs),
-            hir_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
+            extract_cfg_from_attrs(hir_attrs.iter(), cx.tcx, &cx.cache.hidden_cfg),
         )
     }
 
@@ -668,17 +673,28 @@ impl Item {
                 ty::Asyncness::Yes => hir::IsAsync::Async(DUMMY_SP),
                 ty::Asyncness::No => hir::IsAsync::NotAsync,
             };
-            hir::FnHeader { safety: sig.safety(), abi: sig.abi(), constness, asyncness }
+            hir::FnHeader {
+                safety: if tcx.codegen_fn_attrs(def_id).safe_target_features {
+                    hir::HeaderSafety::SafeTargetFeatures
+                } else {
+                    sig.safety().into()
+                },
+                abi: sig.abi(),
+                constness,
+                asyncness,
+            }
         }
         let header = match self.kind {
             ItemKind::ForeignFunctionItem(_, safety) => {
                 let def_id = self.def_id().unwrap();
                 let abi = tcx.fn_sig(def_id).skip_binder().abi();
                 hir::FnHeader {
-                    safety: if abi == ExternAbi::RustIntrinsic {
-                        intrinsic_operation_unsafety(tcx, def_id.expect_local())
+                    safety: if tcx.codegen_fn_attrs(def_id).safe_target_features {
+                        hir::HeaderSafety::SafeTargetFeatures
+                    } else if abi == ExternAbi::RustIntrinsic {
+                        intrinsic_operation_unsafety(tcx, def_id.expect_local()).into()
                     } else {
-                        safety
+                        safety.into()
                     },
                     abi,
                     constness: if tcx.is_const_fn(def_id) {
@@ -979,147 +995,107 @@ pub(crate) struct Module {
     pub(crate) span: Span,
 }
 
-pub(crate) trait AttributesExt {
-    type AttributeIterator<'a>: Iterator<Item = ast::MetaItemInner>
-    where
-        Self: 'a;
-    type Attributes<'a>: Iterator<Item = &'a hir::Attribute>
-    where
-        Self: 'a;
+pub(crate) fn hir_attr_lists<'a, I: IntoIterator<Item = &'a hir::Attribute>>(
+    attrs: I,
+    name: Symbol,
+) -> impl Iterator<Item = ast::MetaItemInner> + use<'a, I> {
+    attrs
+        .into_iter()
+        .filter(move |attr| attr.has_name(name))
+        .filter_map(ast::attr::AttributeExt::meta_item_list)
+        .flatten()
+}
 
-    fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_>;
+pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> + Clone>(
+    attrs: I,
+    tcx: TyCtxt<'_>,
+    hidden_cfg: &FxHashSet<Cfg>,
+) -> Option<Arc<Cfg>> {
+    let sess = tcx.sess;
+    let doc_cfg_active = tcx.features().doc_cfg();
+    let doc_auto_cfg_active = tcx.features().doc_auto_cfg();
 
-    fn iter(&self) -> Self::Attributes<'_>;
-
-    fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>> {
-        let sess = tcx.sess;
-        let doc_cfg_active = tcx.features().doc_cfg();
-        let doc_auto_cfg_active = tcx.features().doc_auto_cfg();
-
-        fn single<T: IntoIterator>(it: T) -> Option<T::Item> {
-            let mut iter = it.into_iter();
-            let item = iter.next()?;
-            if iter.next().is_some() {
-                return None;
-            }
-            Some(item)
+    fn single<T: IntoIterator>(it: T) -> Option<T::Item> {
+        let mut iter = it.into_iter();
+        let item = iter.next()?;
+        if iter.next().is_some() {
+            return None;
         }
+        Some(item)
+    }
 
-        let mut cfg = if doc_cfg_active || doc_auto_cfg_active {
-            let mut doc_cfg = self
-                .iter()
-                .filter(|attr| attr.has_name(sym::doc))
-                .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
+    let mut cfg = if doc_cfg_active || doc_auto_cfg_active {
+        let mut doc_cfg = attrs
+            .clone()
+            .filter(|attr| attr.has_name(sym::doc))
+            .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
+            .filter(|attr| attr.has_name(sym::cfg))
+            .peekable();
+        if doc_cfg.peek().is_some() && doc_cfg_active {
+            doc_cfg
+                .filter_map(|attr| Cfg::parse(&attr).ok())
+                .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
+        } else if doc_auto_cfg_active {
+            // If there is no `doc(cfg())`, then we retrieve the `cfg()` attributes (because
+            // `doc(cfg())` overrides `cfg()`).
+            attrs
+                .clone()
                 .filter(|attr| attr.has_name(sym::cfg))
-                .peekable();
-            if doc_cfg.peek().is_some() && doc_cfg_active {
-                doc_cfg
-                    .filter_map(|attr| Cfg::parse(&attr).ok())
-                    .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
-            } else if doc_auto_cfg_active {
-                // If there is no `doc(cfg())`, then we retrieve the `cfg()` attributes (because
-                // `doc(cfg())` overrides `cfg()`).
-                self.iter()
-                    .filter(|attr| attr.has_name(sym::cfg))
-                    .filter_map(|attr| single(attr.meta_item_list()?))
-                    .filter_map(|attr| {
-                        Cfg::parse_without(attr.meta_item()?, hidden_cfg).ok().flatten()
-                    })
-                    .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
-            } else {
-                Cfg::True
-            }
+                .filter_map(|attr| single(attr.meta_item_list()?))
+                .filter_map(|attr| Cfg::parse_without(attr.meta_item()?, hidden_cfg).ok().flatten())
+                .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
         } else {
             Cfg::True
-        };
+        }
+    } else {
+        Cfg::True
+    };
 
-        for attr in self.iter() {
-            // #[doc]
-            if attr.doc_str().is_none() && attr.has_name(sym::doc) {
-                // #[doc(...)]
-                if let Some(list) = attr.meta_item_list() {
-                    for item in list {
-                        // #[doc(hidden)]
-                        if !item.has_name(sym::cfg) {
-                            continue;
-                        }
-                        // #[doc(cfg(...))]
-                        if let Some(cfg_mi) = item
-                            .meta_item()
-                            .and_then(|item| rustc_expand::config::parse_cfg(item, sess))
-                        {
-                            match Cfg::parse(cfg_mi) {
-                                Ok(new_cfg) => cfg &= new_cfg,
-                                Err(e) => {
-                                    sess.dcx().span_err(e.span, e.msg);
-                                }
+    for attr in attrs.clone() {
+        // #[doc]
+        if attr.doc_str().is_none() && attr.has_name(sym::doc) {
+            // #[doc(...)]
+            if let Some(list) = attr.meta_item_list() {
+                for item in list {
+                    // #[doc(hidden)]
+                    if !item.has_name(sym::cfg) {
+                        continue;
+                    }
+                    // #[doc(cfg(...))]
+                    if let Some(cfg_mi) = item
+                        .meta_item()
+                        .and_then(|item| rustc_expand::config::parse_cfg(item, sess))
+                    {
+                        match Cfg::parse(cfg_mi) {
+                            Ok(new_cfg) => cfg &= new_cfg,
+                            Err(e) => {
+                                sess.dcx().span_err(e.span, e.msg);
                             }
                         }
                     }
                 }
             }
         }
+    }
 
-        // treat #[target_feature(enable = "feat")] attributes as if they were
-        // #[doc(cfg(target_feature = "feat"))] attributes as well
-        for attr in self.lists(sym::target_feature) {
-            if attr.has_name(sym::enable) {
-                if attr.value_str().is_some() {
-                    // Clone `enable = "feat"`, change to `target_feature = "feat"`.
-                    // Unwrap is safe because `value_str` succeeded above.
-                    let mut meta = attr.meta_item().unwrap().clone();
-                    meta.path = ast::Path::from_ident(Ident::with_dummy_span(sym::target_feature));
+    // treat #[target_feature(enable = "feat")] attributes as if they were
+    // #[doc(cfg(target_feature = "feat"))] attributes as well
+    for attr in hir_attr_lists(attrs, sym::target_feature) {
+        if attr.has_name(sym::enable) {
+            if attr.value_str().is_some() {
+                // Clone `enable = "feat"`, change to `target_feature = "feat"`.
+                // Unwrap is safe because `value_str` succeeded above.
+                let mut meta = attr.meta_item().unwrap().clone();
+                meta.path = ast::Path::from_ident(Ident::with_dummy_span(sym::target_feature));
 
-                    if let Ok(feat_cfg) = Cfg::parse(&ast::MetaItemInner::MetaItem(meta)) {
-                        cfg &= feat_cfg;
-                    }
+                if let Ok(feat_cfg) = Cfg::parse(&ast::MetaItemInner::MetaItem(meta)) {
+                    cfg &= feat_cfg;
                 }
             }
         }
-
-        if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) }
-    }
-}
-
-impl AttributesExt for [hir::Attribute] {
-    type AttributeIterator<'a> = impl Iterator<Item = ast::MetaItemInner> + 'a;
-    type Attributes<'a> = impl Iterator<Item = &'a hir::Attribute> + 'a;
-
-    fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
-        self.iter()
-            .filter(move |attr| attr.has_name(name))
-            .filter_map(ast::attr::AttributeExt::meta_item_list)
-            .flatten()
     }
 
-    fn iter(&self) -> Self::Attributes<'_> {
-        self.iter()
-    }
-}
-
-impl AttributesExt for [(Cow<'_, hir::Attribute>, Option<DefId>)] {
-    type AttributeIterator<'a>
-        = impl Iterator<Item = ast::MetaItemInner> + 'a
-    where
-        Self: 'a;
-    type Attributes<'a>
-        = impl Iterator<Item = &'a hir::Attribute> + 'a
-    where
-        Self: 'a;
-
-    fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
-        AttributesExt::iter(self)
-            .filter(move |attr| attr.has_name(name))
-            .filter_map(hir::Attribute::meta_item_list)
-            .flatten()
-    }
-
-    fn iter(&self) -> Self::Attributes<'_> {
-        self.iter().map(move |(attr, _)| match attr {
-            Cow::Borrowed(attr) => *attr,
-            Cow::Owned(attr) => attr,
-        })
-    }
+    if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) }
 }
 
 pub(crate) trait NestedAttributesExt {
@@ -1185,7 +1161,7 @@ pub(crate) struct Attributes {
 
 impl Attributes {
     pub(crate) fn lists(&self, name: Symbol) -> impl Iterator<Item = ast::MetaItemInner> + '_ {
-        self.other_attrs.lists(name)
+        hir_attr_lists(&self.other_attrs[..], name)
     }
 
     pub(crate) fn has_doc_flag(&self, flag: Symbol) -> bool {
@@ -1252,7 +1228,9 @@ impl Attributes {
     pub(crate) fn get_doc_aliases(&self) -> Box<[Symbol]> {
         let mut aliases = FxIndexSet::default();
 
-        for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::alias)) {
+        for attr in
+            hir_attr_lists(&self.other_attrs[..], sym::doc).filter(|a| a.has_name(sym::alias))
+        {
             if let Some(values) = attr.meta_item_list() {
                 for l in values {
                     if let Some(lit) = l.lit()

@@ -346,3 +346,7 @@ pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
         os2path,
     )
 }
+
+pub(crate) fn is_absolute(path: &Path) -> bool {
+    path.has_root() && path.prefix().is_some()
+}

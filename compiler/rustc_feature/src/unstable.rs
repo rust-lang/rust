@@ -361,6 +361,8 @@ declare_features! (
     (unstable, abi_avr_interrupt, "1.45.0", Some(69664)),
     /// Allows `extern "C-cmse-nonsecure-call" fn()`.
     (unstable, abi_c_cmse_nonsecure_call, "1.51.0", Some(81391)),
+    /// Allows `extern "gpu-kernel" fn()`.
+    (unstable, abi_gpu_kernel, "CURRENT_RUSTC_VERSION", Some(135467)),
     /// Allows `extern "msp430-interrupt" fn()`.
     (unstable, abi_msp430_interrupt, "1.16.0", Some(38487)),
     /// Allows `extern "ptx-*" fn()`.
@@ -521,6 +523,8 @@ declare_features! (
     (unstable, impl_trait_in_bindings, "1.64.0", Some(63065)),
     /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.
     (unstable, impl_trait_in_fn_trait_return, "1.64.0", Some(99697)),
+    /// Allows `use` associated functions from traits.
+    (unstable, import_trait_associated_functions, "CURRENT_RUSTC_VERSION", Some(134691)),
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995)),
     /// Allow anonymous constants from an inline `const` block in pattern position
@@ -718,7 +722,8 @@ impl Features {
 
 /// Some features are not allowed to be used together at the same time, if
 /// the two are present, produce an error.
-///
-/// Currently empty, but we will probably need this again in the future,
-/// so let's keep it in for now.
-pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[];
+pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[
+    // Experimental match ergonomics rulesets are incompatible with each other, to simplify the
+    // boolean logic required to tell which typing rules to use.
+    (sym::ref_pat_eat_one_layer_2024, sym::ref_pat_eat_one_layer_2024_structural),
+];

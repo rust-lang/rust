@@ -436,9 +436,9 @@ fn check_opaque_meets_bounds<'tcx>(
     } else {
         // Check that any hidden types found during wf checking match the hidden types that `type_of` sees.
         for (mut key, mut ty) in infcx.take_opaque_types() {
-            ty.hidden_type.ty = infcx.resolve_vars_if_possible(ty.hidden_type.ty);
+            ty.ty = infcx.resolve_vars_if_possible(ty.ty);
             key = infcx.resolve_vars_if_possible(key);
-            sanity_check_found_hidden_type(tcx, key, ty.hidden_type)?;
+            sanity_check_found_hidden_type(tcx, key, ty)?;
         }
         Ok(())
     }
@@ -1637,7 +1637,6 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
     let ty = tcx.type_of(def_id).instantiate_identity();
     if ty.references_error() {
         // If there is already another error, do not emit an error for not using a type parameter.
-        assert!(tcx.dcx().has_errors().is_some());
         return;
     }
 
@@ -1873,7 +1872,7 @@ pub(super) fn check_coroutine_obligations(
         // Check that any hidden types found when checking these stalled coroutine obligations
         // are valid.
         for (key, ty) in infcx.take_opaque_types() {
-            let hidden_type = infcx.resolve_vars_if_possible(ty.hidden_type);
+            let hidden_type = infcx.resolve_vars_if_possible(ty);
             let key = infcx.resolve_vars_if_possible(key);
             sanity_check_found_hidden_type(tcx, key, hidden_type)?;
         }

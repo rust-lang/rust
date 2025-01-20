@@ -35,15 +35,12 @@ use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_session::config::{CrateType, Lto};
+use rustc_target::spec::RelocModel;
 use tempfile::{TempDir, tempdir};
 
 use crate::back::write::save_temp_bitcode;
 use crate::errors::{DynamicLinkingWithLTO, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib};
 use crate::{GccCodegenBackend, GccContext, SyncContext, to_gcc_opt_level};
-
-/// We keep track of the computed LTO cache keys from the previous
-/// session to determine which CGUs we can reuse.
-//pub const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
 
 pub fn crate_type_allows_lto(crate_type: CrateType) -> bool {
     match crate_type {
@@ -54,7 +51,7 @@ pub fn crate_type_allows_lto(crate_type: CrateType) -> bool {
 
 struct LtoData {
     // TODO(antoyo): use symbols_below_threshold.
-    //symbols_below_threshold: Vec<CString>,
+    //symbols_below_threshold: Vec<String>,
     upstream_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     tmp_path: TempDir,
 }
@@ -83,7 +80,7 @@ fn prepare_lto(
 
     let symbol_filter = &|&(ref name, info): &(String, SymbolExportInfo)| {
         if info.level.is_below_threshold(export_threshold) || info.used {
-            Some(CString::new(name.as_str()).unwrap())
+            Some(name.clone())
         } else {
             None
         }
@@ -91,7 +88,7 @@ fn prepare_lto(
     let exported_symbols = cgcx.exported_symbols.as_ref().expect("needs exported symbols for LTO");
     let mut symbols_below_threshold = {
         let _timer = cgcx.prof.generic_activity("GCC_lto_generate_symbols_below_threshold");
-        exported_symbols[&LOCAL_CRATE].iter().filter_map(symbol_filter).collect::<Vec<CString>>()
+        exported_symbols[&LOCAL_CRATE].iter().filter_map(symbol_filter).collect::<Vec<String>>()
     };
     info!("{} symbols to preserve in this crate", symbols_below_threshold.len());
 
@@ -159,11 +156,7 @@ fn prepare_lto(
         }
     }
 
-    Ok(LtoData {
-        //symbols_below_threshold,
-        upstream_modules,
-        tmp_path,
-    })
+    Ok(LtoData { upstream_modules, tmp_path })
 }
 
 fn save_as_file(obj: &[u8], path: &Path) -> Result<(), LtoBitcodeFromRlib> {
@@ -191,7 +184,7 @@ pub(crate) fn run_fat(
         cached_modules,
         lto_data.upstream_modules,
         lto_data.tmp_path,
-        //&symbols_below_threshold,
+        //&lto_data.symbols_below_threshold,
     )
 }
 
@@ -202,7 +195,7 @@ fn fat_lto(
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     tmp_path: TempDir,
-    //symbols_below_threshold: &[*const libc::c_char],
+    //symbols_below_threshold: &[String],
 ) -> Result<LtoModuleCodegen<GccCodegenBackend>, FatalError> {
     let _timer = cgcx.prof.generic_activity("GCC_fat_lto_build_monolithic_module");
     info!("going for a fat lto");
@@ -327,6 +320,7 @@ fn fat_lto(
             ptr as *const *const libc::c_char,
             symbols_below_threshold.len() as libc::size_t,
         );*/
+
         save_temp_bitcode(cgcx, &module, "lto.after-restriction");
         //}
     }
@@ -363,8 +357,6 @@ pub(crate) fn run_thin(
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
     let lto_data = prepare_lto(cgcx, dcx)?;
-    /*let symbols_below_threshold =
-    symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();*/
     if cgcx.opts.cg.linker_plugin_lto.enabled() {
         unreachable!(
             "We should never reach this case if the LTO step \
@@ -377,7 +369,8 @@ pub(crate) fn run_thin(
         modules,
         lto_data.upstream_modules,
         lto_data.tmp_path,
-        cached_modules, /*, &symbols_below_threshold*/
+        cached_modules,
+        //&lto_data.symbols_below_threshold,
     )
 }
 
@@ -428,7 +421,7 @@ fn thin_lto(
     serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     tmp_path: TempDir,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
-    //symbols_below_threshold: &[*const libc::c_char],
+    //_symbols_below_threshold: &[String],
 ) -> Result<(Vec<LtoModuleCodegen<GccCodegenBackend>>, Vec<WorkProduct>), FatalError> {
     let _timer = cgcx.prof.generic_activity("LLVM_thin_lto_global_analysis");
     info!("going for that thin, thin LTO");
@@ -640,7 +633,13 @@ pub unsafe fn optimize_thin_module(
         }
     };
     let module = ModuleCodegen {
-        module_llvm: GccContext { context, should_combine_object_files, temp_dir: None },
+        module_llvm: GccContext {
+            context,
+            should_combine_object_files,
+            // TODO(antoyo): use the correct relocation model here.
+            relocation_model: RelocModel::Pic,
+            temp_dir: None,
+        },
         name: thin_module.name().to_string(),
         kind: ModuleKind::Regular,
     };

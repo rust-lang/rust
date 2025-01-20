@@ -240,14 +240,14 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     }
                 };
                 let ptr_type = base_addr.get_type();
-                let base_addr = self.const_bitcast(base_addr, self.usize_type);
+                let base_addr = self.context.new_cast(None, base_addr, self.usize_type);
                 let offset =
                     self.context.new_rvalue_from_long(self.usize_type, offset.bytes() as i64);
-                let ptr = self.const_bitcast(base_addr + offset, ptr_type);
+                let ptr = self.context.new_cast(None, base_addr + offset, ptr_type);
                 if !matches!(layout.primitive(), Pointer(_)) {
                     self.const_bitcast(ptr.dereference(None).to_rvalue(), ty)
                 } else {
-                    self.const_bitcast(ptr, ty)
+                    self.context.new_cast(None, ptr, ty)
                 }
             }
         }

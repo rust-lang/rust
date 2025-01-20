@@ -1991,18 +1991,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         adt_ty: Ty<'tcx>,
         expected: Expectation<'tcx>,
         expr: &hir::Expr<'_>,
-        span: Span,
+        path_span: Span,
         variant: &'tcx ty::VariantDef,
         hir_fields: &'tcx [hir::ExprField<'tcx>],
         base_expr: &'tcx hir::StructTailExpr<'tcx>,
     ) {
         let tcx = self.tcx;
 
-        let adt_ty = self.try_structurally_resolve_type(span, adt_ty);
+        let adt_ty = self.try_structurally_resolve_type(path_span, adt_ty);
         let adt_ty_hint = expected.only_has_type(self).and_then(|expected| {
             self.fudge_inference_if_ok(|| {
                 let ocx = ObligationCtxt::new(self);
-                ocx.sup(&self.misc(span), self.param_env, expected, adt_ty)?;
+                ocx.sup(&self.misc(path_span), self.param_env, expected, adt_ty)?;
                 if !ocx.select_where_possible().is_empty() {
                     return Err(TypeError::Mismatch);
                 }
@@ -2012,11 +2012,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
         if let Some(adt_ty_hint) = adt_ty_hint {
             // re-link the variables that the fudging above can create.
-            self.demand_eqtype(span, adt_ty_hint, adt_ty);
+            self.demand_eqtype(path_span, adt_ty_hint, adt_ty);
         }
 
         let ty::Adt(adt, args) = adt_ty.kind() else {
-            span_bug!(span, "non-ADT passed to check_expr_struct_fields");
+            span_bug!(path_span, "non-ADT passed to check_expr_struct_fields");
         };
         let adt_kind = adt.adt_kind();
 
@@ -2107,7 +2107,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if adt_kind == AdtKind::Union && hir_fields.len() != 1 {
             struct_span_code_err!(
                 self.dcx(),
-                span,
+                path_span,
                 E0784,
                 "union expressions should have exactly one field",
             )
@@ -2138,13 +2138,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             if !self.tcx.features().default_field_values() {
+                let sugg = self.tcx.crate_level_attribute_injection_span(expr.hir_id);
                 self.dcx().emit_err(BaseExpressionDoubleDot {
                     span: span.shrink_to_hi(),
                     // We only mention enabling the feature if this is a nightly rustc *and* the
                     // expression would make sense with the feature enabled.
-                    default_field_values: if self.tcx.sess.is_nightly_build()
+                    default_field_values_suggestion: if self.tcx.sess.is_nightly_build()
                         && missing_mandatory_fields.is_empty()
                         && !missing_optional_fields.is_empty()
+                        && sugg.is_some()
+                    {
+                        sugg
+                    } else {
+                        None
+                    },
+                    default_field_values_help: if self.tcx.sess.is_nightly_build()
+                        && missing_mandatory_fields.is_empty()
+                        && !missing_optional_fields.is_empty()
+                        && sugg.is_none()
                     {
                         Some(BaseExpressionDoubleDotEnableDefaultFieldValues)
                     } else {
@@ -2166,6 +2177,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     },
                 });
                 return;
+            }
+            if variant.fields.is_empty() {
+                let mut err = self.dcx().struct_span_err(
+                    span,
+                    format!(
+                        "`{adt_ty}` has no fields, `..` needs at least one default field in the \
+                         struct definition",
+                    ),
+                );
+                err.span_label(path_span, "this type has no fields");
+                err.emit();
             }
             if !missing_mandatory_fields.is_empty() {
                 let s = pluralize!(missing_mandatory_fields.len());
@@ -2316,11 +2338,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .collect();
 
             if !private_fields.is_empty() {
-                self.report_private_fields(adt_ty, span, expr.span, private_fields, hir_fields);
+                self.report_private_fields(
+                    adt_ty,
+                    path_span,
+                    expr.span,
+                    private_fields,
+                    hir_fields,
+                );
             } else {
                 self.report_missing_fields(
                     adt_ty,
-                    span,
+                    path_span,
                     remaining_fields,
                     variant,
                     hir_fields,

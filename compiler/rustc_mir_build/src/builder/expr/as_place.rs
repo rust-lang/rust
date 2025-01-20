@@ -11,7 +11,7 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, AdtDef, CanonicalUserTypeAnnotation, Ty, Variance};
 use rustc_middle::{bug, span_bug};
-use rustc_span::{DesugaringKind, Span};
+use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 
 use crate::builder::ForGuard::{OutsideGuard, RefWithinGuard};
@@ -630,98 +630,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block.and(base_place.index(idx))
     }
 
-    /// Given a place that's either an array or a slice, returns an operand
-    /// with the length of the array/slice.
-    ///
-    /// For arrays it'll be `Operand::Constant` with the actual length;
-    /// For slices it'll be `Operand::Move` of a local using `PtrMetadata`.
-    pub(in crate::builder) fn len_of_slice_or_array(
-        &mut self,
-        block: BasicBlock,
-        place: Place<'tcx>,
-        span: Span,
-        source_info: SourceInfo,
-    ) -> Operand<'tcx> {
-        let place_ty = place.ty(&self.local_decls, self.tcx).ty;
-        let usize_ty = self.tcx.types.usize;
-
-        match place_ty.kind() {
-            ty::Array(_elem_ty, len_const) => {
-                let ty_const = if let Some((_, len_ty)) = len_const.try_to_valtree()
-                    && len_ty != self.tcx.types.usize
-                {
-                    // Bad const generics can give us a constant from the type that's
-                    // not actually a `usize`, so in that case give an error instead.
-                    // FIXME: It'd be nice if the type checker made sure this wasn't
-                    // possible, instead.
-                    let err = self.tcx.dcx().span_delayed_bug(
-                        span,
-                        format!(
-                            "Array length should have already been a type error, as it's {len_ty:?}"
-                        ),
-                    );
-                    ty::Const::new_error(self.tcx, err)
-                } else {
-                    // We know how long an array is, so just use that as a constant
-                    // directly -- no locals needed. We do need one statement so
-                    // that borrow- and initialization-checking consider it used,
-                    // though. FIXME: Do we really *need* to count this as a use?
-                    // Could partial array tracking work off something else instead?
-                    self.cfg.push_fake_read(block, source_info, FakeReadCause::ForIndex, place);
-                    *len_const
-                };
-
-                let const_ = Const::from_ty_const(ty_const, usize_ty, self.tcx);
-                Operand::Constant(Box::new(ConstOperand { span, user_ty: None, const_ }))
-            }
-            ty::Slice(_elem_ty) => {
-                let ptr_or_ref = if let [PlaceElem::Deref] = place.projection[..]
-                    && let local_ty = self.local_decls[place.local].ty
-                    && local_ty.is_trivially_pure_clone_copy()
-                {
-                    // It's extremely common that we have something that can be
-                    // directly passed to `PtrMetadata`, so avoid an unnecessary
-                    // temporary and statement in those cases. Note that we can
-                    // only do that for `Copy` types -- not `&mut [_]` -- because
-                    // the MIR we're building here needs to pass NLL later.
-                    Operand::Copy(Place::from(place.local))
-                } else {
-                    let len_span = self.tcx.with_stable_hashing_context(|hcx| {
-                        let span = source_info.span;
-                        span.mark_with_reason(
-                            None,
-                            DesugaringKind::IndexBoundsCheckReborrow,
-                            span.edition(),
-                            hcx,
-                        )
-                    });
-                    let ptr_ty = Ty::new_imm_ptr(self.tcx, place_ty);
-                    let slice_ptr = self.temp(ptr_ty, span);
-                    self.cfg.push_assign(
-                        block,
-                        SourceInfo { span: len_span, ..source_info },
-                        slice_ptr,
-                        Rvalue::RawPtr(Mutability::Not, place),
-                    );
-                    Operand::Move(slice_ptr)
-                };
-
-                let len = self.temp(usize_ty, span);
-                self.cfg.push_assign(
-                    block,
-                    source_info,
-                    len,
-                    Rvalue::UnaryOp(UnOp::PtrMetadata, ptr_or_ref),
-                );
-
-                Operand::Move(len)
-            }
-            _ => {
-                span_bug!(span, "len called on place of type {place_ty:?}")
-            }
-        }
-    }
-
     fn bounds_check(
         &mut self,
         block: BasicBlock,
@@ -730,25 +638,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr_span: Span,
         source_info: SourceInfo,
     ) -> BasicBlock {
-        let slice = slice.to_place(self);
+        let usize_ty = self.tcx.types.usize;
+        let bool_ty = self.tcx.types.bool;
+        // bounds check:
+        let len = self.temp(usize_ty, expr_span);
+        let lt = self.temp(bool_ty, expr_span);
 
         // len = len(slice)
-        let len = self.len_of_slice_or_array(block, slice, expr_span, source_info);
-
+        self.cfg.push_assign(block, source_info, len, Rvalue::Len(slice.to_place(self)));
         // lt = idx < len
-        let bool_ty = self.tcx.types.bool;
-        let lt = self.temp(bool_ty, expr_span);
         self.cfg.push_assign(
             block,
             source_info,
             lt,
             Rvalue::BinaryOp(
                 BinOp::Lt,
-                Box::new((Operand::Copy(Place::from(index)), len.to_copy())),
+                Box::new((Operand::Copy(Place::from(index)), Operand::Copy(len))),
             ),
         );
-        let msg = BoundsCheck { len, index: Operand::Copy(Place::from(index)) };
-
+        let msg = BoundsCheck { len: Operand::Move(len), index: Operand::Copy(Place::from(index)) };
         // assert!(lt, "...")
         self.assert(block, Operand::Move(lt), true, msg, expr_span)
     }

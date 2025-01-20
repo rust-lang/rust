@@ -217,8 +217,8 @@ degree documented below):
 - For every other target with OS `linux`, `macos`, or `windows`, Miri should generally work, but we
   make no promises and we don't run tests for such targets.
 - We have unofficial support (not maintained by the Miri team itself) for some further operating systems.
-  - `solaris` / `illumos`: maintained by @devnexen. Supports `std::{env, thread, sync}`, but not `std::fs`.
-  - `freebsd`: **maintainer wanted**. Supports `std::env` and parts of `std::{thread, fs}`, but not `std::sync`.
+  - `solaris` / `illumos`: maintained by @devnexen. Supports the entire test suite.
+  - `freebsd`: maintained by @YohDeadfall. Supports `std::env` and parts of `std::{thread, fs}`, but not `std::sync`.
   - `android`: **maintainer wanted**. Support very incomplete, but a basic "hello world" works.
   - `wasi`: **maintainer wanted**. Support very incomplete, not even standard output works, but an empty `main` function works.
 - For targets on other operating systems, Miri might fail before even reaching the `main` function.

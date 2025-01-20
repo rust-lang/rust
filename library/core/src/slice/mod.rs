@@ -3071,19 +3071,21 @@ impl<T> [T] {
         sort::unstable::sort(self, &mut |a, b| f(a).lt(&f(b)));
     }
 
-    /// Reorders the slice such that the element at `index` after the reordering is at its final
-    /// sorted position.
+    /// Reorders the slice such that the element at `index` is at a sort-order position. All
+    /// elements before `index` will be `<=` to this value, and all elements after will be `>=` to
+    /// it.
     ///
-    /// This reordering has the additional property that any value at position `i < index` will be
-    /// less than or equal to any value at a position `j > index`. Additionally, this reordering is
-    /// unstable (i.e. any number of equal elements may end up at position `index`), in-place (i.e.
-    /// does not allocate), and runs in *O*(*n*) time. This function is also known as "kth element"
-    /// in other libraries.
+    /// This reordering is unstable (i.e. any element that compares equal to the nth element may end
+    /// up at that position), in-place (i.e.  does not allocate), and runs in *O*(*n*) time. This
+    /// function is also known as "kth element" in other libraries.
     ///
-    /// It returns a triplet of the following from the reordered slice: the subslice prior to
-    /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
-    /// those two subslices will respectively all be less-than-or-equal-to and
-    /// greater-than-or-equal-to the value of the element at `index`.
+    /// Returns a triple that partitions the reordered slice:
+    ///
+    /// * The unsorted subslice before `index`, whose elements all satisfy `x <= self[index]`.
+    ///
+    /// * The element at `index`.
+    ///
+    /// * The unsorted subslice after `index`, whose elements all satisfy `x >= self[index]`.
     ///
     /// # Current implementation
     ///
@@ -3096,7 +3098,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics when `index >= len()`, meaning it always panics on empty slices.
+    /// Panics when `index >= len()`, and so always panics on empty slices.
     ///
     /// May panic if the implementation of [`Ord`] for `T` does not implement a [total order].
     ///
@@ -3105,8 +3107,7 @@ impl<T> [T] {
     /// ```
     /// let mut v = [-5i32, 4, 2, -3, 1];
     ///
-    /// // Find the items less than or equal to the median, the median, and greater than or equal to
-    /// // the median.
+    /// // Find the items `<=` to the median, the median itself, and the items `>=` to it.
     /// let (lesser, median, greater) = v.select_nth_unstable(2);
     ///
     /// assert!(lesser == [-3, -5] || lesser == [-5, -3]);
@@ -3132,19 +3133,23 @@ impl<T> [T] {
         sort::select::partition_at_index(self, index, T::lt)
     }
 
-    /// Reorders the slice with a comparator function such that the element at `index` after the
-    /// reordering is at its final sorted position.
+    /// Reorders the slice with a comparator function such that the element at `index` is at a
+    /// sort-order position. All elements before `index` will be `<=` to this value, and all
+    /// elements after will be `>=` to it, according to the comparator function.
     ///
-    /// This reordering has the additional property that any value at position `i < index` will be
-    /// less than or equal to any value at a position `j > index` using the comparator function.
-    /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
-    /// position `index`), in-place (i.e. does not allocate), and runs in *O*(*n*) time. This
+    /// This reordering is unstable (i.e. any element that compares equal to the nth element may end
+    /// up at that position), in-place (i.e.  does not allocate), and runs in *O*(*n*) time. This
     /// function is also known as "kth element" in other libraries.
     ///
-    /// It returns a triplet of the following from the slice reordered according to the provided
-    /// comparator function: the subslice prior to `index`, the element at `index`, and the subslice
-    /// after `index`; accordingly, the values in those two subslices will respectively all be
-    /// less-than-or-equal-to and greater-than-or-equal-to the value of the element at `index`.
+    /// Returns a triple partitioning the reordered slice:
+    ///
+    /// * The unsorted subslice before `index`, whose elements all satisfy
+    ///   `compare(x, self[index]).is_le()`.
+    ///
+    /// * The element at `index`.
+    ///
+    /// * The unsorted subslice after `index`, whose elements all satisfy
+    ///   `compare(x, self[index]).is_ge()`.
     ///
     /// # Current implementation
     ///
@@ -3157,7 +3162,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics when `index >= len()`, meaning it always panics on empty slices.
+    /// Panics when `index >= len()`, and so always panics on empty slices.
     ///
     /// May panic if `compare` does not implement a [total order].
     ///
@@ -3166,13 +3171,13 @@ impl<T> [T] {
     /// ```
     /// let mut v = [-5i32, 4, 2, -3, 1];
     ///
-    /// // Find the items less than or equal to the median, the median, and greater than or equal to
-    /// // the median as if the slice were sorted in descending order.
-    /// let (lesser, median, greater) = v.select_nth_unstable_by(2, |a, b| b.cmp(a));
+    /// // Find the items `>=` to the median, the median itself, and the items `<=` to it, by using
+    /// // a reversed comparator.
+    /// let (before, median, after) = v.select_nth_unstable_by(2, |a, b| b.cmp(a));
     ///
-    /// assert!(lesser == [4, 2] || lesser == [2, 4]);
+    /// assert!(before == [4, 2] || before == [2, 4]);
     /// assert_eq!(median, &mut 1);
-    /// assert!(greater == [-3, -5] || greater == [-5, -3]);
+    /// assert!(after == [-3, -5] || after == [-5, -3]);
     ///
     /// // We are only guaranteed the slice will be one of the following, based on the way we sort
     /// // about the specified index.
@@ -3197,19 +3202,21 @@ impl<T> [T] {
         sort::select::partition_at_index(self, index, |a: &T, b: &T| compare(a, b) == Less)
     }
 
-    /// Reorders the slice with a key extraction function such that the element at `index` after the
-    /// reordering is at its final sorted position.
+    /// Reorders the slice with a key extraction function such that the element at `index` is at a
+    /// sort-order position. All elements before `index` will have keys `<=` to the key at `index`,
+    /// and all elements after will have keys `>=` to it.
     ///
-    /// This reordering has the additional property that any value at position `i < index` will be
-    /// less than or equal to any value at a position `j > index` using the key extraction function.
-    /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
-    /// position `index`), in-place (i.e. does not allocate), and runs in *O*(*n*) time. This
+    /// This reordering is unstable (i.e. any element that compares equal to the nth element may end
+    /// up at that position), in-place (i.e.  does not allocate), and runs in *O*(*n*) time. This
     /// function is also known as "kth element" in other libraries.
     ///
-    /// It returns a triplet of the following from the slice reordered according to the provided key
-    /// extraction function: the subslice prior to `index`, the element at `index`, and the subslice
-    /// after `index`; accordingly, the values in those two subslices will respectively all be
-    /// less-than-or-equal-to and greater-than-or-equal-to the value of the element at `index`.
+    /// Returns a triple partitioning the reordered slice:
+    ///
+    /// * The unsorted subslice before `index`, whose elements all satisfy `f(x) <= f(self[index])`.
+    ///
+    /// * The element at `index`.
+    ///
+    /// * The unsorted subslice after `index`, whose elements all satisfy `f(x) >= f(self[index])`.
     ///
     /// # Current implementation
     ///
@@ -3231,8 +3238,8 @@ impl<T> [T] {
     /// ```
     /// let mut v = [-5i32, 4, 1, -3, 2];
     ///
-    /// // Find the items less than or equal to the median, the median, and greater than or equal to
-    /// // the median as if the slice were sorted according to absolute value.
+    /// // Find the items `<=` to the absolute median, the absolute median itself, and the items
+    /// // `>=` to it.
     /// let (lesser, median, greater) = v.select_nth_unstable_by_key(2, |a| a.abs());
     ///
     /// assert!(lesser == [1, 2] || lesser == [2, 1]);

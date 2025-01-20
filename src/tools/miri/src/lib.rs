@@ -13,6 +13,8 @@
 #![feature(strict_overflow_ops)]
 #![feature(pointer_is_aligned_to)]
 #![feature(unqualified_local_imports)]
+#![feature(derive_coerce_pointee)]
+#![feature(arbitrary_self_types)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -126,8 +128,8 @@ pub use crate::concurrency::sync::{
     CondvarId, EvalContextExt as _, MutexRef, RwLockId, SynchronizationObjects,
 };
 pub use crate::concurrency::thread::{
-    BlockReason, EvalContextExt as _, StackEmptyCallback, ThreadId, ThreadManager, TimeoutAnchor,
-    TimeoutClock, UnblockCallback,
+    BlockReason, DynUnblockCallback, EvalContextExt as _, StackEmptyCallback, ThreadId,
+    ThreadManager, TimeoutAnchor, TimeoutClock, UnblockKind,
 };
 pub use crate::diagnostics::{
     EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo, report_error,
@@ -139,8 +141,8 @@ pub use crate::eval::{
 pub use crate::helpers::{AccessKind, EvalContextExt as _};
 pub use crate::intrinsics::EvalContextExt as _;
 pub use crate::machine::{
-    AllocExtra, FrameExtra, MemoryKind, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind,
-    PrimitiveLayouts, Provenance, ProvenanceExtra,
+    AllocExtra, DynMachineCallback, FrameExtra, MachineCallback, MemoryKind, MiriInterpCx,
+    MiriInterpCxExt, MiriMachine, MiriMemoryKind, PrimitiveLayouts, Provenance, ProvenanceExtra,
 };
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as _;

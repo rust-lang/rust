@@ -125,7 +125,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         let llfn = declare_raw_fn(
             self,
             name,
-            fn_abi.llvm_cconv(),
+            fn_abi.llvm_cconv(self),
             llvm::UnnamedAddr::Global,
             llvm::Visibility::Default,
             fn_abi.llvm_type(self),

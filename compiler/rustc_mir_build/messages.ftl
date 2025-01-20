@@ -118,12 +118,6 @@ mir_build_extern_static_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
     .note = extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
     .label = use of extern static
 
-mir_build_force_inline =
-    `{$callee}` is incompatible with `#[rustc_force_inline]`
-    .attr = annotation here
-    .callee = `{$callee}` defined here
-    .note = incompatible due to: {$reason}
-
 mir_build_inform_irrefutable = `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
 
 mir_build_initializing_type_with_requires_unsafe =
@@ -329,12 +323,6 @@ mir_build_type_not_structural_def = `{$ty}` must be annotated with `#[derive(Par
 mir_build_type_not_structural_more_info = see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 mir_build_type_not_structural_tip =
     the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
-
-mir_build_unconditional_recursion = function cannot return without recursing
-    .label = cannot return without recursing
-    .help = a `loop` may express intention better if this is on purpose
-
-mir_build_unconditional_recursion_call_site_label = recursive call site
 
 mir_build_union_field_requires_unsafe =
     access to union field is unsafe and requires unsafe block

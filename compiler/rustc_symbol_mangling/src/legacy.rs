@@ -19,15 +19,15 @@ pub(super) fn mangle<'tcx>(
     let def_id = instance.def_id();
 
     // We want to compute the "type" of this item. Unfortunately, some
-    // kinds of items (e.g., closures) don't have an entry in the
-    // item-type array. So walk back up the find the closest parent
-    // that DOES have an entry.
+    // kinds of items (e.g., synthetic static allocations from const eval)
+    // don't have a proper implementation for the `type_of` query. So walk
+    // back up the find the closest parent that DOES have a type.
     let mut ty_def_id = def_id;
     let instance_ty;
     loop {
         let key = tcx.def_key(ty_def_id);
         match key.disambiguated_data.data {
-            DefPathData::TypeNs(_) | DefPathData::ValueNs(_) => {
+            DefPathData::TypeNs(_) | DefPathData::ValueNs(_) | DefPathData::Closure => {
                 instance_ty = tcx.type_of(ty_def_id).instantiate_identity();
                 debug!(?instance_ty);
                 break;

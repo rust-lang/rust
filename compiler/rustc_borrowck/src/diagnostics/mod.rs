@@ -20,13 +20,13 @@ use rustc_middle::mir::{
     StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::print::Print;
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_middle::util::{CallDesugaringKind, call_kind};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveOutIndex};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+use rustc_trait_selection::error_reporting::traits::call_kind::{CallDesugaringKind, call_kind};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{
     FulfillmentErrorCode, type_known_to_meet_bound_modulo_regions,
@@ -63,7 +63,7 @@ pub(crate) use mutability_errors::AccessKind;
 pub(crate) use outlives_suggestion::OutlivesSuggestionBuilder;
 pub(crate) use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionErrors};
 pub(crate) use region_name::{RegionName, RegionNameSource};
-pub(crate) use rustc_middle::util::CallKind;
+pub(crate) use rustc_trait_selection::error_reporting::traits::call_kind::CallKind;
 
 pub(super) struct DescribePlaceOpt {
     including_downcast: bool,

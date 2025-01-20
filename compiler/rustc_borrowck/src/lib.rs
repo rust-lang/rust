@@ -182,9 +182,6 @@ fn do_mir_borrowck<'tcx>(
     let location_table = PoloniusLocationTable::new(body);
 
     let move_data = MoveData::gather_moves(body, tcx, |_| true);
-    let promoted_move_data = promoted
-        .iter_enumerated()
-        .map(|(idx, body)| (idx, MoveData::gather_moves(body, tcx, |_| true)));
 
     let flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
         .iterate_to_fixpoint(tcx, body, Some("borrowck"))
@@ -242,10 +239,14 @@ fn do_mir_borrowck<'tcx>(
         false
     };
 
-    for (idx, move_data) in promoted_move_data {
+    // While promoteds should mostly be correct by construction, we need to check them for
+    // invalid moves to detect moving out of arrays:`struct S; fn main() { &([S][0]); }`.
+    for promoted_body in &promoted {
         use rustc_middle::mir::visit::Visitor;
-
-        let promoted_body = &promoted[idx];
+        // This assumes that we won't use some of the fields of the `promoted_mbcx`
+        // when detecting and reporting move errors. While it would be nice to move
+        // this check out of `MirBorrowckCtxt`, actually doing so is far from trivial.
+        let move_data = MoveData::gather_moves(promoted_body, tcx, |_| true);
         let mut promoted_mbcx = MirBorrowckCtxt {
             infcx: &infcx,
             body: promoted_body,
@@ -270,9 +271,6 @@ fn do_mir_borrowck<'tcx>(
             move_errors: Vec::new(),
             diags_buffer,
         };
-        MoveVisitor { ctxt: &mut promoted_mbcx }.visit_body(promoted_body);
-        promoted_mbcx.report_move_errors();
-
         struct MoveVisitor<'a, 'b, 'infcx, 'tcx> {
             ctxt: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
         }
@@ -284,6 +282,8 @@ fn do_mir_borrowck<'tcx>(
                 }
             }
         }
+        MoveVisitor { ctxt: &mut promoted_mbcx }.visit_body(promoted_body);
+        promoted_mbcx.report_move_errors();
     }
 
     let mut mbcx = MirBorrowckCtxt {
@@ -829,6 +829,7 @@ use self::ReadOrWrite::{Activation, Read, Reservation, Write};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum ArtificialField {
+    ArrayLength,
     FakeBorrow,
 }
 
@@ -1338,11 +1339,16 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 );
             }
 
-            &Rvalue::Discriminant(place) => {
+            &(Rvalue::Len(place) | Rvalue::Discriminant(place)) => {
+                let af = match *rvalue {
+                    Rvalue::Len(..) => Some(ArtificialField::ArrayLength),
+                    Rvalue::Discriminant(..) => None,
+                    _ => unreachable!(),
+                };
                 self.access_place(
                     location,
                     (place, span),
-                    (Shallow(None), Read(ReadKind::Copy)),
+                    (Shallow(af), Read(ReadKind::Copy)),
                     LocalMutationIsAllowed::No,
                     state,
                 );

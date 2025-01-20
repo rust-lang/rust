@@ -29,15 +29,15 @@ LL + type T1 =  extern "C" fn();
 error: an `fn` pointer type cannot be `const`
   --> $DIR/recover-const-async-fn-ptr.rs:5:11
    |
-LL | type T2 = const unsafe extern fn();
-   |           -----^^^^^^^^^^^^^^^^^^^
+LL | type T2 = const unsafe extern "C" fn();
+   |           -----^^^^^^^^^^^^^^^^^^^^^^^
    |           |
    |           `const` because of this
    |
 help: remove the `const` qualifier
    |
-LL - type T2 = const unsafe extern fn();
-LL + type T2 =  unsafe extern fn();
+LL - type T2 = const unsafe extern "C" fn();
+LL + type T2 =  unsafe extern "C" fn();
    |
 
 error: an `fn` pointer type cannot be `async`
@@ -57,15 +57,15 @@ LL + type T3 =  fn();
 error: an `fn` pointer type cannot be `async`
   --> $DIR/recover-const-async-fn-ptr.rs:7:11
    |
-LL | type T4 = async extern fn();
-   |           -----^^^^^^^^^^^^
+LL | type T4 = async extern "C" fn();
+   |           -----^^^^^^^^^^^^^^^^
    |           |
    |           `async` because of this
    |
 help: remove the `async` qualifier
    |
-LL - type T4 = async extern fn();
-LL + type T4 =  extern fn();
+LL - type T4 = async extern "C" fn();
+LL + type T4 =  extern "C" fn();
    |
 
 error: an `fn` pointer type cannot be `async`
@@ -141,15 +141,15 @@ LL + type FT1 = for<'a>  extern "C" fn();
 error: an `fn` pointer type cannot be `const`
   --> $DIR/recover-const-async-fn-ptr.rs:15:12
    |
-LL | type FT2 = for<'a> const unsafe extern fn();
-   |            ^^^^^^^^-----^^^^^^^^^^^^^^^^^^^
+LL | type FT2 = for<'a> const unsafe extern "C" fn();
+   |            ^^^^^^^^-----^^^^^^^^^^^^^^^^^^^^^^^
    |                    |
    |                    `const` because of this
    |
 help: remove the `const` qualifier
    |
-LL - type FT2 = for<'a> const unsafe extern fn();
-LL + type FT2 = for<'a>  unsafe extern fn();
+LL - type FT2 = for<'a> const unsafe extern "C" fn();
+LL + type FT2 = for<'a>  unsafe extern "C" fn();
    |
 
 error: an `fn` pointer type cannot be `async`
@@ -169,15 +169,15 @@ LL + type FT3 = for<'a>  fn();
 error: an `fn` pointer type cannot be `async`
   --> $DIR/recover-const-async-fn-ptr.rs:17:12
    |
-LL | type FT4 = for<'a> async extern fn();
-   |            ^^^^^^^^-----^^^^^^^^^^^^
+LL | type FT4 = for<'a> async extern "C" fn();
+   |            ^^^^^^^^-----^^^^^^^^^^^^^^^^
    |                    |
    |                    `async` because of this
    |
 help: remove the `async` qualifier
    |
-LL - type FT4 = for<'a> async extern fn();
-LL + type FT4 = for<'a>  extern fn();
+LL - type FT4 = for<'a> async extern "C" fn();
+LL + type FT4 = for<'a>  extern "C" fn();
    |
 
 error: an `fn` pointer type cannot be `async`

@@ -75,6 +75,7 @@
 - [Prologue](./building/bootstrapping/intro.md)
 - [What Bootstrapping does](./building/bootstrapping/what-bootstrapping-does.md)
 - [How Bootstrap does it](./building/bootstrapping/how-bootstrap-does-it.md)
+- [Debugging bootstrap](./building/bootstrapping/debugging-bootstrap.md)
 
 # High-level Compiler Architecture
 

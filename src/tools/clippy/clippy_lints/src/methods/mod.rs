@@ -5309,7 +5309,7 @@ fn lint_binary_expr_with_method_call(cx: &LateContext<'_>, info: &mut BinaryExpr
 }
 
 const FN_HEADER: hir::FnHeader = hir::FnHeader {
-    safety: hir::Safety::Safe,
+    safety: hir::HeaderSafety::Normal(hir::Safety::Safe),
     constness: hir::Constness::NotConst,
     asyncness: hir::IsAsync::NotAsync,
     abi: rustc_target::spec::abi::Abi::Rust,

@@ -424,6 +424,7 @@ impl<'tcx> Rvalue<'tcx> {
             | Rvalue::Ref(_, _, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::RawPtr(_, _)
+            | Rvalue::Len(_)
             | Rvalue::Cast(
                 CastKind::IntToInt
                 | CastKind::FloatToInt

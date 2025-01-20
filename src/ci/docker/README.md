@@ -305,8 +305,6 @@ For targets: `mips-unknown-linux-gnu`
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
 - Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
-- Path and misc options > Patches origin = Bundled, then local
-- Path and misc options > Local patch directory = /tmp/patches
 - Target options > Target Architecture = mips
 - Target options > ABI = o32
 - Target options > Endianness = Big endian
@@ -327,8 +325,6 @@ For targets: `mipsel-unknown-linux-gnu`
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
 - Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
-- Path and misc options > Patches origin = Bundled, then local
-- Path and misc options > Local patch directory = /tmp/patches
 - Target options > Target Architecture = mips
 - Target options > ABI = o32
 - Target options > Endianness = Little endian
@@ -349,8 +345,6 @@ For targets: `mips64-unknown-linux-gnuabi64`
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
 - Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
-- Path and misc options > Patches origin = Bundled, then local
-- Path and misc options > Local patch directory = /tmp/patches
 - Target options > Target Architecture = mips
 - Target options > ABI = n64
 - Target options > Endianness = Big endian
@@ -370,8 +364,6 @@ For targets: `mips64el-unknown-linux-gnuabi64`
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
 - Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
-- Path and misc options > Patches origin = Bundled, then local
-- Path and misc options > Local patch directory = /tmp/patches
 - Target options > Target Architecture = mips
 - Target options > ABI = n64
 - Target options > Endianness = Little endian

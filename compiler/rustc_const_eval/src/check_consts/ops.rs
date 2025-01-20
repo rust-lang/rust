@@ -1,8 +1,8 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
 use hir::{ConstContext, LangItem};
-use rustc_errors::Diag;
 use rustc_errors::codes::*;
+use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -14,9 +14,11 @@ use rustc_middle::ty::{
     self, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef, Param, TraitRef, Ty,
     suggest_constraining_type_param,
 };
-use rustc_middle::util::{CallDesugaringKind, CallKind, call_kind};
 use rustc_session::parse::add_feature_diagnostics;
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
+use rustc_trait_selection::error_reporting::traits::call_kind::{
+    CallDesugaringKind, CallKind, call_kind,
+};
 use rustc_trait_selection::traits::SelectionContext;
 use tracing::debug;
 
@@ -324,10 +326,12 @@ fn build_error_for_const_call<'tcx>(
             note_trait_if_possible(&mut err, self_ty, trait_id);
             err
         }
-        CallKind::DerefCoercion { deref_target, deref_target_ty, self_ty } => {
+        CallKind::DerefCoercion { deref_target_span, deref_target_ty, self_ty } => {
             // Check first whether the source is accessible (issue #87060)
-            let target = if tcx.sess.source_map().is_span_accessible(deref_target) {
-                Some(deref_target)
+            let target = if let Some(deref_target_span) = deref_target_span
+                && tcx.sess.source_map().is_span_accessible(deref_target_span)
+            {
+                Some(deref_target_span)
             } else {
                 None
             };
@@ -384,6 +388,7 @@ pub(crate) struct FnCallUnstable {
     /// expose on stable.
     pub feature_enabled: bool,
     pub safe_to_expose_on_stable: bool,
+    pub suggestion_span: Option<Span>,
 }
 
 impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
@@ -403,8 +408,18 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
             def_path: ccx.tcx.def_path_str(self.def_id),
         });
         // FIXME: make this translatable
+        let msg = format!("add `#![feature({})]` to the crate attributes to enable", self.feature);
         #[allow(rustc::untranslatable_diagnostic)]
-        err.help(format!("add `#![feature({})]` to the crate attributes to enable", self.feature));
+        if let Some(span) = self.suggestion_span {
+            err.span_suggestion_verbose(
+                span,
+                msg,
+                format!("#![feature({})]\n", self.feature),
+                Applicability::MachineApplicable,
+            );
+        } else {
+            err.help(msg);
+        }
 
         err
     }
@@ -432,6 +447,7 @@ pub(crate) struct IntrinsicUnstable {
     pub name: Symbol,
     pub feature: Symbol,
     pub const_stable_indirect: bool,
+    pub suggestion: Option<Span>,
 }
 
 impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
@@ -451,6 +467,8 @@ impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
             span,
             name: self.name,
             feature: self.feature,
+            suggestion: self.suggestion,
+            help: self.suggestion.is_none(),
         })
     }
 }

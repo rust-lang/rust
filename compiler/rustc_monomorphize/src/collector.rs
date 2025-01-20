@@ -1407,20 +1407,37 @@ impl<'v> RootCollector<'_, 'v> {
         match self.tcx.def_kind(id.owner_id) {
             DefKind::Enum | DefKind::Struct | DefKind::Union => {
                 if self.strategy == MonoItemCollectionStrategy::Eager
-                    && self.tcx.generics_of(id.owner_id).is_empty()
+                    && !self.tcx.generics_of(id.owner_id).requires_monomorphization(self.tcx)
                 {
                     debug!("RootCollector: ADT drop-glue for `{id:?}`",);
+                    let id_args =
+                        ty::GenericArgs::for_item(self.tcx, id.owner_id.to_def_id(), |param, _| {
+                            match param.kind {
+                                GenericParamDefKind::Lifetime => {
+                                    self.tcx.lifetimes.re_erased.into()
+                                }
+                                GenericParamDefKind::Type { .. }
+                                | GenericParamDefKind::Const { .. } => {
+                                    unreachable!(
+                                        "`own_requires_monomorphization` check means that \
+                                we should have no type/const params"
+                                    )
+                                }
+                            }
+                        });
 
                     // This type is impossible to instantiate, so we should not try to
                     // generate a `drop_in_place` instance for it.
                     if self.tcx.instantiate_and_check_impossible_predicates((
                         id.owner_id.to_def_id(),
-                        ty::List::empty(),
+                        id_args,
                     )) {
                         return;
                     }
 
-                    let ty = self.tcx.type_of(id.owner_id.to_def_id()).no_bound_vars().unwrap();
+                    let ty =
+                        self.tcx.type_of(id.owner_id.to_def_id()).instantiate(self.tcx, id_args);
+                    assert!(!ty.has_non_region_param());
                     visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.output);
                 }
             }

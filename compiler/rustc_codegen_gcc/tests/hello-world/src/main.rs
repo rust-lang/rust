@@ -1,3 +1,5 @@
+use mylib::my_func;
+
 fn main() {
-    println!("Hello, world!");
+    println!("{}", my_func(5, 10));
 }

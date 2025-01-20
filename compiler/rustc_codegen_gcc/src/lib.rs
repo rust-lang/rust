@@ -27,6 +27,8 @@
 // Some "regular" crates we want to share with rustc
 extern crate object;
 extern crate smallvec;
+// FIXME(antoyo): clippy bug: remove the #[allow] when it's fixed.
+#[allow(unused_extern_crates)]
 extern crate tempfile;
 #[macro_use]
 extern crate tracing;
@@ -88,7 +90,6 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
 use back::lto::{ThinBuffer, ThinData};
-use errors::LTONotSupported;
 use gccjit::{CType, Context, OptimizationLevel};
 #[cfg(feature = "master")]
 use gccjit::{TargetInfo, Version};
@@ -109,9 +110,10 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
-use rustc_session::config::{Lto, OptLevel, OutputFilenames};
+use rustc_session::config::{OptLevel, OutputFilenames};
 use rustc_span::Symbol;
 use rustc_span::fatal_error::FatalError;
+use rustc_target::spec::RelocModel;
 use tempfile::TempDir;
 
 use crate::back::lto::ModuleBuffer;
@@ -141,11 +143,15 @@ impl TargetInfo {
         false
     }
 
-    fn supports_128bit_int(&self) -> bool {
-        self.supports_128bit_integers.load(Ordering::SeqCst)
-    }
-
-    fn supports_target_dependent_type(&self, _typ: CType) -> bool {
+    fn supports_target_dependent_type(&self, typ: CType) -> bool {
+        match typ {
+            CType::UInt128t | CType::Int128t => {
+                if self.supports_128bit_integers.load(Ordering::SeqCst) {
+                    return true;
+                }
+            }
+            _ => (),
+        }
         false
     }
 }
@@ -164,10 +170,6 @@ impl Debug for LockedTargetInfo {
 impl LockedTargetInfo {
     fn cpu_supports(&self, feature: &str) -> bool {
         self.info.lock().expect("lock").cpu_supports(feature)
-    }
-
-    fn supports_128bit_int(&self) -> bool {
-        self.info.lock().expect("lock").supports_128bit_int()
     }
 
     fn supports_target_dependent_type(&self, typ: CType) -> bool {
@@ -201,10 +203,6 @@ impl CodegenBackend for GccCodegenBackend {
 
         #[cfg(feature = "master")]
         gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
-
-        if sess.lto() == Lto::Thin {
-            sess.dcx().emit_warn(LTONotSupported {});
-        }
 
         #[cfg(not(feature = "master"))]
         {
@@ -297,6 +295,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
     ) -> Self::Module {
         let mut mods = GccContext {
             context: Arc::new(SyncContext::new(new_context(tcx))),
+            relocation_model: tcx.sess.relocation_model(),
             should_combine_object_files: false,
             temp_dir: None,
         };
@@ -328,6 +327,9 @@ impl ExtraBackendMethods for GccCodegenBackend {
 
 pub struct GccContext {
     context: Arc<SyncContext>,
+    /// This field is needed in order to be able to set the flag -fPIC when necessary when doing
+    /// LTO.
+    relocation_model: RelocModel,
     should_combine_object_files: bool,
     // Temporary directory used by LTO. We keep it here so that it's not removed before linking.
     temp_dir: Option<TempDir>,
@@ -492,10 +494,10 @@ fn target_features_cfg(
     sess.target
         .rust_target_features()
         .iter()
-        .filter(|(_, gate, _)| gate.in_cfg())
-        .filter_map(|(feature, gate, _)| {
+        .filter(|&&(_, gate, _)| gate.in_cfg())
+        .filter_map(|&(feature, gate, _)| {
             if sess.is_nightly_build() || allow_unstable || gate.requires_nightly().is_none() {
-                Some(*feature)
+                Some(feature)
             } else {
                 None
             }

@@ -1633,6 +1633,14 @@ Executed at: {executed_at}"#,
         paths
     }
 
+    /// Copies a file from `src` to `dst`.
+    ///
+    /// If `src` is a symlink, `src` will be resolved to the actual path
+    /// and copied to `dst` instead of the symlink itself.
+    pub fn resolve_symlink_and_copy(&self, src: &Path, dst: &Path) {
+        self.copy_link_internal(src, dst, true);
+    }
+
     /// Links a file from `src` to `dst`.
     /// Attempts to use hard links if possible, falling back to copying.
     /// You can neither rely on this being a copy nor it being a link,

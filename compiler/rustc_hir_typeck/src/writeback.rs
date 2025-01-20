@@ -562,9 +562,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         // types or by using this function at the end of writeback and running it as a
         // fixpoint.
         let opaque_types = self.fcx.infcx.clone_opaque_types();
-        for (opaque_type_key, decl) in opaque_types {
-            let hidden_type = self.resolve(decl.hidden_type, &decl.hidden_type.span);
-            let opaque_type_key = self.resolve(opaque_type_key, &decl.hidden_type.span);
+        for (opaque_type_key, hidden_type) in opaque_types {
+            let hidden_type = self.resolve(hidden_type, &hidden_type.span);
+            let opaque_type_key = self.resolve(opaque_type_key, &hidden_type.span);
 
             if !self.fcx.next_trait_solver() {
                 if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
