@@ -4,6 +4,12 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `else`, `{`, or an operator, fo
 LL |     let _ = &raw foo;
    |                  ^^^ expected one of 8 possible tokens
    |
+help: you might have meant to use a raw reference
+   |
+LL |     let _ = &raw mut foo;
+   |                  +++
+LL |     let _ = &raw const foo;
+   |                  +++++
 help: you might have meant to write a field access
    |
 LL |     let _ = &raw.foo;

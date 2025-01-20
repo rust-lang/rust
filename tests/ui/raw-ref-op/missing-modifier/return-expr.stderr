@@ -3,6 +3,13 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
    |
 LL |     &raw foo::A
    |          ^^^ expected one of 8 possible tokens
+   |
+help: you might have meant to use a raw reference
+   |
+LL |     &raw mut foo::A
+   |          +++
+LL |     &raw const foo::A
+   |          +++++
 
 error: aborting due to 1 previous error
 
