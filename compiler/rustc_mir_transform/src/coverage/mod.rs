@@ -95,12 +95,13 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 
     let coverage_counters = counters::make_bcb_counters(&graph, &bcbs_with_counter_mappings);
 
-    let mappings = create_mappings(&extracted_mappings, &coverage_counters);
+    let mappings = create_mappings(&extracted_mappings);
     if mappings.is_empty() {
         // No spans could be converted into valid mappings, so skip this function.
         debug!("no spans could be converted into valid mappings; skipping");
         return;
     }
+    let term_for_bcb = coverage_counters.node_counters.clone();
 
     inject_coverage_statements(mir_body, &graph, &extracted_mappings, &coverage_counters);
 
@@ -116,26 +117,24 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
         function_source_hash: hir_info.function_source_hash,
         body_span: hir_info.body_span,
+
         num_counters: coverage_counters.num_counters(),
-        mcdc_bitmap_bits: extracted_mappings.mcdc_bitmap_bits,
         expressions: coverage_counters.into_expressions(),
+
         mappings,
+        term_for_bcb,
+
+        mcdc_bitmap_bits: extracted_mappings.mcdc_bitmap_bits,
         mcdc_num_condition_bitmaps,
     }));
 }
 
-/// For each coverage span extracted from MIR, create a corresponding
-/// mapping.
+/// For each coverage span extracted from MIR, create a corresponding mapping.
 ///
-/// Precondition: All BCBs corresponding to those spans have been given
-/// coverage counters.
-fn create_mappings(
-    extracted_mappings: &ExtractedMappings,
-    coverage_counters: &CoverageCounters,
-) -> Vec<Mapping> {
-    let term_for_bcb =
-        |bcb| coverage_counters.term_for_bcb(bcb).expect("all BCBs with spans were given counters");
-
+/// FIXME(Zalathar): This used to be where BCBs in the extracted mappings were
+/// resolved to a `CovTerm`. But that is now handled elsewhere, so this
+/// function can potentially be simplified even further.
+fn create_mappings(extracted_mappings: &ExtractedMappings) -> Vec<Mapping> {
     // Fully destructure the mappings struct to make sure we don't miss any kinds.
     let ExtractedMappings {
         num_bcbs: _,
@@ -150,22 +149,17 @@ fn create_mappings(
     mappings.extend(code_mappings.iter().map(
         // Ordinary code mappings are the simplest kind.
         |&mappings::CodeMapping { span, bcb }| {
-            let kind = MappingKind::Code(term_for_bcb(bcb));
+            let kind = MappingKind::Code { bcb };
             Mapping { kind, span }
         },
     ));
 
     mappings.extend(branch_pairs.iter().map(
         |&mappings::BranchPair { span, true_bcb, false_bcb }| {
-            let true_term = term_for_bcb(true_bcb);
-            let false_term = term_for_bcb(false_bcb);
-            let kind = MappingKind::Branch { true_term, false_term };
+            let kind = MappingKind::Branch { true_bcb, false_bcb };
             Mapping { kind, span }
         },
     ));
-
-    let term_for_bcb =
-        |bcb| coverage_counters.term_for_bcb(bcb).expect("all BCBs with spans were given counters");
 
     // MCDC branch mappings are appended with their decisions in case decisions were ignored.
     mappings.extend(mcdc_degraded_branches.iter().map(
@@ -176,11 +170,7 @@ fn create_mappings(
              condition_info: _,
              true_index: _,
              false_index: _,
-         }| {
-            let true_term = term_for_bcb(true_bcb);
-            let false_term = term_for_bcb(false_bcb);
-            Mapping { kind: MappingKind::Branch { true_term, false_term }, span }
-        },
+         }| { Mapping { kind: MappingKind::Branch { true_bcb, false_bcb }, span } },
     ));
 
     for (decision, branches) in mcdc_mappings {
@@ -201,12 +191,10 @@ fn create_mappings(
                      true_index: _,
                      false_index: _,
                  }| {
-                    let true_term = term_for_bcb(true_bcb);
-                    let false_term = term_for_bcb(false_bcb);
                     Mapping {
                         kind: MappingKind::MCDCBranch {
-                            true_term,
-                            false_term,
+                            true_bcb,
+                            false_bcb,
                             mcdc_params: condition_info,
                         },
                         span,

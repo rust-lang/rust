@@ -101,7 +101,9 @@ fn coverage_ids_info<'tcx>(
         // to any particular point in the control-flow graph.
         // (Keep this in sync with the injection of `ExpressionUsed`
         // statements in the `InstrumentCoverage` MIR pass.)
-        if let MappingKind::Code(CovTerm::Expression(id)) = mapping.kind {
+        if let MappingKind::Code { bcb } = mapping.kind
+            && let Some(CovTerm::Expression(id)) = fn_cov_info.term_for_bcb[bcb]
+        {
             expressions_seen.remove(id);
         }
     }
