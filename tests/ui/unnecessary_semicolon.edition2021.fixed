@@ -26,13 +26,13 @@ fn main() {
     let mut a = 3;
     if a == 2 {
         println!("This is weird");
-    };
+    }
     //~^ ERROR: unnecessary semicolon
 
     a.match {
         3 => println!("three"),
         _ => println!("not three"),
-    };
+    }
     //~^ ERROR: unnecessary semicolon
 }
 
@@ -53,5 +53,5 @@ fn no_borrow_issue(a: u32, b: u32) {
             dbg!(v);
         },
         None => {},
-    };
+    }
 }
