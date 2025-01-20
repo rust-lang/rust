@@ -423,7 +423,7 @@ fn render_resolution_path(
 
     let name = local_name.display_no_db(ctx.completion.edition).to_smolstr();
     let mut item = render_resolution_simple_(ctx, &local_name, import_to_add, resolution);
-    if local_name.is_escaped(completion.edition) {
+    if local_name.needs_escape(completion.edition) {
         item.insert_text(local_name.display_no_db(completion.edition).to_smolstr());
     }
     // Add `<>` for generic types
