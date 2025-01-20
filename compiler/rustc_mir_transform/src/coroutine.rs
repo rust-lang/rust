@@ -60,7 +60,7 @@ use rustc_errors::pluralize;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind};
-use rustc_index::bit_set::{BitMatrix, BitSet, GrowableBitSet};
+use rustc_index::bit_set::{BitMatrix, DenseBitSet, GrowableBitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -185,13 +185,13 @@ struct TransformVisitor<'tcx> {
     remap: IndexVec<Local, Option<(Ty<'tcx>, VariantIdx, FieldIdx)>>,
 
     // A map from a suspension point in a block to the locals which have live storage at that point
-    storage_liveness: IndexVec<BasicBlock, Option<BitSet<Local>>>,
+    storage_liveness: IndexVec<BasicBlock, Option<DenseBitSet<Local>>>,
 
     // A list of suspension points, generated during the transform
     suspension_points: Vec<SuspensionPoint<'tcx>>,
 
     // The set of locals that have no `StorageLive`/`StorageDead` annotations.
-    always_live_locals: BitSet<Local>,
+    always_live_locals: DenseBitSet<Local>,
 
     // The original RETURN_PLACE local
     old_ret_local: Local,
@@ -633,7 +633,7 @@ struct LivenessInfo {
     saved_locals: CoroutineSavedLocals,
 
     /// The set of saved locals live at each suspension point.
-    live_locals_at_suspension_points: Vec<BitSet<CoroutineSavedLocal>>,
+    live_locals_at_suspension_points: Vec<DenseBitSet<CoroutineSavedLocal>>,
 
     /// Parallel vec to the above with SourceInfo for each yield terminator.
     source_info_at_suspension_points: Vec<SourceInfo>,
@@ -645,7 +645,7 @@ struct LivenessInfo {
 
     /// For every suspending block, the locals which are storage-live across
     /// that suspension point.
-    storage_liveness: IndexVec<BasicBlock, Option<BitSet<Local>>>,
+    storage_liveness: IndexVec<BasicBlock, Option<DenseBitSet<Local>>>,
 }
 
 /// Computes which locals have to be stored in the state-machine for the
@@ -659,7 +659,7 @@ struct LivenessInfo {
 fn locals_live_across_suspend_points<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    always_live_locals: &BitSet<Local>,
+    always_live_locals: &DenseBitSet<Local>,
     movable: bool,
 ) -> LivenessInfo {
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
@@ -688,7 +688,7 @@ fn locals_live_across_suspend_points<'tcx>(
     let mut storage_liveness_map = IndexVec::from_elem(None, &body.basic_blocks);
     let mut live_locals_at_suspension_points = Vec::new();
     let mut source_info_at_suspension_points = Vec::new();
-    let mut live_locals_at_any_suspension_point = BitSet::new_empty(body.local_decls.len());
+    let mut live_locals_at_any_suspension_point = DenseBitSet::new_empty(body.local_decls.len());
 
     for (block, data) in body.basic_blocks.iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
@@ -768,7 +768,7 @@ fn locals_live_across_suspend_points<'tcx>(
 /// `CoroutineSavedLocal` is indexed in terms of the elements in this set;
 /// i.e. `CoroutineSavedLocal::new(1)` corresponds to the second local
 /// included in this set.
-struct CoroutineSavedLocals(BitSet<Local>);
+struct CoroutineSavedLocals(DenseBitSet<Local>);
 
 impl CoroutineSavedLocals {
     /// Returns an iterator over each `CoroutineSavedLocal` along with the `Local` it corresponds
@@ -777,11 +777,11 @@ impl CoroutineSavedLocals {
         self.iter().enumerate().map(|(i, l)| (CoroutineSavedLocal::from(i), l))
     }
 
-    /// Transforms a `BitSet<Local>` that contains only locals saved across yield points to the
-    /// equivalent `BitSet<CoroutineSavedLocal>`.
-    fn renumber_bitset(&self, input: &BitSet<Local>) -> BitSet<CoroutineSavedLocal> {
+    /// Transforms a `DenseBitSet<Local>` that contains only locals saved across yield points to the
+    /// equivalent `DenseBitSet<CoroutineSavedLocal>`.
+    fn renumber_bitset(&self, input: &DenseBitSet<Local>) -> DenseBitSet<CoroutineSavedLocal> {
         assert!(self.superset(input), "{:?} not a superset of {:?}", self.0, input);
-        let mut out = BitSet::new_empty(self.count());
+        let mut out = DenseBitSet::new_empty(self.count());
         for (saved_local, local) in self.iter_enumerated() {
             if input.contains(local) {
                 out.insert(saved_local);
@@ -801,7 +801,7 @@ impl CoroutineSavedLocals {
 }
 
 impl ops::Deref for CoroutineSavedLocals {
-    type Target = BitSet<Local>;
+    type Target = DenseBitSet<Local>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -815,7 +815,7 @@ impl ops::Deref for CoroutineSavedLocals {
 fn compute_storage_conflicts<'mir, 'tcx>(
     body: &'mir Body<'tcx>,
     saved_locals: &'mir CoroutineSavedLocals,
-    always_live_locals: BitSet<Local>,
+    always_live_locals: DenseBitSet<Local>,
     mut requires_storage: Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
 ) -> BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal> {
     assert_eq!(body.local_decls.len(), saved_locals.domain_size());
@@ -833,7 +833,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
         body,
         saved_locals,
         local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len()),
-        eligible_storage_live: BitSet::new_empty(body.local_decls.len()),
+        eligible_storage_live: DenseBitSet::new_empty(body.local_decls.len()),
     };
 
     requires_storage.visit_reachable_with(body, &mut visitor);
@@ -871,7 +871,7 @@ struct StorageConflictVisitor<'a, 'tcx> {
     // benchmarks for coroutines.
     local_conflicts: BitMatrix<Local, Local>,
     // We keep this bitset as a buffer to avoid reallocating memory.
-    eligible_storage_live: BitSet<Local>,
+    eligible_storage_live: DenseBitSet<Local>,
 }
 
 impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, MaybeRequiresStorage<'a, 'tcx>>
@@ -880,7 +880,7 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, MaybeRequiresStorage<'a, 'tcx>>
     fn visit_after_early_statement_effect(
         &mut self,
         _results: &mut Results<'tcx, MaybeRequiresStorage<'a, 'tcx>>,
-        state: &BitSet<Local>,
+        state: &DenseBitSet<Local>,
         _statement: &'a Statement<'tcx>,
         loc: Location,
     ) {
@@ -890,7 +890,7 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, MaybeRequiresStorage<'a, 'tcx>>
     fn visit_after_early_terminator_effect(
         &mut self,
         _results: &mut Results<'tcx, MaybeRequiresStorage<'a, 'tcx>>,
-        state: &BitSet<Local>,
+        state: &DenseBitSet<Local>,
         _terminator: &'a Terminator<'tcx>,
         loc: Location,
     ) {
@@ -899,7 +899,7 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, MaybeRequiresStorage<'a, 'tcx>>
 }
 
 impl StorageConflictVisitor<'_, '_> {
-    fn apply_state(&mut self, state: &BitSet<Local>, loc: Location) {
+    fn apply_state(&mut self, state: &DenseBitSet<Local>, loc: Location) {
         // Ignore unreachable blocks.
         if let TerminatorKind::Unreachable = self.body.basic_blocks[loc.block].terminator().kind {
             return;
@@ -924,7 +924,7 @@ fn compute_layout<'tcx>(
 ) -> (
     IndexVec<Local, Option<(Ty<'tcx>, VariantIdx, FieldIdx)>>,
     CoroutineLayout<'tcx>,
-    IndexVec<BasicBlock, Option<BitSet<Local>>>,
+    IndexVec<BasicBlock, Option<DenseBitSet<Local>>>,
 ) {
     let LivenessInfo {
         saved_locals,

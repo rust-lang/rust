@@ -3,6 +3,7 @@ use rustc_span::Symbol;
 use rustc_target::callconv::{Conv, FnAbi};
 
 use super::sync::EvalContextExt as _;
+use crate::helpers::check_min_arg_count;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -67,6 +68,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.realpath(path, resolved_path)?;
                 this.write_scalar(result, dest)?;
             }
+            "ioctl" => {
+                // `ioctl` is variadic. The argument count is checked based on the first argument
+                // in `this.ioctl()`, so we do not use `check_shim` here.
+                this.check_abi_and_shim_symbol_clash(abi, Conv::C, link_name)?;
+                let result = this.ioctl(args)?;
+                this.write_scalar(result, dest)?;
+            }
 
             // Environment related shims
             "_NSGetEnviron" => {
@@ -112,7 +120,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.check_no_isolation("`_NSGetExecutablePath`")?;
 
                 let buf_ptr = this.read_pointer(buf)?;
-                let bufsize = this.deref_pointer(bufsize)?;
+                let bufsize = this.deref_pointer_as(bufsize, this.machine.layouts.u32)?;
 
                 // Using the host current_exe is a bit off, but consistent with Linux
                 // (where stdlib reads /proc/self/exe).
@@ -233,5 +241,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         interp_ok(EmulateItemResult::NeedsReturn)
+    }
+
+    fn ioctl(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let fioclex = this.eval_libc_u64("FIOCLEX");
+
+        let [fd_num, cmd] = check_min_arg_count("ioctl", args)?;
+        let fd_num = this.read_scalar(fd_num)?.to_i32()?;
+        let cmd = this.read_scalar(cmd)?.to_u64()?;
+
+        if cmd == fioclex {
+            // Since we don't support `exec`, this is a NOP. However, we want to
+            // return EBADF if the FD is invalid.
+            if this.machine.fds.is_fd_num(fd_num) {
+                interp_ok(Scalar::from_i32(0))
+            } else {
+                this.set_last_error_and_return_i32(LibcError("EBADF"))
+            }
+        } else {
+            throw_unsup_format!("ioctl: unsupported command {cmd:#x}");
+        }
     }
 }

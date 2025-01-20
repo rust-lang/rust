@@ -333,7 +333,7 @@ pub const fn size_of<T>() -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_size_of_val", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_size_of_val", since = "1.85.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mem_size_of_val")]
 pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
     // SAFETY: `val` is a reference, so it's a valid raw pointer
@@ -484,7 +484,7 @@ pub const fn align_of<T>() -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_align_of_val", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_align_of_val", since = "1.85.0")]
 #[allow(deprecated)]
 pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
     // SAFETY: val is a reference, so it's a valid raw pointer
@@ -725,7 +725,7 @@ pub unsafe fn uninitialized<T>() -> T {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_swap", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_swap", since = "1.85.0")]
 #[rustc_diagnostic_item = "mem_swap"]
 pub const fn swap<T>(x: &mut T, y: &mut T) {
     // SAFETY: `&mut` guarantees these are typed readable and writable

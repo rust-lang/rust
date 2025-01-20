@@ -1,3 +1,5 @@
+#![allow(irrefutable_let_patterns)]
+
 fn match_guards_still_work() {
     match 0 {
         0 if guard(0) => {},
@@ -24,11 +26,9 @@ fn other_guards_dont() {
 
     if let (x if guard(x)) = 0 {}
     //~^ ERROR: guard patterns are experimental
-    //~| WARN: irrefutable
 
     while let (x if guard(x)) = 0 {}
     //~^ ERROR: guard patterns are experimental
-    //~| WARN: irrefutable
 
     #[cfg(FALSE)]
     while let (x if guard(x)) = 0 {}

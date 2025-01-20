@@ -7,7 +7,7 @@
 //! of a `Freeze` local. Those can still be considered to be SSA.
 
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::bug;
 use rustc_middle::middle::resolve_bound_vars::Set1;
@@ -29,7 +29,7 @@ pub(super) struct SsaLocals {
     /// We ignore non-uses (Storage statements, debuginfo).
     direct_uses: IndexVec<Local, u32>,
     /// Set of SSA locals that are immutably borrowed.
-    borrowed_locals: BitSet<Local>,
+    borrowed_locals: DenseBitSet<Local>,
 }
 
 pub(super) enum AssignedValue<'a, 'tcx> {
@@ -50,7 +50,7 @@ impl SsaLocals {
         let dominators = body.basic_blocks.dominators();
 
         let direct_uses = IndexVec::from_elem(0, &body.local_decls);
-        let borrowed_locals = BitSet::new_empty(body.local_decls.len());
+        let borrowed_locals = DenseBitSet::new_empty(body.local_decls.len());
         let mut visitor = SsaVisitor {
             body,
             assignments,
@@ -202,12 +202,12 @@ impl SsaLocals {
     }
 
     /// Set of SSA locals that are immutably borrowed.
-    pub(super) fn borrowed_locals(&self) -> &BitSet<Local> {
+    pub(super) fn borrowed_locals(&self) -> &DenseBitSet<Local> {
         &self.borrowed_locals
     }
 
     /// Make a property uniform on a copy equivalence class by removing elements.
-    pub(super) fn meet_copy_equivalence(&self, property: &mut BitSet<Local>) {
+    pub(super) fn meet_copy_equivalence(&self, property: &mut DenseBitSet<Local>) {
         // Consolidate to have a local iff all its copies are.
         //
         // `copy_classes` defines equivalence classes between locals. The `local`s that recursively
@@ -241,7 +241,7 @@ struct SsaVisitor<'a, 'tcx> {
     assignment_order: Vec<Local>,
     direct_uses: IndexVec<Local, u32>,
     // Track locals that are immutably borrowed, so we can check their type is `Freeze` later.
-    borrowed_locals: BitSet<Local>,
+    borrowed_locals: DenseBitSet<Local>,
 }
 
 impl SsaVisitor<'_, '_> {
@@ -396,7 +396,7 @@ pub(crate) struct StorageLiveLocals {
 impl StorageLiveLocals {
     pub(crate) fn new(
         body: &Body<'_>,
-        always_storage_live_locals: &BitSet<Local>,
+        always_storage_live_locals: &DenseBitSet<Local>,
     ) -> StorageLiveLocals {
         let mut storage_live = IndexVec::from_elem(Set1::Empty, &body.local_decls);
         for local in always_storage_live_locals.iter() {

@@ -248,8 +248,8 @@ impl Write {
     pub fn new(conf: &'static Conf, format_args: FormatArgsStorage) -> Self {
         Self {
             format_args,
-            allow_print_in_tests: conf.allow_print_in_tests,
             in_debug_impl: false,
+            allow_print_in_tests: conf.allow_print_in_tests,
         }
     }
 }

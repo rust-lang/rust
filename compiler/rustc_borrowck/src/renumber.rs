@@ -34,7 +34,6 @@ pub(crate) enum RegionCtxt {
     Location(Location),
     TyContext(TyContext),
     Free(Symbol),
-    Bound(Symbol),
     LateBound(Symbol),
     Existential(Option<Symbol>),
     Placeholder(Symbol),

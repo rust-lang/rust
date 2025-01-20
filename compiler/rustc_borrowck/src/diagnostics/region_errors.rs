@@ -13,7 +13,7 @@ use rustc_hir::{PolyTraitRef, TyKind, WhereBoundPredicate};
 use rustc_infer::infer::{NllRegionVariableOrigin, RelateParamBound};
 use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
-use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
+use rustc_middle::mir::{AnnotationSource, ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::{self, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeVisitor};
 use rustc_span::{Ident, Span, kw};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -29,7 +29,7 @@ use tracing::{debug, instrument, trace};
 use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource};
 use crate::nll::ConstraintDescription;
 use crate::region_infer::values::RegionElement;
-use crate::region_infer::{BlameConstraint, ExtraConstraintInfo, TypeTest};
+use crate::region_infer::{BlameConstraint, TypeTest};
 use crate::session_diagnostics::{
     FnMutError, FnMutReturnTypeErr, GenericDoesNotLiveLongEnough, LifetimeOutliveErr,
     LifetimeReturnCategoryErr, RequireStaticErr, VarHereDenote,
@@ -49,8 +49,8 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
             ConstraintCategory::Cast { is_implicit_coercion: false, .. } => "cast ",
             ConstraintCategory::Cast { is_implicit_coercion: true, .. } => "coercion ",
             ConstraintCategory::CallArgument(_) => "argument ",
-            ConstraintCategory::TypeAnnotation => "type annotation ",
-            ConstraintCategory::ClosureBounds => "closure body ",
+            ConstraintCategory::TypeAnnotation(AnnotationSource::GenericArg) => "generic argument ",
+            ConstraintCategory::TypeAnnotation(_) => "type annotation ",
             ConstraintCategory::SizedBound => "proving this value is `Sized` ",
             ConstraintCategory::CopyBound => "copying this value ",
             ConstraintCategory::OpaqueType => "opaque type ",
@@ -440,10 +440,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     ) {
         debug!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let (blame_constraint, extra_info) =
-            self.regioncx.best_blame_constraint(fr, fr_origin, |r| {
-                self.regioncx.provides_universal_region(r, fr, outlived_fr)
-            });
+        let (blame_constraint, path) = self.regioncx.best_blame_constraint(fr, fr_origin, |r| {
+            self.regioncx.provides_universal_region(r, fr, outlived_fr)
+        });
         let BlameConstraint { category, cause, variance_info, .. } = blame_constraint;
 
         debug!("report_region_error: category={:?} {:?} {:?}", category, cause, variance_info);
@@ -554,13 +553,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
         }
 
-        for extra in extra_info {
-            match extra {
-                ExtraConstraintInfo::PlaceholderFromPredicate(span) => {
-                    diag.span_note(span, "due to current limitations in the borrow checker, this implies a `'static` lifetime");
-                }
-            }
-        }
+        self.add_placeholder_from_predicate_note(&mut diag, &path);
+        self.add_sized_or_copy_bound_info(&mut diag, category, &path);
 
         self.buffer_error(diag);
     }

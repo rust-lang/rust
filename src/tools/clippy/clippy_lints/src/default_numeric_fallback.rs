@@ -3,8 +3,11 @@ use clippy_utils::numeric_literal;
 use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{Visitor, walk_expr, walk_stmt};
-use rustc_hir::{Block, Body, ConstContext, Expr, ExprKind, FnRetTy, HirId, Lit, Stmt, StmtKind, StructTailExpr};
+use rustc_hir::intravisit::{Visitor, walk_expr, walk_pat, walk_stmt};
+use rustc_hir::{
+    Block, Body, ConstContext, Expr, ExprKind, FnRetTy, HirId, Lit, Pat, PatExpr, PatExprKind, PatKind, Stmt, StmtKind,
+    StructTailExpr,
+};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, FloatTy, IntTy, PolyFnSig, Ty};
@@ -217,6 +220,22 @@ impl<'tcx> Visitor<'tcx> for NumericFallbackVisitor<'_, 'tcx> {
         }
 
         walk_expr(self, expr);
+    }
+
+    fn visit_pat(&mut self, pat: &'tcx Pat<'_>) {
+        match pat.kind {
+            PatKind::Expr(&PatExpr {
+                hir_id,
+                kind: PatExprKind::Lit { lit, .. },
+                ..
+            }) => {
+                let ty = self.cx.typeck_results().node_type(hir_id);
+                self.check_lit(lit, ty, hir_id);
+                return;
+            },
+            _ => {},
+        }
+        walk_pat(self, pat)
     }
 
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {

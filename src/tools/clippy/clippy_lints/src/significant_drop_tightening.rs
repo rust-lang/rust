@@ -282,9 +282,9 @@ impl<'tcx> Visitor<'tcx> for StmtsChecker<'_, '_, '_, '_, 'tcx> {
                 }
             {
                 let mut apa = AuxParamsAttr {
-                    first_bind_ident: ident,
                     first_block_hir_id: self.ap.curr_block_hir_id,
                     first_block_span: self.ap.curr_block_span,
+                    first_bind_ident: ident,
                     first_method_span: {
                         let expr_or_init = expr_or_init(self.cx, expr);
                         if let hir::ExprKind::MethodCall(_, local_expr, _, span) = expr_or_init.kind {
@@ -395,8 +395,8 @@ impl Default for AuxParamsAttr {
             counter: 0,
             has_expensive_expr_after_last_attr: false,
             first_block_hir_id: HirId::INVALID,
-            first_bind_ident: Ident::empty(),
             first_block_span: DUMMY_SP,
+            first_bind_ident: Ident::empty(),
             first_method_span: DUMMY_SP,
             first_stmt_span: DUMMY_SP,
             last_bind_ident: Ident::empty(),

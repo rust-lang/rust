@@ -6,6 +6,7 @@
 // We want to control use declaration ordering and spacing (and preserve use group comments), so
 // skip rustfmt on this file.
 #![cfg_attr(rustfmt, rustfmt::skip)]
+#![warn(unreachable_pub)]
 
 mod command;
 mod macros;

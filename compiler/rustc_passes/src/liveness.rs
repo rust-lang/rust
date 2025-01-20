@@ -1360,7 +1360,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
     fn visit_local(&mut self, local: &'tcx hir::LetStmt<'tcx>) {
         self.check_unused_vars_in_pat(local.pat, None, None, |spans, hir_id, ln, var| {
             if local.init.is_some() {
-                self.warn_about_dead_assign(spans, hir_id, ln, var);
+                self.warn_about_dead_assign(spans, hir_id, ln, var, None);
             }
         });
 
@@ -1460,7 +1460,8 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     // as being used.
                     let ln = self.live_node(expr.hir_id, expr.span);
                     let var = self.variable(var_hid, expr.span);
-                    self.warn_about_dead_assign(vec![expr.span], expr.hir_id, ln, var);
+                    let sugg = self.annotate_mut_binding_to_immutable_binding(var_hid, expr);
+                    self.warn_about_dead_assign(vec![expr.span], expr.hir_id, ln, var, sugg);
                 }
             }
             _ => {
@@ -1582,6 +1583,70 @@ impl<'tcx> Liveness<'_, 'tcx> {
             } else {
                 self.report_unused(hir_ids_and_spans, ln, var, can_remove, pat, opt_body);
             }
+        }
+    }
+
+    /// Detect the following case
+    ///
+    /// ```text
+    /// fn change_object(mut a: &Ty) {
+    ///     let a = Ty::new();
+    ///     b = &a;
+    /// }
+    /// ```
+    ///
+    /// where the user likely meant to modify the value behind there reference, use `a` as an out
+    /// parameter, instead of mutating the local binding. When encountering this we suggest:
+    ///
+    /// ```text
+    /// fn change_object(a: &'_ mut Ty) {
+    ///     let a = Ty::new();
+    ///     *b = a;
+    /// }
+    /// ```
+    fn annotate_mut_binding_to_immutable_binding(
+        &self,
+        var_hid: HirId,
+        expr: &'tcx Expr<'tcx>,
+    ) -> Option<errors::UnusedAssignSuggestion> {
+        if let hir::Node::Expr(parent) = self.ir.tcx.parent_hir_node(expr.hir_id)
+            && let hir::ExprKind::Assign(_, rhs, _) = parent.kind
+            && let hir::ExprKind::AddrOf(borrow_kind, _mut, inner) = rhs.kind
+            && let hir::BorrowKind::Ref = borrow_kind
+            && let hir::Node::Pat(pat) = self.ir.tcx.hir_node(var_hid)
+            && let hir::Node::Param(hir::Param { ty_span, .. }) =
+                self.ir.tcx.parent_hir_node(pat.hir_id)
+            && let item_id = self.ir.tcx.hir().get_parent_item(pat.hir_id)
+            && let item = self.ir.tcx.hir_owner_node(item_id)
+            && let Some(fn_decl) = item.fn_decl()
+            && let hir::PatKind::Binding(hir::BindingMode::MUT, _hir_id, ident, _) = pat.kind
+            && let Some((ty_span, pre)) = fn_decl
+                .inputs
+                .iter()
+                .filter_map(|ty| {
+                    if ty.span == *ty_span
+                        && let hir::TyKind::Ref(lt, mut_ty) = ty.kind
+                    {
+                        // `&'name Ty` -> `&'name mut Ty` or `&Ty` -> `&mut Ty`
+                        Some((
+                            mut_ty.ty.span.shrink_to_lo(),
+                            if lt.ident.span.lo() == lt.ident.span.hi() { "" } else { " " },
+                        ))
+                    } else {
+                        None
+                    }
+                })
+                .next()
+        {
+            Some(errors::UnusedAssignSuggestion {
+                ty_span,
+                pre,
+                ty_ref_span: pat.span.until(ident.span),
+                ident_span: expr.span.shrink_to_lo(),
+                expr_ref_span: rhs.span.until(inner.span),
+            })
+        } else {
+            None
         }
     }
 
@@ -1738,15 +1803,23 @@ impl<'tcx> Liveness<'_, 'tcx> {
         suggs
     }
 
-    fn warn_about_dead_assign(&self, spans: Vec<Span>, hir_id: HirId, ln: LiveNode, var: Variable) {
+    fn warn_about_dead_assign(
+        &self,
+        spans: Vec<Span>,
+        hir_id: HirId,
+        ln: LiveNode,
+        var: Variable,
+        suggestion: Option<errors::UnusedAssignSuggestion>,
+    ) {
         if !self.live_on_exit(ln, var)
             && let Some(name) = self.should_warn(var)
         {
+            let help = suggestion.is_none();
             self.ir.tcx.emit_node_span_lint(
                 lint::builtin::UNUSED_ASSIGNMENTS,
                 hir_id,
                 spans,
-                errors::UnusedAssign { name },
+                errors::UnusedAssign { name, suggestion, help },
             );
         }
     }

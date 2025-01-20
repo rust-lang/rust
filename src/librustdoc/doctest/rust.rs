@@ -13,8 +13,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, DUMMY_SP, FileName, Pos, Span};
 
 use super::{DocTestVisitor, ScrapedDocTest};
-use crate::clean::Attributes;
-use crate::clean::types::AttributesExt;
+use crate::clean::{Attributes, extract_cfg_from_attrs};
 use crate::html::markdown::{self, ErrorCodes, LangString, MdRelLine};
 
 struct RustCollector {
@@ -97,7 +96,9 @@ impl HirCollector<'_> {
         nested: F,
     ) {
         let ast_attrs = self.tcx.hir().attrs(self.tcx.local_def_id_to_hir_id(def_id));
-        if let Some(ref cfg) = ast_attrs.cfg(self.tcx, &FxHashSet::default()) {
+        if let Some(ref cfg) =
+            extract_cfg_from_attrs(ast_attrs.iter(), self.tcx, &FxHashSet::default())
+        {
             if !cfg.matches(&self.tcx.sess.psess, Some(self.tcx.features())) {
                 return;
             }

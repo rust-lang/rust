@@ -18,8 +18,8 @@ fn demo<'not_static>(s: &'not_static str) -> thread::JoinHandle<()> {
     // exploit:
     generator.as_mut().resume("");
     generator.as_mut().resume(s); // <- generator hoards it as `let ctx`.
-    //~^ ERROR borrowed data escapes outside of function
     thread::spawn(move || {
+        //~^ ERROR borrowed data escapes outside of function
         thread::sleep(time::Duration::from_millis(200));
         generator.as_mut().resume(""); // <- resumes from the last `yield`, running `dbg!(ctx)`.
     })

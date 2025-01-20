@@ -197,6 +197,7 @@ fn layout_of_simd_ty(
         align,
         max_repr_align: None,
         unadjusted_abi_align: align.abi,
+        randomization_seed: 0,
     }))
 }
 
@@ -313,6 +314,7 @@ pub fn layout_of_ty_query(
                 size,
                 max_repr_align: None,
                 unadjusted_abi_align: element.align.abi,
+                randomization_seed: 0,
             }
         }
         TyKind::Slice(element) => {
@@ -326,6 +328,7 @@ pub fn layout_of_ty_query(
                 size: Size::ZERO,
                 max_repr_align: None,
                 unadjusted_abi_align: element.align.abi,
+                randomization_seed: 0,
             }
         }
         TyKind::Str => Layout {
@@ -337,6 +340,7 @@ pub fn layout_of_ty_query(
             size: Size::ZERO,
             max_repr_align: None,
             unadjusted_abi_align: dl.i8_align.abi,
+            randomization_seed: 0,
         },
         // Potentially-wide pointers.
         TyKind::Ref(_, _, pointee) | TyKind::Raw(_, pointee) => {

@@ -1,5 +1,5 @@
 use rustc_index::IndexSlice;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -34,7 +34,7 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
         let fully_moved = fully_moved_locals(&ssa, body);
         debug!(?fully_moved);
 
-        let mut storage_to_remove = BitSet::new_empty(fully_moved.domain_size());
+        let mut storage_to_remove = DenseBitSet::new_empty(fully_moved.domain_size());
         for (local, &head) in ssa.copy_classes().iter_enumerated() {
             if local != head {
                 storage_to_remove.insert(head);
@@ -68,8 +68,8 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
 /// This means that replacing it by a copy of `_a` if ok, since this copy happens before `_c` is
 /// moved, and therefore that `_d` is moved.
 #[instrument(level = "trace", skip(ssa, body))]
-fn fully_moved_locals(ssa: &SsaLocals, body: &Body<'_>) -> BitSet<Local> {
-    let mut fully_moved = BitSet::new_filled(body.local_decls.len());
+fn fully_moved_locals(ssa: &SsaLocals, body: &Body<'_>) -> DenseBitSet<Local> {
+    let mut fully_moved = DenseBitSet::new_filled(body.local_decls.len());
 
     for (_, rvalue, _) in ssa.assignments(body) {
         let (Rvalue::Use(Operand::Copy(place) | Operand::Move(place))
@@ -96,9 +96,9 @@ fn fully_moved_locals(ssa: &SsaLocals, body: &Body<'_>) -> BitSet<Local> {
 /// Utility to help performing substitution of `*pattern` by `target`.
 struct Replacer<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    fully_moved: BitSet<Local>,
-    storage_to_remove: BitSet<Local>,
-    borrowed_locals: &'a BitSet<Local>,
+    fully_moved: DenseBitSet<Local>,
+    storage_to_remove: DenseBitSet<Local>,
+    borrowed_locals: &'a DenseBitSet<Local>,
     copy_classes: &'a IndexSlice<Local, Local>,
 }
 

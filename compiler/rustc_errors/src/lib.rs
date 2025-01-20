@@ -566,9 +566,7 @@ pub enum StashKey {
     /// FRU syntax
     MaybeFruTypo,
     CallAssocMethod,
-    TraitMissingMethod,
     AssociatedTypeSuggestion,
-    OpaqueHiddenTypeMismatch,
     MaybeForgetReturn,
     /// Query cycle detected, stashing in favor of a better error.
     Cycle,

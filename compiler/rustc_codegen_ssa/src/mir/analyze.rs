@@ -2,7 +2,7 @@
 //! which do not.
 
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, DefLocation, Location, TerminatorKind, traversal};
@@ -16,7 +16,7 @@ use crate::traits::*;
 pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,
     traversal_order: &[mir::BasicBlock],
-) -> BitSet<mir::Local> {
+) -> DenseBitSet<mir::Local> {
     let mir = fx.mir;
     let dominators = mir.basic_blocks.dominators();
     let locals = mir
@@ -44,7 +44,7 @@ pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         analyzer.visit_basic_block_data(bb, data);
     }
 
-    let mut non_ssa_locals = BitSet::new_empty(analyzer.locals.len());
+    let mut non_ssa_locals = DenseBitSet::new_empty(analyzer.locals.len());
     for (local, kind) in analyzer.locals.iter_enumerated() {
         if matches!(kind, LocalKind::Memory) {
             non_ssa_locals.insert(local);

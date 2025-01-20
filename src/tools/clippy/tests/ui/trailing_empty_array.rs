@@ -193,3 +193,17 @@ type C = ConstParamNoDefault<0>;
 type D = ConstParamNonZeroDefault<0>;
 
 fn main() {}
+
+#[cfg(test)]
+mod tests {
+    pub struct Friend {
+        age: u8,
+    }
+
+    #[test]
+    fn oldest_empty_is_none() {
+        struct Michael {
+            friends: [Friend; 0],
+        }
+    }
+}

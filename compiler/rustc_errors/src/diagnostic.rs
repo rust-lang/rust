@@ -880,7 +880,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         )
     } }
 
-    /// Show a suggestion that has multiple parts to it, always as it's own subdiagnostic.
+    /// Show a suggestion that has multiple parts to it, always as its own subdiagnostic.
     /// In other words, multiple changes need to be applied as part of this suggestion.
     #[rustc_lint_diagnostics]
     pub fn multipart_suggestion_verbose(

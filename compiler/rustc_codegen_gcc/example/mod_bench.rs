@@ -3,7 +3,7 @@
 #![allow(internal_features)]
 
 #[link(name = "c")]
-extern {}
+extern "C" {}
 
 #[panic_handler]
 fn panic_handler(_: &core::panic::PanicInfo<'_>) -> ! {

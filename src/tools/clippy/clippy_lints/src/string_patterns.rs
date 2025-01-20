@@ -11,7 +11,7 @@ use clippy_utils::visitors::{Descend, for_each_expr};
 use itertools::Itertools;
 use rustc_ast::{BinOpKind, LitKind};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, PatKind};
+use rustc_hir::{Expr, ExprKind, PatExprKind, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
@@ -171,7 +171,7 @@ fn check_manual_pattern_char_comparison(cx: &LateContext<'_>, method_arg: &Expr<
                         return ControlFlow::Break(());
                     }
                     if arm.pat.walk_short(|pat| match pat.kind {
-                        PatKind::Lit(expr) if let ExprKind::Lit(lit) = expr.kind => {
+                        PatKind::Expr(expr) if let PatExprKind::Lit { lit, negated: false } = expr.kind => {
                             if let LitKind::Char(_) = lit.node {
                                 set_char_spans.push(lit.span);
                             }

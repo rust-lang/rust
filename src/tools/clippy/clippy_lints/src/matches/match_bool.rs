@@ -4,7 +4,7 @@ use clippy_utils::source::{expr_block, snippet};
 use clippy_utils::sugg::Sugg;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, Expr, ExprKind, PatKind};
+use rustc_hir::{Arm, Expr, PatExprKind, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 
@@ -21,8 +21,8 @@ pub(crate) fn check(cx: &LateContext<'_>, scrutinee: &Expr<'_>, arms: &[Arm<'_>]
             move |diag| {
                 if arms.len() == 2 {
                     // no guards
-                    let exprs = if let PatKind::Lit(arm_bool) = arms[0].pat.kind {
-                        if let ExprKind::Lit(lit) = arm_bool.kind {
+                    let exprs = if let PatKind::Expr(arm_bool) = arms[0].pat.kind {
+                        if let PatExprKind::Lit { lit, .. } = arm_bool.kind {
                             match lit.node {
                                 LitKind::Bool(true) => Some((arms[0].body, arms[1].body)),
                                 LitKind::Bool(false) => Some((arms[1].body, arms[0].body)),

@@ -1,0 +1,39 @@
+- // MIR for `local` before InstSimplify-after-simplifycfg
++ // MIR for `local` after InstSimplify-after-simplifycfg
+  
+  fn local() -> [u8; 5] {
+      let mut _0: [u8; 5];
+      let _1: u8;
+      let mut _2: u8;
+      let mut _3: u8;
+      let mut _4: u8;
+      let mut _5: u8;
+      let mut _6: u8;
+      scope 1 {
+          debug val => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = const 0_u8;
+          StorageLive(_2);
+          _2 = copy _1;
+          StorageLive(_3);
+          _3 = copy _1;
+          StorageLive(_4);
+          _4 = copy _1;
+          StorageLive(_5);
+          _5 = copy _1;
+          StorageLive(_6);
+          _6 = copy _1;
+          _0 = [move _2, move _3, move _4, move _5, move _6];
+          StorageDead(_6);
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

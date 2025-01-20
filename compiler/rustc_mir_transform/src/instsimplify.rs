@@ -46,8 +46,11 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
                         }
                         ctx.simplify_bool_cmp(rvalue);
                         ctx.simplify_ref_deref(rvalue);
+                        ctx.simplify_len(rvalue);
                         ctx.simplify_ptr_aggregate(rvalue);
                         ctx.simplify_cast(rvalue);
+                        ctx.simplify_repeated_aggregate(rvalue);
+                        ctx.simplify_repeat_once(rvalue);
                     }
                     _ => {}
                 }
@@ -68,6 +71,35 @@ struct InstSimplifyContext<'a, 'tcx> {
 }
 
 impl<'tcx> InstSimplifyContext<'_, 'tcx> {
+    /// Transform aggregates like [0, 0, 0, 0, 0] into [0; 5].
+    /// GVN can also do this optimization, but GVN is only run at mir-opt-level 2 so having this in
+    /// InstSimplify helps unoptimized builds.
+    fn simplify_repeated_aggregate(&self, rvalue: &mut Rvalue<'tcx>) {
+        let Rvalue::Aggregate(box AggregateKind::Array(_), fields) = rvalue else {
+            return;
+        };
+        if fields.len() < 5 {
+            return;
+        }
+        let first = &fields[rustc_abi::FieldIdx::ZERO];
+        let Operand::Constant(first) = first else {
+            return;
+        };
+        let Ok(first_val) = first.const_.eval(self.tcx, self.typing_env, first.span) else {
+            return;
+        };
+        if fields.iter().all(|field| {
+            let Operand::Constant(field) = field else {
+                return false;
+            };
+            let field = field.const_.eval(self.tcx, self.typing_env, field.span);
+            field == Ok(first_val)
+        }) {
+            let len = ty::Const::from_target_usize(self.tcx, fields.len().try_into().unwrap());
+            *rvalue = Rvalue::Repeat(Operand::Constant(first.clone()), len);
+        }
+    }
+
     /// Transform boolean comparisons into logical operations.
     fn simplify_bool_cmp(&self, rvalue: &mut Rvalue<'tcx>) {
         match rvalue {
@@ -130,6 +162,18 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
         }
     }
 
+    /// Transform `Len([_; N])` ==> `N`.
+    fn simplify_len(&self, rvalue: &mut Rvalue<'tcx>) {
+        if let Rvalue::Len(ref place) = *rvalue {
+            let place_ty = place.ty(self.local_decls, self.tcx).ty;
+            if let ty::Array(_, len) = *place_ty.kind() {
+                let const_ = Const::from_ty_const(len, self.tcx.types.usize, self.tcx);
+                let constant = ConstOperand { span: DUMMY_SP, const_, user_ty: None };
+                *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
+            }
+        }
+    }
+
     /// Transform `Aggregate(RawPtr, [p, ()])` ==> `Cast(PtrToPtr, p)`.
     fn simplify_ptr_aggregate(&self, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Aggregate(box AggregateKind::RawPtr(pointee_ty, mutability), fields) = rvalue
@@ -173,30 +217,19 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
                     *kind = CastKind::IntToInt;
                     return;
                 }
-
-                // Transmuting a transparent struct/union to a field's type is a projection
-                if let ty::Adt(adt_def, args) = operand_ty.kind()
-                    && adt_def.repr().transparent()
-                    && (adt_def.is_struct() || adt_def.is_union())
-                    && let Some(place) = operand.place()
-                {
-                    let variant = adt_def.non_enum_variant();
-                    for (i, field) in variant.fields.iter_enumerated() {
-                        let field_ty = field.ty(self.tcx, args);
-                        if field_ty == *cast_ty {
-                            let place = place
-                                .project_deeper(&[ProjectionElem::Field(i, *cast_ty)], self.tcx);
-                            let operand = if operand.is_move() {
-                                Operand::Move(place)
-                            } else {
-                                Operand::Copy(place)
-                            };
-                            *rvalue = Rvalue::Use(operand);
-                            return;
-                        }
-                    }
-                }
             }
+        }
+    }
+
+    /// Simplify `[x; 1]` to just `[x]`.
+    fn simplify_repeat_once(&self, rvalue: &mut Rvalue<'tcx>) {
+        if let Rvalue::Repeat(operand, count) = rvalue
+            && let Some(1) = count.try_to_target_usize(self.tcx)
+        {
+            *rvalue = Rvalue::Aggregate(
+                Box::new(AggregateKind::Array(operand.ty(self.local_decls, self.tcx))),
+                [operand.clone()].into(),
+            );
         }
     }
 

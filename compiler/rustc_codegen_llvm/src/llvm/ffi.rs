@@ -120,6 +120,7 @@ pub enum CallConv {
     X86_Intr = 83,
     AvrNonBlockingInterrupt = 84,
     AvrInterrupt = 85,
+    AmdgpuKernel = 91,
 }
 
 /// Must match the layout of `LLVMLinkage`.
@@ -2374,7 +2375,7 @@ unsafe extern "C" {
         Data: &ThinLTOData,
         Module: &Module,
         Target: &TargetMachine,
-    ) -> bool;
+    );
     pub fn LLVMRustPrepareThinLTOResolveWeak(Data: &ThinLTOData, Module: &Module) -> bool;
     pub fn LLVMRustPrepareThinLTOInternalize(Data: &ThinLTOData, Module: &Module) -> bool;
     pub fn LLVMRustPrepareThinLTOImport(

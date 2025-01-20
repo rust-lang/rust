@@ -337,7 +337,7 @@ enum Class {
     Ident(Span),
     Lifetime,
     PreludeTy(Span),
-    PreludeVal,
+    PreludeVal(Span),
     QuestionMark,
     Decoration(&'static str),
 }
@@ -385,7 +385,7 @@ impl Class {
             Class::Ident(_) => "",
             Class::Lifetime => "lifetime",
             Class::PreludeTy(_) => "prelude-ty",
-            Class::PreludeVal => "prelude-val",
+            Class::PreludeVal(_) => "prelude-val",
             Class::QuestionMark => "question-mark",
             Class::Decoration(kind) => kind,
         }
@@ -395,7 +395,11 @@ impl Class {
     /// a "span" (a tuple representing `(lo, hi)` equivalent of `Span`).
     fn get_span(self) -> Option<Span> {
         match self {
-            Self::Ident(sp) | Self::Self_(sp) | Self::Macro(sp) | Self::PreludeTy(sp) => Some(sp),
+            Self::Ident(sp)
+            | Self::Self_(sp)
+            | Self::Macro(sp)
+            | Self::PreludeTy(sp)
+            | Self::PreludeVal(sp) => Some(sp),
             Self::Comment
             | Self::DocComment
             | Self::Attribute
@@ -406,7 +410,6 @@ impl Class {
             | Self::Number
             | Self::Bool
             | Self::Lifetime
-            | Self::PreludeVal
             | Self::QuestionMark
             | Self::Decoration(_) => None,
         }
@@ -851,7 +854,9 @@ impl<'src> Classifier<'src> {
             TokenKind::Ident => match get_real_ident_class(text, false) {
                 None => match text {
                     "Option" | "Result" => Class::PreludeTy(self.new_span(before, text)),
-                    "Some" | "None" | "Ok" | "Err" => Class::PreludeVal,
+                    "Some" | "None" | "Ok" | "Err" => {
+                        Class::PreludeVal(self.new_span(before, text))
+                    }
                     // "union" is a weak keyword and is only considered as a keyword when declaring
                     // a union type.
                     "union" if self.check_if_is_union_keyword() => Class::KeyWord,

@@ -7,6 +7,9 @@ LL | pub fn foo(x: &mut Vec<&u8>, y: &u8) { x.push(y); }
    |                        |        let's call the lifetime of this reference `'1`
    |                        let's call the lifetime of this reference `'2`
    |
+   = note: requirement occurs because of a mutable reference to `Vec<&u8>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 help: consider introducing a named lifetime parameter
    |
 LL | pub fn foo<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
@@ -21,6 +24,9 @@ LL | pub fn foo2(x: &mut Vec<&'_ u8>, y: &u8) { x.push(y); }
    |                         |           let's call the lifetime of this reference `'1`
    |                         let's call the lifetime of this reference `'2`
    |
+   = note: requirement occurs because of a mutable reference to `Vec<&u8>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 help: consider introducing a named lifetime parameter
    |
 LL | pub fn foo2<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
@@ -35,6 +41,9 @@ LL | pub fn foo3<'a>(_other: &'a [u8], x: &mut Vec<&u8>, y: &u8) { x.push(y); }
    |                                               |        let's call the lifetime of this reference `'1`
    |                                               let's call the lifetime of this reference `'2`
    |
+   = note: requirement occurs because of a mutable reference to `Vec<&u8>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 help: consider reusing a named lifetime parameter
    |
 LL | pub fn foo3<'a>(_other: &'a [u8], x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }

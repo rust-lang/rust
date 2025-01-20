@@ -353,8 +353,8 @@ impl TestCx<'_> {
         // to work correctly.
         //
         // See <https://github.com/rust-lang/rust/pull/122248> for more background.
+        let stage0_sysroot = build_root.join("stage0-sysroot");
         if std::env::var_os("COMPILETEST_FORCE_STAGE0").is_some() {
-            let stage0_sysroot = build_root.join("stage0-sysroot");
             rustc.arg("--sysroot").arg(&stage0_sysroot);
         }
 
@@ -373,6 +373,15 @@ impl TestCx<'_> {
         // Compute dynamic library search paths for recipes.
         let recipe_dylib_search_paths = {
             let mut paths = base_dylib_search_paths.clone();
+
+            // For stage 0, we need to explicitly include the stage0-sysroot libstd dylib.
+            // See <https://github.com/rust-lang/rust/issues/135373>.
+            if std::env::var_os("COMPILETEST_FORCE_STAGE0").is_some() {
+                paths.push(
+                    stage0_sysroot.join("lib").join("rustlib").join(&self.config.host).join("lib"),
+                );
+            }
+
             paths.push(support_lib_path.parent().unwrap().to_path_buf());
             paths.push(stage_std_path.join("rustlib").join(&self.config.host).join("lib"));
             paths

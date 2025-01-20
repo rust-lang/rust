@@ -419,7 +419,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
         id: LocalDefId,
     ) -> Self::Result {
         if let Some(header) = kind.header()
-            && header.safety.is_unsafe()
+            && header.is_unsafe()
         {
             ControlFlow::Break(())
         } else {

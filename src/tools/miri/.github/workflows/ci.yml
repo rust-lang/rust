@@ -126,7 +126,7 @@ jobs:
         with:
           fetch-depth: 256 # get a bit more of the history
       - name: install josh-proxy
-        run: RUSTFLAGS="--cap-lints warn" cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r23.12.04
+        run: cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r24.10.04
       - name: setup bot git name and email
         run: |
           git config --global user.name 'The Miri Cronjob Bot'

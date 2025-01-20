@@ -25,9 +25,14 @@ jobs:
     # Setup
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        # Unsetting this would make so that any malicious package could get our Github Token
+        persist-credentials: false
 
     - name: Install toolchain
-      run: rustup show active-toolchain
+      run: |
+        # Use a way compatible with Rustup pre-1.28.0 and Rustup 1.28.0
+        rustup show active-toolchain || rustup toolchain install
 
     # Run
     - name: Build

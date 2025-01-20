@@ -470,14 +470,14 @@ fn detect_iter_and_into_iters<'tcx: 'a, 'a>(
     captured_ids: HirIdSet,
 ) -> Option<Vec<IterFunction>> {
     let mut visitor = IterFunctionVisitor {
-        uses: Vec::new(),
-        target: id,
-        seen_other: false,
-        cx,
-        current_mutably_captured_ids: HirIdSet::default(),
         illegal_mutable_capture_ids: captured_ids,
+        current_mutably_captured_ids: HirIdSet::default(),
+        cx,
+        uses: Vec::new(),
         hir_id_uses_map: FxHashMap::default(),
         current_statement_hir_id: None,
+        seen_other: false,
+        target: id,
     };
     visitor.visit_block(block);
     if visitor.seen_other {

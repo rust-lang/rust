@@ -1,3 +1,5 @@
+use core::ops::ControlFlow;
+
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_apfloat::Float;
 use rustc_data_structures::fx::FxHashSet;
@@ -8,7 +10,9 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypeVisitor, ValTree};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, ValTree,
+};
 use rustc_middle::{mir, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::{Span, sym};
@@ -185,7 +189,7 @@ impl<'tcx> ConstToPat<'tcx> {
 
         if !inlined_const_as_pat.references_error() {
             // Always check for `PartialEq` if we had no other errors yet.
-            if !type_has_partial_eq_impl(self.tcx, typing_env, ty).0 {
+            if !type_has_partial_eq_impl(self.tcx, typing_env, ty).has_impl {
                 let mut err = self.tcx.dcx().create_err(TypeNotPartialEq { span: self.span, ty });
                 extend_type_not_partial_eq(self.tcx, typing_env, ty, &mut err);
                 return self.mk_err(err, ty);
@@ -219,12 +223,13 @@ impl<'tcx> ConstToPat<'tcx> {
                 // Extremely important check for all ADTs! Make sure they opted-in to be used in
                 // patterns.
                 debug!("adt_def {:?} has !type_marked_structural for cv.ty: {:?}", adt_def, ty);
-                let (_impls_partial_eq, derived, structural, impl_def_id) =
-                    type_has_partial_eq_impl(self.tcx, self.typing_env, ty);
+                let PartialEqImplStatus {
+                    is_derived, structural_partial_eq, non_blanket_impl, ..
+                } = type_has_partial_eq_impl(self.tcx, self.typing_env, ty);
                 let (manual_partialeq_impl_span, manual_partialeq_impl_note) =
-                    match (structural, impl_def_id) {
+                    match (structural_partial_eq, non_blanket_impl) {
                         (true, _) => (None, false),
-                        (_, Some(def_id)) if def_id.is_local() && !derived => {
+                        (_, Some(def_id)) if def_id.is_local() && !is_derived => {
                             (Some(tcx.def_span(def_id)), false)
                         }
                         _ => (None, true),
@@ -379,41 +384,50 @@ fn extend_type_not_partial_eq<'tcx>(
         adts_without_partialeq: FxHashSet<Span>,
         /// The user has written `impl PartialEq for Ty` which means it's non-structual,
         /// but we don't have a span to point at, so we'll just add them as a `note`.
-        manual: Vec<Ty<'tcx>>,
+        manual: FxHashSet<Ty<'tcx>>,
         /// The type has no `PartialEq` implementation, neither manual or derived, but
         /// we don't have a span to point at, so we'll just add them as a `note`.
-        without: Vec<Ty<'tcx>>,
+        without: FxHashSet<Ty<'tcx>>,
     }
 
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UsedParamsNeedInstantiationVisitor<'tcx> {
+        type Result = ControlFlow<()>;
         fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-            if let ty::Adt(def, _args) = ty.kind() {
-                let ty_def_id = def.did();
-                let ty_def_span = self.tcx.def_span(ty_def_id);
-                let (impls_partial_eq, derived, structural, impl_def_id) =
-                    type_has_partial_eq_impl(self.tcx, self.typing_env, ty);
-                match (impls_partial_eq, derived, structural, impl_def_id) {
-                    (_, _, true, _) => {}
-                    (true, false, _, Some(def_id)) if def_id.is_local() => {
-                        self.adts_with_manual_partialeq.insert(self.tcx.def_span(def_id));
-                    }
-                    (true, false, _, _) if ty_def_id.is_local() => {
-                        self.adts_with_manual_partialeq.insert(ty_def_span);
-                    }
-                    (false, _, _, _) if ty_def_id.is_local() => {
-                        self.adts_without_partialeq.insert(ty_def_span);
-                    }
-                    (true, false, _, _) => {
-                        self.manual.push(ty);
-                    }
-                    (false, _, _, _) => {
-                        self.without.push(ty);
-                    }
-                    _ => {}
-                };
+            match ty.kind() {
+                ty::Dynamic(..) => return ControlFlow::Break(()),
+                ty::FnPtr(..) => return ControlFlow::Continue(()),
+                ty::Adt(def, _args) => {
+                    let ty_def_id = def.did();
+                    let ty_def_span = self.tcx.def_span(ty_def_id);
+                    let PartialEqImplStatus {
+                        has_impl,
+                        is_derived,
+                        structural_partial_eq,
+                        non_blanket_impl,
+                    } = type_has_partial_eq_impl(self.tcx, self.typing_env, ty);
+                    match (has_impl, is_derived, structural_partial_eq, non_blanket_impl) {
+                        (_, _, true, _) => {}
+                        (true, false, _, Some(def_id)) if def_id.is_local() => {
+                            self.adts_with_manual_partialeq.insert(self.tcx.def_span(def_id));
+                        }
+                        (true, false, _, _) if ty_def_id.is_local() => {
+                            self.adts_with_manual_partialeq.insert(ty_def_span);
+                        }
+                        (false, _, _, _) if ty_def_id.is_local() => {
+                            self.adts_without_partialeq.insert(ty_def_span);
+                        }
+                        (true, false, _, _) => {
+                            self.manual.insert(ty);
+                        }
+                        (false, _, _, _) => {
+                            self.without.insert(ty);
+                        }
+                        _ => {}
+                    };
+                    ty.super_visit_with(self)
+                }
+                _ => ty.super_visit_with(self),
             }
-            use rustc_middle::ty::TypeSuperVisitable;
-            ty.super_visit_with(self)
         }
     }
     let mut v = UsedParamsNeedInstantiationVisitor {
@@ -421,10 +435,12 @@ fn extend_type_not_partial_eq<'tcx>(
         typing_env,
         adts_with_manual_partialeq: FxHashSet::default(),
         adts_without_partialeq: FxHashSet::default(),
-        manual: vec![],
-        without: vec![],
+        manual: FxHashSet::default(),
+        without: FxHashSet::default(),
     };
-    v.visit_ty(ty);
+    if v.visit_ty(ty).is_break() {
+        return;
+    }
     #[allow(rustc::potential_query_instability)] // Span labels will be sorted by the rendering
     for span in v.adts_with_manual_partialeq {
         err.span_note(span, "the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details");
@@ -436,16 +452,30 @@ fn extend_type_not_partial_eq<'tcx>(
             "must be annotated with `#[derive(PartialEq)]` to be usable in patterns",
         );
     }
-    for ty in v.manual {
+    #[allow(rustc::potential_query_instability)]
+    let mut manual: Vec<_> = v.manual.into_iter().map(|t| t.to_string()).collect();
+    manual.sort();
+    for ty in manual {
         err.note(format!(
             "`{ty}` must be annotated with `#[derive(PartialEq)]` to be usable in patterns, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details"
         ));
     }
-    for ty in v.without {
+    #[allow(rustc::potential_query_instability)]
+    let mut without: Vec<_> = v.without.into_iter().map(|t| t.to_string()).collect();
+    without.sort();
+    for ty in without {
         err.note(format!(
             "`{ty}` must be annotated with `#[derive(PartialEq)]` to be usable in patterns"
         ));
     }
+}
+
+#[derive(Debug)]
+struct PartialEqImplStatus {
+    has_impl: bool,
+    is_derived: bool,
+    structural_partial_eq: bool,
+    non_blanket_impl: Option<DefId>,
 }
 
 #[instrument(level = "trace", skip(tcx), ret)]
@@ -453,12 +483,7 @@ fn type_has_partial_eq_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
-) -> (
-    /* has impl */ bool,
-    /* is derived */ bool,
-    /* structural partial eq */ bool,
-    /* non-blanket impl */ Option<DefId>,
-) {
+) -> PartialEqImplStatus {
     let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
     // double-check there even *is* a semantic `PartialEq` to dispatch to.
     //
@@ -495,10 +520,10 @@ fn type_has_partial_eq_impl<'tcx>(
     // that patterns can only do things that the code could also do without patterns, but it is
     // needed for backwards compatibility. The actual pattern matching compares primitive values,
     // `PartialEq::eq` never gets invoked, so there's no risk of us running non-const code.
-    (
-        infcx.predicate_must_hold_modulo_regions(&partial_eq_obligation),
-        automatically_derived,
-        structural_peq,
-        impl_def_id,
-    )
+    PartialEqImplStatus {
+        has_impl: infcx.predicate_must_hold_modulo_regions(&partial_eq_obligation),
+        is_derived: automatically_derived,
+        structural_partial_eq: structural_peq,
+        non_blanket_impl: impl_def_id,
+    }
 }

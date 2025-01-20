@@ -202,6 +202,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `sme-lutv2`
 `sme2`
 `sme2p1`
+`soft-float`
 `spe`
 `ssbs`
 `sse`

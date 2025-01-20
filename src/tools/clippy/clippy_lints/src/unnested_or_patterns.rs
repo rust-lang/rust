@@ -92,7 +92,7 @@ impl EarlyLintPass for UnnestedOrPatterns {
 }
 
 fn lint_unnested_or_patterns(cx: &EarlyContext<'_>, pat: &Pat) {
-    if let Ident(.., None) | Lit(_) | Wild | Path(..) | Range(..) | Rest | MacCall(_) = pat.kind {
+    if let Ident(.., None) | Expr(_) | Wild | Path(..) | Range(..) | Rest | MacCall(_) = pat.kind {
         // This is a leaf pattern, so cloning is unprofitable.
         return;
     }
@@ -228,7 +228,7 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: us
         // Therefore they are not some form of constructor `C`,
         // with which a pattern `C(p_0)` may be formed,
         // which we would want to join with other `C(p_j)`s.
-        Ident(.., None) | Lit(_) | Wild | Err(_) | Never | Path(..) | Range(..) | Rest | MacCall(_)
+        Ident(.., None) | Expr(_) | Wild | Err(_) | Never | Path(..) | Range(..) | Rest | MacCall(_)
         // Skip immutable refs, as grouping them saves few characters,
         // and almost always requires adding parens (increasing noisiness).
         // In the case of only two patterns, replacement adds net characters.

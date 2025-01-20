@@ -4,27 +4,29 @@ use std::collections::BTreeMap;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{Applicability, Diag, MultiSpan};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, MultiSpan};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::{self as hir, CoroutineKind, LangItem};
 use rustc_index::IndexSlice;
-use rustc_infer::infer::BoundRegionConversionTime;
+use rustc_infer::infer::{
+    BoundRegionConversionTime, NllRegionVariableOrigin, RegionVariableOrigin,
+};
 use rustc_infer::traits::SelectionError;
 use rustc_middle::bug;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
-    AggregateKind, CallSource, ConstOperand, FakeReadCause, Local, LocalInfo, LocalKind, Location,
-    Operand, Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind,
+    AggregateKind, CallSource, ConstOperand, ConstraintCategory, FakeReadCause, Local, LocalInfo,
+    LocalKind, Location, Operand, Place, PlaceRef, ProjectionElem, Rvalue, Statement,
+    StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::print::Print;
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_middle::util::{CallDesugaringKind, call_kind};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveOutIndex};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+use rustc_trait_selection::error_reporting::traits::call_kind::{CallDesugaringKind, call_kind};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{
     FulfillmentErrorCode, type_known_to_meet_bound_modulo_regions,
@@ -33,7 +35,9 @@ use tracing::debug;
 
 use super::MirBorrowckCtxt;
 use super::borrow_set::BorrowData;
+use crate::constraints::OutlivesConstraint;
 use crate::fluent_generated as fluent;
+use crate::nll::ConstraintDescription;
 use crate::session_diagnostics::{
     CaptureArgLabel, CaptureReasonLabel, CaptureReasonNote, CaptureReasonSuggest, CaptureVarCause,
     CaptureVarKind, CaptureVarPathUseCause, OnClosureNote,
@@ -59,7 +63,7 @@ pub(crate) use mutability_errors::AccessKind;
 pub(crate) use outlives_suggestion::OutlivesSuggestionBuilder;
 pub(crate) use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionErrors};
 pub(crate) use region_name::{RegionName, RegionNameSource};
-pub(crate) use rustc_middle::util::CallKind;
+pub(crate) use rustc_trait_selection::error_reporting::traits::call_kind::CallKind;
 
 pub(super) struct DescribePlaceOpt {
     including_downcast: bool,
@@ -619,6 +623,52 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         region.print(&mut printer).unwrap();
         printer.into_buffer()
     }
+
+    /// Add a note to region errors and borrow explanations when higher-ranked regions in predicates
+    /// implicitly introduce an "outlives `'static`" constraint.
+    fn add_placeholder_from_predicate_note<G: EmissionGuarantee>(
+        &self,
+        err: &mut Diag<'_, G>,
+        path: &[OutlivesConstraint<'tcx>],
+    ) {
+        let predicate_span = path.iter().find_map(|constraint| {
+            let outlived = constraint.sub;
+            if let Some(origin) = self.regioncx.var_infos.get(outlived)
+                && let RegionVariableOrigin::Nll(NllRegionVariableOrigin::Placeholder(_)) =
+                    origin.origin
+                && let ConstraintCategory::Predicate(span) = constraint.category
+            {
+                Some(span)
+            } else {
+                None
+            }
+        });
+
+        if let Some(span) = predicate_span {
+            err.span_note(span, "due to current limitations in the borrow checker, this implies a `'static` lifetime");
+        }
+    }
+
+    /// Add a label to region errors and borrow explanations when outlives constraints arise from
+    /// proving a type implements `Sized` or `Copy`.
+    fn add_sized_or_copy_bound_info<G: EmissionGuarantee>(
+        &self,
+        err: &mut Diag<'_, G>,
+        blamed_category: ConstraintCategory<'tcx>,
+        path: &[OutlivesConstraint<'tcx>],
+    ) {
+        for sought_category in [ConstraintCategory::SizedBound, ConstraintCategory::CopyBound] {
+            if sought_category != blamed_category
+                && let Some(sought_constraint) = path.iter().find(|c| c.category == sought_category)
+            {
+                let label = format!(
+                    "requirement occurs due to {}",
+                    sought_category.description().trim_end()
+                );
+                err.span_label(sought_constraint.span, label);
+            }
+        }
+    }
 }
 
 /// The span(s) associated to a use of a place.
@@ -992,6 +1042,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 kind,
             };
         }
+
         normal_ret
     }
 

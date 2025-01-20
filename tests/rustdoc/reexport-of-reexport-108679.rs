@@ -25,5 +25,6 @@ pub mod a {
 //@ has - '//*[@id="main-content"]//*[@id="reexport.A"]' 'pub use self::a::A;'
 //@ has - '//*[@id="main-content"]//*[@id="reexport.B"]' 'pub use self::a::B;'
 // Should only contain "Modules" and "Re-exports".
-//@ count - '//*[@id="main-content"]//*[@class="item-table"]' 2
+//@ count - '//*[@id="main-content"]//*[@class="item-table"]' 1
+//@ count - '//*[@id="main-content"]//*[@class="item-table reexports"]' 1
 pub use self::a::{A, B};
