@@ -1,0 +1,66 @@
+name: release
+
+on:
+  schedule:
+     - cron: "0 0 * * 1"
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: "sync"
+  cancel-in-progress: true
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    name: Build (Linux)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install dependencies
+        run: |
+            sudo apt-get install ninja-build
+            rustup component add llvm-tools-preview
+      - name: Upstream
+        run: src/ci/scripts/setup-upstream-remote.sh
+      - name: Dist
+        run: ./x.py dist --config src/bootstrap/defaults/config.dist.toml
+      - name: Publish
+        run: ./x.py package --config src/bootstrap/defaults/config.dist.toml
+      - name: Bundle
+        run: |
+            mkdir -p artifacts
+            tar -xzf artifacts/arm.tar.gz build
+            zip -r artifacts/arm.zip build
+      - name: Publish
+        uses: actions/upload-artifact@v4
+        with:
+          path: artifacts
+          retention-days: 14
+  build-macos:
+    runs-on: macos-latest
+    name: Build (macOS)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install dependencies
+        run: |
+            brew install ninja
+      - name: Upstream
+        run: src/ci/scripts/setup-upstream-remote.sh
+      - name: Dist
+        run: ./x.py dist --config src/bootstrap/defaults/config.dist.toml
+      - name: Bundle
+        run: |
+            mkdir -p artifacts
+            tar -xzf artifacts/x86.tar.gz build
+            zip -r artifacts/x86.zip build
+      - name: Publish
+        uses: actions/upload-artifact@v4
+        with:
+          path: artifacts
+          retention-days: 14

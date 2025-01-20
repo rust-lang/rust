@@ -8,7 +8,9 @@ docs = false
 tools = [
     "cargo",
     "clippy",
+    "libbsan",
     "bsan",
+    "cargo-bsan",
     "rustfmt",
     "rust-analyzer",
     "rust-analyzer-proc-macro-srv",
