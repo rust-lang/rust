@@ -3244,6 +3244,25 @@ pub const fn three_way_compare<T: Copy>(_lhs: T, _rhss: T) -> crate::cmp::Orderi
     unimplemented!()
 }
 
+/// Combine two values which have no bits in common.
+///
+/// This allows the backend to implement it as `a + b` *or* `a | b`,
+/// depending which us easier to implement on a specific target.
+///
+/// # Safety
+///
+/// Requires that `(a & b) == 0`, or equivalently that `(a | b) == (a + b)`.
+///
+/// Otherwise it's immediate UB.
+#[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
+#[rustc_nounwind]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[miri::intrinsic_fallback_is_spec] // the fallbacks all `assume` to tell MIRI
+pub const unsafe fn disjoint_bitor<T: ~const fallback::DisjointBitOr>(a: T, b: T) -> T {
+    // SAFETY: same preconditions as this function.
+    unsafe { fallback::DisjointBitOr::disjoint_bitor(a, b) }
+}
+
 /// Performs checked integer addition.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;

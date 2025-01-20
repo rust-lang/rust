@@ -110,3 +110,43 @@ impl const CarryingMulAdd for i128 {
         (low, high)
     }
 }
+
+#[const_trait]
+#[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+pub trait DisjointBitOr: Copy + 'static {
+    /// This is always just `assume((self & other) == 0); self | other`.
+    ///
+    /// It's essential that the assume is there so that this is sufficient to
+    /// specify the UB for MIRI, rather than it needing to re-implement it.
+    ///
+    /// # Safety
+    /// See [`super::disjoint_bitor`].
+    unsafe fn disjoint_bitor(self, other: Self) -> Self;
+}
+macro_rules! zero {
+    (bool) => {
+        false
+    };
+    ($t:ident) => {
+        0
+    };
+}
+macro_rules! impl_disjoint_bitor {
+    ($($t:ident,)+) => {$(
+        #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+        impl const DisjointBitOr for $t {
+            #[inline]
+            unsafe fn disjoint_bitor(self, other: Self) -> Self {
+                // SAFETY: our precondition is that there are no bits in common,
+                // so this is just telling that to the backend.
+                unsafe { super::assume((self & other) == zero!($t)) };
+                self | other
+            }
+        }
+    )+};
+}
+impl_disjoint_bitor! {
+    bool,
+    u8, u16, u32, u64, u128, usize,
+    i8, i16, i32, i64, i128, isize,
+}
