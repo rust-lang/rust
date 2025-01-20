@@ -117,7 +117,7 @@ pub fn setup(
         }
         command
     };
-    // Disable debug assertions in the standard library -- Miri is already slow enough.
+    // Disable debug assertions in the standard library
     // But keep the overflow checks, they are cheap. This completely overwrites flags
     // the user might have set, which is consistent with normal `cargo build` that does
     // not apply `RUSTFLAGS` to the sysroot either.

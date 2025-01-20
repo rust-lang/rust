@@ -157,7 +157,7 @@ pub fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
     }
 }
 
-/// Get the target directory for miri output.
+/// Get the target directory for bsan output.
 ///
 /// Either in an argument passed-in, or from cargo metadata.
 pub fn get_target_dir(meta: &Metadata) -> PathBuf {
@@ -165,7 +165,7 @@ pub fn get_target_dir(meta: &Metadata) -> PathBuf {
         Some(dir) => PathBuf::from(dir),
         None => meta.target_directory.clone().into_std_path_buf(),
     };
-    output.push("miri");
+    output.push("bsan");
     output
 }
 

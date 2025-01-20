@@ -58,8 +58,7 @@ pub fn phase_cargo_bsan(mut args: impl Iterator<Item = String>) {
         targets.push(host.clone());
         Some(host)
     } else {
-        // We don't need to add a `--target` flag, we just forward the user's flags.
-        None
+        show_error!("Cross-compilation is not supported at this time.");
     };
 
     // If cleaning the target directory & sysroot cache,
@@ -81,7 +80,7 @@ pub fn phase_cargo_bsan(mut args: impl Iterator<Item = String>) {
 
     let cargo_cmd = match subcommand {
         BSANCommand::Forward(s) => s,
-        BSANCommand::Setup => return, // `cargo miri setup` stops here.
+        BSANCommand::Setup => return, // `cargo bsan setup` stops here.
         BSANCommand::Clean => unreachable!(),
     };
 
@@ -90,7 +89,7 @@ pub fn phase_cargo_bsan(mut args: impl Iterator<Item = String>) {
     let mut cmd = cargo();
     cmd.arg(&cargo_cmd);
 
-    // Set `--target-dir` to `miri` inside the original target directory.
+    // Set `--target-dir` to `bsan` inside the original target directory.
     let target_dir = get_target_dir(&metadata);
     cmd.arg("--target-dir").arg(target_dir);
 
