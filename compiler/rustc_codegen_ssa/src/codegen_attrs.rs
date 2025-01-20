@@ -1,6 +1,7 @@
 use rustc_ast::attr::list_contains_name;
 use rustc_ast::{MetaItemInner, attr};
-use rustc_attr_parsing::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_attr_parsing::ReprAttr::ReprAlign;
+use rustc_attr_parsing::{AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{DiagMessage, SubdiagMessage, struct_span_code_err};
@@ -100,6 +101,18 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 None
             }
         };
+
+        if let hir::Attribute::Parsed(p) = attr {
+            match p {
+                AttributeKind::Repr(reprs) => {
+                    codegen_fn_attrs.alignment = reprs
+                        .iter()
+                        .find_map(|(r, _)| if let ReprAlign(x) = r { Some(*x) } else { None });
+                }
+
+                _ => {}
+            }
+        }
 
         let Some(Ident { name, .. }) = attr.ident() else {
             continue;
@@ -426,27 +439,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                             None
                         }
                     })
-            }
-            sym::repr => {
-                codegen_fn_attrs.alignment = if let Some(items) = attr.meta_item_list()
-                    && let [item] = items.as_slice()
-                    && let Some((sym::align, literal)) = item.singleton_lit_list()
-                {
-                    rustc_attr_parsing::parse_alignment(&literal.kind)
-                        .map_err(|msg| {
-                            struct_span_code_err!(
-                                tcx.dcx(),
-                                literal.span,
-                                E0589,
-                                "invalid `repr(align)` attribute: {}",
-                                msg
-                            )
-                            .emit();
-                        })
-                        .ok()
-                } else {
-                    None
-                };
             }
             sym::patchable_function_entry => {
                 codegen_fn_attrs.patchable_function_entry = attr.meta_item_list().and_then(|l| {
@@ -839,7 +831,7 @@ impl<'a> MixedExportNameAndNoMangleState<'a> {
             export_name: Some(export_name),
             no_mangle: Some(no_mangle),
             hir_id: Some(hir_id),
-            no_mangle_attr: Some(no_mangle_attr),
+            no_mangle_attr: Some(_),
         } = self
         {
             tcx.emit_node_span_lint(
@@ -848,7 +840,7 @@ impl<'a> MixedExportNameAndNoMangleState<'a> {
                 no_mangle,
                 errors::MixedExportNameAndNoMangle {
                     no_mangle,
-                    no_mangle_attr: rustc_hir_pretty::attribute_to_string(&tcx, no_mangle_attr),
+                    no_mangle_attr: "#[unsafe(no_mangle)]".to_string(),
                     export_name,
                     removal_span: no_mangle,
                 },
