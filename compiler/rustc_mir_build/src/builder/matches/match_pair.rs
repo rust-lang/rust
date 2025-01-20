@@ -60,6 +60,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             exact_size = false;
         }
 
+        // Normally `exact_size` is true iff this is an array pattern, but there
+        // is at least one edge-case exception. Consider code like this:
+        //
+        // ```ignore (illustrative)
+        // let arr = [1, 2, 3];
+        // let closure = || match arr {
+        //     [_, ..] => {}
+        // };
+        // ```
+        //
+        // Under Rust 2021 disjoint-capture rules, the array place isn't
+        // actually captured, because no part of it is actually read or bound
+        // by the match. So the above code can't resolve it, and falls back to
+        // `exact_size = false`. This appears to be benign, but keep it in mind.
+
         match_pairs.extend(prefix.iter().enumerate().map(|(idx, subpattern)| {
             let elem =
                 ProjectionElem::ConstantIndex { offset: idx as u64, min_length, from_end: false };

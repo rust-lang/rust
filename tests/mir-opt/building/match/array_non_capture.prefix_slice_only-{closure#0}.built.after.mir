@@ -1,0 +1,18 @@
+// MIR for `prefix_slice_only::{closure#0}` after built
+
+fn prefix_slice_only::{closure#0}(_1: &{closure@$DIR/array_non_capture.rs:30:19: 30:21}) -> u32 {
+    let mut _0: u32;
+
+    bb0: {
+        _0 = const 102_u32;
+        goto -> bb2;
+    }
+
+    bb1: {
+        unreachable;
+    }
+
+    bb2: {
+        return;
+    }
+}
