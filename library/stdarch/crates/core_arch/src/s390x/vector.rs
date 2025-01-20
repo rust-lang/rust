@@ -350,10 +350,9 @@ mod sealed {
     }
 
     macro_rules! impl_abs {
-        ($name:ident, $ty:ident, $instr:ident) => {
+        ($name:ident, $ty:ident) => {
             #[inline]
             #[target_feature(enable = "vector")]
-            #[cfg_attr(test, assert_instr($instr))]
             unsafe fn $name(v: s_t_l!($ty)) -> s_t_l!($ty) {
                 v.vec_max(-v)
             }
@@ -385,6 +384,72 @@ mod sealed {
 
     impl_vec_trait! { [VectorAbs vec_abs] vec_abs_f32 (vector_float) }
     impl_vec_trait! { [VectorAbs vec_abs] vec_abs_f64 (vector_double) }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSplats<Output> {
+        unsafe fn vec_splats(self) -> Output;
+    }
+
+    macro_rules! impl_vec_splats {
+        ($(($fn:ident ($ty:ty, $shortty:tt) $instr:ident)),*) => {
+            $(
+                #[inline]
+                #[target_feature(enable = "vector")]
+                #[cfg_attr(test, assert_instr($instr))]
+                pub unsafe fn $fn(v: $ty) -> s_t_l!($shortty) {
+                    transmute($shortty::splat(v))
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorSplats<s_t_l!($shortty)> for $ty {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_splats(self) -> s_t_l!($shortty) {
+                        $fn (self)
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_vec_splats! {
+        (vec_splats_u8 (u8, u8x16) vrepb),
+        (vec_splats_i8 (i8, i8x16) vrepb),
+        (vec_splats_u16 (u16, u16x8) vreph),
+        (vec_splats_i16 (i16, i16x8) vreph),
+        (vec_splats_u32 (u32, u32x4) vrepf),
+        (vec_splats_i32 (i32, i32x4) vrepf),
+        (vec_splats_u64 (u64, u64x2) vlvgp),
+        (vec_splats_i64 (i64, i64x2) vlvgp),
+        (vec_splats_f32 (f32, f32x4) vrepf),
+        (vec_splats_f64 (f64, f64x2) vrepg)
+    }
+
+    macro_rules! impl_bool_vec_splats {
+        ($(($ty:ty, $shortty:tt, $boolty:ty)),*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorSplats<$boolty> for $ty {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_splats(self) -> $boolty {
+                        transmute($shortty::splat(self))
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_bool_vec_splats! {
+        (u8, u8x16, vector_bool_char),
+        (i8, i8x16, vector_bool_char),
+        (u16, u16x8, vector_bool_short),
+        (i16, i16x8, vector_bool_short),
+        (u32, u32x4, vector_bool_int),
+        (i32, i32x4, vector_bool_int),
+        (u64, u64x2, vector_bool_long_long),
+        (i64, i64x2, vector_bool_long_long)
+    }
 }
 
 /// Vector pointwise addition.
@@ -457,6 +522,17 @@ where
     T: sealed::VectorAbs,
 {
     a.vec_abs()
+}
+
+/// Vector splats.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_splats<T, U>(a: T) -> U
+where
+    T: sealed::VectorSplats<U>,
+{
+    a.vec_splats()
 }
 
 #[cfg(test)]
@@ -616,4 +692,23 @@ mod tests {
     [0, u8::MAX - 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4],
     [5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 0, u8::MAX, 1, 2, 3, 4],
     [0, 244, 7, 16, 27, 32, 35, 36, 35, 32, 0, 248, 7, 12, 15, 16] }
+
+    macro_rules! test_vec_abs {
+        { $name: ident, $ty: ident, $a: expr, $d: expr } => {
+            #[simd_test(enable = "vector")]
+            unsafe fn $name() {
+                let a: s_t_l!($ty) = vec_splats($a);
+                let a: s_t_l!($ty) = vec_abs(a);
+                let d = $ty::splat($d);
+                assert_eq!(d, transmute(a));
+            }
+        }
+    }
+
+    test_vec_abs! { test_vec_abs_i8, i8x16, -42i8, 42i8 }
+    test_vec_abs! { test_vec_abs_i16, i16x8, -42i16, 42i16 }
+    test_vec_abs! { test_vec_abs_i32, i32x4, -42i32, 42i32 }
+    test_vec_abs! { test_vec_abs_i64, i64x2, -42i64, 42i64 }
+    test_vec_abs! { test_vec_abs_f32, f32x4, -42f32, 42f32 }
+    test_vec_abs! { test_vec_abs_f64, f64x2, -42f64, 42f64 }
 }
