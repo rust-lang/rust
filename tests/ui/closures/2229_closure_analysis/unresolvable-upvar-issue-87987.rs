@@ -25,8 +25,16 @@ fn main() {
 
     let mref = &mut arr;
 
+    // These array patterns don't need to inspect the array, so the array
+    // isn't captured.
     let _c = || match arr {
-        [_, _, _, _] => println!("A"),
+        [_, _, _, _] => println!("C"),
+    };
+    let _d = || match arr {
+        [_, .., _] => println!("D"),
+    };
+    let _e = || match arr {
+        [_, ..] => println!("E"),
     };
 
     println!("{:#?}", mref);
