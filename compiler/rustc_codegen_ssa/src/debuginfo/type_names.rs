@@ -160,7 +160,9 @@ fn push_debuginfo_type_name<'tcx>(
             }
         }
         ty::Ref(_, inner_type, mutbl) => {
-            if cpp_like_debuginfo {
+            // Use the MSVC style whenever we have a ref-to-ref, since LLDB does not properly handle
+            // ref-to-ref.
+            if cpp_like_debuginfo || matches!(inner_type.kind(), ty::Ref(_, _, _)) {
                 match mutbl {
                     Mutability::Not => output.push_str("ref$<"),
                     Mutability::Mut => output.push_str("ref_mut$<"),
@@ -172,7 +174,7 @@ fn push_debuginfo_type_name<'tcx>(
 
             push_debuginfo_type_name(tcx, inner_type, qualified, output, visited);
 
-            if cpp_like_debuginfo {
+            if cpp_like_debuginfo || matches!(inner_type.kind(), ty::Ref(_, _, _)) {
                 push_close_angle_bracket(cpp_like_debuginfo, output);
             }
         }

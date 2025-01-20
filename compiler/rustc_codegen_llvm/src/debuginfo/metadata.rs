@@ -166,16 +166,118 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                 "ptr_type={ptr_type}, pointee_type={pointee_type}",
             );
 
-            let di_node = unsafe {
-                llvm::LLVMRustDIBuilderCreatePointerType(
-                    DIB(cx),
-                    pointee_type_di_node,
-                    data_layout.pointer_size.bits(),
-                    data_layout.pointer_align.abi.bits() as u32,
-                    0, // Ignore DWARF address space.
-                    ptr_type_debuginfo_name.as_c_char_ptr(),
-                    ptr_type_debuginfo_name.len(),
-                )
+            let di_node = match (ptr_type.kind(), pointee_type.kind()) {
+                // if we have a ref-to-ref, treat the outter ref as a pointer and wrap it in a `ref$<>` pseudo-struct.
+                // This is necessary because LLDB (or more specifically, `TypeSystemClang`) seems to implicitly treat
+                // references to references as invalid, and treats them as a reference to the first
+                // non-reference/pointer underlying type (e.g. "&&u8" -> "&u8", "&&&&&u8" -> "&u8"). This is expected
+                // behavior for C/C++ since ref-to-ref isn't valid in those languages, so it's not possible to fix on
+                // the LLDB end outside of creating a `TypeSystemRust`.
+                (ty::Ref(_, _, ptr_mut), ty::Ref(_, _, _)) => unsafe {
+                    let qualified_ref = llvm::LLVMRustDIBuilderCreatePointerType(
+                        DIB(cx),
+                        pointee_type_di_node,
+                        data_layout.pointer_size.bits(),
+                        data_layout.pointer_align.abi.bits() as u32,
+                        0, // Ignore DWARF address space.
+                        ptr_type_debuginfo_name.as_c_char_ptr(),
+                        ptr_type_debuginfo_name.len(),
+                    );
+
+                    let qualified_ref = if ptr_mut.is_not() {
+                        llvm::LLVMRustDIBuilderCreateQualifiedType(
+                            DIB(cx),
+                            dwarf_const::DW_TAG_const_type,
+                            qualified_ref,
+                        )
+                    } else {
+                        qualified_ref
+                    };
+
+                    // now we create a wrapper struct that holds the pointer. This provides the
+                    // info necessary to differentiate a pointer from a ref, but doesn't run into
+                    // the ref-to-ref problem
+
+                    return type_map::build_type_with_children(
+                        cx,
+                        type_map::stub(
+                            cx,
+                            Stub::Struct,
+                            unique_type_id,
+                            &ptr_type_debuginfo_name,
+                            None,
+                            cx.size_and_align_of(ptr_type),
+                            NO_SCOPE_METADATA,
+                            DIFlags::FlagZero,
+                        ),
+                        |cx, owner| {
+                            smallvec![build_field_di_node(
+                                cx,
+                                owner,
+                                "ptr",
+                                cx.size_and_align_of(ptr_type),
+                                Size::ZERO,
+                                DIFlags::FlagZero,
+                                qualified_ref,
+                                None,
+                            )]
+                        },
+                        |_cx| smallvec![pointee_type_di_node],
+                    );
+                },
+                // if we have a ref-to-<not a ref>, apply `const` to the inner value as necessary
+                (ty::Ref(_, _, ptr_mut), _) => unsafe {
+                    let pointee_type_di_node = if ptr_mut.is_not() {
+                        llvm::LLVMRustDIBuilderCreateQualifiedType(
+                            DIB(cx),
+                            dwarf_const::DW_TAG_const_type,
+                            pointee_type_di_node,
+                        )
+                    } else {
+                        pointee_type_di_node
+                    };
+
+                    llvm::LLVMRustDIBuilderCreateReferenceType(
+                        DIB(cx),
+                        dwarf_const::DW_TAG_reference_type,
+                        pointee_type_di_node,
+                    )
+                },
+                // if we have any pointer, apply `const` to the inner value as necessary
+                (ty::RawPtr(_, ptr_mut), _) => unsafe {
+                    let pointee_type_di_node = if ptr_mut.is_not() {
+                        llvm::LLVMRustDIBuilderCreateQualifiedType(
+                            DIB(cx),
+                            dwarf_const::DW_TAG_const_type,
+                            pointee_type_di_node,
+                        )
+                    } else {
+                        pointee_type_di_node
+                    };
+
+                    llvm::LLVMRustDIBuilderCreatePointerType(
+                        DIB(cx),
+                        pointee_type_di_node,
+                        data_layout.pointer_size.bits(),
+                        data_layout.pointer_align.abi.bits() as u32,
+                        0, // Ignore DWARF address space.
+                        ptr_type_debuginfo_name.as_c_char_ptr(),
+                        ptr_type_debuginfo_name.len(),
+                    )
+                },
+                // apply no modifications to `Box`
+                (ty::Adt(_, _), _) => unsafe {
+                    llvm::LLVMRustDIBuilderCreatePointerType(
+                        DIB(cx),
+                        pointee_type_di_node,
+                        data_layout.pointer_size.bits(),
+                        data_layout.pointer_align.abi.bits() as u32,
+                        0, // Ignore DWARF address space.
+                        ptr_type_debuginfo_name.as_c_char_ptr(),
+                        ptr_type_debuginfo_name.len(),
+                    )
+                },
+                _ => todo!(),
             };
 
             DINodeCreationResult { di_node, already_stored_in_typemap: false }

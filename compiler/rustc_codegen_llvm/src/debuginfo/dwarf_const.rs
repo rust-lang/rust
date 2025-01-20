@@ -16,7 +16,9 @@ macro_rules! declare_constant {
     };
 }
 
+// DWARF attribute tags
 declare_constant!(DW_TAG_const_type: c_uint);
+declare_constant!(DW_TAG_reference_type: c_uint);
 
 // DWARF languages.
 declare_constant!(DW_LANG_Rust: c_uint);
