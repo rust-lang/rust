@@ -1,5 +1,5 @@
-//@no-rustfix: overlapping suggestions
 #![deny(clippy::match_bool)]
+#![allow(clippy::nonminimal_bool, clippy::eq_op)]
 
 fn match_bool() {
     let test: bool = true;
@@ -34,11 +34,7 @@ fn match_bool() {
     };
 
     match test && test {
-        //~^ ERROR: this boolean expression can be simplified
-        //~| NOTE: `-D clippy::nonminimal-bool` implied by `-D warnings`
-        //~| ERROR: you seem to be trying to match on a boolean expression
-        //~| ERROR: equal expressions as operands to `&&`
-        //~| NOTE: `#[deny(clippy::eq_op)]` on by default
+        //~^ ERROR: you seem to be trying to match on a boolean expression
         false => {
             println!("Noooo!");
         },
@@ -68,6 +64,42 @@ fn match_bool() {
         true if option == 5 => 10,
         true => 0,
         false => 1,
+    };
+
+    let _ = match test {
+        //~^ ERROR: you seem to be trying to match on a boolean expression
+        true if option == 5 => 10,
+        _ => 1,
+    };
+
+    let _ = match test {
+        //~^ ERROR: you seem to be trying to match on a boolean expression
+        false if option == 5 => 10,
+        _ => 1,
+    };
+
+    match test {
+        //~^ ERROR: you seem to be trying to match on a boolean expression
+        true if option == 5 => println!("Hello"),
+        _ => (),
+    };
+
+    match test {
+        //~^ ERROR: you seem to be trying to match on a boolean expression
+        true if option == 5 => (),
+        _ => println!("Hello"),
+    };
+
+    match test {
+        //~^ ERROR: you seem to be trying to match on a boolean expression
+        false if option == 5 => println!("Hello"),
+        _ => (),
+    };
+
+    match test {
+        //~^ ERROR: you seem to be trying to match on a boolean expression
+        false if option == 5 => (),
+        _ => println!("Hello"),
     };
 }
 
