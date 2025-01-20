@@ -42,7 +42,15 @@ fn show_help() {
     println!("{CARGO_BSAN_HELP}");
 }
 
-fn show_version() {}
+fn show_version() {
+    print!("bsan {}", env!("CARGO_PKG_VERSION"));
+    let version = format!("{} {}", env!("GIT_HASH"), env!("COMMIT_DATE"));
+    if version.len() > 1 {
+        // If there is actually something here, print it.
+        print!(" ({version})");
+    }
+    println!();
+}
 
 fn main() {
     env_logger::init();

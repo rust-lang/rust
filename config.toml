@@ -5,19 +5,11 @@ sanitizers = true
 build-stage = 1
 test-stage = 1
 docs = false
+extended = true
 tools = [
-    "cargo",
-    "clippy",
     "libbsan",
     "bsan",
     "cargo-bsan",
-    "rustfmt",
-    "rust-analyzer",
-    "rust-analyzer-proc-macro-srv",
-    "analysis",
-    "src",
-    "miri", 
-    "cargo-miri",
 ]
 
 [rust]

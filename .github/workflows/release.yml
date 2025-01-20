@@ -5,44 +5,41 @@ on:
      - cron: "0 0 * * 1"
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 defaults:
   run:
     shell: bash
 concurrency:
-  group: "sync"
+  group: "release"
   cancel-in-progress: true
 jobs:
-  build-linux:
+  init:
     runs-on: ubuntu-latest
-    name: Build (Linux)
+    name: Init
+    outputs:
+        should_run: ${{ steps.should_run.outputs.should_run }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Install dependencies
+      - name: Set version info
         run: |
-            sudo apt-get install ninja-build
-            rustup component add llvm-tools-preview
-      - name: Upstream
-        run: src/ci/scripts/setup-upstream-remote.sh
-      - name: Dist
-        run: ./x.py dist --config src/bootstrap/defaults/config.dist.toml
-      - name: Publish
-        run: ./x.py package --config src/bootstrap/defaults/config.dist.toml
-      - name: Bundle
-        run: |
-            mkdir -p artifacts
-            tar -xzf artifacts/arm.tar.gz build
-            zip -r artifacts/arm.zip build
-      - name: Publish
-        uses: actions/upload-artifact@v4
-        with:
-          path: artifacts
-          retention-days: 14
-  build-macos:
+            export DATE=$(git log -1 --format=%cd --date=format:%Y-%m-%d)
+            export TAG_NAME=$(echo ${{ github.sha }} | cut -c1-7)
+            export RELEASE_NAME="$DATE-$TAG_NAME"
+            echo "$RELEASE_NAME"
+            echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+            echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
+      - id: should_run
+        continue-on-error: true
+        name: Check if updates have been published
+        if: ${{ github.event_name == 'schedule' }}
+        run: test -z $(git rev-list  --after="24 hours"  ${{ github.sha }}) && echo "::set-output name=should_run::false"
+
+  build-arm64-macos: 
     runs-on: macos-latest
-    name: Build (macOS)
+    name: Build (arm64 macOS)
+    needs: [init]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,13 +51,32 @@ jobs:
         run: src/ci/scripts/setup-upstream-remote.sh
       - name: Dist
         run: ./x.py dist --config src/bootstrap/defaults/config.dist.toml
-      - name: Bundle
+      - name: List artifacts
         run: |
-            mkdir -p artifacts
-            tar -xzf artifacts/x86.tar.gz build
-            zip -r artifacts/x86.zip build
+          ls -Al ./build/dist/
       - name: Publish
         uses: actions/upload-artifact@v4
         with:
+          name: bsan-arm64-macos
+          path: build/dist/rust-nightly-aarch64-apple-darwin.tar.xz
+
+  release:
+    name: Update rolling release
+    needs: [init, build-arm64-macos]
+    runs-on: macos-latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
           path: artifacts
-          retention-days: 14
+      - name: List artifacts
+        run: |
+          ls -Al .
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: rolling
+          prerelease: true
+          files: |
+            artifacts/*.zip
