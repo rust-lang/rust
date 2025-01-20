@@ -1,11 +1,14 @@
 [package]
-name = "bsan"
+name = "cargo-bsan"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+cargo_metadata = "0.19.1"
+directories = "6.0.0"
 env_logger = "0.11.6"
 log = "0.4.22"
+rustc-build-sysroot = "0.5.4"
 rustc_version = "0.4.1"
 
 [package.metadata.rust-analyzer]

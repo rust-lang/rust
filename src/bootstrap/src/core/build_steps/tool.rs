@@ -1094,55 +1094,12 @@ tool_extended!((self, builder),
     Clippy, "src/tools/clippy", "clippy-driver", stable=true, add_bins_to_sysroot = ["clippy-driver", "cargo-clippy"];
     Miri, "src/tools/miri", "miri", stable=false, add_bins_to_sysroot = ["miri"];
     CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, add_bins_to_sysroot = ["cargo-miri"];
+    Bsan, "src/tools/bsan/", "bsan", stable=false, add_bins_to_sysroot = ["bsan"];
+    CargoBsan, "src/tools/bsan/cargo-bsan", "cargo-bsan", stable=false, add_bins_to_sysroot = ["cargo-bsan"];
     Rls, "src/tools/rls", "rls", stable=true;
     Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, add_bins_to_sysroot = ["rustfmt", "cargo-fmt"];
 );
-/*
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct BsanLender {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
-    pub extra_features: Vec<String>,
-}
 
-impl Step for BsanLender {
-    type Output = PathBuf;
-    const DEFAULT: bool = true; // Overwritten below
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/tools/miri/bsan/lender")
-            .default_condition(builder.config.extended && builder.build.unstable_features())
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Bsan {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
-            target: run.target,
-            extra_features: Vec::new(),
-        });
-    }
-
-    #[allow(unused_mut)]
-    fn run(mut self, builder: &Builder<'_>) -> PathBuf {
-        let bin_name = "bsan-lender";
-        let tool = builder.ensure(ToolBuild {
-            compiler: self.compiler,
-            target: self.target,
-            tool: bin_name,
-            mode: Mode::ToolRustc,
-            path: "src/tools/miri/bsan/lender",
-            extra_features: self.extra_features,
-            source_type: SourceType::InTree,
-            allow_features: "",
-            cargo_args: vec![],
-            tool_kind: ToolKind::Library,
-        });
-        tool
-    }
-}
-*/
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TestFloatParse {
     pub host: TargetSelection,

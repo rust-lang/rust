@@ -11,8 +11,7 @@ use crate::core::build_steps::tool::{SourceType, prepare_tool_cargo};
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::helpers::dylib;
-use crate::{Compiler, Kind, Mode, Path, helpers, t};
-use crate::fs;
+use crate::{Compiler, Kind, Mode, Path, fs, helpers, t};
 
 /// We need two components to compile BSAN (in addition to LLVM). The first component is the
 /// borrow tracker library (libborrowtracker), which is compiled here in the step BsanBorrowTracker.
@@ -100,7 +99,11 @@ impl Step for BsanBorrowTracker {
                 || target == "x86_64-apple-ios"
             {
                 // Update the library’s install name to reflect that it has been renamed.
-                apple_darwin_update_library_name(builder, &runtime, &format!("@rpath/{}", file_name));
+                apple_darwin_update_library_name(
+                    builder,
+                    &runtime,
+                    &format!("@rpath/{}", file_name),
+                );
                 // Upon renaming the install name, the code signature of the file will invalidate,
                 // so we will sign it again.
                 apple_darwin_sign_file(builder, &runtime);
@@ -115,25 +118,26 @@ impl Step for BsanBorrowTracker {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Bsan {
+pub struct BsanLlvmRuntime {
     pub compiler: Compiler,
     pub target: TargetSelection,
 }
-impl Step for Bsan {
+impl Step for BsanLlvmRuntime {
     type Output = Option<SanitizerRuntime>;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.alias("bsan").default_condition(
+        run.alias("libbsan").default_condition(
             builder
                 .config
                 .tools
                 .as_ref()
-                .map_or(true, |tools| tools.iter().any(|tool| tool == "bsan")))
+                .map_or(true, |tools| tools.iter().any(|tool| tool == "libbsan")),
+        )
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Bsan {
+        run.builder.ensure(BsanLlvmRuntime {
             compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
@@ -146,7 +150,7 @@ impl Step for Bsan {
 
         builder.ensure(llvm::Llvm { target });
         builder.ensure(BsanBorrowTracker { compiler, target });
-        
+
         let compiler_rt_dir = builder.src.join("src/llvm-project/compiler-rt");
         if !compiler_rt_dir.exists() {
             return None;
