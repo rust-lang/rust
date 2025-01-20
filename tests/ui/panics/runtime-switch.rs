@@ -6,13 +6,8 @@
 //@ check-run-results
 //@ exec-env:RUST_BACKTRACE=0
 
-// This is needed to avoid test output differences across std being built with v0 symbols vs legacy
-// symbols.
-//@ normalize-stderr: "begin_panic::<&str>" -> "begin_panic"
-// This variant occurs on macOS with `rust.debuginfo-level = "line-tables-only"` (#133997)
-//@ normalize-stderr: " begin_panic<&str>" -> " std::panicking::begin_panic"
-// And this is for differences between std with and without debuginfo.
-//@ normalize-stderr: "\n +at [^\n]+" -> ""
+//@ normalize-stderr: "omitted [0-9]+ frames?" -> "omitted N frames"
+//@ normalize-stderr: ".rs:[0-9]+:[0-9]+" -> ".rs:LL:CC"
 
 //@ ignore-msvc see #62897 and `backtrace-debuginfo.rs` test
 //@ ignore-android FIXME #17520
