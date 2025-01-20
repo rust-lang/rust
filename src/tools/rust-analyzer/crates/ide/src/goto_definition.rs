@@ -185,6 +185,15 @@ fn find_definition_for_known_blanket_dual_impls(
             // Extract the `T` from `Result<T, ..>`
             [return_type.type_arguments().next()?, callable.receiver_param(sema.db)?.1],
         )?
+    } else if fn_name == sym::to_string && fd.alloc_string_ToString() == Some(t) {
+        let dual = fd.core_fmt_Display()?;
+        let dual_f = dual.function(sema.db, &sym::fmt)?;
+        sema.resolve_trait_impl_method(
+            return_type.clone(),
+            dual,
+            dual_f,
+            [callable.receiver_param(sema.db)?.1.strip_reference()],
+        )?
     } else {
         return None;
     };
@@ -3231,6 +3240,36 @@ impl FromStr for A {
 }
 fn f() {
     let a: Result<A, _> = "aaaaaa".parse$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn to_string_call_to_display_definition() {
+        check(
+            r#"
+//- minicore:fmt
+//- /alloc.rs crate:alloc
+pub mod string {
+    pub struct String;
+    pub trait ToString {
+        fn to_string(&self) -> String;
+    }
+
+    impl<T: core::fmt::Display> ToString for T {
+        fn to_string(&self) -> String { String }
+    }
+}
+//- /lib.rs crate:lib deps:alloc
+use alloc::string::ToString;
+struct A;
+impl core::fmt::Display for A {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {}
+    // ^^^
+}
+fn f() {
+    A.to_string$0();
 }
         "#,
         );

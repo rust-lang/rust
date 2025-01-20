@@ -460,6 +460,7 @@ define_symbols! {
     test_case,
     test,
     thiscall,
+    to_string,
     trace_macros,
     transmute_opts,
     transmute_trait,
