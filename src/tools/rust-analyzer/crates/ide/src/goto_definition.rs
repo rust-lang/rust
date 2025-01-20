@@ -5,11 +5,10 @@ use crate::{
     navigation_target::{self, ToNav},
     FilePosition, NavigationTarget, RangeInfo, TryToNav, UpmappingResult,
 };
-use hir::{AsAssocItem, AssocItem, FileRange, Impl, InFile, MacroFileIdExt, ModuleDef, Semantics};
+use hir::{AsAssocItem, AssocItem, FileRange, InFile, MacroFileIdExt, ModuleDef, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileLoader, SourceDatabase},
     defs::{Definition, IdentClass},
-    famous_defs::FamousDefs,
     helpers::pick_best_token,
     RootDatabase, SymbolKind,
 };
@@ -82,8 +81,7 @@ pub(crate) fn goto_definition(
         return Some(RangeInfo::new(original_token.text_range(), navs));
     }
 
-    if let Some(navs) = find_definition_for_known_blanket_dual_impls(sema, file_id, &original_token)
-    {
+    if let Some(navs) = find_definition_for_known_blanket_dual_impls(sema, &original_token) {
         return Some(RangeInfo::new(original_token.text_range(), navs));
     }
 
@@ -134,58 +132,13 @@ pub(crate) fn goto_definition(
 // If the token is into(), try_into(), parse(), search the definition of From, TryFrom, FromStr.
 fn find_definition_for_known_blanket_dual_impls(
     sema: &Semantics<'_, RootDatabase>,
-    file_id: FileId,
     original_token: &SyntaxToken,
 ) -> Option<Vec<NavigationTarget>> {
-    let db = sema.db;
-    let krate = sema.file_to_module_def(file_id)?.krate();
-
-    // e.g. if the method call is let b = a.into(),
-    // - receiver_type is A (type of a)
-    // - return_type is B (type of b)
-    // We will find the definition of B::from(a: A).
     let method_call = ast::MethodCallExpr::cast(original_token.parent()?.parent()?)?;
-    let callable = sema.resolve_method_call_as_callable(&method_call)?;
-    let (_, receiver_type) = callable.receiver_param(db)?;
-    let return_type = callable.return_type();
-
-    let (search_method, search_trait, return_type) = match method_call.name_ref()?.text().as_str() {
-        "into" => ("from", FamousDefs(sema, krate).core_convert_From()?, return_type),
-        // If the method is try_into() or parse(), return_type is Result<T, Error>.
-        // Get T from type arguments of Result<T, Error>.
-        "try_into" => (
-            "try_from",
-            FamousDefs(sema, krate).core_convert_TryFrom()?,
-            return_type.type_arguments().next()?,
-        ),
-        "parse" => (
-            "from_str",
-            FamousDefs(sema, krate).core_str_FromStr()?,
-            return_type.type_arguments().next()?,
-        ),
-        _ => return None,
-    };
-
-    let from_impls = Impl::all_for_type(db, return_type)
-        .into_iter()
-        .filter(|impl_| impl_.trait_(db).is_some_and(|trait_| trait_ == search_trait));
-    let from_methods = from_impls.flat_map(|impl_| impl_.items(db)).filter_map(|item| match item {
-        AssocItem::Function(function) if function.name(db).as_str() == search_method => {
-            Some(function)
-        }
-        _ => None,
-    });
-    let target_method = from_methods.into_iter().find(|method| {
-        let args = method.assoc_fn_params(db);
-
-        // FIXME: This condition does not work for complicated cases such as
-        // receiver_type: Vec<i64>
-        // arg.ty(): T: IntoIterator<Item = i64>
-        args.first().is_some_and(|arg| receiver_type.could_coerce_to(db, arg.ty()))
-    })?;
+    let target_method = sema.resolve_known_blanket_dual_impls(&method_call)?;
 
     let def = Definition::from(target_method);
-    Some(def_to_nav(db, def))
+    Some(def_to_nav(sema.db, def))
 }
 
 fn try_lookup_include_path(
