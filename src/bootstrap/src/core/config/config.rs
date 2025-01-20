@@ -2931,10 +2931,8 @@ impl Config {
         let if_unchanged = || {
             if self.rust_info.is_from_tarball() {
                 // Git is needed for running "if-unchanged" logic.
-                println!(
-                    "WARNING: 'if-unchanged' has no effect on tarball sources; ignoring `download-ci-llvm`."
-                );
-                return false;
+                println!("ERROR: 'if-unchanged' is only compatible with Git managed sources.");
+                crate::exit!(1);
             }
 
             // Fetching the LLVM submodule is unnecessary for self-tests.
