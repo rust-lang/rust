@@ -108,7 +108,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
         let span = self.lower_span(l.span);
         let source = hir::LocalSource::Normal;
-        self.lower_attrs(hir_id, &l.attrs);
+        self.lower_attrs(hir_id, &l.attrs, l.span);
         self.arena.alloc(hir::LetStmt { hir_id, ty, pat, init, els, span, source })
     }
 

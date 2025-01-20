@@ -77,9 +77,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         self.attrs.insert(
                             ex.hir_id.local_id,
                             &*self.arena.alloc_from_iter(
-                                e.attrs
-                                    .iter()
-                                    .map(|a| self.lower_attr(a))
+                                self.lower_attrs_vec(&e.attrs, e.span)
+                                    .into_iter()
                                     .chain(old_attrs.iter().cloned()),
                             ),
                         );
@@ -98,7 +97,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
 
             let expr_hir_id = self.lower_node_id(e.id);
-            self.lower_attrs(expr_hir_id, &e.attrs);
+            self.lower_attrs(expr_hir_id, &e.attrs, e.span);
 
             let kind = match &e.kind {
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
@@ -647,7 +646,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let guard = arm.guard.as_ref().map(|cond| self.lower_expr(cond));
         let hir_id = self.next_id();
         let span = self.lower_span(arm.span);
-        self.lower_attrs(hir_id, &arm.attrs);
+        self.lower_attrs(hir_id, &arm.attrs, arm.span);
         let is_never_pattern = pat.is_never_pattern();
         let body = if let Some(body) = &arm.body
             && !is_never_pattern
@@ -805,15 +804,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span,
                 Some(Lrc::clone(&self.allow_gen_future)),
             );
-            self.lower_attrs(inner_hir_id, &[Attribute {
-                kind: AttrKind::Normal(ptr::P(NormalAttr::from_ident(Ident::new(
-                    sym::track_caller,
-                    span,
-                )))),
-                id: self.tcx.sess.psess.attr_id_generator.mk_attr_id(),
-                style: AttrStyle::Outer,
-                span: unstable_span,
-            }]);
+            self.lower_attrs(
+                inner_hir_id,
+                &[Attribute {
+                    kind: AttrKind::Normal(ptr::P(NormalAttr::from_ident(Ident::new(
+                        sym::track_caller,
+                        span,
+                    )))),
+                    id: self.tcx.sess.psess.attr_id_generator.mk_attr_id(),
+                    style: AttrStyle::Outer,
+                    span: unstable_span,
+                }],
+                span,
+            );
         }
     }
 
@@ -1618,7 +1621,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_expr_field(&mut self, f: &ExprField) -> hir::ExprField<'hir> {
         let hir_id = self.lower_node_id(f.id);
-        self.lower_attrs(hir_id, &f.attrs);
+        self.lower_attrs(hir_id, &f.attrs, f.span);
         hir::ExprField {
             hir_id,
             ident: self.lower_ident(f.ident),
@@ -1881,7 +1884,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         //
         // Also, add the attributes to the outer returned expr node.
         let expr = self.expr_drop_temps_mut(for_span, match_expr);
-        self.lower_attrs(expr.hir_id, &e.attrs);
+        self.lower_attrs(expr.hir_id, &e.attrs, e.span);
         expr
     }
 
@@ -1938,7 +1941,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let val_ident = Ident::with_dummy_span(sym::val);
             let (val_pat, val_pat_nid) = self.pat_ident(span, val_ident);
             let val_expr = self.expr_ident(span, val_ident, val_pat_nid);
-            self.lower_attrs(val_expr.hir_id, &attrs);
+            self.lower_attrs(val_expr.hir_id, &attrs, span);
             let continue_pat = self.pat_cf_continue(unstable_span, val_pat);
             self.arm(continue_pat, val_expr)
         };
@@ -1968,7 +1971,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             } else {
                 self.arena.alloc(self.expr(try_span, hir::ExprKind::Ret(Some(from_residual_expr))))
             };
-            self.lower_attrs(ret_expr.hir_id, &attrs);
+            self.lower_attrs(ret_expr.hir_id, &attrs, ret_expr.span);
 
             let break_pat = self.pat_cf_break(try_span, residual_local);
             self.arm(break_pat, ret_expr)
