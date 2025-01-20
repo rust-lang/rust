@@ -47,7 +47,9 @@ pub use wasmparser;
 // tidy-alphabetical-end
 
 // Re-exports of external dependencies.
-pub use external_deps::{c_build, c_cxx_compiler, clang, htmldocck, llvm, python, rustc, rustdoc};
+pub use external_deps::{
+    cargo, c_build, c_cxx_compiler, clang, htmldocck, llvm, python, rustc, rustdoc
+};
 
 // These rely on external dependencies.
 pub use c_cxx_compiler::{Cc, Gcc, cc, cxx, extra_c_flags, extra_cxx_flags, gcc};
@@ -104,4 +106,3 @@ pub use assertion_helpers::{
 pub use string::{
     count_regex_matches_in_files_with_extension, invalid_utf8_contains, invalid_utf8_not_contains,
 };
-use crate::external_deps::cargo;
