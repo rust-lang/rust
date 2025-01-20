@@ -463,7 +463,8 @@ impl DiagnosticSpan {
         // is an empty string, increase the length to include the newline so we don't
         // leave an empty line
         if start.col.0 == 0
-            && suggestion.map_or(false, |(s, _)| s.is_empty())
+            && let Some((suggestion, _)) = suggestion
+            && suggestion.is_empty()
             && let Ok(after) = je.sm.span_to_next_source(span)
             && after.starts_with('\n')
         {

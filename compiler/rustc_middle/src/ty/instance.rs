@@ -328,7 +328,7 @@ impl<'tcx> InstanceKind<'tcx> {
             // We include enums without destructors to allow, say, optimizing
             // drops of `Option::None` before LTO. We also respect the intent of
             // `#[inline]` on `Drop::drop` implementations.
-            return ty.ty_adt_def().map_or(true, |adt_def| {
+            return ty.ty_adt_def().is_none_or(|adt_def| {
                 match *self {
                     ty::InstanceKind::DropGlue(..) => adt_def.destructor(tcx).map(|dtor| dtor.did),
                     ty::InstanceKind::AsyncDropGlueCtorShim(..) => {

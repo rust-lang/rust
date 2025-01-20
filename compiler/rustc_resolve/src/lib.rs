@@ -1242,7 +1242,7 @@ impl<'ra> ResolverArenas<'ra> {
             no_implicit_prelude,
         ))));
         let def_id = module.opt_def_id();
-        if def_id.map_or(true, |def_id| def_id.is_local()) {
+        if def_id.is_none_or(|def_id| def_id.is_local()) {
             self.local_modules.borrow_mut().push(module);
         }
         if let Some(def_id) = def_id {
