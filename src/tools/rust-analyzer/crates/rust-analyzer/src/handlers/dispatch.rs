@@ -5,6 +5,7 @@ use std::{
 };
 
 use ide::Cancelled;
+use ide_db::base_db::ra_salsa::Cycle;
 use lsp_server::{ExtractError, Response, ResponseError};
 use serde::{de::DeserializeOwned, Serialize};
 use stdx::thread::ThreadIntent;
@@ -328,7 +329,13 @@ where
             if let Some(panic_message) = panic_message {
                 message.push_str(": ");
                 message.push_str(panic_message)
-            };
+            } else if let Some(cycle) = panic.downcast_ref::<Cycle>() {
+                tracing::error!("Cycle propagated out of salsa! This is a bug: {cycle:?}");
+                return Err(Cancelled::PropagatedPanic);
+            } else if let Ok(cancelled) = panic.downcast::<Cancelled>() {
+                tracing::error!("Cancellation propagated out of salsa! This is a bug");
+                return Err(*cancelled);
+            }
 
             Ok(lsp_server::Response::new_err(
                 id,
