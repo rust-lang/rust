@@ -87,7 +87,7 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDef
 }
 
 fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
-    typeck_with_fallback(tcx, def_id, None)
+    typeck_with_inspect(tcx, def_id, None)
 }
 
 /// Same as `typeck` but `inspect` is invoked on evaluation of each root obligation.
@@ -99,11 +99,11 @@ pub fn inspect_typeck<'tcx>(
     def_id: LocalDefId,
     inspect: ObligationInspector<'tcx>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
-    typeck_with_fallback(tcx, def_id, Some(inspect))
+    typeck_with_inspect(tcx, def_id, Some(inspect))
 }
 
 #[instrument(level = "debug", skip(tcx, inspector), ret)]
-fn typeck_with_fallback<'tcx>(
+fn typeck_with_inspect<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     inspector: Option<ObligationInspector<'tcx>>,
@@ -139,7 +139,7 @@ fn typeck_with_fallback<'tcx>(
             // type that has an infer in it, lower the type directly so that it'll
             // be correctly filled with infer. We'll use this inference to provide
             // a suggestion later on.
-            fcx.lowerer().lower_fn_ty(id, header.safety, header.abi, decl, None, None)
+            fcx.lowerer().lower_fn_ty(id, header.safety(), header.abi, decl, None, None)
         } else {
             tcx.fn_sig(def_id).instantiate_identity()
         };
@@ -147,8 +147,23 @@ fn typeck_with_fallback<'tcx>(
         check_abi(tcx, span, fn_sig.abi());
 
         // Compute the function signature from point of view of inside the fn.
-        let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
-        let fn_sig = fcx.normalize(body.value.span, fn_sig);
+        let mut fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
+
+        // Normalize the input and output types one at a time, using a different
+        // `WellFormedLoc` for each. We cannot call `normalize_associated_types`
+        // on the entire `FnSig`, since this would use the same `WellFormedLoc`
+        // for each type, preventing the HIR wf check from generating
+        // a nice error message.
+        let arg_span =
+            |idx| decl.inputs.get(idx).map_or(decl.output.span(), |arg: &hir::Ty<'_>| arg.span);
+
+        fn_sig.inputs_and_output = tcx.mk_type_list_from_iter(
+            fn_sig
+                .inputs_and_output
+                .iter()
+                .enumerate()
+                .map(|(idx, ty)| fcx.normalize(arg_span(idx), ty)),
+        );
 
         check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params());
     } else {

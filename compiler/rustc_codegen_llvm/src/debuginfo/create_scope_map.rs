@@ -4,7 +4,7 @@ use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext};
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::Idx;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{Body, SourceScope};
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv};
 use rustc_middle::ty::{self, Instance};
@@ -27,7 +27,7 @@ pub(crate) fn compute_mir_scopes<'ll, 'tcx>(
 ) {
     // Find all scopes with variables defined in them.
     let variables = if cx.sess().opts.debuginfo == DebugInfo::Full {
-        let mut vars = BitSet::new_empty(mir.source_scopes.len());
+        let mut vars = DenseBitSet::new_empty(mir.source_scopes.len());
         // FIXME(eddyb) take into account that arguments always have debuginfo,
         // irrespective of their name (assuming full debuginfo is enabled).
         // NOTE(eddyb) actually, on second thought, those are always in the
@@ -40,7 +40,7 @@ pub(crate) fn compute_mir_scopes<'ll, 'tcx>(
         // Nothing to emit, of course.
         None
     };
-    let mut instantiated = BitSet::new_empty(mir.source_scopes.len());
+    let mut instantiated = DenseBitSet::new_empty(mir.source_scopes.len());
     let mut discriminators = FxHashMap::default();
     // Instantiate all scopes.
     for idx in 0..mir.source_scopes.len() {
@@ -63,9 +63,9 @@ fn make_mir_scope<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     instance: Instance<'tcx>,
     mir: &Body<'tcx>,
-    variables: &Option<BitSet<SourceScope>>,
+    variables: &Option<DenseBitSet<SourceScope>>,
     debug_context: &mut FunctionDebugContext<'tcx, &'ll DIScope, &'ll DILocation>,
-    instantiated: &mut BitSet<SourceScope>,
+    instantiated: &mut DenseBitSet<SourceScope>,
     discriminators: &mut FxHashMap<BytePos, u32>,
     scope: SourceScope,
 ) {

@@ -51,6 +51,9 @@ pub enum TypeError<I: Interner> {
     ConstMismatch(ExpectedFound<I::Const>),
 
     IntrinsicCast,
+    /// `#[rustc_force_inline]` functions must be inlined and must not be codegened independently,
+    /// so casting to a function pointer must be prohibited.
+    ForceInlineCast,
     /// Safe `#[target_feature]` functions are not assignable to safe function pointers.
     TargetFeatureCast(I::DefId),
 }
@@ -83,6 +86,7 @@ impl<I: Interner> TypeError<I> {
             | ProjectionMismatched(_)
             | ExistentialMismatch(_)
             | ConstMismatch(_)
+            | ForceInlineCast
             | IntrinsicCast => true,
         }
     }

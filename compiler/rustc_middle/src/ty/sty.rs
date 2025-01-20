@@ -27,7 +27,7 @@ use crate::infer::canonical::Canonical;
 use crate::ty::InferTy::*;
 use crate::ty::{
     self, AdtDef, BoundRegionKind, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv,
-    Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
 };
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
@@ -401,7 +401,7 @@ impl<'tcx> Ty<'tcx> {
     /// The more specific methods will often optimize their creation.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
-    pub fn new(tcx: TyCtxt<'tcx>, st: TyKind<'tcx>) -> Ty<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, st: TyKind<'tcx>) -> Ty<'tcx> {
         tcx.mk_ty_from_kind(st)
     }
 
@@ -613,6 +613,41 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_adt(tcx: TyCtxt<'tcx>, def: AdtDef<'tcx>, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
         tcx.debug_assert_args_compatible(def.did(), args);
+        if cfg!(debug_assertions) {
+            match tcx.def_kind(def.did()) {
+                DefKind::Struct | DefKind::Union | DefKind::Enum => {}
+                DefKind::Mod
+                | DefKind::Variant
+                | DefKind::Trait
+                | DefKind::TyAlias
+                | DefKind::ForeignTy
+                | DefKind::TraitAlias
+                | DefKind::AssocTy
+                | DefKind::TyParam
+                | DefKind::Fn
+                | DefKind::Const
+                | DefKind::ConstParam
+                | DefKind::Static { .. }
+                | DefKind::Ctor(..)
+                | DefKind::AssocFn
+                | DefKind::AssocConst
+                | DefKind::Macro(..)
+                | DefKind::ExternCrate
+                | DefKind::Use
+                | DefKind::ForeignMod
+                | DefKind::AnonConst
+                | DefKind::InlineConst
+                | DefKind::OpaqueTy
+                | DefKind::Field
+                | DefKind::LifetimeParam
+                | DefKind::GlobalAsm
+                | DefKind::Impl { .. }
+                | DefKind::Closure
+                | DefKind::SyntheticCoroutineBody => {
+                    bug!("not an adt: {def:?} ({:?})", tcx.def_kind(def.did()))
+                }
+            }
+        }
         Ty::new(tcx, Adt(def, args))
     }
 
@@ -772,7 +807,7 @@ impl<'tcx> Ty<'tcx> {
                 }
             }
         });
-        Ty::new(tcx, Adt(adt_def, args))
+        Ty::new_adt(tcx, adt_def, args)
     }
 
     #[inline]
@@ -1015,6 +1050,18 @@ impl<'tcx> Ty<'tcx> {
             Tuple(tys) => tys.is_empty(),
             _ => false,
         }
+    }
+
+    /// Check if type is an `usize`.
+    #[inline]
+    pub fn is_usize(self) -> bool {
+        matches!(self.kind(), Uint(UintTy::Usize))
+    }
+
+    /// Check if type is an `usize` or an integral type variable.
+    #[inline]
+    pub fn is_usize_like(self) -> bool {
+        matches!(self.kind(), Uint(UintTy::Usize) | Infer(IntVar(_)))
     }
 
     #[inline]

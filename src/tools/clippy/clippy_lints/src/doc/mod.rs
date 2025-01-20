@@ -797,8 +797,8 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         parser.into_offset_iter(),
         &doc,
         Fragments {
-            fragments: &fragments,
             doc: &doc,
+            fragments: &fragments,
         },
     ))
 }

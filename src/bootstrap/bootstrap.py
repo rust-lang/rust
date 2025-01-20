@@ -1129,6 +1129,10 @@ class RustBuild(object):
             "-Zroot-dir=" + self.rust_root,
         ]
         args.extend("--verbose" for _ in range(self.verbose))
+
+        if "BOOTSTRAP_TRACING" in env:
+            args.append("--features=tracing")
+
         if self.use_locked_deps:
             args.append("--locked")
         if self.use_vendored_sources:

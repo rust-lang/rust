@@ -424,6 +424,7 @@ impl<'tcx> Rvalue<'tcx> {
             | Rvalue::Ref(_, _, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::RawPtr(_, _)
+            | Rvalue::Len(_)
             | Rvalue::Cast(
                 CastKind::IntToInt
                 | CastKind::FloatToInt
@@ -455,6 +456,8 @@ impl BorrowKind {
         }
     }
 
+    /// Returns whether borrows represented by this kind are allowed to be split into separate
+    /// Reservation and Activation phases.
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
             BorrowKind::Shared

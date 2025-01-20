@@ -1271,9 +1271,8 @@ declare_lint! {
     /// `pub(crate)` visibility is recommended to be used instead. This more clearly expresses the
     /// intent that the item is only visible within its own crate.
     ///
-    /// This lint is "allow" by default because it will trigger for a large
-    /// amount of existing Rust code, and has some false-positives. Eventually it
-    /// is desired for this to become warn-by-default.
+    /// This lint is "allow" by default because it will trigger for a large amount of existing Rust code.
+    /// Eventually it is desired for this to become warn-by-default.
     ///
     /// [`unnameable_types`]: #unnameable-types
     pub UNREACHABLE_PUB,
@@ -1304,9 +1303,9 @@ impl UnreachablePub {
                 cx.effective_visibilities.effective_vis(def_id).map(|effective_vis| {
                     effective_vis.at_level(rustc_middle::middle::privacy::Level::Reachable)
                 })
-                && let parent_parent = cx.tcx.parent_module_from_def_id(
-                    cx.tcx.parent_module_from_def_id(def_id.into()).into(),
-                )
+                && let parent_parent = cx
+                    .tcx
+                    .parent_module_from_def_id(cx.tcx.parent_module_from_def_id(def_id).into())
                 && *restricted_did == parent_parent.to_local_def_id()
                 && !restricted_did.to_def_id().is_crate_root()
             {

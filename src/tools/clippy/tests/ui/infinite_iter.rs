@@ -1,4 +1,4 @@
-#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::uninlined_format_args, clippy::double_ended_iterator_last)]
 
 use std::iter::repeat;
 fn square_is_lower_64(x: &u32) -> bool {

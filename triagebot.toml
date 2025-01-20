@@ -172,6 +172,12 @@ issues).
 """
 label = "O-emscripten"
 
+[ping.relnotes-interest-group]
+message = """\
+Hi relnotes-interest-group, this PR adds release notes. Could you review this PR
+if you have time? Thanks <3
+"""
+
 [prioritize]
 label = "I-prioritize"
 
@@ -385,6 +391,11 @@ trigger_files = [
     "x.ps1"
 ]
 
+[autolabel."A-bootstrap-stamp"]
+trigger_files = [
+    "src/bootstrap/src/utils/build_stamp.rs",
+]
+
 [autolabel."T-infra"]
 trigger_files = [
     "src/ci",
@@ -414,13 +425,20 @@ trigger_files = [
 
 [autolabel."A-testsuite"]
 trigger_files = [
+    "src/bootstrap/src/core/build_steps/test.rs",
     "src/ci",
-    "src/tools/compiletest",
     "src/tools/cargotest",
-    "src/tools/tidy",
+    "src/tools/compiletest",
+    "src/tools/miropt-test-tools",
     "src/tools/remote-test-server",
     "src/tools/remote-test-client",
-    "src/tools/tier-check"
+    "src/tools/rustdoc-gui-test",
+    "src/tools/suggest-tests",
+]
+
+[autolabel."A-tidy"]
+trigger_files = [
+    "src/tools/tidy",
 ]
 
 [autolabel."A-meta"]

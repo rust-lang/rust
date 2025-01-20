@@ -4,7 +4,7 @@
 //! (`-Zmir-enable-passes=+ReorderBasicBlocks,+ReorderLocals`)
 //! to make the MIR easier to read for humans.
 
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -51,8 +51,10 @@ impl<'tcx> crate::MirPass<'tcx> for ReorderLocals {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let mut finder =
-            LocalFinder { map: IndexVec::new(), seen: BitSet::new_empty(body.local_decls.len()) };
+        let mut finder = LocalFinder {
+            map: IndexVec::new(),
+            seen: DenseBitSet::new_empty(body.local_decls.len()),
+        };
 
         // We can't reorder the return place or the arguments
         for local in (0..=body.arg_count).map(Local::from_usize) {
@@ -113,7 +115,7 @@ impl<'tcx> MutVisitor<'tcx> for BasicBlockUpdater<'tcx> {
 
 struct LocalFinder {
     map: IndexVec<Local, Local>,
-    seen: BitSet<Local>,
+    seen: DenseBitSet<Local>,
 }
 
 impl LocalFinder {

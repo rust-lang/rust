@@ -45,10 +45,25 @@ pub trait Printer<'tcx>: Sized {
         &mut self,
         impl_def_id: DefId,
         args: &'tcx [GenericArg<'tcx>],
-        self_ty: Ty<'tcx>,
-        trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
-        self.default_print_impl_path(impl_def_id, args, self_ty, trait_ref)
+        let tcx = self.tcx();
+        let self_ty = tcx.type_of(impl_def_id);
+        let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);
+        let (self_ty, impl_trait_ref) = if tcx.generics_of(impl_def_id).count() <= args.len() {
+            (
+                self_ty.instantiate(tcx, args),
+                impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate(tcx, args)),
+            )
+        } else {
+            // We are probably printing a nested item inside of an impl.
+            // Use the identity substitutions for the impl.
+            (
+                self_ty.instantiate_identity(),
+                impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate_identity()),
+            )
+        };
+
+        self.default_print_impl_path(impl_def_id, self_ty, impl_trait_ref)
     }
 
     fn print_region(&mut self, region: ty::Region<'tcx>) -> Result<(), PrintError>;
@@ -107,23 +122,7 @@ pub trait Printer<'tcx>: Sized {
                 self.path_crate(def_id.krate)
             }
 
-            DefPathData::Impl => {
-                let generics = self.tcx().generics_of(def_id);
-                let self_ty = self.tcx().type_of(def_id);
-                let impl_trait_ref = self.tcx().impl_trait_ref(def_id);
-                let (self_ty, impl_trait_ref) = if args.len() >= generics.count() {
-                    (
-                        self_ty.instantiate(self.tcx(), args),
-                        impl_trait_ref.map(|i| i.instantiate(self.tcx(), args)),
-                    )
-                } else {
-                    (
-                        self_ty.instantiate_identity(),
-                        impl_trait_ref.map(|i| i.instantiate_identity()),
-                    )
-                };
-                self.print_impl_path(def_id, args, self_ty, impl_trait_ref)
-            }
+            DefPathData::Impl => self.print_impl_path(def_id, args),
 
             _ => {
                 let parent_def_id = DefId { index: key.parent.unwrap(), ..def_id };
@@ -201,7 +200,6 @@ pub trait Printer<'tcx>: Sized {
     fn default_print_impl_path(
         &mut self,
         impl_def_id: DefId,
-        _args: &'tcx [GenericArg<'tcx>],
         self_ty: Ty<'tcx>,
         impl_trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {

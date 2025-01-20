@@ -59,6 +59,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: $SEED,
                    },
                    Layout {
                        size: Size(2 bytes),
@@ -92,13 +93,15 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
                    },
                ],
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/zero-sized-array-enum-niche.rs:13:1
+  --> $DIR/zero-sized-array-enum-niche.rs:14:1
    |
 LL | type AlignedResult = Result<[u32; 0], bool>;
    | ^^^^^^^^^^^^^^^^^^
@@ -164,6 +167,7 @@ error: layout_of(MultipleAlignments) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
+                       randomization_seed: $SEED,
                    },
                    Layout {
                        size: Size(4 bytes),
@@ -188,6 +192,7 @@ error: layout_of(MultipleAlignments) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: $SEED,
                    },
                    Layout {
                        size: Size(2 bytes),
@@ -221,13 +226,15 @@ error: layout_of(MultipleAlignments) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
                    },
                ],
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/zero-sized-array-enum-niche.rs:21:1
+  --> $DIR/zero-sized-array-enum-niche.rs:22:1
    |
 LL | enum MultipleAlignments {
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -293,6 +300,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: $SEED,
                    },
                    Layout {
                        size: Size(3 bytes),
@@ -326,13 +334,15 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
                    },
                ],
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/zero-sized-array-enum-niche.rs:37:1
+  --> $DIR/zero-sized-array-enum-niche.rs:38:1
    |
 LL | type NicheLosesToTagged = Result<[u32; 0], Packed<std::num::NonZero<u16>>>;
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -402,6 +412,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: $SEED,
                    },
                    Layout {
                        size: Size(2 bytes),
@@ -435,13 +446,15 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
                    },
                ],
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/zero-sized-array-enum-niche.rs:44:1
+  --> $DIR/zero-sized-array-enum-niche.rs:45:1
    |
 LL | type NicheWinsOverTagged = Result<[u32; 0], Packed<U16IsZero>>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^

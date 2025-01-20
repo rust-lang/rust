@@ -170,6 +170,14 @@ impl Add for usize {
     }
 }
 
+impl Add for isize {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        self + rhs
+    }
+}
+
 #[lang = "sub"]
 pub trait Sub<RHS = Self> {
     type Output;
@@ -681,7 +689,7 @@ impl<T> Index<usize> for [T] {
     }
 }
 
-extern {
+extern "C" {
     type VaListImpl;
 }
 

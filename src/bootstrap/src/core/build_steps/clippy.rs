@@ -1,12 +1,13 @@
 //! Implementation of running clippy on the compiler, standard library and various tools.
 
-use super::compile::{librustc_stamp, libstd_stamp, run_cargo, rustc_cargo, std_cargo};
+use super::compile::{run_cargo, rustc_cargo, std_cargo};
 use super::tool::{SourceType, prepare_tool_cargo};
 use super::{check, compile};
 use crate::builder::{Builder, ShouldRun};
 use crate::core::build_steps::compile::std_crates_for_run_make;
 use crate::core::builder;
 use crate::core::builder::{Alias, Kind, RunConfig, Step, crate_description};
+use crate::utils::build_stamp::{self, BuildStamp};
 use crate::{Mode, Subcommand, TargetSelection};
 
 /// Disable the most spammy clippy lints
@@ -167,7 +168,7 @@ impl Step for Std {
             builder,
             cargo,
             lint_args(builder, &self.config, IGNORED_RULES_FOR_STD_AND_RUSTC),
-            &libstd_stamp(builder, compiler, target),
+            &build_stamp::libstd_stamp(builder, compiler, target),
             vec![],
             true,
             false,
@@ -243,7 +244,7 @@ impl Step for Rustc {
             builder,
             cargo,
             lint_args(builder, &self.config, IGNORED_RULES_FOR_STD_AND_RUSTC),
-            &librustc_stamp(builder, compiler, target),
+            &build_stamp::librustc_stamp(builder, compiler, target),
             vec![],
             true,
             false,
@@ -307,9 +308,9 @@ macro_rules! lint_any {
                     &target,
                 );
 
-                let stamp = builder
-                    .cargo_out(compiler, Mode::ToolRustc, target)
-                    .join(format!(".{}-check.stamp", stringify!($name).to_lowercase()));
+                let stringified_name = stringify!($name).to_lowercase();
+                let stamp = BuildStamp::new(&builder.cargo_out(compiler, Mode::ToolRustc, target))
+                    .with_prefix(&format!("{}-check", stringified_name));
 
                 run_cargo(
                     builder,
@@ -333,6 +334,7 @@ lint_any!(
     CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri";
     Clippy, "src/tools/clippy", "clippy";
     CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
+    CodegenGcc, "compiler/rustc_codegen_gcc", "rustc-codegen-gcc";
     Compiletest, "src/tools/compiletest", "compiletest";
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
     Jsondocck, "src/tools/jsondocck", "jsondocck";
@@ -385,25 +387,60 @@ impl Step for CI {
         let library_clippy_cfg = LintConfig {
             allow: vec!["clippy::all".into()],
             warn: vec![],
-            deny: vec!["clippy::correctness".into()],
+            deny: vec![
+                "clippy::correctness".into(),
+                "clippy::char_lit_as_u8".into(),
+                "clippy::four_forward_slashes".into(),
+                "clippy::needless_bool".into(),
+                "clippy::needless_bool_assign".into(),
+                "clippy::non_minimal_cfg".into(),
+                "clippy::print_literal".into(),
+                "clippy::same_item_push".into(),
+                "clippy::single_char_add_str".into(),
+                "clippy::to_string_in_format_args".into(),
+            ],
             forbid: vec![],
         };
-        let compiler_clippy_cfg = LintConfig {
-            allow: vec!["clippy::all".into()],
-            warn: vec![],
-            deny: vec!["clippy::correctness".into(), "clippy::clone_on_ref_ptr".into()],
-            forbid: vec![],
-        };
-
         builder.ensure(Std {
             target: self.target,
             config: self.config.merge(&library_clippy_cfg),
             crates: vec![],
         });
+
+        let compiler_clippy_cfg = LintConfig {
+            allow: vec!["clippy::all".into()],
+            warn: vec![],
+            deny: vec![
+                "clippy::correctness".into(),
+                "clippy::char_lit_as_u8".into(),
+                "clippy::clone_on_ref_ptr".into(),
+                "clippy::format_in_format_args".into(),
+                "clippy::four_forward_slashes".into(),
+                "clippy::needless_bool".into(),
+                "clippy::needless_bool_assign".into(),
+                "clippy::non_minimal_cfg".into(),
+                "clippy::print_literal".into(),
+                "clippy::same_item_push".into(),
+                "clippy::single_char_add_str".into(),
+                "clippy::to_string_in_format_args".into(),
+            ],
+            forbid: vec![],
+        };
         builder.ensure(Rustc {
             target: self.target,
             config: self.config.merge(&compiler_clippy_cfg),
             crates: vec![],
+        });
+
+        let rustc_codegen_gcc = LintConfig {
+            allow: vec![],
+            warn: vec![],
+            deny: vec!["warnings".into()],
+            forbid: vec![],
+        };
+        builder.ensure(CodegenGcc {
+            target: self.target,
+            config: self.config.merge(&rustc_codegen_gcc),
         });
     }
 }

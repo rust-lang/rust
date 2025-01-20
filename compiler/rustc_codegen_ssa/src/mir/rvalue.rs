@@ -10,9 +10,9 @@ use rustc_session::config::OptLevel;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
-use super::FunctionCx;
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
+use super::{FunctionCx, LocalRef};
 use crate::common::IntPredicate;
 use crate::traits::*;
 use crate::{MemFlags, base};
@@ -93,23 +93,37 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return;
                 }
 
-                if let OperandValue::Immediate(v) = cg_elem.val {
+                let try_init_all_same = |bx: &mut Bx, v| {
                     let start = dest.val.llval;
                     let size = bx.const_usize(dest.layout.size.bytes());
 
-                    // Use llvm.memset.p0i8.* to initialize all zero arrays
-                    if bx.cx().const_to_opt_u128(v, false) == Some(0) {
-                        let fill = bx.cx().const_u8(0);
-                        bx.memset(start, fill, size, dest.val.align, MemFlags::empty());
-                        return;
+                    // Use llvm.memset.p0i8.* to initialize all same byte arrays
+                    if let Some(int) = bx.cx().const_to_opt_u128(v, false) {
+                        let bytes = &int.to_le_bytes()[..cg_elem.layout.size.bytes_usize()];
+                        let first = bytes[0];
+                        if bytes[1..].iter().all(|&b| b == first) {
+                            let fill = bx.cx().const_u8(first);
+                            bx.memset(start, fill, size, dest.val.align, MemFlags::empty());
+                            return true;
+                        }
                     }
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     let v = bx.from_immediate(v);
                     if bx.cx().val_ty(v) == bx.cx().type_i8() {
                         bx.memset(start, v, size, dest.val.align, MemFlags::empty());
-                        return;
+                        return true;
                     }
+                    false
+                };
+
+                match cg_elem.val {
+                    OperandValue::Immediate(v) => {
+                        if try_init_all_same(bx, v) {
+                            return;
+                        }
+                    }
+                    _ => (),
                 }
 
                 let count = self
@@ -593,6 +607,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_place_to_pointer(bx, place, mk_ptr)
             }
 
+            mir::Rvalue::Len(place) => {
+                let size = self.evaluate_array_len(bx, place);
+                OperandRef {
+                    val: OperandValue::Immediate(size),
+                    layout: bx.cx().layout_of(bx.tcx().types.usize),
+                }
+            }
+
             mir::Rvalue::BinaryOp(op_with_overflow, box (ref lhs, ref rhs))
                 if let Some(op) = op_with_overflow.overflowing_to_wrapping() =>
             {
@@ -790,6 +812,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandRef { val: OperandValue::Immediate(val), layout: box_layout }
             }
         }
+    }
+
+    fn evaluate_array_len(&mut self, bx: &mut Bx, place: mir::Place<'tcx>) -> Bx::Value {
+        // ZST are passed as operands and require special handling
+        // because codegen_place() panics if Local is operand.
+        if let Some(index) = place.as_local() {
+            if let LocalRef::Operand(op) = self.locals[index] {
+                if let ty::Array(_, n) = op.layout.ty.kind() {
+                    let n = n
+                        .try_to_target_usize(bx.tcx())
+                        .expect("expected monomorphic const in codegen");
+                    return bx.cx().const_usize(n);
+                }
+            }
+        }
+        // use common size calculation for non zero-sized types
+        let cg_value = self.codegen_place(bx, place.as_ref());
+        cg_value.len(bx.cx())
     }
 
     /// Codegen an `Rvalue::RawPtr` or `Rvalue::Ref`
@@ -1063,6 +1103,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Ref(..) |
             mir::Rvalue::CopyForDeref(..) |
             mir::Rvalue::RawPtr(..) |
+            mir::Rvalue::Len(..) |
             mir::Rvalue::Cast(..) | // (*)
             mir::Rvalue::ShallowInitBox(..) | // (*)
             mir::Rvalue::BinaryOp(..) |

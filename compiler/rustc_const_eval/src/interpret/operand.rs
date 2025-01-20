@@ -704,8 +704,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn read_str(&self, mplace: &MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx, &str> {
         let len = mplace.len(self)?;
         let bytes = self.read_bytes_ptr_strip_provenance(mplace.ptr(), Size::from_bytes(len))?;
-        let str = std::str::from_utf8(bytes).map_err(|err| err_ub!(InvalidStr(err)))?;
-        interp_ok(str)
+        let s = std::str::from_utf8(bytes).map_err(|err| err_ub!(InvalidStr(err)))?;
+        interp_ok(s)
     }
 
     /// Read from a local of the current frame. Convenience method for [`InterpCx::local_at_frame_to_op`].

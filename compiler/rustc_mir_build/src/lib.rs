@@ -18,7 +18,6 @@ mod builder;
 mod check_tail_calls;
 mod check_unsafety;
 mod errors;
-pub mod lints;
 mod thir;
 
 use rustc_middle::util::Providers;
@@ -28,7 +27,7 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 pub fn provide(providers: &mut Providers) {
     providers.check_match = thir::pattern::check_match;
     providers.lit_to_const = thir::constant::lit_to_const;
-    providers.hooks.build_mir = builder::mir_build;
+    providers.hooks.build_mir = builder::build_mir;
     providers.closure_saved_names_of_captured_variables =
         builder::closure_saved_names_of_captured_variables;
     providers.check_unsafety = check_unsafety::check_unsafety;

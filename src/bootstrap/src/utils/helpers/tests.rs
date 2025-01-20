@@ -1,10 +1,10 @@
-use std::fs::{self, File, remove_file};
+use std::fs::{self, File};
 use std::io::Write;
 use std::path::PathBuf;
 
 use crate::utils::helpers::{
-    check_cfg_arg, extract_beta_rev, hex_encode, make, program_out_of_date, set_file_times,
-    submodule_path_of, symlink_dir,
+    check_cfg_arg, extract_beta_rev, hex_encode, make, set_file_times, submodule_path_of,
+    symlink_dir,
 };
 use crate::{Config, Flags};
 
@@ -55,22 +55,6 @@ fn test_check_cfg_arg() {
         check_cfg_arg("target_os", Some(&["nixos", "nix2"])),
         "--check-cfg=cfg(target_os,values(\"nixos\",\"nix2\"))"
     );
-}
-
-#[test]
-fn test_program_out_of_date() {
-    let config =
-        Config::parse(Flags::parse(&["check".to_owned(), "--config=/does/not/exist".to_owned()]));
-    let tempfile = config.tempdir().join(".tmp-stamp-file");
-    File::create(&tempfile).unwrap().write_all(b"dummy value").unwrap();
-    assert!(tempfile.exists());
-
-    // up-to-date
-    assert!(!program_out_of_date(&tempfile, "dummy value"));
-    // out-of-date
-    assert!(program_out_of_date(&tempfile, ""));
-
-    remove_file(tempfile).unwrap();
 }
 
 #[test]

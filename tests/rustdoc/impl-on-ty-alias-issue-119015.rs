@@ -2,8 +2,8 @@
 
 //@ has 'foo/index.html'
 // There should be only `type A`.
-//@ count - '//*[@class="item-table"]//*[@class="item-name"]' 1
-//@ has - '//*[@class="item-name"]/a[@href="type.A.html"]' 'A'
+//@ count - '//*[@class="item-table"]//dt' 1
+//@ has - '//dt/a[@href="type.A.html"]' 'A'
 
 mod foo {
     pub struct S;

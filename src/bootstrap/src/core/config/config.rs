@@ -42,6 +42,8 @@ use crate::utils::helpers::{self, exe, output, t};
 #[rustfmt::skip] // We don't want rustfmt to oneline this list
 pub(crate) const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
     ":!src/tools",
+    ":!src/librustdoc",
+    ":!src/rustdoc-json-types",
     ":!tests",
     ":!triagebot.toml",
 ];
@@ -634,6 +636,7 @@ pub struct Target {
     pub runner: Option<String>,
     pub no_std: bool,
     pub codegen_backends: Option<Vec<String>>,
+    pub optimized_compiler_builtins: Option<bool>,
 }
 
 impl Target {
@@ -1125,7 +1128,7 @@ impl<'de> Deserialize<'de> for LldMode {
                 match v {
                     "external" => Ok(LldMode::External),
                     "self-contained" => Ok(LldMode::SelfContained),
-                    _ => Err(E::custom("unknown mode {v}")),
+                    _ => Err(E::custom(format!("unknown mode {v}"))),
                 }
             }
         }
@@ -1219,6 +1222,7 @@ define_config! {
         no_std: Option<bool> = "no-std",
         codegen_backends: Option<Vec<String>> = "codegen-backends",
         runner: Option<String> = "runner",
+        optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
     }
 }
 
@@ -2096,6 +2100,7 @@ impl Config {
                 target.sanitizers = cfg.sanitizers;
                 target.profiler = cfg.profiler;
                 target.rpath = cfg.rpath;
+                target.optimized_compiler_builtins = cfg.optimized_compiler_builtins;
 
                 if let Some(ref backends) = cfg.codegen_backends {
                     let available_backends = ["llvm", "cranelift", "gcc"];
@@ -2607,6 +2612,13 @@ impl Config {
 
     pub fn rpath_enabled(&self, target: TargetSelection) -> bool {
         self.target_config.get(&target).and_then(|t| t.rpath).unwrap_or(self.rust_rpath)
+    }
+
+    pub fn optimized_compiler_builtins(&self, target: TargetSelection) -> bool {
+        self.target_config
+            .get(&target)
+            .and_then(|t| t.optimized_compiler_builtins)
+            .unwrap_or(self.optimized_compiler_builtins)
     }
 
     pub fn llvm_enabled(&self, target: TargetSelection) -> bool {
@@ -3162,6 +3174,9 @@ fn check_incompatible_options_for_ci_rustc(
 
             let profiler = &ci_cfg.profiler;
             err!(current_cfg.profiler, profiler, "build");
+
+            let optimized_compiler_builtins = &ci_cfg.optimized_compiler_builtins;
+            err!(current_cfg.optimized_compiler_builtins, optimized_compiler_builtins, "build");
         }
     }
 

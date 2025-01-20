@@ -33,21 +33,15 @@ enum AllocInit {
     Zeroed,
 }
 
-#[repr(transparent)]
-#[cfg_attr(target_pointer_width = "16", rustc_layout_scalar_valid_range_end(0x7fff))]
-#[cfg_attr(target_pointer_width = "32", rustc_layout_scalar_valid_range_end(0x7fff_ffff))]
-#[cfg_attr(target_pointer_width = "64", rustc_layout_scalar_valid_range_end(0x7fff_ffff_ffff_ffff))]
-struct Cap(usize);
+type Cap = core::num::niche_types::UsizeNoHighBit;
 
-impl Cap {
-    const ZERO: Cap = unsafe { Cap(0) };
+const ZERO_CAP: Cap = unsafe { Cap::new_unchecked(0) };
 
-    /// `Cap(cap)`, except if `T` is a ZST then `Cap::ZERO`.
-    ///
-    /// # Safety: cap must be <= `isize::MAX`.
-    unsafe fn new<T>(cap: usize) -> Self {
-        if T::IS_ZST { Cap::ZERO } else { unsafe { Self(cap) } }
-    }
+/// `Cap(cap)`, except if `T` is a ZST then `Cap::ZERO`.
+///
+/// # Safety: cap must be <= `isize::MAX`.
+unsafe fn new_cap<T>(cap: usize) -> Cap {
+    if T::IS_ZST { ZERO_CAP } else { unsafe { Cap::new_unchecked(cap) } }
 }
 
 /// A low-level utility for more ergonomically allocating, reallocating, and deallocating
@@ -257,7 +251,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         // SAFETY: Precondition passed to the caller
         unsafe {
             let ptr = ptr.cast();
-            let capacity = Cap::new::<T>(capacity);
+            let capacity = new_cap::<T>(capacity);
             Self {
                 inner: RawVecInner::from_raw_parts_in(ptr, capacity, alloc),
                 _marker: PhantomData,
@@ -275,7 +269,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         // SAFETY: Precondition passed to the caller
         unsafe {
             let ptr = ptr.cast();
-            let capacity = Cap::new::<T>(capacity);
+            let capacity = new_cap::<T>(capacity);
             Self { inner: RawVecInner::from_nonnull_in(ptr, capacity, alloc), _marker: PhantomData }
         }
     }
@@ -410,7 +404,7 @@ impl<A: Allocator> RawVecInner<A> {
     const fn new_in(alloc: A, align: usize) -> Self {
         let ptr = unsafe { core::mem::transmute(align) };
         // `cap: 0` means "unallocated". zero-sized types are ignored.
-        Self { ptr, cap: Cap::ZERO, alloc }
+        Self { ptr, cap: ZERO_CAP, alloc }
     }
 
     #[cfg(not(no_global_oom_handling))]
@@ -483,7 +477,11 @@ impl<A: Allocator> RawVecInner<A> {
         // Allocators currently return a `NonNull<[u8]>` whose length
         // matches the size requested. If that ever changes, the capacity
         // here should change to `ptr.len() / mem::size_of::<T>()`.
-        Ok(Self { ptr: Unique::from(ptr.cast()), cap: unsafe { Cap(capacity) }, alloc })
+        Ok(Self {
+            ptr: Unique::from(ptr.cast()),
+            cap: unsafe { Cap::new_unchecked(capacity) },
+            alloc,
+        })
     }
 
     #[inline]
@@ -508,7 +506,7 @@ impl<A: Allocator> RawVecInner<A> {
 
     #[inline]
     const fn capacity(&self, elem_size: usize) -> usize {
-        if elem_size == 0 { usize::MAX } else { self.cap.0 }
+        if elem_size == 0 { usize::MAX } else { self.cap.as_inner() }
     }
 
     #[inline]
@@ -518,7 +516,7 @@ impl<A: Allocator> RawVecInner<A> {
 
     #[inline]
     fn current_memory(&self, elem_layout: Layout) -> Option<(NonNull<u8>, Layout)> {
-        if elem_layout.size() == 0 || self.cap.0 == 0 {
+        if elem_layout.size() == 0 || self.cap.as_inner() == 0 {
             None
         } else {
             // We could use Layout::array here which ensures the absence of isize and usize overflows
@@ -526,7 +524,7 @@ impl<A: Allocator> RawVecInner<A> {
             // has already been allocated so we know it can't overflow and currently Rust does not
             // support such types. So we can do better by skipping some checks and avoid an unwrap.
             unsafe {
-                let alloc_size = elem_layout.size().unchecked_mul(self.cap.0);
+                let alloc_size = elem_layout.size().unchecked_mul(self.cap.as_inner());
                 let layout = Layout::from_size_align_unchecked(alloc_size, elem_layout.align());
                 Some((self.ptr.into(), layout))
             }
@@ -562,7 +560,7 @@ impl<A: Allocator> RawVecInner<A> {
     #[inline]
     #[track_caller]
     fn grow_one(&mut self, elem_layout: Layout) {
-        if let Err(err) = self.grow_amortized(self.cap.0, 1, elem_layout) {
+        if let Err(err) = self.grow_amortized(self.cap.as_inner(), 1, elem_layout) {
             handle_error(err);
         }
     }
@@ -627,7 +625,7 @@ impl<A: Allocator> RawVecInner<A> {
         // the size requested. If that ever changes, the capacity here should
         // change to `ptr.len() / mem::size_of::<T>()`.
         self.ptr = Unique::from(ptr.cast());
-        self.cap = unsafe { Cap(cap) };
+        self.cap = unsafe { Cap::new_unchecked(cap) };
     }
 
     fn grow_amortized(
@@ -650,7 +648,7 @@ impl<A: Allocator> RawVecInner<A> {
 
         // This guarantees exponential growth. The doubling cannot overflow
         // because `cap <= isize::MAX` and the type of `cap` is `usize`.
-        let cap = cmp::max(self.cap.0 * 2, required_cap);
+        let cap = cmp::max(self.cap.as_inner() * 2, required_cap);
         let cap = cmp::max(min_non_zero_cap(elem_layout.size()), cap);
 
         let new_layout = layout_array(cap, elem_layout)?;
@@ -719,7 +717,7 @@ impl<A: Allocator> RawVecInner<A> {
             unsafe { self.alloc.deallocate(ptr, layout) };
             self.ptr =
                 unsafe { Unique::new_unchecked(ptr::without_provenance_mut(elem_layout.align())) };
-            self.cap = Cap::ZERO;
+            self.cap = ZERO_CAP;
         } else {
             let ptr = unsafe {
                 // Layout cannot overflow here because it would have

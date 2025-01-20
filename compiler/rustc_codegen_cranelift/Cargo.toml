@@ -23,6 +23,14 @@ libloading = { version = "0.8.0", optional = true }
 smallvec = "1.8.1"
 
 [patch.crates-io]
+# Uncomment to use an unreleased version of cranelift
+#cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-28.0.0", version = "0.115.0" }
+#cranelift-frontend = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-28.0.0", version = "0.115.0" }
+#cranelift-module = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-28.0.0", version = "0.115.0" }
+#cranelift-native = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-28.0.0", version = "0.115.0" }
+#cranelift-jit = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-28.0.0", version = "0.115.0" }
+#cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-28.0.0", version = "0.115.0" }
+
 # Uncomment to use local checkout of cranelift
 #cranelift-codegen = { path = "../wasmtime/cranelift/codegen" }
 #cranelift-frontend = { path = "../wasmtime/cranelift/frontend" }

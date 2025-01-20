@@ -379,6 +379,7 @@ symbols! {
         abi_avr_interrupt,
         abi_c_cmse_nonsecure_call,
         abi_efiapi,
+        abi_gpu_kernel,
         abi_msp430_interrupt,
         abi_ptx,
         abi_riscv_interrupt,
@@ -1095,6 +1096,7 @@ symbols! {
         import,
         import_name_type,
         import_shadowing,
+        import_trait_associated_functions,
         imported_main,
         in_band_lifetimes,
         include,
@@ -1285,6 +1287,7 @@ symbols! {
         mir_drop,
         mir_field,
         mir_goto,
+        mir_len,
         mir_make_place,
         mir_move,
         mir_offset,
@@ -1731,6 +1734,7 @@ symbols! {
         rustc_error,
         rustc_evaluate_where_clauses,
         rustc_expected_cgu_reuse,
+        rustc_force_inline,
         rustc_has_incoherent_inherent_impls,
         rustc_hidden_type_of_opaques,
         rustc_if_this_changed,
@@ -2239,6 +2243,10 @@ symbols! {
         zmm_reg,
     }
 }
+
+/// Symbols for crates that are part of the stable standard library: `std`, `core`, `alloc`, and
+/// `proc_macro`.
+pub const STDLIB_STABLE_CRATES: &[Symbol] = &[sym::std, sym::core, sym::alloc, sym::proc_macro];
 
 #[derive(Copy, Clone, Eq, HashStable_Generic, Encodable, Decodable)]
 pub struct Ident {

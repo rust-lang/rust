@@ -324,12 +324,6 @@ mir_build_type_not_structural_more_info = see https://doc.rust-lang.org/stable/s
 mir_build_type_not_structural_tip =
     the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
-mir_build_unconditional_recursion = function cannot return without recursing
-    .label = cannot return without recursing
-    .help = a `loop` may express intention better if this is on purpose
-
-mir_build_unconditional_recursion_call_site_label = recursive call site
-
 mir_build_union_field_requires_unsafe =
     access to union field is unsafe and requires unsafe block
     .note = the field may not be properly initialized: using uninitialized data will cause undefined behavior

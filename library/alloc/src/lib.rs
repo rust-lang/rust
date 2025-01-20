@@ -91,7 +91,6 @@
 //
 // Library features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(async_closure))]
 #![cfg_attr(test, feature(str_as_str))]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
@@ -127,6 +126,7 @@
 #![feature(local_waker)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_uninit_array_transpose)]
+#![feature(nonnull_provenance)]
 #![feature(panic_internals)]
 #![feature(pattern)]
 #![feature(pin_coerce_unsized_trait)]
@@ -143,6 +143,7 @@
 #![feature(slice_range)]
 #![feature(std_internals)]
 #![feature(str_internals)]
+#![feature(temporary_niche_types)]
 #![feature(trusted_fused)]
 #![feature(trusted_len)]
 #![feature(trusted_random_access)]

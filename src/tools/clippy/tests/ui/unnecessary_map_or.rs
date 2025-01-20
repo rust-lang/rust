@@ -3,6 +3,7 @@
 #![allow(clippy::no_effect)]
 #![allow(clippy::eq_op)]
 #![allow(clippy::unnecessary_lazy_evaluations)]
+#![allow(clippy::nonminimal_bool)]
 #[clippy::msrv = "1.70.0"]
 #[macro_use]
 extern crate proc_macros;
@@ -28,6 +29,9 @@ fn main() {
     let _ = Some(5).map_or(false, |n| n == 5).then(|| 1);
     let _ = Some(5).map_or(true, |n| n == 5);
     let _ = Some(5).map_or(true, |n| 5 == n);
+    let _ = !Some(5).map_or(false, |n| n == 5);
+    let _ = Some(5).map_or(false, |n| n == 5) || false;
+    let _ = Some(5).map_or(false, |n| n == 5) as usize;
 
     macro_rules! x {
         () => {

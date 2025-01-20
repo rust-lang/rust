@@ -169,6 +169,9 @@ pub enum CandidateSource<I: Interner> {
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext, TyEncodable, TyDecodable))]
 pub enum BuiltinImplSource {
+    /// A built-in impl that is considered trivial, without any nested requirements. They
+    /// are preferred over where-clauses, and we want to track them explicitly.
+    Trivial,
     /// Some built-in impl we don't need to differentiate. This should be used
     /// unless more specific information is necessary.
     Misc,
@@ -177,8 +180,9 @@ pub enum BuiltinImplSource {
     /// A built-in implementation of `Upcast` for trait objects to other trait objects.
     ///
     /// This can be removed when `feature(dyn_upcasting)` is stabilized, since we only
-    /// use it to detect when upcasting traits in hir typeck.
-    TraitUpcasting,
+    /// use it to detect when upcasting traits in hir typeck. The index is only used
+    /// for winnowing.
+    TraitUpcasting(usize),
     /// Unsizing a tuple like `(A, B, ..., X)` to `(A, B, ..., Y)` if `X` unsizes to `Y`.
     ///
     /// This can be removed when `feature(tuple_unsizing)` is stabilized, since we only

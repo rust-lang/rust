@@ -12,15 +12,12 @@ use crate::sys::unsupported;
 pub use crate::sys_common::fs::exists;
 use crate::sys_common::ignore_notfound;
 
+type CIntNotMinusOne = core::num::niche_types::NotAllOnes<c_int>;
+
 /// A file descriptor.
 #[derive(Clone, Copy)]
-#[rustc_layout_scalar_valid_range_start(0)]
-// libstd/os/raw/mod.rs assures me that every libstd-supported platform has a
-// 32-bit c_int. Below is -2, in two's complement, but that only works out
-// because c_int is 32 bits.
-#[rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
 struct FileDesc {
-    fd: c_int,
+    fd: CIntNotMinusOne,
 }
 
 impl FileDesc {
@@ -29,12 +26,13 @@ impl FileDesc {
         assert_ne!(fd, -1i32);
         // Safety: we just asserted that the value is in the valid range and
         // isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
-        unsafe { FileDesc { fd } }
+        let fd = unsafe { CIntNotMinusOne::new_unchecked(fd) };
+        FileDesc { fd }
     }
 
     #[inline]
     fn raw(&self) -> c_int {
-        self.fd
+        self.fd.as_inner()
     }
 }
 

@@ -1382,19 +1382,7 @@ pub unsafe fn prefetch_write_instruction<T>(_data: *const T, _locality: i32) {
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
-#[cfg(not(bootstrap))]
 pub fn breakpoint() {
-    unreachable!()
-}
-
-/// Executes a breakpoint trap, for inspection by a debugger.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-#[cfg(bootstrap)]
-pub unsafe fn breakpoint() {
     unreachable!()
 }
 
@@ -1909,7 +1897,11 @@ pub const fn forget<T: ?Sized>(_: T) {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_allowed_through_unstable_modules]
+#[cfg_attr(bootstrap, rustc_allowed_through_unstable_modules)]
+#[cfg_attr(
+    not(bootstrap),
+    rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"
+)]
 #[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
 #[rustc_diagnostic_item = "transmute"]
 #[rustc_nounwind]
@@ -3323,8 +3315,8 @@ pub const fn mul_with_overflow<T: Copy>(_x: T, _y: T) -> (T, bool) {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_const_unstable(feature = "const_carrying_mul_add", issue = "85532")]
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
-#[cfg_attr(not(bootstrap), miri::intrinsic_fallback_is_spec)]
+#[rustc_intrinsic]
+#[miri::intrinsic_fallback_is_spec]
 pub const fn carrying_mul_add<T: ~const fallback::CarryingMulAdd<Unsigned = U>, U>(
     multiplier: T,
     multiplicand: T,
@@ -3969,21 +3961,6 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
     false
 }
 
-#[rustc_nounwind]
-#[inline]
-#[rustc_intrinsic]
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_allow_const_fn_unstable(const_swap_nonoverlapping)] // this is anyway not called since CTFE implements the intrinsic
-#[cfg(bootstrap)]
-pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
-    // SAFETY: The caller provided single non-overlapping items behind
-    // pointers, so swapping them with `count: 1` is fine.
-    unsafe { ptr::swap_nonoverlapping(x, y, 1) };
-}
-
-#[cfg(bootstrap)]
-pub use typed_swap as typed_swap_nonoverlapping;
-
 /// Non-overlapping *typed* swap of a single value.
 ///
 /// The codegen backends will replace this with a better implementation when
@@ -3999,7 +3976,6 @@ pub use typed_swap as typed_swap_nonoverlapping;
 #[rustc_intrinsic]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_allow_const_fn_unstable(const_swap_nonoverlapping)] // this is anyway not called since CTFE implements the intrinsic
-#[cfg(not(bootstrap))]
 pub const unsafe fn typed_swap_nonoverlapping<T>(x: *mut T, y: *mut T) {
     // SAFETY: The caller provided single non-overlapping items behind
     // pointers, so swapping them with `count: 1` is fine.
@@ -4353,7 +4329,11 @@ pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *cons
 /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_allowed_through_unstable_modules]
+#[cfg_attr(bootstrap, rustc_allowed_through_unstable_modules)]
+#[cfg_attr(
+    not(bootstrap),
+    rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"
+)]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -4457,7 +4437,11 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// ```
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_allowed_through_unstable_modules]
+#[cfg_attr(bootstrap, rustc_allowed_through_unstable_modules)]
+#[cfg_attr(
+    not(bootstrap),
+    rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"
+)]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -4540,7 +4524,11 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// ```
 #[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_allowed_through_unstable_modules]
+#[cfg_attr(bootstrap, rustc_allowed_through_unstable_modules)]
+#[cfg_attr(
+    not(bootstrap),
+    rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"
+)]
 #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces

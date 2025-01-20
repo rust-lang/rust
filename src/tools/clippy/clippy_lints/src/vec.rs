@@ -8,7 +8,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;
-use clippy_utils::{get_parent_expr, higher, is_in_test, is_trait_method};
+use clippy_utils::{get_parent_expr, higher, is_in_test, is_trait_method, span_contains_comment};
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, LetStmt, Mutability, Node, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -132,9 +132,19 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
     fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
         for (span, lint_opt) in &self.span_to_lint_map {
             if let Some((hir_id, suggest_slice, snippet, applicability)) = lint_opt {
-                let help_msg = format!("you can use {} directly", suggest_slice.desc(),);
+                let help_msg = format!("you can use {} directly", suggest_slice.desc());
                 span_lint_hir_and_then(cx, USELESS_VEC, *hir_id, *span, "useless use of `vec!`", |diag| {
-                    diag.span_suggestion(*span, help_msg, snippet, *applicability);
+                    // If the `vec!` macro contains comment, better not make the suggestion machine
+                    // applicable as it would remove them.
+                    let applicability = if *applicability != Applicability::Unspecified
+                        && let source_map = cx.tcx.sess.source_map()
+                        && span_contains_comment(source_map, *span)
+                    {
+                        Applicability::Unspecified
+                    } else {
+                        *applicability
+                    };
+                    diag.span_suggestion(*span, help_msg, snippet, applicability);
                 });
             }
         }

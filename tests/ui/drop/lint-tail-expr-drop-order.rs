@@ -17,7 +17,6 @@ impl Drop for LoudDropper {
     //~| NOTE: `#1` invokes this custom destructor
     //~| NOTE: `x` invokes this custom destructor
     //~| NOTE: `#1` invokes this custom destructor
-    //~| NOTE: `future` invokes this custom destructor
     //~| NOTE: `_x` invokes this custom destructor
     //~| NOTE: `#1` invokes this custom destructor
     fn drop(&mut self) {

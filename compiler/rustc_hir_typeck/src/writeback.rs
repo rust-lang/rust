@@ -5,7 +5,7 @@
 use std::mem;
 
 use rustc_data_structures::unord::ExtendUnord;
-use rustc_errors::{ErrorGuaranteed, StashKey};
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -246,6 +246,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             }
         }
     }
+
+    fn visit_const_block(&mut self, span: Span, anon_const: &hir::ConstBlock) {
+        self.visit_node_id(span, anon_const.hir_id);
+
+        let body = self.tcx().hir().body(anon_const.body);
+        self.visit_body(body);
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -275,11 +282,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
             hir::ExprKind::Field(..) | hir::ExprKind::OffsetOf(..) => {
                 self.visit_field_id(e.hir_id);
             }
-            hir::ExprKind::ConstBlock(anon_const) => {
-                self.visit_node_id(e.span, anon_const.hir_id);
-
-                let body = self.tcx().hir().body(anon_const.body);
-                self.visit_body(body);
+            hir::ExprKind::ConstBlock(ref anon_const) => {
+                self.visit_const_block(e.span, anon_const);
             }
             _ => {}
         }
@@ -333,6 +337,14 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
         self.visit_node_id(p.span, p.hir_id);
         intravisit::walk_pat(self, p);
+    }
+
+    fn visit_pat_expr(&mut self, expr: &'tcx hir::PatExpr<'tcx>) {
+        self.visit_node_id(expr.span, expr.hir_id);
+        if let hir::PatExprKind::ConstBlock(c) = &expr.kind {
+            self.visit_const_block(expr.span, c);
+        }
+        intravisit::walk_pat_expr(self, expr);
     }
 
     fn visit_local(&mut self, l: &'tcx hir::LetStmt<'tcx>) {
@@ -550,9 +562,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         // types or by using this function at the end of writeback and running it as a
         // fixpoint.
         let opaque_types = self.fcx.infcx.clone_opaque_types();
-        for (opaque_type_key, decl) in opaque_types {
-            let hidden_type = self.resolve(decl.hidden_type, &decl.hidden_type.span);
-            let opaque_type_key = self.resolve(opaque_type_key, &decl.hidden_type.span);
+        for (opaque_type_key, hidden_type) in opaque_types {
+            let hidden_type = self.resolve(hidden_type, &hidden_type.span);
+            let opaque_type_key = self.resolve(opaque_type_key, &hidden_type.span);
 
             if !self.fcx.next_trait_solver() {
                 if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
@@ -570,15 +582,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 && last_opaque_ty.ty != hidden_type.ty
             {
                 assert!(!self.fcx.next_trait_solver());
-                if let Ok(d) = hidden_type.build_mismatch_error(
-                    &last_opaque_ty,
-                    opaque_type_key.def_id,
-                    self.tcx(),
-                ) {
-                    d.stash(
-                        self.tcx().def_span(opaque_type_key.def_id),
-                        StashKey::OpaqueHiddenTypeMismatch,
-                    );
+                if let Ok(d) = hidden_type.build_mismatch_error(&last_opaque_ty, self.tcx()) {
+                    d.emit();
                 }
             }
         }

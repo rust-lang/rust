@@ -39,7 +39,7 @@
 //! [poset]: https://en.wikipedia.org/wiki/Partially_ordered_set
 
 use rustc_index::Idx;
-use rustc_index::bit_set::{BitSet, MixedBitSet};
+use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 
 use crate::framework::BitSetExt;
 
@@ -68,10 +68,10 @@ pub trait HasTop {
     const TOP: Self;
 }
 
-/// A `BitSet` represents the lattice formed by the powerset of all possible values of
-/// the index type `T` ordered by inclusion. Equivalently, it is a tuple of "two-point" lattices,
-/// one for each possible value of `T`.
-impl<T: Idx> JoinSemiLattice for BitSet<T> {
+/// A `DenseBitSet` represents the lattice formed by the powerset of all possible values of the
+/// index type `T` ordered by inclusion. Equivalently, it is a tuple of "two-point" lattices, one
+/// for each possible value of `T`.
+impl<T: Idx> JoinSemiLattice for DenseBitSet<T> {
     fn join(&mut self, other: &Self) -> bool {
         self.union(other)
     }

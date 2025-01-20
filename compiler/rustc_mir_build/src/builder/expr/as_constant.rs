@@ -3,13 +3,12 @@
 use rustc_abi::Size;
 use rustc_ast as ast;
 use rustc_hir::LangItem;
-use rustc_middle::mir::interpret::{
-    Allocation, CTFE_ALLOC_SALT, LitToConstError, LitToConstInput, Scalar,
-};
+use rustc_middle::mir::interpret::{Allocation, CTFE_ALLOC_SALT, LitToConstInput, Scalar};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{
-    self, CanonicalUserType, CanonicalUserTypeAnnotation, Ty, TyCtxt, UserTypeAnnotationIndex,
+    self, CanonicalUserType, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypeVisitableExt as _,
+    UserTypeAnnotationIndex,
 };
 use rustc_middle::{bug, mir, span_bug};
 use tracing::{instrument, trace};
@@ -50,16 +49,7 @@ pub(crate) fn as_constant_inner<'tcx>(
     let Expr { ty, temp_lifetime: _, span, ref kind } = *expr;
     match *kind {
         ExprKind::Literal { lit, neg } => {
-            let const_ = match lit_to_mir_constant(tcx, LitToConstInput { lit: &lit.node, ty, neg })
-            {
-                Ok(c) => c,
-                Err(LitToConstError::Reported(guar)) => {
-                    Const::Ty(Ty::new_error(tcx, guar), ty::Const::new_error(tcx, guar))
-                }
-                Err(LitToConstError::TypeError) => {
-                    bug!("encountered type error in `lit_to_mir_constant`")
-                }
-            };
+            let const_ = lit_to_mir_constant(tcx, LitToConstInput { lit: &lit.node, ty, neg });
 
             ConstOperand { span, user_ty: None, const_ }
         }
@@ -108,11 +98,13 @@ pub(crate) fn as_constant_inner<'tcx>(
 }
 
 #[instrument(skip(tcx, lit_input))]
-fn lit_to_mir_constant<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    lit_input: LitToConstInput<'tcx>,
-) -> Result<Const<'tcx>, LitToConstError> {
+fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>) -> Const<'tcx> {
     let LitToConstInput { lit, ty, neg } = lit_input;
+
+    if let Err(guar) = ty.error_reported() {
+        return Const::Ty(Ty::new_error(tcx, guar), ty::Const::new_error(tcx, guar));
+    }
+
     let trunc = |n| {
         let width = match tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty)) {
             Ok(layout) => layout.size,
@@ -123,7 +115,7 @@ fn lit_to_mir_constant<'tcx>(
         trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
         let result = width.truncate(n);
         trace!("trunc result: {}", result);
-        Ok(ConstValue::Scalar(Scalar::from_uint(result, width)))
+        ConstValue::Scalar(Scalar::from_uint(result, width))
     };
 
     let value = match (lit, ty.kind()) {
@@ -154,20 +146,18 @@ fn lit_to_mir_constant<'tcx>(
             ConstValue::Scalar(Scalar::from_uint(*n, Size::from_bytes(1)))
         }
         (ast::LitKind::Int(n, _), ty::Uint(_)) | (ast::LitKind::Int(n, _), ty::Int(_)) => {
-            trunc(if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() })?
+            trunc(if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() })
         }
-        (ast::LitKind::Float(n, _), ty::Float(fty)) => parse_float_into_constval(*n, *fty, neg)
-            .ok_or_else(|| {
-                LitToConstError::Reported(
-                    tcx.dcx()
-                        .delayed_bug(format!("couldn't parse float literal: {:?}", lit_input.lit)),
-                )
-            })?,
+        (ast::LitKind::Float(n, _), ty::Float(fty)) => {
+            parse_float_into_constval(*n, *fty, neg).unwrap()
+        }
         (ast::LitKind::Bool(b), ty::Bool) => ConstValue::Scalar(Scalar::from_bool(*b)),
         (ast::LitKind::Char(c), ty::Char) => ConstValue::Scalar(Scalar::from_char(*c)),
-        (ast::LitKind::Err(guar), _) => return Err(LitToConstError::Reported(*guar)),
-        _ => return Err(LitToConstError::TypeError),
+        (ast::LitKind::Err(guar), _) => {
+            return Const::Ty(Ty::new_error(tcx, *guar), ty::Const::new_error(tcx, *guar));
+        }
+        _ => bug!("invalid lit/ty combination in `lit_to_mir_constant`: {lit:?}: {ty:?}"),
     };
 
-    Ok(Const::Val(value, ty))
+    Const::Val(value, ty)
 }

@@ -10,7 +10,7 @@ use rustc_attr_parsing::{ConstStability, StabilityLevel};
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -34,6 +34,12 @@ use crate::errors;
 
 type QualifResults<'mir, 'tcx, Q> =
     rustc_mir_dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'mir, 'mir, 'tcx, Q>>;
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum ConstConditionsHold {
+    Yes,
+    No,
+}
 
 #[derive(Default)]
 pub(crate) struct Qualifs<'mir, 'tcx> {
@@ -172,7 +178,7 @@ pub struct Checker<'mir, 'tcx> {
 
     /// A set that stores for each local whether it is "transient", i.e. guaranteed to be dead
     /// when this MIR body returns.
-    transient_locals: Option<BitSet<Local>>,
+    transient_locals: Option<DenseBitSet<Local>>,
 
     error_emitted: Option<ErrorGuaranteed>,
     secondary_errors: Vec<Diag<'tcx>>,
@@ -242,7 +248,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
                 // And then check all `Return` in the MIR, and if a local is "maybe live" at a
                 // `Return` then it is definitely not transient.
-                let mut transient = BitSet::new_filled(ccx.body.local_decls.len());
+                let mut transient = DenseBitSet::new_filled(ccx.body.local_decls.len());
                 // Make sure to only visit reachable blocks, the dataflow engine can ICE otherwise.
                 for (bb, data) in traversal::reachable(&ccx.body) {
                     if matches!(data.terminator().kind, TerminatorKind::Return) {
@@ -376,15 +382,15 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         callee: DefId,
         callee_args: ty::GenericArgsRef<'tcx>,
         call_span: Span,
-    ) -> bool {
+    ) -> Option<ConstConditionsHold> {
         let tcx = self.tcx;
         if !tcx.is_conditionally_const(callee) {
-            return false;
+            return None;
         }
 
         let const_conditions = tcx.const_conditions(callee).instantiate(tcx, callee_args);
         if const_conditions.is_empty() {
-            return false;
+            return None;
         }
 
         let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(self.body.typing_env(tcx));
@@ -413,12 +419,13 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         }));
 
         let errors = ocx.select_all_or_error();
-        if !errors.is_empty() {
+        if errors.is_empty() {
+            Some(ConstConditionsHold::Yes)
+        } else {
             tcx.dcx()
                 .span_delayed_bug(call_span, "this should have reported a ~const error in HIR");
+            Some(ConstConditionsHold::No)
         }
-
-        true
     }
 
     pub fn check_drop_terminator(
@@ -457,6 +464,12 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             err_span,
         );
     }
+
+    fn crate_inject_span(&self) -> Option<Span> {
+        self.tcx.hir_crate_items(()).definitions().next().and_then(|id| {
+            self.tcx.crate_level_attribute_injection_span(self.tcx.local_def_id_to_hir_id(id))
+        })
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
@@ -488,7 +501,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::Use(_)
             | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
-            | Rvalue::Discriminant(..) => {}
+            | Rvalue::Discriminant(..)
+            | Rvalue::Len(_) => {}
 
             Rvalue::Aggregate(kind, ..) => {
                 if let AggregateKind::Coroutine(def_id, ..) = kind.as_ref()
@@ -572,27 +586,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             ) => {}
             Rvalue::ShallowInitBox(_, _) => {}
 
-            Rvalue::UnaryOp(op, operand) => {
+            Rvalue::UnaryOp(_, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
-                match op {
-                    UnOp::Not | UnOp::Neg => {
-                        if is_int_bool_float_or_char(ty) {
-                            // Int, bool, float, and char operations are fine.
-                        } else {
-                            span_bug!(
-                                self.span,
-                                "non-primitive type in `Rvalue::UnaryOp{op:?}`: {ty:?}",
-                            );
-                        }
-                    }
-                    UnOp::PtrMetadata => {
-                        if !ty.is_ref() && !ty.is_unsafe_ptr() {
-                            span_bug!(
-                                self.span,
-                                "non-pointer type in `Rvalue::UnaryOp({op:?})`: {ty:?}",
-                            );
-                        }
-                    }
+                if is_int_bool_float_or_char(ty) {
+                    // Int, bool, float, and char operations are fine.
+                } else {
+                    span_bug!(self.span, "non-primitive type in `Rvalue::UnaryOp`: {:?}", ty);
                 }
             }
 
@@ -706,9 +705,17 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     trace!("attempting to call a trait method");
                     let trait_is_const = tcx.is_const_trait(trait_did);
 
-                    if trait_is_const {
+                    // Only consider a trait to be const if the const conditions hold.
+                    // Otherwise, it's really misleading to call something "conditionally"
+                    // const when it's very obviously not conditionally const.
+                    if trait_is_const && has_const_conditions == Some(ConstConditionsHold::Yes) {
                         // Trait calls are always conditionally-const.
-                        self.check_op(ops::ConditionallyConstCall { callee, args: fn_args });
+                        self.check_op(ops::ConditionallyConstCall {
+                            callee,
+                            args: fn_args,
+                            span: *fn_span,
+                            call_source,
+                        });
                         // FIXME(const_trait_impl): do a more fine-grained check whether this
                         // particular trait can be const-stably called.
                     } else {
@@ -725,8 +732,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
 
                 // Even if we know the callee, ensure we can use conditionally-const calls.
-                if has_const_conditions {
-                    self.check_op(ops::ConditionallyConstCall { callee, args: fn_args });
+                if has_const_conditions.is_some() {
+                    self.check_op(ops::ConditionallyConstCall {
+                        callee,
+                        args: fn_args,
+                        span: *fn_span,
+                        call_source,
+                    });
                 }
 
                 // At this point, we are calling a function, `callee`, whose `DefId` is known...
@@ -803,6 +815,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 name: intrinsic.name,
                                 feature,
                                 const_stable_indirect: is_const_stable,
+                                suggestion: self.crate_inject_span(),
                             });
                         }
                         Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
@@ -891,7 +904,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 // regular stability.
                                 feature == sym::rustc_private
                                     && issue == NonZero::new(27812)
-                                    && self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked
+                                    && tcx.sess.opts.unstable_opts.force_unstable_if_unmarked
                             };
                         // Even if the feature is enabled, we still need check_op to double-check
                         // this if the callee is not safe to expose on stable.
@@ -901,6 +914,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 feature,
                                 feature_enabled,
                                 safe_to_expose_on_stable: callee_safe_to_expose_on_stable,
+                                suggestion_span: self.crate_inject_span(),
                             });
                         }
                     }

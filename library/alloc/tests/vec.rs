@@ -2742,3 +2742,13 @@ fn max_swap_remove() {
     let mut v = vec![0];
     v.swap_remove(usize::MAX);
 }
+
+// Regression test for #135338
+#[test]
+fn vec_null_ptr_roundtrip() {
+    let ptr = std::ptr::from_ref(&42);
+    let zero = ptr.with_addr(0);
+    let roundtripped = vec![zero; 1].pop().unwrap();
+    let new = roundtripped.with_addr(ptr.addr());
+    unsafe { new.read() };
+}

@@ -19,19 +19,8 @@ use crate::traits::{self, Obligation, PredicateObligations};
 
 mod table;
 
-pub(crate) type OpaqueTypeMap<'tcx> = FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
+pub(crate) type OpaqueTypeMap<'tcx> = FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>;
 pub(crate) use table::{OpaqueTypeStorage, OpaqueTypeTable};
-
-/// Information about the opaque types whose values we
-/// are inferring in this function (these are the `impl Trait` that
-/// appear in the return type).
-#[derive(Clone, Debug)]
-pub struct OpaqueTypeDecl<'tcx> {
-    /// The hidden types that have been inferred for this opaque type.
-    /// There can be multiple, but they are all `lub`ed together at the end
-    /// to obtain the canonical hidden type.
-    pub hidden_type: OpaqueHiddenType<'tcx>,
-}
 
 impl<'tcx> InferCtxt<'tcx> {
     /// This is a backwards compatibility hack to prevent breaking changes from

@@ -194,7 +194,8 @@ Options:
         --doctest-compilation-args add arguments to be used when compiling doctests
                         
         --disable-minification 
-                        removed
+                        disable the minification of CSS/JS files
+                        (perma-unstable, do not use with cached files)
         --plugin-path DIR
                         removed, see issue #44136
                         <https://github.com/rust-lang/rust/issues/44136> for

@@ -63,7 +63,7 @@ error: this `continue` expression is redundant
   --> tests/ui/needless_continue.rs:60:9
    |
 LL |         continue;
-   |         ^^^^^^^^^
+   |         ^^^^^^^^
    |
    = help: consider dropping the `continue` expression
 
@@ -71,7 +71,7 @@ error: this `continue` expression is redundant
   --> tests/ui/needless_continue.rs:68:9
    |
 LL |         continue;
-   |         ^^^^^^^^^
+   |         ^^^^^^^^
    |
    = help: consider dropping the `continue` expression
 
@@ -91,8 +91,16 @@ LL |         continue
    |
    = help: consider dropping the `continue` expression
 
+error: this `continue` expression is redundant
+  --> tests/ui/needless_continue.rs:93:11
+   |
+LL |         { continue }
+   |           ^^^^^^^^
+   |
+   = help: consider dropping the `continue` expression
+
 error: this `else` block is redundant
-  --> tests/ui/needless_continue.rs:136:24
+  --> tests/ui/needless_continue.rs:144:24
    |
 LL |                   } else {
    |  ________________________^
@@ -117,7 +125,7 @@ LL | |                 }
                            }
 
 error: there is no need for an explicit `else` block for this `if` expression
-  --> tests/ui/needless_continue.rs:143:17
+  --> tests/ui/needless_continue.rs:151:17
    |
 LL | /                 if condition() {
 LL | |
@@ -137,12 +145,70 @@ LL | |                 }
                            }
 
 error: this `continue` expression is redundant
-  --> tests/ui/needless_continue.rs:166:13
+  --> tests/ui/needless_continue.rs:174:13
    |
 LL |             continue 'b;
-   |             ^^^^^^^^^^^^
+   |             ^^^^^^^^^^^
    |
    = help: consider dropping the `continue` expression
 
-error: aborting due to 9 previous errors
+error: this `continue` expression is redundant
+  --> tests/ui/needless_continue.rs:190:21
+   |
+LL |                     continue 'inner;
+   |                     ^^^^^^^^^^^^^^^
+   |
+   = help: consider dropping the `continue` expression
+
+error: this `continue` expression is redundant
+  --> tests/ui/needless_continue.rs:193:21
+   |
+LL |                     continue 'inner;
+   |                     ^^^^^^^^^^^^^^^
+   |
+   = help: consider dropping the `continue` expression
+
+error: this `continue` expression is redundant
+  --> tests/ui/needless_continue.rs:203:21
+   |
+LL |                     continue;
+   |                     ^^^^^^^^
+   |
+   = help: consider dropping the `continue` expression
+
+error: this `else` block is redundant
+  --> tests/ui/needless_continue.rs:210:20
+   |
+LL |               } else {
+   |  ____________________^
+LL | |                 // redundant `else`
+LL | |                 continue; // redundant `continue`
+LL | |             }
+   | |_____________^
+   |
+   = help: consider dropping the `else` clause and merging the code that follows (in the loop) with the `if` block
+                       if true {
+           // merged code follows:
+           
+                       }
+
+error: there is no need for an explicit `else` block for this `if` expression
+  --> tests/ui/needless_continue.rs:217:13
+   |
+LL | /             if some_expr() {
+LL | |                 continue;
+LL | |             } else {
+LL | |                 do_something();
+LL | |             }
+   | |_____________^
+   |
+   = help: consider dropping the `else` clause
+                       if some_expr() {
+                           continue;
+                       }
+                       {
+                           do_something();
+                       }
+
+error: aborting due to 15 previous errors
 

@@ -1719,6 +1719,18 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// Only used on aarch64-linux, where the argument passing ABI ignores the requested alignment
     /// in some cases.
     pub unadjusted_abi_align: Align,
+
+    /// The randomization seed based on this type's own repr and its fields.
+    ///
+    /// Since randomization is toggled on a per-crate basis even crates that do not have randomization
+    /// enabled should still calculate a seed so that downstream uses can use it to distinguish different
+    /// types.
+    ///
+    /// For every T and U for which we do not guarantee that a repr(Rust) `Foo<T>` can be coerced or
+    /// transmuted to `Foo<U>` we aim to create probalistically distinct seeds so that Foo can choose
+    /// to reorder its fields based on that information. The current implementation is a conservative
+    /// approximation of this goal.
+    pub randomization_seed: u64,
 }
 
 impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
@@ -1739,6 +1751,30 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
         let size = scalar.size(cx);
         let align = scalar.align(cx);
+
+        let range = scalar.valid_range(cx);
+
+        // All primitive types for which we don't have subtype coercions should get a distinct seed,
+        // so that types wrapping them can use randomization to arrive at distinct layouts.
+        //
+        // Some type information is already lost at this point, so as an approximation we derive
+        // the seed from what remains. For example on 64-bit targets usize and u64 can no longer
+        // be distinguished.
+        let randomization_seed = size
+            .bytes()
+            .wrapping_add(
+                match scalar.primitive() {
+                    Primitive::Int(_, true) => 1,
+                    Primitive::Int(_, false) => 2,
+                    Primitive::Float(_) => 3,
+                    Primitive::Pointer(_) => 4,
+                } << 32,
+            )
+            // distinguishes references from pointers
+            .wrapping_add((range.start as u64).rotate_right(16))
+            // distinguishes char from u32 and bool from u8
+            .wrapping_add((range.end as u64).rotate_right(16));
+
         LayoutData {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Primitive,
@@ -1748,6 +1784,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             align,
             max_repr_align: None,
             unadjusted_abi_align: align.abi,
+            randomization_seed,
         }
     }
 }
@@ -1770,6 +1807,7 @@ where
             variants,
             max_repr_align,
             unadjusted_abi_align,
+            ref randomization_seed,
         } = self;
         f.debug_struct("Layout")
             .field("size", size)
@@ -1780,6 +1818,7 @@ where
             .field("variants", variants)
             .field("max_repr_align", max_repr_align)
             .field("unadjusted_abi_align", unadjusted_abi_align)
+            .field("randomization_seed", randomization_seed)
             .finish()
     }
 }

@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
             return;
         }
         match it.kind {
-            hir::ItemKind::Fn{ .. } => {
+            hir::ItemKind::Fn { .. } => {
                 let desc = "a function";
                 let attrs = cx.tcx.hir().attrs(it.hir_id());
                 check_missing_inline_attrs(cx, attrs, it.span, desc);

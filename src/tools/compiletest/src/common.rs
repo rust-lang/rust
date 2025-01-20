@@ -39,17 +39,21 @@ macro_rules! string_enum {
         }
 
         impl FromStr for $name {
-            type Err = ();
+            type Err = String;
 
-            fn from_str(s: &str) -> Result<Self, ()> {
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s {
                     $($repr => Ok(Self::$variant),)*
-                    _ => Err(()),
+                    _ => Err(format!(concat!("unknown `", stringify!($name), "` variant: `{}`"), s)),
                 }
             }
         }
     }
 }
+
+// Make the macro visible outside of this module, for tests.
+#[cfg(test)]
+pub(crate) use string_enum;
 
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
@@ -63,7 +67,7 @@ string_enum! {
         Incremental => "incremental",
         RunMake => "run-make",
         Ui => "ui",
-        JsDocTest => "js-doc-test",
+        RustdocJs => "rustdoc-js",
         MirOpt => "mir-opt",
         Assembly => "assembly",
         CoverageMap => "coverage-map",

@@ -1389,20 +1389,14 @@ static bool clearDSOLocalOnDeclarations(Module &Mod, TargetMachine &TM) {
   return ClearDSOLocalOnDeclarations;
 }
 
-extern "C" bool LLVMRustPrepareThinLTORename(const LLVMRustThinLTOData *Data,
+extern "C" void LLVMRustPrepareThinLTORename(const LLVMRustThinLTOData *Data,
                                              LLVMModuleRef M,
                                              LLVMTargetMachineRef TM) {
   Module &Mod = *unwrap(M);
   TargetMachine &Target = *unwrap(TM);
 
   bool ClearDSOLocal = clearDSOLocalOnDeclarations(Mod, Target);
-  bool error = renameModuleForThinLTO(Mod, Data->Index, ClearDSOLocal);
-
-  if (error) {
-    LLVMRustSetLastError("renameModuleForThinLTO failed");
-    return false;
-  }
-  return true;
+  renameModuleForThinLTO(Mod, Data->Index, ClearDSOLocal);
 }
 
 extern "C" bool

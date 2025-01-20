@@ -17,9 +17,9 @@ declare_clippy_lint! {
     /// Checks for redundant redefinitions of local bindings.
     ///
     /// ### Why is this bad?
-    /// Redundant redefinitions of local bindings do not change behavior and are likely to be unintended.
+    /// Redundant redefinitions of local bindings do not change behavior other than variable's lifetimes and are likely to be unintended.
     ///
-    /// Note that although these bindings do not affect your code's meaning, they _may_ affect `rustc`'s stack allocation.
+    /// These rebindings can be intentional to shorten the lifetimes of variables because they affect when the `Drop` implementation is called. Other than that, they do not affect your code's meaning but they _may_ affect `rustc`'s stack allocation.
     ///
     /// ### Example
     /// ```no_run
@@ -41,7 +41,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.73.0"]
     pub REDUNDANT_LOCALS,
-    correctness,
+    suspicious,
     "redundant redefinition of a local binding"
 }
 declare_lint_pass!(RedundantLocals => [REDUNDANT_LOCALS]);

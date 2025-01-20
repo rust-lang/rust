@@ -8,23 +8,23 @@
 //! LLVM and compiler-rt are essentially just wired up to everything else to
 //! ensure that they're always in place if needed.
 
-use std::env;
 use std::env::consts::EXE_EXTENSION;
 use std::ffi::{OsStr, OsString};
-use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
+use std::{env, fs};
 
 use build_helper::ci::CiEnv;
 use build_helper::git::get_closest_merge_commit;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
+use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
-    self, HashStamp, exe, get_clang_cl_resource_dir, t, unhashed_basename, up_to_date,
+    self, exe, get_clang_cl_resource_dir, t, unhashed_basename, up_to_date,
 };
-use crate::{CLang, GitRepo, Kind, generate_smart_stamp_hash};
+use crate::{CLang, GitRepo, Kind};
 
 #[derive(Clone)]
 pub struct LlvmResult {
@@ -36,7 +36,7 @@ pub struct LlvmResult {
 }
 
 pub struct Meta {
-    stamp: HashStamp,
+    stamp: BuildStamp,
     res: LlvmResult,
     out_dir: PathBuf,
     root: String,
@@ -135,18 +135,17 @@ pub fn prebuilt_llvm_config(
         )
     });
 
-    let stamp = out_dir.join("llvm-finished-building");
-    let stamp = HashStamp::new(stamp, Some(smart_stamp_hash));
+    let stamp = BuildStamp::new(&out_dir).with_prefix("llvm").add_stamp(smart_stamp_hash);
 
-    if stamp.is_done() {
-        if stamp.hash.is_none() {
+    if stamp.is_up_to_date() {
+        if stamp.stamp().is_empty() {
             builder.info(
                 "Could not determine the LLVM submodule commit hash. \
                      Assuming that an LLVM rebuild is not necessary.",
             );
             builder.info(&format!(
                 "To force LLVM to rebuild, remove the file `{}`",
-                stamp.path.display()
+                stamp.path().display()
             ));
         }
         return LlvmBuildStatus::AlreadyBuilt(res);
@@ -922,18 +921,17 @@ impl Step for Enzyme {
         });
 
         let out_dir = builder.enzyme_out(target);
-        let stamp = out_dir.join("enzyme-finished-building");
-        let stamp = HashStamp::new(stamp, Some(smart_stamp_hash));
+        let stamp = BuildStamp::new(&out_dir).with_prefix("enzyme").add_stamp(smart_stamp_hash);
 
-        if stamp.is_done() {
-            if stamp.hash.is_none() {
+        if stamp.is_up_to_date() {
+            if stamp.stamp().is_empty() {
                 builder.info(
                     "Could not determine the Enzyme submodule commit hash. \
                      Assuming that an Enzyme rebuild is not necessary.",
                 );
                 builder.info(&format!(
                     "To force Enzyme to rebuild, remove the file `{}`",
-                    stamp.path.display()
+                    stamp.path().display()
                 ));
             }
             return out_dir;
@@ -1016,8 +1014,9 @@ impl Step for Lld {
         }
 
         let out_dir = builder.lld_out(target);
-        let done_stamp = out_dir.join("lld-finished-building");
-        if done_stamp.exists() {
+
+        let lld_stamp = BuildStamp::new(&out_dir).with_prefix("lld");
+        if lld_stamp.path().exists() {
             return out_dir;
         }
 
@@ -1092,7 +1091,7 @@ impl Step for Lld {
 
         cfg.build();
 
-        t!(File::create(&done_stamp));
+        t!(lld_stamp.write());
         out_dir
     }
 }
@@ -1122,25 +1121,32 @@ impl Step for Sanitizers {
 
         let out_dir = builder.native_dir(self.target).join("sanitizers");
         let runtimes = supported_sanitizers(&out_dir, self.target, &builder.config.channel);
-        if runtimes.is_empty() {
+
+        if builder.config.dry_run() || runtimes.is_empty() {
             return runtimes;
         }
 
         let LlvmResult { llvm_config, .. } = builder.ensure(Llvm { target: builder.config.build });
-        if builder.config.dry_run() {
-            return runtimes;
-        }
 
-        let stamp = out_dir.join("sanitizers-finished-building");
-        let stamp = HashStamp::new(stamp, builder.in_tree_llvm_info.sha());
+        static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
+        let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
+            generate_smart_stamp_hash(
+                builder,
+                &builder.config.src.join("src/llvm-project/compiler-rt"),
+                builder.in_tree_llvm_info.sha().unwrap_or_default(),
+            )
+        });
 
-        if stamp.is_done() {
-            if stamp.hash.is_none() {
+        let stamp = BuildStamp::new(&out_dir).with_prefix("sanitizers").add_stamp(smart_stamp_hash);
+
+        if stamp.is_up_to_date() {
+            if stamp.stamp().is_empty() {
                 builder.info(&format!(
                     "Rebuild sanitizers by removing the file `{}`",
-                    stamp.path.display()
+                    stamp.path().display()
                 ));
             }
+
             return runtimes;
         }
 

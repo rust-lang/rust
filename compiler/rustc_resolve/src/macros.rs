@@ -1031,6 +1031,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         is_soft,
                         span,
                         soft_handler,
+                        stability::UnstableKind::Regular,
                     );
                 }
             }

@@ -148,6 +148,11 @@ const ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("neon", Unstable(sym::arm_target_feature), &["vfp3"]),
     ("rclass", Unstable(sym::arm_target_feature), &[]),
     ("sha2", Unstable(sym::arm_target_feature), &["neon"]),
+    // This can be *disabled* on non-`hf` targets to enable the use
+    // of hardfloats while keeping the softfloat ABI.
+    // FIXME before stabilization: Should we expose this as a `hard-float` target feature instead of
+    // matching the odd negative feature LLVM uses?
+    ("soft-float", Unstable(sym::arm_target_feature), &[]),
     // This is needed for inline assembly, but shouldn't be stabilized as-is
     // since it should be enabled per-function using #[instruction_set], not
     // #[target_feature].
@@ -790,6 +795,9 @@ impl Target {
                 match self.llvm_floatabi.unwrap() {
                     FloatAbi::Soft => {
                         // Nothing special required, will use soft-float ABI throughout.
+                        // We can even allow `-soft-float` here; in fact that is useful as it lets
+                        // people use FPU instructions with a softfloat ABI (corresponds to
+                        // `-mfloat-abi=softfp` in GCC/clang).
                         NOTHING
                     }
                     FloatAbi::Hard => {

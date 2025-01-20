@@ -723,6 +723,8 @@ impl MetaItemLit {
 pub trait AttributeExt: Debug {
     fn id(&self) -> AttrId;
 
+    /// For a single-segment attribute (i.e., `#[attr]` and not `#[path::atrr]`),
+    /// return the name of the attribute, else return the empty identifier.
     fn name_or_empty(&self) -> Symbol {
         self.ident().unwrap_or_else(Ident::empty).name
     }

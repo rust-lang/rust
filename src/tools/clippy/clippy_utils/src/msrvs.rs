@@ -130,7 +130,7 @@ impl Msrv {
         let mut msrv_attrs = attrs.iter().filter(|attr| attr.path_matches(&[sym::clippy, sym_msrv]));
 
         if let Some(msrv_attr) = msrv_attrs.next() {
-            if let Some(duplicate) = msrv_attrs.last() {
+            if let Some(duplicate) = msrv_attrs.next_back() {
                 sess.dcx()
                     .struct_span_err(duplicate.span(), "`clippy::msrv` is defined multiple times")
                     .with_span_note(msrv_attr.span(), "first definition found here")

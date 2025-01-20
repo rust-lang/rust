@@ -21,7 +21,7 @@
 // Tracking Issue: https://github.com/rust-lang/rust/issues/129080
 
 use run_make_support::{
-    bin_name, cwd, diff, is_darwin, is_windows, rfs, run_in_tmpdir, rust_lib_name, rustc,
+    bin_name, cwd, diff, is_darwin, is_windows, regex, rfs, run_in_tmpdir, rust_lib_name, rustc,
 };
 
 fn main() {
@@ -117,7 +117,34 @@ fn smoke_test(flag: Option<SmokeFlag>) {
             .input("reproducible-build.rs")
             .linker(&cwd().join(bin_name("linker")).display().to_string())
             .run();
-        diff().actual_file("linker-arguments1").expected_file("linker-arguments2").run();
+
+        #[cfg(not(target_os = "aix"))]
+        {
+            diff().actual_file("linker-arguments1").expected_file("linker-arguments2").run();
+        }
+        #[cfg(target_os = "aix")]
+        {
+            // The AIX link command includes an additional argument
+            // that specifies the file containing exported symbols, e.g.,
+            // -bE:/tmp/rustcO6hxkY/list.exp. In this example, the part of the
+            // directory name "rustcO6hxkY" is randomly generated to ensure that
+            // different linking processes do not collide. For the purpose
+            // of comparing link arguments, the randomly generated part is
+            // replaced with a placeholder.
+            let content1 =
+                std::fs::read_to_string("linker-arguments1").expect("Failed to read file");
+            let content2 =
+                std::fs::read_to_string("linker-arguments2").expect("Failed to read file");
+
+            // Define the regex for the directory name containing the random substring.
+            let re = regex::Regex::new(r"rustc[a-zA-Z0-9]{6}/list\.exp").expect("Invalid regex");
+
+            // Compare link commands with random strings replaced by placeholders.
+            assert!(
+                re.replace_all(&content1, "rustcXXXXXX/list.exp").to_string()
+                    == re.replace_all(&content2, "rustcXXXXXX/list.exp").to_string()
+            );
+        }
     });
 }
 
@@ -207,7 +234,21 @@ fn diff_dir_test(crate_type: CrateType, remap_type: RemapType) {
         std::env::set_current_dir(&base_dir).unwrap();
         match crate_type {
             CrateType::Bin => {
-                assert!(rfs::read(bin_name("reproducible-build")) == rfs::read(bin_name("foo")));
+                #[cfg(not(target_os = "aix"))]
+                {
+                    assert!(
+                        rfs::read(bin_name("reproducible-build")) == rfs::read(bin_name("foo"))
+                    );
+                }
+                #[cfg(target_os = "aix")]
+                {
+                    // At the 4th-byte offset, the AIX XCOFF file header defines a
+                    // 4-byte timestamp. Nullify the timestamp before performing a
+                    // binary comparison.
+                    let mut file1 = rfs::read(bin_name("reproducible-build"));
+                    let mut file2 = rfs::read(bin_name("foo"));
+                    assert!(file1[4..8].fill(0x00) == file2[4..8].fill(0x00));
+                };
             }
             CrateType::Rlib => {
                 assert!(

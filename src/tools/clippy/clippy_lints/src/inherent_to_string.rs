@@ -95,7 +95,7 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
         if let ImplItemKind::Fn(ref signature, _) = impl_item.kind
             // #11201
             && let header = signature.header
-            && header.safety.is_safe()
+            && header.is_safe()
             && header.abi == Abi::Rust
             && impl_item.ident.name == sym::to_string
             && let decl = signature.decl

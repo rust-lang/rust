@@ -11,7 +11,7 @@ fn baz(x: u32, y: u32) -> u32 { x + y }
 unsafe fn unsafe_fn() { }
 extern "C" fn c_fn() { }
 unsafe extern "C" fn unsafe_c_fn() { }
-unsafe extern fn variadic(_x: u32, _args: ...) { }
+unsafe extern "C" fn variadic(_x: u32, _args: ...) { }
 fn take_generic_ref<'a, T>(_x: &'a T) { }
 fn take_generic_array<T, const N: usize>(_x: [T; N]) { }
 fn multiple_generic<T, U>(_x: T, _y: U) { }

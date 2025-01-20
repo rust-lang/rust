@@ -3,7 +3,7 @@
 use std::fmt::{self, Debug, Formatter};
 
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
 
@@ -71,11 +71,7 @@ impl ConditionId {
 
 /// Enum that can hold a constant zero value, the ID of an physical coverage
 /// counter, or the ID of a coverage-counter expression.
-///
-/// This was originally only used for expression operands (and named `Operand`),
-/// but the zero/counter/expression distinction is also useful for representing
-/// the value of code/gap mappings, and the true/false arms of branch mappings.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum CovTerm {
     Zero,
@@ -171,7 +167,7 @@ impl Op {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Expression {
     pub lhs: CovTerm,
@@ -303,8 +299,8 @@ pub struct MCDCDecisionSpan {
 /// Used by the `coverage_ids_info` query.
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable)]
 pub struct CoverageIdsInfo {
-    pub counters_seen: BitSet<CounterId>,
-    pub zero_expressions: BitSet<ExpressionId>,
+    pub counters_seen: DenseBitSet<CounterId>,
+    pub zero_expressions: DenseBitSet<ExpressionId>,
 }
 
 impl CoverageIdsInfo {

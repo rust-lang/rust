@@ -649,7 +649,11 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(implicit_return::ImplicitReturn));
     store.register_late_pass(move |_| Box::new(implicit_saturating_sub::ImplicitSaturatingSub::new(conf)));
     store.register_late_pass(|_| Box::new(default_numeric_fallback::DefaultNumericFallback));
-    store.register_late_pass(|_| Box::new(inconsistent_struct_constructor::InconsistentStructConstructor));
+    store.register_late_pass(move |_| {
+        Box::new(inconsistent_struct_constructor::InconsistentStructConstructor::new(
+            conf,
+        ))
+    });
     store.register_late_pass(|_| Box::new(non_octal_unix_permissions::NonOctalUnixPermissions));
     store.register_early_pass(|| Box::new(unnecessary_self_imports::UnnecessarySelfImports));
     store.register_late_pass(move |_| Box::new(approx_const::ApproxConstant::new(conf)));

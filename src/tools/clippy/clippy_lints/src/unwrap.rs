@@ -245,9 +245,9 @@ impl<'tcx> UnwrappableVariablesVisitor<'_, 'tcx> {
         let prev_len = self.unwrappables.len();
         for unwrap_info in collect_unwrap_info(self.cx, if_expr, cond, branch, else_branch, true) {
             let mut delegate = MutationVisitor {
-                tcx: self.cx.tcx,
                 is_mutated: false,
                 local_id: unwrap_info.local_id,
+                tcx: self.cx.tcx,
             };
 
             let vis = ExprUseVisitor::for_clippy(self.cx, cond.hir_id.owner.def_id, &mut delegate);
@@ -397,8 +397,8 @@ impl<'tcx> LateLintPass<'tcx> for Unwrap {
         }
 
         let mut v = UnwrappableVariablesVisitor {
-            cx,
             unwrappables: Vec::new(),
+            cx,
         };
 
         walk_fn(&mut v, kind, decl, body.id(), fn_id);

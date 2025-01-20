@@ -300,8 +300,8 @@ fn check<'tcx>(cx: &LateContext<'tcx>, spawn_expr: &'tcx Expr<'tcx>, cause: Caus
     };
 
     let mut vis = ExitPointFinder {
-        cx,
         state: ExitPointState::WalkUpTo(spawn_expr.hir_id),
+        cx,
     };
     if let Break(ExitCallFound) = vis.visit_block(block) {
         // Visitor found an unconditional `exit()` call, so don't lint.
