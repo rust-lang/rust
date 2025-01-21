@@ -54,17 +54,6 @@ printDF() {
     printSeparationLine "="
 }
 
-removeDir() {
-    dir=${1}
-
-    local before
-    before=$(getAvailableSpace)
-
-    sudo rm -rf "$dir" || true
-
-    printSavedSpace "$before" "Removed $dir"
-}
-
 execAndMeasureSpaceChange() {
     local operation=${1} # Function to execute
     local title=${2}
@@ -141,6 +130,33 @@ removeAllSnaps() {
     sudo snap remove $(snap list | awk '!/^Name|^core|^snapd/ {print $1}')
 }
 
+removeUnusedDirectories() {
+    local dirs_to_remove=(
+        "/usr/lib/heroku/"
+        "/usr/local/lib/android"
+        "/usr/local/lib/node_modules"
+        "/usr/local/share/chromium"
+        "/usr/local/share/powershell"
+        "^/usr/share/az_.*"
+        "/usr/share/dotnet"
+        "/usr/share/icons/"
+        "/usr/share/miniconda/"
+        "/usr/share/swift"
+        "$AGENT_TOOLSDIRECTORY"
+
+        # Haskell runtime
+        "/opt/ghc"
+        "/usr/local/.ghcup"
+    )
+    local before
+
+    for dir in "${dirs_to_remove[@]}"; do
+        before=$(getAvailableSpace)
+        sudo rm -rf "$dir" || true
+        printSavedSpace "$before" "Removed $dir"
+    done
+}
+
 # Display initial disk space stats
 
 AVAILABLE_INITIAL=$(getAvailableSpace)
@@ -148,32 +164,11 @@ AVAILABLE_INITIAL=$(getAvailableSpace)
 printDF "BEFORE CLEAN-UP:"
 echo ""
 
-dirs_to_remove=(
-    "/usr/lib/heroku/"
-    "/usr/local/lib/android"
-    "/usr/local/lib/node_modules"
-    "/usr/local/share/chromium"
-    "/usr/local/share/powershell"
-    "^/usr/share/az_.*"
-    "/usr/share/dotnet"
-    "/usr/share/icons/"
-    "/usr/share/miniconda/"
-    "/usr/share/swift"
-    "$AGENT_TOOLSDIRECTORY"
-
-    # Haskell runtime
-    "/opt/ghc"
-    "/usr/local/.ghcup"
-)
-
-for dir in "${dirs_to_remove[@]}"; do
-    removeDir "$dir"
-done
+removeUnusedDirectories
 
 execAndMeasureSpaceChange removeAllSnaps "Snaps"
 execAndMeasureSpaceChange cleanPackages "Unused packages"
 execAndMeasureSpaceChange cleanDocker "Docker images"
-execAndMeasureSpaceChange cleanSwap "Swap storage"
 
 echo "=> largest directories:"
 sudo du --max-depth=7 /* -h | sort -nr | head -1000
