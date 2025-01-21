@@ -85,7 +85,7 @@ fn complete_trait_impl_name(
     name: &Option<ast::Name>,
     kind: ImplCompletionKind,
 ) -> Option<()> {
-    let item = match name {
+    let macro_file_item = match name {
         Some(name) => name.syntax().parent(),
         None => {
             let token = &ctx.token;
@@ -96,12 +96,12 @@ fn complete_trait_impl_name(
             .parent()
         }
     }?;
-    let item = ctx.sema.original_syntax_node_rooted(&item)?;
+    let real_file_item = ctx.sema.original_syntax_node_rooted(&macro_file_item)?;
     // item -> ASSOC_ITEM_LIST -> IMPL
-    let impl_def = ast::Impl::cast(item.parent()?.parent()?)?;
+    let impl_def = ast::Impl::cast(macro_file_item.parent()?.parent()?)?;
     let replacement_range = {
         // ctx.sema.original_ast_node(item)?;
-        let first_child = item
+        let first_child = real_file_item
             .children_with_tokens()
             .find(|child| {
                 !matches!(
@@ -109,7 +109,7 @@ fn complete_trait_impl_name(
                     SyntaxKind::COMMENT | SyntaxKind::WHITESPACE | SyntaxKind::ATTR
                 )
             })
-            .unwrap_or_else(|| SyntaxElement::Node(item.clone()));
+            .unwrap_or_else(|| SyntaxElement::Node(real_file_item.clone()));
 
         TextRange::new(first_child.text_range().start(), ctx.source_range().end())
     };
@@ -133,8 +133,11 @@ pub(crate) fn complete_trait_impl_item_by_name(
             acc,
             ctx,
             ImplCompletionKind::All,
-            match name_ref {
-                Some(name) => name.syntax().text_range(),
+            match name_ref
+                .as_ref()
+                .and_then(|name| ctx.sema.original_syntax_node_rooted(name.syntax()))
+            {
+                Some(name) => name.text_range(),
                 None => ctx.source_range(),
             },
             impl_,
@@ -516,7 +519,7 @@ fn function_declaration(
 mod tests {
     use expect_test::expect;
 
-    use crate::tests::{check_edit, check_no_kw};
+    use crate::tests::{check, check_edit, check_no_kw};
 
     #[test]
     fn no_completion_inside_fn() {
@@ -1637,6 +1640,53 @@ impl DesugaredAsyncTrait for () {
 }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn within_attr_macro() {
+        check(
+            r#"
+//- proc_macros: identity
+trait Trait {
+    fn foo(&self) {}
+    fn bar(&self) {}
+    fn baz(&self) {}
+}
+
+#[proc_macros::identity]
+impl Trait for () {
+    f$0
+}
+                "#,
+            expect![[r#"
+                me fn bar(..)
+                me fn baz(..)
+                me fn foo(..)
+                md proc_macros
+                kw crate::
+                kw self::
+            "#]],
+        );
+        check(
+            r#"
+//- proc_macros: identity
+trait Trait {
+    fn foo(&self) {}
+    fn bar(&self) {}
+    fn baz(&self) {}
+}
+
+#[proc_macros::identity]
+impl Trait for () {
+    fn $0
+}
+        "#,
+            expect![[r#"
+                me fn bar(..)
+                me fn baz(..)
+                me fn foo(..)
+            "#]],
         );
     }
 }
