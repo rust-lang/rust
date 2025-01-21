@@ -181,6 +181,8 @@ pub struct CompletionRelevance {
     pub postfix_match: Option<CompletionRelevancePostfixMatch>,
     /// This is set for items that are function (associated or method)
     pub function: Option<CompletionRelevanceFn>,
+    /// true when there is an `await.method()` or `iter().method()` completion.
+    pub is_skipping_completion: bool,
 }
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CompletionRelevanceTraitInfo {
@@ -269,6 +271,7 @@ impl CompletionRelevance {
             postfix_match,
             trait_,
             function,
+            is_skipping_completion,
         } = self;
 
         // only applicable for completions within use items
@@ -296,6 +299,12 @@ impl CompletionRelevance {
                 score -= 5;
             }
         }
+
+        // Lower rank for completions that skip `await` and `iter()`.
+        if is_skipping_completion {
+            score -= 7;
+        }
+
         // lower rank for items that need an import
         if requires_import {
             score -= 1;

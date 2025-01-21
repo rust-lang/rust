@@ -123,6 +123,7 @@ fn render(
         exact_name_match: compute_exact_name_match(completion, &call),
         function,
         trait_: trait_info,
+        is_skipping_completion: matches!(func_kind, FuncKind::Method(_, Some(_))),
         ..ctx.completion_relevance()
     });
 
