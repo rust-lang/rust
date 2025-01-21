@@ -81,11 +81,11 @@ fn transcribe_counters(
     let mut new = CoverageCounters::with_num_bcbs(bcb_needs_counter.domain_size());
 
     for bcb in bcb_needs_counter.iter() {
-        // Our counter-creation algorithm doesn't guarantee that a counter
-        // expression starts or ends with a positive term, so partition the
+        // Our counter-creation algorithm doesn't guarantee that a node's list
+        // of terms starts or ends with a positive term, so partition the
         // counters into "positive" and "negative" lists for easier handling.
         let (mut pos, mut neg): (Vec<_>, Vec<_>) =
-            old.counter_expr(bcb).iter().partition_map(|&CounterTerm { node, op }| match op {
+            old.counter_terms[bcb].iter().partition_map(|&CounterTerm { node, op }| match op {
                 Op::Add => Either::Left(node),
                 Op::Subtract => Either::Right(node),
             });

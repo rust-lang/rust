@@ -53,12 +53,12 @@ fn format_counter_expressions<Node: Idx>(counters: &NodeCounters<Node>) -> Vec<S
     };
 
     counters
-        .counter_exprs
+        .counter_terms
         .indices()
         .map(|node| {
-            let mut expr = counters.counter_expr(node).iter().collect::<Vec<_>>();
-            expr.sort_by_key(|item| item.node.index());
-            format!("[{node:?}]: {}", expr.into_iter().map(format_item).join(" "))
+            let mut terms = counters.counter_terms[node].iter().collect::<Vec<_>>();
+            terms.sort_by_key(|item| item.node.index());
+            format!("[{node:?}]: {}", terms.into_iter().map(format_item).join(" "))
         })
         .collect()
 }

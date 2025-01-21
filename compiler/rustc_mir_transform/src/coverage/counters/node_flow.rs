@@ -10,7 +10,6 @@ use rustc_data_structures::graph;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::coverage::Op;
-use smallvec::SmallVec;
 
 use crate::coverage::counters::iter_nodes::IterNodes;
 use crate::coverage::counters::union_find::{FrozenUnionFind, UnionFind};
@@ -100,7 +99,7 @@ impl<Node: Idx> MergedNodeFlowGraph<Node> {
             builder.visit_node(node);
         }
 
-        NodeCounters { counter_exprs: builder.finish() }
+        NodeCounters { counter_terms: builder.finish() }
     }
 }
 
@@ -108,18 +107,12 @@ impl<Node: Idx> MergedNodeFlowGraph<Node> {
 /// nodes of a graph.
 #[derive(Debug)]
 pub(crate) struct NodeCounters<Node: Idx> {
-    counter_exprs: IndexVec<Node, CounterExprVec<Node>>,
-}
-
-impl<Node: Idx> NodeCounters<Node> {
     /// For the given node, returns the finished list of terms that represent
     /// its physical counter or counter expression. Always non-empty.
     ///
-    /// If a node was given a physical counter, its "expression" will contain
+    /// If a node was given a physical counter, the term list will contain
     /// that counter as its sole element.
-    pub(crate) fn counter_expr(&self, this: Node) -> &[CounterTerm<Node>] {
-        self.counter_exprs[this].as_slice()
-    }
+    pub(crate) counter_terms: IndexVec<Node, Vec<CounterTerm<Node>>>,
 }
 
 #[derive(Debug)]
@@ -146,9 +139,6 @@ pub(crate) struct CounterTerm<Node> {
     pub(crate) node: Node,
 }
 
-/// Stores the list of counter terms that make up a node's counter expression.
-type CounterExprVec<Node> = SmallVec<[CounterTerm<Node>; 2]>;
-
 #[derive(Debug)]
 struct SpantreeBuilder<'a, Node: Idx> {
     graph: &'a MergedNodeFlowGraph<Node>,
@@ -163,7 +153,7 @@ struct SpantreeBuilder<'a, Node: Idx> {
     yank_buffer: Vec<Node>,
     /// An in-progress counter expression for each node. Each expression is
     /// initially empty, and will be filled in as relevant nodes are visited.
-    counter_exprs: IndexVec<Node, CounterExprVec<Node>>,
+    counter_terms: IndexVec<Node, Vec<CounterTerm<Node>>>,
 }
 
 impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
@@ -174,7 +164,7 @@ impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
             is_unvisited: DenseBitSet::new_filled(num_nodes),
             span_edges: IndexVec::from_fn_n(|_| None, num_nodes),
             yank_buffer: vec![],
-            counter_exprs: IndexVec::from_fn_n(|_| SmallVec::new(), num_nodes),
+            counter_terms: IndexVec::from_fn_n(|_| vec![], num_nodes),
         }
     }
 
@@ -268,8 +258,8 @@ impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
             // `this_supernode`.
 
             // Instead of setting `this.measure = true` as in the original paper,
-            // we just add the node's ID to its own "expression".
-            self.counter_exprs[this].push(CounterTerm { node: this, op: Op::Add });
+            // we just add the node's ID to its own list of terms.
+            self.counter_terms[this].push(CounterTerm { node: this, op: Op::Add });
 
             // Walk the spantree from `this.successor` back to `this`. For each
             // spantree edge along the way, add this node's physical counter to
@@ -279,7 +269,7 @@ impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
                 let &SpantreeEdge { is_reversed, claiming_node, span_parent } =
                     self.span_edges[curr].as_ref().unwrap();
                 let op = if is_reversed { Op::Subtract } else { Op::Add };
-                self.counter_exprs[claiming_node].push(CounterTerm { node: this, op });
+                self.counter_terms[claiming_node].push(CounterTerm { node: this, op });
 
                 curr = span_parent;
             }
@@ -288,8 +278,8 @@ impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
 
     /// Asserts that all nodes have been visited, and returns the computed
     /// counter expressions (made up of physical counters) for each node.
-    fn finish(self) -> IndexVec<Node, CounterExprVec<Node>> {
-        let Self { graph, is_unvisited, span_edges, yank_buffer: _, counter_exprs } = self;
+    fn finish(self) -> IndexVec<Node, Vec<CounterTerm<Node>>> {
+        let Self { graph, is_unvisited, span_edges, yank_buffer: _, counter_terms } = self;
         assert!(is_unvisited.is_empty(), "some nodes were never visited: {is_unvisited:?}");
         debug_assert!(
             span_edges
@@ -298,9 +288,9 @@ impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
             "only supernodes can have a span edge",
         );
         debug_assert!(
-            counter_exprs.iter().all(|expr| !expr.is_empty()),
-            "after visiting all nodes, every node should have a non-empty expression",
+            counter_terms.iter().all(|terms| !terms.is_empty()),
+            "after visiting all nodes, every node should have at least one term",
         );
-        counter_exprs
+        counter_terms
     }
 }
