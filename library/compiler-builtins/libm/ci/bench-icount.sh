@@ -40,7 +40,12 @@ function run_icount_benchmarks() {
 
     # NB: iai-callgrind should exit on error but does not, so we inspect the sumary
     # for errors. See  https://github.com/iai-callgrind/iai-callgrind/issues/337
-    ./ci/ci-util.py check-regressions --home "$iai_home" || true
+    if [ -n "${PR_NUMBER:-}" ]; then
+        # If this is for a pull request, ignore regressions if specified.
+        ./ci/ci-util.py check-regressions --home "$iai_home" --allow-pr-override "$PR_NUMBER"
+    else
+        ./ci/ci-util.py check-regressions --home "$iai_home" || true
+    fi
 }
 
 # Run once with softfloats, once with arch instructions enabled

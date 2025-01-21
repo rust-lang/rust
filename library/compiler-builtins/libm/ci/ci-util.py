@@ -33,11 +33,14 @@ USAGE = cleandoc(
 
             Note that `--extract` will overwrite files in `iai-home`.
 
-        check-regressions [iai-home]
+        check-regressions [--home iai-home] [--allow-pr-override pr_number]
             Check `iai-home` (or `iai-home` if unspecified) for `summary.json`
             files and see if there are any regressions. This is used as a workaround
             for `iai-callgrind` not exiting with error status; see
             <https://github.com/iai-callgrind/iai-callgrind/issues/337>.
+
+            If `--allow-pr-override` is specified, the regression check will not exit
+            with failure if any line in the PR starts with `allow-regressions`.
     """
 )
 
@@ -46,6 +49,8 @@ GIT = ["git", "-C", REPO_ROOT]
 DEFAULT_BRANCH = "master"
 WORKFLOW_NAME = "CI"  # Workflow that generates the benchmark artifacts
 ARTIFACT_GLOB = "baseline-icount*"
+# Place this in a PR body to skip regression checks (must be at the start of a line).
+REGRESSION_DIRECTIVE = "ci: allow-regressions"
 
 # Don't run exhaustive tests if these files change, even if they contaiin a function
 # definition.
@@ -256,12 +261,26 @@ def locate_baseline(flags: list[str]) -> None:
     eprint("baseline extracted successfully")
 
 
-def check_iai_regressions(iai_home: str | None | Path):
+def check_iai_regressions(args: list[str]):
     """Find regressions in iai summary.json files, exit with failure if any are
     found.
     """
-    if iai_home is None:
-        iai_home = "iai-home"
+
+    iai_home = "iai-home"
+    pr_number = False
+
+    while len(args) > 0:
+        match args:
+            case ["--home", home, *rest]:
+                iai_home = home
+                args = rest
+            case ["--allow-pr-override", pr_num, *rest]:
+                pr_number = pr_num
+                args = rest
+            case _:
+                eprint(USAGE)
+                exit(1)
+
     iai_home = Path(iai_home)
 
     found_summaries = False
@@ -286,9 +305,33 @@ def check_iai_regressions(iai_home: str | None | Path):
         eprint(f"did not find any summary.json files within {iai_home}")
         exit(1)
 
-    if len(regressions) > 0:
-        eprint("Found regressions:", json.dumps(regressions, indent=4))
-        exit(1)
+    if len(regressions) == 0:
+        eprint("No regressions found")
+        return
+
+    eprint("Found regressions:", json.dumps(regressions, indent=4))
+
+    if pr_number is not None:
+        pr_info = sp.check_output(
+            [
+                "gh",
+                "pr",
+                "view",
+                str(pr_number),
+                "--json=number,commits,body,createdAt",
+                "--jq=.commits |= map(.oid)",
+            ],
+            text=True,
+        )
+        pr = json.loads(pr_info)
+        eprint("PR info:", json.dumps(pr, indent=4))
+
+        lines = pr["body"].splitlines()
+        if any(line.startswith(REGRESSION_DIRECTIVE) for line in lines):
+            eprint("PR allows regressions, returning")
+            return
+
+    exit(1)
 
 
 def main():
@@ -299,10 +342,8 @@ def main():
             print(f"matrix={output}")
         case ["locate-baseline", *flags]:
             locate_baseline(flags)
-        case ["check-regressions"]:
-            check_iai_regressions(None)
-        case ["check-regressions", iai_home]:
-            check_iai_regressions(iai_home)
+        case ["check-regressions", *args]:
+            check_iai_regressions(args)
         case ["--help" | "-h"]:
             print(USAGE)
             exit()
