@@ -452,7 +452,7 @@ mod sealed {
     }
 }
 
-/// Vector pointwise addition.
+/// Vector element-wise addition.
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -463,7 +463,7 @@ where
     a.vec_add(b)
 }
 
-/// Vector pointwise subtraction.
+/// Vector element-wise subtraction.
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -474,7 +474,7 @@ where
     a.vec_sub(b)
 }
 
-/// Vector Multiply
+/// Vector element-wise multiplication.
 ///
 /// ## Purpose
 /// Compute the products of corresponding elements of two vectors.
@@ -491,7 +491,7 @@ where
     a.vec_mul(b)
 }
 
-/// Vector max.
+/// Vector element-wise maximum.
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -502,7 +502,7 @@ where
     a.vec_max(b)
 }
 
-/// Vector min.
+/// Vector element-wise minimum.
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
