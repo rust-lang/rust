@@ -1,5 +1,5 @@
 error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:11:11
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:16:11
    |
 LL |     let [&ref x] = &[&0];
    |           ^^^ cannot override to bind by-reference when that is the implicit default
@@ -11,19 +11,7 @@ LL |     let &[&ref x] = &[&0];
    |         +
 
 error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:16:11
-   |
-LL |     let [&ref x] = &[&mut 0];
-   |           ^^^ cannot override to bind by-reference when that is the implicit default
-   |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-help: make the implied reference pattern explicit
-   |
-LL |     let &[&ref x] = &[&mut 0];
-   |         +
-
-error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:21:11
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:22:11
    |
 LL |     let [&ref x] = &mut [&0];
    |           ^^^ cannot override to bind by-reference when that is the implicit default
@@ -35,19 +23,7 @@ LL |     let &mut [&ref x] = &mut [&0];
    |         ++++
 
 error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:26:11
-   |
-LL |     let [&ref x] = &mut [&mut 0];
-   |           ^^^ cannot override to bind by-reference when that is the implicit default
-   |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-help: make the implied reference pattern explicit
-   |
-LL |     let &mut [&ref x] = &mut [&mut 0];
-   |         ++++
-
-error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:31:15
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:28:15
    |
 LL |     let [&mut ref x] = &mut [&mut 0];
    |               ^^^ cannot override to bind by-reference when that is the implicit default
@@ -59,7 +35,7 @@ LL |     let &mut [&mut ref x] = &mut [&mut 0];
    |         ++++
 
 error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:36:15
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:34:15
    |
 LL |     let [&mut ref mut x] = &mut [&mut 0];
    |               ^^^^^^^ cannot override to bind by-reference when that is the implicit default
@@ -68,6 +44,30 @@ LL |     let [&mut ref mut x] = &mut [&mut 0];
 help: make the implied reference pattern explicit
    |
 LL |     let &mut [&mut ref mut x] = &mut [&mut 0];
+   |         ++++
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:46:11
+   |
+LL |     let [&ref x] = &[&mut 0];
+   |           ^^^ cannot override to bind by-reference when that is the implicit default
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL |     let &[&ref x] = &[&mut 0];
+   |         +
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:53:11
+   |
+LL |     let [&ref x] = &mut [&mut 0];
+   |           ^^^ cannot override to bind by-reference when that is the implicit default
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL |     let &mut [&ref x] = &mut [&mut 0];
    |         ++++
 
 error: aborting due to 6 previous errors

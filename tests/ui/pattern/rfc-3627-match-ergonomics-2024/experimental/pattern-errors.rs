@@ -1,5 +1,7 @@
-//@ edition: 2024
-//@ revisions: classic2024 structural2024
+//@ revisions: stable2021 classic2024 structural2024
+//@[stable2021] edition: 2021
+//@[classic2024] edition: 2024
+//@[structural2024] edition: 2024
 //! Test cases for poorly-typed patterns in edition 2024 which are caught by HIR typeck. These must
 //! be separate from cases caught by MIR borrowck or the latter errors may not be emitted.
 #![allow(incomplete_features)]
@@ -10,69 +12,83 @@ pub fn main() {
     if let Some(&mut x) = &Some(&mut 0) {
         //[classic2024]~^ ERROR: mismatched types
         //[classic2024]~| cannot match inherited `&` with `&mut` pattern
-        let _: &u32 = x;
+        #[cfg(stable2021)] let _: u32 = x;
+        #[cfg(structural2024)] let _: &u32 = x;
     }
     if let Some(&mut Some(&x)) = &Some(&mut Some(0)) {
-        //[classic2024]~^ ERROR: mismatched types
+        //[stable2021,classic2024]~^ ERROR: mismatched types
+        //[stable2021]~| expected integer, found `&_`
         //[classic2024]~| cannot match inherited `&` with `&mut` pattern
         let _: u32 = x;
     }
     if let Some(Some(&mut x)) = &Some(Some(&mut 0)) {
         //[classic2024]~^ ERROR: mismatched types
         //[classic2024]~| cannot match inherited `&` with `&mut` pattern
-        let _: &u32 = x;
+        #[cfg(stable2021)] let _: u32 = x;
+        #[cfg(structural2024)] let _: &u32 = x;
     }
 
     if let Some(&mut Some(&_)) = &Some(&Some(0)) {
         //~^ ERROR: mismatched types
-        //~| cannot match inherited `&` with `&mut` pattern
+        //[stable2021]~| types differ in mutability
+        //[classic2024,structural2024]~| cannot match inherited `&` with `&mut` pattern
     }
     if let Some(&Some(&mut _)) = &Some(&mut Some(0)) {
-        //[structural2024]~^ ERROR: mismatched types
+        //[stable2021,structural2024]~^ ERROR: mismatched types
+        //[stable2021]~| types differ in mutability
         //[structural2024]~| cannot match inherited `&` with `&mut` pattern
     }
     if let Some(&Some(&mut _)) = &mut Some(&Some(0)) {
         //~^ ERROR: mismatched types
-        //~| cannot match inherited `&` with `&mut` pattern
+        //[stable2021]~| expected integer, found `&mut _`
+        //[classic2024,structural2024]~| cannot match inherited `&` with `&mut` pattern
     }
     if let Some(&Some(Some(&mut _))) = &Some(Some(&mut Some(0))) {
-        //[structural2024]~^ ERROR: mismatched types
+        //[stable2021,structural2024]~^ ERROR: mismatched types
+        //[stable2021]~| expected `Option<&mut Option<{integer}>>`, found `&_`
         //[structural2024]~| cannot match inherited `&` with `&mut` pattern
     }
     if let Some(&mut Some(x)) = &Some(Some(0)) {
         //~^ ERROR: mismatched types
-        //~| cannot match inherited `&` with `&mut` pattern
+        //[stable2021]~| expected `Option<{integer}>`, found `&mut _`
+        //[classic2024,structural2024]~| cannot match inherited `&` with `&mut` pattern
     }
 }
 
 fn structural_errors_0() {
     let &[&mut x] = &&mut [0];
-    //[structural2024]~^ ERROR: mismatched types
+    //[stable2021,structural2024]~^ ERROR: mismatched types
+    //[stable2021]~| expected integer, found `&mut _`
     //[structural2024]~| cannot match inherited `&` with `&mut` pattern
     let _: u32 = x;
 
     let &[&mut x] = &mut &mut [0];
-    //[structural2024]~^ ERROR: mismatched types
+    //[stable2021,structural2024]~^ ERROR: mismatched types
+    //[stable2021]~| types differ in mutability
     //[structural2024]~| cannot match inherited `&` with `&mut` pattern
     let _: u32 = x;
 
     let &[&mut ref x] = &&mut [0];
-    //[structural2024]~^ ERROR: mismatched types
+    //[stable2021,structural2024]~^ ERROR: mismatched types
+    //[stable2021]~| expected integer, found `&mut _`
     //[structural2024]~| cannot match inherited `&` with `&mut` pattern
     let _: &u32 = x;
 
     let &[&mut ref x] = &mut &mut [0];
-    //[structural2024]~^ ERROR: mismatched types
+    //[stable2021,structural2024]~^ ERROR: mismatched types
+    //[stable2021]~| types differ in mutability
     //[structural2024]~| cannot match inherited `&` with `&mut` pattern
     let _: &u32 = x;
 
     let &[&mut mut x] = &&mut [0];
-    //[structural2024]~^ ERROR: mismatched types
+    //[stable2021,structural2024]~^ ERROR: mismatched types
+    //[stable2021]~| expected integer, found `&mut _`
     //[structural2024]~| cannot match inherited `&` with `&mut` pattern
     let _: u32 = x;
 
     let &[&mut mut x] = &mut &mut [0];
-    //[structural2024]~^ ERROR: mismatched types
+    //[stable2021,structural2024]~^ ERROR: mismatched types
+    //[stable2021]~| types differ in mutability
     //[structural2024]~| cannot match inherited `&` with `&mut` pattern
     let _: u32 = x;
 }
@@ -80,41 +96,49 @@ fn structural_errors_0() {
 fn structural_errors_1() {
     let [&(mut x)] = &[&0];
     //[structural2024]~^ ERROR: binding cannot be both mutable and by-reference
-    let _: &u32 = x;
+    #[cfg(stable2021)] let _: u32 = x;
+    #[cfg(classic2024)] let _: &u32 = x;
 
     let [&(mut x)] = &mut [&0];
     //[structural2024]~^ ERROR: binding cannot be both mutable and by-reference
-    let _: &u32 = x;
+    #[cfg(stable2021)] let _: u32 = x;
+    #[cfg(classic2024)] let _: &u32 = x;
 }
 
 fn structural_errors_2() {
     let [&&mut x] = &[&mut 0];
-    //[structural2024]~^ ERROR: mismatched types
+    //[stable2021,structural2024]~^ ERROR: mismatched types
+    //[stable2021]~| types differ in mutability
     //[structural2024]~| cannot match inherited `&` with `&mut` pattern
     let _: u32 = x;
 
     let [&&mut x] = &mut [&mut 0];
-    //[structural2024]~^ ERROR: mismatched types
+    //[stable2021,structural2024]~^ ERROR: mismatched types
+    //[stable2021]~| types differ in mutability
     //[structural2024]~| cannot match inherited `&` with `&mut` pattern
     let _: u32 = x;
 
     let [&&mut ref x] = &[&mut 0];
-    //[structural2024]~^ ERROR: mismatched types
+    //[stable2021,structural2024]~^ ERROR: mismatched types
+    //[stable2021]~| types differ in mutability
     //[structural2024]~| cannot match inherited `&` with `&mut` pattern
     let _: &u32 = x;
 
     let [&&mut ref x] = &mut [&mut 0];
-    //[structural2024]~^ ERROR: mismatched types
+    //[stable2021,structural2024]~^ ERROR: mismatched types
+    //[stable2021]~| types differ in mutability
     //[structural2024]~| cannot match inherited `&` with `&mut` pattern
     let _: &u32 = x;
 
     let [&&mut mut x] = &[&mut 0];
-    //[structural2024]~^ ERROR: mismatched types
+    //[stable2021,structural2024]~^ ERROR: mismatched types
+    //[stable2021]~| types differ in mutability
     //[structural2024]~| cannot match inherited `&` with `&mut` pattern
     let _: u32 = x;
 
     let [&&mut mut x] = &mut [&mut 0];
-    //[structural2024]~^ ERROR: mismatched types
+    //[stable2021,structural2024]~^ ERROR: mismatched types
+    //[stable2021]~| types differ in mutability
     //[structural2024]~| cannot match inherited `&` with `&mut` pattern
     let _: u32 = x;
 }
@@ -123,20 +147,24 @@ fn classic_errors_0() {
     let [&mut x] = &[&mut 0];
     //[classic2024]~^ ERROR: mismatched types
     //[classic2024]~| cannot match inherited `&` with `&mut` pattern
-    let _: &u32 = x;
+    #[cfg(stable2021)] let _: u32 = x;
+    #[cfg(structural2024)] let _: &u32 = x;
 
     let [&mut &x] = &[&mut 0];
-    //[classic2024]~^ ERROR: mismatched types
+    //[stable2021,classic2024]~^ ERROR: mismatched types
+    //[stable2021]~| expected integer, found `&_`
     //[classic2024]~| cannot match inherited `&` with `&mut` pattern
     let _: u32 = x;
 
     let [&mut &ref x] = &[&mut 0];
-    //[classic2024]~^ ERROR: mismatched types
+    //[stable2021,classic2024]~^ ERROR: mismatched types
+    //[stable2021]~| expected integer, found `&_`
     //[classic2024]~| cannot match inherited `&` with `&mut` pattern
     let _: &u32 = x;
 
     let [&mut &(mut x)] = &[&mut 0];
-    //[classic2024]~^ ERROR: mismatched types
+    //[stable2021,classic2024]~^ ERROR: mismatched types
+    //[stable2021]~| expected integer, found `&_`
     //[classic2024]~| cannot match inherited `&` with `&mut` pattern
     let _: u32 = x;
 }
