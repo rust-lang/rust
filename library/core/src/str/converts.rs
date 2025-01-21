@@ -82,6 +82,7 @@ use crate::ptr;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_str_from_utf8_shared", since = "1.63.0")]
+#[rustc_diagnostic_item = "str_from_utf8"]
 pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
     str::from_utf8(v)
 }
@@ -118,15 +119,9 @@ pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 /// errors that can be returned.
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_str_from_utf8", issue = "91006")]
+#[rustc_diagnostic_item = "str_from_utf8_mut"]
 pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
-    // FIXME(const-hack): This should use `?` again, once it's `const`
-    match super::run_utf8_validation(v) {
-        Ok(_) => {
-            // SAFETY: validation succeeded.
-            Ok(unsafe { str::from_utf8_unchecked_mut(v) })
-        }
-        Err(err) => Err(err),
-    }
+    str::from_utf8_mut(v)
 }
 
 /// Converts a slice of bytes to a string slice without checking
@@ -158,6 +153,7 @@ pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_str_from_utf8_unchecked", since = "1.55.0")]
+#[rustc_diagnostic_item = "from_utf8_unchecked"]
 pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
     // SAFETY: same requirements
     unsafe { str::from_utf8_unchecked(v) }
@@ -184,6 +180,7 @@ pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 #[must_use]
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 #[rustc_const_stable(feature = "const_str_from_utf8_unchecked_mut", since = "1.83.0")]
+#[rustc_diagnostic_item = "from_utf8_unchecked_mut"]
 pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
     // SAFETY: same requirements
     unsafe { str::from_utf8_unchecked_mut(v) }

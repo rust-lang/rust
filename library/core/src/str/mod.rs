@@ -233,9 +233,7 @@ impl str {
     /// assert_eq!("💖", sparkle_heart);
     /// ```
     #[unstable(feature = "inherent_str_constructors", issue = "131114")]
-    #[rustc_const_unstable(feature = "inherent_str_constructors", issue = "131114")]
     #[rustc_allow_const_fn_unstable(str_internals)]
-    #[rustc_diagnostic_item = "str_from_utf8"]
     pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
         // FIXME(const-hack): This should use `?` again, once it's `const`
         match run_utf8_validation(v) {
@@ -278,8 +276,6 @@ impl str {
     /// See the docs for [`Utf8Error`] for more details on the kinds of
     /// errors that can be returned.
     #[unstable(feature = "inherent_str_constructors", issue = "131114")]
-    #[rustc_const_unstable(feature = "inherent_str_constructors", issue = "131114")]
-    #[rustc_diagnostic_item = "str_from_utf8_mut"]
     pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
         // FIXME(const-hack): This should use `?` again, once it's `const`
         match run_utf8_validation(v) {
@@ -319,8 +315,6 @@ impl str {
     #[inline]
     #[must_use]
     #[unstable(feature = "inherent_str_constructors", issue = "131114")]
-    #[rustc_const_unstable(feature = "inherent_str_constructors", issue = "131114")]
-    #[rustc_diagnostic_item = "str_from_utf8_unchecked"]
     pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
         // SAFETY: the caller must guarantee that the bytes `v` are valid UTF-8.
         // Also relies on `&str` and `&[u8]` having the same layout.
@@ -347,8 +341,6 @@ impl str {
     #[inline]
     #[must_use]
     #[unstable(feature = "inherent_str_constructors", issue = "131114")]
-    #[rustc_const_unstable(feature = "inherent_str_constructors", issue = "131114")]
-    #[rustc_diagnostic_item = "str_from_utf8_unchecked_mut"]
     pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
         // SAFETY: the caller must guarantee that the bytes `v`
         // are valid UTF-8, thus the cast to `*mut str` is safe.
