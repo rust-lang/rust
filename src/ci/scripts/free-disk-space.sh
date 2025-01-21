@@ -144,21 +144,25 @@ AVAILABLE_INITIAL=$(getAvailableSpace)
 printDF "BEFORE CLEAN-UP:"
 echo ""
 
-removeDir /usr/local/lib/android
-removeDir /usr/share/dotnet
-removeDir /usr/share/swift
-removeDir "$AGENT_TOOLSDIRECTORY"
-removeDir /usr/local/share/powershell
-removeDir /usr/local/share/chromium
-removeDir /usr/local/lib/node_modules
-removeDir /usr/share/miniconda/
-removeDir /usr/share/icons/
-removeDir "/usr/share/az_*"
-removeDir /usr/lib/heroku/
+dirs_to_remove=(
+    "/usr/local/lib/android"
+    "/usr/share/dotnet"
+    "/usr/share/swift"
+    "$AGENT_TOOLSDIRECTORY"
+    "/usr/local/share/powershell"
+    "/usr/local/share/chromium"
+    "/usr/local/lib/node_modules"
+    "/usr/share/miniconda/"
+    "/usr/share/icons/"
+    "/usr/share/az_*"
+    "/usr/lib/heroku/"
+    "/opt/ghc"
+    "/usr/local/.ghcup"
+)
 
-# Haskell runtime
-removeDir /opt/ghc
-removeDir /usr/local/.ghcup
+for dir in "${dirs_to_remove[@]}"; do
+    removeDir "$dir"
+done
 
 execAndMeasureSpaceChange removeAllSnaps "Snaps"
 execAndMeasureSpaceChange cleanPackages "Unused packages"
