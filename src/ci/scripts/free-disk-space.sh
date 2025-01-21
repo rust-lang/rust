@@ -138,10 +138,7 @@ echo ""
 removeDir /usr/local/lib/android
 removeDir /usr/share/dotnet
 removeDir /usr/share/swift
-removeDir "/usr/local/share/boost"
 removeDir "$AGENT_TOOLSDIRECTORY"
-removeDir /opt/hostedtoolcache/
-removeDir /usr/local/graalvm/
 removeDir /usr/local/share/powershell
 removeDir /usr/local/share/chromium
 removeDir /usr/local/lib/node_modules
