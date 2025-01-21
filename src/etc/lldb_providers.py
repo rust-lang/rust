@@ -3,6 +3,7 @@ import sys
 from lldb import (
     SBData,
     SBError,
+    SBType,
     SBValue,
     eBasicTypeLong,
     eBasicTypeUnsignedLong,
@@ -838,3 +839,159 @@ def StdNonZeroNumberSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
         return str(inner_inner.GetValueAsSigned())
     else:
         return inner_inner.GetValue()
+
+
+class NestedRefSyntheticProvider:
+    def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
+        self.valobj = valobj
+
+    def num_children(self) -> int:
+        return 0
+
+    def get_child_index(self, name: str) -> int:
+        return -1
+
+    def get_child_at_index(self, index: int) -> SBValue:
+        return None
+
+    def update(self):
+        pass
+
+    def has_children(self) -> bool:
+        return False
+
+    def get_type_name(self) -> str:
+        name: str = self.valobj.GetTypeName()
+
+        # on MSVC
+        if name.endswith(" >"):
+            name = name[:-2]
+        elif name.endswith(">"):
+            name = name[:-1]
+
+        if name.startswith("ref$<"):
+            ref_type = "&"
+        elif name.startswith("ref_mut$<"):
+            ref_type = "&mut "
+
+        ptee: SBValue = (
+            self.valobj.GetNonSyntheticValue()
+            .GetChildMemberWithName("ptr")
+            .Dereference()
+        )
+
+        return ref_type + ptee.GetDisplayTypeName()
+
+
+def NestedRefSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
+    inner_val: SBValue = valobj
+    inner_type: SBType = valobj.GetType()
+    inner_type_name: str = inner_type.GetName()
+    while inner_type_name.startswith("ref$<") or inner_type_name.startswith(
+        "ref_mut$<"
+    ):
+        inner_val = (
+            inner_val.GetNonSyntheticValue().GetChildMemberWithName("ptr").Dereference()
+        )
+
+        inner_type = inner_val.GetType()
+        inner_type_name = inner_type.GetName()
+
+    summary = inner_val.summary
+    if summary is None:
+        summary = inner_val.value
+        if summary is None:
+            summary = "{...}"
+    return summary
+
+
+class PtrSyntheticProvider:
+    def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
+        self.valobj = valobj
+
+    def num_children(self) -> int:
+        return 0
+
+    def get_child_index(self, name: str) -> int:
+        return -1
+
+    def get_child_at_index(self, index: int) -> SBValue:
+        return None
+
+    def update(self):
+        pass
+
+    def has_children(self) -> bool:
+        return False
+
+    def get_type_name(self) -> str:
+        type: SBType = self.valobj.GetType()
+        name_parts: list[str] = []
+
+        ptr_type: SBType = type
+        ptee_type: SBType = type.GetPointeeType()
+        ptee_val: SBValue = self.valobj
+
+        # if ptee_name.endswith()
+        while ptr_type.is_pointer or ptr_type.is_reference:
+            ptee_val: SBValue = ptee_val.Dereference()
+            # remove the `const` modifier as it indicates the const-ness of any pointer/ref pointing
+            # *to* it not its own constness
+            # For example:
+            # const u8 *const * -> *const *const u8
+            # u8 *const * -> *const *mut u8
+            # const u8 ** -> *mut *const u8
+            # u8 ** -> *mut *mut u8
+            ptr_name: str = ptr_type.GetName()
+            if ptr_name.endswith("const"):
+                ptr_name = ptr_name[:-5]
+            ptee_name: str = ptee_type.GetName()
+
+            is_ref: bool = ptr_name[-1] == "&"
+
+            if ptee_type.is_pointer or ptee_type.is_reference:
+                if ptee_name.endswith("const"):
+                    if is_ref:
+                        name_parts.append("&")
+                    else:
+                        name_parts.append("*const ")
+                else:
+                    if is_ref:
+                        name_parts.append("&mut ")
+                    else:
+                        name_parts.append("*mut ")
+
+            else:
+                if ptee_name.startswith("const "):
+                    if is_ref:
+                        name_parts.append("&")
+                    else:
+                        name_parts.append("*const ")
+                else:
+                    if is_ref:
+                        name_parts.append("&mut ")
+                    else:
+                        name_parts.append("*mut ")
+
+            ptr_type = ptee_type
+            ptee_type = ptee_type.GetPointeeType()
+
+        inner_name = ptee_val.GetDisplayTypeName()
+        if inner_name.startswith("const "):
+            inner_name = inner_name[6:]
+        name_parts.append(inner_name)
+        return "".join(name_parts)
+
+
+def PtrSummaryProvider(valobj: SBValue, dict) -> str:
+    t: SBType = valobj.GetType()
+    while t.is_pointer or t.is_reference:
+        valobj = valobj.Dereference()
+        t = valobj.GetType()
+
+    summary = valobj.summary
+    if summary is None:
+        summary = valobj.value
+        if summary is None:
+            summary = "{...}"
+    return summary
