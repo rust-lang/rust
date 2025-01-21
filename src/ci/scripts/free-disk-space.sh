@@ -130,6 +130,10 @@ cleanDocker() {
     sudo docker image prune --all --force || true
 }
 
+removeAllSnaps() {
+    sudo snap remove $(snap list | awk '!/^Name|^core|^snapd/ {print $1}')
+}
+
 # Display initial disk space stats
 
 AVAILABLE_INITIAL=$(getAvailableSpace)
@@ -152,7 +156,8 @@ removeDir /usr/local/lib/node_modules
 removeDir /opt/ghc
 removeDir /usr/local/.ghcup
 
-execAndMeasureSpaceChange cleanPackages "Large misc. packages"
+execAndMeasureSpaceChange removeAllSnaps "Snaps"
+execAndMeasureSpaceChange cleanPackages "Unused packages"
 execAndMeasureSpaceChange cleanDocker "Docker images"
 execAndMeasureSpaceChange cleanSwap "Swap storage"
 
