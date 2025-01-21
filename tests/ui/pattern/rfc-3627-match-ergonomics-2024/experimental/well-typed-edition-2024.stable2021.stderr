@@ -1,20 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/well-typed-edition-2024.rs:14:22
-   |
-LL |     if let Some(Some(&x)) = &Some(&Some(0)) {
-   |                      ^^     --------------- this expression has type `&Option<&Option<{integer}>>`
-   |                      |
-   |                      expected integer, found `&_`
-   |
-   = note:   expected type `{integer}`
-           found reference `&_`
-help: consider removing `&` from the pattern
-   |
-LL |     if let Some(Some(x)) = &Some(&Some(0)) {
-   |                      ~
-
-error[E0308]: mismatched types
-  --> $DIR/well-typed-edition-2024.rs:23:23
+  --> $DIR/well-typed-edition-2024.rs:30:23
    |
 LL |     if let Some(Some(&&x)) = &Some(Some(&0)) {
    |                       ^^     --------------- this expression has type `&Option<Option<&{integer}>>`
@@ -30,7 +15,22 @@ LL +     if let Some(Some(&x)) = &Some(Some(&0)) {
    |
 
 error[E0308]: mismatched types
-  --> $DIR/well-typed-edition-2024.rs:28:17
+  --> $DIR/well-typed-edition-2024.rs:37:22
+   |
+LL |     if let Some(Some(&x)) = &Some(&Some(0)) {
+   |                      ^^     --------------- this expression has type `&Option<&Option<{integer}>>`
+   |                      |
+   |                      expected integer, found `&_`
+   |
+   = note:   expected type `{integer}`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL |     if let Some(Some(x)) = &Some(&Some(0)) {
+   |                      ~
+
+error[E0308]: mismatched types
+  --> $DIR/well-typed-edition-2024.rs:42:17
    |
 LL |     if let Some(&Some(x)) = &Some(Some(0)) {
    |                 ^^^^^^^^    -------------- this expression has type `&Option<Option<{integer}>>`
@@ -41,7 +41,7 @@ LL |     if let Some(&Some(x)) = &Some(Some(0)) {
            found reference `&_`
 
 error[E0308]: mismatched types
-  --> $DIR/well-typed-edition-2024.rs:33:22
+  --> $DIR/well-typed-edition-2024.rs:47:22
    |
 LL |     if let Some(Some(&mut x)) = &mut Some(&mut Some(0)) {
    |                      ^^^^^^     ----------------------- this expression has type `&mut Option<&mut Option<{integer}>>`
@@ -51,7 +51,7 @@ LL |     if let Some(Some(&mut x)) = &mut Some(&mut Some(0)) {
    = note:           expected type `{integer}`
            found mutable reference `&mut _`
 note: to declare a mutable binding use: `mut x`
-  --> $DIR/well-typed-edition-2024.rs:33:22
+  --> $DIR/well-typed-edition-2024.rs:47:22
    |
 LL |     if let Some(Some(&mut x)) = &mut Some(&mut Some(0)) {
    |                      ^^^^^^
@@ -61,59 +61,7 @@ LL |     if let Some(Some(x)) = &mut Some(&mut Some(0)) {
    |                      ~
 
 error[E0308]: mismatched types
-  --> $DIR/well-typed-edition-2024.rs:38:23
-   |
-LL |     if let Some(&Some(&x)) = &mut Some(&Some(0)) {
-   |                       ^^     ------------------- this expression has type `&mut Option<&Option<{integer}>>`
-   |                       |
-   |                       expected integer, found `&_`
-   |
-   = note:   expected type `{integer}`
-           found reference `&_`
-help: consider removing `&` from the pattern
-   |
-LL |     if let Some(&Some(x)) = &mut Some(&Some(0)) {
-   |                       ~
-
-error[E0308]: mismatched types
-  --> $DIR/well-typed-edition-2024.rs:50:17
-   |
-LL |     if let Some(&Some(&x)) = &Some(&mut Some(0)) {
-   |                 ^^^^^^^^^    ------------------- this expression has type `&Option<&mut Option<{integer}>>`
-   |                 |
-   |                 types differ in mutability
-   |
-   = note: expected mutable reference `&mut Option<{integer}>`
-                      found reference `&_`
-
-error[E0308]: mismatched types
-  --> $DIR/well-typed-edition-2024.rs:55:23
-   |
-LL |     if let Some(&Some(&x)) = &Some(&Some(0)) {
-   |                       ^^     --------------- this expression has type `&Option<&Option<{integer}>>`
-   |                       |
-   |                       expected integer, found `&_`
-   |
-   = note:   expected type `{integer}`
-           found reference `&_`
-help: consider removing `&` from the pattern
-   |
-LL |     if let Some(&Some(x)) = &Some(&Some(0)) {
-   |                       ~
-
-error[E0308]: mismatched types
-  --> $DIR/well-typed-edition-2024.rs:60:17
-   |
-LL |     if let Some(&Some(Some(&x))) = &Some(Some(&mut Some(0))) {
-   |                 ^^^^^^^^^^^^^^^    ------------------------- this expression has type `&Option<Option<&mut Option<{integer}>>>`
-   |                 |
-   |                 expected `Option<&mut Option<{integer}>>`, found `&_`
-   |
-   = note:   expected enum `Option<&mut Option<{integer}>>`
-           found reference `&_`
-
-error[E0308]: mismatched types
-  --> $DIR/well-typed-edition-2024.rs:65:23
+  --> $DIR/well-typed-edition-2024.rs:54:23
    |
 LL |     if let Some(&Some(&x)) = Some(&Some(&mut 0)) {
    |                       ^^     ------------------- this expression has type `Option<&Option<&mut {integer}>>`
@@ -128,7 +76,33 @@ LL |     if let Some(&Some(x)) = Some(&Some(&mut 0)) {
    |                       ~
 
 error[E0308]: mismatched types
-  --> $DIR/well-typed-edition-2024.rs:70:17
+  --> $DIR/well-typed-edition-2024.rs:61:23
+   |
+LL |     if let Some(&Some(&x)) = &Some(&Some(0)) {
+   |                       ^^     --------------- this expression has type `&Option<&Option<{integer}>>`
+   |                       |
+   |                       expected integer, found `&_`
+   |
+   = note:   expected type `{integer}`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL |     if let Some(&Some(x)) = &Some(&Some(0)) {
+   |                       ~
+
+error[E0308]: mismatched types
+  --> $DIR/well-typed-edition-2024.rs:68:17
+   |
+LL |     if let Some(&Some(Some(&x))) = &Some(Some(&mut Some(0))) {
+   |                 ^^^^^^^^^^^^^^^    ------------------------- this expression has type `&Option<Option<&mut Option<{integer}>>>`
+   |                 |
+   |                 expected `Option<&mut Option<{integer}>>`, found `&_`
+   |
+   = note:   expected enum `Option<&mut Option<{integer}>>`
+           found reference `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/well-typed-edition-2024.rs:73:17
    |
 LL |     if let Some(&Some(x)) = &mut Some(Some(0)) {
    |                 ^^^^^^^^    ------------------ this expression has type `&mut Option<Option<{integer}>>`
@@ -139,7 +113,33 @@ LL |     if let Some(&Some(x)) = &mut Some(Some(0)) {
            found reference `&_`
 
 error[E0308]: mismatched types
-  --> $DIR/well-typed-edition-2024.rs:78:10
+  --> $DIR/well-typed-edition-2024.rs:80:17
+   |
+LL |     if let Some(&Some(&x)) = &Some(&mut Some(0)) {
+   |                 ^^^^^^^^^    ------------------- this expression has type `&Option<&mut Option<{integer}>>`
+   |                 |
+   |                 types differ in mutability
+   |
+   = note: expected mutable reference `&mut Option<{integer}>`
+                      found reference `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/well-typed-edition-2024.rs:85:23
+   |
+LL |     if let Some(&Some(&x)) = &mut Some(&Some(0)) {
+   |                       ^^     ------------------- this expression has type `&mut Option<&Option<{integer}>>`
+   |                       |
+   |                       expected integer, found `&_`
+   |
+   = note:   expected type `{integer}`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL |     if let Some(&Some(x)) = &mut Some(&Some(0)) {
+   |                       ~
+
+error[E0308]: mismatched types
+  --> $DIR/well-typed-edition-2024.rs:93:10
    |
 LL |     let [&mut x] = &mut [&0];
    |          ^^^^^^    --------- this expression has type `&mut [&{integer}; 1]`
@@ -149,7 +149,7 @@ LL |     let [&mut x] = &mut [&0];
    = note:      expected reference `&{integer}`
            found mutable reference `&mut _`
 note: to declare a mutable binding use: `mut x`
-  --> $DIR/well-typed-edition-2024.rs:78:10
+  --> $DIR/well-typed-edition-2024.rs:93:10
    |
 LL |     let [&mut x] = &mut [&0];
    |          ^^^^^^
@@ -160,7 +160,7 @@ LL +     let [x] = &mut [&0];
    |
 
 error[E0308]: mismatched types
-  --> $DIR/well-typed-edition-2024.rs:83:10
+  --> $DIR/well-typed-edition-2024.rs:98:10
    |
 LL |     let [&mut ref x] = &mut [&0];
    |          ^^^^^^^^^^    --------- this expression has type `&mut [&{integer}; 1]`
@@ -170,7 +170,7 @@ LL |     let [&mut ref x] = &mut [&0];
    = note:      expected reference `&{integer}`
            found mutable reference `&mut _`
 note: to declare a mutable binding use: `mut x`
-  --> $DIR/well-typed-edition-2024.rs:83:10
+  --> $DIR/well-typed-edition-2024.rs:98:10
    |
 LL |     let [&mut ref x] = &mut [&0];
    |          ^^^^^^^^^^
@@ -181,7 +181,7 @@ LL +     let [ref x] = &mut [&0];
    |
 
 error[E0308]: mismatched types
-  --> $DIR/well-typed-edition-2024.rs:88:10
+  --> $DIR/well-typed-edition-2024.rs:103:10
    |
 LL |     let [&mut ref mut x] = &mut [&0];
    |          ^^^^^^^^^^^^^^    --------- this expression has type `&mut [&{integer}; 1]`
@@ -191,7 +191,7 @@ LL |     let [&mut ref mut x] = &mut [&0];
    = note:      expected reference `&{integer}`
            found mutable reference `&mut _`
 note: to declare a mutable binding use: `mut x`
-  --> $DIR/well-typed-edition-2024.rs:88:10
+  --> $DIR/well-typed-edition-2024.rs:103:10
    |
 LL |     let [&mut ref mut x] = &mut [&0];
    |          ^^^^^^^^^^^^^^
@@ -202,7 +202,7 @@ LL +     let [ref mut x] = &mut [&0];
    |
 
 error[E0308]: mismatched types
-  --> $DIR/well-typed-edition-2024.rs:93:10
+  --> $DIR/well-typed-edition-2024.rs:108:10
    |
 LL |     let [&mut mut x] = &mut [&0];
    |          ^^^^^^^^^^    --------- this expression has type `&mut [&{integer}; 1]`
@@ -212,7 +212,7 @@ LL |     let [&mut mut x] = &mut [&0];
    = note:      expected reference `&{integer}`
            found mutable reference `&mut _`
 note: to declare a mutable binding use: `mut x`
-  --> $DIR/well-typed-edition-2024.rs:93:10
+  --> $DIR/well-typed-edition-2024.rs:108:10
    |
 LL |     let [&mut mut x] = &mut [&0];
    |          ^^^^^^^^^^
@@ -223,7 +223,7 @@ LL +     let [mut x] = &mut [&0];
    |
 
 error[E0308]: mismatched types
-  --> $DIR/well-typed-edition-2024.rs:98:10
+  --> $DIR/well-typed-edition-2024.rs:113:10
    |
 LL |     let [&mut &x] = &mut [&0];
    |          ^^^^^^^    --------- this expression has type `&mut [&{integer}; 1]`
@@ -234,7 +234,7 @@ LL |     let [&mut &x] = &mut [&0];
            found mutable reference `&mut _`
 
 error[E0308]: mismatched types
-  --> $DIR/well-typed-edition-2024.rs:103:10
+  --> $DIR/well-typed-edition-2024.rs:118:10
    |
 LL |     let [&mut &ref x] = &mut [&0];
    |          ^^^^^^^^^^^    --------- this expression has type `&mut [&{integer}; 1]`
@@ -245,7 +245,7 @@ LL |     let [&mut &ref x] = &mut [&0];
            found mutable reference `&mut _`
 
 error[E0308]: mismatched types
-  --> $DIR/well-typed-edition-2024.rs:108:10
+  --> $DIR/well-typed-edition-2024.rs:123:10
    |
 LL |     let [&mut &(mut x)] = &mut [&0];
    |          ^^^^^^^^^^^^^    --------- this expression has type `&mut [&{integer}; 1]`
