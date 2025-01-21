@@ -1235,9 +1235,12 @@ fn is_pwr2plus1(val: u128) -> bool {
     val != 0 && is_pwr2(val - 1)
 }
 
+/// Formats a power of two as an exponent of two, i.e. 16 => ⁴. Note that `num` MUST be a power
+/// of 2, or this function will panic.
 fn pwr2_to_exponent(num: u128) -> String {
     const DIGITS: [char; 10] = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
-    (127 - num.leading_zeros())
+    assert_eq!(num.count_ones(), 1);
+    num.trailing_zeros()
         .to_string()
         .chars()
         .map(|c| c.to_digit(10).unwrap() as usize)
