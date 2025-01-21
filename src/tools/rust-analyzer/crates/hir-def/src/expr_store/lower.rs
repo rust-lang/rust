@@ -1802,10 +1802,10 @@ impl ExprCollector<'_> {
                                 if ident.is_simple_ident() {
                                     return ident
                                         .name()
-                                        .and_then(|name| Some(name.as_name()))
-                                        .and_then(|hir_name| Some(Path::from(hir_name)))
-                                        .and_then(|path| {
-                                            Some(self.alloc_expr_from_pat(Expr::Path(path), ptr))
+                                        .map(|name| name.as_name())
+                                        .map(Path::from)
+                                        .map(|path| {
+                                            self.alloc_expr_from_pat(Expr::Path(path), ptr)
                                         });
                                 }
 

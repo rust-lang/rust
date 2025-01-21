@@ -1359,7 +1359,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
     }
 
     fn lower_literal_or_const_to_operand(&mut self, ty: Ty, loc: &ExprId) -> Result<Operand> {
-        match dbg!(&self.body.exprs[*loc]) {
+        match &self.body.exprs[*loc] {
             Expr::Literal(l) => self.lower_literal_to_operand(ty, l),
             Expr::Path(c) => {
                 let edition = self.edition();
@@ -1369,7 +1369,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     .resolver
                     .resolve_path_in_value_ns(self.db.upcast(), c, HygieneId::ROOT)
                     .ok_or_else(unresolved_name)?;
-                dbg!(match dbg!(pr) {
+                match pr {
                     ResolveValueResult::ValueNs(v, _) => {
                         if let ValueNs::ConstId(c) = v {
                             self.lower_const_to_operand(Substitution::empty(Interner), c.into(), ty)
@@ -1380,7 +1380,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     ResolveValueResult::Partial(_, _, _) => {
                         not_supported!("associated constants in range pattern")
                     }
-                })
+                }
             }
             _ => {
                 not_supported!("only `char` and numeric types are allowed in range patterns");

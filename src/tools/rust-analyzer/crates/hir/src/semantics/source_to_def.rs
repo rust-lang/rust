@@ -347,7 +347,7 @@ impl SourceToDefCtx<'_, '_> {
         &mut self,
         src: InFile<&ast::IdentPat>,
     ) -> Option<(DefWithBodyId, BindingId)> {
-        let container = dbg!(self.find_pat_or_label_container(src.syntax_ref()))?;
+        let container = self.find_pat_or_label_container(src.syntax_ref())?;
         let (body, source_map) = self.db.body_with_source_map(container);
         let src = src.cloned().map(ast::Pat::from);
         let pat_id = source_map.node_pat(src.as_ref())?;
