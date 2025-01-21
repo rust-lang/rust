@@ -103,6 +103,7 @@ llvm-config = "{llvm_config}"
         "tests/incremental",
         "tests/mir-opt",
         "tests/pretty",
+        "tests/run-make/glibc-symbols-x86_64-unknown-linux-gnu",
         "tests/ui",
         "tests/crashes",
     ];

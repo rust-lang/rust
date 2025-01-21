@@ -1280,7 +1280,7 @@ pub fn llvm_has_libzstd(config: &Config) -> bool {
             let stderr = String::from_utf8(output.stderr).ok()?;
             let zstd_available = !stderr.contains("LLVM was not built with LLVM_ENABLE_ZSTD");
 
-            // We don't partiCOMPILETEST_ENABLE_OPT_DIST_TESTScularly need to clean the link up (so the previous commands could fail
+            // We don't particularly need to clean the link up (so the previous commands could fail
             // in theory but won't in practice), but we can try.
             std::fs::remove_file(lld_symlink_path).ok()?;
 

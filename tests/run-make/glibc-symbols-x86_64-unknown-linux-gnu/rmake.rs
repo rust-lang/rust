@@ -81,7 +81,7 @@ fn get_glibc_symbols(file: &Path) -> Vec<GlibcSymbol> {
 
     // Uses llvm-objdump, because implementing this using the `object` crate is quite complicated.
     llvm_objdump()
-        .arg("-T")
+        .arg("--dynamic-syms")
         .arg(file)
         .run()
         .stdout_utf8()
