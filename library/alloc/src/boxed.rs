@@ -1661,7 +1661,19 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     where
         A: 'a,
     {
-        unsafe { &mut *Box::into_raw(b) }
+        unsafe {
+            let ptr = Box::into_raw(b);
+
+            #[cfg(miri)]
+            {
+                extern "Rust" {
+                    fn miri_static_root(ptr: *const u8);
+                }
+                miri_static_root(ptr.cast());
+            }
+
+            &mut *ptr
+        }
     }
 
     /// Converts a `Box<T>` into a `Pin<Box<T>>`. If `T` does not implement [`Unpin`], then
