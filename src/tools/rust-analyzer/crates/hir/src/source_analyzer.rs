@@ -18,7 +18,7 @@ use hir_def::{
         scope::{ExprScopes, ScopeId},
         Body, BodySourceMap, HygieneId,
     },
-    hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat, PatId},
+    hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
     lang_item::LangItem,
     lower::LowerCtx,
     nameres::MacroSubNs,
@@ -139,15 +139,15 @@ impl SourceAnalyzer {
         sm.node_expr(src.as_ref())
     }
 
-    fn pat_id(&self, pat: &ast::Pat) -> Option<PatId> {
+    fn pat_id(&self, pat: &ast::Pat) -> Option<ExprOrPatId> {
         // FIXME: macros, see `expr_id`
         let src = InFile { file_id: self.file_id, value: pat };
-        self.body_source_map()?.node_pat(src).and_then(ExprOrPatId::as_pat)
+        self.body_source_map()?.node_pat(src)
     }
 
     fn binding_id_of_pat(&self, pat: &ast::IdentPat) -> Option<BindingId> {
         let pat_id = self.pat_id(&pat.clone().into())?;
-        if let Pat::Bind { id, .. } = self.body()?.pats[pat_id] {
+        if let Pat::Bind { id, .. } = self.body()?.pats[pat_id.as_pat()?] {
             Some(id)
         } else {
             None
@@ -212,8 +212,10 @@ impl SourceAnalyzer {
     ) -> Option<(Type, Option<Type>)> {
         let pat_id = self.pat_id(pat)?;
         let infer = self.infer.as_ref()?;
-        let coerced =
-            infer.pat_adjustments.get(&pat_id).and_then(|adjusts| adjusts.last().cloned());
+        let coerced = infer
+            .pat_adjustments
+            .get(&pat_id.as_pat()?)
+            .and_then(|adjusts| adjusts.last().cloned());
         let ty = infer[pat_id].clone();
         let mk_ty = |ty| Type::new_with_resolver(db, &self.resolver, ty);
         Some((mk_ty(ty), coerced.map(mk_ty)))
@@ -248,7 +250,7 @@ impl SourceAnalyzer {
     ) -> Option<BindingMode> {
         let id = self.pat_id(&pat.clone().into())?;
         let infer = self.infer.as_ref()?;
-        infer.binding_modes.get(id).map(|bm| match bm {
+        infer.binding_modes.get(id.as_pat()?).map(|bm| match bm {
             hir_ty::BindingMode::Move => BindingMode::Move,
             hir_ty::BindingMode::Ref(hir_ty::Mutability::Mut) => BindingMode::Ref(Mutability::Mut),
             hir_ty::BindingMode::Ref(hir_ty::Mutability::Not) => {
@@ -266,7 +268,7 @@ impl SourceAnalyzer {
         Some(
             infer
                 .pat_adjustments
-                .get(&pat_id)?
+                .get(&pat_id.as_pat()?)?
                 .iter()
                 .map(|ty| Type::new_with_resolver(db, &self.resolver, ty.clone()))
                 .collect(),
@@ -649,10 +651,10 @@ impl SourceAnalyzer {
         let field_name = field.field_name()?.as_name();
         let record_pat = ast::RecordPat::cast(field.syntax().parent().and_then(|p| p.parent())?)?;
         let pat_id = self.pat_id(&record_pat.into())?;
-        let variant = self.infer.as_ref()?.variant_resolution_for_pat(pat_id)?;
+        let variant = self.infer.as_ref()?.variant_resolution_for_pat(pat_id.as_pat()?)?;
         let variant_data = variant.variant_data(db.upcast());
         let field = FieldId { parent: variant, local_id: variant_data.field(&field_name)? };
-        let (adt, subst) = self.infer.as_ref()?.type_of_pat.get(pat_id)?.as_adt()?;
+        let (adt, subst) = self.infer.as_ref()?.type_of_pat.get(pat_id.as_pat()?)?.as_adt()?;
         let field_ty =
             db.field_types(variant).get(field.local_id)?.clone().substitute(Interner, subst);
         Some((
@@ -684,7 +686,7 @@ impl SourceAnalyzer {
     ) -> Option<ModuleDef> {
         let pat_id = self.pat_id(&pat.clone().into())?;
         let body = self.body()?;
-        let path = match &body[pat_id] {
+        let path = match &body[pat_id.as_pat()?] {
             Pat::Path(path) => path,
             _ => return None,
         };
@@ -783,7 +785,7 @@ impl SourceAnalyzer {
                 prefer_value_ns = true;
             } else if let Some(path_pat) = parent().and_then(ast::PathPat::cast) {
                 let pat_id = self.pat_id(&path_pat.into())?;
-                if let Some((assoc, subs)) = infer.assoc_resolutions_for_pat(pat_id) {
+                if let Some((assoc, subs)) = infer.assoc_resolutions_for_pat(pat_id.as_pat()?) {
                     let (assoc, subst) = match assoc {
                         AssocItemId::ConstId(const_id) => {
                             let (konst, subst) =
@@ -807,7 +809,7 @@ impl SourceAnalyzer {
                     return Some((PathResolution::Def(AssocItem::from(assoc).into()), Some(subst)));
                 }
                 if let Some(VariantId::EnumVariantId(variant)) =
-                    infer.variant_resolution_for_pat(pat_id)
+                    infer.variant_resolution_for_pat(pat_id.as_pat()?)
                 {
                     return Some((PathResolution::Def(ModuleDef::Variant(variant.into())), None));
                 }
@@ -824,7 +826,7 @@ impl SourceAnalyzer {
                     || parent().and_then(ast::TupleStructPat::cast).map(ast::Pat::from);
                 if let Some(pat) = record_pat.or_else(tuple_struct_pat) {
                     let pat_id = self.pat_id(&pat)?;
-                    let variant_res_for_pat = infer.variant_resolution_for_pat(pat_id);
+                    let variant_res_for_pat = infer.variant_resolution_for_pat(pat_id.as_pat()?);
                     if let Some(VariantId::EnumVariantId(variant)) = variant_res_for_pat {
                         return Some((
                             PathResolution::Def(ModuleDef::Variant(variant.into())),
@@ -1043,7 +1045,7 @@ impl SourceAnalyzer {
         let body = self.body()?;
         let infer = self.infer.as_ref()?;
 
-        let pat_id = self.pat_id(&pattern.clone().into())?;
+        let pat_id = self.pat_id(&pattern.clone().into())?.as_pat()?;
         let substs = infer.type_of_pat[pat_id].as_adt()?.1;
 
         let (variant, missing_fields, _exhaustive) =
