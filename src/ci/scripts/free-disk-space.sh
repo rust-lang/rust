@@ -118,15 +118,15 @@ cleanPackages() {
     sudo apt-get autoremove -y || echo "::warning::The command [sudo apt-get autoremove -y] failed"
     sudo apt-get clean || echo "::warning::The command [sudo apt-get clean] failed failed"
 
-    echo "Installed packages sorted by size:"
+    echo "=> Installed packages sorted by size:"
     dpkg-query -W --showformat='${Installed-Size} ${Package}\n' | sort -nr
 }
 
 # Remove Docker images
 cleanDocker() {
-    echo "Removing the following docker images:"
+    echo "=> Removing the following docker images:"
     sudo docker image ls
-    echo "Removing docker images..."
+    echo "=> Removing docker images..."
     sudo docker image prune --all --force || true
 }
 
@@ -136,6 +136,9 @@ AVAILABLE_INITIAL=$(getAvailableSpace)
 
 printDF "BEFORE CLEAN-UP:"
 echo ""
+
+echo "=> installed snaps:"
+snap list
 
 removeDir /usr/local/lib/android
 removeDir /usr/share/dotnet
@@ -153,7 +156,7 @@ execAndMeasureSpaceChange cleanPackages "Large misc. packages"
 execAndMeasureSpaceChange cleanDocker "Docker images"
 execAndMeasureSpaceChange cleanSwap "Swap storage"
 
-echo "largest directories:"
+echo "=> largest directories:"
 du --max-depth=7 /* -h | sort -nr | head -1000
 
 # Output saved space statistic
