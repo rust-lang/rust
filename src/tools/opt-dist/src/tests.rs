@@ -69,6 +69,7 @@ change-id = 115898
 
 [rust]
 channel = "{channel}"
+verbose-tests = true
 
 [build]
 rustc = "{rustc}"
