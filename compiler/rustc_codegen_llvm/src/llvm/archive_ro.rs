@@ -5,17 +5,17 @@ use std::{slice, str};
 
 use rustc_fs_util::path_to_c_string;
 
-pub struct ArchiveRO {
+pub(crate) struct ArchiveRO {
     pub raw: &'static mut super::Archive,
 }
 
 unsafe impl Send for ArchiveRO {}
 
-pub struct Iter<'a> {
+pub(crate) struct Iter<'a> {
     raw: &'a mut super::ArchiveIterator<'a>,
 }
 
-pub struct Child<'a> {
+pub(crate) struct Child<'a> {
     pub raw: &'a mut super::ArchiveChild<'a>,
 }
 
@@ -26,7 +26,7 @@ impl ArchiveRO {
     ///
     /// If this archive is used with a mutable method, then an error will be
     /// raised.
-    pub fn open(dst: &Path) -> Result<ArchiveRO, String> {
+    pub(crate) fn open(dst: &Path) -> Result<ArchiveRO, String> {
         unsafe {
             let s = path_to_c_string(dst);
             let ar = super::LLVMRustOpenArchive(s.as_ptr()).ok_or_else(|| {
@@ -36,7 +36,7 @@ impl ArchiveRO {
         }
     }
 
-    pub fn iter(&self) -> Iter<'_> {
+    pub(crate) fn iter(&self) -> Iter<'_> {
         unsafe { Iter { raw: super::LLVMRustArchiveIteratorNew(self.raw) } }
     }
 }
@@ -71,7 +71,7 @@ impl<'a> Drop for Iter<'a> {
 }
 
 impl<'a> Child<'a> {
-    pub fn name(&self) -> Option<&'a str> {
+    pub(crate) fn name(&self) -> Option<&'a str> {
         unsafe {
             let mut name_len = 0;
             let name_ptr = super::LLVMRustArchiveChildName(self.raw, &mut name_len);
