@@ -10,9 +10,8 @@
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct x4<T>(pub [T; 4]);
 
-extern "rust-intrinsic" {
-    fn simd_gather<T, U, V>(x: T, y: U, z: V) -> T;
-}
+#[rustc_intrinsic]
+unsafe fn simd_gather<T, U, V>(x: T, y: U, z: V) -> T;
 
 fn main() {
     let x: [usize; 4] = [10, 11, 12, 13];
