@@ -6,3 +6,7 @@ target
 Cargo.lock
 musl/
 **.tar.gz
+
+# Benchmark cache
+iai-home
+baseline-*
