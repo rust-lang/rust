@@ -1,6 +1,7 @@
 use std::ffi::{CStr, CString};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::ptr::null_mut;
 use std::sync::Arc;
 use std::{fs, slice, str};
 
@@ -15,7 +16,7 @@ use rustc_codegen_ssa::back::write::{
     TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
+use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{DiagCtxtHandle, FatalError, Level};
@@ -534,6 +535,7 @@ pub(crate) unsafe fn llvm_optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     dcx: DiagCtxtHandle<'_>,
     module: &ModuleCodegen<ModuleLlvm>,
+    thin_lto_buffer: Option<&mut *mut llvm::ThinLTOBuffer>,
     config: &ModuleConfig,
     opt_level: config::OptLevel,
     opt_stage: llvm::OptStage,
@@ -566,7 +568,17 @@ pub(crate) unsafe fn llvm_optimize(
         vectorize_loop = config.vectorize_loop;
     }
     trace!(?unroll_loops, ?vectorize_slp, ?vectorize_loop);
-    let using_thin_buffers = opt_stage == llvm::OptStage::PreLinkThinLTO || config.bitcode_needed();
+    if thin_lto_buffer.is_some() {
+        assert!(
+            matches!(
+                opt_stage,
+                llvm::OptStage::PreLinkNoLTO
+                    | llvm::OptStage::PreLinkFatLTO
+                    | llvm::OptStage::PreLinkThinLTO
+            ),
+            "the bitcode for LTO can only be obtained at the pre-link stage"
+        );
+    }
     let pgo_gen_path = get_pgo_gen_path(config);
     let pgo_use_path = get_pgo_use_path(config);
     let pgo_sample_use_path = get_pgo_sample_use_path(config);
@@ -626,7 +638,9 @@ pub(crate) unsafe fn llvm_optimize(
             config.no_prepopulate_passes,
             config.verify_llvm_ir,
             config.lint_llvm_ir,
-            using_thin_buffers,
+            thin_lto_buffer,
+            config.emit_thin_lto,
+            config.emit_thin_lto_summary,
             config.merge_functions,
             unroll_loops,
             vectorize_slp,
@@ -686,17 +700,61 @@ pub(crate) unsafe fn optimize(
 
         // If we know that we will later run AD, then we disable vectorization and loop unrolling
         let skip_size_increasing_opts = cfg!(llvm_enzyme);
-        return unsafe {
+        // The embedded bitcode is used to run LTO/ThinLTO.
+        // The bitcode obtained during the `codegen` phase is no longer suitable for performing LTO.
+        // It may have undergone LTO due to ThinLocal, so we need to obtain the embedded bitcode at
+        // this point.
+        let mut thin_lto_buffer = if (module.kind == ModuleKind::Regular
+            && config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full))
+            || config.emit_thin_lto_summary
+        {
+            Some(null_mut())
+        } else {
+            None
+        };
+        unsafe {
             llvm_optimize(
                 cgcx,
                 dcx,
                 module,
+                thin_lto_buffer.as_mut(),
                 config,
                 opt_level,
                 opt_stage,
                 skip_size_increasing_opts,
             )
-        };
+        }?;
+        if let Some(thin_lto_buffer) = thin_lto_buffer {
+            let thin_lto_buffer = unsafe { ThinBuffer::from_raw_ptr(thin_lto_buffer) };
+            let thin_bc_out =
+                if let Some(incr_comp_session_dir) = cgcx.incr_comp_session_dir.as_ref() {
+                    incr_comp_session_dir.join(pre_lto_embed_bitcode_filename(module_name.unwrap()))
+                } else {
+                    cgcx.output_filenames.temp_path(OutputType::ThinBitcode, module_name)
+                };
+            if let Err(err) = fs::write(&thin_bc_out, thin_lto_buffer.data()) {
+                dcx.emit_err(WriteBytecode { path: &thin_bc_out, err });
+            }
+            let bc_summary_out =
+                cgcx.output_filenames.temp_path(OutputType::ThinLinkBitcode, module_name);
+            if config.emit_thin_lto_summary
+                && let Some(thin_link_bitcode_filename) = bc_summary_out.file_name()
+            {
+                let summary_data = thin_lto_buffer.thin_link_data();
+                cgcx.prof.artifact_size(
+                    "llvm_bitcode_summary",
+                    thin_link_bitcode_filename.to_string_lossy(),
+                    summary_data.len() as u64,
+                );
+                let _timer = cgcx.prof.generic_activity_with_arg(
+                    "LLVM_module_codegen_emit_bitcode_summary",
+                    &*module.name,
+                );
+                if let Err(err) = fs::write(&bc_summary_out, summary_data) {
+                    dcx.emit_err(WriteBytecode { path: &bc_summary_out, err });
+                }
+            }
+        }
     }
     Ok(())
 }
@@ -777,59 +835,58 @@ pub(crate) unsafe fn codegen(
         //   asm from LLVM and use `gcc` to create the object file.
 
         let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
-        let bc_summary_out =
-            cgcx.output_filenames.temp_path(OutputType::ThinLinkBitcode, module_name);
         let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
 
         if config.bitcode_needed() {
-            let _timer = cgcx
-                .prof
-                .generic_activity_with_arg("LLVM_module_codegen_make_bitcode", &*module.name);
-            let thin = ThinBuffer::new(llmod, config.emit_thin_lto, config.emit_thin_lto_summary);
-            let data = thin.data();
-
-            if let Some(bitcode_filename) = bc_out.file_name() {
-                cgcx.prof.artifact_size(
-                    "llvm_bitcode",
-                    bitcode_filename.to_string_lossy(),
-                    data.len() as u64,
-                );
-            }
-
-            if config.emit_thin_lto_summary
-                && let Some(thin_link_bitcode_filename) = bc_summary_out.file_name()
-            {
-                let summary_data = thin.thin_link_data();
-                cgcx.prof.artifact_size(
-                    "llvm_bitcode_summary",
-                    thin_link_bitcode_filename.to_string_lossy(),
-                    summary_data.len() as u64,
-                );
-
-                let _timer = cgcx.prof.generic_activity_with_arg(
-                    "LLVM_module_codegen_emit_bitcode_summary",
-                    &*module.name,
-                );
-                if let Err(err) = fs::write(&bc_summary_out, summary_data) {
-                    dcx.emit_err(WriteBytecode { path: &bc_summary_out, err });
-                }
-            }
-
             if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
+                let thin = {
+                    let _timer = cgcx.prof.generic_activity_with_arg(
+                        "LLVM_module_codegen_make_bitcode",
+                        &*module.name,
+                    );
+                    ThinBuffer::new(llmod, config.emit_thin_lto, false)
+                };
+                let data = thin.data();
                 let _timer = cgcx
                     .prof
                     .generic_activity_with_arg("LLVM_module_codegen_emit_bitcode", &*module.name);
+                if let Some(bitcode_filename) = bc_out.file_name() {
+                    cgcx.prof.artifact_size(
+                        "llvm_bitcode",
+                        bitcode_filename.to_string_lossy(),
+                        data.len() as u64,
+                    );
+                }
                 if let Err(err) = fs::write(&bc_out, data) {
                     dcx.emit_err(WriteBytecode { path: &bc_out, err });
                 }
             }
 
-            if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full) {
+            if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full)
+                && module.kind == ModuleKind::Regular
+            {
                 let _timer = cgcx
                     .prof
                     .generic_activity_with_arg("LLVM_module_codegen_embed_bitcode", &*module.name);
+                let thin_bc_out = if let Some(incr_comp_session_dir) =
+                    cgcx.incr_comp_session_dir.as_ref()
+                {
+                    incr_comp_session_dir.join(pre_lto_embed_bitcode_filename(module_name.unwrap()))
+                } else {
+                    cgcx.output_filenames.temp_path(OutputType::ThinBitcode, module_name)
+                };
+                assert!(
+                    thin_bc_out.exists(),
+                    "cannot find {} as embedded bitcode",
+                    thin_bc_out.display()
+                );
+                let data = fs::read(&thin_bc_out).unwrap();
+                if cgcx.incr_comp_session_dir.is_none() {
+                    debug!("removing embed bitcode file {:?}", thin_bc_out);
+                    ensure_removed(dcx, &thin_bc_out);
+                }
                 unsafe {
-                    embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, data);
+                    embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, &data);
                 }
             }
         }
@@ -1194,4 +1251,8 @@ fn record_llvm_cgu_instructions_stats(prof: &SelfProfilerRef, llmod: &llvm::Modu
     let InstructionsStats { module, total } =
         serde_json::from_str(&raw_stats).expect("cannot parse llvm cgu instructions stats");
     prof.artifact_size("cgu_instructions", module, total);
+}
+
+fn pre_lto_embed_bitcode_filename(module_name: &str) -> String {
+    format!("{module_name}.{}", OutputType::ThinBitcode.extension())
 }

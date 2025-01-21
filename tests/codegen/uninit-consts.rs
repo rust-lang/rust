@@ -11,15 +11,15 @@ pub struct PartiallyUninit {
     y: MaybeUninit<[u8; 10]>,
 }
 
-// CHECK: [[FULLY_UNINIT:@[0-9]+]] = private unnamed_addr constant <{ [10 x i8] }> undef
+// CHECK: [[FULLY_UNINIT:@.*]] = private unnamed_addr constant <{ [10 x i8] }> undef
 
-// CHECK: [[PARTIALLY_UNINIT:@[0-9]+]] = private unnamed_addr constant <{ [4 x i8], [12 x i8] }> <{ [4 x i8] c"{{\\EF\\BE\\AD\\DE|\\DE\\AD\\BE\\EF}}", [12 x i8] undef }>, align 4
+// CHECK: [[PARTIALLY_UNINIT:@.*]] = private unnamed_addr constant <{ [4 x i8], [12 x i8] }> <{ [4 x i8] c"{{\\EF\\BE\\AD\\DE|\\DE\\AD\\BE\\EF}}", [12 x i8] undef }>, align 4
 
 // This shouldn't contain undef, since it contains more chunks
 // than the default value of uninit_const_chunk_threshold.
-// CHECK: [[UNINIT_PADDING_HUGE:@[0-9]+]] = private unnamed_addr constant <{ [32768 x i8] }> <{ [32768 x i8] c"{{.+}}" }>, align 4
+// CHECK: [[UNINIT_PADDING_HUGE:@.*]] = private unnamed_addr constant <{ [32768 x i8] }> <{ [32768 x i8] c"{{.+}}" }>, align 4
 
-// CHECK: [[FULLY_UNINIT_HUGE:@[0-9]+]] = private unnamed_addr constant <{ [16384 x i8] }> undef
+// CHECK: [[FULLY_UNINIT_HUGE:@.*]] = private unnamed_addr constant <{ [16384 x i8] }> undef
 
 // CHECK-LABEL: @fully_uninit
 #[no_mangle]
