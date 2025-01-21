@@ -2663,8 +2663,8 @@ macro_rules! uint_impl {
         ///
         /// Basic usage:
         ///
-        /// Please note that this example is shared between integer types.
-        /// Which explains why `u32` is used here.
+        /// Please note that this example is shared between integer types,
+        /// which explains why `u32` is used here.
         ///
         /// ```
         /// #![feature(bigint_helper_methods)]
@@ -2676,6 +2676,35 @@ macro_rules! uint_impl {
             stringify!($SelfT), "::MAX.carrying_mul_add(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
             "(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX));"
         )]
+        /// ```
+        ///
+        /// This is the core per-digit operation for "grade school" O(n²) multiplication.
+        ///
+        /// Please note that this example is shared between integer types,
+        /// using `u8` for simplicity of the demonstration.
+        ///
+        /// ```
+        /// #![feature(bigint_helper_methods)]
+        ///
+        /// fn quadratic_mul<const N: usize>(a: [u8; N], b: [u8; N]) -> [u8; N] {
+        ///     let mut out = [0; N];
+        ///     for j in 0..N {
+        ///         let mut carry = 0;
+        ///         for i in 0..(N - j) {
+        ///             (out[j + i], carry) = u8::carrying_mul_add(a[i], b[j], out[j + i], carry);
+        ///         }
+        ///     }
+        ///     out
+        /// }
+        ///
+        /// // -1 * -1 == 1
+        /// assert_eq!(quadratic_mul([0xFF; 3], [0xFF; 3]), [1, 0, 0]);
+        ///
+        /// assert_eq!(u32::wrapping_mul(0x9e3779b9, 0x7f4a7c15), 0xCFFC982D);
+        /// assert_eq!(
+        ///     quadratic_mul(u32::to_le_bytes(0x9e3779b9), u32::to_le_bytes(0x7f4a7c15)),
+        ///     u32::to_le_bytes(0xCFFC982D)
+        /// );
         /// ```
         #[unstable(feature = "bigint_helper_methods", issue = "85532")]
         #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
