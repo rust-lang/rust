@@ -1090,7 +1090,7 @@ fn render_memory_layout(
                 } else if is_pwr2minus1(niches) {
                     format_to!(label, "niches = 2{} - 1, ", pwr2_to_exponent(niches + 1));
                 } else {
-                    format_to!(label, "niches = really rather quite large, ");
+                    format_to!(label, "niches = a lot, ");
                 }
             } else {
                 format_to!(label, "niches = {niches}, ");
@@ -1224,15 +1224,15 @@ fn render_dyn_compatibility(
 }
 
 fn is_pwr2(val: u128) -> bool {
-    val.count_ones() == 1
+    val.is_power_of_two()
 }
 
 fn is_pwr2minus1(val: u128) -> bool {
-    val == u128::MAX || (val + 1).count_ones() == 1
+    val == u128::MAX || is_pwr2(val + 1)
 }
 
 fn is_pwr2plus1(val: u128) -> bool {
-    val != 0 && (val - 1).count_ones() == 1
+    val != 0 && is_pwr2(val - 1)
 }
 
 fn pwr2_to_exponent(num: u128) -> String {
