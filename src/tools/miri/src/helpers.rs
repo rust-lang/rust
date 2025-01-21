@@ -932,8 +932,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn check_abi<'a>(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, exp_abi: Conv) -> InterpResult<'a, ()> {
         if fn_abi.conv != exp_abi {
             throw_ub_format!(
-                "calling a function with ABI {:?} using caller ABI {:?}",
-                exp_abi,
+                "calling a function with ABI {exp_abi} using caller ABI {}",
                 fn_abi.conv
             );
         }
