@@ -4,10 +4,12 @@ use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_index::Idx;
 use rustc_middle::mir::coverage::Op;
 
-use super::{CounterTerm, MergedNodeFlowGraph, NodeCounters};
+use crate::coverage::counters::node_flow::{
+    CounterTerm, NodeCounters, NodeFlowData, make_node_counters, node_flow_data_for_balanced_graph,
+};
 
-fn merged_node_flow_graph<G: graph::Successors>(graph: G) -> MergedNodeFlowGraph<G::Node> {
-    MergedNodeFlowGraph::for_balanced_graph(graph)
+fn node_flow_data<G: graph::Successors>(graph: G) -> NodeFlowData<G::Node> {
+    node_flow_data_for_balanced_graph(graph)
 }
 
 fn make_graph<Node: Idx + Ord>(num_nodes: usize, edge_pairs: Vec<(Node, Node)>) -> VecGraph<Node> {
@@ -30,8 +32,8 @@ fn example_driver() {
         (4, 0),
     ]);
 
-    let merged = merged_node_flow_graph(&graph);
-    let counters = merged.make_node_counters(&[3, 1, 2, 0, 4]);
+    let node_flow_data = node_flow_data(&graph);
+    let counters = make_node_counters(&node_flow_data, &[3, 1, 2, 0, 4]);
 
     assert_eq!(format_counter_expressions(&counters), &[
         // (comment to force vertical formatting for clarity)
