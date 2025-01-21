@@ -362,7 +362,7 @@ fn add_type_alias_impl(
     type_alias: hir::TypeAlias,
     impl_def: hir::Impl,
 ) {
-    let alias_name = type_alias.name(ctx.db).unescaped().display(ctx.db).to_smolstr();
+    let alias_name = type_alias.name(ctx.db).as_str().to_smolstr();
 
     let label = format_smolstr!("type {alias_name} =");
 

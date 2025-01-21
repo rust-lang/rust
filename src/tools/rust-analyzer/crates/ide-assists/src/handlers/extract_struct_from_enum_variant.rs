@@ -170,7 +170,7 @@ fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &Va
             ),
             _ => false,
         })
-        .any(|(name, _)| name.eq_ident(variant_name.text().as_str()))
+        .any(|(name, _)| name.as_str() == variant_name.text().trim_start_matches("r#"))
 }
 
 fn extract_generic_params(

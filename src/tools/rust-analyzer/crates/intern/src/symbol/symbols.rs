@@ -459,6 +459,7 @@ define_symbols! {
     termination,
     test_case,
     test,
+    then,
     thiscall,
     trace_macros,
     transmute_opts,
