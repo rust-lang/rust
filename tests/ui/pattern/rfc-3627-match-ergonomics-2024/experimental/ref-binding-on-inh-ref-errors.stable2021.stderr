@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:46:10
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:43:10
    |
 LL |     let [&ref x] = &[&mut 0];
    |          ^^^^^^    --------- this expression has type `&[&mut {integer}; 1]`
@@ -15,7 +15,7 @@ LL +     let [ref x] = &[&mut 0];
    |
 
 error[E0308]: mismatched types
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:53:10
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:50:10
    |
 LL |     let [&ref x] = &mut [&mut 0];
    |          ^^^^^^    ------------- this expression has type `&mut [&mut {integer}; 1]`
@@ -30,6 +30,13 @@ LL -     let [&ref x] = &mut [&mut 0];
 LL +     let [ref x] = &mut [&mut 0];
    |
 
-error: aborting due to 2 previous errors
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:74:10
+   |
+LL |     let [ref mut x] = &[0];
+   |          ^^^^^^^^^ cannot borrow as mutable
 
-For more information about this error, try `rustc --explain E0308`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0596.
+For more information about an error, try `rustc --explain E0308`.
