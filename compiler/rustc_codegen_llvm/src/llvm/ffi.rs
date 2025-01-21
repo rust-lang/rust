@@ -918,6 +918,7 @@ unsafe extern "C" {
     pub fn LLVMMetadataTypeInContext(C: &Context) -> &Type;
 
     // Operations on all values
+    pub fn LLVMIsUndef(Val: &Value) -> Bool;
     pub fn LLVMTypeOf(Val: &Value) -> &Type;
     pub fn LLVMGetValueName2(Val: &Value, Length: *mut size_t) -> *const c_char;
     pub fn LLVMSetValueName2(Val: &Value, Name: *const c_char, NameLen: size_t);

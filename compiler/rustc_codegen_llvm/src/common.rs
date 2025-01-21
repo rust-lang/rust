@@ -126,6 +126,10 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMGetUndef(t) }
     }
 
+    fn is_undef(&self, v: &'ll Value) -> bool {
+        unsafe { llvm::LLVMIsUndef(v) == True }
+    }
+
     fn const_poison(&self, t: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMGetPoison(t) }
     }
