@@ -794,7 +794,7 @@ impl NameRefClass {
                                 hir::AssocItem::TypeAlias(it) => Some(it),
                                 _ => None,
                             })
-                            .find(|alias| alias.name(sema.db).eq_ident(name_ref.text().as_str()))
+                            .find(|alias| alias.name(sema.db).as_str() == name_ref.text().trim_start_matches("r#"))
                         {
                             // No substitution, this can only occur in type position.
                             return Some(NameRefClass::Definition(Definition::TypeAlias(ty), None));

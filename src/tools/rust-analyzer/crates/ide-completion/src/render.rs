@@ -130,10 +130,8 @@ pub(crate) fn render_field(
     let db = ctx.db();
     let is_deprecated = ctx.is_deprecated(field);
     let name = field.name(db);
-    let (name, escaped_name) = (
-        name.unescaped().display(db).to_smolstr(),
-        name.display_no_db(ctx.completion.edition).to_smolstr(),
-    );
+    let (name, escaped_name) =
+        (name.as_str().to_smolstr(), name.display_no_db(ctx.completion.edition).to_smolstr());
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
@@ -142,7 +140,7 @@ pub(crate) fn render_field(
     );
     item.set_relevance(CompletionRelevance {
         type_match: compute_type_match(ctx.completion, ty),
-        exact_name_match: compute_exact_name_match(ctx.completion, name.as_str()),
+        exact_name_match: compute_exact_name_match(ctx.completion, &name),
         ..CompletionRelevance::default()
     });
     item.detail(ty.display(db, ctx.completion.edition).to_string())
@@ -512,7 +510,7 @@ fn render_resolution_simple_(
     let mut item = CompletionItem::new(
         kind,
         ctx.source_range(),
-        local_name.unescaped().display(db).to_smolstr(),
+        local_name.as_str().to_smolstr(),
         ctx.completion.edition,
     );
     item.set_relevance(ctx.completion_relevance())
