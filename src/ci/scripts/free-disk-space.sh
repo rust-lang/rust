@@ -82,39 +82,39 @@ cleanPackages() {
     sudo apt-get -qq purge -y --autoremove --fix-missing \
         '^aspnetcore-.*'          \
         '^dotnet-.*'              \
+        '^java-*'                 \
+        '^libllvm.*'              \
         '^llvm-.*'                \
-        'php.*'                   \
+        '^llvm.*'                 \
         '^mongodb-.*'             \
         '^mysql-.*'               \
+        '^r-base.*'               \
+        '^vim.*'                  \
         'azure-cli'               \
-        'google-chrome-stable'    \
+        'cpp-11'                  \
         'firefox'                 \
-        'powershell'              \
-        'mono-devel'              \
-        'libgl1-mesa-dri'         \
-        'google-cloud-sdk'        \
-        'google-cloud-cli'        \
-        '^java-*'                 \
-        'groff'                   \
-        'groff-base'              \
-        '^libllvm.*'              \
-        '^llvm.*'                 \
-        'gcc'                     \
-        'gcc-9'                   \
         'gcc-10'                  \
         'gcc-11'                  \
         'gcc-12'                  \
-        'cpp-11'                  \
-        'kubectl'                 \
-        'libicu-dev'              \
-        '^vim.*'                  \
-        'python3-breezy'          \
-        'python-babel-localedata' \
-        'microsoft-edge-stable'   \
-        'mono-llvm-tools'         \
-        'podman'                  \
-        '^r-base.*'               \
+        'gcc-9'                   \
+        'gcc'                     \
+        'google-chrome-stable'    \
+        'google-cloud-cli'        \
+        'google-cloud-sdk'        \
+        'groff-base'              \
+        'groff'                   \
         'humanity-icon-theme'     \
+        'kubectl'                 \
+        'libgl1-mesa-dri'         \
+        'libicu-dev'              \
+        'microsoft-edge-stable'   \
+        'mono-devel'              \
+        'mono-llvm-tools'         \
+        'php.*'                   \
+        'podman'                  \
+        'powershell'              \
+        'python-babel-localedata' \
+        'python3-breezy'          \
         'snapd'
 
     sudo apt-get autoremove -y || echo "::warning::The command [sudo apt-get autoremove -y] failed"
@@ -145,17 +145,19 @@ printDF "BEFORE CLEAN-UP:"
 echo ""
 
 dirs_to_remove=(
+    "/usr/lib/heroku/"
     "/usr/local/lib/android"
+    "/usr/local/lib/node_modules"
+    "/usr/local/share/chromium"
+    "/usr/local/share/powershell"
+    "/usr/share/az_*"
     "/usr/share/dotnet"
+    "/usr/share/icons/"
+    "/usr/share/miniconda/"
     "/usr/share/swift"
     "$AGENT_TOOLSDIRECTORY"
-    "/usr/local/share/powershell"
-    "/usr/local/share/chromium"
-    "/usr/local/lib/node_modules"
-    "/usr/share/miniconda/"
-    "/usr/share/icons/"
-    "/usr/share/az_*"
-    "/usr/lib/heroku/"
+
+    # Haskell runtime
     "/opt/ghc"
     "/usr/local/.ghcup"
 )
