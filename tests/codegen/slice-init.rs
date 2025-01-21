@@ -86,7 +86,7 @@ pub fn option_none_init() -> [Option<u8>; N] {
     // CHECK-NOT: switch
     // CHECK: icmp
     // CHECK-NOT: call void @llvm.memset.p0
-    [None; N]
+    [const { None }; N]
 }
 
 // Use an opaque function to prevent rustc from removing useless drops.
