@@ -41,11 +41,9 @@ use crate::sys::anonymous_pipe::{AnonPipe, pipe as pipe_inner};
 ///
 /// ```no_run
 /// #![feature(anonymous_pipe)]
-/// # #[cfg(miri)] fn main() {}
-/// # #[cfg(not(miri))]
-/// # fn main() -> std::io::Result<()> {
 /// use std::process::Command;
 /// use std::io::{pipe, Read, Write};
+///
 /// let (ping_rx, mut ping_tx) = pipe()?;
 /// let (mut pong_rx, pong_tx) = pipe()?;
 ///
@@ -62,8 +60,7 @@ use crate::sys::anonymous_pipe::{AnonPipe, pipe as pipe_inner};
 /// assert_eq!(&buf, "hello");
 ///
 /// echo_server.wait()?;
-/// # Ok(())
-/// # }
+/// # Ok::<(), std::io::Error>(())
 /// ```
 /// [changes]: io#platform-specific-behavior
 /// [man page]: https://man7.org/linux/man-pages/man7/pipe.7.html
@@ -90,12 +87,10 @@ impl PipeReader {
     ///
     /// ```no_run
     /// #![feature(anonymous_pipe)]
-    /// # #[cfg(miri)] fn main() {}
-    /// # #[cfg(not(miri))]
-    /// # fn main() -> std::io::Result<()> {
     /// use std::fs;
     /// use std::io::{pipe, Write};
     /// use std::process::Command;
+    ///
     /// const NUM_SLOT: u8 = 2;
     /// const NUM_PROC: u8 = 5;
     /// const OUTPUT: &str = "work.txt";
@@ -134,8 +129,7 @@ impl PipeReader {
     /// let xs = fs::read_to_string(OUTPUT)?;
     /// fs::remove_file(OUTPUT)?;
     /// assert_eq!(xs, "x".repeat(NUM_PROC.into()));
-    /// # Ok(())
-    /// # }
+    /// # Ok::<(), std::io::Error>(())
     /// ```
     #[unstable(feature = "anonymous_pipe", issue = "127154")]
     pub fn try_clone(&self) -> io::Result<Self> {
@@ -150,11 +144,9 @@ impl PipeWriter {
     ///
     /// ```no_run
     /// #![feature(anonymous_pipe)]
-    /// # #[cfg(miri)] fn main() {}
-    /// # #[cfg(not(miri))]
-    /// # fn main() -> std::io::Result<()> {
     /// use std::process::Command;
     /// use std::io::{pipe, Read};
+    ///
     /// let (mut reader, writer) = pipe()?;
     ///
     /// // Spawn a process that writes to stdout and stderr.
@@ -174,8 +166,7 @@ impl PipeWriter {
     /// assert_eq!(&msg, "foobar");
     ///
     /// peer.wait()?;
-    /// # Ok(())
-    /// # }
+    /// # Ok::<(), std::io::Error>(())
     /// ```
     #[unstable(feature = "anonymous_pipe", issue = "127154")]
     pub fn try_clone(&self) -> io::Result<Self> {
