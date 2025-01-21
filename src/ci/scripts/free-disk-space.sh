@@ -80,34 +80,39 @@ execAndMeasureSpaceChange() {
 # REF: https://github.com/apache/flink/blob/master/tools/azure-pipelines/free_disk_space.sh
 cleanPackages() {
     sudo apt-get -qq purge -y --autoremove --fix-missing \
-        '^aspnetcore-.*'        \
-        '^dotnet-.*'            \
-        '^llvm-.*'              \
-        'php.*'                 \
-        '^mongodb-.*'           \
-        '^mysql-.*'             \
-        'azure-cli'             \
-        'google-chrome-stable'  \
-        'firefox'               \
-        'powershell'            \
-        'mono-devel'            \
-        'libgl1-mesa-dri'       \
-        'google-cloud-sdk'      \
-        'google-cloud-cli'      \
-        '^java-*'               \
-        'groff'                 \
-        'groff-base'            \
-        '^libllvm.*'            \
-        '^llvm.*'               \
-        'gcc'                   \
-        'gcc-10'                \
-        'gcc-11'                \
-        'gcc-12'                \
-        'kubectl'               \
-        'libicu-dev'            \
-        '^vim.*'                \
-        'python3-breezy'        \
-        'microsoft-edge-stable' \
+        '^aspnetcore-.*'          \
+        '^dotnet-.*'              \
+        '^llvm-.*'                \
+        'php.*'                   \
+        '^mongodb-.*'             \
+        '^mysql-.*'               \
+        'azure-cli'               \
+        'google-chrome-stable'    \
+        'firefox'                 \
+        'powershell'              \
+        'mono-devel'              \
+        'libgl1-mesa-dri'         \
+        'google-cloud-sdk'        \
+        'google-cloud-cli'        \
+        '^java-*'                 \
+        'groff'                   \
+        'groff-base'              \
+        '^libllvm.*'              \
+        '^llvm.*'                 \
+        'gcc'                     \
+        'gcc-9'                   \
+        'gcc-10'                  \
+        'gcc-11'                  \
+        'gcc-12'                  \
+        'cpp-11'                  \
+        'kubectl'                 \
+        'libicu-dev'              \
+        '^vim.*'                  \
+        'python3-breezy'          \
+        'python-babel-localedata' \
+        'microsoft-edge-stable'   \
+        'mono-llvm-tools'         \
+        'podman'                  \
         'snapd'
 
     sudo apt-get autoremove -y || echo "::warning::The command [sudo apt-get autoremove -y] failed"
