@@ -83,6 +83,7 @@ cleanPackages() {
         '^aspnetcore-.*'          \
         '^dotnet-.*'              \
         '^java-*'                 \
+        '^libicu.*'                \
         '^libllvm.*'              \
         '^llvm-.*'                \
         '^llvm.*'                 \
@@ -90,6 +91,7 @@ cleanPackages() {
         '^mysql-.*'               \
         '^r-base.*'               \
         '^vim.*'                  \
+        'adwaita-icon-theme'      \
         'azure-cli'               \
         'cpp-11'                  \
         'firefox'                 \
@@ -107,6 +109,7 @@ cleanPackages() {
         'kubectl'                 \
         'libgl1-mesa-dri'         \
         'libicu-dev'              \
+        'mercurial-common'        \
         'microsoft-edge-stable'   \
         'mono-devel'              \
         'mono-llvm-tools'         \
@@ -115,6 +118,7 @@ cleanPackages() {
         'powershell'              \
         'python-babel-localedata' \
         'python3-breezy'          \
+        'skopeo'                  \
         'snapd'
 
     sudo apt-get autoremove -y || echo "::warning::The command [sudo apt-get autoremove -y] failed"
@@ -150,7 +154,7 @@ dirs_to_remove=(
     "/usr/local/lib/node_modules"
     "/usr/local/share/chromium"
     "/usr/local/share/powershell"
-    "/usr/share/az_*"
+    "^/usr/share/az_.*"
     "/usr/share/dotnet"
     "/usr/share/icons/"
     "/usr/share/miniconda/"
