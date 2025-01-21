@@ -83,7 +83,7 @@ mod tests {
         fixture,
         inlay_hints::{
             tests::{check_expect, check_with_config, DISABLED_CONFIG, TEST_CONFIG},
-            Lazy,
+            LazyProperty,
         },
         InlayHintsConfig,
     };
@@ -102,7 +102,7 @@ mod tests {
         let (analysis, file_id) = fixture::file(ra_fixture);
         let mut inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
         inlay_hints.iter_mut().flat_map(|hint| &mut hint.label.parts).for_each(|hint| {
-            if let Some(Lazy::Computed(loc)) = &mut hint.linked_location {
+            if let Some(LazyProperty::Computed(loc)) = &mut hint.linked_location {
                 loc.range = TextRange::empty(TextSize::from(0));
             }
         });

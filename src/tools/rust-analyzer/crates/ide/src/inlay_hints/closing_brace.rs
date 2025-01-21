@@ -12,7 +12,7 @@ use syntax::{
 };
 
 use crate::{
-    inlay_hints::Lazy, InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind,
+    inlay_hints::LazyProperty, InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind,
 };
 
 pub(super) fn hints(
@@ -143,7 +143,7 @@ pub(super) fn hints(
     acc.push(InlayHint {
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBrace,
-        label: InlayHintLabel::simple(label, None, linked_location.map(Lazy::Computed)),
+        label: InlayHintLabel::simple(label, None, linked_location.map(LazyProperty::Computed)),
         text_edit: None,
         position: InlayHintPosition::After,
         pad_left: true,
