@@ -43,23 +43,21 @@ pub(super) fn hints(
             !should_hide_param_name_hint(sema, &callable, param_name.as_str(), arg)
         })
         .map(|(param, param_name, _, hir::FileRange { range, .. })| {
-            let linked_location = (|| {
-                let source = sema.source(param)?;
-                let name_syntax = match source.value.as_ref() {
-                    Either::Left(pat) => pat.name(),
-                    Either::Right(param) => match param.pat()? {
-                        ast::Pat::IdentPat(it) => it.name(),
-                        _ => None,
-                    },
-                }?;
-                sema.original_range_opt(name_syntax.syntax())
-            })();
-
             let colon = if config.render_colons { ":" } else { "" };
             let label = InlayHintLabel::simple(
                 format!("{}{colon}", param_name.display(sema.db, krate.edition(sema.db))),
                 None,
-                linked_location.map(Into::into),
+                config.lazy_location_opt(|| {
+                    let source = sema.source(param)?;
+                    let name_syntax = match source.value.as_ref() {
+                        Either::Left(pat) => pat.name(),
+                        Either::Right(param) => match param.pat()? {
+                            ast::Pat::IdentPat(it) => it.name(),
+                            _ => None,
+                        },
+                    }?;
+                    sema.original_range_opt(name_syntax.syntax()).map(Into::into)
+                }),
             );
             InlayHint {
                 range,

@@ -684,7 +684,10 @@ fn inlay_hint_label(
                         *something_to_resolve |= part.linked_location.is_some();
                         None
                     } else {
-                        part.linked_location.map(|range| location(snap, range)).transpose()?
+                        part.linked_location
+                            .and_then(|it| it.computed())
+                            .map(|range| location(snap, range))
+                            .transpose()?
                     };
                     Ok(lsp_types::InlayHintLabelPart {
                         value: part.text,

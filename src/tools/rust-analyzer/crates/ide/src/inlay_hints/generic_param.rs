@@ -47,6 +47,18 @@ pub(crate) fn hints(
             return None;
         }
 
+        let allowed = match (param, &arg) {
+            (hir::GenericParam::TypeParam(_), ast::GenericArg::TypeArg(_)) => type_hints,
+            (hir::GenericParam::ConstParam(_), ast::GenericArg::ConstArg(_)) => const_hints,
+            (hir::GenericParam::LifetimeParam(_), ast::GenericArg::LifetimeArg(_)) => {
+                lifetime_hints
+            }
+            _ => false,
+        };
+        if !allowed {
+            return None;
+        }
+
         let param_name = param.name(sema.db);
 
         let should_hide = {
@@ -60,34 +72,27 @@ pub(crate) fn hints(
 
         let range = sema.original_range_opt(arg.syntax())?.range;
 
-        let source_syntax = match param {
-            hir::GenericParam::TypeParam(it) => {
-                if !type_hints || !matches!(arg, ast::GenericArg::TypeArg(_)) {
-                    return None;
-                }
-                sema.source(it.merge()).map(|it| it.value.syntax().clone())
-            }
-            hir::GenericParam::ConstParam(it) => {
-                if !const_hints || !matches!(arg, ast::GenericArg::ConstArg(_)) {
-                    return None;
-                }
-                let syntax = sema.source(it.merge())?.value.syntax().clone();
-                let const_param = ast::ConstParam::cast(syntax)?;
-                const_param.name().map(|it| it.syntax().clone())
-            }
-            hir::GenericParam::LifetimeParam(it) => {
-                if !lifetime_hints || !matches!(arg, ast::GenericArg::LifetimeArg(_)) {
-                    return None;
-                }
-                sema.source(it).map(|it| it.value.syntax().clone())
-            }
-        };
-        let linked_location = source_syntax.and_then(|it| sema.original_range_opt(&it));
         let colon = if config.render_colons { ":" } else { "" };
         let label = InlayHintLabel::simple(
             format!("{}{colon}", param_name.display(sema.db, krate.edition(sema.db))),
             None,
-            linked_location.map(Into::into),
+            config.lazy_location_opt(|| {
+                let source_syntax = match param {
+                    hir::GenericParam::TypeParam(it) => {
+                        sema.source(it.merge()).map(|it| it.value.syntax().clone())
+                    }
+                    hir::GenericParam::ConstParam(it) => {
+                        let syntax = sema.source(it.merge())?.value.syntax().clone();
+                        let const_param = ast::ConstParam::cast(syntax)?;
+                        const_param.name().map(|it| it.syntax().clone())
+                    }
+                    hir::GenericParam::LifetimeParam(it) => {
+                        sema.source(it).map(|it| it.value.syntax().clone())
+                    }
+                };
+                let linked_location = source_syntax.and_then(|it| sema.original_range_opt(&it));
+                linked_location.map(Into::into)
+            }),
         );
 
         Some(InlayHint {

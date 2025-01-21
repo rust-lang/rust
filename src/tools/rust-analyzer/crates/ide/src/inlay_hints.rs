@@ -300,6 +300,7 @@ pub struct InlayHintsConfig {
     pub closing_brace_hints_min_lines: Option<usize>,
     pub fields_to_resolve: InlayFieldsToResolve,
 }
+
 impl InlayHintsConfig {
     fn lazy_text_edit(&self, finish: impl FnOnce() -> TextEdit) -> Lazy<TextEdit> {
         if self.fields_to_resolve.resolve_text_edits {
@@ -327,6 +328,19 @@ impl InlayHintsConfig {
                 "inlay hint produced an empty tooltip"
             );
             Lazy::Computed(tooltip)
+        }
+    }
+
+    /// This always reports a resolvable location, so only use this when it is very likely for a
+    /// location link to actually resolve but where computing `finish` would be costly.
+    fn lazy_location_opt(
+        &self,
+        finish: impl FnOnce() -> Option<FileRange>,
+    ) -> Option<Lazy<FileRange>> {
+        if self.fields_to_resolve.resolve_label_location {
+            Some(Lazy::Lazy)
+        } else {
+            finish().map(Lazy::Computed)
         }
     }
 }
@@ -509,7 +523,7 @@ impl InlayHintLabel {
     pub fn simple(
         s: impl Into<String>,
         tooltip: Option<Lazy<InlayTooltip>>,
-        linked_location: Option<FileRange>,
+        linked_location: Option<Lazy<FileRange>>,
     ) -> InlayHintLabel {
         InlayHintLabel {
             parts: smallvec![InlayHintLabelPart { text: s.into(), linked_location, tooltip }],
@@ -593,7 +607,7 @@ pub struct InlayHintLabelPart {
     /// refers to (not necessarily the location itself).
     /// When setting this, no tooltip must be set on the containing hint, or VS Code will display
     /// them both.
-    pub linked_location: Option<FileRange>,
+    pub linked_location: Option<Lazy<FileRange>>,
     /// The tooltip to show when hovering over the inlay hint, this may invoke other actions like
     /// hover requests to show.
     pub tooltip: Option<Lazy<InlayTooltip>>,
@@ -602,7 +616,7 @@ pub struct InlayHintLabelPart {
 impl std::hash::Hash for InlayHintLabelPart {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.text.hash(state);
-        self.linked_location.hash(state);
+        self.linked_location.is_some().hash(state);
         self.tooltip.is_some().hash(state);
     }
 }
@@ -663,7 +677,7 @@ impl InlayHintLabelBuilder<'_> {
         if !text.is_empty() {
             self.result.parts.push(InlayHintLabelPart {
                 text,
-                linked_location: self.location.take(),
+                linked_location: self.location.take().map(Lazy::Computed),
                 tooltip: None,
             });
         }
