@@ -1124,7 +1124,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if self.next_trait_solver()
                     && let ty::Alias(..) = ty.kind()
                 {
-                    ocx.structurally_normalize(&cause, self.param_env, ty)
+                    ocx.structurally_normalize_ty(&cause, self.param_env, ty)
                 } else {
                     Ok(ty)
                 }

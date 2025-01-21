@@ -7,7 +7,7 @@ use crate::traits::{NormalizeExt, Obligation};
 
 #[extension(pub trait StructurallyNormalizeExt<'tcx>)]
 impl<'tcx> At<'_, 'tcx> {
-    fn structurally_normalize<E: 'tcx>(
+    fn structurally_normalize_ty<E: 'tcx>(
         &self,
         ty: Ty<'tcx>,
         fulfill_cx: &mut dyn TraitEngine<'tcx, E>,

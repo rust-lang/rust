@@ -320,7 +320,7 @@ fn orphan_check<'tcx>(
         }
 
         let ty = if infcx.next_trait_solver() {
-            ocx.structurally_normalize(
+            ocx.structurally_normalize_ty(
                 &cause,
                 ty::ParamEnv::empty(),
                 infcx.resolve_vars_if_possible(ty),
