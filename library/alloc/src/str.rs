@@ -46,7 +46,6 @@ pub use core::str::{RSplitTerminator, SplitTerminator};
 pub use core::str::{Utf8Chunk, Utf8Chunks};
 #[unstable(feature = "str_from_raw_parts", issue = "119206")]
 pub use core::str::{from_raw_parts, from_raw_parts_mut};
-#[allow(deprecated_in_future)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{from_utf8, from_utf8_mut, from_utf8_unchecked, from_utf8_unchecked_mut};
 use core::unicode::conversions;
