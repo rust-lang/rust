@@ -294,6 +294,14 @@ pub trait SqrtHelper: Float {
     const FINAL_ROUNDS: u32;
 }
 
+#[cfg(f16_enabled)]
+impl SqrtHelper for f16 {
+    type ISet1 = u16; // unused
+    type ISet2 = u16; // unused
+
+    const FINAL_ROUNDS: u32 = 2;
+}
+
 impl SqrtHelper for f32 {
     type ISet1 = u32; // unused
     type ISet2 = u32; // unused
@@ -305,6 +313,16 @@ impl SqrtHelper for f64 {
     type ISet1 = u32; // unused
     type ISet2 = u32;
 
+    const SET2_ROUNDS: u32 = 2;
+    const FINAL_ROUNDS: u32 = 2;
+}
+
+#[cfg(f128_enabled)]
+impl SqrtHelper for f128 {
+    type ISet1 = u32;
+    type ISet2 = u64;
+
+    const SET1_ROUNDS: u32 = 1;
     const SET2_ROUNDS: u32 = 2;
     const FINAL_ROUNDS: u32 = 2;
 }
@@ -352,6 +370,42 @@ mod tests {
         assert!(sqrt(F::NAN).is_nan());
         for f in [F::ZERO, F::NEG_ZERO, F::INFINITY].iter().copied() {
             assert_biteq!(sqrt(f), f);
+        }
+    }
+
+    #[test]
+    #[cfg(f16_enabled)]
+    fn sanity_check_f16() {
+        assert_biteq!(sqrt(100.0f16), 10.0);
+        assert_biteq!(sqrt(4.0f16), 2.0);
+    }
+
+    #[test]
+    #[cfg(f16_enabled)]
+    fn spec_tests_f16() {
+        spec_test::<f16>();
+    }
+
+    #[test]
+    #[cfg(f16_enabled)]
+    #[allow(clippy::approx_constant)]
+    fn conformance_tests_f16() {
+        let cases = [
+            (f16::PI, 0x3f17_u16),
+            // 10_000.0, using a hex literal for MSRV hack (Rust < 1.67 checks literal widths as
+            // part of the AST, so the `cfg` is irrelevant here).
+            (f16::from_bits(0x70e2), 0x5640_u16),
+            (f16::from_bits(0x0000000f), 0x13bf_u16),
+            (f16::INFINITY, f16::INFINITY.to_bits()),
+        ];
+
+        for (input, output) in cases {
+            assert_biteq!(
+                sqrt(input),
+                f16::from_bits(output),
+                "input: {input:?} ({:#018x})",
+                input.to_bits()
+            );
         }
     }
 
@@ -411,6 +465,44 @@ mod tests {
             assert_biteq!(
                 sqrt(input),
                 f64::from_bits(output),
+                "input: {input:?} ({:#018x})",
+                input.to_bits()
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(f128_enabled)]
+    fn sanity_check_f128() {
+        assert_biteq!(sqrt(100.0f128), 10.0);
+        assert_biteq!(sqrt(4.0f128), 2.0);
+    }
+
+    #[test]
+    #[cfg(f128_enabled)]
+    fn spec_tests_f128() {
+        spec_test::<f128>();
+    }
+
+    #[test]
+    #[cfg(f128_enabled)]
+    #[allow(clippy::approx_constant)]
+    fn conformance_tests_f128() {
+        let cases = [
+            (f128::PI, 0x3fffc5bf891b4ef6aa79c3b0520d5db9_u128),
+            // 10_000.0, see `f16` for reasoning.
+            (
+                f128::from_bits(0x400c3880000000000000000000000000),
+                0x40059000000000000000000000000000_u128,
+            ),
+            (f128::from_bits(0x0000000f), 0x1fc9efbdeb14f4ed9b17ae807907e1e9_u128),
+            (f128::INFINITY, f128::INFINITY.to_bits()),
+        ];
+
+        for (input, output) in cases {
+            assert_biteq!(
+                sqrt(input),
+                f128::from_bits(output),
                 "input: {input:?} ({:#018x})",
                 input.to_bits()
             );

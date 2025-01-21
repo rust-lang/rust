@@ -718,6 +718,20 @@
         ],
         "type": "f32"
     },
+    "sqrtf128": {
+        "sources": [
+            "src/math/generic/sqrt.rs",
+            "src/math/sqrtf128.rs"
+        ],
+        "type": "f128"
+    },
+    "sqrtf16": {
+        "sources": [
+            "src/math/generic/sqrt.rs",
+            "src/math/sqrtf16.rs"
+        ],
+        "type": "f16"
+    },
     "tan": {
         "sources": [
             "src/libm_helper.rs",

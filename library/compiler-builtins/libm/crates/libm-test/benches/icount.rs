@@ -155,6 +155,8 @@ main!(
     icount_bench_sinh_group,
     icount_bench_sinhf_group,
     icount_bench_sqrt_group,
+    icount_bench_sqrtf128_group,
+    icount_bench_sqrtf16_group,
     icount_bench_sqrtf_group,
     icount_bench_tan_group,
     icount_bench_tanf_group,

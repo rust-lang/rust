@@ -105,6 +105,8 @@ sinh
 sinhf
 sqrt
 sqrtf
+sqrtf128
+sqrtf16
 tan
 tanf
 tanh
