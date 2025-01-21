@@ -209,7 +209,7 @@ fn hints(
 ) {
     closing_brace::hints(hints, sema, config, file_id, node.clone());
     if let Some(any_has_generic_args) = ast::AnyHasGenericArgs::cast(node.clone()) {
-        generic_param::hints(hints, sema, config, any_has_generic_args);
+        generic_param::hints(hints, famous_defs, config, any_has_generic_args);
     }
 
     match_ast! {
