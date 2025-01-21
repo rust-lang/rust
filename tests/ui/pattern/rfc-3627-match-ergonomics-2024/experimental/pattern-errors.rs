@@ -9,31 +9,39 @@
 pub fn main() {
     if let Some(&mut x) = &Some(&mut 0) {
         //[classic2024]~^ ERROR: mismatched types
+        //[classic2024]~| cannot match inherited `&` with `&mut` pattern
         let _: &u32 = x;
     }
     if let Some(&mut Some(&x)) = &Some(&mut Some(0)) {
         //[classic2024]~^ ERROR: mismatched types
+        //[classic2024]~| cannot match inherited `&` with `&mut` pattern
         let _: u32 = x;
     }
     if let Some(Some(&mut x)) = &Some(Some(&mut 0)) {
         //[classic2024]~^ ERROR: mismatched types
+        //[classic2024]~| cannot match inherited `&` with `&mut` pattern
         let _: &u32 = x;
     }
 
     if let Some(&mut Some(&_)) = &Some(&Some(0)) {
         //~^ ERROR: mismatched types
+        //~| cannot match inherited `&` with `&mut` pattern
     }
     if let Some(&Some(&mut _)) = &Some(&mut Some(0)) {
         //[structural2024]~^ ERROR: mismatched types
+        //[structural2024]~| cannot match inherited `&` with `&mut` pattern
     }
     if let Some(&Some(&mut _)) = &mut Some(&Some(0)) {
         //~^ ERROR: mismatched types
+        //~| cannot match inherited `&` with `&mut` pattern
     }
     if let Some(&Some(Some(&mut _))) = &Some(Some(&mut Some(0))) {
         //[structural2024]~^ ERROR: mismatched types
+        //[structural2024]~| cannot match inherited `&` with `&mut` pattern
     }
     if let Some(&mut Some(x)) = &Some(Some(0)) {
         //~^ ERROR: mismatched types
+        //~| cannot match inherited `&` with `&mut` pattern
     }
 }
 
