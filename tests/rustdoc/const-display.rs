@@ -7,12 +7,18 @@
 
 //@ has 'foo/fn.foo.html' '//pre' 'pub fn foo() -> u32'
 //@ has - '//span[@class="since"]' '1.0.0 (const: unstable)'
+//@ has - '//span[@class="item-info"]//span' 'The const version is a \
+//        nightly-only experimental API. (foo)'
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature="foo", issue = "none")]
 pub const fn foo() -> u32 { 42 }
 
 //@ has 'foo/fn.foo_unsafe.html' '//pre' 'pub unsafe fn foo_unsafe() -> u32'
 //@ has - '//span[@class="since"]' '1.0.0 (const: unstable)'
+//@ has - '//span[@class="item-info"]//span' 'The const version is a \
+//        nightly-only experimental API. (foo #111)'
+//@ has - '//span[@class="item-info"]//a[@href="https://github.com/rust-lang/rust/issues/111"]' \
+//       '#111'
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature="foo", issue = "111")]
 pub const unsafe fn foo_unsafe() -> u32 { 42 }
@@ -63,12 +69,18 @@ pub struct Foo;
 impl Foo {
     //@ has 'foo/struct.Foo.html' '//*[@id="method.gated"]/h4[@class="code-header"]' 'pub fn gated() -> u32'
     //@ has - '//span[@class="since"]' '1.0.0 (const: unstable)'
+    //@ has - '//span[@class="item-info"]//span' 'The const version is a \
+    //        nightly-only experimental API. (foo #112)'
+    //@ has - '//span[@class="item-info"]//a[@href="https://github.com/rust-lang/rust/issues/112"]' \
+    //       '#112'
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature="foo", issue = "none")]
+    #[rustc_const_unstable(feature="foo", issue = "112")]
     pub const fn gated() -> u32 { 42 }
 
     //@ has 'foo/struct.Foo.html' '//*[@id="method.gated_unsafe"]/h4[@class="code-header"]' 'pub unsafe fn gated_unsafe() -> u32'
     //@ has - '//span[@class="since"]' '1.0.0 (const: unstable)'
+    //@ has - '//span[@class="item-info"]//span' 'The const version is a \
+    //        nightly-only experimental API. (foo)'
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature="foo", issue = "none")]
     pub const unsafe fn gated_unsafe() -> u32 { 42 }
