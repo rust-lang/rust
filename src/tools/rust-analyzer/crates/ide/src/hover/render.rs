@@ -1083,7 +1083,7 @@ fn render_memory_layout(
     if config.niches {
         if let Some(niches) = layout.niches() {
             if niches > 1024 {
-                if is_pwr2(niches) {
+                if niches.is_power_of_two() {
                     format_to!(label, "niches = 2{}, ", pwr2_to_exponent(niches));
                 } else if is_pwr2plus1(niches) {
                     format_to!(label, "niches = 2{} + 1, ", pwr2_to_exponent(niches - 1));
@@ -1223,16 +1223,12 @@ fn render_dyn_compatibility(
     }
 }
 
-fn is_pwr2(val: u128) -> bool {
-    val.is_power_of_two()
-}
-
 fn is_pwr2minus1(val: u128) -> bool {
-    val == u128::MAX || is_pwr2(val + 1)
+    val == u128::MAX || (val + 1).is_power_of_two()
 }
 
 fn is_pwr2plus1(val: u128) -> bool {
-    val != 0 && is_pwr2(val - 1)
+    val != 0 && (val - 1).is_power_of_two()
 }
 
 /// Formats a power of two as an exponent of two, i.e. 16 => ⁴. Note that `num` MUST be a power
@@ -1253,16 +1249,6 @@ mod tests {
     use super::*;
 
     const TESTERS: [u128; 10] = [0, 1, 2, 3, 4, 255, 256, 257, u128::MAX - 1, u128::MAX];
-
-    #[test]
-    fn test_is_pwr2() {
-        const OUTCOMES: [bool; 10] =
-            [false, true, true, false, true, false, true, false, false, false];
-        for (test, expected) in TESTERS.iter().zip(OUTCOMES) {
-            let actual = is_pwr2(*test);
-            assert_eq!(actual, expected, "is_pwr2({test}) gave {actual}, expected {expected}");
-        }
-    }
 
     #[test]
     fn test_is_pwr2minus1() {
