@@ -137,7 +137,7 @@ removeUnusedDirectories() {
         "/usr/local/lib/node_modules"
         "/usr/local/share/chromium"
         "/usr/local/share/powershell"
-        "^/usr/share/az_.*"
+        "/usr/share/az_"*
         "/usr/share/dotnet"
         "/usr/share/icons/"
         "/usr/share/miniconda/"
