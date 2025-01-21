@@ -55,6 +55,6 @@ fn main() {
 
 fn find_lld_version_in_logs(stderr: String) -> bool {
     let lld_version_re =
-        Regex::new(r"^warning: linker stdout: LLD [0-9]+\.[0-9]+\.[0-9]+").unwrap();
+        Regex::new(r"^warning: linker std(out|err): LLD [0-9]+\.[0-9]+\.[0-9]+").unwrap();
     stderr.lines().any(|line| lld_version_re.is_match(line.trim()))
 }
