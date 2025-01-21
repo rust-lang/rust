@@ -266,7 +266,7 @@ auto:
     # nightly features to compile, and this job would fail if
     # executed on beta and stable.
     only_on_channel: nightly
-    <<: *job-linux-8c-codebuild
+    <<: *job-linux-36c-codebuild
 
   # Tests integration with Rust for Linux.
   # Builds stage 1 compiler and tries to compile a few RfL examples with it.
