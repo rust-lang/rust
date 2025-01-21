@@ -1483,6 +1483,8 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(try_expr.syntax())?.resolve_try_expr(self.db, try_expr)
     }
 
+    // This does not resolve the method call to the correct trait impl!
+    // We should probably fix that.
     pub fn resolve_method_call_as_callable(&self, call: &ast::MethodCallExpr) -> Option<Callable> {
         self.analyze(call.syntax())?.resolve_method_call_as_callable(self.db, call)
     }

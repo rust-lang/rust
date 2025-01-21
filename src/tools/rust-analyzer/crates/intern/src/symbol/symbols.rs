@@ -461,6 +461,7 @@ define_symbols! {
     test,
     then,
     thiscall,
+    to_string,
     trace_macros,
     transmute_opts,
     transmute_trait,

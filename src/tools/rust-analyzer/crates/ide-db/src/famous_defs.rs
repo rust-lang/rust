@@ -142,6 +142,13 @@ impl FamousDefs<'_, '_> {
         self.find_macro("core:unimplemented")
     }
 
+    pub fn core_fmt_Display(&self) -> Option<Trait> {
+        self.find_trait("core:fmt:Display")
+    }
+
+    pub fn alloc_string_ToString(&self) -> Option<Trait> {
+        self.find_trait("alloc:string:ToString")
+    }
     pub fn builtin_crates(&self) -> impl Iterator<Item = Crate> {
         IntoIterator::into_iter([
             self.std(),
