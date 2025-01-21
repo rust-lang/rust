@@ -170,29 +170,7 @@ jobs:
     - name: Run icount benchmarks
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        set -eux
-        iai_home="iai-home"
-        # Download the baseline from master
-        ./ci/ci-util.py locate-baseline --download --extract
-
-        # Run iai-callgrind benchmarks
-        cargo bench --no-default-features \
-          --features unstable,unstable-float,icount \
-          --bench icount \
-          -- \
-          --save-baseline=default \
-          --home "$(pwd)/$iai_home" \
-          --regression='ir=5.0' \
-          --save-summary
-        # NB: iai-callgrind should exit on error but does not, so we inspect the sumary
-        # for errors. See  https://github.com/iai-callgrind/iai-callgrind/issues/337
-        ./ci/ci-util.py check-regressions "$iai_home"
-
-        # Name and tar the new baseline
-        name="baseline-icount-$(date -u +'%Y%m%d%H%M')-${GITHUB_SHA:0:12}"
-        echo "BASELINE_NAME=$name" >> "$GITHUB_ENV"
-        tar cJf "$name.tar.xz" "$iai_home"
+      run: ./ci/bench-icount.sh
 
     - name: Upload the benchmark baseline
       uses: actions/upload-artifact@v4
