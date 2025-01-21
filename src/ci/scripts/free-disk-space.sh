@@ -125,13 +125,6 @@ cleanDocker() {
     sudo docker image prune --all --force || true
 }
 
-# Remove Swap storage
-cleanSwap() {
-    sudo swapoff -a || true
-    sudo rm -rf /mnt/swapfile || true
-    free -h
-}
-
 # Display initial disk space stats
 
 AVAILABLE_INITIAL=$(getAvailableSpace)
