@@ -114,13 +114,14 @@ cleanPackages() {
         'mono-llvm-tools'         \
         'podman'                  \
         '^r-base.*'               \
+        'humanity-icon-theme'     \
         'snapd'
 
     sudo apt-get autoremove -y || echo "::warning::The command [sudo apt-get autoremove -y] failed"
     sudo apt-get clean || echo "::warning::The command [sudo apt-get clean] failed failed"
 
     echo "=> Installed packages sorted by size:"
-    dpkg-query -W --showformat='${Installed-Size} ${Package}\n' | sort -nr
+    dpkg-query -W --showformat='${Installed-Size} ${Package}\n' | sort -nr | head -200
 }
 
 # Remove Docker images
@@ -150,6 +151,10 @@ removeDir "$AGENT_TOOLSDIRECTORY"
 removeDir /usr/local/share/powershell
 removeDir /usr/local/share/chromium
 removeDir /usr/local/lib/node_modules
+removeDir /usr/share/miniconda/
+removeDir /usr/share/icons/
+removeDir "/usr/share/az_*"
+removeDir /usr/lib/heroku/
 
 # Haskell runtime
 removeDir /opt/ghc
