@@ -8,7 +8,7 @@ LL |     core::intrinsics::abort();
    |
    = note: BACKTRACE:
    = note: inside `panic_handler` at tests/fail/panic/no_std.rs:LL:CC
-note: inside `start`
+note: inside `miri_start`
   --> tests/fail/panic/no_std.rs:LL:CC
    |
 LL |     panic!("blarg I am dead")

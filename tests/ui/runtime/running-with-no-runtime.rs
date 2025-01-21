@@ -2,15 +2,15 @@
 //@ ignore-wasm32 spawning processes is not supported
 //@ ignore-sgx no processes
 
-#![feature(start)]
+#![no_main]
 
 use std::ffi::CStr;
 use std::process::{Command, Output};
 use std::panic;
 use std::str;
 
-#[start]
-fn start(argc: isize, argv: *const *const u8) -> isize {
+#[no_mangle]
+extern "C" fn main(argc: core::ffi::c_int, argv: *const *const u8) -> core::ffi::c_int {
     if argc > 1 {
         unsafe {
             match **argv.offset(1) as char {

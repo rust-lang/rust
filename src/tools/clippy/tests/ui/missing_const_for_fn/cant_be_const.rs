@@ -6,7 +6,6 @@
 //@aux-build:../auxiliary/proc_macros.rs
 
 #![warn(clippy::missing_const_for_fn)]
-#![feature(start)]
 #![feature(type_alias_impl_trait)]
 
 extern crate helper;
@@ -69,15 +68,6 @@ mod with_test_fn {
         _ = one;
         _ = two;
     }
-}
-
-// Allowing on this function, because it would lint, which we don't want in this case.
-// if we have `#[start]` and `#[test]` check `is_entrypoint_fn(cx, def_id.to_def_id())` is stopped
-// working
-#[allow(clippy::missing_const_for_fn)]
-#[start]
-fn init(num: isize, something: *const *const u8) -> isize {
-    1
 }
 
 trait Foo {

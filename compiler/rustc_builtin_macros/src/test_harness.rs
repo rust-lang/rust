@@ -204,11 +204,11 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
         ast::mut_visit::walk_item(self, item);
         self.depth -= 1;
 
-        // Remove any #[rustc_main] or #[start] from the AST so it doesn't
+        // Remove any #[rustc_main] from the AST so it doesn't
         // clash with the one we're going to add, but mark it as
         // #[allow(dead_code)] to avoid printing warnings.
         match entry_point_type(&item, self.depth == 0) {
-            EntryPointType::MainNamed | EntryPointType::RustcMainAttr | EntryPointType::Start => {
+            EntryPointType::MainNamed | EntryPointType::RustcMainAttr => {
                 let allow_dead_code = attr::mk_attr_nested_word(
                     &self.sess.psess.attr_id_generator,
                     ast::AttrStyle::Outer,
@@ -217,8 +217,7 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
                     sym::dead_code,
                     self.def_site,
                 );
-                item.attrs
-                    .retain(|attr| !attr.has_name(sym::rustc_main) && !attr.has_name(sym::start));
+                item.attrs.retain(|attr| !attr.has_name(sym::rustc_main));
                 item.attrs.push(allow_dead_code);
             }
             EntryPointType::None | EntryPointType::OtherMain => {}

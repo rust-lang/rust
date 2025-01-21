@@ -1,7 +1,7 @@
 //@ compile-flags:-Zprint-mono-items=eager -Zinline-mir=no
 
 #![deny(dead_code)]
-#![feature(start)]
+#![crate_type = "lib"]
 
 //~ MONO_ITEM fn temporary @@ non_generic_closures-cgu.0[Internal]
 fn temporary() {
@@ -40,9 +40,9 @@ fn assigned_to_variable_executed_directly() {
     f(4);
 }
 
-//~ MONO_ITEM fn start @@ non_generic_closures-cgu.0[Internal]
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+//~ MONO_ITEM fn start @@ non_generic_closures-cgu.0[External]
+#[no_mangle]
+pub fn start(_: isize, _: *const *const u8) -> isize {
     temporary();
     assigned_to_variable_but_not_executed();
     assigned_to_variable_executed_directly();

@@ -1,4 +1,4 @@
-#![feature(start)]
+#![crate_type = "lib"]
 
 #[inline]
 fn inlined() -> u32 {
@@ -21,8 +21,7 @@ mod b {
     }
 }
 
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+pub fn start(_: isize, _: *const *const u8) -> isize {
     a::f();
     b::f();
 

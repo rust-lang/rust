@@ -230,18 +230,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Fn(..) => {
-                if attr::contains_name(&i.attrs, sym::start) {
-                    gate!(
-                        &self,
-                        start,
-                        i.span,
-                        "`#[start]` functions are experimental and their signature may change \
-                         over time"
-                    );
-                }
-            }
-
             ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..) => {
                 for attr in attr::filter_by_name(&i.attrs, sym::repr) {
                     for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {

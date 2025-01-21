@@ -14,8 +14,6 @@
 #![rustc_main] //~ ERROR: the `#[rustc_main]` attribute is used internally to specify
 //~^ ERROR: `rustc_main` attribute cannot be used at crate level
 //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-#![start]
-//~^ ERROR: `start` attribute cannot be used at crate level
 #![repr()]
 //~^ ERROR: `repr` attribute cannot be used at crate level
 #![path = "3800"]
@@ -33,7 +31,6 @@
 //~^ ERROR attribute should be applied to function or closure
 mod inline {
     //~^ NOTE not a function or closure
-    //~| NOTE the inner attribute doesn't annotate this module
     //~| NOTE the inner attribute doesn't annotate this module
     //~| NOTE the inner attribute doesn't annotate this module
     //~| NOTE the inner attribute doesn't annotate this module
@@ -121,24 +118,6 @@ mod export_name {
         //~^ ERROR attribute should be applied to a free function, impl method or static
         //~| NOTE not a free function, impl method or static
     }
-}
-
-#[start]
-//~^ ERROR: `start` attribute can only be used on functions
-mod start {
-    mod inner { #![start] }
-    //~^ ERROR: `start` attribute can only be used on functions
-
-    // for `fn f()` case, see feature-gate-start.rs
-
-    #[start] struct S;
-    //~^ ERROR: `start` attribute can only be used on functions
-
-    #[start] type T = S;
-    //~^ ERROR: `start` attribute can only be used on functions
-
-    #[start] impl S { }
-    //~^ ERROR: `start` attribute can only be used on functions
 }
 
 #[repr(C)]
