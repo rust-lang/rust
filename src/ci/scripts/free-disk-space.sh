@@ -142,6 +142,8 @@ removeUnusedDirectories() {
         "/usr/share/icons/"
         "/usr/share/miniconda/"
         "/usr/share/swift"
+
+        # Environemnt variable set by GitHub Actions
         "$AGENT_TOOLSDIRECTORY"
 
         # Haskell runtime
