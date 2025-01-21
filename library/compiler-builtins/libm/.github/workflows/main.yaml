@@ -183,7 +183,7 @@ jobs:
         # Always use the same seed for benchmarks. Ideally we should switch to a
         # non-random generator.
         export LIBM_SEED=benchesbenchesbenchesbencheswoo!
-        cargo bench --all --features libm-test/short-benchmarks,libm-test/build-musl
+        cargo bench --all --features short-benchmarks,build-musl,force-soft-floats
 
     - name: Print test logs if available
       if: always()
