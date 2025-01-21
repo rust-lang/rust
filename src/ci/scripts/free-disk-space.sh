@@ -131,6 +131,7 @@ cleanDocker() {
 }
 
 removeAllSnaps() {
+    # This won't remove the snaps `core` and `snapd`
     sudo snap remove $(snap list | awk '!/^Name|^core|^snapd/ {print $1}')
 }
 
@@ -140,9 +141,6 @@ AVAILABLE_INITIAL=$(getAvailableSpace)
 
 printDF "BEFORE CLEAN-UP:"
 echo ""
-
-echo "=> installed snaps:"
-snap list
 
 removeDir /usr/local/lib/android
 removeDir /usr/share/dotnet
@@ -162,7 +160,7 @@ execAndMeasureSpaceChange cleanDocker "Docker images"
 execAndMeasureSpaceChange cleanSwap "Swap storage"
 
 echo "=> largest directories:"
-du --max-depth=7 /* -h | sort -nr | head -1000
+sudo du --max-depth=7 /* -h | sort -nr | head -1000
 
 # Output saved space statistic
 echo ""
