@@ -62,7 +62,7 @@ removeDir() {
 
     sudo rm -rf "$dir" || true
 
-    printSavedSpace "$before" "$dir"
+    printSavedSpace "$before" "Removed $dir"
 }
 
 execAndMeasureSpaceChange() {
