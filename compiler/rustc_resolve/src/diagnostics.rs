@@ -1976,10 +1976,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .collect::<Vec<_>>();
         candidates.sort();
         candidates.dedup();
-        match find_best_match_for_name(&candidates, ident, None) {
-            Some(sugg) if sugg == ident => None,
-            sugg => sugg,
-        }
+        find_best_match_for_name(&candidates, ident, None).filter(|sugg| *sugg != ident)
     }
 
     pub(crate) fn report_path_resolution_error(
