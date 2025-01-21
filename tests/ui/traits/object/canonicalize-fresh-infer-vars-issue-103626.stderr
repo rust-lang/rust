@@ -1,12 +1,4 @@
 error[E0038]: the trait `FromResidual` cannot be made into an object
-  --> $DIR/canonicalize-fresh-infer-vars-issue-103626.rs:10:17
-   |
-LL |     let b: &dyn FromResidual = &();
-   |                 ^^^^^^^^^^^^
-   |
-   = note: it cannot use `Self` as a type parameter in a supertrait or `where`-clause
-
-error[E0038]: the trait `FromResidual` cannot be made into an object
   --> $DIR/canonicalize-fresh-infer-vars-issue-103626.rs:10:32
    |
 LL |     let b: &dyn FromResidual = &();
@@ -51,6 +43,6 @@ help: alternatively, consider constraining `from_residual` so it does not apply 
 LL |     fn from_residual(residual: R) -> Self where Self: Sized;
    |                                           +++++++++++++++++
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0038`.

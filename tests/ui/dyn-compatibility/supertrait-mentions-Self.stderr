@@ -19,10 +19,10 @@ LL | trait Bar<T: ?Sized> {
    |            ++++++++
 
 error[E0038]: the trait `Baz` cannot be made into an object
-  --> $DIR/supertrait-mentions-Self.rs:16:31
+  --> $DIR/supertrait-mentions-Self.rs:16:35
    |
 LL | fn make_baz<T:Baz>(t: &T) -> &dyn Baz {
-   |                               ^^^^^^^ `Baz` cannot be made into an object
+   |                                   ^^^ `Baz` cannot be made into an object
    |
 note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/supertrait-mentions-Self.rs:8:13

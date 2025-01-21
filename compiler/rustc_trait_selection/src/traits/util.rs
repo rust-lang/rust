@@ -1,162 +1,85 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::Diag;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
 pub use rustc_infer::traits::util::*;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast,
+    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_span::Span;
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
-///////////////////////////////////////////////////////////////////////////
-// `TraitAliasExpander` iterator
-///////////////////////////////////////////////////////////////////////////
-
-/// "Trait alias expansion" is the process of expanding a sequence of trait
-/// references into another sequence by transitively following all trait
-/// aliases. e.g. If you have bounds like `Foo + Send`, a trait alias
-/// `trait Foo = Bar + Sync;`, and another trait alias
-/// `trait Bar = Read + Write`, then the bounds would expand to
-/// `Read + Write + Sync + Send`.
-/// Expansion is done via a DFS (depth-first search), and the `visited` field
-/// is used to avoid cycles.
-pub struct TraitAliasExpander<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    stack: Vec<TraitAliasExpansionInfo<'tcx>>,
-}
-
-/// Stores information about the expansion of a trait via a path of zero or more trait aliases.
-#[derive(Debug, Clone)]
-pub struct TraitAliasExpansionInfo<'tcx> {
-    pub path: SmallVec<[(ty::PolyTraitRef<'tcx>, Span); 4]>,
-}
-
-impl<'tcx> TraitAliasExpansionInfo<'tcx> {
-    fn new(trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> Self {
-        Self { path: smallvec![(trait_ref, span)] }
-    }
-
-    /// Adds diagnostic labels to `diag` for the expansion path of a trait through all intermediate
-    /// trait aliases.
-    pub fn label_with_exp_info(
-        &self,
-        diag: &mut Diag<'_>,
-        top_label: &'static str,
-        use_desc: &str,
-    ) {
-        diag.span_label(self.top().1, top_label);
-        if self.path.len() > 1 {
-            for (_, sp) in self.path.iter().rev().skip(1).take(self.path.len() - 2) {
-                diag.span_label(*sp, format!("referenced here ({use_desc})"));
-            }
-        }
-        if self.top().1 != self.bottom().1 {
-            // When the trait object is in a return type these two spans match, we don't want
-            // redundant labels.
-            diag.span_label(
-                self.bottom().1,
-                format!("trait alias used in trait object type ({use_desc})"),
-            );
-        }
-    }
-
-    pub fn trait_ref(&self) -> ty::PolyTraitRef<'tcx> {
-        self.top().0
-    }
-
-    pub fn top(&self) -> &(ty::PolyTraitRef<'tcx>, Span) {
-        self.path.last().unwrap()
-    }
-
-    pub fn bottom(&self) -> &(ty::PolyTraitRef<'tcx>, Span) {
-        self.path.first().unwrap()
-    }
-
-    fn clone_and_push(&self, trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> Self {
-        let mut path = self.path.clone();
-        path.push((trait_ref, span));
-
-        Self { path }
-    }
-}
-
+/// Return the trait and projection predicates that come from eagerly expanding the
+/// trait aliases in the list of clauses. For each trait predicate, record a stack
+/// of spans that trace from the user-written trait alias bound. For projection predicates,
+/// just record the span of the projection itself.
+///
+/// For trait aliases, we don't deduplicte the predicates, since we currently do not
+/// consider duplicated traits as a single trait for the purposes of our "one trait principal"
+/// restriction; however, for projections we do deduplicate them.
+///
+/// ```rust,ignore (fails)
+/// trait Bar {}
+/// trait Foo = Bar + Bar;
+///
+/// let not_object_safe: dyn Foo; // bad, two `Bar` principals.
+/// ```
 pub fn expand_trait_aliases<'tcx>(
     tcx: TyCtxt<'tcx>,
-    trait_refs: impl Iterator<Item = (ty::PolyTraitRef<'tcx>, Span)>,
-) -> TraitAliasExpander<'tcx> {
-    let items: Vec<_> =
-        trait_refs.map(|(trait_ref, span)| TraitAliasExpansionInfo::new(trait_ref, span)).collect();
-    TraitAliasExpander { tcx, stack: items }
-}
+    clauses: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
+) -> (
+    Vec<(ty::PolyTraitPredicate<'tcx>, SmallVec<[Span; 1]>)>,
+    Vec<(ty::PolyProjectionPredicate<'tcx>, Span)>,
+) {
+    let mut trait_preds = vec![];
+    let mut projection_preds = vec![];
+    let mut seen_projection_preds = FxHashSet::default();
 
-impl<'tcx> TraitAliasExpander<'tcx> {
-    /// If `item` is a trait alias and its predicate has not yet been visited, then expands `item`
-    /// to the definition, pushes the resulting expansion onto `self.stack`, and returns `false`.
-    /// Otherwise, immediately returns `true` if `item` is a regular trait, or `false` if it is a
-    /// trait alias.
-    /// The return value indicates whether `item` should be yielded to the user.
-    fn expand(&mut self, item: &TraitAliasExpansionInfo<'tcx>) -> bool {
-        let tcx = self.tcx;
-        let trait_ref = item.trait_ref();
-        let pred = trait_ref.upcast(tcx);
+    let mut queue: VecDeque<_> = clauses.into_iter().map(|(p, s)| (p, smallvec![s])).collect();
 
-        debug!("expand_trait_aliases: trait_ref={:?}", trait_ref);
-
-        // Don't recurse if this bound is not a trait alias.
-        let is_alias = tcx.is_trait_alias(trait_ref.def_id());
-        if !is_alias {
-            return true;
-        }
-
-        // Don't recurse if this trait alias is already on the stack for the DFS search.
-        let anon_pred = anonymize_predicate(tcx, pred);
-        if item
-            .path
-            .iter()
-            .rev()
-            .skip(1)
-            .any(|&(tr, _)| anonymize_predicate(tcx, tr.upcast(tcx)) == anon_pred)
-        {
-            return false;
-        }
-
-        // Get components of trait alias.
-        let predicates = tcx.explicit_super_predicates_of(trait_ref.def_id());
-        debug!(?predicates);
-
-        let items = predicates.skip_binder().iter().rev().filter_map(|(pred, span)| {
-            pred.instantiate_supertrait(tcx, trait_ref)
-                .as_trait_clause()
-                .map(|trait_ref| item.clone_and_push(trait_ref.map_bound(|t| t.trait_ref), *span))
-        });
-        debug!("expand_trait_aliases: items={:?}", items.clone().collect::<Vec<_>>());
-
-        self.stack.extend(items);
-
-        false
-    }
-}
-
-impl<'tcx> Iterator for TraitAliasExpander<'tcx> {
-    type Item = TraitAliasExpansionInfo<'tcx>;
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.stack.len(), None)
-    }
-
-    fn next(&mut self) -> Option<TraitAliasExpansionInfo<'tcx>> {
-        while let Some(item) = self.stack.pop() {
-            if self.expand(&item) {
-                return Some(item);
+    while let Some((clause, spans)) = queue.pop_front() {
+        match clause.kind().skip_binder() {
+            ty::ClauseKind::Trait(trait_pred) => {
+                if tcx.is_trait_alias(trait_pred.def_id()) {
+                    queue.extend(
+                        tcx.explicit_super_predicates_of(trait_pred.def_id())
+                            .iter_identity_copied()
+                            .map(|(clause, span)| {
+                                let mut spans = spans.clone();
+                                spans.push(span);
+                                (
+                                    clause.instantiate_supertrait(
+                                        tcx,
+                                        clause.kind().rebind(trait_pred.trait_ref),
+                                    ),
+                                    spans,
+                                )
+                            }),
+                    );
+                } else {
+                    trait_preds.push((clause.kind().rebind(trait_pred), spans));
+                }
             }
+            ty::ClauseKind::Projection(projection_pred) => {
+                let projection_pred = clause.kind().rebind(projection_pred);
+                if !seen_projection_preds.insert(tcx.anonymize_bound_vars(projection_pred)) {
+                    continue;
+                }
+                projection_preds.push((projection_pred, *spans.last().unwrap()));
+            }
+            ty::ClauseKind::RegionOutlives(..)
+            | ty::ClauseKind::TypeOutlives(..)
+            | ty::ClauseKind::ConstArgHasType(_, _)
+            | ty::ClauseKind::WellFormed(_)
+            | ty::ClauseKind::ConstEvaluatable(_)
+            | ty::ClauseKind::HostEffect(..) => {}
         }
-        None
     }
+
+    (trait_preds, projection_preds)
 }
 
 ///////////////////////////////////////////////////////////////////////////
