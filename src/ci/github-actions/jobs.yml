@@ -100,15 +100,6 @@ pr:
   - name: mingw-check-tidy
     continue_on_error: true
     <<: *job-linux-4c
-  - name: x86_64-gnu-llvm-18
-    env:
-      ENABLE_GCC_CODEGEN: "1"
-      # We are adding (temporarily) a dummy commit on the compiler
-      READ_ONLY_SRC: "0"
-      DOCKER_SCRIPT: x86_64-gnu-llvm.sh
-    <<: *job-linux-16c
-  - name: x86_64-gnu-tools
-    <<: *job-linux-16c
 
 # Jobs that run when you perform a try build (@bors try)
 # These jobs automatically inherit envs.try, to avoid repeating

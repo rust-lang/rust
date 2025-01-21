@@ -79,7 +79,7 @@ execAndMeasureSpaceChange() {
 # Remove large packages
 # REF: https://github.com/apache/flink/blob/master/tools/azure-pipelines/free_disk_space.sh
 cleanPackages() {
-    sudo apt-get -qq remove -y --fix-missing \
+    sudo apt-get -qq purge -y --autoremove --fix-missing \
         '^aspnetcore-.*'       \
         '^dotnet-.*'           \
         '^llvm-.*'             \
@@ -93,10 +93,24 @@ cleanPackages() {
         'mono-devel'           \
         'libgl1-mesa-dri'      \
         'google-cloud-sdk'     \
-        'google-cloud-cli'
+        'google-cloud-cli'     \
+        '^java-*'              \
+        'groff'                \
+        'groff-base'           \
+        '^libllvm.*'           \
+        '^llvm.*'              \
+        'gcc'                  \
+        'gcc-11'               \
+        'libicu-dev'           \
+        '^vim.*'               \
+        'python3-breezy'       \
+        'snap'
 
     sudo apt-get autoremove -y || echo "::warning::The command [sudo apt-get autoremove -y] failed"
     sudo apt-get clean || echo "::warning::The command [sudo apt-get clean] failed failed"
+
+    echo "Installed packages sorted by size:"
+    dpkg-query -W --showformat='${Installed-Size} ${Package}\n' | sort -nr
 }
 
 # Remove Docker images
@@ -123,6 +137,14 @@ echo ""
 
 removeDir /usr/local/lib/android
 removeDir /usr/share/dotnet
+removeDir /usr/share/swift
+removeDir "/usr/local/share/boost"
+removeDir "$AGENT_TOOLSDIRECTORY"
+removeDir /opt/hostedtoolcache/
+removeDir /usr/local/graalvm/
+removeDir /usr/local/share/powershell
+removeDir /usr/local/share/chromium
+removeDir /usr/local/lib/node_modules
 
 # Haskell runtime
 removeDir /opt/ghc
