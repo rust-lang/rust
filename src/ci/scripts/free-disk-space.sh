@@ -153,6 +153,9 @@ execAndMeasureSpaceChange cleanPackages "Large misc. packages"
 execAndMeasureSpaceChange cleanDocker "Docker images"
 execAndMeasureSpaceChange cleanSwap "Swap storage"
 
+echo "largest directories:"
+du --max-depth=7 /* -h | sort -nr | head -1000
+
 # Output saved space statistic
 echo ""
 printDF "AFTER CLEAN-UP:"
