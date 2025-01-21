@@ -89,6 +89,55 @@ pub fn option_none_init() -> [Option<u8>; N] {
     [const { None }; N]
 }
 
+// If there is partial provenance or some bytes are initialized and some are not,
+// we can't really do better than initialize bytes or groups of bytes together.
+// CHECK-LABEL: @option_maybe_uninit_init
+#[no_mangle]
+pub fn option_maybe_uninit_init() -> [MaybeUninit<u16>; N] {
+    // CHECK-NOT: select
+    // CHECK: br label %repeat_loop_header{{.*}}
+    // CHECK-NOT: switch
+    // CHECK: icmp
+    // CHECK-NOT: call void @llvm.memset.p0
+    [const {
+        let mut val: MaybeUninit<u16> = MaybeUninit::uninit();
+        let ptr = val.as_mut_ptr() as *mut u8;
+        unsafe {
+            ptr.write(0);
+        }
+        val
+    }; N]
+}
+
+#[repr(packed)]
+struct Packed {
+    start: u8,
+    ptr: &'static (),
+    rest: u16,
+    rest2: u8,
+}
+
+// If there is partial provenance or some bytes are initialized and some are not,
+// we can't really do better than initialize bytes or groups of bytes together.
+// CHECK-LABEL: @option_maybe_uninit_provenance
+#[no_mangle]
+pub fn option_maybe_uninit_provenance() -> [MaybeUninit<Packed>; N] {
+    // CHECK-NOT: select
+    // CHECK: br label %repeat_loop_header{{.*}}
+    // CHECK-NOT: switch
+    // CHECK: icmp
+    // CHECK-NOT: call void @llvm.memset.p0
+    [const {
+        let mut val: MaybeUninit<Packed> = MaybeUninit::uninit();
+        unsafe {
+            let ptr = &raw mut (*val.as_mut_ptr()).ptr;
+            static HAS_ADDR: () = ();
+            ptr.write_unaligned(&HAS_ADDR);
+        }
+        val
+    }; N]
+}
+
 // Use an opaque function to prevent rustc from removing useless drops.
 #[inline(never)]
 pub fn opaque(_: impl Sized) {}
