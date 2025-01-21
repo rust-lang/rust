@@ -174,7 +174,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         &mut self,
         path: &[Segment],
         span: Span,
-        source: PathSource<'_, '_, '_>,
+        source: PathSource<'_, 'ast, 'ra>,
         res: Option<Res>,
     ) -> BaseError {
         // Make the base error.
@@ -318,7 +318,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 (String::new(), "the crate root".to_string(), Some(CRATE_DEF_ID.to_def_id()), None)
             } else {
                 let mod_path = &path[..path.len() - 1];
-                let mod_res = self.resolve_path(mod_path, Some(TypeNS), None);
+                let mod_res = self.resolve_path(mod_path, Some(TypeNS), None, source);
                 let mod_prefix = match mod_res {
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => module.res(),
                     _ => None,
@@ -419,7 +419,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
-        source: PathSource<'_, '_, '_>,
+        source: PathSource<'_, 'ast, 'ra>,
         res: Option<Res>,
         qself: Option<&QSelf>,
     ) -> (Diag<'tcx>, Vec<ImportSuggestion>) {
@@ -1014,7 +1014,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_typo(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_, '_, '_>,
+        source: PathSource<'_, 'ast, 'ra>,
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
@@ -1333,7 +1333,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_swapping_misplaced_self_ty_and_trait(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_, '_, '_>,
+        source: PathSource<'_, 'ast, 'ra>,
         res: Option<Res>,
         span: Span,
     ) {
@@ -1341,7 +1341,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             self.diag_metadata.currently_processing_impl_trait.clone()
             && let TyKind::Path(_, self_ty_path) = &self_ty.kind
             && let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
-                self.resolve_path(&Segment::from_path(self_ty_path), Some(TypeNS), None)
+                self.resolve_path(&Segment::from_path(self_ty_path), Some(TypeNS), None, source)
             && let ModuleKind::Def(DefKind::Trait, ..) = module.kind
             && trait_ref.path.span == span
             && let PathSource::Trait(_) = source
@@ -1449,13 +1449,13 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn get_single_associated_item(
         &mut self,
         path: &[Segment],
-        source: &PathSource<'_, '_, '_>,
+        source: &PathSource<'_, 'ast, 'ra>,
         filter_fn: &impl Fn(Res) -> bool,
     ) -> Option<TypoSuggestion> {
         if let crate::PathSource::TraitItem(_, _) = source {
             let mod_path = &path[..path.len() - 1];
             if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
-                self.resolve_path(mod_path, None, None)
+                self.resolve_path(mod_path, None, None, *source)
             {
                 let targets: Vec<_> = self
                     .r
@@ -1854,7 +1854,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 PathSource::Expr(Some(Expr {
                     kind: ExprKind::Index(..) | ExprKind::Call(..), ..
                 }))
-                | PathSource::Struct,
+                | PathSource::Struct(_),
             ) => {
                 // Don't suggest macro if it's unstable.
                 let suggestable = def_id.is_local()
@@ -2502,7 +2502,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             // Search in module.
             let mod_path = &path[..path.len() - 1];
             if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
-                self.resolve_path(mod_path, Some(TypeNS), None)
+                self.resolve_path(mod_path, Some(TypeNS), None, PathSource::Type)
             {
                 self.r.add_module_candidates(module, &mut names, &filter_fn, None);
             }
@@ -3673,7 +3673,12 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 if let TyKind::Path(None, path) = &ty.kind {
                                     // Check if the path being borrowed is likely to be owned.
                                     let path: Vec<_> = Segment::from_path(path);
-                                    match self.resolve_path(&path, Some(TypeNS), None) {
+                                    match self.resolve_path(
+                                        &path,
+                                        Some(TypeNS),
+                                        None,
+                                        PathSource::Type,
+                                    ) {
                                         PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                                             match module.res() {
                                                 Some(Res::PrimTy(PrimTy::Str)) => {
