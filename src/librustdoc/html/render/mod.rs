@@ -684,6 +684,12 @@ enum ShortItemInfo {
     Portability {
         message: String,
     },
+    /// The feature corresponding to a const unstable item, and optionally
+    /// a tracking issue URL and number.
+    ConstUnstable {
+        feature: String,
+        tracking: Option<u32>,
+    },
 }
 
 /// Render the stability, deprecation and portability information that is displayed at the top of
@@ -723,10 +729,10 @@ fn short_item_info(
         extra_info.push(ShortItemInfo::Deprecation { message });
     }
 
+    let stability = item.stability(cx.tcx());
     // Render unstable items. But don't render "rustc_private" crates (internal compiler crates).
     // Those crates are permanently unstable so it makes no sense to render "unstable" everywhere.
-    if let Some((StabilityLevel::Unstable { reason: _, issue, .. }, feature)) = item
-        .stability(cx.tcx())
+    if let Some((StabilityLevel::Unstable { reason: _, issue, .. }, feature)) = stability
         .as_ref()
         .filter(|stab| stab.feature != sym::rustc_private)
         .map(|stab| (stab.level, stab.feature))
@@ -738,6 +744,18 @@ fn short_item_info(
             None
         };
         extra_info.push(ShortItemInfo::Unstable { feature: feature.to_string(), tracking });
+    }
+
+    // Only display const unstable if NOT entirely unstable.
+    if stability.and_then(|stability| stability.stable_since()).is_some()
+        && let Some(ConstStability {
+            level: StabilityLevel::Unstable { issue, .. }, feature, ..
+        }) = item.const_stability(cx.tcx())
+    {
+        extra_info.push(ShortItemInfo::ConstUnstable {
+            feature: feature.to_string(),
+            tracking: issue.map(|issue| issue.get()),
+        });
     }
 
     if let Some(message) = portability(item, parent) {
