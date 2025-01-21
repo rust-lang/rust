@@ -313,6 +313,17 @@ pub macro cfg_match {
 ///     }
 /// }
 /// ```
+///
+/// If desired, it is possible to return expressions through the use of surrounding braces:
+///
+/// ```
+/// #![feature(cfg_match)]
+///
+/// let _some_string = cfg_match! {{
+///     unix => { "With great power comes great electricity bills" }
+///     _ => { "Behind every successful diet is an unwatched pizza" }
+/// }};
+/// ```
 #[cfg(not(bootstrap))]
 #[unstable(feature = "cfg_match", issue = "115585")]
 #[rustc_diagnostic_item = "cfg_match"]
