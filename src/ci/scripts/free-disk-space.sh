@@ -113,6 +113,7 @@ cleanPackages() {
         'microsoft-edge-stable'   \
         'mono-llvm-tools'         \
         'podman'                  \
+        '^r-base.*'               \
         'snapd'
 
     sudo apt-get autoremove -y || echo "::warning::The command [sudo apt-get autoremove -y] failed"
