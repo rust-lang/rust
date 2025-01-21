@@ -1754,8 +1754,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn report_privacy_error(&mut self, privacy_error: &PrivacyError<'ra>) {
-        let PrivacyError { ident, binding, outermost_res, parent_scope, single_nested, dedup_span } =
-            *privacy_error;
+        let PrivacyError {
+            ident,
+            binding,
+            outermost_res,
+            parent_scope,
+            single_nested,
+            dedup_span,
+            ref source,
+        } = *privacy_error;
 
         let res = binding.res();
         let ctor_fields_span = self.ctor_fields_span(binding);
@@ -1770,6 +1777,44 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let ident_descr = get_descr(binding);
         let mut err =
             self.dcx().create_err(errors::IsPrivate { span: ident.span, ident_descr, ident });
+
+        if let Some(expr) = source
+            && let ast::ExprKind::Struct(struct_expr) = &expr.kind
+            && let Some(Res::Def(_, def_id)) = self.partial_res_map
+                [&struct_expr.path.segments.iter().last().unwrap().id]
+                .full_res()
+            && let Some(default_fields) = self.field_defaults(def_id)
+            && !struct_expr.fields.is_empty()
+        {
+            let last_span = struct_expr.fields.iter().last().unwrap().span;
+            for field in &struct_expr.fields[..] {
+                if field.expr.span.overlaps(ident.span) {
+                    err.span_label(field.ident.span, "while setting this field");
+                    if default_fields.contains(&field.ident.name) {
+                        let sugg = if last_span == field.span {
+                            vec![(field.span, "..".to_string())]
+                        } else {
+                            vec![
+                                (field.span, String::new()),
+                                (last_span.shrink_to_hi(), ", ..".to_string()),
+                            ]
+                        };
+                        err.multipart_suggestion_verbose(
+                            format!(
+                                "the type `{ident}` of field `{}` is private, but you can \
+                                 construct the default value defined for it in `{}` using `..` in \
+                                 the struct initializer expression",
+                                field.ident,
+                                self.tcx.item_name(def_id),
+                            ),
+                            sugg,
+                            Applicability::MachineApplicable,
+                        );
+                        break;
+                    }
+                }
+            }
+        }
 
         let mut not_publicly_reexported = false;
         if let Some((this_res, outer_ident)) = outermost_res {
