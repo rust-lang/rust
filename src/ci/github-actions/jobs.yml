@@ -48,6 +48,8 @@ runners:
     <<: *base-job
 
   - &job-aarch64-linux
+    # Free some disk space to avoid running out of space during the build.
+    free_disk: true
     os: ubuntu-22.04-arm
 
 envs:
