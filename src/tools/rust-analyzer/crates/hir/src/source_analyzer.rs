@@ -686,10 +686,19 @@ impl SourceAnalyzer {
     ) -> Option<ModuleDef> {
         let pat_id = self.pat_id(&pat.clone().into())?;
         let body = self.body()?;
-        let path = match &body[pat_id.as_pat()?] {
-            Pat::Path(path) => path,
-            _ => return None,
+
+        let path = if pat_id.is_pat() {
+            match &body[pat_id.as_pat()?] {
+                Pat::Path(path) => path,
+                _ => return None,
+            }
+        } else {
+            match &body[pat_id.as_expr()?] {
+                Expr::Path(path) => path,
+                _ => return None,
+            }
         };
+
         let res = resolve_hir_path(db, &self.resolver, path, HygieneId::ROOT, TypesMap::EMPTY)?;
         match res {
             PathResolution::Def(def) => Some(def),
