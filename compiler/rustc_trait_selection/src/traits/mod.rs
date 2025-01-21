@@ -67,7 +67,7 @@ pub use self::specialize::{
 pub use self::structural_normalize::StructurallyNormalizeExt;
 pub use self::util::{
     BoundVarReplacer, PlaceholderReplacer, elaborate, expand_trait_aliases, impl_item_is_final,
-    supertraits, transitive_bounds_that_define_assoc_item, upcast_choices,
+    supertrait_def_ids, supertraits, transitive_bounds_that_define_assoc_item, upcast_choices,
     with_replaced_escaping_bound_vars,
 };
 use crate::error_reporting::InferCtxtErrorExt;

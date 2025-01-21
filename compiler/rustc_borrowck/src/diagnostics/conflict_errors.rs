@@ -39,7 +39,9 @@ use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use rustc_trait_selection::error_reporting::traits::call_kind::CallKind;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
+use rustc_trait_selection::traits::{
+    Obligation, ObligationCause, ObligationCtxt, supertrait_def_ids,
+};
 use tracing::{debug, instrument};
 
 use super::explain_borrow::{BorrowExplanation, LaterUseKind};
@@ -658,8 +660,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             clause.as_trait_clause().is_some_and(|tc| {
                 tc.self_ty().skip_binder().is_param(param.index)
                     && tc.polarity() == ty::PredicatePolarity::Positive
-                    && tcx
-                        .supertrait_def_ids(tc.def_id())
+                    && supertrait_def_ids(tcx, tc.def_id())
                         .flat_map(|trait_did| tcx.associated_items(trait_did).in_definition_order())
                         .any(|item| item.fn_has_self_parameter)
             })

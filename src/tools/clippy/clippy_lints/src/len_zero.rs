@@ -18,6 +18,7 @@ use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
+use rustc_trait_selection::traits::supertrait_def_ids;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -270,7 +271,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
     // fill the set with current and super traits
     fn fill_trait_set(traitt: DefId, set: &mut DefIdSet, cx: &LateContext<'_>) {
         if set.insert(traitt) {
-            for supertrait in cx.tcx.supertrait_def_ids(traitt) {
+            for supertrait in supertrait_def_ids(cx.tcx, traitt) {
                 fill_trait_set(supertrait, set, cx);
             }
         }
