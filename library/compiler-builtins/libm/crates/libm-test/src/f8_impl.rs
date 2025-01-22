@@ -30,6 +30,8 @@ impl Float for f8 {
     const INFINITY: Self = Self(0b0_1111_000);
     const NEG_INFINITY: Self = Self(0b1_1111_000);
     const NAN: Self = Self(0b0_1111_100);
+    // FIXME: incorrect values
+    const EPSILON: Self = Self::ZERO;
     const PI: Self = Self::ZERO;
     const NEG_PI: Self = Self::ZERO;
     const FRAC_PI_2: Self = Self::ZERO;

@@ -34,6 +34,7 @@ pub trait Float:
     const NAN: Self;
     const MAX: Self;
     const MIN: Self;
+    const EPSILON: Self;
     const PI: Self;
     const NEG_PI: Self;
     const FRAC_PI_2: Self;
@@ -107,13 +108,13 @@ pub trait Float:
     }
 
     /// Returns the exponent, not adjusting for bias, not accounting for subnormals or zero.
-    fn exp(self) -> i32 {
-        (u32::cast_from(self.to_bits() >> Self::SIG_BITS) & Self::EXP_MAX).signed()
+    fn exp(self) -> u32 {
+        u32::cast_from(self.to_bits() >> Self::SIG_BITS) & Self::EXP_MAX
     }
 
     /// Extract the exponent and adjust it for bias, not accounting for subnormals or zero.
     fn exp_unbiased(self) -> i32 {
-        self.exp() - (Self::EXP_BIAS as i32)
+        self.exp().signed() - (Self::EXP_BIAS as i32)
     }
 
     /// Returns the significand with no implicit bit (or the "fractional" part)
@@ -180,6 +181,7 @@ macro_rules! float_impl {
             const MAX: Self = -Self::MIN;
             // Sign bit set, saturated mantissa, saturated exponent with last bit zeroed
             const MIN: Self = $from_bits(Self::Int::MAX & !(1 << Self::SIG_BITS));
+            const EPSILON: Self = <$ty>::EPSILON;
 
             const PI: Self = core::$ty::consts::PI;
             const NEG_PI: Self = -Self::PI;
