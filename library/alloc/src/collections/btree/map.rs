@@ -40,10 +40,10 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 
 /// An ordered map based on a [B-Tree].
 ///
-/// An ordered map is a map in which the keys are totally ordered.
+/// Given a key type with a [total order], an ordered map stores its entries in key order.
 /// That means that keys must be of a type that implements the [`Ord`] trait,
 /// such that two keys can always be compared to determine their [`Ordering`].
-/// Examples of totally ordered keys are strings with lexicographical order,
+/// Examples of keys with a total order are strings with lexicographical order,
 /// and numbers with their natural order.
 ///
 /// Iterators obtained from functions such as [`BTreeMap::iter`], [`BTreeMap::into_iter`], [`BTreeMap::values`], or
@@ -180,6 +180,7 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 ///
 /// [B-Tree]: https://en.wikipedia.org/wiki/B-tree
 /// [binary search tree]: https://en.wikipedia.org/wiki/Binary_search_tree
+/// [total order]: https://en.wikipedia.org/wiki/Total_order
 /// [`Cell`]: core::cell::Cell
 /// [`RefCell`]: core::cell::RefCell
 #[stable(feature = "rust1", since = "1.0.0")]
