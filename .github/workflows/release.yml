@@ -88,9 +88,6 @@ jobs:
         with:
           merge-multiple: true
           path: artifacts
-      - name: List artifacts
-        run: |
-          ls -Al .
       - name: Release
         uses: softprops/action-gh-release@v2
         with:

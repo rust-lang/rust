@@ -34,10 +34,8 @@ jobs:
             rustup component add llvm-tools-preview
       - name: Upstream
         run: src/ci/scripts/setup-upstream-remote.sh
-      - name: Stage 1
-        run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.toml
-      - name: BSan
-        run: ./x.py build bsan --stage 1 --config src/bootstrap/defaults/config.bsan.toml
+      - name: Stage 1 Build
+        run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.dev.toml
   build-macos:
     runs-on: macos-latest
     name: Build (macOS)
@@ -50,7 +48,5 @@ jobs:
             brew install ninja
       - name: Upstream
         run: src/ci/scripts/setup-upstream-remote.sh
-      - name: Stage 1
-        run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.toml
-      - name: BSan
-        run: ./x.py build bsan --stage 1 --config src/bootstrap/defaults/config.bsan.toml
+      - name: Stage 1 Build
+        run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.dev.toml
