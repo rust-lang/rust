@@ -1,4 +1,4 @@
-//@ normalize-stderr: "\.:.*\(" -> ".: $$ACCESS_DENIED_MSG ("
+//@ normalize-stderr: "\.`:.*\(" -> ".`: $$ACCESS_DENIED_MSG ("
 //@ normalize-stderr: "os error \d+" -> "os error $$ACCESS_DENIED_CODE"
 
 #[path = "."]
