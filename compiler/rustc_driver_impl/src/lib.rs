@@ -207,23 +207,7 @@ pub fn diagnostics_registry() -> Registry {
 }
 
 /// This is the primary entry point for rustc.
-pub struct RunCompiler<'a> {
-    at_args: &'a [String],
-    callbacks: &'a mut (dyn Callbacks + Send),
-}
-
-impl<'a> RunCompiler<'a> {
-    pub fn new(at_args: &'a [String], callbacks: &'a mut (dyn Callbacks + Send)) -> Self {
-        Self { at_args, callbacks }
-    }
-
-    /// Parse args and run the compiler.
-    pub fn run(self) {
-        run_compiler(self.at_args, self.callbacks);
-    }
-}
-
-fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) {
+pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) {
     let mut default_early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     // Throw away the first argument, the name of the binary.
@@ -1516,7 +1500,7 @@ pub fn main() -> ! {
     install_ctrlc_handler();
 
     let exit_code = catch_with_exit_code(|| {
-        RunCompiler::new(&args::raw_args(&early_dcx)?, &mut callbacks).run();
+        run_compiler(&args::raw_args(&early_dcx)?, &mut callbacks);
         Ok(())
     });
 

@@ -18,7 +18,7 @@ use std::path::Path;
 
 use rustc_ast_pretty::pprust::item_to_string;
 use rustc_data_structures::sync::Lrc;
-use rustc_driver::{Compilation, RunCompiler};
+use rustc_driver::{Compilation, run_compiler};
 use rustc_interface::interface::{Compiler, Config};
 use rustc_middle::ty::TyCtxt;
 
@@ -87,5 +87,5 @@ impl rustc_driver::Callbacks for MyCallbacks {
 }
 
 fn main() {
-    RunCompiler::new(&["main.rs".to_string()], &mut MyCallbacks).run();
+    run_compiler(&["main.rs".to_string()], &mut MyCallbacks);
 }
