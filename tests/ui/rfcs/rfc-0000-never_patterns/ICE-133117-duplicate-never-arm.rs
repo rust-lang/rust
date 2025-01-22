@@ -1,12 +1,14 @@
+#![feature(never_type)]
 #![feature(never_patterns)]
 #![allow(incomplete_features)]
 
-fn main() {
-    match () {
-        (!|
-        //~^ ERROR: mismatched types
-        !) if true => {} //~ ERROR a never pattern is always unreachable
-        //~^ ERROR: mismatched types
+enum Void {}
+
+fn foo(x: Void) {
+    match x {
+        (!|!) if true => {} //~ ERROR a never pattern is always unreachable
         (!|!) if true => {} //~ ERROR a never pattern is always unreachable
     }
 }
+
+fn main() {}

@@ -1,11 +1,11 @@
 error: a never pattern is always unreachable
-  --> $DIR/ICE-133117-duplicate-never-arm.rs:8:23
+  --> $DIR/ICE-133117-duplicate-never-arm.rs:9:26
    |
-LL |         !) if true => {}
-   |                       ^^
-   |                       |
-   |                       this will never be executed
-   |                       help: remove this expression
+LL |         (!|!) if true => {}
+   |                          ^^
+   |                          |
+   |                          this will never be executed
+   |                          help: remove this expression
 
 error: a never pattern is always unreachable
   --> $DIR/ICE-133117-duplicate-never-arm.rs:10:26
@@ -16,21 +16,5 @@ LL |         (!|!) if true => {}
    |                          this will never be executed
    |                          help: remove this expression
 
-error: mismatched types
-  --> $DIR/ICE-133117-duplicate-never-arm.rs:6:10
-   |
-LL |         (!|
-   |          ^ a never pattern must be used on an uninhabited type
-   |
-   = note: the matched value is of type `()`
-
-error: mismatched types
-  --> $DIR/ICE-133117-duplicate-never-arm.rs:8:9
-   |
-LL |         !) if true => {}
-   |         ^ a never pattern must be used on an uninhabited type
-   |
-   = note: the matched value is of type `()`
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
