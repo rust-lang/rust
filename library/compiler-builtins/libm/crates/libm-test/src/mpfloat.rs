@@ -137,6 +137,8 @@ libm_macros::for_each_function! {
         // Most of these need a manual implementation
         ceil,
         ceilf,
+        ceilf128,
+        ceilf16,
         copysign,
         copysignf,
         copysignf128,
@@ -237,12 +239,14 @@ impl_no_round! {
 #[cfg(f16_enabled)]
 impl_no_round! {
     fabsf16 => abs_mut;
+    ceilf16 => ceil_mut;
     truncf16 => trunc_mut;
 }
 
 #[cfg(f128_enabled)]
 impl_no_round! {
     fabsf128 => abs_mut;
+    ceilf128 => ceil_mut;
     truncf128 => trunc_mut;
 }
 

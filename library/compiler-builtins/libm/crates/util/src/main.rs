@@ -84,7 +84,9 @@ fn do_eval(basis: &str, op: &str, inputs: &[&str]) {
         emit_types: [CFn, RustFn, RustArgs],
         extra: (basis, op, inputs),
         fn_extra: match MACRO_FN_NAME {
-            copysignf128
+            ceilf128
+            | ceilf16
+            | copysignf128
             | copysignf16
             | fabsf128
             | fabsf16

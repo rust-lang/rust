@@ -109,16 +109,32 @@
             "src/libm_helper.rs",
             "src/math/arch/i586.rs",
             "src/math/arch/wasm32.rs",
-            "src/math/ceil.rs"
+            "src/math/ceil.rs",
+            "src/math/generic/ceil.rs"
         ],
         "type": "f64"
     },
     "ceilf": {
         "sources": [
             "src/math/arch/wasm32.rs",
-            "src/math/ceilf.rs"
+            "src/math/ceilf.rs",
+            "src/math/generic/ceil.rs"
         ],
         "type": "f32"
+    },
+    "ceilf128": {
+        "sources": [
+            "src/math/ceilf128.rs",
+            "src/math/generic/ceil.rs"
+        ],
+        "type": "f128"
+    },
+    "ceilf16": {
+        "sources": [
+            "src/math/ceilf16.rs",
+            "src/math/generic/ceil.rs"
+        ],
+        "type": "f16"
     },
     "copysign": {
         "sources": [
