@@ -45,24 +45,24 @@ LL |     <String as Example>::from::method_that_doesnt_exist();
 error[E0223]: ambiguous associated type
   --> $DIR/issue-109195.rs:24:5
    |
-LL |     str::from::utf8();
+LL |     str::into::string();
    |     ^^^^^^^^^
    |
-help: if there were a trait named `Example` with associated type `from` implemented for `str`, you could use the fully-qualified path
+help: there is an associated function with a similar name: `into_string`
    |
-LL |     <str as Example>::from::utf8();
-   |     ~~~~~~~~~~~~~~~~~~~~~~
+LL |     str::into_string();
+   |          ~~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
   --> $DIR/issue-109195.rs:27:5
    |
-LL |     str::from::utf8_mut();
+LL |     str::char::indices();
    |     ^^^^^^^^^
    |
-help: if there were a trait named `Example` with associated type `from` implemented for `str`, you could use the fully-qualified path
+help: there is an associated function with a similar name: `char_indices`
    |
-LL |     <str as Example>::from::utf8_mut();
-   |     ~~~~~~~~~~~~~~~~~~~~~~
+LL |     str::char_indices();
+   |          ~~~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
   --> $DIR/issue-109195.rs:30:5
@@ -97,6 +97,39 @@ help: if there were a trait named `Example` with associated type `bar` implement
 LL |     <Foo as Example>::bar::fizz;
    |     ~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to 9 previous errors
+error[E0223]: ambiguous associated type
+  --> $DIR/issue-109195.rs:39:5
+   |
+LL |     i32::wrapping::add;
+   |     ^^^^^^^^^^^^^
+   |
+help: there is an associated function with a similar name: `wrapping_add`
+   |
+LL |     i32::wrapping_add;
+   |          ~~~~~~~~~~~~
+
+error[E0223]: ambiguous associated type
+  --> $DIR/issue-109195.rs:42:5
+   |
+LL |     i32::wrapping::method_that_doesnt_exist;
+   |     ^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `wrapping` implemented for `i32`, you could use the fully-qualified path
+   |
+LL |     <i32 as Example>::wrapping::method_that_doesnt_exist;
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error[E0223]: ambiguous associated type
+  --> $DIR/issue-109195.rs:47:5
+   |
+LL |     <dyn std::any::Any>::downcast::mut_unchecked;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `downcast` implemented for `(dyn Any + 'static)`, you could use the fully-qualified path
+   |
+LL |     <(dyn Any + 'static) as Example>::downcast::mut_unchecked;
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 12 previous errors
 
 For more information about this error, try `rustc --explain E0223`.
