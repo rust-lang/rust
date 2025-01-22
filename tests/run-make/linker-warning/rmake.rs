@@ -7,10 +7,13 @@ fn run_rustc() -> Rustc {
         // NOTE: `link-self-contained` can vary depending on config.toml.
         // Make sure we use a consistent value.
         .arg("-Clink-self-contained=-linker")
-        .arg("-Clinker-flavor=gnu-cc")
         .arg("-Zunstable-options")
         .output("main")
         .linker("./fake-linker");
+    if run_make_support::target() == "x86_64-unknown-linux-gnu" {
+        // The value of `rust.lld` is different between CI and locally. Override it explicitly.
+        rustc.arg("-Clinker-flavor=gnu-cc");
+    }
     rustc
 }
 
