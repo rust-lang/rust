@@ -109,7 +109,7 @@ jobs:
       # intensive jobs to run on free runners, which however also have
       # less disk space.
       - name: free up disk space
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+        run: src/ci/scripts/free-disk-space.sh
         if: matrix.free_disk
 
       # Rust Log Analyzer can't currently detect the PR number of a GitHub
