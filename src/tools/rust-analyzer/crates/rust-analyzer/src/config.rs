@@ -84,10 +84,10 @@ config_data! {
         completion_snippets_custom: FxHashMap<String, SnippetDef> = Config::completion_snippets_default(),
 
 
-        /// These directories will be ignored by rust-analyzer. They are
+        /// These paths (file/directories) will be ignored by rust-analyzer. They are
         /// relative to the workspace root, and globs are not supported. You may
         /// also need to add the folders to Code's `files.watcherExclude`.
-        files_excludeDirs: Vec<Utf8PathBuf> = vec![],
+        files_exclude | files_excludeDirs: Vec<Utf8PathBuf> = vec![],
 
 
 
@@ -1787,7 +1787,7 @@ impl Config {
 
     fn discovered_projects(&self) -> Vec<ManifestOrProjectJson> {
         let exclude_dirs: Vec<_> =
-            self.files_excludeDirs().iter().map(|p| self.root_path.join(p)).collect();
+            self.files_exclude().iter().map(|p| self.root_path.join(p)).collect();
 
         let mut projects = vec![];
         for fs_proj in &self.discovered_projects_from_filesystem {
@@ -1909,7 +1909,7 @@ impl Config {
                 }
                 _ => FilesWatcher::Server,
             },
-            exclude: self.files_excludeDirs().iter().map(|it| self.root_path.join(it)).collect(),
+            exclude: self.files_exclude().iter().map(|it| self.root_path.join(it)).collect(),
         }
     }
 
