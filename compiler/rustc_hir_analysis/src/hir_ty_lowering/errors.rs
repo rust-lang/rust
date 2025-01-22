@@ -999,11 +999,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ..
             }) = node
             && let Some(adt_def) = qself_ty.ty_adt_def()
-            && let [inherent_impl] = tcx.inherent_impls(adt_def.did())
-            && let name = format!("{ident2}_{ident3}")
+            && let name = Symbol::intern(&format!("{ident2}_{ident3}"))
             && let Some(ty::AssocItem { kind: ty::AssocKind::Fn, .. }) = tcx
-                .associated_items(inherent_impl)
-                .filter_by_name_unhygienic(Symbol::intern(&name))
+                .inherent_impls(adt_def.did())
+                .iter()
+                .flat_map(|inherent_impl| {
+                    tcx.associated_items(inherent_impl).filter_by_name_unhygienic(name)
+                })
                 .next()
         {
             Err(struct_span_code_err!(self.dcx(), span, E0223, "ambiguous associated type")
