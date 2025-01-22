@@ -170,6 +170,8 @@ libm_macros::for_each_function! {
         remquof,
         rint,
         rintf,
+        rintf128,
+        rintf16,
         round,
         roundf,
         scalbn,
@@ -240,17 +242,19 @@ impl_no_round! {
 
 #[cfg(f16_enabled)]
 impl_no_round! {
-    fabsf16 => abs_mut;
     ceilf16 => ceil_mut;
+    fabsf16 => abs_mut;
     floorf16 => floor_mut;
+    rintf16 => round_even_mut; // FIXME: respect rounding mode
     truncf16 => trunc_mut;
 }
 
 #[cfg(f128_enabled)]
 impl_no_round! {
-    fabsf128 => abs_mut;
     ceilf128 => ceil_mut;
+    fabsf128 => abs_mut;
     floorf128 => floor_mut;
+    rintf128 => round_even_mut; // FIXME: respect rounding mode
     truncf128 => trunc_mut;
 }
 

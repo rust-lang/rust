@@ -149,6 +149,8 @@ main!(
     icount_bench_remquo_group,
     icount_bench_remquof_group,
     icount_bench_rint_group,
+    icount_bench_rintf128_group,
+    icount_bench_rintf16_group,
     icount_bench_rintf_group,
     icount_bench_round_group,
     icount_bench_roundf_group,

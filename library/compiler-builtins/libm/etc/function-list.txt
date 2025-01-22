@@ -97,6 +97,8 @@ remquo
 remquof
 rint
 rintf
+rintf128
+rintf16
 round
 roundf
 scalbn

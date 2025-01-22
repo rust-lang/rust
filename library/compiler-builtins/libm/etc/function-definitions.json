@@ -654,6 +654,7 @@
             "src/libm_helper.rs",
             "src/math/arch/aarch64.rs",
             "src/math/arch/wasm32.rs",
+            "src/math/generic/rint.rs",
             "src/math/rint.rs"
         ],
         "type": "f64"
@@ -662,9 +663,24 @@
         "sources": [
             "src/math/arch/aarch64.rs",
             "src/math/arch/wasm32.rs",
+            "src/math/generic/rint.rs",
             "src/math/rintf.rs"
         ],
         "type": "f32"
+    },
+    "rintf128": {
+        "sources": [
+            "src/math/generic/rint.rs",
+            "src/math/rintf128.rs"
+        ],
+        "type": "f128"
+    },
+    "rintf16": {
+        "sources": [
+            "src/math/generic/rint.rs",
+            "src/math/rintf16.rs"
+        ],
+        "type": "f16"
     },
     "round": {
         "sources": [

@@ -89,9 +89,11 @@ libm_macros::for_each_function! {
         fdimf16,
         floorf128,
         floorf16,
+        rintf128,
+        rintf16,
+        sqrtf128,
+        sqrtf16,
         truncf128,
         truncf16,
-        sqrtf16,
-        sqrtf128,
     ],
 }
