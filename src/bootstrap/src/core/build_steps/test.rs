@@ -311,7 +311,7 @@ impl Step for Cargo {
         );
 
         // NOTE: can't use `run_cargo_test` because we need to overwrite `PATH`
-        let mut cargo = prepare_cargo_test(cargo, &[], &[], "cargo", compiler, self.host, builder);
+        let mut cargo = prepare_cargo_test(cargo, &[], &[], "cargo", self.host, builder);
 
         // Don't run cross-compile tests, we may not have cross-compiled libstd libs
         // available.
@@ -564,7 +564,7 @@ impl Step for Miri {
 
         // We can NOT use `run_cargo_test` since Miri's integration tests do not use the usual test
         // harness and therefore do not understand the flags added by `add_flags_and_try_run_test`.
-        let mut cargo = prepare_cargo_test(cargo, &[], &[], "miri", host_compiler, host, builder);
+        let mut cargo = prepare_cargo_test(cargo, &[], &[], "miri", host, builder);
 
         // miri tests need to know about the stage sysroot
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
@@ -759,7 +759,7 @@ impl Step for Clippy {
         cargo.env("HOST_LIBS", host_libs);
 
         cargo.add_rustc_lib_path(builder);
-        let cargo = prepare_cargo_test(cargo, &[], &[], "clippy", compiler, host, builder);
+        let cargo = prepare_cargo_test(cargo, &[], &[], "clippy", host, builder);
 
         let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "clippy", host, host);
 
@@ -2530,8 +2530,7 @@ fn run_cargo_test<'a>(
     builder: &Builder<'_>,
 ) -> bool {
     let compiler = cargo.compiler();
-    let mut cargo =
-        prepare_cargo_test(cargo, libtest_args, crates, primary_crate, compiler, target, builder);
+    let mut cargo = prepare_cargo_test(cargo, libtest_args, crates, primary_crate, target, builder);
     let _time = helpers::timeit(builder);
     let _group = description.into().and_then(|what| {
         builder.msg_sysroot_tool(Kind::Test, compiler.stage, what, compiler.host, target)
@@ -2552,15 +2551,15 @@ fn run_cargo_test<'a>(
 
 /// Given a `cargo test` subcommand, pass it the appropriate test flags given a `builder`.
 fn prepare_cargo_test(
-    cargo: impl Into<BootstrapCommand>,
+    cargo: builder::Cargo,
     libtest_args: &[&str],
     crates: &[String],
     primary_crate: &str,
-    compiler: Compiler,
     target: TargetSelection,
     builder: &Builder<'_>,
 ) -> BootstrapCommand {
-    let mut cargo = cargo.into();
+    let compiler = cargo.compiler();
+    let mut cargo: BootstrapCommand = cargo.into();
 
     // Propagate `--bless` if it has not already been set/unset
     // Any tools that want to use this should bless if `RUSTC_BLESS` is set to
