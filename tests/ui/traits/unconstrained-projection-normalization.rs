@@ -16,5 +16,7 @@ impl<T: ?Sized> Every for Thing {
 }
 
 static I: <Thing as Every>::Assoc = 3;
+//[next]~^ ERROR: type annotations needed
+//[next]~| ERROR: type annotations needed
 
 fn main() {}
