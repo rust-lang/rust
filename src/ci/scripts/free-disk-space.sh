@@ -113,7 +113,8 @@ cleanPackages() {
 
     echo "=> Installed packages sorted by size:"
     # sort always fails because `head` stops reading stdin
-    dpkg-query -W --showformat='${Installed-Size} ${Package}\n' | sort -nr 2>/dev/null | head -200 || true
+    dpkg-query -W --showformat='${Installed-Size} ${Package}\n' | \
+      sort -nr 2>/dev/null | head -200 || true
 }
 
 # Remove Docker images
