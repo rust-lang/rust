@@ -79,6 +79,7 @@ use crate::alloc::Global;
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
+use crate::collections::VecDeque;
 use crate::vec::Vec;
 
 // HACK(japaric): With cfg(test) `impl [T]` is not available, these three
@@ -662,6 +663,45 @@ impl<T> [T] {
         Self: Join<Separator>,
     {
         Join::join(self, sep)
+    }
+}
+
+#[cfg(not(test))]
+impl [u8] {
+    #[rustc_allow_incoherent_impl]
+    #[unstable(issue = "none", feature = "std_internals")]
+    #[allow(dead_code)]
+    /// Safety:
+    ///    - Must be UTF-8
+    pub unsafe fn make_utf8_uppercase(&mut self) -> Result<usize, VecDeque<u8>> {
+        let mut queue = VecDeque::new();
+
+        let mut read_offset = 0;
+        let mut write_offset = 0;
+
+        let mut buffer = [0; 4];
+        while let Some((codepoint, width)) =
+            unsafe { core::str::next_code_point_with_width(&mut self[read_offset..].iter()) }
+        {
+            read_offset += width;
+            let lowercase_char = unsafe { char::from_u32_unchecked(codepoint) };
+            for c in lowercase_char.to_uppercase() {
+                let l = c.len_utf8();
+                c.encode_utf8(&mut buffer);
+                queue.extend(&buffer[..l]);
+            }
+            while write_offset < read_offset {
+                match queue.pop_front() {
+                    Some(b) => {
+                        self[write_offset] = b;
+                        write_offset += 1;
+                    }
+                    None => break,
+                }
+            }
+        }
+        assert_eq!(read_offset, self.len());
+        if write_offset < read_offset { Ok(write_offset) } else { Err(queue) }
     }
 }
 

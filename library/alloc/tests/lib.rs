@@ -43,6 +43,7 @@
 #![allow(internal_features)]
 #![deny(fuzzy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![feature(string_make_uplowercase)]
 
 extern crate test;
 

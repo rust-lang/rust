@@ -903,3 +903,23 @@ fn test_str_concat() {
     let s: String = format!("{a}{b}");
     assert_eq!(s.as_bytes()[9], 'd' as u8);
 }
+
+#[test]
+fn make_uppercase() {
+    fn test(s: &str) {
+        let ground_truth = s.to_uppercase();
+        let mut tested = s.to_owned();
+        tested.make_uppercase();
+        assert!(
+            tested == ground_truth,
+            r#"When uppercased "{s}" gave "{tested}" while "{ground_truth}" was expected"#
+        );
+    }
+    test("");
+    test("abcde");
+    // 4 to 9 bytes
+    test("ǰΐ");
+    // 10*3 to 10*2 bytes
+    test("ⱥⱥⱥⱥⱥⱥⱥⱥⱥⱥ");
+    test("aéǅßﬁᾀ");
+}

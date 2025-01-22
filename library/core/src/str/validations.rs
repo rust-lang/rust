@@ -26,18 +26,21 @@ pub(super) const fn utf8_is_cont_byte(byte: u8) -> bool {
 }
 
 /// Reads the next code point out of a byte iterator (assuming a
-/// UTF-8-like encoding).
+/// UTF-8-like encoding) and returns it along with its width.
 ///
 /// # Safety
 ///
 /// `bytes` must produce a valid UTF-8-like (UTF-8 or WTF-8) string
 #[unstable(feature = "str_internals", issue = "none")]
 #[inline]
-pub unsafe fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> Option<u32> {
+#[allow(dead_code)]
+pub unsafe fn next_code_point_with_width<'a, I: Iterator<Item = &'a u8>>(
+    bytes: &mut I,
+) -> Option<(u32, usize)> {
     // Decode UTF-8
     let x = *bytes.next()?;
     if x < 128 {
-        return Some(x as u32);
+        return Some((x as u32, 1));
     }
 
     // Multibyte case follows
@@ -47,6 +50,7 @@ pub unsafe fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> 
     // SAFETY: `bytes` produces an UTF-8-like string,
     // so the iterator must produce a value here.
     let y = unsafe { *bytes.next().unwrap_unchecked() };
+    let mut width = 2;
     let mut ch = utf8_acc_cont_byte(init, y);
     if x >= 0xE0 {
         // [[x y z] w] case
@@ -54,6 +58,7 @@ pub unsafe fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> 
         // SAFETY: `bytes` produces an UTF-8-like string,
         // so the iterator must produce a value here.
         let z = unsafe { *bytes.next().unwrap_unchecked() };
+        width = 3;
         let y_z = utf8_acc_cont_byte((y & CONT_MASK) as u32, z);
         ch = init << 12 | y_z;
         if x >= 0xF0 {
@@ -62,11 +67,25 @@ pub unsafe fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> 
             // SAFETY: `bytes` produces an UTF-8-like string,
             // so the iterator must produce a value here.
             let w = unsafe { *bytes.next().unwrap_unchecked() };
+            width = 4;
             ch = (init & 7) << 18 | utf8_acc_cont_byte(y_z, w);
         }
     }
 
-    Some(ch)
+    Some((ch, width))
+}
+
+/// Reads the next code point out of a byte iterator (assuming a
+/// UTF-8-like encoding).
+///
+/// # Safety
+///
+/// `bytes` must produce a valid UTF-8-like (UTF-8 or WTF-8) string
+#[unstable(feature = "str_internals", issue = "none")]
+#[inline]
+pub unsafe fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> Option<u32> {
+    // SAFETY: same call condition
+    Some(unsafe { next_code_point_with_width(bytes) }?.0)
 }
 
 /// Reads the last code point out of a byte iterator (assuming a
