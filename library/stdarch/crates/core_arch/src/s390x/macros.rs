@@ -104,7 +104,7 @@ macro_rules! impl_vec_trait {
         impl_vec_trait!{ [$Trait $m] $sg (vector_signed_long_long, ~vector_bool_long_long) -> vector_signed_long_long }
     };
     ([$Trait:ident $m:ident] ~($fn:ident)) => {
-        impl_vec_trait!{ [$Trait $m] ~($fn, $fn, $fn, $fn, $fn, $fn) }
+        impl_vec_trait!{ [$Trait $m] ~($fn, $fn, $fn, $fn, $fn, $fn, $fn, $fn) }
     };
     ([$Trait:ident $m:ident] 2 ($ub:ident, $sb:ident, $uh:ident, $sh:ident, $uw:ident, $sw:ident)) => {
         impl_vec_trait!{ [$Trait $m] $ub (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char }

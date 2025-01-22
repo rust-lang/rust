@@ -520,8 +520,31 @@ mod sealed {
     // instructions in later facilities. Add tests when possible.
     test_impl! { vec_popcnt_signed +(a: vector_signed_char) -> vector_signed_char [simd_ctpop, vpopctb] }
     test_impl! { vec_popcnt_unsigned +(a: vector_unsigned_char) -> vector_unsigned_char [simd_ctpop, vpopctb] }
-}
 
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorAnd<Other> {
+        type Result;
+        unsafe fn vec_and(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorAnd vec_and] ~(simd_and) }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorOr<Other> {
+        type Result;
+        unsafe fn vec_or(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorOr vec_or] ~(simd_or) }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorXor<Other> {
+        type Result;
+        unsafe fn vec_xor(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorXor vec_xor] ~(simd_xor) }
+}
 
 /// Vector element-wise addition.
 #[inline]
@@ -639,6 +662,39 @@ where
     T: sealed::VectorSplats<U>,
 {
     a.vec_splats()
+}
+
+/// Vector and
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_and<T, U>(a: T, b: U) -> <T as sealed::VectorAnd<U>>::Result
+where
+    T: sealed::VectorAnd<U>,
+{
+    a.vec_and(b)
+}
+
+/// Vector or
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_or<T, U>(a: T, b: U) -> <T as sealed::VectorOr<U>>::Result
+where
+    T: sealed::VectorOr<U>,
+{
+    a.vec_or(b)
+}
+
+/// Vector xor
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_xor<T, U>(a: T, b: U) -> <T as sealed::VectorXor<U>>::Result
+where
+    T: sealed::VectorXor<U>,
+{
+    a.vec_xor(b)
 }
 
 #[cfg(test)]
