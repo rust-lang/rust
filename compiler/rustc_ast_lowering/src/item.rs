@@ -1092,6 +1092,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // this as a special case.
             return self.lower_fn_body(decl, |this| {
                 if attrs.iter().any(|a| a.name_or_empty() == sym::rustc_intrinsic) {
+                    let span = this.lower_span(span);
                     let empty_block = hir::Block {
                         hir_id: this.next_id(),
                         stmts: &[],
