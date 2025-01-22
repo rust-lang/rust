@@ -1,12 +1,15 @@
 // Need a different module so we try to build the mir for `test`
 // before analyzing `mod foo`.
+#![feature(sized_hierarchy)]
 
 mod foo {
+    use std::marker::PointeeSized;
+
     pub trait Callable {
         fn call();
     }
 
-    impl<V: ?Sized> Callable for () {
+    impl<V: PointeeSized> Callable for () {
     //~^ ERROR the type parameter `V` is not constrained by the impl trait, self type, or predicates
         fn call() {}
     }
