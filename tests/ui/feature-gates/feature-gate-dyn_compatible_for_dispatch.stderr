@@ -5,7 +5,7 @@ LL | fn takes_dyn_incompatible_ref<T>(obj: &dyn DynIncompatible1) {
    |                                        ^^^^^^^^^^^^^^^^^^^^ `DynIncompatible1` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/feature-gate-dyn_compatible_for_dispatch.rs:4:25
    |
 LL | trait DynIncompatible1: Sized {}
@@ -20,7 +20,7 @@ LL | fn return_dyn_incompatible_ref() -> &'static dyn DynIncompatible2 {
    |                                              ^^^^^^^^^^^^^^^^^^^^ `DynIncompatible2` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/feature-gate-dyn_compatible_for_dispatch.rs:7:8
    |
 LL | trait DynIncompatible2 {
@@ -43,7 +43,7 @@ LL | fn takes_dyn_incompatible_box(obj: Box<dyn DynIncompatible3>) {
    |                                        ^^^^^^^^^^^^^^^^^^^^ `DynIncompatible3` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/feature-gate-dyn_compatible_for_dispatch.rs:11:8
    |
 LL | trait DynIncompatible3 {
@@ -59,7 +59,7 @@ LL | fn return_dyn_incompatible_rc() -> std::rc::Rc<dyn DynIncompatible4> {
    |                                                ^^^^^^^^^^^^^^^^^^^^ `DynIncompatible4` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/feature-gate-dyn_compatible_for_dispatch.rs:15:22
    |
 LL | trait DynIncompatible4 {
@@ -75,7 +75,7 @@ LL | impl Trait for dyn DynIncompatible1 {}
    |                ^^^^^^^^^^^^^^^^^^^^ `DynIncompatible1` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/feature-gate-dyn_compatible_for_dispatch.rs:4:25
    |
 LL | trait DynIncompatible1: Sized {}
