@@ -11,8 +11,10 @@ use std::path::{Path, PathBuf};
 use run_make_support::{cmd, llvm_objdump, regex, rustc_path};
 
 fn main() {
-    // This is the maximum glibc version *supported* by the x86_64-unknown-linux-gnu target.
+    // This is the maximum glibc version that we are *permitted* to use for the
+    // x86_64-unknown-linux-gnu target.
     // All glibc symbols used in the compiler must be lower or equal than this version.
+    // So that if a given machine only has glibc 2.17, it is able to run the compiler.
     let max_supported = (2, 17, 99);
 
     let rustc = PathBuf::from(rustc_path());
