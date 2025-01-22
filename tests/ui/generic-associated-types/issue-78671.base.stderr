@@ -14,17 +14,18 @@ help: add missing generic argument
 LL |     Box::new(Family) as &dyn CollectionFamily<Member<T>=usize>
    |                                                     +++
 
-error[E0038]: the trait `CollectionFamily` cannot be made into an object
+error[E0038]: the trait `CollectionFamily` is not dyn compatible
   --> $DIR/issue-78671.rs:10:25
    |
 LL |     Box::new(Family) as &dyn CollectionFamily<Member=usize>
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `CollectionFamily` cannot be made into an object
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `CollectionFamily` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/issue-78671.rs:7:10
    |
 LL | trait CollectionFamily {
-   |       ---------------- this trait cannot be made into an object...
+   |       ---------------- this trait is not dyn compatible...
 LL |     type Member<T>;
    |          ^^^^^^ ...because it contains the generic associated type `Member`
    = help: consider moving `Member` to another trait

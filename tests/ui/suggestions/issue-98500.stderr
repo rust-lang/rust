@@ -1,10 +1,11 @@
-error[E0038]: the trait `B` cannot be made into an object
+error[E0038]: the trait `B` is not dyn compatible
   --> $DIR/issue-98500.rs:11:14
    |
 LL | struct S(Box<dyn B>);
-   |              ^^^^^ `B` cannot be made into an object
+   |              ^^^^^ `B` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/auxiliary/dyn-incompatible.rs:4:8
    |
 LL |     fn f();
@@ -15,7 +16,7 @@ LL |     fn f2(self: &Arc<Self>);
   ::: $DIR/issue-98500.rs:5:11
    |
 LL | pub trait B where
-   |           - this trait cannot be made into an object...
+   |           - this trait is not dyn compatible...
    = help: consider moving `f` to another trait
    = help: consider moving `f2` to another trait
 

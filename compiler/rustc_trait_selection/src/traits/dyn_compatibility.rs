@@ -53,7 +53,6 @@ fn dyn_compatibility_violations(
 ) -> &'_ [DynCompatibilityViolation] {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     debug!("dyn_compatibility_violations: {:?}", trait_def_id);
-
     tcx.arena.alloc_from_iter(
         elaborate::supertrait_def_ids(tcx, trait_def_id)
             .flat_map(|def_id| dyn_compatibility_violations_for_trait(tcx, def_id)),
