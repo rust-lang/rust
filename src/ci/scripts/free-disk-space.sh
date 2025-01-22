@@ -74,8 +74,8 @@ cleanPackages() {
         '^dotnet-.*'              \
         '^java-*'                 \
         '^libllvm.*'              \
-        '^llvm-.*'                \
         '^llvm.*'                 \
+        '^libc++.*'               \
         '^mongodb-.*'             \
         '^mysql-.*'               \
         '^r-base.*'               \
@@ -137,6 +137,7 @@ removeUnusedDirectories() {
         "/usr/local/share/chromium"
         "/usr/local/share/powershell"
         "/usr/share/az_"*
+        "/usr/local/share/cmake-"*
         "/usr/share/dotnet"
         "/usr/share/icons/"
         "/usr/share/miniconda/"
