@@ -10,7 +10,7 @@
 // CHECK: coverage body span:
 // CHECK: coverage Code { bcb: bcb{{[0-9]+}} } =>
 // CHECK: bb0:
-// CHECK: Coverage::CounterIncrement
+// CHECK: Coverage::VirtualCounter
 fn main() {
     loop {
         if bar() {
@@ -24,7 +24,7 @@ fn main() {
 // CHECK: coverage body span:
 // CHECK: coverage Code { bcb: bcb{{[0-9]+}} } =>
 // CHECK: bb0:
-// CHECK: Coverage::CounterIncrement
+// CHECK: Coverage::VirtualCounter
 #[inline(never)]
 fn bar() -> bool {
     true

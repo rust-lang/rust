@@ -1,9 +1,10 @@
 use rustc_data_structures::captures::Captures;
+use rustc_index::IndexSlice;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::{
-    CounterId, CovTerm, CoverageIdsInfo, CoverageKind, Expression, ExpressionId,
-    FunctionCoverageInfo, MappingKind, Op,
+    BasicCoverageBlock, CounterId, CovTerm, CoverageIdsInfo, CoverageKind, Expression,
+    ExpressionId, MappingKind, Op,
 };
 use rustc_middle::mir::{Body, Statement, StatementKind};
 use rustc_middle::ty::{self, TyCtxt};
@@ -11,6 +12,9 @@ use rustc_middle::util::Providers;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::sym;
 use tracing::trace;
+
+use crate::coverage::counters::node_flow::make_node_counters;
+use crate::coverage::counters::{CoverageCounters, transcribe_counters};
 
 /// Registers query/hook implementations related to coverage.
 pub(crate) fn provide(providers: &mut Providers) {
@@ -89,41 +93,85 @@ fn coverage_ids_info<'tcx>(
     let mir_body = tcx.instance_mir(instance_def);
     let fn_cov_info = mir_body.function_coverage_info.as_deref()?;
 
-    let mut counters_seen = DenseBitSet::new_empty(fn_cov_info.num_counters);
-    let mut expressions_seen = DenseBitSet::new_filled(fn_cov_info.expressions.len());
-
-    // For each expression ID that is directly used by one or more mappings,
-    // mark it as not-yet-seen. This indicates that we expect to see a
-    // corresponding `ExpressionUsed` statement during MIR traversal.
-    for mapping in fn_cov_info.mappings.iter() {
-        // Currently we only worry about ordinary code mappings.
-        // For branch and MC/DC mappings, expressions might not correspond
-        // to any particular point in the control-flow graph.
-        // (Keep this in sync with the injection of `ExpressionUsed`
-        // statements in the `InstrumentCoverage` MIR pass.)
-        if let MappingKind::Code { bcb } = mapping.kind
-            && let Some(CovTerm::Expression(id)) = fn_cov_info.term_for_bcb[bcb]
-        {
-            expressions_seen.remove(id);
-        }
-    }
-
+    // Scan through the final MIR to see which BCBs survived MIR opts.
+    // Any BCB not in this set was optimized away.
+    let mut bcbs_seen = DenseBitSet::new_empty(fn_cov_info.priority_list.len());
     for kind in all_coverage_in_mir_body(mir_body) {
         match *kind {
-            CoverageKind::CounterIncrement { id } => {
-                counters_seen.insert(id);
-            }
-            CoverageKind::ExpressionUsed { id } => {
-                expressions_seen.insert(id);
+            CoverageKind::VirtualCounter { bcb } => {
+                bcbs_seen.insert(bcb);
             }
             _ => {}
         }
     }
 
-    let zero_expressions =
-        identify_zero_expressions(fn_cov_info, &counters_seen, &expressions_seen);
+    // Determine the set of BCBs that are referred to by mappings, and therefore
+    // need a counter. Any node not in this set will only get a counter if it
+    // is part of the counter expression for a node that is in the set.
+    let mut bcb_needs_counter =
+        DenseBitSet::<BasicCoverageBlock>::new_empty(fn_cov_info.priority_list.len());
+    for mapping in &fn_cov_info.mappings {
+        match mapping.kind {
+            MappingKind::Code { bcb } => {
+                bcb_needs_counter.insert(bcb);
+            }
+            MappingKind::Branch { true_bcb, false_bcb } => {
+                bcb_needs_counter.insert(true_bcb);
+                bcb_needs_counter.insert(false_bcb);
+            }
+            MappingKind::MCDCBranch { true_bcb, false_bcb, mcdc_params: _ } => {
+                bcb_needs_counter.insert(true_bcb);
+                bcb_needs_counter.insert(false_bcb);
+            }
+            MappingKind::MCDCDecision(_) => {}
+        }
+    }
 
-    Some(CoverageIdsInfo { counters_seen, zero_expressions })
+    let node_counters = make_node_counters(&fn_cov_info.node_flow_data, &fn_cov_info.priority_list);
+    let coverage_counters = transcribe_counters(&node_counters, &bcb_needs_counter);
+
+    let mut counters_seen = DenseBitSet::new_empty(coverage_counters.node_counters.len());
+    let mut expressions_seen = DenseBitSet::new_filled(coverage_counters.expressions.len());
+
+    // For each expression ID that is directly used by one or more mappings,
+    // mark it as not-yet-seen. This indicates that we expect to see a
+    // corresponding `VirtualCounter` statement during MIR traversal.
+    for mapping in fn_cov_info.mappings.iter() {
+        // Currently we only worry about ordinary code mappings.
+        // For branch and MC/DC mappings, expressions might not correspond
+        // to any particular point in the control-flow graph.
+        if let MappingKind::Code { bcb } = mapping.kind
+            && let Some(CovTerm::Expression(id)) = coverage_counters.node_counters[bcb]
+        {
+            expressions_seen.remove(id);
+        }
+    }
+
+    for bcb in bcbs_seen.iter() {
+        if let Some(&id) = coverage_counters.phys_counter_for_node.get(&bcb) {
+            counters_seen.insert(id);
+        }
+        if let Some(CovTerm::Expression(id)) = coverage_counters.node_counters[bcb] {
+            expressions_seen.insert(id);
+        }
+    }
+
+    let zero_expressions = identify_zero_expressions(
+        &coverage_counters.expressions,
+        &counters_seen,
+        &expressions_seen,
+    );
+
+    let CoverageCounters { phys_counter_for_node, node_counters, expressions, .. } =
+        coverage_counters;
+
+    Some(CoverageIdsInfo {
+        counters_seen,
+        zero_expressions,
+        phys_counter_for_node,
+        term_for_bcb: node_counters,
+        expressions,
+    })
 }
 
 fn all_coverage_in_mir_body<'a, 'tcx>(
@@ -150,7 +198,7 @@ fn is_inlined(body: &Body<'_>, statement: &Statement<'_>) -> bool {
 /// already being performed by the Rust-side expression renumbering, so that
 /// the resulting coverage mappings don't get worse.
 fn identify_zero_expressions(
-    fn_cov_info: &FunctionCoverageInfo,
+    expressions: &IndexSlice<ExpressionId, Expression>,
     counters_seen: &DenseBitSet<CounterId>,
     expressions_seen: &DenseBitSet<ExpressionId>,
 ) -> DenseBitSet<ExpressionId> {
@@ -158,13 +206,13 @@ fn identify_zero_expressions(
     // have zero as both of their operands, and will therefore always have
     // a value of zero. Other expressions that refer to these as operands
     // can have those operands replaced with `CovTerm::Zero`.
-    let mut zero_expressions = DenseBitSet::new_empty(fn_cov_info.expressions.len());
+    let mut zero_expressions = DenseBitSet::new_empty(expressions.len());
 
     // Simplify a copy of each expression based on lower-numbered expressions,
     // and then update the set of always-zero expressions if necessary.
     // (By construction, expressions can only refer to other expressions
     // that have lower IDs, so one pass is sufficient.)
-    for (id, expression) in fn_cov_info.expressions.iter_enumerated() {
+    for (id, expression) in expressions.iter_enumerated() {
         if !expressions_seen.contains(id) {
             // If an expression was not seen, it must have been optimized away,
             // so any operand that refers to it can be replaced with zero.
