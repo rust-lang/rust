@@ -387,10 +387,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         use abi::Primitive::*;
         imm = bx.from_immediate(imm);
 
-        // When scalars are passed by value, there's no metadata recording their
-        // valid ranges. For example, `char`s are passed as just `i32`, with no
-        // way for LLVM to know that they're 0x10FFFF at most. Thus we assume
-        // the range of the input value too, not just the output range.
+        // If we have a scalar, we must already know its range. Either
+        //
+        // 1) It's a parameter with `range` parameter metadata,
+        // 2) It's something we `load`ed with `!range` metadata, or
+        // 3) After a transmute we `assume`d the range (see below).
+        //
+        // That said, last time we tried removing this, it didn't actually help
+        // the rustc-perf results, so might as well keep doing it
+        // <https://github.com/rust-lang/rust/pull/135610#issuecomment-2599275182>
         self.assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
 
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
@@ -411,7 +416,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.bitcast(int_imm, to_backend_ty)
             }
         };
+
+        // This `assume` remains important for cases like (a conceptual)
+        //    transmute::<u32, NonZeroU32>(x) == 0
+        // since it's never passed to something with parameter metadata (especially
+        // after MIR inlining) so the only way to tell the backend about the
+        // constraint that the `transmute` introduced is to `assume` it.
         self.assume_scalar_range(bx, imm, to_scalar, to_backend_ty);
+
         imm = bx.to_immediate_scalar(imm, to_scalar);
         imm
     }
@@ -433,31 +445,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
 
-        let abi::WrappingRange { start, end } = scalar.valid_range(self.cx);
-
-        if start <= end {
-            if start > 0 {
-                let low = bx.const_uint_big(backend_ty, start);
-                let cmp = bx.icmp(IntPredicate::IntUGE, imm, low);
-                bx.assume(cmp);
-            }
-
-            let type_max = scalar.size(self.cx).unsigned_int_max();
-            if end < type_max {
-                let high = bx.const_uint_big(backend_ty, end);
-                let cmp = bx.icmp(IntPredicate::IntULE, imm, high);
-                bx.assume(cmp);
-            }
-        } else {
-            let low = bx.const_uint_big(backend_ty, start);
-            let cmp_low = bx.icmp(IntPredicate::IntUGE, imm, low);
-
-            let high = bx.const_uint_big(backend_ty, end);
-            let cmp_high = bx.icmp(IntPredicate::IntULE, imm, high);
-
-            let or = bx.or(cmp_low, cmp_high);
-            bx.assume(or);
-        }
+        let range = scalar.valid_range(self.cx);
+        bx.assume_integer_range(imm, backend_ty, range);
     }
 
     pub(crate) fn codegen_rvalue_unsized(
