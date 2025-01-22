@@ -75,7 +75,6 @@ cleanPackages() {
         '^java-*'                 \
         '^libllvm.*'              \
         '^llvm.*'                 \
-        '^libc++.*'               \
         '^mongodb-.*'             \
         '^mysql-.*'               \
         '^r-base.*'               \
