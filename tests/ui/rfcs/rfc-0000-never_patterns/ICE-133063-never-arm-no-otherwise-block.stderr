@@ -1,37 +1,11 @@
 error: a never pattern is always unreachable
-  --> $DIR/ICE-133063-never-arm-no-otherwise-block.rs:13:46
+  --> $DIR/ICE-133063-never-arm-no-otherwise-block.rs:10:31
    |
-LL |             !) if let _ = split_last(&()) => {}
-   |                                              ^^
-   |                                              |
-   |                                              this will never be executed
-   |                                              help: remove this expression
+LL |             (!|!) if false => {}
+   |                               ^^
+   |                               |
+   |                               this will never be executed
+   |                               help: remove this expression
 
-error: mismatched types
-  --> $DIR/ICE-133063-never-arm-no-otherwise-block.rs:12:14
-   |
-LL |             (!|
-   |              ^ a never pattern must be used on an uninhabited type
-   |
-   = note: the matched value is of type `()`
-
-error: mismatched types
-  --> $DIR/ICE-133063-never-arm-no-otherwise-block.rs:13:13
-   |
-LL |             !) if let _ = split_last(&()) => {}
-   |             ^ a never pattern must be used on an uninhabited type
-   |
-   = note: the matched value is of type `()`
-
-warning: irrefutable `if let` guard pattern
-  --> $DIR/ICE-133063-never-arm-no-otherwise-block.rs:13:19
-   |
-LL |             !) if let _ = split_last(&()) => {}
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this pattern will always match, so the guard is useless
-   = help: consider removing the guard and adding a `let` inside the match arm
-   = note: `#[warn(irrefutable_let_patterns)]` on by default
-
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 1 previous error
 
