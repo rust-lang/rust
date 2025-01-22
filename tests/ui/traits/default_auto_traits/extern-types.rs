@@ -23,7 +23,7 @@ pub trait Copy {}
 auto trait Leak {}
 
 // implicit T: Leak here
-fn foo<T: ?Sized>(_: &T) {}
+fn foo<T: PointeeSized>(_: &T) {}
 
 mod extern_leak {
     use crate::*;

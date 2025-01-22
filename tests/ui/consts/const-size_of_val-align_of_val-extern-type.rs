@@ -7,7 +7,9 @@ extern "C" {
     type Opaque;
 }
 
-const _SIZE: usize = unsafe { size_of_val(&4 as *const i32 as *const Opaque) }; //~ ERROR constant
-const _ALIGN: usize = unsafe { min_align_of_val(&4 as *const i32 as *const Opaque) }; //~ ERROR constant
+const _SIZE: usize = unsafe { size_of_val(&4 as *const i32 as *const Opaque) };
+//~^ ERROR the size for values of type `Opaque` cannot be known
+const _ALIGN: usize = unsafe { min_align_of_val(&4 as *const i32 as *const Opaque) };
+//~^ ERROR the size for values of type `Opaque` cannot be known
 
 fn main() {}
