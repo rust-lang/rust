@@ -8,7 +8,7 @@ use std::rc::Rc;
 struct Local;
 
 impl<T> Remote1<T> for u32 {
-    //~^ ERROR type parameter `T` must be used as the type parameter for some local type
+    //~^ ERROR type parameter `T` must be used as the argument to some local type
 }
 
 fn main() {}
