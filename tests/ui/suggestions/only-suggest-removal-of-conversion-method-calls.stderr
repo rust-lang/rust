@@ -8,6 +8,9 @@ LL |     your_name.trim()
    |     ^^^^^^^^^^^^^^^^- help: try using a conversion method: `.to_string()`
    |     |
    |     expected `String`, found `&str`
+   |
+   = note: expected struct `String`
+           found reference `&str`
 
 error: aborting due to 1 previous error
 

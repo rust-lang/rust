@@ -89,7 +89,7 @@ LL |     String::new().push("");
    |                   arguments to this method are incorrect
    |
 note: method defined here
-  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+  --> $SRC_DIR/alloc/src/string/string.rs:LL:COL
 help: you might have meant to use `push_str`
    |
 LL |     String::new().push_str("");

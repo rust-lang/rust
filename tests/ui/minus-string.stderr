@@ -5,7 +5,7 @@ LL | fn main() { -"foo".to_string(); }
    |             ^^^^^^^^^^^^^^^^^^ cannot apply unary operator `-`
    |
 note: the foreign item type `String` doesn't implement `Neg`
-  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+  --> $SRC_DIR/alloc/src/string/string.rs:LL:COL
    |
    = note: not implement `Neg`
 

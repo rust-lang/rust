@@ -11,9 +11,9 @@ LL |     foo(String::new());
              `String` implements `From<&String>`
              `String` implements `From<&mut str>`
              `String` implements `From<&str>`
-             `String` implements `From<Box<str>>`
              `String` implements `From<Cow<'_, str>>`
              `String` implements `From<char>`
+             `String<A>` implements `From<Box<str, A>>`
    = note: required for `String` to implement `Into<&str>`
 note: required by a bound in `foo`
   --> $DIR/into-str.rs:1:31

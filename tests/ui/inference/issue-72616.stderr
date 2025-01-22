@@ -8,12 +8,8 @@ LL |         if String::from("a") == "a".try_into().unwrap() {}
    |
    = note: cannot satisfy `String: PartialEq<_>`
    = help: the following types implement trait `PartialEq<Rhs>`:
-             `String` implements `PartialEq<&str>`
              `String` implements `PartialEq<ByteStr>`
              `String` implements `PartialEq<ByteString>`
-             `String` implements `PartialEq<Cow<'_, str>>`
-             `String` implements `PartialEq<str>`
-             `String` implements `PartialEq`
 help: try using a fully qualified path to specify the expected types
    |
 LL |         if String::from("a") == <&str as TryInto<T>>::try_into("a").unwrap() {}
