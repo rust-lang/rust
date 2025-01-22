@@ -1528,9 +1528,9 @@ fn report_ice(
     // If backtraces are enabled, also print the query stack
     let backtrace = env::var_os("RUST_BACKTRACE").is_some_and(|x| &x != "0");
 
-    let num_frames = if backtrace { None } else { Some(2) };
+    let limit_frames = if backtrace { None } else { Some(2) };
 
-    interface::try_print_query_stack(dcx, num_frames, file);
+    interface::try_print_query_stack(dcx, limit_frames, file);
 
     // We don't trust this callback not to panic itself, so run it at the end after we're sure we've
     // printed all the relevant info.
