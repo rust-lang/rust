@@ -8,7 +8,6 @@ use rustc_codegen_ssa::traits::{
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::Instance;
-use rustc_middle::ty::layout::HasTyCtxt;
 use tracing::{debug, instrument};
 
 use crate::builder::Builder;
@@ -147,6 +146,10 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             debug!("function has a coverage statement but no coverage info");
             return;
         };
+        let Some(ids_info) = bx.tcx.coverage_ids_info(instance.def) else {
+            debug!("function has a coverage statement but no IDs info");
+            return;
+        };
 
         // Mark the instance as used in this CGU, for coverage purposes.
         // This includes functions that were not partitioned into this CGU,
@@ -162,8 +165,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 // be smaller than the number originally inserted by the instrumentor,
                 // if some high-numbered counters were removed by MIR optimizations.
                 // If so, LLVM's profiler runtime will use fewer physical counters.
-                let num_counters =
-                    bx.tcx().coverage_ids_info(instance.def).num_counters_after_mir_opts();
+                let num_counters = ids_info.num_counters_after_mir_opts();
                 assert!(
                     num_counters as usize <= function_coverage_info.num_counters,
                     "num_counters disagreement: query says {num_counters} but function info only has {}",
