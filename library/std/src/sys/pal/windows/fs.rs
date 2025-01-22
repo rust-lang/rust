@@ -328,9 +328,6 @@ impl File {
                         mem::size_of::<c::FILE_ALLOCATION_INFO>() as u32,
                     );
                     if result == 0 {
-                        if api::get_last_error().code != 0 {
-                            panic!("FILE_ALLOCATION_INFO failed!!!");
-                        }
                         let eof = c::FILE_END_OF_FILE_INFO { EndOfFile: 0 };
                         let result = c::SetFileInformationByHandle(
                             handle.as_raw_handle(),
