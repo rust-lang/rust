@@ -1139,7 +1139,9 @@ pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_dangling_pointers_from_temporaries)]
 #[note]
-#[help]
+#[help(lint_help_bind)]
+#[help(lint_help_returned)]
+#[help(lint_help_visit)]
 // FIXME: put #[primary_span] on `ptr_span` once it does not cause conflicts
 pub(crate) struct DanglingPointersFromTemporaries<'tcx> {
     pub callee: Symbol,
