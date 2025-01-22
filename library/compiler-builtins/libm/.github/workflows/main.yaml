@@ -270,7 +270,7 @@ jobs:
           fi
 
           LIBM_EXTENSIVE_TESTS="$CHANGED" cargo t \
-            --features build-mpfr,unstable \
+            --features build-mpfr,unstable,force-soft-floats \
             --profile release-checked \
             -- extensive
       - name: Print test logs if available
