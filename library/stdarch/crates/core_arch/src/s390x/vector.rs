@@ -330,6 +330,13 @@ mod sealed {
 
     impl_vec_trait! { [VectorMax vec_max] ~(vmxlb, vmxb, vmxlh, vmxh, vmxlf, vmxf, vmxlg, vmxg) }
 
+    // FIXME(vector-enhancements-1) test for the `vfmaxsb` etc. instruction
+    test_impl! { vec_vfmaxsb (a: vector_float, b: vector_float) -> vector_float [simd_fmax, _] }
+    test_impl! { vec_vfmaxdb (a: vector_double, b: vector_double) -> vector_double [simd_fmax, _] }
+
+    impl_vec_trait!([VectorMax vec_max] vec_vfmaxsb (vector_float, vector_float) -> vector_float);
+    impl_vec_trait!([VectorMax vec_max] vec_vfmaxdb (vector_double, vector_double) -> vector_double);
+
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorMin<Other> {
         type Result;
@@ -347,6 +354,13 @@ mod sealed {
     test_impl! { vec_vmnslg (a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> vector_unsigned_long_long [vmnlg, vmnlg] }
 
     impl_vec_trait! { [VectorMin vec_min] ~(vmxlb, vmxb, vmxlh, vmxh, vmxlf, vmxf, vmxlg, vmxg) }
+
+    // FIXME(vector-enhancements-1) test for the `vfminsb` etc. instruction
+    test_impl! { vec_vfminsb (a: vector_float, b: vector_float) -> vector_float [simd_fmin, _] }
+    test_impl! { vec_vfmindb (a: vector_double, b: vector_double) -> vector_double [simd_fmin, _] }
+
+    impl_vec_trait!([VectorMin vec_min] vec_vfminsb (vector_float, vector_float) -> vector_float);
+    impl_vec_trait!([VectorMin vec_min] vec_vfmindb (vector_double, vector_double) -> vector_double);
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorAbs {
