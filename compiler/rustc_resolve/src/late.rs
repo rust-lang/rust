@@ -468,16 +468,12 @@ impl<'a> PathSource<'a> {
                     {
                         "external crate"
                     }
-                    ExprKind::Path(_, path) => {
-                        let mut msg = "function";
-                        if let Some(segment) = path.segments.iter().last() {
-                            if let Some(c) = segment.ident.to_string().chars().next() {
-                                if c.is_uppercase() {
-                                    msg = "function, tuple struct or tuple variant";
-                                }
-                            }
-                        }
-                        msg
+                    ExprKind::Path(_, path)
+                        if let Some(segment) = path.segments.last()
+                            && let Some(c) = segment.ident.to_string().chars().next()
+                            && c.is_uppercase() =>
+                    {
+                        "function, tuple struct or tuple variant"
                     }
                     _ => "function",
                 },
@@ -1182,32 +1178,27 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
                 // namespace first, and if that fails we try again in the value namespace. If
                 // resolution in the value namespace succeeds, we have an generic const argument on
                 // our hands.
-                if let TyKind::Path(None, ref path) = ty.kind {
+                if let TyKind::Path(None, ref path) = ty.kind
                     // We cannot disambiguate multi-segment paths right now as that requires type
                     // checking.
-                    if path.is_potential_trivial_const_arg() {
-                        let mut check_ns = |ns| {
-                            self.maybe_resolve_ident_in_lexical_scope(path.segments[0].ident, ns)
-                                .is_some()
-                        };
-                        if !check_ns(TypeNS) && check_ns(ValueNS) {
-                            self.resolve_anon_const_manual(
-                                true,
-                                AnonConstKind::ConstArg(IsRepeatExpr::No),
-                                |this| {
-                                    this.smart_resolve_path(
-                                        ty.id,
-                                        &None,
-                                        path,
-                                        PathSource::Expr(None),
-                                    );
-                                    this.visit_path(path, ty.id);
-                                },
-                            );
+                    && path.is_potential_trivial_const_arg()
+                {
+                    let mut check_ns = |ns| {
+                        self.maybe_resolve_ident_in_lexical_scope(path.segments[0].ident, ns)
+                            .is_some()
+                    };
+                    if !check_ns(TypeNS) && check_ns(ValueNS) {
+                        self.resolve_anon_const_manual(
+                            true,
+                            AnonConstKind::ConstArg(IsRepeatExpr::No),
+                            |this| {
+                                this.smart_resolve_path(ty.id, &None, path, PathSource::Expr(None));
+                                this.visit_path(path, ty.id);
+                            },
+                        );
 
-                            self.diag_metadata.currently_processing_generic_args = prev;
-                            return;
-                        }
+                        self.diag_metadata.currently_processing_generic_args = prev;
+                        return;
                     }
                 }
 
@@ -1243,54 +1234,56 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
     }
 
     fn visit_path_segment(&mut self, path_segment: &'ast PathSegment) {
-        if let Some(ref args) = path_segment.args {
-            match &**args {
-                GenericArgs::AngleBracketed(..) => visit::walk_generic_args(self, args),
-                GenericArgs::Parenthesized(p_args) => {
-                    // Probe the lifetime ribs to know how to behave.
-                    for rib in self.lifetime_ribs.iter().rev() {
-                        match rib.kind {
-                            // We are inside a `PolyTraitRef`. The lifetimes are
-                            // to be introduced in that (maybe implicit) `for<>` binder.
-                            LifetimeRibKind::Generics {
-                                binder,
-                                kind: LifetimeBinderKind::PolyTrait,
-                                ..
-                            } => {
-                                self.with_lifetime_rib(
-                                    LifetimeRibKind::AnonymousCreateParameter {
+        let Some(ref args) = path_segment.args else {
+            return;
+        };
+
+        match &**args {
+            GenericArgs::AngleBracketed(..) => visit::walk_generic_args(self, args),
+            GenericArgs::Parenthesized(p_args) => {
+                // Probe the lifetime ribs to know how to behave.
+                for rib in self.lifetime_ribs.iter().rev() {
+                    match rib.kind {
+                        // We are inside a `PolyTraitRef`. The lifetimes are
+                        // to be introduced in that (maybe implicit) `for<>` binder.
+                        LifetimeRibKind::Generics {
+                            binder,
+                            kind: LifetimeBinderKind::PolyTrait,
+                            ..
+                        } => {
+                            self.with_lifetime_rib(
+                                LifetimeRibKind::AnonymousCreateParameter {
+                                    binder,
+                                    report_in_path: false,
+                                },
+                                |this| {
+                                    this.resolve_fn_signature(
                                         binder,
-                                        report_in_path: false,
-                                    },
-                                    |this| {
-                                        this.resolve_fn_signature(
-                                            binder,
-                                            false,
-                                            p_args.inputs.iter().map(|ty| (None, &**ty)),
-                                            &p_args.output,
-                                        )
-                                    },
-                                );
-                                break;
-                            }
-                            // We have nowhere to introduce generics. Code is malformed,
-                            // so use regular lifetime resolution to avoid spurious errors.
-                            LifetimeRibKind::Item | LifetimeRibKind::Generics { .. } => {
-                                visit::walk_generic_args(self, args);
-                                break;
-                            }
-                            LifetimeRibKind::AnonymousCreateParameter { .. }
-                            | LifetimeRibKind::AnonymousReportError
-                            | LifetimeRibKind::StaticIfNoLifetimeInScope { .. }
-                            | LifetimeRibKind::Elided(_)
-                            | LifetimeRibKind::ElisionFailure
-                            | LifetimeRibKind::ConcreteAnonConst(_)
-                            | LifetimeRibKind::ConstParamTy => {}
+                                        false,
+                                        p_args.inputs.iter().map(|ty| (None, &**ty)),
+                                        &p_args.output,
+                                    )
+                                },
+                            );
+                            break;
                         }
+                        // We have nowhere to introduce generics. Code is malformed,
+                        // so use regular lifetime resolution to avoid spurious errors.
+                        LifetimeRibKind::Item | LifetimeRibKind::Generics { .. } => {
+                            visit::walk_generic_args(self, args);
+                            break;
+                        }
+                        LifetimeRibKind::AnonymousCreateParameter { .. }
+                        | LifetimeRibKind::AnonymousReportError
+                        | LifetimeRibKind::StaticIfNoLifetimeInScope { .. }
+                        | LifetimeRibKind::Elided(_)
+                        | LifetimeRibKind::ElisionFailure
+                        | LifetimeRibKind::ConcreteAnonConst(_)
+                        | LifetimeRibKind::ConstParamTy => {}
                     }
                 }
-                GenericArgs::ParenthesizedElided(_) => {}
             }
+            GenericArgs::ParenthesizedElided(_) => {}
         }
     }
 
@@ -1735,13 +1728,8 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
 
         let normalized_ident = ident.normalize_to_macros_2_0();
-        let mut outer_res = None;
-        for rib in lifetime_rib_iter {
-            if let Some((&outer, _)) = rib.bindings.get_key_value(&normalized_ident) {
-                outer_res = Some(outer);
-                break;
-            }
-        }
+        let outer_res = lifetime_rib_iter
+            .find_map(|rib| rib.bindings.get_key_value(&normalized_ident).map(|(&outer, _)| outer));
 
         self.emit_undeclared_lifetime_error(lifetime, outer_res);
         self.record_lifetime_res(lifetime.id, LifetimeRes::Error, LifetimeElisionCandidate::Named);
@@ -1808,23 +1796,21 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 }
                 LifetimeRibKind::AnonymousReportError => {
                     if elided {
-                        let mut suggestion = None;
-                        for rib in self.lifetime_ribs[i..].iter().rev() {
+                        let suggestion = self.lifetime_ribs[i..].iter().rev().find_map(|rib| {
                             if let LifetimeRibKind::Generics {
                                 span,
                                 kind: LifetimeBinderKind::PolyTrait | LifetimeBinderKind::WhereBound,
                                 ..
-                            } = &rib.kind
+                            } = rib.kind
                             {
-                                suggestion =
-                                    Some(errors::ElidedAnonymousLivetimeReportErrorSuggestion {
-                                        lo: span.shrink_to_lo(),
-                                        hi: lifetime.ident.span.shrink_to_hi(),
-                                    });
-                                break;
+                                Some(errors::ElidedAnonymousLivetimeReportErrorSuggestion {
+                                    lo: span.shrink_to_lo(),
+                                    hi: lifetime.ident.span.shrink_to_hi(),
+                                })
+                            } else {
+                                None
                             }
-                        }
-
+                        });
                         // are we trying to use an anonymous lifetime
                         // on a non GAT associated trait type?
                         if !self.in_func_body
@@ -2460,12 +2446,12 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         for i in (0..self.label_ribs.len()).rev() {
             let rib = &self.label_ribs[i];
 
-            if let RibKind::MacroDefinition(def) = rib.kind {
+            if let RibKind::MacroDefinition(def) = rib.kind
                 // If an invocation of this macro created `ident`, give up on `ident`
                 // and switch to `ident`'s source from the macro definition.
-                if def == self.r.macro_def(label.span.ctxt()) {
-                    label.span.remove_mark();
-                }
+                && def == self.r.macro_def(label.span.ctxt())
+            {
+                label.span.remove_mark();
             }
 
             let ident = label.normalize_to_macro_rules();
@@ -2493,14 +2479,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// Determine whether or not a label from the `rib_index`th label rib is reachable.
     fn is_label_valid_from_rib(&self, rib_index: usize) -> bool {
         let ribs = &self.label_ribs[rib_index + 1..];
-
-        for rib in ribs {
-            if rib.kind.is_label_barrier() {
-                return false;
-            }
-        }
-
-        true
+        ribs.iter().all(|rib| !rib.kind.is_label_barrier())
     }
 
     fn resolve_adt(&mut self, item: &'ast Item, generics: &'ast Generics) {
@@ -3505,21 +3484,20 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             self.visit_ty(&qself.ty);
         }
         self.visit_path(&delegation.path, delegation.id);
-        if let Some(body) = &delegation.body {
-            self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {
-                // `PatBoundCtx` is not necessary in this context
-                let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
+        let Some(body) = &delegation.body else { return };
+        self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {
+            // `PatBoundCtx` is not necessary in this context
+            let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
 
-                let span = delegation.path.segments.last().unwrap().ident.span;
-                this.fresh_binding(
-                    Ident::new(kw::SelfLower, span),
-                    delegation.id,
-                    PatternSource::FnParam,
-                    &mut bindings,
-                );
-                this.visit_block(body);
-            });
-        }
+            let span = delegation.path.segments.last().unwrap().ident.span;
+            this.fresh_binding(
+                Ident::new(kw::SelfLower, span),
+                delegation.id,
+                PatternSource::FnParam,
+                &mut bindings,
+            );
+            this.visit_block(body);
+        });
     }
 
     fn resolve_params(&mut self, params: &'ast [Param]) {
