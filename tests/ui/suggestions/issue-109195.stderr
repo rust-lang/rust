@@ -1,5 +1,5 @@
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:2:5
+  --> $DIR/issue-109195.rs:12:5
    |
 LL |     String::from::utf8;
    |     ^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL |     String::from_utf8;
    |             ~~~~~~~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:5:5
+  --> $DIR/issue-109195.rs:15:5
    |
 LL |     String::from::utf8();
    |     ^^^^^^^^^^^^
@@ -21,7 +21,7 @@ LL |     String::from_utf8();
    |             ~~~~~~~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:8:5
+  --> $DIR/issue-109195.rs:18:5
    |
 LL |     String::from::utf16();
    |     ^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL |     String::from_utf16();
    |             ~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:11:5
+  --> $DIR/issue-109195.rs:21:5
    |
 LL |     String::from::method_that_doesnt_exist();
    |     ^^^^^^^^^^^^
@@ -43,7 +43,7 @@ LL |     <String as Example>::from::method_that_doesnt_exist();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:14:5
+  --> $DIR/issue-109195.rs:24:5
    |
 LL |     str::from::utf8();
    |     ^^^^^^^^^
@@ -54,7 +54,7 @@ LL |     <str as Example>::from::utf8();
    |     ~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:17:5
+  --> $DIR/issue-109195.rs:27:5
    |
 LL |     str::from::utf8_mut();
    |     ^^^^^^^^^
@@ -64,6 +64,39 @@ help: if there were a trait named `Example` with associated type `from` implemen
 LL |     <str as Example>::from::utf8_mut();
    |     ~~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to 6 previous errors
+error[E0223]: ambiguous associated type
+  --> $DIR/issue-109195.rs:30:5
+   |
+LL |     Foo::bar::baz;
+   |     ^^^^^^^^
+   |
+help: there is an associated function with a similar name: `bar_baz`
+   |
+LL |     Foo::bar_baz;
+   |          ~~~~~~~
+
+error[E0223]: ambiguous associated type
+  --> $DIR/issue-109195.rs:33:5
+   |
+LL |     Foo::bar::quux;
+   |     ^^^^^^^^
+   |
+help: there is an associated function with a similar name: `bar_quux`
+   |
+LL |     Foo::bar_quux;
+   |          ~~~~~~~~
+
+error[E0223]: ambiguous associated type
+  --> $DIR/issue-109195.rs:36:5
+   |
+LL |     Foo::bar::fizz;
+   |     ^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `bar` implemented for `Foo`, you could use the fully-qualified path
+   |
+LL |     <Foo as Example>::bar::fizz;
+   |     ~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0223`.
