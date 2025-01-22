@@ -73,7 +73,6 @@ cleanPackages() {
         '^aspnetcore-.*'          \
         '^dotnet-.*'              \
         '^java-*'                 \
-        '^libicu.*'                \
         '^libllvm.*'              \
         '^llvm-.*'                \
         '^llvm.*'                 \
@@ -81,7 +80,6 @@ cleanPackages() {
         '^mysql-.*'               \
         '^r-base.*'               \
         '^vim.*'                  \
-        'adwaita-icon-theme'      \
         'azure-cli'               \
         'cpp-11'                  \
         'firefox'                 \
