@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 use std::result;
-use std::sync::Arc;
 
 use rustc_ast::{LitKind, MetaItemKind, token};
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -347,7 +346,7 @@ pub struct Config {
     /// enabled. Makes it so that "please report a bug" is hidden, as ICEs with
     /// internal features are wontfix, and they are usually the cause of the ICEs.
     /// None signifies that this is not tracked.
-    pub using_internal_features: Arc<std::sync::atomic::AtomicBool>,
+    pub using_internal_features: &'static std::sync::atomic::AtomicBool,
 
     /// All commandline args used to invoke the compiler, with @file args fully expanded.
     /// This will only be used within debug info, e.g. in the pdb file on windows

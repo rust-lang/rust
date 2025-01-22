@@ -28,8 +28,8 @@ use std::io::{self, IsTerminal, Read, Write};
 use std::panic::{self, PanicHookInfo, catch_unwind};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
+use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, OnceLock};
 use std::time::{Instant, SystemTime};
 use std::{env, str};
 
@@ -214,18 +214,11 @@ pub struct RunCompiler<'a> {
     file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     make_codegen_backend:
         Option<Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>>,
-    using_internal_features: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl<'a> RunCompiler<'a> {
     pub fn new(at_args: &'a [String], callbacks: &'a mut (dyn Callbacks + Send)) -> Self {
-        Self {
-            at_args,
-            callbacks,
-            file_loader: None,
-            make_codegen_backend: None,
-            using_internal_features: Arc::default(),
-        }
+        Self { at_args, callbacks, file_loader: None, make_codegen_backend: None }
     }
 
     /// Set a custom codegen backend.
@@ -257,23 +250,9 @@ impl<'a> RunCompiler<'a> {
         self
     }
 
-    /// Set the session-global flag that checks whether internal features have been used,
-    /// suppressing the message about submitting an issue in ICEs when enabled.
-    #[must_use]
-    pub fn set_using_internal_features(mut self, using_internal_features: Arc<AtomicBool>) -> Self {
-        self.using_internal_features = using_internal_features;
-        self
-    }
-
     /// Parse args and run the compiler.
     pub fn run(self) {
-        run_compiler(
-            self.at_args,
-            self.callbacks,
-            self.file_loader,
-            self.make_codegen_backend,
-            self.using_internal_features,
-        );
+        run_compiler(self.at_args, self.callbacks, self.file_loader, self.make_codegen_backend);
     }
 }
 
@@ -284,7 +263,6 @@ fn run_compiler(
     make_codegen_backend: Option<
         Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
     >,
-    using_internal_features: Arc<std::sync::atomic::AtomicBool>,
 ) {
     let mut default_early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
@@ -331,7 +309,7 @@ fn run_compiler(
         override_queries: None,
         make_codegen_backend,
         registry: diagnostics_registry(),
-        using_internal_features,
+        using_internal_features: &USING_INTERNAL_FEATURES,
         expanded_args: args,
     };
 
@@ -1350,6 +1328,8 @@ fn ice_path_with_config(config: Option<&UnstableOptions>) -> &'static Option<Pat
     })
 }
 
+pub static USING_INTERNAL_FEATURES: AtomicBool = AtomicBool::new(false);
+
 /// Installs a panic hook that will print the ICE message on unexpected panics.
 ///
 /// The hook is intended to be useable even by external tools. You can pass a custom
@@ -1360,15 +1340,8 @@ fn ice_path_with_config(config: Option<&UnstableOptions>) -> &'static Option<Pat
 /// If you have no extra info to report, pass the empty closure `|_| ()` as the argument to
 /// extra_info.
 ///
-/// Returns a flag that can be set to disable the note for submitting a bug. This can be passed to
-/// [`RunCompiler::set_using_internal_features`] to let macro expansion set it when encountering
-/// internal features.
-///
 /// A custom rustc driver can skip calling this to set up a custom ICE hook.
-pub fn install_ice_hook(
-    bug_report_url: &'static str,
-    extra_info: fn(&DiagCtxt),
-) -> Arc<AtomicBool> {
+pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&DiagCtxt)) {
     // If the user has not explicitly overridden "RUST_BACKTRACE", then produce
     // full backtraces. When a compiler ICE happens, we want to gather
     // as much information as possible to present in the issue opened
@@ -1385,8 +1358,6 @@ pub fn install_ice_hook(
         }
     }
 
-    let using_internal_features = Arc::new(std::sync::atomic::AtomicBool::default());
-    let using_internal_features_hook = Arc::clone(&using_internal_features);
     panic::update_hook(Box::new(
         move |default_hook: &(dyn Fn(&PanicHookInfo<'_>) + Send + Sync + 'static),
               info: &PanicHookInfo<'_>| {
@@ -1438,11 +1409,9 @@ pub fn install_ice_hook(
             }
 
             // Print the ICE message
-            report_ice(info, bug_report_url, extra_info, &using_internal_features_hook);
+            report_ice(info, bug_report_url, extra_info, &USING_INTERNAL_FEATURES);
         },
     ));
-
-    using_internal_features
 }
 
 /// Prints the ICE message, including query stack, but without backtrace.
@@ -1583,13 +1552,11 @@ pub fn main() -> ! {
     init_rustc_env_logger(&early_dcx);
     signal_handler::install();
     let mut callbacks = TimePassesCallbacks::default();
-    let using_internal_features = install_ice_hook(DEFAULT_BUG_REPORT_URL, |_| ());
+    install_ice_hook(DEFAULT_BUG_REPORT_URL, |_| ());
     install_ctrlc_handler();
 
     let exit_code = catch_with_exit_code(|| {
-        RunCompiler::new(&args::raw_args(&early_dcx)?, &mut callbacks)
-            .set_using_internal_features(using_internal_features)
-            .run();
+        RunCompiler::new(&args::raw_args(&early_dcx)?, &mut callbacks).run();
         Ok(())
     });
 
