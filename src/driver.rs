@@ -236,7 +236,7 @@ pub fn main() {
             let mut args: Vec<String> = orig_args.clone();
             pass_sysroot_env_if_given(&mut args, sys_root_env);
 
-            rustc_driver::RunCompiler::new(&args, &mut DefaultCallbacks).run();
+            rustc_driver::run_compiler(&args, &mut DefaultCallbacks);
             return Ok(());
         }
 
@@ -295,9 +295,9 @@ pub fn main() {
         let clippy_enabled = !cap_lints_allow && relevant_package && !info_query;
         if clippy_enabled {
             args.extend(clippy_args);
-            rustc_driver::RunCompiler::new(&args, &mut ClippyCallbacks { clippy_args_var }).run();
+            rustc_driver::run_compiler(&args, &mut ClippyCallbacks { clippy_args_var });
         } else {
-            rustc_driver::RunCompiler::new(&args, &mut RustcCallbacks { clippy_args_var }).run();
+            rustc_driver::run_compiler(&args, &mut RustcCallbacks { clippy_args_var });
         }
         Ok(())
     }))
