@@ -36,6 +36,27 @@ jobs:
         if: ${{ github.event_name == 'schedule' }}
         run: test -z $(git rev-list  --after="24 hours"  ${{ github.sha }}) && echo "::set-output name=should_run::false"
 
+  build-x86-linux:
+    runs-on: ubuntu-latest
+    name: Build (x86 Linux)
+    needs: [init]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install dependencies
+        run: |
+            sudo apt-get install ninja-build
+            rustup component add llvm-tools-preview
+      - name: Upstream
+        run: src/ci/scripts/setup-upstream-remote.sh
+      - name: Dist
+        run: ./x.py dist --config src/bootstrap/defaults/config.dist.toml
+      - name: Publish
+        uses: actions/upload-artifact@v4
+        with:
+          name: bsan-x86-linux
+          path: build/dist/rust-nightly-x86_64-unknown-linux-gnu.tar.xz
   build-arm64-macos: 
     runs-on: macos-latest
     name: Build (arm64 macOS)
@@ -51,9 +72,6 @@ jobs:
         run: src/ci/scripts/setup-upstream-remote.sh
       - name: Dist
         run: ./x.py dist --config src/bootstrap/defaults/config.dist.toml
-      - name: List artifacts
-        run: |
-          ls -Al ./build/dist/
       - name: Publish
         uses: actions/upload-artifact@v4
         with:
@@ -62,7 +80,7 @@ jobs:
 
   release:
     name: Update rolling release
-    needs: [init, build-arm64-macos]
+    needs: [init, build-arm64-macos, build-x86-linux]
     runs-on: macos-latest
     steps:
       - name: Download artifact
@@ -79,4 +97,4 @@ jobs:
           tag_name: rolling
           prerelease: true
           files: |
-            artifacts/*.zip
+            artifacts/*.tar.xz
