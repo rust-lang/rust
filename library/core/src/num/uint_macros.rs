@@ -1213,7 +1213,7 @@ macro_rules! uint_impl {
         ///
         /// # Safety
         ///
-        /// Requires that `(self | other) == 0`, otherwise it's immediate UB.
+        /// Requires that `(self & other) == 0`, otherwise it's immediate UB.
         ///
         /// Equivalently, requires that `(self | other) == (self + other)`.
         #[unstable(feature = "disjoint_bitor", issue = "135758")]

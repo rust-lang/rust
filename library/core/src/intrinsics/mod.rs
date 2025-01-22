@@ -3257,7 +3257,8 @@ pub const fn three_way_compare<T: Copy>(_lhs: T, _rhss: T) -> crate::cmp::Orderi
 #[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
 #[rustc_nounwind]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
-#[miri::intrinsic_fallback_is_spec] // the fallbacks all `assume` to tell MIRI
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[miri::intrinsic_fallback_is_spec] // the fallbacks all `assume` to tell Miri
 pub const unsafe fn disjoint_bitor<T: ~const fallback::DisjointBitOr>(a: T, b: T) -> T {
     // SAFETY: same preconditions as this function.
     unsafe { fallback::DisjointBitOr::disjoint_bitor(a, b) }
