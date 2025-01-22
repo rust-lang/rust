@@ -17,7 +17,7 @@ pub(crate) use cargo_metadata::diagnostic::{
 use toolchain::Tool;
 use triomphe::Arc;
 
-use crate::command::{CommandHandle, ParseFromLine};
+use crate::command::{CargoParser, CommandHandle};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) enum InvocationStrategy {
@@ -324,7 +324,7 @@ impl FlycheckActor {
 
                     tracing::debug!(?command, "will restart flycheck");
                     let (sender, receiver) = unbounded();
-                    match CommandHandle::spawn(command, sender) {
+                    match CommandHandle::spawn(command, CargoCheckParser, sender) {
                         Ok(command_handle) => {
                             tracing::debug!(command = formatted_command, "did restart flycheck");
                             self.command_handle = Some(command_handle);
@@ -550,8 +550,10 @@ enum CargoCheckMessage {
     Diagnostic { diagnostic: Diagnostic, package_id: Option<Arc<PackageId>> },
 }
 
-impl ParseFromLine for CargoCheckMessage {
-    fn from_line(line: &str, error: &mut String) -> Option<Self> {
+struct CargoCheckParser;
+
+impl CargoParser<CargoCheckMessage> for CargoCheckParser {
+    fn from_line(&self, line: &str, error: &mut String) -> Option<CargoCheckMessage> {
         let mut deserializer = serde_json::Deserializer::from_str(line);
         deserializer.disable_recursion_limit();
         if let Ok(message) = JsonMessage::deserialize(&mut deserializer) {
@@ -580,7 +582,7 @@ impl ParseFromLine for CargoCheckMessage {
         None
     }
 
-    fn from_eof() -> Option<Self> {
+    fn from_eof(&self) -> Option<CargoCheckMessage> {
         None
     }
 }

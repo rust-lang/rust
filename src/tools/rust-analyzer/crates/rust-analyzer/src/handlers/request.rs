@@ -36,7 +36,6 @@ use crate::{
     config::{Config, RustfmtConfig, WorkspaceSymbolConfig},
     diagnostics::convert_diagnostic,
     global_state::{FetchWorkspaceRequest, GlobalState, GlobalStateSnapshot},
-    hack_recover_crate_name,
     line_index::LineEndings,
     lsp::{
         ext::{
@@ -196,18 +195,46 @@ pub(crate) fn handle_view_item_tree(
     Ok(res)
 }
 
-// cargo test requires the real package name which might contain hyphens but
-// the test identifier passed to this function is the namespace form where hyphens
-// are replaced with underscores so we have to reverse this and find the real package name
-fn find_package_name(namespace_root: &str, cargo: &CargoWorkspace) -> Option<String> {
+// cargo test requires:
+// - the package name - the root of the test identifier supplied to this handler can be
+//   a package or a target inside a package.
+// - the target name - if the test identifier is a target, it's needed in addition to the
+//   package name to run the right test
+// - real names - the test identifier uses the namespace form where hyphens are replaced with
+//   underscores. cargo test requires the real name.
+// - the target kind e.g. bin or lib
+fn find_test_target(namespace_root: &str, cargo: &CargoWorkspace) -> Option<TestTarget> {
     cargo.packages().find_map(|p| {
         let package_name = &cargo[p].name;
-        if package_name.replace('-', "_") == namespace_root {
-            Some(package_name.clone())
-        } else {
-            None
+        for target in cargo[p].targets.iter() {
+            let target_name = &cargo[*target].name;
+            if target_name.replace('-', "_") == namespace_root {
+                return Some(TestTarget {
+                    package: package_name.clone(),
+                    target: target_name.clone(),
+                    kind: cargo[*target].kind,
+                });
+            }
         }
+        None
     })
+}
+
+fn get_all_targets(cargo: &CargoWorkspace) -> Vec<TestTarget> {
+    cargo
+        .packages()
+        .flat_map(|p| {
+            let package_name = &cargo[p].name;
+            cargo[p].targets.iter().map(|target| {
+                let target_name = &cargo[*target].name;
+                TestTarget {
+                    package: package_name.clone(),
+                    target: target_name.clone(),
+                    kind: cargo[*target].kind,
+                }
+            })
+        })
+        .collect()
 }
 
 pub(crate) fn handle_run_test(
@@ -217,53 +244,41 @@ pub(crate) fn handle_run_test(
     if let Some(_session) = state.test_run_session.take() {
         state.send_notification::<lsp_ext::EndRunTest>(());
     }
-    // We detect the lowest common ancestor of all included tests, and
-    // run it. We ignore excluded tests for now, the client will handle
-    // it for us.
-    let lca = match params.include {
-        Some(tests) => tests
-            .into_iter()
-            .reduce(|x, y| {
-                let mut common_prefix = "".to_owned();
-                for (xc, yc) in x.chars().zip(y.chars()) {
-                    if xc != yc {
-                        break;
-                    }
-                    common_prefix.push(xc);
-                }
-                common_prefix
-            })
-            .unwrap_or_default(),
-        None => "".to_owned(),
-    };
-    let (namespace_root, test_path) = if lca.is_empty() {
-        (None, None)
-    } else if let Some((namespace_root, path)) = lca.split_once("::") {
-        (Some(namespace_root), Some(path))
-    } else {
-        (Some(lca.as_str()), None)
-    };
+
     let mut handles = vec![];
     for ws in &*state.workspaces {
         if let ProjectWorkspaceKind::Cargo { cargo, .. } = &ws.kind {
-            let test_target = if let Some(namespace_root) = namespace_root {
-                if let Some(package_name) = find_package_name(namespace_root, cargo) {
-                    TestTarget::Package(package_name)
-                } else {
-                    TestTarget::Workspace
-                }
-            } else {
-                TestTarget::Workspace
+            // need to deduplicate `include` to avoid redundant test runs
+            let tests = match params.include {
+                Some(ref include) => include
+                    .iter()
+                    .unique()
+                    .filter_map(|test| {
+                        let (root, remainder) = match test.split_once("::") {
+                            Some((root, remainder)) => (root.to_owned(), Some(remainder)),
+                            None => (test.clone(), None),
+                        };
+                        if let Some(target) = find_test_target(&root, cargo) {
+                            Some((target, remainder))
+                        } else {
+                            tracing::error!("Test target not found for: {test}");
+                            None
+                        }
+                    })
+                    .collect_vec(),
+                None => get_all_targets(cargo).into_iter().map(|target| (target, None)).collect(),
             };
 
-            let handle = CargoTestHandle::new(
-                test_path,
-                state.config.cargo_test_options(None),
-                cargo.workspace_root(),
-                test_target,
-                state.test_run_sender.clone(),
-            )?;
-            handles.push(handle);
+            for (target, path) in tests {
+                let handle = CargoTestHandle::new(
+                    path,
+                    state.config.cargo_test_options(None),
+                    cargo.workspace_root(),
+                    target,
+                    state.test_run_sender.clone(),
+                )?;
+                handles.push(handle);
+            }
         }
     }
     // Each process send finished signal twice, once for stdout and once for stderr
@@ -287,9 +302,7 @@ pub(crate) fn handle_discover_test(
         }
         None => (snap.analysis.discover_test_roots()?, None),
     };
-    for t in &tests {
-        hack_recover_crate_name::insert_name(t.id.clone());
-    }
+
     Ok(lsp_ext::DiscoverTestResults {
         tests: tests
             .into_iter()

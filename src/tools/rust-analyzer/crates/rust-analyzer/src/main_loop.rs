@@ -26,7 +26,6 @@ use crate::{
         file_id_to_url, url_to_file_id, FetchBuildDataResponse, FetchWorkspaceRequest,
         FetchWorkspaceResponse, GlobalState,
     },
-    hack_recover_crate_name,
     handlers::{
         dispatch::{NotificationDispatcher, RequestDispatcher},
         request::empty_diagnostic_report,
@@ -37,7 +36,7 @@ use crate::{
     },
     lsp_ext,
     reload::{BuildDataProgress, ProcMacroProgress, ProjectWorkspaceProgress},
-    test_runner::{CargoTestMessage, TestState},
+    test_runner::{CargoTestMessage, CargoTestOutput, TestState},
 };
 
 pub fn main_loop(config: Config, connection: Connection) -> anyhow::Result<()> {
@@ -659,9 +658,7 @@ impl GlobalState {
                     .filter_map(|f| snapshot.analysis.discover_tests_in_file(f).ok())
                     .flatten()
                     .collect::<Vec<_>>();
-                for t in &tests {
-                    hack_recover_crate_name::insert_name(t.id.clone());
-                }
+
                 Task::DiscoverTest(lsp_ext::DiscoverTestResults {
                     tests: tests
                         .into_iter()
@@ -958,30 +955,29 @@ impl GlobalState {
     }
 
     fn handle_cargo_test_msg(&mut self, message: CargoTestMessage) {
-        match message {
-            CargoTestMessage::Test { name, state } => {
+        match message.output {
+            CargoTestOutput::Test { name, state } => {
                 let state = match state {
                     TestState::Started => lsp_ext::TestState::Started,
                     TestState::Ignored => lsp_ext::TestState::Skipped,
                     TestState::Ok => lsp_ext::TestState::Passed,
                     TestState::Failed { stdout } => lsp_ext::TestState::Failed { message: stdout },
                 };
-                let Some(test_id) = hack_recover_crate_name::lookup_name(name) else {
-                    return;
-                };
+                let test_id = format!("{}::{name}", message.target.target);
+
                 self.send_notification::<lsp_ext::ChangeTestState>(
                     lsp_ext::ChangeTestStateParams { test_id, state },
                 );
             }
-            CargoTestMessage::Suite => (),
-            CargoTestMessage::Finished => {
+            CargoTestOutput::Suite => (),
+            CargoTestOutput::Finished => {
                 self.test_run_remaining_jobs = self.test_run_remaining_jobs.saturating_sub(1);
                 if self.test_run_remaining_jobs == 0 {
                     self.send_notification::<lsp_ext::EndRunTest>(());
                     self.test_run_session = None;
                 }
             }
-            CargoTestMessage::Custom { text } => {
+            CargoTestOutput::Custom { text } => {
                 self.send_notification::<lsp_ext::AppendOutputToRunTest>(text);
             }
         }
