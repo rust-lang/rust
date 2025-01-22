@@ -118681,5 +118681,167 @@
         "ZIP2"
       ]
     ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vamin_f32",
+    "arguments": [
+      "float32x2_t a",
+      "float32x2_t b"
+    ],
+    "return_type": {
+      "value": "float32x2_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.2S"
+      },
+      "b": {
+        "register": "Vm.2S"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "FAMIN"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vaminq_f32",
+    "arguments": [
+      "float32x4_t a",
+      "float32x4_t b"
+    ],
+    "return_type": {
+      "value": "float32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.4S"
+      },
+      "b": {
+        "register": "Vm.4S"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "FAMIN"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vaminq_f64",
+    "arguments": [
+      "float64x2_t a",
+      "float64x2_t b"
+    ],
+    "return_type": {
+      "value": "float64x2_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.2D"
+      },
+      "b": {
+        "register": "Vm.2D"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "FAMIN"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vamax_f32",
+    "arguments": [
+      "float32x2_t a",
+      "float32x2_t b"
+    ],
+    "return_type": {
+      "value": "float32x2_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.2S"
+      },
+      "b": {
+        "register": "Vm.2S"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "FAMAX"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vamaxq_f32",
+    "arguments": [
+      "float32x4_t a",
+      "float32x4_t b"
+    ],
+    "return_type": {
+      "value": "float32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.4S"
+      },
+      "b": {
+        "register": "Vm.4S"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "FAMAX"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vamaxq_f64",
+    "arguments": [
+      "float64x2_t a",
+      "float64x2_t b"
+    ],
+    "return_type": {
+      "value": "float64x2_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.2D"
+      },
+      "b": {
+        "register": "Vm.2D"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "FAMAX"
+      ]
+    ]
   }
 ]

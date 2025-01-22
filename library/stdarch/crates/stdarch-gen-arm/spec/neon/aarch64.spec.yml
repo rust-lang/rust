@@ -13973,3 +13973,45 @@ intrinsics:
           - - r
             - a
             - FnCall: ["vdup{neon_type[1].N}", [{FnCall: [simd_extract!, [b, 'LANE as u32']]}]]
+
+  - name: "vamax{neon_type.no}"
+    doc: "Multi-vector floating-point absolute maximum"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,faminmax"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [famax]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - float32x2_t
+      - float32x4_t
+      - float64x2_t
+    compose:
+      - LLVMLink:
+          name: "_vamax{neon_type.no}"
+          links:
+            - link: "llvm.aarch64.neon.famax.{neon_type}"
+              arch: aarch64,arm64ec
+
+  - name: "vamin{neon_type.no}"
+    doc: "Multi-vector floating-point absolute minimum"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,faminmax"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [famin]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - float32x2_t
+      - float32x4_t
+      - float64x2_t
+    compose:
+      - LLVMLink:
+          name: "_vamin{neon_type.no}"
+          links:
+            - link: "llvm.aarch64.neon.famin.{neon_type}"
+              arch: aarch64,arm64ec
