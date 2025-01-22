@@ -67,6 +67,8 @@ no_mangle! {
     cbrtf(x: f32) -> f32;
     ceil(x: f64) -> f64;
     ceilf(x: f32) -> f32;
+    ceilf128(x: f128) -> f128;
+    ceilf16(x: f16) -> f16;
     copysign(x: f64, y: f64) -> f64;
     copysignf(x: f32, y: f32) -> f32;
     copysignf128(x: f128, y: f128) -> f128;
@@ -97,6 +99,8 @@ no_mangle! {
     fdimf16(x: f16, y: f16) -> f16;
     floor(x: f64) -> f64;
     floorf(x: f32) -> f32;
+    floorf128(x: f128) -> f128;
+    floorf16(x: f16) -> f16;
     fma(x: f64, y: f64, z: f64) -> f64;
     fmaf(x: f32, y: f32, z: f32) -> f32;
     fmax(x: f64, y: f64) -> f64;

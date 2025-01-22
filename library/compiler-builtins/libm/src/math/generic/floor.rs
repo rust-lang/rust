@@ -1,15 +1,15 @@
-/* SPDX-License-Identifier: MIT */
-/* origin: musl src/math/ceilf.c */
+/* SPDX-License-Identifier: MIT
+ * origin: musl src/math/floor.c */
 
-//! Generic `ceil` algorithm.
+//! Generic `floor` algorithm.
 //!
-//! Note that this uses the algorithm from musl's `ceilf` rather than `ceil` or `ceill` because
+//! Note that this uses the algorithm from musl's `floorf` rather than `floor` or `floorl` because
 //! performance seems to be better (based on icount) and it does not seem to experience rounding
 //! errors on i386.
 
 use super::super::{Float, Int, IntTy, MinInt};
 
-pub fn ceil<F: Float>(x: F) -> F {
+pub fn floor<F: Float>(x: F) -> F {
     let zero = IntTy::<F>::ZERO;
 
     let mut ix = x.to_bits();
@@ -24,7 +24,7 @@ pub fn ceil<F: Float>(x: F) -> F {
         // |x| >= 1.0
 
         let m = F::SIG_MASK >> e.unsigned();
-        if (ix & m) == zero {
+        if ix & m == zero {
             // Portion to be masked is already zero; no adjustment needed.
             return x;
         }
@@ -32,7 +32,7 @@ pub fn ceil<F: Float>(x: F) -> F {
         // Otherwise, raise an inexact exception.
         force_eval!(x + F::MAX);
 
-        if x.is_sign_positive() {
+        if x.is_sign_negative() {
             ix += m;
         }
 
@@ -42,14 +42,14 @@ pub fn ceil<F: Float>(x: F) -> F {
         // |x| < 1.0, raise an inexact exception since truncation will happen (unless x == 0).
         force_eval!(x + F::MAX);
 
-        if x.is_sign_negative() {
-            // -1.0 < x <= -0.0; rounding up goes toward -0.0.
-            F::NEG_ZERO
+        if x.is_sign_positive() {
+            // 0.0 <= x < 1.0; rounding down goes toward +0.0.
+            F::ZERO
         } else if ix << 1 != zero {
-            // 0.0 < x < 1.0; rounding up goes toward +1.0.
-            F::ONE
+            // -1.0 < x < 0.0; rounding down goes toward -1.0.
+            F::NEG_ONE
         } else {
-            // +0.0 remains unchanged
+            // -0.0 remains unchanged
             x
         }
     }
@@ -59,11 +59,11 @@ pub fn ceil<F: Float>(x: F) -> F {
 mod tests {
     use super::*;
 
-    /// Test against https://en.cppreference.com/w/cpp/numeric/math/ceil
+    /// Test against https://en.cppreference.com/w/cpp/numeric/math/floor
     fn spec_test<F: Float>() {
         // Not Asserted: that the current rounding mode has no effect.
         for f in [F::ZERO, F::NEG_ZERO, F::INFINITY, F::NEG_INFINITY].iter().copied() {
-            assert_biteq!(ceil(f), f);
+            assert_biteq!(floor(f), f);
         }
     }
 
@@ -77,8 +77,9 @@ mod tests {
 
     #[test]
     fn sanity_check_f32() {
-        assert_eq!(ceil(1.1f32), 2.0);
-        assert_eq!(ceil(2.9f32), 3.0);
+        assert_eq!(floor(0.5f32), 0.0);
+        assert_eq!(floor(1.1f32), 1.0);
+        assert_eq!(floor(2.9f32), 2.0);
     }
 
     #[test]
@@ -88,8 +89,8 @@ mod tests {
 
     #[test]
     fn sanity_check_f64() {
-        assert_eq!(ceil(1.1f64), 2.0);
-        assert_eq!(ceil(2.9f64), 3.0);
+        assert_eq!(floor(1.1f64), 1.0);
+        assert_eq!(floor(2.9f64), 2.0);
     }
 
     #[test]
