@@ -17,7 +17,7 @@ use crate::{
     TraitEnvironment, Ty, TyBuilder, TyKind,
 };
 
-static AUTODEREF_RECURSION_LIMIT: Limit = Limit::new(10);
+static AUTODEREF_RECURSION_LIMIT: Limit = Limit::new(20);
 
 #[derive(Debug)]
 pub(crate) enum AutoderefKind {
@@ -49,7 +49,7 @@ pub fn autoderef(
         // If the deref chain contains a cycle (e.g. `A` derefs to `B` and `B` derefs to `A`), we
         // would revisit some already visited types. Stop here to avoid duplication.
         //
-        // XXX: The recursion limit for `Autoderef` is currently 10, so `Vec::contains()` shouldn't
+        // XXX: The recursion limit for `Autoderef` is currently 20, so `Vec::contains()` shouldn't
         // be too expensive. Replace this duplicate check with `FxHashSet` if it proves to be more
         // performant.
         if v.contains(&resolved) {
