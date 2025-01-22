@@ -112,7 +112,8 @@ cleanPackages() {
     sudo apt-get clean || echo "::warning::The command [sudo apt-get clean] failed failed"
 
     echo "=> Installed packages sorted by size:"
-    dpkg-query -W --showformat='${Installed-Size} ${Package}\n' | sort -nr | head -200 || true
+    # sort always fails because `head` stops reading stdin
+    dpkg-query -W --showformat='${Installed-Size} ${Package}\n' | sort -nr 2>/dev/null | head -200 || true
 }
 
 # Remove Docker images
@@ -155,6 +156,10 @@ removeUnusedDirectories() {
         sudo rm -rf "$dir" || true
         printSavedSpace "$before" "Removed $dir"
     done
+
+    echo "=> largest directories:"
+    # sort always fails because `head` stops reading stdin
+    sudo du --max-depth=7 /* -h | sort -nr 2>/dev/null  | head -1000 || true
 }
 
 # Display initial disk space stats
@@ -169,9 +174,6 @@ execAndMeasureSpaceChange cleanPackages "Unused packages"
 execAndMeasureSpaceChange cleanDocker "Docker images"
 
 removeUnusedDirectories
-
-echo "=> largest directories:"
-sudo du --max-depth=7 /* -h | sort -nr | head -1000
 
 # Output saved space statistic
 echo ""
