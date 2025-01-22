@@ -673,6 +673,9 @@ impl flags::AnalysisStats {
                         DefWithBody::Const(it) => it.source(db).map(|it| it.syntax().cloned()),
                         DefWithBody::Variant(it) => it.source(db).map(|it| it.syntax().cloned()),
                         DefWithBody::InTypeConst(_) => unimplemented!(),
+                        DefWithBody::Field(it) => {
+                            it.default_value_source(db).map(|it| it.syntax().cloned())
+                        }
                     };
                     if let Some(src) = source {
                         let original_file = src.file_id.original_file(db);
@@ -987,6 +990,9 @@ impl flags::AnalysisStats {
                         DefWithBody::Const(it) => it.source(db).map(|it| it.syntax().cloned()),
                         DefWithBody::Variant(it) => it.source(db).map(|it| it.syntax().cloned()),
                         DefWithBody::InTypeConst(_) => unimplemented!(),
+                        DefWithBody::Field(it) => {
+                            it.default_value_source(db).map(|it| it.syntax().cloned())
+                        }
                     };
                     if let Some(src) = source {
                         let original_file = src.file_id.original_file(db);

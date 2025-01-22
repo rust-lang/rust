@@ -1227,6 +1227,11 @@ impl HasResolver for TypeOwnerId {
             TypeOwnerId::TypeAliasId(it) => it.resolver(db),
             TypeOwnerId::ImplId(it) => it.resolver(db),
             TypeOwnerId::EnumVariantId(it) => it.resolver(db),
+            TypeOwnerId::FieldId(it) => match it.parent {
+                VariantId::EnumVariantId(it) => it.resolver(db),
+                VariantId::StructId(it) => it.resolver(db),
+                VariantId::UnionId(it) => it.resolver(db),
+            },
         }
     }
 }
@@ -1239,6 +1244,11 @@ impl HasResolver for DefWithBodyId {
             DefWithBodyId::StaticId(s) => s.resolver(db),
             DefWithBodyId::VariantId(v) => v.resolver(db),
             DefWithBodyId::InTypeConstId(c) => c.lookup(db).owner.resolver(db),
+            DefWithBodyId::FieldId(f) => match f.parent {
+                VariantId::EnumVariantId(it) => it.resolver(db),
+                VariantId::StructId(it) => it.resolver(db),
+                VariantId::UnionId(it) => it.resolver(db),
+            },
         }
     }
 }

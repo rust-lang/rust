@@ -11,6 +11,7 @@ use crate::{
         Statement,
     },
     pretty::{print_generic_args, print_path, print_type_ref},
+    VariantId,
 };
 
 use super::*;
@@ -55,6 +56,32 @@ pub(super) fn print_body_hir(
                 enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db.upcast(), edition),
                 loc.id.item_tree(db)[loc.id.value].name.display(db.upcast(), edition),
             )
+        }
+        DefWithBodyId::FieldId(it) => {
+            let parent_name: String = match it.parent {
+                VariantId::EnumVariantId(it) => {
+                    let loc = it.lookup(db);
+                    let enum_loc = loc.parent.lookup(db);
+                    format!(
+                        "{}::{}",
+                        enum_loc.id.item_tree(db)[enum_loc.id.value]
+                            .name
+                            .display(db.upcast(), edition),
+                        loc.id.item_tree(db)[loc.id.value].name.display(db.upcast(), edition),
+                    )
+                }
+                VariantId::StructId(it) => it
+                    .lookup(db)
+                    .id
+                    .resolved(db, |it| it.name.display(db.upcast(), edition).to_string()),
+                VariantId::UnionId(it) => it
+                    .lookup(db)
+                    .id
+                    .resolved(db, |it| it.name.display(db.upcast(), edition).to_string()),
+            };
+            let variant_data = it.parent.variant_data(db);
+            let field_name = &variant_data.fields()[it.local_id].name;
+            format!("field {}.{}", parent_name, field_name.display(db.upcast(), edition),)
         }
     };
 

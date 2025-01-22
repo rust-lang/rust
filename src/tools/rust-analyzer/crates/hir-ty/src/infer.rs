@@ -134,6 +134,9 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
                 .unwrap()
                 .0;
         }
+        DefWithBodyId::FieldId(f) => {
+            ctx.collect_field(f);
+        }
     }
 
     ctx.infer_body();
@@ -905,6 +908,19 @@ impl<'a> InferenceContext<'a> {
             self.make_ty(data.type_ref, &data.types_map, InferenceTyDiagnosticSource::Signature);
 
         // Statics might be defining usage sites of TAITs.
+        self.make_tait_coercion_table(iter::once(&return_ty));
+
+        self.return_ty = return_ty;
+    }
+
+    fn collect_field(&mut self, field: FieldId) {
+        let variant_data = field.parent.variant_data(self.db.upcast());
+        let field_data = &variant_data.fields()[field.local_id];
+        let types_map = variant_data.types_map();
+        let return_ty =
+            self.make_ty(field_data.type_ref, types_map, InferenceTyDiagnosticSource::Signature);
+
+        // Field default value exprs might be defining usage sites of TAITs.
         self.make_tait_coercion_table(iter::once(&return_ty));
 
         self.return_ty = return_ty;

@@ -160,6 +160,7 @@ fn check_impl(
             loc.source(&db).value.syntax().text_range().start()
         }
         DefWithBodyId::InTypeConstId(it) => it.source(&db).syntax().text_range().start(),
+        DefWithBodyId::FieldId(_) => unreachable!(),
     });
     let mut unexpected_type_mismatches = String::new();
     for def in defs {
@@ -415,6 +416,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             loc.source(&db).value.syntax().text_range().start()
         }
         DefWithBodyId::InTypeConstId(it) => it.source(&db).syntax().text_range().start(),
+        DefWithBodyId::FieldId(_) => unreachable!(),
     });
     for def in defs {
         let (body, source_map) = db.body_with_source_map(def);

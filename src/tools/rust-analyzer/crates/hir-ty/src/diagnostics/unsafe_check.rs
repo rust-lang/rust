@@ -33,7 +33,8 @@ pub fn missing_unsafe(
         DefWithBodyId::StaticId(_)
         | DefWithBodyId::ConstId(_)
         | DefWithBodyId::VariantId(_)
-        | DefWithBodyId::InTypeConstId(_) => false,
+        | DefWithBodyId::InTypeConstId(_)
+        | DefWithBodyId::FieldId(_) => false,
     };
 
     let body = db.body(def);

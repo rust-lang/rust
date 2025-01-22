@@ -415,6 +415,19 @@ impl ModuleDef {
             def.diagnostics(db, &mut acc);
         }
 
+        let fields = match self {
+            ModuleDef::Adt(Adt::Struct(it)) => Some(it.fields(db)),
+            ModuleDef::Adt(Adt::Union(it)) => Some(it.fields(db)),
+            ModuleDef::Variant(it) => Some(it.fields(db)),
+            _ => None,
+        };
+        if let Some(fields) = fields {
+            for field in fields {
+                let def: DefWithBody = field.into();
+                def.diagnostics(db, &mut acc, style_lints);
+            }
+        }
+
         acc
     }
 
@@ -1226,6 +1239,12 @@ impl HasVisibility for Module {
     }
 }
 
+impl From<&Field> for DefWithBodyId {
+    fn from(&f: &Field) -> Self {
+        DefWithBodyId::FieldId(f.into())
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Field {
     pub(crate) parent: VariantDef,
@@ -1291,6 +1310,10 @@ impl AstNode for FieldSource {
 }
 
 impl Field {
+    pub fn module(self, db: &dyn HirDatabase) -> Module {
+        self.parent.module(db)
+    }
+
     pub fn name(&self, db: &dyn HirDatabase) -> Name {
         self.parent.variant_data(db).fields()[self.id].name.clone()
     }
@@ -1352,6 +1375,14 @@ impl Field {
 
     pub fn parent_def(&self, _db: &dyn HirDatabase) -> VariantDef {
         self.parent
+    }
+
+    pub fn default_value_source(
+        &self,
+        db: &dyn HirDatabase,
+    ) -> Option<InFileWrapper<HirFileId, ast::Expr>> {
+        let id: hir_def::FieldId = (*self).into();
+        id.record_field_source(db.upcast()).map(|it| it.and_then(|it| it.expr())).transpose()
     }
 }
 
@@ -1789,8 +1820,9 @@ pub enum DefWithBody {
     Const(Const),
     Variant(Variant),
     InTypeConst(InTypeConst),
+    Field(Field),
 }
-impl_from!(Function, Const, Static, Variant, InTypeConst for DefWithBody);
+impl_from!(Function, Const, Static, Variant, InTypeConst, Field for DefWithBody);
 
 impl DefWithBody {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -1800,6 +1832,7 @@ impl DefWithBody {
             DefWithBody::Static(s) => s.module(db),
             DefWithBody::Variant(v) => v.module(db),
             DefWithBody::InTypeConst(c) => c.module(db),
+            DefWithBody::Field(f) => f.module(db),
         }
     }
 
@@ -1810,6 +1843,7 @@ impl DefWithBody {
             DefWithBody::Const(c) => c.name(db),
             DefWithBody::Variant(v) => Some(v.name(db)),
             DefWithBody::InTypeConst(_) => None,
+            DefWithBody::Field(f) => Some(f.name(db)),
         }
     }
 
@@ -1825,6 +1859,7 @@ impl DefWithBody {
                 &DefWithBodyId::from(it.id).resolver(db.upcast()),
                 TyKind::Error.intern(Interner),
             ),
+            DefWithBody::Field(it) => it.ty(db),
         }
     }
 
@@ -1835,6 +1870,7 @@ impl DefWithBody {
             DefWithBody::Const(it) => it.id.into(),
             DefWithBody::Variant(it) => it.into(),
             DefWithBody::InTypeConst(it) => it.id.into(),
+            DefWithBody::Field(it) => it.into(),
         }
     }
 
@@ -1880,6 +1916,23 @@ impl DefWithBody {
                 item_tree_source_maps.konst(konst.value)
             }
             DefWithBody::Variant(_) | DefWithBody::InTypeConst(_) => &TypesSourceMap::EMPTY,
+            DefWithBody::Field(field) => match field.parent {
+                VariantDef::Struct(strukt) => {
+                    let strukt = strukt.id.lookup(db.upcast()).id;
+                    item_tree_source_maps = strukt.item_tree_with_source_map(db.upcast()).1;
+                    item_tree_source_maps.strukt(strukt.value).item()
+                }
+                VariantDef::Union(union) => {
+                    let union = union.id.lookup(db.upcast()).id;
+                    item_tree_source_maps = union.item_tree_with_source_map(db.upcast()).1;
+                    item_tree_source_maps.union(union.value).item()
+                }
+                VariantDef::Variant(variant) => {
+                    let variant = variant.id.lookup(db.upcast()).id;
+                    item_tree_source_maps = variant.item_tree_with_source_map(db.upcast()).1;
+                    item_tree_source_maps.variant(variant.value)
+                }
+            },
         };
 
         for (_, def_map) in body.blocks(db.upcast()) {
@@ -2111,8 +2164,8 @@ impl DefWithBody {
             DefWithBody::Static(it) => it.into(),
             DefWithBody::Const(it) => it.into(),
             DefWithBody::Variant(it) => it.into(),
-            // FIXME: don't ignore diagnostics for in type const
-            DefWithBody::InTypeConst(_) => return,
+            // FIXME: don't ignore diagnostics for in type const and default field value exprs
+            DefWithBody::InTypeConst(_) | DefWithBody::Field(_) => return,
         };
         for diag in hir_ty::diagnostics::incorrect_case(db, def.into()) {
             acc.push(diag.into())
@@ -3237,7 +3290,10 @@ impl AsAssocItem for DefWithBody {
         match self {
             DefWithBody::Function(it) => it.as_assoc_item(db),
             DefWithBody::Const(it) => it.as_assoc_item(db),
-            DefWithBody::Static(_) | DefWithBody::Variant(_) | DefWithBody::InTypeConst(_) => None,
+            DefWithBody::Static(_)
+            | DefWithBody::Variant(_)
+            | DefWithBody::InTypeConst(_)
+            | DefWithBody::Field(_) => None,
         }
     }
 }
