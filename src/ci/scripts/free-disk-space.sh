@@ -95,7 +95,6 @@ cleanPackages() {
         'google-cloud-sdk'        \
         'groff-base'              \
         'groff'                   \
-        'humanity-icon-theme'     \
         'kubectl'                 \
         'libgl1-mesa-dri'         \
         'libicu-dev'              \
