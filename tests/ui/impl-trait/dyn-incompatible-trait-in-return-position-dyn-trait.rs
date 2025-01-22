@@ -19,7 +19,7 @@ impl DynIncompatible for B {
     }
 }
 
-fn car() -> dyn DynIncompatible { //~ ERROR the trait `DynIncompatible` cannot be made into an object
+fn car() -> dyn DynIncompatible { //~ ERROR the trait `DynIncompatible` is not dyn compatible
 //~^ ERROR return type cannot have an unboxed trait object
     if true {
         return A;
@@ -27,11 +27,11 @@ fn car() -> dyn DynIncompatible { //~ ERROR the trait `DynIncompatible` cannot b
     B
 }
 
-fn cat() -> Box<dyn DynIncompatible> { //~ ERROR the trait `DynIncompatible` cannot be made into an
+fn cat() -> Box<dyn DynIncompatible> { //~ ERROR the trait `DynIncompatible` is not dyn compatible
     if true {
-        return Box::new(A); //~ ERROR cannot be made into an object
+        return Box::new(A); //~ ERROR is not dyn compatible
     }
-    Box::new(B) //~ ERROR cannot be made into an object
+    Box::new(B) //~ ERROR is not dyn compatible
 }
 
 fn main() {}

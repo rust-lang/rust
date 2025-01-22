@@ -433,34 +433,19 @@ pub fn report_dyn_incompatibility<'tcx>(
         hir::Node::Item(item) => Some(item.ident.span),
         _ => None,
     });
+
     let mut err = struct_span_code_err!(
         tcx.dcx(),
         span,
         E0038,
-        "the {} `{}` cannot be made into an object",
+        "the {} `{}` is not dyn compatible",
         tcx.def_descr(trait_def_id),
         trait_str
     );
-    err.span_label(span, format!("`{trait_str}` cannot be made into an object"));
+    err.span_label(span, format!("`{trait_str}` is not dyn compatible"));
 
-    if let Some(hir_id) = hir_id
-        && let hir::Node::Ty(ty) = tcx.hir_node(hir_id)
-        && let hir::TyKind::TraitObject([trait_ref, ..], ..) = ty.kind
-    {
-        let mut hir_id = hir_id;
-        while let hir::Node::Ty(ty) = tcx.parent_hir_node(hir_id) {
-            hir_id = ty.hir_id;
-        }
-        if tcx.parent_hir_node(hir_id).fn_sig().is_some() {
-            // Do not suggest `impl Trait` when dealing with things like super-traits.
-            err.span_suggestion_verbose(
-                ty.span.until(trait_ref.span),
-                "consider using an opaque type instead",
-                "impl ",
-                Applicability::MaybeIncorrect,
-            );
-        }
-    }
+    attempt_dyn_to_impl_suggestion(tcx, hir_id, &mut err);
+
     let mut reported_violations = FxIndexSet::default();
     let mut multi_span = vec![];
     let mut messages = vec![];
@@ -475,7 +460,7 @@ pub fn report_dyn_incompatibility<'tcx>(
         if reported_violations.insert(violation.clone()) {
             let spans = violation.spans();
             let msg = if trait_span.is_none() || spans.is_empty() {
-                format!("the trait cannot be made into an object because {}", violation.error_msg())
+                format!("the trait is not dyn compatible because {}", violation.error_msg())
             } else {
                 format!("...because {}", violation.error_msg())
             };
@@ -492,7 +477,7 @@ pub fn report_dyn_incompatibility<'tcx>(
     let has_multi_span = !multi_span.is_empty();
     let mut note_span = MultiSpan::from_spans(multi_span.clone());
     if let (Some(trait_span), true) = (trait_span, has_multi_span) {
-        note_span.push_span_label(trait_span, "this trait cannot be made into an object...");
+        note_span.push_span_label(trait_span, "this trait is not dyn compatible...");
     }
     for (span, msg) in iter::zip(multi_span, messages) {
         note_span.push_span_label(span, msg);
@@ -500,16 +485,12 @@ pub fn report_dyn_incompatibility<'tcx>(
     // FIXME(dyn_compat_renaming): Update the URL.
     err.span_note(
         note_span,
-        "for a trait to be \"dyn-compatible\" it needs to allow building a vtable to allow the call \
-         to be resolvable dynamically; for more information visit \
-         <https://doc.rust-lang.org/reference/items/traits.html#object-safety>",
+        "for a trait to be dyn compatible it needs to allow building a vtable\n\
+        for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>",
     );
 
     // Only provide the help if its a local trait, otherwise it's not actionable.
     if trait_span.is_some() {
-        let mut reported_violations: Vec<_> = reported_violations.into_iter().collect();
-        reported_violations.sort();
-
         let mut potential_solutions: Vec<_> =
             reported_violations.into_iter().map(|violation| violation.solution()).collect();
         potential_solutions.sort();
@@ -520,68 +501,116 @@ pub fn report_dyn_incompatibility<'tcx>(
         }
     }
 
+    attempt_dyn_to_enum_suggestion(tcx, trait_def_id, &*trait_str, &mut err);
+
+    err
+}
+
+/// Attempt to suggest converting the `dyn Trait` argument to an enumeration
+/// over the types that implement `Trait`.
+fn attempt_dyn_to_enum_suggestion(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+    trait_str: &str,
+    err: &mut Diag<'_>,
+) {
     let impls_of = tcx.trait_impls_of(trait_def_id);
-    let impls = if impls_of.blanket_impls().is_empty() {
-        impls_of
-            .non_blanket_impls()
-            .values()
-            .flatten()
-            .filter(|def_id| {
-                !matches!(tcx.type_of(*def_id).instantiate_identity().kind(), ty::Dynamic(..))
-            })
-            .collect::<Vec<_>>()
-    } else {
-        vec![]
-    };
-    let externally_visible = if !impls.is_empty()
-        && let Some(def_id) = trait_def_id.as_local()
+
+    if !impls_of.blanket_impls().is_empty() {
+        return;
+    }
+
+    let concrete_impls: Option<Vec<Ty<'_>>> = impls_of
+        .non_blanket_impls()
+        .values()
+        .flatten()
+        .map(|impl_id| {
+            // Don't suggest conversion to enum if the impl types have type parameters.
+            // It's unlikely the user wants to define a generic enum.
+            let Some(impl_type) = tcx.type_of(*impl_id).no_bound_vars() else { return None };
+
+            // Obviously unsized impl types won't be usable in an enum.
+            // Note: this doesn't use `Ty::is_trivially_sized` because that function
+            // defaults to assuming that things are *not* sized, whereas we want to
+            // fall back to assuming that things may be sized.
+            match impl_type.kind() {
+                ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::DynKind::Dyn) => {
+                    return None;
+                }
+                _ => {}
+            }
+            Some(impl_type)
+        })
+        .collect();
+    let Some(concrete_impls) = concrete_impls else { return };
+
+    const MAX_IMPLS_TO_SUGGEST_CONVERTING_TO_ENUM: usize = 9;
+    if concrete_impls.is_empty() || concrete_impls.len() > MAX_IMPLS_TO_SUGGEST_CONVERTING_TO_ENUM {
+        return;
+    }
+
+    let externally_visible = if let Some(def_id) = trait_def_id.as_local() {
         // We may be executing this during typeck, which would result in cycle
         // if we used effective_visibilities query, which looks into opaque types
         // (and therefore calls typeck).
-        && tcx.resolutions(()).effective_visibilities.is_exported(def_id)
-    {
-        true
+        tcx.resolutions(()).effective_visibilities.is_exported(def_id)
     } else {
         false
     };
-    match &impls[..] {
-        [] => {}
-        _ if impls.len() > 9 => {}
-        [only] if externally_visible => {
-            err.help(with_no_trimmed_paths!(format!(
-                "only type `{}` is seen to implement the trait in this crate, consider using it \
-                 directly instead",
-                tcx.type_of(*only).instantiate_identity(),
-            )));
-        }
-        [only] => {
-            err.help(with_no_trimmed_paths!(format!(
-                "only type `{}` implements the trait, consider using it directly instead",
-                tcx.type_of(*only).instantiate_identity(),
-            )));
-        }
-        impls => {
-            let types = impls
-                .iter()
-                .map(|t| {
-                    with_no_trimmed_paths!(format!("  {}", tcx.type_of(*t).instantiate_identity(),))
-                })
-                .collect::<Vec<_>>();
-            err.help(format!(
-                "the following types implement the trait, consider defining an enum where each \
-                 variant holds one of these types, implementing `{}` for this new enum and using \
-                 it instead:\n{}",
-                trait_str,
-                types.join("\n"),
-            ));
-        }
-    }
-    if externally_visible {
-        err.note(format!(
-            "`{trait_str}` can be implemented in other crates; if you want to support your users \
-             passing their own types here, you can't refer to a specific type",
+
+    if let [only_impl] = &concrete_impls[..] {
+        let within = if externally_visible { " within this crate" } else { "" };
+        err.help(with_no_trimmed_paths!(format!(
+            "only type `{only_impl}` implements `{trait_str}`{within}; \
+            consider using it directly instead."
+        )));
+    } else {
+        let types = concrete_impls
+            .iter()
+            .map(|t| with_no_trimmed_paths!(format!("  {}", t)))
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        err.help(format!(
+            "the following types implement `{trait_str}`:\n\
+             {types}\n\
+             consider defining an enum where each variant holds one of these types,\n\
+             implementing `{trait_str}` for this new enum and using it instead",
         ));
     }
 
-    err
+    if externally_visible {
+        err.note(format!(
+            "`{trait_str}` may be implemented in other crates; if you want to support your users \
+             passing their own types here, you can't refer to a specific type",
+        ));
+    }
+}
+
+/// Attempt to suggest that a `dyn Trait` argument or return type be converted
+/// to use `impl Trait`.
+fn attempt_dyn_to_impl_suggestion(tcx: TyCtxt<'_>, hir_id: Option<hir::HirId>, err: &mut Diag<'_>) {
+    let Some(hir_id) = hir_id else { return };
+    let hir::Node::Ty(ty) = tcx.hir_node(hir_id) else { return };
+    let hir::TyKind::TraitObject([trait_ref, ..], ..) = ty.kind else { return };
+
+    // Only suggest converting `dyn` to `impl` if we're in a function signature.
+    // This ensures that we don't suggest converting e.g.
+    //   `type Alias = Box<dyn DynIncompatibleTrait>;` to
+    //   `type Alias = Box<impl DynIncompatibleTrait>;`
+    let Some((_id, first_non_type_parent_node)) =
+        tcx.hir().parent_iter(hir_id).find(|(_id, node)| !matches!(node, hir::Node::Ty(_)))
+    else {
+        return;
+    };
+    if first_non_type_parent_node.fn_sig().is_none() {
+        return;
+    }
+
+    err.span_suggestion_verbose(
+        ty.span.until(trait_ref.span),
+        "consider using an opaque type instead",
+        "impl ",
+        Applicability::MaybeIncorrect,
+    );
 }

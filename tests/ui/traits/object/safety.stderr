@@ -1,17 +1,18 @@
-error[E0038]: the trait `Tr` cannot be made into an object
+error[E0038]: the trait `Tr` is not dyn compatible
   --> $DIR/safety.rs:15:22
    |
 LL |     let _: &dyn Tr = &St;
-   |                      ^^^ `Tr` cannot be made into an object
+   |                      ^^^ `Tr` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/safety.rs:4:8
    |
 LL | trait Tr {
-   |       -- this trait cannot be made into an object...
+   |       -- this trait is not dyn compatible...
 LL |     fn foo();
    |        ^^^ ...because associated function `foo` has no `self` parameter
-   = help: only type `St` implements the trait, consider using it directly instead
+   = help: only type `St` implements `Tr`; consider using it directly instead.
    = note: required for the cast from `&St` to `&dyn Tr`
 help: consider turning `foo` into a method by giving it a `&self` argument
    |
@@ -22,20 +23,21 @@ help: alternatively, consider constraining `foo` so it does not apply to trait o
 LL |     fn foo() where Self: Sized;
    |              +++++++++++++++++
 
-error[E0038]: the trait `Tr` cannot be made into an object
+error[E0038]: the trait `Tr` is not dyn compatible
   --> $DIR/safety.rs:15:12
    |
 LL |     let _: &dyn Tr = &St;
-   |            ^^^^^^^ `Tr` cannot be made into an object
+   |            ^^^^^^^ `Tr` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/safety.rs:4:8
    |
 LL | trait Tr {
-   |       -- this trait cannot be made into an object...
+   |       -- this trait is not dyn compatible...
 LL |     fn foo();
    |        ^^^ ...because associated function `foo` has no `self` parameter
-   = help: only type `St` implements the trait, consider using it directly instead
+   = help: only type `St` implements `Tr`; consider using it directly instead.
 help: consider turning `foo` into a method by giving it a `&self` argument
    |
 LL |     fn foo(&self);

@@ -1,17 +1,18 @@
-error[E0038]: the trait `Qiz` cannot be made into an object
+error[E0038]: the trait `Qiz` is not dyn compatible
   --> $DIR/issue-19380.rs:11:29
    |
 LL |   foos: &'static [&'static (dyn Qiz + 'static)]
-   |                             ^^^^^^^^^^^^^^^^^ `Qiz` cannot be made into an object
+   |                             ^^^^^^^^^^^^^^^^^ `Qiz` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/issue-19380.rs:2:6
    |
 LL | trait Qiz {
-   |       --- this trait cannot be made into an object...
+   |       --- this trait is not dyn compatible...
 LL |   fn qiz();
    |      ^^^ ...because associated function `qiz` has no `self` parameter
-   = help: only type `Foo` implements the trait, consider using it directly instead
+   = help: only type `Foo` implements `Qiz`; consider using it directly instead.
 help: consider turning `qiz` into a method by giving it a `&self` argument
    |
 LL |   fn qiz(&self);
@@ -21,20 +22,21 @@ help: alternatively, consider constraining `qiz` so it does not apply to trait o
 LL |   fn qiz() where Self: Sized;
    |            +++++++++++++++++
 
-error[E0038]: the trait `Qiz` cannot be made into an object
+error[E0038]: the trait `Qiz` is not dyn compatible
   --> $DIR/issue-19380.rs:16:33
    |
 LL | const BAR : Bar = Bar { foos: &[&FOO]};
-   |                                 ^^^^ `Qiz` cannot be made into an object
+   |                                 ^^^^ `Qiz` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/issue-19380.rs:2:6
    |
 LL | trait Qiz {
-   |       --- this trait cannot be made into an object...
+   |       --- this trait is not dyn compatible...
 LL |   fn qiz();
    |      ^^^ ...because associated function `qiz` has no `self` parameter
-   = help: only type `Foo` implements the trait, consider using it directly instead
+   = help: only type `Foo` implements `Qiz`; consider using it directly instead.
    = note: required for the cast from `&Foo` to `&'static (dyn Qiz + 'static)`
 help: consider turning `qiz` into a method by giving it a `&self` argument
    |
@@ -45,20 +47,21 @@ help: alternatively, consider constraining `qiz` so it does not apply to trait o
 LL |   fn qiz() where Self: Sized;
    |            +++++++++++++++++
 
-error[E0038]: the trait `Qiz` cannot be made into an object
+error[E0038]: the trait `Qiz` is not dyn compatible
   --> $DIR/issue-19380.rs:16:31
    |
 LL | const BAR : Bar = Bar { foos: &[&FOO]};
-   |                               ^^^^^^^ `Qiz` cannot be made into an object
+   |                               ^^^^^^^ `Qiz` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/issue-19380.rs:2:6
    |
 LL | trait Qiz {
-   |       --- this trait cannot be made into an object...
+   |       --- this trait is not dyn compatible...
 LL |   fn qiz();
    |      ^^^ ...because associated function `qiz` has no `self` parameter
-   = help: only type `Foo` implements the trait, consider using it directly instead
+   = help: only type `Foo` implements `Qiz`; consider using it directly instead.
 help: consider turning `qiz` into a method by giving it a `&self` argument
    |
 LL |   fn qiz(&self);

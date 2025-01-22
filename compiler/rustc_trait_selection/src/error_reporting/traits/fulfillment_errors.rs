@@ -1338,20 +1338,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let derive_better_type_error =
                         |alias_term: ty::AliasTerm<'tcx>, expected_term: ty::Term<'tcx>| {
                             let ocx = ObligationCtxt::new(self);
-                            let normalized_term = match expected_term.unpack() {
-                                ty::TermKind::Ty(_) => self.next_ty_var(DUMMY_SP).into(),
-                                ty::TermKind::Const(_) => self.next_const_var(DUMMY_SP).into(),
-                            };
-                            ocx.register_obligation(Obligation::new(
-                                self.tcx,
-                                ObligationCause::dummy(),
+
+                            let Ok(normalized_term) = ocx.structurally_normalize_term(
+                                &ObligationCause::dummy(),
                                 obligation.param_env,
-                                ty::PredicateKind::NormalizesTo(ty::NormalizesTo {
-                                    alias: alias_term,
-                                    term: normalized_term,
-                                }),
-                            ));
-                            let _ = ocx.select_where_possible();
+                                alias_term.to_term(self.tcx),
+                            ) else {
+                                return None;
+                            };
+
                             if let Err(terr) = ocx.eq(
                                 &ObligationCause::dummy(),
                                 obligation.param_env,

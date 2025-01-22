@@ -136,13 +136,14 @@ LL |         const A: u8 = 0;
 LL |     <dyn C>::A;
    |              ^ private associated constant
 
-error[E0038]: the trait `assoc_const::C` cannot be made into an object
+error[E0038]: the trait `assoc_const::C` is not dyn compatible
   --> $DIR/item-privacy.rs:101:6
    |
 LL |     <dyn C>::A;
-   |      ^^^^^ `assoc_const::C` cannot be made into an object
+   |      ^^^^^ `assoc_const::C` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/item-privacy.rs:25:15
    |
 LL |         const A: u8 = 0;
@@ -152,13 +153,13 @@ LL |         const B: u8 = 0;
    |               ^ ...because it contains this associated `const`
 ...
 LL |     pub trait C: A + B {
-   |               - this trait cannot be made into an object...
+   |               - this trait is not dyn compatible...
 LL |         const C: u8 = 0;
    |               ^ ...because it contains this associated `const`
    = help: consider moving `C` to another trait
    = help: consider moving `A` to another trait
    = help: consider moving `B` to another trait
-   = help: only type `S` implements the trait, consider using it directly instead
+   = help: only type `S` implements `assoc_const::C`; consider using it directly instead.
 
 error[E0223]: ambiguous associated type
   --> $DIR/item-privacy.rs:115:12
