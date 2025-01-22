@@ -3113,23 +3113,34 @@ impl Step for Bootstrap {
         // Use `python -m unittest` manually if you want to pass arguments.
         check_bootstrap.delay_failure().run(builder);
 
-        let mut cmd = command(&builder.initial_cargo);
-        cmd.arg("test")
-            .current_dir(builder.src.join("src/bootstrap"))
-            .env("RUSTFLAGS", "--cfg test -Cdebuginfo=2")
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolBootstrap,
+            host,
+            Kind::Test,
+            "src/bootstrap",
+            SourceType::InTree,
+            &[],
+        );
+
+        cargo
+            .rustflag("-Cdebuginfo=2")
             .env("CARGO_TARGET_DIR", builder.out.join("bootstrap"))
-            .env("RUSTC_BOOTSTRAP", "1")
-            .env("RUSTDOC", builder.rustdoc(compiler))
-            .env("RUSTC", &builder.initial_rustc);
-        if let Some(flags) = option_env!("RUSTFLAGS") {
-            // Use the same rustc flags for testing as for "normal" compilation,
-            // so that Cargo doesn’t recompile the entire dependency graph every time:
-            // https://github.com/rust-lang/rust/issues/49215
-            cmd.env("RUSTFLAGS", flags);
-        }
+            .env("RUSTC_BOOTSTRAP", "1");
+
         // bootstrap tests are racy on directory creation so just run them one at a time.
         // Since there's not many this shouldn't be a problem.
-        run_cargo_test(cmd, &["--test-threads=1"], &[], "bootstrap", None, compiler, host, builder);
+        run_cargo_test(
+            cargo,
+            &["--test-threads=1"],
+            &[],
+            "bootstrap",
+            None,
+            compiler,
+            host,
+            builder,
+        );
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
