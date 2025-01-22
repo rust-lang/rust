@@ -31,24 +31,28 @@ pub fn ceil<F: Float>(x: F) -> F {
 
         // Otherwise, raise an inexact exception.
         force_eval!(x + F::MAX);
+
         if x.is_sign_positive() {
             ix += m;
         }
+
         ix &= !m;
+        F::from_bits(ix)
     } else {
         // |x| < 1.0, raise an inexact exception since truncation will happen (unless x == 0).
         force_eval!(x + F::MAX);
 
         if x.is_sign_negative() {
             // -1.0 < x <= -0.0; rounding up goes toward -0.0.
-            return F::NEG_ZERO;
+            F::NEG_ZERO
         } else if ix << 1 != zero {
             // 0.0 < x < 1.0; rounding up goes toward +1.0.
-            return F::ONE;
+            F::ONE
+        } else {
+            // +0.0 remains unchanged
+            x
         }
     }
-
-    F::from_bits(ix)
 }
 
 #[cfg(test)]
