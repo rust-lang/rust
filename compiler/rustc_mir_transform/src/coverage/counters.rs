@@ -2,7 +2,6 @@ use std::cmp::Ordering;
 
 use either::Either;
 use itertools::Itertools;
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::IndexVec;
@@ -11,31 +10,35 @@ use rustc_middle::mir::coverage::{CounterId, CovTerm, Expression, ExpressionId, 
 
 use crate::coverage::counters::balanced_flow::BalancedFlowGraph;
 use crate::coverage::counters::node_flow::{
-    CounterTerm, NodeCounters, make_node_counters, node_flow_data_for_balanced_graph,
+    CounterTerm, NodeCounters, NodeFlowData, node_flow_data_for_balanced_graph,
 };
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
 
 mod balanced_flow;
-mod node_flow;
+pub(crate) mod node_flow;
 mod union_find;
 
-/// Ensures that each BCB node needing a counter has one, by creating physical
-/// counters or counter expressions for nodes as required.
-pub(super) fn make_bcb_counters(
-    graph: &CoverageGraph,
-    bcb_needs_counter: &DenseBitSet<BasicCoverageBlock>,
-) -> CoverageCounters {
+/// Struct containing the results of [`prepare_bcb_counters_data`].
+pub(crate) struct BcbCountersData {
+    pub(crate) node_flow_data: NodeFlowData<BasicCoverageBlock>,
+    pub(crate) priority_list: Vec<BasicCoverageBlock>,
+}
+
+/// Analyzes the coverage graph to create intermediate data structures that
+/// will later be used (during codegen) to create physical counters or counter
+/// expressions for each BCB node that needs one.
+pub(crate) fn prepare_bcb_counters_data(graph: &CoverageGraph) -> BcbCountersData {
     // Create the derived graphs that are necessary for subsequent steps.
     let balanced_graph = BalancedFlowGraph::for_graph(graph, |n| !graph[n].is_out_summable);
     let node_flow_data = node_flow_data_for_balanced_graph(&balanced_graph);
 
-    // Use those graphs to determine which nodes get physical counters, and how
-    // to compute the execution counts of other nodes from those counters.
+    // Also create a "priority list" of coverage graph nodes, to help determine
+    // which ones get physical counters or counter expressions. This needs to
+    // be done now, because the later parts of the counter-creation process
+    // won't have access to the original coverage graph.
     let priority_list = make_node_flow_priority_list(graph, balanced_graph);
-    let node_counters = make_node_counters(&node_flow_data, &priority_list);
 
-    // Convert the counters into a form suitable for embedding into MIR.
-    transcribe_counters(&node_counters, bcb_needs_counter)
+    BcbCountersData { node_flow_data, priority_list }
 }
 
 /// Arranges the nodes in `balanced_graph` into a list, such that earlier nodes
@@ -74,7 +77,7 @@ fn make_node_flow_priority_list(
 }
 
 // Converts node counters into a form suitable for embedding into MIR.
-fn transcribe_counters(
+pub(crate) fn transcribe_counters(
     old: &NodeCounters<BasicCoverageBlock>,
     bcb_needs_counter: &DenseBitSet<BasicCoverageBlock>,
 ) -> CoverageCounters {
@@ -129,7 +132,7 @@ fn transcribe_counters(
 pub(super) struct CoverageCounters {
     /// List of places where a counter-increment statement should be injected
     /// into MIR, each with its corresponding counter ID.
-    phys_counter_for_node: FxIndexMap<BasicCoverageBlock, CounterId>,
+    pub(crate) phys_counter_for_node: FxIndexMap<BasicCoverageBlock, CounterId>,
     next_counter_id: CounterId,
 
     /// Coverage counters/expressions that are associated with individual BCBs.
@@ -137,7 +140,7 @@ pub(super) struct CoverageCounters {
 
     /// Table of expression data, associating each expression ID with its
     /// corresponding operator (+ or -) and its LHS/RHS operands.
-    expressions: IndexVec<ExpressionId, Expression>,
+    pub(crate) expressions: IndexVec<ExpressionId, Expression>,
     /// Remember expressions that have already been created (or simplified),
     /// so that we don't create unnecessary duplicates.
     expressions_memo: FxHashMap<Expression, CovTerm>,
@@ -188,12 +191,6 @@ impl CoverageCounters {
         self.make_expression(lhs, Op::Subtract, rhs_sum)
     }
 
-    pub(super) fn num_counters(&self) -> usize {
-        let num_counters = self.phys_counter_for_node.len();
-        assert_eq!(num_counters, self.next_counter_id.as_usize());
-        num_counters
-    }
-
     fn set_node_counter(&mut self, bcb: BasicCoverageBlock, counter: CovTerm) -> CovTerm {
         let existing = self.node_counters[bcb].replace(counter);
         assert!(
@@ -201,31 +198,5 @@ impl CoverageCounters {
             "node {bcb:?} already has a counter: {existing:?} => {counter:?}"
         );
         counter
-    }
-
-    /// Returns an iterator over all the nodes in the coverage graph that
-    /// should have a counter-increment statement injected into MIR, along with
-    /// each site's corresponding counter ID.
-    pub(super) fn counter_increment_sites(
-        &self,
-    ) -> impl Iterator<Item = (CounterId, BasicCoverageBlock)> + Captures<'_> {
-        self.phys_counter_for_node.iter().map(|(&site, &id)| (id, site))
-    }
-
-    /// Returns an iterator over the subset of BCB nodes that have been associated
-    /// with a counter *expression*, along with the ID of that expression.
-    pub(super) fn bcb_nodes_with_coverage_expressions(
-        &self,
-    ) -> impl Iterator<Item = (BasicCoverageBlock, ExpressionId)> + Captures<'_> {
-        self.node_counters.iter_enumerated().filter_map(|(bcb, &counter)| match counter {
-            // Yield the BCB along with its associated expression ID.
-            Some(CovTerm::Expression(id)) => Some((bcb, id)),
-            // This BCB is associated with a counter or nothing, so skip it.
-            Some(CovTerm::Counter { .. } | CovTerm::Zero) | None => None,
-        })
-    }
-
-    pub(super) fn into_expressions(self) -> IndexVec<ExpressionId, Expression> {
-        self.expressions
     }
 }

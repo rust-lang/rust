@@ -9,36 +9,13 @@
 use rustc_data_structures::graph;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
+pub(crate) use rustc_middle::mir::coverage::NodeFlowData;
 use rustc_middle::mir::coverage::Op;
 
 use crate::coverage::counters::union_find::UnionFind;
 
 #[cfg(test)]
 mod tests;
-
-/// Data representing a view of some underlying graph, in which each node's
-/// successors have been merged into a single "supernode".
-///
-/// The resulting supernodes have no obvious meaning on their own.
-/// However, merging successor nodes means that a node's out-edges can all
-/// be combined into a single out-edge, whose flow is the same as the flow
-/// (execution count) of its corresponding node in the original graph.
-///
-/// With all node flows now in the original graph now represented as edge flows
-/// in the merged graph, it becomes possible to analyze the original node flows
-/// using techniques for analyzing edge flows.
-#[derive(Debug)]
-pub(crate) struct NodeFlowData<Node: Idx> {
-    /// Maps each node to the supernode that contains it, indicated by some
-    /// arbitrary "root" node that is part of that supernode.
-    supernodes: IndexVec<Node, Node>,
-    /// For each node, stores the single supernode that all of its successors
-    /// have been merged into.
-    ///
-    /// (Note that each node in a supernode can potentially have a _different_
-    /// successor supernode from its peers.)
-    succ_supernodes: IndexVec<Node, Node>,
-}
 
 /// Creates a "merged" view of an underlying graph.
 ///
