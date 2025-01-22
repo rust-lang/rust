@@ -112,7 +112,7 @@ cleanPackages() {
     sudo apt-get clean || echo "::warning::The command [sudo apt-get clean] failed failed"
 
     echo "=> Installed packages sorted by size:"
-    dpkg-query -W --showformat='${Installed-Size} ${Package}\n' | sort -nr | head -200
+    dpkg-query -W --showformat='${Installed-Size} ${Package}\n' | sort -nr | head -200 || true
 }
 
 # Remove Docker images
