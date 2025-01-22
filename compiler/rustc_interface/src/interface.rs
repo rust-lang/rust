@@ -355,7 +355,6 @@ pub struct Config {
     /// The inner atomic value is set to true when a feature marked as `internal` is
     /// enabled. Makes it so that "please report a bug" is hidden, as ICEs with
     /// internal features are wontfix, and they are usually the cause of the ICEs.
-    /// None signifies that this is not tracked.
     pub using_internal_features: &'static std::sync::atomic::AtomicBool,
 
     /// All commandline args used to invoke the compiler, with @file args fully expanded.
