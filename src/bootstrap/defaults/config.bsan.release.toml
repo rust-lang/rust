@@ -8,13 +8,12 @@ extended = true
 download-ci-llvm = false
 
 [rust]
-channel = "nightly"
+channel = "dev"
 download-rustc = false
 
 lld = true
 llvm-bitcode-linker = true
 
 [dist]
-compression-profile = "fast"
+compression-profile = "balanced"
 src-tarball = false
-compression-formats = ["xz"]

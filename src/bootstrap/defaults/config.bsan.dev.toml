@@ -13,7 +13,7 @@ tools = [
 ]
 
 [rust]
-channel = "nightly"
+description = "BorrowSanitizer"
 
 [llvm]
 download-ci-llvm = false

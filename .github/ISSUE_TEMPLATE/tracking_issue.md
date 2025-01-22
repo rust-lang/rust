@@ -2,8 +2,11 @@
 name: Tracking Issue
 about: A tracking issue for an accepted feature or RFC in Rust.
 title: Tracking Issue for XXX
-labels: C-tracking-issue
+labels: ''
+assignees: ''
+
 ---
+
 <!--
 NOTE: For library features, please use the "Library Tracking Issue" template instead.
 

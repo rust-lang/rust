@@ -34,7 +34,7 @@ jobs:
             rustup component add llvm-tools-preview
       - name: Upstream
         run: src/ci/scripts/setup-upstream-remote.sh
-      - name: Stage 1 Build
+      - name: Build
         run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.dev.toml
   build-macos:
     runs-on: macos-latest

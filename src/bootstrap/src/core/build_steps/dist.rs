@@ -1560,7 +1560,7 @@ impl Step for Extended {
 
         let xform = |p: &Path| {
             let mut contents = t!(fs::read_to_string(p));
-            for tool in &["miri", "rust-docs"] {
+            for tool in &["bsan", "miri", "rust-docs"] {
                 if !built_tools.contains(tool) {
                     contents = filter(&contents, tool);
                 }
@@ -1606,6 +1606,7 @@ impl Step for Extended {
                 "rust-analyzer",
                 "rust-docs",
                 "miri",
+                "bsan",
                 "rustc-codegen-cranelift",
             ] {
                 if built_tools.contains(tool) {
@@ -1651,6 +1652,8 @@ impl Step for Extended {
                     "rustfmt-preview".to_string()
                 } else if name == "miri" {
                     "miri-preview".to_string()
+                } else if name == "bsan" {
+                    "bsan-preview".to_string()
                 } else if name == "rustc-codegen-cranelift" {
                     // FIXME add installer support for cg_clif once it is ready to be distributed on
                     // windows.
@@ -1668,7 +1671,7 @@ impl Step for Extended {
             prepare("cargo");
             prepare("rust-analysis");
             prepare("rust-std");
-            for tool in &["clippy", "rustfmt", "rust-analyzer", "rust-docs", "miri"] {
+            for tool in &["clippy", "rustfmt", "rust-analyzer", "rust-docs", "miri", "bsan"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1822,6 +1825,24 @@ impl Step for Extended {
                     .arg(etc.join("msi/remove-duplicates.xsl"))
                     .run(builder);
             }
+            if built_tools.contains("bsan") {
+                command(&heat)
+                    .current_dir(&exe)
+                    .arg("dir")
+                    .arg("bsan")
+                    .args(heat_flags)
+                    .arg("-cg")
+                    .arg("BsanGroup")
+                    .arg("-dr")
+                    .arg("Bsan")
+                    .arg("-var")
+                    .arg("var.BsanDir")
+                    .arg("-out")
+                    .arg(exe.join("BsanGroup.wxs"))
+                    .arg("-t")
+                    .arg(etc.join("msi/remove-duplicates.xsl"))
+                    .run(builder);
+            }
             command(&heat)
                 .current_dir(&exe)
                 .arg("dir")
@@ -1887,6 +1908,9 @@ impl Step for Extended {
                 if built_tools.contains("miri") {
                     cmd.arg("-dMiriDir=miri");
                 }
+                if built_tools.contains("bsan") {
+                    cmd.arg("-dBsanDir=miri");
+                }
                 if target.is_windows_gnu() {
                     cmd.arg("-dGccDir=rust-mingw");
                 }
@@ -1909,6 +1933,9 @@ impl Step for Extended {
             }
             if built_tools.contains("miri") {
                 candle("MiriGroup.wxs".as_ref());
+            }
+            if built_tools.contains("bsan") {
+                candle("BsanGroup.wxs".as_ref());
             }
             if built_tools.contains("rust-analyzer") {
                 candle("RustAnalyzerGroup.wxs".as_ref());
@@ -1950,6 +1977,9 @@ impl Step for Extended {
             }
             if built_tools.contains("miri") {
                 cmd.arg("MiriGroup.wixobj");
+            }
+            if built_tools.contains("bsan") {
+                cmd.arg("BsanGroup.wixobj");
             }
             if built_tools.contains("rust-analyzer") {
                 cmd.arg("RustAnalyzerGroup.wixobj");

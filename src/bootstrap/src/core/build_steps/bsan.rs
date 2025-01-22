@@ -31,113 +31,36 @@ use crate::{Compiler, Kind, Mode, Path, fs, helpers, t};
 /// Running './x.py build sanitizers' builds every single one. Having these separate steps allows us to build
 /// BSAN without building the other sanitizers.
 
+const BSAN_CORE_PATH: &str = "src/tools/bsan/bsan-rt";
+const BSAN_RT_ALIAS: &str = "bsan-rt";
+const BSAN_RT_DYLIB: &str = "bsanrt";
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct BsanBorrowTracker {
+pub struct Bsan {
     pub compiler: Compiler,
     pub target: TargetSelection,
 }
-
-impl Step for BsanBorrowTracker {
-    type Output = PathBuf;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/tools/bsan/borrowtracker")
-            .default_condition(builder.config.extended && builder.build.unstable_features())
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(BsanBorrowTracker {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
-            target: run.target,
-        });
-    }
-
-    /// Builds sanitizer runtime libraries.
-    fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let compiler = self.compiler;
-        let target = self.target;
-        let tool = "borrowtracker";
-        let path = "src/tools/bsan/borrowtracker";
-        let mode = Mode::ToolRustc;
-        let kind = Kind::Build;
-
-        builder.ensure(compile::Std::new(compiler, compiler.host));
-        builder.ensure(compile::Rustc::new(compiler, target));
-
-        let cargo = prepare_tool_cargo(
-            builder,
-            compiler,
-            mode,
-            target,
-            kind,
-            path,
-            SourceType::InTree,
-            &Vec::new(),
-        );
-
-        let _guard = builder.msg_tool(
-            kind,
-            mode,
-            "borrowtracker",
-            self.compiler.stage,
-            &self.compiler.host,
-            &self.target,
-        );
-
-        // we check this below
-        let build_success = compile::stream_cargo(builder, cargo, vec![], &mut |_| {});
-        if !build_success {
-            crate::exit!(1);
-        } else {
-            let file_name = dylib(tool, target);
-            let runtime = builder.cargo_out(compiler, mode, target).join(&file_name);
-            if target == "x86_64-apple-darwin"
-                || target == "aarch64-apple-darwin"
-                || target == "aarch64-apple-ios"
-                || target == "aarch64-apple-ios-sim"
-                || target == "x86_64-apple-ios"
-            {
-                // Update the library’s install name to reflect that it has been renamed.
-                apple_darwin_update_library_name(
-                    builder,
-                    &runtime,
-                    &format!("@rpath/{}", file_name),
-                );
-                // Upon renaming the install name, the code signature of the file will invalidate,
-                // so we will sign it again.
-                apple_darwin_sign_file(builder, &runtime);
-            }
-
-            let libdir = builder.sysroot_target_libdir(compiler, target);
-            let dst = libdir.join(dylib(tool, target));
-            builder.copy_link(&runtime, &dst);
-            dst
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct BsanLlvmRuntime {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
-}
-impl Step for BsanLlvmRuntime {
+impl Step for Bsan {
     type Output = Option<SanitizerRuntime>;
-
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.alias("libbsan").default_condition(
-            builder
-                .config
-                .tools
-                .as_ref()
-                .map_or(true, |tools| tools.iter().any(|tool| tool == "libbsan")),
+        run.path(BSAN_CORE_PATH).default_condition(
+            builder.config.extended
+                && builder.config.tools.as_ref().map_or(
+                    builder.build.unstable_features(),
+                    |tools| {
+                        tools.iter().any(|tool: &String| match tool.as_str() {
+                            x => BSAN_RT_ALIAS == x || BSAN_RT_DYLIB == x,
+                        })
+                    },
+                ),
         )
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(BsanLlvmRuntime {
+        run.builder.ensure(Bsan {
             compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
@@ -149,7 +72,7 @@ impl Step for BsanLlvmRuntime {
         let compiler = self.compiler;
 
         builder.ensure(llvm::Llvm { target });
-        builder.ensure(BsanBorrowTracker { compiler, target });
+        builder.ensure(BsanCore { compiler, target });
 
         let compiler_rt_dir = builder.src.join("src/llvm-project/compiler-rt");
         if !compiler_rt_dir.exists() {
@@ -249,5 +172,75 @@ pub fn supports_bsan(
             Some(common_sanitizer_lib("bsan", "linux", "x86_64", channel, out_dir))
         }
         _ => None,
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct BsanCore {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for BsanCore {
+    type Output = PathBuf;
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.never()
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(BsanCore {
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        let compiler = self.compiler;
+        let target = self.target;
+        let mode = Mode::ToolRustc;
+        let kind = Kind::Build;
+
+        builder.ensure(compile::Std::new(compiler, compiler.host));
+        builder.ensure(compile::Rustc::new(compiler, target));
+
+        let cargo = prepare_tool_cargo(
+            builder,
+            compiler,
+            mode,
+            target,
+            kind,
+            BSAN_CORE_PATH,
+            SourceType::InTree,
+            &Vec::new(),
+        );
+
+        // we check this below
+        let build_success = compile::stream_cargo(builder, cargo, vec![], &mut |_| {});
+        if !build_success {
+            crate::exit!(1);
+        } else {
+            let file_name = dylib(BSAN_RT_DYLIB, target);
+            let runtime = builder.cargo_out(compiler, mode, target).join(&file_name);
+            if target == "x86_64-apple-darwin"
+                || target == "aarch64-apple-darwin"
+                || target == "aarch64-apple-ios"
+                || target == "aarch64-apple-ios-sim"
+                || target == "x86_64-apple-ios"
+            {
+                // Update the library’s install name to reflect that it has been renamed.
+                apple_darwin_update_library_name(
+                    builder,
+                    &runtime,
+                    &format!("@rpath/{}", file_name),
+                );
+                // Upon renaming the install name, the code signature of the file will invalidate,
+                // so we will sign it again.
+                apple_darwin_sign_file(builder, &runtime);
+            }
+            let libdir = builder.sysroot_target_libdir(compiler, target);
+            let dst = libdir.join(dylib(BSAN_RT_DYLIB, target));
+            builder.copy_link(&runtime, &dst);
+            dst
+        }
     }
 }

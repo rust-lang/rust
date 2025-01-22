@@ -31,6 +31,7 @@ pub(crate) enum OverlayKind {
 impl OverlayKind {
     fn legal_and_readme(&self) -> &[&str] {
         match self {
+
             OverlayKind::Rust => &["COPYRIGHT", "LICENSE-APACHE", "LICENSE-MIT", "README.md"],
             OverlayKind::Llvm => {
                 &["src/llvm-project/llvm/LICENSE.TXT", "src/llvm-project/llvm/README.txt"]
