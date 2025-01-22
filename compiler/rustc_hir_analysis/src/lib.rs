@@ -174,6 +174,15 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         }
     });
 
+    // Make sure we actually have a value for static items, as they aren't cached in incremental.
+    // While we could just wait for codegen to invoke this, the definitions freeze below will cause
+    // that to ICE, because evaluating statics can create more items.
+    tcx.hir().par_body_owners(|item_def_id| {
+        if let DefKind::Static { .. } = tcx.def_kind(item_def_id) {
+            let _ = tcx.eval_static_initializer(item_def_id);
+        }
+    });
+
     // FIXME: Remove this when we implement creating `DefId`s
     // for anon constants during their parents' typeck.
     // Typeck all body owners in parallel will produce queries

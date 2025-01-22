@@ -39,7 +39,7 @@ use rustc_hir::{self as hir, Attribute, HirId, Node, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::cache::WithDepNode;
-use rustc_query_system::dep_graph::DepNodeIndex;
+use rustc_query_system::dep_graph::{DepNodeIndex, TaskDepsRef};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::CrateType;
@@ -49,10 +49,8 @@ use rustc_session::{Limit, MetadataKind, Session};
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_type_ir::TyKind::*;
-use rustc_type_ir::fold::TypeFoldable;
-use rustc_type_ir::lang_items::TraitSolverLangItem;
-pub use rustc_type_ir::lift::Lift;
-use rustc_type_ir::{CollectAndApply, Interner, TypeFlags, WithCachedTypeInfo, search_graph};
+use rustc_type_ir::WithCachedTypeInfo;
+use rustc_type_ir::{CollectAndApply, Interner, TypeFlags};
 use tracing::{debug, instrument};
 
 use crate::arena::Arena;
@@ -1826,6 +1824,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
 
 impl<'tcx> TyCtxt<'tcx> {
     /// `tcx`-dependent operations performed for every created definition.
+    #[instrument(level = "trace", skip(self))]
     pub fn create_def(
         self,
         parent: LocalDefId,
@@ -1833,27 +1832,63 @@ impl<'tcx> TyCtxt<'tcx> {
         def_kind: DefKind,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let data = def_kind.def_path_data(name);
-        // The following call has the side effect of modifying the tables inside `definitions`.
+        // The following create_def calls have the side effect of modifying the tables inside `definitions`.
         // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
         // decode the on-disk cache.
         //
         // Any LocalDefId which is used within queries, either as key or result, either:
-        // - has been created before the construction of the TyCtxt;
+        // - has been created before the construction of the TyCtxt,
+        // - has been created when marking a query as green (recreating definitions it created in the actual run),
         // - has been created by this call to `create_def`.
-        // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
-        // comp. engine itself.
         //
         // This call also writes to the value of `source_span` and `expn_that_defined` queries.
         // This is fine because:
         // - those queries are `eval_always` so we won't miss their result changing;
         // - this write will have happened before these queries are called.
-        let def_id = self.untracked.definitions.write().create_def(parent, data);
+        let def_id = tls::with_context(|icx| {
+            match icx.task_deps {
+                // Always gets rerun anyway, so nothing to replay
+                TaskDepsRef::EvalAlways => {
+                    let def_id = self.untracked.definitions.write().create_def(parent, data).0;
+                    trace!(?def_id, "eval always");
+                    def_id
+                }
+                // Top-level queries like the resolver get rerun every time anyway
+                TaskDepsRef::Ignore => {
+                    let def_id = self.untracked.definitions.write().create_def(parent, data).0;
+                    trace!(?def_id, "ignore");
+                    def_id
+                }
+                TaskDepsRef::Forbid => bug!(
+                    "cannot create definition {parent:?}, {name:?}, {def_kind:?} without being able to register task dependencies"
+                ),
+                TaskDepsRef::Allow(_) => {
+                    let (def_id, hash) =
+                        self.untracked.definitions.write().create_def(parent, data);
+                    trace!(?def_id, "record side effects");
 
-        // This function modifies `self.definitions` using a side-effect.
-        // We need to ensure that these side effects are re-run by the incr. comp. engine.
-        // Depending on the forever-red node will tell the graph that the calling query
-        // needs to be re-evaluated.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+                    icx.side_effects.as_ref().unwrap().lock().definitions.push(DefIdInfo {
+                        parent,
+                        data,
+                        hash,
+                    });
+                    def_id
+                }
+                TaskDepsRef::Replay { prev_side_effects, created_def_ids } => {
+                    trace!(?created_def_ids, "replay side effects");
+                    trace!("num_defs : {}", prev_side_effects.definitions.len());
+                    let index = created_def_ids.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    let prev_info = &prev_side_effects.definitions[index];
+                    let def_id = self.untracked.definitions.read().local_def_path_hash_to_def_id(
+                        prev_info.hash,
+                        &"should have already recreated def id in try_mark_green",
+                    );
+                    assert_eq!(prev_info.data, data);
+                    assert_eq!(prev_info.parent, parent);
+                    def_id
+                }
+            }
+        });
 
         let feed = TyCtxtFeed { tcx: self, key: def_id };
         feed.def_kind(def_kind);
