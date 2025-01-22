@@ -79,7 +79,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             && let Some(future_trait) = cx.tcx.lang_items().future_trait()
             && let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::Send)
         {
-            let preds = cx.tcx.explicit_item_super_predicates(def_id);
+            let preds = cx.tcx.explicit_item_self_bounds(def_id);
             let is_future = preds.iter_instantiated_copied(cx.tcx, args).any(|(p, _)| {
                 p.as_trait_clause()
                     .is_some_and(|trait_pred| trait_pred.skip_binder().trait_ref.def_id == future_trait)
