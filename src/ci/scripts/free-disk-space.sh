@@ -134,7 +134,6 @@ removeUnusedDirectories() {
     local dirs_to_remove=(
         "/usr/lib/heroku/"
         "/usr/local/lib/android"
-        "/usr/local/lib/node_modules"
         "/usr/local/share/chromium"
         "/usr/local/share/powershell"
         "/usr/share/az_"*
