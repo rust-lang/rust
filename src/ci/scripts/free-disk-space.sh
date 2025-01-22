@@ -106,7 +106,8 @@ cleanPackages() {
         'python-babel-localedata' \
         'python3-breezy'          \
         'skopeo'                  \
-        'snapd'
+        'snapd'                   \
+        'tmux'
 
     sudo apt-get autoremove -y || echo "::warning::The command [sudo apt-get autoremove -y] failed"
     sudo apt-get clean || echo "::warning::The command [sudo apt-get clean] failed failed"
