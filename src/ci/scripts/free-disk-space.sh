@@ -166,11 +166,11 @@ AVAILABLE_INITIAL=$(getAvailableSpace)
 printDF "BEFORE CLEAN-UP:"
 echo ""
 
-removeUnusedDirectories
-
 execAndMeasureSpaceChange removeAllSnaps "Snaps"
 execAndMeasureSpaceChange cleanPackages "Unused packages"
 execAndMeasureSpaceChange cleanDocker "Docker images"
+
+removeUnusedDirectories
 
 echo "=> largest directories:"
 sudo du --max-depth=7 /* -h | sort -nr | head -1000
