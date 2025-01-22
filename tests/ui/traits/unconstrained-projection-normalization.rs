@@ -4,13 +4,15 @@
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
+#![feature(sized_hierarchy)]
+use std::marker::PointeeSized;
 
 struct Thing;
 
 pub trait Every {
     type Assoc;
 }
-impl<T: ?Sized> Every for Thing {
+impl<T: PointeeSized> Every for Thing {
 //~^ ERROR the type parameter `T` is not constrained
     type Assoc = T;
 }
