@@ -10,13 +10,13 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_next_trait_solver::solve::{GenerateProofTree, SolverDelegateEvalExt as _};
-use rustc_type_ir::solve::NoSolution;
+use rustc_type_ir::solve::{Goal, NoSolution};
 use tracing::{instrument, trace};
 
 use crate::solve::Certainty;
 use crate::solve::delegate::SolverDelegate;
 use crate::solve::inspect::{self, ProofTreeInferCtxtExt, ProofTreeVisitor};
-use crate::traits::{FulfillmentError, FulfillmentErrorCode};
+use crate::traits::{FulfillmentError, FulfillmentErrorCode, wf};
 
 pub(super) fn fulfillment_error_for_no_solution<'tcx>(
     infcx: &InferCtxt<'tcx>,
@@ -207,14 +207,10 @@ impl<'tcx> BestObligation<'tcx> {
                                             | GoalSource::AliasBoundConstCondition
                                             | GoalSource::InstantiateHigherRanked
                                             | GoalSource::AliasWellFormed
-                                    ) && match self.consider_ambiguities {
-                                        true => {
-                                            matches!(
-                                                nested_goal.result(),
-                                                Ok(Certainty::Maybe(MaybeCause::Ambiguity))
-                                            )
-                                        }
-                                        false => matches!(nested_goal.result(), Err(_)),
+                                    ) && match (self.consider_ambiguities, nested_goal.result()) {
+                                        (true, Ok(Certainty::Maybe(MaybeCause::Ambiguity)))
+                                        | (false, Err(_)) => true,
+                                        _ => false,
                                     }
                                 },
                             )
@@ -232,6 +228,39 @@ impl<'tcx> BestObligation<'tcx> {
         }
 
         candidates
+    }
+
+    /// HACK: We walk the nested obligations for a well-formed arg manually,
+    /// since there's nontrivial logic in `wf.rs` to set up an obligation cause.
+    /// Ideally we'd be able to track this better.
+    fn visit_well_formed_goal(
+        &mut self,
+        candidate: &inspect::InspectCandidate<'_, 'tcx>,
+        arg: ty::GenericArg<'tcx>,
+    ) -> ControlFlow<PredicateObligation<'tcx>> {
+        let infcx = candidate.goal().infcx();
+        let param_env = candidate.goal().goal().param_env;
+        let body_id = self.obligation.cause.body_id;
+
+        for obligation in wf::unnormalized_obligations(infcx, param_env, arg, self.span(), body_id)
+            .into_iter()
+            .flatten()
+        {
+            let nested_goal = candidate.instantiate_proof_tree_for_nested_goal(
+                GoalSource::Misc,
+                Goal::new(infcx.tcx, obligation.param_env, obligation.predicate),
+                self.span(),
+            );
+            // Skip nested goals that aren't the *reason* for our goal's failure.
+            match (self.consider_ambiguities, nested_goal.result()) {
+                (true, Ok(Certainty::Maybe(MaybeCause::Ambiguity))) | (false, Err(_)) => {}
+                _ => continue,
+            }
+
+            self.with_derived_obligation(obligation, |this| nested_goal.visit_with(this))?;
+        }
+
+        ControlFlow::Break(self.obligation.clone())
     }
 }
 
@@ -282,6 +311,9 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                     trait_ref: normalizes_to.alias.trait_ref(tcx),
                     polarity: ty::PredicatePolarity::Positive,
                 }))
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
+                return self.visit_well_formed_goal(candidate, arg);
             }
             _ => ChildMode::PassThrough,
         };
@@ -355,12 +387,8 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             }
 
             // Skip nested goals that aren't the *reason* for our goal's failure.
-            match self.consider_ambiguities {
-                true if matches!(
-                    nested_goal.result(),
-                    Ok(Certainty::Maybe(MaybeCause::Ambiguity))
-                ) => {}
-                false if matches!(nested_goal.result(), Err(_)) => {}
+            match (self.consider_ambiguities, nested_goal.result()) {
+                (true, Ok(Certainty::Maybe(MaybeCause::Ambiguity))) | (false, Err(_)) => {}
                 _ => continue,
             }
 

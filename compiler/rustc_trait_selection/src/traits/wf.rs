@@ -8,8 +8,8 @@ use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::Span;
+use rustc_span::def_id::{DefId, LocalDefId};
 use tracing::{debug, instrument, trace};
 
 use crate::infer::InferCtxt;
@@ -89,6 +89,8 @@ pub fn unnormalized_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     arg: GenericArg<'tcx>,
+    span: Span,
+    body_id: LocalDefId,
 ) -> Option<PredicateObligations<'tcx>> {
     debug_assert_eq!(arg, infcx.resolve_vars_if_possible(arg));
 
@@ -106,8 +108,8 @@ pub fn unnormalized_obligations<'tcx>(
     let mut wf = WfPredicates {
         infcx,
         param_env,
-        body_id: CRATE_DEF_ID,
-        span: DUMMY_SP,
+        body_id,
+        span,
         out: PredicateObligations::new(),
         recursion_depth: 0,
         item: None,
