@@ -6,14 +6,13 @@ use rustc_errors::{Diag, EmissionGuarantee, ErrorGuaranteed};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_lint_defs::builtin::UNCOVERED_PARAM_IN_PROJECTION;
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    self, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypingMode,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{Ident, Span};
-use rustc_trait_selection::traits::{
-    self, InSelfTy, OrphanCheckErr, OrphanCheckMode, UncoveredTyParams,
-};
+use rustc_trait_selection::traits::{self, InSelfTy, OrphanCheckErr, OrphanCheckMode, UncoveredTy};
 use tracing::{debug, instrument};
 
 use crate::errors;
@@ -30,25 +29,34 @@ pub(crate) fn orphan_check_impl(
         Ok(()) => {}
         Err(err) => match orphan_check(tcx, impl_def_id, OrphanCheckMode::Compat) {
             Ok(()) => match err {
-                OrphanCheckErr::UncoveredTyParams(uncovered_ty_params) => {
-                    let hir_id = tcx.local_def_id_to_hir_id(impl_def_id);
+                OrphanCheckErr::UncoveredTy(UncoveredTy { uncovered, local_ty, in_self_ty }) => {
+                    let item = tcx.hir_expect_item(impl_def_id);
+                    let impl_ = item.expect_impl();
+                    let hir_trait_ref = impl_.of_trait.as_ref().unwrap();
 
-                    for param_def_id in uncovered_ty_params.uncovered {
-                        let ident = tcx.item_ident(param_def_id);
+                    // FIXME: Dedupe!
+                    // Given `impl<A, B> C<B> for D<A>`,
+                    let span = match in_self_ty {
+                        InSelfTy::Yes => impl_.self_ty.span,     // point at `D<A>`.
+                        InSelfTy::No => hir_trait_ref.path.span, // point at `C<B>`.
+                    };
 
-                        tcx.node_span_lint(
-                            UNCOVERED_PARAM_IN_PROJECTION,
-                            hir_id,
-                            ident.span,
-                            |diag| {
-                                decorate_uncovered_ty_params_diag(
-                                    diag,
-                                    ident.span,
-                                    ident,
-                                    uncovered_ty_params.local_ty,
-                                )
-                            },
-                        );
+                    for ty in uncovered {
+                        match ty {
+                            UncoveredTyKind::TyParam(ident) => tcx.node_span_lint(
+                                UNCOVERED_PARAM_IN_PROJECTION,
+                                item.hir_id(),
+                                ident.span,
+                                |diag| decorate_uncovered_ty_diag(diag, ident.span, ty, local_ty),
+                            ),
+                            // FIXME(fmease): This one is hard to explain ^^'
+                            UncoveredTyKind::Unknown => {
+                                let mut diag = tcx.dcx().struct_span_err(span, "");
+                                decorate_uncovered_ty_diag(&mut diag, span, ty, local_ty);
+                                diag.emit();
+                            }
+                            _ => bug!(),
+                        }
                     }
                 }
                 OrphanCheckErr::NonLocalInputType(_) => {
@@ -291,20 +299,13 @@ pub(crate) fn orphan_check_impl(
     Ok(())
 }
 
-/// Checks the coherence orphan rules.
-///
-/// `impl_def_id` should be the `DefId` of a trait impl.
-///
-/// To pass, either the trait must be local, or else two conditions must be satisfied:
-///
-/// 1. All type parameters in `Self` must be "covered" by some local type constructor.
-/// 2. Some local type must appear in `Self`.
+/// Checks the coherence orphan rules for trait impl given by `impl_def_id`.
 #[instrument(level = "debug", skip(tcx), ret)]
 fn orphan_check<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_def_id: LocalDefId,
     mode: OrphanCheckMode,
-) -> Result<(), OrphanCheckErr<TyCtxt<'tcx>, FxIndexSet<DefId>>> {
+) -> Result<(), OrphanCheckErr<TyCtxt<'tcx>, UncoveredTys<'tcx>>> {
     // We only accept this routine to be invoked on implementations
     // of a trait, not inherent implementations.
     let trait_ref = tcx.impl_trait_ref(impl_def_id);
@@ -357,15 +358,17 @@ fn orphan_check<'tcx>(
 
     // (2)  Try to map the remaining inference vars back to generic params.
     result.map_err(|err| match err {
-        OrphanCheckErr::UncoveredTyParams(UncoveredTyParams { uncovered, local_ty }) => {
+        OrphanCheckErr::UncoveredTy(UncoveredTy { uncovered, in_self_ty, local_ty }) => {
             let mut collector =
-                UncoveredTyParamCollector { infcx: &infcx, uncovered_params: Default::default() };
+                UncoveredTyCollector { infcx: &infcx, uncovered: Default::default() };
             uncovered.visit_with(&mut collector);
-            // FIXME(fmease): This is very likely reachable.
-            debug_assert!(!collector.uncovered_params.is_empty());
+            if collector.uncovered.is_empty() {
+                collector.uncovered.insert(UncoveredTyKind::Unknown);
+            }
 
-            OrphanCheckErr::UncoveredTyParams(UncoveredTyParams {
-                uncovered: collector.uncovered_params,
+            OrphanCheckErr::UncoveredTy(UncoveredTy {
+                uncovered: collector.uncovered,
+                in_self_ty,
                 local_ty,
             })
         }
@@ -393,14 +396,20 @@ fn emit_orphan_check_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
     impl_def_id: LocalDefId,
-    err: traits::OrphanCheckErr<TyCtxt<'tcx>, FxIndexSet<DefId>>,
+    err: OrphanCheckErr<TyCtxt<'tcx>, UncoveredTys<'tcx>>,
 ) -> ErrorGuaranteed {
-    match err {
-        traits::OrphanCheckErr::NonLocalInputType(tys) => {
-            let item = tcx.hir_expect_item(impl_def_id);
-            let impl_ = item.expect_impl();
-            let of_trait = impl_.of_trait.unwrap();
+    let item = tcx.hir_expect_item(impl_def_id);
+    let impl_ = item.expect_impl();
+    let of_trait = impl_.of_trait.unwrap();
 
+    // Given `impl<A, B> C<B> for D<A>`,
+    let impl_trait_ref_span = |in_self_ty| match in_self_ty {
+        InSelfTy::Yes => impl_.self_ty.span,          // point at `D<A>`.
+        InSelfTy::No => of_trait.trait_ref.path.span, // point at `C<B>`.
+    };
+
+    match err {
+        OrphanCheckErr::NonLocalInputType(tys) => {
             let span = tcx.def_span(impl_def_id);
             let mut diag = tcx.dcx().create_err(match trait_ref.self_ty().kind() {
                 ty::Adt(..) => errors::OnlyCurrentTraits::Outside { span, note: () },
@@ -411,15 +420,11 @@ fn emit_orphan_check_error<'tcx>(
             });
 
             for &(mut ty, in_self_ty) in &tys {
-                // Given `impl<A, B> C<B> for D<A>`,
-                let span = match in_self_ty {
-                    InSelfTy::Yes => impl_.self_ty.span,          // point at `D<A>`.
-                    InSelfTy::No => of_trait.trait_ref.path.span, // point at `C<B>`.
-                };
+                let span = impl_trait_ref_span(in_self_ty);
+                let is_foreign =
+                    !of_trait.trait_ref.def_id.is_local() && matches!(in_self_ty, InSelfTy::No);
 
                 ty = tcx.erase_and_anonymize_regions(ty);
-
-                let is_foreign = !trait_ref.def_id.is_local() && matches!(in_self_ty, InSelfTy::No);
 
                 match *ty.kind() {
                     ty::Slice(_) => {
@@ -480,73 +485,121 @@ fn emit_orphan_check_error<'tcx>(
 
             diag.emit()
         }
-        traits::OrphanCheckErr::UncoveredTyParams(UncoveredTyParams { uncovered, local_ty }) => {
+        OrphanCheckErr::UncoveredTy(UncoveredTy { uncovered, in_self_ty, local_ty }) => {
+            let span = impl_trait_ref_span(in_self_ty);
+
             let mut guar = None;
-            for param_def_id in uncovered {
-                let ident = tcx.item_ident(param_def_id);
-                let mut diag = tcx.dcx().struct_span_err(ident.span, "");
-                decorate_uncovered_ty_params_diag(&mut diag, ident.span, ident, local_ty);
+            for ty in uncovered {
+                let span = match ty {
+                    UncoveredTyKind::TyParam(ident) => ident.span,
+                    _ => span,
+                };
+                let mut diag = tcx.dcx().struct_span_err(span, "");
+                decorate_uncovered_ty_diag(&mut diag, span, ty, local_ty);
                 guar.get_or_insert(diag.emit());
             }
+            // This should not fail because we know that `uncovered` was non-empty at the point of
+            // iteration since it always contains a single `Unknown` if all else fails.
             guar.unwrap()
         }
     }
 }
 
-fn decorate_uncovered_ty_params_diag(
+fn decorate_uncovered_ty_diag(
     diag: &mut Diag<'_, impl EmissionGuarantee>,
     span: Span,
-    param: Ident,
+    kind: UncoveredTyKind<'_>,
     local_ty: Option<Ty<'_>>,
 ) {
-    diag.code(rustc_errors::E0210);
+    let descr = match kind {
+        UncoveredTyKind::TyParam(ident) => Some(("type parameter", ident.to_string())),
+        UncoveredTyKind::OpaqueTy(ty) => Some(("opaque type", ty.to_string())),
+        UncoveredTyKind::Unknown => None,
+    };
 
-    let note = "implementing a foreign trait is only possible if at least one of the types for which it is implemented is local";
+    diag.code(rustc_errors::E0210);
+    diag.span_label(
+        span,
+        match descr {
+            Some((kind, _)) => format!("uncovered {kind}"),
+            None => "contains an uncovered type".into(),
+        },
+    );
+
+    let subject = match &descr {
+        Some((kind, ty)) => format!("{kind} `{ty}`"),
+        None => "type parameters and opaque types".into(),
+    };
+
+    let note = "\
+        implementing a foreign trait is only possible if \
+        at least one of the types for which it is implemented is local";
+
     if let Some(local_ty) = local_ty {
-        let msg = format!(
-            "type parameter `{param}` must be covered by another type when it appears before the first local type (`{local_ty}`)"
+        diag.primary_message(format!("{subject} must be covered by another type when it appears before the first local type (`{local_ty}`)"));
+        diag.note(format!("{note},\nand no uncovered type parameters or opaque types appear before that first local type"));
+        diag.note(
+            "in this case, 'before' refers to the following order: \
+            `impl<...> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last",
         );
-        diag.primary_message(msg.clone());
-        diag.span_label(span, msg);
-        diag.note(format!(
-            "{note}, and no uncovered type parameters appear before that first local type"
-        ));
-        diag.note("in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last");
     } else {
-        let msg = format!(
-            "type parameter `{param}` must be used as the type parameter for some local type"
-        );
-        diag.primary_message(format!("{msg} (e.g., `MyStruct<{param}>`)"));
-        diag.span_label(span, msg);
+        let example = descr.map(|(_, ty)| format!(" (e.g., `MyStruct<{ty}>`)")).unwrap_or_default();
+        diag.primary_message(format!(
+            "{subject} must be used as the argument to some local type{example}"
+        ));
         diag.note(note);
         diag.note(
-            "only traits defined in the current crate can be implemented for a type parameter",
+            "only traits defined in the current crate can be implemented for type parameters and opaque types"
         );
     }
 }
 
-struct UncoveredTyParamCollector<'cx, 'tcx> {
+struct UncoveredTyCollector<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'tcx>,
-    uncovered_params: FxIndexSet<DefId>,
+    uncovered: UncoveredTys<'tcx>,
 }
 
-impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UncoveredTyParamCollector<'_, 'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UncoveredTyCollector<'_, 'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-        if !ty.has_type_flags(ty::TypeFlags::HAS_TY_INFER) {
+        if !ty.has_type_flags(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_TY_OPAQUE) {
             return;
         }
-        let ty::Infer(ty::TyVar(vid)) = *ty.kind() else {
-            return ty.super_visit_with(self);
-        };
-        let origin = self.infcx.type_var_origin(vid);
-        if let Some(def_id) = origin.param_def_id {
-            self.uncovered_params.insert(def_id);
+        match *ty.kind() {
+            ty::Infer(ty::TyVar(vid)) => {
+                if let Some(def_id) = self.infcx.type_var_origin(vid).param_def_id {
+                    let ident = self.infcx.tcx.item_ident(def_id);
+                    self.uncovered.insert(UncoveredTyKind::TyParam(ident));
+                }
+            }
+            // This only works with the old solver. With the next solver, alias types like opaque
+            // types structurally normalize to an infer var that is "unresolvable" under coherence.
+            // Furthermore, the orphan checker returns the unnormalized type in such cases (with
+            // exception like for `Fundamental<?opaque>`) which would be Weak for TAITs and
+            // Projection for ATPITs.
+            // FIXME(fmease): One solution I could see working would be to reintroduce
+            //                "TypeVarOriginKind::OpaqueTy(_)" and to stop OrphanChecker from
+            //                remapping to the unnormalized type at all.
+            // FIXME(fmease): Should we just let uncovered Opaques take precedence over
+            //                uncovered TyParams *inside* Opaques?
+            ty::Alias(ty::Opaque, alias) if !alias.has_type_flags(TypeFlags::HAS_TY_INFER) => {
+                self.uncovered.insert(UncoveredTyKind::OpaqueTy(ty));
+            }
+            _ => ty.super_visit_with(self),
         }
     }
 
     fn visit_const(&mut self, ct: ty::Const<'tcx>) -> Self::Result {
-        if ct.has_type_flags(ty::TypeFlags::HAS_TY_INFER) {
+        if ct.has_type_flags(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_TY_OPAQUE) {
             ct.super_visit_with(self)
         }
     }
+}
+
+type UncoveredTys<'tcx> = FxIndexSet<UncoveredTyKind<'tcx>>;
+
+#[derive(PartialEq, Eq, Hash, Debug)]
+enum UncoveredTyKind<'tcx> {
+    TyParam(Ident),
+    OpaqueTy(Ty<'tcx>),
+    Unknown,
 }

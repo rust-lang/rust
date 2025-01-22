@@ -9,6 +9,6 @@ use orphan_check_diagnostics::RemoteTrait;
 trait LocalTrait { fn dummy(&self) { } }
 
 impl<T> RemoteTrait for T where T: LocalTrait {}
-//~^ ERROR type parameter `T` must be used as the type parameter for some local type
+//~^ ERROR type parameter `T` must be used as the argument to some local type
 
 fn main() {}

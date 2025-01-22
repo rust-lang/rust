@@ -1,7 +1,11 @@
 //@ aux-build:foreign-crate.rs
-//@ revisions: classic next
+//@ revisions: current next
 //@[next] compile-flags: -Znext-solver
+//@ ignore-compare-mode-next-solver (explicit revisions)
 #![feature(type_alias_impl_trait)]
+
+// See also <https://github.com/rust-lang/rust/issues/130978>.
+// FIXME(fmease): Add a more descriptive comment.
 
 extern crate foreign_crate;
 
@@ -15,6 +19,7 @@ fn use_alias<T>(val: T) -> AliasOfForeignType<T> {
 }
 
 impl foreign_crate::ForeignTrait for AliasOfForeignType<()> {}
-//~^ ERROR only traits defined in the current crate can be implemented for arbitrary types
+//[current]~^ ERROR opaque type `AliasOfForeignType<()>` must be used as the argument to some local type
+//[next]~^^ ERROR type parameters and opaque types must be used as the argument to some local type
 
 fn main() {}
