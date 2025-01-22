@@ -7,7 +7,6 @@
 #![allow(unused_parens)]
 
 use std::mem;
-use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -85,6 +84,7 @@ use crate::ty::{
 };
 use crate::{dep_graph, mir, thir};
 
+mod arena_cached;
 pub mod erase;
 mod keys;
 pub use keys::{AsLocalKey, Key, LocalCrate};
@@ -586,7 +586,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query mir_coroutine_witnesses(key: DefId) -> &'tcx Option<mir::CoroutineLayout<'tcx>> {
+    query mir_coroutine_witnesses(key: DefId) -> Option<&'tcx mir::CoroutineLayout<'tcx>> {
         arena_cache
         desc { |tcx| "coroutine witness types for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
@@ -2415,7 +2415,7 @@ rustc_queries! {
     /// because the `ty::Ty`-based wfcheck is always run.
     query diagnostic_hir_wf_check(
         key: (ty::Predicate<'tcx>, WellFormedLoc)
-    ) -> &'tcx Option<ObligationCause<'tcx>> {
+    ) -> Option<&'tcx ObligationCause<'tcx>> {
         arena_cache
         eval_always
         no_hash
