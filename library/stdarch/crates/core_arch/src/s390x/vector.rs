@@ -384,21 +384,9 @@ mod sealed {
     impl_abs! { vec_abs_i32, i32x4 }
     impl_abs! { vec_abs_i64, i64x2 }
 
-    #[inline]
-    #[target_feature(enable = "vector")]
-    unsafe fn vec_abs_f32(v: vector_float) -> vector_float {
-        let v: u32x4 = transmute(v);
-
-        transmute(simd_and(v, u32x4::splat(0x7FFFFFFF)))
-    }
-
-    #[inline]
-    #[target_feature(enable = "vector")]
-    unsafe fn vec_abs_f64(v: vector_double) -> vector_double {
-        let v: u64x2 = transmute(v);
-
-        transmute(simd_and(v, u64x2::splat(0x7FFFFFFF_FFFFFFFF)))
-    }
+    // FIXME(vector-enhancements-1)
+    test_impl! { vec_abs_f32 (v: vector_float) -> vector_float [ simd_fabs, _ ] }
+    test_impl! { vec_abs_f64 (v: vector_double) -> vector_double [ simd_fabs, vflpdb ] }
 
     impl_vec_trait! { [VectorAbs vec_abs] vec_abs_f32 (vector_float) }
     impl_vec_trait! { [VectorAbs vec_abs] vec_abs_f64 (vector_double) }
