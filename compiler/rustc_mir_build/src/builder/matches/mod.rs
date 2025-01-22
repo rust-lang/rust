@@ -2005,7 +2005,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let next_block = self.cfg.start_new_block();
             candidate.pre_binding_block = Some(next_block);
             candidate.otherwise_block = Some(next_block);
-            // In addition, if `candidate` should have `false_edge_start_block`.
+            // In addition, if `candidate` doesn't have `false_edge_start_block`, it should be assigned here.
             if candidate.false_edge_start_block.is_none() {
                 candidate.false_edge_start_block = false_edge_start_block;
             }
