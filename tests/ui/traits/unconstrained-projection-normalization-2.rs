@@ -17,5 +17,6 @@ impl<T: ?Sized> Every for Thing {
 }
 
 fn foo(_: <Thing as Every>::Assoc) {}
+//[next]~^ ERROR: type annotations needed
 
 fn main() {}
