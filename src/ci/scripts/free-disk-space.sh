@@ -95,7 +95,7 @@ cleanPackages() {
         'groff'                   \
         'kubectl'                 \
         'libgl1-mesa-dri'         \
-        '^libicu.*'               \
+        'libicu-dev'              \
         'mercurial-common'        \
         'microsoft-edge-stable'   \
         'mono-devel'              \
