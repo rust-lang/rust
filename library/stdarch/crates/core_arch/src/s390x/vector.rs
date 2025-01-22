@@ -450,7 +450,78 @@ mod sealed {
         (u64, u64x2, vector_bool_long_long),
         (i64, i64x2, vector_bool_long_long)
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait CountBits {
+        type Result;
+
+        unsafe fn vec_cntlz(self) -> Self::Result;
+        unsafe fn vec_cnttz(self) -> Self::Result;
+        unsafe fn vec_popcnt(self) -> Self::Result;
+    }
+
+    macro_rules! impl_count_bits {
+        ($ty:tt) => {
+            #[unstable(feature = "stdarch_s390x", issue = "135681")]
+            impl CountBits for $ty {
+                type Result = t_u!($ty);
+
+                #[inline]
+                #[target_feature(enable = "vector")]
+                unsafe fn vec_cntlz(self) -> Self::Result {
+                    transmute(simd_ctlz(self))
+                }
+
+                #[inline]
+                #[target_feature(enable = "vector")]
+                unsafe fn vec_cnttz(self) -> Self::Result {
+                    transmute(simd_cttz(self))
+                }
+
+                #[inline]
+                #[target_feature(enable = "vector")]
+                unsafe fn vec_popcnt(self) -> Self::Result {
+                    transmute(simd_ctpop(self))
+                }
+            }
+        };
+    }
+
+    impl_count_bits!(vector_signed_char);
+    impl_count_bits!(vector_unsigned_char);
+    impl_count_bits!(vector_signed_short);
+    impl_count_bits!(vector_unsigned_short);
+    impl_count_bits!(vector_signed_int);
+    impl_count_bits!(vector_unsigned_int);
+    impl_count_bits!(vector_signed_long_long);
+    impl_count_bits!(vector_unsigned_long_long);
+
+    test_impl! { vec_clzb_signed +(a: vector_signed_char) -> vector_unsigned_char [simd_ctlz, vclzb] }
+    test_impl! { vec_clzh_signed +(a: vector_signed_short) -> vector_unsigned_short [simd_ctlz, vclzh] }
+    test_impl! { vec_clzf_signed +(a: vector_signed_int) -> vector_unsigned_int [simd_ctlz, vclzf] }
+    test_impl! { vec_clzg_signed +(a: vector_signed_long_long) -> vector_unsigned_long_long [simd_ctlz, vclzg] }
+
+    test_impl! { vec_clzb_unsigned +(a: vector_unsigned_char) -> vector_unsigned_char [simd_ctlz, vclzb] }
+    test_impl! { vec_clzh_unsigned +(a: vector_unsigned_short) -> vector_unsigned_short [simd_ctlz, vclzh] }
+    test_impl! { vec_clzf_unsigned +(a: vector_unsigned_int) -> vector_unsigned_int [simd_ctlz, vclzf] }
+    test_impl! { vec_clzg_unsigned +(a: vector_unsigned_long_long) -> vector_unsigned_long_long [simd_ctlz, vclzg] }
+
+    test_impl! { vec_ctzb_signed +(a: vector_signed_char) -> vector_unsigned_char [simd_cttz, vctzb] }
+    test_impl! { vec_ctzh_signed +(a: vector_signed_short) -> vector_unsigned_short [simd_cttz, vctzh] }
+    test_impl! { vec_ctzf_signed +(a: vector_signed_int) -> vector_unsigned_int [simd_cttz, vctzf] }
+    test_impl! { vec_ctzg_signed +(a: vector_signed_long_long) -> vector_unsigned_long_long [simd_cttz, vctzg] }
+
+    test_impl! { vec_ctzb_unsigned +(a: vector_unsigned_char) -> vector_unsigned_char [simd_cttz, vctzb] }
+    test_impl! { vec_ctzh_unsigned +(a: vector_unsigned_short) -> vector_unsigned_short [simd_cttz, vctzh] }
+    test_impl! { vec_ctzf_unsigned +(a: vector_unsigned_int) -> vector_unsigned_int [simd_cttz, vctzf] }
+    test_impl! { vec_ctzg_unsigned +(a: vector_unsigned_long_long) -> vector_unsigned_long_long [simd_cttz, vctzg] }
+
+    // FIXME(vector-enhancements-1) other integer types are emulated, but get their own
+    // instructions in later facilities. Add tests when possible.
+    test_impl! { vec_popcnt_signed +(a: vector_signed_char) -> vector_signed_char [simd_ctpop, vpopctb] }
+    test_impl! { vec_popcnt_unsigned +(a: vector_unsigned_char) -> vector_unsigned_char [simd_ctpop, vpopctb] }
 }
+
 
 /// Vector element-wise addition.
 #[inline]
@@ -489,6 +560,41 @@ where
     T: sealed::VectorMul,
 {
     a.vec_mul(b)
+}
+
+/// Vector Count Leading Zeros
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cntlz<T>(a: T) -> <T as sealed::CountBits>::Result
+where
+    T: sealed::CountBits,
+{
+    a.vec_cntlz()
+}
+
+/// Vector Count Trailing Zeros
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cnttz<T>(a: T) -> <T as sealed::CountBits>::Result
+where
+    T: sealed::CountBits,
+{
+    a.vec_cnttz()
+}
+
+/// Vector Population Count
+///
+/// Computes the population count (number of set bits) in each element of the input.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_popcnt<T>(a: T) -> <T as sealed::CountBits>::Result
+where
+    T: sealed::CountBits,
+{
+    a.vec_popcnt()
 }
 
 /// Vector element-wise maximum.

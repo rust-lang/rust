@@ -2,6 +2,14 @@
 #![allow(unused_imports)] // FIXME remove when more tests are added
 
 macro_rules! test_impl {
+    ($fun:ident +($($v:ident : $ty:ty),*) -> $r:ty [$call:ident, $instr:ident]) => {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        #[cfg_attr(test, assert_instr($instr))]
+        pub unsafe fn $fun ($($v : $ty),*) -> $r {
+            transmute($call ($($v),*))
+        }
+    };
     ($fun:ident ($($v:ident : $ty:ty),*) -> $r:ty [$call:ident, $instr:ident]) => {
         #[inline]
         #[target_feature(enable = "vector")]
