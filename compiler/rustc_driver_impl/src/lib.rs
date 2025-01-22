@@ -60,7 +60,6 @@ use rustc_session::lint::{Lint, LintId};
 use rustc_session::output::collect_crate_types;
 use rustc_session::{EarlyDiagCtxt, Session, config, filesearch};
 use rustc_span::FileName;
-use rustc_span::source_map::FileLoader;
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTuple};
 use time::OffsetDateTime;
@@ -211,59 +210,20 @@ pub fn diagnostics_registry() -> Registry {
 pub struct RunCompiler<'a> {
     at_args: &'a [String],
     callbacks: &'a mut (dyn Callbacks + Send),
-    file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
-    make_codegen_backend:
-        Option<Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>>,
 }
 
 impl<'a> RunCompiler<'a> {
     pub fn new(at_args: &'a [String], callbacks: &'a mut (dyn Callbacks + Send)) -> Self {
-        Self { at_args, callbacks, file_loader: None, make_codegen_backend: None }
-    }
-
-    /// Set a custom codegen backend.
-    ///
-    /// Has no uses within this repository, but is used by bjorn3 for "the
-    /// hotswapping branch of cg_clif" for "setting the codegen backend from a
-    /// custom driver where the custom codegen backend has arbitrary data."
-    /// (See #102759.)
-    pub fn set_make_codegen_backend(
-        &mut self,
-        make_codegen_backend: Option<
-            Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
-        >,
-    ) -> &mut Self {
-        self.make_codegen_backend = make_codegen_backend;
-        self
-    }
-
-    /// Load files from sources other than the file system.
-    ///
-    /// Has no uses within this repository, but may be used in the future by
-    /// bjorn3 for "hooking rust-analyzer's VFS into rustc at some point for
-    /// running rustc without having to save". (See #102759.)
-    pub fn set_file_loader(
-        &mut self,
-        file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
-    ) -> &mut Self {
-        self.file_loader = file_loader;
-        self
+        Self { at_args, callbacks }
     }
 
     /// Parse args and run the compiler.
     pub fn run(self) {
-        run_compiler(self.at_args, self.callbacks, self.file_loader, self.make_codegen_backend);
+        run_compiler(self.at_args, self.callbacks);
     }
 }
 
-fn run_compiler(
-    at_args: &[String],
-    callbacks: &mut (dyn Callbacks + Send),
-    file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
-    make_codegen_backend: Option<
-        Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
-    >,
-) {
+fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) {
     let mut default_early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     // Throw away the first argument, the name of the binary.
@@ -300,14 +260,14 @@ fn run_compiler(
         output_file: ofile,
         output_dir: odir,
         ice_file,
-        file_loader,
+        file_loader: None,
         locale_resources: DEFAULT_LOCALE_RESOURCES.to_vec(),
         lint_caps: Default::default(),
         psess_created: None,
         hash_untracked_state: None,
         register_lints: None,
         override_queries: None,
-        make_codegen_backend,
+        make_codegen_backend: None,
         registry: diagnostics_registry(),
         using_internal_features: &USING_INTERNAL_FEATURES,
         expanded_args: args,

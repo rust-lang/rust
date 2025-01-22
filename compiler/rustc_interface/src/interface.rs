@@ -308,6 +308,11 @@ pub struct Config {
     pub output_dir: Option<PathBuf>,
     pub output_file: Option<OutFileName>,
     pub ice_file: Option<PathBuf>,
+    /// Load files from sources other than the file system.
+    ///
+    /// Has no uses within this repository, but may be used in the future by
+    /// bjorn3 for "hooking rust-analyzer's VFS into rustc at some point for
+    /// running rustc without having to save". (See #102759.)
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     /// The list of fluent resources, used for lints declared with
     /// [`Diagnostic`](rustc_errors::Diagnostic) and [`LintDiagnostic`](rustc_errors::LintDiagnostic).
@@ -336,6 +341,11 @@ pub struct Config {
     pub override_queries: Option<fn(&Session, &mut Providers)>,
 
     /// This is a callback from the driver that is called to create a codegen backend.
+    ///
+    /// Has no uses within this repository, but is used by bjorn3 for "the
+    /// hotswapping branch of cg_clif" for "setting the codegen backend from a
+    /// custom driver where the custom codegen backend has arbitrary data."
+    /// (See #102759.)
     pub make_codegen_backend:
         Option<Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>>,
 
