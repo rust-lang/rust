@@ -96,7 +96,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                         return false;
                     }
 
-                    for (predicate, _span) in cx.tcx.explicit_item_super_predicates(def_id).iter_identity_copied() {
+                    for (predicate, _span) in cx.tcx.explicit_item_self_bounds(def_id).iter_identity_copied() {
                         match predicate.kind().skip_binder() {
                             // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
                             // and check substitutions to find `U`.
@@ -322,7 +322,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         },
         ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty)),
         ty::Alias(ty::Opaque, AliasTy { def_id, .. }) => {
-            for (predicate, _) in cx.tcx.explicit_item_super_predicates(def_id).skip_binder() {
+            for (predicate, _) in cx.tcx.explicit_item_self_bounds(def_id).skip_binder() {
                 if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder() {
                     if cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use) {
                         return true;
@@ -712,7 +712,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
         ty::Alias(ty::Opaque, AliasTy { def_id, args, .. }) => sig_from_bounds(
             cx,
             ty,
-            cx.tcx.item_super_predicates(def_id).iter_instantiated(cx.tcx, args),
+            cx.tcx.item_self_bounds(def_id).iter_instantiated(cx.tcx, args),
             cx.tcx.opt_parent(def_id),
         ),
         ty::FnPtr(sig_tys, hdr) => Some(ExprFnSig::Sig(sig_tys.with(hdr), None)),
