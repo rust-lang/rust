@@ -8,28 +8,25 @@
 
 use core::cmp::Ordering;
 use core::error::Error;
-use core::fmt;
-use core::hash;
+use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::from_fn;
-use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Range, RangeBounds};
 #[cfg(not(no_global_oom_handling))]
 use core::ops::{Add, AddAssign};
-use core::ptr;
-use core::slice;
 use core::str::pattern::{Pattern, Utf8Pattern};
+use core::{fmt, hash, ptr, slice};
 
 use crate::alloc::{Allocator, Global};
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
-use crate::str::{self, from_utf8_unchecked_mut, CharIndices, Chars, Utf8Error};
+use crate::str::{self, CharIndices, Chars, Utf8Error, from_utf8_unchecked_mut};
 #[cfg(not(no_global_oom_handling))]
-use crate::str::{from_boxed_utf8_unchecked, FromStr};
+use crate::str::{FromStr, from_boxed_utf8_unchecked};
 use crate::string::ToString;
 use crate::vec::{self, Vec};
 
@@ -521,7 +518,6 @@ impl<A: Allocator> String<A> {
 
         Err(res)
     }
-
 }
 
 impl String {
@@ -633,7 +629,6 @@ impl String {
             unsafe { String::from_utf8_unchecked(v) }
         }
     }
-
 
     /// Decode a native endian UTF-16–encoded vector `v` into a `String`,
     /// returning [`Err`] if `v` contains any invalid data.
@@ -1935,7 +1930,6 @@ impl<A: Allocator> String<A> {
         IntoChars { bytes: self.into_bytes().into_iter() }
     }
 
-
     /// Removes the specified range in the string,
     /// and replaces it with the given string.
     /// The given string doesn't need to be the same length as the range.
@@ -2112,7 +2106,6 @@ impl<A: Allocator> FromUtf8Error<A> {
 
         res
     }
-
 
     /// Returns the bytes that were attempted to convert to a `String`.
     ///
@@ -3055,7 +3048,6 @@ impl<A: Allocator> DoubleEndedIterator for IntoChars<A> {
 
 #[unstable(feature = "string_into_chars", issue = "133125")]
 impl<A: Allocator> FusedIterator for IntoChars<A> {}
-
 
 /// A draining iterator for `String`.
 ///

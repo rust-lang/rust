@@ -566,7 +566,7 @@ macro_rules! to_string_str {
         )+
     };
  }
- 
+
 #[cfg(not(no_global_oom_handling))]
 to_string_str! {
     x x x x x x x x x x x x,
