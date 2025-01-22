@@ -3,6 +3,8 @@
 //@[next] compile-flags: -Znext-solver
 #![feature(type_alias_impl_trait)]
 
+// See also <https://github.com/rust-lang/rust/issues/130978>.
+
 extern crate foreign_crate;
 
 trait LocalTrait {}
@@ -14,6 +16,6 @@ fn use_alias<T>(val: T) -> AliasOfForeignType<T> {
 }
 
 impl foreign_crate::ForeignTrait for AliasOfForeignType<()> {}
-//~^ ERROR only traits defined in the current crate can be implemented for arbitrary types
+//~^ ERROR opaque type `AliasOfForeignType<()>` must be used as the argument to some local type
 
 fn main() {}

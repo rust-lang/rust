@@ -43,7 +43,7 @@ use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
 pub use self::coherence::{
-    InCrate, IsFirstInputType, OrphanCheckErr, OrphanCheckMode, OverlapResult, UncoveredTyParams,
+    InCrate, IsFirstInputType, OrphanCheckErr, OrphanCheckMode, OverlapResult, UncoveredTy,
     add_placeholder_note, orphan_check_trait_ref, overlapping_impls,
 };
 pub use self::dyn_compatibility::{

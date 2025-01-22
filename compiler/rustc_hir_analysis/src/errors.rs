@@ -2,7 +2,8 @@
 
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan,
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
+    LintDiagnostic, MultiSpan,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
@@ -1378,54 +1379,47 @@ pub(crate) struct CrossCrateTraitsDefined {
     pub traits: String,
 }
 
-// FIXME(fmease): Deduplicate:
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_ty_param_first_local, code = E0210)]
-#[note]
-pub(crate) struct TyParamFirstLocal<'tcx> {
-    #[primary_span]
-    #[label]
+pub(crate) struct UncoveredTy<'tcx, T> {
     pub span: Span,
-    #[note(hir_analysis_case_note)]
-    pub note: (),
-    pub param: Symbol,
-    pub local_type: Ty<'tcx>,
+    pub kind: (&'static str, &'static str),
+    pub ty: T,
+    pub local_ty: Option<Ty<'tcx>>,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(hir_analysis_ty_param_first_local, code = E0210)]
-#[note]
-pub(crate) struct TyParamFirstLocalLint<'tcx> {
-    #[label]
-    pub span: Span,
-    #[note(hir_analysis_case_note)]
-    pub note: (),
-    pub param: Symbol,
-    pub local_type: Ty<'tcx>,
+impl<'tcx, T: IntoDiagArg> UncoveredTy<'tcx, T> {
+    fn decorate<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        diag.primary_message(match self.local_ty {
+            Some(_) => fluent::hir_analysis_uncovered_ty_before_first_local,
+            None => fluent::hir_analysis_uncovered_ty,
+        });
+        diag.code(E0210);
+        diag.span_label(self.span, fluent::hir_analysis_label);
+        diag.note(fluent::hir_analysis_note);
+        diag.note(match self.local_ty {
+            Some(_) => fluent::hir_analysis_case_note,
+            None => fluent::hir_analysis_only_note,
+        });
+        diag.arg("article", self.kind.0);
+        diag.arg("kind", self.kind.1);
+        diag.arg("ty", self.ty);
+        if let Some(local_ty) = self.local_ty {
+            diag.arg("local_ty", local_ty);
+        }
+    }
 }
 
-#[derive(Diagnostic)]
-#[diag(hir_analysis_ty_param_some, code = E0210)]
-#[note]
-pub(crate) struct TyParamSome {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[note(hir_analysis_only_note)]
-    pub note: (),
-    pub param: Symbol,
+impl<'a, 'tcx, G: EmissionGuarantee, T: IntoDiagArg> Diagnostic<'a, G> for UncoveredTy<'tcx, T> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+        let mut diag = Diag::new(dcx, level, "").with_span(self.span);
+        self.decorate(&mut diag);
+        diag
+    }
 }
 
-#[derive(LintDiagnostic)]
-#[diag(hir_analysis_ty_param_some, code = E0210)]
-#[note]
-pub(crate) struct TyParamSomeLint {
-    #[label]
-    pub span: Span,
-    #[note(hir_analysis_only_note)]
-    pub note: (),
-    pub param: Symbol,
+impl<'a, 'tcx, T: IntoDiagArg> LintDiagnostic<'a, ()> for UncoveredTy<'tcx, T> {
+    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        self.decorate(diag);
+    }
 }
 
 #[derive(Diagnostic)]

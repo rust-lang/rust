@@ -530,16 +530,6 @@ hir_analysis_transparent_non_zero_sized_enum = the variant of a transparent {$de
 
 hir_analysis_ty_of_assoc_const_binding_note = `{$assoc_const}` has type `{$ty}`
 
-hir_analysis_ty_param_first_local = type parameter `{$param}` must be covered by another type when it appears before the first local type (`{$local_type}`)
-    .label = type parameter `{$param}` must be covered by another type when it appears before the first local type (`{$local_type}`)
-    .note = implementing a foreign trait is only possible if at least one of the types for which it is implemented is local, and no uncovered type parameters appear before that first local type
-    .case_note = in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last
-
-hir_analysis_ty_param_some = type parameter `{$param}` must be used as the type parameter for some local type (e.g., `MyStruct<{$param}>`)
-    .label = type parameter `{$param}` must be used as the type parameter for some local type
-    .note = implementing a foreign trait is only possible if at least one of the types for which it is implemented is local
-    .only_note = only traits defined in the current crate can be implemented for a type parameter
-
 hir_analysis_type_of = {$ty}
 
 hir_analysis_typeof_reserved_keyword_used =
@@ -554,6 +544,17 @@ hir_analysis_unconstrained_generic_parameter = the {$param_def_kind} `{$param_na
 
 hir_analysis_unconstrained_opaque_type = unconstrained opaque type
     .note = `{$name}` must be used in combination with a concrete type within the same {$what}
+
+hir_analysis_uncovered_ty = {$kind} `{$ty}` must be used as the argument to some local type (e.g., `MyStruct<{$ty}>`)
+    .label = {$kind} `{$ty}` must be used as the argument to some local type
+    .note = implementing a foreign trait is only possible if at least one of the types for which it is implemented is local
+    .only_note = only traits defined in the current crate can be implemented for {$article} {$kind}
+
+hir_analysis_uncovered_ty_before_first_local = {$kind} `{$ty}` must be covered by another type when it appears before the first local type (`{$local_ty}`)
+    .label = {$kind} `{$ty}` must be covered by another type when it appears before the first local type (`{$local_ty}`)
+    .note = implementing a foreign trait is only possible if at least one of the types for which it is implemented is local,
+            and no uncovered type parameters or opaque types appear before that first local type
+    .case_note = in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last
 
 hir_analysis_unrecognized_atomic_operation =
     unrecognized atomic operation function: `{$op}`
