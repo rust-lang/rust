@@ -31,11 +31,11 @@
 // gdb-check:$7 = "IAMA OS string 😃"
 
 // gdb-command: print some_string
-// gdb-check:$8 = core::option::Option<alloc::string::String>::Some("IAMA optional string!")
+// gdb-check:$8 = core::option::Option<alloc::string::string::String<alloc::alloc::Global>>::Some("IAMA optional string!")
 
 // gdb-command: set print elements 5
 // gdb-command: print some_string
-// gdb-check:$9 = core::option::Option<alloc::string::String>::Some("IAMA "...)
+// gdb-check:$9 = core::option::Option<alloc::string::string::String<alloc::alloc::Global>>::Some("IAMA "...)
 
 // === LLDB TESTS ==================================================================================
 
