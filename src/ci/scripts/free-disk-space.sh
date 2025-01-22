@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Free disk space on Linux GitHub action runners
 # Script inspired by https://github.com/jlumbroso/free-disk-space
