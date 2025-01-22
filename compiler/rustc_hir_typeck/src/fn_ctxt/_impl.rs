@@ -1433,7 +1433,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // in a reentrant borrow, causing an ICE.
             let result = self
                 .at(&self.misc(sp), self.param_env)
-                .structurally_normalize(ty, &mut **self.fulfillment_cx.borrow_mut());
+                .structurally_normalize_ty(ty, &mut **self.fulfillment_cx.borrow_mut());
             match result {
                 Ok(normalized_ty) => normalized_ty,
                 Err(errors) => {
