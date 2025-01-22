@@ -5,10 +5,12 @@
 
 use std::any::type_name;
 use std::env;
+use std::num::ParseIntError;
 use std::str::FromStr;
 
 #[cfg(feature = "build-mpfr")]
 use az::Az;
+use libm::support::{hf32, hf64};
 #[cfg(feature = "build-mpfr")]
 use libm_test::mpfloat::MpOp;
 use libm_test::{MathOp, TupleCall};
@@ -238,21 +240,103 @@ impl_parse_tuple_via_rug!(f16);
 impl_parse_tuple_via_rug!(f128);
 
 /// Try to parse the number, printing a nice message on failure.
-fn parse<F: FromStr>(input: &[&str], idx: usize) -> F {
+fn parse<T: FromStr + FromStrRadix>(input: &[&str], idx: usize) -> T {
     let s = input[idx];
-    s.parse().unwrap_or_else(|_| panic!("invalid {} input '{s}'", type_name::<F>()))
+
+    let msg = || format!("invalid {} input '{s}'", type_name::<T>());
+
+    if s.starts_with("0x") {
+        return T::from_str_radix(s, 16).unwrap_or_else(|_| panic!("{}", msg()));
+    }
+
+    if s.starts_with("0b") {
+        return T::from_str_radix(s, 2).unwrap_or_else(|_| panic!("{}", msg()));
+    }
+
+    s.parse().unwrap_or_else(|_| panic!("{}", msg()))
 }
 
 /// Try to parse the float type going via `rug`, for `f16` and `f128` which don't yet implement
 /// `FromStr`.
 #[cfg(feature = "build-mpfr")]
-fn parse_rug<F: libm_test::Float>(input: &[&str], idx: usize) -> F
+fn parse_rug<F>(input: &[&str], idx: usize) -> F
 where
+    F: libm_test::Float + FromStrRadix,
     rug::Float: az::Cast<F>,
 {
     let s = input[idx];
-    let x =
-        rug::Float::parse(s).unwrap_or_else(|_| panic!("invalid {} input '{s}'", type_name::<F>()));
+
+    let msg = || format!("invalid {} input '{s}'", type_name::<F>());
+
+    if s.starts_with("0x") {
+        return F::from_str_radix(s, 16).unwrap_or_else(|_| panic!("{}", msg()));
+    }
+
+    if s.starts_with("0b") {
+        return F::from_str_radix(s, 2).unwrap_or_else(|_| panic!("{}", msg()));
+    }
+
+    let x = rug::Float::parse(s).unwrap_or_else(|_| panic!("{}", msg()));
     let x = rug::Float::with_val(F::BITS, x);
     x.az()
+}
+
+trait FromStrRadix: Sized {
+    fn from_str_radix(s: &str, radix: u32) -> Result<Self, ParseIntError>;
+}
+
+impl FromStrRadix for i32 {
+    fn from_str_radix(s: &str, radix: u32) -> Result<Self, ParseIntError> {
+        let s = strip_radix_prefix(s, radix);
+        i32::from_str_radix(s, radix)
+    }
+}
+
+#[cfg(f16_enabled)]
+impl FromStrRadix for f16 {
+    fn from_str_radix(s: &str, radix: u32) -> Result<Self, ParseIntError> {
+        let s = strip_radix_prefix(s, radix);
+        u16::from_str_radix(s, radix).map(Self::from_bits)
+    }
+}
+
+impl FromStrRadix for f32 {
+    fn from_str_radix(s: &str, radix: u32) -> Result<Self, ParseIntError> {
+        if radix == 16 && s.contains("p") {
+            // Parse as hex float
+            return Ok(hf32(s));
+        }
+
+        let s = strip_radix_prefix(s, radix);
+        u32::from_str_radix(s, radix).map(Self::from_bits)
+    }
+}
+
+impl FromStrRadix for f64 {
+    fn from_str_radix(s: &str, radix: u32) -> Result<Self, ParseIntError> {
+        if s.contains("p") {
+            return Ok(hf64(s));
+        }
+
+        let s = strip_radix_prefix(s, radix);
+        u64::from_str_radix(s, radix).map(Self::from_bits)
+    }
+}
+
+#[cfg(f128_enabled)]
+impl FromStrRadix for f128 {
+    fn from_str_radix(s: &str, radix: u32) -> Result<Self, ParseIntError> {
+        let s = strip_radix_prefix(s, radix);
+        u128::from_str_radix(s, radix).map(Self::from_bits)
+    }
+}
+
+fn strip_radix_prefix(s: &str, radix: u32) -> &str {
+    if radix == 16 {
+        s.strip_prefix("0x").unwrap()
+    } else if radix == 2 {
+        s.strip_prefix("0b").unwrap()
+    } else {
+        s
+    }
 }
