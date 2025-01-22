@@ -53,7 +53,7 @@ use crate::alloc::{Allocator, Global};
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::slice::{Concat, Join, SliceIndex};
-use crate::string::String;
+use crate::string::string::String;
 use crate::vec::Vec;
 
 /// Note: `str` in `Concat<str>` is not meaningful here.

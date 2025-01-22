@@ -20,18 +20,18 @@ use core::ops::{self, Range, RangeBounds};
 use core::ops::{Add, AddAssign};
 use core::ptr;
 use core::slice;
-use core::str::pattern::Pattern;
+use core::str::pattern::{Pattern, Utf8Pattern};
 
 use crate::alloc::{Allocator, Global};
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
-use crate::str::{self, from_utf8_unchecked_mut, Chars, Utf8Error};
+use crate::str::{self, from_utf8_unchecked_mut, CharIndices, Chars, Utf8Error};
 #[cfg(not(no_global_oom_handling))]
 use crate::str::{from_boxed_utf8_unchecked, FromStr};
 use crate::string::ToString;
-use crate::vec::Vec;
+use crate::vec::{self, Vec};
 
 /// A UTF-8–encoded, growable string, with allocator support.
 ///
@@ -491,6 +491,37 @@ impl<A: Allocator> String<A> {
     pub fn allocator(&self) -> &A {
         self.vec.allocator()
     }
+
+    fn from_utf8_lossy_in(v: &[u8], alloc: A) -> Result<&str, String<A>> {
+        let mut iter = v.utf8_chunks();
+
+        let first_valid = if let Some(chunk) = iter.next() {
+            let valid = chunk.valid();
+            if chunk.invalid().is_empty() {
+                debug_assert_eq!(valid.len(), v.len());
+                return Ok(valid);
+            }
+            valid
+        } else {
+            return Ok("");
+        };
+
+        const REPLACEMENT: &str = "\u{FFFD}";
+
+        let mut res = String::with_capacity_in(v.len(), alloc);
+        res.push_str(first_valid);
+        res.push_str(REPLACEMENT);
+
+        for chunk in iter {
+            res.push_str(chunk.valid());
+            if !chunk.invalid().is_empty() {
+                res.push_str(REPLACEMENT);
+            }
+        }
+
+        Err(res)
+    }
+
 }
 
 impl String {
@@ -547,40 +578,10 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8_lossy(v: &[u8]) -> Cow<'_, str> {
-        match String::from_utf8_lossy_in(Global) {
+        match String::from_utf8_lossy_in(v, Global) {
             Ok(s) => Cow::Borrowed(s),
             Err(s) => Cow::Owned(s),
         }
-    }
-
-    fn from_utf8_lossy_in(v: &[u8], alloc: A) -> Result<&str, String<A>> {
-        let mut iter = v.utf8_chunks();
-
-        let first_valid = if let Some(chunk) = iter.next() {
-            let valid = chunk.valid();
-            if chunk.invalid().is_empty() {
-                debug_assert_eq!(valid.len(), v.len());
-                return Ok(valid);
-            }
-            valid
-        } else {
-            return Ok("");
-        };
-
-        const REPLACEMENT: &str = "\u{FFFD}";
-
-        let mut res = String::with_capacity_in(v.len(), alloc);
-        res.push_str(first_valid);
-        res.push_str(REPLACEMENT);
-
-        for chunk in iter {
-            res.push_str(chunk.valid());
-            if !chunk.invalid().is_empty() {
-                res.push_str(REPLACEMENT);
-            }
-        }
-
-        Err(res)
     }
 
     /// Converts a [`Vec<u8>`] to a `String`, substituting invalid UTF-8

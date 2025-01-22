@@ -461,7 +461,8 @@ impl<T: fmt::Display + ?Sized> SpecToString for T {
     #[inline]
     default fn spec_to_string(&self) -> String {
         let mut buf = String::new();
-        let mut formatter = core::fmt::Formatter::new(&mut buf);
+        let mut formatter =
+            core::fmt::Formatter::new(&mut buf, core::fmt::FormattingOptions::new());
         // Bypass format_args!() to avoid write_str with zero-length strs
         fmt::Display::fmt(self, &mut formatter)
             .expect("a Display implementation returned an error unexpectedly");
@@ -614,7 +615,7 @@ impl SpecToString for fmt::Arguments<'_> {
 /// [`char`]: prim@char
 /// [`into_chars`]: String::into_chars
 #[unstable(feature = "string_into_chars", issue = "133125")]
-pub type struct IntoChars = string::IntoChars<Global>;
+pub type IntoChars = string::IntoChars<Global>;
 
 /// A draining iterator for `String`.
 ///
