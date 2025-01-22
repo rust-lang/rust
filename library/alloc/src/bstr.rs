@@ -46,6 +46,7 @@ use crate::vec::Vec;
 #[unstable(feature = "bstr", issue = "134915")]
 #[repr(transparent)]
 #[derive(Clone)]
+#[doc(alias = "BString")]
 pub struct ByteString(pub Vec<u8>);
 
 impl ByteString {

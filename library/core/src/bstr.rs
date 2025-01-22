@@ -39,6 +39,7 @@ use crate::{fmt, hash};
 ///
 #[unstable(feature = "bstr", issue = "134915")]
 #[repr(transparent)]
+#[doc(alias = "BStr")]
 pub struct ByteStr(pub [u8]);
 
 impl ByteStr {
