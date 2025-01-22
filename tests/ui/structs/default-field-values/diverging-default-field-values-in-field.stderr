@@ -1,0 +1,35 @@
+error: default field overrides that field's type's default
+  --> $DIR/diverging-default-field-values-in-field.rs:10:41
+   |
+LL |         pub foo: Foo = Foo { something: 10 },
+   |                        ---              ^^ this overrides the default of field `something` in `Foo`
+   |                        |
+   |                        when constructing this value
+   |
+note: this field's default value in `Foo` is overriden
+  --> $DIR/diverging-default-field-values-in-field.rs:6:30
+   |
+LL |     pub struct Foo {
+   |     --------------
+LL |         pub something: i32 = 2,
+   |                              ^
+   = note: `#[deny(default_field_overrides_default_field)]` on by default
+
+error: default field overrides that field's type's default
+  --> $DIR/diverging-default-field-values-in-field.rs:23:44
+   |
+LL |             foo: Foo = Foo::X { something: 10 },
+   |                        ------              ^^ this overrides the default of field `something` in `X`
+   |                        |
+   |                        when constructing this value
+   |
+note: this field's default value in `X` is overriden
+  --> $DIR/diverging-default-field-values-in-field.rs:17:30
+   |
+LL |         X {
+   |         -
+LL |             something: i32 = 2,
+   |                              ^
+
+error: aborting due to 2 previous errors
+

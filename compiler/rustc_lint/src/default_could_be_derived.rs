@@ -1,5 +1,7 @@
-use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, Diag};
+use hir::def::{CtorOf, DefKind, Res};
+use rustc_ast::Recovered;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::{Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
 use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
@@ -50,7 +52,6 @@ declare_lint! {
     @feature_gate = default_field_values;
 }
 
-#[derive(Default)]
 pub(crate) struct DefaultCouldBeDerived;
 
 impl_lint_pass!(DefaultCouldBeDerived => [DEFAULT_OVERRIDES_DEFAULT_FIELDS]);
@@ -199,5 +200,129 @@ fn mk_lint(
         let msg = "use the default values in the `impl` with `Struct { mandatory_field, .. }` to \
                    avoid them diverging over time";
         diag.help(msg);
+    }
+}
+
+declare_lint! {
+    /// The `default_field_overrides_default_field` lint checks for struct literals in field default
+    /// values with fields that have in turn default values. These should instead be skipped and
+    /// rely on `..` for them.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(default_field_values)]
+    /// #![deny(default_field_overrides_default_field)]
+    ///
+    /// struct Foo {
+    ///     x: Bar = Bar { x: 0 }, // `Foo { .. }.x.x` != `Bar { .. }.x`
+    /// }
+    ///
+    /// struct Bar {
+    ///     x: i32 = 101,
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Defaulting a field to a value different to that field's type already defined default can
+    /// easily lead to confusion due to diverging behavior. Acknowleding that there can be reasons
+    /// for one to write an API that does this, this is not outright rejected by the compiler,
+    /// merely linted against.
+    pub DEFAULT_FIELD_OVERRIDES_DEFAULT_FIELD,
+    Deny,
+    "detect default field value that should use the type's default field values",
+    @feature_gate = default_field_values;
+}
+
+pub(crate) struct DefaultFieldOverride;
+
+impl_lint_pass!(DefaultFieldOverride => [DEFAULT_FIELD_OVERRIDES_DEFAULT_FIELD]);
+
+impl DefaultFieldOverride {
+    fn lint_variant(&mut self, cx: &LateContext<'_>, data: &hir::VariantData<'_>) {
+        if !cx.tcx.features().default_field_values() {
+            return;
+        }
+        let hir::VariantData::Struct { fields, recovered: Recovered::No } = data else {
+            return;
+        };
+
+        for default in fields.iter().filter_map(|f| f.default) {
+            let body = cx.tcx.hir().body(default.body);
+            let hir::ExprKind::Struct(hir::QPath::Resolved(_, path), fields, _) = body.value.kind
+            else {
+                continue;
+            };
+            let Res::Def(
+                DefKind::Variant
+                | DefKind::Struct
+                | DefKind::Ctor(CtorOf::Variant | CtorOf::Struct, ..),
+                def_id,
+            ) = path.res
+            else {
+                continue;
+            };
+            let fields_set: FxHashSet<_> = fields.iter().map(|f| f.ident.name).collect();
+            let variant = cx.tcx.expect_variant_res(path.res);
+            let mut to_lint = vec![];
+            let mut defs = vec![];
+
+            for field in &variant.fields {
+                if fields_set.contains(&field.name) {
+                    for f in fields {
+                        if f.ident.name == field.name
+                            && let Some(default) = field.value
+                        {
+                            to_lint.push((f.expr.span, f.ident.name));
+                            defs.push(cx.tcx.def_span(default));
+                        }
+                    }
+                }
+            }
+
+            if to_lint.is_empty() {
+                continue;
+            }
+            cx.tcx.node_span_lint(
+                DEFAULT_FIELD_OVERRIDES_DEFAULT_FIELD,
+                body.value.hir_id,
+                to_lint.iter().map(|&(span, _)| span).collect::<Vec<_>>(),
+                |diag| {
+                    diag.primary_message("default field overrides that field's type's default");
+                    diag.span_label(path.span, "when constructing this value");
+                    let type_name = cx.tcx.item_name(def_id);
+                    for (span, name) in to_lint {
+                        diag.span_label(
+                            span,
+                            format!(
+                                "this overrides the default of field `{name}` in `{type_name}`"
+                            ),
+                        );
+                    }
+                    let mut overriden_spans: MultiSpan = defs.clone().into();
+                    overriden_spans.push_span_label(cx.tcx.def_span(def_id), "");
+                    diag.span_note(
+                        overriden_spans,
+                        format!(
+                            "{this} field's default value in `{type_name}` is overriden",
+                            this = if defs.len() == 1 { "this" } else { "these" }
+                        ),
+                    );
+                },
+            );
+        }
+    }
+}
+
+impl<'tcx> LateLintPass<'tcx> for DefaultFieldOverride {
+    fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
+        let hir::ItemKind::Struct(data, _) = item.kind else { return };
+        self.lint_variant(cx, &data);
+    }
+    fn check_variant(&mut self, cx: &LateContext<'_>, variant: &hir::Variant<'_>) {
+        self.lint_variant(cx, &variant.data);
     }
 }

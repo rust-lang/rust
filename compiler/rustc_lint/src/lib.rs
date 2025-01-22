@@ -86,7 +86,7 @@ use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;
 use builtin::*;
 use dangling::*;
-use default_could_be_derived::DefaultCouldBeDerived;
+use default_could_be_derived::{DefaultCouldBeDerived, DefaultFieldOverride};
 use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
@@ -191,7 +191,8 @@ late_lint_methods!(
         BuiltinCombinedModuleLateLintPass,
         [
             ForLoopsOverFallibles: ForLoopsOverFallibles,
-            DefaultCouldBeDerived: DefaultCouldBeDerived::default(),
+            DefaultCouldBeDerived: DefaultCouldBeDerived,
+            DefaultFieldOverride: DefaultFieldOverride,
             DerefIntoDynSupertrait: DerefIntoDynSupertrait,
             DropForgetUseless: DropForgetUseless,
             ImproperCTypesDeclarations: ImproperCTypesDeclarations,
