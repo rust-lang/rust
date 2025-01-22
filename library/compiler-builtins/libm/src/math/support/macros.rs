@@ -87,6 +87,17 @@ macro_rules! select_implementation {
     (@cfg $provided:meta; $ex:expr) => { #[cfg($provided)] $ex };
 }
 
+/// Construct a 16-bit float from hex float representation (C-style), guaranteed to
+/// evaluate at compile time.
+#[cfg(f16_enabled)]
+#[allow(unused_macros)]
+macro_rules! hf16 {
+    ($s:literal) => {{
+        const X: f16 = $crate::math::support::hf16($s);
+        X
+    }};
+}
+
 /// Construct a 32-bit float from hex float representation (C-style), guaranteed to
 /// evaluate at compile time.
 #[allow(unused_macros)]
@@ -103,6 +114,17 @@ macro_rules! hf32 {
 macro_rules! hf64 {
     ($s:literal) => {{
         const X: f64 = $crate::math::support::hf64($s);
+        X
+    }};
+}
+
+/// Construct a 128-bit float from hex float representation (C-style), guaranteed to
+/// evaluate at compile time.
+#[cfg(f128_enabled)]
+#[allow(unused_macros)]
+macro_rules! hf128 {
+    ($s:literal) => {{
+        const X: f128 = $crate::math::support::hf128($s);
         X
     }};
 }
