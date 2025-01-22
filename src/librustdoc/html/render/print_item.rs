@@ -914,7 +914,6 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
     let mut extern_crates = FxIndexSet::default();
 
     if !t.is_dyn_compatible(cx.tcx()) {
-        // FIXME(dyn_compat_renaming): Update the URL once the Reference is updated.
         write_section_heading(
             w,
             "Dyn Compatibility",
@@ -922,7 +921,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             None,
             format!(
                 "<div class=\"dyn-compatibility-info\"><p>This trait is <b>not</b> \
-                <a href=\"{base}/reference/items/traits.html#object-safety\">dyn compatible</a>.</p>\
+                <a href=\"{base}/reference/items/traits.html#dyn-compatibility\">dyn compatible</a>.</p>\
                 <p><i>In older versions of Rust, dyn compatibility was called \"object safety\", \
                 so this trait is not object safe.</i></p></div>",
                 base = crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL
