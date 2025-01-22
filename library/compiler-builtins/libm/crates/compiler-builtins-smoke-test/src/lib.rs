@@ -145,6 +145,8 @@ no_mangle! {
     remquof(x: f32, y: f32 | q: &mut c_int) -> f32;
     rint(x: f64) -> f64;
     rintf(x: f32) -> f32;
+    rintf128(x: f128) -> f128;
+    rintf16(x: f16) -> f16;
     round(x: f64) -> f64;
     roundf(x: f32) -> f32;
     scalbn(x: f64, y: c_int) -> f64;
