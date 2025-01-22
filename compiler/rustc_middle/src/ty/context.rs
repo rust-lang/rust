@@ -345,6 +345,20 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.item_bounds(def_id).map_bound(IntoIterator::into_iter)
     }
 
+    fn item_self_bounds(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
+        self.item_super_predicates(def_id).map_bound(IntoIterator::into_iter)
+    }
+
+    fn item_non_self_bounds(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
+        self.item_non_self_assumptions(def_id).map_bound(IntoIterator::into_iter)
+    }
+
     fn predicates_of(
         self,
         def_id: DefId,
