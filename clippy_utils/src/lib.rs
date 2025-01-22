@@ -117,15 +117,15 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
-    self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, FloatTy, GenericArgsRef, IntTy, Ty, TyCtxt,
-    TypeVisitableExt, UintTy, UpvarCapture,
+    self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, FloatTy, GenericArgKind, GenericArgsRef, IntTy, Ty,
+    TyCtxt, TypeVisitableExt, UintTy, UpvarCapture,
 };
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
 use rustc_span::{InnerSpan, Span, sym};
 use rustc_target::abi::Integer;
-use visitors::Visitable;
+use visitors::{Visitable, for_each_unconsumed_temporary};
 
 use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};
 use crate::higher::Range;
@@ -3464,4 +3464,21 @@ pub fn is_receiver_of_method_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool
         return true;
     }
     false
+}
+
+/// Returns true if `expr` creates any temporary whose type references a non-static lifetime and has
+/// a significant drop and does not consume it.
+pub fn leaks_droppable_temporary_with_limited_lifetime<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+    for_each_unconsumed_temporary(cx, expr, |temporary_ty| {
+        if temporary_ty.has_significant_drop(cx.tcx, cx.typing_env())
+            && temporary_ty
+                .walk()
+                .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(re) if !re.is_static()))
+        {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    })
+    .is_break()
 }
