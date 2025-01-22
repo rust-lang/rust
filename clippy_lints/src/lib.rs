@@ -973,6 +973,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(unnecessary_literal_bound::UnnecessaryLiteralBound));
     store.register_late_pass(move |_| Box::new(arbitrary_source_item_ordering::ArbitrarySourceItemOrdering::new(conf)));
     store.register_late_pass(|_| Box::new(unneeded_struct_pattern::UnneededStructPattern));
-    store.register_late_pass(|_| Box::new(unnecessary_semicolon::UnnecessarySemicolon));
+    store.register_late_pass(|_| Box::<unnecessary_semicolon::UnnecessarySemicolon>::default());
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
