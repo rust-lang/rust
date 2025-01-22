@@ -79,8 +79,10 @@ fn check_symbols(file: &Path, max_supported: (u32, u32, u32)) {
 fn get_glibc_symbols(file: &Path) -> Vec<GlibcSymbol> {
     let regex = regex::Regex::new(r#"GLIBC_(\d)+\.(\d+)(:?\.(\d+))?"#).unwrap();
 
-    // Uses llvm-objdump, because implementing this using the `object` crate is quite complicated.
-    llvm_objdump()
+    // FIXME(kobzol): llvm-objdump currently chokes on the BOLTed librustc_driver.so file.
+    // Use objdump instead, since it seems to work, and we only run this test in a specific
+    // CI environment anyway.
+    cmd("objdump")
         .arg("--dynamic-syms")
         .arg(file)
         .run()
