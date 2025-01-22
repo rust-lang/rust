@@ -101,6 +101,8 @@ pub fn load_errors(testfile: &Path, revision: Option<&str>) -> Vec<Error> {
 
     rdr.lines()
         .enumerate()
+        // We want to ignore utf-8 failures in tests during collection of annotations.
+        .filter(|(_, line)| line.is_ok())
         .filter_map(|(line_num, line)| {
             parse_expected(last_nonfollow_error, line_num + 1, &line.unwrap(), revision).map(
                 |(which, error)| {
