@@ -7,7 +7,7 @@ iai_home="iai-home"
 # Download the baseline from master
 ./ci/ci-util.py locate-baseline --download --extract
 
-# Run benchmarks once 
+# Run benchmarks once
 function run_icount_benchmarks() {
     cargo_args=(
         "--bench" "icount"

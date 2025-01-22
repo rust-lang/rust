@@ -13,7 +13,7 @@ using CairoMakie
 using TOML
 
 function main()::Nothing
-    CairoMakie.activate!(px_per_unit=10)
+    CairoMakie.activate!(px_per_unit = 10)
     config_path = ARGS[1]
 
     cfg = Dict()
@@ -75,15 +75,25 @@ function plot_one(
     gen_x = map((v) -> parse(Float32, v), inputs)
 
     do_plot(
-        fig, gen_x, func, xlims[1], xlims[2],
+        fig,
+        gen_x,
+        func,
+        xlims[1],
+        xlims[2],
         "$fn_name $gen_name (linear scale)",
-        lin_out_file, false,
+        lin_out_file,
+        false,
     )
 
     do_plot(
-        fig, gen_x, func, xlims_log[1], xlims_log[2],
+        fig,
+        gen_x,
+        func,
+        xlims_log[1],
+        xlims_log[2],
         "$fn_name $gen_name (log scale)",
-        log_out_file, true,
+        log_out_file,
+        true,
     )
 end
 
@@ -97,7 +107,7 @@ function do_plot(
     title::String,
     out_file::String,
     logscale::Bool,
-)::Nothing where F<:AbstractFloat
+)::Nothing where {F<:AbstractFloat}
     println("plotting $title")
 
     # `gen_x` is the values the generator produces. `actual_x` is for plotting a
@@ -116,32 +126,36 @@ function do_plot(
         actual_x = LinRange(input_min, input_max, steps)
         xscale = identity
     end
-    
+
     gen_y = @. func(gen_x)
     actual_y = @. func(actual_x)
 
-    ax = Axis(fig[1, 1], xscale=xscale, title=title)
+    ax = Axis(fig[1, 1], xscale = xscale, title = title)
 
     lines!(
-        ax, actual_x, actual_y, color=(:lightblue, 0.6),
-        linewidth=6.0, label="true function",
+        ax,
+        actual_x,
+        actual_y,
+        color = (:lightblue, 0.6),
+        linewidth = 6.0,
+        label = "true function",
     )
     scatter!(
-        ax, gen_x, gen_y, color=(:darkblue, 0.9),
-        markersize=markersize, label="checked inputs",
+        ax,
+        gen_x,
+        gen_y,
+        color = (:darkblue, 0.9),
+        markersize = markersize,
+        label = "checked inputs",
     )
-    axislegend(ax, position=:rb, framevisible=false)
+    axislegend(ax, position = :rb, framevisible = false)
 
     save(out_file, fig)
     delete!(ax)
 end
 
 "Apply a function, returning the default if there is a domain error"
-function map_or(
-    input::AbstractFloat,
-    f::Function,
-    default::Any
-)::Union{AbstractFloat,Any}
+function map_or(input::AbstractFloat, f::Function, default::Any)::Union{AbstractFloat,Any}
     try
         return f(input)
     catch
@@ -151,7 +165,7 @@ end
 
 # Operations for logarithms that are symmetric about 0
 C = 10
-symlog10(x::Number) = sign(x) * (log10(1 + abs(x)/(10^C)))
+symlog10(x::Number) = sign(x) * (log10(1 + abs(x) / (10^C)))
 sympow10(x::Number) = (10^C) * (10^x - 1)
 
 main()

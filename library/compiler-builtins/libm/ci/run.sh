@@ -90,7 +90,7 @@ if [ "$nextest" = "1" ]; then
         echo "dir = \"$CARGO_TARGET_DIR/nextest\"" >> "$cfg_file"
         cfg_flag="--config-file $cfg_file"
     fi
-    
+
     cmd="cargo nextest run ${cfg_flag:-} --max-fail=10 $flags"
     profile="--cargo-profile"
 fi
@@ -111,7 +111,7 @@ $cmd --features unstable-intrinsics --benches
 
 # Test the same in release mode, which also increases coverage. Also ensure
 # the soft float routines are checked.
-$cmd "$profile" release-checked 
+$cmd "$profile" release-checked
 $cmd "$profile" release-checked --features force-soft-floats
 $cmd "$profile" release-checked --features unstable-intrinsics
 $cmd "$profile" release-checked --features unstable-intrinsics --benches
