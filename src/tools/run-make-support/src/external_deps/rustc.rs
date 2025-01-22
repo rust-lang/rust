@@ -1,5 +1,6 @@
 use std::ffi::{OsStr, OsString};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::str::FromStr as _;
 
 use crate::command::Command;
 use crate::env::env_var;
@@ -389,4 +390,11 @@ impl Rustc {
         };
         self
     }
+}
+
+/// Query the sysroot path corresponding `rustc --print=sysroot`.
+#[track_caller]
+pub fn sysroot() -> PathBuf {
+    let path = rustc().print("sysroot").run().stdout_utf8();
+    PathBuf::from_str(path.trim()).unwrap()
 }
