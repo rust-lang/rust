@@ -123,6 +123,8 @@ libm_macros::for_each_function! {
         | fabsf16
         | fdimf128
         | fdimf16
+        | sqrtf16
+        | sqrtf128
         | truncf128
         | truncf16 => (false, None),
 

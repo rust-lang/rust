@@ -344,11 +344,13 @@ cfg_if! {
         mod copysignf16;
         mod fabsf16;
         mod fdimf16;
+        mod sqrtf16;
         mod truncf16;
 
         pub use self::copysignf16::copysignf16;
         pub use self::fabsf16::fabsf16;
         pub use self::fdimf16::fdimf16;
+        pub use self::sqrtf16::sqrtf16;
         pub use self::truncf16::truncf16;
     }
 }
@@ -358,11 +360,13 @@ cfg_if! {
         mod copysignf128;
         mod fabsf128;
         mod fdimf128;
+        mod sqrtf128;
         mod truncf128;
 
         pub use self::copysignf128::copysignf128;
         pub use self::fabsf128::fabsf128;
         pub use self::fdimf128::fdimf128;
+        pub use self::sqrtf128::sqrtf128;
         pub use self::truncf128::truncf128;
     }
 }

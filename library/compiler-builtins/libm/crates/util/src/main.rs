@@ -90,6 +90,8 @@ fn do_eval(basis: &str, op: &str, inputs: &[&str]) {
             | fabsf16
             | fdimf128
             | fdimf16
+            | sqrtf128
+            | sqrtf16
             | truncf128
             | truncf16  => None,
             _ => Some(musl_math_sys::MACRO_FN_NAME)
