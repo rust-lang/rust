@@ -360,22 +360,40 @@ fn create_venv_at_path(path: &Path) -> Result<(), Error> {
         return Err(ret);
     };
 
-    eprintln!("creating virtual environment at '{}' using '{sys_py}'", path.display());
-    let out = Command::new(sys_py).args(["-m", "virtualenv"]).arg(path).output().unwrap();
+    // First try venv, which should be packaged in the Python3 standard library.
+    // If it is not available, try to create the virtual environment using the
+    // virtualenv package.
+    if try_create_venv(sys_py, path, "venv").is_ok() {
+        return Ok(());
+    }
+    try_create_venv(sys_py, path, "virtualenv")
+}
+
+fn try_create_venv(python: &str, path: &Path, module: &str) -> Result<(), Error> {
+    eprintln!(
+        "creating virtual environment at '{}' using '{python}' and '{module}'",
+        path.display()
+    );
+    let out = Command::new(python).args(["-m", module]).arg(path).output().unwrap();
 
     if out.status.success() {
         return Ok(());
     }
 
     let stderr = String::from_utf8_lossy(&out.stderr);
-    let err = if stderr.contains("No module named virtualenv") {
+    let err = if stderr.contains(&format!("No module named {module}")) {
         Error::Generic(format!(
-            "virtualenv not found: you may need to install it \
-                               (`{sys_py} -m pip install virtualenv`)"
+            r#"{module} not found: you may need to install it:
+`{python} -m pip install {module}`
+If you see an error about "externally managed environment" when running the above command,
+either install `{module}` using your system package manager
+(e.g. `sudo apt-get install {python}-{module}`) or create a virtual environment manually, install
+`{module}` in it and then activate it before running tidy.
+"#
         ))
     } else {
         Error::Generic(format!(
-            "failed to create venv at '{}' using {sys_py}: {stderr}",
+            "failed to create venv at '{}' using {python} -m {module}: {stderr}",
             path.display()
         ))
     };
