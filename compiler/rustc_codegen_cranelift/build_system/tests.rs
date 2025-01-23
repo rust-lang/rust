@@ -151,7 +151,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         apply_patches(
             &runner.dirs,
             "coretests",
-            &runner.stdlib_source.join("library/core/tests"),
+            &runner.stdlib_source.join("library/coretests"),
             &LIBCORE_TESTS_SRC.to_path(&runner.dirs),
         );
 
