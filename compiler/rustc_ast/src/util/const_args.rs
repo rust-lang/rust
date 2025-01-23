@@ -1,7 +1,8 @@
 use std::ops::ControlFlow;
 
+use crate::ptr::P;
 use crate::visit::{Visitor, walk_anon_const};
-use crate::{DUMMY_NODE_ID, Expr, ExprKind, Path};
+use crate::{DUMMY_NODE_ID, Expr, ExprKind, Path, QSelf};
 
 impl Expr {
     // FIXME: update docs
@@ -18,7 +19,7 @@ impl Expr {
             MGCATrivialConstArgVisitor::new().visit_expr(this).is_continue()
         } else {
             if let ExprKind::Path(None, path) = &this.kind
-                && path.is_potential_trivial_const_arg(allow_mgca_arg)
+                && path.is_potential_trivial_const_arg(&None, allow_mgca_arg)
             {
                 true
             } else {
@@ -31,11 +32,19 @@ impl Expr {
 impl Path {
     // FIXME: add docs
     #[tracing::instrument(level = "debug", ret)]
-    pub fn is_potential_trivial_const_arg(&self, allow_mgca_arg: bool) -> bool {
+    pub fn is_potential_trivial_const_arg(
+        &self,
+        qself: &Option<P<QSelf>>,
+        allow_mgca_arg: bool,
+    ) -> bool {
         if allow_mgca_arg {
-            MGCATrivialConstArgVisitor::new().visit_path(self, DUMMY_NODE_ID).is_continue()
+            let mut visitor = MGCATrivialConstArgVisitor::new();
+            visitor.visit_qself(qself).is_continue()
+                && visitor.visit_path(self, DUMMY_NODE_ID).is_continue()
         } else {
-            self.segments.len() == 1 && self.segments.iter().all(|seg| seg.args.is_none())
+            qself.is_none()
+                && self.segments.len() == 1
+                && self.segments.iter().all(|seg| seg.args.is_none())
         }
     }
 }
