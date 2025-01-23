@@ -1,5 +1,5 @@
 error[E0599]: no method named `exec` found for mutable reference `&mut Command` in the current scope
-  --> $DIR/issue-39175.rs:13:47
+  --> $DIR/import-visible-path-39175.rs:13:47
    |
 LL |     let _ = Command::new("echo").arg("hello").exec();
    |                                               ^^^^

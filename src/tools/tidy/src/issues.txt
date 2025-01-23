@@ -2204,7 +2204,6 @@ ui/issues/issue-3895.rs
 ui/issues/issue-38954.rs
 ui/issues/issue-38987.rs
 ui/issues/issue-39089.rs
-ui/issues/issue-39175.rs
 ui/issues/issue-39211.rs
 ui/issues/issue-39367.rs
 ui/issues/issue-39548.rs
