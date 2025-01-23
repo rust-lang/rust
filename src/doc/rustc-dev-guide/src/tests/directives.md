@@ -152,6 +152,8 @@ Some examples of `X` in `ignore-X` or `only-X`:
   `compare-mode-split-dwarf`, `compare-mode-split-dwarf-single`
 - The two different test modes used by coverage tests:
   `ignore-coverage-map`, `ignore-coverage-run`
+- When testing a dist toolchain: `dist`
+  - This needs to be enabled with `COMPILETEST_ENABLE_DIST_TESTS=1`
 
 The following directives will check rustc build settings and target
 settings:
