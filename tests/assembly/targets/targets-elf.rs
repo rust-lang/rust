@@ -571,6 +571,9 @@
 //@ revisions: x86_64_linux_android
 //@ [x86_64_linux_android] compile-flags: --target x86_64-linux-android
 //@ [x86_64_linux_android] needs-llvm-components: x86
+//@ revisions: x86_64_lynx_lynxos178
+//@ [x86_64_lynx_lynxos178] compile-flags: --target x86_64-lynx-lynxos178
+//@ [x86_64_lynx_lynxos178] needs-llvm-components: x86
 //@ revisions: x86_64_pc_nto_qnx710
 //@ [x86_64_pc_nto_qnx710] compile-flags: --target x86_64-pc-nto-qnx710
 //@ [x86_64_pc_nto_qnx710] needs-llvm-components: x86
