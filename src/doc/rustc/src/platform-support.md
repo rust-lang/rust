@@ -418,6 +418,7 @@ target | std | host | notes
 [`x86_64-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 64-bit GNU/Hurd
 `x86_64-unknown-l4re-uclibc` | ? |  |
 [`x86_64-unknown-linux-none`](platform-support/x86_64-unknown-linux-none.md) | * |  | 64-bit Linux with no libc
+[`x86_64-unknown-lynxos_178-elf`](platform-support/lynxos_178.md) |   |  | x86_64 LynxOS_178
 [`x86_64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 64-bit OpenBSD
 [`x86_64-unknown-trusty`](platform-support/trusty.md) | ? |  |
 `x86_64-uwp-windows-gnu` | ✓ |  |
