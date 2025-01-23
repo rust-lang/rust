@@ -17,7 +17,13 @@
 #![crate_type = "lib"]
 
 #[lang = "sized"]
-trait Sized {}
+trait Sized: MetaSized {}
+
+#[lang = "metasized"]
+trait MetaSized: PointeeSized {}
+
+#[lang = "pointeesized"]
+trait PointeeSized {}
 
 #[lang = "copy"]
 trait Copy {}

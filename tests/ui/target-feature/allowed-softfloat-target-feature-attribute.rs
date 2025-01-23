@@ -4,8 +4,14 @@
 #![feature(no_core, lang_items, x87_target_feature)]
 #![no_core]
 
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-pub trait Sized {}
+pub trait Sized: MetaSized {}
 
 #[target_feature(enable = "x87")]
 pub unsafe fn my_fun() {}

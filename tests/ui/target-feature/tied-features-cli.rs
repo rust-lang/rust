@@ -14,7 +14,13 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang="sized"]
-trait Sized {}
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+pub trait MetaSized: PointeeSized {}
+
+#[lang = "sized"]
+pub trait Sized: MetaSized {}
 
 fn main() {}
