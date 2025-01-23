@@ -8,13 +8,11 @@ use crate::{FilePosition, NavigationTarget, RangeInfo, TryToNav};
 //
 // Navigates to the type of an identifier.
 //
-// |===
-// | Editor  | Action Name
+// | Editor  | Action Name |
+// |---------|-------------|
+// | VS Code | **Go to Type Definition** |
 //
-// | VS Code | **Go to Type Definition**
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113020657-b560f500-917a-11eb-9007-0f809733a338.gif[]
+// ![Go to Type Definition](https://user-images.githubusercontent.com/48062697/113020657-b560f500-917a-11eb-9007-0f809733a338.gif)
 pub(crate) fn goto_type_definition(
     db: &RootDatabase,
     FilePosition { file_id, offset }: FilePosition,
