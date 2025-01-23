@@ -43,6 +43,10 @@ impl<T: ?Sized> Deref for FileDescriptionRef<T> {
     }
 }
 
+#[cfg(bootstrap)]
+impl<T: ?Sized> core::ops::LegacyReceiver for FileDescriptionRef<T> {
+}
+
 impl<T: ?Sized> FileDescriptionRef<T> {
     pub fn id(&self) -> FdId {
         self.0.id
