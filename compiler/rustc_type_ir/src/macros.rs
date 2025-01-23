@@ -2,7 +2,7 @@
 /// allocated data** (i.e., don't need to be folded).
 #[macro_export]
 macro_rules! TrivialTypeTraversalImpls {
-    ($($ty:ty,)+) => {
+    ($($ty:ty),+ $(,)?) => {
         $(
             impl<I: $crate::Interner> $crate::TypeFoldable<I> for $ty {
                 fn try_fold_with<F: $crate::FallibleTypeFolder<I>>(
