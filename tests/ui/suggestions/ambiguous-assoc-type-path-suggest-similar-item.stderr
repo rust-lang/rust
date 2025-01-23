@@ -1,5 +1,5 @@
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:12:5
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:13:5
    |
 LL |     String::from::utf8;
    |     ^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL |     String::from_utf8;
    |             ~~~~~~~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:15:5
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:16:5
    |
 LL |     String::from::utf8();
    |     ^^^^^^^^^^^^
@@ -21,7 +21,7 @@ LL |     String::from_utf8();
    |             ~~~~~~~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:18:5
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:19:5
    |
 LL |     String::from::utf16();
    |     ^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL |     String::from_utf16();
    |             ~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:21:5
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:22:5
    |
 LL |     String::from::method_that_doesnt_exist();
    |     ^^^^^^^^^^^^
@@ -43,7 +43,7 @@ LL |     <String as Example>::from::method_that_doesnt_exist();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:24:5
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:25:5
    |
 LL |     str::into::string();
    |     ^^^^^^^^^
@@ -54,7 +54,7 @@ LL |     str::into_string();
    |          ~~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:27:5
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:28:5
    |
 LL |     str::char::indices();
    |     ^^^^^^^^^
@@ -65,7 +65,7 @@ LL |     str::char_indices();
    |          ~~~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:30:5
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:31:5
    |
 LL |     Foo::bar::baz;
    |     ^^^^^^^^
@@ -76,7 +76,7 @@ LL |     Foo::bar_baz;
    |          ~~~~~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:33:5
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:34:5
    |
 LL |     Foo::bar::quux;
    |     ^^^^^^^^
@@ -87,7 +87,7 @@ LL |     Foo::bar_quux;
    |          ~~~~~~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:36:5
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:37:5
    |
 LL |     Foo::bar::fizz;
    |     ^^^^^^^^
@@ -98,7 +98,7 @@ LL |     <Foo as Example>::bar::fizz;
    |     ~~~~~~~~~~~~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:39:5
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:40:5
    |
 LL |     i32::wrapping::add;
    |     ^^^^^^^^^^^^^
@@ -109,7 +109,7 @@ LL |     i32::wrapping_add;
    |          ~~~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:42:5
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:43:5
    |
 LL |     i32::wrapping::method_that_doesnt_exist;
    |     ^^^^^^^^^^^^^
@@ -120,7 +120,7 @@ LL |     <i32 as Example>::wrapping::method_that_doesnt_exist;
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109195.rs:47:5
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:48:5
    |
 LL |     <dyn std::any::Any>::downcast::mut_unchecked;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/109195
 struct Foo;
 
 impl Foo {
