@@ -1,21 +1,21 @@
-error[E0433]: failed to resolve: you might be missing crate `nonexistant`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `nonexistant`
   --> $DIR/editions-crate-root-2015.rs:4:26
    |
 LL |     fn global_inner(_: ::nonexistant::Foo) {
-   |                          ^^^^^^^^^^^ you might be missing crate `nonexistant`
+   |                          ^^^^^^^^^^^ use of unresolved module or unlinked crate `nonexistant`
    |
-help: consider importing the `nonexistant` crate
+help: you might be missing a crate named `nonexistant`, add it to your project and import it in your code
    |
 LL + extern crate nonexistant;
    |
 
-error[E0433]: failed to resolve: you might be missing crate `nonexistant`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `nonexistant`
   --> $DIR/editions-crate-root-2015.rs:7:30
    |
 LL |     fn crate_inner(_: crate::nonexistant::Foo) {
-   |                              ^^^^^^^^^^^ you might be missing crate `nonexistant`
+   |                              ^^^^^^^^^^^ use of unresolved module or unlinked crate `nonexistant`
    |
-help: consider importing the `nonexistant` crate
+help: you might be missing a crate named `nonexistant`, add it to your project and import it in your code
    |
 LL + extern crate nonexistant;
    |
