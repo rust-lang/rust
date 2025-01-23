@@ -1,5 +1,5 @@
 error[E0308]: lang item `start` function has wrong type
-  --> $DIR/start_lang_item_args.rs:15:1
+  --> $DIR/start_lang_item_args.rs:19:1
    |
 LL | fn start<T>() -> isize {
    | ^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters

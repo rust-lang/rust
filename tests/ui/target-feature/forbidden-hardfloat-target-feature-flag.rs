@@ -8,8 +8,14 @@
 #![feature(no_core, lang_items, riscv_target_feature)]
 #![no_core]
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-pub trait Sized {}
+pub trait Sized: MetaSized {}
 
 //~? WARN target feature `soft-float` must be disabled to ensure that the ABI of the current target can be implemented correctl
 //~? WARN unstable feature specified for `-Ctarget-feature`: `soft-float`

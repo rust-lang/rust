@@ -4,8 +4,14 @@
 #![no_std]
 
 // This is needed because of #![no_core]:
+#[lang = "pointee_sized"]
+trait PointeeSized {}
+
+#[lang = "meta_sized"]
+trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+trait Sized: MetaSized {}
 
 #[no_mangle]
 extern "gpu-kernel" fn kernel() {}

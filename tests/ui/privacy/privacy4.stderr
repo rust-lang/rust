@@ -1,11 +1,11 @@
 error[E0603]: module `glob` is private
-  --> $DIR/privacy4.rs:21:14
+  --> $DIR/privacy4.rs:23:14
    |
 LL |     use bar::glob::gpriv;
    |              ^^^^ private module
    |
 note: the module `glob` is defined here
-  --> $DIR/privacy4.rs:13:5
+  --> $DIR/privacy4.rs:15:5
    |
 LL |     mod glob {
    |     ^^^^^^^^

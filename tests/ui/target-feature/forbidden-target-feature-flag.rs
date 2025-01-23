@@ -8,7 +8,13 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-pub trait Sized {}
+pub trait Sized: MetaSized {}
 
 //~? WARN target feature `forced-atomics` cannot be enabled with `-Ctarget-feature`: unsound because it changes the ABI of atomic operations
