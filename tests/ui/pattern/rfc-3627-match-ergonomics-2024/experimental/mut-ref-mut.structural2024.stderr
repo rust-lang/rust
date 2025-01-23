@@ -1,5 +1,5 @@
 error[E0658]: binding cannot be both mutable and by-reference
-  --> $DIR/mut-ref-mut.rs:14:13
+  --> $DIR/mut-ref-mut.rs:18:13
    |
 LL |     let Foo(mut a) = &Foo(0);
    |             ^^^^
@@ -9,7 +9,7 @@ LL |     let Foo(mut a) = &Foo(0);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: binding cannot be both mutable and by-reference
-  --> $DIR/mut-ref-mut.rs:19:13
+  --> $DIR/mut-ref-mut.rs:23:13
    |
 LL |     let Foo(mut a) = &mut Foo(0);
    |             ^^^^
@@ -19,7 +19,7 @@ LL |     let Foo(mut a) = &mut Foo(0);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: binding cannot be both mutable and by-reference
-  --> $DIR/mut-ref-mut.rs:24:15
+  --> $DIR/mut-ref-mut.rs:28:15
    |
 LL |     let [&mut mut x] = &[&mut 0];
    |               ^^^^
