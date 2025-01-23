@@ -24,14 +24,20 @@ pub fn main() -> ! {
 
 // FIXME: replace with proper minicore once available (#130693)
 mod minicore {
+    #[lang = "pointee_sized"]
+    pub trait PointeeSized {}
+
+    #[lang = "meta_sized"]
+    pub trait MetaSized: PointeeSized {}
+
     #[lang = "sized"]
-    pub trait Sized {}
+    pub trait Sized: MetaSized {}
 
     #[lang = "copy"]
     pub trait Copy {}
     impl Copy for u32 {}
     impl Copy for &u32 {}
-    impl<T: ?Sized> Copy for *mut T {}
+    impl<T: PointeeSized> Copy for *mut T {}
 
     pub mod ptr {
         #[inline]
