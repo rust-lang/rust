@@ -28,9 +28,9 @@ An example for async closures: https://rustc-dev-guide.rust-lang.org/coroutine-c
 
 ### What outstanding bugs in the issue tracker involve this feature? Are they stabilization-blocking?
 
-### Summarize contributors to the feature by name for recognition and assuredness that people involved in the feature agree with stabilization 
-
 ### What FIXMEs are still in the code for that feature and why is it ok to leave them there?
+
+### Summarize contributors to the feature by name for recognition and assuredness that people involved in the feature agree with stabilization 
 
 ### Which tools need to be adjusted to support this feature. Has this work been done?
 
@@ -42,7 +42,7 @@ An example for async closures: https://rustc-dev-guide.rust-lang.org/coroutine-c
 
 (Be sure to link to tests demonstrating that these tests are being done.)
 
-### Can users use this feature to introduce undefined behavior? (Describe.)
+### Can users use this feature to introduce undefined behavior, or use this feature to break the abstraction of Rust and expose the underlying assembly-level implementation? (Describe.)
 
 ### What updates are needed to the reference/specification? (link to PRs when they exist)
 

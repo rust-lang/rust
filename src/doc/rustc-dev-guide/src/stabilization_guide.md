@@ -52,7 +52,7 @@ The [template][srt] includes a series of questions that aim to surface interconn
 The stabilization report is typically posted as the main comment on the stabilization PR (see the next section).
 If you'd like to develop the stabilization report incrementally, we recommend adding it to 
 
-## Stabilization PR
+## Stabilization PR for a language feature
 
 *This is for stabilizing language features.  If you are stabilizing a library
 feature, see [the stabilization chapter of the std dev guide][std-guide-stabilization] instead.*

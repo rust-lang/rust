@@ -209,7 +209,7 @@ tests/ui/feature-gates/ --bless`.
 
 ## Call for testing
 
-Once the implementation is complete, the feature will be available to nightly users, but not yet part of stable Rust. This is a good time to write a blog post on [one of the Rust blogs](https://github.com/rust-lang/blog.rust-lang.org/) and issue a call for testing (here are two example [blog](https://blog.rust-lang.org/inside-rust/2024/08/09/async-closures-call-for-testing.html) [posts](https://blog.rust-lang.org/2024/09/05/impl-trait-capture-rules.html) to give you the idea). The post should highlight how the feature works, what areas you'd like people to play with, and how they can supply feedback.
+Once the implementation is complete, the feature will be available to nightly users, but not yet part of stable Rust. This is a good time to write a blog post on [one of the Rust blogs](https://github.com/rust-lang/blog.rust-lang.org/) and issue a call for testing (here are three [example](https://blog.rust-lang.org/2021/08/03/GATs-stabilization-push.html) [blog](https://blog.rust-lang.org/inside-rust/2024/08/09/async-closures-call-for-testing.html) [posts](https://blog.rust-lang.org/2024/09/05/impl-trait-capture-rules.html) to give you the idea). The post should highlight how the feature works, what areas you'd like people to play with, and how they can supply feedback.
 
 ## Affiliated work
 
