@@ -96,26 +96,17 @@ pub fn trait_ref_is_local_or_fundamental<I: Interner>(tcx: I, trait_ref: ty::Tra
     trait_ref.def_id.is_local() || tcx.trait_is_fundamental(trait_ref.def_id)
 }
 
-TrivialTypeTraversalImpls! { IsFirstInputType, }
+TrivialTypeTraversalImpls! { InSelfTy }
 
 #[derive(Debug, Copy, Clone)]
-pub enum IsFirstInputType {
+pub enum InSelfTy {
     No,
     Yes,
 }
 
-impl From<bool> for IsFirstInputType {
-    fn from(b: bool) -> IsFirstInputType {
-        match b {
-            false => IsFirstInputType::No,
-            true => IsFirstInputType::Yes,
-        }
-    }
-}
-
 #[derive_where(Debug; I: Interner, T: Debug)]
 pub enum OrphanCheckErr<I: Interner, T> {
-    NonLocalInputType(Vec<(I::Ty, IsFirstInputType)>),
+    NonLocalInputType(Vec<(I::Ty, InSelfTy)>),
     UncoveredTyParams(UncoveredTyParams<I, T>),
 }
 
@@ -258,11 +249,11 @@ where
 struct OrphanChecker<'a, Infcx, I: Interner, F> {
     infcx: &'a Infcx,
     in_crate: InCrate,
-    in_self_ty: bool,
+    in_self_ty: InSelfTy,
     lazily_normalize_ty: F,
     /// Ignore orphan check failures and exclusively search for the first local type.
     search_first_local_ty: bool,
-    non_local_tys: Vec<(I::Ty, IsFirstInputType)>,
+    non_local_tys: Vec<(I::Ty, InSelfTy)>,
 }
 
 impl<'a, Infcx, I, F, E> OrphanChecker<'a, Infcx, I, F>
@@ -275,7 +266,7 @@ where
         OrphanChecker {
             infcx,
             in_crate,
-            in_self_ty: true,
+            in_self_ty: InSelfTy::Yes,
             lazily_normalize_ty,
             search_first_local_ty: false,
             non_local_tys: Vec::new(),
@@ -283,7 +274,7 @@ where
     }
 
     fn found_non_local_ty(&mut self, t: I::Ty) -> ControlFlow<OrphanCheckEarlyExit<I, E>> {
-        self.non_local_tys.push((t, self.in_self_ty.into()));
+        self.non_local_tys.push((t, self.in_self_ty));
         ControlFlow::Continue(())
     }
 
@@ -444,7 +435,7 @@ where
         };
         // A bit of a hack, the `OrphanChecker` is only used to visit a `TraitRef`, so
         // the first type we visit is always the self type.
-        self.in_self_ty = false;
+        self.in_self_ty = InSelfTy::No;
         result
     }
 
