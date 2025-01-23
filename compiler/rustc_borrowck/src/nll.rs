@@ -210,6 +210,10 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         for error in placeholder_errors.into_iter() {
             nll_errors.push(error);
         }
+    } else {
+        debug!(
+            "Errors already reported, skipping these placeholder errors: {placeholder_errors:?}"
+        );
     }
 
     if let Some(guar) = nll_errors.has_errors() {

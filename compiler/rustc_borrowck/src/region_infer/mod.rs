@@ -742,6 +742,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             // Type-test failed. Report the error.
             let erased_generic_kind = infcx.tcx.erase_regions(type_test.generic_kind);
+
             let original_lower_bound = type_test
                 .original
                 .as_ref()
@@ -1757,6 +1758,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             | NllRegionVariableOrigin::Existential { from_forall: true } => false,
         };
 
+        // FIXME(amandasystems) This closure is tooe big to inline, it should be a method if plausible.
         // To pick a constraint to blame, we organize constraints by how interesting we expect them
         // to be in diagnostics, then pick the most interesting one closest to either the source or
         // the target on our constraint path.
@@ -1773,7 +1775,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 constraint.category
             };
 
-            match category {
+            let interest = match category {
                 // Returns usually provide a type to blame and have specially written diagnostics,
                 // so prioritize them.
                 ConstraintCategory::Return(_) => 0,
@@ -1824,10 +1826,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // `BoringNoLocation` constraints can point to user-written code, but are less
                 // specific, and are not used for relations that would make sense to blame.
                 ConstraintCategory::BoringNoLocation => 6,
+                ConstraintCategory::IllegalPlaceholder(_, _) => 7,
                 // Do not blame internal constraints.
-                ConstraintCategory::Internal => 7,
-                ConstraintCategory::IllegalPlaceholder(_, _) => 8,
-            }
+                ConstraintCategory::Internal => 8,
+            };
+
+            debug!("constraint {constraint:?} category: {category:?}, interest: {interest:?}");
+
+            interest
         };
 
         let best_choice = if blame_source {
