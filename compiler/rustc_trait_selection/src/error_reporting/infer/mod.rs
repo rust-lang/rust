@@ -435,6 +435,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         exp_found: Option<ty::error::ExpectedFound<Ty<'tcx>>>,
         terr: TypeError<'tcx>,
         param_env: Option<ParamEnv<'tcx>>,
+        path: &mut Option<PathBuf>,
     ) {
         match *cause.code() {
             ObligationCauseCode::Pattern {
@@ -457,6 +458,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             format!("this is an iterator with items of type `{}`", args.type_at(0)),
                         );
                     } else {
+                        let expected_ty = self.tcx.short_ty_string(expected_ty, path);
                         err.span_label(span, format!("this expression has type `{expected_ty}`"));
                     }
                 }
@@ -1611,7 +1613,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return;
         }
 
-        if let Some((expected, found, path)) = expected_found {
+        let mut path = None;
+        if let Some((expected, found, p)) = expected_found {
+            path = p;
             let (expected_label, found_label, exp_found) = match exp_found {
                 Mismatch::Variable(ef) => (
                     ef.expected.prefix_string(self.tcx),
@@ -1792,13 +1796,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     &sort_string(values.expected),
                                     &sort_string(values.found),
                                 );
-                                if let Some(path) = path {
-                                    diag.note(format!(
-                                        "the full type name has been written to '{}'",
-                                        path.display(),
-                                    ));
-                                    diag.note("consider using `--verbose` to print the full type name to the console");
-                                }
                             }
                         }
                     }
@@ -1894,7 +1891,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // It reads better to have the error origin as the final
         // thing.
-        self.note_error_origin(diag, cause, exp_found, terr, param_env);
+        self.note_error_origin(diag, cause, exp_found, terr, param_env, &mut path);
+        if let Some(path) = path {
+            diag.note(format!("the full type name has been written to '{}'", path.display()));
+            diag.note("consider using `--verbose` to print the full type name to the console");
+        }
 
         debug!(?diag);
     }
