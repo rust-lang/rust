@@ -461,9 +461,17 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // to the target type), since that should be the least
         // confusing.
         let Some(InferOk { value: ty, mut obligations }) = found else {
-            let err = first_error.expect("coerce_borrowed_pointer had no error");
-            debug!("coerce_borrowed_pointer: failed with err = {:?}", err);
-            return Err(err);
+            if let Some(first_error) = first_error {
+                debug!("coerce_borrowed_pointer: failed with err = {:?}", first_error);
+                return Err(first_error);
+            } else {
+                // This may happen in the new trait solver since autoderef requires
+                // the pointee to be structurally normalizable, or else it'll just bail.
+                // So when we have a type like `&<not well formed>`, then we get no
+                // autoderef steps (even though there should be at least one). That means
+                // we get no type mismatches, since the loop above just exits early.
+                return Err(TypeError::Mismatch);
+            }
         };
 
         if ty == a && mt_a.mutbl.is_not() && autoderef.step_count() == 1 {
