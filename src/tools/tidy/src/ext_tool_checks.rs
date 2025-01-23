@@ -324,8 +324,16 @@ fn get_or_create_venv(venv_path: &Path, src_reqs_path: &Path) -> Result<PathBuf,
 fn create_venv_at_path(path: &Path) -> Result<(), Error> {
     /// Preferred python versions in order. Newest to oldest then current
     /// development versions
-    const TRY_PY: &[&str] =
-        &["python3.11", "python3.10", "python3.9", "python3", "python", "python3.12", "python3.13"];
+    const TRY_PY: &[&str] = &[
+        "python3.13",
+        "python3.12",
+        "python3.11",
+        "python3.10",
+        "python3.9",
+        "python3",
+        "python",
+        "python3.14",
+    ];
 
     let mut sys_py = None;
     let mut found = Vec::new();
