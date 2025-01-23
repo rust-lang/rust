@@ -98,6 +98,7 @@ rm -r tests/run-make/volatile-intrinsics # same
 rm -r tests/run-make/llvm-ident # same
 rm -r tests/run-make/no-builtins-attribute # same
 rm -r tests/run-make/pgo-gen-no-imp-symbols # same
+rm -r tests/run-make/llvm-location-discriminator-limit-dummy-span # same
 rm tests/ui/abi/stack-protector.rs # requires stack protector support
 rm -r tests/run-make/emit-stack-sizes # requires support for -Z emit-stack-sizes
 rm -r tests/run-make/optimization-remarks-dir # remarks are LLVM specific
