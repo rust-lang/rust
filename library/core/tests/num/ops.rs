@@ -51,9 +51,7 @@ macro_rules! test_op {
     };
 }
 
-test_op!(test_neg_defined, Neg::neg(0), 0, i8, i16, i32, i64, f32, f64);
-#[cfg(not(target_os = "emscripten"))]
-test_op!(test_neg_defined_128, Neg::neg(0), 0, i128);
+test_op!(test_neg_defined, Neg::neg(0), 0, i8, i16, i32, i64, i128, f32, f64);
 
 test_op!(test_not_defined_bool, Not::not(true), false, bool);
 
@@ -69,17 +67,17 @@ macro_rules! test_arith_op {
                 i16,
                 i32,
                 i64,
+                i128,
                 isize,
                 u8,
                 u16,
                 u32,
                 u64,
+                u128,
                 usize,
                 f32,
                 f64
             );
-            #[cfg(not(target_os = "emscripten"))]
-            impls_defined!($op, $method($lhs, $rhs), 0, i128, u128);
         }
     };
     ($fn_name:ident, $op:ident::$method:ident(&mut $lhs:literal, $rhs:literal)) => {
@@ -93,17 +91,17 @@ macro_rules! test_arith_op {
                 i16,
                 i32,
                 i64,
+                i128,
                 isize,
                 u8,
                 u16,
                 u32,
                 u64,
+                u128,
                 usize,
                 f32,
                 f64
             );
-            #[cfg(not(target_os = "emscripten"))]
-            impls_defined!($op, $method(&mut $lhs, $rhs), 0, i128, u128);
         }
     };
 }
@@ -131,15 +129,15 @@ macro_rules! test_bitop {
                 i16,
                 i32,
                 i64,
+                i128,
                 isize,
                 u8,
                 u16,
                 u32,
                 u64,
+                u128,
                 usize
             );
-            #[cfg(not(target_os = "emscripten"))]
-            impls_defined!($op, $method(0, 0), 0, i128, u128);
             impls_defined!($op, $method(false, false), false, bool);
         }
     };
@@ -156,15 +154,15 @@ macro_rules! test_bitop_assign {
                 i16,
                 i32,
                 i64,
+                i128,
                 isize,
                 u8,
                 u16,
                 u32,
                 u64,
+                u128,
                 usize
             );
-            #[cfg(not(target_os = "emscripten"))]
-            impls_defined!($op, $method(&mut 0, 0), 0, i128, u128);
             impls_defined!($op, $method(&mut false, false), false, bool);
         }
     };
@@ -182,9 +180,11 @@ macro_rules! test_shift_inner {
         $(impl_defined!($op, $method(0,0), 0, $lt, $rt);)+
     };
     ($op:ident::$method:ident, $lt:ty) => {
-        test_shift_inner!($op::$method, $lt, i8, i16, i32, i64, isize, u8, u16, u32, u64, usize);
-        #[cfg(not(target_os = "emscripten"))]
-        test_shift_inner!($op::$method, $lt, i128, u128);
+        test_shift_inner!(
+            $op::$method, $lt,
+            i8, i16, i32, i64, i128, isize,
+            u8, u16, u32, u64, u128, usize
+        );
     };
 }
 
@@ -195,9 +195,11 @@ macro_rules! test_shift {
     ($test_name:ident, $op:ident::$method:ident) => {
         #[test]
         fn $test_name() {
-            test_shift!($op::$method, i8, i16, i32, i64, isize, u8, u16, u32, u64, usize);
-            #[cfg(not(target_os = "emscripten"))]
-            test_shift!($op::$method, i128, u128);
+            test_shift!(
+                $op::$method,
+                i8, i16, i32, i64, i128, isize,
+                u8, u16, u32, u64, u128, usize
+            );
         }
     };
 }
@@ -207,9 +209,11 @@ macro_rules! test_shift_assign_inner {
         $(impl_defined!($op, $method(&mut 0,0), 0, $lt, $rt);)+
     };
     ($op:ident::$method:ident, $lt:ty) => {
-        test_shift_assign_inner!($op::$method, $lt, i8, i16, i32, i64, isize, u8, u16, u32, u64, usize);
-        #[cfg(not(target_os = "emscripten"))]
-        test_shift_assign_inner!($op::$method, $lt, i128, u128);
+        test_shift_assign_inner!(
+            $op::$method, $lt,
+            i8, i16, i32, i64, i128, isize,
+            u8, u16, u32, u64, u128, usize
+        );
     };
 }
 
@@ -220,9 +224,11 @@ macro_rules! test_shift_assign {
     ($test_name:ident, $op:ident::$method:ident) => {
         #[test]
         fn $test_name() {
-            test_shift_assign!($op::$method, i8, i16, i32, i64, isize, u8, u16, u32, u64, usize);
-            #[cfg(not(target_os = "emscripten"))]
-            test_shift_assign!($op::$method, i128, u128);
+            test_shift_assign!(
+                $op::$method,
+                i8, i16, i32, i64, i128, isize,
+                u8, u16, u32, u64, u128, usize
+            );
         }
     };
 }
