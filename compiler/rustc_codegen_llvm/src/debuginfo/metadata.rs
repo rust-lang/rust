@@ -1500,6 +1500,14 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
     .di_node
 }
 
+/// Get the global variable for the vtable.
+///
+/// When using global variables, we may have created an addrspacecast to get a pointer to the
+/// default address space if global variables are created in a different address space.
+/// For modifying the vtable, we need the real global variable. This function accepts either a
+/// global variable (which is simply returned), or an addrspacecast constant expression.
+/// If the given value is an addrspacecast, the cast is removed and the global variable behind
+/// the cast is returned.
 fn find_vtable_behind_cast<'ll>(vtable: &'ll Value) -> &'ll Value {
     // The vtable is a global variable, which may be behind an addrspacecast.
     unsafe {
@@ -1532,6 +1540,7 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
 
     let Some(trait_ref) = trait_ref else { return };
 
+    // Unwrap potential addrspacecast
     let vtable = find_vtable_behind_cast(vtable);
     let trait_ref_self = trait_ref.with_self_ty(cx.tcx, ty);
     let trait_ref_self = cx.tcx.erase_regions(trait_ref_self);
@@ -1606,6 +1615,7 @@ pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
         return;
     }
 
+    // Unwrap potential addrspacecast
     let vtable = find_vtable_behind_cast(vtable);
 
     // When full debuginfo is enabled, we want to try and prevent vtables from being

@@ -221,6 +221,7 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     llvm::LLVMSetUnnamedAddress(g, llvm::UnnamedAddr::Global);
                 }
                 llvm::set_linkage(g, llvm::Linkage::InternalLinkage);
+                // Cast to default address space if globals are in a different addrspace
                 let g = self.const_pointercast(g, self.type_ptr());
                 (s.to_owned(), g)
             })
@@ -324,6 +325,7 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 let llval = unsafe {
                     llvm::LLVMConstInBoundsGEP2(
                         self.type_i8(),
+                        // Cast to the required address space if necessary
                         self.const_pointercast(base_addr, self.type_ptr_ext(base_addr_space)),
                         &self.const_usize(offset.bytes()),
                         1,
