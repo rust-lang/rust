@@ -34,6 +34,7 @@ RUN yum upgrade -y && \
       python3 \
       unzip \
       wget \
+      flex \
       xz \
       zlib-devel.i686 \
       zlib-devel.x86_64 \
