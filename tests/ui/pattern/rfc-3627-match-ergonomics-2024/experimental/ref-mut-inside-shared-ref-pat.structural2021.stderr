@@ -1,3 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/ref-mut-inside-shared-ref-pat.rs:16:17
+   |
+LL |     if let Some(&Some(ref mut x)) = &mut Some(Some(0)) { // TODO: `classic2021` and `structural2021` shouldn't have mismatched types
+   |                 ^^^^^^^^^^^^^^^^    ------------------ this expression has type `&mut Option<Option<{integer}>>`
+   |                 |
+   |                 expected `Option<{integer}>`, found `&_`
+   |
+   = note:   expected enum `Option<{integer}>`
+           found reference `&_`
+
 error[E0596]: cannot borrow as mutable inside an `&` pattern
   --> $DIR/ref-mut-inside-shared-ref-pat.rs:16:31
    |
@@ -38,6 +49,7 @@ LL |     let &(ref mut a, ref mut b) = &mut (true, false);
    |         |
    |         help: replace this `&` with `&mut`: `&mut`
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0596`.
+Some errors have detailed explanations: E0308, E0596.
+For more information about an error, try `rustc --explain E0308`.
