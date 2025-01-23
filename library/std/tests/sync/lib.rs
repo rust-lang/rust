@@ -2,7 +2,6 @@
 #![feature(mapped_lock_guards)]
 #![feature(mpmc_channel)]
 #![feature(once_cell_try)]
-#![feature(once_wait)]
 #![feature(lock_value_accessors)]
 #![feature(reentrant_lock)]
 #![feature(rwlock_downgrade)]
