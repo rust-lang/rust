@@ -2,7 +2,7 @@
 
 
 fn range_<F>(a: isize, b: isize, mut it: F) where F: FnMut(isize) {
-    assert!((a < b));
+    assert!(a < b);
     let mut i: isize = a;
     while i < b { it(i); i += 1; }
 }
