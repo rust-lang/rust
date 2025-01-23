@@ -13,12 +13,16 @@
 #![crate_type = "lib"]
 #![no_std]
 #![no_core]
-
 // FIXME: Migrate these code after PR #130693 is landed.
-// vvvvv core
+
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
-trait Sized {}
+pub trait Sized: MetaSized {}
 
 #[lang = "copy"]
 trait Copy {}

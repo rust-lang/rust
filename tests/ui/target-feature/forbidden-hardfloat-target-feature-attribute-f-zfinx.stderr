@@ -1,5 +1,5 @@
 error: target feature `zfinx` cannot be enabled with `#[target_feature]`: this feature is incompatible with the target ABI
-  --> $DIR/forbidden-hardfloat-target-feature-attribute-f-zfinx.rs:10:18
+  --> $DIR/forbidden-hardfloat-target-feature-attribute-f-zfinx.rs:16:18
    |
 LL | #[target_feature(enable = "zdinx")]
    |                  ^^^^^^^^^^^^^^^^
