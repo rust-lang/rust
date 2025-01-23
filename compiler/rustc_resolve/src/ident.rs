@@ -246,23 +246,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // ---- end
         // ```
         // So we have to fall back to the module's parent during lexical resolution in this case.
-        if derive_fallback_lint_id.is_some() {
-            if let Some(parent) = module.parent {
-                // Inner module is inside the macro, parent module is outside of the macro.
-                if module.expansion != parent.expansion
-                    && module.expansion.is_descendant_of(parent.expansion)
-                {
-                    // The macro is a proc macro derive
-                    if let Some(def_id) = module.expansion.expn_data().macro_def_id {
-                        let ext = &self.get_macro_by_def_id(def_id).ext;
-                        if ext.builtin_name.is_none()
-                            && ext.macro_kind() == MacroKind::Derive
-                            && parent.expansion.outer_expn_is_descendant_of(*ctxt)
-                        {
-                            return Some((parent, derive_fallback_lint_id));
-                        }
-                    }
-                }
+        if derive_fallback_lint_id.is_some()
+            && let Some(parent) = module.parent
+            // Inner module is inside the macro
+            && module.expansion != parent.expansion
+            // Parent module is outside of the macro
+            && module.expansion.is_descendant_of(parent.expansion)
+            // The macro is a proc macro derive
+            && let Some(def_id) = module.expansion.expn_data().macro_def_id
+        {
+            let ext = &self.get_macro_by_def_id(def_id).ext;
+            if ext.builtin_name.is_none()
+                && ext.macro_kind() == MacroKind::Derive
+                && parent.expansion.outer_expn_is_descendant_of(*ctxt)
+            {
+                return Some((parent, derive_fallback_lint_id));
             }
         }
 
@@ -593,8 +591,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     },
                     Scope::StdLibPrelude => {
                         let mut result = Err(Determinacy::Determined);
-                        if let Some(prelude) = this.prelude {
-                            if let Ok(binding) = this.resolve_ident_in_module_unadjusted(
+                        if let Some(prelude) = this.prelude
+                            && let Ok(binding) = this.resolve_ident_in_module_unadjusted(
                                 ModuleOrUniformRoot::Module(prelude),
                                 ident,
                                 ns,
@@ -603,14 +601,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 None,
                                 ignore_binding,
                                 ignore_import,
-                            ) {
-                                if matches!(use_prelude, UsePrelude::Yes)
-                                    || this.is_builtin_macro(binding.res())
-                                {
-                                    result = Ok((binding, Flags::MISC_FROM_PRELUDE));
-                                }
-                            }
+                            )
+                            && (matches!(use_prelude, UsePrelude::Yes)
+                                || this.is_builtin_macro(binding.res()))
+                        {
+                            result = Ok((binding, Flags::MISC_FROM_PRELUDE));
                         }
+
                         result
                     }
                     Scope::BuiltinTypes => match this.builtin_types_bindings.get(&ident.name) {
@@ -939,10 +936,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
 
         // Items and single imports are not shadowable, if we have one, then it's determined.
-        if let Some(binding) = binding {
-            if !binding.is_glob_import() {
-                return check_usable(self, binding);
-            }
+        if let Some(binding) = binding
+            && !binding.is_glob_import()
+        {
+            return check_usable(self, binding);
         }
 
         // --- From now on we either have a glob resolution or no resolution. ---
@@ -1437,13 +1434,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         for (segment_idx, &Segment { ident, id, .. }) in path.iter().enumerate() {
             debug!("resolve_path ident {} {:?} {:?}", segment_idx, ident, id);
             let record_segment_res = |this: &mut Self, res| {
-                if finalize.is_some() {
-                    if let Some(id) = id {
-                        if !this.partial_res_map.contains_key(&id) {
-                            assert!(id != ast::DUMMY_NODE_ID, "Trying to resolve dummy id");
-                            this.record_partial_res(id, PartialRes::new(res));
-                        }
-                    }
+                if finalize.is_some()
+                    && let Some(id) = id
+                    && !this.partial_res_map.contains_key(&id)
+                {
+                    assert!(id != ast::DUMMY_NODE_ID, "Trying to resolve dummy id");
+                    this.record_partial_res(id, PartialRes::new(res));
                 }
             };
 
@@ -1463,13 +1459,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             _ => None,
                         },
                     };
-                    if let Some(self_module) = self_module {
-                        if let Some(parent) = self_module.parent {
-                            module = Some(ModuleOrUniformRoot::Module(
-                                self.resolve_self(&mut ctxt, parent),
-                            ));
-                            continue;
-                        }
+                    if let Some(self_module) = self_module
+                        && let Some(parent) = self_module.parent
+                    {
+                        module =
+                            Some(ModuleOrUniformRoot::Module(self.resolve_self(&mut ctxt, parent)));
+                        continue;
                     }
                     return PathResult::failed(
                         ident,
@@ -1644,13 +1639,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 Err(Undetermined) => return PathResult::Indeterminate,
                 Err(Determined) => {
-                    if let Some(ModuleOrUniformRoot::Module(module)) = module {
-                        if opt_ns.is_some() && !module.is_normal() {
-                            return PathResult::NonModule(PartialRes::with_unresolved_segments(
-                                module.res().unwrap(),
-                                path.len() - segment_idx,
-                            ));
-                        }
+                    if let Some(ModuleOrUniformRoot::Module(module)) = module
+                        && opt_ns.is_some()
+                        && !module.is_normal()
+                    {
+                        return PathResult::NonModule(PartialRes::with_unresolved_segments(
+                            module.res().unwrap(),
+                            path.len() - segment_idx,
+                        ));
                     }
 
                     return PathResult::failed(

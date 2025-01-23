@@ -62,6 +62,7 @@ pub(crate) fn complete_expr_path(
         in_condition,
         incomplete_let,
         ref ref_expr_parent,
+        after_amp,
         ref is_func_update,
         ref innermost_ret_ty,
         ref impl_,
@@ -69,8 +70,23 @@ pub(crate) fn complete_expr_path(
         ..
     } = expr_ctx;
 
-    let wants_mut_token =
-        ref_expr_parent.as_ref().map(|it| it.mut_token().is_none()).unwrap_or(false);
+    let (has_raw_token, has_const_token, has_mut_token) = ref_expr_parent
+        .as_ref()
+        .map(|it| (it.raw_token().is_some(), it.const_token().is_some(), it.mut_token().is_some()))
+        .unwrap_or((false, false, false));
+
+    let wants_raw_token = ref_expr_parent.is_some() && !has_raw_token && after_amp;
+    let wants_const_token =
+        ref_expr_parent.is_some() && has_raw_token && !has_const_token && !has_mut_token;
+    let wants_mut_token = if ref_expr_parent.is_some() {
+        if has_raw_token {
+            !has_const_token && !has_mut_token
+        } else {
+            !has_mut_token
+        }
+    } else {
+        false
+    };
 
     let scope_def_applicable = |def| match def {
         ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) | ScopeDef::Label(_) => false,
@@ -354,6 +370,12 @@ pub(crate) fn complete_expr_path(
                         add_keyword("else if", "else if $1 {\n    $0\n}");
                     }
 
+                    if wants_raw_token {
+                        add_keyword("raw", "raw ");
+                    }
+                    if wants_const_token {
+                        add_keyword("const", "const ");
+                    }
                     if wants_mut_token {
                         add_keyword("mut", "mut ");
                     }

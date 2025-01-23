@@ -45,6 +45,7 @@ use rustc_session::lint;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_type_ir::elaborate;
 use tracing::{debug, instrument};
 
 use super::FnCtxt;
@@ -923,7 +924,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         let src_auto: FxHashSet<_> = src_tty
                             .auto_traits()
                             .chain(
-                                tcx.supertrait_def_ids(src_principal.def_id())
+                                elaborate::supertrait_def_ids(tcx, src_principal.def_id())
                                     .filter(|def_id| tcx.trait_is_auto(*def_id)),
                             )
                             .collect();

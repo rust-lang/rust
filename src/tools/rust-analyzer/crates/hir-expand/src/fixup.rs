@@ -380,7 +380,7 @@ pub(crate) fn reverse_fixups(tt: &mut TopSubtree, undo_info: &SyntaxFixupUndoInf
         let span = |file_id| Span {
             range: TextRange::empty(TextSize::new(0)),
             anchor: SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
-            ctx: SyntaxContextId::ROOT,
+            ctx: SyntaxContextId::root(span::Edition::Edition2015),
         };
         delimiter.open = span(delimiter.open.anchor.file_id);
         delimiter.close = span(delimiter.close.anchor.file_id);
@@ -441,8 +441,8 @@ fn transform_tt<'a, 'b>(
                 };
                 let len_diff = replacement.len() as i64 - old_len as i64;
                 tt.splice(i..i + old_len, replacement.flat_tokens().iter().cloned());
-                // `+1` for the loop.
-                i = i.checked_add_signed(len_diff as isize + 1).unwrap();
+                // Skip the newly inserted replacement, we don't want to visit it.
+                i += replacement.len();
 
                 for &subtree_idx in &subtrees_stack {
                     let tt::TokenTree::Subtree(subtree) = &mut tt[subtree_idx] else {
@@ -532,7 +532,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn check(ra_fixture: &str, mut expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, mut expect: Expect) {
         let parsed = syntax::SourceFile::parse(ra_fixture, span::Edition::CURRENT);
         let span_map = SpanMap::RealSpanMap(Arc::new(RealSpanMap::absolute(EditionedFileId::new(
             FileId::from_raw(0),
@@ -562,6 +562,7 @@ mod tests {
         let (parse, _) = syntax_bridge::token_tree_to_syntax_node(
             &tt,
             syntax_bridge::TopEntryPoint::MacroItems,
+            &mut |_| parser::Edition::CURRENT,
             parser::Edition::CURRENT,
         );
         assert!(

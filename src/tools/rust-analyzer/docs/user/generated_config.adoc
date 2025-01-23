@@ -94,10 +94,10 @@ avoid checking unnecessary things.
 --
 Default:
 ----
-{
-  "miri": null,
-  "debug_assertions": null
-}
+[
+  "debug_assertions",
+  "miri"
+]
 ----
 List of cfg options to enable with the given values.
 
@@ -716,6 +716,11 @@ Whether to show generic type parameter name inlay hints.
 --
 Whether to show implicit drop hints.
 --
+[[rust-analyzer.inlayHints.implicitSizedBoundHints.enable]]rust-analyzer.inlayHints.implicitSizedBoundHints.enable (default: `false`)::
++
+--
+Whether to show inlay hints for the implied type parameter `Sized` bound.
+--
 [[rust-analyzer.inlayHints.lifetimeElisionHints.enable]]rust-analyzer.inlayHints.lifetimeElisionHints.enable (default: `"never"`)::
 +
 --
@@ -1046,10 +1051,25 @@ Show full signature of the callable. Only shows parameters if disabled.
 --
 Show documentation.
 --
-[[rust-analyzer.typing.excludeChars]]rust-analyzer.typing.excludeChars (default: `"|<"`)::
+[[rust-analyzer.typing.triggerChars]]rust-analyzer.typing.triggerChars (default: `"=."`)::
 +
 --
-Specify the characters to exclude from triggering typing assists. The default trigger characters are `.`, `=`, `<`, `>`, `{`, and `(`.
+Specify the characters allowed to invoke special on typing triggers.
+- typing `=` after `let` tries to smartly add `;` if `=` is followed by an existing expression
+- typing `=` between two expressions adds `;` when in statement position
+- typing `=` to turn an assignment into an equality comparison removes `;` when in expression position
+- typing `.` in a chain method call auto-indents
+- typing `{` or `(` in front of an expression inserts a closing `}` or `)` after the expression
+- typing `{` in a use item adds a closing `}` in the right place
+- typing `>` to complete a return type `->` will insert a whitespace after it
+- typing `<` in a path or type position inserts a closing `>` after the path or type.
+--
+[[rust-analyzer.vfs.extraIncludes]]rust-analyzer.vfs.extraIncludes (default: `[]`)::
++
+--
+Additional paths to include in the VFS. Generally for code that is
+generated or otherwise managed by a build system outside of Cargo,
+though Cargo might be the eventual consumer.
 --
 [[rust-analyzer.workspace.discoverConfig]]rust-analyzer.workspace.discoverConfig (default: `null`)::
 +

@@ -18,6 +18,7 @@ use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Term, Ty, TyCtxt, TypingMode, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::sym;
+use rustc_type_ir::elaborate;
 use thin_vec::thin_vec;
 use tracing::{debug, instrument};
 
@@ -836,8 +837,7 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
     if tcx.is_impl_trait_in_trait(obligation.predicate.def_id)
         && let Some(out_trait_def_id) = data.principal_def_id()
         && let rpitit_trait_def_id = tcx.parent(obligation.predicate.def_id)
-        && tcx
-            .supertrait_def_ids(out_trait_def_id)
+        && elaborate::supertrait_def_ids(tcx, out_trait_def_id)
             .any(|trait_def_id| trait_def_id == rpitit_trait_def_id)
     {
         candidate_set.push_candidate(ProjectionCandidate::ObjectRpitit);

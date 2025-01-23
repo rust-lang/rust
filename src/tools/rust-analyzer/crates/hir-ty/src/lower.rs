@@ -761,8 +761,8 @@ impl<'a> TyLoweringContext<'a> {
         path: &Path,
         on_diagnostic: &mut dyn FnMut(&mut Self, PathLoweringDiagnostic),
     ) -> Option<(TypeNs, Option<usize>)> {
-        let (resolution, remaining_index, _) =
-            self.resolver.resolve_path_in_type_ns(self.db.upcast(), path)?;
+        let (resolution, remaining_index, _, prefix_info) =
+            self.resolver.resolve_path_in_type_ns_with_prefix_info(self.db.upcast(), path)?;
         let segments = path.segments();
 
         match path {
@@ -771,13 +771,12 @@ impl<'a> TyLoweringContext<'a> {
             _ => return Some((resolution, remaining_index)),
         };
 
-        let (module_segments, resolved_segment_idx, resolved_segment) = match remaining_index {
-            None => (
-                segments.strip_last(),
-                segments.len() - 1,
-                segments.last().expect("resolved path has at least one element"),
-            ),
-            Some(i) => (segments.take(i - 1), i - 1, segments.get(i - 1).unwrap()),
+        let (module_segments, resolved_segment_idx, enum_segment) = match remaining_index {
+            None if prefix_info.enum_variant => {
+                (segments.strip_last_two(), segments.len() - 1, Some(segments.len() - 2))
+            }
+            None => (segments.strip_last(), segments.len() - 1, None),
+            Some(i) => (segments.take(i - 1), i - 1, None),
         };
 
         for (i, mod_segment) in module_segments.iter().enumerate() {
@@ -792,9 +791,23 @@ impl<'a> TyLoweringContext<'a> {
             }
         }
 
+        if let Some(enum_segment) = enum_segment {
+            if segments.get(enum_segment).is_some_and(|it| it.args_and_bindings.is_some())
+                && segments.get(enum_segment + 1).is_some_and(|it| it.args_and_bindings.is_some())
+            {
+                on_diagnostic(
+                    self,
+                    PathLoweringDiagnostic::GenericArgsProhibited {
+                        segment: (enum_segment + 1) as u32,
+                        reason: GenericArgsProhibitedReason::EnumVariant,
+                    },
+                );
+            }
+        }
+
         self.handle_type_ns_resolution(
             &resolution,
-            resolved_segment,
+            segments.get(resolved_segment_idx).expect("should have resolved segment"),
             resolved_segment_idx,
             on_diagnostic,
         );

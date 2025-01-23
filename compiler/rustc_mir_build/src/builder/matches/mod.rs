@@ -1986,6 +1986,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return;
         }
 
+        let false_edge_start_block = candidate.subcandidates[0].false_edge_start_block;
         candidate.subcandidates.retain_mut(|candidate| {
             if candidate.extra_data.is_never {
                 candidate.visit_leaves(|subcandidate| {
@@ -2000,8 +2001,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         });
         if candidate.subcandidates.is_empty() {
-            // If `candidate` has become a leaf candidate, ensure it has a `pre_binding_block`.
-            candidate.pre_binding_block = Some(self.cfg.start_new_block());
+            // If `candidate` has become a leaf candidate, ensure it has a `pre_binding_block` and `otherwise_block`.
+            let next_block = self.cfg.start_new_block();
+            candidate.pre_binding_block = Some(next_block);
+            candidate.otherwise_block = Some(next_block);
+            // In addition, if `candidate` doesn't have `false_edge_start_block`, it should be assigned here.
+            if candidate.false_edge_start_block.is_none() {
+                candidate.false_edge_start_block = false_edge_start_block;
+            }
         }
     }
 

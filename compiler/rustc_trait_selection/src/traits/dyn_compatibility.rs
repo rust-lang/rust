@@ -19,6 +19,7 @@ use rustc_middle::ty::{
     TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
 };
 use rustc_span::Span;
+use rustc_type_ir::elaborate;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -39,7 +40,7 @@ pub fn hir_ty_lowering_dyn_compatibility_violations(
     trait_def_id: DefId,
 ) -> Vec<DynCompatibilityViolation> {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
-    tcx.supertrait_def_ids(trait_def_id)
+    elaborate::supertrait_def_ids(tcx, trait_def_id)
         .map(|def_id| predicates_reference_self(tcx, def_id, true))
         .filter(|spans| !spans.is_empty())
         .map(DynCompatibilityViolation::SupertraitSelf)
@@ -52,9 +53,8 @@ fn dyn_compatibility_violations(
 ) -> &'_ [DynCompatibilityViolation] {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     debug!("dyn_compatibility_violations: {:?}", trait_def_id);
-
     tcx.arena.alloc_from_iter(
-        tcx.supertrait_def_ids(trait_def_id)
+        elaborate::supertrait_def_ids(tcx, trait_def_id)
             .flat_map(|def_id| dyn_compatibility_violations_for_trait(tcx, def_id)),
     )
 }

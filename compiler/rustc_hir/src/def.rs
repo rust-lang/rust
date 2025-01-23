@@ -794,7 +794,7 @@ impl<Id> Res<Id> {
 
     /// Always returns `true` if `self` is `Res::Err`
     pub fn matches_ns(&self, ns: Namespace) -> bool {
-        self.ns().map_or(true, |actual_ns| actual_ns == ns)
+        self.ns().is_none_or(|actual_ns| actual_ns == ns)
     }
 
     /// Returns whether such a resolved path can occur in a tuple struct/variant pattern

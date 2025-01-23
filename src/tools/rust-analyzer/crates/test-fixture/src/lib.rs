@@ -30,7 +30,9 @@ pub const WORKSPACE: base_db::SourceRootId = base_db::SourceRootId(0);
 
 pub trait WithFixture: Default + ExpandDatabase + SourceRootDatabase + 'static {
     #[track_caller]
-    fn with_single_file(ra_fixture: &str) -> (Self, EditionedFileId) {
+    fn with_single_file(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    ) -> (Self, EditionedFileId) {
         let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
         fixture.change.apply(&mut db);
@@ -39,7 +41,9 @@ pub trait WithFixture: Default + ExpandDatabase + SourceRootDatabase + 'static {
     }
 
     #[track_caller]
-    fn with_many_files(ra_fixture: &str) -> (Self, Vec<EditionedFileId>) {
+    fn with_many_files(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    ) -> (Self, Vec<EditionedFileId>) {
         let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
         fixture.change.apply(&mut db);
@@ -48,7 +52,7 @@ pub trait WithFixture: Default + ExpandDatabase + SourceRootDatabase + 'static {
     }
 
     #[track_caller]
-    fn with_files(ra_fixture: &str) -> Self {
+    fn with_files(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> Self {
         let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
         fixture.change.apply(&mut db);
@@ -58,7 +62,7 @@ pub trait WithFixture: Default + ExpandDatabase + SourceRootDatabase + 'static {
 
     #[track_caller]
     fn with_files_extra_proc_macros(
-        ra_fixture: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
         proc_macros: Vec<(String, ProcMacro)>,
     ) -> Self {
         let fixture = ChangeFixture::parse_with_proc_macros(ra_fixture, proc_macros);
@@ -69,21 +73,23 @@ pub trait WithFixture: Default + ExpandDatabase + SourceRootDatabase + 'static {
     }
 
     #[track_caller]
-    fn with_position(ra_fixture: &str) -> (Self, FilePosition) {
+    fn with_position(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (Self, FilePosition) {
         let (db, file_id, range_or_offset) = Self::with_range_or_offset(ra_fixture);
         let offset = range_or_offset.expect_offset();
         (db, FilePosition { file_id, offset })
     }
 
     #[track_caller]
-    fn with_range(ra_fixture: &str) -> (Self, FileRange) {
+    fn with_range(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (Self, FileRange) {
         let (db, file_id, range_or_offset) = Self::with_range_or_offset(ra_fixture);
         let range = range_or_offset.expect_range();
         (db, FileRange { file_id, range })
     }
 
     #[track_caller]
-    fn with_range_or_offset(ra_fixture: &str) -> (Self, EditionedFileId, RangeOrOffset) {
+    fn with_range_or_offset(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    ) -> (Self, EditionedFileId, RangeOrOffset) {
         let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
         fixture.change.apply(&mut db);
@@ -116,12 +122,12 @@ pub struct ChangeFixture {
 const SOURCE_ROOT_PREFIX: &str = "/";
 
 impl ChangeFixture {
-    pub fn parse(ra_fixture: &str) -> ChangeFixture {
+    pub fn parse(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> ChangeFixture {
         Self::parse_with_proc_macros(ra_fixture, Vec::new())
     }
 
     pub fn parse_with_proc_macros(
-        ra_fixture: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
         mut proc_macro_defs: Vec<(String, ProcMacro)>,
     ) -> ChangeFixture {
         let FixtureWithProjectMeta {
@@ -376,8 +382,8 @@ impl ChangeFixture {
     }
 }
 
-fn default_test_proc_macros() -> [(String, ProcMacro); 8] {
-    [
+fn default_test_proc_macros() -> Box<[(String, ProcMacro)]> {
+    Box::new([
         (
             r#"
 #[proc_macro_attribute]
@@ -498,7 +504,22 @@ pub fn issue_17479(input: TokenStream) -> TokenStream {
                 disabled: false,
             },
         ),
-    ]
+        (
+            r#"
+#[proc_macro_attribute]
+pub fn issue_18898(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    input
+}
+"#
+            .into(),
+            ProcMacro {
+                name: Symbol::intern("issue_18898"),
+                kind: ProcMacroKind::Bang,
+                expander: sync::Arc::new(Issue18898ProcMacroExpander),
+                disabled: false,
+            },
+        ),
+    ])
 }
 
 fn filter_test_proc_macros(
@@ -798,6 +819,57 @@ impl ProcMacroExpander for Issue17479ProcMacroExpander {
         let span = lit.span;
         Ok(quote! { span =>
             #symbol()
+        })
+    }
+}
+
+// Reads ident type within string quotes, for issue #17479.
+#[derive(Debug)]
+struct Issue18898ProcMacroExpander;
+impl ProcMacroExpander for Issue18898ProcMacroExpander {
+    fn expand(
+        &self,
+        subtree: &TopSubtree,
+        _: Option<&TopSubtree>,
+        _: &Env,
+        def_site: Span,
+        _: Span,
+        _: Span,
+        _: Option<String>,
+    ) -> Result<TopSubtree, ProcMacroExpansionError> {
+        let span = subtree
+            .token_trees()
+            .flat_tokens()
+            .last()
+            .ok_or_else(|| ProcMacroExpansionError::Panic("malformed input".to_owned()))?
+            .first_span();
+        let overly_long_subtree = quote! {span =>
+            {
+                let a = 5;
+                let a = 5;
+                let a = 5;
+                let a = 5;
+                let a = 5;
+                let a = 5;
+                let a = 5;
+                let a = 5;
+                let a = 5;
+                let a = 5;
+                let a = 5;
+                let a = 5;
+                let a = 5;
+                let a = 5;
+                let a = 5;
+                let a = 5;
+                let a = 5;
+                let a = 5;
+                let a = 5;
+            }
+        };
+        Ok(quote! { def_site =>
+            fn foo() {
+                #overly_long_subtree
+            }
         })
     }
 }

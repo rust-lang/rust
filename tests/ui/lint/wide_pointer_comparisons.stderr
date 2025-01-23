@@ -615,7 +615,7 @@ warning: ambiguous wide pointer comparison, the comparison includes metadata whi
   --> $DIR/wide_pointer_comparisons.rs:169:37
    |
 LL |             ($a:expr, $b:expr) => { $a == $b }
-   |                                     ^^
+   |                                     ^^^^^^^^
 ...
 LL |         cmp!(&a, &b);
    |         ------------ in this macro invocation

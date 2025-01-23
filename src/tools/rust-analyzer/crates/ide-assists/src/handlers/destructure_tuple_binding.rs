@@ -1128,7 +1128,10 @@ fn main {
             destructure_tuple_binding_impl(acc, ctx, false)
         }
 
-        pub(crate) fn check_in_place_assist(ra_fixture_before: &str, ra_fixture_after: &str) {
+        pub(crate) fn check_in_place_assist(
+            #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+            #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+        ) {
             check_assist_by_label(
                 in_place_assist,
                 ra_fixture_before,
@@ -1138,7 +1141,10 @@ fn main {
             );
         }
 
-        pub(crate) fn check_sub_pattern_assist(ra_fixture_before: &str, ra_fixture_after: &str) {
+        pub(crate) fn check_sub_pattern_assist(
+            #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+            #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+        ) {
             check_assist_by_label(
                 assist,
                 ra_fixture_before,

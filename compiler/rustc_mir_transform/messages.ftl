@@ -27,6 +27,12 @@ mir_transform_force_inline =
     .callee = `{$callee}` defined here
     .note = could not be inlined due to: {$reason}
 
+mir_transform_force_inline_attr =
+    `{$callee}` is incompatible with `#[rustc_force_inline]`
+    .attr = annotation here
+    .callee = `{$callee}` defined here
+    .note = incompatible due to: {$reason}
+
 mir_transform_force_inline_justification =
     `{$callee}` is required to be inlined to: {$sym}
 
@@ -65,6 +71,12 @@ mir_transform_unaligned_packed_ref = reference to packed field is unaligned
     .note = packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
     .note_ub = creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
     .help = copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+mir_transform_unconditional_recursion = function cannot return without recursing
+    .label = cannot return without recursing
+    .help = a `loop` may express intention better if this is on purpose
+
+mir_transform_unconditional_recursion_call_site_label = recursive call site
 
 mir_transform_undefined_transmute = pointers cannot be transmuted to integers during const eval
     .note = at compile-time, pointers do not have an integer value

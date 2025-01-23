@@ -65,19 +65,20 @@ help: if this is a dyn-compatible trait, use `dyn`
 LL | trait B { fn f(a: dyn A) -> A; }
    |                   +++
 
-error[E0038]: the trait `A` cannot be made into an object
+error[E0038]: the trait `A` is not dyn compatible
   --> $DIR/avoid-ice-on-warning-3.rs:4:19
    |
 LL | trait B { fn f(a: A) -> A; }
-   |                   ^ `A` cannot be made into an object
+   |                   ^ `A` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/avoid-ice-on-warning-3.rs:14:14
    |
 LL | trait A { fn g(b: B) -> B; }
    |       -      ^ ...because associated function `g` has no `self` parameter
    |       |
-   |       this trait cannot be made into an object...
+   |       this trait is not dyn compatible...
 help: consider turning `g` into a method by giving it a `&self` argument
    |
 LL | trait A { fn g(&self, b: B) -> B; }
@@ -101,19 +102,20 @@ help: if this is a dyn-compatible trait, use `dyn`
 LL | trait A { fn g(b: dyn B) -> B; }
    |                   +++
 
-error[E0038]: the trait `B` cannot be made into an object
+error[E0038]: the trait `B` is not dyn compatible
   --> $DIR/avoid-ice-on-warning-3.rs:14:19
    |
 LL | trait A { fn g(b: B) -> B; }
-   |                   ^ `B` cannot be made into an object
+   |                   ^ `B` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/avoid-ice-on-warning-3.rs:4:14
    |
 LL | trait B { fn f(a: A) -> A; }
    |       -      ^ ...because associated function `f` has no `self` parameter
    |       |
-   |       this trait cannot be made into an object...
+   |       this trait is not dyn compatible...
 help: consider turning `f` into a method by giving it a `&self` argument
    |
 LL | trait B { fn f(&self, a: A) -> A; }

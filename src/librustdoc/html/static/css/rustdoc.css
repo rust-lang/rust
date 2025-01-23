@@ -242,7 +242,7 @@ h1, h2, h3, h4, h5, h6,
 .mobile-topbar,
 .search-input,
 .search-results .result-name,
-.item-name > a,
+.item-table dt > a,
 .out-of-band,
 .sub-heading,
 span.since,
@@ -385,11 +385,11 @@ details:not(.toggle) summary {
 code, pre, .code-header, .type-signature {
 	font-family: "Source Code Pro", monospace;
 }
-.docblock code, .docblock-short code {
+.docblock code, .item-table dd code {
 	border-radius: 3px;
 	padding: 0 0.125em;
 }
-.docblock pre code, .docblock-short pre code {
+.docblock pre code, .item-table dd pre code {
 	padding: 0;
 }
 pre {
@@ -887,13 +887,13 @@ both the code example and the line numbers, so we need to remove the radius in t
 	text-align: center;
 }
 
-.docblock-short {
+.item-table dd {
 	overflow-wrap: break-word;
 	overflow-wrap: anywhere;
 }
 /* Wrap non-pre code blocks (`text`) but not (```text```). */
 .docblock :not(pre) > code,
-.docblock-short code {
+.item-table dd code {
 	white-space: pre-wrap;
 }
 
@@ -938,7 +938,7 @@ rustdoc-toolbar {
 	min-height: 60px;
 }
 
-.docblock code, .docblock-short code,
+.docblock code, .item-table dd code,
 pre, .rustdoc.src .example-wrap, .example-wrap .src-line-numbers {
 	background-color: var(--code-block-background-color);
 	border-radius: var(--code-block-border-radius);
@@ -964,7 +964,7 @@ pre, .rustdoc.src .example-wrap, .example-wrap .src-line-numbers {
 	background: var(--table-alt-row-background-color);
 }
 
-.docblock .stab, .docblock-short .stab, .docblock p code {
+.docblock .stab, .item-table dd .stab, .docblock p code {
 	display: inline-block;
 }
 
@@ -1069,7 +1069,7 @@ because of the `[-]` element which would overlap with it. */
 .example-wrap .rust a:hover,
 .all-items a:hover,
 .docblock a:not(.scrape-help):not(.tooltip):hover:not(.doc-anchor),
-.docblock-short a:not(.scrape-help):not(.tooltip):hover,
+.item-table dd a:not(.scrape-help):not(.tooltip):hover,
 .item-info a {
 	text-decoration: underline;
 }
@@ -1102,19 +1102,16 @@ table,
 }
 
 .item-table {
-	display: table;
 	padding: 0;
 	margin: 0;
 	width: 100%;
 }
-.item-table > li {
-	display: table-row;
-}
-.item-table > li > div {
-	display: table-cell;
-}
-.item-table > li > .item-name {
+.item-table > dt {
 	padding-right: 1.25rem;
+}
+.item-table > dd {
+	margin-inline-start: 0;
+	margin-left: 0;
 }
 
 .search-results-title {
@@ -1415,7 +1412,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	padding: 3px;
 	margin-bottom: 5px;
 }
-.item-name .stab {
+.item-table dt .stab {
 	margin-left: 0.3125em;
 }
 .stab {
@@ -2476,7 +2473,6 @@ in src-script.js and main.js
 	}
 
 	/* Display an alternating layout on tablets and phones */
-	.item-table, .item-row, .item-table > li, .item-table > li > div,
 	.search-results > a, .search-results > a > div {
 		display: block;
 	}
@@ -2485,7 +2481,7 @@ in src-script.js and main.js
 	.search-results > a {
 		padding: 5px 0px;
 	}
-	.search-results > a > div.desc, .item-table > li > div.desc {
+	.search-results > a > div.desc, .item-table dd {
 		padding-left: 2em;
 	}
 	.search-results .result-name {
@@ -2546,11 +2542,19 @@ in src-script.js and main.js
 		box-shadow: 0 0 4px var(--main-background-color);
 	}
 
-	.item-table > li > .item-name {
-		width: 33%;
+	/* Since the screen is wide enough, we show items on their description on the same line. */
+	.item-table:not(.reexports) {
+		display: grid;
+		grid-template-columns: 33% 67%;
 	}
-	.item-table > li > div {
+	.item-table > dt, .item-table > dd {
 		overflow-wrap: anywhere;
+	}
+	.item-table > dt {
+		grid-column-start: 1;
+	}
+	.item-table > dd {
+		grid-column-start: 2;
 	}
 }
 

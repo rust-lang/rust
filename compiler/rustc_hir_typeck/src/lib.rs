@@ -87,7 +87,7 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDef
 }
 
 fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
-    typeck_with_fallback(tcx, def_id, None)
+    typeck_with_inspect(tcx, def_id, None)
 }
 
 /// Same as `typeck` but `inspect` is invoked on evaluation of each root obligation.
@@ -99,11 +99,11 @@ pub fn inspect_typeck<'tcx>(
     def_id: LocalDefId,
     inspect: ObligationInspector<'tcx>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
-    typeck_with_fallback(tcx, def_id, Some(inspect))
+    typeck_with_inspect(tcx, def_id, Some(inspect))
 }
 
 #[instrument(level = "debug", skip(tcx, inspector), ret)]
-fn typeck_with_fallback<'tcx>(
+fn typeck_with_inspect<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     inspector: Option<ObligationInspector<'tcx>>,

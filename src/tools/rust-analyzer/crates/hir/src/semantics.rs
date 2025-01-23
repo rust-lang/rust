@@ -39,8 +39,8 @@ use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
     ast::{self, HasAttrs as _, HasGenericParams},
-    AstNode, AstToken, Direction, SmolStr, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken,
-    TextRange, TextSize,
+    AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
+    TextSize,
 };
 use triomphe::Arc;
 
@@ -136,8 +136,6 @@ pub struct Semantics<'db, DB> {
 pub struct SemanticsImpl<'db> {
     pub db: &'db dyn HirDatabase,
     s2d_cache: RefCell<SourceToDefCache>,
-    /// Rootnode to HirFileId cache
-    root_to_file_cache: RefCell<FxHashMap<SyntaxNode, HirFileId>>,
     /// MacroCall to its expansion's MacroFileId cache
     macro_call_cache: RefCell<FxHashMap<InFile<ast::MacroCall>, MacroFileId>>,
 }
@@ -304,12 +302,7 @@ impl<DB: HirDatabase> Semantics<'_, DB> {
 
 impl<'db> SemanticsImpl<'db> {
     fn new(db: &'db dyn HirDatabase) -> Self {
-        SemanticsImpl {
-            db,
-            s2d_cache: Default::default(),
-            root_to_file_cache: Default::default(),
-            macro_call_cache: Default::default(),
-        }
+        SemanticsImpl { db, s2d_cache: Default::default(), macro_call_cache: Default::default() }
     }
 
     pub fn parse(&self, file_id: EditionedFileId) -> ast::SourceFile {
@@ -483,7 +476,7 @@ impl<'db> SemanticsImpl<'db> {
             Some(
                 calls
                     .into_iter()
-                    .map(|call| macro_call_to_macro_id(self, ctx, call?).map(|id| Macro { id }))
+                    .map(|call| macro_call_to_macro_id(ctx, call?).map(|id| Macro { id }))
                     .collect(),
             )
         })
@@ -962,7 +955,7 @@ impl<'db> SemanticsImpl<'db> {
             let InMacroFile { file_id, value: mapped_tokens } = self.with_ctx(|ctx| {
                 Some(
                     ctx.cache
-                        .get_or_insert_expansion(self, macro_file)
+                        .get_or_insert_expansion(ctx.db, macro_file)
                         .map_range_down(span)?
                         .map(SmallVec::<[_; 2]>::from_iter),
                 )
@@ -986,7 +979,10 @@ impl<'db> SemanticsImpl<'db> {
                 process_expansion_for_token(&mut stack, include)?;
             }
             None => {
-                stack.push((file_id.into(), smallvec![(token, SyntaxContextId::ROOT)]));
+                stack.push((
+                    file_id.into(),
+                    smallvec![(token, SyntaxContextId::root(file_id.edition()))],
+                ));
             }
         }
 
@@ -1284,7 +1280,7 @@ impl<'db> SemanticsImpl<'db> {
                     let macro_file = file_id.macro_file()?;
 
                     self.with_ctx(|ctx| {
-                        let expansion_info = ctx.cache.get_or_insert_expansion(self, macro_file);
+                        let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);
                         expansion_info.arg().map(|node| node?.parent()).transpose()
                     })
                 }
@@ -1315,8 +1311,8 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn resolve_label(&self, label: &ast::Lifetime) -> Option<Label> {
-        let (parent, label_id) = self
-            .with_ctx(|ctx| ctx.label_ref_to_def(self.wrap_node_infile(label.clone()).as_ref()))?;
+        let src = self.wrap_node_infile(label.clone());
+        let (parent, label_id) = self.with_ctx(|ctx| ctx.label_ref_to_def(src.as_ref()))?;
         Some(Label { parent, label_id })
     }
 
@@ -1443,6 +1439,10 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(call.syntax())?.resolve_method_call_fallback(self.db, call)
     }
 
+    pub fn resolve_known_blanket_dual_impls(&self, call: &ast::MethodCallExpr) -> Option<Function> {
+        self.analyze(call.syntax())?.resolve_known_blanket_dual_impls(self.db, call)
+    }
+
     fn resolve_range_pat(&self, range_pat: &ast::RangePat) -> Option<StructId> {
         self.analyze(range_pat.syntax())?.resolve_range_pat(self.db, range_pat)
     }
@@ -1516,7 +1516,7 @@ impl<'db> SemanticsImpl<'db> {
         let macro_call = self.find_file(macro_call.syntax()).with_value(macro_call);
         self.with_ctx(|ctx| {
             ctx.macro_call_to_macro_call(macro_call)
-                .and_then(|call| macro_call_to_macro_id(self, ctx, call))
+                .and_then(|call| macro_call_to_macro_id(ctx, call))
                 .map(Into::into)
         })
         .or_else(|| {
@@ -1558,7 +1558,7 @@ impl<'db> SemanticsImpl<'db> {
         let item_in_file = self.wrap_node_infile(item.clone());
         let id = self.with_ctx(|ctx| {
             let macro_call_id = ctx.item_to_macro_call(item_in_file.as_ref())?;
-            macro_call_to_macro_id(self, ctx, macro_call_id)
+            macro_call_to_macro_id(ctx, macro_call_id)
         })?;
         Some(Macro { id })
     }
@@ -1591,14 +1591,11 @@ impl<'db> SemanticsImpl<'db> {
     pub fn resolve_mod_path_relative(
         &self,
         to: Module,
-        segments: impl IntoIterator<Item = SmolStr>,
+        segments: impl IntoIterator<Item = Name>,
     ) -> Option<impl Iterator<Item = ItemInNs>> {
         let items = to.id.resolver(self.db.upcast()).resolve_module_path_in_items(
             self.db.upcast(),
-            &ModPath::from_segments(
-                hir_def::path::PathKind::Plain,
-                segments.into_iter().map(|it| Name::new(&it, SyntaxContextId::ROOT)),
-            ),
+            &ModPath::from_segments(hir_def::path::PathKind::Plain, segments),
         );
         Some(items.iter_items().map(|(item, _)| item.into()))
     }
@@ -1722,10 +1719,11 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn cache(&self, root_node: SyntaxNode, file_id: HirFileId) {
-        assert!(root_node.parent().is_none());
-        let mut cache = self.root_to_file_cache.borrow_mut();
-        let prev = cache.insert(root_node, file_id);
-        assert!(prev.is_none() || prev == Some(file_id));
+        SourceToDefCache::cache(
+            &mut self.s2d_cache.borrow_mut().root_to_file_cache,
+            root_node,
+            file_id,
+        );
     }
 
     pub fn assert_contains_node(&self, node: &SyntaxNode) {
@@ -1733,8 +1731,8 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn lookup(&self, root_node: &SyntaxNode) -> Option<HirFileId> {
-        let cache = self.root_to_file_cache.borrow();
-        cache.get(root_node).copied()
+        let cache = self.s2d_cache.borrow();
+        cache.root_to_file_cache.get(root_node).copied()
     }
 
     fn wrap_node_infile<N: AstNode>(&self, node: N) -> InFile<N> {
@@ -1753,13 +1751,14 @@ impl<'db> SemanticsImpl<'db> {
         let file_id = self.lookup(&root_node).unwrap_or_else(|| {
             panic!(
                 "\n\nFailed to lookup {:?} in this Semantics.\n\
-                 Make sure to use only query nodes, derived from this instance of Semantics.\n\
+                 Make sure to only query nodes derived from this instance of Semantics.\n\
                  root node:   {:?}\n\
                  known nodes: {}\n\n",
                 node,
                 root_node,
-                self.root_to_file_cache
+                self.s2d_cache
                     .borrow()
+                    .root_to_file_cache
                     .keys()
                     .map(|it| format!("{it:?}"))
                     .collect::<Vec<_>>()
@@ -1906,7 +1905,6 @@ impl<'db> SemanticsImpl<'db> {
 }
 
 fn macro_call_to_macro_id(
-    sema: &SemanticsImpl<'_>,
     ctx: &mut SourceToDefCtx<'_, '_>,
     macro_call_id: MacroCallId,
 ) -> Option<MacroId> {
@@ -1922,7 +1920,7 @@ fn macro_call_to_macro_id(
                     it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
                 }
                 HirFileIdRepr::MacroFile(macro_file) => {
-                    let expansion_info = ctx.cache.get_or_insert_expansion(sema, macro_file);
+                    let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);
                     it.to_ptr(db).to_node(&expansion_info.expanded().value)
                 }
             };
@@ -1934,7 +1932,7 @@ fn macro_call_to_macro_id(
                     it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
                 }
                 HirFileIdRepr::MacroFile(macro_file) => {
-                    let expansion_info = ctx.cache.get_or_insert_expansion(sema, macro_file);
+                    let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);
                     it.to_ptr(db).to_node(&expansion_info.expanded().value)
                 }
             };

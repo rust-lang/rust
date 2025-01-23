@@ -131,10 +131,10 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     && let Ok(pat) = tcx.sess.source_map().span_to_snippet(pat.span)
                 {
                     suggest_rewrite_if_let(tcx, expr, &pat, init, conseq, alt, err);
-                } else if path_span.map_or(true, |path_span| path_span == var_or_use_span) {
+                } else if path_span.is_none_or(|path_span| path_span == var_or_use_span) {
                     // We can use `var_or_use_span` if either `path_span` is not present, or both
                     // spans are the same.
-                    if borrow_span.map_or(true, |sp| !sp.overlaps(var_or_use_span)) {
+                    if borrow_span.is_none_or(|sp| !sp.overlaps(var_or_use_span)) {
                         err.span_label(
                             var_or_use_span,
                             format!("{borrow_desc}borrow later {message}"),

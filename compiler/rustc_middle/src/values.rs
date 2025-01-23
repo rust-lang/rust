@@ -360,7 +360,7 @@ fn find_item_ty_spans(
             if let Res::Def(kind, def_id) = path.res
                 && matches!(kind, DefKind::Enum | DefKind::Struct | DefKind::Union)
             {
-                let check_params = def_id.as_local().map_or(true, |def_id| {
+                let check_params = def_id.as_local().is_none_or(|def_id| {
                     if def_id == needle {
                         spans.push(ty.span);
                     }

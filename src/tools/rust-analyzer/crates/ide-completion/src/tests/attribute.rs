@@ -1,12 +1,7 @@
 //! Completion tests for attributes.
-use expect_test::{expect, Expect};
+use expect_test::expect;
 
-use crate::tests::{check_edit, completion_list};
-
-fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(ra_fixture);
-    expect.assert_eq(&actual);
-}
+use crate::tests::{check, check_edit};
 
 #[test]
 fn derive_helpers() {
@@ -788,14 +783,9 @@ mod cfg {
 mod derive {
     use super::*;
 
-    fn check_derive(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture);
-        expect.assert_eq(&actual);
-    }
-
     #[test]
     fn no_completion_for_incorrect_derive() {
-        check_derive(
+        check(
             r#"
 //- minicore: derive, copy, clone, ord, eq, default, fmt
 #[derive{$0)] struct Test;
@@ -806,7 +796,7 @@ mod derive {
 
     #[test]
     fn empty_derive() {
-        check_derive(
+        check(
             r#"
 //- minicore: derive, copy, clone, ord, eq, default, fmt
 #[derive($0)] struct Test;
@@ -828,7 +818,7 @@ mod derive {
 
     #[test]
     fn derive_with_input_before() {
-        check_derive(
+        check(
             r#"
 //- minicore: derive, copy, clone, ord, eq, default, fmt
 #[derive(serde::Serialize, PartialEq, $0)] struct Test;
@@ -849,7 +839,7 @@ mod derive {
 
     #[test]
     fn derive_with_input_after() {
-        check_derive(
+        check(
             r#"
 //- minicore: derive, copy, clone, ord, eq, default, fmt
 #[derive($0 serde::Serialize, PartialEq)] struct Test;
@@ -870,7 +860,7 @@ mod derive {
 
     #[test]
     fn derive_with_existing_derives() {
-        check_derive(
+        check(
             r#"
 //- minicore: derive, copy, clone, ord, eq, default, fmt
 #[derive(PartialEq, Eq, Or$0)] struct Test;
@@ -890,7 +880,7 @@ mod derive {
 
     #[test]
     fn derive_flyimport() {
-        check_derive(
+        check(
             r#"
 //- proc_macros: derive_identity
 //- minicore: derive
@@ -904,7 +894,7 @@ mod derive {
                 kw self::
             "#]],
         );
-        check_derive(
+        check(
             r#"
 //- proc_macros: derive_identity
 //- minicore: derive
@@ -940,7 +930,7 @@ use proc_macros::DeriveIdentity;
 
     #[test]
     fn qualified() {
-        check_derive(
+        check(
             r#"
 //- proc_macros: derive_identity
 //- minicore: derive, copy, clone
@@ -950,7 +940,7 @@ use proc_macros::DeriveIdentity;
                 de DeriveIdentity proc_macro DeriveIdentity
             "#]],
         );
-        check_derive(
+        check(
             r#"
 //- proc_macros: derive_identity
 //- minicore: derive, copy, clone
@@ -1056,19 +1046,14 @@ mod lint {
 mod repr {
     use super::*;
 
-    fn check_repr(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture);
-        expect.assert_eq(&actual);
-    }
-
     #[test]
     fn no_completion_for_incorrect_repr() {
-        check_repr(r#"#[repr{$0)] struct Test;"#, expect![[]])
+        check(r#"#[repr{$0)] struct Test;"#, expect![[]])
     }
 
     #[test]
     fn empty() {
-        check_repr(
+        check(
             r#"#[repr($0)] struct Test;"#,
             expect![[r#"
                 ba C
@@ -1093,12 +1078,12 @@ mod repr {
 
     #[test]
     fn transparent() {
-        check_repr(r#"#[repr(transparent, $0)] struct Test;"#, expect![[r#""#]]);
+        check(r#"#[repr(transparent, $0)] struct Test;"#, expect![[r#""#]]);
     }
 
     #[test]
     fn align() {
-        check_repr(
+        check(
             r#"#[repr(align(1), $0)] struct Test;"#,
             expect![[r#"
                 ba C
@@ -1121,7 +1106,7 @@ mod repr {
 
     #[test]
     fn packed() {
-        check_repr(
+        check(
             r#"#[repr(packed, $0)] struct Test;"#,
             expect![[r#"
                 ba C
@@ -1144,7 +1129,7 @@ mod repr {
 
     #[test]
     fn c() {
-        check_repr(
+        check(
             r#"#[repr(C, $0)] struct Test;"#,
             expect![[r#"
                 ba align($0)
@@ -1167,7 +1152,7 @@ mod repr {
 
     #[test]
     fn prim() {
-        check_repr(
+        check(
             r#"#[repr(usize, $0)] struct Test;"#,
             expect![[r#"
                 ba C

@@ -106,6 +106,10 @@ impl FamousDefs<'_, '_> {
         self.find_trait("core:marker:Copy")
     }
 
+    pub fn core_marker_Sized(&self) -> Option<Trait> {
+        self.find_trait("core:marker:Sized")
+    }
+
     pub fn core_future_Future(&self) -> Option<Trait> {
         self.find_trait("core:future:Future")
     }

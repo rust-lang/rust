@@ -336,7 +336,7 @@ pub fn suggest_constraining_type_params<'a>(
             .collect();
 
         constraints
-            .retain(|(_, def_id, _)| def_id.map_or(true, |def| !bound_trait_defs.contains(&def)));
+            .retain(|(_, def_id, _)| def_id.is_none_or(|def| !bound_trait_defs.contains(&def)));
 
         if constraints.is_empty() {
             continue;

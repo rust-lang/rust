@@ -1,5 +1,19 @@
-privacy_field_is_private = field `{$field_name}` of {$variant_descr} `{$def_path_str}` is private
-privacy_field_is_private_is_update_syntax_label = field `{$field_name}` is private
+privacy_field_is_private =
+    {$len ->
+        [1] field
+        *[other] fields
+    } {$field_names} of {$variant_descr} `{$def_path_str}` {$len ->
+        [1] is
+        *[other] are
+    } private
+    .label = in this type
+privacy_field_is_private_is_update_syntax_label = {$rest_len ->
+        [1] field
+        *[other] fields
+    } {$rest_field_names} {$rest_len ->
+        [1] is
+        *[other] are
+    } private
 privacy_field_is_private_label = private field
 
 privacy_from_private_dep_in_public_interface =

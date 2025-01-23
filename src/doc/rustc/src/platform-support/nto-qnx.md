@@ -78,7 +78,7 @@ extern "C" {
 }
 
 #[no_mangle]
-pub extern "C" fn main(_argc: isize, _argv: *const *const u8) -> isize {
+pub extern "C" fn main(_argc: core::ffi::c_int, _argv: *const *const u8) -> core::ffi::c_int {
     const HELLO: &'static str = "Hello World, the answer is %d\n\0";
     unsafe {
         printf(HELLO.as_ptr() as *const _, 42);

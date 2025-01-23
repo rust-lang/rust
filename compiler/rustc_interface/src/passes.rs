@@ -875,6 +875,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     });
     // Freeze definitions as we don't add new ones at this point.
     // We need to wait until now since we synthesize a by-move body
+    // for all coroutine-closures.
+    //
     // This improves performance by allowing lock-free access to them.
     tcx.untracked().definitions.freeze();
 
@@ -887,7 +889,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
         });
     });
     sess.time("MIR_effect_checking", || {
-        for def_id in tcx.hir().body_owners() {
+        tcx.hir().par_body_owners(|def_id| {
             tcx.ensure().has_ffi_unwind_calls(def_id);
 
             // If we need to codegen, ensure that we emit all errors from
@@ -898,15 +900,17 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             {
                 tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
             }
-        }
+        });
     });
-    tcx.hir().par_body_owners(|def_id| {
-        if tcx.is_coroutine(def_id.to_def_id()) {
-            tcx.ensure().mir_coroutine_witnesses(def_id);
-            tcx.ensure().check_coroutine_obligations(
-                tcx.typeck_root_def_id(def_id.to_def_id()).expect_local(),
-            );
-        }
+    sess.time("coroutine_obligations", || {
+        tcx.hir().par_body_owners(|def_id| {
+            if tcx.is_coroutine(def_id.to_def_id()) {
+                tcx.ensure().mir_coroutine_witnesses(def_id);
+                tcx.ensure().check_coroutine_obligations(
+                    tcx.typeck_root_def_id(def_id.to_def_id()).expect_local(),
+                );
+            }
+        });
     });
 
     sess.time("layout_testing", || layout_test::test_layout(tcx));

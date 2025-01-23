@@ -135,8 +135,8 @@ pub use crate::diagnostics::{
     EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo, report_error,
 };
 pub use crate::eval::{
-    AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, RejectOpWith, ValidationMode,
-    create_ecx, eval_entry,
+    AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, MiriEntryFnType, RejectOpWith,
+    ValidationMode, create_ecx, eval_entry,
 };
 pub use crate::helpers::{AccessKind, EvalContextExt as _};
 pub use crate::intrinsics::EvalContextExt as _;

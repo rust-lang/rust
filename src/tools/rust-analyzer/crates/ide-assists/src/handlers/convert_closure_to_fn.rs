@@ -507,7 +507,7 @@ fn wrap_capture_in_deref_if_needed(
     if does_autoderef {
         return capture_name;
     }
-    make::expr_prefix(T![*], capture_name)
+    make::expr_prefix(T![*], capture_name).into()
 }
 
 fn capture_as_arg(ctx: &AssistContext<'_>, capture: &ClosureCapture) -> ast::Expr {

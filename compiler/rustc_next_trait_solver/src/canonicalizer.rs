@@ -273,7 +273,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                         //
                         // For this we set `next_orig_uv` to the next smallest, not yet compressed,
                         // universe of the input.
-                        if next_orig_uv.map_or(true, |curr_next_uv| uv.cannot_name(curr_next_uv)) {
+                        if next_orig_uv.is_none_or(|curr_next_uv| uv.cannot_name(curr_next_uv)) {
                             next_orig_uv = Some(uv);
                         }
                     }

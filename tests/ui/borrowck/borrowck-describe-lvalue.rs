@@ -231,6 +231,7 @@ fn main() {
         let x = &mut v;
         v[0].y;
         //~^ ERROR cannot use `v[_].y` because it was mutably borrowed
+        //~| ERROR cannot use `*v` because it was mutably borrowed
         drop(x);
     }
     // Field of constant index

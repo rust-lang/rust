@@ -6,15 +6,14 @@ use std::mem;
 
 use rustc_ast::attr::AttributeExt;
 use rustc_ast::expand::StrippedCfgItem;
-use rustc_ast::{self as ast, Crate, Inline, ItemKind, ModKind, NodeId, attr};
+use rustc_ast::{self as ast, Crate, NodeId, attr};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::StabilityLevel;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, StashKey};
 use rustc_expand::base::{
-    Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
-    SyntaxExtensionKind,
+    DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension, SyntaxExtensionKind,
 };
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{
@@ -26,8 +25,8 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::{RegisteredTools, TyCtxt, Visibility};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
-    LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, SOFT_UNSTABLE,
-    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_MACRO_RULES, UNUSED_MACROS,
+    LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+    UNUSED_MACRO_RULES, UNUSED_MACROS,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::edit_distance;
@@ -155,26 +154,6 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
         [sym::clippy, sym::rustfmt, sym::diagnostic, sym::miri, sym::rust_analyzer];
     registered_tools.extend(predefined_tools.iter().cloned().map(Ident::with_dummy_span));
     registered_tools
-}
-
-// Some feature gates for inner attributes are reported as lints for backward compatibility.
-fn soft_custom_inner_attributes_gate(path: &ast::Path, invoc: &Invocation) -> bool {
-    match &path.segments[..] {
-        // `#![test]`
-        [seg] if seg.ident.name == sym::test => return true,
-        // `#![rustfmt::skip]` on out-of-line modules
-        [seg1, seg2] if seg1.ident.name == sym::rustfmt && seg2.ident.name == sym::skip => {
-            if let InvocationKind::Attr { item, .. } = &invoc.kind {
-                if let Annotatable::Item(item) = item {
-                    if let ItemKind::Mod(_, ModKind::Loaded(_, Inline::No, _, _)) = item.kind {
-                        return true;
-                    }
-                }
-            }
-        }
-        _ => {}
-    }
-    false
 }
 
 impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
@@ -317,7 +296,6 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             parent_scope,
             node_id,
             force,
-            soft_custom_inner_attributes_gate(path, invoc),
             deleg_impl,
             looks_like_invoc_in_mod_inert_attr,
         )?;
@@ -549,7 +527,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         node_id: NodeId,
         force: bool,
-        soft_custom_inner_attributes_gate: bool,
         deleg_impl: Option<LocalDefId>,
         invoc_in_mod_inert_attr: Option<LocalDefId>,
     ) -> Result<(Lrc<SyntaxExtension>, Res), Indeterminate> {
@@ -667,22 +644,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Res::NonMacroAttr(..) => false,
                 _ => unreachable!(),
             };
-            if soft_custom_inner_attributes_gate {
-                self.tcx.sess.psess.buffer_lint(
-                    SOFT_UNSTABLE,
-                    path.span,
-                    node_id,
-                    BuiltinLintDiag::InnerAttributeUnstable { is_macro },
-                );
+            let msg = if is_macro {
+                "inner macro attributes are unstable"
             } else {
-                // FIXME: deduplicate with rustc_lint (`BuiltinLintDiag::InnerAttributeUnstable`)
-                let msg = if is_macro {
-                    "inner macro attributes are unstable"
-                } else {
-                    "custom inner attributes are unstable"
-                };
-                feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
-            }
+                "custom inner attributes are unstable"
+            };
+            feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
         }
 
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
@@ -1055,7 +1022,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         span: Span,
     ) {
         if let Some(Res::NonMacroAttr(kind)) = res {
-            if kind != NonMacroAttrKind::Tool && binding.map_or(true, |b| b.is_import()) {
+            if kind != NonMacroAttrKind::Tool && binding.is_none_or(|b| b.is_import()) {
                 let binding_span = binding.map(|binding| binding.span);
                 self.dcx().emit_err(errors::CannotUseThroughAnImport {
                     span,

@@ -9,8 +9,8 @@ trait Qux {
 }
 
 static FOO: &(dyn Qux + Sync) = "desc";
-//~^ the trait `Qux` cannot be made into an object
-//[curr]~| the trait `Qux` cannot be made into an object
-//[curr]~| the trait `Qux` cannot be made into an object
+//~^ the trait `Qux` is not dyn compatible
+//[curr]~| the trait `Qux` is not dyn compatible
+//[curr]~| the trait `Qux` is not dyn compatible
 
 fn main() {}

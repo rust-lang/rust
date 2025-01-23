@@ -1143,7 +1143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.may_coerce(found, ty)
             }
             hir::FnRetTy::DefaultReturn(_) if in_closure => {
-                self.ret_coercion.as_ref().map_or(false, |ret| {
+                self.ret_coercion.as_ref().is_some_and(|ret| {
                     let ret_ty = ret.borrow().expected_ty();
                     self.may_coerce(found, ret_ty)
                 })
@@ -1784,14 +1784,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let results = self.typeck_results.borrow();
         // First, look for a `Clone::clone` call
         if segment.ident.name == sym::clone
-            && results.type_dependent_def_id(expr.hir_id).map_or(
-                false,
-                |did| {
+            && results.type_dependent_def_id(expr.hir_id).is_some_and(|did| {
                     let assoc_item = self.tcx.associated_item(did);
                     assoc_item.container == ty::AssocItemContainer::Trait
                         && assoc_item.container_id(self.tcx) == clone_trait_did
-                },
-            )
+                })
             // If that clone call hasn't already dereferenced the self type (i.e. don't give this
             // diagnostic in cases where we have `(&&T).clone()` and we expect `T`).
             && !results.expr_adjustments(callee_expr).iter().any(|adj| matches!(adj.kind, ty::adjustment::Adjust::Deref(..)))

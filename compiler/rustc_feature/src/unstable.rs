@@ -272,7 +272,7 @@ declare_features! (
     (unstable, doc_notable_trait, "1.52.0", Some(45040)),
     /// Allows using the `may_dangle` attribute (RFC 1327).
     (unstable, dropck_eyepatch, "1.10.0", Some(34761)),
-    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn-compatible[^1].
+    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn compatible[^1].
     /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
     /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
     ///
@@ -300,8 +300,6 @@ declare_features! (
     (internal, rustdoc_internals, "1.58.0", Some(90418)),
     /// Allows using the `rustdoc::missing_doc_code_examples` lint
     (unstable, rustdoc_missing_doc_code_examples, "1.31.0", Some(101730)),
-    /// Allows using `#[start]` on a function indicating that it is the program entrypoint.
-    (unstable, start, "1.0.0", Some(29633)),
     /// Allows using `#[structural_match]` which indicates that a type is structurally matchable.
     /// FIXME: Subsumed by trait `StructuralPartialEq`, cannot move to removed until a library
     /// feature with the same name exists.
@@ -722,7 +720,8 @@ impl Features {
 
 /// Some features are not allowed to be used together at the same time, if
 /// the two are present, produce an error.
-///
-/// Currently empty, but we will probably need this again in the future,
-/// so let's keep it in for now.
-pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[];
+pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[
+    // Experimental match ergonomics rulesets are incompatible with each other, to simplify the
+    // boolean logic required to tell which typing rules to use.
+    (sym::ref_pat_eat_one_layer_2024, sym::ref_pat_eat_one_layer_2024_structural),
+];

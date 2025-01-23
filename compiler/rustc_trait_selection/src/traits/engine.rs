@@ -319,7 +319,7 @@ where
         self.infcx.at(cause, param_env).deeply_normalize(value, &mut **self.engine.borrow_mut())
     }
 
-    pub fn structurally_normalize(
+    pub fn structurally_normalize_ty(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -327,7 +327,7 @@ where
     ) -> Result<Ty<'tcx>, Vec<E>> {
         self.infcx
             .at(cause, param_env)
-            .structurally_normalize(value, &mut **self.engine.borrow_mut())
+            .structurally_normalize_ty(value, &mut **self.engine.borrow_mut())
     }
 
     pub fn structurally_normalize_const(
@@ -339,5 +339,16 @@ where
         self.infcx
             .at(cause, param_env)
             .structurally_normalize_const(value, &mut **self.engine.borrow_mut())
+    }
+
+    pub fn structurally_normalize_term(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        value: ty::Term<'tcx>,
+    ) -> Result<ty::Term<'tcx>, Vec<E>> {
+        self.infcx
+            .at(cause, param_env)
+            .structurally_normalize_term(value, &mut **self.engine.borrow_mut())
     }
 }

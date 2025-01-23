@@ -2,19 +2,19 @@ use crate::mem::MaybeUninit;
 use crate::{fmt, str};
 
 /// Used for slow path in `Display` implementations when alignment is required.
-pub struct DisplayBuffer<const SIZE: usize> {
+pub(super) struct DisplayBuffer<const SIZE: usize> {
     buf: [MaybeUninit<u8>; SIZE],
     len: usize,
 }
 
 impl<const SIZE: usize> DisplayBuffer<SIZE> {
     #[inline]
-    pub const fn new() -> Self {
+    pub(super) const fn new() -> Self {
         Self { buf: [MaybeUninit::uninit(); SIZE], len: 0 }
     }
 
     #[inline]
-    pub fn as_str(&self) -> &str {
+    pub(super) fn as_str(&self) -> &str {
         // SAFETY: `buf` is only written to by the `fmt::Write::write_str` implementation
         // which writes a valid UTF-8 string to `buf` and correctly sets `len`.
         unsafe {

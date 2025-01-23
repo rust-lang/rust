@@ -3,7 +3,7 @@
 //@ compile-flags:-Zinline-in-all-cgus
 
 #![deny(dead_code)]
-#![feature(start)]
+#![crate_type = "lib"]
 
 //~ MONO_ITEM fn std::ptr::drop_in_place::<Root> - shim(Some(Root)) @@ transitive_drop_glue-cgu.0[Internal]
 struct Root(#[allow(dead_code)] Intermediate);
@@ -26,8 +26,8 @@ impl<T> Drop for LeafGen<T> {
 }
 
 //~ MONO_ITEM fn start
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+#[no_mangle]
+pub fn start(_: isize, _: *const *const u8) -> isize {
     let _ = Root(Intermediate(Leaf));
 
     //~ MONO_ITEM fn std::ptr::drop_in_place::<RootGen<u32>> - shim(Some(RootGen<u32>)) @@ transitive_drop_glue-cgu.0[Internal]

@@ -275,7 +275,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | sym::lang
                     | sym::needs_allocator
                     | sym::default_lib_allocator
-                    | sym::start
                     | sym::custom_mir,
                     ..
                 ] => {}
@@ -2655,7 +2654,6 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
         sym::repr,
         sym::path,
         sym::automatically_derived,
-        sym::start,
         sym::rustc_main,
         sym::derive,
         sym::test,

@@ -1,10 +1,21 @@
-error[E0038]: the trait alias `BB` cannot be made into an object
+error[E0038]: the trait alias `BB` is not dyn compatible
   --> $DIR/self-in-const-generics.rs:9:16
    |
 LL | fn foo(x: &dyn BB) {}
-   |                ^^
+   |                ^^ `BB` is not dyn compatible
    |
-   = note: it cannot use `Self` as a type parameter in a supertrait or `where`-clause
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/self-in-const-generics.rs:7:12
+   |
+LL | trait BB = Bar<{ 2 + 1 }>;
+   |       --   ^^^^^^^^^^^^^^ ...because it uses `Self` as a type parameter
+   |       |
+   |       this trait is not dyn compatible...
+help: consider using an opaque type instead
+   |
+LL | fn foo(x: &impl BB) {}
+   |            ~~~~
 
 error: aborting due to 1 previous error
 

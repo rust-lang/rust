@@ -1,14 +1,15 @@
-error[E0038]: the trait `issue_3907::Foo` cannot be made into an object
+error[E0038]: the trait `issue_3907::Foo` is not dyn compatible
   --> $DIR/issue-3907-2.rs:11:12
    |
 LL | fn bar(_x: Foo) {}
-   |            ^^^ `issue_3907::Foo` cannot be made into an object
+   |            ^^^ `issue_3907::Foo` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/auxiliary/issue-3907.rs:2:8
    |
 LL |     fn bar();
-   |        ^^^ the trait cannot be made into an object because associated function `bar` has no `self` parameter
+   |        ^^^ the trait is not dyn compatible because associated function `bar` has no `self` parameter
 
 error[E0277]: the size for values of type `(dyn issue_3907::Foo + 'static)` cannot be known at compilation time
   --> $DIR/issue-3907-2.rs:11:12

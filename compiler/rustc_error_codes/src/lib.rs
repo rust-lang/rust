@@ -24,6 +24,10 @@
 //
 // Both columns are necessary because it's not possible in Rust to create a new identifier such as
 // `E0123` from an integer literal such as `0123`, unfortunately.
+//
+// Do *not* remove entries from this list. Instead, just add a note th the corresponding markdown
+// file saying that this error is not emitted by the compiler any more (see E0001.md for an
+// example), and remove all code examples that do not build any more.
 #[macro_export]
 macro_rules! error_codes {
     ($macro:path) => (

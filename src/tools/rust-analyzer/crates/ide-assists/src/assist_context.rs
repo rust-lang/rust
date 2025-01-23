@@ -109,6 +109,10 @@ impl<'a> AssistContext<'a> {
         self.trimmed_range
     }
 
+    pub(crate) fn source_file(&self) -> &SourceFile {
+        &self.source_file
+    }
+
     pub(crate) fn token_at_offset(&self) -> TokenAtOffset<SyntaxToken> {
         self.source_file.syntax().token_at_offset(self.offset())
     }
