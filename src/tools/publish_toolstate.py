@@ -36,7 +36,6 @@ MAINTAINERS = {
     "rust-by-example": {"marioidival"},
     "embedded-book": {"adamgreig", "andre-richter", "jamesmunns", "therealprof"},
     "edition-guide": {"ehuss"},
-    "rustc-dev-guide": {"spastorino", "amanjeev", "JohnTitor"},
 }
 
 LABELS = {
@@ -46,7 +45,6 @@ LABELS = {
     "rust-by-example": ["C-bug"],
     "embedded-book": ["C-bug"],
     "edition-guide": ["C-bug"],
-    "rustc-dev-guide": ["C-bug"],
 }
 
 REPOS = {
@@ -56,7 +54,6 @@ REPOS = {
     "rust-by-example": "https://github.com/rust-lang/rust-by-example",
     "embedded-book": "https://github.com/rust-embedded/book",
     "edition-guide": "https://github.com/rust-lang/edition-guide",
-    "rustc-dev-guide": "https://github.com/rust-lang/rustc-dev-guide",
 }
 
 
