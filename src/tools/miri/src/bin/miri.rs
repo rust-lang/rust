@@ -33,7 +33,8 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, Once};
 
 use miri::{
-    BacktraceStyle, BorrowTrackerMethod, MiriConfig, MiriEntryFnType,ProvenanceMode, RetagFields, ValidationMode,
+    BacktraceStyle, BorrowTrackerMethod, MiriConfig, MiriEntryFnType, ProvenanceMode, RetagFields,
+    ValidationMode,
 };
 use rustc_abi::ExternAbi;
 use rustc_data_structures::sync;
