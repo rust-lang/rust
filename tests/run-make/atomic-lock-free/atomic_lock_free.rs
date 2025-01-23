@@ -6,8 +6,14 @@ extern "rust-intrinsic" {
     fn atomic_xadd_seqcst<T>(dst: *mut T, src: T) -> T;
 }
 
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+pub trait Sized: MetaSized {}
 #[lang = "copy"]
 trait Copy {}
 #[lang = "freeze"]

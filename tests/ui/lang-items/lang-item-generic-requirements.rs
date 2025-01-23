@@ -4,8 +4,14 @@
 #![feature(lang_items, no_core)]
 #![no_core]
 
+#[lang = "pointeesized"]
+pub trait MyPointeeSized {}
+
+#[lang = "metasized"]
+pub trait MyMetaSized: MyPointeeSized {}
+
 #[lang = "sized"]
-trait MySized {}
+trait MySized: MyMetaSized {}
 
 #[lang = "add"]
 trait MyAdd<'a, T> {}

@@ -1,5 +1,5 @@
 error: target feature `forced-atomics` cannot be enabled with `#[target_feature]`: unsound because it changes the ABI of atomic operations
-  --> $DIR/forbidden-target-feature-attribute.rs:10:18
+  --> $DIR/forbidden-target-feature-attribute.rs:16:18
    |
 LL | #[target_feature(enable = "forced-atomics")]
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
