@@ -342,12 +342,14 @@
     },
     "fma": {
         "sources": [
+            "src/math/arch/aarch64.rs",
             "src/math/fma.rs"
         ],
         "type": "f64"
     },
     "fmaf": {
         "sources": [
+            "src/math/arch/aarch64.rs",
             "src/math/fma_wide.rs"
         ],
         "type": "f32"
@@ -806,6 +808,7 @@
     },
     "rintf16": {
         "sources": [
+            "src/math/arch/aarch64.rs",
             "src/math/rint.rs"
         ],
         "type": "f16"
@@ -928,6 +931,7 @@
     },
     "sqrt": {
         "sources": [
+            "src/math/arch/aarch64.rs",
             "src/math/arch/i686.rs",
             "src/math/arch/wasm32.rs",
             "src/math/generic/sqrt.rs",
@@ -937,6 +941,7 @@
     },
     "sqrtf": {
         "sources": [
+            "src/math/arch/aarch64.rs",
             "src/math/arch/i686.rs",
             "src/math/arch/wasm32.rs",
             "src/math/generic/sqrt.rs",
@@ -953,6 +958,7 @@
     },
     "sqrtf16": {
         "sources": [
+            "src/math/arch/aarch64.rs",
             "src/math/generic/sqrt.rs",
             "src/math/sqrtf16.rs"
         ],

@@ -9,6 +9,12 @@ use super::{CastFrom, CastInto, Float, Int, MinInt};
 /// Computes `(x*y)+z`, rounded as one ternary operation (i.e. calculated with infinite precision).
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn fma(x: f64, y: f64, z: f64) -> f64 {
+    select_implementation! {
+        name: fma,
+        use_arch: all(target_arch = "aarch64", target_feature = "neon"),
+        args: x, y, z,
+    }
+
     fma_round(x, y, z, Round::Nearest).val
 }
 

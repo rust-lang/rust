@@ -4,6 +4,7 @@ pub fn sqrt(x: f64) -> f64 {
     select_implementation! {
         name: sqrt,
         use_arch: any(
+            all(target_arch = "aarch64", target_feature = "neon"),
             all(target_arch = "wasm32", intrinsics_enabled),
             target_feature = "sse2"
         ),

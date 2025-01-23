@@ -17,6 +17,12 @@ pub(crate) fn fmaf16(_x: f16, _y: f16, _z: f16) -> f16 {
 /// Computes `(x*y)+z`, rounded as one ternary operation (i.e. calculated with infinite precision).
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn fmaf(x: f32, y: f32, z: f32) -> f32 {
+    select_implementation! {
+        name: fmaf,
+        use_arch: all(target_arch = "aarch64", target_feature = "neon"),
+        args: x, y, z,
+    }
+
     fma_wide_round(x, y, z, Round::Nearest).val
 }
 

@@ -1,33 +1,115 @@
-use core::arch::aarch64::{
-    float32x2_t, float64x1_t, vdup_n_f32, vdup_n_f64, vget_lane_f32, vget_lane_f64, vrndn_f32,
-    vrndn_f64,
-};
+//! Architecture-specific support for aarch64 with neon.
 
-pub fn rint(x: f64) -> f64 {
-    // SAFETY: only requires target_feature=neon, ensured by `cfg_if` in parent module.
-    let x_vec: float64x1_t = unsafe { vdup_n_f64(x) };
+use core::arch::asm;
 
-    // SAFETY: only requires target_feature=neon, ensured by `cfg_if` in parent module.
-    let result_vec: float64x1_t = unsafe { vrndn_f64(x_vec) };
-
-    // SAFETY: only requires target_feature=neon, ensured by `cfg_if` in parent module.
-    let result: f64 = unsafe { vget_lane_f64::<0>(result_vec) };
-
-    result
+pub fn fma(mut x: f64, y: f64, z: f64) -> f64 {
+    // SAFETY: `fmadd` is available with neon and has no side effects.
+    unsafe {
+        asm!(
+            "fmadd {x:d}, {x:d}, {y:d}, {z:d}",
+            x = inout(vreg) x,
+            y = in(vreg) y,
+            z = in(vreg) z,
+            options(nomem, nostack, pure)
+        );
+    }
+    x
 }
 
-pub fn rintf(x: f32) -> f32 {
-    // There's a scalar form of this instruction (FRINTN) but core::arch doesn't expose it, so we
-    // have to use the vector form and drop the other lanes afterwards.
+pub fn fmaf(mut x: f32, y: f32, z: f32) -> f32 {
+    // SAFETY: `fmadd` is available with neon and has no side effects.
+    unsafe {
+        asm!(
+            "fmadd {x:s}, {x:s}, {y:s}, {z:s}",
+            x = inout(vreg) x,
+            y = in(vreg) y,
+            z = in(vreg) z,
+            options(nomem, nostack, pure)
+        );
+    }
+    x
+}
 
-    // SAFETY: only requires target_feature=neon, ensured by `cfg_if` in parent module.
-    let x_vec: float32x2_t = unsafe { vdup_n_f32(x) };
+pub fn rint(mut x: f64) -> f64 {
+    // SAFETY: `frintn` is available with neon and has no side effects.
+    //
+    // `frintn` is always round-to-nearest which does not match the C specification, but Rust does
+    // not support rounding modes.
+    unsafe {
+        asm!(
+            "frintn {x:d}, {x:d}",
+            x = inout(vreg) x,
+            options(nomem, nostack, pure)
+        );
+    }
+    x
+}
 
-    // SAFETY: only requires target_feature=neon, ensured by `cfg_if` in parent module.
-    let result_vec: float32x2_t = unsafe { vrndn_f32(x_vec) };
+pub fn rintf(mut x: f32) -> f32 {
+    // SAFETY: `frintn` is available with neon and has no side effects.
+    //
+    // `frintn` is always round-to-nearest which does not match the C specification, but Rust does
+    // not support rounding modes.
+    unsafe {
+        asm!(
+            "frintn {x:s}, {x:s}",
+            x = inout(vreg) x,
+            options(nomem, nostack, pure)
+        );
+    }
+    x
+}
 
-    // SAFETY: only requires target_feature=neon, ensured by `cfg_if` in parent module.
-    let result: f32 = unsafe { vget_lane_f32::<0>(result_vec) };
+#[cfg(all(f16_enabled, target_feature = "fp16"))]
+pub fn rintf16(mut x: f16) -> f16 {
+    // SAFETY: `frintn` is available for `f16` with `fp16` (implies `neon`) and has no side effects.
+    //
+    // `frintn` is always round-to-nearest which does not match the C specification, but Rust does
+    // not support rounding modes.
+    unsafe {
+        asm!(
+            "frintn {x:h}, {x:h}",
+            x = inout(vreg) x,
+            options(nomem, nostack, pure)
+        );
+    }
+    x
+}
 
-    result
+pub fn sqrt(mut x: f64) -> f64 {
+    // SAFETY: `fsqrt` is available with neon and has no side effects.
+    unsafe {
+        asm!(
+            "fsqrt {x:d}, {x:d}",
+            x = inout(vreg) x,
+            options(nomem, nostack, pure)
+        );
+    }
+    x
+}
+
+pub fn sqrtf(mut x: f32) -> f32 {
+    // SAFETY: `fsqrt` is available with neon and has no side effects.
+    unsafe {
+        asm!(
+            "fsqrt {x:s}, {x:s}",
+            x = inout(vreg) x,
+            options(nomem, nostack, pure)
+        );
+    }
+    x
+}
+
+#[cfg(all(f16_enabled, target_feature = "fp16"))]
+pub fn sqrtf16(mut x: f16) -> f16 {
+    // SAFETY: `fsqrt` is available for `f16` with `fp16` (implies `neon`) and has no
+    // side effects.
+    unsafe {
+        asm!(
+            "fsqrt {x:h}, {x:h}",
+            x = inout(vreg) x,
+            options(nomem, nostack, pure)
+        );
+    }
+    x
 }
