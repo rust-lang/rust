@@ -206,3 +206,22 @@ tests/ui/feature-gates/ --bless`.
 [here]: ./stabilization_guide.md
 [tracking issue]: #tracking-issues
 [add-feature-gate]: ./feature-gates.md#adding-a-feature-gate
+
+## Call for testing
+
+Once the implementation is complete, the feature will be available to nightly users, but not yet part of stable Rust. This is a good time to write a blog post on [one of the Rust blogs](https://github.com/rust-lang/blog.rust-lang.org/) and issue a call for testing (here are two example [blog](https://blog.rust-lang.org/inside-rust/2024/08/09/async-closures-call-for-testing.html) [posts](https://blog.rust-lang.org/2024/09/05/impl-trait-capture-rules.html) to give you the idea). The post should highlight how the feature works, what areas you'd like people to play with, and how they can supply feedback.
+
+## Affiliated work
+
+Once the feature is supported by rustc, there is other associated work that needs to be done to give users a complete experience:
+
+* Extending rustfmt to format any new syntax;
+* Extending rust-analyzer;
+* Documenting the feature in the Rust reference;
+* ...
+
+## Stabilization
+
+The final step in the feature lifecycle is [stabilization][stab], which is when the feature becomes available to all Rust users. At this point, backwards incompatible changes are no longer permitted (modulo soundness bugs and inference changes; see the lang team's [defined semver policies](https://rust-lang.github.io/rfcs/1122-language-semver.html) for full details). To learn more about stabilization, see the [stabilization guide][stab].
+
+[stab]: ./stabilization_guide.md
