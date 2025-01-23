@@ -5,8 +5,14 @@
 #[rustc_intrinsic]
 unsafe fn atomic_xadd_seqcst<T>(dst: *mut T, src: T) -> T;
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+pub trait Sized: MetaSized {}
 #[lang = "copy"]
 trait Copy {}
 #[lang = "freeze"]
