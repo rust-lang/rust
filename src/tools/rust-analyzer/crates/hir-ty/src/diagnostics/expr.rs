@@ -547,8 +547,8 @@ pub fn record_literal_missing_fields(
     id: ExprId,
     expr: &Expr,
 ) -> Option<(VariantId, Vec<LocalFieldId>, /*exhaustive*/ bool)> {
-    let (fields, exhaustive) = match expr {
-        Expr::RecordLit { fields, spread, .. } => (fields, spread.is_none()),
+    let (fields, exhaustive, ellipsis) = match expr {
+        Expr::RecordLit { fields, spread, ellipsis, .. } => (fields, spread.is_none(), *ellipsis),
         _ => return None,
     };
 
@@ -563,7 +563,13 @@ pub fn record_literal_missing_fields(
     let missed_fields: Vec<LocalFieldId> = variant_data
         .fields()
         .iter()
-        .filter_map(|(f, d)| if specified_fields.contains(&d.name) { None } else { Some(f) })
+        .filter_map(|(f, d)| {
+            if (ellipsis && d.has_default) || specified_fields.contains(&d.name) {
+                None
+            } else {
+                Some(f)
+            }
+        })
         .collect();
     if missed_fields.is_empty() {
         return None;

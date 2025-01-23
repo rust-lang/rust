@@ -398,7 +398,7 @@ impl Printer<'_> {
                     self.print_expr(*expr);
                 }
             }
-            Expr::RecordLit { path, fields, spread } => {
+            Expr::RecordLit { path, fields, spread, ellipsis: _ } => {
                 match path {
                     Some(path) => self.print_path(path),
                     None => w!(self, "�"),

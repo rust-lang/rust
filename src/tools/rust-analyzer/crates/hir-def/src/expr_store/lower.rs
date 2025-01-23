@@ -603,9 +603,10 @@ impl ExprCollector<'_> {
                         })
                         .collect();
                     let spread = nfl.spread().map(|s| self.collect_expr(s));
-                    Expr::RecordLit { path, fields, spread }
+                    let ellipsis = nfl.dotdot_token().is_some();
+                    Expr::RecordLit { path, fields, spread, ellipsis }
                 } else {
-                    Expr::RecordLit { path, fields: Box::default(), spread: None }
+                    Expr::RecordLit { path, fields: Box::default(), spread: None, ellipsis: false }
                 };
 
                 self.alloc_expr(record_lit, syntax_ptr)
