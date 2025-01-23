@@ -2,7 +2,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::num::NonZero;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::emitter::HumanReadableErrorType;
@@ -62,6 +62,8 @@ where
             temps_dir,
         };
 
+        static USING_INTERNAL_FEATURES: AtomicBool = AtomicBool::new(false);
+
         let sess = build_session(
             early_dcx,
             sessopts,
@@ -74,7 +76,7 @@ where
             sysroot,
             "",
             None,
-            Arc::default(),
+            &USING_INTERNAL_FEATURES,
             Default::default(),
         );
         let cfg = parse_cfg(sess.dcx(), matches.opt_strs("cfg"));
