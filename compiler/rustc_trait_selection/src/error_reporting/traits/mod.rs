@@ -160,17 +160,24 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             })
             .collect();
 
-        // Ensure `T: Sized` and `T: WF` obligations come last. This lets us display diagnostics
-        // with more relevant type information and hide redundant E0282 errors.
-        errors.sort_by_key(|e| match e.obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
-                if self.tcx.is_lang_item(pred.def_id(), LangItem::Sized) =>
-            {
-                1
+        // Ensure `T: Sized`, `T: MetaSized`, `T: PointeeSized` and `T: WF` obligations come last.
+        // This lets us display diagnostics with more relevant type information and hide redundant
+        // E0282 errors.
+        errors.sort_by_key(|e| {
+            let maybe_sizedness_did = match e.obligation.predicate.kind().skip_binder() {
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => Some(pred.def_id()),
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(pred)) => Some(pred.def_id()),
+                _ => None,
+            };
+
+            match e.obligation.predicate.kind().skip_binder() {
+                _ if maybe_sizedness_did == self.tcx.lang_items().sized_trait() => 1,
+                _ if maybe_sizedness_did == self.tcx.lang_items().meta_sized_trait() => 2,
+                _ if maybe_sizedness_did == self.tcx.lang_items().pointee_sized_trait() => 3,
+                ty::PredicateKind::Coerce(_) => 4,
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 5,
+                _ => 0,
             }
-            ty::PredicateKind::Coerce(_) => 2,
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 3,
-            _ => 0,
         });
 
         for (index, error) in errors.iter().enumerate() {
