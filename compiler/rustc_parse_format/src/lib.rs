@@ -514,13 +514,7 @@ impl<'a> Parser<'a> {
 
     /// Consumes all whitespace characters until the first non-whitespace character
     fn ws(&mut self) {
-        while let Some(&(_, c)) = self.cur.peek() {
-            if c.is_whitespace() {
-                self.cur.next();
-            } else {
-                break;
-            }
-        }
+        while let Some(_) = self.cur.next_if(|&(_, c)| c.is_whitespace()) {}
     }
 
     /// Parses all of a string which is to be considered a "raw literal" in a
