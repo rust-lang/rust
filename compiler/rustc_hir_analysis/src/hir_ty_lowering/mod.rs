@@ -1624,7 +1624,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     /// Lower a qualified path to a type.
     #[instrument(level = "debug", skip_all)]
-    fn lower_qpath(
+    fn lower_qpath_ty(
         &self,
         span: Span,
         opt_self_ty: Option<Ty<'tcx>>,
@@ -1642,6 +1642,56 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
         debug!(?self_ty);
 
+        let (item_def_id, item_args) = self.lower_qpath_shared(
+            span,
+            self_ty,
+            trait_def_id,
+            item_def_id,
+            trait_segment,
+            item_segment,
+        );
+        Ty::new_projection_from_args(tcx, item_def_id, item_args)
+    }
+
+    /// Lower a qualified path to a const.
+    #[instrument(level = "debug", skip_all)]
+    fn lower_qpath_const(
+        &self,
+        span: Span,
+        self_ty: Ty<'tcx>,
+        item_def_id: DefId,
+        trait_segment: &hir::PathSegment<'tcx>,
+        item_segment: &hir::PathSegment<'tcx>,
+    ) -> Const<'tcx> {
+        let tcx = self.tcx();
+
+        let trait_def_id = tcx.parent(item_def_id);
+        debug!(?trait_def_id);
+
+        debug!(?self_ty);
+
+        let (item_def_id, item_args) = self.lower_qpath_shared(
+            span,
+            self_ty,
+            trait_def_id,
+            item_def_id,
+            trait_segment,
+            item_segment,
+        );
+        let uv = ty::UnevaluatedConst::new(item_def_id, item_args);
+        Const::new_unevaluated(tcx, uv)
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    fn lower_qpath_shared(
+        &self,
+        span: Span,
+        self_ty: Ty<'tcx>,
+        trait_def_id: DefId,
+        item_def_id: DefId,
+        trait_segment: &hir::PathSegment<'tcx>,
+        item_segment: &hir::PathSegment<'tcx>,
+    ) -> (DefId, GenericArgsRef<'tcx>) {
         let trait_ref =
             self.lower_mono_trait_ref(span, trait_def_id, self_ty, trait_segment, false);
         debug!(?trait_ref);
@@ -1649,7 +1699,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let item_args =
             self.lower_generic_args_of_assoc_item(span, item_def_id, item_segment, trait_ref.args);
 
-        Ty::new_projection_from_args(tcx, item_def_id, item_args)
+        (item_def_id, item_args)
     }
 
     fn error_missing_qpath_self_ty(
@@ -2000,7 +2050,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     path.segments[..path.segments.len() - 2].iter(),
                     GenericsArgsErrExtend::None,
                 );
-                self.lower_qpath(
+                self.lower_qpath_ty(
                     span,
                     opt_self_ty,
                     def_id,
@@ -2165,6 +2215,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(did, args))
             }
+            Res::Def(DefKind::AssocConst, did) => {
+                debug_assert!(path.segments.len() >= 2);
+                let _ = self.prohibit_generic_args(
+                    path.segments[..path.segments.len() - 2].iter(),
+                    GenericsArgsErrExtend::None,
+                );
+                // FIXME(mgca): maybe needs proper error reported
+                let Some(self_ty) = opt_self_ty else { span_bug!(span, "{path:?}") };
+                self.lower_qpath_const(
+                    span,
+                    self_ty,
+                    did,
+                    &path.segments[path.segments.len() - 2],
+                    path.segments.last().unwrap(),
+                )
+            }
             Res::Def(DefKind::Static { .. }, _) => {
                 span_bug!(span, "use of bare `static` ConstArgKind::Path's not yet supported")
             }
@@ -2177,7 +2243,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             // Exhaustive match to be clear about what exactly we're considering to be
             // an invalid Res for a const path.
-            Res::Def(
+            res @ (Res::Def(
                 DefKind::Mod
                 | DefKind::Enum
                 | DefKind::Variant
@@ -2191,7 +2257,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 | DefKind::Union
                 | DefKind::Trait
                 | DefKind::ForeignTy
-                | DefKind::AssocConst
                 | DefKind::TyParam
                 | DefKind::Macro(_)
                 | DefKind::LifetimeParam
@@ -2214,7 +2279,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             | Res::Local(_)
             | Res::ToolMod
             | Res::NonMacroAttr(_)
-            | Res::Err => Const::new_error_with_message(tcx, span, "invalid Res for const path"),
+            | Res::Err) => Const::new_error_with_message(
+                tcx,
+                span,
+                format!("invalid Res {res:?} for const path"),
+            ),
         }
     }
 

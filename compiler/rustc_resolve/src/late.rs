@@ -1181,7 +1181,7 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
                 if let TyKind::Path(None, ref path) = ty.kind
                     // We cannot disambiguate multi-segment paths right now as that requires type
                     // checking.
-                    && path.is_potential_trivial_const_arg(false)
+                    && path.is_potential_trivial_const_arg(&None, false)
                 {
                     let mut check_ns = |ns| {
                         self.maybe_resolve_ident_in_lexical_scope(path.segments[0].ident, ns)
