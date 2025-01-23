@@ -20,7 +20,7 @@ use std::{iter, str, string};
 
 pub use Alignment::*;
 pub use Count::*;
-pub use Piece::*;
+pub(crate) use Piece::*;
 pub use Position::*;
 use rustc_lexer::unescape;
 
