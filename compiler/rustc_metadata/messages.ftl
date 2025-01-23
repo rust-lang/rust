@@ -113,6 +113,14 @@ metadata_incompatible_rustc =
     found crate `{$crate_name}` compiled by an incompatible version of rustc{$add_info}
     .help = please recompile that crate using this compiler ({$rustc_version}) (consider running `cargo clean` first)
 
+metadata_incompatible_target_modifiers =
+    mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`
+    .note = `{$flag_name_prefixed}={$flag_local_value}` in this crate is incompatible with `{$flag_name_prefixed}={$flag_extern_value}` in dependency `{$extern_crate}`
+    .help = the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
+
+metadata_incompatible_target_modifiers_help_allow = if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error
+metadata_incompatible_target_modifiers_help_fix = set `{$flag_name_prefixed}={$flag_extern_value}` in this crate or `{$flag_name_prefixed}={$flag_local_value}` in `{$extern_crate}`
+
 metadata_incompatible_wasm_link =
     `wasm_import_module` is incompatible with other arguments in `#[link]` attributes
 
@@ -283,6 +291,8 @@ metadata_unknown_link_kind =
 
 metadata_unknown_link_modifier =
     unknown linking modifier `{$modifier}`, expected one of: bundle, verbatim, whole-archive, as-needed
+
+metadata_unknown_target_modifier_unsafe_allowed = unknown target modifier `{$flag_name}`, requested by `-Cunsafe-allow-abi-mismatch={$flag_name}`
 
 metadata_unsupported_abi =
     ABI not supported by `#[link(kind = "raw-dylib")]` on this architecture
