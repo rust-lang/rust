@@ -12,7 +12,6 @@ use hir_def::{
 };
 use hir_expand::{mod_path::PathKind, name::Name};
 use hir_ty::{db::HirDatabase, method_resolution};
-use span::SyntaxContextId;
 
 use crate::{
     Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, DocLinkDef, Enum, ExternCrateDecl,
@@ -87,6 +86,16 @@ impl HasAttrs for AssocItem {
             AssocItem::Const(it) => it.attr_id(),
             AssocItem::TypeAlias(it) => it.attr_id(),
         }
+    }
+}
+
+impl HasAttrs for crate::Crate {
+    fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
+        let def = AttrDefId::ModuleId(self.root_module().id);
+        AttrsWithOwner::new(db.upcast(), def)
+    }
+    fn attr_id(self) -> AttrDefId {
+        AttrDefId::ModuleId(self.root_module().id)
     }
 }
 
@@ -328,9 +337,7 @@ fn doc_modpath_from_str(link: &str) -> Option<ModPath> {
         };
         let parts = first_segment.into_iter().chain(parts).map(|segment| match segment.parse() {
             Ok(idx) => Name::new_tuple_field(idx),
-            Err(_) => {
-                Name::new(segment.split_once('<').map_or(segment, |it| it.0), SyntaxContextId::ROOT)
-            }
+            Err(_) => Name::new_root(segment.split_once('<').map_or(segment, |it| it.0)),
         });
         Some(ModPath::from_segments(kind, parts))
     };

@@ -4,7 +4,7 @@ use either::Either;
 use hir::{InFile, Semantics, Type};
 use parser::T;
 use syntax::{
-    ast::{self, HasArgList, HasName},
+    ast::{self, AstChildren, HasArgList, HasAttrs, HasName},
     match_ast, AstNode, NodeOrToken, SyntaxToken,
 };
 
@@ -36,6 +36,10 @@ impl ActiveParameter {
             ast::Pat::IdentPat(ident) => ident.name(),
             _ => None,
         })
+    }
+
+    pub fn attrs(&self) -> Option<AstChildren<ast::Attr>> {
+        self.src.as_ref().and_then(|param| Some(param.value.as_ref().right()?.attrs()))
     }
 }
 

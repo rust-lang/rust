@@ -209,7 +209,9 @@ lint_dangling_pointers_from_temporaries = a dangling pointer will be produced be
     .label_ptr = this pointer will immediately be invalid
     .label_temporary = this `{$ty}` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
     .note = pointers do not have a lifetime; when calling `{$callee}` the `{$ty}` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
-    .help = for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+    .help_bind = you must make sure that the variable you bind the `{$ty}` to lives at least as long as the pointer returned by the call to `{$callee}`
+    .help_returned = in particular, if this pointer is returned from the current function, binding the `{$ty}` inside the function will not suffice
+    .help_visit = for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
 lint_default_hash_types = prefer `{$preferred}` over `{$used}`, it has better performance
     .note = a `use rustc_data_structures::fx::{$preferred}` may be necessary

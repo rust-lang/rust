@@ -1,7 +1,5 @@
 //@ run-pass
-#![allow(unused_mut)]
-//@ ignore-wasm32 no processes
-//@ ignore-sgx no processes
+//@ needs-subprocess
 
 use std::env;
 use std::io::prelude::*;
@@ -20,7 +18,7 @@ fn main() {
 fn child() {
     writeln!(&mut io::stdout(), "foo").unwrap();
     writeln!(&mut io::stderr(), "bar").unwrap();
-    let mut stdin = io::stdin();
+    let stdin = io::stdin();
     let mut s = String::new();
     stdin.lock().read_line(&mut s).unwrap();
     assert_eq!(s.len(), 0);

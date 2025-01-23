@@ -420,8 +420,8 @@ fn make_elided_region_spans_suggs<'a>(
 
     let mut process_consecutive_brackets =
         |span: Option<Span>, spans_suggs: &mut Vec<(Span, String)>| {
-            if span
-                .is_some_and(|span| bracket_span.map_or(true, |bracket_span| span == bracket_span))
+            if let Some(span) = span
+                && bracket_span.is_none_or(|bracket_span| span == bracket_span)
             {
                 consecutive_brackets += 1;
             } else if let Some(bracket_span) = bracket_span.take() {

@@ -48,7 +48,6 @@ mod ssr;
 mod static_index;
 mod status;
 mod syntax_highlighting;
-mod syntax_tree;
 mod test_explorer;
 mod typing;
 mod view_crate_graph;
@@ -56,6 +55,7 @@ mod view_hir;
 mod view_item_tree;
 mod view_memory_layout;
 mod view_mir;
+mod view_syntax_tree;
 
 use std::{iter, panic::UnwindSafe};
 
@@ -120,7 +120,7 @@ pub use ide_assists::{
 };
 pub use ide_completion::{
     CallableSnippets, CompletionConfig, CompletionFieldsToResolve, CompletionItem,
-    CompletionItemKind, CompletionRelevance, Snippet, SnippetScope,
+    CompletionItemKind, CompletionItemRefMode, CompletionRelevance, Snippet, SnippetScope,
 };
 pub use ide_db::text_edit::{Indel, TextEdit};
 pub use ide_db::{
@@ -329,14 +329,8 @@ impl Analysis {
         })
     }
 
-    /// Returns a syntax tree represented as `String`, for debug purposes.
-    // FIXME: use a better name here.
-    pub fn syntax_tree(
-        &self,
-        file_id: FileId,
-        text_range: Option<TextRange>,
-    ) -> Cancellable<String> {
-        self.with_db(|db| syntax_tree::syntax_tree(db, file_id, text_range))
+    pub fn view_syntax_tree(&self, file_id: FileId) -> Cancellable<String> {
+        self.with_db(|db| view_syntax_tree::view_syntax_tree(db, file_id))
     }
 
     pub fn view_hir(&self, position: FilePosition) -> Cancellable<String> {
@@ -410,16 +404,10 @@ impl Analysis {
         &self,
         position: FilePosition,
         char_typed: char,
-        chars_to_exclude: Option<String>,
     ) -> Cancellable<Option<SourceChange>> {
         // Fast path to not even parse the file.
         if !typing::TRIGGER_CHARS.contains(char_typed) {
             return Ok(None);
-        }
-        if let Some(chars_to_exclude) = chars_to_exclude {
-            if chars_to_exclude.contains(char_typed) {
-                return Ok(None);
-            }
         }
 
         self.with_db(|db| typing::on_char_typed(db, position, char_typed))
@@ -588,17 +576,17 @@ impl Analysis {
         self.with_db(|db| parent_module::parent_module(db, position))
     }
 
-    /// Returns crates this file belongs too.
+    /// Returns crates that this file belongs to.
     pub fn crates_for(&self, file_id: FileId) -> Cancellable<Vec<CrateId>> {
         self.with_db(|db| parent_module::crates_for(db, file_id))
     }
 
-    /// Returns crates this file belongs too.
+    /// Returns crates that this file belongs to.
     pub fn transitive_rev_deps(&self, crate_id: CrateId) -> Cancellable<Vec<CrateId>> {
         self.with_db(|db| db.crate_graph().transitive_rev_deps(crate_id).collect())
     }
 
-    /// Returns crates this file *might* belong too.
+    /// Returns crates that this file *might* belong to.
     pub fn relevant_crates_for(&self, file_id: FileId) -> Cancellable<Vec<CrateId>> {
         self.with_db(|db| db.relevant_crates(file_id).iter().copied().collect())
     }

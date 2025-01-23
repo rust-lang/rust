@@ -433,7 +433,7 @@ pub fn analyze_coroutine_closure_captures<'a, 'tcx: 'a, T>(
                 // A parent matches a child if they share the same prefix of projections.
                 // The child may have more, if it is capturing sub-fields out of
                 // something that is captured by-move in the parent closure.
-                while child_captures.peek().map_or(false, |(_, child_capture)| {
+                while child_captures.peek().is_some_and(|(_, child_capture)| {
                     child_prefix_matches_parent_projections(parent_capture, child_capture)
                 }) {
                     let (child_field_idx, child_capture) = child_captures.next().unwrap();

@@ -11,9 +11,8 @@ use base_db::{
 };
 use cfg::{CfgAtom, CfgDiff, CfgOptions};
 use intern::{sym, Symbol};
-use itertools::Itertools;
 use paths::{AbsPath, AbsPathBuf};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
 use span::{Edition, FileId};
 use tracing::instrument;
@@ -63,6 +62,8 @@ pub struct ProjectWorkspace {
     pub target_layout: TargetLayoutLoadResult,
     /// A set of cfg overrides for this workspace.
     pub cfg_overrides: CfgOverrides,
+    /// Additional includes to add for the VFS.
+    pub extra_includes: Vec<AbsPathBuf>,
 }
 
 #[derive(Clone)]
@@ -104,7 +105,15 @@ pub enum ProjectWorkspaceKind {
 impl fmt::Debug for ProjectWorkspace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Make sure this isn't too verbose.
-        let Self { kind, sysroot, rustc_cfg, toolchain, target_layout, cfg_overrides } = self;
+        let Self {
+            kind,
+            sysroot,
+            rustc_cfg,
+            toolchain,
+            target_layout,
+            cfg_overrides,
+            extra_includes,
+        } = self;
         match kind {
             ProjectWorkspaceKind::Cargo { cargo, error: _, build_scripts, rustc, set_test } => f
                 .debug_struct("Cargo")
@@ -117,6 +126,7 @@ impl fmt::Debug for ProjectWorkspace {
                 )
                 .field("n_rustc_cfg", &rustc_cfg.len())
                 .field("n_cfg_overrides", &cfg_overrides.len())
+                .field("n_extra_includes", &extra_includes.len())
                 .field("toolchain", &toolchain)
                 .field("data_layout", &target_layout)
                 .field("set_test", set_test)
@@ -130,7 +140,8 @@ impl fmt::Debug for ProjectWorkspace {
                     .field("n_rustc_cfg", &rustc_cfg.len())
                     .field("toolchain", &toolchain)
                     .field("data_layout", &target_layout)
-                    .field("n_cfg_overrides", &cfg_overrides.len());
+                    .field("n_cfg_overrides", &cfg_overrides.len())
+                    .field("n_extra_includes", &extra_includes.len());
 
                 debug_struct.finish()
             }
@@ -144,6 +155,7 @@ impl fmt::Debug for ProjectWorkspace {
                 .field("toolchain", &toolchain)
                 .field("data_layout", &target_layout)
                 .field("n_cfg_overrides", &cfg_overrides.len())
+                .field("n_extra_includes", &extra_includes.len())
                 .field("set_test", set_test)
                 .finish(),
         }
@@ -320,6 +332,7 @@ impl ProjectWorkspace {
             cfg_overrides,
             toolchain,
             target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
+            extra_includes: config.extra_includes.clone(),
         })
     }
 
@@ -340,6 +353,7 @@ impl ProjectWorkspace {
             toolchain,
             target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
             cfg_overrides: config.cfg_overrides.clone(),
+            extra_includes: config.extra_includes.clone(),
         }
     }
 
@@ -399,6 +413,7 @@ impl ProjectWorkspace {
             toolchain,
             target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
             cfg_overrides: config.cfg_overrides.clone(),
+            extra_includes: config.extra_includes.clone(),
         })
     }
 
@@ -565,13 +580,20 @@ impl ProjectWorkspace {
 
                     PackageRoot {
                         is_local: krate.is_workspace_member,
-                        include: krate.include.iter().cloned().chain(build_file).collect(),
+                        include: krate
+                            .include
+                            .iter()
+                            .cloned()
+                            .chain(build_file)
+                            .chain(self.extra_includes.iter().cloned())
+                            .collect(),
                         exclude: krate.exclude.clone(),
                     }
                 })
+                .collect::<FxHashSet<_>>()
+                .into_iter()
                 .chain(mk_sysroot())
-                .unique()
-                .collect(),
+                .collect::<Vec<_>>(),
             ProjectWorkspaceKind::Cargo { cargo, rustc, build_scripts, error: _, set_test: _ } => {
                 cargo
                     .packages()
@@ -603,6 +625,8 @@ impl ProjectWorkspace {
 
                         let mut exclude = vec![pkg_root.join(".git")];
                         if is_local {
+                            include.extend(self.extra_includes.iter().cloned());
+
                             exclude.push(pkg_root.join("target"));
                         } else {
                             exclude.push(pkg_root.join("tests"));
@@ -618,11 +642,6 @@ impl ProjectWorkspace {
                             include: vec![rustc[krate].manifest.parent().to_path_buf()],
                             exclude: Vec::new(),
                         })
-                    }))
-                    .chain(cargo.is_virtual_workspace().then(|| PackageRoot {
-                        is_local: true,
-                        include: vec![cargo.workspace_root().to_path_buf()],
-                        exclude: Vec::new(),
                     }))
                     .collect()
             }
@@ -661,6 +680,8 @@ impl ProjectWorkspace {
 
                         let mut exclude = vec![pkg_root.join(".git")];
                         if is_local {
+                            include.extend(self.extra_includes.iter().cloned());
+
                             exclude.push(pkg_root.join("target"));
                         } else {
                             exclude.push(pkg_root.join("tests"));

@@ -442,7 +442,7 @@ pub(crate) fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) ->
         // (or if there is no allocator argument).
         ty::Adt(def, args)
             if def.is_box()
-                && args.get(1).map_or(true, |arg| cx.layout_of(arg.expect_ty()).is_1zst()) =>
+                && args.get(1).is_none_or(|arg| cx.layout_of(arg.expect_ty()).is_1zst()) =>
         {
             build_pointer_or_reference_di_node(cx, t, t.expect_boxed_ty(), unique_type_id)
         }

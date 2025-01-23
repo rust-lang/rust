@@ -38,7 +38,10 @@ impl<'t> Bindings<'t> {
             nesting_state.hit = true;
             b = match b {
                 Binding::Fragment(_) => break,
-                Binding::Missing(_) => break,
+                Binding::Missing(_) => {
+                    nesting_state.at_end = true;
+                    break;
+                }
                 Binding::Nested(bs) => bs.get(nesting_state.idx).ok_or_else(|| {
                     nesting_state.at_end = true;
                     binding_err!("could not find nested binding `{name}`")
@@ -445,6 +448,7 @@ fn expand_repeat(
     let mut counter = 0;
     let mut err = None;
 
+    let initial_restore_point = builder.restore_point();
     let mut restore_point = builder.restore_point();
     loop {
         let ExpandResult { value: (), err: e } =
@@ -462,6 +466,10 @@ fn expand_repeat(
 
         counter += 1;
         if counter == limit {
+            // FIXME: This is a bug here, we get here when we shouldn't, see https://github.com/rust-lang/rust-analyzer/issues/18910.
+            // If we don't restore we emit a lot of nodes which causes a stack overflow down the road. For now just ignore them,
+            // there is always an error here anyway.
+            builder.restore(initial_restore_point);
             err = Some(ExpandError::new(ctx.call_site, ExpandErrorKind::LimitExceeded));
             break;
         }

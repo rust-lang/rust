@@ -35,6 +35,10 @@ runners:
     os: windows-2022
     <<: *base-job
 
+  - &job-windows-25
+    os: windows-2025
+    <<: *base-job
+
   - &job-windows-8c
     os: windows-2022-8core-32gb
     <<: *base-job
@@ -442,23 +446,29 @@ auto:
   #  Windows Builders  #
   ######################
 
-  - name: x86_64-msvc
+  - name: x86_64-msvc-1
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
-      SCRIPT: make ci-msvc
-    <<: *job-windows-8c
+      SCRIPT: make ci-msvc-py
+    <<: *job-windows-25
+
+  - name: x86_64-msvc-2
+    env:
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+      SCRIPT: make ci-msvc-ps1
+    <<: *job-windows-25
 
   # i686-msvc is split into two jobs to run tests in parallel.
   - name: i686-msvc-1
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
-      SCRIPT: make ci-msvc-py-set1
+      SCRIPT: make ci-msvc-py
     <<: *job-windows
 
   - name: i686-msvc-2
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
-      SCRIPT: make ci-msvc-ps1-set2
+      SCRIPT: make ci-msvc-ps1
     <<: *job-windows
 
   # x86_64-msvc-ext is split into multiple jobs to run tests in parallel.

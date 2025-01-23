@@ -1695,13 +1695,6 @@ pub enum ObligationCauseFailureCode {
         #[primary_span]
         span: Span,
     },
-    #[diag(trait_selection_oc_fn_start_correct_type, code = E0308)]
-    FnStartCorrectType {
-        #[primary_span]
-        span: Span,
-        #[subdiagnostic]
-        subdiags: Vec<TypeErrorAdditionalDiags>,
-    },
     #[diag(trait_selection_oc_fn_lang_correct_type, code = E0308)]
     FnLangCorrectType {
         #[primary_span]

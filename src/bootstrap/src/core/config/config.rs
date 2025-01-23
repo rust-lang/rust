@@ -2875,21 +2875,26 @@ impl Config {
             allowed_paths.push(":!library");
         }
 
-        // Look for a version to compare to based on the current commit.
-        // Only commits merged by bors will have CI artifacts.
-        let commit = match self.last_modified_commit(&allowed_paths, "download-rustc", if_unchanged)
-        {
-            Some(commit) => commit,
-            None => {
-                if if_unchanged {
-                    return None;
+        let commit = if self.rust_info.is_managed_git_subrepository() {
+            // Look for a version to compare to based on the current commit.
+            // Only commits merged by bors will have CI artifacts.
+            match self.last_modified_commit(&allowed_paths, "download-rustc", if_unchanged) {
+                Some(commit) => commit,
+                None => {
+                    if if_unchanged {
+                        return None;
+                    }
+                    println!("ERROR: could not find commit hash for downloading rustc");
+                    println!("HELP: maybe your repository history is too shallow?");
+                    println!("HELP: consider setting `rust.download-rustc=false` in config.toml");
+                    println!("HELP: or fetch enough history to include one upstream commit");
+                    crate::exit!(1);
                 }
-                println!("ERROR: could not find commit hash for downloading rustc");
-                println!("HELP: maybe your repository history is too shallow?");
-                println!("HELP: consider setting `rust.download-rustc=false` in config.toml");
-                println!("HELP: or fetch enough history to include one upstream commit");
-                crate::exit!(1);
             }
+        } else {
+            channel::read_commit_info_file(&self.src)
+                .map(|info| info.sha.trim().to_owned())
+                .expect("git-commit-info is missing in the project root")
         };
 
         if CiEnv::is_ci() && {
@@ -2926,10 +2931,8 @@ impl Config {
         let if_unchanged = || {
             if self.rust_info.is_from_tarball() {
                 // Git is needed for running "if-unchanged" logic.
-                println!(
-                    "WARNING: 'if-unchanged' has no effect on tarball sources; ignoring `download-ci-llvm`."
-                );
-                return false;
+                println!("ERROR: 'if-unchanged' is only compatible with Git managed sources.");
+                crate::exit!(1);
             }
 
             // Fetching the LLVM submodule is unnecessary for self-tests.
@@ -2971,6 +2974,11 @@ impl Config {
         option_name: &str,
         if_unchanged: bool,
     ) -> Option<String> {
+        assert!(
+            self.rust_info.is_managed_git_subrepository(),
+            "Can't run `Config::last_modified_commit` on a non-git source."
+        );
+
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
         let commit = get_closest_merge_commit(Some(&self.src), &self.git_config(), &[]).unwrap();

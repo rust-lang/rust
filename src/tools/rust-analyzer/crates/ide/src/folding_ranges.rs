@@ -286,7 +286,7 @@ mod tests {
 
     use super::*;
 
-    fn check(ra_fixture: &str) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (ranges, text) = extract_tags(ra_fixture, "fold");
 
         let parse = SourceFile::parse(&text, span::Edition::CURRENT);

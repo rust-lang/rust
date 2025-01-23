@@ -39,14 +39,15 @@ help: if this is a dyn-compatible trait, use `dyn`
 LL |     fn foo() -> dyn Clone;
    |                 +++
 
-error[E0038]: the trait `Clone` cannot be made into an object
+error[E0038]: the trait `Clone` is not dyn compatible
   --> $DIR/issue-116434-2015.rs:3:17
    |
 LL |     fn foo() -> Clone;
-   |                 ^^^^^ `Clone` cannot be made into an object
+   |                 ^^^^^ `Clone` is not dyn compatible
    |
-   = note: the trait cannot be made into an object because it requires `Self: Sized`
-   = note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+   = note: the trait is not dyn compatible because it requires `Self: Sized`
+   = note: for a trait to be dyn compatible it needs to allow building a vtable
+           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
 help: there is an associated type with the same name
    |
 LL |     fn foo() -> Self::Clone;
@@ -66,19 +67,20 @@ help: if this is a dyn-compatible trait, use `dyn`
 LL |     fn handle() -> dyn DbHandle;
    |                    +++
 
-error[E0038]: the trait `DbHandle` cannot be made into an object
+error[E0038]: the trait `DbHandle` is not dyn compatible
   --> $DIR/issue-116434-2015.rs:18:20
    |
 LL |     fn handle() -> DbHandle;
-   |                    ^^^^^^^^ `DbHandle` cannot be made into an object
+   |                    ^^^^^^^^ `DbHandle` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/issue-116434-2015.rs:14:17
    |
 LL | trait DbHandle: Sized {}
    |       --------  ^^^^^ ...because it requires `Self: Sized`
    |       |
-   |       this trait cannot be made into an object...
+   |       this trait is not dyn compatible...
 help: there is an associated type with the same name
    |
 LL |     fn handle() -> Self::DbHandle;

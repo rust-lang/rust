@@ -101,6 +101,7 @@
 #![warn(multiple_supertrait_upcastable)]
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
+#![warn(unreachable_pub)]
 // Do not check link redundancy on bootstraping phase
 #![allow(rustdoc::redundant_explicit_links)]
 #![warn(rustdoc::unescaped_backticks)]
@@ -396,7 +397,8 @@ pub mod primitive;
     unused_imports,
     unsafe_op_in_unsafe_fn,
     ambiguous_glob_reexports,
-    deprecated_in_future
+    deprecated_in_future,
+    unreachable_pub
 )]
 #[allow(rustdoc::bare_urls)]
 mod core_arch;

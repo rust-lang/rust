@@ -162,11 +162,13 @@ pub(super) fn hints(
         let label = InlayHintLabelPart {
             text: if postfix { format!(".{}", text.trim_end()) } else { text.to_owned() },
             linked_location: None,
-            tooltip: Some(InlayTooltip::Markdown(format!(
-                "`{}` → `{}` ({coercion} coercion)",
-                source.display(sema.db, file_id.edition()),
-                target.display(sema.db, file_id.edition()),
-            ))),
+            tooltip: Some(config.lazy_tooltip(|| {
+                InlayTooltip::Markdown(format!(
+                    "`{}` → `{}` ({coercion} coercion)",
+                    source.display(sema.db, file_id.edition()),
+                    target.display(sema.db, file_id.edition()),
+                ))
+            })),
         };
         if postfix { &mut post } else { &mut pre }.label.append_part(label);
     }
@@ -183,7 +185,7 @@ pub(super) fn hints(
         return None;
     }
     if allow_edit {
-        let edit = {
+        let edit = Some(config.lazy_text_edit(|| {
             let mut b = TextEditBuilder::default();
             if let Some(pre) = &pre {
                 b.insert(
@@ -198,14 +200,14 @@ pub(super) fn hints(
                 );
             }
             b.finish()
-        };
+        }));
         match (&mut pre, &mut post) {
             (Some(pre), Some(post)) => {
-                pre.text_edit = Some(edit.clone());
-                post.text_edit = Some(edit);
+                pre.text_edit = edit.clone();
+                post.text_edit = edit;
             }
-            (Some(pre), None) => pre.text_edit = Some(edit),
-            (None, Some(post)) => post.text_edit = Some(edit),
+            (Some(pre), None) => pre.text_edit = edit,
+            (None, Some(post)) => post.text_edit = edit,
             (None, None) => (),
         }
     }

@@ -45,7 +45,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .invalid_escape_sequence { color: #FC5555; text-decoration: wavy underline; }
 .unresolved_reference    { color: #FC5555; text-decoration: wavy underline; }
 </style>
-<pre><code><span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">id</span> <span class="brace">{</span>
+<pre><code><span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration public">id</span> <span class="brace">{</span>
     <span class="parenthesis">(</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="colon">:</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="operator">&gt;</span> <span class="brace">{</span>
         <span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span>
     <span class="brace">}</span><span class="semicolon">;</span>
@@ -57,7 +57,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword const">const</span> <span class="brace">{</span>
         <span class="keyword">const</span> <span class="punctuation">|</span><span class="punctuation">|</span> <span class="brace">{</span><span class="brace">}</span>
     <span class="brace">}</span>
-    <span class="macro">id</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span>
+    <span class="macro public">id</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span>
         <span class="constant const macro">CONST_ITEM</span><span class="semicolon macro">;</span>
         <span class="const_param const macro">CONST_PARAM</span><span class="semicolon macro">;</span>
         <span class="keyword const macro">const</span> <span class="brace macro">{</span>
@@ -78,7 +78,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword const">const</span> <span class="keyword">fn</span> <span class="function associated const declaration static trait">assoc_const_fn</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 <span class="brace">}</span>
 
-<span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">unsafe_deref</span> <span class="brace">{</span>
+<span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration public">unsafe_deref</span> <span class="brace">{</span>
     <span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="operator">&gt;</span> <span class="brace">{</span>
         <span class="punctuation">*</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="keyword">as</span> <span class="punctuation">*</span><span class="keyword">const</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="parenthesis">)</span>
     <span class="brace">}</span><span class="semicolon">;</span>

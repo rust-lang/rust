@@ -47,7 +47,8 @@ use self::lsp::ext as lsp_ext;
 #[cfg(test)]
 mod integrated_benchmarks;
 
-use ide::{CompletionItem, CompletionRelevance};
+use hir::Mutability;
+use ide::{CompletionItem, CompletionItemRefMode, CompletionRelevance};
 use serde::de::DeserializeOwned;
 use tenthash::TentHasher;
 
@@ -132,8 +133,13 @@ fn completion_item_hash(item: &CompletionItem, is_ref_completion: bool) -> [u8; 
         hasher.update(detail);
     }
     hash_completion_relevance(&mut hasher, &item.relevance);
-    if let Some((mutability, text_size)) = &item.ref_match {
-        hasher.update(mutability.as_keyword_for_ref());
+    if let Some((ref_mode, text_size)) = &item.ref_match {
+        let prefix = match ref_mode {
+            CompletionItemRefMode::Reference(Mutability::Shared) => "&",
+            CompletionItemRefMode::Reference(Mutability::Mut) => "&mut ",
+            CompletionItemRefMode::Dereference => "*",
+        };
+        hasher.update(prefix);
         hasher.update(u32::from(*text_size).to_le_bytes());
     }
     for (import_path, import_name) in &item.import_to_add {

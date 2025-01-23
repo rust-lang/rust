@@ -246,7 +246,7 @@ pub(crate) fn vis_offset(node: &SyntaxNode) -> TextSize {
 }
 
 pub(crate) fn invert_boolean_expression(expr: ast::Expr) -> ast::Expr {
-    invert_special_case(&expr).unwrap_or_else(|| make::expr_prefix(T![!], expr))
+    invert_special_case(&expr).unwrap_or_else(|| make::expr_prefix(T![!], expr).into())
 }
 
 fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
@@ -262,7 +262,7 @@ fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
                 T![>] => T![<=],
                 T![>=] => T![<],
                 // Parenthesize other expressions before prefixing `!`
-                _ => return Some(make::expr_prefix(T![!], make::expr_paren(expr.clone()))),
+                _ => return Some(make::expr_prefix(T![!], make::expr_paren(expr.clone())).into()),
             };
             ted::replace(op_token, make::token(rev_token));
             Some(bin.into())

@@ -856,7 +856,7 @@ fn impl_def_datum(
     let associated_ty_value_ids = impl_data
         .items
         .iter()
-        .filter_map(|item| match item {
+        .filter_map(|(_, item)| match item {
             AssocItemId::TypeAliasId(type_alias) => Some(*type_alias),
             _ => None,
         })

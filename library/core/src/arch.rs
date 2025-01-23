@@ -1,6 +1,14 @@
 #![doc = include_str!("../../stdarch/crates/core_arch/src/core_arch_docs.md")]
 
-#[allow(unused_imports)]
+#[allow(
+    // some targets don't have anything to reexport, which
+    // makes the `pub use` unused and unreachable, allow
+    // both lints as to not have `#[cfg]`s
+    //
+    // cf. https://github.com/rust-lang/rust/pull/116033#issuecomment-1760085575
+    unused_imports,
+    unreachable_pub
+)]
 #[stable(feature = "simd_arch", since = "1.27.0")]
 pub use crate::core_arch::arch::*;
 

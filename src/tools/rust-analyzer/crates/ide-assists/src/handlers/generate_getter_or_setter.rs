@@ -933,7 +933,7 @@ mod tests_setter {
 
     use super::*;
 
-    fn check_not_applicable(ra_fixture: &str) {
+    fn check_not_applicable(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_assist_not_applicable(generate_setter, ra_fixture)
     }
 

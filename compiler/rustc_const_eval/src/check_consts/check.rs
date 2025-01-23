@@ -464,6 +464,12 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             err_span,
         );
     }
+
+    fn crate_inject_span(&self) -> Option<Span> {
+        self.tcx.hir_crate_items(()).definitions().next().and_then(|id| {
+            self.tcx.crate_level_attribute_injection_span(self.tcx.local_def_id_to_hir_id(id))
+        })
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
@@ -495,7 +501,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::Use(_)
             | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
-            | Rvalue::Discriminant(..) => {}
+            | Rvalue::Discriminant(..)
+            | Rvalue::Len(_) => {}
 
             Rvalue::Aggregate(kind, ..) => {
                 if let AggregateKind::Coroutine(def_id, ..) = kind.as_ref()
@@ -579,27 +586,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             ) => {}
             Rvalue::ShallowInitBox(_, _) => {}
 
-            Rvalue::UnaryOp(op, operand) => {
+            Rvalue::UnaryOp(_, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
-                match op {
-                    UnOp::Not | UnOp::Neg => {
-                        if is_int_bool_float_or_char(ty) {
-                            // Int, bool, float, and char operations are fine.
-                        } else {
-                            span_bug!(
-                                self.span,
-                                "non-primitive type in `Rvalue::UnaryOp{op:?}`: {ty:?}",
-                            );
-                        }
-                    }
-                    UnOp::PtrMetadata => {
-                        if !ty.is_ref() && !ty.is_unsafe_ptr() {
-                            span_bug!(
-                                self.span,
-                                "non-pointer type in `Rvalue::UnaryOp({op:?})`: {ty:?}",
-                            );
-                        }
-                    }
+                if is_int_bool_float_or_char(ty) {
+                    // Int, bool, float, and char operations are fine.
+                } else {
+                    span_bug!(self.span, "non-primitive type in `Rvalue::UnaryOp`: {:?}", ty);
                 }
             }
 
@@ -823,6 +815,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 name: intrinsic.name,
                                 feature,
                                 const_stable_indirect: is_const_stable,
+                                suggestion: self.crate_inject_span(),
                             });
                         }
                         Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
@@ -911,7 +904,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 // regular stability.
                                 feature == sym::rustc_private
                                     && issue == NonZero::new(27812)
-                                    && self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked
+                                    && tcx.sess.opts.unstable_opts.force_unstable_if_unmarked
                             };
                         // Even if the feature is enabled, we still need check_op to double-check
                         // this if the callee is not safe to expose on stable.
@@ -921,6 +914,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 feature,
                                 feature_enabled,
                                 safe_to_expose_on_stable: callee_safe_to_expose_on_stable,
+                                suggestion_span: self.crate_inject_span(),
                             });
                         }
                     }

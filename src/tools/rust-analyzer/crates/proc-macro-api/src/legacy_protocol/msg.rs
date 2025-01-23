@@ -159,7 +159,7 @@ type ProtocolWrite<W: Write> = for<'o, 'msg> fn(out: &'o mut W, msg: &'msg str) 
 #[cfg(test)]
 mod tests {
     use intern::{sym, Symbol};
-    use span::{ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, TextRange, TextSize};
+    use span::{Edition, ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, TextRange, TextSize};
     use tt::{
         Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, Spacing, TopSubtree,
         TopSubtreeBuilder,
@@ -180,12 +180,12 @@ mod tests {
             open: Span {
                 range: TextRange::empty(TextSize::new(0)),
                 anchor,
-                ctx: SyntaxContextId::ROOT,
+                ctx: SyntaxContextId::root(Edition::CURRENT),
             },
             close: Span {
                 range: TextRange::empty(TextSize::new(19)),
                 anchor,
-                ctx: SyntaxContextId::ROOT,
+                ctx: SyntaxContextId::root(Edition::CURRENT),
             },
             kind: DelimiterKind::Invisible,
         });
@@ -196,7 +196,7 @@ mod tests {
                 span: Span {
                     range: TextRange::at(TextSize::new(0), TextSize::of("struct")),
                     anchor,
-                    ctx: SyntaxContextId::ROOT,
+                    ctx: SyntaxContextId::root(Edition::CURRENT),
                 },
                 is_raw: tt::IdentIsRaw::No,
             }
@@ -208,7 +208,7 @@ mod tests {
                 span: Span {
                     range: TextRange::at(TextSize::new(5), TextSize::of("r#Foo")),
                     anchor,
-                    ctx: SyntaxContextId::ROOT,
+                    ctx: SyntaxContextId::root(Edition::CURRENT),
                 },
                 is_raw: tt::IdentIsRaw::Yes,
             }
@@ -219,7 +219,7 @@ mod tests {
             span: Span {
                 range: TextRange::at(TextSize::new(10), TextSize::of("\"Foo\"")),
                 anchor,
-                ctx: SyntaxContextId::ROOT,
+                ctx: SyntaxContextId::root(Edition::CURRENT),
             },
             kind: tt::LitKind::Str,
             suffix: None,
@@ -229,7 +229,7 @@ mod tests {
             span: Span {
                 range: TextRange::at(TextSize::new(13), TextSize::of('@')),
                 anchor,
-                ctx: SyntaxContextId::ROOT,
+                ctx: SyntaxContextId::root(Edition::CURRENT),
             },
             spacing: Spacing::Joint,
         }));
@@ -238,7 +238,7 @@ mod tests {
             Span {
                 range: TextRange::at(TextSize::new(14), TextSize::of('{')),
                 anchor,
-                ctx: SyntaxContextId::ROOT,
+                ctx: SyntaxContextId::root(Edition::CURRENT),
             },
         );
         builder.push(Leaf::Literal(Literal {
@@ -246,7 +246,7 @@ mod tests {
             span: Span {
                 range: TextRange::at(TextSize::new(15), TextSize::of("0u32")),
                 anchor,
-                ctx: SyntaxContextId::ROOT,
+                ctx: SyntaxContextId::root(Edition::CURRENT),
             },
             kind: tt::LitKind::Integer,
             suffix: Some(sym::u32.clone()),
@@ -254,7 +254,7 @@ mod tests {
         builder.close(Span {
             range: TextRange::at(TextSize::new(19), TextSize::of('}')),
             anchor,
-            ctx: SyntaxContextId::ROOT,
+            ctx: SyntaxContextId::root(Edition::CURRENT),
         });
 
         builder.build()
