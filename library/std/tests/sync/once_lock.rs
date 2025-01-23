@@ -164,7 +164,7 @@ fn sync_once_cell_does_not_leak_partially_constructed_boxes() {
                     break;
                 }
                 #[cfg(target_env = "sgx")]
-                crate::thread::yield_now();
+                std::thread::yield_now();
             }
         });
     }
