@@ -131,11 +131,11 @@ pub trait Float:
     fn from_bits(a: Self::Int) -> Self;
 
     /// Constructs a `Self` from its parts. Inputs are treated as bits and shifted into position.
-    fn from_parts(negative: bool, exponent: i32, significand: Self::Int) -> Self {
+    fn from_parts(negative: bool, exponent: u32, significand: Self::Int) -> Self {
         let sign = if negative { Self::Int::ONE } else { Self::Int::ZERO };
         Self::from_bits(
             (sign << (Self::BITS - 1))
-                | (Self::Int::cast_from(exponent as u32 & Self::EXP_MAX) << Self::SIG_BITS)
+                | (Self::Int::cast_from(exponent & Self::EXP_MAX) << Self::SIG_BITS)
                 | (significand & Self::SIG_MASK),
         )
     }
@@ -282,7 +282,7 @@ mod tests {
         assert_eq!(f16::from_bits(0x1).exp_unbiased(), -15);
 
         // `from_parts`
-        assert_biteq!(f16::from_parts(true, f16::EXP_BIAS as i32, 0), -1.0f16);
+        assert_biteq!(f16::from_parts(true, f16::EXP_BIAS, 0), -1.0f16);
         assert_biteq!(f16::from_parts(false, 0, 1), f16::from_bits(0x1));
     }
 
@@ -304,8 +304,8 @@ mod tests {
         assert_eq!(f32::from_bits(0x1).exp_unbiased(), -127);
 
         // `from_parts`
-        assert_biteq!(f32::from_parts(true, f32::EXP_BIAS as i32, 0), -1.0f32);
-        assert_biteq!(f32::from_parts(false, 10 + f32::EXP_BIAS as i32, 0), hf32!("0x1p10"));
+        assert_biteq!(f32::from_parts(true, f32::EXP_BIAS, 0), -1.0f32);
+        assert_biteq!(f32::from_parts(false, 10 + f32::EXP_BIAS, 0), hf32!("0x1p10"));
         assert_biteq!(f32::from_parts(false, 0, 1), f32::from_bits(0x1));
     }
 
@@ -327,8 +327,8 @@ mod tests {
         assert_eq!(f64::from_bits(0x1).exp_unbiased(), -1023);
 
         // `from_parts`
-        assert_biteq!(f64::from_parts(true, f64::EXP_BIAS as i32, 0), -1.0f64);
-        assert_biteq!(f64::from_parts(false, 10 + f64::EXP_BIAS as i32, 0), hf64!("0x1p10"));
+        assert_biteq!(f64::from_parts(true, f64::EXP_BIAS, 0), -1.0f64);
+        assert_biteq!(f64::from_parts(false, 10 + f64::EXP_BIAS, 0), hf64!("0x1p10"));
         assert_biteq!(f64::from_parts(false, 0, 1), f64::from_bits(0x1));
     }
 
@@ -351,7 +351,7 @@ mod tests {
         assert_eq!(f128::from_bits(0x1).exp_unbiased(), -16383);
 
         // `from_parts`
-        assert_biteq!(f128::from_parts(true, f128::EXP_BIAS as i32, 0), -1.0f128);
+        assert_biteq!(f128::from_parts(true, f128::EXP_BIAS, 0), -1.0f128);
         assert_biteq!(f128::from_parts(false, 0, 1), f128::from_bits(0x1));
     }
 }

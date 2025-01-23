@@ -92,7 +92,7 @@ where
         }
 
         // Normalize subnormals by multiplying by 1.0 << SIG_BITS (e.g. 0x1p52 for doubles).
-        let scaled = x * F::from_parts(false, (F::SIG_BITS + F::EXP_BIAS) as i32, zero);
+        let scaled = x * F::from_parts(false, F::SIG_BITS + F::EXP_BIAS, zero);
         ix = scaled.to_bits();
         match top {
             Exp::Shifted(ref mut v) => {
