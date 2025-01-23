@@ -1,5 +1,5 @@
 error[E0718]: `drop_in_place` lang item must be applied to a function with at least 1 generic argument
-  --> $DIR/issue-87573.rs:20:1
+  --> $DIR/issue-87573.rs:26:1
    |
 LL | #[lang = "drop_in_place"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | fn drop_fn() {
    |           - this function has 0 generic arguments
 
 error[E0718]: `start` lang item must be applied to a function with 1 generic argument
-  --> $DIR/issue-87573.rs:26:1
+  --> $DIR/issue-87573.rs:32:1
    |
 LL | #[lang = "start"]
    | ^^^^^^^^^^^^^^^^^
