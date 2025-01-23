@@ -1,5 +1,5 @@
 error: enabling the `neon` target feature on the current target is unsound due to ABI issues
-  --> $DIR/abi-incompatible-target-feature-attribute-fcw.rs:11:18
+  --> $DIR/abi-incompatible-target-feature-attribute-fcw.rs:17:18
    |
 LL | #[target_feature(enable = "neon")]
    |                  ^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ error: aborting due to 1 previous error
 
 Future incompatibility report: Future breakage diagnostic:
 error: enabling the `neon` target feature on the current target is unsound due to ABI issues
-  --> $DIR/abi-incompatible-target-feature-attribute-fcw.rs:11:18
+  --> $DIR/abi-incompatible-target-feature-attribute-fcw.rs:17:18
    |
 LL | #[target_feature(enable = "neon")]
    |                  ^^^^^^^^^^^^^^^
