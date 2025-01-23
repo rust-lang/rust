@@ -11,9 +11,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_trait_selection::traits::{
-    self, IsFirstInputType, OrphanCheckErr, OrphanCheckMode, UncoveredTy,
-};
+use rustc_trait_selection::traits::{self, InSelfTy, OrphanCheckErr, OrphanCheckMode, UncoveredTy};
 use tracing::{debug, instrument};
 
 use crate::errors;
@@ -384,8 +382,8 @@ fn emit_orphan_check_error<'tcx>(
 
     // Given `impl<A, B> C<B> for D<A>`
     let impl_trait_ref_span = |in_self_ty| match in_self_ty {
-        IsFirstInputType::Yes => impl_.self_ty.span, // point at `D<A>`.
-        IsFirstInputType::No => hir_trait_ref.path.span, // point at `C<B>`.
+        InSelfTy::Yes => impl_.self_ty.span,     // point at `D<A>`.
+        InSelfTy::No => hir_trait_ref.path.span, // point at `C<B>`.
     };
 
     match err {
@@ -399,13 +397,12 @@ fn emit_orphan_check_error<'tcx>(
                 _ => errors::OnlyCurrentTraits::Arbitrary { span, note: () },
             });
 
-            for &(mut ty, is_target_ty) in &tys {
-                let span = impl_trait_ref_span(is_target_ty);
+            for &(mut ty, in_self_ty) in &tys {
+                let span = impl_trait_ref_span(in_self_ty);
 
                 ty = tcx.erase_regions(ty);
 
-                let is_foreign =
-                    !trait_ref.def_id.is_local() && matches!(is_target_ty, IsFirstInputType::No);
+                let is_foreign = !trait_ref.def_id.is_local() && matches!(in_self_ty, InSelfTy::No);
 
                 match *ty.kind() {
                     ty::Slice(_) => {
