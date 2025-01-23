@@ -372,14 +372,7 @@ impl<'a> Parser<'a> {
         label: S2,
         span: InnerSpan,
     ) {
-        self.errors.push(ParseError {
-            description: description.into(),
-            note: None,
-            label: label.into(),
-            span,
-            secondary_label: None,
-            suggestion: Suggestion::None,
-        });
+        self.err_with_note(description, label, None, span);
     }
 
     /// Notifies of an error. The message doesn't actually need to be of type
