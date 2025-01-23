@@ -84,10 +84,6 @@ enum EnvironmentCmd {
         #[arg(long, default_value_t = false)]
         use_bolt: bool,
 
-        /// Tests that should be skipped when testing the optimized compiler.
-        #[arg(long)]
-        skipped_tests: Vec<String>,
-
         #[clap(flatten)]
         shared: SharedArgs,
 
@@ -122,7 +118,6 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
             rustc_perf_checkout_dir,
             llvm_shared,
             use_bolt,
-            skipped_tests,
             benchmark_cargo_config,
             shared,
         } => {
@@ -136,7 +131,6 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .prebuilt_rustc_perf(rustc_perf_checkout_dir)
                 .shared_llvm(llvm_shared)
                 .use_bolt(use_bolt)
-                .skipped_tests(skipped_tests)
                 .benchmark_cargo_config(benchmark_cargo_config)
                 .build()?;
 
@@ -147,19 +141,6 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 std::env::var("PGO_HOST").expect("PGO_HOST environment variable missing");
 
             let is_aarch64 = target_triple.starts_with("aarch64");
-
-            let mut skip_tests = vec![
-                // Fails because of linker errors, as of June 2023.
-                "tests/ui/process/nofile-limit.rs".to_string(),
-            ];
-
-            if is_aarch64 {
-                skip_tests.extend([
-                    // Those tests fail only inside of Docker on aarch64, as of December 2024
-                    "tests/ui/consts/promoted_running_out_of_memory_issue-130687.rs".to_string(),
-                    "tests/ui/consts/large_const_alloc.rs".to_string(),
-                ]);
-            }
 
             let checkout_dir = Utf8PathBuf::from("/checkout");
             let env = EnvironmentBuilder::default()
@@ -172,7 +153,6 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .shared_llvm(true)
                 // FIXME: Enable bolt for aarch64 once it's fixed upstream. Broken as of December 2024.
                 .use_bolt(!is_aarch64)
-                .skipped_tests(skip_tests)
                 .build()?;
 
             (env, shared.build_args)
@@ -191,10 +171,6 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .build_dir(checkout_dir)
                 .shared_llvm(false)
                 .use_bolt(false)
-                .skipped_tests(vec![
-                    // Fails as of June 2023.
-                    "tests\\codegen\\vec-shrink-panik.rs".to_string(),
-                ])
                 .build()?;
 
             (env, shared.build_args)
