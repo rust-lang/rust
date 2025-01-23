@@ -394,6 +394,7 @@ define_symbols! {
     RangeToInclusive,
     Ready,
     receiver,
+    receiver_target,
     recursion_limit,
     register_attr,
     register_tool,

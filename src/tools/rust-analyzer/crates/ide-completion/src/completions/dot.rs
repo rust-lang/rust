@@ -1466,4 +1466,34 @@ async fn bar() {
 "#,
         );
     }
+
+    #[test]
+    fn receiver_without_deref_impl_completion() {
+        check_no_kw(
+            r#"
+//- minicore: receiver
+use core::ops::Receiver;
+
+struct Foo;
+
+impl Foo {
+    fn foo(self: Bar) {}
+}
+
+struct Bar;
+
+impl Receiver for Bar {
+    type Target = Foo;
+}
+
+fn main() {
+    let bar = Bar;
+    bar.$0
+}
+"#,
+            expect![[r#"
+    me foo() fn(self: Bar)
+"#]],
+        );
+    }
 }

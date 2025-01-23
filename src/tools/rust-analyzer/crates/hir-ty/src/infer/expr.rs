@@ -487,7 +487,7 @@ impl InferenceContext<'_> {
             }
             Expr::Call { callee, args, .. } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none(), ExprIsRead::Yes);
-                let mut derefs = Autoderef::new(&mut self.table, callee_ty.clone(), false);
+                let mut derefs = Autoderef::new(&mut self.table, callee_ty.clone(), false, true);
                 let (res, derefed_callee) = loop {
                     let Some((callee_deref_ty, _)) = derefs.next() else {
                         break (None, callee_ty.clone());
@@ -854,7 +854,7 @@ impl InferenceContext<'_> {
                         if let Some(derefed) = builtin_deref(self.table.db, &inner_ty, true) {
                             self.resolve_ty_shallow(derefed)
                         } else {
-                            deref_by_trait(&mut self.table, inner_ty)
+                            deref_by_trait(&mut self.table, inner_ty, false)
                                 .unwrap_or_else(|| self.err_ty())
                         }
                     }
@@ -1718,7 +1718,7 @@ impl InferenceContext<'_> {
         receiver_ty: &Ty,
         name: &Name,
     ) -> Option<(Ty, Either<FieldId, TupleFieldId>, Vec<Adjustment>, bool)> {
-        let mut autoderef = Autoderef::new(&mut self.table, receiver_ty.clone(), false);
+        let mut autoderef = Autoderef::new(&mut self.table, receiver_ty.clone(), false, false);
         let mut private_field = None;
         let res = autoderef.by_ref().find_map(|(derefed_ty, _)| {
             let (field_id, parameters) = match derefed_ty.kind(Interner) {
