@@ -344,13 +344,15 @@
     },
     "fma": {
         "sources": [
-            "src/math/fma.rs"
+            "src/math/fma.rs",
+            "src/math/generic/fma.rs"
         ],
         "type": "f64"
     },
     "fmaf": {
         "sources": [
-            "src/math/fmaf.rs"
+            "src/math/fmaf.rs",
+            "src/math/generic/fma.rs"
         ],
         "type": "f32"
     },

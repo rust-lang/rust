@@ -52,10 +52,14 @@ pub trait Int:
     + ops::Sub<Output = Self>
     + ops::Mul<Output = Self>
     + ops::Div<Output = Self>
+    + ops::Shl<i32, Output = Self>
+    + ops::Shl<u32, Output = Self>
+    + ops::Shr<i32, Output = Self>
     + ops::Shr<u32, Output = Self>
     + ops::BitXor<Output = Self>
     + ops::BitAnd<Output = Self>
     + cmp::Ord
+    + From<bool>
     + CastFrom<i32>
     + CastFrom<u16>
     + CastFrom<u32>
@@ -92,6 +96,7 @@ pub trait Int:
     fn wrapping_shr(self, other: u32) -> Self;
     fn rotate_left(self, other: u32) -> Self;
     fn overflowing_add(self, other: Self) -> (Self, bool);
+    fn overflowing_sub(self, other: Self) -> (Self, bool);
     fn leading_zeros(self) -> u32;
     fn ilog2(self) -> u32;
 }
@@ -148,6 +153,10 @@ macro_rules! int_impl_common {
 
         fn overflowing_add(self, other: Self) -> (Self, bool) {
             <Self>::overflowing_add(self, other)
+        }
+
+        fn overflowing_sub(self, other: Self) -> (Self, bool) {
+            <Self>::overflowing_sub(self, other)
         }
 
         fn leading_zeros(self) -> u32 {
@@ -399,6 +408,30 @@ macro_rules! cast_into {
     )*};
 }
 
+macro_rules! cast_into_float {
+    ($ty:ty) => {
+        #[cfg(f16_enabled)]
+        cast_into_float!($ty; f16);
+
+        cast_into_float!($ty; f32, f64);
+
+        #[cfg(f128_enabled)]
+        cast_into_float!($ty; f128);
+    };
+    ($ty:ty; $($into:ty),*) => {$(
+        impl CastInto<$into> for $ty {
+            fn cast(self) -> $into {
+                debug_assert_eq!(self as $into as $ty, self, "inexact float cast");
+                self as $into
+            }
+
+            fn cast_lossy(self) -> $into {
+                self as $into
+            }
+        }
+    )*};
+}
+
 cast_into!(usize);
 cast_into!(isize);
 cast_into!(u8);
@@ -411,3 +444,9 @@ cast_into!(u64);
 cast_into!(i64);
 cast_into!(u128);
 cast_into!(i128);
+
+cast_into_float!(i8);
+cast_into_float!(i16);
+cast_into_float!(i32);
+cast_into_float!(i64);
+cast_into_float!(i128);

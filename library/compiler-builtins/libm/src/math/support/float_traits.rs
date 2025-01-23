@@ -23,7 +23,9 @@ pub trait Float:
     type Int: Int<OtherSign = Self::SignedInt, Unsigned = Self::Int>;
 
     /// A int of the same width as the float
-    type SignedInt: Int + MinInt<OtherSign = Self::Int, Unsigned = Self::Int>;
+    type SignedInt: Int
+        + MinInt<OtherSign = Self::Int, Unsigned = Self::Int>
+        + ops::Neg<Output = Self::SignedInt>;
 
     const ZERO: Self;
     const NEG_ZERO: Self;
