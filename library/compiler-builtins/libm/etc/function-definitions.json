@@ -698,12 +698,14 @@
     "scalbn": {
         "sources": [
             "src/libm_helper.rs",
+            "src/math/generic/scalbn.rs",
             "src/math/scalbn.rs"
         ],
         "type": "f64"
     },
     "scalbnf": {
         "sources": [
+            "src/math/generic/scalbn.rs",
             "src/math/scalbnf.rs"
         ],
         "type": "f32"
