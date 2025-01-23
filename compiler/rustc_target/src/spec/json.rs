@@ -248,6 +248,15 @@ impl Target {
                     Some(Ok(()))
                 })).unwrap_or(Ok(()))
             } );
+            ($key_name:ident, CheckEnvironment) => ( {
+                obj.remove("check-environment").and_then(|o| o.as_str().and_then(|s| {
+                    match s.parse::<super::CheckEnvironment>() {
+                        Ok(support) => base.check_environment = support,
+                        _ => return Some(Err(format!("'{s}' is not a valid value for check-environment."))),
+                    }
+                    Some(Ok(()))
+                })).unwrap_or(Ok(()))
+            } );
             ($key_name:ident, list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(j) = obj.remove(&name) {
@@ -641,6 +650,7 @@ impl Target {
         key!(entry_name);
         key!(entry_abi, Conv)?;
         key!(supports_xray, bool);
+        key!(check_environment, CheckEnvironment)?;
 
         base.update_from_cli();
         base.check_consistency(TargetKind::Json)?;
@@ -819,6 +829,7 @@ impl ToJson for Target {
         target_option_val!(entry_name);
         target_option_val!(entry_abi);
         target_option_val!(supports_xray);
+        target_option_val!(check_environment);
 
         // Serializing `-Clink-self-contained` needs a dynamic key to support the
         // backwards-compatible variants.

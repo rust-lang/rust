@@ -833,7 +833,8 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 dcx,
                 interface::run_compiler(config, |_compiler| {
                     markdown::render_and_write(&md_input, render_options, edition)
-                }),
+                })
+                .unwrap(),
             );
         }
         (false, None) => {}
@@ -907,4 +908,5 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
             }
         })
     })
+    .unwrap()
 }

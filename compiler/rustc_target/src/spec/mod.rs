@@ -937,6 +937,30 @@ impl ToJson for SmallDataThresholdSupport {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Hash)]
+pub enum CheckEnvironment {
+    None,
+}
+
+impl FromStr for CheckEnvironment {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "none" => Ok(Self::None),
+            _ => Err(()),
+        }
+    }
+}
+
+impl ToJson for CheckEnvironment {
+    fn to_json(&self) -> Value {
+        match self {
+            Self::None => "none".to_json(),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum MergeFunctions {
     Disabled,
@@ -2595,6 +2619,14 @@ pub struct TargetOptions {
 
     /// Whether the targets supports -Z small-data-threshold
     small_data_threshold_support: SmallDataThresholdSupport,
+
+    /// Function to check that the environment is correct for compiling for this
+    /// target. E.g. it can check that environment variables are set, that the
+    /// right linker is available, that the right libraries are available, and
+    /// so on.
+    /// We don't put the function in here directly because this structure can be
+    /// converted to/from json and functions can't do that.
+    pub check_environment: CheckEnvironment,
 }
 
 /// Add arguments for the given flavor and also for its "twin" flavors
@@ -2695,6 +2727,12 @@ impl TargetOptions {
                 .iter()
                 .map(|(flavor, args)| (flavor.to_cli_counterpart(), args.clone()))
                 .collect();
+        }
+    }
+
+    pub fn check_environment(&self) -> Result<(), String> {
+        match self.check_environment {
+            CheckEnvironment::None => Ok(()),
         }
     }
 }
@@ -2821,6 +2859,7 @@ impl Default for TargetOptions {
             entry_abi: Conv::C,
             supports_xray: false,
             small_data_threshold_support: SmallDataThresholdSupport::DefaultForArch,
+            check_environment: CheckEnvironment::None,
         }
     }
 }

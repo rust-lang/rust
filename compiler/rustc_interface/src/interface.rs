@@ -378,7 +378,10 @@ pub(crate) fn initialize_checked_jobserver(early_dcx: &EarlyDiagCtxt) {
 
 // JUSTIFICATION: before session exists, only config
 #[allow(rustc::bad_opt_access)]
-pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
+pub fn run_compiler<R: Send>(
+    config: Config,
+    f: impl FnOnce(&Compiler) -> R + Send,
+) -> result::Result<R, String> {
     trace!("run_compiler");
 
     // Set parallel mode before thread pool creation, which will create `Lock`s.
@@ -392,12 +395,13 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
     let sysroot = filesearch::materialize_sysroot(config.opts.maybe_sysroot.clone());
     let target = config::build_target_config(&early_dcx, &config.opts.target_triple, &sysroot);
+    target.options.check_environment()?;
     let file_loader = config.file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
     let path_mapping = config.opts.file_path_mapping();
     let hash_kind = config.opts.unstable_opts.src_hash_algorithm(&target);
     let checksum_hash_kind = config.opts.unstable_opts.checksum_hash_algorithm();
 
-    util::run_in_thread_pool_with_globals(
+    Ok(util::run_in_thread_pool_with_globals(
         &early_dcx,
         config.opts.edition,
         config.opts.unstable_opts.threads,
@@ -538,7 +542,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             res
         },
-    )
+    ))
 }
 
 pub fn try_print_query_stack(
