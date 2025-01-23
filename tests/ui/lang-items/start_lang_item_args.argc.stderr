@@ -1,5 +1,5 @@
 error[E0308]: lang item `start` function has wrong type
-  --> $DIR/start_lang_item_args.rs:75:38
+  --> $DIR/start_lang_item_args.rs:79:38
    |
 LL | fn start<T>(_main: fn() -> T, _argc: i8, _argv: *const *const u8, _sigpipe: u8) -> isize {
    |                                      ^^ expected `isize`, found `i8`
