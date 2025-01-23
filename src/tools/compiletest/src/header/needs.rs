@@ -95,6 +95,11 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored on targets without threading support",
         },
         Need {
+            name: "needs-subprocess",
+            condition: config.has_subprocess_support(),
+            ignore_reason: "ignored on targets without subprocess support",
+        },
+        Need {
             name: "needs-unwind",
             condition: config.can_unwind(),
             ignore_reason: "ignored on targets without unwinding support",
@@ -351,6 +356,9 @@ fn find_dlltool(config: &Config) -> bool {
     dlltool_found
 }
 
+// FIXME(#135928): this is actually not quite right because this detection is run on the **host**.
+// This however still helps the case of windows -> windows local development in case symlinks are
+// not available.
 #[cfg(windows)]
 fn has_symlinks() -> bool {
     if std::env::var_os("CI").is_some() {

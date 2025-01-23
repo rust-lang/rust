@@ -152,6 +152,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-sanitizer-support",
     "needs-sanitizer-thread",
     "needs-std-debug-assertions",
+    "needs-subprocess",
     "needs-symlink",
     "needs-target-has-atomic",
     "needs-threads",
