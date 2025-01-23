@@ -4,8 +4,14 @@
 #[lang = "copy"]
 trait Copy {}
 
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+trait Sized: MetaSized {}
 
 #[lang = "freeze"]
 auto trait Freeze {}

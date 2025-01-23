@@ -6,8 +6,15 @@
 
 #[lang = "copy"]
 pub trait Copy {}
+
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-pub trait Sized {}
+pub trait Sized: MetaSized {}
 
 #[lang = "start"]
 #[target_feature(enable = "avx2")]

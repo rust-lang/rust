@@ -9,8 +9,14 @@ pub static mut STATIC_MUT_BOOL: bool = true;
 const CONST_BOOL: bool = true;
 pub static CONST_BOOL_REF: &'static bool = &CONST_BOOL;
 
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+pub trait Sized: MetaSized {}
 
 #[lang = "copy"]
 trait Copy {}

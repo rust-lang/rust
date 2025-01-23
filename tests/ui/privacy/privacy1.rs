@@ -1,8 +1,14 @@
 #![feature(lang_items, no_core)]
 #![no_core] // makes debugging this test *a lot* easier (during resolve)
 
-#[lang="sized"]
-pub trait Sized {}
+#[lang = "sized"]
+pub trait Sized: MetaSized {}
+
+#[lang = "metasized"]
+pub trait MetaSized: PointeeSized {}
+
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
 
 #[lang="copy"]
 pub trait Copy {}

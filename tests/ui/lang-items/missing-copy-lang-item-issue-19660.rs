@@ -4,8 +4,14 @@
 #![no_core]
 #![no_main]
 
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized { }
+trait Sized: MetaSized { }
 
 struct S;
 
