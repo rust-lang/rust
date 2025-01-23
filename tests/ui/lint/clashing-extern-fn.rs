@@ -248,6 +248,7 @@ mod sameish_members {
 
 mod same_sized_members_clash {
     mod a {
+        #[allow(uses_power_alignment)]
         #[repr(C)]
         struct Point3 {
             x: f32,
