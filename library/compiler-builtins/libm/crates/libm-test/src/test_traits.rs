@@ -8,8 +8,9 @@
 
 use std::fmt;
 
-use anyhow::{Context, bail, ensure};
+use anyhow::{Context, anyhow, bail, ensure};
 
+use crate::precision::CheckAction;
 use crate::{CheckCtx, Float, Int, MaybeOverride, SpecialCase, TestResult};
 
 /// Trait for calling a function with a tuple as arguments.
@@ -185,20 +186,34 @@ where
     Input: Hex + fmt::Debug,
     SpecialCase: MaybeOverride<Input>,
 {
-    if let Some(res) = SpecialCase::check_int(input, actual, expected, ctx) {
-        return res;
-    }
+    let (result, xfail_msg) = match SpecialCase::check_int(input, actual, expected, ctx) {
+        CheckAction::AssertSuccess => (actual == expected, None),
+        CheckAction::AssertFailure(msg) => (actual != expected, Some(msg)),
+        CheckAction::Custom(res) => return res,
+        CheckAction::Skip => return Ok(()),
+        CheckAction::AssertWithUlp(_) => panic!("ulp has no meaning for integer checks"),
+    };
+
+    let make_xfail_msg = || match xfail_msg {
+        Some(m) => format!(
+            "expected failure but test passed. Does an XFAIL need to be updated?\n\
+            failed at: {m}",
+        ),
+        None => String::new(),
+    };
 
     anyhow::ensure!(
-        actual == expected,
+        result,
         "\
         \n    input:    {input:?} {ibits}\
         \n    expected: {expected:<22?} {expbits}\
         \n    actual:   {actual:<22?} {actbits}\
+        \n    {msg}\
         ",
         actbits = actual.hex(),
         expbits = expected.hex(),
         ibits = input.hex(),
+        msg = make_xfail_msg()
     );
 
     Ok(())
@@ -246,15 +261,19 @@ where
     u32: TryFrom<F::SignedInt, Error: fmt::Debug>,
     SpecialCase: MaybeOverride<Input>,
 {
+    let mut assert_failure_msg = None;
+
     // Create a wrapper function so we only need to `.with_context` once.
-    let inner = || -> TestResult {
+    let mut inner = || -> TestResult {
         let mut allowed_ulp = ctx.ulp;
 
-        // If the tested function requires a nonstandard test, run it here.
-        if let Some(res) = SpecialCase::check_float(input, actual, expected, &mut allowed_ulp, ctx)
-        {
-            return res;
-        }
+        match SpecialCase::check_float(input, actual, expected, ctx) {
+            CheckAction::AssertSuccess => (),
+            CheckAction::AssertFailure(msg) => assert_failure_msg = Some(msg),
+            CheckAction::Custom(res) => return res,
+            CheckAction::Skip => return Ok(()),
+            CheckAction::AssertWithUlp(ulp_override) => allowed_ulp = ulp_override,
+        };
 
         // Check when both are NaNs
         if actual.is_nan() && expected.is_nan() {
@@ -280,14 +299,29 @@ where
         let ulp_diff = act_bits.checked_sub(exp_bits).unwrap().abs();
 
         let ulp_u32 = u32::try_from(ulp_diff)
-            .map_err(|e| anyhow::anyhow!("{e:?}: ulp of {ulp_diff} exceeds u32::MAX"))?;
+            .map_err(|e| anyhow!("{e:?}: ulp of {ulp_diff} exceeds u32::MAX"))?;
 
         ensure!(ulp_u32 <= allowed_ulp, "ulp {ulp_diff} > {allowed_ulp}",);
 
         Ok(())
     };
 
-    inner().with_context(|| {
+    let mut res = inner();
+
+    if let Some(msg) = assert_failure_msg {
+        // Invert `Ok` and `Err` if the test is an xfail.
+        if res.is_ok() {
+            let e = anyhow!(
+                "expected failure but test passed. Does an XFAIL need to be updated?\n\
+                failed at: {msg}",
+            );
+            res = Err(e)
+        } else {
+            res = Ok(())
+        }
+    }
+
+    res.with_context(|| {
         format!(
             "\
             \n    input:    {input:?} {ibits}\

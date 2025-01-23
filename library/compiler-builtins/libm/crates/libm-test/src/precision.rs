@@ -118,13 +118,13 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
             // FIXME(#401): these need to be correctly rounded but are not.
             Id::Fmaf => ulp = 1,
             Id::Fdim => ulp = 1,
+            Id::Round => ulp = 1,
 
             Id::Asinh => ulp = 3,
             Id::Asinhf => ulp = 3,
             Id::Exp10 | Id::Exp10f => ulp = 1_000_000,
             Id::Exp2 | Id::Exp2f => ulp = 10_000_000,
             Id::Log1p | Id::Log1pf => ulp = 2,
-            Id::Round => ulp = 1,
             Id::Tan => ulp = 2,
             _ => (),
         }
@@ -133,12 +133,42 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
     ulp
 }
 
-/// Don't run further validation on this test case.
-const SKIP: Option<TestResult> = Some(Ok(()));
+/// Result of checking for possible overrides.
+#[derive(Debug, Default)]
+pub enum CheckAction {
+    /// The check should pass. Default case.
+    #[default]
+    AssertSuccess,
 
-/// Return this to skip checks on a test that currently fails but shouldn't. Looks
-/// the same as skip, but we keep them separate to better indicate purpose.
-const XFAIL: Option<TestResult> = Some(Ok(()));
+    /// Override the ULP for this check.
+    AssertWithUlp(u32),
+
+    /// Failure is expected, ensure this is the case (xfail). Takes a contxt string to help trace
+    /// back exactly why we expect this to fail.
+    AssertFailure(&'static str),
+
+    /// The override somehow validated the result, here it is.
+    Custom(TestResult),
+
+    /// Disregard the output.
+    Skip,
+}
+
+/// Don't run further validation on this test case.
+const SKIP: CheckAction = CheckAction::Skip;
+
+/// Return this to skip checks on a test that currently fails but shouldn't. Takes a description
+/// of context.
+const XFAIL: fn(&'static str) -> CheckAction = CheckAction::AssertFailure;
+
+/// Indicates that we expect a test to fail but we aren't asserting that it does (e.g. some results
+/// within a range do actually pass).
+///
+/// Same as `SKIP`, just indicates we have something to eventually fix.
+const XFAIL_NOCHECK: CheckAction = CheckAction::Skip;
+
+/// By default, all tests should pass.
+const DEFAULT: CheckAction = CheckAction::AssertSuccess;
 
 /// Allow overriding the outputs of specific test cases.
 ///
@@ -158,19 +188,13 @@ pub trait MaybeOverride<Input> {
         _input: Input,
         _actual: F,
         _expected: F,
-        _ulp: &mut u32,
         _ctx: &CheckCtx,
-    ) -> Option<TestResult> {
-        None
+    ) -> CheckAction {
+        DEFAULT
     }
 
-    fn check_int<I: Int>(
-        _input: Input,
-        _actual: I,
-        _expected: I,
-        _ctx: &CheckCtx,
-    ) -> Option<TestResult> {
-        None
+    fn check_int<I: Int>(_input: Input, _actual: I, _expected: I, _ctx: &CheckCtx) -> CheckAction {
+        DEFAULT
     }
 }
 
@@ -178,47 +202,18 @@ pub trait MaybeOverride<Input> {
 impl MaybeOverride<(f16,)> for SpecialCase {}
 
 impl MaybeOverride<(f32,)> for SpecialCase {
-    fn check_float<F: Float>(
-        input: (f32,),
-        actual: F,
-        expected: F,
-        _ulp: &mut u32,
-        ctx: &CheckCtx,
-    ) -> Option<TestResult> {
-        if ctx.base_name == BaseName::Expm1 && input.0 > 80.0 && actual.is_infinite() {
+    fn check_float<F: Float>(input: (f32,), actual: F, expected: F, ctx: &CheckCtx) -> CheckAction {
+        if ctx.base_name == BaseName::Expm1
+            && !input.0.is_infinite()
+            && input.0 > 80.0
+            && actual.is_infinite()
+            && !expected.is_infinite()
+        {
             // we return infinity but the number is representable
-            return XFAIL;
-        }
-
-        if ctx.base_name == BaseName::Sinh && input.0.abs() > 80.0 && actual.is_nan() {
-            // we return some NaN that should be real values or infinite
-            return XFAIL;
-        }
-
-        if ctx.base_name == BaseName::Acosh && input.0 < -1.0 {
-            // acoshf is undefined for x <= 1.0, but we return a random result at lower
-            // values.
-            return XFAIL;
-        }
-
-        if ctx.base_name == BaseName::Lgamma || ctx.base_name == BaseName::LgammaR && input.0 < 0.0
-        {
-            // loggamma should not be defined for x < 0, yet we both return results
-            return XFAIL;
-        }
-
-        if (ctx.base_name == BaseName::Lgamma || ctx.base_name == BaseName::LgammaR)
-            && input.0 > 4e36
-            && expected.is_infinite()
-            && !actual.is_infinite()
-        {
-            // This result should saturate but we return a finite value.
-            return XFAIL;
-        }
-
-        if ctx.base_name == BaseName::J0 && input.0 < -1e34 {
-            // Errors get huge close to -inf
-            return XFAIL;
+            if ctx.basis == CheckBasis::Musl {
+                return XFAIL_NOCHECK;
+            }
+            return XFAIL("expm1 representable numbers");
         }
 
         if cfg!(x86_no_sse)
@@ -227,18 +222,35 @@ impl MaybeOverride<(f32,)> for SpecialCase {
             && actual.is_infinite()
         {
             // We return infinity when there is a representable value. Test input: 127.97238
-            return XFAIL;
+            return XFAIL("586 exp2 representable numbers");
         }
 
-        maybe_check_nan_bits(actual, expected, ctx)
+        if ctx.base_name == BaseName::Sinh && input.0.abs() > 80.0 && actual.is_nan() {
+            // we return some NaN that should be real values or infinite
+            if ctx.basis == CheckBasis::Musl {
+                return XFAIL_NOCHECK;
+            }
+            return XFAIL("sinh unexpected NaN");
+        }
+
+        if (ctx.base_name == BaseName::Lgamma || ctx.base_name == BaseName::LgammaR)
+            && input.0 > 4e36
+            && expected.is_infinite()
+            && !actual.is_infinite()
+        {
+            // This result should saturate but we return a finite value.
+            return XFAIL_NOCHECK;
+        }
+
+        if ctx.base_name == BaseName::J0 && input.0 < -1e34 {
+            // Errors get huge close to -inf
+            return XFAIL_NOCHECK;
+        }
+
+        unop_common(input, actual, expected, ctx)
     }
 
-    fn check_int<I: Int>(
-        input: (f32,),
-        actual: I,
-        expected: I,
-        ctx: &CheckCtx,
-    ) -> Option<anyhow::Result<()>> {
+    fn check_int<I: Int>(input: (f32,), actual: I, expected: I, ctx: &CheckCtx) -> CheckAction {
         // On MPFR for lgammaf_r, we set -1 as the integer result for negative infinity but MPFR
         // sets +1
         if ctx.basis == CheckBasis::Mpfr
@@ -246,37 +258,25 @@ impl MaybeOverride<(f32,)> for SpecialCase {
             && input.0 == f32::NEG_INFINITY
             && actual.abs() == expected.abs()
         {
-            XFAIL
-        } else {
-            None
+            return XFAIL("lgammar integer result");
         }
+
+        DEFAULT
     }
 }
 
 impl MaybeOverride<(f64,)> for SpecialCase {
-    fn check_float<F: Float>(
-        input: (f64,),
-        actual: F,
-        expected: F,
-        _ulp: &mut u32,
-        ctx: &CheckCtx,
-    ) -> Option<TestResult> {
-        if ctx.basis == CheckBasis::Musl {
-            if cfg!(target_arch = "x86") && ctx.base_name == BaseName::Acosh && input.0 < 1.0 {
-                // The function is undefined, both implementations return random results
-                return SKIP;
-            }
-
-            if cfg!(x86_no_sse)
-                && ctx.base_name == BaseName::Ceil
-                && input.0 < 0.0
-                && input.0 > -1.0
-                && expected == F::ZERO
-                && actual == F::ZERO
-            {
-                // musl returns -0.0, we return +0.0
-                return XFAIL;
-            }
+    fn check_float<F: Float>(input: (f64,), actual: F, expected: F, ctx: &CheckCtx) -> CheckAction {
+        if cfg!(x86_no_sse)
+            && ctx.base_name == BaseName::Ceil
+            && ctx.basis == CheckBasis::Musl
+            && input.0 < 0.0
+            && input.0 > -1.0
+            && expected == F::ZERO
+            && actual == F::ZERO
+        {
+            // musl returns -0.0, we return +0.0
+            return XFAIL("i586 ceil signed zero");
         }
 
         if cfg!(x86_no_sse)
@@ -285,53 +285,37 @@ impl MaybeOverride<(f64,)> for SpecialCase {
             && (expected - actual).abs() > F::ZERO
         {
             // Our rounding mode is incorrect.
-            return XFAIL;
+            return XFAIL("i586 rint rounding mode");
         }
 
-        if ctx.base_name == BaseName::Acosh && input.0 < 1.0 {
-            // The function is undefined for the inputs, musl and our libm both return
-            // random results.
-            return XFAIL;
-        }
-
-        if ctx.base_name == BaseName::Lgamma || ctx.base_name == BaseName::LgammaR && input.0 < 0.0
-        {
-            // loggamma should not be defined for x < 0, yet we both return results
-            return XFAIL;
-        }
-
-        if ctx.base_name == BaseName::J0 && input.0 < -1e300 {
-            // Errors get huge close to -inf
-            return XFAIL;
-        }
-
-        if (ctx.fn_ident == Identifier::Ceil || ctx.fn_ident == Identifier::Floor)
-            && cfg!(x86_no_sse)
+        if cfg!(x86_no_sse)
+            && (ctx.fn_ident == Identifier::Ceil || ctx.fn_ident == Identifier::Floor)
             && expected.eq_repr(F::NEG_ZERO)
             && actual.eq_repr(F::ZERO)
         {
             // FIXME: the x87 implementations do not keep the distinction between -0.0 and 0.0.
             // See https://github.com/rust-lang/libm/pull/404#issuecomment-2572399955
-            return XFAIL;
+            return XFAIL("i586 ceil/floor signed zero");
         }
 
-        if (ctx.fn_ident == Identifier::Exp10 || ctx.fn_ident == Identifier::Exp2)
-            && cfg!(x86_no_sse)
+        if cfg!(x86_no_sse)
+            && (ctx.fn_ident == Identifier::Exp10 || ctx.fn_ident == Identifier::Exp2)
         {
             // FIXME: i586 has very imprecise results with ULP > u32::MAX for these
             // operations so we can't reasonably provide a limit.
-            return XFAIL;
+            return XFAIL_NOCHECK;
         }
 
-        maybe_check_nan_bits(actual, expected, ctx)
+        if ctx.base_name == BaseName::J0 && input.0 < -1e300 {
+            // Errors get huge close to -inf
+            return XFAIL_NOCHECK;
+        }
+
+        // maybe_check_nan_bits(actual, expected, ctx)
+        unop_common(input, actual, expected, ctx)
     }
 
-    fn check_int<I: Int>(
-        input: (f64,),
-        actual: I,
-        expected: I,
-        ctx: &CheckCtx,
-    ) -> Option<anyhow::Result<()>> {
+    fn check_int<I: Int>(input: (f64,), actual: I, expected: I, ctx: &CheckCtx) -> CheckAction {
         // On MPFR for lgamma_r, we set -1 as the integer result for negative infinity but MPFR
         // sets +1
         if ctx.basis == CheckBasis::Mpfr
@@ -339,41 +323,68 @@ impl MaybeOverride<(f64,)> for SpecialCase {
             && input.0 == f64::NEG_INFINITY
             && actual.abs() == expected.abs()
         {
-            XFAIL
-        } else {
-            None
+            return XFAIL("lgammar integer result");
         }
+
+        DEFAULT
     }
 }
 
 #[cfg(f128_enabled)]
 impl MaybeOverride<(f128,)> for SpecialCase {}
 
-/// Check NaN bits if the function requires it
-fn maybe_check_nan_bits<F: Float>(actual: F, expected: F, ctx: &CheckCtx) -> Option<TestResult> {
-    if !(ctx.base_name == BaseName::Fabs || ctx.base_name == BaseName::Copysign) {
-        return None;
+// F1 and F2 are always the same type, this is just to please generics
+fn unop_common<F1: Float, F2: Float>(
+    input: (F1,),
+    actual: F2,
+    expected: F2,
+    ctx: &CheckCtx,
+) -> CheckAction {
+    if ctx.base_name == BaseName::Acosh
+        && input.0 < F1::NEG_ONE
+        && !(expected.is_nan() && actual.is_nan())
+    {
+        // acoshf is undefined for x <= 1.0, but we return a random result at lower values.
+
+        if ctx.basis == CheckBasis::Musl {
+            return XFAIL_NOCHECK;
+        }
+
+        return XFAIL("acoshf undefined");
     }
 
-    // LLVM currently uses x87 instructions which quieten signalling NaNs to handle the i686
-    // `extern "C"` `f32`/`f64` return ABI.
-    // LLVM issue <https://github.com/llvm/llvm-project/issues/66803>
-    // Rust issue <https://github.com/rust-lang/rust/issues/115567>
-    if cfg!(target_arch = "x86") && ctx.basis == CheckBasis::Musl {
-        return SKIP;
+    if (ctx.base_name == BaseName::Lgamma || ctx.base_name == BaseName::LgammaR)
+        && input.0 < F1::ZERO
+        && !input.0.is_infinite()
+    {
+        // loggamma should not be defined for x < 0, yet we both return results
+        return XFAIL_NOCHECK;
     }
 
-    // MPFR only has one NaN bitpattern; allow the default `.is_nan()` checks to validate.
-    if ctx.basis == CheckBasis::Mpfr {
-        return SKIP;
+    // fabs and copysign must leave NaNs untouched.
+    if ctx.base_name == BaseName::Fabs && input.0.is_nan() {
+        // LLVM currently uses x87 instructions which quieten signalling NaNs to handle the i686
+        // `extern "C"` `f32`/`f64` return ABI.
+        // LLVM issue <https://github.com/llvm/llvm-project/issues/66803>
+        // Rust issue <https://github.com/rust-lang/rust/issues/115567>
+        if cfg!(target_arch = "x86") && ctx.basis == CheckBasis::Musl && actual.is_nan() {
+            return XFAIL_NOCHECK;
+        }
+
+        // MPFR only has one NaN bitpattern; allow the default `.is_nan()` checks to validate.
+        if ctx.basis == CheckBasis::Mpfr {
+            return DEFAULT;
+        }
+
+        // abs and copysign require signaling NaNs to be propagated, so verify bit equality.
+        if actual.to_bits() == expected.to_bits() {
+            return CheckAction::Custom(Ok(()));
+        } else {
+            return CheckAction::Custom(Err(anyhow::anyhow!("NaNs have different bitpatterns")));
+        }
     }
 
-    // abs and copysign require signaling NaNs to be propagated, so verify bit equality.
-    if actual.to_bits() == expected.to_bits() {
-        SKIP
-    } else {
-        Some(Err(anyhow::anyhow!("NaNs have different bitpatterns")))
-    }
+    DEFAULT
 }
 
 #[cfg(f16_enabled)]
@@ -382,9 +393,8 @@ impl MaybeOverride<(f16, f16)> for SpecialCase {
         input: (f16, f16),
         actual: F,
         expected: F,
-        _ulp: &mut u32,
         ctx: &CheckCtx,
-    ) -> Option<TestResult> {
+    ) -> CheckAction {
         binop_common(input, actual, expected, ctx)
     }
 }
@@ -394,18 +404,8 @@ impl MaybeOverride<(f32, f32)> for SpecialCase {
         input: (f32, f32),
         actual: F,
         expected: F,
-        _ulp: &mut u32,
         ctx: &CheckCtx,
-    ) -> Option<TestResult> {
-        if ctx.base_name == BaseName::Fmin
-            && input.0.biteq(f32::NEG_ZERO)
-            && input.1.biteq(f32::ZERO)
-            && expected.biteq(F::NEG_ZERO)
-            && actual.biteq(F::ZERO)
-        {
-            return XFAIL;
-        }
-
+    ) -> CheckAction {
         binop_common(input, actual, expected, ctx)
     }
 
@@ -414,7 +414,7 @@ impl MaybeOverride<(f32, f32)> for SpecialCase {
         actual: I,
         expected: I,
         ctx: &CheckCtx,
-    ) -> Option<TestResult> {
+    ) -> CheckAction {
         remquo_common(actual, expected, ctx)
     }
 }
@@ -424,18 +424,8 @@ impl MaybeOverride<(f64, f64)> for SpecialCase {
         input: (f64, f64),
         actual: F,
         expected: F,
-        _ulp: &mut u32,
         ctx: &CheckCtx,
-    ) -> Option<TestResult> {
-        if ctx.base_name == BaseName::Fmin
-            && input.0.biteq(f64::NEG_ZERO)
-            && input.1.biteq(f64::ZERO)
-            && expected.biteq(F::ZERO)
-            && actual.biteq(F::NEG_ZERO)
-        {
-            return XFAIL;
-        }
-
+    ) -> CheckAction {
         binop_common(input, actual, expected, ctx)
     }
 
@@ -444,22 +434,9 @@ impl MaybeOverride<(f64, f64)> for SpecialCase {
         actual: I,
         expected: I,
         ctx: &CheckCtx,
-    ) -> Option<TestResult> {
+    ) -> CheckAction {
         remquo_common(actual, expected, ctx)
     }
-}
-
-fn remquo_common<I: Int>(actual: I, expected: I, ctx: &CheckCtx) -> Option<TestResult> {
-    // FIXME: Our MPFR implementation disagrees with musl and may need to be updated.
-    if ctx.basis == CheckBasis::Mpfr
-        && ctx.base_name == BaseName::Remquo
-        && expected == I::MIN
-        && actual == I::ZERO
-    {
-        return XFAIL;
-    }
-
-    None
 }
 
 #[cfg(f128_enabled)]
@@ -468,9 +445,8 @@ impl MaybeOverride<(f128, f128)> for SpecialCase {
         input: (f128, f128),
         actual: F,
         expected: F,
-        _ulp: &mut u32,
         ctx: &CheckCtx,
-    ) -> Option<TestResult> {
+    ) -> CheckAction {
         binop_common(input, actual, expected, ctx)
     }
 }
@@ -481,8 +457,17 @@ fn binop_common<F1: Float, F2: Float>(
     actual: F2,
     expected: F2,
     ctx: &CheckCtx,
-) -> Option<TestResult> {
-    /* FIXME(#439): we do not compare signed zeros */
+) -> CheckAction {
+    // MPFR only has one NaN bitpattern; allow the default `.is_nan()` checks to validate. Skip if
+    // the first input (magnitude source) is NaN and the output is also a NaN, or if the second
+    // input (sign source) is NaN.
+    if ctx.basis == CheckBasis::Mpfr
+        && ((input.0.is_nan() && actual.is_nan() && expected.is_nan()) || input.1.is_nan())
+    {
+        return SKIP;
+    }
+
+    /* FIXME(#439): our fmin and fmax do not compare signed zeros */
 
     if ctx.base_name == BaseName::Fmin
         && input.0.biteq(F1::NEG_ZERO)
@@ -490,7 +475,7 @@ fn binop_common<F1: Float, F2: Float>(
         && expected.biteq(F2::NEG_ZERO)
         && actual.biteq(F2::ZERO)
     {
-        return XFAIL;
+        return XFAIL("fmin signed zeroes");
     }
 
     if ctx.base_name == BaseName::Fmax
@@ -499,21 +484,32 @@ fn binop_common<F1: Float, F2: Float>(
         && expected.biteq(F2::ZERO)
         && actual.biteq(F2::NEG_ZERO)
     {
-        return XFAIL;
+        return XFAIL("fmax signed zeroes");
     }
 
     // Musl propagates NaNs if one is provided as the input, but we return the other input.
-    match (&ctx.basis, ctx.base_name) {
-        (Musl, BaseName::Fmin | BaseName::Fmax)
-            if (input.0.is_nan() || input.1.is_nan()) && expected.is_nan() =>
-        {
-            XFAIL
-        }
-
-        (Mpfr, BaseName::Copysign) if input.1.is_nan() => SKIP,
-
-        _ => None,
+    if (ctx.base_name == BaseName::Fmax || ctx.base_name == BaseName::Fmin)
+        && ctx.basis == Musl
+        && (input.0.is_nan() ^ input.1.is_nan())
+        && expected.is_nan()
+    {
+        return XFAIL("fmax/fmin musl NaN");
     }
+
+    DEFAULT
+}
+
+fn remquo_common<I: Int>(actual: I, expected: I, ctx: &CheckCtx) -> CheckAction {
+    // FIXME: Our MPFR implementation disagrees with musl and may need to be updated.
+    if ctx.basis == CheckBasis::Mpfr
+        && ctx.base_name == BaseName::Remquo
+        && expected == I::MIN
+        && actual == I::ZERO
+    {
+        return XFAIL("remquo integer mismatch");
+    }
+
+    DEFAULT
 }
 
 impl MaybeOverride<(i32, f32)> for SpecialCase {
@@ -521,28 +517,19 @@ impl MaybeOverride<(i32, f32)> for SpecialCase {
         input: (i32, f32),
         actual: F,
         expected: F,
-        ulp: &mut u32,
         ctx: &CheckCtx,
-    ) -> Option<TestResult> {
-        match (&ctx.basis, ctx.base_name) {
-            (Musl, _) => bessel_prec_dropoff(input, actual, expected, ulp, ctx),
-
-            // We return +0.0, MPFR returns -0.0
-            (Mpfr, BaseName::Jn | BaseName::Yn)
-                if input.1 == f32::NEG_INFINITY && actual == F::ZERO && expected == F::ZERO =>
-            {
-                XFAIL
-            }
-
-            // `ynf(213, 109.15641) = -inf` with our library, should be finite.
-            (_, BaseName::Yn)
-                if input.0 > 200 && !expected.is_infinite() && actual.is_infinite() =>
-            {
-                XFAIL
-            }
-
-            _ => None,
+    ) -> CheckAction {
+        // `ynf(213, 109.15641) = -inf` with our library, should be finite.
+        if ctx.basis == Mpfr
+            && ctx.base_name == BaseName::Yn
+            && input.0 > 200
+            && !expected.is_infinite()
+            && actual.is_infinite()
+        {
+            return XFAIL("ynf infinity mismatch");
         }
+
+        int_float_common(input, actual, expected, ctx)
     }
 }
 
@@ -551,55 +538,51 @@ impl MaybeOverride<(i32, f64)> for SpecialCase {
         input: (i32, f64),
         actual: F,
         expected: F,
-        ulp: &mut u32,
         ctx: &CheckCtx,
-    ) -> Option<TestResult> {
-        match (&ctx.basis, ctx.base_name) {
-            (Musl, _) => bessel_prec_dropoff(input, actual, expected, ulp, ctx),
-
-            // We return +0.0, MPFR returns -0.0
-            (Mpfr, BaseName::Jn | BaseName::Yn)
-                if input.1 == f64::NEG_INFINITY && actual == F::ZERO && expected == F::ZERO =>
-            {
-                XFAIL
-            }
-
-            _ => None,
-        }
+    ) -> CheckAction {
+        int_float_common(input, actual, expected, ctx)
     }
 }
 
-/// Our bessel functions blow up with large N values
-fn bessel_prec_dropoff<F1: Float, F2: Float>(
+fn int_float_common<F1: Float, F2: Float>(
     input: (i32, F1),
     actual: F2,
     expected: F2,
-    ulp: &mut u32,
     ctx: &CheckCtx,
-) -> Option<TestResult> {
-    if ctx.base_name == BaseName::Jn || ctx.base_name == BaseName::Yn {
+) -> CheckAction {
+    if ctx.basis == Mpfr
+        && (ctx.base_name == BaseName::Jn || ctx.base_name == BaseName::Yn)
+        && input.1 == F1::NEG_INFINITY
+        && actual == F2::ZERO
+        && expected == F2::ZERO
+    {
+        return XFAIL("mpfr b");
+    }
+
+    // Our bessel functions blow up with large N values
+    if ctx.basis == Musl && (ctx.base_name == BaseName::Jn || ctx.base_name == BaseName::Yn) {
         if input.0 > 4000 {
-            return XFAIL;
+            return XFAIL_NOCHECK;
         } else if input.0 > 2000 {
-            // *ulp = 20_000;
-            *ulp = 20000;
+            return CheckAction::AssertWithUlp(20_000);
         } else if input.0 > 1000 {
-            *ulp = 4000;
+            return CheckAction::AssertWithUlp(4_000);
         }
     }
 
     // Values near infinity sometimes get cut off for us. `ynf(681, 509.90924) = -inf` but should
     // be -3.2161271e38.
-    if ctx.fn_ident == Identifier::Ynf
+    if ctx.basis == Musl
+        && ctx.fn_ident == Identifier::Ynf
         && !expected.is_infinite()
         && actual.is_infinite()
         && (expected.abs().to_bits().abs_diff(actual.abs().to_bits())
             < F2::Int::cast_from(1_000_000u32))
     {
-        return XFAIL;
+        return XFAIL_NOCHECK;
     }
 
-    None
+    DEFAULT
 }
 
 impl MaybeOverride<(f32, i32)> for SpecialCase {}
@@ -610,9 +593,8 @@ impl MaybeOverride<(f32, f32, f32)> for SpecialCase {
         input: (f32, f32, f32),
         actual: F,
         expected: F,
-        _ulp: &mut u32,
         ctx: &CheckCtx,
-    ) -> Option<TestResult> {
+    ) -> CheckAction {
         ternop_common(input, actual, expected, ctx)
     }
 }
@@ -621,9 +603,8 @@ impl MaybeOverride<(f64, f64, f64)> for SpecialCase {
         input: (f64, f64, f64),
         actual: F,
         expected: F,
-        _ulp: &mut u32,
         ctx: &CheckCtx,
-    ) -> Option<TestResult> {
+    ) -> CheckAction {
         ternop_common(input, actual, expected, ctx)
     }
 }
@@ -634,7 +615,7 @@ fn ternop_common<F1: Float, F2: Float>(
     actual: F2,
     expected: F2,
     ctx: &CheckCtx,
-) -> Option<TestResult> {
+) -> CheckAction {
     // FIXME(fma): 754-2020 says "When the exact result of (a × b) + c is non-zero yet the result
     // of fusedMultiplyAdd is zero because of rounding, the zero result takes the sign of the
     // exact result". Our implementation returns the wrong sign:
@@ -647,8 +628,8 @@ fn ternop_common<F1: Float, F2: Float>(
         && expected.biteq(F2::NEG_ZERO)
         && actual.biteq(F2::ZERO)
     {
-        return XFAIL;
+        return XFAIL("fma sign");
     }
 
-    None
+    DEFAULT
 }
