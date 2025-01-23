@@ -545,7 +545,7 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        &self.input[start..self.input.len()]
+        &self.input[start..]
     }
 
     /// Parses an `Argument` structure, or what's contained within braces inside the format string.
