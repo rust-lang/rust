@@ -121,6 +121,10 @@ impl Cargo {
         cargo
     }
 
+    pub fn compiler(&self) -> Compiler {
+        self.compiler
+    }
+
     pub fn into_cmd(self) -> BootstrapCommand {
         self.into()
     }
