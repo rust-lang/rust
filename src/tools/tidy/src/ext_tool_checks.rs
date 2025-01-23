@@ -89,74 +89,45 @@ fn check_impl(
 
     if python_lint {
         eprintln!("linting python files");
-        let mut cfg_args_ruff = cfg_args.clone();
-        let mut file_args_ruff = file_args.clone();
-
-        let mut cfg_path = root_path.to_owned();
-        cfg_path.extend(RUFF_CONFIG_PATH);
-        let mut cache_dir = outdir.to_owned();
-        cache_dir.extend(RUFF_CACHE_PATH);
-
-        cfg_args_ruff.extend([
-            "--config".as_ref(),
-            cfg_path.as_os_str(),
-            "--cache-dir".as_ref(),
-            cache_dir.as_os_str(),
-        ]);
-
-        if file_args_ruff.is_empty() {
-            file_args_ruff.push(root_path.as_os_str());
-        }
-
-        let mut args = merge_args(&cfg_args_ruff, &file_args_ruff);
-        args.insert(0, "check".as_ref());
-        let res = py_runner(py_path.as_ref().unwrap(), true, None, "ruff", &args);
+        let py_path = py_path.as_ref().unwrap();
+        let res = run_ruff(root_path, outdir, py_path, &cfg_args, &file_args, &["check".as_ref()]);
 
         if res.is_err() && show_diff {
             eprintln!("\npython linting failed! Printing diff suggestions:");
 
-            args.insert(1, "--diff".as_ref());
-            let _ = py_runner(py_path.as_ref().unwrap(), true, None, "ruff", &args);
+            let _ = run_ruff(root_path, outdir, py_path, &cfg_args, &file_args, &[
+                "check".as_ref(),
+                "--diff".as_ref(),
+            ]);
         }
         // Rethrow error
         let _ = res?;
     }
 
     if python_fmt {
-        let mut cfg_args_ruff = cfg_args.clone();
-        let mut file_args_ruff = file_args.clone();
-
+        let mut args: Vec<&OsStr> = vec!["format".as_ref()];
         if bless {
             eprintln!("formatting python files");
         } else {
             eprintln!("checking python file formatting");
-            cfg_args_ruff.push("--check".as_ref());
+            args.push("--check".as_ref());
         }
 
-        let mut cfg_path = root_path.to_owned();
-        cfg_path.extend(RUFF_CONFIG_PATH);
-        let mut cache_dir = outdir.to_owned();
-        cache_dir.extend(RUFF_CACHE_PATH);
+        let py_path = py_path.as_ref().unwrap();
+        let res = run_ruff(root_path, outdir, py_path, &cfg_args, &file_args, &args);
 
-        cfg_args_ruff.extend(["--config".as_ref(), cfg_path.as_os_str()]);
-
-        if file_args_ruff.is_empty() {
-            file_args_ruff.push(root_path.as_os_str());
-        }
-
-        let mut args = merge_args(&cfg_args_ruff, &file_args_ruff);
-        args.insert(0, "format".as_ref());
-        let res = py_runner(py_path.as_ref().unwrap(), true, None, "ruff", &args);
-
-        if res.is_err() && show_diff {
-            eprintln!("\npython formatting does not match! Printing diff:");
-
-            args.insert(0, "--diff".as_ref());
-            let _ = py_runner(py_path.as_ref().unwrap(), true, None, "ruff", &args);
-        }
         if res.is_err() && !bless {
+            if show_diff {
+                eprintln!("\npython formatting does not match! Printing diff:");
+
+                let _ = run_ruff(root_path, outdir, py_path, &cfg_args, &file_args, &[
+                    "format".as_ref(),
+                    "--diff".as_ref(),
+                ]);
+            }
             eprintln!("rerun tidy with `--extra-checks=py:fmt --bless` to reformat Python code");
         }
+
         // Rethrow error
         let _ = res?;
     }
@@ -245,6 +216,38 @@ fn check_impl(
     }
 
     Ok(())
+}
+
+fn run_ruff(
+    root_path: &Path,
+    outdir: &Path,
+    py_path: &Path,
+    cfg_args: &[&OsStr],
+    file_args: &[&OsStr],
+    ruff_args: &[&OsStr],
+) -> Result<(), Error> {
+    let mut cfg_args_ruff = cfg_args.into_iter().copied().collect::<Vec<_>>();
+    let mut file_args_ruff = file_args.into_iter().copied().collect::<Vec<_>>();
+
+    let mut cfg_path = root_path.to_owned();
+    cfg_path.extend(RUFF_CONFIG_PATH);
+    let mut cache_dir = outdir.to_owned();
+    cache_dir.extend(RUFF_CACHE_PATH);
+
+    cfg_args_ruff.extend([
+        "--config".as_ref(),
+        cfg_path.as_os_str(),
+        "--cache-dir".as_ref(),
+        cache_dir.as_os_str(),
+    ]);
+
+    if file_args_ruff.is_empty() {
+        file_args_ruff.push(root_path.as_os_str());
+    }
+
+    let mut args: Vec<&OsStr> = ruff_args.into_iter().copied().collect();
+    args.extend(merge_args(&cfg_args_ruff, &file_args_ruff));
+    py_runner(py_path, true, None, "ruff", &args)
 }
 
 /// Helper to create `cfg1 cfg2 -- file1 file2` output
