@@ -514,13 +514,11 @@ mod pattern_types {
             // invariant that the value is non-zero, or you're missing out on that invariant. Both
             // cases are warning for, from both a caller-convenience and optimisation perspective.
             fn pt_non_zero_usize() -> usize;
-            //~^ WARN `pt_non_zero_usize` redeclared with a different signature
             fn pt_non_zero_usize_opt() -> usize;
             //~^ WARN `pt_non_zero_usize_opt` redeclared with a different signature
             fn pt_non_null_ptr() -> *const ();
             //~^ WARN `pt_non_null_ptr` redeclared with a different signature
             fn pt_non_zero_usize_wrapper() -> usize;
-            //~^ WARN `pt_non_zero_usize_wrapper` redeclared with a different signature
             fn pt_non_zero_usize_wrapper_opt() -> usize;
             //~^ WARN `pt_non_zero_usize_wrapper_opt` redeclared with a different signature
         }
