@@ -46,6 +46,10 @@ impl<'tcx> TyCtxt<'tcx> {
             value,
             typing_env,
         );
+        debug_assert!(
+            !value.has_escaping_bound_vars(),
+            "{value:?} cannot be normalized with escaping bound vars"
+        );
 
         // Erase first before we do the real query -- this keeps the
         // cache from being too polluted.
