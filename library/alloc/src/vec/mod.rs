@@ -3013,10 +3013,9 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// Iterates over the slice `other`, clones each element, and then appends
     /// it to this `Vec`. The `other` slice is traversed in-order.
     ///
-    /// Note that this function is same as [`extend`] except that it is
-    /// specialized to work with slices instead. If and when Rust gets
-    /// specialization this function will likely be deprecated (but still
-    /// available).
+    /// Note that this function is the same as [`extend`],
+    /// except that it also works with slice elements that are Clone but not Copy.
+    /// If Rust gets specialization this function may be deprecated.
     ///
     /// # Examples
     ///
