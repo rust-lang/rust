@@ -1,6 +1,8 @@
 use std::io;
 
-use rustc_middle::mir::pretty::{PrettyPrintMirOptions, dump_mir_with_options};
+use rustc_middle::mir::pretty::{
+    PrettyPrintMirOptions, create_dump_file, dump_enabled, dump_mir_to_writer,
+};
 use rustc_middle::mir::{Body, ClosureRegionRequirements, PassWhere};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::MirIncludeSpans;
@@ -26,9 +28,39 @@ pub(crate) fn dump_polonius_mir<'tcx>(
         return;
     }
 
+    if !dump_enabled(tcx, "polonius", body.source.def_id()) {
+        return;
+    }
+
     let localized_outlives_constraints = localized_outlives_constraints
         .expect("missing localized constraints with `-Zpolonius=next`");
 
+    let _: io::Result<()> = try {
+        let mut file = create_dump_file(tcx, "mir", false, "polonius", &0, body)?;
+        emit_polonius_dump(
+            tcx,
+            body,
+            regioncx,
+            borrow_set,
+            localized_outlives_constraints,
+            closure_region_requirements,
+            &mut file,
+        )?;
+    };
+}
+
+/// The polonius dump consists of:
+/// - the NLL MIR
+/// - the list of polonius localized constraints
+fn emit_polonius_dump<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    regioncx: &RegionInferenceContext<'tcx>,
+    borrow_set: &BorrowSet<'tcx>,
+    localized_outlives_constraints: LocalizedOutlivesConstraintSet,
+    closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
+    out: &mut dyn io::Write,
+) -> io::Result<()> {
     // We want the NLL extra comments printed by default in NLL MIR dumps (they were removed in
     // #112346). Specifying `-Z mir-include-spans` on the CLI still has priority: for example,
     // they're always disabled in mir-opt tests to make working with blessed dumps easier.
@@ -39,12 +71,12 @@ pub(crate) fn dump_polonius_mir<'tcx>(
         ),
     };
 
-    dump_mir_with_options(
+    dump_mir_to_writer(
         tcx,
-        false,
         "polonius",
         &0,
         body,
+        out,
         |pass_where, out| {
             emit_polonius_mir(
                 tcx,
@@ -57,7 +89,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
             )
         },
         options,
-    );
+    )
 }
 
 /// Produces the actual NLL + Polonius MIR sections to emit during the dumping process.
