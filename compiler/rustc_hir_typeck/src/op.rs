@@ -645,7 +645,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // pointer + {integer} or pointer - pointer.
                 if op.span.can_be_used_for_suggestions() {
                     match op.node {
-                        hir::BinOpKind::Add if lhs_ty.is_unsafe_ptr() && rhs_ty.is_integral() => {
+                        hir::BinOpKind::Add if lhs_ty.is_raw_ptr() && rhs_ty.is_integral() => {
                             err.multipart_suggestion(
                                 "consider using `wrapping_add` or `add` for pointer + {integer}",
                                 vec![
@@ -659,7 +659,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                         }
                         hir::BinOpKind::Sub => {
-                            if lhs_ty.is_unsafe_ptr() && rhs_ty.is_integral() {
+                            if lhs_ty.is_raw_ptr() && rhs_ty.is_integral() {
                                 err.multipart_suggestion(
                                     "consider using `wrapping_sub` or `sub` for \
                                      pointer - {integer}",
@@ -674,7 +674,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 );
                             }
 
-                            if lhs_ty.is_unsafe_ptr() && rhs_ty.is_unsafe_ptr() {
+                            if lhs_ty.is_raw_ptr() && rhs_ty.is_raw_ptr() {
                                 err.multipart_suggestion(
                                     "consider using `offset_from` for pointer - pointer if the \
                                      pointers point to the same allocation",
