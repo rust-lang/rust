@@ -112,7 +112,7 @@ pub struct ConfigInfo {
     pub sysroot_panic_abort: bool,
     pub cg_backend_path: String,
     pub sysroot_path: String,
-    pub gcc_path: String,
+    pub gcc_path: Option<String>,
     config_file: Option<String>,
     // This is used in particular in rust compiler bootstrap because it doesn't run at the root
     // of the `cg_gcc` folder, making it complicated for us to get access to local files we need
@@ -173,6 +173,14 @@ impl ConfigInfo {
             "--release-sysroot" => self.sysroot_release_channel = true,
             "--release" => self.channel = Channel::Release,
             "--sysroot-panic-abort" => self.sysroot_panic_abort = true,
+            "--gcc-path" => match args.next() {
+                Some(arg) if !arg.is_empty() => {
+                    self.gcc_path = Some(arg.into());
+                }
+                _ => {
+                    return Err("Expected a value after `--gcc-path`, found nothing".to_string());
+                }
+            },
             "--cg_gcc-path" => match args.next() {
                 Some(arg) if !arg.is_empty() => {
                     self.cg_gcc_path = Some(arg.into());
@@ -260,8 +268,9 @@ impl ConfigInfo {
             create_symlink(&libgccjit_so, output_dir.join(&format!("{}.0", libgccjit_so_name)))?;
         }
 
-        self.gcc_path = output_dir.display().to_string();
-        println!("Using `{}` as path for libgccjit", self.gcc_path);
+        let gcc_path = output_dir.display().to_string();
+        println!("Using `{}` as path for libgccjit", gcc_path);
+        self.gcc_path = Some(gcc_path);
         Ok(())
     }
 
@@ -273,6 +282,11 @@ impl ConfigInfo {
     }
 
     pub fn setup_gcc_path(&mut self) -> Result<(), String> {
+        // If the user used the `--gcc-path` option, no need to look at `config.toml` content
+        // since we already have everything we need.
+        if self.gcc_path.is_some() {
+            return Ok(());
+        }
         let config_file = match self.config_file.as_deref() {
             Some(config_file) => config_file.into(),
             None => self.compute_path("config.toml"),
@@ -283,12 +297,10 @@ impl ConfigInfo {
             self.download_gccjit_if_needed()?;
             return Ok(());
         }
-        self.gcc_path = match gcc_path {
-            Some(path) => path,
-            None => {
-                return Err(format!("missing `gcc-path` value from `{}`", config_file.display(),));
-            }
-        };
+        if gcc_path.is_none() {
+            return Err(format!("missing `gcc-path` value from `{}`", config_file.display()));
+        }
+        self.gcc_path = gcc_path;
         Ok(())
     }
 
@@ -299,10 +311,13 @@ impl ConfigInfo {
     ) -> Result<(), String> {
         env.insert("CARGO_INCREMENTAL".to_string(), "0".to_string());
 
-        if self.gcc_path.is_empty() && !use_system_gcc {
+        if self.gcc_path.is_none() && !use_system_gcc {
             self.setup_gcc_path()?;
         }
-        env.insert("GCC_PATH".to_string(), self.gcc_path.clone());
+        let gcc_path = self.gcc_path.clone().expect(
+            "The config module should have emitted an error if the GCC path wasn't provided",
+        );
+        env.insert("GCC_PATH".to_string(), gcc_path.clone());
 
         if self.cargo_target_dir.is_empty() {
             match env.get("CARGO_TARGET_DIR").filter(|dir| !dir.is_empty()) {
@@ -414,7 +429,7 @@ impl ConfigInfo {
             "{target}:{sysroot}:{gcc_path}",
             target = self.cargo_target_dir,
             sysroot = sysroot.display(),
-            gcc_path = self.gcc_path,
+            gcc_path = gcc_path,
         );
         env.insert("LIBRARY_PATH".to_string(), ld_library_path.clone());
         env.insert("LD_LIBRARY_PATH".to_string(), ld_library_path.clone());
@@ -459,6 +474,7 @@ impl ConfigInfo {
     --release-sysroot      : Build sysroot in release mode
     --sysroot-panic-abort  : Build the sysroot without unwinding support
     --config-file          : Location of the config file to be used
+    --gcc-path             : Location of the GCC root folder
     --cg_gcc-path          : Location of the rustc_codegen_gcc root folder (used
                              when ran from another directory)
     --no-default-features  : Add `--no-default-features` flag to cargo commands
