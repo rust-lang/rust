@@ -328,6 +328,8 @@ impl f128 {
     /// # Examples
     ///
     /// ```
+    /// #![feature(f128)]
+    ///
     /// let x = 2.0_f128;
     /// let abs_difference = (x.powi(2) - (x * x)).abs();
     /// assert!(abs_difference < f128::EPSILON);
