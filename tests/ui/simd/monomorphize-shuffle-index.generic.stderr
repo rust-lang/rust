@@ -1,8 +1,8 @@
 error: overly complex generic constant
   --> $DIR/monomorphize-shuffle-index.rs:29:45
    |
-LL |         return simd_shuffle_generic::<_, _, { &Self::I }>(a, b);
-   |                                             ^^--------^^
+LL |         return simd_shuffle_generic::<_, _, { &Self::I.0 }>(a, b);
+   |                                             ^^----------^^
    |                                               |
    |                                               pointer casts are not allowed in generic constants
    |

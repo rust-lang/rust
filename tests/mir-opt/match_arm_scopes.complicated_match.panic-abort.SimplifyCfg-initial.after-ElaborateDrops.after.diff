@@ -32,22 +32,22 @@
   
       bb0: {
           PlaceMention(_2);
--         switchInt((_2.0: bool)) -> [0: bb2, otherwise: bb1];
-+         switchInt((_2.0: bool)) -> [0: bb6, otherwise: bb1];
+-         switchInt(copy (_2.0: bool)) -> [0: bb2, otherwise: bb1];
++         switchInt(copy (_2.0: bool)) -> [0: bb6, otherwise: bb1];
       }
   
       bb1: {
--         switchInt((_2.1: bool)) -> [0: bb4, otherwise: bb3];
-+         switchInt((_2.1: bool)) -> [0: bb5, otherwise: bb2];
+-         switchInt(copy (_2.1: bool)) -> [0: bb4, otherwise: bb3];
++         switchInt(copy (_2.1: bool)) -> [0: bb5, otherwise: bb2];
       }
   
       bb2: {
 -         falseEdge -> [real: bb9, imaginary: bb1];
-+         switchInt((_2.0: bool)) -> [0: bb3, otherwise: bb4];
++         switchInt(copy (_2.0: bool)) -> [0: bb3, otherwise: bb4];
       }
   
       bb3: {
--         switchInt((_2.0: bool)) -> [0: bb6, otherwise: bb5];
+-         switchInt(copy (_2.0: bool)) -> [0: bb6, otherwise: bb5];
 -     }
 - 
 -     bb4: {
@@ -60,7 +60,7 @@
 - 
 -     bb6: {
           StorageLive(_15);
-          _15 = (_2.1: bool);
+          _15 = copy (_2.1: bool);
           StorageLive(_16);
           _16 = move (_2.2: std::string::String);
 -         goto -> bb20;
@@ -70,7 +70,7 @@
 -     bb7: {
 +     bb4: {
           StorageLive(_15);
-          _15 = (_2.1: bool);
+          _15 = copy (_2.1: bool);
           StorageLive(_16);
           _16 = move (_2.2: std::string::String);
 -         goto -> bb20;
@@ -87,7 +87,7 @@
 -         _4 = &fake shallow (_2.1: bool);
           StorageLive(_12);
           StorageLive(_13);
-          _13 = _1;
+          _13 = copy _1;
 -         switchInt(move _13) -> [0: bb16, otherwise: bb15];
 +         switchInt(move _13) -> [0: bb13, otherwise: bb12];
       }
@@ -102,7 +102,7 @@
 -         _4 = &fake shallow (_2.1: bool);
           StorageLive(_9);
           StorageLive(_10);
-          _10 = _1;
+          _10 = copy _1;
 -         switchInt(move _10) -> [0: bb12, otherwise: bb11];
 +         switchInt(move _10) -> [0: bb9, otherwise: bb8];
       }
@@ -125,7 +125,7 @@
   
 -     bb12: {
 +     bb9: {
-          _9 = (*_6);
+          _9 = copy (*_6);
 -         switchInt(move _9) -> [0: bb14, otherwise: bb13];
 +         switchInt(move _9) -> [0: bb11, otherwise: bb10];
       }
@@ -139,7 +139,7 @@
 -         FakeRead(ForGuardBinding, _6);
 -         FakeRead(ForGuardBinding, _8);
           StorageLive(_5);
-          _5 = (_2.1: bool);
+          _5 = copy (_2.1: bool);
           StorageLive(_7);
           _7 = move (_2.2: std::string::String);
 -         goto -> bb10;
@@ -167,7 +167,7 @@
   
 -     bb16: {
 +     bb13: {
-          _12 = (*_6);
+          _12 = copy (*_6);
 -         switchInt(move _12) -> [0: bb18, otherwise: bb17];
 +         switchInt(move _12) -> [0: bb15, otherwise: bb14];
       }
@@ -181,7 +181,7 @@
 -         FakeRead(ForGuardBinding, _6);
 -         FakeRead(ForGuardBinding, _8);
           StorageLive(_5);
-          _5 = (_2.0: bool);
+          _5 = copy (_2.0: bool);
           StorageLive(_7);
           _7 = move (_2.2: std::string::String);
 -         goto -> bb10;

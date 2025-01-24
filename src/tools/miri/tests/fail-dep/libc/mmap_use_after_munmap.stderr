@@ -1,5 +1,5 @@
 error: Undefined Behavior: memory access failed: ALLOC has been freed, so this pointer is dangling
-  --> $DIR/mmap_use_after_munmap.rs:LL:CC
+  --> tests/fail-dep/libc/mmap_use_after_munmap.rs:LL:CC
    |
 LL |         let _x = *(ptr as *mut u8);
    |                  ^^^^^^^^^^^^^^^^^ memory access failed: ALLOC has been freed, so this pointer is dangling
@@ -7,7 +7,7 @@ LL |         let _x = *(ptr as *mut u8);
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
 help: ALLOC was allocated here:
-  --> $DIR/mmap_use_after_munmap.rs:LL:CC
+  --> tests/fail-dep/libc/mmap_use_after_munmap.rs:LL:CC
    |
 LL |           let ptr = libc::mmap(
    |  ___________________^
@@ -19,12 +19,12 @@ LL | |             0,
 LL | |         );
    | |_________^
 help: ALLOC was deallocated here:
-  --> $DIR/mmap_use_after_munmap.rs:LL:CC
+  --> tests/fail-dep/libc/mmap_use_after_munmap.rs:LL:CC
    |
 LL |         libc::munmap(ptr, 4096);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    = note: BACKTRACE (of the first span):
-   = note: inside `main` at $DIR/mmap_use_after_munmap.rs:LL:CC
+   = note: inside `main` at tests/fail-dep/libc/mmap_use_after_munmap.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

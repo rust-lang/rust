@@ -1,6 +1,6 @@
-use crate::spec::{cvs, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions, cvs};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         data_layout: "e-m:e-p:32:32-i64:64-n32-S128".into(),
         llvm_target: "riscv32".into(),
@@ -21,6 +21,7 @@ pub fn target() -> Target {
             cpu: "generic-rv32".into(),
             max_atomic_width: Some(32),
             features: "+m,+a,+c".into(),
+            llvm_abiname: "ilp32".into(),
             panic_strategy: PanicStrategy::Unwind,
             relocation_model: RelocModel::Static,
             ..Default::default()

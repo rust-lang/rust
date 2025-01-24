@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
                 if let ExprKind::Path(ref path) = fn_expr.kind {
                     check_arguments(
                         cx,
-                        arguments.iter().collect(),
+                        &mut arguments.iter(),
                         cx.typeck_results().expr_ty(fn_expr),
                         &rustc_hir_pretty::qpath_to_string(&cx.tcx, path),
                         "function",
@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
                 let method_type = cx.tcx.type_of(def_id).instantiate(cx.tcx, args);
                 check_arguments(
                     cx,
-                    iter::once(receiver).chain(arguments.iter()).collect(),
+                    &mut iter::once(receiver).chain(arguments.iter()),
                     method_type,
                     path.ident.as_str(),
                     "method",
@@ -73,13 +73,13 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
 
 fn check_arguments<'tcx>(
     cx: &LateContext<'tcx>,
-    arguments: Vec<&Expr<'_>>,
+    arguments: &mut dyn Iterator<Item = &'tcx Expr<'tcx>>,
     type_definition: Ty<'tcx>,
     name: &str,
     fn_kind: &str,
 ) {
     match type_definition.kind() {
-        ty::FnDef(..) | ty::FnPtr(_) => {
+        ty::FnDef(..) | ty::FnPtr(..) => {
             let parameters = type_definition.fn_sig(cx.tcx).skip_binder().inputs();
             for (argument, parameter) in iter::zip(arguments, parameters) {
                 match parameter.kind() {

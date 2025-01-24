@@ -7,7 +7,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::{self, ExistentialPredicate, Ty};
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 /// Checks if the given type is `dyn Any`, or a trait object that has `Any` as a supertrait.
 /// Only in those cases will its vtable have a `type_id` method that returns the implementor's
@@ -25,8 +25,7 @@ fn is_subtrait_of_any(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
                     || cx
                         .tcx
                         .explicit_super_predicates_of(tr.def_id)
-                        .predicates
-                        .iter()
+                        .iter_identity_copied()
                         .any(|(clause, _)| {
                             matches!(clause.kind().skip_binder(), ty::ClauseKind::Trait(super_tr)
                             if cx.tcx.is_diagnostic_item(sym::Any, super_tr.def_id()))

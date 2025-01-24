@@ -1,6 +1,7 @@
 //! Various helper functions to work with SyntaxNodes.
 use itertools::Itertools;
 use parser::T;
+use span::Edition;
 use syntax::{
     ast::{self, HasLoopBody, MacroCall, PathSegmentKind, VisibilityKind},
     AstNode, AstToken, Preorder, RustLanguage, WalkEvent,
@@ -219,7 +220,7 @@ pub fn vis_eq(this: &ast::Visibility, other: &ast::Visibility) -> bool {
     match (this.kind(), other.kind()) {
         (VisibilityKind::In(this), VisibilityKind::In(other)) => {
             stdx::iter_eq_by(this.segments(), other.segments(), |lhs, rhs| {
-                lhs.kind().zip(rhs.kind()).map_or(false, |it| match it {
+                lhs.kind().zip(rhs.kind()).is_some_and(|it| match it {
                     (PathSegmentKind::CrateKw, PathSegmentKind::CrateKw)
                     | (PathSegmentKind::SelfKw, PathSegmentKind::SelfKw)
                     | (PathSegmentKind::SuperKw, PathSegmentKind::SuperKw) => true,
@@ -258,7 +259,7 @@ pub fn is_pattern_cond(expr: ast::Expr) -> bool {
                 .or_else(|| expr.rhs().map(is_pattern_cond))
                 .unwrap_or(false)
         }
-        ast::Expr::ParenExpr(expr) => expr.expr().map_or(false, is_pattern_cond),
+        ast::Expr::ParenExpr(expr) => expr.expr().is_some_and(is_pattern_cond),
         ast::Expr::LetExpr(_) => true,
         _ => false,
     }
@@ -407,7 +408,7 @@ fn for_each_break_expr(
 }
 
 pub fn eq_label_lt(lt1: &Option<ast::Lifetime>, lt2: &Option<ast::Lifetime>) -> bool {
-    lt1.as_ref().zip(lt2.as_ref()).map_or(false, |(lt, lbl)| lt.text() == lbl.text())
+    lt1.as_ref().zip(lt2.as_ref()).is_some_and(|(lt, lbl)| lt.text() == lbl.text())
 }
 
 struct TreeWithDepthIterator {
@@ -456,12 +457,15 @@ impl Iterator for TreeWithDepthIterator {
 }
 
 /// Parses the input token tree as comma separated plain paths.
-pub fn parse_tt_as_comma_sep_paths(input: ast::TokenTree) -> Option<Vec<ast::Path>> {
+pub fn parse_tt_as_comma_sep_paths(
+    input: ast::TokenTree,
+    edition: Edition,
+) -> Option<Vec<ast::Path>> {
     let r_paren = input.r_paren_token();
     let tokens =
         input.syntax().children_with_tokens().skip(1).map_while(|it| match it.into_token() {
             // seeing a keyword means the attribute is unclosed so stop parsing here
-            Some(tok) if tok.kind().is_keyword() => None,
+            Some(tok) if tok.kind().is_keyword(edition) => None,
             // don't include the right token tree parenthesis if it exists
             tok @ Some(_) if tok == r_paren => None,
             // only nodes that we can find are other TokenTrees, those are unexpected in this parse though
@@ -473,10 +477,12 @@ pub fn parse_tt_as_comma_sep_paths(input: ast::TokenTree) -> Option<Vec<ast::Pat
         .into_iter()
         .filter_map(|(is_sep, group)| (!is_sep).then_some(group))
         .filter_map(|mut tokens| {
-            syntax::hacks::parse_expr_from_str(&tokens.join("")).and_then(|expr| match expr {
-                ast::Expr::PathExpr(it) => it.path(),
-                _ => None,
-            })
+            syntax::hacks::parse_expr_from_str(&tokens.join(""), Edition::CURRENT).and_then(
+                |expr| match expr {
+                    ast::Expr::PathExpr(it) => it.path(),
+                    _ => None,
+                },
+            )
         })
         .collect();
     Some(paths)

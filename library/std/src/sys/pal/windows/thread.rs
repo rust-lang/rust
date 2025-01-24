@@ -19,6 +19,7 @@ pub struct Thread {
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
 
@@ -99,7 +100,7 @@ impl Thread {
         }
         // Attempt to use high-precision sleep (Windows 10, version 1803+).
         // On error fallback to the standard `Sleep` function.
-        // Also preserves the zero duration behaviour of `Sleep`.
+        // Also preserves the zero duration behavior of `Sleep`.
         if dur.is_zero() || high_precision_sleep(dur).is_err() {
             unsafe { c::Sleep(super::dur2timeout(dur)) }
         }

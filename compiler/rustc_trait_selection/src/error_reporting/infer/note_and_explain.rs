@@ -1,13 +1,15 @@
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
-use rustc_errors::{pluralize, Diag, MultiSpan};
+use rustc_errors::{Diag, MultiSpan, pluralize};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::print::{FmtPrinter, Printer};
-use rustc_middle::ty::{self, suggest_constraining_type_param, Ty};
+use rustc_middle::ty::{self, Ty, suggest_constraining_type_param};
 use rustc_span::def_id::DefId;
-use rustc_span::{sym, BytePos, Span, Symbol};
+use rustc_span::{BytePos, Span, Symbol, sym};
+use tracing::debug;
 
 use crate::error_reporting::TypeErrCtxt;
 use crate::infer::InferCtxtExt;
@@ -313,11 +315,15 @@ impl<T> Trait<T> for X {
                     (ty::Dynamic(t, _, ty::DynKind::Dyn), _)
                         if let Some(def_id) = t.principal_def_id() =>
                     {
-                        let mut impl_def_ids = vec![];
+                        let mut has_matching_impl = false;
                         tcx.for_each_relevant_impl(def_id, values.found, |did| {
-                            impl_def_ids.push(did)
+                            if DeepRejectCtxt::relate_rigid_infer(tcx)
+                                .types_may_unify(values.found, tcx.type_of(did).skip_binder())
+                            {
+                                has_matching_impl = true;
+                            }
                         });
-                        if let [_] = &impl_def_ids[..] {
+                        if has_matching_impl {
                             let trait_name = tcx.item_name(def_id);
                             diag.help(format!(
                                 "`{}` implements `{trait_name}` so you could box the found value \
@@ -330,11 +336,15 @@ impl<T> Trait<T> for X {
                     (_, ty::Dynamic(t, _, ty::DynKind::Dyn))
                         if let Some(def_id) = t.principal_def_id() =>
                     {
-                        let mut impl_def_ids = vec![];
+                        let mut has_matching_impl = false;
                         tcx.for_each_relevant_impl(def_id, values.expected, |did| {
-                            impl_def_ids.push(did)
+                            if DeepRejectCtxt::relate_rigid_infer(tcx)
+                                .types_may_unify(values.expected, tcx.type_of(did).skip_binder())
+                            {
+                                has_matching_impl = true;
+                            }
                         });
-                        if let [_] = &impl_def_ids[..] {
+                        if has_matching_impl {
                             let trait_name = tcx.item_name(def_id);
                             diag.help(format!(
                                 "`{}` implements `{trait_name}` so you could change the expected \
@@ -346,11 +356,15 @@ impl<T> Trait<T> for X {
                     (ty::Dynamic(t, _, ty::DynKind::DynStar), _)
                         if let Some(def_id) = t.principal_def_id() =>
                     {
-                        let mut impl_def_ids = vec![];
+                        let mut has_matching_impl = false;
                         tcx.for_each_relevant_impl(def_id, values.found, |did| {
-                            impl_def_ids.push(did)
+                            if DeepRejectCtxt::relate_rigid_infer(tcx)
+                                .types_may_unify(values.found, tcx.type_of(did).skip_binder())
+                            {
+                                has_matching_impl = true;
+                            }
                         });
-                        if let [_] = &impl_def_ids[..] {
+                        if has_matching_impl {
                             let trait_name = tcx.item_name(def_id);
                             diag.help(format!(
                                 "`{}` implements `{trait_name}`, `#[feature(dyn_star)]` is likely \
@@ -370,7 +384,10 @@ impl<T> Trait<T> for X {
                                     | DefKind::AssocFn
                                     | DefKind::AssocConst
                             )
-                            && tcx.is_type_alias_impl_trait(opaque_ty.def_id)
+                            && matches!(
+                                tcx.opaque_ty_origin(opaque_ty.def_id),
+                                hir::OpaqueTyOrigin::TyAlias { .. }
+                            )
                             && !tcx
                                 .opaque_types_defined_by(body_owner_def_id.expect_local())
                                 .contains(&opaque_ty.def_id.expect_local())
@@ -441,12 +458,14 @@ impl<T> Trait<T> for X {
                             }
                         }
                     }
-                    (ty::FnPtr(sig), ty::FnDef(def_id, _))
-                    | (ty::FnDef(def_id, _), ty::FnPtr(sig)) => {
-                        if tcx.fn_sig(def_id).skip_binder().safety() < sig.safety() {
-                            diag.note(
+                    (ty::FnPtr(_, hdr), ty::FnDef(def_id, _))
+                    | (ty::FnDef(def_id, _), ty::FnPtr(_, hdr)) => {
+                        if tcx.fn_sig(def_id).skip_binder().safety() < hdr.safety {
+                            if !tcx.codegen_fn_attrs(def_id).safe_target_features {
+                                diag.note(
                                 "unsafe functions cannot be coerced into safe function pointers",
-                            );
+                                );
+                            }
                         }
                     }
                     (ty::Adt(_, _), ty::Adt(def, args))
@@ -613,7 +632,7 @@ impl<T> Trait<T> for X {
         let callable_scope = matches!(
             body_owner,
             Some(
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { .. }, .. })
                     | hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(..), .. })
                     | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }),
             )
@@ -706,7 +725,7 @@ fn foo(&self) -> Self::T { String::new() }
         if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *proj_ty.self_ty().kind() {
             let opaque_local_def_id = def_id.as_local();
             let opaque_hir_ty = if let Some(opaque_local_def_id) = opaque_local_def_id {
-                tcx.hir().expect_item(opaque_local_def_id).expect_opaque_ty()
+                tcx.hir().expect_opaque_ty(opaque_local_def_id)
             } else {
                 return false;
             };
@@ -880,7 +899,9 @@ fn foo(&self) -> Self::T { String::new() }
         // FIXME: we would want to call `resolve_vars_if_possible` on `ty` before suggesting.
 
         let trait_bounds = bounds.iter().filter_map(|bound| match bound {
-            hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::None) => Some(ptr),
+            hir::GenericBound::Trait(ptr) if ptr.modifiers == hir::TraitBoundModifiers::NONE => {
+                Some(ptr)
+            }
             _ => None,
         });
 

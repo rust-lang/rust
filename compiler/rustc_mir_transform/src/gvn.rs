@@ -45,7 +45,7 @@
 //!
 //! # Handling of references
 //!
-//! We handle references by assigning a different "provenance" index to each Ref/AddressOf rvalue.
+//! We handle references by assigning a different "provenance" index to each Ref/RawPtr rvalue.
 //! This ensure that we do not spuriously merge borrows that should not be merged. Meanwhile, we
 //! consider all the derefs of an immutable reference to a freeze type to give the same value:
 //! ```ignore (MIR)
@@ -85,32 +85,33 @@
 use std::borrow::Cow;
 
 use either::Either;
+use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, VariantIdx};
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{
-    intern_const_alloc_for_constprop, ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy,
-    Projectable, Scalar,
+    ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy, Projectable, Scalar,
+    intern_const_alloc_for_constprop,
 };
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
-use rustc_index::bit_set::BitSet;
-use rustc_index::{newtype_index, IndexVec};
+use rustc_index::bit_set::DenseBitSet;
+use rustc_index::{IndexVec, newtype_index};
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
+use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
-use rustc_target::abi::{self, Abi, FieldIdx, Size, VariantIdx, FIRST_VARIANT};
+use rustc_span::def_id::DefId;
 use smallvec::SmallVec;
+use tracing::{debug, instrument, trace};
 
 use crate::ssa::{AssignedValue, SsaLocals};
 
-pub struct GVN;
+pub(super) struct GVN;
 
-impl<'tcx> MirPass<'tcx> for GVN {
+impl<'tcx> crate::MirPass<'tcx> for GVN {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 2
     }
@@ -118,53 +119,50 @@ impl<'tcx> MirPass<'tcx> for GVN {
     #[instrument(level = "trace", skip(self, tcx, body))]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!(def_id = ?body.source.def_id());
-        propagate_ssa(tcx, body);
-    }
-}
 
-fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-    let ssa = SsaLocals::new(tcx, body, param_env);
-    // Clone dominators as we need them while mutating the body.
-    let dominators = body.basic_blocks.dominators().clone();
+        let typing_env = body.typing_env(tcx);
+        let ssa = SsaLocals::new(tcx, body, typing_env);
+        // Clone dominators because we need them while mutating the body.
+        let dominators = body.basic_blocks.dominators().clone();
 
-    let mut state = VnState::new(tcx, body, param_env, &ssa, &dominators, &body.local_decls);
-    ssa.for_each_assignment_mut(
-        body.basic_blocks.as_mut_preserves_cfg(),
-        |local, value, location| {
-            let value = match value {
-                // We do not know anything of this assigned value.
-                AssignedValue::Arg | AssignedValue::Terminator => None,
-                // Try to get some insight.
-                AssignedValue::Rvalue(rvalue) => {
-                    let value = state.simplify_rvalue(rvalue, location);
-                    // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark `local` as
-                    // reusable if we have an exact type match.
-                    if state.local_decls[local].ty != rvalue.ty(state.local_decls, tcx) {
-                        return;
+        let mut state = VnState::new(tcx, body, typing_env, &ssa, dominators, &body.local_decls);
+        ssa.for_each_assignment_mut(
+            body.basic_blocks.as_mut_preserves_cfg(),
+            |local, value, location| {
+                let value = match value {
+                    // We do not know anything of this assigned value.
+                    AssignedValue::Arg | AssignedValue::Terminator => None,
+                    // Try to get some insight.
+                    AssignedValue::Rvalue(rvalue) => {
+                        let value = state.simplify_rvalue(rvalue, location);
+                        // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark
+                        // `local` as reusable if we have an exact type match.
+                        if state.local_decls[local].ty != rvalue.ty(state.local_decls, tcx) {
+                            return;
+                        }
+                        value
                     }
-                    value
-                }
-            };
-            // `next_opaque` is `Some`, so `new_opaque` must return `Some`.
-            let value = value.or_else(|| state.new_opaque()).unwrap();
-            state.assign(local, value);
-        },
-    );
+                };
+                // `next_opaque` is `Some`, so `new_opaque` must return `Some`.
+                let value = value.or_else(|| state.new_opaque()).unwrap();
+                state.assign(local, value);
+            },
+        );
 
-    // Stop creating opaques during replacement as it is useless.
-    state.next_opaque = None;
+        // Stop creating opaques during replacement as it is useless.
+        state.next_opaque = None;
 
-    let reverse_postorder = body.basic_blocks.reverse_postorder().to_vec();
-    for bb in reverse_postorder {
-        let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
-        state.visit_basic_block_data(bb, data);
+        let reverse_postorder = body.basic_blocks.reverse_postorder().to_vec();
+        for bb in reverse_postorder {
+            let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
+            state.visit_basic_block_data(bb, data);
+        }
+
+        // For each local that is reused (`y` above), we remove its storage statements do avoid any
+        // difficulty. Those locals are SSA, so should be easy to optimize by LLVM without storage
+        // statements.
+        StorageRemover { tcx, reused_locals: state.reused_locals }.visit_body_preserves_cfg(body);
     }
-
-    // For each local that is reused (`y` above), we remove its storage statements do avoid any
-    // difficulty. Those locals are SSA, so should be easy to optimize by LLVM without storage
-    // statements.
-    StorageRemover { tcx, reused_locals: state.reused_locals }.visit_body_preserves_cfg(body);
 }
 
 newtype_index! {
@@ -243,7 +241,6 @@ enum Value<'tcx> {
 struct VnState<'body, 'tcx> {
     tcx: TyCtxt<'tcx>,
     ecx: InterpCx<'tcx, DummyMachine>,
-    param_env: ty::ParamEnv<'tcx>,
     local_decls: &'body LocalDecls<'tcx>,
     /// Value stored in each local.
     locals: IndexVec<Local, Option<VnIndex>>,
@@ -260,17 +257,17 @@ struct VnState<'body, 'tcx> {
     /// Cache the value of the `unsized_locals` features, to avoid fetching it repeatedly in a loop.
     feature_unsized_locals: bool,
     ssa: &'body SsaLocals,
-    dominators: &'body Dominators<BasicBlock>,
-    reused_locals: BitSet<Local>,
+    dominators: Dominators<BasicBlock>,
+    reused_locals: DenseBitSet<Local>,
 }
 
 impl<'body, 'tcx> VnState<'body, 'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         ssa: &'body SsaLocals,
-        dominators: &'body Dominators<BasicBlock>,
+        dominators: Dominators<BasicBlock>,
         local_decls: &'body LocalDecls<'tcx>,
     ) -> Self {
         // Compute a rough estimate of the number of values in the body from the number of
@@ -282,19 +279,22 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 + 4 * body.basic_blocks.len();
         VnState {
             tcx,
-            ecx: InterpCx::new(tcx, DUMMY_SP, param_env, DummyMachine),
-            param_env,
+            ecx: InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine),
             local_decls,
             locals: IndexVec::from_elem(None, local_decls),
             rev_locals: IndexVec::with_capacity(num_values),
             values: FxIndexSet::with_capacity_and_hasher(num_values, Default::default()),
             evaluated: IndexVec::with_capacity(num_values),
             next_opaque: Some(1),
-            feature_unsized_locals: tcx.features().unsized_locals,
+            feature_unsized_locals: tcx.features().unsized_locals(),
             ssa,
             dominators,
-            reused_locals: BitSet::new_empty(local_decls.len()),
+            reused_locals: DenseBitSet::new_empty(local_decls.len()),
         }
+    }
+
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        self.ecx.typing_env()
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -345,7 +345,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         // Only register the value if its type is `Sized`, as we will emit copies of it.
         let is_sized = !self.feature_unsized_locals
-            || self.local_decls[local].ty.is_sized(self.tcx, self.param_env);
+            || self.local_decls[local].ty.is_sized(self.tcx, self.typing_env());
         if is_sized {
             self.rev_locals[value].push(local);
         }
@@ -395,7 +395,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             Repeat(..) => return None,
 
             Constant { ref value, disambiguator: _ } => {
-                self.ecx.eval_mir_constant(value, DUMMY_SP, None).ok()?
+                self.ecx.eval_mir_constant(value, DUMMY_SP, None).discard_err()?
             }
             Aggregate(kind, variant, ref fields) => {
                 let fields = fields
@@ -421,29 +421,35 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     ImmTy::uninit(ty).into()
                 } else if matches!(kind, AggregateTy::RawPtr { .. }) {
                     // Pointers don't have fields, so don't `project_field` them.
-                    let data = self.ecx.read_pointer(fields[0]).ok()?;
+                    let data = self.ecx.read_pointer(fields[0]).discard_err()?;
                     let meta = if fields[1].layout.is_zst() {
                         MemPlaceMeta::None
                     } else {
-                        MemPlaceMeta::Meta(self.ecx.read_scalar(fields[1]).ok()?)
+                        MemPlaceMeta::Meta(self.ecx.read_scalar(fields[1]).discard_err()?)
                     };
                     let ptr_imm = Immediate::new_pointer_with_meta(data, meta, &self.ecx);
                     ImmTy::from_immediate(ptr_imm, ty).into()
-                } else if matches!(ty.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
-                    let dest = self.ecx.allocate(ty, MemoryKind::Stack).ok()?;
+                } else if matches!(
+                    ty.backend_repr,
+                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)
+                ) {
+                    let dest = self.ecx.allocate(ty, MemoryKind::Stack).discard_err()?;
                     let variant_dest = if let Some(variant) = variant {
-                        self.ecx.project_downcast(&dest, variant).ok()?
+                        self.ecx.project_downcast(&dest, variant).discard_err()?
                     } else {
                         dest.clone()
                     };
                     for (field_index, op) in fields.into_iter().enumerate() {
-                        let field_dest = self.ecx.project_field(&variant_dest, field_index).ok()?;
-                        self.ecx.copy_op(op, &field_dest).ok()?;
+                        let field_dest =
+                            self.ecx.project_field(&variant_dest, field_index).discard_err()?;
+                        self.ecx.copy_op(op, &field_dest).discard_err()?;
                     }
-                    self.ecx.write_discriminant(variant.unwrap_or(FIRST_VARIANT), &dest).ok()?;
+                    self.ecx
+                        .write_discriminant(variant.unwrap_or(FIRST_VARIANT), &dest)
+                        .discard_err()?;
                     self.ecx
                         .alloc_mark_immutable(dest.ptr().provenance.unwrap().alloc_id())
-                        .ok()?;
+                        .discard_err()?;
                     dest.into()
                 } else {
                     return None;
@@ -469,7 +475,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     // This should have been replaced by a `ConstantIndex` earlier.
                     ProjectionElem::Index(_) => return None,
                 };
-                self.ecx.project(value, elem).ok()?
+                self.ecx.project(value, elem).discard_err()?
             }
             Address { place, kind, provenance: _ } => {
                 if !place.is_indirect_first_projection() {
@@ -477,13 +483,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 }
                 let local = self.locals[place.local]?;
                 let pointer = self.evaluated[local].as_ref()?;
-                let mut mplace = self.ecx.deref_pointer(pointer).ok()?;
+                let mut mplace = self.ecx.deref_pointer(pointer).discard_err()?;
                 for proj in place.projection.iter().skip(1) {
-                    // We have no call stack to associate a local with a value, so we cannot interpret indexing.
+                    // We have no call stack to associate a local with a value, so we cannot
+                    // interpret indexing.
                     if matches!(proj, ProjectionElem::Index(_)) {
                         return None;
                     }
-                    mplace = self.ecx.project(&mplace, proj).ok()?;
+                    mplace = self.ecx.project(&mplace, proj).discard_err()?;
                 }
                 let pointer = mplace.to_ref(&self.ecx);
                 let ty = match kind {
@@ -501,15 +508,15 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
             Discriminant(base) => {
                 let base = self.evaluated[base].as_ref()?;
-                let variant = self.ecx.read_discriminant(base).ok()?;
+                let variant = self.ecx.read_discriminant(base).discard_err()?;
                 let discr_value =
-                    self.ecx.discriminant_for_variant(base.layout.ty, variant).ok()?;
+                    self.ecx.discriminant_for_variant(base.layout.ty, variant).discard_err()?;
                 discr_value.into()
             }
             Len(slice) => {
                 let slice = self.evaluated[slice].as_ref()?;
                 let usize_layout = self.ecx.layout_of(self.tcx.types.usize).unwrap();
-                let len = slice.len(&self.ecx).ok()?;
+                let len = slice.len(&self.ecx).discard_err()?;
                 let imm = ImmTy::from_uint(len, usize_layout);
                 imm.into()
             }
@@ -526,7 +533,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     NullOp::OffsetOf(fields) => self
                         .ecx
                         .tcx
-                        .offset_of_subfield(self.ecx.param_env(), layout, fields.iter())
+                        .offset_of_subfield(self.typing_env(), layout, fields.iter())
                         .bytes(),
                     NullOp::UbChecks => return None,
                 };
@@ -536,67 +543,83 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             UnaryOp(un_op, operand) => {
                 let operand = self.evaluated[operand].as_ref()?;
-                let operand = self.ecx.read_immediate(operand).ok()?;
-                let val = self.ecx.unary_op(un_op, &operand).ok()?;
+                let operand = self.ecx.read_immediate(operand).discard_err()?;
+                let val = self.ecx.unary_op(un_op, &operand).discard_err()?;
                 val.into()
             }
             BinaryOp(bin_op, lhs, rhs) => {
                 let lhs = self.evaluated[lhs].as_ref()?;
-                let lhs = self.ecx.read_immediate(lhs).ok()?;
+                let lhs = self.ecx.read_immediate(lhs).discard_err()?;
                 let rhs = self.evaluated[rhs].as_ref()?;
-                let rhs = self.ecx.read_immediate(rhs).ok()?;
-                let val = self.ecx.binary_op(bin_op, &lhs, &rhs).ok()?;
+                let rhs = self.ecx.read_immediate(rhs).discard_err()?;
+                let val = self.ecx.binary_op(bin_op, &lhs, &rhs).discard_err()?;
                 val.into()
             }
             Cast { kind, value, from: _, to } => match kind {
                 CastKind::IntToInt | CastKind::IntToFloat => {
                     let value = self.evaluated[value].as_ref()?;
-                    let value = self.ecx.read_immediate(value).ok()?;
+                    let value = self.ecx.read_immediate(value).discard_err()?;
                     let to = self.ecx.layout_of(to).ok()?;
-                    let res = self.ecx.int_to_int_or_float(&value, to).ok()?;
+                    let res = self.ecx.int_to_int_or_float(&value, to).discard_err()?;
                     res.into()
                 }
                 CastKind::FloatToFloat | CastKind::FloatToInt => {
                     let value = self.evaluated[value].as_ref()?;
-                    let value = self.ecx.read_immediate(value).ok()?;
+                    let value = self.ecx.read_immediate(value).discard_err()?;
                     let to = self.ecx.layout_of(to).ok()?;
-                    let res = self.ecx.float_to_float_or_int(&value, to).ok()?;
+                    let res = self.ecx.float_to_float_or_int(&value, to).discard_err()?;
                     res.into()
                 }
                 CastKind::Transmute => {
                     let value = self.evaluated[value].as_ref()?;
                     let to = self.ecx.layout_of(to).ok()?;
-                    // `offset` for immediates only supports scalar/scalar-pair ABIs,
-                    // so bail out if the target is not one.
+                    // `offset` for immediates generally only supports projections that match the
+                    // type of the immediate. However, as a HACK, we exploit that it can also do
+                    // limited transmutes: it only works between types with the same layout, and
+                    // cannot transmute pointers to integers.
                     if value.as_mplace_or_imm().is_right() {
-                        match (value.layout.abi, to.abi) {
-                            (Abi::Scalar(..), Abi::Scalar(..)) => {}
-                            (Abi::ScalarPair(..), Abi::ScalarPair(..)) => {}
-                            _ => return None,
+                        let can_transmute = match (value.layout.backend_repr, to.backend_repr) {
+                            (BackendRepr::Scalar(s1), BackendRepr::Scalar(s2)) => {
+                                s1.size(&self.ecx) == s2.size(&self.ecx)
+                                    && !matches!(s1.primitive(), Primitive::Pointer(..))
+                            }
+                            (BackendRepr::ScalarPair(a1, b1), BackendRepr::ScalarPair(a2, b2)) => {
+                                a1.size(&self.ecx) == a2.size(&self.ecx) &&
+                                b1.size(&self.ecx) == b2.size(&self.ecx) &&
+                                // The alignment of the second component determines its offset, so that also needs to match.
+                                b1.align(&self.ecx) == b2.align(&self.ecx) &&
+                                // None of the inputs may be a pointer.
+                                !matches!(a1.primitive(), Primitive::Pointer(..))
+                                    && !matches!(b1.primitive(), Primitive::Pointer(..))
+                            }
+                            _ => false,
+                        };
+                        if !can_transmute {
+                            return None;
                         }
                     }
-                    value.offset(Size::ZERO, to, &self.ecx).ok()?
+                    value.offset(Size::ZERO, to, &self.ecx).discard_err()?
                 }
-                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize) => {
+                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) => {
                     let src = self.evaluated[value].as_ref()?;
                     let to = self.ecx.layout_of(to).ok()?;
-                    let dest = self.ecx.allocate(to, MemoryKind::Stack).ok()?;
-                    self.ecx.unsize_into(src, to, &dest.clone().into()).ok()?;
+                    let dest = self.ecx.allocate(to, MemoryKind::Stack).discard_err()?;
+                    self.ecx.unsize_into(src, to, &dest.clone().into()).discard_err()?;
                     self.ecx
                         .alloc_mark_immutable(dest.ptr().provenance.unwrap().alloc_id())
-                        .ok()?;
+                        .discard_err()?;
                     dest.into()
                 }
                 CastKind::FnPtrToPtr | CastKind::PtrToPtr => {
                     let src = self.evaluated[value].as_ref()?;
-                    let src = self.ecx.read_immediate(src).ok()?;
+                    let src = self.ecx.read_immediate(src).discard_err()?;
                     let to = self.ecx.layout_of(to).ok()?;
-                    let ret = self.ecx.ptr_to_ptr(&src, to).ok()?;
+                    let ret = self.ecx.ptr_to_ptr(&src, to).discard_err()?;
                     ret.into()
                 }
-                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::UnsafeFnPointer) => {
+                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::UnsafeFnPointer, _) => {
                     let src = self.evaluated[value].as_ref()?;
-                    let src = self.ecx.read_immediate(src).ok()?;
+                    let src = self.ecx.read_immediate(src).discard_err()?;
                     let to = self.ecx.layout_of(to).ok()?;
                     ImmTy::from_immediate(*src, to).into()
                 }
@@ -615,9 +638,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         let proj = match proj {
             ProjectionElem::Deref => {
                 let ty = place.ty(self.local_decls, self.tcx).ty;
-                if let Some(Mutability::Not) = ty.ref_mutability()
+                // unsound: https://github.com/rust-lang/rust/issues/130853
+                if self.tcx.sess.opts.unstable_opts.unsound_mir_opts
+                    && let Some(Mutability::Not) = ty.ref_mutability()
                     && let Some(pointee_ty) = ty.builtin_deref(true)
-                    && pointee_ty.is_freeze(self.tcx, self.param_env)
+                    && pointee_ty.is_freeze(self.tcx, self.typing_env())
                 {
                     // An immutable borrow `_x` always points to the same value for the
                     // lifetime of the borrow, so we can merge all instances of `*_x`.
@@ -709,7 +734,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 && let Some(idx) = self.locals[idx_local]
             {
                 if let Some(offset) = self.evaluated[idx].as_ref()
-                    && let Ok(offset) = self.ecx.read_target_usize(offset)
+                    && let Some(offset) = self.ecx.read_target_usize(offset).discard_err()
                     && let Some(min_length) = offset.checked_add(1)
                 {
                     projection.to_mut()[i] =
@@ -832,7 +857,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Ref(borrow_kind));
             }
-            Rvalue::AddressOf(mutbl, ref mut place) => {
+            Rvalue::RawPtr(mutbl, ref mut place) => {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Address(mutbl));
             }
@@ -869,11 +894,100 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             && let DefKind::Enum = self.tcx.def_kind(enum_did)
         {
             let enum_ty = self.tcx.type_of(enum_did).instantiate(self.tcx, enum_args);
-            let discr = self.ecx.discriminant_for_variant(enum_ty, variant).ok()?;
+            let discr = self.ecx.discriminant_for_variant(enum_ty, variant).discard_err()?;
             return Some(self.insert_scalar(discr.to_scalar(), discr.layout.ty));
         }
 
         None
+    }
+
+    fn try_as_place_elem(
+        &mut self,
+        proj: ProjectionElem<VnIndex, Ty<'tcx>>,
+        loc: Location,
+    ) -> Option<PlaceElem<'tcx>> {
+        Some(match proj {
+            ProjectionElem::Deref => ProjectionElem::Deref,
+            ProjectionElem::Field(idx, ty) => ProjectionElem::Field(idx, ty),
+            ProjectionElem::Index(idx) => {
+                let Some(local) = self.try_as_local(idx, loc) else {
+                    return None;
+                };
+                self.reused_locals.insert(local);
+                ProjectionElem::Index(local)
+            }
+            ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
+                ProjectionElem::ConstantIndex { offset, min_length, from_end }
+            }
+            ProjectionElem::Subslice { from, to, from_end } => {
+                ProjectionElem::Subslice { from, to, from_end }
+            }
+            ProjectionElem::Downcast(symbol, idx) => ProjectionElem::Downcast(symbol, idx),
+            ProjectionElem::OpaqueCast(idx) => ProjectionElem::OpaqueCast(idx),
+            ProjectionElem::Subtype(idx) => ProjectionElem::Subtype(idx),
+        })
+    }
+
+    fn simplify_aggregate_to_copy(
+        &mut self,
+        rvalue: &mut Rvalue<'tcx>,
+        location: Location,
+        fields: &[VnIndex],
+        variant_index: VariantIdx,
+    ) -> Option<VnIndex> {
+        let Some(&first_field) = fields.first() else {
+            return None;
+        };
+        let Value::Projection(copy_from_value, _) = *self.get(first_field) else {
+            return None;
+        };
+        // All fields must correspond one-to-one and come from the same aggregate value.
+        if fields.iter().enumerate().any(|(index, &v)| {
+            if let Value::Projection(pointer, ProjectionElem::Field(from_index, _)) = *self.get(v)
+                && copy_from_value == pointer
+                && from_index.index() == index
+            {
+                return false;
+            }
+            true
+        }) {
+            return None;
+        }
+
+        let mut copy_from_local_value = copy_from_value;
+        if let Value::Projection(pointer, proj) = *self.get(copy_from_value)
+            && let ProjectionElem::Downcast(_, read_variant) = proj
+        {
+            if variant_index == read_variant {
+                // When copying a variant, there is no need to downcast.
+                copy_from_local_value = pointer;
+            } else {
+                // The copied variant must be identical.
+                return None;
+            }
+        }
+
+        let tcx = self.tcx;
+        let mut projection = SmallVec::<[PlaceElem<'tcx>; 1]>::new();
+        loop {
+            if let Some(local) = self.try_as_local(copy_from_local_value, location) {
+                projection.reverse();
+                let place = Place { local, projection: tcx.mk_place_elems(projection.as_slice()) };
+                if rvalue.ty(self.local_decls, tcx) == place.ty(self.local_decls, tcx).ty {
+                    self.reused_locals.insert(local);
+                    *rvalue = Rvalue::Use(Operand::Copy(place));
+                    return Some(copy_from_value);
+                }
+                return None;
+            } else if let Value::Projection(pointer, proj) = *self.get(copy_from_local_value)
+                && let Some(proj) = self.try_as_place_elem(proj, location)
+            {
+                projection.push(proj);
+                copy_from_local_value = pointer;
+            } else {
+                return None;
+            }
+        }
     }
 
     fn simplify_aggregate(
@@ -947,7 +1061,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 && let ty::RawPtr(from_pointee_ty, from_mtbl) = cast_from.kind()
                 && let ty::RawPtr(_, output_mtbl) = output_pointer_ty.kind()
                 && from_mtbl == output_mtbl
-                && from_pointee_ty.is_sized(self.tcx, self.param_env)
+                && from_pointee_ty.is_sized(self.tcx, self.typing_env())
             {
                 fields[0] = *cast_value;
                 *data_pointer_ty = *cast_from;
@@ -970,6 +1084,15 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 }
                 return Some(self.insert(Value::Repeat(first, len)));
             }
+        }
+
+        // unsound: https://github.com/rust-lang/rust/issues/132353
+        if tcx.sess.opts.unstable_opts.unsound_mir_opts
+            && let AggregateTy::Def(_, _) = ty
+            && let Some(value) =
+                self.simplify_aggregate_to_copy(rvalue, location, &fields, variant_index)
+        {
+            return Some(value);
         }
 
         Some(self.insert(Value::Aggregate(ty, variant_index, fields)))
@@ -1039,11 +1162,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             (UnOp::PtrMetadata, Value::Aggregate(AggregateTy::RawPtr { .. }, _, fields)) => {
                 return Some(fields[1]);
             }
-            // We have an unsizing cast, which assigns the length to fat pointer metadata.
+            // We have an unsizing cast, which assigns the length to wide pointer metadata.
             (
                 UnOp::PtrMetadata,
                 Value::Cast {
-                    kind: CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize),
+                    kind: CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _),
                     from,
                     to,
                     ..
@@ -1127,9 +1250,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         let as_bits = |value| {
             let constant = self.evaluated[value].as_ref()?;
-            if layout.abi.is_scalar() {
-                let scalar = self.ecx.read_scalar(constant).ok()?;
-                scalar.to_bits(constant.layout.size).ok()
+            if layout.backend_repr.is_scalar() {
+                let scalar = self.ecx.read_scalar(constant).discard_err()?;
+                scalar.to_bits(constant.layout.size).discard_err()
             } else {
                 // `constant` is a wide pointer. Do not evaluate to bits.
                 None
@@ -1238,8 +1361,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         to: Ty<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
-        use rustc_middle::ty::adjustment::PointerCoercion::*;
         use CastKind::*;
+        use rustc_middle::ty::adjustment::PointerCoercion::*;
 
         let mut from = operand.ty(self.local_decls, self.tcx);
         let mut value = self.simplify_operand(operand, location)?;
@@ -1247,63 +1370,114 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             return Some(value);
         }
 
-        if let CastKind::PointerCoercion(ReifyFnPointer | ClosureFnPointer(_)) = kind {
+        if let CastKind::PointerCoercion(ReifyFnPointer | ClosureFnPointer(_), _) = kind {
             // Each reification of a generic fn may get a different pointer.
             // Do not try to merge them.
             return self.new_opaque();
         }
 
-        let mut was_updated = false;
+        let mut was_ever_updated = false;
+        loop {
+            let mut was_updated_this_iteration = false;
 
-        // If that cast just casts away the metadata again,
-        if let PtrToPtr = kind
-            && let Value::Aggregate(AggregateTy::RawPtr { data_pointer_ty, .. }, _, fields) =
-                self.get(value)
-            && let ty::RawPtr(to_pointee, _) = to.kind()
-            && to_pointee.is_sized(self.tcx, self.param_env)
-        {
-            from = *data_pointer_ty;
-            value = fields[0];
-            was_updated = true;
-            if *data_pointer_ty == to {
-                return Some(fields[0]);
+            // Transmuting between raw pointers is just a pointer cast so long as
+            // they have the same metadata type (like `*const i32` <=> `*mut u64`
+            // or `*mut [i32]` <=> `*const [u64]`), including the common special
+            // case of `*const T` <=> `*mut T`.
+            if let Transmute = kind
+                && from.is_unsafe_ptr()
+                && to.is_unsafe_ptr()
+                && self.pointers_have_same_metadata(from, to)
+            {
+                *kind = PtrToPtr;
+                was_updated_this_iteration = true;
             }
-        }
 
-        // PtrToPtr-then-PtrToPtr can skip the intermediate step
-        if let PtrToPtr = kind
-            && let Value::Cast { kind: inner_kind, value: inner_value, from: inner_from, to: _ } =
-                *self.get(value)
-            && let PtrToPtr = inner_kind
-        {
-            from = inner_from;
-            value = inner_value;
-            was_updated = true;
-            if inner_from == to {
-                return Some(inner_value);
+            // If a cast just casts away the metadata again, then we can get it by
+            // casting the original thin pointer passed to `from_raw_parts`
+            if let PtrToPtr = kind
+                && let Value::Aggregate(AggregateTy::RawPtr { data_pointer_ty, .. }, _, fields) =
+                    self.get(value)
+                && let ty::RawPtr(to_pointee, _) = to.kind()
+                && to_pointee.is_sized(self.tcx, self.typing_env())
+            {
+                from = *data_pointer_ty;
+                value = fields[0];
+                was_updated_this_iteration = true;
+                if *data_pointer_ty == to {
+                    return Some(fields[0]);
+                }
             }
-        }
 
-        // PtrToPtr-then-Transmute can just transmute the original, so long as the
-        // PtrToPtr didn't change metadata (and thus the size of the pointer)
-        if let Transmute = kind
-            && let Value::Cast {
-                kind: PtrToPtr,
+            // Aggregate-then-Transmute can just transmute the original field value,
+            // so long as the bytes of a value from only from a single field.
+            if let Transmute = kind
+                && let Value::Aggregate(_aggregate_ty, variant_idx, field_values) = self.get(value)
+                && let Some((field_idx, field_ty)) =
+                    self.value_is_all_in_one_field(from, *variant_idx)
+            {
+                from = field_ty;
+                value = field_values[field_idx.as_usize()];
+                was_updated_this_iteration = true;
+                if field_ty == to {
+                    return Some(value);
+                }
+            }
+
+            // Various cast-then-cast cases can be simplified.
+            if let Value::Cast {
+                kind: inner_kind,
                 value: inner_value,
                 from: inner_from,
                 to: inner_to,
             } = *self.get(value)
-            && self.pointers_have_same_metadata(inner_from, inner_to)
-        {
-            from = inner_from;
-            value = inner_value;
-            was_updated = true;
-            if inner_from == to {
-                return Some(inner_value);
+            {
+                let new_kind = match (inner_kind, *kind) {
+                    // Even if there's a narrowing cast in here that's fine, because
+                    // things like `*mut [i32] -> *mut i32 -> *const i32` and
+                    // `*mut [i32] -> *const [i32] -> *const i32` can skip the middle in MIR.
+                    (PtrToPtr, PtrToPtr) => Some(PtrToPtr),
+                    // PtrToPtr-then-Transmute is fine so long as the pointer cast is identity:
+                    // `*const T -> *mut T -> NonNull<T>` is fine, but we need to check for narrowing
+                    // to skip things like `*const [i32] -> *const i32 -> NonNull<T>`.
+                    (PtrToPtr, Transmute)
+                        if self.pointers_have_same_metadata(inner_from, inner_to) =>
+                    {
+                        Some(Transmute)
+                    }
+                    // Similarly, for Transmute-then-PtrToPtr. Note that we need to check different
+                    // variables for their metadata, and thus this can't merge with the previous arm.
+                    (Transmute, PtrToPtr) if self.pointers_have_same_metadata(from, to) => {
+                        Some(Transmute)
+                    }
+                    // If would be legal to always do this, but we don't want to hide information
+                    // from the backend that it'd otherwise be able to use for optimizations.
+                    (Transmute, Transmute)
+                        if !self.type_may_have_niche_of_interest_to_backend(inner_to) =>
+                    {
+                        Some(Transmute)
+                    }
+                    _ => None,
+                };
+                if let Some(new_kind) = new_kind {
+                    *kind = new_kind;
+                    from = inner_from;
+                    value = inner_value;
+                    was_updated_this_iteration = true;
+                    if inner_from == to {
+                        return Some(inner_value);
+                    }
+                }
+            }
+
+            if was_updated_this_iteration {
+                was_ever_updated = true;
+            } else {
+                break;
             }
         }
 
-        if was_updated && let Some(op) = self.try_as_operand(value, location) {
+        if was_ever_updated && let Some(op) = self.try_as_operand(value, location) {
             *operand = op;
         }
 
@@ -1323,7 +1497,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         let mut inner = self.simplify_place_value(place, location)?;
 
-        // The length information is stored in the fat pointer.
+        // The length information is stored in the wide pointer.
         // Reborrowing copies length information from one pointer to the other.
         while let Value::Address { place: borrowed, .. } = self.get(inner)
             && let [PlaceElem::Deref] = borrowed.projection[..]
@@ -1332,9 +1506,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             inner = borrowed;
         }
 
-        // We have an unsizing cast, which assigns the length to fat pointer metadata.
+        // We have an unsizing cast, which assigns the length to wide pointer metadata.
         if let Value::Cast { kind, from, to, .. } = self.get(inner)
-            && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize) = kind
+            && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) = kind
             && let Some(from) = from.builtin_deref(true)
             && let ty::Array(_, len) = from.kind()
             && let Some(to) = to.builtin_deref(true)
@@ -1357,12 +1531,61 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         if left_meta_ty == right_meta_ty {
             true
         } else if let Ok(left) =
-            self.tcx.try_normalize_erasing_regions(self.param_env, left_meta_ty)
-            && let Ok(right) = self.tcx.try_normalize_erasing_regions(self.param_env, right_meta_ty)
+            self.tcx.try_normalize_erasing_regions(self.typing_env(), left_meta_ty)
+            && let Ok(right) =
+                self.tcx.try_normalize_erasing_regions(self.typing_env(), right_meta_ty)
         {
             left == right
         } else {
             false
+        }
+    }
+
+    /// Returns `false` if we know for sure that this type has no interesting niche,
+    /// and thus we can skip transmuting through it without worrying.
+    ///
+    /// The backend will emit `assume`s when transmuting between types with niches,
+    /// so we want to preserve `i32 -> char -> u32` so that that data is around,
+    /// but it's fine to skip whole-range-is-value steps like `A -> u32 -> B`.
+    fn type_may_have_niche_of_interest_to_backend(&self, ty: Ty<'tcx>) -> bool {
+        let Ok(layout) = self.ecx.layout_of(ty) else {
+            // If it's too generic or something, then assume it might be interesting later.
+            return true;
+        };
+
+        match layout.backend_repr {
+            BackendRepr::Uninhabited => true,
+            BackendRepr::Scalar(a) => !a.is_always_valid(&self.ecx),
+            BackendRepr::ScalarPair(a, b) => {
+                !a.is_always_valid(&self.ecx) || !b.is_always_valid(&self.ecx)
+            }
+            BackendRepr::Vector { .. } | BackendRepr::Memory { .. } => false,
+        }
+    }
+
+    fn value_is_all_in_one_field(
+        &self,
+        ty: Ty<'tcx>,
+        variant: VariantIdx,
+    ) -> Option<(FieldIdx, Ty<'tcx>)> {
+        if let Ok(layout) = self.ecx.layout_of(ty)
+            && let abi::Variants::Single { index } = layout.variants
+            && index == variant
+            && let Some((field_idx, field_layout)) = layout.non_1zst_field(&self.ecx)
+            && layout.size == field_layout.size
+        {
+            // We needed to check the variant to avoid trying to read the tag
+            // field from an enum where no fields have variants, since that tag
+            // field isn't in the `Aggregate` from which we're getting values.
+            Some((FieldIdx::from_usize(field_idx), field_layout.ty))
+        } else if let ty::Adt(adt, args) = ty.kind()
+            && adt.is_struct()
+            && adt.repr().transparent()
+            && let [single_field] = adt.non_enum_variant().fields.raw.as_slice()
+        {
+            Some((FieldIdx::ZERO, single_field.ty(self.tcx, args)))
+        } else {
+            None
         }
     }
 }
@@ -1381,14 +1604,15 @@ fn op_to_prop_const<'tcx>(
         return Some(ConstValue::ZeroSized);
     }
 
-    // Do not synthetize too large constants. Codegen will just memcpy them, which we'd like to avoid.
-    if !matches!(op.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
+    // Do not synthetize too large constants. Codegen will just memcpy them, which we'd like to
+    // avoid.
+    if !matches!(op.layout.backend_repr, BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)) {
         return None;
     }
 
     // If this constant has scalar ABI, return it as a `ConstValue::Scalar`.
-    if let Abi::Scalar(abi::Scalar::Initialized { .. }) = op.layout.abi
-        && let Ok(scalar) = ecx.read_scalar(op)
+    if let BackendRepr::Scalar(abi::Scalar::Initialized { .. }) = op.layout.backend_repr
+        && let Some(scalar) = ecx.read_scalar(op).discard_err()
     {
         if !scalar.try_to_scalar_int().is_ok() {
             // Check that we do not leak a pointer.
@@ -1402,12 +1626,12 @@ fn op_to_prop_const<'tcx>(
     // If this constant is already represented as an `Allocation`,
     // try putting it into global memory to return it.
     if let Either::Left(mplace) = op.as_mplace_or_imm() {
-        let (size, _align) = ecx.size_and_align_of_mplace(&mplace).ok()??;
+        let (size, _align) = ecx.size_and_align_of_mplace(&mplace).discard_err()??;
 
         // Do not try interning a value that contains provenance.
         // Due to https://github.com/rust-lang/rust/issues/79738, doing so could lead to bugs.
         // FIXME: remove this hack once that issue is fixed.
-        let alloc_ref = ecx.get_ptr_alloc(mplace.ptr(), size).ok()??;
+        let alloc_ref = ecx.get_ptr_alloc(mplace.ptr(), size).discard_err()??;
         if alloc_ref.has_provenance() {
             return None;
         }
@@ -1415,7 +1639,7 @@ fn op_to_prop_const<'tcx>(
         let pointer = mplace.ptr().into_pointer_or_addr().ok()?;
         let (prov, offset) = pointer.into_parts();
         let alloc_id = prov.alloc_id();
-        intern_const_alloc_for_constprop(ecx, alloc_id).ok()?;
+        intern_const_alloc_for_constprop(ecx, alloc_id).discard_err()?;
 
         // `alloc_id` may point to a static. Codegen will choke on an `Indirect` with anything
         // by `GlobalAlloc::Memory`, so do fall through to copying if needed.
@@ -1430,7 +1654,8 @@ fn op_to_prop_const<'tcx>(
     }
 
     // Everything failed: create a new allocation to hold the data.
-    let alloc_id = ecx.intern_with_temp_alloc(op.layout, |ecx, dest| ecx.copy_op(op, dest)).ok()?;
+    let alloc_id =
+        ecx.intern_with_temp_alloc(op.layout, |ecx, dest| ecx.copy_op(op, dest)).discard_err()?;
     let value = ConstValue::Indirect { alloc_id, offset: Size::ZERO };
 
     // Check that we do not leak a pointer.
@@ -1485,12 +1710,12 @@ impl<'tcx> VnState<'_, 'tcx> {
     }
 
     /// If there is a local which is assigned `index`, and its assignment strictly dominates `loc`,
-    /// return it.
+    /// return it. If you used this local, add it to `reused_locals` to remove storage statements.
     fn try_as_local(&mut self, index: VnIndex, loc: Location) -> Option<Local> {
         let other = self.rev_locals.get(index)?;
         other
             .iter()
-            .find(|&&other| self.ssa.assignment_dominates(self.dominators, other, loc))
+            .find(|&&other| self.ssa.assignment_dominates(&self.dominators, other, loc))
             .copied()
     }
 }
@@ -1540,7 +1765,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
 
 struct StorageRemover<'tcx> {
     tcx: TyCtxt<'tcx>,
-    reused_locals: BitSet<Local>,
+    reused_locals: DenseBitSet<Local>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {

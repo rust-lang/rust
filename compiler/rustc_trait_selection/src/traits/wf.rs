@@ -2,14 +2,15 @@ use std::iter;
 
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::traits::ObligationCauseCode;
+use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
+use rustc_span::{DUMMY_SP, Span};
+use tracing::{debug, instrument, trace};
 
 use crate::infer::InferCtxt;
 use crate::traits;
@@ -26,7 +27,7 @@ pub fn obligations<'tcx>(
     recursion_depth: usize,
     arg: GenericArg<'tcx>,
     span: Span,
-) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
+) -> Option<PredicateObligations<'tcx>> {
     // Handle the "livelock" case (see comment above) by bailing out if necessary.
     let arg = match arg.unpack() {
         GenericArgKind::Type(ty) => {
@@ -60,11 +61,18 @@ pub fn obligations<'tcx>(
             .into()
         }
         // There is nothing we have to do for lifetimes.
-        GenericArgKind::Lifetime(..) => return Some(Vec::new()),
+        GenericArgKind::Lifetime(..) => return Some(PredicateObligations::new()),
     };
 
-    let mut wf =
-        WfPredicates { infcx, param_env, body_id, span, out: vec![], recursion_depth, item: None };
+    let mut wf = WfPredicates {
+        infcx,
+        param_env,
+        body_id,
+        span,
+        out: PredicateObligations::new(),
+        recursion_depth,
+        item: None,
+    };
     wf.compute(arg);
     debug!("wf::obligations({:?}, body_id={:?}) = {:?}", arg, body_id, wf.out);
 
@@ -81,7 +89,7 @@ pub fn unnormalized_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     arg: GenericArg<'tcx>,
-) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
+) -> Option<PredicateObligations<'tcx>> {
     debug_assert_eq!(arg, infcx.resolve_vars_if_possible(arg));
 
     // However, if `arg` IS an unresolved inference variable, returns `None`,
@@ -92,7 +100,7 @@ pub fn unnormalized_obligations<'tcx>(
     }
 
     if let ty::GenericArgKind::Lifetime(..) = arg.unpack() {
-        return Some(vec![]);
+        return Some(PredicateObligations::new());
     }
 
     let mut wf = WfPredicates {
@@ -100,7 +108,7 @@ pub fn unnormalized_obligations<'tcx>(
         param_env,
         body_id: CRATE_DEF_ID,
         span: DUMMY_SP,
-        out: vec![],
+        out: PredicateObligations::new(),
         recursion_depth: 0,
         item: None,
     };
@@ -119,13 +127,13 @@ pub fn trait_obligations<'tcx>(
     trait_pred: ty::TraitPredicate<'tcx>,
     span: Span,
     item: &'tcx hir::Item<'tcx>,
-) -> Vec<traits::PredicateObligation<'tcx>> {
+) -> PredicateObligations<'tcx> {
     let mut wf = WfPredicates {
         infcx,
         param_env,
         body_id,
         span,
-        out: vec![],
+        out: PredicateObligations::new(),
         recursion_depth: 0,
         item: Some(item),
     };
@@ -146,13 +154,13 @@ pub fn clause_obligations<'tcx>(
     body_id: LocalDefId,
     clause: ty::Clause<'tcx>,
     span: Span,
-) -> Vec<traits::PredicateObligation<'tcx>> {
+) -> PredicateObligations<'tcx> {
     let mut wf = WfPredicates {
         infcx,
         param_env,
         body_id,
         span,
-        out: vec![],
+        out: PredicateObligations::new(),
         recursion_depth: 0,
         item: None,
     };
@@ -161,6 +169,10 @@ pub fn clause_obligations<'tcx>(
     match clause.kind().skip_binder() {
         ty::ClauseKind::Trait(t) => {
             wf.compute_trait_pred(t, Elaborate::None);
+        }
+        ty::ClauseKind::HostEffect(..) => {
+            // Technically the well-formedness of this predicate is implied by
+            // the corresponding trait predicate it should've been generated beside.
         }
         ty::ClauseKind::RegionOutlives(..) => {}
         ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
@@ -191,7 +203,7 @@ struct WfPredicates<'a, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     body_id: LocalDefId,
     span: Span,
-    out: Vec<traits::PredicateObligation<'tcx>>,
+    out: PredicateObligations<'tcx>,
     recursion_depth: usize,
     item: Option<&'tcx hir::Item<'tcx>>,
 }
@@ -322,7 +334,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         traits::ObligationCause::new(self.span, self.body_id, code)
     }
 
-    fn normalize(self, infcx: &InferCtxt<'tcx>) -> Vec<traits::PredicateObligation<'tcx>> {
+    fn normalize(self, infcx: &InferCtxt<'tcx>) -> PredicateObligations<'tcx> {
         // Do not normalize `wf` obligations with the new solver.
         //
         // The current deep normalization routine with the new solver does not
@@ -335,7 +347,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
         let cause = self.cause(ObligationCauseCode::WellFormed(None));
         let param_env = self.param_env;
-        let mut obligations = Vec::with_capacity(self.out.len());
+        let mut obligations = PredicateObligations::with_capacity(self.out.len());
         for mut obligation in self.out {
             assert!(!obligation.has_escaping_bound_vars());
             let mut selcx = traits::SelectionContext::new(infcx);
@@ -552,7 +564,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         &mut self,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-    ) -> Vec<traits::PredicateObligation<'tcx>> {
+    ) -> PredicateObligations<'tcx> {
         let predicates = self.tcx().predicates_of(def_id);
         let mut origins = vec![def_id; predicates.predicates.len()];
         let mut head = predicates;
@@ -812,9 +824,12 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 return upvars.visit_with(self);
             }
 
-            ty::FnPtr(_) => {
+            ty::FnPtr(..) => {
                 // Let the visitor iterate into the argument/return
                 // types appearing in the fn signature.
+            }
+            ty::UnsafeBinder(_) => {
+                // FIXME(unsafe_binders): We should also recurse into the binder here.
             }
 
             ty::Dynamic(data, r, _) => {
@@ -828,7 +843,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // obligations that don't refer to Self and
                 // checking those
 
-                let defer_to_coercion = tcx.features().object_safe_for_dispatch;
+                let defer_to_coercion = tcx.features().dyn_compatible_for_dispatch();
 
                 if !defer_to_coercion {
                     if let Some(principal) = data.principal_def_id() {
@@ -837,7 +852,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                             self.cause(ObligationCauseCode::WellFormed(None)),
                             self.recursion_depth,
                             self.param_env,
-                            ty::Binder::dummy(ty::PredicateKind::ObjectSafe(principal)),
+                            ty::Binder::dummy(ty::PredicateKind::DynCompatible(principal)),
                         ));
                     }
                 }
@@ -951,30 +966,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
 /// bounds that must hold on the elided self type. These are derived
 /// from the declarations of `SomeTrait`, `Send`, and friends -- if
 /// they declare `trait SomeTrait : 'static`, for example, then
-/// `'static` would appear in the list. The hard work is done by
-/// `infer::required_region_bounds`, see that for more information.
-pub fn object_region_bounds<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    existential_predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-) -> Vec<ty::Region<'tcx>> {
-    let predicates = existential_predicates.iter().filter_map(|predicate| {
-        if let ty::ExistentialPredicate::Projection(_) = predicate.skip_binder() {
-            None
-        } else {
-            Some(predicate.with_self_ty(tcx, tcx.types.trait_object_dummy_self))
-        }
-    });
-
-    required_region_bounds(tcx, tcx.types.trait_object_dummy_self, predicates)
-}
-
-/// Given a set of predicates that apply to an object type, returns
-/// the region bounds that the (erased) `Self` type must
-/// outlive. Precisely *because* the `Self` type is erased, the
-/// parameter `erased_self_ty` must be supplied to indicate what type
-/// has been used to represent `Self` in the predicates
-/// themselves. This should really be a unique type; `FreshTy(0)` is a
-/// popular choice.
+/// `'static` would appear in the list.
 ///
 /// N.B., in some cases, particularly around higher-ranked bounds,
 /// this function returns a kind of conservative approximation.
@@ -984,13 +976,14 @@ pub fn object_region_bounds<'tcx>(
 ///
 /// Requires that trait definitions have been processed so that we can
 /// elaborate predicates and walk supertraits.
-#[instrument(skip(tcx, predicates), level = "debug", ret)]
-pub(crate) fn required_region_bounds<'tcx>(
+pub fn object_region_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    erased_self_ty: Ty<'tcx>,
-    predicates: impl Iterator<Item = ty::Clause<'tcx>>,
+    existential_predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
 ) -> Vec<ty::Region<'tcx>> {
-    assert!(!erased_self_ty.has_escaping_bound_vars());
+    let erased_self_ty = tcx.types.trait_object_dummy_self;
+
+    let predicates =
+        existential_predicates.iter().map(|predicate| predicate.with_self_ty(tcx, erased_self_ty));
 
     traits::elaborate(tcx, predicates)
         .filter_map(|pred| {
@@ -1013,6 +1006,7 @@ pub(crate) fn required_region_bounds<'tcx>(
                     }
                 }
                 ty::ClauseKind::Trait(_)
+                | ty::ClauseKind::HostEffect(..)
                 | ty::ClauseKind::RegionOutlives(_)
                 | ty::ClauseKind::Projection(_)
                 | ty::ClauseKind::ConstArgHasType(_, _)

@@ -1,8 +1,7 @@
 use clippy_config::Conf;
-use clippy_utils::create_disallowed_map;
+use clippy_config::types::create_disallowed_map;
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::macros::macro_backtrace;
-use rustc_ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Diag;
 use rustc_hir::def_id::DefIdMap;
@@ -13,6 +12,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::{ExpnId, MacroKind, Span};
+
+use crate::utils::attr_collector::AttrStorage;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -42,7 +43,6 @@ declare_clippy_lint! {
     /// ```no_run
     /// use serde::Serialize;
     ///
-    /// // Example code where clippy issues a warning
     /// println!("warns");
     ///
     /// // The diagnostic will contain the message "no serializing"
@@ -64,14 +64,19 @@ pub struct DisallowedMacros {
     // Track the most recently seen node that can have a `derive` attribute.
     // Needed to use the correct lint level.
     derive_src: Option<OwnerId>,
+
+    // When a macro is disallowed in an early pass, it's stored
+    // and emitted during the late pass. This happens for attributes.
+    earlies: AttrStorage,
 }
 
 impl DisallowedMacros {
-    pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
+    pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf, earlies: AttrStorage) -> Self {
         Self {
             disallowed: create_disallowed_map(tcx, &conf.disallowed_macros),
             seen: FxHashSet::default(),
             derive_src: None,
+            earlies,
         }
     }
 
@@ -114,6 +119,15 @@ impl DisallowedMacros {
 impl_lint_pass!(DisallowedMacros => [DISALLOWED_MACROS]);
 
 impl LateLintPass<'_> for DisallowedMacros {
+    fn check_crate(&mut self, cx: &LateContext<'_>) {
+        // once we check a crate in the late pass we can emit the early pass lints
+        if let Some(attr_spans) = self.earlies.clone().0.get() {
+            for span in attr_spans {
+                self.check(cx, *span, None);
+            }
+        }
+    }
+
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         self.check(cx, expr.span, None);
         // `$t + $t` can have the context of $t, check also the span of the binary operator
@@ -163,9 +177,5 @@ impl LateLintPass<'_> for DisallowedMacros {
 
     fn check_path(&mut self, cx: &LateContext<'_>, path: &Path<'_>, _: HirId) {
         self.check(cx, path.span, None);
-    }
-
-    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &Attribute) {
-        self.check(cx, attr.span, self.derive_src);
     }
 }

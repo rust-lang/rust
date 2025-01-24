@@ -1,10 +1,10 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_context;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{Symbol, sym};
 
 use super::CLONE_ON_REF_PTR;
 
@@ -29,19 +29,22 @@ pub(super) fn check(
             sym::RcWeak | sym::ArcWeak => "Weak",
             _ => return,
         };
-
-        // Sometimes unnecessary ::<_> after Rc/Arc/Weak
-        let mut app = Applicability::Unspecified;
-        let snippet = snippet_with_context(cx, receiver.span, expr.span.ctxt(), "..", &mut app).0;
-
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             CLONE_ON_REF_PTR,
             expr.span,
             "using `.clone()` on a ref-counted pointer",
-            "try",
-            format!("{caller_type}::<{}>::clone(&{snippet})", subst.type_at(0)),
-            app,
+            |diag| {
+                // Sometimes unnecessary ::<_> after Rc/Arc/Weak
+                let mut app = Applicability::Unspecified;
+                let snippet = snippet_with_context(cx, receiver.span, expr.span.ctxt(), "..", &mut app).0;
+                diag.span_suggestion(
+                    expr.span,
+                    "try",
+                    format!("{caller_type}::<{}>::clone(&{snippet})", subst.type_at(0)),
+                    app,
+                );
+            },
         );
     }
 }

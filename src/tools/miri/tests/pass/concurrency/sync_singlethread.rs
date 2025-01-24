@@ -1,6 +1,5 @@
 use std::hint;
-use std::sync::atomic;
-use std::sync::{Mutex, TryLockError};
+use std::sync::{Mutex, TryLockError, atomic};
 
 fn main() {
     test_mutex_stdlib();

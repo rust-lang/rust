@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -19,7 +19,7 @@ pub(crate) fn check<'tcx>(
     if op == BinOpKind::Div
         && let ExprKind::MethodCall(method_path, self_arg, [], _) = left.kind
         && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_arg).peel_refs(), sym::Duration)
-        && let Some(Constant::Int(divisor)) = constant(cx, cx.typeck_results(), right)
+        && let Some(Constant::Int(divisor)) = ConstEvalCtxt::new(cx).eval(right)
     {
         let suggested_fn = match (method_path.ident.as_str(), divisor) {
             ("subsec_micros", 1_000) | ("subsec_nanos", 1_000_000) => "subsec_millis",

@@ -12,6 +12,7 @@ rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_feature = { path = "../rustc_feature" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
+rustc_index = { path = "../rustc_index" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_session = { path = "../rustc_session" }
@@ -19,7 +20,7 @@ rustc_span = { path = "../rustc_span" }
 thin-vec = "0.2.12"
 tracing = "0.1"
 unicode-normalization = "0.1.11"
-unicode-width = "0.1.4"
+unicode-width = "0.2.0"
 # tidy-alphabetical-end
 
 [dev-dependencies]

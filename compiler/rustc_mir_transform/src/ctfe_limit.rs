@@ -6,12 +6,11 @@ use rustc_middle::mir::{
     BasicBlock, BasicBlockData, Body, Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
+use tracing::instrument;
 
-use crate::MirPass;
+pub(super) struct CtfeLimit;
 
-pub struct CtfeLimit;
-
-impl<'tcx> MirPass<'tcx> for CtfeLimit {
+impl<'tcx> crate::MirPass<'tcx> for CtfeLimit {
     #[instrument(skip(self, _tcx, body))]
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let doms = body.basic_blocks.dominators();

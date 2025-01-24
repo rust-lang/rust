@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::get_parent_expr;
 use clippy_utils::source::snippet_with_context;
@@ -117,11 +117,11 @@ fn get_int_max(ty: Ty<'_>) -> Option<u128> {
 
 fn get_const<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<(u128, BinOpKind, &'tcx Expr<'tcx>)> {
     if let ExprKind::Binary(op, l, r) = expr.kind {
-        let tr = cx.typeck_results();
-        if let Some(Constant::Int(c)) = constant(cx, tr, r) {
+        let ecx = ConstEvalCtxt::new(cx);
+        if let Some(Constant::Int(c)) = ecx.eval(r) {
             return Some((c, op.node, l));
         };
-        if let Some(Constant::Int(c)) = constant(cx, tr, l) {
+        if let Some(Constant::Int(c)) = ecx.eval(l) {
             return Some((c, invert_op(op.node)?, r));
         }
     }

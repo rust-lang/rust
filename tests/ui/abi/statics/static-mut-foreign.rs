@@ -3,6 +3,9 @@
 // statics cannot. This ensures that there's some form of error if this is
 // attempted.
 
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 use std::ffi::c_int;
 
 #[link(name = "rust_test_helpers", kind = "static")]
@@ -29,9 +32,7 @@ unsafe fn run() {
     rust_dbg_static_mut = -3;
     assert_eq!(rust_dbg_static_mut, -3);
     static_bound(&rust_dbg_static_mut);
-    //~^ WARN shared reference to mutable static is discouraged [static_mut_refs]
     static_bound_set(&mut rust_dbg_static_mut);
-    //~^ WARN mutable reference to mutable static is discouraged [static_mut_refs]
 }
 
 pub fn main() {

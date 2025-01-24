@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -7,11 +7,12 @@ use std::sync::OnceLock;
 use std::{fmt, iter};
 
 use build_helper::git::GitConfig;
+use semver::Version;
 use serde::de::{Deserialize, Deserializer, Error as _};
 use test::{ColorConfig, OutputFormat};
 
 pub use self::Mode::*;
-use crate::util::{add_dylib_path, PathBufExt};
+use crate::util::{PathBufExt, add_dylib_path};
 
 macro_rules! string_enum {
     ($(#[$meta:meta])* $vis:vis enum $name:ident { $($variant:ident => $repr:expr,)* }) => {
@@ -38,22 +39,25 @@ macro_rules! string_enum {
         }
 
         impl FromStr for $name {
-            type Err = ();
+            type Err = String;
 
-            fn from_str(s: &str) -> Result<Self, ()> {
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s {
                     $($repr => Ok(Self::$variant),)*
-                    _ => Err(()),
+                    _ => Err(format!(concat!("unknown `", stringify!($name), "` variant: `{}`"), s)),
                 }
             }
         }
     }
 }
 
+// Make the macro visible outside of this module, for tests.
+#[cfg(test)]
+pub(crate) use string_enum;
+
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
     pub enum Mode {
-        RunPassValgrind => "run-pass-valgrind",
         Pretty => "pretty",
         DebugInfo => "debuginfo",
         Codegen => "codegen",
@@ -63,7 +67,7 @@ string_enum! {
         Incremental => "incremental",
         RunMake => "run-make",
         Ui => "ui",
-        JsDocTest => "js-doc-test",
+        RustdocJs => "rustdoc-js",
         MirOpt => "mir-opt",
         Assembly => "assembly",
         CoverageMap => "coverage-map",
@@ -183,6 +187,9 @@ pub struct Config {
     /// The rustc executable.
     pub rustc_path: PathBuf,
 
+    /// The cargo executable.
+    pub cargo_path: Option<PathBuf>,
+
     /// The rustdoc executable.
     pub rustdoc_path: Option<PathBuf>,
 
@@ -203,13 +210,6 @@ pub struct Config {
 
     /// Path to LLVM's bin directory.
     pub llvm_bin_dir: Option<PathBuf>,
-
-    /// The valgrind path.
-    pub valgrind_path: Option<String>,
-
-    /// Whether to fail if we can't run run-pass-valgrind tests under valgrind
-    /// (or, alternatively, to silently run them like regular run-pass tests).
-    pub force_valgrind: bool,
 
     /// The path to the Clang executable to run Clang-based tests with. If
     /// `None` then these tests will be ignored.
@@ -240,8 +240,11 @@ pub struct Config {
     /// Run ignored tests
     pub run_ignored: bool,
 
-    /// Whether to run tests with `ignore-debug` header
-    pub with_debug_assertions: bool,
+    /// Whether rustc was built with debug assertions.
+    pub with_rustc_debug_assertions: bool,
+
+    /// Whether std was built with debug assertions.
+    pub with_std_debug_assertions: bool,
 
     /// Only run tests that match these filters
     pub filters: Vec<String>,
@@ -274,6 +277,9 @@ pub struct Config {
     /// Flags to pass to the compiler when building for the target
     pub target_rustcflags: Vec<String>,
 
+    /// Whether the compiler and stdlib has been built with randomized struct layouts
+    pub rust_randomized_layout: bool,
+
     /// Whether tests should be optimized by default. Individual test-suites and test files may
     /// override this setting.
     pub optimize_tests: bool,
@@ -296,17 +302,11 @@ pub struct Config {
     /// Version of GDB, encoded as ((major * 1000) + minor) * 1000 + patch
     pub gdb_version: Option<u32>,
 
-    /// Whether GDB has native rust support
-    pub gdb_native_rust: bool,
-
     /// Version of LLDB
     pub lldb_version: Option<u32>,
 
-    /// Whether LLDB has native rust support
-    pub lldb_native_rust: bool,
-
     /// Version of LLVM
-    pub llvm_version: Option<u32>,
+    pub llvm_version: Option<Version>,
 
     /// Is LLVM a system LLVM
     pub system_llvm: bool,
@@ -346,8 +346,11 @@ pub struct Config {
     /// created in `/<build_base>/rustfix_missing_coverage.txt`
     pub rustfix_coverage: bool,
 
-    /// whether to run `tidy` when a rustdoc test fails
-    pub has_tidy: bool,
+    /// whether to run `tidy` (html-tidy) when a rustdoc test fails
+    pub has_html_tidy: bool,
+
+    /// whether to run `enzyme` autodiff tests
+    pub has_enzyme: bool,
 
     /// The current Rust channel
     pub channel: String,
@@ -381,16 +384,26 @@ pub struct Config {
     pub only_modified: bool,
 
     pub target_cfgs: OnceLock<TargetCfgs>,
+    pub builtin_cfg_names: OnceLock<HashSet<String>>,
 
     pub nocapture: bool,
 
     // Needed both to construct build_helper::git::GitConfig
     pub git_repository: String,
     pub nightly_branch: String,
+    pub git_merge_commit_email: String,
 
     /// True if the profiler runtime is enabled for this target.
-    /// Used by the "needs-profiler-support" header in test files.
-    pub profiler_support: bool,
+    /// Used by the "needs-profiler-runtime" directive in test files.
+    pub profiler_runtime: bool,
+
+    /// Command for visual diff display, e.g. `diff-tool --color=always`.
+    pub diff_command: Option<String>,
+
+    /// Path to minicore aux library, used for `no_core` tests that need `core` stubs in
+    /// cross-compilation scenarios that do not otherwise want/need to `-Zbuild-std`. Used in e.g.
+    /// ABI tests.
+    pub minicore_path: PathBuf,
 }
 
 impl Config {
@@ -444,6 +457,11 @@ impl Config {
         self.target_cfg().panic == PanicStrategy::Unwind
     }
 
+    /// Get the list of builtin, 'well known' cfg names
+    pub fn builtin_cfg_names(&self) -> &HashSet<String> {
+        self.builtin_cfg_names.get_or_init(|| builtin_cfg_names(self))
+    }
+
     pub fn has_threads(&self) -> bool {
         // Wasm targets don't have threads unless `-threads` is in the target
         // name, such as `wasm32-wasip1-threads`.
@@ -464,9 +482,16 @@ impl Config {
     }
 
     pub fn git_config(&self) -> GitConfig<'_> {
-        GitConfig { git_repository: &self.git_repository, nightly_branch: &self.nightly_branch }
+        GitConfig {
+            git_repository: &self.git_repository,
+            nightly_branch: &self.nightly_branch,
+            git_merge_commit_email: &self.git_merge_commit_email,
+        }
     }
 }
+
+/// Known widths of `target_has_atomic`.
+pub const KNOWN_TARGET_HAS_ATOMIC_WIDTHS: &[&str] = &["8", "16", "32", "64", "128", "ptr"];
 
 #[derive(Debug, Clone)]
 pub struct TargetCfgs {
@@ -593,6 +618,17 @@ impl TargetCfgs {
                 ("panic", Some("abort")) => cfg.panic = PanicStrategy::Abort,
                 ("panic", Some("unwind")) => cfg.panic = PanicStrategy::Unwind,
                 ("panic", other) => panic!("unexpected value for panic cfg: {other:?}"),
+
+                ("target_has_atomic", Some(width))
+                    if KNOWN_TARGET_HAS_ATOMIC_WIDTHS.contains(&width) =>
+                {
+                    cfg.target_has_atomic.insert(width.to_string());
+                }
+                ("target_has_atomic", Some(other)) => {
+                    panic!("unexpected value for `target_has_atomic` cfg: {other:?}")
+                }
+                // Nightly-only std-internal impl detail.
+                ("target_has_atomic", None) => {}
                 _ => {}
             }
         }
@@ -627,6 +663,12 @@ pub struct TargetCfg {
     pub(crate) xray: bool,
     #[serde(default = "default_reloc_model")]
     pub(crate) relocation_model: String,
+
+    // Not present in target cfg json output, additional derived information.
+    #[serde(skip)]
+    /// Supported target atomic widths: e.g. `8` to `128` or `ptr`. This is derived from the builtin
+    /// `target_has_atomic` `cfg`s e.g. `target_has_atomic="8"`.
+    pub(crate) target_has_atomic: BTreeSet<String>,
 }
 
 impl TargetCfg {
@@ -649,6 +691,18 @@ pub enum Endian {
     #[default]
     Little,
     Big,
+}
+
+fn builtin_cfg_names(config: &Config) -> HashSet<String> {
+    rustc_output(
+        config,
+        &["--print=check-cfg", "-Zunstable-options", "--check-cfg=cfg()"],
+        Default::default(),
+    )
+    .lines()
+    .map(|l| if let Some((name, _)) = l.split_once('=') { name.to_string() } else { l.to_string() })
+    .chain(std::iter::once(String::from("test")))
+    .collect()
 }
 
 fn rustc_output(config: &Config, args: &[&str], envs: HashMap<String, String>) -> String {
@@ -734,7 +788,7 @@ pub const UI_COVERAGE_MAP: &str = "cov-map";
 
 /// Absolute path to the directory where all output for all tests in the given
 /// `relative_dir` group should reside. Example:
-///   /path/to/build/host-triple/test/ui/relative/
+///   /path/to/build/host-tuple/test/ui/relative/
 /// This is created early when tests are collected to avoid race conditions.
 pub fn output_relative_path(config: &Config, relative_dir: &Path) -> PathBuf {
     config.build_base.join(relative_dir)
@@ -757,27 +811,21 @@ pub fn output_testname_unique(
 
 /// Absolute path to the directory where all output for the given
 /// test/revision should reside. Example:
-///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/
+///   /path/to/build/host-tuple/test/ui/relative/testname.revision.mode/
 pub fn output_base_dir(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
-    // In run-make tests, constructing a relative path + unique testname causes a double layering
-    // since revisions are not supported, causing unnecessary nesting.
-    if config.mode == Mode::RunMake {
-        output_relative_path(config, &testpaths.relative_dir)
-    } else {
-        output_relative_path(config, &testpaths.relative_dir)
-            .join(output_testname_unique(config, testpaths, revision))
-    }
+    output_relative_path(config, &testpaths.relative_dir)
+        .join(output_testname_unique(config, testpaths, revision))
 }
 
 /// Absolute path to the base filename used as output for the given
 /// test/revision. Example:
-///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/testname
+///   /path/to/build/host-tuple/test/ui/relative/testname.revision.mode/testname
 pub fn output_base_name(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
     output_base_dir(config, testpaths, revision).join(testpaths.file.file_stem().unwrap())
 }
 
 /// Absolute path to the directory to use for incremental compilation. Example:
-///   /path/to/build/host-triple/test/ui/relative/testname.mode/testname.inc
+///   /path/to/build/host-tuple/test/ui/relative/testname.mode/testname.inc
 pub fn incremental_dir(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
     output_base_name(config, testpaths, revision).with_extension("inc")
 }

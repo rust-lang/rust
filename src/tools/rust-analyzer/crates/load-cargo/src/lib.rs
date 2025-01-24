@@ -10,17 +10,20 @@ use hir_expand::proc_macro::{
     ProcMacros,
 };
 use ide_db::{
-    base_db::{CrateGraph, Env, SourceRoot, SourceRootId},
+    base_db::{CrateGraph, CrateWorkspaceData, Env, SourceRoot, SourceRootId},
     prime_caches, ChangeWithProcMacros, FxHashMap, RootDatabase,
 };
 use itertools::Itertools;
-use proc_macro_api::{MacroDylib, ProcMacroServer};
-use project_model::{
-    CargoConfig, ManifestPath, PackageRoot, ProjectManifest, ProjectWorkspace, ProjectWorkspaceKind,
-};
+use proc_macro_api::{MacroDylib, ProcMacroClient};
+use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
 use span::Span;
-use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf, VfsPath};
+use vfs::{
+    file_set::FileSetConfig,
+    loader::{Handle, LoadingProgress},
+    AbsPath, AbsPathBuf, VfsPath,
+};
 
+#[derive(Debug)]
 pub struct LoadCargoConfig {
     pub load_out_dirs_from_check: bool,
     pub with_proc_macro_server: ProcMacroServerChoice,
@@ -39,7 +42,7 @@ pub fn load_workspace_at(
     cargo_config: &CargoConfig,
     load_config: &LoadCargoConfig,
     progress: &dyn Fn(String),
-) -> anyhow::Result<(RootDatabase, vfs::Vfs, Option<ProcMacroServer>)> {
+) -> anyhow::Result<(RootDatabase, vfs::Vfs, Option<ProcMacroClient>)> {
     let root = AbsPathBuf::assert_utf8(std::env::current_dir()?.join(root));
     let root = ProjectManifest::discover_single(&root)?;
     let mut workspace = ProjectWorkspace::load(root, cargo_config, progress)?;
@@ -56,27 +59,35 @@ pub fn load_workspace(
     ws: ProjectWorkspace,
     extra_env: &FxHashMap<String, String>,
     load_config: &LoadCargoConfig,
-) -> anyhow::Result<(RootDatabase, vfs::Vfs, Option<ProcMacroServer>)> {
+) -> anyhow::Result<(RootDatabase, vfs::Vfs, Option<ProcMacroClient>)> {
     let (sender, receiver) = unbounded();
     let mut vfs = vfs::Vfs::default();
     let mut loader = {
-        let loader =
-            vfs_notify::NotifyHandle::spawn(Box::new(move |msg| sender.send(msg).unwrap()));
+        let loader = vfs_notify::NotifyHandle::spawn(sender);
         Box::new(loader)
     };
 
+    tracing::debug!(?load_config, "LoadCargoConfig");
     let proc_macro_server = match &load_config.with_proc_macro_server {
         ProcMacroServerChoice::Sysroot => ws
             .find_sysroot_proc_macro_srv()
-            .and_then(|it| ProcMacroServer::spawn(&it, extra_env).map_err(Into::into))
+            .and_then(|it| ProcMacroClient::spawn(&it, extra_env).map_err(Into::into))
             .map_err(|e| (e, true)),
         ProcMacroServerChoice::Explicit(path) => {
-            ProcMacroServer::spawn(path, extra_env).map_err(Into::into).map_err(|e| (e, true))
+            ProcMacroClient::spawn(path, extra_env).map_err(Into::into).map_err(|e| (e, true))
         }
         ProcMacroServerChoice::None => {
             Err((anyhow::format_err!("proc macro server disabled"), false))
         }
     };
+    match &proc_macro_server {
+        Ok(server) => {
+            tracing::info!(path=%server.server_path(), "Proc-macro server started")
+        }
+        Err((e, _)) => {
+            tracing::info!(%e, "Failed to start proc-macro server")
+        }
+    }
 
     let (crate_graph, proc_macros) = ws.to_crate_graph(
         &mut |path: &AbsPath| {
@@ -110,7 +121,7 @@ pub fn load_workspace(
             .collect()
     };
 
-    let project_folders = ProjectFolders::new(std::slice::from_ref(&ws), &[]);
+    let project_folders = ProjectFolders::new(std::slice::from_ref(&ws), &[], None);
     loader.set_config(vfs::loader::Config {
         load: project_folders.load,
         watch: vec![],
@@ -140,7 +151,11 @@ pub struct ProjectFolders {
 }
 
 impl ProjectFolders {
-    pub fn new(workspaces: &[ProjectWorkspace], global_excludes: &[AbsPathBuf]) -> ProjectFolders {
+    pub fn new(
+        workspaces: &[ProjectWorkspace],
+        global_excludes: &[AbsPathBuf],
+        user_config_dir_path: Option<&AbsPath>,
+    ) -> ProjectFolders {
         let mut res = ProjectFolders::default();
         let mut fsc = FileSetConfig::builder();
         let mut local_filesets = vec![];
@@ -241,36 +256,20 @@ impl ProjectFolders {
             fsc.add_file_set(file_set_roots)
         }
 
-        // register the workspace manifest as well, note that this currently causes duplicates for
-        // non-virtual cargo workspaces! We ought to fix that
-        for ws in workspaces.iter() {
-            let mut file_set_roots: Vec<VfsPath> = vec![];
-            let mut entries = vec![];
+        if let Some(user_config_path) = user_config_dir_path {
+            let ratoml_path = {
+                let mut p = user_config_path.to_path_buf();
+                p.push("rust-analyzer.toml");
+                p
+            };
 
-            if let Some(manifest) = ws.manifest().map(ManifestPath::as_ref) {
-                file_set_roots.push(VfsPath::from(manifest.to_owned()));
-                entries.push(manifest.to_owned());
-            }
+            let file_set_roots = vec![VfsPath::from(ratoml_path.to_owned())];
+            let entry = vfs::loader::Entry::Files(vec![ratoml_path.to_owned()]);
 
-            // In case of detached files we do **not** look for a rust-analyzer.toml.
-            if !matches!(ws.kind, ProjectWorkspaceKind::DetachedFile { .. }) {
-                let ws_root = ws.workspace_root();
-                let ratoml_path = {
-                    let mut p = ws_root.to_path_buf();
-                    p.push("rust-analyzer.toml");
-                    p
-                };
-                file_set_roots.push(VfsPath::from(ratoml_path.to_owned()));
-                entries.push(ratoml_path.to_owned());
-            }
-
-            if !file_set_roots.is_empty() {
-                let entry = vfs::loader::Entry::Files(entries);
-                res.watch.push(res.load.len());
-                res.load.push(entry);
-                local_filesets.push(fsc.len() as u64);
-                fsc.add_file_set(file_set_roots)
-            }
+            res.watch.push(res.load.len());
+            res.load.push(entry);
+            local_filesets.push(fsc.len() as u64);
+            fsc.add_file_set(file_set_roots)
         }
 
         let fsc = fsc.build();
@@ -360,7 +359,7 @@ impl SourceRootConfig {
 
 /// Load the proc-macros for the given lib path, disabling all expanders whose names are in `ignored_macros`.
 pub fn load_proc_macro(
-    server: &ProcMacroServer,
+    server: &ProcMacroClient,
     path: &AbsPath,
     ignored_macros: &[Box<str>],
 ) -> ProcMacroLoadResult {
@@ -409,8 +408,8 @@ fn load_crate_graph(
     // wait until Vfs has loaded all roots
     for task in receiver {
         match task {
-            vfs::loader::Message::Progress { n_done, n_total, .. } => {
-                if n_done == Some(n_total) {
+            vfs::loader::Message::Progress { n_done, .. } => {
+                if n_done == LoadingProgress::Finished {
                     break;
                 }
             }
@@ -434,12 +433,16 @@ fn load_crate_graph(
     let source_roots = source_root_config.partition(vfs);
     analysis_change.set_roots(source_roots);
 
-    let num_crates = crate_graph.len();
-    analysis_change.set_crate_graph(crate_graph);
+    let ws_data = crate_graph
+        .iter()
+        .zip(iter::repeat(From::from(CrateWorkspaceData {
+            proc_macro_cwd: None,
+            data_layout: target_layout.clone(),
+            toolchain: toolchain.clone(),
+        })))
+        .collect();
+    analysis_change.set_crate_graph(crate_graph, ws_data);
     analysis_change.set_proc_macros(proc_macros);
-    analysis_change
-        .set_target_data_layouts(iter::repeat(target_layout.clone()).take(num_crates).collect());
-    analysis_change.set_toolchains(iter::repeat(toolchain.clone()).take(num_crates).collect());
 
     db.apply_change(analysis_change);
     db
@@ -470,14 +473,23 @@ struct Expander(proc_macro_api::ProcMacro);
 impl ProcMacroExpander for Expander {
     fn expand(
         &self,
-        subtree: &tt::Subtree<Span>,
-        attrs: Option<&tt::Subtree<Span>>,
+        subtree: &tt::TopSubtree<Span>,
+        attrs: Option<&tt::TopSubtree<Span>>,
         env: &Env,
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
-    ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
-        match self.0.expand(subtree, attrs, env.clone(), def_site, call_site, mixed_site) {
+        current_dir: Option<String>,
+    ) -> Result<tt::TopSubtree<Span>, ProcMacroExpansionError> {
+        match self.0.expand(
+            subtree.view(),
+            attrs.map(|attrs| attrs.view()),
+            env.clone().into(),
+            def_site,
+            call_site,
+            mixed_site,
+            current_dir,
+        ) {
             Ok(Ok(subtree)) => Ok(subtree),
             Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err.0)),
             Err(err) => Err(ProcMacroExpansionError::System(err.to_string())),
@@ -495,7 +507,7 @@ mod tests {
     #[test]
     fn test_loading_rust_analyzer() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
-        let cargo_config = CargoConfig::default();
+        let cargo_config = CargoConfig { set_test: true, ..CargoConfig::default() };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,
             with_proc_macro_server: ProcMacroServerChoice::None,

@@ -6,7 +6,7 @@
 //@ edition: 2021
 //@ check-pass
 
-//@ aux-build: count.rs
+//@ proc-macro: count.rs
 extern crate count;
 
 const _: () = {

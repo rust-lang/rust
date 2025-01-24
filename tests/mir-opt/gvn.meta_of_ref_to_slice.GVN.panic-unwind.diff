@@ -15,12 +15,12 @@
 -         StorageLive(_2);
 +         nop;
           StorageLive(_3);
-          _3 = _1;
+          _3 = copy _1;
 -         _2 = *const [i32] from (move _3, const 1_usize);
-+         _2 = *const [i32] from (_1, const 1_usize);
++         _2 = *const [i32] from (copy _1, const 1_usize);
           StorageDead(_3);
           StorageLive(_4);
-          _4 = _2;
+          _4 = copy _2;
 -         _0 = PtrMetadata(move _4);
 +         _0 = const 1_usize;
           StorageDead(_4);

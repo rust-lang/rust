@@ -25,7 +25,7 @@ CONST UNSAFE FN _e() {}
 //~| ERROR keyword `unsafe` is written in the wrong case
 //~| ERROR keyword `fn` is written in the wrong case
 
-unSAFE EXTern fn _f() {}
+unSAFE EXTern "C" fn _f() {}
 //~^ ERROR keyword `unsafe` is written in the wrong case
 //~| ERROR keyword `extern` is written in the wrong case
 

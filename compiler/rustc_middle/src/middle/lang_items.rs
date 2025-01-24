@@ -7,8 +7,8 @@
 //! * Traits that represent operators; e.g., `Add`, `Sub`, `Index`.
 //! * Functions called by the compiler itself.
 
-use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
+use rustc_hir::def_id::DefId;
 use rustc_span::Span;
 use rustc_target::spec::PanicStrategy;
 
@@ -65,6 +65,17 @@ impl<'tcx> TyCtxt<'tcx> {
             ty::ClosureKind::Fn => items.fn_trait(),
             ty::ClosureKind::FnMut => items.fn_mut_trait(),
             ty::ClosureKind::FnOnce => items.fn_once_trait(),
+        }
+    }
+
+    /// Given a [`ty::ClosureKind`], get the [`DefId`] of its corresponding `Fn`-family
+    /// trait, if it is defined.
+    pub fn async_fn_trait_kind_to_def_id(self, kind: ty::ClosureKind) -> Option<DefId> {
+        let items = self.lang_items();
+        match kind {
+            ty::ClosureKind::Fn => items.async_fn_trait(),
+            ty::ClosureKind::FnMut => items.async_fn_mut_trait(),
+            ty::ClosureKind::FnOnce => items.async_fn_once_trait(),
         }
     }
 

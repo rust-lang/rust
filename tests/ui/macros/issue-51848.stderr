@@ -1,8 +1,8 @@
-error: invalid format string: expected `'}'` but string was terminated
+error: invalid format string: expected `}` but string was terminated
   --> $DIR/issue-51848.rs:6:20
    |
 LL |         println!("{");
-   |                   -^ expected `'}'` in format string
+   |                   -^ expected `}` in format string
    |                   |
    |                   because of this opening brace
 ...

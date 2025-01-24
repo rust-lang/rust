@@ -1,4 +1,4 @@
-pub use self::itron::error::{expect_success, ItronError as SolidError};
+pub use self::itron::error::{ItronError as SolidError, expect_success};
 use super::{abi, itron, net};
 use crate::io::ErrorKind;
 

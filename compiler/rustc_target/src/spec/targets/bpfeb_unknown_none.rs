@@ -1,7 +1,7 @@
 use crate::abi::Endian;
-use crate::spec::{base, Target};
+use crate::spec::{Target, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "bpfeb".into(),
         metadata: crate::spec::TargetMetadata {

@@ -1,10 +1,12 @@
 //! Implements calling functions from a native library.
-use libffi::{high::call as ffi, low::CodePtr};
 use std::ops::Deref;
 
+use libffi::high::call as ffi;
+use libffi::low::CodePtr;
+use rustc_abi::{BackendRepr, HasDataLayout, Size};
+use rustc_middle::mir::interpret::Pointer;
 use rustc_middle::ty::{self as ty, IntTy, UintTy};
 use rustc_span::Symbol;
-use rustc_target::abi::{Abi, HasDataLayout};
 
 use crate::*;
 
@@ -70,13 +72,18 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             // Functions with no declared return type (i.e., the default return)
             // have the output_type `Tuple([])`.
-            ty::Tuple(t_list) if t_list.len() == 0 => {
+            ty::Tuple(t_list) if t_list.is_empty() => {
                 unsafe { ffi::call::<()>(ptr, libffi_args.as_slice()) };
-                return Ok(ImmTy::uninit(dest.layout));
+                return interp_ok(ImmTy::uninit(dest.layout));
+            }
+            ty::RawPtr(..) => {
+                let x = unsafe { ffi::call::<*const ()>(ptr, libffi_args.as_slice()) };
+                let ptr = Pointer::new(Provenance::Wildcard, Size::from_bytes(x.addr()));
+                Scalar::from_pointer(ptr, this)
             }
             _ => throw_unsup_format!("unsupported return type for native call: {:?}", link_name),
         };
-        Ok(ImmTy::from_scalar(scalar, dest.layout))
+        interp_ok(ImmTy::from_scalar(scalar, dest.layout))
     }
 
     /// Get the pointer to the function of the specified name in the shared object file,
@@ -141,18 +148,42 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some(ptr) => ptr,
             None => {
                 // Shared object file does not export this function -- try the shims next.
-                return Ok(false);
+                return interp_ok(false);
             }
         };
 
         // Get the function arguments, and convert them to `libffi`-compatible form.
         let mut libffi_args = Vec::<CArg>::with_capacity(args.len());
         for arg in args.iter() {
-            if !matches!(arg.layout.abi, Abi::Scalar(_)) {
+            if !matches!(arg.layout.backend_repr, BackendRepr::Scalar(_)) {
                 throw_unsup_format!("only scalar argument types are support for native calls")
             }
-            libffi_args.push(imm_to_carg(this.read_immediate(arg)?, this)?);
+            let imm = this.read_immediate(arg)?;
+            libffi_args.push(imm_to_carg(&imm, this)?);
+            // If we are passing a pointer, prepare the memory it points to.
+            if matches!(arg.layout.ty.kind(), ty::RawPtr(..)) {
+                let ptr = imm.to_scalar().to_pointer(this)?;
+                let Some(prov) = ptr.provenance else {
+                    // Pointer without provenance may not access any memory.
+                    continue;
+                };
+                // We use `get_alloc_id` for its best-effort behaviour with Wildcard provenance.
+                let Some(alloc_id) = prov.get_alloc_id() else {
+                    // Wildcard pointer, whatever it points to must be already exposed.
+                    continue;
+                };
+                // The first time this happens, print a warning.
+                if !this.machine.native_call_mem_warned.replace(true) {
+                    // Newly set, so first time we get here.
+                    this.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem);
+                }
+
+                this.prepare_for_native_call(alloc_id, prov)?;
+            }
         }
+
+        // FIXME: In the future, we should also call `prepare_for_native_call` on all previously
+        // exposed allocations, since C may access any of them.
 
         // Convert them to `libffi::high::Arg` type.
         let libffi_args = libffi_args
@@ -163,7 +194,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Call the function and store output, depending on return type in the function signature.
         let ret = this.call_native_with_args(link_name, dest, code_ptr, libffi_args)?;
         this.write_immediate(*ret, dest)?;
-        Ok(true)
+        interp_ok(true)
     }
 }
 
@@ -194,6 +225,8 @@ enum CArg {
     UInt64(u64),
     /// usize.
     USize(usize),
+    /// Raw pointer, stored as C's `void*`.
+    RawPtr(*mut std::ffi::c_void),
 }
 
 impl<'a> CArg {
@@ -210,14 +243,15 @@ impl<'a> CArg {
             CArg::UInt32(i) => ffi::arg(i),
             CArg::UInt64(i) => ffi::arg(i),
             CArg::USize(i) => ffi::arg(i),
+            CArg::RawPtr(i) => ffi::arg(i),
         }
     }
 }
 
 /// Extract the scalar value from the result of reading a scalar from the machine,
 /// and convert it to a `CArg`.
-fn imm_to_carg<'tcx>(v: ImmTy<'tcx>, cx: &impl HasDataLayout) -> InterpResult<'tcx, CArg> {
-    Ok(match v.layout.ty.kind() {
+fn imm_to_carg<'tcx>(v: &ImmTy<'tcx>, cx: &impl HasDataLayout) -> InterpResult<'tcx, CArg> {
+    interp_ok(match v.layout.ty.kind() {
         // If the primitive provided can be converted to a type matching the type pattern
         // then create a `CArg` of this primitive value with the corresponding `CArg` constructor.
         // the ints
@@ -234,6 +268,11 @@ fn imm_to_carg<'tcx>(v: ImmTy<'tcx>, cx: &impl HasDataLayout) -> InterpResult<'t
         ty::Uint(UintTy::U64) => CArg::UInt64(v.to_scalar().to_u64()?),
         ty::Uint(UintTy::Usize) =>
             CArg::USize(v.to_scalar().to_target_usize(cx)?.try_into().unwrap()),
+        ty::RawPtr(..) => {
+            let s = v.to_scalar().to_pointer(cx)?.addr();
+            // This relies on the `expose_provenance` in `addr_from_alloc_id`.
+            CArg::RawPtr(std::ptr::with_exposed_provenance_mut(s.bytes_usize()))
+        }
         _ => throw_unsup_format!("unsupported argument type for native call: {}", v.layout.ty),
     })
 }

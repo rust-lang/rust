@@ -1,0 +1,14 @@
+error[E0726]: implicit elided lifetime not allowed here
+  --> $DIR/skip-reporting-if-references-err.rs:6:9
+   |
+LL | impl<T> ToUnit for T {}
+   |         ^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL | impl<T> ToUnit<'_> for T {}
+   |               ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0726`.

@@ -1,17 +1,17 @@
 error: invalid asm output
-  --> $DIR/type-check-1.rs:14:29
+  --> $DIR/type-check-1.rs:12:29
    |
 LL |         asm!("{}", out(reg) 1 + 2);
    |                             ^^^^^ cannot assign to this expression
 
 error: invalid asm output
-  --> $DIR/type-check-1.rs:16:31
+  --> $DIR/type-check-1.rs:14:31
    |
 LL |         asm!("{}", inout(reg) 1 + 2);
    |                               ^^^^^ cannot assign to this expression
 
 error[E0277]: the size for values of type `[u64]` cannot be known at compilation time
-  --> $DIR/type-check-1.rs:22:28
+  --> $DIR/type-check-1.rs:20:28
    |
 LL |         asm!("{}", in(reg) v[..]);
    |                            ^^^^^ doesn't have a size known at compile-time
@@ -20,7 +20,7 @@ LL |         asm!("{}", in(reg) v[..]);
    = note: all inline asm arguments must have a statically known size
 
 error[E0277]: the size for values of type `[u64]` cannot be known at compilation time
-  --> $DIR/type-check-1.rs:25:29
+  --> $DIR/type-check-1.rs:23:29
    |
 LL |         asm!("{}", out(reg) v[..]);
    |                             ^^^^^ doesn't have a size known at compile-time
@@ -29,7 +29,7 @@ LL |         asm!("{}", out(reg) v[..]);
    = note: all inline asm arguments must have a statically known size
 
 error[E0277]: the size for values of type `[u64]` cannot be known at compilation time
-  --> $DIR/type-check-1.rs:28:31
+  --> $DIR/type-check-1.rs:26:31
    |
 LL |         asm!("{}", inout(reg) v[..]);
    |                               ^^^^^ doesn't have a size known at compile-time
@@ -38,7 +38,7 @@ LL |         asm!("{}", inout(reg) v[..]);
    = note: all inline asm arguments must have a statically known size
 
 error: cannot use value of type `[u64]` for inline assembly
-  --> $DIR/type-check-1.rs:22:28
+  --> $DIR/type-check-1.rs:20:28
    |
 LL |         asm!("{}", in(reg) v[..]);
    |                            ^^^^^
@@ -46,7 +46,7 @@ LL |         asm!("{}", in(reg) v[..]);
    = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: cannot use value of type `[u64]` for inline assembly
-  --> $DIR/type-check-1.rs:25:29
+  --> $DIR/type-check-1.rs:23:29
    |
 LL |         asm!("{}", out(reg) v[..]);
    |                             ^^^^^
@@ -54,7 +54,7 @@ LL |         asm!("{}", out(reg) v[..]);
    = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: cannot use value of type `[u64]` for inline assembly
-  --> $DIR/type-check-1.rs:28:31
+  --> $DIR/type-check-1.rs:26:31
    |
 LL |         asm!("{}", inout(reg) v[..]);
    |                               ^^^^^

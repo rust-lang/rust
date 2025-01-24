@@ -1,5 +1,5 @@
 error: Undefined Behavior: interpreting an invalid 32-bit value as a char: $HEX
-  --> $DIR/invalid_char_match.rs:LL:CC
+  --> tests/fail/validity/invalid_char_match.rs:LL:CC
    |
 LL | /             match *ptr {
 LL | |                 '0' => ret,
@@ -10,9 +10,9 @@ LL | |             }
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `switch_int` at $DIR/invalid_char_match.rs:LL:CC
+   = note: inside `switch_int` at tests/fail/validity/invalid_char_match.rs:LL:CC
 note: inside `main`
-  --> $DIR/invalid_char_match.rs:LL:CC
+  --> tests/fail/validity/invalid_char_match.rs:LL:CC
    |
 LL |     switch_int(&v as *const u32 as *const char);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

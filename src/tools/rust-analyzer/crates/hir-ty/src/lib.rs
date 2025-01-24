@@ -15,14 +15,15 @@ extern crate rustc_abi;
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_abi as rustc_abi;
 
-// Use the crates.io version unconditionally until the API settles enough that we can switch to
-// using the in-tree one.
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_pattern_analysis;
+
+#[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
 
 mod builder;
 mod chalk_db;
 mod chalk_ext;
-mod generics;
 mod infer;
 mod inhabitedness;
 mod interner;
@@ -36,6 +37,8 @@ pub mod consteval;
 pub mod db;
 pub mod diagnostics;
 pub mod display;
+pub mod dyn_compatibility;
+pub mod generics;
 pub mod lang_items;
 pub mod layout;
 pub mod method_resolution;
@@ -47,13 +50,11 @@ pub mod traits;
 mod test_db;
 #[cfg(test)]
 mod tests;
+mod variance;
 
-use std::{
-    collections::hash_map::Entry,
-    hash::{BuildHasherDefault, Hash},
-};
+use std::hash::Hash;
 
-use base_db::salsa::InternValueTrivial;
+use base_db::ra_salsa::InternValueTrivial;
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
@@ -62,10 +63,12 @@ use chalk_ir::{
 use either::Either;
 use hir_def::{hir::ExprId, type_ref::Rawness, CallableDefId, GeneralConstId, TypeOrConstParamId};
 use hir_expand::name::Name;
+use indexmap::{map::Entry, IndexMap};
 use intern::{sym, Symbol};
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
+use span::Edition;
 use syntax::ast::{make, ConstArg};
 use traits::FnTrait;
 use triomphe::Arc;
@@ -79,14 +82,16 @@ pub use autoderef::autoderef;
 pub use builder::{ParamKind, TyBuilder};
 pub use chalk_ext::*;
 pub use infer::{
+    cast::CastError,
     closure::{CaptureKind, CapturedItem},
     could_coerce, could_unify, could_unify_deeply, Adjust, Adjustment, AutoBorrow, BindingMode,
-    InferenceDiagnostic, InferenceResult, OverloadedDeref, PointerCast,
+    InferenceDiagnostic, InferenceResult, InferenceTyDiagnosticSource, OverloadedDeref,
+    PointerCast,
 };
 pub use interner::Interner;
 pub use lower::{
-    associated_type_shorthand_candidates, ImplTraitLoweringMode, ParamLoweringMode, TyDefId,
-    TyLoweringContext, ValueTyDefId,
+    associated_type_shorthand_candidates, diagnostics::*, ImplTraitLoweringMode, ParamLoweringMode,
+    TyDefId, TyLoweringContext, ValueTyDefId,
 };
 pub use mapping::{
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
@@ -95,7 +100,8 @@ pub use mapping::{
 };
 pub use method_resolution::check_orphan_rules;
 pub use traits::TraitEnvironment;
-pub use utils::{all_super_traits, is_fn_unsafe_to_call};
+pub use utils::{all_super_traits, direct_super_traits, is_fn_unsafe_to_call};
+pub use variance::Variance;
 
 pub use chalk_ir::{
     cast::Cast,
@@ -194,7 +200,7 @@ pub enum MemoryMap {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ComplexMemoryMap {
-    memory: FxHashMap<usize, Box<[u8]>>,
+    memory: IndexMap<usize, Box<[u8]>, FxBuildHasher>,
     vtable: VTableMap,
 }
 
@@ -240,7 +246,7 @@ impl MemoryMap {
         match self {
             MemoryMap::Empty => Ok(Default::default()),
             MemoryMap::Simple(m) => transform((&0, m)).map(|(addr, val)| {
-                let mut map = FxHashMap::with_capacity_and_hasher(1, BuildHasherDefault::default());
+                let mut map = FxHashMap::with_capacity_and_hasher(1, rustc_hash::FxBuildHasher);
                 map.insert(addr, val);
                 map
             }),
@@ -374,6 +380,7 @@ pub enum FnAbi {
     AvrNonBlockingInterrupt,
     C,
     CCmseNonsecureCall,
+    CCmseNonsecureEntry,
     CDecl,
     CDeclUnwind,
     CUnwind,
@@ -381,7 +388,6 @@ pub enum FnAbi {
     Fastcall,
     FastcallUnwind,
     Msp430Interrupt,
-    PlatformIntrinsic,
     PtxKernel,
     RiscvInterruptM,
     RiscvInterruptS,
@@ -431,6 +437,7 @@ impl FnAbi {
             s if *s == sym::avr_dash_interrupt => FnAbi::AvrInterrupt,
             s if *s == sym::avr_dash_non_dash_blocking_dash_interrupt => FnAbi::AvrNonBlockingInterrupt,
             s if *s == sym::C_dash_cmse_dash_nonsecure_dash_call => FnAbi::CCmseNonsecureCall,
+            s if *s == sym::C_dash_cmse_dash_nonsecure_dash_entry => FnAbi::CCmseNonsecureEntry,
             s if *s == sym::C_dash_unwind => FnAbi::CUnwind,
             s if *s == sym::C => FnAbi::C,
             s if *s == sym::cdecl_dash_unwind => FnAbi::CDeclUnwind,
@@ -439,7 +446,6 @@ impl FnAbi {
             s if *s == sym::fastcall_dash_unwind => FnAbi::FastcallUnwind,
             s if *s == sym::fastcall => FnAbi::Fastcall,
             s if *s == sym::msp430_dash_interrupt => FnAbi::Msp430Interrupt,
-            s if *s == sym::platform_dash_intrinsic => FnAbi::PlatformIntrinsic,
             s if *s == sym::ptx_dash_kernel => FnAbi::PtxKernel,
             s if *s == sym::riscv_dash_interrupt_dash_m => FnAbi::RiscvInterruptM,
             s if *s == sym::riscv_dash_interrupt_dash_s => FnAbi::RiscvInterruptS,
@@ -474,6 +480,7 @@ impl FnAbi {
             FnAbi::AvrNonBlockingInterrupt => "avr-non-blocking-interrupt",
             FnAbi::C => "C",
             FnAbi::CCmseNonsecureCall => "C-cmse-nonsecure-call",
+            FnAbi::CCmseNonsecureEntry => "C-cmse-nonsecure-entry",
             FnAbi::CDecl => "C-decl",
             FnAbi::CDeclUnwind => "cdecl-unwind",
             FnAbi::CUnwind => "C-unwind",
@@ -481,7 +488,6 @@ impl FnAbi {
             FnAbi::Fastcall => "fastcall",
             FnAbi::FastcallUnwind => "fastcall-unwind",
             FnAbi::Msp430Interrupt => "msp430-interrupt",
-            FnAbi::PlatformIntrinsic => "platform-intrinsic",
             FnAbi::PtxKernel => "ptx-kernel",
             FnAbi::RiscvInterruptM => "riscv-interrupt-m",
             FnAbi::RiscvInterruptS => "riscv-interrupt-s",
@@ -595,7 +601,7 @@ impl TypeFoldable<Interner> for CallableSig {
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum ImplTraitId {
     ReturnTypeImplTrait(hir_def::FunctionId, ImplTraitIdx),
-    AssociatedTypeImplTrait(hir_def::TypeAliasId, ImplTraitIdx),
+    TypeAliasImplTrait(hir_def::TypeAliasId, ImplTraitIdx),
     AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
 impl InternValueTrivial for ImplTraitId {}
@@ -640,7 +646,7 @@ pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<
             F2: FnMut(Ty, BoundVar, DebruijnIndex) -> Const,
         > TypeFolder<Interner> for FreeVarFolder<F1, F2>
     {
-        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
+        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner> {
             self
         }
 
@@ -691,7 +697,7 @@ pub(crate) fn fold_tys_and_consts<T: HasInterner<Interner = Interner> + TypeFold
     impl<F: FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const>> TypeFolder<Interner>
         for TyFolder<F>
     {
-        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
+        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner> {
             self
         }
 
@@ -1025,7 +1031,11 @@ where
     collector.placeholders.into_iter().collect()
 }
 
-pub fn known_const_to_ast(konst: &Const, db: &dyn HirDatabase) -> Option<ConstArg> {
+pub fn known_const_to_ast(
+    konst: &Const,
+    db: &dyn HirDatabase,
+    edition: Edition,
+) -> Option<ConstArg> {
     if let ConstValue::Concrete(c) = &konst.interned().value {
         match c.interned {
             ConstScalar::UnevaluatedConst(GeneralConstId::InTypeConstId(cid), _) => {
@@ -1035,5 +1045,5 @@ pub fn known_const_to_ast(konst: &Const, db: &dyn HirDatabase) -> Option<ConstAr
             _ => (),
         }
     }
-    Some(make::expr_const_value(konst.display(db).to_string().as_str()))
+    Some(make::expr_const_value(konst.display(db, edition).to_string().as_str()))
 }

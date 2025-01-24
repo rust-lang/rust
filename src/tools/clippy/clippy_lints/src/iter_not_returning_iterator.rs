@@ -4,7 +4,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{FnSig, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -70,12 +70,12 @@ fn check_sig(cx: &LateContext<'_>, name: Symbol, sig: &FnSig<'_>, fn_id: LocalDe
             .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(fn_id).instantiate_identity().output());
         let ret_ty = cx
             .tcx
-            .try_normalize_erasing_regions(cx.param_env, ret_ty)
+            .try_normalize_erasing_regions(cx.typing_env(), ret_ty)
             .unwrap_or(ret_ty);
         if cx
             .tcx
             .get_diagnostic_item(sym::Iterator)
-            .map_or(false, |iter_id| !implements_trait(cx, ret_ty, iter_id, &[]))
+            .is_some_and(|iter_id| !implements_trait(cx, ret_ty, iter_id, &[]))
         {
             span_lint(
                 cx,

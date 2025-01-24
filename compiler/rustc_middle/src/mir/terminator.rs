@@ -5,7 +5,7 @@ use std::slice;
 use rustc_data_structures::packed::Pu128;
 use rustc_hir::LangItem;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 
 use super::{TerminatorKind, *};
 
@@ -65,6 +65,17 @@ impl SwitchTargets {
     #[inline]
     pub fn all_targets_mut(&mut self) -> &mut [BasicBlock] {
         &mut self.targets
+    }
+
+    /// Returns a slice with all considered values (not including the fallback).
+    #[inline]
+    pub fn all_values(&self) -> &[Pu128] {
+        &self.values
+    }
+
+    #[inline]
+    pub fn all_values_mut(&mut self) -> &mut [Pu128] {
+        &mut self.values
     }
 
     /// Finds the `BasicBlock` to which this `SwitchInt` will branch given the
@@ -413,6 +424,17 @@ mod helper {
     use super::*;
     pub type Successors<'a> = impl DoubleEndedIterator<Item = BasicBlock> + 'a;
     pub type SuccessorsMut<'a> = impl DoubleEndedIterator<Item = &'a mut BasicBlock> + 'a;
+
+    impl SwitchTargets {
+        /// Like [`SwitchTargets::target_for_value`], but returning the same type as
+        /// [`Terminator::successors`].
+        #[inline]
+        pub fn successors_for_value(&self, value: u128) -> Successors<'_> {
+            let target = self.target_for_value(value);
+            (&[]).into_iter().copied().chain(Some(target))
+        }
+    }
+
     impl<'tcx> TerminatorKind<'tcx> {
         #[inline]
         pub fn successors(&self) -> Successors<'_> {
@@ -655,6 +677,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             },
 
             InlineAsm {
+                asm_macro: _,
                 template: _,
                 ref operands,
                 options: _,

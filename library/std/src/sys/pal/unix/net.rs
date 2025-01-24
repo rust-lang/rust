@@ -1,4 +1,4 @@
-use libc::{c_int, c_void, size_t, sockaddr, socklen_t, MSG_PEEK};
+use libc::{MSG_PEEK, c_int, c_void, size_t, sockaddr, socklen_t};
 
 use crate::ffi::CStr;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut};
@@ -38,19 +38,19 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
     // We may need to trigger a glibc workaround. See on_resolver_failure() for details.
     on_resolver_failure();
 
-    #[cfg(not(target_os = "espidf"))]
+    #[cfg(not(any(target_os = "espidf", target_os = "nuttx")))]
     if err == libc::EAI_SYSTEM {
         return Err(io::Error::last_os_error());
     }
 
-    #[cfg(not(target_os = "espidf"))]
+    #[cfg(not(any(target_os = "espidf", target_os = "nuttx")))]
     let detail = unsafe {
         // We can't always expect a UTF-8 environment. When we don't get that luxury,
         // it's better to give a low-quality error message than none at all.
         CStr::from_ptr(libc::gai_strerror(err)).to_string_lossy()
     };
 
-    #[cfg(target_os = "espidf")]
+    #[cfg(any(target_os = "espidf", target_os = "nuttx"))]
     let detail = "";
 
     Err(io::Error::new(
@@ -81,6 +81,7 @@ impl Socket {
                     target_os = "netbsd",
                     target_os = "openbsd",
                     target_os = "nto",
+                    target_os = "solaris",
                 ))] {
                     // On platforms that support it we pass the SOCK_CLOEXEC
                     // flag to atomically create the socket and set it as
@@ -190,7 +191,7 @@ impl Socket {
         loop {
             let elapsed = start.elapsed();
             if elapsed >= timeout {
-                return Err(io::const_io_error!(io::ErrorKind::TimedOut, "connection timed out"));
+                return Err(io::const_error!(io::ErrorKind::TimedOut, "connection timed out"));
             }
 
             let timeout = timeout - elapsed;
@@ -215,7 +216,7 @@ impl Socket {
                 _ => {
                     if cfg!(target_os = "vxworks") {
                         // VxWorks poll does not return  POLLHUP or POLLERR in revents. Check if the
-                        // connnection actually succeeded and return ok only when the socket is
+                        // connection actually succeeded and return ok only when the socket is
                         // ready and no errors were found.
                         if let Some(e) = self.take_error()? {
                             return Err(e);
@@ -225,7 +226,7 @@ impl Socket {
                         // for POLLHUP or POLLERR rather than read readiness
                         if pollfd.revents & (libc::POLLHUP | libc::POLLERR) != 0 {
                             let e = self.take_error()?.unwrap_or_else(|| {
-                                io::const_io_error!(
+                                io::const_error!(
                                     io::ErrorKind::Uncategorized,
                                     "no error set after POLLHUP",
                                 )
@@ -329,7 +330,7 @@ impl Socket {
                 buf.as_mut_ptr() as *mut c_void,
                 buf.len(),
                 flags,
-                core::ptr::addr_of_mut!(storage) as *mut _,
+                (&raw mut storage) as *mut _,
                 &mut addrlen,
             )
         })?;

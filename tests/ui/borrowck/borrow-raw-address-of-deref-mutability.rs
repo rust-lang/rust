@@ -1,7 +1,5 @@
 // Check that `&raw mut` cannot be used to turn a `&T` into a `*mut T`.
 
-#![feature(raw_ref_op)]
-
 fn raw_reborrow() {
     let x = &0;
 

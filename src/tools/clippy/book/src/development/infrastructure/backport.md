@@ -5,68 +5,108 @@ Backports in Clippy are rare and should be approved by the Clippy team. For
 example, a backport is done, if a crucial ICE was fixed or a lint is broken to a
 point, that it has to be disabled, before landing on stable.
 
-Backports are done to the `beta` branch of Clippy. Backports to stable Clippy
-releases basically don't exist, since this would require a Rust point release,
-which is almost never justifiable for a Clippy fix.
+> Note: If you think a PR should be backported you can label it with
+> `beta-nominated`. This has to be done before the Thursday the week before the
+> release.
 
+## Filtering PRs to backport
+
+First, find all labeled PRs using [this filter][beta-accepted-prs].
+
+Next, look at each PR individually. There are a few things to check. Those need
+some explanation and are quite subjective. Good judgement is required.
+
+1. **Is the fix worth a backport?**
+
+   This is really subjective. An ICE fix usually is. Moving a lint to a _lower_
+   group (from warn- to allow-by-default) usually as well. An FP fix usually not
+   (on its own). If a backport is done anyway, FP fixes might also be included.
+   If the PR has a lot of changes, backports must be considered more carefully.
+
+2. **Is the problem that was fixed by the PR already in `beta`?**
+
+   It could be that the problem that was fixed by the PR hasn't made it to the
+   `beta` branch of the Rust repo yet. If that's the case, and the fix is
+   already synced to the Rust repo, the fix doesn't need to be backported, as it
+   will hit stable together with the commit that introduced the problem. If the
+   fix PR is not synced yet, the fix PR either needs to be "backported" to the
+   Rust `master` branch or to `beta` in the next backport cycle.
+
+3. **Make sure that the fix is on `master` before porting to `beta`**
+
+   The fix must already be synced to the Rust `master` branch. Otherwise, the
+   next `beta` will be missing this fix again. If it is not yet in `master` it
+   should probably not be backported. If the backport is really important, do an
+   out-of-cycle sync first. However, the out-of-cycle sync should be small,
+   because the changes in that sync will get right into `beta`, without being
+   tested in `nightly` first.
+
+[beta-accepted-prs]: https://github.com/rust-lang/rust-clippy/issues?q=label%3Abeta-nominated
+
+## Preparation
+
+> Note: All commands in this chapter will be run in the Rust clone.
+
+Follow the instructions in [defining remotes] to define the `clippy-upstream`
+remote in the Rust repository.
+
+After that, fetch the remote with
+
+```bash
+git fetch clippy-upstream master
+```
+
+Then, switch to the `beta` branch:
+
+```bash
+git switch beta
+git fetch upstream
+git reset --hard upstream/beta
+```
+
+[defining remotes]: release.md#defining-remotes
 
 ## Backport the changes
 
-Backports are done on the beta branch of the Clippy repository.
+When a PR is merged with the GitHub merge queue, the PR is closed with the message
+
+> \<PR title\> (#\<PR number\>)
+
+This commit needs to be backported. To do that, find the `<sha1>` of that commit
+and run the following command in the clone of the **Rust repository**:
 
 ```bash
-# Assuming the current directory corresponds to the Clippy repository
-$ git checkout beta
-$ git checkout -b backport
-$ git cherry-pick <SHA>  # `<SHA>` is the commit hash of the commit(s), that should be backported
-$ git push origin backport
+git cherry-pick -m 1 `<sha1>`
 ```
 
-Now you should test that the backport passes all the tests in the Rust
-repository. You can do this with:
+Do this for all PRs that should be backported.
 
-```bash
-# Assuming the current directory corresponds to the Rust repository
-$ git checkout beta
-# Make sure to change `your-github-name` to your github name in the following command
-$ git subtree pull -p src/tools/clippy https://github.com/<your-github-name>/rust-clippy backport
-$ ./x.py test src/tools/clippy
+## Open PR in the Rust repository
+
+Next, open the PR for the backport. Make sure, the PR is opened towards the
+`beta` branch and not the `master` branch. The PR description should look like
+this:
+
+```
+[beta] Clippy backports
+
+r? @Mark-Simulacrum
+
+Backports:
+- <Link to the Clippy PR>
+- ...
+
+<Short summary of what is backported and why>
 ```
 
-Should the test fail, you can fix Clippy directly in the Rust repository. This
-has to be first applied to the Clippy beta branch and then again synced to the
-Rust repository, though. The easiest way to do this is:
+Mark is from the release team and they ultimately have to merge the PR before
+branching a new `beta` version. Tag them to take care of the backport. Next,
+list all the backports and give a short summary what's backported and why it is
+worth backporting this.
 
-```bash
-# In the Rust repository
-$ git diff --patch --relative=src/tools/clippy > clippy.patch
-# In the Clippy repository
-$ git apply /path/to/clippy.patch
-$ git add -u
-$ git commit -m "Fix rustup fallout"
-$ git push origin backport
-```
+## Relabel backported PRs
 
-After this, you can open a PR to the `beta` branch of the Clippy repository.
+When a PR is backported to Rust `beta`, label the PR with `beta-accepted`. This
+will then get picked up when [writing the changelog].
 
-
-## Update Clippy in the Rust Repository
-
-This step must be done, **after** the PR of the previous step was merged.
-
-After the backport landed in the Clippy repository, the branch has to be synced
-back to the beta branch of the Rust repository.
-
-```bash
-# Assuming the current directory corresponds to the Rust repository
-$ git checkout beta
-$ git checkout -b clippy_backport
-$ git subtree pull -p src/tools/clippy https://github.com/rust-lang/rust-clippy beta
-$ git push origin clippy_backport
-```
-
-Make sure to test the backport in the Rust repository before opening a PR. This
-is done with `./x.py test src/tools/clippy`. If that passes all tests, open a PR
-to the `beta` branch of the Rust repository. In this PR you should tag the
-Clippy team member, that agreed to the backport or the `@rust-lang/clippy` team.
-Make sure to add `[beta]` to the title of the PR.
+[writing the changelog]: changelog_update.md#31-include-beta-accepted-prs

@@ -26,7 +26,5 @@ type A = <m::Alias as m::Trait>::X; //~ ERROR type `Priv` is private
 trait Tr2<T> {}
 impl<T> Tr2<T> for u8 {}
 fn g() -> impl Tr2<m::Alias> { 0 } //~ ERROR type `Priv` is private
-                                   //~| ERROR type `Priv` is private
 fn g_ext() -> impl Tr2<ext::Alias> { 0 } //~ ERROR type `ext::Priv` is private
-                                         //~| ERROR type `ext::Priv` is private
 fn main() {}

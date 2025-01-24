@@ -10,16 +10,45 @@
 //! and we do not detect copying of the lock, but macOS doesn't guarantee anything
 //! in that case either.
 
+use rustc_abi::Size;
+
 use crate::*;
+
+#[derive(Clone)]
+enum MacOsUnfairLock {
+    Poisoned,
+    Active { mutex_ref: MutexRef },
+}
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn os_unfair_lock_getid(&mut self, lock_op: &OpTy<'tcx>) -> InterpResult<'tcx, MutexId> {
+    fn os_unfair_lock_get_data<'a>(
+        &'a mut self,
+        lock_ptr: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, &'a MacOsUnfairLock>
+    where
+        'tcx: 'a,
+    {
         let this = self.eval_context_mut();
-        // os_unfair_lock holds a 32-bit value, is initialized with zero and
-        // must be assumed to be opaque. Therefore, we can just store our
-        // internal mutex ID in the structure without anyone noticing.
-        this.mutex_get_or_create_id(lock_op, this.libc_ty_layout("os_unfair_lock"), 0)
+        let lock = this.deref_pointer(lock_ptr)?;
+        this.lazy_sync_get_data(
+            &lock,
+            Size::ZERO, // offset for init tracking
+            || {
+                // If we get here, due to how we reset things to zero in `os_unfair_lock_unlock`,
+                // this means the lock was moved while locked. This can happen with a `std` lock,
+                // but then any future attempt to unlock will just deadlock. In practice, terrible
+                // things can probably happen if you swap two locked locks, since they'd wake up
+                // from the wrong queue... we just won't catch all UB of this library API then (we
+                // would need to store some unique identifer in-memory for this, instead of a static
+                // LAZY_INIT_COOKIE). This can't be hit via `std::sync::Mutex`.
+                interp_ok(MacOsUnfairLock::Poisoned)
+            },
+            |ecx| {
+                let mutex_ref = ecx.machine.sync.mutex_create();
+                interp_ok(MacOsUnfairLock::Active { mutex_ref })
+            },
+        )
     }
 }
 
@@ -28,21 +57,36 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn os_unfair_lock_lock(&mut self, lock_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let id = this.os_unfair_lock_getid(lock_op)?;
-        if this.mutex_is_locked(id) {
-            if this.mutex_get_owner(id) == this.active_thread() {
+        let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
+            // Trying to get a poisoned lock. Just block forever...
+            this.block_thread(
+                BlockReason::Sleep,
+                None,
+                callback!(
+                    @capture<'tcx> {}
+                    |_this, _unblock: UnblockKind| {
+                        panic!("we shouldn't wake up ever")
+                    }
+                ),
+            );
+            return interp_ok(());
+        };
+        let mutex_ref = mutex_ref.clone();
+
+        if this.mutex_is_locked(&mutex_ref) {
+            if this.mutex_get_owner(&mutex_ref) == this.active_thread() {
                 // Matching the current macOS implementation: abort on reentrant locking.
                 throw_machine_stop!(TerminationInfo::Abort(
                     "attempted to lock an os_unfair_lock that is already locked by the current thread".to_owned()
                 ));
             }
 
-            this.mutex_enqueue_and_block(id, None);
+            this.mutex_enqueue_and_block(&mutex_ref, None);
         } else {
-            this.mutex_lock(id);
+            this.mutex_lock(&mutex_ref);
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     fn os_unfair_lock_trylock(
@@ -52,56 +96,102 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let id = this.os_unfair_lock_getid(lock_op)?;
-        if this.mutex_is_locked(id) {
+        let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
+            // Trying to get a poisoned lock. That never works.
+            this.write_scalar(Scalar::from_bool(false), dest)?;
+            return interp_ok(());
+        };
+        let mutex_ref = mutex_ref.clone();
+
+        if this.mutex_is_locked(&mutex_ref) {
             // Contrary to the blocking lock function, this does not check for
             // reentrancy.
             this.write_scalar(Scalar::from_bool(false), dest)?;
         } else {
-            this.mutex_lock(id);
+            this.mutex_lock(&mutex_ref);
             this.write_scalar(Scalar::from_bool(true), dest)?;
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     fn os_unfair_lock_unlock(&mut self, lock_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let id = this.os_unfair_lock_getid(lock_op)?;
-        if this.mutex_unlock(id)?.is_none() {
+        let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
+            // The lock is poisoned, who knows who owns it... we'll pretend: someone else.
+            throw_machine_stop!(TerminationInfo::Abort(
+                "attempted to unlock an os_unfair_lock not owned by the current thread".to_owned()
+            ));
+        };
+        let mutex_ref = mutex_ref.clone();
+
+        // Now, unlock.
+        if this.mutex_unlock(&mutex_ref)?.is_none() {
             // Matching the current macOS implementation: abort.
             throw_machine_stop!(TerminationInfo::Abort(
                 "attempted to unlock an os_unfair_lock not owned by the current thread".to_owned()
             ));
         }
 
-        Ok(())
+        // If the lock is not locked by anyone now, it went quer.
+        // Reset to zero so that it can be moved and initialized again for the next phase.
+        if !this.mutex_is_locked(&mutex_ref) {
+            let lock_place = this.deref_pointer_as(lock_op, this.machine.layouts.u32)?;
+            this.write_scalar_atomic(Scalar::from_u32(0), &lock_place, AtomicWriteOrd::Relaxed)?;
+        }
+
+        interp_ok(())
     }
 
     fn os_unfair_lock_assert_owner(&mut self, lock_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let id = this.os_unfair_lock_getid(lock_op)?;
-        if !this.mutex_is_locked(id) || this.mutex_get_owner(id) != this.active_thread() {
+        let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
+            // The lock is poisoned, who knows who owns it... we'll pretend: someone else.
+            throw_machine_stop!(TerminationInfo::Abort(
+                "called os_unfair_lock_assert_owner on an os_unfair_lock not owned by the current thread".to_owned()
+            ));
+        };
+        let mutex_ref = mutex_ref.clone();
+
+        if !this.mutex_is_locked(&mutex_ref)
+            || this.mutex_get_owner(&mutex_ref) != this.active_thread()
+        {
             throw_machine_stop!(TerminationInfo::Abort(
                 "called os_unfair_lock_assert_owner on an os_unfair_lock not owned by the current thread".to_owned()
             ));
         }
 
-        Ok(())
+        // The lock is definitely not quiet since we are the owner.
+
+        interp_ok(())
     }
 
     fn os_unfair_lock_assert_not_owner(&mut self, lock_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let id = this.os_unfair_lock_getid(lock_op)?;
-        if this.mutex_is_locked(id) && this.mutex_get_owner(id) == this.active_thread() {
+        let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
+            // The lock is poisoned, who knows who owns it... we'll pretend: someone else.
+            return interp_ok(());
+        };
+        let mutex_ref = mutex_ref.clone();
+
+        if this.mutex_is_locked(&mutex_ref)
+            && this.mutex_get_owner(&mutex_ref) == this.active_thread()
+        {
             throw_machine_stop!(TerminationInfo::Abort(
                 "called os_unfair_lock_assert_not_owner on an os_unfair_lock owned by the current thread".to_owned()
             ));
         }
 
-        Ok(())
+        // If the lock is not locked by anyone now, it went quer.
+        // Reset to zero so that it can be moved and initialized again for the next phase.
+        if !this.mutex_is_locked(&mutex_ref) {
+            let lock_place = this.deref_pointer_as(lock_op, this.machine.layouts.u32)?;
+            this.write_scalar_atomic(Scalar::from_u32(0), &lock_place, AtomicWriteOrd::Relaxed)?;
+        }
+
+        interp_ok(())
     }
 }

@@ -1,27 +1,38 @@
 //@ only-linux
 //@ ignore-wasm32
 //@ ignore-wasm64
+// ignore-tidy-linelength
 
-use run_make_support::rfs::copy;
-use run_make_support::{assert_contains, rust_lib_name, rustc};
+use run_make_support::{diff, rust_lib_name, rustc};
 
 fn main() {
     rustc().input("multiple-dep-versions-1.rs").run();
     rustc().input("multiple-dep-versions-2.rs").extra_filename("2").metadata("2").run();
+    rustc()
+        .input("multiple-dep-versions-3.rs")
+        .extern_("dependency", rust_lib_name("dependency2"))
+        .run();
 
     let out = rustc()
         .input("multiple-dep-versions.rs")
         .extern_("dependency", rust_lib_name("dependency"))
-        .extern_("dep_2_reexport", rust_lib_name("dependency2"))
+        .extern_("dep_2_reexport", rust_lib_name("foo"))
+        .ui_testing()
         .run_fail()
-        .assert_stderr_contains(
-            "you have multiple different versions of crate `dependency` in your dependency graph",
-        )
-        .assert_stderr_contains(
-            "two types coming from two different versions of the same crate are different types \
-             even if they look the same",
-        )
-        .assert_stderr_contains("this type doesn't implement the required trait")
-        .assert_stderr_contains("this type implements the required trait")
-        .assert_stderr_contains("this is the required trait");
+        .stderr_utf8();
+
+    // We don't remap all the paths, so we remap it here.
+    let mut lines: Vec<_> = out.lines().collect();
+    for line in &mut lines {
+        if line.starts_with("  --> ") {
+            *line = "  --> replaced";
+        }
+        if line.starts_with("  ::: ") {
+            *line = "  ::: replaced";
+        }
+    }
+    diff()
+        .expected_file("multiple-dep-versions.stderr")
+        .actual_text("(rustc)", &lines.join("\n"))
+        .run();
 }

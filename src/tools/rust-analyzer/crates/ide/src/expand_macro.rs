@@ -1,8 +1,11 @@
-use hir::{DescendPreference, InFile, MacroFileIdExt, Semantics};
+use hir::db::ExpandDatabase;
+use hir::{ExpandResult, InFile, MacroFileIdExt, Semantics};
+use ide_db::base_db::CrateId;
 use ide_db::{
-    helpers::pick_best_token, syntax_helpers::insert_whitespace_into_node::insert_ws_into, FileId,
-    RootDatabase,
+    helpers::pick_best_token, syntax_helpers::prettify_macro_expansion, FileId, RootDatabase,
 };
+use span::{Edition, SpanMap, SyntaxContextId, TextRange, TextSize};
+use stdx::format_to;
 use syntax::{ast, ted, AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T};
 
 use crate::FilePosition;
@@ -26,6 +29,7 @@ pub struct ExpandedMacro {
 pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<ExpandedMacro> {
     let sema = Semantics::new(db);
     let file = sema.parse_guess_edition(position.file_id);
+    let krate = sema.file_to_module_def(position.file_id)?.krate().into();
 
     let tok = pick_best_token(file.syntax().token_at_offset(position.offset), |kind| match kind {
         SyntaxKind::IDENT => 1,
@@ -40,51 +44,68 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     // struct Bar;
     // ```
 
-    let derive = sema
-        .descend_into_macros(DescendPreference::None, tok.clone())
-        .into_iter()
-        .find_map(|descended| {
-            let macro_file = sema.hir_file_for(&descended.parent()?).macro_file()?;
-            if !macro_file.is_derive_attr_pseudo_expansion(db) {
-                return None;
-            }
+    let derive = sema.descend_into_macros_exact(tok.clone()).into_iter().find_map(|descended| {
+        let macro_file = sema.hir_file_for(&descended.parent()?).macro_file()?;
+        if !macro_file.is_derive_attr_pseudo_expansion(db) {
+            return None;
+        }
 
-            let name = descended.parent_ancestors().filter_map(ast::Path::cast).last()?.to_string();
-            // up map out of the #[derive] expansion
-            let InFile { file_id, value: tokens } =
-                hir::InMacroFile::new(macro_file, descended).upmap_once(db);
-            let token = sema.parse_or_expand(file_id).covering_element(tokens[0]).into_token()?;
-            let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
-            let expansions = sema.expand_derive_macro(&attr)?;
-            let idx = attr
-                .token_tree()?
-                .token_trees_and_tokens()
-                .filter_map(NodeOrToken::into_token)
-                .take_while(|it| it != &token)
-                .filter(|it| it.kind() == T![,])
-                .count();
-            let expansion = format(
-                db,
-                SyntaxKind::MACRO_ITEMS,
-                position.file_id,
-                expansions.get(idx).cloned()?,
+        let name = descended.parent_ancestors().filter_map(ast::Path::cast).last()?.to_string();
+        // up map out of the #[derive] expansion
+        let InFile { file_id, value: tokens } =
+            hir::InMacroFile::new(macro_file, descended).upmap_once(db);
+        let token = sema.parse_or_expand(file_id).covering_element(tokens[0]).into_token()?;
+        let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
+        let expansions = sema.expand_derive_macro(&attr)?;
+        let idx = attr
+            .token_tree()?
+            .token_trees_and_tokens()
+            .filter_map(NodeOrToken::into_token)
+            .take_while(|it| it != &token)
+            .filter(|it| it.kind() == T![,])
+            .count();
+        let ExpandResult { err, value: expansion } = expansions.get(idx)?.clone();
+        let expansion_file_id = sema.hir_file_for(&expansion).macro_file()?;
+        let expansion_span_map = db.expansion_span_map(expansion_file_id);
+        let mut expansion = format(
+            db,
+            SyntaxKind::MACRO_ITEMS,
+            position.file_id,
+            expansion,
+            &expansion_span_map,
+            krate,
+        );
+        if let Some(err) = err {
+            expansion.insert_str(
+                0,
+                &format!("Expansion had errors: {}\n\n", err.render_to_string(sema.db)),
             );
-            Some(ExpandedMacro { name, expansion })
-        });
+        }
+        Some(ExpandedMacro { name, expansion })
+    });
 
     if derive.is_some() {
         return derive;
     }
 
     let mut anc = tok.parent_ancestors();
+    let mut span_map = SpanMap::empty();
+    let mut error = String::new();
     let (name, expanded, kind) = loop {
         let node = anc.next()?;
 
         if let Some(item) = ast::Item::cast(node.clone()) {
             if let Some(def) = sema.resolve_attr_macro_call(&item) {
                 break (
-                    def.name(db).display(db).to_string(),
-                    expand_macro_recur(&sema, &item)?,
+                    def.name(db)
+                        .display(
+                            db,
+                            sema.attach_first_edition(position.file_id)
+                                .map(|it| it.edition())
+                                .unwrap_or(Edition::CURRENT),
+                        )
+                        .to_string(),
+                    expand_macro_recur(&sema, &item, &mut error, &mut span_map, TextSize::new(0))?,
                     SyntaxKind::MACRO_ITEMS,
                 );
             }
@@ -94,52 +115,104 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             name.push('!');
             let syntax_kind =
                 mac.syntax().parent().map(|it| it.kind()).unwrap_or(SyntaxKind::MACRO_ITEMS);
-            break (name, expand_macro_recur(&sema, &ast::Item::MacroCall(mac))?, syntax_kind);
+            break (
+                name,
+                expand_macro_recur(
+                    &sema,
+                    &ast::Item::MacroCall(mac),
+                    &mut error,
+                    &mut span_map,
+                    TextSize::new(0),
+                )?,
+                syntax_kind,
+            );
         }
     };
 
     // FIXME:
     // macro expansion may lose all white space information
     // But we hope someday we can use ra_fmt for that
-    let expansion = format(db, kind, position.file_id, expanded);
+    let mut expansion = format(db, kind, position.file_id, expanded, &span_map, krate);
 
+    if !error.is_empty() {
+        expansion.insert_str(0, &format!("Expansion had errors:{error}\n\n"));
+    }
     Some(ExpandedMacro { name, expansion })
 }
 
 fn expand_macro_recur(
     sema: &Semantics<'_, RootDatabase>,
     macro_call: &ast::Item,
+    error: &mut String,
+    result_span_map: &mut SpanMap<SyntaxContextId>,
+    offset_in_original_node: TextSize,
 ) -> Option<SyntaxNode> {
-    let expanded = match macro_call {
-        item @ ast::Item::MacroCall(macro_call) => sema
-            .expand_attr_macro(item)
-            .or_else(|| sema.expand_allowed_builtins(macro_call))?
-            .clone_for_update(),
-        item => sema.expand_attr_macro(item)?.clone_for_update(),
+    let ExpandResult { value: expanded, err } = match macro_call {
+        item @ ast::Item::MacroCall(macro_call) => {
+            sema.expand_attr_macro(item).or_else(|| sema.expand_allowed_builtins(macro_call))?
+        }
+        item => sema.expand_attr_macro(item)?,
     };
-    expand(sema, expanded)
+    let expanded = expanded.clone_for_update();
+    if let Some(err) = err {
+        format_to!(error, "\n{}", err.render_to_string(sema.db));
+    }
+    let file_id =
+        sema.hir_file_for(&expanded).macro_file().expect("expansion must produce a macro file");
+    let expansion_span_map = sema.db.expansion_span_map(file_id);
+    result_span_map.merge(
+        TextRange::at(offset_in_original_node, macro_call.syntax().text_range().len()),
+        expanded.text_range().len(),
+        &expansion_span_map,
+    );
+    Some(expand(sema, expanded, error, result_span_map, u32::from(offset_in_original_node) as i32))
 }
 
-fn expand(sema: &Semantics<'_, RootDatabase>, expanded: SyntaxNode) -> Option<SyntaxNode> {
+fn expand(
+    sema: &Semantics<'_, RootDatabase>,
+    expanded: SyntaxNode,
+    error: &mut String,
+    result_span_map: &mut SpanMap<SyntaxContextId>,
+    mut offset_in_original_node: i32,
+) -> SyntaxNode {
     let children = expanded.descendants().filter_map(ast::Item::cast);
     let mut replacements = Vec::new();
 
     for child in children {
-        if let Some(new_node) = expand_macro_recur(sema, &child) {
+        if let Some(new_node) = expand_macro_recur(
+            sema,
+            &child,
+            error,
+            result_span_map,
+            TextSize::new(
+                (offset_in_original_node + (u32::from(child.syntax().text_range().start()) as i32))
+                    as u32,
+            ),
+        ) {
+            offset_in_original_node = offset_in_original_node
+                + (u32::from(new_node.text_range().len()) as i32)
+                - (u32::from(child.syntax().text_range().len()) as i32);
             // check if the whole original syntax is replaced
             if expanded == *child.syntax() {
-                return Some(new_node);
+                return new_node;
             }
             replacements.push((child, new_node));
         }
     }
 
     replacements.into_iter().rev().for_each(|(old, new)| ted::replace(old.syntax(), new));
-    Some(expanded)
+    expanded
 }
 
-fn format(db: &RootDatabase, kind: SyntaxKind, file_id: FileId, expanded: SyntaxNode) -> String {
-    let expansion = insert_ws_into(expanded).to_string();
+fn format(
+    db: &RootDatabase,
+    kind: SyntaxKind,
+    file_id: FileId,
+    expanded: SyntaxNode,
+    span_map: &SpanMap<SyntaxContextId>,
+    krate: CrateId,
+) -> String {
+    let expansion = prettify_macro_expansion(db, expanded, span_map, krate).to_string();
 
     _format(db, kind, file_id, &expansion).unwrap_or(expansion)
 }
@@ -180,6 +253,7 @@ fn _format(
     let &crate_id = db.relevant_crates(file_id).iter().next()?;
     let edition = db.crate_graph()[crate_id].edition;
 
+    #[allow(clippy::disallowed_methods)]
     let mut cmd = std::process::Command::new(toolchain::Tool::Rustfmt.path());
     cmd.arg("--edition");
     cmd.arg(edition.to_string());
@@ -222,7 +296,7 @@ mod tests {
     use crate::fixture;
 
     #[track_caller]
-    fn check(ra_fixture: &str, expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (analysis, pos) = fixture::position(ra_fixture);
         let expansion = analysis.expand_macro(pos).unwrap().unwrap();
         let actual = format!("{}\n{}", expansion.name, expansion.expansion);
@@ -440,6 +514,9 @@ fn main() {
 "#,
             expect![[r#"
                 foo!
+                Expansion had errors:
+                expected ident: `BAD`
+
             "#]],
         );
     }
@@ -497,7 +574,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Clone
-                impl < >$crate::clone::Clone for Foo< >where {
+                impl <>core::clone::Clone for Foo< >where {
                     fn clone(&self) -> Self {
                         match self {
                             Foo{}
@@ -523,7 +600,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Copy
-                impl < >$crate::marker::Copy for Foo< >where{}"#]],
+                impl <>core::marker::Copy for Foo< >where{}"#]],
         );
     }
 
@@ -538,7 +615,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Copy
-                impl < >$crate::marker::Copy for Foo< >where{}"#]],
+                impl <>core::marker::Copy for Foo< >where{}"#]],
         );
         check(
             r#"
@@ -549,7 +626,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Clone
-                impl < >$crate::clone::Clone for Foo< >where {
+                impl <>core::clone::Clone for Foo< >where {
                     fn clone(&self) -> Self {
                         match self {
                             Foo{}
@@ -560,6 +637,46 @@ struct Foo {}
                     }
 
                     }"#]],
+        );
+    }
+
+    #[test]
+    fn dollar_crate() {
+        check(
+            r#"
+//- /a.rs crate:a
+pub struct Foo;
+#[macro_export]
+macro_rules! m {
+    ( $i:ident ) => { $crate::Foo; $crate::Foo; $i::Foo; };
+}
+//- /b.rs crate:b deps:a
+pub struct Foo;
+#[macro_export]
+macro_rules! m {
+    () => { a::m!($crate); $crate::Foo; $crate::Foo; };
+}
+//- /c.rs crate:c deps:b,a
+pub struct Foo;
+#[macro_export]
+macro_rules! m {
+    () => { b::m!(); $crate::Foo; $crate::Foo; };
+}
+fn bar() {
+    m$0!();
+}
+"#,
+            expect![[r#"
+m!
+a::Foo;
+a::Foo;
+b::Foo;
+;
+b::Foo;
+b::Foo;
+;
+crate::Foo;
+crate::Foo;"#]],
         );
     }
 }

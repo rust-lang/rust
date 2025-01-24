@@ -12,19 +12,19 @@
 //! code was written, and check if the span contains that text. Note this will only work correctly
 //! if the span is not from a `macro_rules` based macro.
 
+use rustc_ast::AttrStyle;
 use rustc_ast::ast::{AttrKind, Attribute, IntTy, LitIntType, LitKind, StrStyle, TraitObjectSyntax, UintTy};
 use rustc_ast::token::CommentKind;
-use rustc_ast::AttrStyle;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, FnRetTy, HirId, Impl,
     ImplItem, ImplItemKind, IsAuto, Item, ItemKind, Lit, LoopSource, MatchSource, MutTy, Node, Path, QPath, Safety,
     TraitItem, TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData, YieldSource,
 };
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::symbol::{kw, Ident};
+use rustc_span::symbol::{Ident, kw};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi::Abi;
 
@@ -51,7 +51,7 @@ fn span_matches_pat(sess: &Session, span: Span, start_pat: Pat, end_pat: Pat) ->
         return false;
     };
     let end = span.hi() - pos.sf.start_pos;
-    src.get(pos.pos.0 as usize..end.0 as usize).map_or(false, |s| {
+    src.get(pos.pos.0 as usize..end.0 as usize).is_some_and(|s| {
         // Spans can be wrapped in a mixture or parenthesis, whitespace, and trailing commas.
         let start_str = s.trim_start_matches(|c: char| c.is_whitespace() || c == '(');
         let end_str = s.trim_end_matches(|c: char| c.is_whitespace() || c == ')' || c == ',');
@@ -60,13 +60,13 @@ fn span_matches_pat(sess: &Session, span: Span, start_pat: Pat, end_pat: Pat) ->
             Pat::MultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
             Pat::OwnedMultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
             Pat::Sym(sym) => start_str.starts_with(sym.as_str()),
-            Pat::Num => start_str.as_bytes().first().map_or(false, u8::is_ascii_digit),
+            Pat::Num => start_str.as_bytes().first().is_some_and(u8::is_ascii_digit),
         } && match end_pat {
             Pat::Str(text) => end_str.ends_with(text),
-            Pat::MultiStr(texts) => texts.iter().any(|s| start_str.ends_with(s)),
-            Pat::OwnedMultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
+            Pat::MultiStr(texts) => texts.iter().any(|s| end_str.ends_with(s)),
+            Pat::OwnedMultiStr(texts) => texts.iter().any(|s| end_str.ends_with(s)),
             Pat::Sym(sym) => end_str.ends_with(sym.as_str()),
-            Pat::Num => end_str.as_bytes().last().map_or(false, u8::is_ascii_hexdigit),
+            Pat::Num => end_str.as_bytes().last().is_some_and(u8::is_ascii_hexdigit),
         })
     })
 }
@@ -123,16 +123,14 @@ fn qpath_search_pat(path: &QPath<'_>) -> (Pat, Pat) {
 
 fn path_search_pat(path: &Path<'_>) -> (Pat, Pat) {
     let (head, tail) = match path.segments {
-        [head, .., tail] => (head, tail),
-        [p] => (p, p),
         [] => return (Pat::Str(""), Pat::Str("")),
+        [p] => (Pat::Sym(p.ident.name), p),
+        // QPath::Resolved can have a path that looks like `<Foo as Bar>::baz` where
+        // the path (`Bar::baz`) has it's span covering the whole QPath.
+        [.., tail] => (Pat::Str(""), tail),
     };
     (
-        if head.ident.name == kw::PathRoot {
-            Pat::Str("::")
-        } else {
-            Pat::Sym(head.ident.name)
-        },
+        head,
         if tail.args.is_some() {
             Pat::Str(">")
         } else {
@@ -143,62 +141,89 @@ fn path_search_pat(path: &Path<'_>) -> (Pat, Pat) {
 
 /// Get the search patterns to use for the given expression
 fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
-    match e.kind {
-        ExprKind::ConstBlock(_) => (Pat::Str("const"), Pat::Str("}")),
-        // Parenthesis are trimmed from the text before the search patterns are matched.
-        // See: `span_matches_pat`
-        ExprKind::Tup([]) => (Pat::Str(")"), Pat::Str("(")),
-        ExprKind::Unary(UnOp::Deref, e) => (Pat::Str("*"), expr_search_pat(tcx, e).1),
-        ExprKind::Unary(UnOp::Not, e) => (Pat::Str("!"), expr_search_pat(tcx, e).1),
-        ExprKind::Unary(UnOp::Neg, e) => (Pat::Str("-"), expr_search_pat(tcx, e).1),
-        ExprKind::Lit(lit) => lit_search_pat(&lit.node),
-        ExprKind::Array(_) | ExprKind::Repeat(..) => (Pat::Str("["), Pat::Str("]")),
-        ExprKind::Call(e, []) | ExprKind::MethodCall(_, e, [], _) => (expr_search_pat(tcx, e).0, Pat::Str("(")),
-        ExprKind::Call(first, [.., last])
-        | ExprKind::MethodCall(_, first, [.., last], _)
-        | ExprKind::Binary(_, first, last)
-        | ExprKind::Tup([first, .., last])
-        | ExprKind::Assign(first, last, _)
-        | ExprKind::AssignOp(_, first, last) => (expr_search_pat(tcx, first).0, expr_search_pat(tcx, last).1),
-        ExprKind::Tup([e]) | ExprKind::DropTemps(e) => expr_search_pat(tcx, e),
-        ExprKind::Cast(e, _) | ExprKind::Type(e, _) => (expr_search_pat(tcx, e).0, Pat::Str("")),
-        ExprKind::Let(let_expr) => (Pat::Str("let"), expr_search_pat(tcx, let_expr.init).1),
-        ExprKind::If(..) => (Pat::Str("if"), Pat::Str("}")),
-        ExprKind::Loop(_, Some(_), _, _) | ExprKind::Block(_, Some(_)) => (Pat::Str("'"), Pat::Str("}")),
-        ExprKind::Loop(_, None, LoopSource::Loop, _) => (Pat::Str("loop"), Pat::Str("}")),
-        ExprKind::Loop(_, None, LoopSource::While, _) => (Pat::Str("while"), Pat::Str("}")),
-        ExprKind::Loop(_, None, LoopSource::ForLoop, _) | ExprKind::Match(_, _, MatchSource::ForLoopDesugar) => {
-            (Pat::Str("for"), Pat::Str("}"))
-        },
-        ExprKind::Match(_, _, MatchSource::Normal) => (Pat::Str("match"), Pat::Str("}")),
-        ExprKind::Match(e, _, MatchSource::TryDesugar(_)) => (expr_search_pat(tcx, e).0, Pat::Str("?")),
-        ExprKind::Match(e, _, MatchSource::AwaitDesugar) | ExprKind::Yield(e, YieldSource::Await { .. }) => {
-            (expr_search_pat(tcx, e).0, Pat::Str("await"))
-        },
-        ExprKind::Closure(&Closure { body, .. }) => (Pat::Str(""), expr_search_pat(tcx, tcx.hir().body(body).value).1),
-        ExprKind::Block(
-            Block {
-                rules: BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),
-                ..
+    fn expr_search_pat_inner(tcx: TyCtxt<'_>, e: &Expr<'_>, outer_span: Span) -> (Pat, Pat) {
+        // The expression can have subexpressions in different contexts, in which case
+        // building up a search pattern from the macro expansion would lead to false positives;
+        // e.g. `return format!(..)` would be considered to be from a proc macro
+        // if we build up a pattern for the macro expansion and compare it to the invocation `format!()`.
+        // So instead we return an empty pattern such that `span_matches_pat` always returns true.
+        if !e.span.eq_ctxt(outer_span) {
+            return (Pat::Str(""), Pat::Str(""));
+        }
+
+        match e.kind {
+            ExprKind::ConstBlock(_) => (Pat::Str("const"), Pat::Str("}")),
+            // Parenthesis are trimmed from the text before the search patterns are matched.
+            // See: `span_matches_pat`
+            ExprKind::Tup([]) => (Pat::Str(")"), Pat::Str("(")),
+            ExprKind::Unary(UnOp::Deref, e) => (Pat::Str("*"), expr_search_pat_inner(tcx, e, outer_span).1),
+            ExprKind::Unary(UnOp::Not, e) => (Pat::Str("!"), expr_search_pat_inner(tcx, e, outer_span).1),
+            ExprKind::Unary(UnOp::Neg, e) => (Pat::Str("-"), expr_search_pat_inner(tcx, e, outer_span).1),
+            ExprKind::Lit(lit) => lit_search_pat(&lit.node),
+            ExprKind::Array(_) | ExprKind::Repeat(..) => (Pat::Str("["), Pat::Str("]")),
+            ExprKind::Call(e, []) | ExprKind::MethodCall(_, e, [], _) => {
+                (expr_search_pat_inner(tcx, e, outer_span).0, Pat::Str("("))
             },
-            None,
-        ) => (Pat::Str("unsafe"), Pat::Str("}")),
-        ExprKind::Block(_, None) => (Pat::Str("{"), Pat::Str("}")),
-        ExprKind::Field(e, name) => (expr_search_pat(tcx, e).0, Pat::Sym(name.name)),
-        ExprKind::Index(e, _, _) => (expr_search_pat(tcx, e).0, Pat::Str("]")),
-        ExprKind::Path(ref path) => qpath_search_pat(path),
-        ExprKind::AddrOf(_, _, e) => (Pat::Str("&"), expr_search_pat(tcx, e).1),
-        ExprKind::Break(Destination { label: None, .. }, None) => (Pat::Str("break"), Pat::Str("break")),
-        ExprKind::Break(Destination { label: Some(name), .. }, None) => (Pat::Str("break"), Pat::Sym(name.ident.name)),
-        ExprKind::Break(_, Some(e)) => (Pat::Str("break"), expr_search_pat(tcx, e).1),
-        ExprKind::Continue(Destination { label: None, .. }) => (Pat::Str("continue"), Pat::Str("continue")),
-        ExprKind::Continue(Destination { label: Some(name), .. }) => (Pat::Str("continue"), Pat::Sym(name.ident.name)),
-        ExprKind::Ret(None) => (Pat::Str("return"), Pat::Str("return")),
-        ExprKind::Ret(Some(e)) => (Pat::Str("return"), expr_search_pat(tcx, e).1),
-        ExprKind::Struct(path, _, _) => (qpath_search_pat(path).0, Pat::Str("}")),
-        ExprKind::Yield(e, YieldSource::Yield) => (Pat::Str("yield"), expr_search_pat(tcx, e).1),
-        _ => (Pat::Str(""), Pat::Str("")),
+            ExprKind::Call(first, [.., last])
+            | ExprKind::MethodCall(_, first, [.., last], _)
+            | ExprKind::Binary(_, first, last)
+            | ExprKind::Tup([first, .., last])
+            | ExprKind::Assign(first, last, _)
+            | ExprKind::AssignOp(_, first, last) => (
+                expr_search_pat_inner(tcx, first, outer_span).0,
+                expr_search_pat_inner(tcx, last, outer_span).1,
+            ),
+            ExprKind::Tup([e]) | ExprKind::DropTemps(e) => expr_search_pat_inner(tcx, e, outer_span),
+            ExprKind::Cast(e, _) | ExprKind::Type(e, _) => (expr_search_pat_inner(tcx, e, outer_span).0, Pat::Str("")),
+            ExprKind::Let(let_expr) => (Pat::Str("let"), expr_search_pat_inner(tcx, let_expr.init, outer_span).1),
+            ExprKind::If(..) => (Pat::Str("if"), Pat::Str("}")),
+            ExprKind::Loop(_, Some(_), _, _) | ExprKind::Block(_, Some(_)) => (Pat::Str("'"), Pat::Str("}")),
+            ExprKind::Loop(_, None, LoopSource::Loop, _) => (Pat::Str("loop"), Pat::Str("}")),
+            ExprKind::Loop(_, None, LoopSource::While, _) => (Pat::Str("while"), Pat::Str("}")),
+            ExprKind::Loop(_, None, LoopSource::ForLoop, _) | ExprKind::Match(_, _, MatchSource::ForLoopDesugar) => {
+                (Pat::Str("for"), Pat::Str("}"))
+            },
+            ExprKind::Match(_, _, MatchSource::Normal) => (Pat::Str("match"), Pat::Str("}")),
+            ExprKind::Match(e, _, MatchSource::TryDesugar(_)) => {
+                (expr_search_pat_inner(tcx, e, outer_span).0, Pat::Str("?"))
+            },
+            ExprKind::Match(e, _, MatchSource::AwaitDesugar) | ExprKind::Yield(e, YieldSource::Await { .. }) => {
+                (expr_search_pat_inner(tcx, e, outer_span).0, Pat::Str("await"))
+            },
+            ExprKind::Closure(&Closure { body, .. }) => (
+                Pat::Str(""),
+                expr_search_pat_inner(tcx, tcx.hir().body(body).value, outer_span).1,
+            ),
+            ExprKind::Block(
+                Block {
+                    rules: BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),
+                    ..
+                },
+                None,
+            ) => (Pat::Str("unsafe"), Pat::Str("}")),
+            ExprKind::Block(_, None) => (Pat::Str("{"), Pat::Str("}")),
+            ExprKind::Field(e, name) => (expr_search_pat_inner(tcx, e, outer_span).0, Pat::Sym(name.name)),
+            ExprKind::Index(e, _, _) => (expr_search_pat_inner(tcx, e, outer_span).0, Pat::Str("]")),
+            ExprKind::Path(ref path) => qpath_search_pat(path),
+            ExprKind::AddrOf(_, _, e) => (Pat::Str("&"), expr_search_pat_inner(tcx, e, outer_span).1),
+            ExprKind::Break(Destination { label: None, .. }, None) => (Pat::Str("break"), Pat::Str("break")),
+            ExprKind::Break(Destination { label: Some(name), .. }, None) => {
+                (Pat::Str("break"), Pat::Sym(name.ident.name))
+            },
+            ExprKind::Break(_, Some(e)) => (Pat::Str("break"), expr_search_pat_inner(tcx, e, outer_span).1),
+            ExprKind::Continue(Destination { label: None, .. }) => (Pat::Str("continue"), Pat::Str("continue")),
+            ExprKind::Continue(Destination { label: Some(name), .. }) => {
+                (Pat::Str("continue"), Pat::Sym(name.ident.name))
+            },
+            ExprKind::Ret(None) => (Pat::Str("return"), Pat::Str("return")),
+            ExprKind::Ret(Some(e)) => (Pat::Str("return"), expr_search_pat_inner(tcx, e, outer_span).1),
+            ExprKind::Struct(path, _, _) => (qpath_search_pat(path).0, Pat::Str("}")),
+            ExprKind::Yield(e, YieldSource::Yield) => (Pat::Str("yield"), expr_search_pat_inner(tcx, e, outer_span).1),
+            _ => (Pat::Str(""), Pat::Str("")),
+        }
     }
+
+    expr_search_pat_inner(tcx, e, e.span)
 }
 
 fn fn_header_search_pat(header: FnHeader) -> Pat {
@@ -220,9 +245,9 @@ fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
         ItemKind::ExternCrate(_) => (Pat::Str("extern"), Pat::Str(";")),
         ItemKind::Static(..) => (Pat::Str("static"), Pat::Str(";")),
         ItemKind::Const(..) => (Pat::Str("const"), Pat::Str(";")),
-        ItemKind::Fn(sig, ..) => (fn_header_search_pat(sig.header), Pat::Str("")),
+        ItemKind::Fn { sig, .. } => (fn_header_search_pat(sig.header), Pat::Str("")),
         ItemKind::ForeignMod { .. } => (Pat::Str("extern"), Pat::Str("}")),
-        ItemKind::TyAlias(..) | ItemKind::OpaqueTy(_) => (Pat::Str("type"), Pat::Str(";")),
+        ItemKind::TyAlias(..) => (Pat::Str("type"), Pat::Str(";")),
         ItemKind::Enum(..) => (Pat::Str("enum"), Pat::Str("}")),
         ItemKind::Struct(VariantData::Struct { .. }, _) => (Pat::Str("struct"), Pat::Str("}")),
         ItemKind::Struct(..) => (Pat::Str("struct"), Pat::Str(";")),
@@ -308,26 +333,32 @@ fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
     match attr.kind {
         AttrKind::Normal(..) => {
             if let Some(ident) = attr.ident() {
-                // TODO: I feel like it's likely we can use `Cow` instead but this will require quite a bit of
-                // refactoring
                 // NOTE: This will likely have false positives, like `allow = 1`
-                (
-                    Pat::OwnedMultiStr(vec![ident.to_string(), "#".to_owned()]),
-                    Pat::Str(""),
-                )
+                let ident_string = ident.to_string();
+                if attr.style == AttrStyle::Outer {
+                    (
+                        Pat::OwnedMultiStr(vec!["#[".to_owned() + &ident_string, ident_string]),
+                        Pat::Str(""),
+                    )
+                } else {
+                    (
+                        Pat::OwnedMultiStr(vec!["#![".to_owned() + &ident_string, ident_string]),
+                        Pat::Str(""),
+                    )
+                }
             } else {
                 (Pat::Str("#"), Pat::Str("]"))
             }
         },
         AttrKind::DocComment(_kind @ CommentKind::Line, ..) => {
-            if matches!(attr.style, AttrStyle::Outer) {
+            if attr.style == AttrStyle::Outer {
                 (Pat::Str("///"), Pat::Str(""))
             } else {
                 (Pat::Str("//!"), Pat::Str(""))
             }
         },
         AttrKind::DocComment(_kind @ CommentKind::Block, ..) => {
-            if matches!(attr.style, AttrStyle::Outer) {
+            if attr.style == AttrStyle::Outer {
                 (Pat::Str("/**"), Pat::Str("*/"))
             } else {
                 (Pat::Str("/*!"), Pat::Str("*/"))
@@ -342,7 +373,7 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
         TyKind::Ptr(MutTy { ty, .. }) => (Pat::Str("*"), ty_search_pat(ty).1),
         TyKind::Ref(_, MutTy { ty, .. }) => (Pat::Str("&"), ty_search_pat(ty).1),
         TyKind::BareFn(bare_fn) => (
-            if bare_fn.safety == Safety::Unsafe {
+            if bare_fn.safety.is_unsafe() {
                 Pat::Str("unsafe")
             } else if bare_fn.abi != Abi::Rust {
                 Pat::Str("extern")
@@ -404,10 +435,11 @@ impl_with_search_pat!((_cx: LateContext<'tcx>, self: ImplItem<'_>) => impl_item_
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: FieldDef<'_>) => field_def_search_pat(self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Variant<'_>) => variant_search_pat(self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Ty<'_>) => ty_search_pat(self));
-impl_with_search_pat!((_cx: LateContext<'tcx>, self: Attribute) => attr_search_pat(self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Ident) => ident_search_pat(*self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Lit) => lit_search_pat(&self.node));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Path<'_>) => path_search_pat(self));
+
+impl_with_search_pat!((_cx: EarlyContext<'tcx>, self: Attribute) => attr_search_pat(self));
 
 impl<'cx> WithSearchPat<'cx> for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
     type Context = LateContext<'cx>;

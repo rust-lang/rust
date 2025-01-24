@@ -2,19 +2,186 @@
 
 use std::borrow::Cow;
 use std::cell::RefCell;
+use std::ffi::OsString;
+use std::path::PathBuf;
 use std::sync::OnceLock;
 use std::{io, ops, str};
 
 use regex::Regex;
-use rustc_graphviz as dot;
-use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::{self, graphviz_safe_def_name, BasicBlock, Body, Location};
+use rustc_hir::def_id::DefId;
+use rustc_index::bit_set::DenseBitSet;
+use rustc_middle::mir::{
+    self, BasicBlock, Body, Location, create_dump_file, dump_enabled, graphviz_safe_def_name,
+    traversal,
+};
+use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_span::{Symbol, sym};
+use tracing::debug;
+use {rustc_ast as ast, rustc_graphviz as dot};
 
 use super::fmt::{DebugDiffWithAdapter, DebugWithAdapter, DebugWithContext};
 use super::{Analysis, CallReturnPlaces, Direction, Results, ResultsCursor, ResultsVisitor};
+use crate::errors::{
+    DuplicateValuesFor, PathMustEndInFilename, RequiresAnArgument, UnknownFormatter,
+};
+
+/// Writes a DOT file containing the results of a dataflow analysis if the user requested it via
+/// `rustc_mir` attributes and `-Z dump-mir-dataflow`. The `Result` in and the `Results` out are
+/// the same.
+pub(super) fn write_graphviz_results<'tcx, A>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    results: &mut Results<'tcx, A>,
+    pass_name: Option<&'static str>,
+) -> std::io::Result<()>
+where
+    A: Analysis<'tcx>,
+    A::Domain: DebugWithContext<A>,
+{
+    use std::fs;
+    use std::io::Write;
+
+    let def_id = body.source.def_id();
+    let Ok(attrs) = RustcMirAttrs::parse(tcx, def_id) else {
+        // Invalid `rustc_mir` attrs are reported in `RustcMirAttrs::parse`
+        return Ok(());
+    };
+
+    let file = try {
+        match attrs.output_path(A::NAME) {
+            Some(path) => {
+                debug!("printing dataflow results for {:?} to {}", def_id, path.display());
+                if let Some(parent) = path.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                fs::File::create_buffered(&path)?
+            }
+
+            None if dump_enabled(tcx, A::NAME, def_id) => {
+                create_dump_file(tcx, "dot", false, A::NAME, &pass_name.unwrap_or("-----"), body)?
+            }
+
+            _ => return Ok(()),
+        }
+    };
+    let mut file = match file {
+        Ok(f) => f,
+        Err(e) => return Err(e),
+    };
+
+    let style = match attrs.formatter {
+        Some(sym::two_phase) => OutputStyle::BeforeAndAfter,
+        _ => OutputStyle::AfterOnly,
+    };
+
+    let mut buf = Vec::new();
+
+    let graphviz = Formatter::new(body, results, style);
+    let mut render_opts =
+        vec![dot::RenderOption::Fontname(tcx.sess.opts.unstable_opts.graphviz_font.clone())];
+    if tcx.sess.opts.unstable_opts.graphviz_dark_mode {
+        render_opts.push(dot::RenderOption::DarkTheme);
+    }
+    let r = with_no_trimmed_paths!(dot::render_opts(&graphviz, &mut buf, &render_opts));
+
+    let lhs = try {
+        r?;
+        file.write_all(&buf)?;
+    };
+
+    lhs
+}
+
+#[derive(Default)]
+struct RustcMirAttrs {
+    basename_and_suffix: Option<PathBuf>,
+    formatter: Option<Symbol>,
+}
+
+impl RustcMirAttrs {
+    fn parse(tcx: TyCtxt<'_>, def_id: DefId) -> Result<Self, ()> {
+        let mut result = Ok(());
+        let mut ret = RustcMirAttrs::default();
+
+        let rustc_mir_attrs = tcx
+            .get_attrs(def_id, sym::rustc_mir)
+            .flat_map(|attr| attr.meta_item_list().into_iter().flat_map(|v| v.into_iter()));
+
+        for attr in rustc_mir_attrs {
+            let attr_result = if attr.has_name(sym::borrowck_graphviz_postflow) {
+                Self::set_field(&mut ret.basename_and_suffix, tcx, &attr, |s| {
+                    let path = PathBuf::from(s.to_string());
+                    match path.file_name() {
+                        Some(_) => Ok(path),
+                        None => {
+                            tcx.dcx().emit_err(PathMustEndInFilename { span: attr.span() });
+                            Err(())
+                        }
+                    }
+                })
+            } else if attr.has_name(sym::borrowck_graphviz_format) {
+                Self::set_field(&mut ret.formatter, tcx, &attr, |s| match s {
+                    sym::gen_kill | sym::two_phase => Ok(s),
+                    _ => {
+                        tcx.dcx().emit_err(UnknownFormatter { span: attr.span() });
+                        Err(())
+                    }
+                })
+            } else {
+                Ok(())
+            };
+
+            result = result.and(attr_result);
+        }
+
+        result.map(|()| ret)
+    }
+
+    fn set_field<T>(
+        field: &mut Option<T>,
+        tcx: TyCtxt<'_>,
+        attr: &ast::MetaItemInner,
+        mapper: impl FnOnce(Symbol) -> Result<T, ()>,
+    ) -> Result<(), ()> {
+        if field.is_some() {
+            tcx.dcx()
+                .emit_err(DuplicateValuesFor { span: attr.span(), name: attr.name_or_empty() });
+
+            return Err(());
+        }
+
+        if let Some(s) = attr.value_str() {
+            *field = Some(mapper(s)?);
+            Ok(())
+        } else {
+            tcx.dcx()
+                .emit_err(RequiresAnArgument { span: attr.span(), name: attr.name_or_empty() });
+            Err(())
+        }
+    }
+
+    /// Returns the path where dataflow results should be written, or `None`
+    /// `borrowck_graphviz_postflow` was not specified.
+    ///
+    /// This performs the following transformation to the argument of `borrowck_graphviz_postflow`:
+    ///
+    /// "path/suffix.dot" -> "path/analysis_name_suffix.dot"
+    fn output_path(&self, analysis_name: &str) -> Option<PathBuf> {
+        let mut ret = self.basename_and_suffix.as_ref().cloned()?;
+        let suffix = ret.file_name().unwrap(); // Checked when parsing attrs
+
+        let mut file_name: OsString = analysis_name.into();
+        file_name.push("_");
+        file_name.push(suffix);
+        ret.set_file_name(file_name);
+
+        Some(ret)
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum OutputStyle {
+enum OutputStyle {
     AfterOnly,
     BeforeAndAfter,
 }
@@ -28,37 +195,40 @@ impl OutputStyle {
     }
 }
 
-pub(crate) struct Formatter<'mir, 'tcx, A>
+struct Formatter<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    body: &'mir Body<'tcx>,
-    results: RefCell<Option<Results<'tcx, A>>>,
+    // The `RefCell` is used because `<Formatter as Labeller>::node_label`
+    // takes `&self`, but it needs to modify the cursor. This is also the
+    // reason for the `Formatter`/`BlockFormatter` split; `BlockFormatter` has
+    // the operations that involve the mutation, i.e. within the `borrow_mut`.
+    cursor: RefCell<ResultsCursor<'mir, 'tcx, A>>,
     style: OutputStyle,
-    reachable: BitSet<BasicBlock>,
+    reachable: DenseBitSet<BasicBlock>,
 }
 
 impl<'mir, 'tcx, A> Formatter<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    pub(crate) fn new(
+    fn new(
         body: &'mir Body<'tcx>,
-        results: Results<'tcx, A>,
+        results: &'mir mut Results<'tcx, A>,
         style: OutputStyle,
     ) -> Self {
-        let reachable = mir::traversal::reachable_as_bitset(body);
-        Formatter { body, results: Some(results).into(), style, reachable }
+        let reachable = traversal::reachable_as_bitset(body);
+        Formatter { cursor: results.as_results_cursor(body).into(), style, reachable }
     }
 
-    pub(crate) fn into_results(self) -> Results<'tcx, A> {
-        self.results.into_inner().unwrap()
+    fn body(&self) -> &'mir Body<'tcx> {
+        self.cursor.borrow().body()
     }
 }
 
 /// A pair of a basic block and an index into that basic blocks `successors`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub(crate) struct CfgEdge {
+struct CfgEdge {
     source: BasicBlock,
     index: usize,
 }
@@ -81,7 +251,7 @@ where
     type Edge = CfgEdge;
 
     fn graph_id(&self) -> dot::Id<'_> {
-        let name = graphviz_safe_def_name(self.body.source.def_id());
+        let name = graphviz_safe_def_name(self.body().source.def_id());
         dot::Id::new(format!("graph_for_def_id_{name}")).unwrap()
     }
 
@@ -90,20 +260,11 @@ where
     }
 
     fn node_label(&self, block: &Self::Node) -> dot::LabelText<'_> {
-        let mut label = Vec::new();
-        self.results.replace_with(|results| {
-            // `Formatter::result` is a `RefCell<Option<_>>` so we can replace
-            // the value with `None`, move it into the results cursor, move it
-            // back out, and return it to the refcell wrapped in `Some`.
-            let mut fmt = BlockFormatter {
-                results: results.take().unwrap().into_results_cursor(self.body),
-                style: self.style,
-                bg: Background::Light,
-            };
+        let mut cursor = self.cursor.borrow_mut();
+        let mut fmt =
+            BlockFormatter { cursor: &mut cursor, style: self.style, bg: Background::Light };
+        let label = fmt.write_node_label(*block).unwrap();
 
-            fmt.write_node_label(&mut label, *block).unwrap();
-            Some(fmt.results.into_results())
-        });
         dot::LabelText::html(String::from_utf8(label).unwrap())
     }
 
@@ -112,12 +273,12 @@ where
     }
 
     fn edge_label(&self, e: &Self::Edge) -> dot::LabelText<'_> {
-        let label = &self.body[e.source].terminator().kind.fmt_successor_labels()[e.index];
+        let label = &self.body()[e.source].terminator().kind.fmt_successor_labels()[e.index];
         dot::LabelText::label(label.clone())
     }
 }
 
-impl<'mir, 'tcx, A> dot::GraphWalk<'mir> for Formatter<'mir, 'tcx, A>
+impl<'tcx, A> dot::GraphWalk<'_> for Formatter<'_, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
@@ -125,7 +286,7 @@ where
     type Edge = CfgEdge;
 
     fn nodes(&self) -> dot::Nodes<'_, Self::Node> {
-        self.body
+        self.body()
             .basic_blocks
             .indices()
             .filter(|&idx| self.reachable.contains(idx))
@@ -134,10 +295,10 @@ where
     }
 
     fn edges(&self) -> dot::Edges<'_, Self::Edge> {
-        self.body
-            .basic_blocks
+        let body = self.body();
+        body.basic_blocks
             .indices()
-            .flat_map(|bb| dataflow_successors(self.body, bb))
+            .flat_map(|bb| dataflow_successors(body, bb))
             .collect::<Vec<_>>()
             .into()
     }
@@ -147,20 +308,20 @@ where
     }
 
     fn target(&self, edge: &Self::Edge) -> Self::Node {
-        self.body[edge.source].terminator().successors().nth(edge.index).unwrap()
+        self.body()[edge.source].terminator().successors().nth(edge.index).unwrap()
     }
 }
 
-struct BlockFormatter<'mir, 'tcx, A>
+struct BlockFormatter<'a, 'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    results: ResultsCursor<'mir, 'tcx, A>,
+    cursor: &'a mut ResultsCursor<'mir, 'tcx, A>,
     bg: Background,
     style: OutputStyle,
 }
 
-impl<'mir, 'tcx, A> BlockFormatter<'mir, 'tcx, A>
+impl<'tcx, A> BlockFormatter<'_, '_, 'tcx, A>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
@@ -173,7 +334,9 @@ where
         bg
     }
 
-    fn write_node_label(&mut self, w: &mut impl io::Write, block: BasicBlock) -> io::Result<()> {
+    fn write_node_label(&mut self, block: BasicBlock) -> io::Result<Vec<u8>> {
+        use std::io::Write;
+
         //   Sample output:
         //   +-+-----------------------------------------------+
         // A |                      bb4                        |
@@ -200,6 +363,9 @@ where
         // attributes. Make sure to test the output before trying to remove the redundancy.
         // Notably, `align` was found to have no effect when applied only to <table>.
 
+        let mut v = vec![];
+        let w = &mut v;
+
         let table_fmt = concat!(
             " border=\"1\"",
             " cellborder=\"1\"",
@@ -219,8 +385,8 @@ where
 
         // C: State at start of block
         self.bg = Background::Light;
-        self.results.seek_to_block_start(block);
-        let block_start_state = self.results.get().clone();
+        self.cursor.seek_to_block_start(block);
+        let block_start_state = self.cursor.get().clone();
         self.write_row_with_full_state(w, "", "(on start)")?;
 
         // D + E: Statement and terminator transfer functions
@@ -228,12 +394,12 @@ where
 
         // F: State at end of block
 
-        let terminator = self.results.body()[block].terminator();
+        let terminator = self.cursor.body()[block].terminator();
 
         // Write the full dataflow state immediately after the terminator if it differs from the
         // state at block entry.
-        self.results.seek_to_block_end(block);
-        if self.results.get() != &block_start_state || A::Direction::IS_BACKWARD {
+        self.cursor.seek_to_block_end(block);
+        if self.cursor.get() != &block_start_state || A::Direction::IS_BACKWARD {
             let after_terminator_name = match terminator.kind {
                 mir::TerminatorKind::Call { target: Some(_), .. } => "(on unwind)",
                 _ => "(on end)",
@@ -250,8 +416,8 @@ where
         match terminator.kind {
             mir::TerminatorKind::Call { destination, .. } => {
                 self.write_row(w, "", "(on successful return)", |this, w, fmt| {
-                    let state_on_unwind = this.results.get().clone();
-                    this.results.apply_custom_effect(|analysis, state| {
+                    let state_on_unwind = this.cursor.get().clone();
+                    this.cursor.apply_custom_effect(|analysis, state| {
                         analysis.apply_call_return_effect(
                             state,
                             block,
@@ -265,9 +431,9 @@ where
                         colspan = this.style.num_state_columns(),
                         fmt = fmt,
                         diff = diff_pretty(
-                            this.results.get(),
+                            this.cursor.get(),
                             &state_on_unwind,
-                            this.results.analysis()
+                            this.cursor.analysis()
                         ),
                     )
                 })?;
@@ -275,8 +441,8 @@ where
 
             mir::TerminatorKind::Yield { resume, resume_arg, .. } => {
                 self.write_row(w, "", "(on yield resume)", |this, w, fmt| {
-                    let state_on_coroutine_drop = this.results.get().clone();
-                    this.results.apply_custom_effect(|analysis, state| {
+                    let state_on_coroutine_drop = this.cursor.get().clone();
+                    this.cursor.apply_custom_effect(|analysis, state| {
                         analysis.apply_call_return_effect(
                             state,
                             resume,
@@ -290,9 +456,9 @@ where
                         colspan = this.style.num_state_columns(),
                         fmt = fmt,
                         diff = diff_pretty(
-                            this.results.get(),
+                            this.cursor.get(),
                             &state_on_coroutine_drop,
-                            this.results.analysis()
+                            this.cursor.analysis()
                         ),
                     )
                 })?;
@@ -302,8 +468,8 @@ where
                 if !targets.is_empty() =>
             {
                 self.write_row(w, "", "(on successful return)", |this, w, fmt| {
-                    let state_on_unwind = this.results.get().clone();
-                    this.results.apply_custom_effect(|analysis, state| {
+                    let state_on_unwind = this.cursor.get().clone();
+                    this.cursor.apply_custom_effect(|analysis, state| {
                         analysis.apply_call_return_effect(
                             state,
                             block,
@@ -317,9 +483,9 @@ where
                         colspan = this.style.num_state_columns(),
                         fmt = fmt,
                         diff = diff_pretty(
-                            this.results.get(),
+                            this.cursor.get(),
                             &state_on_unwind,
-                            this.results.analysis()
+                            this.cursor.analysis()
                         ),
                     )
                 })?;
@@ -328,7 +494,9 @@ where
             _ => {}
         };
 
-        write!(w, "</table>")
+        write!(w, "</table>")?;
+
+        Ok(v)
     }
 
     fn write_block_header_simple(
@@ -407,9 +575,9 @@ where
         block: BasicBlock,
     ) -> io::Result<()> {
         let diffs = StateDiffCollector::run(
-            self.results.body(),
+            self.cursor.body(),
             block,
-            self.results.mut_results(),
+            self.cursor.mut_results(),
             self.style,
         );
 
@@ -420,7 +588,7 @@ where
             if A::Direction::IS_FORWARD { it.next().unwrap() } else { it.next_back().unwrap() }
         };
 
-        for (i, statement) in self.results.body()[block].statements.iter().enumerate() {
+        for (i, statement) in self.cursor.body()[block].statements.iter().enumerate() {
             let statement_str = format!("{statement:?}");
             let index_str = format!("{i}");
 
@@ -440,9 +608,9 @@ where
         let before = diffs_before.as_mut().map(next_in_dataflow_order);
 
         assert!(diffs_after.is_empty());
-        assert!(diffs_before.as_ref().map_or(true, ExactSizeIterator::is_empty));
+        assert!(diffs_before.as_ref().is_none_or(ExactSizeIterator::is_empty));
 
-        let terminator = self.results.body()[block].terminator();
+        let terminator = self.cursor.body()[block].terminator();
         let mut terminator_str = String::new();
         terminator.kind.fmt_head(&mut terminator_str).unwrap();
 
@@ -492,8 +660,8 @@ where
         mir: &str,
     ) -> io::Result<()> {
         self.write_row(w, i, mir, |this, w, fmt| {
-            let state = this.results.get();
-            let analysis = this.results.analysis();
+            let state = this.cursor.get();
+            let analysis = this.cursor.analysis();
 
             // FIXME: The full state vector can be quite long. It would be nice to split on commas
             // and use some text wrapping algorithm.
@@ -502,10 +670,10 @@ where
                 r#"<td colspan="{colspan}" {fmt} align="left">{state}</td>"#,
                 colspan = this.style.num_state_columns(),
                 fmt = fmt,
-                state = dot::escape_html(&format!(
-                    "{:?}",
-                    DebugWithAdapter { this: state, ctxt: analysis }
-                )),
+                state = dot::escape_html(&format!("{:?}", DebugWithAdapter {
+                    this: state,
+                    ctxt: analysis
+                })),
             )
         })
     }
@@ -519,7 +687,7 @@ struct StateDiffCollector<D> {
 
 impl<D> StateDiffCollector<D> {
     fn run<'tcx, A>(
-        body: &mir::Body<'tcx>,
+        body: &Body<'tcx>,
         block: BasicBlock,
         results: &mut Results<'tcx, A>,
         style: OutputStyle,
@@ -539,29 +707,27 @@ impl<D> StateDiffCollector<D> {
     }
 }
 
-impl<'tcx, A> ResultsVisitor<'_, 'tcx, Results<'tcx, A>> for StateDiffCollector<A::Domain>
+impl<'tcx, A> ResultsVisitor<'_, 'tcx, A> for StateDiffCollector<A::Domain>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
 {
-    type FlowState = A::Domain;
-
-    fn visit_block_start(&mut self, state: &Self::FlowState) {
+    fn visit_block_start(&mut self, state: &A::Domain) {
         if A::Direction::IS_FORWARD {
             self.prev_state.clone_from(state);
         }
     }
 
-    fn visit_block_end(&mut self, state: &Self::FlowState) {
+    fn visit_block_end(&mut self, state: &A::Domain) {
         if A::Direction::IS_BACKWARD {
             self.prev_state.clone_from(state);
         }
     }
 
-    fn visit_statement_before_primary_effect(
+    fn visit_after_early_statement_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
-        state: &Self::FlowState,
+        state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
@@ -571,10 +737,10 @@ where
         }
     }
 
-    fn visit_statement_after_primary_effect(
+    fn visit_after_primary_statement_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
-        state: &Self::FlowState,
+        state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
@@ -582,10 +748,10 @@ where
         self.prev_state.clone_from(state)
     }
 
-    fn visit_terminator_before_primary_effect(
+    fn visit_after_early_terminator_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
-        state: &Self::FlowState,
+        state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
@@ -595,10 +761,10 @@ where
         }
     }
 
-    fn visit_terminator_after_primary_effect(
+    fn visit_after_primary_terminator_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
-        state: &Self::FlowState,
+        state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {

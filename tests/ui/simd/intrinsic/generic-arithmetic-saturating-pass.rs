@@ -6,7 +6,7 @@
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-struct u32x4(pub u32, pub u32, pub u32, pub u32);
+struct u32x4(pub [u32; 4]);
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -22,11 +22,11 @@ fn main() {
     {
         const M: u32 = u32::MAX;
 
-        let a = u32x4(1, 2, 3, 4);
-        let b = u32x4(2, 4, 6, 8);
-        let m = u32x4(M, M, M, M);
-        let m1 = u32x4(M - 1, M - 1, M - 1, M - 1);
-        let z = u32x4(0, 0, 0, 0);
+        let a = u32x4([1, 2, 3, 4]);
+        let b = u32x4([2, 4, 6, 8]);
+        let m = u32x4([M, M, M, M]);
+        let m1 = u32x4([M - 1, M - 1, M - 1, M - 1]);
+        let z = u32x4([0, 0, 0, 0]);
 
         unsafe {
             assert_eq!(simd_saturating_add(z, z), z);

@@ -1,4 +1,4 @@
-use crate::clippy_project_root;
+use crate::utils::{clippy_project_root, clippy_version};
 use indoc::{formatdoc, writedoc};
 use std::fmt;
 use std::fmt::Write as _;
@@ -186,34 +186,19 @@ fn to_camel_case(name: &str) -> String {
 }
 
 pub(crate) fn get_stabilization_version() -> String {
-    fn parse_manifest(contents: &str) -> Option<String> {
-        let version = contents
-            .lines()
-            .filter_map(|l| l.split_once('='))
-            .find_map(|(k, v)| (k.trim() == "version").then(|| v.trim()))?;
-        let Some(("0", version)) = version.get(1..version.len() - 1)?.split_once('.') else {
-            return None;
-        };
-        let (minor, patch) = version.split_once('.')?;
-        Some(format!(
-            "{}.{}.0",
-            minor.parse::<u32>().ok()?,
-            patch.parse::<u32>().ok()?
-        ))
-    }
-    let contents = fs::read_to_string("Cargo.toml").expect("Unable to read `Cargo.toml`");
-    parse_manifest(&contents).expect("Unable to find package version in `Cargo.toml`")
+    let (minor, patch) = clippy_version();
+    format!("{minor}.{patch}.0")
 }
 
 fn get_test_file_contents(lint_name: &str, msrv: bool) -> String {
     let mut test = formatdoc!(
-        r#"
+        r"
         #![warn(clippy::{lint_name})]
 
         fn main() {{
             // test code goes here
         }}
-    "#
+    "
     );
 
     if msrv {
@@ -272,23 +257,23 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
 
     result.push_str(&if enable_msrv {
         formatdoc!(
-            r#"
-            use clippy_config::msrvs::{{self, Msrv}};
+            r"
+            use clippy_utils::msrvs::{{self, Msrv}};
             use clippy_config::Conf;
             {pass_import}
             use rustc_lint::{{{context_import}, {pass_type}, LintContext}};
             use rustc_session::impl_lint_pass;
 
-        "#
+        "
         )
     } else {
         formatdoc!(
-            r#"
+            r"
             {pass_import}
             use rustc_lint::{{{context_import}, {pass_type}}};
             use rustc_session::declare_lint_pass;
 
-        "#
+        "
         )
     });
 
@@ -296,7 +281,7 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
 
     result.push_str(&if enable_msrv {
         formatdoc!(
-            r#"
+            r"
             pub struct {name_camel} {{
                 msrv: Msrv,
             }}
@@ -315,15 +300,15 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
 
             // TODO: Add MSRV level to `clippy_config/src/msrvs.rs` if needed.
             // TODO: Update msrv config comment in `clippy_config/src/conf.rs`
-        "#
+        "
         )
     } else {
         formatdoc!(
-            r#"
+            r"
             declare_lint_pass!({name_camel} => [{name_upper}]);
 
             impl {pass_type}{pass_lifetimes} for {name_camel} {{}}
-        "#
+        "
         )
     });
 
@@ -399,7 +384,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
         let _: fmt::Result = writedoc!(
             lint_file_contents,
             r#"
-                use clippy_config::msrvs::{{self, Msrv}};
+                use clippy_utils::msrvs::{{self, Msrv}};
                 use rustc_lint::{{{context_import}, LintContext}};
 
                 use super::{name_upper};
@@ -416,7 +401,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
     } else {
         let _: fmt::Result = writedoc!(
             lint_file_contents,
-            r#"
+            r"
                 use rustc_lint::{{{context_import}, LintContext}};
 
                 use super::{name_upper};
@@ -425,7 +410,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
                 pub(super) fn check(cx: &{context_import}{pass_lifetimes}) {{
                     todo!();
                 }}
-           "#
+           "
         );
     }
 
@@ -441,7 +426,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
 
 #[allow(clippy::too_many_lines)]
 fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> {
-    use super::update_lints::{match_tokens, LintDeclSearchResult};
+    use super::update_lints::{LintDeclSearchResult, match_tokens};
     use rustc_lexer::TokenKind;
 
     let lint_name_upper = lint.name.to_uppercase();
@@ -470,7 +455,7 @@ fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> 
     });
 
     // Find both the last lint declaration (declare_clippy_lint!) and the lint pass impl
-    while let Some(LintDeclSearchResult { content, .. }) = iter.find(|result| result.token_kind == TokenKind::Ident) {
+    while let Some(LintDeclSearchResult { content, .. }) = iter.find(|result| result.token == TokenKind::Ident) {
         let mut iter = iter
             .by_ref()
             .filter(|t| !matches!(t.token_kind, TokenKind::Whitespace | TokenKind::LineComment { .. }));
@@ -480,7 +465,7 @@ fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> 
                 // matches `!{`
                 match_tokens!(iter, Bang OpenBrace);
                 if let Some(LintDeclSearchResult { range, .. }) =
-                    iter.find(|result| result.token_kind == TokenKind::CloseBrace)
+                    iter.find(|result| result.token == TokenKind::CloseBrace)
                 {
                     last_decl_curly_offset = Some(range.end);
                 }

@@ -7,7 +7,7 @@
 
 #[derive(Copy, Clone)]
 #[repr(simd)]
-pub struct int16x4_t(pub i16, pub i16, pub i16, pub i16);
+pub struct int16x4_t(pub [i16; 4]);
 
 #[derive(Copy, Clone)]
 pub struct int16x4x2_t(pub int16x4_t, pub int16x4_t);

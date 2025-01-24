@@ -3,14 +3,14 @@ use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::{
     self, FakeReadCause, Statement, StatementKind, Terminator, TerminatorKind,
 };
-use rustc_span::{Span, Symbol};
+use rustc_span::{ExpnKind, Span};
 
+use crate::coverage::ExtractedHirInfo;
 use crate::coverage::graph::{
     BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB,
 };
 use crate::coverage::spans::Covspan;
-use crate::coverage::unexpand::unexpand_into_body_span_with_visible_macro;
-use crate::coverage::ExtractedHirInfo;
+use crate::coverage::unexpand::unexpand_into_body_span_with_expn_kind;
 
 pub(crate) struct ExtractedCovspans {
     pub(crate) covspans: Vec<SpanFromMir>,
@@ -22,13 +22,13 @@ pub(crate) struct ExtractedCovspans {
 pub(crate) fn extract_covspans_from_mir(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
-    basic_coverage_blocks: &CoverageGraph,
+    graph: &CoverageGraph,
 ) -> ExtractedCovspans {
     let &ExtractedHirInfo { body_span, .. } = hir_info;
 
     let mut covspans = vec![];
 
-    for (bcb, bcb_data) in basic_coverage_blocks.iter_enumerated() {
+    for (bcb, bcb_data) in graph.iter_enumerated() {
         bcb_to_initial_coverage_spans(mir_body, body_span, bcb, bcb_data, &mut covspans);
     }
 
@@ -60,7 +60,7 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
         let data = &mir_body[bb];
 
         let unexpand = move |expn_span| {
-            unexpand_into_body_span_with_visible_macro(expn_span, body_span)
+            unexpand_into_body_span_with_expn_kind(expn_span, body_span)
                 // Discard any spans that fill the entire body, because they tend
                 // to represent compiler-inserted code, e.g. implicitly returning `()`.
                 .filter(|(span, _)| !span.source_equal(body_span))
@@ -68,9 +68,9 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
 
         let mut extract_statement_span = |statement| {
             let expn_span = filtered_statement_span(statement)?;
-            let (span, visible_macro) = unexpand(expn_span)?;
+            let (span, expn_kind) = unexpand(expn_span)?;
 
-            initial_covspans.push(SpanFromMir::new(span, visible_macro, bcb));
+            initial_covspans.push(SpanFromMir::new(span, expn_kind, bcb));
             Some(())
         };
         for statement in data.statements.iter() {
@@ -79,9 +79,9 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
 
         let mut extract_terminator_span = |terminator| {
             let expn_span = filtered_terminator_span(terminator)?;
-            let (span, visible_macro) = unexpand(expn_span)?;
+            let (span, expn_kind) = unexpand(expn_span)?;
 
-            initial_covspans.push(SpanFromMir::new(span, visible_macro, bcb));
+            initial_covspans.push(SpanFromMir::new(span, expn_kind, bcb));
             Some(())
         };
         extract_terminator_span(data.terminator());
@@ -97,6 +97,7 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
         | StatementKind::ConstEvalCounter
+        | StatementKind::BackwardIncompatibleDropHint { .. }
         | StatementKind::Nop => None,
 
         // FIXME(#78546): MIR InstrumentCoverage - Can the source_info.span for `FakeRead`
@@ -214,7 +215,7 @@ pub(crate) struct SpanFromMir {
     /// With the exception of `fn_sig_span`, this should always be contained
     /// within `body_span`.
     pub(crate) span: Span,
-    pub(crate) visible_macro: Option<Symbol>,
+    pub(crate) expn_kind: Option<ExpnKind>,
     pub(crate) bcb: BasicCoverageBlock,
 }
 
@@ -223,12 +224,12 @@ impl SpanFromMir {
         Self::new(fn_sig_span, None, START_BCB)
     }
 
-    pub(crate) fn new(span: Span, visible_macro: Option<Symbol>, bcb: BasicCoverageBlock) -> Self {
-        Self { span, visible_macro, bcb }
+    pub(crate) fn new(span: Span, expn_kind: Option<ExpnKind>, bcb: BasicCoverageBlock) -> Self {
+        Self { span, expn_kind, bcb }
     }
 
     pub(crate) fn into_covspan(self) -> Covspan {
-        let Self { span, visible_macro: _, bcb } = self;
+        let Self { span, expn_kind: _, bcb } = self;
         Covspan { span, bcb }
     }
 }

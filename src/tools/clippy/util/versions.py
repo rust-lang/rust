@@ -1,22 +1,21 @@
 #!/usr/bin/env python
 
-import json
-import logging as log
+from string import Template
+import argparse
 import os
 import sys
 
-log.basicConfig(level=log.INFO, format="%(levelname)s: %(message)s")
-
-
 def key(v):
     if v == "master":
-        return float("inf")
-    if v == "stable":
         return sys.maxsize
-    if v == "beta":
+    if v == "stable":
         return sys.maxsize - 1
+    if v == "beta":
+        return sys.maxsize - 2
     if v == "pre-1.29.0":
         return -1
+    if not v.startswith("rust-"):
+        return None
 
     v = v.replace("rust-", "")
 
@@ -26,26 +25,27 @@ def key(v):
 
     return s
 
-
 def main():
-    if len(sys.argv) < 2:
-        log.error("specify output directory")
-        return
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input", help="path to the versions.html template", type=argparse.FileType("r"))
+    parser.add_argument("outdir", help="path to write the output HTML")
+    args = parser.parse_args()
 
-    outdir = sys.argv[1]
     versions = [
         dir
-        for dir in os.listdir(outdir)
-        if not dir.startswith(".")
-        and not dir.startswith("v")
-        and os.path.isdir(os.path.join(outdir, dir))
+        for dir in os.listdir(args.outdir)
+        if key(dir) is not None
     ]
-    versions.sort(key=key)
+    versions.sort(key=key, reverse=True)
+    links = [f'<a class="list-group-item" href="./{version}/index.html">{version}</a>' for version in versions]
 
-    with open(os.path.join(outdir, "versions.json"), "w") as fp:
-        json.dump(versions, fp, indent=2)
-        log.info("wrote JSON for great justice")
+    template = Template(args.input.read())
+    html = template.substitute(list="\n".join(links))
 
+    path = os.path.join(args.outdir, "index.html")
+    with open(path, "w") as out:
+        out.write(html)
+        print(f"wrote HTML to {path}")
 
 if __name__ == "__main__":
     main()

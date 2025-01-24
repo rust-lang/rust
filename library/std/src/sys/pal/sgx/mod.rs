@@ -9,7 +9,6 @@ use crate::io::ErrorKind;
 use crate::sync::atomic::{AtomicBool, Ordering};
 
 pub mod abi;
-pub mod alloc;
 pub mod args;
 pub mod env;
 pub mod fd;
@@ -49,7 +48,7 @@ pub fn unsupported<T>() -> crate::io::Result<T> {
 }
 
 pub fn unsupported_err() -> crate::io::Error {
-    crate::io::const_io_error!(ErrorKind::Unsupported, "operation not supported on SGX yet")
+    crate::io::const_error!(ErrorKind::Unsupported, "operation not supported on SGX yet")
 }
 
 /// This function is used to implement various functions that doesn't exist,
@@ -60,7 +59,7 @@ pub fn unsupported_err() -> crate::io::Error {
 pub fn sgx_ineffective<T>(v: T) -> crate::io::Result<T> {
     static SGX_INEFFECTIVE_ERROR: AtomicBool = AtomicBool::new(false);
     if SGX_INEFFECTIVE_ERROR.load(Ordering::Relaxed) {
-        Err(crate::io::const_io_error!(
+        Err(crate::io::const_error!(
             ErrorKind::Uncategorized,
             "operation can't be trusted to have any effect on SGX",
         ))
@@ -131,24 +130,6 @@ pub fn abort_internal() -> ! {
 // NB. used by both libunwind and libpanic_abort
 pub extern "C" fn __rust_abort() {
     abort_internal();
-}
-
-pub mod rand {
-    pub fn rdrand64() -> u64 {
-        unsafe {
-            let mut ret: u64 = 0;
-            for _ in 0..10 {
-                if crate::arch::x86_64::_rdrand64_step(&mut ret) == 1 {
-                    return ret;
-                }
-            }
-            rtabort!("Failed to obtain random data");
-        }
-    }
-}
-
-pub fn hashmap_random_keys() -> (u64, u64) {
-    (self::rand::rdrand64(), self::rand::rdrand64())
 }
 
 pub use crate::sys_common::{AsInner, FromInner, IntoInner};

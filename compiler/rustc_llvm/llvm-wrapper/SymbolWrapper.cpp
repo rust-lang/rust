@@ -8,14 +8,14 @@
 // * https://github.com/llvm/llvm-project/blob/ef6d1ec07c693352c4a60dd58db08d2d8558f6ea/llvm/lib/Object/ArchiveWriter.cpp
 
 #include "LLVMWrapper.h"
-#include "SuppressLLVMWarnings.h"
+
 #include "llvm/ADT/SmallString.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/Object/COFF.h"
 #include "llvm/Object/COFFImportFile.h"
 #include "llvm/Object/IRObjectFile.h"
 #include "llvm/Object/ObjectFile.h"
-#include <llvm/Support/raw_ostream.h>
+#include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
 using namespace llvm::sys;
@@ -77,22 +77,18 @@ LLVMRustGetSymbols(char *BufPtr, size_t BufLen, void *State,
   Expected<std::unique_ptr<object::SymbolicFile>> ObjOrErr =
       getSymbolicFile(Buf->getMemBufferRef(), Context);
   if (!ObjOrErr) {
-    Error E = ObjOrErr.takeError();
-    SmallString<0> ErrorBuf;
-    auto Error = raw_svector_ostream(ErrorBuf);
-    Error << E << '\0';
-    return ErrorCallback(Error.str().data());
+    return ErrorCallback(toString(ObjOrErr.takeError()).c_str());
   }
   std::unique_ptr<object::SymbolicFile> Obj = std::move(*ObjOrErr);
+  if (Obj == nullptr) {
+    return 0;
+  }
 
   for (const object::BasicSymbolRef &S : Obj->symbols()) {
     if (!isArchiveSymbol(S))
       continue;
     if (Error E = S.printName(SymName)) {
-      SmallString<0> ErrorBuf;
-      auto Error = raw_svector_ostream(ErrorBuf);
-      Error << E << '\0';
-      return ErrorCallback(Error.str().data());
+      return ErrorCallback(toString(std::move(E)).c_str());
     }
     SymName << '\0';
     if (void *E = Callback(State, SymNameBuf.str().data())) {
@@ -154,11 +150,9 @@ extern "C" bool LLVMRustIsECObject(char *BufPtr, size_t BufLen) {
     return cast<llvm::object::COFFObjectFile>(&*Obj)->getMachine() !=
            COFF::IMAGE_FILE_MACHINE_ARM64;
 
-#if LLVM_VERSION_GE(18, 0)
   if (Obj->isCOFFImportFile())
     return cast<llvm::object::COFFImportFile>(&*Obj)->getMachine() !=
            COFF::IMAGE_FILE_MACHINE_ARM64;
-#endif
 
   if (Obj->isIR()) {
     Expected<std::string> TripleStr =

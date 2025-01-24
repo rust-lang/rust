@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: riscv64 riscv32 riscv64-zfhmin riscv32-zfhmin riscv64-zfh riscv32-zfh
 //@ assembly-output: emit-asm
 
@@ -27,40 +28,17 @@
 //@[riscv32-zfh] filecheck-flags: --check-prefix zfhmin
 
 //@ compile-flags: -C target-feature=+d
+//@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, lang_items, rustc_attrs, f16)]
+#![feature(no_core, f16)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! concat {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! stringify {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 type ptr = *mut u8;
-
-impl Copy for i8 {}
-impl Copy for i16 {}
-impl Copy for f16 {}
-impl Copy for i32 {}
-impl Copy for f32 {}
-impl Copy for i64 {}
-impl Copy for f64 {}
-impl Copy for ptr {}
 
 extern "C" {
     fn extern_func();
@@ -90,12 +68,6 @@ macro_rules! check {
     ($func:ident $ty:ident $class:ident $mov:literal) => {
         #[no_mangle]
         pub unsafe fn $func(x: $ty) -> $ty {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let y;
             asm!(concat!($mov, " {}, {}"), out($class) y, in($class) x);
             y
@@ -107,12 +79,6 @@ macro_rules! check_reg {
     ($func:ident $ty:ident $reg:tt $mov:literal) => {
         #[no_mangle]
         pub unsafe fn $func(x: $ty) -> $ty {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let y;
             asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
             y

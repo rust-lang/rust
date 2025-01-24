@@ -1,14 +1,8 @@
 //! Reading proc-macro rustc version information from binary data
 
-use std::{
-    fs::File,
-    io::{self, Read},
-};
+use std::io::{self, Read};
 
-use memmap2::Mmap;
-use object::read::{File as BinaryFile, Object, ObjectSection};
-use paths::AbsPath;
-use snap::read::FrameDecoder as SnapDecoder;
+use object::read::{Object, ObjectSection};
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -22,14 +16,14 @@ pub struct RustCInfo {
 }
 
 /// Read rustc dylib information
-pub fn read_dylib_info(dylib_path: &AbsPath) -> io::Result<RustCInfo> {
+pub fn read_dylib_info(obj: &object::File<'_>) -> io::Result<RustCInfo> {
     macro_rules! err {
         ($e:literal) => {
             io::Error::new(io::ErrorKind::InvalidData, $e)
         };
     }
 
-    let ver_str = read_version(dylib_path)?;
+    let ver_str = read_version(obj)?;
     let mut items = ver_str.split_whitespace();
     let tag = items.next().ok_or_else(|| err!("version format error"))?;
     if tag != "rustc" {
@@ -76,10 +70,8 @@ pub fn read_dylib_info(dylib_path: &AbsPath) -> io::Result<RustCInfo> {
 
 /// This is used inside read_version() to locate the ".rustc" section
 /// from a proc macro crate's binary file.
-fn read_section<'a>(dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'a [u8]> {
-    BinaryFile::parse(dylib_binary)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
-        .section_by_name(section_name)
+fn read_section<'a>(obj: &object::File<'a>, section_name: &str) -> io::Result<&'a [u8]> {
+    obj.section_by_name(section_name)
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "section read error"))?
         .data()
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
@@ -107,11 +99,8 @@ fn read_section<'a>(dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'
 ///
 /// Check this issue for more about the bytes layout:
 /// <https://github.com/rust-lang/rust-analyzer/issues/6174>
-pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
-    let dylib_file = File::open(dylib_path)?;
-    let dylib_mmapped = unsafe { Mmap::map(&dylib_file) }?;
-
-    let dot_rustc = read_section(&dylib_mmapped, ".rustc")?;
+pub fn read_version(obj: &object::File<'_>) -> io::Result<String> {
+    let dot_rustc = read_section(obj, ".rustc")?;
 
     // check if magic is valid
     if &dot_rustc[0..4] != b"rust" {
@@ -123,9 +112,8 @@ pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
     let version = u32::from_be_bytes([dot_rustc[4], dot_rustc[5], dot_rustc[6], dot_rustc[7]]);
     // Last supported version is:
     // https://github.com/rust-lang/rust/commit/b94cfefc860715fb2adf72a6955423d384c69318
-    let (snappy_portion, bytes_before_version) = match version {
-        5 | 6 => (&dot_rustc[8..], 13),
-        7 | 8 => {
+    let (mut metadata_portion, bytes_before_version) = match version {
+        8 => {
             let len_bytes = &dot_rustc[8..12];
             let data_len = u32::from_be_bytes(len_bytes.try_into().unwrap()) as usize;
             (&dot_rustc[12..data_len + 12], 13)
@@ -143,13 +131,6 @@ pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
         }
     };
 
-    let mut uncompressed: Box<dyn Read> = if &snappy_portion[0..4] == b"rust" {
-        // Not compressed.
-        Box::new(snappy_portion)
-    } else {
-        Box::new(SnapDecoder::new(snappy_portion))
-    };
-
     // We're going to skip over the bytes before the version string, so basically:
     // 8 bytes for [b'r',b'u',b's',b't',0,0,0,5]
     // 4 or 8 bytes for [crate root bytes]
@@ -157,19 +138,23 @@ pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
     // so 13 or 17 bytes in total, and we should check the last of those bytes
     // to know the length
     let mut bytes = [0u8; 17];
-    uncompressed.read_exact(&mut bytes[..bytes_before_version])?;
+    metadata_portion.read_exact(&mut bytes[..bytes_before_version])?;
     let length = bytes[bytes_before_version - 1];
 
     let mut version_string_utf8 = vec![0u8; length as usize];
-    uncompressed.read_exact(&mut version_string_utf8)?;
+    metadata_portion.read_exact(&mut version_string_utf8)?;
     let version_string = String::from_utf8(version_string_utf8);
     version_string.map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
 #[test]
 fn test_version_check() {
-    let path = paths::AbsPathBuf::assert(crate::proc_macro_test_dylib_path());
-    let info = read_dylib_info(&path).unwrap();
+    let info = read_dylib_info(
+        &object::File::parse(&*std::fs::read(crate::proc_macro_test_dylib_path()).unwrap())
+            .unwrap(),
+    )
+    .unwrap();
+
     assert_eq!(
         info.version_string,
         crate::RUSTC_VERSION_STRING,

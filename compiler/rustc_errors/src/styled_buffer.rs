@@ -3,7 +3,7 @@
 use crate::snippet::{Style, StyledString};
 
 #[derive(Debug)]
-pub struct StyledBuffer {
+pub(crate) struct StyledBuffer {
     lines: Vec<Vec<StyledChar>>,
 }
 
@@ -22,12 +22,12 @@ impl StyledChar {
 }
 
 impl StyledBuffer {
-    pub fn new() -> StyledBuffer {
+    pub(crate) fn new() -> StyledBuffer {
         StyledBuffer { lines: vec![] }
     }
 
     /// Returns content of `StyledBuffer` split by lines and line styles
-    pub fn render(&self) -> Vec<Vec<StyledString>> {
+    pub(crate) fn render(&self) -> Vec<Vec<StyledString>> {
         // Tabs are assumed to have been replaced by spaces in calling code.
         debug_assert!(self.lines.iter().all(|r| !r.iter().any(|sc| sc.chr == '\t')));
 
@@ -70,7 +70,7 @@ impl StyledBuffer {
     /// Sets `chr` with `style` for given `line`, `col`.
     /// If `line` does not exist in our buffer, adds empty lines up to the given
     /// and fills the last line with unstyled whitespace.
-    pub fn putc(&mut self, line: usize, col: usize, chr: char, style: Style) {
+    pub(crate) fn putc(&mut self, line: usize, col: usize, chr: char, style: Style) {
         self.ensure_lines(line);
         if col >= self.lines[line].len() {
             self.lines[line].resize(col + 1, StyledChar::SPACE);
@@ -81,7 +81,7 @@ impl StyledBuffer {
     /// Sets `string` with `style` for given `line`, starting from `col`.
     /// If `line` does not exist in our buffer, adds empty lines up to the given
     /// and fills the last line with unstyled whitespace.
-    pub fn puts(&mut self, line: usize, col: usize, string: &str, style: Style) {
+    pub(crate) fn puts(&mut self, line: usize, col: usize, string: &str, style: Style) {
         let mut n = col;
         for c in string.chars() {
             self.putc(line, n, c, style);
@@ -91,7 +91,7 @@ impl StyledBuffer {
 
     /// For given `line` inserts `string` with `style` before old content of that line,
     /// adding lines if needed
-    pub fn prepend(&mut self, line: usize, string: &str, style: Style) {
+    pub(crate) fn prepend(&mut self, line: usize, string: &str, style: Style) {
         self.ensure_lines(line);
         let string_len = string.chars().count();
 
@@ -107,7 +107,7 @@ impl StyledBuffer {
 
     /// For given `line` inserts `string` with `style` after old content of that line,
     /// adding lines if needed
-    pub fn append(&mut self, line: usize, string: &str, style: Style) {
+    pub(crate) fn append(&mut self, line: usize, string: &str, style: Style) {
         if line >= self.lines.len() {
             self.puts(line, 0, string, style);
         } else {
@@ -116,14 +116,14 @@ impl StyledBuffer {
         }
     }
 
-    pub fn num_lines(&self) -> usize {
+    pub(crate) fn num_lines(&self) -> usize {
         self.lines.len()
     }
 
     /// Set `style` for `line`, `col_start..col_end` range if:
     /// 1. That line and column range exist in `StyledBuffer`
     /// 2. `overwrite` is `true` or existing style is `Style::NoStyle` or `Style::Quotation`
-    pub fn set_style_range(
+    pub(crate) fn set_style_range(
         &mut self,
         line: usize,
         col_start: usize,
@@ -139,7 +139,7 @@ impl StyledBuffer {
     /// Set `style` for `line`, `col` if:
     /// 1. That line and column exist in `StyledBuffer`
     /// 2. `overwrite` is `true` or existing style is `Style::NoStyle` or `Style::Quotation`
-    pub fn set_style(&mut self, line: usize, col: usize, style: Style, overwrite: bool) {
+    fn set_style(&mut self, line: usize, col: usize, style: Style, overwrite: bool) {
         if let Some(ref mut line) = self.lines.get_mut(line) {
             if let Some(StyledChar { style: s, .. }) = line.get_mut(col) {
                 if overwrite || matches!(s, Style::NoStyle | Style::Quotation) {

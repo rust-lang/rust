@@ -1,5 +1,5 @@
 use hir_def::db::DefDatabase;
-use span::EditionedFileId;
+use span::{Edition, EditionedFileId};
 use syntax::{TextRange, TextSize};
 use test_fixture::WithFixture;
 
@@ -15,7 +15,7 @@ fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), 
         .declarations()
         .find_map(|x| match x {
             hir_def::ModuleDefId::FunctionId(x) => {
-                if db.function_data(x).name.display(db).to_string() == "main" {
+                if db.function_data(x).name.display(db, Edition::CURRENT).to_string() == "main" {
                     Some(x)
                 } else {
                     None
@@ -32,16 +32,20 @@ fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), 
         )
         .map_err(|e| MirEvalError::MirLowerError(func_id, e))?;
 
-    let (result, output) = interpret_mir(db, body, false, None);
+    let (result, output) = interpret_mir(db, body, false, None)?;
     result?;
     Ok((output.stdout().into_owned(), output.stderr().into_owned()))
 }
 
-fn check_pass(ra_fixture: &str) {
+fn check_pass(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     check_pass_and_stdio(ra_fixture, "", "");
 }
 
-fn check_pass_and_stdio(ra_fixture: &str, expected_stdout: &str, expected_stderr: &str) {
+fn check_pass_and_stdio(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    expected_stdout: &str,
+    expected_stderr: &str,
+) {
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
     let file_id = *file_ids.last().unwrap();
     let x = eval_main(&db, file_id);
@@ -63,7 +67,7 @@ fn check_pass_and_stdio(ra_fixture: &str, expected_stdout: &str, expected_stderr
             let span_formatter = |file, range: TextRange| {
                 format!("{:?} {:?}..{:?}", file, line_index(range.start()), line_index(range.end()))
             };
-            e.pretty_print(&mut err, &db, span_formatter).unwrap();
+            e.pretty_print(&mut err, &db, span_formatter, Edition::CURRENT).unwrap();
             panic!("Error in interpreting: {err}");
         }
         Ok((stdout, stderr)) => {
@@ -73,7 +77,7 @@ fn check_pass_and_stdio(ra_fixture: &str, expected_stdout: &str, expected_stderr
     }
 }
 
-fn check_panic(ra_fixture: &str, expected_panic: &str) {
+fn check_panic(#[rust_analyzer::rust_fixture] ra_fixture: &str, expected_panic: &str) {
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
     let file_id = *file_ids.last().unwrap();
     let e = eval_main(&db, file_id).unwrap_err();
@@ -399,7 +403,7 @@ extern "C" {
     fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32;
 }
 
-fn my_cmp(x: &[u8], y: &[u8]) -> i32 {
+fn my_cmp(x: &[u8; 3], y: &[u8; 3]) -> i32 {
     memcmp(x as *const u8, y as *const u8, x.len())
 }
 
@@ -779,6 +783,7 @@ fn main() {
 fn posix_getenv() {
     check_pass(
         r#"
+//- minicore: sized
 //- /main.rs env:foo=bar
 
 type c_char = u8;
@@ -849,7 +854,7 @@ fn main() {
 fn regression_14966() {
     check_pass(
         r#"
-//- minicore: fn, copy, coerce_unsized
+//- minicore: fn, copy, coerce_unsized, dispatch_from_dyn
 trait A<T> {
     fn a(&self) {}
 }
@@ -876,5 +881,34 @@ fn main() {
     C::c(&());
 }
 "#,
+    );
+}
+
+#[test]
+fn long_str_eq_same_prefix() {
+    check_pass_and_stdio(
+        r#"
+//- minicore: slice, index, coerce_unsized
+
+type pthread_key_t = u32;
+type c_void = u8;
+type c_int = i32;
+
+extern "C" {
+    pub fn write(fd: i32, buf: *const u8, count: usize) -> usize;
+}
+
+fn main() {
+    // More than 16 bytes, the size of `i128`.
+    let long_str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab";
+    let output = match long_str {
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" => b"true" as &[u8],
+        _ => b"false",
+    };
+    write(1, &output[0], output.len());
+}
+        "#,
+        "false",
+        "",
     );
 }

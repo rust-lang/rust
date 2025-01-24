@@ -1,7 +1,7 @@
 // Check that unsafe trait object do not implement themselves
 // automatically
 
-#![feature(object_safe_for_dispatch)]
+#![feature(dyn_compatible_for_dispatch)]
 
 trait Trait: Sized {
     fn call(&self);

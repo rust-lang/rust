@@ -8,7 +8,7 @@ use crate::passes::{ImplStripper, ImportStripper, Pass, Stripper};
 
 pub(crate) const STRIP_PRIVATE: Pass = Pass {
     name: "strip-private",
-    run: strip_private,
+    run: Some(strip_private),
     description: "strips all private items from a crate which cannot be seen externally, \
                   implies strip-priv-imports",
 };
@@ -18,7 +18,7 @@ pub(crate) const STRIP_PRIVATE: Pass = Pass {
 pub(crate) fn strip_private(mut krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
     // This stripper collects all *retained* nodes.
     let mut retained = ItemIdSet::default();
-    let is_json_output = cx.output_format.is_json() && !cx.show_coverage;
+    let is_json_output = cx.is_json_output();
 
     // strip all private items
     {

@@ -7,8 +7,9 @@ use std::fmt::Display;
 
 use either::Either;
 use hir::{Callable, Semantics};
-use ide_db::RootDatabase;
+use ide_db::{famous_defs::FamousDefs, RootDatabase};
 
+use span::EditionedFileId;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, AstNode, HasArgList, HasName, UnaryOp},
@@ -19,8 +20,9 @@ use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, Inla
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
-    sema: &Semantics<'_, RootDatabase>,
+    FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
+    _file_id: EditionedFileId,
     expr: ast::Expr,
 ) -> Option<()> {
     if !config.parameter_hints {
@@ -60,6 +62,7 @@ pub(super) fn hints(
                 position: InlayHintPosition::Before,
                 pad_left: false,
                 pad_right: true,
+                resolve_parent: Some(expr.syntax().text_range()),
             }
         });
 
@@ -121,7 +124,9 @@ fn should_hide_param_name_hint(
     }
 
     let fn_name = match callable.kind() {
-        hir::CallableKind::Function(it) => Some(it.name(sema.db).display_no_db().to_smolstr()),
+        hir::CallableKind::Function(it) => {
+            Some(it.name(sema.db).unescaped().display_no_db().to_smolstr())
+        }
         _ => None,
     };
     let fn_name = fn_name.as_deref();
@@ -148,7 +153,7 @@ fn is_param_name_suffix_of_fn_name(
                     .len()
                     .checked_sub(param_name.len())
                     .and_then(|at| function.is_char_boundary(at).then(|| function.split_at(at)))
-                    .map_or(false, |(prefix, suffix)| {
+                    .is_some_and(|(prefix, suffix)| {
                         suffix.eq_ignore_ascii_case(param_name) && prefix.ends_with('_')
                     })
         }
@@ -264,7 +269,7 @@ mod tests {
     };
 
     #[track_caller]
-    fn check_params(ra_fixture: &str) {
+    fn check_params(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(
             InlayHintsConfig { parameter_hints: true, ..DISABLED_CONFIG },
             ra_fixture,

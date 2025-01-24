@@ -3,7 +3,7 @@
 
 #![allow(dropping_copy_types)]
 
-use std::alloc::{alloc, dealloc, Layout};
+use std::alloc::{Layout, alloc, dealloc};
 use std::slice::from_raw_parts;
 
 fn main() {

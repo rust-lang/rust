@@ -156,7 +156,7 @@ pub enum AnEnum {
     WithVariants { and: usize, sub: usize, variants: usize },
 }
 
-#[doc(keyword = "CookieMonster")]
+#[doc(keyword = "for")]
 /// Some keyword.
 pub mod keyword {}
 
@@ -627,4 +627,67 @@ pub mod short_docs {
 
     /// subt_vec_num(x: &[f64], y: f64)
     pub fn subt_vec_num() {}
+}
+
+pub mod long_list {
+    //! bla
+    //!
+    //! * Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque et libero ut leo
+    //!   interdum laoreet vitae a mi. Aliquam erat volutpat. Suspendisse volutpat non quam non
+    //!   commodo.
+    //!
+    //!   Praesent enim neque, imperdiet sed nisl at, lobortis egestas augue. Sed vitae tristique
+    //!   augue. Phasellus vel pretium lectus.
+    //! * Praesent enim neque, imperdiet sed nisl at, lobortis egestas augue. Sed vitae tristique
+    //!   augue. Phasellus vel pretium lectus.
+    //! * Praesent enim neque, imperdiet sed nisl at, lobortis egestas augue. Sed vitae tristique
+    //!   augue. Phasellus vel pretium lectus.
+    //!
+    //! Another list:
+    //!
+    //! * [`TryFromBytes`](#a) indicates that a type may safely be converted from certain byte
+    //!   sequence (conditional on runtime checks)
+    //! * [`FromZeros`](#a) indicates that a sequence of zero bytes represents a valid instance of
+    //!   a type
+    //! * [`FromBytes`](#a) indicates that a type may safely be converted from an arbitrary byte
+    //!   sequence
+}
+
+pub struct ImplDoc;
+
+/// bla sondfosdnf sdfasd fadsd fdsa f ads fad sf sad f sad fasdfsafsa df dsafasdasd fsa dfadsfasd
+/// fads fadfadd
+///
+/// bla
+impl ImplDoc {
+    pub fn bar() {}
+}
+
+/// bla
+///
+/// bla
+impl ImplDoc {
+    pub fn bar2() {}
+}
+
+// ignore-tidy-linelength
+/// | this::is::a::kinda::very::long::header::number::one | this::is::a::kinda::very::long::header::number::two | this::is::a::kinda::very::long::header::number::three |
+/// |-|-|-|
+/// | bla | bli | blob |
+impl ImplDoc {
+    pub fn bar3() {}
+}
+
+/// # h1
+///
+/// bla
+impl ImplDoc {
+    pub fn bar4() {}
+}
+
+/// * list
+/// * list
+/// * list
+impl ImplDoc {
+    pub fn bar5() {}
 }

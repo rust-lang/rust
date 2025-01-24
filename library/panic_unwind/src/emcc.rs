@@ -64,7 +64,7 @@ struct Exception {
     data: Option<Box<dyn Any + Send>>,
 }
 
-pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
+pub(crate) unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     // intrinsics::try actually gives us a pointer to this structure.
     #[repr(C)]
     struct CatchData {
@@ -78,7 +78,7 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
         super::__rust_foreign_exception();
     }
 
-    let canary = ptr::addr_of!((*adjusted_ptr).canary).read();
+    let canary = (&raw const (*adjusted_ptr).canary).read();
     if !ptr::eq(canary, &EXCEPTION_TYPE_INFO) {
         super::__rust_foreign_exception();
     }
@@ -93,19 +93,16 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     out
 }
 
-pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
+pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     let exception = __cxa_allocate_exception(mem::size_of::<Exception>()) as *mut Exception;
     if exception.is_null() {
         return uw::_URC_FATAL_PHASE1_ERROR as u32;
     }
-    ptr::write(
-        exception,
-        Exception {
-            canary: &EXCEPTION_TYPE_INFO,
-            caught: AtomicBool::new(false),
-            data: Some(data),
-        },
-    );
+    ptr::write(exception, Exception {
+        canary: &EXCEPTION_TYPE_INFO,
+        caught: AtomicBool::new(false),
+        data: Some(data),
+    });
     __cxa_throw(exception as *mut _, &EXCEPTION_TYPE_INFO, exception_cleanup);
 }
 

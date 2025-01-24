@@ -8,6 +8,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
+#![feature(autodiff)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
 #![feature(if_let_guard)]
@@ -15,19 +16,22 @@
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![feature(rustdoc_internals)]
+#![feature(string_from_utf8_lossy_owned)]
 #![feature(try_blocks)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 extern crate proc_macro;
 
 use rustc_expand::base::{MacroExpanderFn, ResolverExpand, SyntaxExtensionKind};
 use rustc_expand::proc_macro::BangProcMacro;
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use crate::deriving::*;
 
 mod alloc_error_handler;
 mod assert;
+mod autodiff;
 mod cfg;
 mod cfg_accessible;
 mod cfg_eval;
@@ -93,6 +97,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         line: source_util::expand_line,
         log_syntax: log_syntax::expand_log_syntax,
         module_path: source_util::expand_mod,
+        naked_asm: asm::expand_naked_asm,
         option_env: env::expand_option_env,
         pattern_type: pattern_type::expand,
         std_panic: edition_panic::expand_panic,
@@ -104,6 +109,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
 
     register_attr! {
         alloc_error_handler: alloc_error_handler::expand,
+        autodiff: autodiff::expand,
         bench: test::expand_bench,
         cfg_accessible: cfg_accessible::Expander,
         cfg_eval: cfg_eval::expand,
@@ -128,7 +134,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         PartialOrd: partial_ord::expand_deriving_partial_ord,
         RustcDecodable: decodable::expand_deriving_rustc_decodable,
         RustcEncodable: encodable::expand_deriving_rustc_encodable,
-        SmartPointer: smart_ptr::expand_deriving_smart_ptr,
+        CoercePointee: coerce_pointee::expand_deriving_coerce_pointee,
     }
 
     let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);

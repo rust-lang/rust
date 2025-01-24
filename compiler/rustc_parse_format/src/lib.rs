@@ -13,15 +13,16 @@
     html_playground_url = "https://play.rust-lang.org/",
     test(attr(deny(warnings)))
 )]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::{iter, str, string};
 
-use rustc_lexer::unescape;
 pub use Alignment::*;
 pub use Count::*;
 pub use Piece::*;
 pub use Position::*;
+use rustc_lexer::unescape;
 
 // Note: copied from rustc_span
 /// Range inside of a `Span` used for diagnostics when we only have access to relative positions.
@@ -220,6 +221,11 @@ pub enum Suggestion {
     /// Remove `r#` from identifier:
     /// `format!("{r#foo}")` -> `format!("{foo}")`
     RemoveRawIdent(InnerSpan),
+    /// Reorder format parameter:
+    /// `format!("{foo:?#}")` -> `format!("{foo:#?}")`
+    /// `format!("{foo:?x}")` -> `format!("{foo:x?}")`
+    /// `format!("{foo:?X}")` -> `format!("{foo:X?}")`
+    ReorderFormatParameter(InnerSpan, string::String),
 }
 
 /// The parser structure for interpreting the input format string. This is
@@ -472,19 +478,19 @@ impl<'a> Parser<'a> {
             }
 
             pos = peek_pos;
-            description = format!("expected `'}}'`, found `{maybe:?}`");
+            description = format!("expected `}}`, found `{}`", maybe.escape_debug());
         } else {
-            description = "expected `'}'` but string was terminated".to_owned();
+            description = "expected `}` but string was terminated".to_owned();
             // point at closing `"`
             pos = self.input.len() - if self.append_newline { 1 } else { 0 };
         }
 
         let pos = self.to_span_index(pos);
 
-        let label = "expected `'}'`".to_owned();
+        let label = "expected `}`".to_owned();
         let (note, secondary_label) = if arg.format.fill == Some('}') {
             (
-                Some("the character `'}'` is interpreted as a fill character because of the `:` that precedes it".to_owned()),
+                Some("the character `}` is interpreted as a fill character because of the `:` that precedes it".to_owned()),
                 arg.format.fill_span.map(|sp| ("this is not interpreted as a formatting closing brace".to_owned(), sp)),
             )
         } else {
@@ -508,13 +514,7 @@ impl<'a> Parser<'a> {
 
     /// Consumes all whitespace characters until the first non-whitespace character
     fn ws(&mut self) {
-        while let Some(&(_, c)) = self.cur.peek() {
-            if c.is_whitespace() {
-                self.cur.next();
-            } else {
-                break;
-            }
-        }
+        while let Some(_) = self.cur.next_if(|&(_, c)| c.is_whitespace()) {}
     }
 
     /// Parses all of a string which is to be considered a "raw literal" in a
@@ -539,7 +539,7 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        &self.input[start..self.input.len()]
+        &self.input[start..]
     }
 
     /// Parses an `Argument` structure, or what's contained within braces inside the format string.
@@ -730,6 +730,12 @@ impl<'a> Parser<'a> {
             }
         } else if self.consume('?') {
             spec.ty = "?";
+            if let Some(&(_, maybe)) = self.cur.peek() {
+                match maybe {
+                    '#' | 'x' | 'X' => self.suggest_format_parameter(maybe),
+                    _ => (),
+                }
+            }
         } else {
             spec.ty = self.word();
             if !spec.ty.is_empty() {
@@ -869,34 +875,28 @@ impl<'a> Parser<'a> {
         if let (Some(pos), Some(_)) = (self.consume_pos('?'), self.consume_pos(':')) {
             let word = self.word();
             let pos = self.to_span_index(pos);
-            self.errors.insert(
-                0,
-                ParseError {
-                    description: "expected format parameter to occur after `:`".to_owned(),
-                    note: Some(format!("`?` comes after `:`, try `{}:{}` instead", word, "?")),
-                    label: "expected `?` to occur after `:`".to_owned(),
-                    span: pos.to(pos),
-                    secondary_label: None,
-                    suggestion: Suggestion::None,
-                },
-            );
+            self.errors.insert(0, ParseError {
+                description: "expected format parameter to occur after `:`".to_owned(),
+                note: Some(format!("`?` comes after `:`, try `{}:{}` instead", word, "?")),
+                label: "expected `?` to occur after `:`".to_owned(),
+                span: pos.to(pos),
+                secondary_label: None,
+                suggestion: Suggestion::None,
+            });
         }
     }
 
     fn suggest_format_align(&mut self, alignment: char) {
         if let Some(pos) = self.consume_pos(alignment) {
             let pos = self.to_span_index(pos);
-            self.errors.insert(
-                0,
-                ParseError {
-                    description: "expected format parameter to occur after `:`".to_owned(),
-                    note: None,
-                    label: format!("expected `{}` to occur after `:`", alignment),
-                    span: pos.to(pos),
-                    secondary_label: None,
-                    suggestion: Suggestion::None,
-                },
-            );
+            self.errors.insert(0, ParseError {
+                description: "expected format parameter to occur after `:`".to_owned(),
+                note: None,
+                label: format!("expected `{}` to occur after `:`", alignment),
+                span: pos.to(pos),
+                secondary_label: None,
+                suggestion: Suggestion::None,
+            });
         }
     }
 
@@ -913,41 +913,53 @@ impl<'a> Parser<'a> {
             if let ArgumentNamed(_) = arg.position {
                 match field.position {
                     ArgumentNamed(_) => {
-                        self.errors.insert(
-                            0,
-                            ParseError {
-                                description: "field access isn't supported".to_string(),
-                                note: None,
-                                label: "not supported".to_string(),
-                                span: InnerSpan::new(
-                                    arg.position_span.start,
-                                    field.position_span.end,
-                                ),
-                                secondary_label: None,
-                                suggestion: Suggestion::UsePositional,
-                            },
-                        );
+                        self.errors.insert(0, ParseError {
+                            description: "field access isn't supported".to_string(),
+                            note: None,
+                            label: "not supported".to_string(),
+                            span: InnerSpan::new(arg.position_span.start, field.position_span.end),
+                            secondary_label: None,
+                            suggestion: Suggestion::UsePositional,
+                        });
                     }
                     ArgumentIs(_) => {
-                        self.errors.insert(
-                            0,
-                            ParseError {
-                                description: "tuple index access isn't supported".to_string(),
-                                note: None,
-                                label: "not supported".to_string(),
-                                span: InnerSpan::new(
-                                    arg.position_span.start,
-                                    field.position_span.end,
-                                ),
-                                secondary_label: None,
-                                suggestion: Suggestion::UsePositional,
-                            },
-                        );
+                        self.errors.insert(0, ParseError {
+                            description: "tuple index access isn't supported".to_string(),
+                            note: None,
+                            label: "not supported".to_string(),
+                            span: InnerSpan::new(arg.position_span.start, field.position_span.end),
+                            secondary_label: None,
+                            suggestion: Suggestion::UsePositional,
+                        });
                     }
                     _ => {}
                 };
             }
         }
+    }
+
+    fn suggest_format_parameter(&mut self, c: char) {
+        let replacement = match c {
+            '#' => "#?",
+            'x' => "x?",
+            'X' => "X?",
+            _ => return,
+        };
+        let Some(pos) = self.consume_pos(c) else {
+            return;
+        };
+
+        let span = self.span(pos - 1, pos + 1);
+        let pos = self.to_span_index(pos);
+
+        self.errors.insert(0, ParseError {
+            description: format!("expected `}}`, found `{c}`"),
+            note: None,
+            label: "expected `'}'`".into(),
+            span: pos.to(pos),
+            secondary_label: None,
+            suggestion: Suggestion::ReorderFormatParameter(span, format!("{replacement}")),
+        })
     }
 }
 

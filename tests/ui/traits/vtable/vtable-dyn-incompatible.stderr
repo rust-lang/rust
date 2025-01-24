@@ -1,0 +1,16 @@
+error: vtable entries for `<std::vec::IntoIter<u8> as A>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<std::vec::IntoIter<u8> as Iterator>::next),
+           Method(<std::vec::IntoIter<u8> as Iterator>::size_hint),
+           Method(<std::vec::IntoIter<u8> as Iterator>::advance_by),
+           Method(<std::vec::IntoIter<u8> as Iterator>::nth),
+       ]
+  --> $DIR/vtable-dyn-incompatible.rs:8:1
+   |
+LL | trait A: Iterator {}
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

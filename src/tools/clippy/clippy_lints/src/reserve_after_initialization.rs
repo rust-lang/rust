@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::higher::{get_vec_init_kind, VecInitKind};
+use clippy_utils::higher::{VecInitKind, get_vec_init_kind};
 use clippy_utils::source::snippet;
 use clippy_utils::{is_from_proc_macro, path_to_local_id};
 use rustc_errors::Applicability;

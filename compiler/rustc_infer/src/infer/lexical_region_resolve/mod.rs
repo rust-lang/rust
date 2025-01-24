@@ -4,18 +4,19 @@ use std::fmt;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{
-    Direction, Graph, NodeIndex, INCOMING, OUTGOING,
+    Direction, Graph, INCOMING, NodeIndex, OUTGOING,
 };
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::unord::UnordSet;
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::fold::{TypeFoldable, fold_regions};
 use rustc_middle::ty::{
     self, ReBound, ReEarlyParam, ReErased, ReError, ReLateParam, RePlaceholder, ReStatic, ReVar,
     Region, RegionVid, Ty, TyCtxt,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
+use tracing::{debug, instrument};
 
 use super::outlives::test_type_match;
 use crate::infer::region_constraints::{
@@ -43,7 +44,7 @@ pub(crate) fn resolve<'tcx>(
 /// Contains the result of lexical region resolution. Offers methods
 /// to lookup up the final value of a region variable.
 #[derive(Clone)]
-pub struct LexicalRegionResolutions<'tcx> {
+pub(crate) struct LexicalRegionResolutions<'tcx> {
     pub(crate) values: IndexVec<RegionVid, VarValue<'tcx>>,
 }
 
@@ -973,7 +974,7 @@ impl<'tcx> LexicalRegionResolutions<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        tcx.fold_regions(value, |r, _db| self.resolve_region(tcx, r))
+        fold_regions(tcx, value, |r, _db| self.resolve_region(tcx, r))
     }
 
     fn value(&self, rid: RegionVid) -> &VarValue<'tcx> {

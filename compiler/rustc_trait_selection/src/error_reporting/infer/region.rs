@@ -2,7 +2,7 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
-    struct_span_code_err, Applicability, Diag, Subdiagnostic, E0309, E0310, E0311, E0495,
+    Applicability, Diag, E0309, E0310, E0311, E0495, Subdiagnostic, struct_span_code_err,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -12,17 +12,17 @@ use rustc_middle::bug;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, IsSuggestable, Region, Ty, TyCtxt, TypeVisitableExt as _};
-use rustc_span::symbol::kw;
-use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol};
+use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol, kw};
 use rustc_type_ir::Upcast as _;
+use tracing::{debug, instrument};
 
+use super::ObligationCauseAsDiagArg;
 use super::nice_region_error::find_anon_type;
-use super::{nice_region_error, ObligationCauseAsDiagArg};
-use crate::error_reporting::infer::ObligationCauseExt as _;
 use crate::error_reporting::TypeErrCtxt;
+use crate::error_reporting::infer::ObligationCauseExt;
 use crate::errors::{
-    self, note_and_explain, FulfillReqLifetime, LfBoundNotSatisfied, OutlivesBound,
-    OutlivesContent, RefLongerThanData, RegionOriginNote, WhereClauseSuggestions,
+    self, FulfillReqLifetime, LfBoundNotSatisfied, OutlivesBound, OutlivesContent,
+    RefLongerThanData, RegionOriginNote, WhereClauseSuggestions, note_and_explain,
 };
 use crate::fluent_generated as fluent;
 use crate::infer::region_constraints::GenericKind;
@@ -221,7 +221,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             infer::Subtype(ref trace) => RegionOriginNote::WithRequirement {
                 span: trace.cause.span,
                 requirement: ObligationCauseAsDiagArg(trace.cause.clone()),
-                expected_found: self.values_str(trace.values).map(|(e, f, _)| (e, f)),
+                expected_found: self.values_str(trace.values, &trace.cause).map(|(e, f, _)| (e, f)),
             }
             .add_to_diag(err),
             infer::Reborrow(span) => {
@@ -257,7 +257,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .add_to_diag(err);
                 }
             }
-            infer::RelateRegionParamBound(span) => {
+            infer::RelateRegionParamBound(span, _) => {
                 RegionOriginNote::Plain {
                     span,
                     msg: fluent::trait_selection_relate_region_param_bound,
@@ -294,7 +294,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut err = match origin {
             infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
-                let mut err = self.report_and_explain_type_error(trace, terr);
+                let mut err = self.report_and_explain_type_error(
+                    trace,
+                    self.tcx.param_env(generic_param_scope),
+                    terr,
+                );
                 match (*sub, *sup) {
                     (ty::RePlaceholder(_), ty::RePlaceholder(_)) => {}
                     (ty::RePlaceholder(_), _) => {
@@ -410,7 +414,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     note,
                 })
             }
-            infer::RelateRegionParamBound(span) => {
+            infer::RelateRegionParamBound(span, ty) => {
                 let param_instantiated = note_and_explain::RegionExplanation::new(
                     self.tcx,
                     generic_param_scope,
@@ -419,11 +423,31 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     note_and_explain::PrefixKind::LfParamInstantiatedWith,
                     note_and_explain::SuffixKind::Empty,
                 );
+                let mut alt_span = None;
+                if let Some(ty) = ty
+                    && sub.is_static()
+                    && let ty::Dynamic(preds, _, ty::DynKind::Dyn) = ty.kind()
+                    && let Some(def_id) = preds.principal_def_id()
+                {
+                    for (clause, span) in
+                        self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
+                    {
+                        if let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(a, b)) =
+                            clause.kind().skip_binder()
+                            && let ty::Param(param) = a.kind()
+                            && param.name == kw::SelfUpper
+                            && b.is_static()
+                        {
+                            // Point at explicit `'static` bound on the trait (`trait T: 'static`).
+                            alt_span = Some(span);
+                        }
+                    }
+                }
                 let param_must_outlive = note_and_explain::RegionExplanation::new(
                     self.tcx,
                     generic_param_scope,
                     sub,
-                    None,
+                    alt_span,
                     note_and_explain::PrefixKind::LfParamMustOutlive,
                     note_and_explain::SuffixKind::Empty,
                 );
@@ -604,11 +628,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if let ObligationCauseCode::WhereClause(_, span)
                 | ObligationCauseCode::WhereClauseInExpr(_, span, ..) =
                     &trace.cause.code().peel_derives()
-                    && !span.is_dummy()
                 {
                     let span = *span;
-                    self.report_concrete_failure(generic_param_scope, placeholder_origin, sub, sup)
-                        .with_span_note(span, "the lifetime requirement is introduced here")
+                    let mut err = self.report_concrete_failure(
+                        generic_param_scope,
+                        placeholder_origin,
+                        sub,
+                        sup,
+                    );
+                    if !span.is_dummy() {
+                        err =
+                            err.with_span_note(span, "the lifetime requirement is introduced here");
+                    }
+                    err
                 } else {
                     unreachable!(
                         "control flow ensures we have a `BindingObligation` or `WhereClauseInExpr` here..."
@@ -617,7 +649,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsPlaceholderMismatch;
-                return self.report_and_explain_type_error(trace, terr);
+                return self.report_and_explain_type_error(
+                    trace,
+                    self.tcx.param_env(generic_param_scope),
+                    terr,
+                );
             }
             _ => {
                 return self.report_concrete_failure(
@@ -753,7 +789,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let lifetime_scope = match sub.kind() {
                     ty::ReStatic => hir::def_id::CRATE_DEF_ID,
                     _ => match self.tcx.is_suitable_region(generic_param_scope, sub) {
-                        Some(info) => info.def_id,
+                        Some(info) => info.scope,
                         None => generic_param_scope,
                     },
                 };
@@ -813,56 +849,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         lifetime: Region<'tcx>,
         add_lt_suggs: &mut Vec<(Span, String)>,
     ) -> String {
-        struct LifetimeReplaceVisitor<'tcx, 'a> {
-            tcx: TyCtxt<'tcx>,
+        struct LifetimeReplaceVisitor<'a> {
             needle: hir::LifetimeName,
             new_lt: &'a str,
             add_lt_suggs: &'a mut Vec<(Span, String)>,
         }
 
-        impl<'hir, 'tcx> hir::intravisit::Visitor<'hir> for LifetimeReplaceVisitor<'tcx, '_> {
+        impl<'hir> hir::intravisit::Visitor<'hir> for LifetimeReplaceVisitor<'_> {
             fn visit_lifetime(&mut self, lt: &'hir hir::Lifetime) {
                 if lt.res == self.needle {
-                    let (pos, span) = lt.suggestion_position();
-                    let new_lt = &self.new_lt;
-                    let sugg = match pos {
-                        hir::LifetimeSuggestionPosition::Normal => format!("{new_lt}"),
-                        hir::LifetimeSuggestionPosition::Ampersand => format!("{new_lt} "),
-                        hir::LifetimeSuggestionPosition::ElidedPath => format!("<{new_lt}>"),
-                        hir::LifetimeSuggestionPosition::ElidedPathArgument => {
-                            format!("{new_lt}, ")
-                        }
-                        hir::LifetimeSuggestionPosition::ObjectDefault => format!("+ {new_lt}"),
-                    };
-                    self.add_lt_suggs.push((span, sugg));
-                }
-            }
-
-            fn visit_ty(&mut self, ty: &'hir hir::Ty<'hir>) {
-                let hir::TyKind::OpaqueDef(item_id, _, _) = ty.kind else {
-                    return hir::intravisit::walk_ty(self, ty);
-                };
-                let opaque_ty = self.tcx.hir().item(item_id).expect_opaque_ty();
-                if let Some(&(_, b)) =
-                    opaque_ty.lifetime_mapping.iter().find(|&(a, _)| a.res == self.needle)
-                {
-                    let prev_needle =
-                        std::mem::replace(&mut self.needle, hir::LifetimeName::Param(b));
-                    for bound in opaque_ty.bounds {
-                        self.visit_param_bound(bound);
-                    }
-                    self.needle = prev_needle;
+                    self.add_lt_suggs.push(lt.suggestion(self.new_lt));
                 }
             }
         }
 
-        let (lifetime_def_id, lifetime_scope) =
-            match self.tcx.is_suitable_region(generic_param_scope, lifetime) {
-                Some(info) if !lifetime.has_name() => {
-                    (info.bound_region.get_id().unwrap().expect_local(), info.def_id)
-                }
-                _ => return lifetime.get_name_or_anon().to_string(),
-            };
+        let (lifetime_def_id, lifetime_scope) = match self
+            .tcx
+            .is_suitable_region(generic_param_scope, lifetime)
+        {
+            Some(info) if !lifetime.has_name() => (info.region_def_id.expect_local(), info.scope),
+            _ => return lifetime.get_name_or_anon().to_string(),
+        };
 
         let new_lt = {
             let generics = self.tcx.generics_of(lifetime_scope);
@@ -887,7 +894,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         let mut visitor = LifetimeReplaceVisitor {
-            tcx: self.tcx,
             needle: hir::LifetimeName::Param(lifetime_def_id),
             add_lt_suggs,
             new_lt: &new_lt,
@@ -940,8 +946,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         if let infer::Subtype(ref sup_trace) = sup_origin
             && let infer::Subtype(ref sub_trace) = sub_origin
-            && let Some((sup_expected, sup_found, _)) = self.values_str(sup_trace.values)
-            && let Some((sub_expected, sub_found, _)) = self.values_str(sub_trace.values)
+            && let Some((sup_expected, sup_found, _)) =
+                self.values_str(sup_trace.values, &sup_trace.cause)
+            && let Some((sub_expected, sub_found, _)) =
+                self.values_str(sub_trace.values, &sup_trace.cause)
             && sub_expected == sup_expected
             && sub_found == sup_found
         {
@@ -986,7 +994,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn report_inference_failure(&self, var_origin: RegionVariableOrigin) -> Diag<'_> {
         let br_string = |br: ty::BoundRegionKind| {
             let mut s = match br {
-                ty::BrNamed(_, name) => name.to_string(),
+                ty::BoundRegionKind::Named(_, name) => name.to_string(),
                 _ => String::new(),
             };
             if !s.is_empty() {
@@ -997,7 +1005,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let var_description = match var_origin {
             infer::MiscVariable(_) => String::new(),
             infer::PatternRegion(_) => " for pattern".to_string(),
-            infer::AddrOfRegion(_) => " for borrow expression".to_string(),
+            infer::BorrowRegion(_) => " for borrow expression".to_string(),
             infer::Autoref(_) => " for autoref".to_string(),
             infer::Coercion(_) => " for automatic coercion".to_string(),
             infer::BoundRegion(_, br, infer::FnCall) => {
@@ -1079,16 +1087,8 @@ fn msg_span_from_named_region<'tcx>(
 ) -> (String, Option<Span>) {
     match *region {
         ty::ReEarlyParam(br) => {
-            let scope = tcx
-                .parent(tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id)
-                .expect_local();
-            let span = if let Some(param) =
-                tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
-            {
-                param.span
-            } else {
-                tcx.def_span(scope)
-            };
+            let param_def_id = tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id;
+            let span = tcx.def_span(param_def_id);
             let text = if br.has_name() {
                 format!("the lifetime `{}` as defined here", br.name)
             } else {
@@ -1097,23 +1097,14 @@ fn msg_span_from_named_region<'tcx>(
             (text, Some(span))
         }
         ty::ReLateParam(ref fr) => {
-            if !fr.bound_region.is_named()
-                && let Some((ty, _)) =
-                    find_anon_type(tcx, generic_param_scope, region, &fr.bound_region)
+            if !fr.kind.is_named()
+                && let Some((ty, _)) = find_anon_type(tcx, generic_param_scope, region)
             {
                 ("the anonymous lifetime defined here".to_string(), Some(ty.span))
             } else {
-                match fr.bound_region {
-                    ty::BoundRegionKind::BrNamed(_, name) => {
-                        let span = if let Some(param) = tcx
-                            .hir()
-                            .get_generics(generic_param_scope)
-                            .and_then(|generics| generics.get_named(name))
-                        {
-                            param.span
-                        } else {
-                            tcx.def_span(generic_param_scope)
-                        };
+                match fr.kind {
+                    ty::LateParamRegionKind::Named(param_def_id, name) => {
+                        let span = tcx.def_span(param_def_id);
                         let text = if name == kw::UnderscoreLifetime {
                             "the anonymous lifetime as defined here".to_string()
                         } else {
@@ -1121,7 +1112,7 @@ fn msg_span_from_named_region<'tcx>(
                         };
                         (text, Some(span))
                     }
-                    ty::BrAnon => (
+                    ty::LateParamRegionKind::Anon(_) => (
                         "the anonymous lifetime as defined here".to_string(),
                         Some(tcx.def_span(generic_param_scope)),
                     ),
@@ -1134,11 +1125,11 @@ fn msg_span_from_named_region<'tcx>(
         }
         ty::ReStatic => ("the static lifetime".to_owned(), alt_span),
         ty::RePlaceholder(ty::PlaceholderRegion {
-            bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrNamed(def_id, name), .. },
+            bound: ty::BoundRegion { kind: ty::BoundRegionKind::Named(def_id, name), .. },
             ..
         }) => (format!("the lifetime `{name}` as defined here"), Some(tcx.def_span(def_id))),
         ty::RePlaceholder(ty::PlaceholderRegion {
-            bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrAnon, .. },
+            bound: ty::BoundRegion { kind: ty::BoundRegionKind::Anon, .. },
             ..
         }) => ("an anonymous lifetime".to_owned(), None),
         _ => bug!("{:?}", region),
@@ -1212,22 +1203,8 @@ pub fn unexpected_hidden_region_diagnostic<'a, 'tcx>(
                 hidden_region,
                 "",
             );
-            if let Some(reg_info) = tcx.is_suitable_region(generic_param_scope, hidden_region) {
-                if infcx.tcx.features().precise_capturing {
-                    suggest_precise_capturing(tcx, opaque_ty_key.def_id, hidden_region, &mut err);
-                } else {
-                    let fn_returns = tcx.return_type_impl_or_dyn_traits(reg_info.def_id);
-                    nice_region_error::suggest_new_region_bound(
-                        tcx,
-                        &mut err,
-                        fn_returns,
-                        hidden_region.to_string(),
-                        None,
-                        format!("captures `{hidden_region}`"),
-                        None,
-                        Some(reg_info.def_id),
-                    )
-                }
+            if let Some(_) = tcx.is_suitable_region(generic_param_scope, hidden_region) {
+                suggest_precise_capturing(tcx, opaque_ty_key.def_id, hidden_region, &mut err);
             }
         }
         ty::RePlaceholder(_) => {
@@ -1281,9 +1258,9 @@ fn suggest_precise_capturing<'tcx>(
     diag: &mut Diag<'_>,
 ) {
     let hir::OpaqueTy { bounds, origin, .. } =
-        tcx.hir_node_by_def_id(opaque_def_id).expect_item().expect_opaque_ty();
+        tcx.hir_node_by_def_id(opaque_def_id).expect_opaque_ty();
 
-    let hir::OpaqueTyOrigin::FnReturn(fn_def_id) = *origin else {
+    let hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, .. } = *origin else {
         return;
     };
 

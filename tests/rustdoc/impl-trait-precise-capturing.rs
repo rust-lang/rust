@@ -1,7 +1,6 @@
 //@ aux-build:precise-capturing.rs
 
 #![crate_name = "foo"]
-#![feature(precise_capturing)]
 
 extern crate precise_capturing;
 

@@ -9,8 +9,8 @@ use rustc_hir::{Body, Expr, ExprKind, HirId, ImplItem, ImplItemKind, Node, PatKi
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, ConstKind, EarlyBinder, GenericArgKind, GenericArgsRef};
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
+use rustc_span::symbol::{Ident, kw};
 use std::iter;
 
 declare_clippy_lint! {
@@ -200,7 +200,7 @@ impl Params {
                 if self
                     .get_by_fn(param.fn_id, usage.idx)
                     // If the parameter can't be found, then it's used for more than just recursion.
-                    .map_or(true, |p| self.try_disable_lint_for_param(p, eval_stack))
+                    .is_none_or(|p| self.try_disable_lint_for_param(p, eval_stack))
                 {
                     param.apply_lint.set(false);
                     eval_stack.pop();
@@ -243,7 +243,6 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                 owner_id,
                 ..
             }) => {
-                #[allow(trivial_casts)]
                 if let Node::Item(item) = cx.tcx.parent_hir_node(owner_id.into())
                     && let Some(trait_ref) = cx
                         .tcx
@@ -291,7 +290,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                     Some((Node::Expr(parent), child_id)) => match parent.kind {
                         // Recursive call. Track which index the parameter is used in.
                         ExprKind::Call(callee, args)
-                            if path_def_id(cx, callee).map_or(false, |id| {
+                            if path_def_id(cx, callee).is_some_and(|id| {
                                 id == param.fn_id && has_matching_args(param.fn_kind, typeck.node_args(callee.hir_id))
                             }) =>
                         {
@@ -301,7 +300,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                             return;
                         },
                         ExprKind::MethodCall(_, receiver, args, _)
-                            if typeck.type_dependent_def_id(parent.hir_id).map_or(false, |id| {
+                            if typeck.type_dependent_def_id(parent.hir_id).is_some_and(|id| {
                                 id == param.fn_id && has_matching_args(param.fn_kind, typeck.node_args(parent.hir_id))
                             }) =>
                         {

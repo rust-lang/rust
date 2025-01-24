@@ -137,10 +137,10 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(all(test, not(target_os = "emscripten")))]
+#[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
 mod tests;
 
-#[cfg(all(test, not(target_os = "emscripten")))]
+#[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
 mod sync_tests;
 
 // MPSC channels are built as a wrapper around MPMC channels, which
@@ -483,6 +483,7 @@ pub enum TrySendError<T> {
 }
 
 /// Creates a new asynchronous channel, returning the sender/receiver halves.
+///
 /// All data sent on the [`Sender`] will become available on the [`Receiver`] in
 /// the same order as it was sent, and no [`send`] will block the calling thread
 /// (this channel has an "infinite buffer", unlike [`sync_channel`], which will
@@ -527,6 +528,7 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 }
 
 /// Creates a new synchronous, bounded channel.
+///
 /// All data sent on the [`SyncSender`] will become available on the [`Receiver`]
 /// in the same order as it was sent. Like asynchronous [`channel`]s, the
 /// [`Receiver`] will block until a message becomes available. `sync_channel`

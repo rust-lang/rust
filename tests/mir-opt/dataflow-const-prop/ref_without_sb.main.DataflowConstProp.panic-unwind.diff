@@ -39,7 +39,7 @@
       bb2: {
           StorageDead(_5);
           StorageLive(_6);
-          _6 = _1;
+          _6 = copy _1;
           _0 = const ();
           StorageDead(_6);
           StorageDead(_1);

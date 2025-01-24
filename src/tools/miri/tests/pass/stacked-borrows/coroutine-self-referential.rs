@@ -2,10 +2,8 @@
 // this fails when Stacked Borrows is strictly applied even to `!Unpin` types.
 #![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
-use std::{
-    ops::{Coroutine, CoroutineState},
-    pin::Pin,
-};
+use std::ops::{Coroutine, CoroutineState};
+use std::pin::Pin;
 
 fn firstn() -> impl Coroutine<Yield = u64, Return = ()> {
     #[coroutine]

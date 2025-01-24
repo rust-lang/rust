@@ -1,22 +1,21 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
-use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
-use clippy_utils::{is_from_proc_macro, SpanlessEq, SpanlessHash};
+use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_applicability};
+use clippy_utils::{SpanlessEq, SpanlessHash, is_from_proc_macro};
 use core::hash::{Hash, Hasher};
 use itertools::Itertools;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, IndexEntry};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{
-    GenericArg, GenericBound, Generics, Item, ItemKind, LangItem, Node, Path, PathSegment, PredicateOrigin, QPath,
-    TraitBoundModifier, TraitItem, TraitRef, Ty, TyKind, WherePredicate,
+    BoundPolarity, GenericBound, Generics, Item, ItemKind, LangItem, Node, Path, PathSegment, PredicateOrigin, QPath,
+    TraitBoundModifiers, TraitItem, TraitRef, Ty, TyKind, WherePredicateKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Span};
-use std::collections::hash_map::Entry;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -125,9 +124,9 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
         let mut self_bounds_map = FxHashMap::default();
 
         for predicate in item.generics.predicates {
-            if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate
+            if let WherePredicateKind::BoundPredicate(bound_predicate) = predicate.kind
                 && bound_predicate.origin != PredicateOrigin::ImplTrait
-                && !bound_predicate.span.from_expansion()
+                && !predicate.span.from_expansion()
                 && let TyKind::Path(QPath::Resolved(_, Path { segments, .. })) = bound_predicate.bounded_ty.kind
                 && let Some(PathSegment {
                     res: Res::SelfTyParam { trait_: def_id },
@@ -153,7 +152,10 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                     .filter_map(get_trait_info_from_bound)
                     .for_each(|(trait_item_res, trait_item_segments, span)| {
                         if let Some(self_segments) = self_bounds_map.get(&trait_item_res) {
-                            if SpanlessEq::new(cx).eq_path_segments(self_segments, trait_item_segments) {
+                            if SpanlessEq::new(cx)
+                                .paths_by_resolution()
+                                .eq_path_segments(self_segments, trait_item_segments)
+                            {
                                 span_lint_and_help(
                                     cx,
                                     TRAIT_DUPLICATION_IN_BOUNDS,
@@ -183,7 +185,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
 
             // Iterate the bounds and add them to our seen hash
             // If we haven't yet seen it, add it to the fixed traits
-            for (bound, _) in bounds {
+            for bound in bounds {
                 let Some(def_id) = bound.trait_ref.trait_def_id() else {
                     continue;
                 };
@@ -198,16 +200,15 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
             // If the number of unique traits isn't the same as the number of traits in the bounds,
             // there must be 1 or more duplicates
             if bounds.len() != unique_traits.len() {
-                let mut bounds_span = bounds[0].0.span;
+                let mut bounds_span = bounds[0].span;
 
-                for (bound, _) in bounds.iter().skip(1) {
+                for bound in bounds.iter().skip(1) {
                     bounds_span = bounds_span.to(bound.span);
                 }
 
                 let fixed_trait_snippet = unique_traits
                     .iter()
-                    .filter_map(|b| snippet_opt(cx, b.span))
-                    .collect::<Vec<_>>()
+                    .filter_map(|b| b.span.get_source_text(cx))
                     .join(" + ");
 
                 span_lint_and_sugg(
@@ -231,7 +232,8 @@ impl TraitBounds {
     /// this MSRV? See <https://github.com/rust-lang/rust-clippy/issues/8772> for details.
     fn cannot_combine_maybe_bound(&self, cx: &LateContext<'_>, bound: &GenericBound<'_>) -> bool {
         if !self.msrv.meets(msrvs::MAYBE_BOUND_IN_WHERE)
-            && let GenericBound::Trait(tr, TraitBoundModifier::Maybe) = bound
+            && let GenericBound::Trait(tr) = bound
+            && let BoundPolarity::Maybe(_) = tr.modifiers.polarity
         {
             cx.tcx.lang_items().get(LangItem::Sized) == tr.trait_ref.path.res.opt_def_id()
         } else {
@@ -266,10 +268,10 @@ impl TraitBounds {
         let mut map: UnhashMap<SpanlessTy<'_, '_>, Vec<&GenericBound<'_>>> = UnhashMap::default();
         let mut applicability = Applicability::MaybeIncorrect;
         for bound in generics.predicates {
-            if let WherePredicate::BoundPredicate(ref p) = bound
+            if let WherePredicateKind::BoundPredicate(p) = bound.kind
                 && p.origin != PredicateOrigin::ImplTrait
                 && p.bounds.len() as u64 <= self.max_trait_bounds
-                && !p.span.from_expansion()
+                && !bound.span.from_expansion()
                 && let bounds = p
                     .bounds
                     .iter()
@@ -293,7 +295,7 @@ impl TraitBounds {
                 span_lint_and_help(
                     cx,
                     TYPE_REPETITION_IN_BOUNDS,
-                    p.span,
+                    bound.span,
                     "this type has already been used as a bound predicate",
                     None,
                     hint_string,
@@ -303,7 +305,7 @@ impl TraitBounds {
     }
 }
 
-fn check_trait_bound_duplication(cx: &LateContext<'_>, generics: &'_ Generics<'_>) {
+fn check_trait_bound_duplication<'tcx>(cx: &LateContext<'tcx>, generics: &'_ Generics<'tcx>) {
     if generics.span.from_expansion() {
         return;
     }
@@ -315,12 +317,13 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, generics: &'_ Generics<'_
     //       |
     // collects each of these where clauses into a set keyed by generic name and comparable trait
     // eg. (T, Clone)
+    #[expect(clippy::mutable_key_type)]
     let where_predicates = generics
         .predicates
         .iter()
         .filter_map(|pred| {
-            if pred.in_where_clause()
-                && let WherePredicate::BoundPredicate(bound_predicate) = pred
+            if pred.kind.in_where_clause()
+                && let WherePredicateKind::BoundPredicate(bound_predicate) = pred.kind
                 && let TyKind::Path(QPath::Resolved(_, path)) = bound_predicate.bounded_ty.kind
             {
                 return Some(
@@ -344,10 +347,10 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, generics: &'_ Generics<'_
     //            |
     // compare trait bounds keyed by generic name and comparable trait to collected where
     // predicates eg. (T, Clone)
-    for predicate in generics.predicates.iter().filter(|pred| !pred.in_where_clause()) {
-        if let WherePredicate::BoundPredicate(bound_predicate) = predicate
+    for predicate in generics.predicates.iter().filter(|pred| !pred.kind.in_where_clause()) {
+        if let WherePredicateKind::BoundPredicate(bound_predicate) = predicate.kind
             && bound_predicate.origin != PredicateOrigin::ImplTrait
-            && !bound_predicate.span.from_expansion()
+            && !predicate.span.from_expansion()
             && let TyKind::Path(QPath::Resolved(_, path)) = bound_predicate.bounded_ty.kind
         {
             let traits = rollup_traits(cx, bound_predicate.bounds, "these bounds contain repeated elements");
@@ -368,20 +371,36 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, generics: &'_ Generics<'_
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
-struct ComparableTraitRef(Res, Vec<Res>);
-impl Default for ComparableTraitRef {
-    fn default() -> Self {
-        Self(Res::Err, Vec::new())
+struct ComparableTraitRef<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    trait_ref: &'tcx TraitRef<'tcx>,
+    modifiers: TraitBoundModifiers,
+}
+
+impl PartialEq for ComparableTraitRef<'_, '_> {
+    fn eq(&self, other: &Self) -> bool {
+        SpanlessEq::eq_modifiers(self.modifiers, other.modifiers)
+            && SpanlessEq::new(self.cx)
+                .paths_by_resolution()
+                .eq_path(self.trait_ref.path, other.trait_ref.path)
+    }
+}
+impl Eq for ComparableTraitRef<'_, '_> {}
+impl Hash for ComparableTraitRef<'_, '_> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let mut s = SpanlessHash::new(self.cx).paths_by_resolution();
+        s.hash_path(self.trait_ref.path);
+        s.hash_modifiers(self.modifiers);
+        state.write_u64(s.finish());
     }
 }
 
 fn get_trait_info_from_bound<'a>(bound: &'a GenericBound<'_>) -> Option<(Res, &'a [PathSegment<'a>], Span)> {
-    if let GenericBound::Trait(t, tbm) = bound {
+    if let GenericBound::Trait(t) = bound {
         let trait_path = t.trait_ref.path;
         let trait_span = {
             let path_span = trait_path.span;
-            if let TraitBoundModifier::Maybe = tbm {
+            if let BoundPolarity::Maybe(_) = t.modifiers.polarity {
                 path_span.with_lo(path_span.lo() - BytePos(1)) // include the `?`
             } else {
                 path_span
@@ -393,78 +412,49 @@ fn get_trait_info_from_bound<'a>(bound: &'a GenericBound<'_>) -> Option<(Res, &'
     }
 }
 
-fn get_ty_res(ty: Ty<'_>) -> Option<Res> {
-    match ty.kind {
-        TyKind::Path(QPath::Resolved(_, path)) => Some(path.res),
-        TyKind::Path(QPath::TypeRelative(ty, _)) => get_ty_res(*ty),
-        _ => None,
-    }
-}
-
-// FIXME: ComparableTraitRef does not support nested bounds needed for associated_type_bounds
-fn into_comparable_trait_ref(trait_ref: &TraitRef<'_>) -> ComparableTraitRef {
-    ComparableTraitRef(
-        trait_ref.path.res,
-        trait_ref
-            .path
-            .segments
-            .iter()
-            .filter_map(|segment| {
-                // get trait bound type arguments
-                Some(segment.args?.args.iter().filter_map(|arg| {
-                    if let GenericArg::Type(ty) = arg {
-                        return get_ty_res(**ty);
-                    }
-                    None
-                }))
-            })
-            .flatten()
-            .collect(),
-    )
-}
-
-fn rollup_traits(
-    cx: &LateContext<'_>,
-    bounds: &[GenericBound<'_>],
+fn rollup_traits<'cx, 'tcx>(
+    cx: &'cx LateContext<'tcx>,
+    bounds: &'tcx [GenericBound<'tcx>],
     msg: &'static str,
-) -> Vec<(ComparableTraitRef, Span)> {
-    let mut map = FxHashMap::default();
+) -> Vec<(ComparableTraitRef<'cx, 'tcx>, Span)> {
+    // Source order is needed for joining spans
+    let mut map = FxIndexMap::default();
     let mut repeated_res = false;
 
-    let only_comparable_trait_refs = |bound: &GenericBound<'_>| {
-        if let GenericBound::Trait(t, _) = bound {
-            Some((into_comparable_trait_ref(&t.trait_ref), t.span))
+    let only_comparable_trait_refs = |bound: &'tcx GenericBound<'tcx>| {
+        if let GenericBound::Trait(t) = bound {
+            Some((
+                ComparableTraitRef {
+                    cx,
+                    trait_ref: &t.trait_ref,
+                    modifiers: t.modifiers,
+                },
+                t.span,
+            ))
         } else {
             None
         }
     };
 
-    let mut i = 0usize;
     for bound in bounds.iter().filter_map(only_comparable_trait_refs) {
         let (comparable_bound, span_direct) = bound;
         match map.entry(comparable_bound) {
-            Entry::Occupied(_) => repeated_res = true,
-            Entry::Vacant(e) => {
-                e.insert((span_direct, i));
-                i += 1;
+            IndexEntry::Occupied(_) => repeated_res = true,
+            IndexEntry::Vacant(e) => {
+                e.insert(span_direct);
             },
         }
     }
 
-    // Put bounds in source order
-    let mut comparable_bounds = vec![Default::default(); map.len()];
-    for (k, (v, i)) in map {
-        comparable_bounds[i] = (k, v);
-    }
+    let comparable_bounds: Vec<_> = map.into_iter().collect();
 
     if repeated_res && let [first_trait, .., last_trait] = bounds {
         let all_trait_span = first_trait.span().to(last_trait.span());
 
         let traits = comparable_bounds
             .iter()
-            .filter_map(|&(_, span)| snippet_opt(cx, span))
-            .collect::<Vec<_>>();
-        let traits = traits.join(" + ");
+            .filter_map(|&(_, span)| span.get_source_text(cx))
+            .join(" + ");
 
         span_lint_and_sugg(
             cx,

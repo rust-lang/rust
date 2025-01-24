@@ -1,13 +1,14 @@
 use clippy_config::Conf;
+use clippy_config::types::create_disallowed_map;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{create_disallowed_map, match_def_path, paths};
+use clippy_utils::{match_def_path, paths};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::CoroutineLayout;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -15,7 +16,7 @@ declare_clippy_lint! {
     /// `MutexGuard`.
     ///
     /// ### Why is this bad?
-    /// The Mutex types found in [`std::sync`][https://doc.rust-lang.org/stable/std/sync/] and
+    /// The Mutex types found in [`std::sync`](https://doc.rust-lang.org/stable/std/sync/) and
     /// [`parking_lot`](https://docs.rs/parking_lot/latest/parking_lot/) are
     /// not designed to operate in an async context across await points.
     ///

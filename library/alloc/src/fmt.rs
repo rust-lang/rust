@@ -109,6 +109,16 @@
 //! parameters (corresponding to `format_spec` in [the syntax](#syntax)). These
 //! parameters affect the string representation of what's being formatted.
 //!
+//! The colon `:` in format syntax divides indentifier of the input data and
+//! the formatting options, the colon itself does not change anything, only
+//! introduces the options.
+//!
+//! ```
+//! let a = 5;
+//! let b = &a;
+//! println!("{a:e} {b:p}"); // => 5e0 0x7ffe37b7273c
+//! ```
+//!
 //! ## Width
 //!
 //! ```
@@ -580,18 +590,20 @@
 pub use core::fmt::Alignment;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::Error;
-#[unstable(feature = "debug_closure_helpers", issue = "117729")]
-pub use core::fmt::FormatterFn;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::fmt::{write, Arguments};
+pub use core::fmt::{Arguments, write};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{Binary, Octal};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{Debug, Display};
+#[unstable(feature = "formatting_options", issue = "118117")]
+pub use core::fmt::{DebugAsHex, FormattingOptions, Sign};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{Formatter, Result, Write};
+#[unstable(feature = "debug_closure_helpers", issue = "117729")]
+pub use core::fmt::{FromFn, from_fn};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{LowerExp, UpperExp};
 #[stable(feature = "rust1", since = "1.0.0")]

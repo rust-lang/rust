@@ -21,15 +21,15 @@
       }
   
       bb2: {
-          _5 = (*_2);
-          _0 = opaque::<i32>(_5) -> [return: bb3, unwind continue];
+          _5 = copy (*_2);
+          _0 = opaque::<i32>(copy _5) -> [return: bb3, unwind continue];
       }
   
       bb3: {
           StorageDead(_1);
           StorageLive(_1);
           _6 = const true;
-          switchInt(_6) -> [0: bb3, otherwise: bb1];
+          switchInt(copy _6) -> [0: bb3, otherwise: bb1];
       }
   }
   

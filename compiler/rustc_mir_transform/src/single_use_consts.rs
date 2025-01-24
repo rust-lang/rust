@@ -1,5 +1,5 @@
-use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -19,18 +19,18 @@ use rustc_middle::ty::TyCtxt;
 ///
 /// It also removes *never*-used constants, since it had all the information
 /// needed to do that too, including updating the debug info.
-pub struct SingleUseConsts;
+pub(super) struct SingleUseConsts;
 
-impl<'tcx> MirPass<'tcx> for SingleUseConsts {
+impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut finder = SingleUseConstsFinder {
-            ineligible_locals: BitSet::new_empty(body.local_decls.len()),
+            ineligible_locals: DenseBitSet::new_empty(body.local_decls.len()),
             locations: IndexVec::from_elem(LocationPair::new(), &body.local_decls),
-            locals_in_debug_info: BitSet::new_empty(body.local_decls.len()),
+            locals_in_debug_info: DenseBitSet::new_empty(body.local_decls.len()),
         };
 
         finder.ineligible_locals.insert_range(..=Local::from_usize(body.arg_count));
@@ -96,9 +96,9 @@ impl LocationPair {
 }
 
 struct SingleUseConstsFinder {
-    ineligible_locals: BitSet<Local>,
+    ineligible_locals: DenseBitSet<Local>,
     locations: IndexVec<Local, LocationPair>,
-    locals_in_debug_info: BitSet<Local>,
+    locals_in_debug_info: DenseBitSet<Local>,
 }
 
 impl<'tcx> Visitor<'tcx> for SingleUseConstsFinder {
@@ -185,15 +185,14 @@ impl<'tcx> MutVisitor<'tcx> for LocalReplacer<'tcx> {
             && let Some(local) = place.as_local()
             && local == self.local
         {
-            let const_op = self
+            let const_op = *self
                 .operand
                 .as_ref()
                 .unwrap_or_else(|| {
                     bug!("the operand was already stolen");
                 })
                 .constant()
-                .unwrap()
-                .clone();
+                .unwrap();
             var_debug_info.value = VarDebugInfoContents::Const(const_op);
         }
     }

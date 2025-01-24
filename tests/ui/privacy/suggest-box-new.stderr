@@ -44,7 +44,7 @@ LL |         wtf: Some(Box::new_zeroed()),
    |                      ~~~~~~~~~~~~~~
 LL |         wtf: Some(Box::new_in(_, _)),
    |                      ~~~~~~~~~~~~~~
-     and 10 other candidates
+     and 12 other candidates
 help: consider using the `Default` trait
    |
 LL |         wtf: Some(<Box as std::default::Default>::default()),
@@ -89,7 +89,7 @@ LL |     let _ = Box::new_zeroed();
    |                ~~~~~~~~~~~~~~
 LL |     let _ = Box::new_in(_, _);
    |                ~~~~~~~~~~~~~~
-     and 10 other candidates
+     and 12 other candidates
 help: consider using the `Default` trait
    |
 LL |     let _ = <Box as std::default::Default>::default();

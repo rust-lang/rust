@@ -5,7 +5,7 @@ use crate::command::Command;
 use crate::env::env_var;
 use crate::path_helpers::cwd;
 use crate::util::set_host_rpath;
-use crate::{is_darwin, is_msvc, is_windows, uname};
+use crate::{is_aix, is_darwin, is_msvc, is_windows, uname};
 
 /// Construct a new `rustc` invocation. This will automatically set the library
 /// search path as `-L cwd()`. Use [`bare_rustc`] to avoid this.
@@ -36,10 +36,13 @@ pub struct Rustc {
 
 crate::macros::impl_common_helpers!(Rustc);
 
+pub fn rustc_path() -> String {
+    env_var("RUSTC")
+}
+
 #[track_caller]
 fn setup_common() -> Command {
-    let rustc = env_var("RUSTC");
-    let mut cmd = Command::new(rustc);
+    let mut cmd = Command::new(rustc_path());
     set_host_rpath(&mut cmd);
     cmd
 }
@@ -224,6 +227,12 @@ impl Rustc {
         self
     }
 
+    /// Normalize the line number in the stderr output
+    pub fn ui_testing(&mut self) -> &mut Self {
+        self.cmd.arg(format!("-Zui-testing"));
+        self
+    }
+
     /// Specify the target triple, or a path to a custom target json spec file.
     pub fn target<S: AsRef<str>>(&mut self, target: S) -> &mut Self {
         let target = target.as_ref();
@@ -291,9 +300,9 @@ impl Rustc {
         self
     }
 
-    /// Specify a stdin input
-    pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
-        self.cmd.stdin(input);
+    /// Specify a stdin input buffer.
+    pub fn stdin_buf<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
+        self.cmd.stdin_buf(input);
         self
     }
 
@@ -313,6 +322,12 @@ impl Rustc {
     /// Specify the linker flavor
     pub fn linker_flavor(&mut self, linker_flavor: &str) -> &mut Self {
         self.cmd.arg(format!("-Clinker-flavor={linker_flavor}"));
+        self
+    }
+
+    /// Pass the `--verbose` flag.
+    pub fn verbose(&mut self) -> &mut Self {
+        self.cmd.arg("--verbose");
         self
     }
 
@@ -343,7 +358,7 @@ impl Rustc {
         //     endif
         // endif
         // ```
-        let flag = if is_windows() {
+        if is_windows() {
             // So this is a bit hacky: we can't use the DLL version of libstdc++ because
             // it pulls in the DLL version of libgcc, which means that we end up with 2
             // instances of the DW2 unwinding implementation. This is a problem on
@@ -359,18 +374,19 @@ impl Rustc {
             // So we end up with the following hack: we link use static:-bundle to only
             // link the parts of libstdc++ that we actually use, which doesn't include
             // the dependency on the pthreads DLL.
-            if is_msvc() { None } else { Some("-lstatic:-bundle=stdc++") }
+            if !is_msvc() {
+                self.cmd.arg("-lstatic:-bundle=stdc++");
+            };
         } else if is_darwin() {
-            Some("-lc++")
+            self.cmd.arg("-lc++");
+        } else if is_aix() {
+            self.cmd.arg("-lc++");
+            self.cmd.arg("-lc++abi");
         } else {
-            match &uname()[..] {
-                "FreeBSD" | "SunOS" | "OpenBSD" => None,
-                _ => Some("-lstdc++"),
-            }
+            if !matches!(&uname()[..], "FreeBSD" | "SunOS" | "OpenBSD") {
+                self.cmd.arg("-lstdc++");
+            };
         };
-        if let Some(flag) = flag {
-            self.cmd.arg(flag);
-        }
         self
     }
 }

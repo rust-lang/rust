@@ -73,11 +73,9 @@ fn main() {
 
 // WIN:          $__llvm_profile_runtime_user = comdat any
 
-// CHECK:        @__llvm_coverage_mapping = private constant
-// CHECK-SAME:   section "[[INSTR_PROF_COVMAP]]", align 8
+// CHECK-DAG:    @__llvm_coverage_mapping = private constant {{.*}}, section "[[INSTR_PROF_COVMAP]]", align 8
 
-// CHECK:        @__covrec_{{[A-F0-9]+}}u = linkonce_odr hidden constant
-// CHECK-SAME:   section "[[INSTR_PROF_COVFUN]]"[[COMDAT_IF_SUPPORTED]], align 8
+// CHECK-DAG:    @__covrec_{{[A-F0-9]+}}u = linkonce_odr hidden constant {{.*}}, section "[[INSTR_PROF_COVFUN]]"[[COMDAT_IF_SUPPORTED]], align 8
 
 // WIN:          @__llvm_profile_runtime = external{{.*}}global i32
 

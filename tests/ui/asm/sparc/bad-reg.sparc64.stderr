@@ -1,0 +1,92 @@
+error: invalid register `g0`: g0 is always zero and cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:22:18
+   |
+LL |         asm!("", out("g0") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `g1`: reserved by LLVM and cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:25:18
+   |
+LL |         asm!("", out("g1") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `g6`: reserved for system and cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:32:18
+   |
+LL |         asm!("", out("g6") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `g7`: reserved for system and cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:34:18
+   |
+LL |         asm!("", out("g7") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `sp`: the stack pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:36:18
+   |
+LL |         asm!("", out("sp") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `fp`: the frame pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:38:18
+   |
+LL |         asm!("", out("fp") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `i7`: the return address register cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:40:18
+   |
+LL |         asm!("", out("i7") _);
+   |                  ^^^^^^^^^^^
+
+error: register class `yreg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:46:18
+   |
+LL |         asm!("", in("y") x);
+   |                  ^^^^^^^^^
+
+error: register class `yreg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:49:18
+   |
+LL |         asm!("", out("y") x);
+   |                  ^^^^^^^^^^
+
+error: register class `yreg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:52:26
+   |
+LL |         asm!("/* {} */", in(yreg) x);
+   |                          ^^^^^^^^^^
+
+error: register class `yreg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:55:26
+   |
+LL |         asm!("/* {} */", out(yreg) _);
+   |                          ^^^^^^^^^^^
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:46:26
+   |
+LL |         asm!("", in("y") x);
+   |                          ^
+   |
+   = note: register class `yreg` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:49:27
+   |
+LL |         asm!("", out("y") x);
+   |                           ^
+   |
+   = note: register class `yreg` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:52:35
+   |
+LL |         asm!("/* {} */", in(yreg) x);
+   |                                   ^
+   |
+   = note: register class `yreg` supports these types: 
+
+error: aborting due to 14 previous errors
+

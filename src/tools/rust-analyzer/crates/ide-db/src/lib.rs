@@ -1,4 +1,4 @@
-//! This crate defines the core datastructure representing IDE state -- `RootDatabase`.
+//! This crate defines the core data structure representing IDE state -- `RootDatabase`.
 //!
 //! It is mainly a `HirDatabase` for semantic analysis, plus a `SymbolsDatabase`, for fuzzy search.
 
@@ -19,6 +19,7 @@ pub mod rust_doc;
 pub mod search;
 pub mod source_change;
 pub mod symbol_index;
+pub mod text_edit;
 pub mod traits;
 pub mod ty_filter;
 pub mod use_trivial_constructor;
@@ -36,8 +37,10 @@ pub mod generated {
 pub mod syntax_helpers {
     pub mod format_string;
     pub mod format_string_exprs;
-    pub mod insert_whitespace_into_node;
+    pub mod tree_diff;
+    pub use hir::prettify_macro_expansion;
     pub mod node_ext;
+    pub mod suggest_name;
 
     pub use parser::LexedStr;
 }
@@ -47,7 +50,7 @@ pub use hir::ChangeWithProcMacros;
 use std::{fmt, mem::ManuallyDrop};
 
 use base_db::{
-    salsa::{self, Durability},
+    ra_salsa::{self, Durability},
     AnchoredPath, CrateId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
     DEFAULT_FILE_TEXT_LRU_CAP,
 };
@@ -73,8 +76,8 @@ pub type FxIndexMap<K, V> =
 pub type FilePosition = FilePositionWrapper<FileId>;
 pub type FileRange = FileRangeWrapper<FileId>;
 
-#[salsa::database(
-    base_db::SourceDatabaseExtStorage,
+#[ra_salsa::database(
+    base_db::SourceRootDatabaseStorage,
     base_db::SourceDatabaseStorage,
     hir::db::ExpandDatabaseStorage,
     hir::db::DefDatabaseStorage,
@@ -88,7 +91,7 @@ pub struct RootDatabase {
     // `&RootDatabase -> &dyn OtherDatabase` cast will instantiate its drop glue in the vtable,
     // which duplicates `Weak::drop` and `Arc::drop` tens of thousands of times, which makes
     // compile times of all `ide_*` and downstream crates suffer greatly.
-    storage: ManuallyDrop<salsa::Storage<RootDatabase>>,
+    storage: ManuallyDrop<ra_salsa::Storage<RootDatabase>>,
 }
 
 impl Drop for RootDatabase {
@@ -125,9 +128,6 @@ impl Upcast<dyn HirDatabase> for RootDatabase {
 }
 
 impl FileLoader for RootDatabase {
-    fn file_text(&self, file_id: FileId) -> Arc<str> {
-        FileLoaderDelegate(self).file_text(file_id)
-    }
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
         FileLoaderDelegate(self).resolve_path(path)
     }
@@ -136,7 +136,7 @@ impl FileLoader for RootDatabase {
     }
 }
 
-impl salsa::Database for RootDatabase {}
+impl ra_salsa::Database for RootDatabase {}
 
 impl Default for RootDatabase {
     fn default() -> RootDatabase {
@@ -146,7 +146,7 @@ impl Default for RootDatabase {
 
 impl RootDatabase {
     pub fn new(lru_capacity: Option<u16>) -> RootDatabase {
-        let mut db = RootDatabase { storage: ManuallyDrop::new(salsa::Storage::default()) };
+        let mut db = RootDatabase { storage: ManuallyDrop::new(ra_salsa::Storage::default()) };
         db.set_crate_graph_with_durability(Default::default(), Durability::HIGH);
         db.set_proc_macros_with_durability(Default::default(), Durability::HIGH);
         db.set_local_roots_with_durability(Default::default(), Durability::HIGH);
@@ -197,13 +197,15 @@ impl RootDatabase {
     }
 }
 
-impl salsa::ParallelDatabase for RootDatabase {
-    fn snapshot(&self) -> salsa::Snapshot<RootDatabase> {
-        salsa::Snapshot::new(RootDatabase { storage: ManuallyDrop::new(self.storage.snapshot()) })
+impl ra_salsa::ParallelDatabase for RootDatabase {
+    fn snapshot(&self) -> ra_salsa::Snapshot<RootDatabase> {
+        ra_salsa::Snapshot::new(RootDatabase {
+            storage: ManuallyDrop::new(self.storage.snapshot()),
+        })
     }
 }
 
-#[salsa::query_group(LineIndexDatabaseStorage)]
+#[ra_salsa::query_group(LineIndexDatabaseStorage)]
 pub trait LineIndexDatabase: base_db::SourceDatabase {
     fn line_index(&self, file_id: FileId) -> Arc<LineIndex>;
 }
@@ -226,6 +228,7 @@ pub enum SymbolKind {
     Function,
     Method,
     Impl,
+    InlineAsmRegOrRegClass,
     Label,
     LifetimeParam,
     Local,
@@ -257,23 +260,23 @@ impl From<hir::MacroKind> for SymbolKind {
     }
 }
 
-impl From<hir::ModuleDefId> for SymbolKind {
-    fn from(it: hir::ModuleDefId) -> Self {
+impl From<hir::ModuleDef> for SymbolKind {
+    fn from(it: hir::ModuleDef) -> Self {
         match it {
-            hir::ModuleDefId::ConstId(..) => SymbolKind::Const,
-            hir::ModuleDefId::EnumVariantId(..) => SymbolKind::Variant,
-            hir::ModuleDefId::FunctionId(..) => SymbolKind::Function,
-            hir::ModuleDefId::MacroId(hir::MacroId::ProcMacroId(..)) => SymbolKind::ProcMacro,
-            hir::ModuleDefId::MacroId(..) => SymbolKind::Macro,
-            hir::ModuleDefId::ModuleId(..) => SymbolKind::Module,
-            hir::ModuleDefId::StaticId(..) => SymbolKind::Static,
-            hir::ModuleDefId::AdtId(hir::AdtId::StructId(..)) => SymbolKind::Struct,
-            hir::ModuleDefId::AdtId(hir::AdtId::EnumId(..)) => SymbolKind::Enum,
-            hir::ModuleDefId::AdtId(hir::AdtId::UnionId(..)) => SymbolKind::Union,
-            hir::ModuleDefId::TraitId(..) => SymbolKind::Trait,
-            hir::ModuleDefId::TraitAliasId(..) => SymbolKind::TraitAlias,
-            hir::ModuleDefId::TypeAliasId(..) => SymbolKind::TypeAlias,
-            hir::ModuleDefId::BuiltinType(..) => SymbolKind::TypeAlias,
+            hir::ModuleDef::Const(..) => SymbolKind::Const,
+            hir::ModuleDef::Variant(..) => SymbolKind::Variant,
+            hir::ModuleDef::Function(..) => SymbolKind::Function,
+            hir::ModuleDef::Macro(mac) if mac.is_proc_macro() => SymbolKind::ProcMacro,
+            hir::ModuleDef::Macro(..) => SymbolKind::Macro,
+            hir::ModuleDef::Module(..) => SymbolKind::Module,
+            hir::ModuleDef::Static(..) => SymbolKind::Static,
+            hir::ModuleDef::Adt(hir::Adt::Struct(..)) => SymbolKind::Struct,
+            hir::ModuleDef::Adt(hir::Adt::Enum(..)) => SymbolKind::Enum,
+            hir::ModuleDef::Adt(hir::Adt::Union(..)) => SymbolKind::Union,
+            hir::ModuleDef::Trait(..) => SymbolKind::Trait,
+            hir::ModuleDef::TraitAlias(..) => SymbolKind::TraitAlias,
+            hir::ModuleDef::TypeAlias(..) => SymbolKind::TypeAlias,
+            hir::ModuleDef::BuiltinType(..) => SymbolKind::TypeAlias,
         }
     }
 }
@@ -291,4 +294,44 @@ impl SnippetCap {
             None
         }
     }
+}
+
+pub struct Ranker<'a> {
+    pub kind: parser::SyntaxKind,
+    pub text: &'a str,
+    pub ident_kind: bool,
+}
+
+impl<'a> Ranker<'a> {
+    pub const MAX_RANK: usize = 0b1110;
+
+    pub fn from_token(token: &'a syntax::SyntaxToken) -> Self {
+        let kind = token.kind();
+        Ranker { kind, text: token.text(), ident_kind: kind.is_any_identifier() }
+    }
+
+    /// A utility function that ranks a token again a given kind and text, returning a number that
+    /// represents how close the token is to the given kind and text.
+    pub fn rank_token(&self, tok: &syntax::SyntaxToken) -> usize {
+        let tok_kind = tok.kind();
+
+        let exact_same_kind = tok_kind == self.kind;
+        let both_idents = exact_same_kind || (tok_kind.is_any_identifier() && self.ident_kind);
+        let same_text = tok.text() == self.text;
+        // anything that mapped into a token tree has likely no semantic information
+        let no_tt_parent =
+            tok.parent().is_some_and(|it| it.kind() != parser::SyntaxKind::TOKEN_TREE);
+        (both_idents as usize)
+            | ((exact_same_kind as usize) << 1)
+            | ((same_text as usize) << 2)
+            | ((no_tt_parent as usize) << 3)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Severity {
+    Error,
+    Warning,
+    WeakWarning,
+    Allow,
 }

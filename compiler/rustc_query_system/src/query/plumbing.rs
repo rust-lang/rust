@@ -13,24 +13,21 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lock;
-#[cfg(parallel_compiler)]
 use rustc_data_structures::{outline, sync};
 use rustc_errors::{Diag, FatalError, StashKey};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 use thin_vec::ThinVec;
 use tracing::instrument;
 
 use super::QueryConfig;
+use crate::HandleCycleError;
 use crate::dep_graph::{DepContext, DepGraphData, DepNode, DepNodeIndex, DepNodeParams};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
-#[cfg(parallel_compiler)]
-use crate::query::job::QueryLatch;
-use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
+use crate::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryLatch, report_cycle};
 use crate::query::{
     QueryContext, QueryMap, QuerySideEffects, QueryStackFrame, SerializedDepNodeIndex,
 };
-use crate::HandleCycleError;
 
 pub struct QueryState<K> {
     active: Sharded<FxHashMap<K, QueryResult>>,
@@ -181,8 +178,15 @@ where
         cache.complete(key, result, dep_node_index);
 
         let job = {
-            let mut lock = state.active.lock_shard_by_value(&key);
-            lock.remove(&key).unwrap().expect_job()
+            let val = {
+                // don't keep the lock during the `unwrap()` of the retrieved value, or we taint the
+                // underlying shard.
+                // since unwinding also wants to look at this map, this can also prevent a double
+                // panic.
+                let mut lock = state.active.lock_shard_by_value(&key);
+                lock.remove(&key)
+            };
+            val.unwrap().expect_job()
         };
 
         job.signal_complete();
@@ -256,7 +260,6 @@ where
 }
 
 #[inline(always)]
-#[cfg(parallel_compiler)]
 fn wait_for_query<Q, Qcx>(
     query: Q,
     qcx: Qcx,
@@ -327,7 +330,7 @@ where
     // re-executing the query since `try_start` only checks that the query is not currently
     // executing, but another thread may have already completed the query and stores it result
     // in the query cache.
-    if cfg!(parallel_compiler) && qcx.dep_context().sess().threads() > 1 {
+    if qcx.dep_context().sess().threads() > 1 {
         if let Some((value, index)) = query.query_cache(qcx).lookup(&key) {
             qcx.dep_context().profiler().query_cache_hit(index.into());
             return (value, Some(index));
@@ -352,7 +355,6 @@ where
         Entry::Occupied(mut entry) => {
             match entry.get_mut() {
                 QueryResult::Started(job) => {
-                    #[cfg(parallel_compiler)]
                     if sync::is_dyn_thread_safe() {
                         // Get the latch out
                         let latch = job.latch();
@@ -518,9 +520,11 @@ where
     let (result, dep_node_index) =
         qcx.start_query(job_id, query.depth_limit(), Some(&diagnostics), || {
             if query.anon() {
-                return dep_graph_data.with_anon_task(*qcx.dep_context(), query.dep_kind(), || {
-                    query.compute(qcx, key)
-                });
+                return dep_graph_data.with_anon_task_inner(
+                    *qcx.dep_context(),
+                    query.dep_kind(),
+                    || query.compute(qcx, key),
+                );
             }
 
             // `to_dep_node` is expensive for some `DepKind`s.

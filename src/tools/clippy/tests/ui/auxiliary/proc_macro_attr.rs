@@ -11,8 +11,8 @@ use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::token::Star;
 use syn::{
-    parse_macro_input, parse_quote, FnArg, ImplItem, ItemFn, ItemImpl, ItemStruct, ItemTrait, Lifetime, Pat, PatIdent,
-    PatType, Signature, TraitItem, Type, Visibility,
+    FnArg, ImplItem, ItemFn, ItemImpl, ItemStruct, ItemTrait, Lifetime, Pat, PatIdent, PatType, Signature, TraitItem,
+    Type, Visibility, parse_macro_input, parse_quote,
 };
 
 #[proc_macro_attribute]

@@ -141,7 +141,17 @@ fn unsized_dyn_autoderef() {
 }
 */
 
+fn vtable_ptr_eq() {
+    use std::{fmt, ptr};
+
+    // We don't always get the same vtable when casting this to a wide pointer.
+    let x = &2;
+    let x_wide = x as &dyn fmt::Display;
+    assert!((0..256).any(|_| !ptr::eq(x as &dyn fmt::Display, x_wide)));
+}
+
 fn main() {
     ref_box_dyn();
     box_box_trait();
+    vtable_ptr_eq();
 }

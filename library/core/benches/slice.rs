@@ -1,6 +1,6 @@
 use core::ptr::NonNull;
 
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 enum Cache {
     L1,

@@ -29,6 +29,7 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-extended \
       --enable-full-tools \
       --enable-profiler \
+      --enable-sanitizers \
       --disable-docs \
       --set target.loongarch64-unknown-linux-musl.crt-static=false \
       --musl-root-loongarch64=/x-tools/loongarch64-unknown-linux-musl/loongarch64-unknown-linux-musl/sysroot/usr

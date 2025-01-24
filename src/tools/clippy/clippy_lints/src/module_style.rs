@@ -1,6 +1,6 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::ast;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LOCAL_CRATE;
@@ -87,7 +87,7 @@ impl EarlyLintPass for ModStyle {
 
         // `folder_segments` is all unique folder path segments `path/to/foo.rs` gives
         // `[path, to]` but not foo
-        let mut folder_segments = FxHashSet::default();
+        let mut folder_segments = FxIndexSet::default();
         // `mod_folders` is all the unique folder names that contain a mod.rs file
         let mut mod_folders = FxHashSet::default();
         // `file_map` maps file names to the full path including the file name
@@ -121,17 +121,18 @@ impl EarlyLintPass for ModStyle {
         for folder in &folder_segments {
             if !mod_folders.contains(folder) {
                 if let Some((file, path)) = file_map.get(folder) {
-                    let mut correct = path.to_path_buf();
-                    correct.pop();
-                    correct.push(folder);
-                    correct.push("mod.rs");
-                    span_lint_and_help(
+                    span_lint_and_then(
                         cx,
                         SELF_NAMED_MODULE_FILES,
                         Span::new(file.start_pos, file.start_pos, SyntaxContext::root(), None),
                         format!("`mod.rs` files are required, found `{}`", path.display()),
-                        None,
-                        format!("move `{}` to `{}`", path.display(), correct.display(),),
+                        |diag| {
+                            let mut correct = path.to_path_buf();
+                            correct.pop();
+                            correct.push(folder);
+                            correct.push("mod.rs");
+                            diag.help(format!("move `{}` to `{}`", path.display(), correct.display(),));
+                        },
                     );
                 }
             }
@@ -143,7 +144,7 @@ impl EarlyLintPass for ModStyle {
 /// is `mod.rs` we add it's parent folder to `mod_folders`.
 fn process_paths_for_mod_files<'a>(
     path: &'a Path,
-    folder_segments: &mut FxHashSet<&'a OsStr>,
+    folder_segments: &mut FxIndexSet<&'a OsStr>,
     mod_folders: &mut FxHashSet<&'a OsStr>,
 ) {
     let mut comp = path.components().rev().peekable();
@@ -161,17 +162,18 @@ fn process_paths_for_mod_files<'a>(
 /// for code-sharing between tests.
 fn check_self_named_mod_exists(cx: &EarlyContext<'_>, path: &Path, file: &SourceFile) {
     if path.ends_with("mod.rs") && !path.starts_with("tests") {
-        let mut mod_file = path.to_path_buf();
-        mod_file.pop();
-        mod_file.set_extension("rs");
-
-        span_lint_and_help(
+        span_lint_and_then(
             cx,
             MOD_MODULE_FILES,
             Span::new(file.start_pos, file.start_pos, SyntaxContext::root(), None),
             format!("`mod.rs` files are not allowed, found `{}`", path.display()),
-            None,
-            format!("move `{}` to `{}`", path.display(), mod_file.display()),
+            |diag| {
+                let mut mod_file = path.to_path_buf();
+                mod_file.pop();
+                mod_file.set_extension("rs");
+
+                diag.help(format!("move `{}` to `{}`", path.display(), mod_file.display()));
+            },
         );
     }
 }

@@ -6,8 +6,10 @@
 //! script is to check all relative links in our documentation to make sure they
 //! actually point to a valid place.
 //!
-//! Currently this doesn't actually do any HTML parsing or anything fancy like
-//! that, it just has a simple "regex" to search for `href` and `id` tags.
+//! Currently uses a combination of HTML parsing to
+//! extract the `href` and `id` attributes,
+//! and regex search on the original markdown to handle intra-doc links.
+//!
 //! These values are then translated to file URLs if possible and then the
 //! destination is asserted to exist.
 //!
@@ -48,6 +50,29 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
     ("alloc/slice/trait.Concat.html", &["#method.concat"]),
     ("alloc/slice/index.html", &["#method.concat", "#method.join"]),
     ("alloc/vec/struct.Vec.html", &["#method.sort_by_key", "#method.sort_by_cached_key"]),
+    ("alloc/bstr/struct.ByteStr.html", &[
+        "#method.to_ascii_uppercase",
+        "#method.to_ascii_lowercase",
+        "core/slice::sort_by_key",
+        "core\\slice::sort_by_key",
+        "#method.sort_by_cached_key",
+        "#method.sort_by_key"
+    ]),
+    ("alloc/bstr/struct.ByteString.html", &[
+        "#method.to_ascii_uppercase",
+        "#method.to_ascii_lowercase",
+        "core/slice::sort_by_key",
+        "core\\slice::sort_by_key",
+        "#method.sort_by_cached_key",
+        "#method.sort_by_key"
+    ]),
+    ("core/bstr/struct.ByteStr.html", &[
+        "#method.to_ascii_uppercase",
+        "#method.to_ascii_lowercase",
+        "core/bstr/slice::sort_by_key",
+        "core\\bstr\\slice::sort_by_key",
+        "#method.sort_by_cached_key"
+    ]),
     ("core/primitive.str.html", &["#method.to_ascii_uppercase", "#method.to_ascii_lowercase"]),
     ("core/primitive.slice.html", &["#method.to_ascii_uppercase", "#method.to_ascii_lowercase",
                                     "core/slice::sort_by_key", "core\\slice::sort_by_key",
@@ -98,6 +123,7 @@ fn main() {
         links_ignored_external: 0,
         links_ignored_exception: 0,
         intra_doc_exceptions: 0,
+        has_broken_urls: false,
     };
     checker.walk(&docs, &mut report);
     report.report();
@@ -114,6 +140,8 @@ struct Checker {
 
 struct Report {
     errors: u32,
+    // Used to provide help message to remind the user to register a page in `SUMMARY.md`.
+    has_broken_urls: bool,
     start: Instant,
     html_files: u32,
     html_redirects: u32,
@@ -272,6 +300,7 @@ impl Checker {
                     report.links_ignored_exception += 1;
                 } else {
                     report.errors += 1;
+                    report.has_broken_urls = true;
                     println!("{}:{}: broken link - `{}`", pretty_path, i, target_pretty_path);
                 }
                 return;
@@ -436,6 +465,13 @@ impl Report {
         println!("number of links ignored due to exceptions: {}", self.links_ignored_exception);
         println!("number of intra doc links ignored: {}", self.intra_doc_exceptions);
         println!("errors found: {}", self.errors);
+
+        if self.has_broken_urls {
+            eprintln!(
+                "NOTE: if you are adding or renaming a markdown file in a mdBook, don't forget to \
+                register the page in SUMMARY.md"
+            );
+        }
     }
 }
 

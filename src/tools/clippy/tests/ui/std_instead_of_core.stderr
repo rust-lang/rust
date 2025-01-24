@@ -85,5 +85,17 @@ LL |     use alloc::slice::from_ref;
    = note: `-D clippy::alloc-instead-of-core` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::alloc_instead_of_core)]`
 
-error: aborting due to 13 previous errors
+error: used import from `std` instead of `core`
+  --> tests/ui/std_instead_of_core.rs:82:9
+   |
+LL |         std::intrinsics::copy(a, b, 1);
+   |         ^^^ help: consider importing the item from `core`: `core`
+
+error: used import from `std` instead of `core`
+  --> tests/ui/std_instead_of_core.rs:91:17
+   |
+LL | fn msrv_1_77(_: std::net::IpAddr) {}
+   |                 ^^^ help: consider importing the item from `core`: `core`
+
+error: aborting due to 15 previous errors
 

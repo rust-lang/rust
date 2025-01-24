@@ -10,7 +10,7 @@
           StorageLive(_2);
           _2 = &raw const (*_1);
 -         _0 = read_via_copy::<Never>(move _2) -> unwind unreachable;
-+         _0 = (*_2);
++         _0 = copy (*_2);
 +         unreachable;
       }
   }

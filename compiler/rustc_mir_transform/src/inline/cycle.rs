@@ -5,6 +5,7 @@ use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty::{self, GenericArgsRef, InstanceKind, TyCtxt, TypeVisitableExt};
 use rustc_session::Limit;
 use rustc_span::sym;
+use tracing::{instrument, trace};
 
 // FIXME: check whether it is cheaper to precompute the entire call graph instead of invoking
 // this query ridiculously often.
@@ -14,7 +15,6 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
     (root, target): (ty::Instance<'tcx>, LocalDefId),
 ) -> bool {
     trace!(%root, target = %tcx.def_path_str(target));
-    let param_env = tcx.param_env_reveal_all_normalized(target);
     assert_ne!(
         root.def_id().expect_local(),
         target,
@@ -30,11 +30,11 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
     );
     #[instrument(
         level = "debug",
-        skip(tcx, param_env, target, stack, seen, recursion_limiter, caller, recursion_limit)
+        skip(tcx, typing_env, target, stack, seen, recursion_limiter, caller, recursion_limit)
     )]
     fn process<'tcx>(
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         caller: ty::Instance<'tcx>,
         target: LocalDefId,
         stack: &mut Vec<ty::Instance<'tcx>>,
@@ -46,13 +46,13 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
         for &(callee, args) in tcx.mir_inliner_callees(caller.def) {
             let Ok(args) = caller.try_instantiate_mir_and_normalize_erasing_regions(
                 tcx,
-                param_env,
+                typing_env,
                 ty::EarlyBinder::bind(args),
             ) else {
-                trace!(?caller, ?param_env, ?args, "cannot normalize, skipping");
+                trace!(?caller, ?typing_env, ?args, "cannot normalize, skipping");
                 continue;
             };
-            let Ok(Some(callee)) = ty::Instance::try_resolve(tcx, param_env, callee, args) else {
+            let Ok(Some(callee)) = ty::Instance::try_resolve(tcx, typing_env, callee, args) else {
                 trace!(?callee, "cannot resolve, skipping");
                 continue;
             };
@@ -88,7 +88,6 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
                 | InstanceKind::FnPtrShim(..)
                 | InstanceKind::ClosureOnceShim { .. }
                 | InstanceKind::ConstructCoroutineInClosureShim { .. }
-                | InstanceKind::CoroutineKindShim { .. }
                 | InstanceKind::ThreadLocalShim { .. }
                 | InstanceKind::CloneShim(..) => {}
 
@@ -115,7 +114,7 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
                     let found_recursion = ensure_sufficient_stack(|| {
                         process(
                             tcx,
-                            param_env,
+                            typing_env,
                             callee,
                             target,
                             stack,
@@ -136,15 +135,23 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
         }
         false
     }
+    // FIXME(-Znext-solver): Remove this hack when trait solver overflow can return an error.
+    // In code like that pointed out in #128887, the type complexity we ask the solver to deal with
+    // grows as we recurse into the call graph. If we use the same recursion limit here and in the
+    // solver, the solver hits the limit first and emits a fatal error. But if we use a reduced
+    // limit, we will hit the limit first and give up on looking for inlining. And in any case,
+    // the default recursion limits are quite generous for us. If we need to recurse 64 times
+    // into the call graph, we're probably not going to find any useful MIR inlining.
+    let recursion_limit = tcx.recursion_limit() / 2;
     process(
         tcx,
-        param_env,
+        ty::TypingEnv::post_analysis(tcx, target),
         root,
         target,
         &mut Vec::new(),
         &mut FxHashSet::default(),
         &mut FxHashMap::default(),
-        tcx.recursion_limit(),
+        recursion_limit,
     )
 }
 

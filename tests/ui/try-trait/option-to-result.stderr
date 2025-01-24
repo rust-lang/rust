@@ -20,7 +20,7 @@ LL |     a?;
    |      ^ use `.ok()?` if you want to discard the `Result<Infallible, i32>` error information
    |
    = help: the trait `FromResidual<Result<Infallible, i32>>` is not implemented for `Option<i32>`
-   = help: the trait `FromResidual` is implemented for `Option<T>`
+   = help: the trait `FromResidual<Option<Infallible>>` is implemented for `Option<T>`
 
 error: aborting due to 2 previous errors
 

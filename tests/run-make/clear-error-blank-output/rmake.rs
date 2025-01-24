@@ -8,6 +8,6 @@
 use run_make_support::rustc;
 
 fn main() {
-    let output = rustc().output("").stdin(b"fn main() {}").run_fail();
+    let output = rustc().output("").stdin_buf(b"fn main() {}").run_fail();
     output.assert_stderr_not_contains("panic");
 }

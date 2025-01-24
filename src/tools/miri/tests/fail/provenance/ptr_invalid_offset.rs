@@ -1,5 +1,4 @@
 //@compile-flags: -Zmiri-strict-provenance
-#![feature(strict_provenance)]
 
 fn main() {
     let x = 22;

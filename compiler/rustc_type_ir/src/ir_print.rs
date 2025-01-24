@@ -2,8 +2,8 @@ use std::fmt;
 
 use crate::{
     AliasTerm, AliasTy, Binder, CoercePredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
-    Interner, NormalizesTo, OutlivesPredicate, ProjectionPredicate, SubtypePredicate,
-    TraitPredicate, TraitRef,
+    HostEffectPredicate, Interner, NormalizesTo, OutlivesPredicate, ProjectionPredicate,
+    SubtypePredicate, TraitPredicate, TraitRef,
 };
 
 pub trait IrPrint<T> {
@@ -53,6 +53,7 @@ define_display_via_print!(
     NormalizesTo,
     SubtypePredicate,
     CoercePredicate,
+    HostEffectPredicate,
     AliasTy,
     AliasTerm,
     FnSig,

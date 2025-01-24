@@ -1,5 +1,5 @@
 error: you should consider adding a `Default` implementation for `Foo`
-  --> tests/ui/new_without_default.rs:12:5
+  --> tests/ui/new_without_default.rs:13:5
    |
 LL | /     pub fn new() -> Foo {
 LL | |
@@ -20,7 +20,7 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `Bar`
-  --> tests/ui/new_without_default.rs:22:5
+  --> tests/ui/new_without_default.rs:23:5
    |
 LL | /     pub fn new() -> Self {
 LL | |
@@ -38,7 +38,7 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `LtKo<'c>`
-  --> tests/ui/new_without_default.rs:87:5
+  --> tests/ui/new_without_default.rs:88:5
    |
 LL | /     pub fn new() -> LtKo<'c> {
 LL | |
@@ -56,7 +56,7 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `Const`
-  --> tests/ui/new_without_default.rs:120:5
+  --> tests/ui/new_without_default.rs:121:5
    |
 LL | /     pub const fn new() -> Const {
 LL | |         Const
@@ -73,7 +73,7 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `NewNotEqualToDerive`
-  --> tests/ui/new_without_default.rs:180:5
+  --> tests/ui/new_without_default.rs:181:5
    |
 LL | /     pub fn new() -> Self {
 LL | |
@@ -91,7 +91,7 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `FooGenerics<T>`
-  --> tests/ui/new_without_default.rs:189:5
+  --> tests/ui/new_without_default.rs:190:5
    |
 LL | /     pub fn new() -> Self {
 LL | |
@@ -109,7 +109,7 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `BarGenerics<T>`
-  --> tests/ui/new_without_default.rs:197:5
+  --> tests/ui/new_without_default.rs:198:5
    |
 LL | /     pub fn new() -> Self {
 LL | |
@@ -127,7 +127,7 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `Foo<T>`
-  --> tests/ui/new_without_default.rs:209:9
+  --> tests/ui/new_without_default.rs:210:9
    |
 LL | /         pub fn new() -> Self {
 LL | |
@@ -147,7 +147,7 @@ LL ~     impl<T> Foo<T> {
    |
 
 error: you should consider adding a `Default` implementation for `MyStruct<K, V>`
-  --> tests/ui/new_without_default.rs:255:5
+  --> tests/ui/new_without_default.rs:256:5
    |
 LL | /     pub fn new() -> Self {
 LL | |         Self { _kv: None }

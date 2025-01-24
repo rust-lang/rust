@@ -1,30 +1,41 @@
 # Docker images for CI
 
 This folder contains a bunch of docker images used by the continuous integration
-(CI) of Rust. An script is accompanied (`run.sh`) with these images to actually
-execute them. To test out an image execute:
+(CI) of Rust. A script is accompanied (`run.sh`) with these images to actually
+execute them.
+
+Note that a single Docker image can be used by multiple CI jobs, so the job name
+is the important thing that you should know. You can examine the existing CI jobs in
+the [`jobs.yml`](../github-actions/jobs.yml) file.
+
+To run a specific CI job locally, you can use the following script:
 
 ```
-./src/ci/docker/run.sh $image_name
+python3 ./src/ci/github-actions/ci.py run-local <job-name>
 ```
 
-for example:
+For example, to run the `x86_64-gnu-llvm-18-1` job:
+```
+python3 ./src/ci/github-actions/ci.py run-local x86_64-gnu-llvm-18-1
+```
 
-```
-./src/ci/docker/run.sh x86_64-gnu
-```
-
-Images will output artifacts in an `obj/$image_name` dir at the root of a repository. Note
-that the script will overwrite the contents of this directory.
-
-To match conditions in rusts CI, also set the environment variable `DEPLOY=1`, e.g.:
-```
-DEPLOY=1 ./src/ci/docker/run.sh x86_64-gnu
-```
+The job will output artifacts in an `obj/<image-name>` dir at the root of a repository. Note
+that the script will overwrite the contents of this directory. `<image-name>` is set based on the
+Docker image executed in the given CI job.
 
 **NOTE**: In CI, the script outputs the artifacts to the `obj` directory,
-while locally, to the `obj/$image_name` directory. This is primarily to prevent
+while locally, to the `obj/<image-name>` directory. This is primarily to prevent
 strange linker errors when using multiple Docker images.
+
+For some Linux workflows (for example `x86_64-gnu-llvm-18-N`), the process is more involved. You will need to see which script is executed for the given workflow inside the [`jobs.yml`](../github-actions/jobs.yml) file and pass it through the `DOCKER_SCRIPT` environment variable. For example, to reproduce the `x86_64-gnu-llvm-18-3` workflow, you can run the following script:
+
+```
+DOCKER_SCRIPT=x86_64-gnu-llvm3.sh ./src/ci/docker/run.sh x86_64-gnu-llvm-18
+```
+
+## Local Development
+
+Refer to the [dev guide](https://rustc-dev-guide.rust-lang.org/tests/docker.html) for more information on testing locally.
 
 ## Filesystem layout
 
@@ -266,9 +277,9 @@ For targets: `loongarch64-unknown-linux-gnu`
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 5.19.16
-- Binary utilities > Version of binutils = 2.40
+- Binary utilities > Version of binutils = 2.42
 - C-library > glibc version = 2.36
-- C compiler > gcc version = 13.2.0
+- C compiler > gcc version = 14.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `loongarch64-linux-musl.defconfig`
@@ -282,9 +293,9 @@ For targets: `loongarch64-unknown-linux-musl`
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 5.19.16
-- Binary utilities > Version of binutils = 2.41
+- Binary utilities > Version of binutils = 2.42
 - C-library > musl version = 1.2.5
-- C compiler > gcc version = 13.2.0
+- C compiler > gcc version = 14.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `mips-linux-gnu.defconfig`
@@ -294,8 +305,6 @@ For targets: `mips-unknown-linux-gnu`
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
 - Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
-- Path and misc options > Patches origin = Bundled, then local
-- Path and misc options > Local patch directory = /tmp/patches
 - Target options > Target Architecture = mips
 - Target options > ABI = o32
 - Target options > Endianness = Big endian
@@ -316,8 +325,6 @@ For targets: `mipsel-unknown-linux-gnu`
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
 - Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
-- Path and misc options > Patches origin = Bundled, then local
-- Path and misc options > Local patch directory = /tmp/patches
 - Target options > Target Architecture = mips
 - Target options > ABI = o32
 - Target options > Endianness = Little endian
@@ -338,8 +345,6 @@ For targets: `mips64-unknown-linux-gnuabi64`
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
 - Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
-- Path and misc options > Patches origin = Bundled, then local
-- Path and misc options > Local patch directory = /tmp/patches
 - Target options > Target Architecture = mips
 - Target options > ABI = n64
 - Target options > Endianness = Big endian
@@ -359,8 +364,6 @@ For targets: `mips64el-unknown-linux-gnuabi64`
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Use a mirror = ENABLE
 - Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
-- Path and misc options > Patches origin = Bundled, then local
-- Path and misc options > Local patch directory = /tmp/patches
 - Target options > Target Architecture = mips
 - Target options > ABI = n64
 - Target options > Endianness = Little endian

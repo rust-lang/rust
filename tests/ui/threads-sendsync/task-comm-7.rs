@@ -6,12 +6,16 @@
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
-pub fn main() { test00(); }
+pub fn main() {
+    test00();
+}
 
-fn test00_start(c: &Sender<isize>, start: isize,
-                number_of_messages: isize) {
+fn test00_start(c: &Sender<isize>, start: isize, number_of_messages: isize) {
     let mut i: isize = 0;
-    while i < number_of_messages { c.send(start + i).unwrap(); i += 1; }
+    while i < number_of_messages {
+        c.send(start + i).unwrap();
+        i += 1;
+    }
 }
 
 fn test00() {
@@ -21,19 +25,19 @@ fn test00() {
     let number_of_messages: isize = 10;
 
     let tx2 = tx.clone();
-    let t1 = thread::spawn(move|| {
+    let t1 = thread::spawn(move || {
         test00_start(&tx2, number_of_messages * 0, number_of_messages);
     });
     let tx2 = tx.clone();
-    let t2 = thread::spawn(move|| {
+    let t2 = thread::spawn(move || {
         test00_start(&tx2, number_of_messages * 1, number_of_messages);
     });
     let tx2 = tx.clone();
-    let t3 = thread::spawn(move|| {
+    let t3 = thread::spawn(move || {
         test00_start(&tx2, number_of_messages * 2, number_of_messages);
     });
     let tx2 = tx.clone();
-    let t4 = thread::spawn(move|| {
+    let t4 = thread::spawn(move || {
         test00_start(&tx2, number_of_messages * 3, number_of_messages);
     });
 

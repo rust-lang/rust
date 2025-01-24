@@ -3,18 +3,18 @@
 //! The main entry point is the `step` method.
 
 use either::Either;
+use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_index::IndexSlice;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::source_map::Spanned;
-use rustc_target::abi::call::FnAbi;
-use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
+use rustc_target::callconv::FnAbi;
 use tracing::{info, instrument, trace};
 
 use super::{
-    throw_ub, FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemPlaceMeta,
-    PlaceTy, Projectable, Scalar,
+    FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemPlaceMeta, PlaceTy,
+    Projectable, Scalar, interp_ok, throw_ub,
 };
 use crate::util;
 
@@ -36,7 +36,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     #[inline(always)]
     pub fn step(&mut self) -> InterpResult<'tcx, bool> {
         if self.stack().is_empty() {
-            return Ok(false);
+            return interp_ok(false);
         }
 
         let Either::Left(loc) = self.frame().loc else {
@@ -44,7 +44,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Just go on unwinding.
             trace!("unwinding: skipping frame");
             self.return_from_current_stack_frame(/* unwinding */ true)?;
-            return Ok(true);
+            return interp_ok(true);
         };
         let basic_block = &self.body().basic_blocks[loc.block];
 
@@ -55,7 +55,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             assert_eq!(old_frames, self.frame_idx());
             // Advance the program counter.
             self.frame_mut().loc.as_mut().left().unwrap().statement_index += 1;
-            return Ok(true);
+            return interp_ok(true);
         }
 
         M::before_terminator(self)?;
@@ -67,7 +67,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 info!("// executing {:?}", loc.block);
             }
         }
-        Ok(true)
+        interp_ok(true)
     }
 
     /// Runs the interpretation logic for the given `mir::Statement` at the current frame and
@@ -143,9 +143,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.
             Nop => {}
+
+            // Only used for temporary lifetime lints
+            BackwardIncompatibleDropHint { .. } => {}
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     /// Evaluate an assignment statement.
@@ -234,7 +237,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_immediate(*val, &dest)?;
             }
 
-            AddressOf(_, place) => {
+            RawPtr(_, place) => {
                 // Figure out whether this is an addr_of of an already raw place.
                 let place_base_raw = if place.is_indirect_first_projection() {
                     let ty = self.frame().body.local_decls[place.local].ty;
@@ -277,7 +280,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         trace!("{:?}", self.dump_place(&dest));
 
-        Ok(())
+        interp_ok(())
     }
 
     /// Writes the aggregate to the destination.
@@ -313,7 +316,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let ptr_imm = Immediate::new_pointer_with_meta(data, meta, self);
                 let ptr = ImmTy::from_immediate(ptr_imm, dest.layout);
                 self.copy_op(&ptr, dest)?;
-                return Ok(());
+                return interp_ok(());
             }
             _ => (FIRST_VARIANT, dest.clone(), None),
         };
@@ -365,7 +368,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             )?;
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     /// Evaluate the arguments of a function call
@@ -373,7 +376,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &self,
         op: &mir::Operand<'tcx>,
     ) -> InterpResult<'tcx, FnArg<'tcx, M::Provenance>> {
-        Ok(match op {
+        interp_ok(match op {
             mir::Operand::Copy(_) | mir::Operand::Constant(_) => {
                 // Make a regular copy.
                 let op = self.eval_operand(op, None)?;
@@ -418,13 +421,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             .collect::<InterpResult<'tcx, Vec<_>>>()?;
 
         let fn_sig_binder = func.layout.ty.fn_sig(*self.tcx);
-        let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
+        let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.typing_env, fn_sig_binder);
         let extra_args = &args[fn_sig.inputs().len()..];
         let extra_args =
             self.tcx.mk_type_list_from_iter(extra_args.iter().map(|arg| arg.layout().ty));
 
         let (callee, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
-            ty::FnPtr(_sig) => {
+            ty::FnPtr(..) => {
                 let fn_ptr = self.read_pointer(&func)?;
                 let fn_val = self.get_ptr_fn(fn_ptr)?;
                 (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)
@@ -442,7 +445,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
         };
 
-        Ok(EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location })
+        interp_ok(EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location })
     }
 
     fn eval_terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
@@ -537,7 +540,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     // generic. In order to make sure that generic and non-generic code behaves
                     // roughly the same (and in keeping with Mir semantics) we do nothing here.
                     self.go_to_block(target);
-                    return Ok(());
+                    return interp_ok(());
                 }
                 trace!("TerminatorKind::drop: {:?}, type {}", place, place.layout.ty);
                 self.init_drop_in_place_call(&place, instance, target, unwind)?;
@@ -566,7 +569,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // By definition, a Resume terminator means
                 // that we're unwinding
                 self.return_from_current_stack_frame(/* unwinding */ true)?;
-                return Ok(());
+                return interp_ok(());
             }
 
             // It is UB to ever encounter this.
@@ -584,6 +587,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
         }
 
-        Ok(())
+        interp_ok(())
     }
 }

@@ -21,7 +21,7 @@
           (_1.1: i32) = const 99_i32;
           (_1.0: i32) = const 42_i32;
           StorageLive(_2);
-          _2 = (_1.1: i32);
+          _2 = copy (_1.1: i32);
           _0 = const ();
           StorageDead(_2);
           StorageDead(_1);

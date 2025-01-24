@@ -1,12 +1,12 @@
 error: unsupported operation: unknown `miri_resolve_frame_names` flags 2
-  --> $DIR/bad-backtrace-resolve-names-flags.rs:LL:CC
+  --> tests/fail/shims/backtrace/bad-backtrace-resolve-names-flags.rs:LL:CC
    |
 LL | ...   miri_resolve_frame_names(buf[0], 2, std::ptr::null_mut(), std::ptr::null_mut());
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unknown `miri_resolve_frame_names` flags 2
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/bad-backtrace-resolve-names-flags.rs:LL:CC
+   = note: inside `main` at tests/fail/shims/backtrace/bad-backtrace-resolve-names-flags.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

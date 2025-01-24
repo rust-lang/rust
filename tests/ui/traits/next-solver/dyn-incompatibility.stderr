@@ -1,0 +1,49 @@
+error[E0277]: the trait bound `T: Copy` is not satisfied in `dyn Setup<From = T>`
+  --> $DIR/dyn-incompatibility.rs:12:12
+   |
+LL |     copy::<dyn Setup<From=T>>(t)
+   |            ^^^^^^^^^^^^^^^^^ within `dyn Setup<From = T>`, the trait `Copy` is not implemented for `T`
+   |
+   = note: required because it appears within the type `dyn Setup<From = T>`
+note: required by a bound in `copy`
+  --> $DIR/dyn-incompatibility.rs:7:12
+   |
+LL | fn copy<U: Setup + ?Sized>(from: &U::From) -> U::From {
+   |            ^^^^^ required by this bound in `copy`
+help: consider restricting type parameter `T` with trait `Copy`
+   |
+LL | pub fn copy_any<T: std::marker::Copy>(t: &T) -> T {
+   |                  +++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/dyn-incompatibility.rs:12:31
+   |
+LL |     copy::<dyn Setup<From=T>>(t)
+   |     ------------------------- ^ types differ
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&<dyn Setup<From = T> as Setup>::From`
+              found reference `&T`
+note: function defined here
+  --> $DIR/dyn-incompatibility.rs:7:4
+   |
+LL | fn copy<U: Setup + ?Sized>(from: &U::From) -> U::From {
+   |    ^^^^                    --------------
+
+error[E0277]: the trait bound `T: Copy` is not satisfied in `dyn Setup<From = T>`
+  --> $DIR/dyn-incompatibility.rs:12:5
+   |
+LL |     copy::<dyn Setup<From=T>>(t)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ within `dyn Setup<From = T>`, the trait `Copy` is not implemented for `T`
+   |
+   = note: required because it appears within the type `dyn Setup<From = T>`
+help: consider restricting type parameter `T` with trait `Copy`
+   |
+LL | pub fn copy_any<T: std::marker::Copy>(t: &T) -> T {
+   |                  +++++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

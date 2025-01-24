@@ -231,11 +231,11 @@ pub macro panic_2015 {
     }),
 }
 
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+pub use core::panic::Location;
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
 pub use core::panic::panic_2021;
-#[stable(feature = "panic_hooks", since = "1.10.0")]
-pub use core::panic::Location;
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 pub use core::panic::{AssertUnwindSafe, RefUnwindSafe, UnwindSafe};
 
@@ -283,47 +283,60 @@ where
 {
 }
 
+#[unstable(feature = "abort_unwind", issue = "130338")]
+pub use core::panic::abort_unwind;
+
 /// Invokes a closure, capturing the cause of an unwinding panic if one occurs.
 ///
-/// This function will return `Ok` with the closure's result if the closure
-/// does not panic, and will return `Err(cause)` if the closure panics. The
-/// `cause` returned is the object with which panic was originally invoked.
+/// This function will return `Ok` with the closure's result if the closure does
+/// not panic, and will return `Err(cause)` if the closure panics. The `cause`
+/// returned is the object with which panic was originally invoked.
 ///
-/// It is currently undefined behavior to unwind from Rust code into foreign
-/// code, so this function is particularly useful when Rust is called from
-/// another language (normally C). This can run arbitrary Rust code, capturing a
-/// panic and allowing a graceful handling of the error.
+/// Rust functions that are expected to be called from foreign code that does
+/// not support unwinding (such as C compiled with `-fno-exceptions`) should be
+/// defined using `extern "C"`, which ensures that if the Rust code panics, it
+/// is automatically caught and the process is aborted. If this is the desired
+/// behavior, it is not necessary to use `catch_unwind` explicitly. This
+/// function should instead be used when more graceful error-handling is needed.
 ///
 /// It is **not** recommended to use this function for a general try/catch
 /// mechanism. The [`Result`] type is more appropriate to use for functions that
 /// can fail on a regular basis. Additionally, this function is not guaranteed
 /// to catch all panics, see the "Notes" section below.
 ///
-/// The closure provided is required to adhere to the [`UnwindSafe`] trait to ensure
-/// that all captured variables are safe to cross this boundary. The purpose of
-/// this bound is to encode the concept of [exception safety][rfc] in the type
-/// system. Most usage of this function should not need to worry about this
-/// bound as programs are naturally unwind safe without `unsafe` code. If it
-/// becomes a problem the [`AssertUnwindSafe`] wrapper struct can be used to quickly
-/// assert that the usage here is indeed unwind safe.
+/// The closure provided is required to adhere to the [`UnwindSafe`] trait to
+/// ensure that all captured variables are safe to cross this boundary. The
+/// purpose of this bound is to encode the concept of [exception safety][rfc] in
+/// the type system. Most usage of this function should not need to worry about
+/// this bound as programs are naturally unwind safe without `unsafe` code. If
+/// it becomes a problem the [`AssertUnwindSafe`] wrapper struct can be used to
+/// quickly assert that the usage here is indeed unwind safe.
 ///
 /// [rfc]: https://github.com/rust-lang/rfcs/blob/master/text/1236-stabilize-catch-panic.md
 ///
 /// # Notes
 ///
-/// Note that this function **might not catch all panics** in Rust. A panic in
-/// Rust is not always implemented via unwinding, but can be implemented by
-/// aborting the process as well. This function *only* catches unwinding panics,
-/// not those that abort the process.
+/// This function **might not catch all Rust panics**. A Rust panic is not
+/// always implemented via unwinding, but can be implemented by aborting the
+/// process as well. This function *only* catches unwinding panics, not those
+/// that abort the process.
 ///
-/// Note that if a custom panic hook has been set, it will be invoked before
-/// the panic is caught, before unwinding.
+/// If a custom panic hook has been set, it will be invoked before the panic is
+/// caught, before unwinding.
 ///
-/// Also note that unwinding into Rust code with a foreign exception (e.g.
-/// an exception thrown from C++ code) is undefined behavior.
+/// Although unwinding into Rust code with a foreign exception (e.g. an
+/// exception thrown from C++ code, or a `panic!` in Rust code compiled or
+/// linked with a different runtime) via an appropriate ABI (e.g. `"C-unwind"`)
+/// is permitted, catching such an exception using this function will have one
+/// of two behaviors, and it is unspecified which will occur:
 ///
-/// Finally, be **careful in how you drop the result of this function**.
-/// If it is `Err`, it contains the panic payload, and dropping that may in turn panic!
+/// * The process aborts, after executing all destructors of `f` and the
+///   functions it called.
+/// * The function returns a `Result::Err` containing an opaque type.
+///
+/// Finally, be **careful in how you drop the result of this function**. If it
+/// is `Err`, it contains the panic payload, and dropping that may in turn
+/// panic!
 ///
 /// # Examples
 ///
@@ -440,13 +453,12 @@ impl BacktraceStyle {
     }
 
     fn from_u8(s: u8) -> Option<Self> {
-        Some(match s {
-            0 => return None,
-            1 => BacktraceStyle::Short,
-            2 => BacktraceStyle::Full,
-            3 => BacktraceStyle::Off,
-            _ => unreachable!(),
-        })
+        match s {
+            1 => Some(BacktraceStyle::Short),
+            2 => Some(BacktraceStyle::Full),
+            3 => Some(BacktraceStyle::Off),
+            _ => None,
+        }
     }
 }
 
@@ -465,7 +477,7 @@ static SHOULD_CAPTURE: AtomicU8 = AtomicU8::new(0);
 pub fn set_backtrace_style(style: BacktraceStyle) {
     if cfg!(feature = "backtrace") {
         // If the `backtrace` feature of this crate is enabled, set the backtrace style.
-        SHOULD_CAPTURE.store(style.as_u8(), Ordering::Release);
+        SHOULD_CAPTURE.store(style.as_u8(), Ordering::Relaxed);
     }
 }
 
@@ -498,7 +510,9 @@ pub fn get_backtrace_style() -> Option<BacktraceStyle> {
         // to optimize away callers.
         return None;
     }
-    if let Some(style) = BacktraceStyle::from_u8(SHOULD_CAPTURE.load(Ordering::Acquire)) {
+
+    let current = SHOULD_CAPTURE.load(Ordering::Relaxed);
+    if let Some(style) = BacktraceStyle::from_u8(current) {
         return Some(style);
     }
 
@@ -509,8 +523,11 @@ pub fn get_backtrace_style() -> Option<BacktraceStyle> {
         None if crate::sys::FULL_BACKTRACE_DEFAULT => BacktraceStyle::Full,
         None => BacktraceStyle::Off,
     };
-    set_backtrace_style(format);
-    Some(format)
+
+    match SHOULD_CAPTURE.compare_exchange(0, format.as_u8(), Ordering::Relaxed, Ordering::Relaxed) {
+        Ok(_) => Some(format),
+        Err(new) => BacktraceStyle::from_u8(new),
+    }
 }
 
 #[cfg(test)]

@@ -1,15 +1,17 @@
 use std::iter;
 
 use itertools::Itertools;
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_ast::Mutability;
 use rustc_const_eval::interpret;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::{
-    BasicBlock, BasicBlockData, Body, CallSource, CastKind, Const, ConstOperand, ConstValue, Local,
-    LocalDecl, MirSource, Operand, Place, PlaceElem, Rvalue, SourceInfo, Statement, StatementKind,
-    Terminator, TerminatorKind, UnwindAction, UnwindTerminateReason, RETURN_PLACE,
+    BasicBlock, BasicBlockData, Body, CallSource, CastKind, CoercionSource, Const, ConstOperand,
+    ConstValue, Local, LocalDecl, MirSource, Operand, Place, PlaceElem, RETURN_PLACE, Rvalue,
+    SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UnwindAction,
+    UnwindTerminateReason,
 };
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::{AsyncDropGlueMorphology, Discr};
@@ -17,12 +19,12 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::source_map::respan;
 use rustc_span::{Span, Symbol};
-use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::spec::PanicStrategy;
+use tracing::debug;
 
 use super::{local_decls_for_sig, new_body};
 
-pub fn build_async_destructor_ctor_shim<'tcx>(
+pub(super) fn build_async_destructor_ctor_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     ty: Option<Ty<'tcx>>,
@@ -46,7 +48,7 @@ struct AsyncDestructorCtorShimBuilder<'tcx> {
     self_ty: Option<Ty<'tcx>>,
     span: Span,
     source_info: SourceInfo,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
 
     stack: Vec<Operand<'tcx>>,
     last_bb: BasicBlock,
@@ -84,17 +86,17 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
         // Usual case: noop() + unwind resume + return
         let mut bbs = IndexVec::with_capacity(3);
-        let param_env = tcx.param_env_reveal_all_normalized(def_id);
+        let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
         AsyncDestructorCtorShimBuilder {
             tcx,
             def_id,
             self_ty,
             span,
             source_info,
-            param_env,
+            typing_env,
 
             stack: Vec::with_capacity(Self::MAX_STACK_LEN),
-            last_bb: bbs.push(BasicBlockData::new(None)),
+            last_bb: bbs.push(BasicBlockData::new(None, false)),
             top_cleanup_bb: match tcx.sess.panic_strategy() {
                 PanicStrategy::Unwind => {
                     // Don't drop input arg because it's just a pointer
@@ -328,7 +330,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     fn put_array_as_slice(&mut self, elem_ty: Ty<'tcx>) {
         let slice_ptr_ty = Ty::new_mut_ptr(self.tcx, Ty::new_slice(self.tcx, elem_ty));
         self.put_temp_rvalue(Rvalue::Cast(
-            CastKind::PointerCoercion(PointerCoercion::Unsize),
+            CastKind::PointerCoercion(PointerCoercion::Unsize, CoercionSource::Implicit),
             Operand::Copy(Self::SELF_PTR.into()),
             slice_ptr_ty,
         ))
@@ -343,7 +345,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 .tcx
                 .mk_place_elems(&[PlaceElem::Deref, PlaceElem::Field(field, field_ty)]),
         };
-        self.put_temp_rvalue(Rvalue::AddressOf(Mutability::Mut, place))
+        self.put_temp_rvalue(Rvalue::RawPtr(Mutability::Mut, place))
     }
 
     /// If given Self is an enum puts `to_drop: *mut FieldTy` on top of
@@ -363,7 +365,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 PlaceElem::Field(field, field_ty),
             ]),
         };
-        self.put_temp_rvalue(Rvalue::AddressOf(Mutability::Mut, place))
+        self.put_temp_rvalue(Rvalue::RawPtr(Mutability::Mut, place))
     }
 
     /// If given Self is an enum puts `to_drop: *mut FieldTy` on top of
@@ -420,7 +422,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                         statements: Vec::new(),
                         terminator: Some(Terminator {
                             source_info,
-                            kind: if self.locals[local].ty.needs_drop(self.tcx, self.param_env) {
+                            kind: if self.locals[local].ty.needs_drop(self.tcx, self.typing_env) {
                                 TerminatorKind::Drop {
                                     place: local.into(),
                                     target: *top_cleanup_bb,
@@ -451,19 +453,17 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     }
 
     fn combine_sync_surface(&mut self) -> Ty<'tcx> {
-        self.apply_combinator(
-            1,
-            LangItem::AsyncDropSurfaceDropInPlace,
-            &[self.self_ty.unwrap().into()],
-        )
+        self.apply_combinator(1, LangItem::AsyncDropSurfaceDropInPlace, &[self
+            .self_ty
+            .unwrap()
+            .into()])
     }
 
     fn combine_deferred_drop_in_place(&mut self) -> Ty<'tcx> {
-        self.apply_combinator(
-            1,
-            LangItem::AsyncDropDeferredDropInPlace,
-            &[self.self_ty.unwrap().into()],
-        )
+        self.apply_combinator(1, LangItem::AsyncDropDeferredDropInPlace, &[self
+            .self_ty
+            .unwrap()
+            .into()])
     }
 
     fn combine_fuse(&mut self, inner_future_ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -483,11 +483,11 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     }
 
     fn combine_either(&mut self, other: Ty<'tcx>, matched: Ty<'tcx>) -> Ty<'tcx> {
-        self.apply_combinator(
-            4,
-            LangItem::AsyncDropEither,
-            &[other.into(), matched.into(), self.self_ty.unwrap().into()],
-        )
+        self.apply_combinator(4, LangItem::AsyncDropEither, &[
+            other.into(),
+            matched.into(),
+            self.self_ty.unwrap().into(),
+        ])
     }
 
     fn return_(mut self) -> Body<'tcx> {

@@ -17,6 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   pkg-config \
   xz-utils \
   mingw-w64 \
+  zlib1g-dev \
+  libzstd-dev \
   && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/sccache.sh /scripts/
@@ -26,5 +28,6 @@ ENV RUST_CONFIGURE_ARGS \
  --build=x86_64-unknown-linux-gnu \
  --enable-sanitizers \
  --enable-profiler \
- --enable-compiler-docs
+ --enable-compiler-docs \
+ --set llvm.libzstd=true
 ENV SCRIPT python3 ../x.py --stage 2 test

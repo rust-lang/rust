@@ -1,0 +1,30 @@
+error: `crate_type` within an `#![cfg_attr]` attribute is forbidden
+  --> $DIR/crate-attributes-using-cfg_attr.rs:4:18
+   |
+LL | #![cfg_attr(foo, crate_type="bin")]
+   |                  ^^^^^^^^^^^^^^^^
+
+error: `crate_name` within an `#![cfg_attr]` attribute is forbidden
+  --> $DIR/crate-attributes-using-cfg_attr.rs:7:18
+   |
+LL | #![cfg_attr(foo, crate_name="bar")]
+   |                  ^^^^^^^^^^^^^^^^
+
+error: `crate_type` within an `#![cfg_attr]` attribute is forbidden
+  --> $DIR/crate-attributes-using-cfg_attr.rs:4:18
+   |
+LL | #![cfg_attr(foo, crate_type="bin")]
+   |                  ^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `crate_name` within an `#![cfg_attr]` attribute is forbidden
+  --> $DIR/crate-attributes-using-cfg_attr.rs:7:18
+   |
+LL | #![cfg_attr(foo, crate_name="bar")]
+   |                  ^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+

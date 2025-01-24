@@ -5,15 +5,12 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(allocator_api)]
-#![feature(strict_provenance)]
 
-use std::{
-    alloc::{AllocError, Allocator, Layout},
-    cell::{Cell, UnsafeCell},
-    mem,
-    ptr::{self, addr_of, NonNull},
-    thread::{self, ThreadId},
-};
+use std::alloc::{AllocError, Allocator, Layout};
+use std::cell::{Cell, UnsafeCell};
+use std::mem;
+use std::ptr::{self, NonNull, addr_of};
+use std::thread::{self, ThreadId};
 
 const BIN_SIZE: usize = 8;
 

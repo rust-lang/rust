@@ -1,5 +1,6 @@
+use crate::fmt;
 use crate::iter::{FusedIterator, TrustedLen, UncheckedIterator};
-use crate::mem::ManuallyDrop;
+use crate::mem::{self, MaybeUninit};
 use crate::num::NonZero;
 
 /// Creates a new iterator that repeats a single element a given number of times.
@@ -7,9 +8,7 @@ use crate::num::NonZero;
 /// The `repeat_n()` function repeats a single value exactly `n` times.
 ///
 /// This is very similar to using [`repeat()`] with [`Iterator::take()`],
-/// but there are two differences:
-/// - `repeat_n()` can return the original value, rather than always cloning.
-/// - `repeat_n()` produces an [`ExactSizeIterator`].
+/// but `repeat_n()` can return the original value, rather than always cloning.
 ///
 /// [`repeat()`]: crate::iter::repeat
 ///
@@ -18,7 +17,6 @@ use crate::num::NonZero;
 /// Basic usage:
 ///
 /// ```
-/// #![feature(iter_repeat_n)]
 /// use std::iter;
 ///
 /// // four of the number four:
@@ -36,7 +34,6 @@ use crate::num::NonZero;
 /// For non-`Copy` types,
 ///
 /// ```
-/// #![feature(iter_repeat_n)]
 /// use std::iter;
 ///
 /// let v: Vec<i32> = Vec::with_capacity(123);
@@ -58,16 +55,14 @@ use crate::num::NonZero;
 /// assert_eq!(None, it.next());
 /// ```
 #[inline]
-#[unstable(feature = "iter_repeat_n", issue = "104434")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 pub fn repeat_n<T: Clone>(element: T, count: usize) -> RepeatN<T> {
-    let mut element = ManuallyDrop::new(element);
-
-    if count == 0 {
-        // SAFETY: we definitely haven't dropped it yet, since we only just got
-        // passed it in, and because the count is zero the instance we're about
-        // to create won't drop it, so to avoid leaking we need to now.
-        unsafe { ManuallyDrop::drop(&mut element) };
-    }
+    let element = if count == 0 {
+        // `element` gets dropped eagerly.
+        MaybeUninit::uninit()
+    } else {
+        MaybeUninit::new(element)
+    };
 
     RepeatN { element, count }
 }
@@ -76,15 +71,23 @@ pub fn repeat_n<T: Clone>(element: T, count: usize) -> RepeatN<T> {
 ///
 /// This `struct` is created by the [`repeat_n()`] function.
 /// See its documentation for more.
-#[derive(Clone, Debug)]
-#[unstable(feature = "iter_repeat_n", issue = "104434")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 pub struct RepeatN<A> {
     count: usize,
-    // Invariant: has been dropped iff count == 0.
-    element: ManuallyDrop<A>,
+    // Invariant: uninit iff count == 0.
+    element: MaybeUninit<A>,
 }
 
 impl<A> RepeatN<A> {
+    /// Returns the element if it hasn't been dropped already.
+    fn element_ref(&self) -> Option<&A> {
+        if self.count > 0 {
+            // SAFETY: The count is non-zero, so it must be initialized.
+            Some(unsafe { self.element.assume_init_ref() })
+        } else {
+            None
+        }
+    }
     /// If we haven't already dropped the element, return it in an option.
     ///
     /// Clears the count so it won't be dropped again later.
@@ -92,23 +95,44 @@ impl<A> RepeatN<A> {
     fn take_element(&mut self) -> Option<A> {
         if self.count > 0 {
             self.count = 0;
+            let element = mem::replace(&mut self.element, MaybeUninit::uninit());
             // SAFETY: We just set count to zero so it won't be dropped again,
             // and it used to be non-zero so it hasn't already been dropped.
-            unsafe { Some(ManuallyDrop::take(&mut self.element)) }
+            unsafe { Some(element.assume_init()) }
         } else {
             None
         }
     }
 }
 
-#[unstable(feature = "iter_repeat_n", issue = "104434")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
+impl<A: Clone> Clone for RepeatN<A> {
+    fn clone(&self) -> RepeatN<A> {
+        RepeatN {
+            count: self.count,
+            element: self.element_ref().cloned().map_or_else(MaybeUninit::uninit, MaybeUninit::new),
+        }
+    }
+}
+
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
+impl<A: fmt::Debug> fmt::Debug for RepeatN<A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RepeatN")
+            .field("count", &self.count)
+            .field("element", &self.element_ref())
+            .finish()
+    }
+}
+
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A> Drop for RepeatN<A> {
     fn drop(&mut self) {
         self.take_element();
     }
 }
 
-#[unstable(feature = "iter_repeat_n", issue = "104434")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A: Clone> Iterator for RepeatN<A> {
     type Item = A;
 
@@ -156,14 +180,14 @@ impl<A: Clone> Iterator for RepeatN<A> {
     }
 }
 
-#[unstable(feature = "iter_repeat_n", issue = "104434")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A: Clone> ExactSizeIterator for RepeatN<A> {
     fn len(&self) -> usize {
         self.count
     }
 }
 
-#[unstable(feature = "iter_repeat_n", issue = "104434")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A: Clone> DoubleEndedIterator for RepeatN<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
@@ -181,12 +205,12 @@ impl<A: Clone> DoubleEndedIterator for RepeatN<A> {
     }
 }
 
-#[unstable(feature = "iter_repeat_n", issue = "104434")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A: Clone> FusedIterator for RepeatN<A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A: Clone> TrustedLen for RepeatN<A> {}
-#[unstable(feature = "trusted_len_next_unchecked", issue = "37572")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A: Clone> UncheckedIterator for RepeatN<A> {
     #[inline]
     unsafe fn next_unchecked(&mut self) -> Self::Item {
@@ -196,9 +220,11 @@ impl<A: Clone> UncheckedIterator for RepeatN<A> {
             // SAFETY: the check above ensured that the count used to be non-zero,
             // so element hasn't been dropped yet, and we just lowered the count to
             // zero so it won't be dropped later, and thus it's okay to take it here.
-            unsafe { ManuallyDrop::take(&mut self.element) }
+            unsafe { mem::replace(&mut self.element, MaybeUninit::uninit()).assume_init() }
         } else {
-            A::clone(&self.element)
+            // SAFETY: the count is non-zero, so it must have not been dropped yet.
+            let element = unsafe { self.element.assume_init_ref() };
+            A::clone(element)
         }
     }
 }

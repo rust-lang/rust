@@ -1,6 +1,6 @@
-use crate::spec::{cvs, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{PanicStrategy, RelocModel, Target, TargetOptions, cvs};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         data_layout: "e-m:e-p:32:32-i64:64-n32-S128".into(),
         llvm_target: "riscv32".into(),
@@ -27,6 +27,7 @@ pub fn target() -> Target {
             atomic_cas: true,
 
             features: "+m,+a,+c".into(),
+            llvm_abiname: "ilp32".into(),
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,
             emit_debug_gdb_scripts: false,

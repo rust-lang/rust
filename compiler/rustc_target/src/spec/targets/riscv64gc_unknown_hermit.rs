@@ -1,6 +1,6 @@
-use crate::spec::{base, CodeModel, RelocModel, Target, TargetOptions, TlsModel};
+use crate::spec::{CodeModel, RelocModel, Target, TargetOptions, TlsModel, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "riscv64-unknown-hermit".into(),
         metadata: crate::spec::TargetMetadata {

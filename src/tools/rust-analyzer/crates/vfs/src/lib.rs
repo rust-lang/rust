@@ -67,7 +67,7 @@ pub struct FileId(u32);
 // pub struct FileId(NonMaxU32);
 
 impl FileId {
-    pub const MAX: u32 = 0x7fff_ffff;
+    const MAX: u32 = 0x7fff_ffff;
 
     #[inline]
     pub const fn from_raw(raw: u32) -> FileId {
@@ -201,8 +201,8 @@ impl Vfs {
     pub fn set_file_contents(&mut self, path: VfsPath, contents: Option<Vec<u8>>) -> bool {
         let _p = span!(Level::INFO, "Vfs::set_file_contents").entered();
         let file_id = self.alloc_file_id(path);
-        let state = self.get(file_id);
-        let change_kind = match (state, contents) {
+        let state: FileState = self.get(file_id);
+        let change = match (state, contents) {
             (FileState::Deleted, None) => return false,
             (FileState::Deleted, Some(v)) => {
                 let hash = hash_once::<FxHasher>(&*v);
@@ -225,7 +225,7 @@ impl Vfs {
             };
         };
 
-        let changed_file = ChangedFile { file_id, change: change_kind };
+        let changed_file = ChangedFile { file_id, change };
         match self.changes.entry(file_id) {
             // two changes to the same file in one cycle, merge them appropriately
             Entry::Occupied(mut o) => {

@@ -1,14 +1,15 @@
 use libc::c_uint;
 use rustc_ast::expand::allocator::{
-    alloc_error_handler_name, default_fn_name, global_fn_name, AllocatorKind, AllocatorTy,
-    ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE,
+    ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
+    alloc_error_handler_name, default_fn_name, global_fn_name,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, OomStrategy};
 
+use crate::common::AsCCharPtr;
 use crate::llvm::{self, Context, False, Module, True, Type};
-use crate::{attributes, debuginfo, ModuleLlvm};
+use crate::{ModuleLlvm, attributes, debuginfo};
 
 pub(crate) unsafe fn codegen(
     tcx: TyCtxt<'_>,
@@ -76,19 +77,15 @@ pub(crate) unsafe fn codegen(
     unsafe {
         // __rust_alloc_error_handler_should_panic
         let name = OomStrategy::SYMBOL;
-        let ll_g = llvm::LLVMRustGetOrInsertGlobal(llmod, name.as_ptr().cast(), name.len(), i8);
-        if tcx.sess.default_hidden_visibility() {
-            llvm::LLVMRustSetVisibility(ll_g, llvm::Visibility::Hidden);
-        }
+        let ll_g = llvm::LLVMRustGetOrInsertGlobal(llmod, name.as_c_char_ptr(), name.len(), i8);
+        llvm::set_visibility(ll_g, llvm::Visibility::from_generic(tcx.sess.default_visibility()));
         let val = tcx.sess.opts.unstable_opts.oom.should_panic();
         let llval = llvm::LLVMConstInt(i8, val as u64, False);
         llvm::LLVMSetInitializer(ll_g, llval);
 
         let name = NO_ALLOC_SHIM_IS_UNSTABLE;
-        let ll_g = llvm::LLVMRustGetOrInsertGlobal(llmod, name.as_ptr().cast(), name.len(), i8);
-        if tcx.sess.default_hidden_visibility() {
-            llvm::LLVMRustSetVisibility(ll_g, llvm::Visibility::Hidden);
-        }
+        let ll_g = llvm::LLVMRustGetOrInsertGlobal(llmod, name.as_c_char_ptr(), name.len(), i8);
+        llvm::set_visibility(ll_g, llvm::Visibility::from_generic(tcx.sess.default_visibility()));
         let llval = llvm::LLVMConstInt(i8, 0, False);
         llvm::LLVMSetInitializer(ll_g, llval);
     }
@@ -119,7 +116,7 @@ fn create_wrapper_function(
         );
         let llfn = llvm::LLVMRustGetOrInsertFunction(
             llmod,
-            from_name.as_ptr().cast(),
+            from_name.as_c_char_ptr(),
             from_name.len(),
             ty,
         );
@@ -132,9 +129,8 @@ fn create_wrapper_function(
             None
         };
 
-        if tcx.sess.default_hidden_visibility() {
-            llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
-        }
+        llvm::set_visibility(llfn, llvm::Visibility::from_generic(tcx.sess.default_visibility()));
+
         if tcx.sess.must_emit_unwind_tables() {
             let uwtable =
                 attributes::uwtable_attr(llcx, tcx.sess.opts.unstable_opts.use_sync_unwind);
@@ -142,14 +138,14 @@ fn create_wrapper_function(
         }
 
         let callee =
-            llvm::LLVMRustGetOrInsertFunction(llmod, to_name.as_ptr().cast(), to_name.len(), ty);
+            llvm::LLVMRustGetOrInsertFunction(llmod, to_name.as_c_char_ptr(), to_name.len(), ty);
         if let Some(no_return) = no_return {
             // -> ! DIFlagNoReturn
             attributes::apply_to_llfn(callee, llvm::AttributePlace::Function, &[no_return]);
         }
-        llvm::LLVMRustSetVisibility(callee, llvm::Visibility::Hidden);
+        llvm::set_visibility(callee, llvm::Visibility::Hidden);
 
-        let llbb = llvm::LLVMAppendBasicBlockInContext(llcx, llfn, c"entry".as_ptr().cast());
+        let llbb = llvm::LLVMAppendBasicBlockInContext(llcx, llfn, c"entry".as_ptr());
 
         let llbuilder = llvm::LLVMCreateBuilderInContext(llcx);
         llvm::LLVMPositionBuilderAtEnd(llbuilder, llbb);
@@ -158,7 +154,7 @@ fn create_wrapper_function(
             .enumerate()
             .map(|(i, _)| llvm::LLVMGetParam(llfn, i as c_uint))
             .collect::<Vec<_>>();
-        let ret = llvm::LLVMRustBuildCall(
+        let ret = llvm::LLVMBuildCallWithOperandBundles(
             llbuilder,
             ty,
             callee,
@@ -166,6 +162,7 @@ fn create_wrapper_function(
             args.len() as c_uint,
             [].as_ptr(),
             0 as c_uint,
+            c"".as_ptr(),
         );
         llvm::LLVMSetTailCall(ret, True);
         if output.is_some() {

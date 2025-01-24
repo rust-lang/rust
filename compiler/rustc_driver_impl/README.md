@@ -7,4 +7,4 @@ options).
 
 For more information about how the driver works, see the [rustc dev guide].
 
-[rustc dev guide]: https://rustc-dev-guide.rust-lang.org/rustc-driver.html
+[rustc dev guide]: https://rustc-dev-guide.rust-lang.org/rustc-driver/intro.html

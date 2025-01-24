@@ -1,6 +1,6 @@
 # `wasm32-wasip2`
 
-**Tier: 3**
+**Tier: 2**
 
 The `wasm32-wasip2` target is a new and still (as of January 2024) an
 experimental target. This target is an extension to `wasm32-wasip1` target,
@@ -61,3 +61,9 @@ It's recommended to conditionally compile code for this target with:
 ```text
 #[cfg(all(target_os = "wasi", target_env = "p2"))]
 ```
+
+## Enabled WebAssembly features
+
+The default set of WebAssembly features enabled for compilation is currently the
+same as [`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md). See the
+documentation there for more information.

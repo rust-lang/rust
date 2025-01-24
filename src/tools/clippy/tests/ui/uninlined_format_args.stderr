@@ -845,5 +845,53 @@ LL -     println!("expand='{}'", local_i32);
 LL +     println!("expand='{local_i32}'");
    |
 
-error: aborting due to 71 previous errors
+error: variables can be used directly in the `format!` string
+  --> tests/ui/uninlined_format_args.rs:287:5
+   |
+LL |     usr_println!(true, "val='{}'", local_i32);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -     usr_println!(true, "val='{}'", local_i32);
+LL +     usr_println!(true, "val='{local_i32}'");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> tests/ui/uninlined_format_args.rs:288:5
+   |
+LL |     usr_println!(true, "{}", local_i32);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -     usr_println!(true, "{}", local_i32);
+LL +     usr_println!(true, "{local_i32}");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> tests/ui/uninlined_format_args.rs:289:5
+   |
+LL |     usr_println!(true, "{:#010x}", local_i32);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -     usr_println!(true, "{:#010x}", local_i32);
+LL +     usr_println!(true, "{local_i32:#010x}");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> tests/ui/uninlined_format_args.rs:290:5
+   |
+LL |     usr_println!(true, "{:.1}", local_f64);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -     usr_println!(true, "{:.1}", local_f64);
+LL +     usr_println!(true, "{local_f64:.1}");
+   |
+
+error: aborting due to 75 previous errors
 

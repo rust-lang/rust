@@ -1,0 +1,40 @@
+error: all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
+  --> $DIR/redundant.rs:6:19
+   |
+LL | fn hello<'a>() -> impl Sized + use<'a> {}
+   |                   ^^^^^^^^^^^^^-------
+   |                                |
+   |                                help: remove the `use<...>` syntax
+   |
+note: the lint level is defined here
+  --> $DIR/redundant.rs:4:9
+   |
+LL | #![deny(impl_trait_redundant_captures)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
+  --> $DIR/redundant.rs:11:27
+   |
+LL |     fn inherent(&self) -> impl Sized + use<'_> {}
+   |                           ^^^^^^^^^^^^^-------
+   |                                        |
+   |                                        help: remove the `use<...>` syntax
+
+error: all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
+  --> $DIR/redundant.rs:16:22
+   |
+LL |     fn in_trait() -> impl Sized + use<'a, Self>;
+   |                      ^^^^^^^^^^^^^-------------
+   |                                   |
+   |                                   help: remove the `use<...>` syntax
+
+error: all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
+  --> $DIR/redundant.rs:20:22
+   |
+LL |     fn in_trait() -> impl Sized + use<'a> {}
+   |                      ^^^^^^^^^^^^^-------
+   |                                   |
+   |                                   help: remove the `use<...>` syntax
+
+error: aborting due to 4 previous errors
+

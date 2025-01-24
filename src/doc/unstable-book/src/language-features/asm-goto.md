@@ -21,7 +21,9 @@ unsafe {
 }
 ```
 
-The block must have unit type or diverge.
+The block must have unit type or diverge. The block starts a new safety context,
+so despite outer `unsafe`, you need extra unsafe to perform unsafe operations
+within `label <block>`.
 
 When `label <block>` is used together with `noreturn` option, it means that the
 assembly will not fallthrough. It's allowed to jump to a label within the

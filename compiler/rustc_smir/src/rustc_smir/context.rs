@@ -11,11 +11,11 @@ use std::iter;
 use rustc_abi::HasDataLayout;
 use rustc_hir::LangItem;
 use rustc_middle::ty::layout::{
-    FnAbiOf, FnAbiOfHelpers, HasParamEnv, HasTyCtxt, LayoutOf, LayoutOfHelpers,
+    FnAbiOf, FnAbiOfHelpers, HasTyCtxt, HasTypingEnv, LayoutOf, LayoutOfHelpers,
 };
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    GenericPredicates, Instance, List, ParamEnv, ScalarInt, TyCtxt, TypeVisitableExt, ValTree,
+    GenericPredicates, Instance, List, ScalarInt, TyCtxt, TypeVisitableExt, ValTree,
 };
 use rustc_middle::{mir, ty};
 use rustc_span::def_id::LOCAL_CRATE;
@@ -34,7 +34,7 @@ use stable_mir::{Crate, CrateDef, CrateItem, CrateNum, DefId, Error, Filename, I
 
 use crate::rustc_internal::RustcInternal;
 use crate::rustc_smir::builder::BodyBuilder;
-use crate::rustc_smir::{alloc, new_item_kind, smir_crate, Stable, Tables};
+use crate::rustc_smir::{Stable, Tables, alloc, filter_def_ids, new_item_kind, smir_crate};
 
 impl<'tcx> Context for TablesWrapper<'tcx> {
     fn target_info(&self) -> MachineInfo {
@@ -78,6 +78,20 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
             .keys()
             .map(|mod_def_id| tables.foreign_module_def(*mod_def_id))
             .collect()
+    }
+
+    fn crate_functions(&self, crate_num: CrateNum) -> Vec<FnDef> {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        let krate = crate_num.internal(&mut *tables, tcx);
+        filter_def_ids(tcx, krate, |def_id| tables.to_fn_def(def_id))
+    }
+
+    fn crate_statics(&self, crate_num: CrateNum) -> Vec<StaticDef> {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        let krate = crate_num.internal(&mut *tables, tcx);
+        filter_def_ids(tcx, krate, |def_id| tables.to_static(def_id))
     }
 
     fn foreign_module(
@@ -161,8 +175,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     fn predicates_of(&self, def_id: stable_mir::DefId) -> stable_mir::ty::GenericPredicates {
         let mut tables = self.0.borrow_mut();
         let def_id = tables[def_id];
-        let GenericPredicates { parent, predicates, effects_min_tys: _ } =
-            tables.tcx.predicates_of(def_id);
+        let GenericPredicates { parent, predicates } = tables.tcx.predicates_of(def_id);
         stable_mir::ty::GenericPredicates {
             parent: parent.map(|did| tables.trait_def(did)),
             predicates: predicates
@@ -183,8 +196,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     ) -> stable_mir::ty::GenericPredicates {
         let mut tables = self.0.borrow_mut();
         let def_id = tables[def_id];
-        let GenericPredicates { parent, predicates, effects_min_tys: _ } =
-            tables.tcx.explicit_predicates_of(def_id);
+        let GenericPredicates { parent, predicates } = tables.tcx.explicit_predicates_of(def_id);
         stable_mir::ty::GenericPredicates {
             parent: parent.map(|did| tables.trait_def(did)),
             predicates: predicates
@@ -239,11 +251,10 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
         let did = tables[def_id];
-        let attr_name: Vec<_> =
-            attr.iter().map(|seg| rustc_span::symbol::Symbol::intern(&seg)).collect();
+        let attr_name: Vec<_> = attr.iter().map(|seg| rustc_span::Symbol::intern(&seg)).collect();
         tcx.get_attrs_by_path(did, &attr_name)
             .map(|attribute| {
-                let attr_str = rustc_ast_pretty::pprust::attribute_to_string(attribute);
+                let attr_str = rustc_hir_pretty::attribute_to_string(&tcx, attribute);
                 let span = attribute.span;
                 stable_mir::crate_def::Attribute::new(attr_str, span.stable(&mut *tables))
             })
@@ -254,17 +265,16 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
         let did = tables[def_id];
-        let filter_fn = move |a: &&rustc_ast::ast::Attribute| {
-            matches!(a.kind, rustc_ast::ast::AttrKind::Normal(_))
-        };
+        let filter_fn =
+            move |a: &&rustc_hir::Attribute| matches!(a.kind, rustc_hir::AttrKind::Normal(_));
         let attrs_iter = if let Some(did) = did.as_local() {
             tcx.hir().attrs(tcx.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else {
-            tcx.item_attrs(did).iter().filter(filter_fn)
+            tcx.attrs_for_def(did).iter().filter(filter_fn)
         };
         attrs_iter
             .map(|attribute| {
-                let attr_str = rustc_ast_pretty::pprust::attribute_to_string(attribute);
+                let attr_str = rustc_hir_pretty::attribute_to_string(&tcx, attribute);
                 let span = attribute.span;
                 stable_mir::crate_def::Attribute::new(attr_str, span.stable(&mut *tables))
             })
@@ -398,7 +408,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tcx = tables.tcx;
         let mir_const = cnst.internal(&mut *tables, tcx);
         mir_const
-            .try_eval_target_usize(tables.tcx, ParamEnv::empty())
+            .try_eval_target_usize(tables.tcx, ty::TypingEnv::fully_monomorphized())
             .ok_or_else(|| Error::new(format!("Const `{cnst:?}` cannot be encoded as u64")))
     }
     fn eval_target_usize_ty(&self, cnst: &TyConst) -> Result<u64, Error> {
@@ -406,7 +416,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tcx = tables.tcx;
         let mir_const = cnst.internal(&mut *tables, tcx);
         mir_const
-            .try_eval_target_usize(tables.tcx, ParamEnv::empty())
+            .try_to_target_usize(tables.tcx)
             .ok_or_else(|| Error::new(format!("Const `{cnst:?}` cannot be encoded as u64")))
     }
 
@@ -416,7 +426,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let ty_internal = ty.internal(&mut *tables, tcx);
         let size = tables
             .tcx
-            .layout_of(ParamEnv::empty().and(ty_internal))
+            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty_internal))
             .map_err(|err| {
                 Error::new(format!(
                     "Cannot create a zero-sized constant for type `{ty_internal}`: {err}"
@@ -457,7 +467,11 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
         let ty = ty::Ty::new_uint(tcx, uint_ty.internal(&mut *tables, tcx));
-        let size = tables.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap().size;
+        let size = tables
+            .tcx
+            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+            .unwrap()
+            .size;
 
         // We don't use Const::from_bits since it doesn't have any error checking.
         let scalar = ScalarInt::try_from_uint(value, size).ok_or_else(|| {
@@ -474,7 +488,11 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
         let ty = ty::Ty::new_uint(tcx, uint_ty.internal(&mut *tables, tcx));
-        let size = tables.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap().size;
+        let size = tables
+            .tcx
+            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+            .unwrap()
+            .size;
 
         // We don't use Const::from_bits since it doesn't have any error checking.
         let scalar = ScalarInt::try_from_uint(value, size).ok_or_else(|| {
@@ -511,7 +529,11 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let def_ty = tables.tcx.type_of(item.internal(&mut *tables, tcx));
         tables
             .tcx
-            .instantiate_and_normalize_erasing_regions(args, ty::ParamEnv::reveal_all(), def_ty)
+            .instantiate_and_normalize_erasing_regions(
+                args,
+                ty::TypingEnv::fully_monomorphized(),
+                def_ty,
+            )
             .stable(&mut *tables)
     }
 
@@ -561,7 +583,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let mut tables = self.0.borrow_mut();
         let instance = tables.instances[def];
         assert!(!instance.has_non_region_param(), "{instance:?} needs further instantiation");
-        instance.ty(tables.tcx, ParamEnv::reveal_all()).stable(&mut *tables)
+        instance.ty(tables.tcx, ty::TypingEnv::fully_monomorphized()).stable(&mut *tables)
     }
 
     fn instance_args(&self, def: InstanceDef) -> GenericArgs {
@@ -630,7 +652,12 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tcx = tables.tcx;
         let def_id = def.0.internal(&mut *tables, tcx);
         let args_ref = args.internal(&mut *tables, tcx);
-        match Instance::try_resolve(tables.tcx, ParamEnv::reveal_all(), def_id, args_ref) {
+        match Instance::try_resolve(
+            tables.tcx,
+            ty::TypingEnv::fully_monomorphized(),
+            def_id,
+            args_ref,
+        ) {
             Ok(Some(instance)) => Some(instance.stable(&mut *tables)),
             Ok(None) | Err(_) => None,
         }
@@ -653,8 +680,13 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tcx = tables.tcx;
         let def_id = def.0.internal(&mut *tables, tcx);
         let args_ref = args.internal(&mut *tables, tcx);
-        Instance::resolve_for_fn_ptr(tables.tcx, ParamEnv::reveal_all(), def_id, args_ref)
-            .stable(&mut *tables)
+        Instance::resolve_for_fn_ptr(
+            tables.tcx,
+            ty::TypingEnv::fully_monomorphized(),
+            def_id,
+            args_ref,
+        )
+        .stable(&mut *tables)
     }
 
     fn resolve_closure(
@@ -679,7 +711,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let instance = tables.instances[def];
         let tcx = tables.tcx;
         let result = tcx.const_eval_instance(
-            ParamEnv::reveal_all(),
+            ty::TypingEnv::fully_monomorphized(),
             instance,
             tcx.def_span(instance.def_id()),
         );
@@ -784,11 +816,11 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     }
 }
 
-pub struct TablesWrapper<'tcx>(pub RefCell<Tables<'tcx>>);
+pub(crate) struct TablesWrapper<'tcx>(pub RefCell<Tables<'tcx>>);
 
 /// Implement error handling for extracting function ABI information.
 impl<'tcx> FnAbiOfHelpers<'tcx> for Tables<'tcx> {
-    type FnAbiOfResult = Result<&'tcx rustc_target::abi::call::FnAbi<'tcx, ty::Ty<'tcx>>, Error>;
+    type FnAbiOfResult = Result<&'tcx rustc_target::callconv::FnAbi<'tcx, ty::Ty<'tcx>>, Error>;
 
     #[inline]
     fn handle_fn_abi_err(
@@ -815,9 +847,9 @@ impl<'tcx> LayoutOfHelpers<'tcx> for Tables<'tcx> {
     }
 }
 
-impl<'tcx> HasParamEnv<'tcx> for Tables<'tcx> {
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        ty::ParamEnv::reveal_all()
+impl<'tcx> HasTypingEnv<'tcx> for Tables<'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        ty::TypingEnv::fully_monomorphized()
     }
 }
 

@@ -182,10 +182,8 @@ Some general areas that you may be interested in modifying are:
   `Config` struct.
 * Adding a sanity check? Take a look at `bootstrap/src/core/sanity.rs`.
 
-If you make a major change on bootstrap configuration, please remember to:
-
-+ Update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
-* Update `change-id = {pull-request-id}` in `config.example.toml`.
+If you make a major change on bootstrap configuration, please add a new entry to
+`CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
 
 A 'major change' includes
 

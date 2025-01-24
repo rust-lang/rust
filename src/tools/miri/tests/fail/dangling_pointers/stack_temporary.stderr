@@ -1,5 +1,5 @@
 error: Undefined Behavior: memory access failed: ALLOC has been freed, so this pointer is dangling
-  --> $DIR/stack_temporary.rs:LL:CC
+  --> tests/fail/dangling_pointers/stack_temporary.rs:LL:CC
    |
 LL |         let val = *x;
    |                   ^^ memory access failed: ALLOC has been freed, so this pointer is dangling
@@ -7,17 +7,17 @@ LL |         let val = *x;
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
 help: ALLOC was allocated here:
-  --> $DIR/stack_temporary.rs:LL:CC
+  --> tests/fail/dangling_pointers/stack_temporary.rs:LL:CC
    |
 LL |         let x = make_ref(&mut 0); // The temporary storing "0" is deallocated at the ";"!
    |                               ^
 help: ALLOC was deallocated here:
-  --> $DIR/stack_temporary.rs:LL:CC
+  --> tests/fail/dangling_pointers/stack_temporary.rs:LL:CC
    |
 LL |         let x = make_ref(&mut 0); // The temporary storing "0" is deallocated at the ";"!
    |                                 ^
    = note: BACKTRACE (of the first span):
-   = note: inside `main` at $DIR/stack_temporary.rs:LL:CC
+   = note: inside `main` at tests/fail/dangling_pointers/stack_temporary.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

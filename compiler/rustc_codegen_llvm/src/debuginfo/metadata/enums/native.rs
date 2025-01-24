@@ -1,23 +1,23 @@
 use std::borrow::Cow;
 
 use libc::c_uint;
+use rustc_abi::{Size, TagEncoding, VariantIdx, Variants};
 use rustc_codegen_ssa::debuginfo::type_names::compute_debuginfo_type_name;
-use rustc_codegen_ssa::debuginfo::wants_c_like_enum_debuginfo;
-use rustc_codegen_ssa::traits::ConstMethods;
+use rustc_codegen_ssa::debuginfo::{tag_base_type, wants_c_like_enum_debuginfo};
+use rustc_codegen_ssa::traits::{ConstCodegenMethods, MiscCodegenMethods};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self};
-use rustc_target::abi::{Size, TagEncoding, VariantIdx, Variants};
 use smallvec::smallvec;
 
-use crate::common::CodegenCx;
-use crate::debuginfo::metadata::enums::tag_base_type;
+use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::metadata::type_map::{self, Stub, StubInfo, UniqueTypeId};
 use crate::debuginfo::metadata::{
-    file_metadata, size_and_align_of, type_di_node, unknown_file_metadata, visibility_di_flags,
-    DINodeCreationResult, SmallVec, NO_GENERICS, UNKNOWN_LINE_NUMBER,
+    DINodeCreationResult, NO_GENERICS, SmallVec, UNKNOWN_LINE_NUMBER, file_metadata,
+    file_metadata_from_def_id, size_and_align_of, type_di_node, unknown_file_metadata,
+    visibility_di_flags,
 };
-use crate::debuginfo::utils::{create_DIArray, get_namespace_for_item, DIB};
+use crate::debuginfo::utils::{DIB, create_DIArray, get_namespace_for_item};
 use crate::llvm::debuginfo::{DIFile, DIFlags, DIType};
 use crate::llvm::{self};
 
@@ -54,7 +54,13 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
 
     let visibility_flags = visibility_di_flags(cx, enum_adt_def.did(), enum_adt_def.did());
 
-    assert!(!wants_c_like_enum_debuginfo(enum_type_and_layout));
+    assert!(!wants_c_like_enum_debuginfo(cx.tcx, enum_type_and_layout));
+
+    let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+        Some(file_metadata_from_def_id(cx, Some(enum_adt_def.did())))
+    } else {
+        None
+    };
 
     type_map::build_type_with_children(
         cx,
@@ -63,6 +69,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &enum_type_name,
+            def_location,
             size_and_align_of(enum_type_and_layout),
             Some(containing_scope),
             visibility_flags,
@@ -85,14 +92,27 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
                         enum_type_and_layout.for_variant(cx, variant_index),
                         visibility_flags,
                     ),
-                    source_info: None,
+                    source_info: if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+                        Some(file_metadata_from_def_id(
+                            cx,
+                            Some(enum_adt_def.variant(variant_index).def_id),
+                        ))
+                    } else {
+                        None
+                    },
                 })
                 .collect();
 
+            let enum_adt_def_id = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+                Some(enum_adt_def.did())
+            } else {
+                None
+            };
             smallvec![build_enum_variant_part_di_node(
                 cx,
                 enum_type_and_layout,
                 enum_type_di_node,
+                enum_adt_def_id,
                 &variant_member_infos[..],
             )]
         },
@@ -131,9 +151,15 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
     let containing_scope = get_namespace_for_item(cx, coroutine_def_id);
     let coroutine_type_and_layout = cx.layout_of(coroutine_type);
 
-    assert!(!wants_c_like_enum_debuginfo(coroutine_type_and_layout));
+    assert!(!wants_c_like_enum_debuginfo(cx.tcx, coroutine_type_and_layout));
 
     let coroutine_type_name = compute_debuginfo_type_name(cx.tcx, coroutine_type, false);
+
+    let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+        Some(file_metadata_from_def_id(cx, Some(coroutine_def_id)))
+    } else {
+        None
+    };
 
     type_map::build_type_with_children(
         cx,
@@ -142,6 +168,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &coroutine_type_name,
+            def_location,
             size_and_align_of(coroutine_type_and_layout),
             Some(containing_scope),
             DIFlags::FlagZero,
@@ -198,10 +225,16 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
                 })
                 .collect();
 
+            let coroutine_def_id = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+                Some(coroutine_def_id)
+            } else {
+                None
+            };
             smallvec![build_enum_variant_part_di_node(
                 cx,
                 coroutine_type_and_layout,
                 coroutine_type_di_node,
+                coroutine_def_id,
                 &variant_struct_type_di_nodes[..],
             )]
         },
@@ -229,6 +262,7 @@ fn build_enum_variant_part_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
     enum_type_di_node: &'ll DIType,
+    enum_type_def_id: Option<rustc_span::def_id::DefId>,
     variant_member_infos: &[VariantMemberInfo<'_, 'll>],
 ) -> &'ll DIType {
     let tag_member_di_node =
@@ -236,6 +270,13 @@ fn build_enum_variant_part_di_node<'ll, 'tcx>(
 
     let variant_part_unique_type_id =
         UniqueTypeId::for_enum_variant_part(cx.tcx, enum_type_and_layout.ty);
+
+    let (file_metadata, line_number) = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers
+    {
+        file_metadata_from_def_id(cx, enum_type_def_id)
+    } else {
+        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
+    };
 
     let stub = StubInfo::new(
         cx,
@@ -245,16 +286,16 @@ fn build_enum_variant_part_di_node<'ll, 'tcx>(
             llvm::LLVMRustDIBuilderCreateVariantPart(
                 DIB(cx),
                 enum_type_di_node,
-                variant_part_name.as_ptr().cast(),
+                variant_part_name.as_c_char_ptr(),
                 variant_part_name.len(),
-                unknown_file_metadata(cx),
-                UNKNOWN_LINE_NUMBER,
+                file_metadata,
+                line_number,
                 enum_type_and_layout.size.bits(),
                 enum_type_and_layout.align.abi.bits() as u32,
                 DIFlags::FlagZero,
                 tag_member_di_node,
                 create_DIArray(DIB(cx), &[]),
-                variant_part_unique_type_id_str.as_ptr().cast(),
+                variant_part_unique_type_id_str.as_c_char_ptr(),
                 variant_part_unique_type_id_str.len(),
             )
         },
@@ -317,18 +358,18 @@ fn build_discr_member_di_node<'ll, 'tcx>(
     let containing_scope = enum_or_coroutine_type_di_node;
 
     match enum_or_coroutine_type_and_layout.layout.variants() {
-        // A single-variant enum has no discriminant.
-        &Variants::Single { .. } => None,
+        // A single-variant or no-variant enum has no discriminant.
+        &Variants::Single { .. } | &Variants::Empty => None,
 
         &Variants::Multiple { tag_field, .. } => {
-            let tag_base_type = tag_base_type(cx, enum_or_coroutine_type_and_layout);
+            let tag_base_type = tag_base_type(cx.tcx, enum_or_coroutine_type_and_layout);
             let (size, align) = cx.size_and_align_of(tag_base_type);
 
             unsafe {
                 Some(llvm::LLVMRustDIBuilderCreateMemberType(
                     DIB(cx),
                     containing_scope,
-                    tag_name.as_ptr().cast(),
+                    tag_name.as_c_char_ptr(),
                     tag_name.len(),
                     unknown_file_metadata(cx),
                     UNKNOWN_LINE_NUMBER,
@@ -400,7 +441,7 @@ fn build_enum_variant_member_di_node<'ll, 'tcx>(
         llvm::LLVMRustDIBuilderCreateVariantMemberType(
             DIB(cx),
             variant_part_di_node,
-            variant_member_info.variant_name.as_ptr().cast(),
+            variant_member_info.variant_name.as_c_char_ptr(),
             variant_member_info.variant_name.len(),
             file_di_node,
             line_number,

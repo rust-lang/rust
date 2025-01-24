@@ -1,6 +1,6 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target};
+use crate::spec::{Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
@@ -14,6 +14,8 @@ pub fn target() -> Target {
         | SanitizerSet::MEMORY
         | SanitizerSet::THREAD;
     base.supports_xray = true;
+    // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
+    base.crt_static_default = true;
 
     Target {
         llvm_target: "x86_64-unknown-linux-musl".into(),

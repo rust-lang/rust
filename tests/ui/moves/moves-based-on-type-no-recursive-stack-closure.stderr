@@ -24,10 +24,6 @@ LL | fn conspirator<F>(mut f: F) where F: FnMut(&mut R, bool) {
    |                ^ consider constraining this type parameter with `Clone`
 LL |     let mut r = R {c: Box::new(f)};
    |                                - you could clone this value
-help: consider mutably borrowing `f`
-   |
-LL |     let mut r = R {c: Box::new(&mut f)};
-   |                                ++++
 
 error: aborting due to 2 previous errors
 

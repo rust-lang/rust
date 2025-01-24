@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::source::snippet;
-use clippy_utils::{higher, is_integer_const, is_trait_method, SpanlessEq};
+use clippy_utils::{SpanlessEq, higher, is_integer_const, is_trait_method};
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
 use rustc_span::sym;

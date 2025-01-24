@@ -1,7 +1,7 @@
 // LLVM 17 realizes double panic is not possible and doesn't generate calls
 // to panic_cannot_unwind.
 //@ compile-flags: -O
-//@ ignore-debug: plain old debug assertions
+//@ ignore-std-debug-assertions (plain old debug assertions)
 //@ needs-unwind
 #![crate_type = "lib"]
 #![feature(shrink_to)]

@@ -203,19 +203,15 @@ lint_confusable_identifier_pair = found both `{$existing_sym}` and `{$sym}` as i
     .current_use = this identifier can be confused with `{$existing_sym}`
     .other_use = other identifier used here
 
-lint_crate_name_in_cfg_attr_deprecated =
-    `crate_name` within an `#![cfg_attr]` attribute is deprecated
-
-lint_crate_type_in_cfg_attr_deprecated =
-    `crate_type` within an `#![cfg_attr]` attribute is deprecated
-
-lint_cstring_ptr = getting the inner pointer of a temporary `CString`
-    .as_ptr_label = this pointer will be invalid
-    .unwrap_label = this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
-    .note = pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
-    .help = for more information, see https://doc.rust-lang.org/reference/destructors.html
-
 lint_custom_inner_attribute_unstable = custom inner attributes are unstable
+
+lint_dangling_pointers_from_temporaries = a dangling pointer will be produced because the temporary `{$ty}` will be dropped
+    .label_ptr = this pointer will immediately be invalid
+    .label_temporary = this `{$ty}` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+    .note = pointers do not have a lifetime; when calling `{$callee}` the `{$ty}` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+    .help_bind = you must make sure that the variable you bind the `{$ty}` to lives at least as long as the pointer returned by the call to `{$callee}`
+    .help_returned = in particular, if this pointer is returned from the current function, binding the `{$ty}` inside the function will not suffice
+    .help_visit = for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
 lint_default_hash_types = prefer `{$preferred}` over `{$used}`, it has better performance
     .note = a `use rustc_data_structures::fx::{$preferred}` may be necessary
@@ -252,6 +248,11 @@ lint_duplicate_macro_attribute =
 
 lint_duplicate_matcher_binding = duplicate matcher binding
 
+lint_elided_named_lifetime = elided lifetime has a name
+    .label_elided = this elided lifetime gets resolved as `{$name}`
+    .label_named = lifetime `{$name}` declared here
+    .suggestion = consider specifying it explicitly
+
 lint_enum_intrinsics_mem_discriminant =
     the return value of `mem::discriminant` is unspecified when called with a non-enum type
     .note = the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `{$ty_param}`, which is not an enum
@@ -269,7 +270,7 @@ lint_extern_crate_not_idiomatic = `extern crate` is not idiomatic in the new edi
 
 lint_extern_without_abi = extern declarations without an explicit ABI are deprecated
     .label = ABI should be specified here
-    .help = the default ABI is {$default_abi}
+    .suggestion = explicitly specify the {$default_abi} ABI
 
 lint_for_loops_over_fallibles =
     for loop over {$article} `{$ref_prefix}{$ty}`. This is more readably written as an `if let` statement
@@ -329,6 +330,11 @@ lint_identifier_uncommon_codepoints = identifier contains {$codepoints_len ->
         *[other] {" "}{$identifier_type}
     } Unicode general security profile
 
+lint_if_let_rescope = `if let` assigns a shorter lifetime since Edition 2024
+    .label = this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
+    .help = the value is now dropped here in Edition 2024
+    .suggestion = a `match` with a single arm can preserve the drop order up to Edition 2021
+
 lint_ignored_unless_crate_specified = {$level}({$name}) is ignored unless specified at crate level
 
 lint_ill_formed_attribute_input = {$num_suggestions ->
@@ -342,7 +348,6 @@ lint_impl_trait_overcaptures = `{$self_ty}` will capture more lifetimes than pos
         *[other] these lifetimes are
      } in scope but not mentioned in the type's bounds
     .note2 = all lifetimes in scope will be captured by `impl Trait`s in edition 2024
-    .suggestion = use the precise capturing `use<...>` syntax to make the captures explicit
 
 lint_impl_trait_redundant_captures = all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
     .suggestion = remove the `use<...>` syntax
@@ -361,6 +366,11 @@ lint_improper_ctypes_box = box cannot be represented as a single pointer
 lint_improper_ctypes_char_help = consider using `u32` or `libc::wchar_t` instead
 
 lint_improper_ctypes_char_reason = the `char` type has no C equivalent
+
+lint_improper_ctypes_cstr_help =
+    consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
+lint_improper_ctypes_cstr_reason = `CStr`/`CString` do not have a guaranteed layout
+
 lint_improper_ctypes_dyn = trait objects have no C equivalent
 
 lint_improper_ctypes_enum_repr_help =
@@ -442,15 +452,15 @@ lint_invalid_nan_comparisons_eq_ne = incorrect NaN comparison, NaN cannot be dir
 lint_invalid_nan_comparisons_lt_le_gt_ge = incorrect NaN comparison, NaN is not orderable
 
 lint_invalid_reference_casting_assign_to_ref = assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-    .label = casting happend here
+    .label = casting happened here
 
 lint_invalid_reference_casting_bigger_layout = casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
-    .label = casting happend here
+    .label = casting happened here
     .alloc = backing allocation comes from here
     .layout = casting from `{$from_ty}` ({$from_size} bytes) to `{$to_ty}` ({$to_size} bytes)
 
 lint_invalid_reference_casting_borrow_as_mut = casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-    .label = casting happend here
+    .label = casting happened here
 
 lint_invalid_reference_casting_note_book = for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
@@ -499,7 +509,7 @@ lint_mixed_script_confusables =
     .includes_note = the usage includes {$includes}
     .note = please recheck to make sure their usages are indeed what you want
 
-lint_multiple_supertrait_upcastable = `{$ident}` is object-safe and has multiple supertraits
+lint_multiple_supertrait_upcastable = `{$ident}` is dyn-compatible and has multiple supertraits
 
 lint_named_argument_used_positionally = named argument `{$named_arg_name}` is not used by name
     .label_named_arg = this named argument is referred to by position in formatting string
@@ -516,7 +526,7 @@ lint_non_binding_let_multi_suggestion =
     consider immediately dropping the value
 
 lint_non_binding_let_on_drop_type =
-    non-binding let on a type that implements `Drop`
+    non-binding let on a type that has a destructor
 
 lint_non_binding_let_on_sync_lock = non-binding let on a synchronization lock
     .label = this lock is not assigned to a binding and is immediately dropped
@@ -527,9 +537,6 @@ lint_non_binding_let_suggestion =
 lint_non_camel_case_type = {$sort} `{$name}` should have an upper camel case name
     .suggestion = convert the identifier to upper camel case
     .label = should have an UpperCamelCase name
-
-lint_non_existent_doc_keyword = found non-existing keyword `{$keyword}` used in `#[doc(keyword = "...")]`
-    .help = only existing keywords are allowed in core/std
 
 lint_non_fmt_panic = panic message is not a string literal
     .note = this usage of `{$name}!()` is deprecated; it will be a hard error in Rust 2021
@@ -572,13 +579,8 @@ lint_non_glob_import_type_ir_inherent = non-glob import of `rustc_type_ir::inher
 
 lint_non_local_definitions_cargo_update = the {$macro_kind} `{$macro_name}` may come from an old version of the `{$crate_name}` crate, try updating your dependency with `cargo update -p {$crate_name}`
 
-lint_non_local_definitions_deprecation = this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
-
 lint_non_local_definitions_impl = non-local `impl` definition, `impl` blocks should be written at the same level as their item
-    .remove_help = remove `{$may_remove_part}` to make the `impl` local
-    .without_trait = methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
-    .with_trait = an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-    .bounds = `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
+    .non_local = an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
     .doctest = make this doc-test a standalone test with its own `fn main() {"{"} ... {"}"}`
     .exception = items in an anonymous const item (`const _: () = {"{"} ... {"}"}`) are treated as in the same scope as the anonymous const's declaration for the purpose of this lint
     .const_anon = use a const-anon item to suppress this lint
@@ -599,12 +601,6 @@ lint_non_local_definitions_macro_rules = non-local `macro_rules!` definition, `#
     .help_doctest =
         remove the `#[macro_export]` or make this doc-test a standalone test with its own `fn main() {"{"} ... {"}"}`
     .non_local = a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
-
-lint_non_local_definitions_may_move = may need to be moved as well
-
-lint_non_local_definitions_of_trait_not_local = `{$of_trait_str}` is not local
-
-lint_non_local_definitions_self_ty_not_local = `{$self_ty_str}` is not local
 
 lint_non_snake_case = {$sort} `{$name}` should have a snake case name
     .rename_or_convert_suggestion = rename the identifier or convert it to a snake case raw identifier
@@ -690,10 +686,17 @@ lint_ptr_null_checks_ref = references are not nullable, so checking them for nul
 lint_query_instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
 
+lint_query_untracked = `{$method}` accesses information that is not tracked by the query system
+    .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
+
 lint_range_endpoint_out_of_range = range endpoint is out of range for `{$ty}`
 
 lint_range_use_inclusive_range = use an inclusive range instead
 
+
+lint_raw_prefix = prefix `'r` is reserved
+    .label = reserved prefix
+    .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
 
 lint_reason_must_be_string_literal = reason must be a string literal
 
@@ -729,9 +732,15 @@ lint_renamed_lint = lint `{$name}` has been renamed to `{$replace}`
 
 lint_requested_level = requested on the command line with `{$level} {$lint_name}`
 
+lint_reserved_multihash = reserved token in Rust 2024
+    .suggestion = insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
+
 lint_reserved_prefix = prefix `{$prefix}` is unknown
     .label = unknown prefix
     .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
+
+lint_reserved_string = will be parsed as a guarded string in Rust 2024
+    .suggestion = insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
 
 lint_shadowed_into_iter =
     this method call resolves to `<&{$target} as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<{$target} as IntoIterator>::into_iter` in Rust {$edition}
@@ -747,6 +756,13 @@ lint_single_use_lifetime = lifetime parameter `{$ident}` only used once
 
 lint_span_use_eq_ctxt = use `.eq_ctxt()` instead of `.ctxt() == .ctxt()`
 
+lint_static_mut_refs_lint = creating a {$shared_label}reference to mutable static is discouraged
+    .label = {$shared_label}reference to mutable static
+    .suggestion = use `&raw const` instead to create a raw pointer
+    .suggestion_mut = use `&raw mut` instead to create a raw pointer
+    .shared_note = shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+    .mut_note = mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives
+
 lint_supertrait_as_deref_target = this `Deref` implementation is covered by an implicit supertrait coercion
     .label = `{$self_ty}` implements `Deref<Target = dyn {$target_principal}>` which conflicts with supertrait `{$supertrait_principal}`
     .label2 = target type is a supertrait of `{$self_ty}`
@@ -757,6 +773,9 @@ lint_suspicious_double_ref_clone =
 
 lint_suspicious_double_ref_deref =
     using `.deref()` on a double reference, which returns `{$ty}` instead of dereferencing the inner type
+
+lint_symbol_intern_string_literal = using `Symbol::intern` on a string literal
+    .help = consider adding the symbol to `compiler/rustc_span/src/symbol.rs`
 
 lint_trailing_semi_macro = trailing semicolon in macro used in expression position
     .note1 = macro invocations at the end of a block are treated as expressions
@@ -771,6 +790,9 @@ lint_tykind = usage of `ty::TyKind`
 lint_tykind_kind = usage of `ty::TyKind::<kind>`
     .suggestion = try using `ty::<kind>` directly
 
+lint_type_ir_inherent_usage = do not use `rustc_type_ir::inherent` unless you're inside of the trait solver
+    .note = the method or struct you're looking for is likely defined somewhere else downstream in the compiler
+
 lint_undropped_manually_drops = calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of the inner value does nothing
     .label = argument has type `{$arg_ty}`
     .suggestion = use `std::mem::ManuallyDrop::into_inner` to get the inner value
@@ -783,10 +805,14 @@ lint_unexpected_cfg_add_build_rs_println = or consider adding `{$build_rs_printl
 lint_unexpected_cfg_add_cargo_feature = consider using a Cargo feature instead
 lint_unexpected_cfg_add_cargo_toml_lint_cfg = or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:{$cargo_toml_lint_cfg}
 lint_unexpected_cfg_add_cmdline_arg = to expect this configuration use `{$cmdline_arg}`
+lint_unexpected_cfg_cargo_update = the {$macro_kind} `{$macro_name}` may come from an old version of the `{$crate_name}` crate, try updating your dependency with `cargo update -p {$crate_name}`
+
 lint_unexpected_cfg_define_features = consider defining some features in `Cargo.toml`
 lint_unexpected_cfg_doc_cargo = see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
 lint_unexpected_cfg_doc_rustc = see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
+lint_unexpected_cfg_from_external_macro_origin = using a cfg inside a {$macro_kind} will use the cfgs from the destination crate and not the ones from the defining crate
+lint_unexpected_cfg_from_external_macro_refer = try referring to `{$macro_name}` crate for guidance on how handle this unexpected cfg
 lint_unexpected_cfg_name = unexpected `cfg` condition name: `{$name}`
 lint_unexpected_cfg_name_expected_names = expected names are: {$possibilities}{$and_more ->
         [0] {""}
@@ -861,6 +887,14 @@ lint_unnameable_test_items = cannot test inner items
 
 lint_unnecessary_qualification = unnecessary qualification
     .suggestion = remove the unnecessary path segments
+
+lint_unpredictable_fn_pointer_comparisons = function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
+    .note_duplicated_fn = the address of the same function can vary between different codegen units
+    .note_deduplicated_fn = furthermore, different functions could have the same address after being merged together
+    .note_visit_fn_addr_eq = for more information visit <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
+    .fn_addr_eq_suggestion = refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint
+
+lint_unqualified_local_imports = `use` of a local item without leading `self::`, `super::`, or `crate::`
 
 lint_unsafe_attr_outside_unsafe = unsafe attribute used without unsafe
     .label = usage of unsafe attribute
@@ -937,6 +971,8 @@ lint_unused_op = unused {$op} that must be used
 lint_unused_result = unused result of type `{$ty}`
 
 lint_use_let_underscore_ignore_suggestion = use `let _ = ...` to ignore the expression or result
+
+lint_uses_power_alignment = repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
 
 lint_variant_size_differences =
     enum variant is more than three times larger ({$largest} bytes) than the next largest

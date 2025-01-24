@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 use std::ops::RangeBounds;
 
-use rand::seq::SliceRandom;
 use rand::Rng;
-use test::{black_box, Bencher};
+use rand::seq::SliceRandom;
+use test::{Bencher, black_box};
 
 macro_rules! map_insert_rand_bench {
     ($name: ident, $n: expr, $map: ident) => {

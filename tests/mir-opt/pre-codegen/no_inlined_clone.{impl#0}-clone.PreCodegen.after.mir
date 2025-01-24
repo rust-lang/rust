@@ -7,7 +7,7 @@ fn <impl at $DIR/no_inlined_clone.rs:9:10: 9:15>::clone(_1: &Foo) -> Foo {
 
     bb0: {
         StorageLive(_2);
-        _2 = ((*_1).0: i32);
+        _2 = copy ((*_1).0: i32);
         _0 = Foo { a: move _2 };
         StorageDead(_2);
         return;

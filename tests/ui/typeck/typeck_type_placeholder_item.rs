@@ -160,7 +160,7 @@ impl BadTrait<_> for BadStruct<_> {}
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for implementations
 
 fn impl_trait() -> impl BadTrait<_> {
-//~^ ERROR the placeholder `_` is not allowed within types on item signatures for opaque types
+//~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
     unimplemented!()
 }
 
@@ -180,7 +180,7 @@ struct Struct;
 trait Trait<T> {}
 impl Trait<usize> for Struct {}
 type Y = impl Trait<_>;
-//~^ ERROR the placeholder `_` is not allowed within types on item signatures for opaque types
+//~^ ERROR the placeholder `_` is not allowed within types on item signatures for type aliases
 fn foo() -> Y {
     Struct
 }
@@ -221,6 +221,7 @@ fn value() -> Option<&'static _> {
 
 const _: Option<_> = map(value);
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+//~| ERROR cannot call non-const function `map::<u8>` in constants
 
 fn evens_squared(n: usize) -> _ {
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types

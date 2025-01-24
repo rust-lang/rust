@@ -2,7 +2,7 @@ error[E0277]: `PhantomPinned` cannot be unpinned
   --> $DIR/suggest-pin-macro.rs:22:17
    |
 LL |     dummy(test1.get_mut());
-   |                 ^^^^^^^ within `Test`, the trait `Unpin` is not implemented for `PhantomPinned`, which is required by `Test: Unpin`
+   |                 ^^^^^^^ within `Test`, the trait `Unpin` is not implemented for `PhantomPinned`
    |
    = note: consider using the `pin!` macro
            consider using `Box::pin` if you need to access the pinned value outside of the current scope

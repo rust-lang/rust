@@ -1,16 +1,15 @@
-//@ compile-flags: -Zunpretty=expanded -Zunstable-options
+//@ compile-flags: -Zunpretty=expanded
 //@ edition:2024
 //@ check-pass
 
-#![feature(async_closure)]
 #![feature(auto_traits)]
 #![feature(box_patterns)]
 #![feature(builtin_syntax)]
 #![feature(concat_idents)]
 #![feature(const_trait_impl)]
-#![feature(core_pattern_type)]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
+#![feature(dyn_star)]
 #![feature(explicit_tail_calls)]
 #![feature(gen_blocks)]
 #![feature(let_chains)]
@@ -18,13 +17,12 @@
 #![feature(never_patterns)]
 #![feature(never_type)]
 #![feature(pattern_types)]
+#![feature(pattern_type_macro)]
 #![feature(prelude_import)]
-#![feature(raw_ref_op)]
 #![feature(specialization)]
 #![feature(trace_macros)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
-#![feature(unnamed_fields)]
 #![feature(yeet_expr)]
 #![allow(incomplete_features)]
 
@@ -454,15 +452,15 @@ mod items {
     /// ItemKind::Fn
     mod item_fn {
         pub const unsafe extern "C" fn f() {}
-        pub async unsafe extern fn g() {}
+        pub async unsafe extern "C" fn g() {}
         fn h<'a, T>() where T: 'a {}
 
         trait TraitItems {
-            unsafe extern fn f();
+            unsafe extern "C" fn f();
         }
 
         impl TraitItems for _ {
-            default unsafe extern fn f() {}
+            default unsafe extern "C" fn f() {}
         }
     }
 
@@ -474,7 +472,7 @@ mod items {
     /// ItemKind::ForeignMod
     mod item_foreign_mod {
         unsafe extern "C++" {}
-        unsafe extern {}
+        unsafe extern "C" {}
     }
 
     /// ItemKind::GlobalAsm
@@ -653,8 +651,8 @@ mod patterns {
         let &mut pat;
     }
 
-    /// PatKind::Lit
-    fn pat_lit() {
+    /// PatKind::Expr
+    fn pat_expr() {
         let 1_000_i8;
         let -"";
     }
@@ -787,20 +785,6 @@ mod types {
         let _: (T, T);
     }
 
-    /// TyKind::AnonStruct
-    fn ty_anon_struct() {
-        struct Struct {
-            _: struct { t: T },
-        }
-    }
-
-    /// TyKind::AnonUnion
-    fn ty_anon_union() {
-        struct Struct {
-            _: union { t: T },
-        }
-    }
-
     /// TyKind::Path
     fn ty_path() {
         let _: T;
@@ -817,6 +801,7 @@ mod types {
         let _: dyn Send + 'static;
         let _: dyn 'static + Send;
         let _: dyn for<'a> Send;
+        let _: dyn* Send;
     }
 
     /// TyKind::ImplTrait

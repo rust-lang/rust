@@ -40,7 +40,7 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb0: {
-        _3 = PtrMetadata(_1);
+        _3 = PtrMetadata(copy _1);
         StorageLive(_4);
         _4 = const 0_usize;
         goto -> bb1;
@@ -51,8 +51,8 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageLive(_7);
         StorageLive(_6);
         StorageLive(_5);
-        _5 = _4;
-        _6 = Lt(move _5, _3);
+        _5 = copy _4;
+        _6 = Lt(move _5, copy _3);
         StorageDead(_5);
         switchInt(move _6) -> [0: bb2, otherwise: bb4];
     }
@@ -70,21 +70,21 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb4: {
-        _7 = _4;
+        _7 = copy _4;
         StorageLive(_8);
-        _8 = <usize as Step>::forward_unchecked(_7, const 1_usize) -> [return: bb5, unwind: bb8];
+        _8 = <usize as Step>::forward_unchecked(copy _7, const 1_usize) -> [return: bb5, unwind: bb8];
     }
 
     bb5: {
         _4 = move _8;
         StorageDead(_8);
-        _9 = Option::<usize>::Some(_7);
+        _9 = Option::<usize>::Some(copy _7);
         StorageDead(_6);
         StorageDead(_7);
-        _10 = ((_9 as Some).0: usize);
+        _10 = copy ((_9 as Some).0: usize);
         _11 = Len((*_1));
-        _12 = Lt(_10, _11);
-        assert(move _12, "index out of bounds: the length is {} but the index is {}", move _11, _10) -> [success: bb6, unwind: bb8];
+        _12 = Lt(copy _10, copy _11);
+        assert(move _12, "index out of bounds: the length is {} but the index is {}", move _11, copy _10) -> [success: bb6, unwind: bb8];
     }
 
     bb6: {
@@ -92,7 +92,7 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageLive(_14);
         _14 = &_2;
         StorageLive(_15);
-        _15 = (_10, _13);
+        _15 = (copy _10, copy _13);
         _16 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _14, move _15) -> [return: bb7, unwind: bb8];
     }
 

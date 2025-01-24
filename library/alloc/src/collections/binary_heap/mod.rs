@@ -145,7 +145,7 @@
 
 use core::alloc::Allocator;
 use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen};
-use core::mem::{self, swap, ManuallyDrop};
+use core::mem::{self, ManuallyDrop, swap};
 use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
 use core::{fmt, ptr};
@@ -154,9 +154,6 @@ use crate::alloc::Global;
 use crate::collections::TryReserveError;
 use crate::slice;
 use crate::vec::{self, AsVecIntoIter, Vec};
-
-#[cfg(test)]
-mod tests;
 
 /// A priority queue implemented with a binary heap.
 ///
@@ -374,7 +371,10 @@ impl<'a, T: Ord, A: Allocator> PeekMut<'a, T, A> {
             // the caller could've mutated the element. It is removed from the
             // heap on the next line and pop() is not sensitive to its value.
         }
-        this.heap.pop().unwrap()
+
+        // SAFETY: Have a `PeekMut` element proves that the associated binary heap being non-empty,
+        // so the `pop` operation will not fail.
+        unsafe { this.heap.pop().unwrap_unchecked() }
     }
 }
 
@@ -449,7 +449,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// The binary heap will be able to hold at least `capacity` elements without
     /// reallocating. This method is allowed to allocate for more elements than
-    /// `capacity`. If `capacity` is 0, the binary heap will not allocate.
+    /// `capacity`. If `capacity` is zero, the binary heap will not allocate.
     ///
     /// # Examples
     ///
@@ -483,7 +483,6 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// heap.push(4);
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "const_binary_heap_new_in", issue = "125961")]
     #[must_use]
     pub const fn new_in(alloc: A) -> BinaryHeap<T, A> {
         BinaryHeap { data: Vec::new_in(alloc) }
@@ -493,7 +492,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     ///
     /// The binary heap will be able to hold at least `capacity` elements without
     /// reallocating. This method is allowed to allocate for more elements than
-    /// `capacity`. If `capacity` is 0, the binary heap will not allocate.
+    /// `capacity`. If `capacity` is zero, the binary heap will not allocate.
     ///
     /// # Examples
     ///
@@ -532,8 +531,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// heap.push(1);
     /// heap.push(5);
     /// heap.push(2);
-    /// {
-    ///     let mut val = heap.peek_mut().unwrap();
+    /// if let Some(mut val) = heap.peek_mut() {
     ///     *val = 0;
     /// }
     /// assert_eq!(heap.peek(), Some(&2));
@@ -959,6 +957,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "binaryheap_iter")]
     pub fn iter(&self) -> Iter<'_, T> {
         Iter { iter: self.data.iter() }
     }
@@ -1433,7 +1432,7 @@ pub struct Iter<'a, T: 'a> {
     iter: slice::Iter<'a, T>,
 }
 
-#[stable(feature = "default_iters_sequel", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters_sequel", since = "1.82.0")]
 impl<T> Default for Iter<'_, T> {
     /// Creates an empty `binary_heap::Iter`.
     ///

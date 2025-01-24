@@ -16,7 +16,7 @@ fn main() {
         .run_fail()
         .assert_exit_code(101);
 
-    rustdoc().arg("success.rs").output("exit-code").run();
+    rustdoc().arg("success.rs").out_dir("exit-code").run();
 
     rustdoc().arg("--invalid-arg-foo").run_fail().assert_exit_code(1);
 

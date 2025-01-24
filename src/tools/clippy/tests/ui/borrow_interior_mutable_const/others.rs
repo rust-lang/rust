@@ -5,12 +5,12 @@
 use std::borrow::Cow;
 use std::cell::{Cell, UnsafeCell};
 use std::fmt::Display;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Once;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 const ATOMIC: AtomicUsize = AtomicUsize::new(5);
 const CELL: Cell<usize> = Cell::new(6);
-const ATOMIC_TUPLE: ([AtomicUsize; 1], Vec<AtomicUsize>, u8) = ([ATOMIC], Vec::new(), 7);
+const ATOMIC_TUPLE: ([AtomicUsize; 1], Option<Box<AtomicUsize>>, u8) = ([ATOMIC], None, 7);
 const INTEGER: u8 = 8;
 const STRING: String = String::new();
 const STR: &str = "012345";
@@ -47,6 +47,17 @@ impl<T> std::ops::Deref for StaticRef<T> {
     }
 }
 
+// ICE regression test
+mod issue12979 {
+    use std::cell::UnsafeCell;
+
+    const ATOMIC_TUPLE: (Vec<UnsafeCell<u8>>, ()) = (Vec::new(), ());
+
+    fn main() {
+        let _x = &ATOMIC_TUPLE.0;
+    }
+}
+
 // use a tuple to make sure referencing a field behind a pointer isn't linted.
 const CELL_REF: StaticRef<(UnsafeCell<u32>,)> = unsafe { StaticRef::new(std::ptr::null()) };
 
@@ -74,7 +85,6 @@ fn main() {
     let _ = &(&&&&ATOMIC_TUPLE).0; //~ ERROR: interior mutability
     let _ = &ATOMIC_TUPLE.0[0]; //~ ERROR: interior mutability
     let _ = ATOMIC_TUPLE.0[0].load(Ordering::SeqCst); //~ ERROR: interior mutability
-    let _ = &*ATOMIC_TUPLE.1;
     let _ = &ATOMIC_TUPLE.2;
     let _ = (&&&&ATOMIC_TUPLE).0;
     let _ = (&&&&ATOMIC_TUPLE).2;

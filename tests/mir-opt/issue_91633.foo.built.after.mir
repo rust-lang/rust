@@ -18,8 +18,8 @@ fn foo(_1: Box<[T]>) -> T {
         StorageLive(_4);
         _4 = const 0_usize;
         _5 = Len((*_1));
-        _6 = Lt(_4, _5);
-        assert(move _6, "index out of bounds: the length is {} but the index is {}", move _5, _4) -> [success: bb1, unwind: bb5];
+        _6 = Lt(copy _4, copy _5);
+        assert(move _6, "index out of bounds: the length is {} but the index is {}", move _5, copy _4) -> [success: bb1, unwind: bb5];
     }
 
     bb1: {

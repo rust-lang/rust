@@ -4,7 +4,7 @@ error: `&'static mut ()` is forbidden as the type of a const generic parameter
 LL | fn uwu_0<const N: &'static mut ()>() {}
    |                   ^^^^^^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: `&'static u32` is forbidden as the type of a const generic parameter
   --> $DIR/suggest_feature_only_when_possible.rs:15:19
@@ -12,7 +12,7 @@ error: `&'static u32` is forbidden as the type of a const generic parameter
 LL | fn owo_0<const N: &'static u32>() {}
    |                   ^^^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(adt_const_params)]
@@ -28,7 +28,7 @@ error: `Meow` is forbidden as the type of a const generic parameter
 LL | fn meow_0<const N: Meow>() {}
    |                    ^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(adt_const_params)]
@@ -40,7 +40,7 @@ error: `&'static Meow` is forbidden as the type of a const generic parameter
 LL | fn meow_1<const N: &'static Meow>() {}
    |                    ^^^^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(adt_const_params)]
@@ -56,7 +56,7 @@ error: `[Meow; 100]` is forbidden as the type of a const generic parameter
 LL | fn meow_2<const N: [Meow; 100]>() {}
    |                    ^^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: `(Meow, u8)` is forbidden as the type of a const generic parameter
   --> $DIR/suggest_feature_only_when_possible.rs:29:20
@@ -64,7 +64,7 @@ error: `(Meow, u8)` is forbidden as the type of a const generic parameter
 LL | fn meow_3<const N: (Meow, u8)>() {}
    |                    ^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: `(Meow, String)` is forbidden as the type of a const generic parameter
   --> $DIR/suggest_feature_only_when_possible.rs:34:20
@@ -72,7 +72,7 @@ error: `(Meow, String)` is forbidden as the type of a const generic parameter
 LL | fn meow_4<const N: (Meow, String)>() {}
    |                    ^^^^^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: `String` is forbidden as the type of a const generic parameter
   --> $DIR/suggest_feature_only_when_possible.rs:38:19
@@ -80,7 +80,7 @@ error: `String` is forbidden as the type of a const generic parameter
 LL | fn nya_0<const N: String>() {}
    |                   ^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: `Vec<u32>` is forbidden as the type of a const generic parameter
   --> $DIR/suggest_feature_only_when_possible.rs:40:19
@@ -88,7 +88,7 @@ error: `Vec<u32>` is forbidden as the type of a const generic parameter
 LL | fn nya_1<const N: Vec<u32>>() {}
    |                   ^^^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: aborting due to 9 previous errors
 

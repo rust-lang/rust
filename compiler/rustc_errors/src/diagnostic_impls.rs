@@ -5,20 +5,20 @@ use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
+use rustc_abi::TargetDataLayoutErrors;
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast_pretty::pprust;
 use rustc_macros::Subdiagnostic;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, Symbol};
-use rustc_span::Span;
-use rustc_target::abi::TargetDataLayoutErrors;
-use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
+use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol};
+use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTuple};
 use rustc_type_ir::{ClosureKind, FloatTy};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::diagnostic::DiagLocation;
 use crate::{
-    fluent_generated as fluent, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee,
-    ErrCode, IntoDiagArg, Level, SubdiagMessageOp, Subdiagnostic,
+    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, ErrCode, IntoDiagArg, Level,
+    SubdiagMessageOp, Subdiagnostic, fluent_generated as fluent,
 };
 
 pub struct DiagArgFromDisplay<'a>(pub &'a dyn fmt::Display);
@@ -66,6 +66,7 @@ macro_rules! into_diag_arg_for_number {
             impl IntoDiagArg for $ty {
                 fn into_diag_arg(self) -> DiagArgValue {
                     // Convert to a string if it won't fit into `Number`.
+                    #[allow(irrefutable_let_patterns)]
                     if let Ok(n) = TryInto::<i32>::try_into(self) {
                         DiagArgValue::Number(n)
                     } else {
@@ -88,7 +89,7 @@ into_diag_arg_using_display!(
     MacroRulesNormalizedIdent,
     ParseIntError,
     StackProtector,
-    &TargetTriple,
+    &TargetTuple,
     SplitDebuginfo,
     ExitStatus,
     ErrCode,
@@ -294,6 +295,12 @@ impl IntoDiagArg for ClosureKind {
 impl IntoDiagArg for hir::def::Namespace {
     fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(self.descr()))
+    }
+}
+
+impl IntoDiagArg for ExprPrecedence {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Number(self as i32)
     }
 }
 

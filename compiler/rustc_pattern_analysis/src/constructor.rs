@@ -176,13 +176,13 @@
 //! we assume they never cover each other. In order to respect the invariants of
 //! [`SplitConstructorSet`], we give each `Opaque` constructor a unique id so we can recognize it.
 
-use std::cmp::{self, max, min, Ordering};
+use std::cmp::{self, Ordering, max, min};
 use std::fmt;
 use std::iter::once;
 
 use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, SingleS};
-use rustc_index::bit_set::{BitSet, GrowableBitSet};
 use rustc_index::IndexVec;
+use rustc_index::bit_set::{DenseBitSet, GrowableBitSet};
 use smallvec::SmallVec;
 
 use self::Constructor::*;
@@ -288,7 +288,7 @@ impl IntRange {
     /// Best effort; will not know that e.g. `255u8..` is a singleton.
     pub fn is_singleton(&self) -> bool {
         // Since `lo` and `hi` can't be the same `Infinity` and `plus_one` never changes from finite
-        // to infinite, this correctly only detects ranges that contain exacly one `Finite(x)`.
+        // to infinite, this correctly only detects ranges that contain exactly one `Finite(x)`.
         self.lo.plus_one() == Some(self.hi)
     }
 
@@ -735,10 +735,10 @@ impl<Cx: PatCx> Clone for Constructor<Cx> {
             Constructor::UnionField => Constructor::UnionField,
             Constructor::Bool(b) => Constructor::Bool(*b),
             Constructor::IntRange(range) => Constructor::IntRange(*range),
-            Constructor::F16Range(lo, hi, end) => Constructor::F16Range(lo.clone(), *hi, *end),
-            Constructor::F32Range(lo, hi, end) => Constructor::F32Range(lo.clone(), *hi, *end),
-            Constructor::F64Range(lo, hi, end) => Constructor::F64Range(lo.clone(), *hi, *end),
-            Constructor::F128Range(lo, hi, end) => Constructor::F128Range(lo.clone(), *hi, *end),
+            Constructor::F16Range(lo, hi, end) => Constructor::F16Range(*lo, *hi, *end),
+            Constructor::F32Range(lo, hi, end) => Constructor::F32Range(*lo, *hi, *end),
+            Constructor::F64Range(lo, hi, end) => Constructor::F64Range(*lo, *hi, *end),
+            Constructor::F128Range(lo, hi, end) => Constructor::F128Range(*lo, *hi, *end),
             Constructor::Str(value) => Constructor::Str(value.clone()),
             Constructor::Opaque(inner) => Constructor::Opaque(inner.clone()),
             Constructor::Or => Constructor::Or,
@@ -1072,7 +1072,7 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
                 }
             }
             ConstructorSet::Variants { variants, non_exhaustive } => {
-                let mut seen_set = BitSet::new_empty(variants.len());
+                let mut seen_set = DenseBitSet::new_empty(variants.len());
                 for idx in seen.iter().filter_map(|c| c.as_variant()) {
                     seen_set.insert(idx);
                 }

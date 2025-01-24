@@ -1,8 +1,7 @@
 //@ compile-flags: -Z ui-testing=no
 
 
-#![feature(const_swap)]
-#![feature(const_mut_refs)]
+#![feature(const_swap_nonoverlapping)]
 use std::{
     mem::{self, MaybeUninit},
     ptr,

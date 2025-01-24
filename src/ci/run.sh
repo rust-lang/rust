@@ -47,9 +47,11 @@ source "$ci_dir/shared.sh"
 
 export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
-# suppress change-tracker warnings on CI
-if [ "$CI" != "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set change-id=99999999"
+# If runner uses an incompatible option and `FORCE_CI_RUSTC` is not defined,
+# switch to in-tree rustc.
+if [ "$FORCE_CI_RUSTC" == "" ]; then
+    echo 'debug: `DISABLE_CI_RUSTC_IF_INCOMPATIBLE` configured.'
+    DISABLE_CI_RUSTC_IF_INCOMPATIBLE=1
 fi
 
 if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try || isCiBranch try-perf || \
@@ -113,14 +115,16 @@ RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=$RUST_RELEASE_CHANNE
 if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-static-stdcpp"
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.remap-debuginfo"
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --debuginfo-level-std=1"
+
+  if [ "$DEPLOY_ALT" != "" ] && isLinux; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --debuginfo-level=2"
+  else
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --debuginfo-level-std=1"
+  fi
 
   if [ "$NO_LLVM_ASSERTIONS" = "1" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
   elif [ "$DEPLOY_ALT" != "" ]; then
-    if [ "$ALT_PARALLEL_COMPILER" = "" ]; then
-      RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.parallel-compiler=false"
-    fi
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
   fi
@@ -169,9 +173,15 @@ else
   if [ "$NO_DOWNLOAD_CI_LLVM" = "" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.download-ci-llvm=if-unchanged"
   else
+    # CI rustc requires CI LLVM to be enabled (see https://github.com/rust-lang/rust/issues/123586).
+    NO_DOWNLOAD_CI_RUSTC=1
     # When building for CI we want to use the static C++ Standard library
     # included with LLVM, since a dynamic libstdcpp may not be available.
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.static-libstdcpp"
+  fi
+
+  if [ "$NO_DOWNLOAD_CI_RUSTC" = "" ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.download-rustc=if-unchanged"
   fi
 fi
 
@@ -253,7 +263,7 @@ fi
 
 if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
   rm -f config.toml
-  $SRC/configure --set change-id=99999999 --set rust.parallel-compiler
+  $SRC/configure --set change-id=99999999
 
   # Save the build metrics before we wipe the directory
   if [ "$HAS_METRICS" = 1 ]; then

@@ -1,7 +1,6 @@
 //@ check-pass
 
 #![feature(return_type_notation)]
-//~^ WARN the feature `return_type_notation` is incomplete
 
 trait Foo {
     fn borrow(&mut self) -> impl Sized + '_;

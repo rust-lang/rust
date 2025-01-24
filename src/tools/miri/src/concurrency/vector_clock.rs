@@ -1,11 +1,10 @@
+use std::cmp::Ordering;
+use std::fmt::Debug;
+use std::ops::{Index, Shr};
+
 use rustc_index::Idx;
-use rustc_span::{Span, SpanData, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span, SpanData};
 use smallvec::SmallVec;
-use std::{
-    cmp::Ordering,
-    fmt::Debug,
-    ops::{Index, Shr},
-};
 
 use super::data_race::NaReadType;
 
@@ -130,6 +129,9 @@ impl Ord for VTimestamp {
 /// also this means that there is only one unique valid length
 /// for each set of vector clock values and hence the PartialEq
 /// and Eq derivations are correct.
+///
+/// This means we cannot represent a clock where the last entry is a timestamp-0 read that occurs
+/// because of a retag. That's fine, all it does is risk wrong diagnostics in a extreme corner case.
 #[derive(PartialEq, Eq, Default, Debug)]
 pub struct VClock(SmallVec<[VTimestamp; SMALL_VECTOR]>);
 
@@ -137,6 +139,9 @@ impl VClock {
     /// Create a new vector-clock containing all zeros except
     /// for a value at the given index
     pub(super) fn new_with_index(index: VectorIdx, timestamp: VTimestamp) -> VClock {
+        if timestamp.time() == 0 {
+            return VClock::default();
+        }
         let len = index.index() + 1;
         let mut vec = smallvec::smallvec![VTimestamp::ZERO; len];
         vec[index.index()] = timestamp;
@@ -146,7 +151,7 @@ impl VClock {
     /// Load the internal timestamp slice in the vector clock
     #[inline]
     pub(super) fn as_slice(&self) -> &[VTimestamp] {
-        debug_assert!(!self.0.last().is_some_and(|t| t.time() == 0));
+        debug_assert!(self.0.last().is_none_or(|t| t.time() != 0));
         self.0.as_slice()
     }
 
@@ -424,10 +429,12 @@ impl Index<VectorIdx> for VClock {
 ///  test suite
 #[cfg(test)]
 mod tests {
+    use std::cmp::Ordering;
+
+    use rustc_span::DUMMY_SP;
+
     use super::{VClock, VTimestamp, VectorIdx};
     use crate::concurrency::data_race::NaReadType;
-    use rustc_span::DUMMY_SP;
-    use std::cmp::Ordering;
 
     #[test]
     fn test_equal() {

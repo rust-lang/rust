@@ -3,17 +3,17 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::spanned::Spanned;
-use syn::{parse_quote, Attribute, Meta, Path, Token, Type};
+use syn::{Attribute, Meta, Path, Token, Type, parse_quote};
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
 use super::utils::SubdiagnosticVariant;
 use crate::diagnostics::error::{
-    span_err, throw_invalid_attr, throw_span_err, DiagnosticDeriveError,
+    DiagnosticDeriveError, span_err, throw_invalid_attr, throw_span_err,
 };
 use crate::diagnostics::utils::{
+    FieldInfo, FieldInnerTy, FieldMap, HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
     build_field_mapping, is_doc_comment, report_error_if_not_applied_to_span, report_type_error,
-    should_generate_arg, type_is_bool, type_is_unit, type_matches_path, FieldInfo, FieldInnerTy,
-    FieldMap, HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
+    should_generate_arg, type_is_bool, type_is_unit, type_matches_path,
 };
 
 /// What kind of diagnostic is being derived - a fatal/error/warning or a lint?
@@ -253,7 +253,10 @@ impl DiagnosticDeriveVariantBuilder {
         let mut field_binding = binding_info.binding.clone();
         field_binding.set_span(field.ty.span());
 
-        let ident = field.ident.as_ref().unwrap();
+        let Some(ident) = field.ident.as_ref() else {
+            span_err(field.span().unwrap(), "tuple structs are not supported").emit();
+            return TokenStream::new();
+        };
         let ident = format_ident!("{}", ident); // strip `r#` prefix, if present
 
         quote! {

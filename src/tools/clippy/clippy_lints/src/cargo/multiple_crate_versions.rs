@@ -1,5 +1,3 @@
-//! lint on multiple versions of a crate being used
-
 use cargo_metadata::{DependencyKind, Metadata, Node, Package, PackageId};
 use clippy_utils::diagnostics::span_lint;
 use itertools::Itertools;

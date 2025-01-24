@@ -7,6 +7,11 @@ LL | fn foo<'a>(s: &'a str) -> impl Trait + 'static {
    |        hidden type `impl Trait + 'static` captures the lifetime `'a` as defined here
 LL |     bar(s)
    |     ^^^^^^
+   |
+help: add a `use<...>` bound to explicitly capture `'a`
+   |
+LL | fn foo<'a>(s: &'a str) -> impl Trait + 'static + use<'a> {
+   |                                                +++++++++
 
 error: aborting due to 1 previous error
 

@@ -2,7 +2,7 @@
 #![allow(unconditional_panic, non_fmt_panics)]
 
 use std::cell::Cell;
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::process;
 
 thread_local! {

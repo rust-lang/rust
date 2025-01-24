@@ -2,7 +2,7 @@
 // separate modules for each platform.
 #![cfg(target_os = "netbsd")]
 
-use libc::{_lwp_self, c_long, clockid_t, lwpid_t, time_t, timespec, CLOCK_MONOTONIC};
+use libc::{_lwp_self, CLOCK_MONOTONIC, c_long, clockid_t, lwpid_t, time_t, timespec};
 
 use crate::ffi::{c_int, c_void};
 use crate::ptr;

@@ -188,96 +188,6 @@ impl f128 {
         self - self.trunc()
     }
 
-    /// Computes the absolute value of `self`.
-    ///
-    /// This function always returns the precise result.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(f128)]
-    /// # #[cfg(reliable_f128)] {
-    ///
-    /// let x = 3.5_f128;
-    /// let y = -3.5_f128;
-    ///
-    /// assert_eq!(x.abs(), x);
-    /// assert_eq!(y.abs(), -y);
-    ///
-    /// assert!(f128::NAN.abs().is_nan());
-    /// # }
-    /// ```
-    #[inline]
-    #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f128", issue = "116909")]
-    #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn abs(self) -> Self {
-        // FIXME(f16_f128): replace with `intrinsics::fabsf128` when available
-        // We don't do this now because LLVM has lowering bugs for f128 math.
-        Self::from_bits(self.to_bits() & !(1 << 127))
-    }
-
-    /// Returns a number that represents the sign of `self`.
-    ///
-    /// - `1.0` if the number is positive, `+0.0` or `INFINITY`
-    /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
-    /// - NaN if the number is NaN
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
-    ///
-    /// let f = 3.5_f128;
-    ///
-    /// assert_eq!(f.signum(), 1.0);
-    /// assert_eq!(f128::NEG_INFINITY.signum(), -1.0);
-    ///
-    /// assert!(f128::NAN.signum().is_nan());
-    /// # }
-    /// ```
-    #[inline]
-    #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f128", issue = "116909")]
-    #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn signum(self) -> f128 {
-        if self.is_nan() { Self::NAN } else { 1.0_f128.copysign(self) }
-    }
-
-    /// Returns a number composed of the magnitude of `self` and the sign of
-    /// `sign`.
-    ///
-    /// Equal to `self` if the sign of `self` and `sign` are the same, otherwise
-    /// equal to `-self`. If `self` is a NaN, then a NaN with the sign bit of
-    /// `sign` is returned. Note, however, that conserving the sign bit on NaN
-    /// across arithmetical operations is not generally guaranteed.
-    /// See [explanation of NaN as a special value](primitive@f128) for more info.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
-    ///
-    /// let f = 3.5_f128;
-    ///
-    /// assert_eq!(f.copysign(0.42), 3.5_f128);
-    /// assert_eq!(f.copysign(-0.42), -3.5_f128);
-    /// assert_eq!((-f).copysign(0.42), 3.5_f128);
-    /// assert_eq!((-f).copysign(-0.42), -3.5_f128);
-    ///
-    /// assert!(f128::NAN.copysign(1.0).is_nan());
-    /// # }
-    /// ```
-    #[inline]
-    #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f128", issue = "116909")]
-    #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn copysign(self, sign: f128) -> f128 {
-        unsafe { intrinsics::copysignf128(self, sign) }
-    }
-
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error, yielding a more accurate result than an unfused multiply-add.
     ///
@@ -317,6 +227,7 @@ impl f128 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
+    #[doc(alias = "fmaf128", alias = "fusedMultiplyAdd")]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn mul_add(self, a: f128, b: f128) -> f128 {
@@ -474,6 +385,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
+    #[doc(alias = "squareRoot")]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]

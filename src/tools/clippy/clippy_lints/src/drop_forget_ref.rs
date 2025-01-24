@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_must_use_func_call;
 use clippy_utils::ty::{is_copy, is_must_use_ty, is_type_lang_item};
 use rustc_hir::{Arm, Expr, ExprKind, LangItem, Node};
@@ -99,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                 sym::mem_forget if is_copy => return,
                 sym::mem_drop if is_type_lang_item(cx, arg_ty, LangItem::ManuallyDrop) => return,
                 sym::mem_drop
-                    if !(arg_ty.needs_drop(cx.tcx, cx.param_env)
+                    if !(arg_ty.needs_drop(cx.tcx, cx.typing_env())
                         || is_must_use_func_call(cx, arg)
                         || is_must_use_ty(cx, arg_ty)
                         || drop_is_single_call_in_arm) =>
@@ -107,12 +107,12 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                     (DROP_NON_DROP, DROP_NON_DROP_SUMMARY.into(), Some(arg.span))
                 },
                 sym::mem_forget => {
-                    if arg_ty.needs_drop(cx.tcx, cx.param_env) {
+                    if arg_ty.needs_drop(cx.tcx, cx.typing_env()) {
                         (
                             MEM_FORGET,
                             Cow::Owned(format!(
                                 "usage of `mem::forget` on {}",
-                                if arg_ty.ty_adt_def().map_or(false, |def| def.has_dtor(cx.tcx)) {
+                                if arg_ty.ty_adt_def().is_some_and(|def| def.has_dtor(cx.tcx)) {
                                     "`Drop` type"
                                 } else {
                                     "type with `Drop` fields"
@@ -126,14 +126,14 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                 },
                 _ => return,
             };
-            span_lint_and_note(
-                cx,
-                lint,
-                expr.span,
-                msg,
-                note_span,
-                format!("argument has type `{arg_ty}`"),
-            );
+            span_lint_and_then(cx, lint, expr.span, msg, |diag| {
+                let note = format!("argument has type `{arg_ty}`");
+                if let Some(span) = note_span {
+                    diag.span_note(span, note);
+                } else {
+                    diag.note(note);
+                }
+            });
         }
     }
 }

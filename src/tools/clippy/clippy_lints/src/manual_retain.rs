@@ -1,36 +1,25 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_utils::SpanlessEq;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
-use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
-use clippy_utils::{match_def_path, paths, SpanlessEq};
+use clippy_utils::ty::{get_type_diagnostic_name, is_type_lang_item};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::ExprKind::Assign;
+use rustc_hir::def_id::DefId;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_semver::RustcVersion;
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::symbol::{Symbol, sym};
 
-const ACCEPTABLE_METHODS: [&[&str]; 5] = [
-    &paths::BINARYHEAP_ITER,
-    &paths::HASHSET_ITER,
-    &paths::BTREESET_ITER,
-    &paths::SLICE_INTO,
-    &paths::VEC_DEQUE_ITER,
+const ACCEPTABLE_METHODS: [Symbol; 5] = [
+    sym::binaryheap_iter,
+    sym::hashset_iter,
+    sym::btreeset_iter,
+    sym::slice_iter,
+    sym::vecdeque_iter,
 ];
-const ACCEPTABLE_TYPES: [(rustc_span::Symbol, Option<RustcVersion>); 7] = [
-    (sym::BinaryHeap, Some(msrvs::BINARY_HEAP_RETAIN)),
-    (sym::BTreeSet, Some(msrvs::BTREE_SET_RETAIN)),
-    (sym::BTreeMap, Some(msrvs::BTREE_MAP_RETAIN)),
-    (sym::HashSet, Some(msrvs::HASH_SET_RETAIN)),
-    (sym::HashMap, Some(msrvs::HASH_MAP_RETAIN)),
-    (sym::Vec, None),
-    (sym::VecDeque, None),
-];
-const MAP_TYPES: [rustc_span::Symbol; 2] = [sym::BTreeMap, sym::HashMap];
 
 declare_clippy_lint! {
     /// ### What it does
@@ -95,7 +84,7 @@ fn check_into_iter(
 ) {
     if let hir::ExprKind::MethodCall(_, into_iter_expr, [_], _) = &target_expr.kind
         && let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
-        && match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER)
+        && cx.tcx.is_diagnostic_item(sym::iter_filter, filter_def_id)
         && let hir::ExprKind::MethodCall(_, struct_expr, [], _) = &into_iter_expr.kind
         && let Some(into_iter_def_id) = cx.typeck_results().type_dependent_def_id(into_iter_expr.hir_id)
         && Some(into_iter_def_id) == cx.tcx.lang_items().into_iter_fn()
@@ -138,14 +127,14 @@ fn check_iter(
 ) {
     if let hir::ExprKind::MethodCall(_, filter_expr, [], _) = &target_expr.kind
         && let Some(copied_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
-        && (match_def_path(cx, copied_def_id, &paths::CORE_ITER_COPIED)
-            || match_def_path(cx, copied_def_id, &paths::CORE_ITER_CLONED))
+        && (cx.tcx.is_diagnostic_item(sym::iter_copied, copied_def_id)
+            || cx.tcx.is_diagnostic_item(sym::iter_cloned, copied_def_id))
         && let hir::ExprKind::MethodCall(_, iter_expr, [_], _) = &filter_expr.kind
         && let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(filter_expr.hir_id)
-        && match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER)
+        && cx.tcx.is_diagnostic_item(sym::iter_filter, filter_def_id)
         && let hir::ExprKind::MethodCall(_, struct_expr, [], _) = &iter_expr.kind
         && let Some(iter_expr_def_id) = cx.typeck_results().type_dependent_def_id(iter_expr.hir_id)
-        && match_acceptable_def_path(cx, iter_expr_def_id)
+        && match_acceptable_sym(cx, iter_expr_def_id)
         && match_acceptable_type(cx, left_expr, msrv)
         && SpanlessEq::new(cx).eq_expr(left_expr, struct_expr)
         && let hir::ExprKind::MethodCall(_, _, [closure_expr], _) = filter_expr.kind
@@ -200,10 +189,10 @@ fn check_to_owned(
         && cx.tcx.is_diagnostic_item(sym::to_owned_method, to_owned_def_id)
         && let hir::ExprKind::MethodCall(_, chars_expr, [_], _) = &filter_expr.kind
         && let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(filter_expr.hir_id)
-        && match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER)
+        && cx.tcx.is_diagnostic_item(sym::iter_filter, filter_def_id)
         && let hir::ExprKind::MethodCall(_, str_expr, [], _) = &chars_expr.kind
         && let Some(chars_expr_def_id) = cx.typeck_results().type_dependent_def_id(chars_expr.hir_id)
-        && match_def_path(cx, chars_expr_def_id, &paths::STR_CHARS)
+        && cx.tcx.is_diagnostic_item(sym::str_chars, chars_expr_def_id)
         && let ty = cx.typeck_results().expr_ty(str_expr).peel_refs()
         && is_type_lang_item(cx, ty, hir::LangItem::String)
         && SpanlessEq::new(cx).eq_expr(left_expr, str_expr)
@@ -258,23 +247,29 @@ fn make_sugg(
     }
 }
 
-fn match_acceptable_def_path(cx: &LateContext<'_>, collect_def_id: DefId) -> bool {
+fn match_acceptable_sym(cx: &LateContext<'_>, collect_def_id: DefId) -> bool {
     ACCEPTABLE_METHODS
         .iter()
-        .any(|&method| match_def_path(cx, collect_def_id, method))
+        .any(|&method| cx.tcx.is_diagnostic_item(method, collect_def_id))
 }
 
 fn match_acceptable_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>, msrv: &Msrv) -> bool {
-    let expr_ty = cx.typeck_results().expr_ty(expr).peel_refs();
-    ACCEPTABLE_TYPES.iter().any(|(ty, acceptable_msrv)| {
-        is_type_diagnostic_item(cx, expr_ty, *ty)
-            && acceptable_msrv.map_or(true, |acceptable_msrv| msrv.meets(acceptable_msrv))
-    })
+    let ty = cx.typeck_results().expr_ty(expr).peel_refs();
+    let required = match get_type_diagnostic_name(cx, ty) {
+        Some(sym::BinaryHeap) => msrvs::BINARY_HEAP_RETAIN,
+        Some(sym::BTreeSet) => msrvs::BTREE_SET_RETAIN,
+        Some(sym::BTreeMap) => msrvs::BTREE_MAP_RETAIN,
+        Some(sym::HashSet) => msrvs::HASH_SET_RETAIN,
+        Some(sym::HashMap) => msrvs::HASH_MAP_RETAIN,
+        Some(sym::Vec | sym::VecDeque) => return true,
+        _ => return false,
+    };
+    msrv.meets(required)
 }
 
 fn match_map_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
-    let expr_ty = cx.typeck_results().expr_ty(expr).peel_refs();
-    MAP_TYPES.iter().any(|ty| is_type_diagnostic_item(cx, expr_ty, *ty))
+    let ty = cx.typeck_results().expr_ty(expr).peel_refs();
+    matches!(get_type_diagnostic_name(cx, ty), Some(sym::BTreeMap | sym::HashMap))
 }
 
 fn make_span_lint_and_sugg(cx: &LateContext<'_>, span: Span, sugg: String) {

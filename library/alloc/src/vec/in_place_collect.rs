@@ -163,7 +163,7 @@ use core::num::NonZero;
 use core::ptr;
 
 use super::{InPlaceDrop, InPlaceDstDataSrcBufDrop, SpecFromIter, SpecFromIterNested, Vec};
-use crate::alloc::{handle_alloc_error, Global};
+use crate::alloc::{Global, handle_alloc_error};
 
 const fn in_place_collectible<DEST, SRC>(
     step_merge: Option<NonZero<usize>>,
@@ -191,7 +191,7 @@ const fn in_place_collectible<DEST, SRC>(
 
 const fn needs_realloc<SRC, DEST>(src_cap: usize, dst_cap: usize) -> bool {
     if const { mem::align_of::<SRC>() != mem::align_of::<DEST>() } {
-        // FIXME: use unreachable! once that works in const
+        // FIXME(const-hack): use unreachable! once that works in const
         panic!("in_place_collectible() prevents this");
     }
 
@@ -208,7 +208,7 @@ const fn needs_realloc<SRC, DEST>(src_cap: usize, dst_cap: usize) -> bool {
 
     // type layouts don't guarantee a fit, so do a runtime check to see if
     // the allocations happen to match
-    return src_cap > 0 && src_cap * mem::size_of::<SRC>() != dst_cap * mem::size_of::<DEST>();
+    src_cap > 0 && src_cap * mem::size_of::<SRC>() != dst_cap * mem::size_of::<DEST>()
 }
 
 /// This provides a shorthand for the source type since local type aliases aren't a thing.
@@ -229,6 +229,7 @@ where
     I: Iterator<Item = T> + InPlaceCollect,
     <I as SourceIter>::Source: AsVecIntoIter,
 {
+    #[track_caller]
     default fn from_iter(iterator: I) -> Self {
         // Select the implementation in const eval to avoid codegen of the dead branch to improve compile times.
         let fun: fn(I) -> Vec<T> = const {
@@ -246,6 +247,7 @@ where
     }
 }
 
+#[track_caller]
 fn from_iter_in_place<I, T>(mut iterator: I) -> Vec<T>
 where
     I: Iterator<Item = T> + InPlaceCollect,
@@ -328,7 +330,7 @@ where
 
     mem::forget(dst_guard);
 
-    let vec = unsafe { Vec::from_nonnull(dst_buf, len, dst_cap) };
+    let vec = unsafe { Vec::from_parts(dst_buf, len, dst_cap) };
 
     vec
 }

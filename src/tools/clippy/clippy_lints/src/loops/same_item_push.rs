@@ -6,11 +6,11 @@ use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, Mutability, Node, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
-use rustc_span::symbol::sym;
 use rustc_span::SyntaxContext;
+use rustc_span::symbol::sym;
 
 /// Detects for loop pushing the same item into a Vec
 pub(super) fn check<'tcx>(
@@ -50,7 +50,7 @@ pub(super) fn check<'tcx>(
             .tcx
             .lang_items()
             .clone_trait()
-            .map_or(false, |id| implements_trait(cx, ty, id, &[]))
+            .is_some_and(|id| implements_trait(cx, ty, id, &[]))
     {
         // Make sure that the push does not involve possibly mutating values
         match pushed_item.kind {
@@ -123,7 +123,7 @@ impl<'a, 'tcx> SameItemPushVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for SameItemPushVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         match &expr.kind {
             // Non-determinism may occur ... don't give a lint
@@ -172,10 +172,8 @@ fn get_vec_push<'tcx>(
     stmt: &'tcx Stmt<'_>,
 ) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>, SyntaxContext)> {
     if let StmtKind::Semi(semi_stmt) = &stmt.kind
-            // Extract method being called
-            && let ExprKind::MethodCall(path, self_expr, args, _) = &semi_stmt.kind
-            // Figure out the parameters for the method call
-            && let Some(pushed_item) = args.first()
+            // Extract method being called and figure out the parameters for the method call
+            && let ExprKind::MethodCall(path, self_expr, [pushed_item], _) = &semi_stmt.kind
             // Check that the method being called is push() on a Vec
             && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr), sym::Vec)
             && path.ident.name.as_str() == "push"

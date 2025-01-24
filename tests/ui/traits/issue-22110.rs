@@ -3,7 +3,6 @@
 // and the blanket impl. The only important thing is that compilation
 // succeeds here. Issue #22110.
 
-//@ pretty-expanded FIXME #23616
 
 #![allow(dead_code)]
 

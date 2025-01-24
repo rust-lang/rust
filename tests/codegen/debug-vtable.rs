@@ -1,5 +1,10 @@
-// This test checks the debuginfo for the expected 3 vtables is generated for correct names and number
-// of entries.
+// ignore-tidy-linelength
+//! This test checks the debuginfo for the expected 3 vtables is generated for correct names and
+//! number of entries.
+
+//@ revisions: MSVC NONMSVC
+//@[MSVC] only-msvc
+//@[NONMSVC] ignore-msvc
 
 // Use the v0 symbol mangling scheme to codegen order independent of rustc version.
 // Unnamed items like shims are generated in lexicographical order of their symbol name and in the
@@ -7,7 +12,6 @@
 // of the name, thus randomizing item order with respect to rustc version.
 
 //@ compile-flags: -Cdebuginfo=2 -Copt-level=0 -Csymbol-mangling-version=v0
-// ignore-tidy-linelength
 
 // Make sure that vtables don't have the unnamed_addr attribute when debuginfo is enabled.
 // This helps debuggers more reliably map from dyn pointer to concrete type.

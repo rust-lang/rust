@@ -4,13 +4,14 @@
 
 #![stable(feature = "process_extensions", since = "1.2.0")]
 
-use crate::ffi::OsStr;
+use crate::ffi::{OsStr, c_void};
+use crate::mem::MaybeUninit;
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
 };
 use crate::sealed::Sealed;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
-use crate::{process, sys};
+use crate::{io, marker, process, ptr, sys};
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawHandle for process::Stdio {
@@ -295,41 +296,25 @@ pub trait CommandExt: Sealed {
     #[unstable(feature = "windows_process_extensions_async_pipes", issue = "98289")]
     fn async_pipes(&mut self, always_async: bool) -> &mut process::Command;
 
-    /// Set a raw attribute on the command, providing extended configuration options for Windows
-    /// processes.
+    /// Executes the command as a child process with the given
+    /// [`ProcThreadAttributeList`], returning a handle to it.
     ///
-    /// This method allows you to specify custom attributes for a child process on Windows systems
-    /// using raw attribute values. Raw attributes provide extended configurability for process
-    /// creation, but their usage can be complex and potentially unsafe.
-    ///
-    /// The `attribute` parameter specifies the raw attribute to be set, while the `value`
-    /// parameter holds the value associated with that attribute. Please refer to the
-    /// [`windows-rs` documentation] or the [Win32 API documentation] for detailed information
-    /// about available attributes and their meanings.
-    ///
-    /// [`windows-rs` documentation]: https://microsoft.github.io/windows-docs-rs/doc/windows/
-    /// [Win32 API documentation]: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute
+    /// This method enables the customization of attributes for the spawned
+    /// child process on Windows systems.
+    /// Attributes offer extended configurability for process creation,
+    /// but their usage can be intricate and potentially unsafe.
     ///
     /// # Note
     ///
-    /// The maximum number of raw attributes is the value of [`u32::MAX`].
-    /// If this limit is exceeded, the call to [`process::Command::spawn`] will return an `Error`
-    /// indicating that the maximum number of attributes has been exceeded.
-    ///
-    /// # Safety
-    ///
-    /// The usage of raw attributes is potentially unsafe and should be done with caution.
-    /// Incorrect attribute values or improper configuration can lead to unexpected behavior or
-    /// errors.
+    /// By default, stdin, stdout, and stderr are inherited from the parent
+    /// process.
     ///
     /// # Example
     ///
-    /// The following example demonstrates how to create a child process with a specific parent
-    /// process ID using a raw attribute.
-    ///
-    /// ```rust
+    /// ```
     /// #![feature(windows_process_extensions_raw_attribute)]
-    /// use std::os::windows::{process::CommandExt, io::AsRawHandle};
+    /// use std::os::windows::io::AsRawHandle;
+    /// use std::os::windows::process::{CommandExt, ProcThreadAttributeList};
     /// use std::process::Command;
     ///
     /// # struct ProcessDropGuard(std::process::Child);
@@ -338,36 +323,27 @@ pub trait CommandExt: Sealed {
     /// #         let _ = self.0.kill();
     /// #     }
     /// # }
-    ///
-    /// let parent = Command::new("cmd").spawn()?;
-    ///
-    /// let mut child_cmd = Command::new("cmd");
-    ///
-    /// const PROC_THREAD_ATTRIBUTE_PARENT_PROCESS: usize = 0x00020000;
-    ///
-    /// unsafe {
-    ///     child_cmd.raw_attribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, parent.as_raw_handle() as isize);
-    /// }
     /// #
+    /// let parent = Command::new("cmd").spawn()?;
+    /// let parent_process_handle = parent.as_raw_handle();
     /// # let parent = ProcessDropGuard(parent);
     ///
-    /// let mut child = child_cmd.spawn()?;
+    /// const PROC_THREAD_ATTRIBUTE_PARENT_PROCESS: usize = 0x00020000;
+    /// let mut attribute_list = ProcThreadAttributeList::build()
+    ///     .attribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &parent_process_handle)
+    ///     .finish()
+    ///     .unwrap();
     ///
+    /// let mut child = Command::new("cmd").spawn_with_attributes(&attribute_list)?;
+    /// #
     /// # child.kill()?;
     /// # Ok::<(), std::io::Error>(())
     /// ```
-    ///
-    /// # Safety Note
-    ///
-    /// Remember that improper use of raw attributes can lead to undefined behavior or security
-    /// vulnerabilities. Always consult the documentation and ensure proper attribute values are
-    /// used.
     #[unstable(feature = "windows_process_extensions_raw_attribute", issue = "114854")]
-    unsafe fn raw_attribute<T: Copy + Send + Sync + 'static>(
+    fn spawn_with_attributes(
         &mut self,
-        attribute: usize,
-        value: T,
-    ) -> &mut process::Command;
+        attribute_list: &ProcThreadAttributeList<'_>,
+    ) -> io::Result<process::Child>;
 }
 
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
@@ -401,13 +377,13 @@ impl CommandExt for process::Command {
         self
     }
 
-    unsafe fn raw_attribute<T: Copy + Send + Sync + 'static>(
+    fn spawn_with_attributes(
         &mut self,
-        attribute: usize,
-        value: T,
-    ) -> &mut process::Command {
-        unsafe { self.as_inner_mut().raw_attribute(attribute, value) };
-        self
+        attribute_list: &ProcThreadAttributeList<'_>,
+    ) -> io::Result<process::Child> {
+        self.as_inner_mut()
+            .spawn_with_attributes(sys::process::Stdio::Inherit, true, Some(attribute_list))
+            .map(process::Child::from_inner)
     }
 }
 
@@ -446,4 +422,246 @@ impl ExitCodeExt for process::ExitCode {
     fn from_raw(raw: u32) -> Self {
         process::ExitCode::from_inner(From::from(raw))
     }
+}
+
+/// A wrapper around windows [`ProcThreadAttributeList`][1].
+///
+/// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-initializeprocthreadattributelist>
+#[derive(Debug)]
+#[unstable(feature = "windows_process_extensions_raw_attribute", issue = "114854")]
+pub struct ProcThreadAttributeList<'a> {
+    attribute_list: Box<[MaybeUninit<u8>]>,
+    _lifetime_marker: marker::PhantomData<&'a ()>,
+}
+
+#[unstable(feature = "windows_process_extensions_raw_attribute", issue = "114854")]
+impl<'a> ProcThreadAttributeList<'a> {
+    /// Creates a new builder for constructing a [`ProcThreadAttributeList`].
+    pub fn build() -> ProcThreadAttributeListBuilder<'a> {
+        ProcThreadAttributeListBuilder::new()
+    }
+
+    /// Returns a pointer to the underling attribute list.
+    #[doc(hidden)]
+    pub fn as_ptr(&self) -> *const MaybeUninit<u8> {
+        self.attribute_list.as_ptr()
+    }
+}
+
+#[unstable(feature = "windows_process_extensions_raw_attribute", issue = "114854")]
+impl<'a> Drop for ProcThreadAttributeList<'a> {
+    /// Deletes the attribute list.
+    ///
+    /// This method calls [`DeleteProcThreadAttributeList`][1] to delete the
+    /// underlying attribute list.
+    ///
+    /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-deleteprocthreadattributelist>
+    fn drop(&mut self) {
+        let lp_attribute_list = self.attribute_list.as_mut_ptr().cast::<c_void>();
+        unsafe { sys::c::DeleteProcThreadAttributeList(lp_attribute_list) }
+    }
+}
+
+/// Builder for constructing a [`ProcThreadAttributeList`].
+#[derive(Clone, Debug)]
+#[unstable(feature = "windows_process_extensions_raw_attribute", issue = "114854")]
+pub struct ProcThreadAttributeListBuilder<'a> {
+    attributes: alloc::collections::BTreeMap<usize, ProcThreadAttributeValue>,
+    _lifetime_marker: marker::PhantomData<&'a ()>,
+}
+
+#[unstable(feature = "windows_process_extensions_raw_attribute", issue = "114854")]
+impl<'a> ProcThreadAttributeListBuilder<'a> {
+    fn new() -> Self {
+        ProcThreadAttributeListBuilder {
+            attributes: alloc::collections::BTreeMap::new(),
+            _lifetime_marker: marker::PhantomData,
+        }
+    }
+
+    /// Sets an attribute on the attribute list.
+    ///
+    /// The `attribute` parameter specifies the raw attribute to be set, while
+    /// the `value` parameter holds the value associated with that attribute.
+    /// Please refer to the [Windows documentation][1] for a list of valid attributes.
+    ///
+    /// # Note
+    ///
+    /// The maximum number of attributes is the value of [`u32::MAX`]. If this
+    /// limit is exceeded, the call to [`Self::finish`] will return an `Error`
+    /// indicating that the maximum number of attributes has been exceeded.
+    ///
+    /// # Safety Note
+    ///
+    /// Remember that improper use of attributes can lead to undefined behavior
+    /// or security vulnerabilities. Always consult the documentation and ensure
+    /// proper attribute values are used.
+    ///
+    /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute#parameters>
+    pub fn attribute<T>(self, attribute: usize, value: &'a T) -> Self {
+        unsafe {
+            self.raw_attribute(
+                attribute,
+                ptr::addr_of!(*value).cast::<c_void>(),
+                crate::mem::size_of::<T>(),
+            )
+        }
+    }
+
+    /// Sets a raw attribute on the attribute list.
+    ///
+    /// This function is useful for setting attributes with pointers or sizes
+    /// that cannot be derived directly from their values.
+    ///
+    /// # Safety
+    ///
+    /// This function is marked as `unsafe` because it deals with raw pointers
+    /// and sizes. It is the responsibility of the caller to ensure the value
+    /// lives longer than the resulting [`ProcThreadAttributeList`] as well as
+    /// the validity of the size parameter.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(windows_process_extensions_raw_attribute)]
+    /// use std::ffi::c_void;
+    /// use std::os::windows::process::{CommandExt, ProcThreadAttributeList};
+    /// use std::os::windows::raw::HANDLE;
+    /// use std::process::Command;
+    ///
+    /// #[repr(C)]
+    /// pub struct COORD {
+    ///     pub X: i16,
+    ///     pub Y: i16,
+    /// }
+    ///
+    /// extern "system" {
+    ///     fn CreatePipe(
+    ///         hreadpipe: *mut HANDLE,
+    ///         hwritepipe: *mut HANDLE,
+    ///         lppipeattributes: *const c_void,
+    ///         nsize: u32,
+    ///     ) -> i32;
+    ///     fn CreatePseudoConsole(
+    ///         size: COORD,
+    ///         hinput: HANDLE,
+    ///         houtput: HANDLE,
+    ///         dwflags: u32,
+    ///         phpc: *mut isize,
+    ///     ) -> i32;
+    ///     fn CloseHandle(hobject: HANDLE) -> i32;
+    /// }
+    ///
+    /// let [mut input_read_side, mut output_write_side, mut output_read_side, mut input_write_side] =
+    ///     [unsafe { std::mem::zeroed::<HANDLE>() }; 4];
+    ///
+    /// unsafe {
+    ///     CreatePipe(&mut input_read_side, &mut input_write_side, std::ptr::null(), 0);
+    ///     CreatePipe(&mut output_read_side, &mut output_write_side, std::ptr::null(), 0);
+    /// }
+    ///
+    /// let size = COORD { X: 60, Y: 40 };
+    /// let mut h_pc = unsafe { std::mem::zeroed() };
+    /// unsafe { CreatePseudoConsole(size, input_read_side, output_write_side, 0, &mut h_pc) };
+    ///
+    /// unsafe { CloseHandle(input_read_side) };
+    /// unsafe { CloseHandle(output_write_side) };
+    ///
+    /// const PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE: usize = 131094;
+    ///
+    /// let attribute_list = unsafe {
+    ///     ProcThreadAttributeList::build()
+    ///         .raw_attribute(
+    ///             PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
+    ///             h_pc as *const c_void,
+    ///             std::mem::size_of::<isize>(),
+    ///         )
+    ///         .finish()?
+    /// };
+    ///
+    /// let mut child = Command::new("cmd").spawn_with_attributes(&attribute_list)?;
+    /// #
+    /// # child.kill()?;
+    /// # Ok::<(), std::io::Error>(())
+    /// ```
+    pub unsafe fn raw_attribute<T>(
+        mut self,
+        attribute: usize,
+        value_ptr: *const T,
+        value_size: usize,
+    ) -> Self {
+        self.attributes.insert(attribute, ProcThreadAttributeValue {
+            ptr: value_ptr.cast::<c_void>(),
+            size: value_size,
+        });
+        self
+    }
+
+    /// Finalizes the construction of the `ProcThreadAttributeList`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the maximum number of attributes is exceeded
+    /// or if there is an I/O error during initialization.
+    pub fn finish(&self) -> io::Result<ProcThreadAttributeList<'a>> {
+        // To initialize our ProcThreadAttributeList, we need to determine
+        // how many bytes to allocate for it. The Windows API simplifies this
+        // process by allowing us to call `InitializeProcThreadAttributeList`
+        // with a null pointer to retrieve the required size.
+        let mut required_size = 0;
+        let Ok(attribute_count) = self.attributes.len().try_into() else {
+            return Err(io::const_error!(
+                io::ErrorKind::InvalidInput,
+                "maximum number of ProcThreadAttributes exceeded",
+            ));
+        };
+        unsafe {
+            sys::c::InitializeProcThreadAttributeList(
+                ptr::null_mut(),
+                attribute_count,
+                0,
+                &mut required_size,
+            )
+        };
+
+        let mut attribute_list = vec![MaybeUninit::uninit(); required_size].into_boxed_slice();
+
+        // Once we've allocated the necessary memory, it's safe to invoke
+        // `InitializeProcThreadAttributeList` to properly initialize the list.
+        sys::cvt(unsafe {
+            sys::c::InitializeProcThreadAttributeList(
+                attribute_list.as_mut_ptr().cast::<c_void>(),
+                attribute_count,
+                0,
+                &mut required_size,
+            )
+        })?;
+
+        // # Add our attributes to the buffer.
+        // It's theoretically possible for the attribute count to exceed a u32
+        // value. Therefore, we ensure that we don't add more attributes than
+        // the buffer was initialized for.
+        for (&attribute, value) in self.attributes.iter().take(attribute_count as usize) {
+            sys::cvt(unsafe {
+                sys::c::UpdateProcThreadAttribute(
+                    attribute_list.as_mut_ptr().cast::<c_void>(),
+                    0,
+                    attribute,
+                    value.ptr,
+                    value.size,
+                    ptr::null_mut(),
+                    ptr::null_mut(),
+                )
+            })?;
+        }
+
+        Ok(ProcThreadAttributeList { attribute_list, _lifetime_marker: marker::PhantomData })
+    }
+}
+
+/// Wrapper around the value data to be used as a Process Thread Attribute.
+#[derive(Clone, Debug)]
+struct ProcThreadAttributeValue {
+    ptr: *const c_void,
+    size: usize,
 }

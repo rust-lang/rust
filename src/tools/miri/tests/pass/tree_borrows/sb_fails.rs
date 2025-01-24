@@ -67,10 +67,11 @@ mod static_memory_modification {
 
     #[allow(mutable_transmutes)]
     pub fn main() {
-        let _x = unsafe {
+        let x = unsafe {
             std::mem::transmute::<&usize, &mut usize>(&X) // In SB this mutable reborrow fails.
             // But in TB we are allowed to transmute as long as we don't write.
         };
+        assert_eq!(*&*x, 5);
     }
 }
 

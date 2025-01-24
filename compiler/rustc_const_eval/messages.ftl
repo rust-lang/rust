@@ -1,9 +1,6 @@
 const_eval_address_space_full =
     there are no more free addresses in the address space
 
-const_eval_align_offset_invalid_align =
-    `align_offset` called with non-power-of-two align: {$target_align}
-
 const_eval_alignment_check_failed =
     {$msg ->
      [AccessedPtr] accessing memory
@@ -15,8 +12,6 @@ const_eval_already_reported =
 const_eval_assume_false =
     `assume` called with `false`
 
-const_eval_await_non_const =
-    cannot convert `{$ty}` into a future in {const_eval_const_context}s
 const_eval_bounds_check_failed =
     indexing out of bounds: the len is {$len} but the index is {$index}
 const_eval_call_nonzero_intrinsic =
@@ -26,8 +21,7 @@ const_eval_closure_call =
     closures need an RFC before allowed to be called in {const_eval_const_context}s
 const_eval_closure_fndef_not_const =
     function defined here, but it is not `const`
-const_eval_closure_non_const =
-    cannot call non-const closure in {const_eval_const_context}s
+
 const_eval_consider_dereferencing =
     consider dereferencing here
 
@@ -61,10 +55,6 @@ const_eval_dealloc_incorrect_layout =
 const_eval_dealloc_kind_mismatch =
     deallocating {$alloc}, which is {$alloc_kind} memory, using {$kind} deallocation operation
 
-const_eval_deref_coercion_non_const =
-    cannot perform deref coercion on `{$ty}` in {const_eval_const_context}s
-    .note = attempting to deref into `{$target_ty}`
-    .target_note = deref defined here
 const_eval_deref_function_pointer =
     accessing {$allocation} which contains a function
 const_eval_deref_vtable_pointer =
@@ -108,9 +98,6 @@ const_eval_extern_type_field = `extern type` field does not have a known offset
 
 const_eval_fn_ptr_call =
     function pointers need an RFC before allowed to be called in {const_eval_const_context}s
-const_eval_for_loop_into_iter_non_const =
-    cannot convert `{$ty}` into an iterator in {const_eval_const_context}s
-
 const_eval_frame_note = {$times ->
     [0] {const_eval_frame_note_inner}
     *[other] [... {$times} additional calls {const_eval_frame_note_inner} ...]
@@ -132,17 +119,16 @@ const_eval_incompatible_return_types =
 const_eval_incompatible_types =
     calling a function with argument of type {$callee_ty} passing data of type {$caller_ty}
 
-const_eval_interior_mutability_borrow =
-    cannot borrow here, since the borrowed element may contain interior mutability
-
-const_eval_interior_mutable_data_refer =
+const_eval_interior_mutable_ref_escaping =
     {const_eval_const_context}s cannot refer to interior mutable data
     .label = this borrow of an interior mutable value may end up in the final value
     .help = to fix this, the value can be extracted to a separate `static` item and then referenced
     .teach_note =
-        A constant containing interior mutable data behind a reference can allow you to modify that data.
-        This would make multiple uses of a constant to be able to see different values and allow circumventing
-        the `Send` and `Sync` requirements for shared mutable data, which is unsound.
+        References that escape into the final value of a constant or static must be immutable.
+        This is to avoid accidentally creating shared mutable state.
+
+
+        If you really want global mutable state, try using an interior mutable `static` or a `static mut`.
 
 const_eval_intern_kind = {$kind ->
     [static] static
@@ -199,7 +185,10 @@ const_eval_invalid_vtable_pointer =
     using {$pointer} as vtable pointer but it does not point to a vtable
 
 const_eval_invalid_vtable_trait =
-    using vtable for trait `{$vtable_trait}` but trait `{$expected_trait}` was expected
+    using vtable for `{$vtable_dyn_type}` but `{$expected_dyn_type}` was expected
+
+const_eval_lazy_lock =
+    consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
 
 const_eval_live_drop =
     destructor of `{$dropped_ty}` cannot be evaluated at compile-time
@@ -213,9 +202,6 @@ const_eval_long_running =
     .label = the const evaluator is currently interpreting this expression
     .help = the constant being evaluated
 
-const_eval_match_eq_non_const = cannot match on `{$ty}` in {const_eval_const_context}s
-    .note = `{$ty}` cannot be compared in compile-time, and therefore cannot be used in `match`es
-
 const_eval_max_num_nodes_in_const = maximum number of nodes exceeded in constant {$global_const_id}
 
 const_eval_memory_access_test = memory access failed
@@ -225,20 +211,67 @@ const_eval_memory_exhausted =
 const_eval_modified_global =
     modifying a static's initial value from another static's initializer
 
-const_eval_mut_deref =
-    mutation through a reference is not allowed in {const_eval_const_context}s
-
 const_eval_mutable_ptr_in_final = encountered mutable pointer in final value of {const_eval_intern_kind}
 
+const_eval_mutable_raw_escaping =
+    raw mutable pointers are not allowed in the final value of {const_eval_const_context}s
+    .teach_note =
+        Pointers that escape into the final value of a constant or static must be immutable.
+        This is to avoid accidentally creating shared mutable state.
+
+
+        If you really want global mutable state, try using an interior mutable `static` or a `static mut`.
+
+const_eval_mutable_ref_escaping =
+    mutable references are not allowed in the final value of {const_eval_const_context}s
+    .teach_note =
+        References that escape into the final value of a constant or static must be immutable.
+        This is to avoid accidentally creating shared mutable state.
+
+
+        If you really want global mutable state, try using an interior mutable `static` or a `static mut`.
+
 const_eval_nested_static_in_thread_local = #[thread_local] does not support implicit nested statics, please create explicit static items and refer to them instead
+
+const_eval_non_const_await =
+    cannot convert `{$ty}` into a future in {const_eval_const_context}s
+
+const_eval_non_const_closure =
+    cannot call {$non_or_conditionally}-const closure in {const_eval_const_context}s
+
+const_eval_non_const_deref_coercion =
+    cannot perform {$non_or_conditionally}-const deref coercion on `{$ty}` in {const_eval_const_context}s
+    .note = attempting to deref into `{$target_ty}`
+    .target_note = deref defined here
+
 const_eval_non_const_fmt_macro_call =
-    cannot call non-const formatting macro in {const_eval_const_context}s
+    cannot call {$non_or_conditionally}-const formatting macro in {const_eval_const_context}s
 
 const_eval_non_const_fn_call =
-    cannot call non-const fn `{$def_path_str}` in {const_eval_const_context}s
+    cannot call {$non_or_conditionally}-const {$def_descr} `{$def_path_str}` in {const_eval_const_context}s
+
+const_eval_non_const_for_loop_into_iter =
+    cannot use `for` loop on `{$ty}` in {const_eval_const_context}s
 
 const_eval_non_const_impl =
     impl defined here, but it is not `const`
+
+const_eval_non_const_intrinsic =
+    cannot call non-const intrinsic `{$name}` in {const_eval_const_context}s
+
+const_eval_non_const_match_eq = cannot match on `{$ty}` in {const_eval_const_context}s
+    .note = `{$ty}` cannot be compared in compile-time, and therefore cannot be used in `match`es
+
+const_eval_non_const_operator =
+    cannot call {$non_or_conditionally}-const operator in {const_eval_const_context}s
+
+const_eval_non_const_question_branch =
+    `?` is not allowed on `{$ty}` in {const_eval_const_context}s
+const_eval_non_const_question_from_residual =
+    `?` is not allowed on `{$ty}` in {const_eval_const_context}s
+
+const_eval_non_const_try_block_from_output =
+    `try` block cannot convert `{$ty}` to the result in {const_eval_const_context}s
 
 const_eval_not_enough_caller_args =
     calling a function with fewer arguments than it requires
@@ -260,8 +293,6 @@ const_eval_offset_from_unsigned_overflow =
         *[false] offset
     } than second: {$a_offset} < {$b_offset}
 
-const_eval_operator_non_const =
-    cannot call non-const operator in {const_eval_const_context}s
 const_eval_overflow_arith =
     arithmetic overflow in `{$intrinsic}`
 const_eval_overflow_shift =
@@ -303,11 +334,6 @@ const_eval_ptr_as_bytes_1 =
     this code performed an operation that depends on the underlying bytes representing a pointer
 const_eval_ptr_as_bytes_2 =
     the absolute address of a pointer is not known at compile-time, so such operations are not supported
-const_eval_question_branch_non_const =
-    `?` cannot determine the branch of `{$ty}` in {const_eval_const_context}s
-
-const_eval_question_from_residual_non_const =
-    `?` cannot convert from residual of `{$ty}` in {const_eval_const_context}s
 
 const_eval_range = in the range {$lo}..={$hi}
 const_eval_range_lower = greater or equal to {$lo}
@@ -358,63 +384,47 @@ const_eval_too_generic =
 const_eval_too_many_caller_args =
     calling a function with more arguments than it expected
 
-const_eval_transient_mut_borrow = mutable references are not allowed in {const_eval_const_context}s
-
-const_eval_transient_mut_raw = raw mutable pointers are not allowed in {const_eval_const_context}s
-
-const_eval_try_block_from_output_non_const =
-    `try` block cannot convert `{$ty}` to the result in {const_eval_const_context}s
 const_eval_unallowed_fn_pointer_call = function pointer calls are not allowed in {const_eval_const_context}s
 
 const_eval_unallowed_heap_allocations =
     allocations are not allowed in {const_eval_const_context}s
     .label = allocation not allowed in {const_eval_const_context}s
-    .teach_note = The value of statics and constants must be known at compile time, and they live for the entire lifetime of a program. Creating a boxed value allocates memory on the heap at runtime, and therefore cannot be done at compile time.
+    .teach_note =
+        The runtime heap is not yet available at compile-time, so no runtime heap allocations can be created.
 
 const_eval_unallowed_inline_asm =
     inline assembly is not allowed in {const_eval_const_context}s
-const_eval_unallowed_mutable_raw =
-    raw mutable pointers are not allowed in the final value of {const_eval_const_context}s
-    .teach_note =
-        References in statics and constants may only refer to immutable values.
-
-
-        Statics are shared everywhere, and if they refer to mutable data one might violate memory
-        safety since holding multiple mutable references to shared data is not allowed.
-
-
-        If you really want global mutable state, try using static mut or a global UnsafeCell.
-
-const_eval_unallowed_mutable_refs =
-    mutable references are not allowed in the final value of {const_eval_const_context}s
-    .teach_note =
-        Statics are shared everywhere, and if they refer to mutable data one might violate memory
-        safety since holding multiple mutable references to shared data is not allowed.
-
-
-        If you really want global mutable state, try using static mut or a global UnsafeCell.
 
 const_eval_unallowed_op_in_const_context =
     {$msg}
-
-const_eval_unavailable_target_features_for_fn =
-    calling a function that requires unavailable target features: {$unavailable_feats}
 
 const_eval_uninhabited_enum_variant_read =
     read discriminant of an uninhabited enum variant
 const_eval_uninhabited_enum_variant_written =
     writing discriminant of an uninhabited enum variant
+
+const_eval_unmarked_const_fn_exposed = `{$def_path}` cannot be (indirectly) exposed to stable
+    .help = either mark the callee as `#[rustc_const_stable_indirect]`, or the caller as `#[rustc_const_unstable]`
+const_eval_unmarked_intrinsic_exposed = intrinsic `{$def_path}` cannot be (indirectly) exposed to stable
+    .help = mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_intrinsic_const_stable_indirect]` (but this requires team approval)
+
 const_eval_unreachable = entering unreachable code
 const_eval_unreachable_unwind =
     unwinding past a stack frame that does not allow unwinding
 
 const_eval_unsized_local = unsized locals are not supported
 const_eval_unstable_const_fn = `{$def_path}` is not yet stable as a const fn
+const_eval_unstable_in_stable_exposed =
+    const function that might be (indirectly) exposed to stable cannot use `#[feature({$gate})]`
+    .is_function_call = mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+    .unstable_sugg = if the {$is_function_call2 ->
+            [true] caller
+            *[false] function
+        } is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+    .bypass_sugg = otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
 
-const_eval_unstable_in_stable =
-    const-stable function cannot use `#[feature({$gate})]`
-    .unstable_sugg = if it is not part of the public API, make this function unstably const
-    .bypass_sugg = otherwise `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks
+const_eval_unstable_intrinsic = `{$name}` is not yet stable as a const intrinsic
+const_eval_unstable_intrinsic_suggestion = add `#![feature({$feature})]` to the crate attributes to enable
 
 const_eval_unterminated_c_string =
     reading a null-terminated string starting at {$pointer} with no null found before end of allocation
@@ -467,7 +477,7 @@ const_eval_validation_invalid_fn_ptr = {$front_matter}: encountered {$value}, bu
 const_eval_validation_invalid_ref_meta = {$front_matter}: encountered invalid reference metadata: total size is bigger than largest supported object
 const_eval_validation_invalid_ref_slice_meta = {$front_matter}: encountered invalid reference metadata: slice is bigger than largest supported object
 const_eval_validation_invalid_vtable_ptr = {$front_matter}: encountered {$value}, but expected a vtable pointer
-const_eval_validation_invalid_vtable_trait = {$front_matter}: wrong trait in wide pointer vtable: expected `{$ref_trait}`, but encountered `{$vtable_trait}`
+const_eval_validation_invalid_vtable_trait = {$front_matter}: wrong trait in wide pointer vtable: expected `{$expected_dyn_type}`, but encountered `{$vtable_dyn_type}`
 const_eval_validation_mutable_ref_to_immutable = {$front_matter}: encountered mutable reference or box pointing to read-only memory
 const_eval_validation_never_val = {$front_matter}: encountered a value of the never type `!`
 const_eval_validation_null_box = {$front_matter}: encountered a null box

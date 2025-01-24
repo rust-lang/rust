@@ -520,6 +520,7 @@ use crate::{convert, fmt, hint};
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
 /// See the [module documentation](self) for details.
+#[doc(search_unbox)]
 #[derive(Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[must_use = "this `Result` may be an `Err` variant, which should be handled"]
 #[rustc_diagnostic_item = "Result"]
@@ -653,6 +654,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "result_ok_method")]
     pub fn ok(self) -> Option<T> {
         match self {
             Ok(x) => Some(x),
@@ -733,7 +735,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    #[rustc_const_stable(feature = "const_result", since = "1.83.0")]
     pub const fn as_mut(&mut self) -> Result<&mut T, &mut E> {
         match *self {
             Ok(ref mut x) => Ok(x),
@@ -1063,10 +1065,15 @@ impl<T, E> Result<T, E> {
     /// Returns the contained [`Ok`] value, consuming the `self` value.
     ///
     /// Because this function may panic, its use is generally discouraged.
-    /// Instead, prefer to use pattern matching and handle the [`Err`]
-    /// case explicitly, or call [`unwrap_or`], [`unwrap_or_else`], or
-    /// [`unwrap_or_default`].
+    /// Panics are meant for unrecoverable errors, and
+    /// [may abort the entire program][panic-abort].
     ///
+    /// Instead, prefer to use [the `?` (try) operator][try-operator], or pattern matching
+    /// to handle the [`Err`] case explicitly, or call [`unwrap_or`],
+    /// [`unwrap_or_else`], or [`unwrap_or_default`].
+    ///
+    /// [panic-abort]: https://doc.rust-lang.org/book/ch09-01-unrecoverable-errors-with-panic.html
+    /// [try-operator]: https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html#a-shortcut-for-propagating-errors-the--operator
     /// [`unwrap_or`]: Result::unwrap_or
     /// [`unwrap_or_else`]: Result::unwrap_or_else
     /// [`unwrap_or_default`]: Result::unwrap_or_default
@@ -1481,7 +1488,6 @@ impl<T, E> Result<T, E> {
     #[track_caller]
     #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
     pub unsafe fn unwrap_unchecked(self) -> T {
-        debug_assert!(self.is_ok());
         match self {
             Ok(t) => t,
             // SAFETY: the safety contract must be upheld by the caller.
@@ -1513,7 +1519,6 @@ impl<T, E> Result<T, E> {
     #[track_caller]
     #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
     pub unsafe fn unwrap_err_unchecked(self) -> E {
-        debug_assert!(self.is_err());
         match self {
             // SAFETY: the safety contract must be upheld by the caller.
             Ok(_) => unsafe { hint::unreachable_unchecked() },
@@ -1537,11 +1542,18 @@ impl<T, E> Result<&T, E> {
     /// ```
     #[inline]
     #[stable(feature = "result_copied", since = "1.59.0")]
-    pub fn copied(self) -> Result<T, E>
+    #[rustc_const_stable(feature = "const_result", since = "1.83.0")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    pub const fn copied(self) -> Result<T, E>
     where
         T: Copy,
     {
-        self.map(|&t| t)
+        // FIXME(const-hack): this implementation, which sidesteps using `Result::map` since it's not const
+        // ready yet, should be reverted when possible to avoid code repetition
+        match self {
+            Ok(&v) => Ok(v),
+            Err(e) => Err(e),
+        }
     }
 
     /// Maps a `Result<&T, E>` to a `Result<T, E>` by cloning the contents of the
@@ -1581,11 +1593,18 @@ impl<T, E> Result<&mut T, E> {
     /// ```
     #[inline]
     #[stable(feature = "result_copied", since = "1.59.0")]
-    pub fn copied(self) -> Result<T, E>
+    #[rustc_const_stable(feature = "const_result", since = "1.83.0")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    pub const fn copied(self) -> Result<T, E>
     where
         T: Copy,
     {
-        self.map(|&mut t| t)
+        // FIXME(const-hack): this implementation, which sidesteps using `Result::map` since it's not const
+        // ready yet, should be reverted when possible to avoid code repetition
+        match self {
+            Ok(&mut v) => Ok(v),
+            Err(e) => Err(e),
+        }
     }
 
     /// Maps a `Result<&mut T, E>` to a `Result<T, E>` by cloning the contents of the
@@ -1628,7 +1647,8 @@ impl<T, E> Result<Option<T>, E> {
     /// ```
     #[inline]
     #[stable(feature = "transpose_result", since = "1.33.0")]
-    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    #[rustc_const_stable(feature = "const_result", since = "1.83.0")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn transpose(self) -> Option<Result<T, E>> {
         match self {
             Ok(Some(x)) => Some(Ok(x)),
@@ -1665,8 +1685,13 @@ impl<T, E> Result<Result<T, E>, E> {
     /// ```
     #[inline]
     #[unstable(feature = "result_flattening", issue = "70142")]
-    pub fn flatten(self) -> Result<T, E> {
-        self.and_then(convert::identity)
+    #[rustc_const_unstable(feature = "result_flattening", issue = "70142")]
+    pub const fn flatten(self) -> Result<T, E> {
+        // FIXME(const-hack): could be written with `and_then`
+        match self {
+            Ok(inner) => inner,
+            Err(e) => Err(e),
+        }
     }
 }
 

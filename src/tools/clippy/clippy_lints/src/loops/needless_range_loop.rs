@@ -1,18 +1,19 @@
 use super::NEEDLESS_RANGE_LOOP;
-use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::has_iter_method;
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{contains_name, higher, is_integer_const, sugg, SpanlessEq};
+use clippy_utils::{SpanlessEq, contains_name, higher, is_integer_const, sugg};
 use rustc_ast::ast;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BinOpKind, BorrowKind, Closure, Expr, ExprKind, HirId, Mutability, Pat, PatKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::middle::region;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{Symbol, sym};
 use std::{iter, mem};
 
 /// Checks for looping over a range and then indexing a sequence with it.
@@ -38,7 +39,7 @@ pub(super) fn check<'tcx>(
                 var: canonical_id,
                 indexed_mut: FxHashSet::default(),
                 indexed_indirectly: FxHashMap::default(),
-                indexed_directly: FxHashMap::default(),
+                indexed_directly: FxIndexMap::default(),
                 referenced: FxHashSet::default(),
                 nonindex: false,
                 prefer_mutable: false,
@@ -145,8 +146,7 @@ pub(super) fn check<'tcx>(
                         arg.span,
                         format!("the loop variable `{}` is used to index `{indexed}`", ident.name),
                         |diag| {
-                            multispan_sugg(
-                                diag,
+                            diag.multipart_suggestion(
                                 "consider using an iterator and enumerate()",
                                 vec![
                                     (pat.span, format!("({}, <item>)", ident.name)),
@@ -155,6 +155,7 @@ pub(super) fn check<'tcx>(
                                         format!("{indexed}.{method}().enumerate(){method_1}{method_2}"),
                                     ),
                                 ],
+                                Applicability::HasPlaceholders,
                             );
                         },
                     );
@@ -171,10 +172,10 @@ pub(super) fn check<'tcx>(
                         arg.span,
                         format!("the loop variable `{}` is only used to index `{indexed}`", ident.name),
                         |diag| {
-                            multispan_sugg(
-                                diag,
+                            diag.multipart_suggestion(
                                 "consider using an iterator",
                                 vec![(pat.span, "<item>".to_string()), (arg.span, repl)],
+                                Applicability::HasPlaceholders,
                             );
                         },
                     );
@@ -206,7 +207,7 @@ fn is_end_eq_array_len<'tcx>(
     if let ExprKind::Lit(lit) = end.kind
         && let ast::LitKind::Int(end_int, _) = lit.node
         && let ty::Array(_, arr_len_const) = indexed_ty.kind()
-        && let Some(arr_len) = arr_len_const.try_eval_target_usize(cx.tcx, cx.param_env)
+        && let Some(arr_len) = arr_len_const.try_to_target_usize(cx.tcx)
     {
         return match limits {
             ast::RangeLimits::Closed => end_int.get() + 1 >= arr_len.into(),
@@ -228,7 +229,7 @@ struct VarVisitor<'a, 'tcx> {
     indexed_indirectly: FxHashMap<Symbol, Option<region::Scope>>,
     /// subset of `indexed` of vars that are indexed directly: `v[i]`
     /// this will not contain cases like `v[calc_index(i)]` or `v[(i + 4) % N]`
-    indexed_directly: FxHashMap<Symbol, (Option<region::Scope>, Ty<'tcx>)>,
+    indexed_directly: FxIndexMap<Symbol, (Option<region::Scope>, Ty<'tcx>)>,
     /// Any names that are used outside an index operation.
     /// Used to detect things like `&mut vec` used together with `vec[i]`
     referenced: FxHashSet<Symbol>,
@@ -240,7 +241,7 @@ struct VarVisitor<'a, 'tcx> {
     prefer_mutable: bool,
 }
 
-impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
+impl<'tcx> VarVisitor<'_, 'tcx> {
     fn check(&mut self, idx: &'tcx Expr<'_>, seqexpr: &'tcx Expr<'_>, expr: &'tcx Expr<'_>) -> bool {
         if let ExprKind::Path(ref seqpath) = seqexpr.kind
             // the indexed container is referenced by a name
@@ -291,7 +292,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for VarVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if let ExprKind::MethodCall(meth, args_0, [args_1, ..], _) = &expr.kind
             // a range index op

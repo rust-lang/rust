@@ -4,11 +4,6 @@ error[E0391]: cycle detected when computing predicates of `user`
 LL | fn user<T>() where S<T>::P: std::fmt::Debug {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: ...which requires computing predicates of `user`...
-  --> $DIR/cycle-iat-inside-of-where-predicate.rs:8:1
-   |
-LL | fn user<T>() where S<T>::P: std::fmt::Debug {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires computing explicit predicates of `user`...
   --> $DIR/cycle-iat-inside-of-where-predicate.rs:8:1
    |

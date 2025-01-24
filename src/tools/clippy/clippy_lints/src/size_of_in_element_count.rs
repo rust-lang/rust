@@ -1,6 +1,3 @@
-//! Lint on use of `size_of` or `size_of_val` of T in an expression
-//! expecting a count of T
-
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -37,7 +34,7 @@ declare_lint_pass!(SizeOfInElementCount => [SIZE_OF_IN_ELEMENT_COUNT]);
 
 fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, inverted: bool) -> Option<Ty<'tcx>> {
     match expr.kind {
-        ExprKind::Call(count_func, _func_args) => {
+        ExprKind::Call(count_func, _) => {
             if !inverted
                 && let ExprKind::Path(ref count_func_qpath) = count_func.kind
                 && let Some(def_id) = cx.qpath_res(count_func_qpath, count_func.hir_id).opt_def_id()

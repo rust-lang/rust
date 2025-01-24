@@ -3,8 +3,8 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::{env as std_env, fs};
 
-use boml::types::TomlValue;
 use boml::Toml;
+use boml::types::TomlValue;
 
 use crate::utils::{
     create_dir, create_symlink, get_os_name, get_sysroot_dir, run_command_with_output,
@@ -98,7 +98,7 @@ impl ConfigFile {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct ConfigInfo {
     pub target: String,
     pub target_triple: String,
@@ -123,6 +123,7 @@ pub struct ConfigInfo {
     pub no_download: bool,
     pub no_default_features: bool,
     pub backend: Option<String>,
+    pub features: Vec<String>,
 }
 
 impl ConfigInfo {
@@ -133,6 +134,13 @@ impl ConfigInfo {
         args: &mut impl Iterator<Item = String>,
     ) -> Result<bool, String> {
         match arg {
+            "--features" => {
+                if let Some(arg) = args.next() {
+                    self.features.push(arg);
+                } else {
+                    return Err("Expected a value after `--features`, found nothing".to_string());
+                }
+            }
             "--target" => {
                 if let Some(arg) = args.next() {
                     self.target = arg;
@@ -443,6 +451,7 @@ impl ConfigInfo {
     pub fn show_usage() {
         println!(
             "\
+    --features [arg]       : Add a new feature [arg]
     --target-triple [arg]  : Set the target triple to [arg]
     --target [arg]         : Set the target to [arg]
     --out-dir              : Location where the files will be generated

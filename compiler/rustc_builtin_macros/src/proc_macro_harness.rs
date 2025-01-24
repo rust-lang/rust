@@ -2,19 +2,18 @@ use std::mem;
 
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
-use rustc_ast::{self as ast, attr, NodeId};
+use rustc_ast::{self as ast, NodeId, attr};
 use rustc_ast_pretty::pprust;
 use rustc_errors::DiagCtxtHandle;
-use rustc_expand::base::{parse_macro_name_and_helper_attrs, ExtCtxt, ResolverExpand};
+use rustc_expand::base::{ExtCtxt, ResolverExpand, parse_macro_name_and_helper_attrs};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
 use rustc_session::Session;
 use rustc_span::hygiene::AstPass;
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::smallvec;
-use thin_vec::{thin_vec, ThinVec};
+use thin_vec::{ThinVec, thin_vec};
 
 use crate::errors;
 
@@ -302,16 +301,21 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
             };
             let local_path = |cx: &ExtCtxt<'_>, name| cx.expr_path(cx.path(span, vec![name]));
             let proc_macro_ty_method_path = |cx: &ExtCtxt<'_>, method| {
-                cx.expr_path(cx.path(
-                    span.with_ctxt(harness_span.ctxt()),
-                    vec![proc_macro, bridge, client, proc_macro_ty, method],
-                ))
+                cx.expr_path(cx.path(span.with_ctxt(harness_span.ctxt()), vec![
+                    proc_macro,
+                    bridge,
+                    client,
+                    proc_macro_ty,
+                    method,
+                ]))
             };
             match m {
                 ProcMacro::Derive(cd) => {
                     cx.resolver.declare_proc_macro(cd.id);
+                    // The call needs to use `harness_span` so that the const stability checker
+                    // accepts it.
                     cx.expr_call(
-                        span,
+                        harness_span,
                         proc_macro_ty_method_path(cx, custom_derive),
                         thin_vec![
                             cx.expr_str(span, cd.trait_name),
@@ -334,14 +338,12 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
                         ProcMacro::Derive(_) => unreachable!(),
                     };
 
-                    cx.expr_call(
-                        span,
-                        proc_macro_ty_method_path(cx, ident),
-                        thin_vec![
-                            cx.expr_str(span, ca.function_name.name),
-                            local_path(cx, ca.function_name),
-                        ],
-                    )
+                    // The call needs to use `harness_span` so that the const stability checker
+                    // accepts it.
+                    cx.expr_call(harness_span, proc_macro_ty_method_path(cx, ident), thin_vec![
+                        cx.expr_str(span, ca.function_name.name),
+                        local_path(cx, ca.function_name),
+                    ])
                 }
             }
         })
@@ -355,9 +357,12 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
                 span,
                 cx.ty(
                     span,
-                    ast::TyKind::Slice(
-                        cx.ty_path(cx.path(span, vec![proc_macro, bridge, client, proc_macro_ty])),
-                    ),
+                    ast::TyKind::Slice(cx.ty_path(cx.path(span, vec![
+                        proc_macro,
+                        bridge,
+                        client,
+                        proc_macro_ty,
+                    ]))),
                 ),
                 None,
                 ast::Mutability::Not,

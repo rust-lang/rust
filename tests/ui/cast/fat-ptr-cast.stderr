@@ -44,7 +44,7 @@ LL |     p as usize;
    |
    = help: cast through a thin pointer first
 
-error[E0607]: cannot cast thin pointer `*const i32` to fat pointer `*const [i32]`
+error[E0607]: cannot cast thin pointer `*const i32` to wide pointer `*const [i32]`
   --> $DIR/fat-ptr-cast.rs:19:5
    |
 LL |     q as *const [i32];

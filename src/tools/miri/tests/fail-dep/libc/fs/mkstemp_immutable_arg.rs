@@ -1,4 +1,4 @@
-//@ignore-target-windows: No mkstemp on Windows
+//@ignore-target: windows # No mkstemp on Windows
 //@compile-flags: -Zmiri-disable-isolation
 
 fn main() {

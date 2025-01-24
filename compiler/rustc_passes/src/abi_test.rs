@@ -1,18 +1,18 @@
-use rustc_ast::Attribute;
+use rustc_hir::Attribute;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{FnAbiError, LayoutError};
 use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TyCtxt};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 use rustc_target::abi::call::FnAbi;
 
 use super::layout_test::ensure_wf;
 use crate::errors::{AbiInvalidAttribute, AbiNe, AbiOf, UnrecognizedField};
 
 pub fn test_abi(tcx: TyCtxt<'_>) {
-    if !tcx.features().rustc_attrs {
+    if !tcx.features().rustc_attrs() {
         // if the `rustc_attrs` feature is not enabled, don't bother testing ABI
         return;
     }
@@ -59,9 +59,9 @@ fn unwrap_fn_abi<'tcx>(
 }
 
 fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
-    let param_env = tcx.param_env(item_def_id);
+    let typing_env = ty::TypingEnv::post_analysis(tcx, item_def_id);
     let args = GenericArgs::identity_for_item(tcx, item_def_id);
-    let instance = match Instance::try_resolve(tcx, param_env, item_def_id.into(), args) {
+    let instance = match Instance::try_resolve(tcx, typing_env, item_def_id.into(), args) {
         Ok(Some(instance)) => instance,
         Ok(None) => {
             // Not sure what to do here, but `LayoutError::Unknown` seems reasonable?
@@ -75,7 +75,9 @@ fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
         Err(_guaranteed) => return,
     };
     let abi = unwrap_fn_abi(
-        tcx.fn_abi_of_instance(param_env.and((instance, /* extra_args */ ty::List::empty()))),
+        tcx.fn_abi_of_instance(
+            typing_env.as_query_input((instance, /* extra_args */ ty::List::empty())),
+        ),
         tcx,
         item_def_id,
     );
@@ -117,24 +119,27 @@ fn test_abi_eq<'tcx>(abi1: &'tcx FnAbi<'tcx, Ty<'tcx>>, abi2: &'tcx FnAbi<'tcx, 
 }
 
 fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
-    let param_env = tcx.param_env(item_def_id);
+    let typing_env = ty::TypingEnv::post_analysis(tcx, item_def_id);
     let ty = tcx.type_of(item_def_id).instantiate_identity();
     let span = tcx.def_span(item_def_id);
-    if !ensure_wf(tcx, param_env, ty, item_def_id, span) {
+    if !ensure_wf(tcx, typing_env, ty, item_def_id, span) {
         return;
     }
     let meta_items = attr.meta_item_list().unwrap_or_default();
     for meta_item in meta_items {
         match meta_item.name_or_empty() {
             sym::debug => {
-                let ty::FnPtr(sig) = ty.kind() else {
+                let ty::FnPtr(sig_tys, hdr) = ty.kind() else {
                     span_bug!(
                         meta_item.span(),
                         "`#[rustc_abi(debug)]` on a type alias requires function pointer type"
                     );
                 };
                 let abi = unwrap_fn_abi(
-                    tcx.fn_abi_of_fn_ptr(param_env.and((*sig, /* extra_args */ ty::List::empty()))),
+                    tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((
+                        sig_tys.with(*hdr),
+                        /* extra_args */ ty::List::empty(),
+                    ))),
                     tcx,
                     item_def_id,
                 );
@@ -155,29 +160,31 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
                         "`#[rustc_abi(assert_eq)]` on a type alias requires pair type"
                     );
                 };
-                let ty::FnPtr(sig1) = field1.kind() else {
+                let ty::FnPtr(sig_tys1, hdr1) = field1.kind() else {
                     span_bug!(
                         meta_item.span(),
                         "`#[rustc_abi(assert_eq)]` on a type alias requires pair of function pointer types"
                     );
                 };
                 let abi1 = unwrap_fn_abi(
-                    tcx.fn_abi_of_fn_ptr(
-                        param_env.and((*sig1, /* extra_args */ ty::List::empty())),
-                    ),
+                    tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((
+                        sig_tys1.with(*hdr1),
+                        /* extra_args */ ty::List::empty(),
+                    ))),
                     tcx,
                     item_def_id,
                 );
-                let ty::FnPtr(sig2) = field2.kind() else {
+                let ty::FnPtr(sig_tys2, hdr2) = field2.kind() else {
                     span_bug!(
                         meta_item.span(),
                         "`#[rustc_abi(assert_eq)]` on a type alias requires pair of function pointer types"
                     );
                 };
                 let abi2 = unwrap_fn_abi(
-                    tcx.fn_abi_of_fn_ptr(
-                        param_env.and((*sig2, /* extra_args */ ty::List::empty())),
-                    ),
+                    tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((
+                        sig_tys2.with(*hdr2),
+                        /* extra_args */ ty::List::empty(),
+                    ))),
                     tcx,
                     item_def_id,
                 );

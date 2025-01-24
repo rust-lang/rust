@@ -7,10 +7,7 @@ LL |     fn next(&'a mut self) -> Option<Self::Item>
    = note: expected signature `fn(&mut RepeatMut<'_, _>) -> Option<_>`
               found signature `fn(&'a mut RepeatMut<'_, _>) -> Option<_>`
 note: the anonymous lifetime as defined here...
-  --> $DIR/issue-37884.rs:6:5
-   |
-LL |     fn next(&'a mut self) -> Option<Self::Item>
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 note: ...does not necessarily outlive the lifetime `'a` as defined here
   --> $DIR/issue-37884.rs:3:6
    |

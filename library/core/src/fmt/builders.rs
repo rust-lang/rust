@@ -78,7 +78,7 @@ impl fmt::Write for PadAdapter<'_, '_> {
 ///
 /// assert_eq!(
 ///     format!("{:?}", Foo { bar: 10, baz: "Hello World".to_string() }),
-///     "Foo { bar: 10, baz: \"Hello World\" }",
+///     r#"Foo { bar: 10, baz: "Hello World" }"#,
 /// );
 /// ```
 #[must_use = "must eventually call `finish()` on Debug builders"]
@@ -125,7 +125,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Bar { bar: 10, another: "Hello World".to_string() }),
-    ///     "Bar { bar: 10, another: \"Hello World\", nonexistent_field: 1 }",
+    ///     r#"Bar { bar: 10, another: "Hello World", nonexistent_field: 1 }"#,
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -237,7 +237,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Bar { bar: 10, baz: "Hello World".to_string() }),
-    ///     "Bar { bar: 10, baz: \"Hello World\" }",
+    ///     r#"Bar { bar: 10, baz: "Hello World" }"#,
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -280,7 +280,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
 ///
 /// assert_eq!(
 ///     format!("{:?}", Foo(10, "Hello World".to_string())),
-///     "Foo(10, \"Hello World\")",
+///     r#"Foo(10, "Hello World")"#,
 /// );
 /// ```
 #[must_use = "must eventually call `finish()` on Debug builders"]
@@ -322,7 +322,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Foo(10, "Hello World".to_string())),
-    ///     "Foo(10, \"Hello World\")",
+    ///     r#"Foo(10, "Hello World")"#,
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -360,6 +360,49 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
         self
     }
 
+    /// Marks the tuple struct as non-exhaustive, indicating to the reader that there are some
+    /// other fields that are not shown in the debug representation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(i32, String);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_tuple("Foo")
+    ///            .field(&self.0)
+    ///            .finish_non_exhaustive() // Show that some other field(s) exist.
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(10, "secret!".to_owned())),
+    ///     "Foo(10, ..)",
+    /// );
+    /// ```
+    #[stable(feature = "debug_more_non_exhaustive", since = "1.83.0")]
+    pub fn finish_non_exhaustive(&mut self) -> fmt::Result {
+        self.result = self.result.and_then(|_| {
+            if self.fields > 0 {
+                if self.is_pretty() {
+                    let mut slot = None;
+                    let mut state = Default::default();
+                    let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut state);
+                    writer.write_str("..\n")?;
+                    self.fmt.write_str(")")
+                } else {
+                    self.fmt.write_str(", ..)")
+                }
+            } else {
+                self.fmt.write_str("(..)")
+            }
+        });
+        self.result
+    }
+
     /// Finishes output and returns any error encountered.
     ///
     /// # Examples
@@ -381,7 +424,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Foo(10, "Hello World".to_string())),
-    ///     "Foo(10, \"Hello World\")",
+    ///     r#"Foo(10, "Hello World")"#,
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -555,6 +598,54 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
         self
     }
 
+    /// Marks the set as non-exhaustive, indicating to the reader that there are some other
+    /// elements that are not shown in the debug representation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<i32>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         // Print at most two elements, abbreviate the rest
+    ///         let mut f = fmt.debug_set();
+    ///         let mut f = f.entries(self.0.iter().take(2));
+    ///         if self.0.len() > 2 {
+    ///             f.finish_non_exhaustive()
+    ///         } else {
+    ///             f.finish()
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![1, 2, 3, 4])),
+    ///     "{1, 2, ..}",
+    /// );
+    /// ```
+    #[stable(feature = "debug_more_non_exhaustive", since = "1.83.0")]
+    pub fn finish_non_exhaustive(&mut self) -> fmt::Result {
+        self.inner.result = self.inner.result.and_then(|_| {
+            if self.inner.has_fields {
+                if self.inner.is_pretty() {
+                    let mut slot = None;
+                    let mut state = Default::default();
+                    let mut writer = PadAdapter::wrap(self.inner.fmt, &mut slot, &mut state);
+                    writer.write_str("..\n")?;
+                    self.inner.fmt.write_str("}")
+                } else {
+                    self.inner.fmt.write_str(", ..}")
+                }
+            } else {
+                self.inner.fmt.write_str("..}")
+            }
+        });
+        self.inner.result
+    }
+
     /// Finishes output and returns any error encountered.
     ///
     /// # Examples
@@ -699,6 +790,53 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
         self
     }
 
+    /// Marks the list as non-exhaustive, indicating to the reader that there are some other
+    /// elements that are not shown in the debug representation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<i32>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         // Print at most two elements, abbreviate the rest
+    ///         let mut f = fmt.debug_list();
+    ///         let mut f = f.entries(self.0.iter().take(2));
+    ///         if self.0.len() > 2 {
+    ///             f.finish_non_exhaustive()
+    ///         } else {
+    ///             f.finish()
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![1, 2, 3, 4])),
+    ///     "[1, 2, ..]",
+    /// );
+    /// ```
+    #[stable(feature = "debug_more_non_exhaustive", since = "1.83.0")]
+    pub fn finish_non_exhaustive(&mut self) -> fmt::Result {
+        self.inner.result.and_then(|_| {
+            if self.inner.has_fields {
+                if self.inner.is_pretty() {
+                    let mut slot = None;
+                    let mut state = Default::default();
+                    let mut writer = PadAdapter::wrap(self.inner.fmt, &mut slot, &mut state);
+                    writer.write_str("..\n")?;
+                    self.inner.fmt.write_str("]")
+                } else {
+                    self.inner.fmt.write_str(", ..]")
+                }
+            } else {
+                self.inner.fmt.write_str("..]")
+            }
+        })
+    }
+
     /// Finishes output and returns any error encountered.
     ///
     /// # Examples
@@ -750,7 +888,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
 ///
 /// assert_eq!(
 ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
-///     "{\"A\": 10, \"B\": 11}",
+///     r#"{"A": 10, "B": 11}"#,
 /// );
 /// ```
 #[must_use = "must eventually call `finish()` on Debug builders"]
@@ -790,7 +928,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
-    ///     "{\"whole\": [(\"A\", 10), (\"B\", 11)]}",
+    ///     r#"{"whole": [("A", 10), ("B", 11)]}"#,
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -826,7 +964,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
-    ///     "{\"whole\": [(\"A\", 10), (\"B\", 11)]}",
+    ///     r#"{"whole": [("A", 10), ("B", 11)]}"#,
     /// );
     /// ```
     #[stable(feature = "debug_map_key_value", since = "1.42.0")]
@@ -902,7 +1040,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
-    ///     "{\"whole\": [(\"A\", 10), (\"B\", 11)]}",
+    ///     r#"{"whole": [("A", 10), ("B", 11)]}"#,
     /// );
     /// ```
     #[stable(feature = "debug_map_key_value", since = "1.42.0")]
@@ -960,7 +1098,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
-    ///     "{\"A\": 10, \"B\": 11}",
+    ///     r#"{"A": 10, "B": 11}"#,
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -974,6 +1112,60 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
             self.entry(&k, &v);
         }
         self
+    }
+
+    /// Marks the map as non-exhaustive, indicating to the reader that there are some other
+    /// entries that are not shown in the debug representation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<(String, i32)>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         // Print at most two elements, abbreviate the rest
+    ///         let mut f = fmt.debug_map();
+    ///         let mut f = f.entries(self.0.iter().take(2).map(|&(ref k, ref v)| (k, v)));
+    ///         if self.0.len() > 2 {
+    ///             f.finish_non_exhaustive()
+    ///         } else {
+    ///             f.finish()
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![
+    ///         ("A".to_string(), 10),
+    ///         ("B".to_string(), 11),
+    ///         ("C".to_string(), 12),
+    ///     ])),
+    ///     r#"{"A": 10, "B": 11, ..}"#,
+    /// );
+    /// ```
+    #[stable(feature = "debug_more_non_exhaustive", since = "1.83.0")]
+    pub fn finish_non_exhaustive(&mut self) -> fmt::Result {
+        self.result = self.result.and_then(|_| {
+            assert!(!self.has_key, "attempted to finish a map with a partial entry");
+
+            if self.has_fields {
+                if self.is_pretty() {
+                    let mut slot = None;
+                    let mut state = Default::default();
+                    let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut state);
+                    writer.write_str("..\n")?;
+                    self.fmt.write_str("}")
+                } else {
+                    self.fmt.write_str(", ..}")
+                }
+            } else {
+                self.fmt.write_str("..}")
+            }
+        });
+        self.result
     }
 
     /// Finishes output and returns any error encountered.
@@ -1000,7 +1192,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
-    ///     "{\"A\": 10, \"B\": 11}",
+    ///     r#"{"A": 10, "B": 11}"#,
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -1018,7 +1210,8 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     }
 }
 
-/// Implements [`fmt::Debug`] and [`fmt::Display`] using a function.
+/// Creates a type whose [`fmt::Debug`] and [`fmt::Display`] impls are provided with the function
+/// `f`.
 ///
 /// # Examples
 ///
@@ -1030,17 +1223,25 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 /// assert_eq!(format!("{}", value), "a");
 /// assert_eq!(format!("{:?}", value), "'a'");
 ///
-/// let wrapped = fmt::FormatterFn(|f| write!(f, "{value:?}"));
+/// let wrapped = fmt::from_fn(|f| write!(f, "{value:?}"));
 /// assert_eq!(format!("{}", wrapped), "'a'");
 /// assert_eq!(format!("{:?}", wrapped), "'a'");
 /// ```
 #[unstable(feature = "debug_closure_helpers", issue = "117729")]
-pub struct FormatterFn<F>(pub F)
+pub fn from_fn<F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result>(f: F) -> FromFn<F> {
+    FromFn(f)
+}
+
+/// Implements [`fmt::Debug`] and [`fmt::Display`] using a function.
+///
+/// Created with [`from_fn`].
+#[unstable(feature = "debug_closure_helpers", issue = "117729")]
+pub struct FromFn<F>(F)
 where
     F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result;
 
 #[unstable(feature = "debug_closure_helpers", issue = "117729")]
-impl<F> fmt::Debug for FormatterFn<F>
+impl<F> fmt::Debug for FromFn<F>
 where
     F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result,
 {
@@ -1050,7 +1251,7 @@ where
 }
 
 #[unstable(feature = "debug_closure_helpers", issue = "117729")]
-impl<F> fmt::Display for FormatterFn<F>
+impl<F> fmt::Display for FromFn<F>
 where
     F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result,
 {

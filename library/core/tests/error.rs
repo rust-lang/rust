@@ -1,4 +1,4 @@
-use core::error::{request_ref, request_value, Request};
+use core::error::{Request, request_ref, request_value};
 
 // Test the `Request` API.
 #[derive(Debug)]

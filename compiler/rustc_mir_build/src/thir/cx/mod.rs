@@ -5,10 +5,10 @@
 use rustc_data_structures::steal::Steal;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
+use rustc_hir::HirId;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{HirId, Node};
 use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::thir::*;
@@ -56,7 +56,7 @@ struct Cx<'tcx> {
     tcx: TyCtxt<'tcx>,
     thir: Thir<'tcx>,
 
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
 
     region_scope_tree: &'tcx region::ScopeTree,
     typeck_results: &'tcx ty::TypeckResults<'tcx>,
@@ -97,7 +97,9 @@ impl<'tcx> Cx<'tcx> {
         Cx {
             tcx,
             thir: Thir::new(body_type),
-            param_env: tcx.param_env(def),
+            // FIXME(#132279): We're in a body, we should use a typing
+            // mode which reveals the opaque types defined by that body.
+            typing_env: ty::TypingEnv::non_body_analysis(tcx, def),
             region_scope_tree: tcx.region_scope_tree(def),
             typeck_results,
             rvalue_scopes: &typeck_results.rvalue_scopes,
@@ -110,12 +112,8 @@ impl<'tcx> Cx<'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn pattern_from_hir(&mut self, p: &hir::Pat<'_>) -> Box<Pat<'tcx>> {
-        let p = match self.tcx.hir_node(p.hir_id) {
-            Node::Pat(p) => p,
-            node => bug!("pattern became {:?}", node),
-        };
-        pat_from_hir(self.tcx, self.param_env, self.typeck_results(), p)
+    fn pattern_from_hir(&mut self, p: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
+        pat_from_hir(self.tcx, self.typing_env, self.typeck_results(), p)
     }
 
     fn closure_env_param(&self, owner_def: LocalDefId, expr_id: HirId) -> Option<Param<'tcx>> {
@@ -186,9 +184,11 @@ impl<'tcx> Cx<'tcx> {
             let ty = if fn_decl.c_variadic && index == fn_decl.inputs.len() {
                 let va_list_did = self.tcx.require_lang_item(LangItem::VaList, Some(param.span));
 
-                self.tcx
-                    .type_of(va_list_did)
-                    .instantiate(self.tcx, &[self.tcx.lifetimes.re_erased.into()])
+                self.tcx.type_of(va_list_did).instantiate(self.tcx, &[self
+                    .tcx
+                    .lifetimes
+                    .re_erased
+                    .into()])
             } else {
                 fn_sig.inputs()[index]
             };

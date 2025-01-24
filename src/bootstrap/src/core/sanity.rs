@@ -8,21 +8,19 @@
 //! In theory if we get past this phase it's a bug if a build fails, but in
 //! practice that's likely not true!
 
-use std::collections::HashMap;
-#[cfg(not(feature = "bootstrap-self-test"))]
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 use std::{env, fs};
 
-#[cfg(not(feature = "bootstrap-self-test"))]
+use crate::Build;
+#[cfg(not(test))]
 use crate::builder::Builder;
 use crate::builder::Kind;
-#[cfg(not(feature = "bootstrap-self-test"))]
+#[cfg(not(test))]
 use crate::core::build_steps::tool;
 use crate::core::config::Target;
 use crate::utils::exec::command;
-use crate::Build;
 
 pub struct Finder {
     cache: HashMap<OsString, Option<PathBuf>>,
@@ -34,14 +32,13 @@ pub struct Finder {
 // it might not yet be included in stage0. In such cases, we handle the targets missing from stage0 in this list.
 //
 // Targets can be removed from this list once they are present in the stage0 compiler (usually by updating the beta compiler of the bootstrap).
-#[cfg(not(feature = "bootstrap-self-test"))]
 const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
 /// from CI (with`llvm.download-ci-llvm` option).
-#[cfg(not(feature = "bootstrap-self-test"))]
+#[cfg(not(test))]
 const LIBSTDCXX_MIN_VERSION_THRESHOLD: usize = 8;
 
 impl Finder {
@@ -109,7 +106,7 @@ pub fn check(build: &mut Build) {
     }
 
     // Ensure that a compatible version of libstdc++ is available on the system when using `llvm.download-ci-llvm`.
-    #[cfg(not(feature = "bootstrap-self-test"))]
+    #[cfg(not(test))]
     if !build.config.dry_run() && !build.build.is_msvc() && build.config.llvm_from_ci {
         let builder = Builder::new(build);
         let libcxx_version = builder.ensure(tool::LibcxxVersionTool { target: build.build });
@@ -138,19 +135,15 @@ pub fn check(build: &mut Build) {
 
     // We need cmake, but only if we're actually building LLVM or sanitizers.
     let building_llvm = !build.config.llvm_from_ci
-        && build
-            .hosts
-            .iter()
-            .map(|host| {
-                build.config.llvm_enabled(*host)
-                    && build
-                        .config
-                        .target_config
-                        .get(host)
-                        .map(|config| config.llvm_config.is_none())
-                        .unwrap_or(true)
-            })
-            .any(|build_llvm_ourselves| build_llvm_ourselves);
+        && build.hosts.iter().any(|host| {
+            build.config.llvm_enabled(*host)
+                && build
+                    .config
+                    .target_config
+                    .get(host)
+                    .map(|config| config.llvm_config.is_none())
+                    .unwrap_or(true)
+        });
 
     let need_cmake = building_llvm || build.config.any_sanitizers_to_build();
     if need_cmake && cmd_finder.maybe_have("cmake").is_none() {
@@ -205,7 +198,6 @@ than building it.
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("reuse"));
 
-    #[cfg(not(feature = "bootstrap-self-test"))]
     let stage0_supported_target_list: HashSet<String> = crate::utils::helpers::output(
         command(&build.config.initial_rustc).args(["--print", "target-list"]).as_command_mut(),
     )
@@ -234,8 +226,7 @@ than building it.
         }
 
         // Ignore fake targets that are only used for unit tests in bootstrap.
-        #[cfg(not(feature = "bootstrap-self-test"))]
-        {
+        if cfg!(not(test)) && !skip_target_sanity && !build.local_rebuild {
             let mut has_target = false;
             let target_str = target.to_string();
 
@@ -295,19 +286,19 @@ than building it.
         }
     }
 
-    for host in &build.hosts {
-        if !build.config.dry_run() {
+    if !build.config.dry_run() {
+        for host in &build.hosts {
             cmd_finder.must_have(build.cxx(*host).unwrap());
-        }
 
-        if build.config.llvm_enabled(*host) {
-            // Externally configured LLVM requires FileCheck to exist
-            let filecheck = build.llvm_filecheck(build.build);
-            if !filecheck.starts_with(&build.out)
-                && !filecheck.exists()
-                && build.config.codegen_tests
-            {
-                panic!("FileCheck executable {filecheck:?} does not exist");
+            if build.config.llvm_enabled(*host) {
+                // Externally configured LLVM requires FileCheck to exist
+                let filecheck = build.llvm_filecheck(build.build);
+                if !filecheck.starts_with(&build.out)
+                    && !filecheck.exists()
+                    && build.config.codegen_tests
+                {
+                    panic!("FileCheck executable {filecheck:?} does not exist");
+                }
             }
         }
     }
@@ -356,7 +347,8 @@ than building it.
             // There are three builds of cmake on windows: MSVC, MinGW, and
             // Cygwin. The Cygwin build does not have generators for Visual
             // Studio, so detect that here and error.
-            let out = command("cmake").arg("--help").run_capture_stdout(build).stdout();
+            let out =
+                command("cmake").arg("--help").run_always().run_capture_stdout(build).stdout();
             if !out.contains("Visual Studio") {
                 panic!(
                     "

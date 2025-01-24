@@ -3,12 +3,12 @@ error[E0493]: destructor of `helper::Foo` cannot be evaluated at compile-time
    |
 LL |     let _: &'static _ = &FOO;
    |                          ^^^ the destructor for this type cannot be evaluated in constants
-...
+LL |
 LL | };
    | - value is dropped here
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/const-promoted-opaque.rs:37:26
+  --> $DIR/const-promoted-opaque.rs:36:26
    |
 LL |     let _: &'static _ = &FOO;
    |            ----------    ^^^ creates a temporary value which is freed while still in use

@@ -1,10 +1,18 @@
-#[cfg(all(test, not(any(target_os = "emscripten", target_env = "sgx", target_os = "xous"))))]
+#[cfg(all(
+    test,
+    not(any(
+        target_os = "emscripten",
+        all(target_os = "wasi", target_env = "p1"),
+        target_env = "sgx",
+        target_os = "xous"
+    ))
+))]
 mod tests;
 
 use crate::fmt;
 use crate::io::{self, ErrorKind};
 use crate::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
-use crate::sys_common::{net as net_imp, AsInner, FromInner, IntoInner};
+use crate::sys_common::{AsInner, FromInner, IntoInner, net as net_imp};
 use crate::time::Duration;
 
 /// A UDP socket.
@@ -195,9 +203,7 @@ impl UdpSocket {
     pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A) -> io::Result<usize> {
         match addr.to_socket_addrs()?.next() {
             Some(addr) => self.0.send_to(buf, &addr),
-            None => {
-                Err(io::const_io_error!(ErrorKind::InvalidInput, "no addresses to send data to"))
-            }
+            None => Err(io::const_error!(ErrorKind::InvalidInput, "no addresses to send data to")),
         }
     }
 
@@ -579,8 +585,8 @@ impl UdpSocket {
     /// This function specifies a new multicast group for this socket to join.
     /// The address must be a valid multicast address, and `interface` is the
     /// address of the local interface with which the system should join the
-    /// multicast group. If it's equal to `INADDR_ANY` then an appropriate
-    /// interface is chosen by the system.
+    /// multicast group. If it's equal to [`UNSPECIFIED`](Ipv4Addr::UNSPECIFIED)
+    /// then an appropriate interface is chosen by the system.
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
         self.0.join_multicast_v4(multiaddr, interface)
@@ -764,7 +770,7 @@ impl UdpSocket {
 
     /// Moves this UDP socket into or out of nonblocking mode.
     ///
-    /// This will result in `recv`, `recv_from`, `send`, and `send_to`
+    /// This will result in `recv`, `recv_from`, `send`, and `send_to` system
     /// operations becoming nonblocking, i.e., immediately returning from their
     /// calls. If the IO operation is successful, `Ok` is returned and no
     /// further action is required. If the IO operation could not be completed

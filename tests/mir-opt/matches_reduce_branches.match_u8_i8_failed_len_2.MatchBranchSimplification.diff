@@ -7,7 +7,7 @@
   
       bb0: {
           _2 = discriminant(_1);
-          switchInt(_2) -> [0: bb1, 127: bb2, 128: bb3, 255: bb4, otherwise: bb5];
+          switchInt(copy _2) -> [0: bb1, 127: bb2, 128: bb3, 255: bb4, otherwise: bb5];
       }
   
       bb1: {

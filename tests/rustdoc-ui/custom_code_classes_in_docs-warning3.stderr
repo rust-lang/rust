@@ -4,7 +4,6 @@ error: unclosed quote string `"`
 LL | / /// ```{class="}
 LL | | /// main;
 LL | | /// ```
-LL | |
 ...  |
 LL | | /// main;
 LL | | /// ```
@@ -23,7 +22,6 @@ error: unclosed quote string `"`
 LL | / /// ```{class="}
 LL | | /// main;
 LL | | /// ```
-LL | |
 ...  |
 LL | | /// main;
 LL | | /// ```

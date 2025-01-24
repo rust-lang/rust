@@ -1,7 +1,7 @@
 use std::fmt::{self, Write as FmtWrite};
 use std::io::{self, Write as IoWrite};
 
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 #[bench]
 fn write_vec_value(bh: &mut Bencher) {
@@ -147,5 +147,19 @@ fn write_u64_max(bh: &mut Bencher) {
 fn write_u64_min(bh: &mut Bencher) {
     bh.iter(|| {
         test::black_box(format!("{}", 0u64));
+    });
+}
+
+#[bench]
+fn write_u8_max(bh: &mut Bencher) {
+    bh.iter(|| {
+        test::black_box(format!("{}", u8::MAX));
+    });
+}
+
+#[bench]
+fn write_u8_min(bh: &mut Bencher) {
+    bh.iter(|| {
+        test::black_box(format!("{}", 0u8));
     });
 }

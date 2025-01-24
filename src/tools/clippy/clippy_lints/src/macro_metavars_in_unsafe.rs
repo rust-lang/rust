@@ -3,13 +3,13 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_lint_allowed;
 use itertools::Itertools;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{walk_block, walk_expr, walk_stmt, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
 use rustc_hir::{BlockCheckMode, Expr, ExprKind, HirId, Stmt, UnsafeSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, Span, SyntaxContext};
-use std::collections::btree_map::Entry;
+use rustc_span::{Span, SyntaxContext, sym};
 use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -122,8 +122,23 @@ struct BodyVisitor<'a, 'tcx> {
     /// within a relevant macro.
     macro_unsafe_blocks: Vec<HirId>,
     /// When this is >0, it means that the node currently being visited is "within" a
-    /// macro definition. This is not necessary for correctness, it merely helps reduce the number
-    /// of spans we need to insert into the map, since only spans from macros are relevant.
+    /// macro definition.
+    /// This is used to detect if an expression represents a metavariable.
+    ///
+    /// For example, the following pre-expansion code that we want to lint
+    /// ```ignore
+    /// macro_rules! m { ($e:expr) => { unsafe { $e; } } }
+    /// m!(1);
+    /// ```
+    /// would look like this post-expansion code:
+    /// ```ignore
+    /// unsafe { /* macro */
+    ///     1 /* root */; /* macro */
+    /// }
+    /// ```
+    /// Visiting the block and the statement will increment the `expn_depth` so that it is >0,
+    /// and visiting the expression with a root context while `expn_depth > 0` tells us
+    /// that it must be a metavariable.
     expn_depth: u32,
     cx: &'a LateContext<'tcx>,
     lint: &'a mut ExprMetavarsInUnsafe,
@@ -134,7 +149,7 @@ fn is_public_macro(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
         && !cx.tcx.is_doc_hidden(def_id)
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for BodyVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for BodyVisitor<'_, 'tcx> {
     fn visit_stmt(&mut self, s: &'tcx Stmt<'tcx>) {
         let from_expn = s.span.from_expansion();
         if from_expn {
@@ -157,7 +172,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BodyVisitor<'a, 'tcx> {
             && (self.lint.warn_unsafe_macro_metavars_in_private_macros || is_public_macro(self.cx, macro_def_id))
         {
             self.macro_unsafe_blocks.push(block.hir_id);
+            self.expn_depth += 1;
             walk_block(self, block);
+            self.expn_depth -= 1;
             self.macro_unsafe_blocks.pop();
         } else if ctxt.is_root() && self.expn_depth > 0 {
             let unsafe_block = self.macro_unsafe_blocks.last().copied();
@@ -203,11 +220,11 @@ impl<'tcx> LateLintPass<'tcx> for ExprMetavarsInUnsafe {
         // `check_stmt_post` on `(Late)LintPass`, which we'd need to detect when we're leaving a macro span
 
         let mut vis = BodyVisitor {
+            macro_unsafe_blocks: Vec::new(),
             #[expect(clippy::bool_to_int_with_if)] // obfuscates the meaning
             expn_depth: if body.value.span.from_expansion() { 1 } else { 0 },
-            macro_unsafe_blocks: Vec::new(),
-            lint: self,
-            cx
+            cx,
+            lint: self
         };
         vis.visit_body(body);
     }

@@ -6,9 +6,7 @@ resolver = "2"
 
 [dependencies]
 core = { path = "./sysroot_src/library/core" }
-# TODO: after the sync, revert to using version 0.1.
-# compiler_builtins = "0.1"
-compiler_builtins = "=0.1.109"
+compiler_builtins = "0.1"
 alloc = { path = "./sysroot_src/library/alloc" }
 std = { path = "./sysroot_src/library/std", features = ["panic_unwind", "backtrace"] }
 test = { path = "./sysroot_src/library/test" }
@@ -18,6 +16,22 @@ proc_macro = { path = "./sysroot_src/library/proc_macro" }
 rustc-std-workspace-core = { path = "./sysroot_src/library/rustc-std-workspace-core" }
 rustc-std-workspace-alloc = { path = "./sysroot_src/library/rustc-std-workspace-alloc" }
 rustc-std-workspace-std = { path = "./sysroot_src/library/rustc-std-workspace-std" }
+
+# For compiler-builtins we always use a high number of codegen units.
+# The goal here is to place every single intrinsic into its own object
+# file to avoid symbol clashes with the system libgcc if possible. Note
+# that this number doesn't actually produce this many object files, we
+# just don't create more than this number of object files.
+#
+# It's a bit of a bummer that we have to pass this here, unfortunately.
+# Ideally this would be specified through an env var to Cargo so Cargo
+# knows how many CGUs are for this specific crate, but for now
+# per-crate configuration isn't specifiable in the environment.
+[profile.dev.package.compiler_builtins]
+codegen-units = 10000
+
+[profile.release.package.compiler_builtins]
+codegen-units = 10000
 
 [profile.release]
 debug = "limited"

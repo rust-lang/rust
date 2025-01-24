@@ -1,12 +1,14 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
+use std::assert_matches::assert_matches;
+
 use hir::LangItem;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
-use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 
 use super::outlives_bounds::InferCtxtExt;
 use crate::regions::InferCtxtRegionExt;
@@ -16,6 +18,7 @@ pub enum CopyImplementationError<'tcx> {
     InfringingFields(Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>),
     NotAnAdt,
     HasDestructor,
+    HasUnsafeFields,
 }
 
 pub enum ConstParamTyImplementationError<'tcx> {
@@ -37,11 +40,16 @@ pub enum InfringingFieldsReason<'tcx> {
 ///
 /// If it's not an ADT, int ty, `bool`, float ty, `char`, raw pointer, `!`,
 /// a reference or an array returns `Err(NotAnAdt)`.
+///
+/// If the impl is `Safe`, `self_type` must not have unsafe fields. When used to
+/// generate suggestions in lints, `Safe` should be supplied so as to not
+/// suggest implementing `Copy` for types with unsafe fields.
 pub fn type_allowed_to_implement_copy<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     self_type: Ty<'tcx>,
     parent_cause: ObligationCause<'tcx>,
+    impl_safety: hir::Safety,
 ) -> Result<(), CopyImplementationError<'tcx>> {
     let (adt, args) = match self_type.kind() {
         // These types used to have a builtin impl.
@@ -76,6 +84,10 @@ pub fn type_allowed_to_implement_copy<'tcx>(
         return Err(CopyImplementationError::HasDestructor);
     }
 
+    if impl_safety.is_safe() && self_type.has_unsafe_fields() {
+        return Err(CopyImplementationError::HasUnsafeFields);
+    }
+
     Ok(())
 }
 
@@ -92,7 +104,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
     lang_item: LangItem,
     parent_cause: ObligationCause<'tcx>,
 ) -> Result<(), ConstParamTyImplementationError<'tcx>> {
-    assert!(matches!(lang_item, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy));
+    assert_matches!(lang_item, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy);
 
     let inner_tys: Vec<_> = match *self_type.kind() {
         // Trivially okay as these types are all:
@@ -141,7 +153,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
     let mut infringing_inner_tys = vec![];
     for inner_ty in inner_tys {
         // We use an ocx per inner ty for better diagnostics
-        let infcx = tcx.infer_ctxt().build();
+        let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
         let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
 
         ocx.register_bound(
@@ -198,7 +210,7 @@ pub fn all_fields_implement_trait<'tcx>(
     for variant in adt.variants() {
         for field in &variant.fields {
             // Do this per-field to get better error messages.
-            let infcx = tcx.infer_ctxt().build();
+            let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
             let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
 
             let unnormalized_ty = field.ty(tcx, args);

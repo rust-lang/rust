@@ -8,8 +8,8 @@ use rustc_hir::{Closure, Expr, ExprKind, HirId, QPath};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 
-use super::utils::get_last_chain_binding_hir_id;
 use super::UNNECESSARY_RESULT_MAP_OR_ELSE;
+use super::utils::get_last_chain_binding_hir_id;
 
 fn emit_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, def_arg: &Expr<'_>) {
     let msg = "unused \"map closure\" when calling `Result::map_or_else` value";

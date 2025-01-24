@@ -2,8 +2,9 @@ use std::fmt;
 
 use rustc_ast::Mutability;
 use rustc_macros::HashStable;
+use rustc_type_ir::elaborate;
 
-use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar};
+use crate::mir::interpret::{AllocId, Allocation, CTFE_ALLOC_SALT, Pointer, Scalar, alloc_range};
 use crate::ty::{self, Instance, PolyTraitRef, Ty, TyCtxt};
 
 #[derive(Clone, Copy, PartialEq, HashStable)]
@@ -64,7 +65,7 @@ pub(crate) fn vtable_min_entries<'tcx>(
     };
 
     // This includes self in supertraits.
-    for def_id in tcx.supertrait_def_ids(trait_ref.def_id()) {
+    for def_id in elaborate::supertrait_def_ids(tcx, trait_ref.def_id()) {
         count += tcx.own_existential_vtable_entries(def_id).len();
     }
 
@@ -73,6 +74,11 @@ pub(crate) fn vtable_min_entries<'tcx>(
 
 /// Retrieves an allocation that represents the contents of a vtable.
 /// Since this is a query, allocations are cached and not duplicated.
+///
+/// This is an "internal" `AllocId` that should never be used as a value in the interpreted program.
+/// The interpreter should use `AllocId` that refer to a `GlobalAlloc::VTable` instead.
+/// (This is similar to statics, which also have a similar "internal" `AllocId` storing their
+/// initial contents.)
 pub(super) fn vtable_allocation_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>),
@@ -92,7 +98,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
     assert!(vtable_entries.len() >= vtable_min_entries(tcx, poly_trait_ref));
 
     let layout = tcx
-        .layout_of(ty::ParamEnv::reveal_all().and(ty))
+        .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
         .expect("failed to build vtable representation");
     assert!(layout.is_sized(), "can't create a vtable for an unsized type");
     let size = layout.size.bytes();
@@ -112,9 +118,9 @@ pub(super) fn vtable_allocation_provider<'tcx>(
         let idx: u64 = u64::try_from(idx).unwrap();
         let scalar = match entry {
             VtblEntry::MetadataDropInPlace => {
-                if ty.needs_drop(tcx, ty::ParamEnv::reveal_all()) {
+                if ty.needs_drop(tcx, ty::TypingEnv::fully_monomorphized()) {
                     let instance = ty::Instance::resolve_drop_in_place(tcx, ty);
-                    let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance);
+                    let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT);
                     let fn_ptr = Pointer::from(fn_alloc_id);
                     Scalar::from_pointer(fn_ptr, &tcx)
                 } else {
@@ -126,8 +132,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
             VtblEntry::Vacant => continue,
             VtblEntry::Method(instance) => {
                 // Prepare the fn ptr we write into the vtable.
-                let instance = instance.polymorphize(tcx);
-                let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance);
+                let fn_alloc_id = tcx.reserve_and_set_fn_alloc(*instance, CTFE_ALLOC_SALT);
                 let fn_ptr = Pointer::from(fn_alloc_id);
                 Scalar::from_pointer(fn_ptr, &tcx)
             }

@@ -276,7 +276,7 @@ impl TyExt for Ty {
                             data.substitute(Interner, &subst).into_value_and_skipped_binders().0
                         })
                     }
-                    ImplTraitId::AssociatedTypeImplTrait(alias, idx) => {
+                    ImplTraitId::TypeAliasImplTrait(alias, idx) => {
                         db.type_alias_impl_traits(alias).map(|it| {
                             let data =
                                 (*it).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
@@ -295,7 +295,7 @@ impl TyExt for Ty {
                             data.substitute(Interner, &opaque_ty.substitution)
                         })
                     }
-                    ImplTraitId::AssociatedTypeImplTrait(alias, idx) => {
+                    ImplTraitId::TypeAliasImplTrait(alias, idx) => {
                         db.type_alias_impl_traits(alias).map(|it| {
                             let data =
                                 (*it).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
@@ -443,13 +443,25 @@ impl ProjectionTyExt for ProjectionTy {
 }
 
 pub trait DynTyExt {
-    fn principal(&self) -> Option<&TraitRef>;
+    fn principal(&self) -> Option<Binders<Binders<&TraitRef>>>;
+    fn principal_id(&self) -> Option<chalk_ir::TraitId<Interner>>;
 }
 
 impl DynTyExt for DynTy {
-    fn principal(&self) -> Option<&TraitRef> {
+    fn principal(&self) -> Option<Binders<Binders<&TraitRef>>> {
+        self.bounds.as_ref().filter_map(|bounds| {
+            bounds.interned().first().and_then(|b| {
+                b.as_ref().filter_map(|b| match b {
+                    crate::WhereClause::Implemented(trait_ref) => Some(trait_ref),
+                    _ => None,
+                })
+            })
+        })
+    }
+
+    fn principal_id(&self) -> Option<chalk_ir::TraitId<Interner>> {
         self.bounds.skip_binders().interned().first().and_then(|b| match b.skip_binders() {
-            crate::WhereClause::Implemented(trait_ref) => Some(trait_ref),
+            crate::WhereClause::Implemented(trait_ref) => Some(trait_ref.trait_id),
             _ => None,
         })
     }

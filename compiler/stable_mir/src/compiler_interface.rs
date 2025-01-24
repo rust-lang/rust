@@ -18,8 +18,8 @@ use crate::ty::{
     TraitDef, Ty, TyConst, TyConstId, TyKind, UintTy, VariantDef,
 };
 use crate::{
-    mir, Crate, CrateItem, CrateItems, CrateNum, DefId, Error, Filename, ImplTraitDecls, ItemKind,
-    Symbol, TraitDecls,
+    Crate, CrateItem, CrateItems, CrateNum, DefId, Error, Filename, ImplTraitDecls, ItemKind,
+    Symbol, TraitDecls, mir,
 };
 
 /// This trait defines the interface between stable_mir and the Rust compiler.
@@ -34,6 +34,12 @@ pub trait Context {
     /// Check whether the body of a function is available.
     fn has_body(&self, item: DefId) -> bool;
     fn foreign_modules(&self, crate_num: CrateNum) -> Vec<ForeignModuleDef>;
+
+    /// Retrieve all functions defined in this crate.
+    fn crate_functions(&self, crate_num: CrateNum) -> Vec<FnDef>;
+
+    /// Retrieve all static items defined in this crate.
+    fn crate_statics(&self, crate_num: CrateNum) -> Vec<StaticDef>;
     fn foreign_module(&self, mod_def: ForeignModuleDef) -> ForeignModule;
     fn foreign_items(&self, mod_def: ForeignModuleDef) -> Vec<ForeignDef>;
     fn all_trait_decls(&self) -> TraitDecls;
@@ -255,7 +261,7 @@ where
     if TLV.is_set() {
         Err(Error::from("StableMIR already running"))
     } else {
-        let ptr: *const () = std::ptr::addr_of!(context) as _;
+        let ptr: *const () = (&raw const context) as _;
         TLV.set(&Cell::new(ptr), || Ok(f()))
     }
 }

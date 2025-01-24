@@ -2,7 +2,7 @@ use rustc_errors::MultiSpan;
 use rustc_hir as hir;
 use rustc_middle::ty;
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 
 use crate::lints::{NonBindingLet, NonBindingLetSub};
 use crate::{LateContext, LateLintPass, LintContext};
@@ -51,7 +51,7 @@ declare_lint! {
     /// intent.
     pub LET_UNDERSCORE_DROP,
     Allow,
-    "non-binding let on a type that implements `Drop`"
+    "non-binding let on a type that has a destructor"
 }
 
 declare_lint! {
@@ -128,7 +128,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
 
             // If the type has a trivial Drop implementation, then it doesn't
             // matter that we drop the value immediately.
-            if !ty.needs_drop(cx.tcx, cx.param_env) {
+            if !ty.needs_drop(cx.tcx, cx.typing_env()) {
                 return;
             }
             // Lint for patterns like `mutex.lock()`, which returns `Result<MutexGuard, _>` as well.
@@ -156,11 +156,10 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
             };
             if is_sync_lock {
                 let span = MultiSpan::from_span(pat.span);
-                cx.emit_span_lint(
-                    LET_UNDERSCORE_LOCK,
-                    span,
-                    NonBindingLet::SyncLock { sub, pat: pat.span },
-                );
+                cx.emit_span_lint(LET_UNDERSCORE_LOCK, span, NonBindingLet::SyncLock {
+                    sub,
+                    pat: pat.span,
+                });
             // Only emit let_underscore_drop for top-level `_` patterns.
             } else if can_use_init.is_some() {
                 cx.emit_span_lint(LET_UNDERSCORE_DROP, local.span, NonBindingLet::DropType { sub });

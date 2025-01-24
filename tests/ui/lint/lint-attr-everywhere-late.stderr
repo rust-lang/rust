@@ -406,10 +406,10 @@ error: `clashing1` redeclared with a different signature
   --> $DIR/lint-attr-everywhere-late.rs:123:5
    |
 LL |         fn clashing1();
-   |         -------------- `clashing1` previously declared here
+   |         --------------- `clashing1` previously declared here
 ...
 LL |     fn clashing1(_: i32);
-   |     ^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |     ^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
    |
    = note: expected `unsafe extern "C" fn()`
               found `unsafe extern "C" fn(i32)`
@@ -423,10 +423,10 @@ error: `clashing2` redeclared with a different signature
   --> $DIR/lint-attr-everywhere-late.rs:128:5
    |
 LL |         fn clashing2();
-   |         -------------- `clashing2` previously declared here
+   |         --------------- `clashing2` previously declared here
 ...
 LL |     fn clashing2(_: i32);
-   |     ^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |     ^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
    |
    = note: expected `unsafe extern "C" fn()`
               found `unsafe extern "C" fn(i32)`

@@ -10,6 +10,12 @@ hir_typeck_address_of_temporary_taken = cannot take address of a temporary
 hir_typeck_arg_mismatch_indeterminate = argument type mismatch was detected, but rustc had trouble determining where
     .note = we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new
 
+hir_typeck_base_expression_double_dot = base expression required after `..`
+hir_typeck_base_expression_double_dot_add_expr = add a base expression here
+hir_typeck_base_expression_double_dot_enable_default_field_values =
+    add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+hir_typeck_base_expression_double_dot_remove = remove the `..` as all the fields are already present
+
 hir_typeck_candidate_trait_note = `{$trait_name}` defines an item `{$item_name}`{$action_or_ty ->
     [NONE] {""}
     [implement] , perhaps you need to implement it
@@ -23,17 +29,17 @@ hir_typeck_cannot_cast_to_bool = cannot cast `{$expr_ty}` as `bool`
 
 hir_typeck_cast_enum_drop = cannot cast enum `{$expr_ty}` into integer `{$cast_ty}` because it implements `Drop`
 
-hir_typeck_cast_thin_pointer_to_fat_pointer = cannot cast thin pointer `{$expr_ty}` to fat pointer `{$cast_ty}`
+hir_typeck_cast_thin_pointer_to_wide_pointer = cannot cast thin pointer `{$expr_ty}` to wide pointer `{$cast_ty}`
     .teach_help = Thin pointers are "simple" pointers: they are purely a reference to a
         memory address.
 
-        Fat pointers are pointers referencing "Dynamically Sized Types" (also
+        Wide pointers are pointers referencing "Dynamically Sized Types" (also
         called DST). DST don't have a statically known size, therefore they can
         only exist behind some kind of pointers that contain additional
         information. Slices and trait objects are DSTs. In the case of slices,
-        the additional information the fat pointer holds is their size.
+        the additional information the wide pointer holds is their size.
 
-        To fix this error, don't try to cast directly between thin and fat
+        To fix this error, don't try to cast directly between thin and wide
         pointers.
 
         For more information about casts, take a look at The Book:
@@ -78,6 +84,11 @@ hir_typeck_field_multiply_specified_in_initializer =
     field `{$ident}` specified more than once
     .label = used more than once
     .previous_use_label = first use of `{$ident}`
+
+hir_typeck_fn_item_to_variadic_function = can't pass a function item to a variadic function
+    .suggestion = use a function pointer instead
+    .help = a function item is zero-sized and needs to be cast into a function pointer to be used in FFI
+    .note = for more information on function items, visit https://doc.rust-lang.org/reference/types/function-item.html
 
 hir_typeck_fru_expr = this expression does not end in a comma...
 hir_typeck_fru_expr2 = ... so this is interpreted as a `..` range expression, instead of functional record update syntax
@@ -141,7 +152,6 @@ hir_typeck_option_result_copied = use `{$def_path}::copied` to copy the value in
 
 hir_typeck_pass_to_variadic_function = can't pass `{$ty}` to variadic function
     .suggestion = cast the value to `{$cast_ty}`
-    .help = cast the value to `{$cast_ty}`
     .teach_help = certain types, like `{$ty}`, must be casted before passing them to a variadic function, because of arcane ABI rules dictated by the C standard
 
 hir_typeck_ptr_cast_add_auto_to_object = adding {$traits_len ->
@@ -154,6 +164,8 @@ hir_typeck_remove_semi_for_coerce_expr = this could be implicitly returned but i
 hir_typeck_remove_semi_for_coerce_ret = the `match` arms can conform to this return type
 hir_typeck_remove_semi_for_coerce_semi = the `match` is a statement because of this semicolon, consider removing it
 hir_typeck_remove_semi_for_coerce_suggestion = remove this semicolon
+
+hir_typeck_replace_comma_with_semicolon = replace the comma with a semicolon to create {$descr}
 
 hir_typeck_return_stmt_outside_of_fn_body =
     {$statement_kind} statement outside of function body

@@ -115,4 +115,90 @@ fn issue_12625() {
     if !(a as u64 <= b) {} //~ ERROR: this boolean expression can be simplified
 }
 
+fn issue_12761() {
+    let a = 0;
+    let b = 0;
+    let c = 0;
+    if !(a >= b) as i32 == c {} //~ ERROR: this boolean expression can be simplified
+    if !(a >= b) | !(a <= c) {} //~ ERROR: this boolean expression can be simplified
+    let opt: Option<usize> = Some(1);
+    let res: Result<usize, usize> = Ok(1);
+    if !res.is_ok() as i32 == c {} //~ ERROR: this boolean expression can be simplified
+    if !res.is_ok() | !opt.is_none() {} //~ ERROR: this boolean expression can be simplified
+
+    fn a(a: bool) -> bool {
+        (!(4 > 3)).b() //~ ERROR: this boolean expression can be simplified
+    }
+
+    trait B {
+        fn b(&self) -> bool {
+            true
+        }
+    }
+
+    impl B for bool {}
+}
+
+fn issue_13436() {
+    fn not_zero(x: i32) -> bool {
+        x != 0
+    }
+
+    let opt = Some(500);
+    _ = opt.is_some_and(|x| x < 1000);
+    _ = opt.is_some_and(|x| x <= 1000);
+    _ = opt.is_some_and(|x| x > 1000);
+    _ = opt.is_some_and(|x| x >= 1000);
+    _ = opt.is_some_and(|x| x == 1000);
+    _ = opt.is_some_and(|x| x != 1000);
+    _ = opt.is_some_and(not_zero);
+    _ = !opt.is_some_and(|x| x < 1000); //~ ERROR: this boolean expression can be simplified
+    _ = !opt.is_some_and(|x| x <= 1000); //~ ERROR: this boolean expression can be simplified
+    _ = !opt.is_some_and(|x| x > 1000); //~ ERROR: this boolean expression can be simplified
+    _ = !opt.is_some_and(|x| x >= 1000); //~ ERROR: this boolean expression can be simplified
+    _ = !opt.is_some_and(|x| x == 1000); //~ ERROR: this boolean expression can be simplified
+    _ = !opt.is_some_and(|x| x != 1000); //~ ERROR: this boolean expression can be simplified
+    _ = !opt.is_some_and(not_zero);
+    _ = opt.is_none_or(|x| x < 1000);
+    _ = opt.is_none_or(|x| x <= 1000);
+    _ = opt.is_none_or(|x| x > 1000);
+    _ = opt.is_none_or(|x| x >= 1000);
+    _ = opt.is_none_or(|x| x == 1000);
+    _ = opt.is_none_or(|x| x != 1000);
+    _ = opt.is_none_or(not_zero);
+    _ = !opt.is_none_or(|x| x < 1000); //~ ERROR: this boolean expression can be simplified
+    _ = !opt.is_none_or(|x| x <= 1000); //~ ERROR: this boolean expression can be simplified
+    _ = !opt.is_none_or(|x| x > 1000); //~ ERROR: this boolean expression can be simplified
+    _ = !opt.is_none_or(|x| x >= 1000); //~ ERROR: this boolean expression can be simplified
+    _ = !opt.is_none_or(|x| x == 1000); //~ ERROR: this boolean expression can be simplified
+    _ = !opt.is_none_or(|x| x != 1000); //~ ERROR: this boolean expression can be simplified
+    _ = !opt.is_none_or(not_zero);
+
+    let opt = Some(true);
+    _ = opt.is_some_and(|x| x);
+    _ = opt.is_some_and(|x| !x);
+    _ = !opt.is_some_and(|x| x);
+    _ = !opt.is_some_and(|x| !x); //~ ERROR: this boolean expression can be simplified
+    _ = opt.is_none_or(|x| x);
+    _ = opt.is_none_or(|x| !x);
+    _ = !opt.is_none_or(|x| x);
+    _ = !opt.is_none_or(|x| !x); //~ ERROR: this boolean expression can be simplified
+
+    let opt: Option<Result<i32, i32>> = Some(Ok(123));
+    _ = opt.is_some_and(|x| x.is_ok());
+    _ = opt.is_some_and(|x| x.is_err());
+    _ = opt.is_none_or(|x| x.is_ok());
+    _ = opt.is_none_or(|x| x.is_err());
+    _ = !opt.is_some_and(|x| x.is_ok()); //~ ERROR: this boolean expression can be simplified
+    _ = !opt.is_some_and(|x| x.is_err()); //~ ERROR: this boolean expression can be simplified
+    _ = !opt.is_none_or(|x| x.is_ok()); //~ ERROR: this boolean expression can be simplified
+    _ = !opt.is_none_or(|x| x.is_err()); //~ ERROR: this boolean expression can be simplified
+
+    #[clippy::msrv = "1.81"]
+    fn before_stabilization() {
+        let opt = Some(500);
+        _ = !opt.is_some_and(|x| x < 1000);
+    }
+}
+
 fn main() {}

@@ -8,7 +8,6 @@
 use std::future::Future;
 
 type FutNothing<'a> = impl 'a + Future<Output = ()>;
-//~^ ERROR: unconstrained opaque type
 
 async fn operation(_: &mut ()) -> () {
     //~^ ERROR: concrete type differs from previous

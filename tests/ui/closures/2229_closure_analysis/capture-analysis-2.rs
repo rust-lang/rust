@@ -22,7 +22,7 @@ fn main() {
         //~^ NOTE: Capturing p[(0, 0)] -> ByValue
         //~| NOTE: p[] captured as ByValue here
         println!("{:?}", p);
-        //~^ NOTE: Capturing p[] -> ImmBorrow
+        //~^ NOTE: Capturing p[] -> Immutable
         //~| NOTE: Min Capture p[] -> ByValue
         //~| NOTE: p[] used here
     };

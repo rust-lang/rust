@@ -1,4 +1,4 @@
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 #[bench]
 fn char_iterator(b: &mut Bencher) {
@@ -347,3 +347,5 @@ make_test!(rsplitn_space_char, s, s.rsplitn(10, ' ').count());
 
 make_test!(split_space_str, s, s.split(" ").count());
 make_test!(split_ad_str, s, s.split("ad").count());
+
+make_test!(to_lowercase, s, s.to_lowercase());

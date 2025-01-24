@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
-  --> $DIR/feature-gate-unsized_fn_params.rs:17:8
+  --> $DIR/feature-gate-unsized_fn_params.rs:17:11
    |
 LL | fn foo(x: dyn Foo) {
-   |        ^ doesn't have a size known at compile-time
+   |           ^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Foo + 'static)`
    = help: unsized fn params are gated as an unstable feature
@@ -16,10 +16,10 @@ LL | fn foo(x: &dyn Foo) {
    |           +
 
 error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
-  --> $DIR/feature-gate-unsized_fn_params.rs:21:8
+  --> $DIR/feature-gate-unsized_fn_params.rs:21:11
    |
 LL | fn bar(x: Foo) {
-   |        ^ doesn't have a size known at compile-time
+   |           ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Foo + 'static)`
    = help: unsized fn params are gated as an unstable feature
@@ -33,10 +33,10 @@ LL | fn bar(x: &dyn Foo) {
    |           ++++
 
 error[E0277]: the size for values of type `[()]` cannot be known at compilation time
-  --> $DIR/feature-gate-unsized_fn_params.rs:25:8
+  --> $DIR/feature-gate-unsized_fn_params.rs:25:11
    |
 LL | fn qux(_: [()]) {}
-   |        ^ doesn't have a size known at compile-time
+   |           ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[()]`
    = help: unsized fn params are gated as an unstable feature

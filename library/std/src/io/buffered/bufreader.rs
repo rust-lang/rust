@@ -4,8 +4,8 @@ use buffer::Buffer;
 
 use crate::fmt;
 use crate::io::{
-    self, uninlined_slow_read_byte, BorrowedCursor, BufRead, IoSliceMut, Read, Seek, SeekFrom,
-    SizeHint, SpecReadByte, DEFAULT_BUF_SIZE,
+    self, BorrowedCursor, BufRead, DEFAULT_BUF_SIZE, IoSliceMut, Read, Seek, SeekFrom, SizeHint,
+    SpecReadByte, uninlined_slow_read_byte,
 };
 
 /// The `BufReader<R>` struct adds buffering to any reader.
@@ -74,6 +74,14 @@ impl<R: Read> BufReader<R> {
         BufReader::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
+    pub(crate) fn try_new_buffer() -> io::Result<Buffer> {
+        Buffer::try_with_capacity(DEFAULT_BUF_SIZE)
+    }
+
+    pub(crate) fn with_buffer(inner: R, buf: Buffer) -> Self {
+        Self { inner, buf }
+    }
+
     /// Creates a new `BufReader<R>` with the specified buffer capacity.
     ///
     /// # Examples
@@ -94,10 +102,15 @@ impl<R: Read> BufReader<R> {
     pub fn with_capacity(capacity: usize, inner: R) -> BufReader<R> {
         BufReader { inner, buf: Buffer::with_capacity(capacity) }
     }
+}
 
+impl<R: Read + ?Sized> BufReader<R> {
     /// Attempt to look ahead `n` bytes.
     ///
-    /// `n` must be less than `capacity`.
+    /// `n` must be less than or equal to `capacity`.
+    ///
+    /// the returned slice may be less than `n` bytes long if
+    /// end of file is reached.
     ///
     /// ## Examples
     ///
@@ -115,6 +128,7 @@ impl<R: Read> BufReader<R> {
     /// let mut s = String::new();
     /// rdr.read_to_string(&mut s).unwrap();
     /// assert_eq!(&s, "hello");
+    /// assert_eq!(rdr.peek(1).unwrap().len(), 0);
     /// ```
     #[unstable(feature = "bufreader_peek", issue = "128405")]
     pub fn peek(&mut self, n: usize) -> io::Result<&[u8]> {
@@ -123,7 +137,11 @@ impl<R: Read> BufReader<R> {
             if self.buf.pos() > 0 {
                 self.buf.backshift();
             }
-            self.buf.read_more(&mut self.inner)?;
+            let new = self.buf.read_more(&mut self.inner)?;
+            if new == 0 {
+                // end of file, no more bytes to read
+                return Ok(&self.buf.buffer()[..]);
+            }
             debug_assert_eq!(self.buf.pos(), 0);
         }
         Ok(&self.buf.buffer()[..n])
@@ -265,6 +283,7 @@ impl<R: ?Sized> BufReader<R> {
 // This is only used by a test which asserts that the initialization-tracking is correct.
 #[cfg(test)]
 impl<R: ?Sized> BufReader<R> {
+    #[allow(missing_docs)]
     pub fn initialized(&self) -> usize {
         self.buf.initialized()
     }
@@ -338,7 +357,7 @@ impl<R: ?Sized + Read> Read for BufReader<R> {
         let prev = cursor.written();
 
         let mut rem = self.fill_buf()?;
-        rem.read_buf(cursor.reborrow())?;
+        rem.read_buf(cursor.reborrow())?; // actually never fails
 
         self.consume(cursor.written() - prev); //slice impl of read_buf known to never unfill buf
 

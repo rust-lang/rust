@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'concat_bytes'
+error[E0658]: use of unstable library feature `concat_bytes`
   --> $DIR/feature-gate-concat_bytes.rs:2:13
    |
 LL |     let a = concat_bytes!(b'A', b"BC");

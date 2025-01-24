@@ -2,15 +2,15 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::consts::{constant_simple, Constant};
+use crate::consts::{ConstEvalCtxt, Constant};
+use crate::is_expn_of;
 use crate::ty::is_type_diagnostic_item;
-use crate::{is_expn_of, match_def_path, paths};
 
 use rustc_ast::ast;
 use rustc_hir as hir;
-use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath};
+use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath, StructTailExpr};
 use rustc_lint::LateContext;
-use rustc_span::{sym, symbol, Span};
+use rustc_span::{Span, sym, symbol};
 
 /// The essential nodes of a desugared for loop as well as the entire span:
 /// `for pat in arg { body }` becomes `(pat, arg, body)`. Returns `(pat, arg, body, span)`.
@@ -25,6 +25,8 @@ pub struct ForLoop<'tcx> {
     pub loop_id: HirId,
     /// entire `for` loop span
     pub span: Span,
+    /// label
+    pub label: Option<ast::Label>,
 }
 
 impl<'tcx> ForLoop<'tcx> {
@@ -33,7 +35,7 @@ impl<'tcx> ForLoop<'tcx> {
         if let ExprKind::DropTemps(e) = expr.kind
             && let ExprKind::Match(iterexpr, [arm], MatchSource::ForLoopDesugar) = e.kind
             && let ExprKind::Call(_, [arg]) = iterexpr.kind
-            && let ExprKind::Loop(block, ..) = arm.body.kind
+            && let ExprKind::Loop(block, label, ..) = arm.body.kind
             && let [stmt] = block.stmts
             && let hir::StmtKind::Expr(e) = stmt.kind
             && let ExprKind::Match(_, [_, some_arm], _) = e.kind
@@ -45,6 +47,7 @@ impl<'tcx> ForLoop<'tcx> {
                 body: some_arm.body,
                 loop_id: arm.body.hir_id,
                 span: expr.span.ctxt().outer_expn_data().call_site,
+                label,
             });
         }
         None
@@ -100,7 +103,7 @@ impl<'hir> IfLet<'hir> {
     /// Parses an `if let` expression
     pub fn hir(cx: &LateContext<'_>, expr: &Expr<'hir>) -> Option<Self> {
         if let ExprKind::If(
-            Expr {
+            &Expr {
                 kind:
                     ExprKind::Let(&hir::LetExpr {
                         pat: let_pat,
@@ -193,8 +196,8 @@ impl<'hir> IfOrIfLet<'hir> {
             if let ExprKind::DropTemps(new_cond) = cond.kind {
                 return Some(Self {
                     cond: new_cond,
-                    r#else,
                     then,
+                    r#else,
                 });
             }
             if let ExprKind::Let(..) = cond.kind {
@@ -233,7 +236,7 @@ impl<'a> Range<'a> {
                     limits: ast::RangeLimits::Closed,
                 })
             },
-            ExprKind::Struct(path, fields, None) => match (path, fields) {
+            ExprKind::Struct(path, fields, StructTailExpr::None) => match (path, fields) {
                 (QPath::LangItem(hir::LangItem::RangeFull, ..), []) => Some(Range {
                     start: None,
                     end: None,
@@ -294,10 +297,10 @@ impl<'a> VecArgs<'a> {
             && is_expn_of(fun.span, "vec").is_some()
             && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
         {
-            return if match_def_path(cx, fun_def_id, &paths::VEC_FROM_ELEM) && args.len() == 2 {
+            return if cx.tcx.is_diagnostic_item(sym::vec_from_elem, fun_def_id) && args.len() == 2 {
                 // `vec![elem; size]` case
                 Some(VecArgs::Repeat(&args[0], &args[1]))
-            } else if match_def_path(cx, fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
+            } else if cx.tcx.is_diagnostic_item(sym::slice_into_vec, fun_def_id) && args.len() == 1 {
                 // `vec![a, b, c]` case
                 if let ExprKind::Call(_, [arg]) = &args[0].kind
                     && let ExprKind::Array(args) = arg.kind
@@ -306,7 +309,7 @@ impl<'a> VecArgs<'a> {
                 } else {
                     None
                 }
-            } else if match_def_path(cx, fun_def_id, &paths::VEC_NEW) && args.is_empty() {
+            } else if cx.tcx.is_diagnostic_item(sym::vec_new, fun_def_id) && args.is_empty() {
                 Some(VecArgs::Vec(&[]))
             } else {
                 None
@@ -367,6 +370,7 @@ pub struct WhileLet<'hir> {
     pub let_expr: &'hir Expr<'hir>,
     /// `while let` loop body
     pub if_then: &'hir Expr<'hir>,
+    pub label: Option<ast::Label>,
     /// `while let PAT = EXPR`
     ///        ^^^^^^^^^^^^^^
     pub let_span: Span,
@@ -377,12 +381,12 @@ impl<'hir> WhileLet<'hir> {
     /// Parses a desugared `while let` loop
     pub const fn hir(expr: &Expr<'hir>) -> Option<Self> {
         if let ExprKind::Loop(
-            Block {
+            &Block {
                 expr:
-                    Some(Expr {
+                    Some(&Expr {
                         kind:
                             ExprKind::If(
-                                Expr {
+                                &Expr {
                                     kind:
                                         ExprKind::Let(&hir::LetExpr {
                                             pat: let_pat,
@@ -399,7 +403,7 @@ impl<'hir> WhileLet<'hir> {
                     }),
                 ..
             },
-            _,
+            label,
             LoopSource::While,
             _,
         ) = expr.kind
@@ -408,6 +412,7 @@ impl<'hir> WhileLet<'hir> {
                 let_pat,
                 let_expr,
                 if_then,
+                label,
                 let_span,
             });
         }
@@ -466,7 +471,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
                     return Some(VecInitKind::Default);
                 } else if name.ident.name.as_str() == "with_capacity" {
                     let arg = args.first()?;
-                    return match constant_simple(cx, cx.typeck_results(), arg) {
+                    return match ConstEvalCtxt::new(cx).eval_simple(arg) {
                         Some(Constant::Int(num)) => Some(VecInitKind::WithConstCapacity(num)),
                         _ => Some(VecInitKind::WithExprCapacity(arg.hir_id)),
                     };

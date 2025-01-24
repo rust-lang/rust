@@ -6,24 +6,26 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use cfg::{CfgAtom, CfgDiff};
 use hir::{
     db::{DefDatabase, ExpandDatabase, HirDatabase},
     Adt, AssocItem, Crate, DefWithBody, HasSource, HirDisplay, HirFileIdExt, ImportPathConfig,
     ModuleDef, Name,
 };
 use hir_def::{
-    body::{BodySourceMap, SyntheticSyntax},
+    body::BodySourceMap,
     hir::{ExprId, PatId},
+    SyntheticSyntax,
 };
 use hir_ty::{Interner, Substitution, TyExt, TypeFlags};
 use ide::{
-    Analysis, AnalysisHost, AnnotationConfig, DiagnosticsConfig, InlayFieldsToResolve,
+    Analysis, AnalysisHost, AnnotationConfig, DiagnosticsConfig, Edition, InlayFieldsToResolve,
     InlayHintsConfig, LineCol, RootDatabase,
 };
 use ide_db::{
     base_db::{
-        salsa::{self, debug::DebugQueryTable, ParallelDatabase},
-        SourceDatabase, SourceDatabaseExt,
+        ra_salsa::{self, debug::DebugQueryTable, ParallelDatabase},
+        SourceDatabase, SourceRootDatabase,
     },
     EditionedFileId, LineIndexDatabase, SnippetCap,
 };
@@ -31,7 +33,7 @@ use itertools::Itertools;
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
 use oorandom::Rand32;
 use profile::{Bytes, StopWatch};
-use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
+use project_model::{CargoConfig, CfgOverrides, ProjectManifest, ProjectWorkspace, RustLibSource};
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{AstNode, SyntaxNode};
@@ -46,8 +48,8 @@ use crate::cli::{
 
 /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
 struct Snap<DB>(DB);
-impl<DB: ParallelDatabase> Clone for Snap<salsa::Snapshot<DB>> {
-    fn clone(&self) -> Snap<salsa::Snapshot<DB>> {
+impl<DB: ParallelDatabase> Clone for Snap<ra_salsa::Snapshot<DB>> {
+    fn clone(&self) -> Snap<ra_salsa::Snapshot<DB>> {
         Snap(self.0.snapshot())
     }
 }
@@ -64,7 +66,12 @@ impl flags::AnalysisStats {
                 true => None,
                 false => Some(RustLibSource::Discover),
             },
-            sysroot_query_metadata: self.query_sysroot_metadata,
+            all_targets: true,
+            set_test: !self.no_test,
+            cfg_overrides: CfgOverrides {
+                global: CfgDiff::new(vec![CfgAtom::Flag(hir::sym::miri.clone())], vec![]).unwrap(),
+                selective: Default::default(),
+            },
             ..Default::default()
         };
         let no_progress = &|_| ();
@@ -78,7 +85,17 @@ impl flags::AnalysisStats {
         let metadata_time = db_load_sw.elapsed();
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: !self.disable_build_scripts,
-            with_proc_macro_server: ProcMacroServerChoice::Sysroot,
+            with_proc_macro_server: if self.disable_proc_macros {
+                ProcMacroServerChoice::None
+            } else {
+                match self.proc_macro_srv {
+                    Some(ref path) => {
+                        let path = vfs::AbsPathBuf::assert_utf8(path.to_owned());
+                        ProcMacroServerChoice::Explicit(path)
+                    }
+                    None => ProcMacroServerChoice::Sysroot,
+                }
+            },
             prefill_caches: false,
         };
 
@@ -156,7 +173,6 @@ impl flags::AnalysisStats {
         let mut num_decls = 0;
         let mut bodies = Vec::new();
         let mut adts = Vec::new();
-        let mut consts = Vec::new();
         let mut file_ids = Vec::new();
         while let Some(module) = visit_queue.pop() {
             if visited_modules.insert(module) {
@@ -177,7 +193,6 @@ impl flags::AnalysisStats {
                         }
                         ModuleDef::Const(c) => {
                             bodies.push(DefWithBody::from(c));
-                            consts.push(c)
                         }
                         ModuleDef::Static(s) => bodies.push(DefWithBody::from(s)),
                         _ => (),
@@ -191,7 +206,6 @@ impl flags::AnalysisStats {
                             AssocItem::Function(f) => bodies.push(DefWithBody::from(f)),
                             AssocItem::Const(c) => {
                                 bodies.push(DefWithBody::from(c));
-                                consts.push(c);
                             }
                             _ => (),
                         }
@@ -204,7 +218,10 @@ impl flags::AnalysisStats {
             visited_modules.len(),
             bodies.len(),
             adts.len(),
-            consts.len(),
+            bodies
+                .iter()
+                .filter(|it| matches!(it, DefWithBody::Const(_) | DefWithBody::Static(_)))
+                .count(),
         );
         let crate_def_map_time = crate_def_map_sw.elapsed();
         eprintln!("{:<20} {}", "Item Collection:", crate_def_map_time);
@@ -231,7 +248,7 @@ impl flags::AnalysisStats {
         }
 
         if !self.skip_const_eval {
-            self.run_const_eval(db, &consts, verbosity);
+            self.run_const_eval(db, &bodies, verbosity);
         }
 
         if self.run_all_ide_things {
@@ -304,18 +321,23 @@ impl flags::AnalysisStats {
         report_metric("data layout time", data_layout_time.time.as_millis() as u64, "ms");
     }
 
-    fn run_const_eval(&self, db: &RootDatabase, consts: &[hir::Const], verbosity: Verbosity) {
+    fn run_const_eval(&self, db: &RootDatabase, bodies: &[DefWithBody], verbosity: Verbosity) {
         let mut sw = self.stop_watch();
         let mut all = 0;
         let mut fail = 0;
-        for &c in consts {
+        for &b in bodies {
+            let res = match b {
+                DefWithBody::Const(c) => c.eval(db),
+                DefWithBody::Static(s) => s.eval(db),
+                _ => continue,
+            };
             all += 1;
-            let Err(error) = c.render_eval(db) else {
+            let Err(error) = res else {
                 continue;
             };
             if verbosity.is_spammy() {
                 let full_name =
-                    full_name_of_item(db, c.module(db), c.name(db).unwrap_or(Name::missing()));
+                    full_name_of_item(db, b.module(db), b.name(db).unwrap_or(Name::missing()));
                 println!("Const eval for {full_name} failed due {error:?}");
             }
             fail += 1;
@@ -340,6 +362,7 @@ impl flags::AnalysisStats {
                 true => None,
                 false => Some(RustLibSource::Discover),
             },
+            all_targets: true,
             ..Default::default()
         };
 
@@ -443,6 +466,7 @@ impl flags::AnalysisStats {
                                 prefer_prelude: true,
                                 prefer_absolute: false,
                             },
+                            Edition::LATEST,
                         )
                         .unwrap();
                     syntax_hit_found |= trim(&original_text) == trim(&generated);
@@ -564,7 +588,7 @@ impl flags::AnalysisStats {
                     .rev()
                     .filter_map(|it| it.name(db))
                     .chain(Some(body.name(db).unwrap_or_else(Name::missing)))
-                    .map(|it| it.display(db).to_string())
+                    .map(|it| it.display(db, Edition::LATEST).to_string())
                     .join("::");
                 println!("Mir body for {full_name} failed due {e:?}");
             }
@@ -629,12 +653,14 @@ impl flags::AnalysisStats {
                             .filter_map(|it| it.name(db))
                             .rev()
                             .chain(Some(body_id.name(db).unwrap_or_else(Name::missing)))
-                            .map(|it| it.display(db).to_string()),
+                            .map(|it| it.display(db, Edition::LATEST).to_string()),
                     )
                     .join("::")
             };
             if let Some(only_name) = self.only.as_deref() {
-                if name.display(db).to_string() != only_name && full_name() != only_name {
+                if name.display(db, Edition::LATEST).to_string() != only_name
+                    && full_name() != only_name
+                {
                     continue;
                 }
             }
@@ -688,7 +714,10 @@ impl flags::AnalysisStats {
                                 end.col,
                             ));
                         } else {
-                            bar.println(format!("{}: Unknown type", name.display(db)));
+                            bar.println(format!(
+                                "{}: Unknown type",
+                                name.display(db, Edition::LATEST)
+                            ));
                         }
                     }
                     true
@@ -709,17 +738,20 @@ impl flags::AnalysisStats {
                             start.col,
                             end.line + 1,
                             end.col,
-                            ty.display(db)
+                            ty.display(db, Edition::LATEST)
                         ));
                     } else {
-                        bar.println(format!("unknown location: {}", ty.display(db)));
+                        bar.println(format!(
+                            "unknown location: {}",
+                            ty.display(db, Edition::LATEST)
+                        ));
                     }
                 }
                 if unknown_or_partial && self.output == Some(OutputFormat::Csv) {
                     println!(
                         r#"{},type,"{}""#,
                         location_csv_expr(db, vfs, &sm(), expr_id),
-                        ty.display(db)
+                        ty.display(db, Edition::LATEST)
                     );
                 }
                 if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr_id) {
@@ -734,15 +766,15 @@ impl flags::AnalysisStats {
                                 start.col,
                                 end.line + 1,
                                 end.col,
-                                mismatch.expected.display(db),
-                                mismatch.actual.display(db)
+                                mismatch.expected.display(db, Edition::LATEST),
+                                mismatch.actual.display(db, Edition::LATEST)
                             ));
                         } else {
                             bar.println(format!(
                                 "{}: Expected {}, got {}",
-                                name.display(db),
-                                mismatch.expected.display(db),
-                                mismatch.actual.display(db)
+                                name.display(db, Edition::LATEST),
+                                mismatch.expected.display(db, Edition::LATEST),
+                                mismatch.actual.display(db, Edition::LATEST)
                             ));
                         }
                     }
@@ -750,8 +782,8 @@ impl flags::AnalysisStats {
                         println!(
                             r#"{},mismatch,"{}","{}""#,
                             location_csv_expr(db, vfs, &sm(), expr_id),
-                            mismatch.expected.display(db),
-                            mismatch.actual.display(db)
+                            mismatch.expected.display(db, Edition::LATEST),
+                            mismatch.actual.display(db, Edition::LATEST)
                         );
                     }
                 }
@@ -786,7 +818,10 @@ impl flags::AnalysisStats {
                                 end.col,
                             ));
                         } else {
-                            bar.println(format!("{}: Unknown type", name.display(db)));
+                            bar.println(format!(
+                                "{}: Unknown type",
+                                name.display(db, Edition::LATEST)
+                            ));
                         }
                     }
                     true
@@ -807,17 +842,20 @@ impl flags::AnalysisStats {
                             start.col,
                             end.line + 1,
                             end.col,
-                            ty.display(db)
+                            ty.display(db, Edition::LATEST)
                         ));
                     } else {
-                        bar.println(format!("unknown location: {}", ty.display(db)));
+                        bar.println(format!(
+                            "unknown location: {}",
+                            ty.display(db, Edition::LATEST)
+                        ));
                     }
                 }
                 if unknown_or_partial && self.output == Some(OutputFormat::Csv) {
                     println!(
                         r#"{},type,"{}""#,
                         location_csv_pat(db, vfs, &sm(), pat_id),
-                        ty.display(db)
+                        ty.display(db, Edition::LATEST)
                     );
                 }
                 if let Some(mismatch) = inference_result.type_mismatch_for_pat(pat_id) {
@@ -831,15 +869,15 @@ impl flags::AnalysisStats {
                                 start.col,
                                 end.line + 1,
                                 end.col,
-                                mismatch.expected.display(db),
-                                mismatch.actual.display(db)
+                                mismatch.expected.display(db, Edition::LATEST),
+                                mismatch.actual.display(db, Edition::LATEST)
                             ));
                         } else {
                             bar.println(format!(
                                 "{}: Expected {}, got {}",
-                                name.display(db),
-                                mismatch.expected.display(db),
-                                mismatch.actual.display(db)
+                                name.display(db, Edition::LATEST),
+                                mismatch.expected.display(db, Edition::LATEST),
+                                mismatch.actual.display(db, Edition::LATEST)
                             ));
                         }
                     }
@@ -847,8 +885,8 @@ impl flags::AnalysisStats {
                         println!(
                             r#"{},mismatch,"{}","{}""#,
                             location_csv_pat(db, vfs, &sm(), pat_id),
-                            mismatch.expected.display(db),
-                            mismatch.actual.display(db)
+                            mismatch.expected.display(db, Edition::LATEST),
+                            mismatch.actual.display(db, Edition::LATEST)
                         );
                     }
                 }
@@ -924,12 +962,16 @@ impl flags::AnalysisStats {
                             .filter_map(|it| it.name(db))
                             .rev()
                             .chain(Some(body_id.name(db).unwrap_or_else(Name::missing)))
-                            .map(|it| it.display(db).to_string()),
+                            .map(|it| it.display(db, Edition::LATEST).to_string()),
                     )
                     .join("::")
             };
             if let Some(only_name) = self.only.as_deref() {
-                if body_id.name(db).unwrap_or_else(Name::missing).display(db).to_string()
+                if body_id
+                    .name(db)
+                    .unwrap_or_else(Name::missing)
+                    .display(db, Edition::LATEST)
+                    .to_string()
                     != only_name
                     && full_name() != only_name
                 {
@@ -977,7 +1019,7 @@ impl flags::AnalysisStats {
         let mut sw = self.stop_watch();
 
         for &file_id in &file_ids {
-            _ = analysis.diagnostics(
+            _ = analysis.full_diagnostics(
                 &DiagnosticsConfig {
                     enabled: true,
                     proc_macros_enabled: true,
@@ -1009,6 +1051,7 @@ impl flags::AnalysisStats {
                 &InlayHintsConfig {
                     render_colons: false,
                     type_hints: true,
+                    sized_bound: false,
                     discriminant_hints: ide::DiscriminantHints::Always,
                     parameter_hints: true,
                     generic_parameter_hints: ide::GenericParameterHints {

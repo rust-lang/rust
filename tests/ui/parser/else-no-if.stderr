@@ -30,7 +30,7 @@ error: expected `{`, found `falsy`
 LL |     } else falsy();
    |            ^^^^^ expected `{`
    |
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |     } else { falsy() };
    |            +         +
@@ -41,7 +41,7 @@ error: expected `{`, found keyword `loop`
 LL |     } else loop{}
    |            ^^^^ expected `{`
    |
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |     } else { loop{} }
    |            +        +
@@ -65,7 +65,7 @@ error: expected `{`, found `falsy`
 LL |     } else falsy!();
    |            ^^^^^ expected `{`
    |
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |     } else { falsy!() };
    |            +          +
@@ -74,12 +74,14 @@ error: expected `{`, found `falsy`
   --> $DIR/else-no-if.rs:47:12
    |
 LL |     } else falsy! {} {
-   |            ^^^^^ expected `{`
+   |       ---- ^^^^^
+   |       |
+   |       expected an `if` or a block after this `else`
    |
-help: try placing this code inside a block
+help: add an `if` if this is the condition of a chained `else if` statement
    |
-LL |     } else { falsy! {} } {
-   |            +           +
+LL |     } else if falsy! {} {
+   |            ++
 
 error: expected `{`, found `falsy`
   --> $DIR/else-no-if.rs:54:12
@@ -87,7 +89,7 @@ error: expected `{`, found `falsy`
 LL |     } else falsy! {};
    |            ^^^^^ expected `{`
    |
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |     } else { falsy! {} };
    |            +           +

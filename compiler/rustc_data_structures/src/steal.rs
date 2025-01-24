@@ -51,6 +51,16 @@ impl<T> Steal<T> {
         let value = value_ref.take();
         value.expect("attempt to steal from stolen value")
     }
+
+    /// Writers of rustc drivers often encounter stealing issues. This function makes it possible to
+    /// handle these errors gracefully.
+    ///
+    /// This should not be used within rustc as it leaks information not tracked
+    /// by the query system, breaking incremental compilation.
+    #[rustc_lint_untracked_query_information]
+    pub fn is_stolen(&self) -> bool {
+        self.value.borrow().is_none()
+    }
 }
 
 impl<CTX, T: HashStable<CTX>> HashStable<CTX> for Steal<T> {

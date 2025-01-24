@@ -301,15 +301,18 @@ mod tests;
 pub use core::io::{BorrowedBuf, BorrowedCursor};
 use core::slice::memchr;
 
-pub(crate) use error::const_io_error;
-
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 pub use self::buffered::WriterPanicked;
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use self::error::RawOsError;
-pub(crate) use self::stdio::attempt_print_to_stderr;
+#[doc(hidden)]
+#[unstable(feature = "io_const_error_internals", issue = "none")]
+pub use self::error::SimpleMessage;
+#[unstable(feature = "io_const_error", issue = "133448")]
+pub use self::error::const_error;
 #[stable(feature = "is_terminal", since = "1.70.0")]
 pub use self::stdio::IsTerminal;
+pub(crate) use self::stdio::attempt_print_to_stderr;
 #[unstable(feature = "print_internals", issue = "none")]
 #[doc(hidden)]
 pub use self::stdio::{_eprint, _print};
@@ -322,11 +325,12 @@ pub use self::{
     copy::copy,
     cursor::Cursor,
     error::{Error, ErrorKind, Result},
-    stdio::{stderr, stdin, stdout, Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock},
-    util::{empty, repeat, sink, Empty, Repeat, Sink},
+    stdio::{Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock, stderr, stdin, stdout},
+    util::{Empty, Repeat, Sink, empty, repeat, sink},
 };
 use crate::mem::take;
 use crate::ops::{Deref, DerefMut};
+use crate::sys::anonymous_pipe::{AnonPipe, pipe as pipe_inner};
 use crate::{cmp, fmt, slice, str, sys};
 
 mod buffered;
@@ -398,8 +402,7 @@ where
 // - avoid passing large buffers to readers that always initialize the free capacity if they perform short reads (#23815, #23820)
 // - pass large buffers to readers that do not initialize the spare capacity. this can amortize per-call overheads
 // - and finally pass not-too-small and not-too-large buffers to Windows read APIs because they manage to suffer from both problems
-//   at the same time, i.e. small reads suffer from syscall overhead, all reads incur initialization cost
-//   proportional to buffer size (#110650)
+//   at the same time, i.e. small reads suffer from syscall overhead, all reads incur costs proportional to buffer size (#110650)
 //
 pub(crate) fn default_read_to_end<R: Read + ?Sized>(
     r: &mut R,
@@ -444,6 +447,8 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
         }
     }
 
+    let mut consecutive_short_reads = 0;
+
     loop {
         if buf.len() == buf.capacity() && buf.capacity() == start_cap {
             // The buffer might be an exact fit. Let's read into a probe buffer
@@ -473,24 +478,18 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
         }
 
         let mut cursor = read_buf.unfilled();
-        loop {
+        let result = loop {
             match r.read_buf(cursor.reborrow()) {
-                Ok(()) => break,
                 Err(e) if e.is_interrupted() => continue,
-                Err(e) => return Err(e),
+                // Do not stop now in case of error: we might have received both data
+                // and an error
+                res => break res,
             }
-        }
+        };
 
         let unfilled_but_initialized = cursor.init_ref().len();
         let bytes_read = cursor.written();
         let was_fully_initialized = read_buf.init_len() == buf_len;
-
-        if bytes_read == 0 {
-            return Ok(buf.len() - start_len);
-        }
-
-        // store how much was initialized but not filled
-        initialized = unfilled_but_initialized;
 
         // SAFETY: BorrowedBuf's invariants mean this much memory is initialized.
         unsafe {
@@ -498,12 +497,31 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
             buf.set_len(new_len);
         }
 
+        // Now that all data is pushed to the vector, we can fail without data loss
+        result?;
+
+        if bytes_read == 0 {
+            return Ok(buf.len() - start_len);
+        }
+
+        if bytes_read < buf_len {
+            consecutive_short_reads += 1;
+        } else {
+            consecutive_short_reads = 0;
+        }
+
+        // store how much was initialized but not filled
+        initialized = unfilled_but_initialized;
+
         // Use heuristics to determine the max read size if no initial size hint was provided
         if size_hint.is_none() {
             // The reader is returning short reads but it doesn't call ensure_init().
             // In that case we no longer need to restrict read sizes to avoid
             // initialization costs.
-            if !was_fully_initialized {
+            // When reading from disk we usually don't get any short reads except at EOF.
+            // So we wait for at least 2 short reads before uncapping the read buffer;
+            // this helps with the Windows issue.
+            if !was_fully_initialized && consecutive_short_reads > 1 {
                 max_read_size = usize::MAX;
             }
 
@@ -964,6 +982,8 @@ pub trait Read {
     /// with uninitialized buffers. The new data will be appended to any existing contents of `buf`.
     ///
     /// The default implementation delegates to `read`.
+    ///
+    /// This method makes it possible to return both data and an error but it is advised against.
     #[unstable(feature = "read_buf", issue = "78485")]
     fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> Result<()> {
         default_read_buf(|b| self.read(b), buf)
@@ -1064,7 +1084,7 @@ pub trait Read {
     ///     let f = BufReader::new(File::open("foo.txt")?);
     ///
     ///     for byte in f.bytes() {
-    ///         println!("{}", byte.unwrap());
+    ///         println!("{}", byte?);
     ///     }
     ///     Ok(())
     /// }
@@ -1324,6 +1344,25 @@ impl<'a> IoSliceMut<'a> {
             bufs[0].advance(left);
         }
     }
+
+    /// Get the underlying bytes as a mutable slice with the original lifetime.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_slice_as_bytes)]
+    /// use std::io::IoSliceMut;
+    ///
+    /// let mut data = *b"abcdef";
+    /// let io_slice = IoSliceMut::new(&mut data);
+    /// io_slice.into_slice()[0] = b'A';
+    ///
+    /// assert_eq!(&data, b"Abcdef");
+    /// ```
+    #[unstable(feature = "io_slice_as_bytes", issue = "132818")]
+    pub const fn into_slice(self) -> &'a mut [u8] {
+        self.0.into_slice()
+    }
 }
 
 #[stable(feature = "iovec", since = "1.36.0")]
@@ -1465,6 +1504,32 @@ impl<'a> IoSlice<'a> {
         } else {
             bufs[0].advance(left);
         }
+    }
+
+    /// Get the underlying bytes as a slice with the original lifetime.
+    ///
+    /// This doesn't borrow from `self`, so is less restrictive than calling
+    /// `.deref()`, which does.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_slice_as_bytes)]
+    /// use std::io::IoSlice;
+    ///
+    /// let data = b"abcdef";
+    ///
+    /// let mut io_slice = IoSlice::new(data);
+    /// let tail = &io_slice.as_slice()[3..];
+    ///
+    /// // This works because `tail` doesn't borrow `io_slice`
+    /// io_slice = IoSlice::new(tail);
+    ///
+    /// assert_eq!(io_slice.as_slice(), b"def");
+    /// ```
+    #[unstable(feature = "io_slice_as_bytes", issue = "132818")]
+    pub const fn as_slice(self) -> &'a [u8] {
+        self.0.as_slice()
     }
 }
 
@@ -1931,15 +1996,16 @@ pub trait Seek {
     ///     .write(true)
     ///     .read(true)
     ///     .create(true)
-    ///     .open("foo.txt").unwrap();
+    ///     .open("foo.txt")?;
     ///
     /// let hello = "Hello!\n";
-    /// write!(f, "{hello}").unwrap();
-    /// f.rewind().unwrap();
+    /// write!(f, "{hello}")?;
+    /// f.rewind()?;
     ///
     /// let mut buf = String::new();
-    /// f.read_to_string(&mut buf).unwrap();
+    /// f.read_to_string(&mut buf)?;
     /// assert_eq!(&buf, hello);
+    /// # std::io::Result::Ok(())
     /// ```
     #[stable(feature = "seek_rewind", since = "1.55.0")]
     fn rewind(&mut self) -> Result<()> {
@@ -2058,6 +2124,7 @@ pub trait Seek {
 /// It is used by the [`Seek`] trait.
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "SeekFrom")]
 pub enum SeekFrom {
     /// Sets the offset to the provided number of bytes.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -2147,8 +2214,9 @@ fn skip_until<R: BufRead + ?Sized>(r: &mut R, delim: u8) -> Result<usize> {
 ///
 /// let stdin = io::stdin();
 /// for line in stdin.lock().lines() {
-///     println!("{}", line.unwrap());
+///     println!("{}", line?);
 /// }
+/// # std::io::Result::Ok(())
 /// ```
 ///
 /// If you have something that implements [`Read`], you can use the [`BufReader`
@@ -2171,7 +2239,8 @@ fn skip_until<R: BufRead + ?Sized>(r: &mut R, delim: u8) -> Result<usize> {
 ///     let f = BufReader::new(f);
 ///
 ///     for line in f.lines() {
-///         println!("{}", line.unwrap());
+///         let line = line?;
+///         println!("{line}");
 ///     }
 ///
 ///     Ok(())
@@ -2209,7 +2278,7 @@ pub trait BufRead: Read {
     /// let stdin = io::stdin();
     /// let mut stdin = stdin.lock();
     ///
-    /// let buffer = stdin.fill_buf().unwrap();
+    /// let buffer = stdin.fill_buf()?;
     ///
     /// // work with buffer
     /// println!("{buffer:?}");
@@ -2217,6 +2286,7 @@ pub trait BufRead: Read {
     /// // ensure the bytes we worked with aren't returned again later
     /// let length = buffer.len();
     /// stdin.consume(length);
+    /// # std::io::Result::Ok(())
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fill_buf(&mut self) -> Result<&[u8]>;
@@ -2262,12 +2332,13 @@ pub trait BufRead: Read {
     /// let stdin = io::stdin();
     /// let mut stdin = stdin.lock();
     ///
-    /// while stdin.has_data_left().unwrap() {
+    /// while stdin.has_data_left()? {
     ///     let mut line = String::new();
-    ///     stdin.read_line(&mut line).unwrap();
+    ///     stdin.read_line(&mut line)?;
     ///     // work with line
     ///     println!("{line:?}");
     /// }
+    /// # std::io::Result::Ok(())
     /// ```
     #[unstable(feature = "buf_read_has_data_left", reason = "recently added", issue = "86423")]
     fn has_data_left(&mut self) -> Result<bool> {
@@ -2365,8 +2436,6 @@ pub trait BufRead: Read {
     /// about Ferris from a binary string, skipping the fun fact:
     ///
     /// ```
-    /// #![feature(bufread_skip_until)]
-    ///
     /// use std::io::{self, BufRead};
     ///
     /// let mut cursor = io::Cursor::new(b"Ferris\0Likes long walks on the beach\0Crustacean\0");
@@ -2390,7 +2459,7 @@ pub trait BufRead: Read {
     /// assert_eq!(num_bytes, 11);
     /// assert_eq!(animal, b"Crustacean\0");
     /// ```
-    #[unstable(feature = "bufread_skip_until", issue = "111735")]
+    #[stable(feature = "bufread_skip_until", since = "1.83.0")]
     fn skip_until(&mut self, byte: u8) -> Result<usize> {
         skip_until(self, byte)
     }
@@ -2930,7 +2999,7 @@ impl<T: Read> Read for Take<T> {
             }
 
             let mut cursor = sliced_buf.unfilled();
-            self.inner.read_buf(cursor.reborrow())?;
+            let result = self.inner.read_buf(cursor.reborrow());
 
             let new_init = cursor.init_ref().len();
             let filled = sliced_buf.len();
@@ -2945,13 +3014,14 @@ impl<T: Read> Read for Take<T> {
             }
 
             self.limit -= filled as u64;
+
+            result
         } else {
             let written = buf.written();
-            self.inner.read_buf(buf.reborrow())?;
+            let result = self.inner.read_buf(buf.reborrow());
             self.limit -= (buf.written() - written) as u64;
+            result
         }
-
-        Ok(())
     }
 }
 
@@ -3179,5 +3249,253 @@ impl<B: BufRead> Iterator for Lines<B> {
             }
             Err(e) => Some(Err(e)),
         }
+    }
+}
+
+/// Create anonymous pipe that is close-on-exec and blocking.
+///
+/// # Behavior
+///
+/// A pipe is a synchronous, unidirectional data channel between two or more processes, like an
+/// interprocess [`mpsc`](crate::sync::mpsc) provided by the OS. In particular:
+///
+/// * A read on a [`PipeReader`] blocks until the pipe is non-empty.
+/// * A write on a [`PipeWriter`] blocks when the pipe is full.
+/// * When all copies of a [`PipeWriter`] are closed, a read on the corresponding [`PipeReader`]
+///   returns EOF.
+/// * [`PipeReader`] can be shared, but only one process will consume the data in the pipe.
+///
+/// # Capacity
+///
+/// Pipe capacity is platform dependent. To quote the Linux [man page]:
+///
+/// > Different implementations have different limits for the pipe capacity. Applications should
+/// > not rely on a particular capacity: an application should be designed so that a reading process
+/// > consumes data as soon as it is available, so that a writing process does not remain blocked.
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(anonymous_pipe)]
+/// # #[cfg(miri)] fn main() {}
+/// # #[cfg(not(miri))]
+/// # fn main() -> std::io::Result<()> {
+/// # use std::process::Command;
+/// # use std::io::{Read, Write};
+/// let (ping_rx, mut ping_tx) = std::io::pipe()?;
+/// let (mut pong_rx, pong_tx) = std::io::pipe()?;
+///
+/// // Spawn a process that echoes its input.
+/// let mut echo_server = Command::new("cat").stdin(ping_rx).stdout(pong_tx).spawn()?;
+///
+/// ping_tx.write_all(b"hello")?;
+/// // Close to unblock echo_server's reader.
+/// drop(ping_tx);
+///
+/// let mut buf = String::new();
+/// // Block until echo_server's writer is closed.
+/// pong_rx.read_to_string(&mut buf)?;
+/// assert_eq!(&buf, "hello");
+///
+/// echo_server.wait()?;
+/// # Ok(())
+/// # }
+/// ```
+/// [pipe]: https://man7.org/linux/man-pages/man2/pipe.2.html
+/// [CreatePipe]: https://learn.microsoft.com/en-us/windows/win32/api/namedpipeapi/nf-namedpipeapi-createpipe
+/// [man page]: https://man7.org/linux/man-pages/man7/pipe.7.html
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+#[inline]
+pub fn pipe() -> Result<(PipeReader, PipeWriter)> {
+    pipe_inner().map(|(reader, writer)| (PipeReader(reader), PipeWriter(writer)))
+}
+
+/// Read end of the anonymous pipe.
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+#[derive(Debug)]
+pub struct PipeReader(pub(crate) AnonPipe);
+
+/// Write end of the anonymous pipe.
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+#[derive(Debug)]
+pub struct PipeWriter(pub(crate) AnonPipe);
+
+impl PipeReader {
+    /// Create a new [`PipeReader`] instance that shares the same underlying file description.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(anonymous_pipe)]
+    /// # #[cfg(miri)] fn main() {}
+    /// # #[cfg(not(miri))]
+    /// # fn main() -> std::io::Result<()> {
+    /// # use std::fs;
+    /// # use std::io::Write;
+    /// # use std::process::Command;
+    /// const NUM_SLOT: u8 = 2;
+    /// const NUM_PROC: u8 = 5;
+    /// const OUTPUT: &str = "work.txt";
+    ///
+    /// let mut jobs = vec![];
+    /// let (reader, mut writer) = std::io::pipe()?;
+    ///
+    /// // Write NUM_SLOT characters the pipe.
+    /// writer.write_all(&[b'|'; NUM_SLOT as usize])?;
+    ///
+    /// // Spawn several processes that read a character from the pipe, do some work, then
+    /// // write back to the pipe. When the pipe is empty, the processes block, so only
+    /// // NUM_SLOT processes can be working at any given time.
+    /// for _ in 0..NUM_PROC {
+    ///     jobs.push(
+    ///         Command::new("bash")
+    ///             .args(["-c",
+    ///                 &format!(
+    ///                      "read -n 1\n\
+    ///                       echo -n 'x' >> '{OUTPUT}'\n\
+    ///                       echo -n '|'",
+    ///                 ),
+    ///             ])
+    ///             .stdin(reader.try_clone()?)
+    ///             .stdout(writer.try_clone()?)
+    ///             .spawn()?,
+    ///     );
+    /// }
+    ///
+    /// // Wait for all jobs to finish.
+    /// for mut job in jobs {
+    ///     job.wait()?;
+    /// }
+    ///
+    /// // Check our work and clean up.
+    /// let xs = fs::read_to_string(OUTPUT)?;
+    /// fs::remove_file(OUTPUT)?;
+    /// assert_eq!(xs, "x".repeat(NUM_PROC.into()));
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "anonymous_pipe", issue = "127154")]
+    pub fn try_clone(&self) -> Result<Self> {
+        self.0.try_clone().map(Self)
+    }
+}
+
+impl PipeWriter {
+    /// Create a new [`PipeWriter`] instance that shares the same underlying file description.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(anonymous_pipe)]
+    /// # #[cfg(miri)] fn main() {}
+    /// # #[cfg(not(miri))]
+    /// # fn main() -> std::io::Result<()> {
+    /// # use std::process::Command;
+    /// # use std::io::Read;
+    /// let (mut reader, writer) = std::io::pipe()?;
+    ///
+    /// // Spawn a process that writes to stdout and stderr.
+    /// let mut peer = Command::new("bash")
+    ///     .args([
+    ///         "-c",
+    ///         "echo -n foo\n\
+    ///          echo -n bar >&2"
+    ///     ])
+    ///     .stdout(writer.try_clone()?)
+    ///     .stderr(writer)
+    ///     .spawn()?;
+    ///
+    /// // Read and check the result.
+    /// let mut msg = String::new();
+    /// reader.read_to_string(&mut msg)?;
+    /// assert_eq!(&msg, "foobar");
+    ///
+    /// peer.wait()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "anonymous_pipe", issue = "127154")]
+    pub fn try_clone(&self) -> Result<Self> {
+        self.0.try_clone().map(Self)
+    }
+}
+
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl Read for &PipeReader {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        self.0.read(buf)
+    }
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> Result<usize> {
+        self.0.read_vectored(bufs)
+    }
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.0.is_read_vectored()
+    }
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
+        self.0.read_to_end(buf)
+    }
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> Result<()> {
+        self.0.read_buf(buf)
+    }
+}
+
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl Read for PipeReader {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        self.0.read(buf)
+    }
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> Result<usize> {
+        self.0.read_vectored(bufs)
+    }
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.0.is_read_vectored()
+    }
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
+        self.0.read_to_end(buf)
+    }
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> Result<()> {
+        self.0.read_buf(buf)
+    }
+}
+
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl Write for &PipeWriter {
+    fn write(&mut self, buf: &[u8]) -> Result<usize> {
+        self.0.write(buf)
+    }
+    #[inline]
+    fn flush(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> Result<usize> {
+        self.0.write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
+    }
+}
+
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl Write for PipeWriter {
+    fn write(&mut self, buf: &[u8]) -> Result<usize> {
+        self.0.write(buf)
+    }
+    #[inline]
+    fn flush(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> Result<usize> {
+        self.0.write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
     }
 }

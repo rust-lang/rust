@@ -13,6 +13,7 @@ mod rustc_tests;
 mod scip;
 mod ssr;
 mod symbols;
+mod unresolved_references;
 
 mod progress_report;
 
@@ -21,7 +22,7 @@ use std::io::Read;
 use anyhow::Result;
 use hir::{Module, Name};
 use hir_ty::db::HirDatabase;
-use ide::AnalysisHost;
+use ide::{AnalysisHost, Edition};
 use itertools::Itertools;
 use vfs::Vfs;
 
@@ -85,6 +86,6 @@ fn full_name_of_item(db: &dyn HirDatabase, module: Module, name: Name) -> String
         .rev()
         .filter_map(|it| it.name(db))
         .chain(Some(name))
-        .map(|it| it.display(db.upcast()).to_string())
+        .map(|it| it.display(db.upcast(), Edition::LATEST).to_string())
         .join("::")
 }

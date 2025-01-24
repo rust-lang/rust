@@ -400,10 +400,10 @@ impl client::Client<crate::TokenStream, crate::TokenStream> {
         S: Server,
         S::TokenStream: Default,
     {
-        let client::Client { get_handle_counters, run, _marker } = *self;
+        let client::Client { handle_counters, run, _marker } = *self;
         run_server(
             strategy,
-            get_handle_counters(),
+            handle_counters,
             server,
             <MarkedTypes<S> as Types>::TokenStream::mark(input),
             run,
@@ -426,10 +426,10 @@ impl client::Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream
         S: Server,
         S::TokenStream: Default,
     {
-        let client::Client { get_handle_counters, run, _marker } = *self;
+        let client::Client { handle_counters, run, _marker } = *self;
         run_server(
             strategy,
-            get_handle_counters(),
+            handle_counters,
             server,
             (
                 <MarkedTypes<S> as Types>::TokenStream::mark(input),

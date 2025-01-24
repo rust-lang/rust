@@ -1,4 +1,4 @@
-#![feature(precise_capturing)]
+#![feature(precise_capturing_in_traits)]
 
 fn type_param<T>() -> impl Sized + use<> {}
 //~^ ERROR `impl Trait` must mention all type parameters in scope
@@ -6,7 +6,6 @@ fn type_param<T>() -> impl Sized + use<> {}
 trait Foo {
     fn bar() -> impl Sized + use<>;
     //~^ ERROR `impl Trait` must mention the `Self` type of the trait
-    //~| ERROR `use<...>` precise capturing syntax is currently not allowed in return-position `impl Trait` in traits
 }
 
 fn main() {}

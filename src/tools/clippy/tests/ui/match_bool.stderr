@@ -75,9 +75,6 @@ error: you seem to be trying to match on a boolean expression
   --> tests/ui/match_bool.rs:36:5
    |
 LL | /     match test && test {
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |         _ => (),
 LL | |     };

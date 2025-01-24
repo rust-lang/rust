@@ -37,6 +37,8 @@ mod rustc_warn {
 
         #[expect(invalid_nan_comparisons)]
         //~^ WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+        //~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+        //~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
         let _b = x == 5;
     }
 }

@@ -4,7 +4,7 @@ pub(crate) mod query_context;
 #[cfg(test)]
 mod tests;
 
-use crate::layout::{self, dfa, Byte, Def, Dfa, Nfa, Ref, Tree, Uninhabited};
+use crate::layout::{self, Byte, Def, Dfa, Nfa, Ref, Tree, Uninhabited, dfa};
 use crate::maybe_transmutable::query_context::QueryContext;
 use crate::{Answer, Condition, Map, Reason};
 
@@ -30,8 +30,8 @@ where
 // FIXME: Nix this cfg, so we can write unit tests independently of rustc
 #[cfg(feature = "rustc")]
 mod rustc {
-    use rustc_middle::ty::layout::{LayoutCx, LayoutOf};
-    use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
+    use rustc_middle::ty::layout::LayoutCx;
+    use rustc_middle::ty::{Ty, TyCtxt, TypingEnv};
 
     use super::*;
     use crate::layout::tree::rustc::Err;
@@ -40,23 +40,15 @@ mod rustc {
         /// This method begins by converting `src` and `dst` from `Ty`s to `Tree`s,
         /// then computes an answer using those trees.
         #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
-        pub fn answer(self) -> Answer<<TyCtxt<'tcx> as QueryContext>::Ref> {
+        pub(crate) fn answer(self) -> Answer<<TyCtxt<'tcx> as QueryContext>::Ref> {
             let Self { src, dst, assume, context } = self;
 
-            let layout_cx = LayoutCx { tcx: context, param_env: ParamEnv::reveal_all() };
-            let layout_of = |ty| {
-                layout_cx
-                    .layout_of(ty)
-                    .map_err(|_| Err::NotYetSupported)
-                    .and_then(|tl| Tree::from_ty(tl, layout_cx))
-            };
+            let layout_cx = LayoutCx::new(context, TypingEnv::fully_monomorphized());
 
             // Convert `src` and `dst` from their rustc representations, to `Tree`-based
-            // representations. If these conversions fail, conclude that the transmutation is
-            // unacceptable; the layouts of both the source and destination types must be
-            // well-defined.
-            let src = layout_of(src);
-            let dst = layout_of(dst);
+            // representations.
+            let src = Tree::from_ty(src, layout_cx);
+            let dst = Tree::from_ty(dst, layout_cx);
 
             match (src, dst) {
                 (Err(Err::TypeError(_)), _) | (_, Err(Err::TypeError(_))) => {
@@ -250,7 +242,7 @@ where
                 //   }
                 // ...if `refs_answer` was computed lazily. The below early
                 // returns can be deleted without impacting the correctness of
-                // the algoritm; only its performance.
+                // the algorithm; only its performance.
                 debug!(?bytes_answer);
                 match bytes_answer {
                     Answer::No(_) if !self.assume.validity => return bytes_answer,
@@ -374,13 +366,13 @@ where
     }
 }
 
-pub enum Quantifier {
+enum Quantifier {
     ThereExists,
     ForAll,
 }
 
 impl Quantifier {
-    pub fn apply<R, I>(&self, iter: I) -> Answer<R>
+    fn apply<R, I>(&self, iter: I) -> Answer<R>
     where
         R: layout::Ref,
         I: IntoIterator<Item = Answer<R>>,

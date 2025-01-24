@@ -24,9 +24,9 @@ mod iter;
 #[unstable(feature = "new_range_api", issue = "125687")]
 pub mod legacy;
 
+use Bound::{Excluded, Included, Unbounded};
 #[doc(inline)]
 pub use iter::{IterRange, IterRangeFrom, IterRangeInclusive};
-use Bound::{Excluded, Included, Unbounded};
 
 #[doc(inline)]
 pub use crate::iter::Step;

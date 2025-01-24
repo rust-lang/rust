@@ -1,6 +1,6 @@
 //! Conversion of internal Rust compiler items to stable ones.
 
-use rustc_target::abi::FieldIdx;
+use rustc_abi::FieldIdx;
 
 use crate::rustc_smir::{Stable, Tables};
 
@@ -9,7 +9,7 @@ mod error;
 mod mir;
 mod ty;
 
-pub use ty::mir_const_from_ty_const;
+pub(crate) use ty::mir_const_from_ty_const;
 
 impl<'tcx> Stable<'tcx> for rustc_hir::Safety {
     type T = stable_mir::mir::Safety;

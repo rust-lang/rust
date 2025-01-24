@@ -4,8 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::{fmt, iter, mem, ptr, slice};
 
-use rustc_data_structures::aligned::{align_of, Aligned};
-#[cfg(parallel_compiler)]
+use rustc_data_structures::aligned::{Aligned, align_of};
 use rustc_data_structures::sync::DynSync;
 use rustc_serialize::{Encodable, Encoder};
 
@@ -22,7 +21,7 @@ use crate::arena::Arena;
 ///   pointer.
 /// - Because of this, you cannot get a `List<T>` that is a sub-list of another
 ///   `List<T>`. You can get a sub-slice `&[T]`, however.
-/// - `List<T>` can be used with `CopyTaggedPtr`, which is useful within
+/// - `List<T>` can be used with `TaggedRef`, which is useful within
 ///   structs whose size must be minimized.
 /// - Because of the uniqueness assumption, we can use the address of a
 ///   `List<T>` for faster equality comparisons and hashing.
@@ -58,7 +57,7 @@ impl<T> Default for &List<T> {
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     /// A dummy type used to force `List` to be unsized while not requiring
     /// references to it be wide pointers.
     type OpaqueListContents;
@@ -103,13 +102,13 @@ impl<H, T> RawList<H, T> {
         let mem = arena.dropless.alloc_raw(layout) as *mut RawList<H, T>;
         unsafe {
             // Write the header
-            ptr::addr_of_mut!((*mem).skel.header).write(header);
+            (&raw mut (*mem).skel.header).write(header);
 
             // Write the length
-            ptr::addr_of_mut!((*mem).skel.len).write(slice.len());
+            (&raw mut (*mem).skel.len).write(slice.len());
 
             // Write the elements
-            ptr::addr_of_mut!((*mem).skel.data)
+            (&raw mut (*mem).skel.data)
                 .cast::<T>()
                 .copy_from_nonoverlapping(slice.as_ptr(), slice.len());
 
@@ -160,7 +159,7 @@ macro_rules! impl_list_empty {
 
                 // SAFETY: `EMPTY` is sufficiently aligned to be an empty list for all
                 // types with `align_of(T) <= align_of(MaxAlign)`, which we checked above.
-                unsafe { &*(std::ptr::addr_of!(EMPTY) as *const RawList<$header_ty, T>) }
+                unsafe { &*((&raw const EMPTY) as *const RawList<$header_ty, T>) }
             }
         }
     };
@@ -238,7 +237,7 @@ impl<H, T> Deref for RawList<H, T> {
 impl<H, T> AsRef<[T]> for RawList<H, T> {
     #[inline(always)]
     fn as_ref(&self) -> &[T] {
-        let data_ptr = ptr::addr_of!(self.skel.data).cast::<T>();
+        let data_ptr = (&raw const self.skel.data).cast::<T>();
         // SAFETY: `data_ptr` has the same provenance as `self` and can therefore
         // access the `self.skel.len` elements stored at `self.skel.data`.
         // Note that we specifically don't reborrow `&self.skel.data`, because that
@@ -259,7 +258,6 @@ impl<'a, H, T: Copy> IntoIterator for &'a RawList<H, T> {
 unsafe impl<H: Sync, T: Sync> Sync for RawList<H, T> {}
 
 // We need this since `List` uses extern type `OpaqueListContents`.
-#[cfg(parallel_compiler)]
 unsafe impl<H: DynSync, T: DynSync> DynSync for RawList<H, T> {}
 
 // Safety:

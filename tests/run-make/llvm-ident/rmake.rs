@@ -17,7 +17,7 @@ fn main() {
         .codegen_units(16)
         .opt_level("2")
         .target(&env_var("TARGET"))
-        .stdin("fn main(){}")
+        .stdin_buf("fn main(){}")
         .run();
 
     // `llvm-dis` is used here since `--emit=llvm-ir` does not emit LLVM IR

@@ -5,25 +5,22 @@
 use std::borrow::Cow;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use rustc_mir_dataflow::impls::{MaybeStorageDead, MaybeStorageLive};
-use rustc_mir_dataflow::storage::always_storage_live_locals;
+use rustc_mir_dataflow::impls::{MaybeStorageDead, MaybeStorageLive, always_storage_live_locals};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 
-pub fn lint_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: String) {
+pub(super) fn lint_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: String) {
     let always_live_locals = &always_storage_live_locals(body);
 
     let maybe_storage_live = MaybeStorageLive::new(Cow::Borrowed(always_live_locals))
-        .into_engine(tcx, body)
-        .iterate_to_fixpoint()
+        .iterate_to_fixpoint(tcx, body, None)
         .into_results_cursor(body);
 
     let maybe_storage_dead = MaybeStorageDead::new(Cow::Borrowed(always_live_locals))
-        .into_engine(tcx, body)
-        .iterate_to_fixpoint()
+        .iterate_to_fixpoint(tcx, body, None)
         .into_results_cursor(body);
 
     let mut lint = Lint {
@@ -46,7 +43,7 @@ struct Lint<'a, 'tcx> {
     when: String,
     body: &'a Body<'tcx>,
     is_fn_like: bool,
-    always_live_locals: &'a BitSet<Local>,
+    always_live_locals: &'a DenseBitSet<Local>,
     maybe_storage_live: ResultsCursor<'a, 'tcx, MaybeStorageLive<'a>>,
     maybe_storage_dead: ResultsCursor<'a, 'tcx, MaybeStorageDead<'a>>,
     places: FxHashSet<PlaceRef<'tcx>>,

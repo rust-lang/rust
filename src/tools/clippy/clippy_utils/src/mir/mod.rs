@@ -1,8 +1,8 @@
 use rustc_hir::{Expr, HirId};
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{
-    traversal, BasicBlock, Body, InlineAsmOperand, Local, Location, Place, StatementKind, TerminatorKind, START_BLOCK,
+    BasicBlock, Body, InlineAsmOperand, Local, Location, Place, START_BLOCK, StatementKind, TerminatorKind, traversal,
 };
 use rustc_middle::ty::TyCtxt;
 
@@ -30,7 +30,7 @@ pub fn visit_local_usage(locals: &[Local], mir: &Body<'_>, location: Location) -
         locals.len()
     ];
 
-    traversal::Postorder::new(&mir.basic_blocks, location.block)
+    traversal::Postorder::new(&mir.basic_blocks, location.block, ())
         .collect::<Vec<_>>()
         .into_iter()
         .rev()
@@ -58,7 +58,7 @@ struct V<'a> {
     results: Vec<LocalUsage>,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for V<'a> {
+impl<'tcx> Visitor<'tcx> for V<'_> {
     fn visit_place(&mut self, place: &Place<'tcx>, ctx: PlaceContext, loc: Location) {
         if loc.block == self.location.block && loc.statement_index <= self.location.statement_index {
             return;
@@ -88,7 +88,7 @@ impl<'a, 'tcx> Visitor<'tcx> for V<'a> {
 
 /// Checks if the block is part of a cycle
 pub fn block_in_cycle(body: &Body<'_>, block: BasicBlock) -> bool {
-    let mut seen = BitSet::new_empty(body.basic_blocks.len());
+    let mut seen = DenseBitSet::new_empty(body.basic_blocks.len());
     let mut to_visit = Vec::with_capacity(body.basic_blocks.len() / 2);
 
     seen.insert(block);
@@ -112,14 +112,10 @@ pub fn block_in_cycle(body: &Body<'_>, block: BasicBlock) -> bool {
 
 /// Convenience wrapper around `visit_local_usage`.
 pub fn used_exactly_once(mir: &Body<'_>, local: Local) -> Option<bool> {
-    visit_local_usage(
-        &[local],
-        mir,
-        Location {
-            block: START_BLOCK,
-            statement_index: 0,
-        },
-    )
+    visit_local_usage(&[local], mir, Location {
+        block: START_BLOCK,
+        statement_index: 0,
+    })
     .map(|mut vec| {
         let LocalUsage { local_use_locs, .. } = vec.remove(0);
         let mut locations = local_use_locs

@@ -1,13 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use rustc_ast::AttrStyle;
 use rustc_ast::token::CommentKind;
-use rustc_ast::{AttrKind, AttrStyle, Attribute};
 use rustc_errors::Applicability;
+use rustc_hir::Attribute;
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
 use super::SUSPICIOUS_DOC_COMMENTS;
 
-pub fn check(cx: &LateContext<'_>, attrs: &[Attribute]) {
+pub fn check(cx: &LateContext<'_>, attrs: &[Attribute]) -> bool {
     let replacements: Vec<_> = collect_doc_replacements(attrs);
 
     if let Some((&(lo_span, _), &(hi_span, _))) = replacements.first().zip(replacements.last()) {
@@ -24,6 +25,10 @@ pub fn check(cx: &LateContext<'_>, attrs: &[Attribute]) {
                 );
             },
         );
+
+        true
+    } else {
+        false
     }
 }
 
@@ -31,7 +36,7 @@ fn collect_doc_replacements(attrs: &[Attribute]) -> Vec<(Span, String)> {
     attrs
         .iter()
         .filter_map(|attr| {
-            if let AttrKind::DocComment(com_kind, sym) = attr.kind
+            if let Some((sym, com_kind)) = attr.doc_str_and_comment_kind()
                 && let AttrStyle::Outer = attr.style
                 && let Some(com) = sym.as_str().strip_prefix('!')
             {

@@ -1,10 +1,10 @@
-use clippy_config::msrvs::{Msrv, OPTION_RESULT_IS_VARIANT_AND};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use super::MANUAL_IS_VARIANT_AND;
 
@@ -36,7 +36,7 @@ pub(super) fn check<'tcx>(
     }
 
     // 4. msrv doesn't meet `OPTION_RESULT_IS_VARIANT_AND`
-    if !msrv.meets(OPTION_RESULT_IS_VARIANT_AND) {
+    if !msrv.meets(msrvs::OPTION_RESULT_IS_VARIANT_AND) {
         return;
     }
 

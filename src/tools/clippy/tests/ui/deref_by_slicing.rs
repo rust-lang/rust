@@ -25,4 +25,8 @@ fn main() {
 
     let bytes: &[u8] = &[];
     let _ = (&bytes[..]).read_to_end(&mut vec![]).unwrap(); // Err, re-borrows slice
+
+    // issue 12751
+    let a = &mut [1, 2, 3][..];
+    let _ = &a[..];
 }

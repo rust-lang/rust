@@ -1,20 +1,11 @@
 error: memory leaked: ALLOC (Rust heap, size: 4, align: 4), allocated here:
-  --> RUSTLIB/alloc/src/alloc.rs:LL:CC
-   |
-LL |         __rust_alloc(layout.size(), layout.align())
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: BACKTRACE:
-   = note: inside `std::alloc::alloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: inside `std::alloc::Global::alloc_impl` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: inside `<std::alloc::Global as std::alloc::Allocator>::allocate` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: inside `alloc::alloc::exchange_malloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: inside `std::boxed::Box::<i32>::new` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-note: inside closure
-  --> $DIR/tls_static_leak.rs:LL:CC
+  --> tests/fail/tls_static_leak.rs:LL:CC
    |
 LL |         TLS.set(Some(Box::leak(Box::new(123))));
    |                                ^^^^^^^^^^^^^
+   |
+   = note: BACKTRACE:
+   = note: inside closure at tests/fail/tls_static_leak.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

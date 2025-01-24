@@ -5,10 +5,13 @@ use rustc_hir::lang_items::LangItem;
 pub use rustc_infer::infer::*;
 use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
-use rustc_middle::infer::canonical::{Canonical, CanonicalQueryResponse, QueryResponse};
+use rustc_middle::infer::canonical::{
+    Canonical, CanonicalQueryInput, CanonicalQueryResponse, QueryResponse,
+};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast};
 use rustc_span::DUMMY_SP;
+use tracing::instrument;
 
 use crate::infer::at::ToTrace;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -29,8 +32,10 @@ impl<'tcx> InferCtxt<'tcx> {
     fn type_is_copy_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         let ty = self.resolve_vars_if_possible(ty);
 
+        // FIXME(#132279): This should be removed as it causes us to incorrectly
+        // handle opaques in their defining scope.
         if !(param_env, ty).has_infer() {
-            return ty.is_copy_modulo_regions(self.tcx, param_env);
+            return self.tcx.type_is_copy_modulo_regions(self.typing_env(param_env), ty);
         }
 
         let copy_def_id = self.tcx.require_lang_item(LangItem::Copy, None);
@@ -40,6 +45,12 @@ impl<'tcx> InferCtxt<'tcx> {
         // moves_by_default has a cache, which we want to use in other
         // cases.
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id)
+    }
+
+    fn type_is_clone_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
+        let ty = self.resolve_vars_if_possible(ty);
+        let clone_def_id = self.tcx.require_lang_item(LangItem::Clone, None);
+        traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, clone_def_id)
     }
 
     fn type_is_sized_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -57,6 +68,24 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// Invokes `evaluate_obligation`, so in the event that evaluating
     /// `Ty: Trait` causes overflow, EvaluatedToAmbigStackDependent will be returned.
+    ///
+    /// `type_implements_trait` is a convenience function for simple cases like
+    ///
+    /// ```ignore (illustrative)
+    /// let copy_trait = infcx.tcx.require_lang_item(LangItem::Copy, span);
+    /// let implements_copy = infcx.type_implements_trait(copy_trait, [ty], param_env)
+    /// .must_apply_modulo_regions();
+    /// ```
+    ///
+    /// In most cases you should instead create an [Obligation] and check whether
+    ///  it holds via [`evaluate_obligation`] or one of its helper functions like
+    /// [`predicate_must_hold_modulo_regions`], because it properly handles higher ranked traits
+    /// and it is more convenient and safer when your `params` are inside a [`Binder`].
+    ///
+    /// [Obligation]: traits::Obligation
+    /// [`evaluate_obligation`]: crate::traits::query::evaluate_obligation::InferCtxtExt::evaluate_obligation
+    /// [`predicate_must_hold_modulo_regions`]: crate::traits::query::evaluate_obligation::InferCtxtExt::predicate_must_hold_modulo_regions
+    /// [`Binder`]: ty::Binder
     #[instrument(level = "debug", skip(self, params), ret)]
     fn type_implements_trait(
         &self,
@@ -131,7 +160,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// `K: TypeFoldable<TyCtxt<'tcx>>`.)
     fn enter_canonical_trait_query<K, R>(
         self,
-        canonical_key: &Canonical<'tcx, K>,
+        canonical_key: &CanonicalQueryInput<'tcx, K>,
         operation: impl FnOnce(&ObligationCtxt<'_, 'tcx>, K) -> Result<R, NoSolution>,
     ) -> Result<CanonicalQueryResponse<'tcx, R>, NoSolution>
     where

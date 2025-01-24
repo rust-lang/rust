@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use super::query_context::test::{Def, UltraMinimal};
 use crate::maybe_transmutable::MaybeTransmutableQuery;
-use crate::{layout, Reason};
+use crate::{Reason, layout};
 
 mod safety {
     use super::*;

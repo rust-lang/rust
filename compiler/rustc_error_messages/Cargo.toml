@@ -19,8 +19,3 @@ rustc_span = { path = "../rustc_span" }
 tracing = "0.1"
 unic-langid = { version = "0.9.0", features = ["macros"] }
 # tidy-alphabetical-end
-
-[features]
-# tidy-alphabetical-start
-rustc_use_parallel_compiler = ['rustc_baked_icu_data/rustc_use_parallel_compiler']
-# tidy-alphabetical-end

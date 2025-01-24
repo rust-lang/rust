@@ -1,7 +1,8 @@
 //! Extracted from the backtrace crate's test test_frame_conversion
 
-use backtrace::{Backtrace, BacktraceFrame};
 use std::fmt::Write;
+
+use backtrace::{Backtrace, BacktraceFrame};
 
 fn main() {
     let mut frames = vec![];

@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use syntax::{
     ast::{self, make, AstNode, AstToken},
-    match_ast, ted, NodeOrToken, SyntaxElement, TextRange, TextSize, T,
+    match_ast, ted, Edition, NodeOrToken, SyntaxElement, TextRange, TextSize, T,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -41,7 +41,7 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
         macro_calls.into_iter().filter_map(compute_dbg_replacement).collect::<Vec<_>>();
 
     acc.add(
-        AssistId("remove_dbg", AssistKind::Refactor),
+        AssistId("remove_dbg", AssistKind::QuickFix),
         "Remove dbg!()",
         replacements.iter().map(|&(range, _)| range).reduce(|acc, range| acc.cover(range))?,
         |builder| {
@@ -77,7 +77,7 @@ fn compute_dbg_replacement(macro_expr: ast::MacroExpr) -> Option<(TextRange, Opt
     let input_expressions = input_expressions
         .into_iter()
         .filter_map(|(is_sep, group)| (!is_sep).then_some(group))
-        .map(|mut tokens| syntax::hacks::parse_expr_from_str(&tokens.join("")))
+        .map(|mut tokens| syntax::hacks::parse_expr_from_str(&tokens.join(""), Edition::CURRENT))
         .collect::<Option<Vec<ast::Expr>>>()?;
 
     let parent = macro_expr.syntax().parent()?;
@@ -102,7 +102,7 @@ fn compute_dbg_replacement(macro_expr: ast::MacroExpr) -> Option<(TextRange, Opt
                         };
                         (range, None)
                     },
-                    _ => (macro_call.syntax().text_range(), Some(make::expr_unit())),
+                    _ => (macro_call.syntax().text_range(), Some(make::ext::expr_unit())),
                 }
             }
         }
@@ -152,7 +152,7 @@ fn compute_dbg_replacement(macro_expr: ast::MacroExpr) -> Option<(TextRange, Opt
         exprs => {
             let exprs = exprs.iter().cloned().map(replace_nested_dbgs);
             let expr = make::expr_tuple(exprs);
-            (macro_call.syntax().text_range(), Some(expr))
+            (macro_call.syntax().text_range(), Some(expr.into()))
         }
     })
 }
@@ -209,7 +209,10 @@ mod tests {
 
     use super::*;
 
-    fn check(ra_fixture_before: &str, ra_fixture_after: &str) {
+    fn check(
+        #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+    ) {
         check_assist(
             remove_dbg,
             &format!("fn main() {{\n{ra_fixture_before}\n}}"),

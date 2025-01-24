@@ -3,6 +3,7 @@
 #![allow(clippy::ptr_arg)] // https://github.com/rust-lang/rust-clippy/issues/10612
 #![allow(clippy::needless_late_init)]
 #![allow(clippy::box_collection)]
+#![allow(clippy::boxed_local)]
 #![warn(clippy::assigning_clones)]
 
 use std::borrow::ToOwned;
@@ -182,6 +183,31 @@ impl Clone for AvoidRecursiveCloneFrom {
     }
 }
 
+// Deref handling
+fn clone_into_deref_method(mut a: DerefWrapper<HasCloneFrom>, b: HasCloneFrom) {
+    (*a).clone_from(&b);
+}
+
+fn clone_into_deref_with_clone_method(mut a: DerefWrapperWithClone<HasCloneFrom>, b: HasCloneFrom) {
+    (*a).clone_from(&b);
+}
+
+fn clone_into_box_method(mut a: Box<HasCloneFrom>, b: HasCloneFrom) {
+    (*a).clone_from(&b);
+}
+
+fn clone_into_self_deref_method(a: &mut DerefWrapperWithClone<HasCloneFrom>, b: DerefWrapperWithClone<HasCloneFrom>) {
+    a.clone_from(&b);
+}
+
+fn clone_into_deref_function(mut a: DerefWrapper<HasCloneFrom>, b: HasCloneFrom) {
+    Clone::clone_from(&mut *a, &b);
+}
+
+fn clone_into_box_function(mut a: Box<HasCloneFrom>, b: HasCloneFrom) {
+    Clone::clone_from(&mut *a, &b);
+}
+
 // ToOwned
 fn owned_method_mut_ref(mut_string: &mut String, ref_str: &str) {
     ref_str.clone_into(mut_string);
@@ -326,5 +352,67 @@ mod borrowck_conflicts {
     fn issue12749() {
         let mut path = PathBuf::from("/a/b/c");
         path = path.components().as_path().to_owned();
+    }
+}
+
+struct DerefWrapper<T>(T);
+
+impl<T> Deref for DerefWrapper<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> DerefMut for DerefWrapper<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+struct DerefWrapperWithClone<T>(T);
+
+impl<T> Deref for DerefWrapperWithClone<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> DerefMut for DerefWrapperWithClone<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<T: Clone> Clone for DerefWrapperWithClone<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        *self = Self(source.0.clone());
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[derive(Default)]
+    struct Data {
+        field: String,
+    }
+
+    fn test_data() -> Data {
+        Data {
+            field: "default_value".to_string(),
+        }
+    }
+
+    #[test]
+    fn test() {
+        let mut data = test_data();
+        data.field = "override_value".to_owned();
     }
 }

@@ -1,15 +1,15 @@
 error: Undefined Behavior: constructing invalid value at [0]: encountered 0x02, but expected a boolean
-  --> $DIR/typed-swap-invalid-array.rs:LL:CC
+  --> tests/fail/intrinsics/typed-swap-invalid-array.rs:LL:CC
    |
-LL |         typed_swap(a, b);
-   |         ^^^^^^^^^^^^^^^^ constructing invalid value at [0]: encountered 0x02, but expected a boolean
+LL |         typed_swap_nonoverlapping(a, b);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at [0]: encountered 0x02, but expected a boolean
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `invalid_array` at $DIR/typed-swap-invalid-array.rs:LL:CC
+   = note: inside `invalid_array` at tests/fail/intrinsics/typed-swap-invalid-array.rs:LL:CC
 note: inside `main`
-  --> $DIR/typed-swap-invalid-array.rs:LL:CC
+  --> tests/fail/intrinsics/typed-swap-invalid-array.rs:LL:CC
    |
 LL |     invalid_array();
    |     ^^^^^^^^^^^^^^^

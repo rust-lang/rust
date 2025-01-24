@@ -7,7 +7,7 @@ use hir::{HirDisplay, Semantics};
 use ide_db::{FileRange, RootDatabase};
 use span::EditionedFileId;
 use syntax::{
-    ast::{self, AstNode, HasName},
+    ast::{self, AstNode, HasLoopBody, HasName},
     match_ast, SyntaxKind, SyntaxNode, T,
 };
 
@@ -18,12 +18,13 @@ pub(super) fn hints(
     sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
     file_id: EditionedFileId,
-    mut node: SyntaxNode,
+    original_node: SyntaxNode,
 ) -> Option<()> {
     let min_lines = config.closing_brace_hints_min_lines?;
 
     let name = |it: ast::Name| it.syntax().text_range();
 
+    let mut node = original_node.clone();
     let mut closing_token;
     let (label, name_range) = if let Some(item_list) = ast::AssocItemList::cast(node.clone()) {
         closing_token = item_list.r_curly_token()?;
@@ -36,8 +37,12 @@ pub(super) fn hints(
                     let ty = imp.self_ty(sema.db);
                     let trait_ = imp.trait_(sema.db);
                     let hint_text = match trait_ {
-                        Some(tr) => format!("impl {} for {}", tr.name(sema.db).display(sema.db), ty.display_truncated(sema.db, config.max_length)),
-                        None => format!("impl {}", ty.display_truncated(sema.db, config.max_length)),
+                        Some(tr) => format!(
+                            "impl {} for {}",
+                            tr.name(sema.db).display(sema.db, file_id.edition()),
+                            ty.display_truncated(sema.db, config.max_length, file_id.edition(),
+                        )),
+                        None => format!("impl {}", ty.display_truncated(sema.db, config.max_length, file_id.edition())),
                     };
                     (hint_text, None)
                 },
@@ -57,9 +62,24 @@ pub(super) fn hints(
         // the actual number of lines in this case should be the line count of the parent BlockExpr,
         // which the `min_lines` config cares about
         node = node.parent()?;
-        let block = label.syntax().parent().and_then(ast::BlockExpr::cast)?;
-        closing_token = block.stmt_list()?.r_curly_token()?;
-        let lifetime = label.lifetime().map_or_else(String::new, |it| it.to_string());
+
+        let parent = label.syntax().parent()?;
+        let block;
+        match_ast! {
+            match parent {
+                ast::BlockExpr(block_expr) => {
+                    block = block_expr.stmt_list()?;
+                },
+                ast::AnyHasLoopBody(loop_expr) => {
+                    block = loop_expr.loop_body()?.stmt_list()?;
+                },
+                _ => return None,
+            }
+        }
+        closing_token = block.r_curly_token()?;
+
+        let lifetime = label.lifetime()?.to_string();
+
         (lifetime, Some(label.syntax().text_range()))
     } else if let Some(block) = ast::BlockExpr::cast(node.clone()) {
         closing_token = block.stmt_list()?.r_curly_token()?;
@@ -126,6 +146,7 @@ pub(super) fn hints(
         position: InlayHintPosition::After,
         pad_left: true,
         pad_right: false,
+        resolve_parent: Some(original_node.text_range()),
     });
 
     None
@@ -219,6 +240,19 @@ fn test() {
       //^ 'do_a
     }
   //^ 'end
+
+    'a: loop {
+        'b: for i in 0..5 {
+            'c: while true {
+
+
+            }
+          //^ 'c
+        }
+      //^ 'b
+    }
+  //^ 'a
+
   }
 //^ fn test
 "#,

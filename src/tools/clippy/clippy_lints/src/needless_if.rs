@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher::If;
 use clippy_utils::is_from_proc_macro;
-use clippy_utils::source::{snippet_opt, SpanRangeExt};
+use clippy_utils::source::SpanRangeExt;
 use rustc_errors::Applicability;
 use rustc_hir::{ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -57,7 +57,7 @@ impl LateLintPass<'_> for NeedlessIf {
                 src.bytes()
                     .all(|ch| matches!(ch, b'{' | b'}') || ch.is_ascii_whitespace())
             })
-            && let Some(cond_snippet) = snippet_opt(cx, cond.span)
+            && let Some(cond_snippet) = cond.span.get_source_text(cx)
             && !is_from_proc_macro(cx, expr)
         {
             span_lint_and_sugg(

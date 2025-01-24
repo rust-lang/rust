@@ -1,7 +1,5 @@
-//! lint on blocks unnecessarily using >= with a + 1 or - 1
-
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use rustc_ast::ast::{BinOpKind, Expr, ExprKind, LitKind};
 use rustc_ast::token;
 use rustc_errors::Applicability;
@@ -132,8 +130,8 @@ impl IntPlusOne {
             BinOpKind::Le => "<",
             _ => return None,
         };
-        if let Some(snippet) = snippet_opt(cx, node.span) {
-            if let Some(other_side_snippet) = snippet_opt(cx, other_side.span) {
+        if let Some(snippet) = node.span.get_source_text(cx) {
+            if let Some(other_side_snippet) = other_side.span.get_source_text(cx) {
                 let rec = match side {
                     Side::Lhs => Some(format!("{snippet} {binop_string} {other_side_snippet}")),
                     Side::Rhs => Some(format!("{other_side_snippet} {binop_string} {snippet}")),

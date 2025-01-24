@@ -1,7 +1,6 @@
 //@ compile-flags:-g
-//@ min-gdb-version: 8.1
 //@ ignore-lldb
-//@ ignore-windows-gnu // emit_debug_gdb_scripts is disabled on Windows
+//@ ignore-windows-gnu: #128981
 
 // === CDB TESTS ==================================================================================
 

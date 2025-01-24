@@ -28,6 +28,9 @@ use shared_helpers::{
 #[path = "../utils/shared_helpers.rs"]
 mod shared_helpers;
 
+#[path = "../utils/proc_macro_deps.rs"]
+mod proc_macro_deps;
+
 fn main() {
     let orig_args = env::args_os().skip(1).collect::<Vec<_>>();
     let mut args = orig_args.clone();
@@ -89,6 +92,24 @@ fn main() {
         rustc_real
     };
 
+    // Get the name of the crate we're compiling, if any.
+    let crate_name = parse_value_from_args(&orig_args, "--crate-name");
+
+    // When statically linking `std` into `rustc_driver`, remove `-C prefer-dynamic`
+    if env::var("RUSTC_LINK_STD_INTO_RUSTC_DRIVER").unwrap() == "1"
+        && crate_name == Some("rustc_driver")
+    {
+        if let Some(pos) = args.iter().enumerate().position(|(i, a)| {
+            a == "-C" && args.get(i + 1).map(|a| a == "prefer-dynamic").unwrap_or(false)
+        }) {
+            args.remove(pos);
+            args.remove(pos);
+        }
+        if let Some(pos) = args.iter().position(|a| a == "-Cprefer-dynamic") {
+            args.remove(pos);
+        }
+    }
+
     let mut cmd = match env::var_os("RUSTC_WRAPPER_REAL") {
         Some(wrapper) if !wrapper.is_empty() => {
             let mut cmd = Command::new(wrapper);
@@ -98,9 +119,6 @@ fn main() {
         _ => Command::new(rustc_driver),
     };
     cmd.args(&args).env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
-
-    // Get the name of the crate we're compiling, if any.
-    let crate_name = parse_value_from_args(&orig_args, "--crate-name");
 
     if let Some(crate_name) = crate_name {
         if let Some(target) = env::var_os("RUSTC_TIME") {
@@ -119,6 +137,12 @@ fn main() {
 
     if let Ok(lint_flags) = env::var("RUSTC_LINT_FLAGS") {
         cmd.args(lint_flags.split_whitespace());
+    }
+
+    // Conditionally pass `-Zon-broken-pipe=kill` to underlying rustc. Not all binaries want
+    // `-Zon-broken-pipe=kill`, which includes cargo itself.
+    if env::var_os("FORCE_ON_BROKEN_PIPE_KILL").is_some() {
+        cmd.arg("-Z").arg("on-broken-pipe=kill");
     }
 
     if target.is_some() {
@@ -146,7 +170,7 @@ fn main() {
         // issue https://github.com/rust-lang/rust/issues/100530
         if env::var("RUSTC_TLS_MODEL_INITIAL_EXEC").is_ok()
             && crate_type != Some("proc-macro")
-            && !matches!(crate_name, Some("proc_macro2" | "quote" | "syn" | "synstructure"))
+            && proc_macro_deps::CRATES.binary_search(&crate_name.unwrap_or_default()).is_err()
         {
             cmd.arg("-Ztls-model=initial-exec");
         }
@@ -154,9 +178,7 @@ fn main() {
         // Find any host flags that were passed by bootstrap.
         // The flags are stored in a RUSTC_HOST_FLAGS variable, separated by spaces.
         if let Ok(flags) = std::env::var("RUSTC_HOST_FLAGS") {
-            for flag in flags.split(' ') {
-                cmd.arg(flag);
-            }
+            cmd.args(flags.split(' '));
         }
     }
 

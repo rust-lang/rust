@@ -2,17 +2,11 @@
 //@ compile-flags:--test
 //@ needs-threads
 
-use std::sync::mpsc::channel;
-use std::sync::mpsc::TryRecvError;
-use std::sync::mpsc::RecvError;
-use std::sync::mpsc::RecvTimeoutError;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc::{channel, RecvError, RecvTimeoutError, TryRecvError};
 use std::sync::Arc;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
-
 use std::thread;
 use std::time::Duration;
-
 
 /// Simple thread synchronization utility
 struct Barrier {
@@ -42,7 +36,6 @@ impl Barrier {
     }
 }
 
-
 fn shared_close_sender_does_not_lose_messages_iter() {
     let (tb, rb) = Barrier::new2();
 
@@ -71,7 +64,6 @@ fn shared_close_sender_does_not_lose_messages() {
     });
 }
 
-
 // https://github.com/rust-lang/rust/issues/39364
 fn concurrent_recv_timeout_and_upgrade_iter() {
     // 1 us
@@ -85,8 +77,8 @@ fn concurrent_recv_timeout_and_upgrade_iter() {
             match rx.recv_timeout(sleep) {
                 Ok(_) => {
                     break;
-                },
-                Err(_) => {},
+                }
+                Err(_) => {}
             }
         }
     });
@@ -104,7 +96,6 @@ fn concurrent_recv_timeout_and_upgrade() {
         }
     });
 }
-
 
 fn concurrent_writes_iter() {
     const THREADS: usize = 4;

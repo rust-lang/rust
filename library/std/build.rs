@@ -7,10 +7,12 @@ fn main() {
     let target_vendor =
         env::var("CARGO_CFG_TARGET_VENDOR").expect("CARGO_CFG_TARGET_VENDOR was not set");
     let target_env = env::var("CARGO_CFG_TARGET_ENV").expect("CARGO_CFG_TARGET_ENV was not set");
+    let target_abi = env::var("CARGO_CFG_TARGET_ABI").expect("CARGO_CFG_TARGET_ABI was not set");
     let target_pointer_width: u32 = env::var("CARGO_CFG_TARGET_POINTER_WIDTH")
         .expect("CARGO_CFG_TARGET_POINTER_WIDTH was not set")
         .parse()
         .unwrap();
+    let is_miri = env::var_os("CARGO_CFG_MIRI").is_some();
 
     println!("cargo:rustc-check-cfg=cfg(netbsd10)");
     if target_os == "netbsd" && env::var("RUSTC_STD_NETBSD10").is_ok() {
@@ -52,6 +54,8 @@ fn main() {
         || target_os == "uefi"
         || target_os == "teeos"
         || target_os == "zkvm"
+        || target_os == "rtems"
+        || target_os == "nuttx"
 
         // See src/bootstrap/src/core/build_steps/synthetic_targets.rs
         || env::var("RUSTC_BOOTSTRAP_SYNTHETIC_TARGET").is_ok()
@@ -91,64 +95,71 @@ fn main() {
     println!("cargo:rustc-check-cfg=cfg(reliable_f128_math)");
 
     let has_reliable_f16 = match (target_arch.as_str(), target_os.as_str()) {
-        // Selection failure until recent LLVM <https://github.com/llvm/llvm-project/issues/93894>
-        // FIXME(llvm19): can probably be removed at the version bump
-        ("loongarch64", _) => false,
+        // We can always enable these in Miri as that is not affected by codegen bugs.
+        _ if is_miri => true,
         // Selection failure <https://github.com/llvm/llvm-project/issues/50374>
         ("s390x", _) => false,
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         ("arm64ec", _) => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
-        ("x86_64", "windows") => false,
-        // x86 has ABI bugs that show up with optimizations. This should be partially fixed with
-        // the compiler-builtins update. <https://github.com/rust-lang/rust/issues/123885>
-        ("x86" | "x86_64", _) => false,
-        // Missing `__gnu_h2f_ieee` and `__gnu_f2h_ieee`
+        ("x86_64", "windows") if target_env == "gnu" && target_abi != "llvm" => false,
+        // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>
+        ("csky", _) => false,
+        ("hexagon", _) => false,
+        ("loongarch64", _) => false,
+        ("mips" | "mips64" | "mips32r6" | "mips64r6", _) => false,
         ("powerpc" | "powerpc64", _) => false,
-        // Missing `__gnu_h2f_ieee` and `__gnu_f2h_ieee`
-        ("mips" | "mips32r6" | "mips64" | "mips64r6", _) => false,
-        // Missing `__extendhfsf` and `__truncsfhf`
-        ("riscv32" | "riscv64", _) => false,
-        // Most OSs are missing `__extendhfsf` and `__truncsfhf`
-        (_, "linux" | "macos") => true,
-        // Almost all OSs besides Linux and MacOS are missing symbols until compiler-builtins can
-        // be updated. <https://github.com/rust-lang/rust/pull/125016> will get some of these, the
-        // next CB update should get the rest.
-        _ => false,
+        ("sparc" | "sparc64", _) => false,
+        ("wasm32" | "wasm64", _) => false,
+        // `f16` support only requires that symbols converting to and from `f32` are available. We
+        // provide these in `compiler-builtins`, so `f16` should be available on all platforms that
+        // do not have other ABI issues or LLVM crashes.
+        _ => true,
     };
 
     let has_reliable_f128 = match (target_arch.as_str(), target_os.as_str()) {
+        // We can always enable these in Miri as that is not affected by codegen bugs.
+        _ if is_miri => true,
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         ("arm64ec", _) => false,
-        // ABI and precision bugs <https://github.com/rust-lang/rust/issues/125109>
-        // <https://github.com/rust-lang/rust/issues/125102>
-        ("powerpc" | "powerpc64", _) => false,
+        // Selection bug <https://github.com/llvm/llvm-project/issues/96432>
+        ("mips64" | "mips64r6", _) => false,
         // Selection bug <https://github.com/llvm/llvm-project/issues/95471>
         ("nvptx64", _) => false,
+        // ABI bugs <https://github.com/rust-lang/rust/issues/125109> et al. (full
+        // list at <https://github.com/rust-lang/rust/issues/116909>)
+        ("powerpc" | "powerpc64", _) => false,
         // ABI unsupported  <https://github.com/llvm/llvm-project/issues/41838>
         ("sparc", _) => false,
+        // Stack alignment bug <https://github.com/llvm/llvm-project/issues/77401>. NB: tests may
+        // not fail if our compiler-builtins is linked.
+        ("x86", _) => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
-        ("x86_64", "windows") => false,
-        // 64-bit Linux is about the only platform to have f128 symbols by default
-        (_, "linux") if target_pointer_width == 64 => true,
-        // Same as for f16, except MacOS is also missing f128 symbols.
-        _ => false,
+        ("x86_64", "windows") if target_env == "gnu" && target_abi != "llvm" => false,
+        // There are no known problems on other platforms, so the only requirement is that symbols
+        // are available. `compiler-builtins` provides all symbols required for core `f128`
+        // support, so this should work for everything else.
+        _ => true,
     };
 
-    // These are currently empty, but will fill up as some platforms move from completely
-    // unreliable to reliable basics but unreliable math.
+    // Configure platforms that have reliable basics but may have unreliable math.
 
-    // LLVM is currenlty adding missing routines, <https://github.com/llvm/llvm-project/issues/93566>
+    // LLVM is currently adding missing routines, <https://github.com/llvm/llvm-project/issues/93566>
     let has_reliable_f16_math = has_reliable_f16
         && match (target_arch.as_str(), target_os.as_str()) {
-            // Currently nothing special. Hooray!
-            // This will change as platforms gain better better support for standard ops but math
-            // lags behind.
+            // FIXME: Disabled on Miri as the intrinsics are not implemented yet.
+            _ if is_miri => false,
+            // x86 has a crash for `powi`: <https://github.com/llvm/llvm-project/issues/105747>
+            ("x86" | "x86_64", _) => false,
+            // Assume that working `f16` means working `f16` math for most platforms, since
+            // operations just go through `f32`.
             _ => true,
         };
 
     let has_reliable_f128_math = has_reliable_f128
         && match (target_arch.as_str(), target_os.as_str()) {
+            // FIXME: Disabled on Miri as the intrinsics are not implemented yet.
+            _ if is_miri => false,
             // LLVM lowers `fp128` math to `long double` symbols even on platforms where
             // `long double` is not IEEE binary128. See
             // <https://github.com/llvm/llvm-project/issues/44744>.

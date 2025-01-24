@@ -1,3 +1,15 @@
+error[E0308]: mismatched types
+  --> $DIR/lazy_subtyping_of_opaques.rs:11:5
+   |
+LL | fn reify_as_tait() -> Thunk<Tait> {
+   |                       ----------- expected `Thunk<_>` because of return type
+LL |
+LL |     Thunk::new(|cont| cont)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `Thunk<_>`, found `()`
+   |
+   = note: expected struct `Thunk<_>`
+           found unit type `()`
+
 error[E0277]: expected a `FnOnce()` closure, found `()`
   --> $DIR/lazy_subtyping_of_opaques.rs:11:23
    |
@@ -12,18 +24,12 @@ error[E0277]: expected a `FnOnce()` closure, found `()`
    |
 LL | fn reify_as_tait() -> Thunk<Tait> {
    |                       ^^^^^^^^^^^ expected an `FnOnce()` closure, found `()`
+LL |
+LL |     Thunk::new(|cont| cont)
+   |     ----------------------- return type was inferred to be `{type error}` here
    |
    = help: the trait `FnOnce()` is not implemented for `()`
    = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
-
-error[E0308]: mismatched types
-  --> $DIR/lazy_subtyping_of_opaques.rs:11:5
-   |
-LL |     Thunk::new(|cont| cont)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `Thunk<_>`, found `()`
-   |
-   = note: expected struct `Thunk<_>`
-           found unit type `()`
 
 error: aborting due to 3 previous errors
 

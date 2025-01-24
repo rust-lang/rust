@@ -1,6 +1,6 @@
 use libc::{c_int, c_void, size_t};
 
-use self::netc::{sockaddr, socklen_t, MSG_PEEK};
+use self::netc::{MSG_PEEK, sockaddr, socklen_t};
 use super::abi;
 use crate::ffi::CStr;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
@@ -175,7 +175,7 @@ impl Socket {
         };
 
         match n {
-            0 => Err(io::const_io_error!(io::ErrorKind::TimedOut, "connection timed out")),
+            0 => Err(io::const_error!(io::ErrorKind::TimedOut, "connection timed out")),
             _ => {
                 let can_write = writefds.num_fds != 0;
                 if !can_write {

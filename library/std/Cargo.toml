@@ -17,10 +17,9 @@ cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core", public = true }
-compiler_builtins = { version = "0.1.117" }
-profiler_builtins = { path = "../profiler_builtins", optional = true }
+compiler_builtins = { version = "=0.1.143" }
 unwind = { path = "../unwind" }
-hashbrown = { version = "0.14", default-features = false, features = [
+hashbrown = { version = "0.15", default-features = false, features = [
     'rustc-dep-of-std',
 ] }
 std_detect = { path = "../stdarch/crates/std_detect", default-features = false, features = [
@@ -31,11 +30,11 @@ std_detect = { path = "../stdarch/crates/std_detect", default-features = false, 
 rustc-demangle = { version = "0.1.24", features = ['rustc-dep-of-std'] }
 
 [target.'cfg(not(all(windows, target_env = "msvc", not(target_vendor = "uwp"))))'.dependencies]
-miniz_oxide = { version = "0.7.0", optional = true, default-features = false }
-addr2line = { version = "0.22.0", optional = true, default-features = false }
+miniz_oxide = { version = "0.8.0", optional = true, default-features = false }
+addr2line = { version = "0.24.0", optional = true, default-features = false }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
-libc = { version = "0.2.153", default-features = false, features = [
+libc = { version = "0.2.169", default-features = false, features = [
     'rustc-dep-of-std',
 ], public = true }
 
@@ -56,6 +55,9 @@ object = { version = "0.36.0", default-features = false, optional = true, featur
     'unaligned',
     'archive',
 ] }
+
+[target.'cfg(windows)'.dependencies.windows-targets]
+path = "../windows_targets"
 
 [dev-dependencies]
 rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
@@ -91,7 +93,6 @@ backtrace = [
 ]
 
 panic-unwind = ["panic_unwind"]
-profiler = ["profiler_builtins"]
 compiler-builtins-c = ["alloc/compiler-builtins-c"]
 compiler-builtins-mem = ["alloc/compiler-builtins-mem"]
 compiler-builtins-no-asm = ["alloc/compiler-builtins-no-asm"]
@@ -116,7 +117,7 @@ std_detect_env_override = ["std_detect/std_detect_env_override"]
 
 # Enable using raw-dylib for Windows imports.
 # This will eventually be the default.
-windows_raw_dylib = []
+windows_raw_dylib = ["windows-targets/windows_raw_dylib"]
 
 [package.metadata.fortanix-sgx]
 # Maximum possible number of threads when testing

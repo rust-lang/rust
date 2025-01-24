@@ -11,7 +11,7 @@
 
 use std::{cmp, mem};
 
-use crate::symbol::Symbol;
+use crate::Symbol;
 
 #[cfg(test)]
 mod tests;

@@ -7,7 +7,7 @@ use std::borrow::Cow;
 use rustc_ast as ast;
 use rustc_ast::token::{Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
-pub use state::{print_crate, AnnNode, Comments, PpAnn, PrintState, State};
+pub use state::{AnnNode, Comments, PpAnn, PrintState, State, print_crate};
 
 pub fn nonterminal_to_string(nt: &Nonterminal) -> String {
     State::new().nonterminal_to_string(nt)
@@ -67,7 +67,7 @@ pub fn vis_to_string(v: &ast::Visibility) -> String {
     State::new().vis_to_string(v)
 }
 
-pub fn meta_list_item_to_string(li: &ast::NestedMetaItem) -> String {
+pub fn meta_list_item_to_string(li: &ast::MetaItemInner) -> String {
     State::new().meta_list_item_to_string(li)
 }
 

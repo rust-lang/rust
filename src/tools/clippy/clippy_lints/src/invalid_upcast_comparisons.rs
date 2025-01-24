@@ -7,7 +7,7 @@ use rustc_span::Span;
 
 use clippy_utils::comparisons;
 use clippy_utils::comparisons::Rel;
-use clippy_utils::consts::{constant_full_int, FullInt};
+use clippy_utils::consts::{ConstEvalCtxt, FullInt};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::source::snippet;
 
@@ -95,7 +95,7 @@ fn upcast_comparison_bounds_err<'tcx>(
     invert: bool,
 ) {
     if let Some((lb, ub)) = lhs_bounds {
-        if let Some(norm_rhs_val) = constant_full_int(cx, cx.typeck_results(), rhs) {
+        if let Some(norm_rhs_val) = ConstEvalCtxt::new(cx).eval_full_int(rhs) {
             if rel == Rel::Eq || rel == Rel::Ne {
                 if norm_rhs_val < lb || norm_rhs_val > ub {
                     err_upcast_comparison(cx, span, lhs, rel == Rel::Ne);

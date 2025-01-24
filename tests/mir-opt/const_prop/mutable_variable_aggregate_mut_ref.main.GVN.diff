@@ -24,7 +24,7 @@
           _2 = &mut _1;
           ((*_2).1: i32) = const 99_i32;
           StorageLive(_3);
-          _3 = _1;
+          _3 = copy _1;
           _0 = const ();
           StorageDead(_3);
           StorageDead(_2);

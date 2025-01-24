@@ -1,46 +1,11 @@
-use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use std::assert_matches::assert_matches;
+
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 
 use super::Const;
 use crate::mir;
 use crate::ty::abstract_const::CastKind;
-use crate::ty::visit::TypeVisitableExt as _;
 use crate::ty::{self, Ty, TyCtxt};
-
-#[extension(pub(crate) trait UnevaluatedConstEvalExt<'tcx>)]
-impl<'tcx> ty::UnevaluatedConst<'tcx> {
-    /// FIXME(RalfJung): I cannot explain what this does or why it makes sense, but not doing this
-    /// hurts performance.
-    #[inline]
-    fn prepare_for_eval(
-        self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> (ty::ParamEnv<'tcx>, Self) {
-        // HACK(eddyb) this erases lifetimes even though `const_eval_resolve`
-        // also does later, but we want to do it before checking for
-        // inference variables.
-        // Note that we erase regions *before* calling `with_reveal_all_normalized`,
-        // so that we don't try to invoke this query with
-        // any region variables.
-
-        // HACK(eddyb) when the query key would contain inference variables,
-        // attempt using identity args and `ParamEnv` instead, that will succeed
-        // when the expression doesn't depend on any parameters.
-        // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
-        // we can call `infcx.const_eval_resolve` which handles inference variables.
-        if (param_env, self).has_non_region_infer() {
-            (
-                tcx.param_env(self.def),
-                ty::UnevaluatedConst {
-                    def: self.def,
-                    args: ty::GenericArgs::identity_for_item(tcx, self.def),
-                },
-            )
-        } else {
-            (tcx.erase_regions(param_env).with_reveal_all_normalized(tcx), tcx.erase_regions(self))
-        }
-    }
-}
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeVisitable, TypeFoldable)]
@@ -80,7 +45,7 @@ impl<'tcx> Expr<'tcx> {
     }
 
     pub fn binop_args(self) -> (Ty<'tcx>, Ty<'tcx>, Const<'tcx>, Const<'tcx>) {
-        assert!(matches!(self.kind, ExprKind::Binop(_)));
+        assert_matches!(self.kind, ExprKind::Binop(_));
 
         match self.args().as_slice() {
             [lhs_ty, rhs_ty, lhs_ct, rhs_ct] => (
@@ -101,7 +66,7 @@ impl<'tcx> Expr<'tcx> {
     }
 
     pub fn unop_args(self) -> (Ty<'tcx>, Const<'tcx>) {
-        assert!(matches!(self.kind, ExprKind::UnOp(_)));
+        assert_matches!(self.kind, ExprKind::UnOp(_));
 
         match self.args().as_slice() {
             [ty, ct] => (ty.expect_ty(), ct.expect_const()),
@@ -125,7 +90,7 @@ impl<'tcx> Expr<'tcx> {
     }
 
     pub fn call_args(self) -> (Ty<'tcx>, Const<'tcx>, impl Iterator<Item = Const<'tcx>>) {
-        assert!(matches!(self.kind, ExprKind::FunctionCall));
+        assert_matches!(self.kind, ExprKind::FunctionCall);
 
         match self.args().as_slice() {
             [func_ty, func, rest @ ..] => (
@@ -152,7 +117,7 @@ impl<'tcx> Expr<'tcx> {
     }
 
     pub fn cast_args(self) -> (Ty<'tcx>, Const<'tcx>, Ty<'tcx>) {
-        assert!(matches!(self.kind, ExprKind::Cast(_)));
+        assert_matches!(self.kind, ExprKind::Cast(_));
 
         match self.args().as_slice() {
             [value_ty, value, to_ty] => {

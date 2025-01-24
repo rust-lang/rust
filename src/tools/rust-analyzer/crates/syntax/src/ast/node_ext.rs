@@ -17,7 +17,7 @@ use crate::{
     ted, NodeOrToken, SmolStr, SyntaxElement, SyntaxToken, TokenText, T,
 };
 
-use super::{RangeItem, RangeOp};
+use super::{GenericParam, RangeItem, RangeOp};
 
 impl ast::Lifetime {
     pub fn text(&self) -> TokenText<'_> {
@@ -185,6 +185,14 @@ impl ast::Attr {
         Some((self.simple_name()?, tt))
     }
 
+    pub fn as_simple_path(&self) -> Option<ast::Path> {
+        let meta = self.meta()?;
+        if meta.eq_token().is_some() || meta.token_tree().is_some() {
+            return None;
+        }
+        self.path()
+    }
+
     pub fn simple_name(&self) -> Option<SmolStr> {
         let path = self.meta()?.path()?;
         match (path.segment(), path.qualifier()) {
@@ -333,7 +341,7 @@ impl ast::Path {
 
 impl ast::Use {
     pub fn is_simple_glob(&self) -> bool {
-        self.use_tree().map_or(false, |use_tree| {
+        self.use_tree().is_some_and(|use_tree| {
             use_tree.use_tree_list().is_none() && use_tree.star_token().is_some()
         })
     }
@@ -387,7 +395,7 @@ impl ast::UseTreeList {
             if let Some((single_subtree,)) = u.use_trees().collect_tuple() {
                 // We have a single subtree, check whether it is self.
 
-                let is_self = single_subtree.path().as_ref().map_or(false, |path| {
+                let is_self = single_subtree.path().as_ref().is_some_and(|path| {
                     path.segment().and_then(|seg| seg.self_token()).is_some()
                         && path.qualifier().is_none()
                 });
@@ -795,7 +803,7 @@ pub enum TypeBoundKind {
     /// for<'a> ...
     ForType(ast::ForType),
     /// use
-    Use(ast::GenericParamList),
+    Use(ast::UseBoundGenericArgs),
     /// 'a
     Lifetime(ast::Lifetime),
 }
@@ -806,8 +814,8 @@ impl ast::TypeBound {
             TypeBoundKind::PathType(path_type)
         } else if let Some(for_type) = support::children(self.syntax()).next() {
             TypeBoundKind::ForType(for_type)
-        } else if let Some(generic_param_list) = self.generic_param_list() {
-            TypeBoundKind::Use(generic_param_list)
+        } else if let Some(args) = self.use_bound_generic_args() {
+            TypeBoundKind::Use(args)
         } else if let Some(lifetime) = self.lifetime() {
             TypeBoundKind::Lifetime(lifetime)
         } else {
@@ -820,6 +828,15 @@ impl ast::TypeBound {
 pub enum TypeOrConstParam {
     Type(ast::TypeParam),
     Const(ast::ConstParam),
+}
+
+impl From<TypeOrConstParam> for GenericParam {
+    fn from(value: TypeOrConstParam) -> Self {
+        match value {
+            TypeOrConstParam::Type(it) => GenericParam::TypeParam(it),
+            TypeOrConstParam::Const(it) => GenericParam::ConstParam(it),
+        }
+    }
 }
 
 impl TypeOrConstParam {
@@ -1129,5 +1146,15 @@ impl From<ast::Item> for ast::AnyHasAttrs {
 impl From<ast::AssocItem> for ast::AnyHasAttrs {
     fn from(node: ast::AssocItem) -> Self {
         Self::new(node)
+    }
+}
+
+impl ast::OrPat {
+    pub fn leading_pipe(&self) -> Option<SyntaxToken> {
+        self.syntax
+            .children_with_tokens()
+            .find(|it| !it.kind().is_trivia())
+            .and_then(NodeOrToken::into_token)
+            .filter(|it| it.kind() == T![|])
     }
 }

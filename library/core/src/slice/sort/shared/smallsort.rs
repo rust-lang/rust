@@ -102,7 +102,7 @@ impl<T: FreezeMarker> UnstableSmallSortTypeImpl for T {
     }
 }
 
-/// FIXME(effects) use original ipnsort approach with choose_unstable_small_sort,
+/// FIXME(const_trait_impl) use original ipnsort approach with choose_unstable_small_sort,
 /// as found here <https://github.com/Voultapher/sort-research-rs/blob/438fad5d0495f65d4b72aa87f0b62fc96611dff3/ipnsort/src/smallsort.rs#L83C10-L83C36>.
 pub(crate) trait UnstableSmallSortFreezeTypeImpl: Sized + FreezeMarker {
     fn small_sort_threshold() -> usize;
@@ -378,7 +378,12 @@ where
 
 /// Swap two values in the slice pointed to by `v_base` at the position `a_pos` and `b_pos` if the
 /// value at position `b_pos` is less than the one at position `a_pos`.
-pub unsafe fn swap_if_less<T, F>(v_base: *mut T, a_pos: usize, b_pos: usize, is_less: &mut F)
+///
+/// Purposefully not marked `#[inline]`, despite us wanting it to be inlined for integers like
+/// types. `is_less` could be a huge function and we want to give the compiler an option to
+/// not inline this function. For the same reasons that this function is very perf critical
+/// it should be in the same module as the functions that use it.
+unsafe fn swap_if_less<T, F>(v_base: *mut T, a_pos: usize, b_pos: usize, is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {
@@ -831,18 +836,33 @@ unsafe fn bidirectional_merge<T: FreezeMarker, F: FnMut(&T, &T) -> bool>(
             right = right.add((!left_nonempty) as usize);
         }
 
-        // We now should have consumed the full input exactly once. This can
-        // only fail if the comparison operator fails to be Ord, in which case
-        // we will panic and never access the inconsistent state in dst.
+        // We now should have consumed the full input exactly once. This can only fail if the
+        // user-provided comparison function fails to implement a strict weak ordering. In that case
+        // we panic and never access the inconsistent state in dst.
         if left != left_end || right != right_end {
             panic_on_ord_violation();
         }
     }
 }
 
-#[inline(never)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
 fn panic_on_ord_violation() -> ! {
-    panic!("Ord violation");
+    // This is indicative of a logic bug in the user-provided comparison function or Ord
+    // implementation. They are expected to implement a total order as explained in the Ord
+    // documentation.
+    //
+    // By panicking we inform the user, that they have a logic bug in their program. If a strict
+    // weak ordering is not given, the concept of comparison based sorting cannot yield a sorted
+    // result. E.g.: a < b < c < a
+    //
+    // The Ord documentation requires users to implement a total order. Arguably that's
+    // unnecessarily strict in the context of sorting. Issues only arise if the weaker requirement
+    // of a strict weak ordering is violated.
+    //
+    // The panic message talks about a total order because that's what the Ord documentation talks
+    // about and requires, so as to not confuse users.
+    panic!("user-provided comparison function does not correctly implement a total order");
 }
 
 #[must_use]

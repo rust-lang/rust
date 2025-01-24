@@ -1,6 +1,3 @@
-//@ ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
-//@ min-lldb-version: 310
-
 // This test case checks if function arguments already have the correct value
 // when breaking at the first line of the function, that is if the function
 // prologue has already been executed at the first line. Note that because of
@@ -8,7 +5,9 @@
 // arguments have been properly loaded when setting the breakpoint via the
 // function name.
 
-//@ compile-flags:-g
+//@ min-lldb-version: 1800
+//@ compile-flags:-g -Zmir-enable-passes=-SingleUseConsts
+// SingleUseConsts shouldn't need to be disabled, see #128945
 
 // === GDB TESTS ===================================================================================
 
@@ -25,10 +24,8 @@
 
 // NON IMMEDIATE ARGS
 // gdb-command:print a
-// gdbg-check:$4 = {a = 3, b = 4, c = 5, d = 6, e = 7, f = 8, g = 9, h = 10}
 // gdbt-check:$4 = function_arg_initialization::BigStruct {a: 3, b: 4, c: 5, d: 6, e: 7, f: 8, g: 9, h: 10}
 // gdb-command:print b
-// gdbg-check:$5 = {a = 11, b = 12, c = 13, d = 14, e = 15, f = 16, g = 17, h = 18}
 // gdbt-check:$5 = function_arg_initialization::BigStruct {a: 11, b: 12, c: 13, d: 14, e: 15, f: 16, g: 17, h: 18}
 // gdb-command:continue
 

@@ -6,8 +6,8 @@ LL |     let i = i.map(|x| x.clone());
 LL |     i.collect()
    |       ^^^^^^^ value of type `Vec<X>` cannot be built from `std::iter::Iterator<Item=&X>`
    |
-   = help: the trait `FromIterator<&X>` is not implemented for `Vec<X>`
-   = help: the trait `FromIterator<X>` is implemented for `Vec<X>`
+   = help: the trait `FromIterator<&_>` is not implemented for `Vec<X>`
+           but trait `FromIterator<_>` is implemented for it
    = help: for that trait implementation, expected `X`, found `&X`
 note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain-fixable.rs:5:26
@@ -33,7 +33,7 @@ LL |     println!("{}", scores.sum::<i32>());
    |
    = help: the trait `Sum<()>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
-             `i32` implements `Sum<&'a i32>`
+             `i32` implements `Sum<&i32>`
              `i32` implements `Sum`
 note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain-fixable.rs:14:10
@@ -66,7 +66,7 @@ LL |             .sum::<i32>(),
    |
    = help: the trait `Sum<()>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
-             `i32` implements `Sum<&'a i32>`
+             `i32` implements `Sum<&i32>`
              `i32` implements `Sum`
 note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain-fixable.rs:23:14
@@ -99,7 +99,7 @@ LL |     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
    |
    = help: the trait `Sum<()>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
-             `i32` implements `Sum<&'a i32>`
+             `i32` implements `Sum<&i32>`
              `i32` implements `Sum`
 note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain-fixable.rs:27:38
@@ -124,7 +124,7 @@ LL |     let g: Vec<i32> = f.collect();
    |                         ^^^^^^^ value of type `Vec<i32>` cannot be built from `std::iter::Iterator<Item=()>`
    |
    = help: the trait `FromIterator<()>` is not implemented for `Vec<i32>`
-   = help: the trait `FromIterator<i32>` is implemented for `Vec<i32>`
+           but trait `FromIterator<i32>` is implemented for it
    = help: for that trait implementation, expected `i32`, found `()`
 note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain-fixable.rs:32:15

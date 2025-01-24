@@ -4,8 +4,8 @@ use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
-    braced, parenthesized, parse_macro_input, parse_quote, token, AttrStyle, Attribute, Block,
-    Error, Expr, Ident, Pat, ReturnType, Token, Type,
+    AttrStyle, Attribute, Block, Error, Expr, Ident, Pat, ReturnType, Token, Type, braced,
+    parenthesized, parse_macro_input, parse_quote, token,
 };
 
 mod kw {
@@ -307,7 +307,7 @@ fn add_query_desc_cached_impl(
     });
 }
 
-pub fn rustc_queries(input: TokenStream) -> TokenStream {
+pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
     let queries = parse_macro_input!(input as List<Query>);
 
     let mut query_stream = quote! {};

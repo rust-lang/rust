@@ -4,7 +4,7 @@ error[E0606]: casting `*const U` as `*const V` is invalid
 LL |     u as *const V
    |     ^^^^^^^^^^^^^
    |
-   = note: vtable kinds may not match
+   = note: the pointers may have different metadata
 
 error[E0606]: casting `*const U` as `*const str` is invalid
   --> $DIR/cast-rfc0401.rs:8:5
@@ -12,7 +12,7 @@ error[E0606]: casting `*const U` as `*const str` is invalid
 LL |     u as *const str
    |     ^^^^^^^^^^^^^^^
    |
-   = note: vtable kinds may not match
+   = note: the pointers may have different metadata
 
 error[E0609]: no field `f` on type `fn() {main}`
   --> $DIR/cast-rfc0401.rs:65:18
@@ -158,7 +158,7 @@ LL |     let _ = 42usize as *const [u8];
    |             |
    |             consider casting this expression to `*const ()`, then using `core::ptr::from_raw_parts`
 
-error[E0607]: cannot cast thin pointer `*const u8` to fat pointer `*const [u8]`
+error[E0607]: cannot cast thin pointer `*const u8` to wide pointer `*const [u8]`
   --> $DIR/cast-rfc0401.rs:52:13
    |
 LL |     let _ = v as *const [u8];
@@ -208,7 +208,7 @@ error[E0606]: casting `*const dyn Foo` as `*const [u16]` is invalid
 LL |     let _ = cf as *const [u16];
    |             ^^^^^^^^^^^^^^^^^^
    |
-   = note: vtable kinds may not match
+   = note: the pointers have different metadata
 
 error[E0606]: casting `*const dyn Foo` as `*const dyn Bar` is invalid
   --> $DIR/cast-rfc0401.rs:69:13
@@ -216,7 +216,7 @@ error[E0606]: casting `*const dyn Foo` as `*const dyn Bar` is invalid
 LL |     let _ = cf as *const dyn Bar;
    |             ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: vtable kinds may not match
+   = note: the trait objects may have different vtables
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/cast-rfc0401.rs:53:13

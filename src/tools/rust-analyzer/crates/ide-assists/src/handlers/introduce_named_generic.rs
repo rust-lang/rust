@@ -1,9 +1,8 @@
-use syntax::{
-    ast::{self, edit_in_place::GenericParamsOwnerEdit, make, AstNode, HasGenericParams},
-    ted,
-};
+use ide_db::syntax_helpers::suggest_name;
+use itertools::Itertools;
+use syntax::ast::{self, syntax_factory::SyntaxFactory, AstNode, HasGenericParams, HasName};
 
-use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: introduce_named_generic
 //
@@ -23,32 +22,42 @@ pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>
 
     let type_bound_list = impl_trait_type.type_bound_list()?;
 
+    let make = SyntaxFactory::new();
     let target = fn_.syntax().text_range();
     acc.add(
         AssistId("introduce_named_generic", AssistKind::RefactorRewrite),
         "Replace impl trait with generic",
         target,
-        |edit| {
-            let impl_trait_type = edit.make_mut(impl_trait_type);
-            let fn_ = edit.make_mut(fn_);
-            let fn_generic_param_list = fn_.get_or_create_generic_param_list();
-            let type_param_name =
-                suggest_name::for_impl_trait_as_generic(&impl_trait_type, &fn_generic_param_list);
+        |builder| {
+            let mut editor = builder.make_editor(fn_.syntax());
 
-            let type_param = make::type_param(make::name(&type_param_name), Some(type_bound_list))
-                .clone_for_update();
-            let new_ty = make::ty(&type_param_name).clone_for_update();
+            let existing_names = match fn_.generic_param_list() {
+                Some(generic_param_list) => generic_param_list
+                    .generic_params()
+                    .flat_map(|param| match param {
+                        ast::GenericParam::TypeParam(t) => t.name().map(|name| name.to_string()),
+                        p => Some(p.to_string()),
+                    })
+                    .collect_vec(),
+                None => Vec::new(),
+            };
+            let type_param_name = suggest_name::NameGenerator::new_with_names(
+                existing_names.iter().map(|s| s.as_str()),
+            )
+            .for_impl_trait_as_generic(&impl_trait_type);
 
-            ted::replace(impl_trait_type.syntax(), new_ty.syntax());
-            fn_generic_param_list.add_generic_param(type_param.into());
+            let type_param = make.type_param(make.name(&type_param_name), Some(type_bound_list));
+            let new_ty = make.ty(&type_param_name);
+
+            editor.replace(impl_trait_type.syntax(), new_ty.syntax());
+            editor.add_generic_param(&fn_, type_param.clone().into());
 
             if let Some(cap) = ctx.config.snippet_cap {
-                if let Some(generic_param) =
-                    fn_.generic_param_list().and_then(|it| it.generic_params().last())
-                {
-                    edit.add_tabstop_before(cap, generic_param);
-                }
+                editor.add_annotation(type_param.syntax(), builder.make_tabstop_before(cap));
             }
+
+            editor.add_mappings(make.finish_with_mappings());
+            builder.add_file_edits(ctx.file_id(), editor);
         },
     )
 }
@@ -115,7 +124,7 @@ fn foo<$0B: Bar
         check_assist(
             introduce_named_generic,
             r#"fn foo<B>(bar: $0impl Bar) {}"#,
-            r#"fn foo<B, $0B0: Bar>(bar: B0) {}"#,
+            r#"fn foo<B, $0B1: Bar>(bar: B1) {}"#,
         );
     }
 
@@ -124,7 +133,7 @@ fn foo<$0B: Bar
         check_assist(
             introduce_named_generic,
             r#"fn foo<B, B0, B1, B3>(bar: $0impl Bar) {}"#,
-            r#"fn foo<B, B0, B1, B3, $0B2: Bar>(bar: B2) {}"#,
+            r#"fn foo<B, B0, B1, B3, $0B4: Bar>(bar: B4) {}"#,
         );
     }
 

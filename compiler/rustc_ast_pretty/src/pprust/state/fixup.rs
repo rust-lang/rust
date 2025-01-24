@@ -1,7 +1,9 @@
-use rustc_ast::util::{classify, parser};
 use rustc_ast::Expr;
+use rustc_ast::util::{classify, parser};
 
-#[derive(Copy, Clone, Debug)]
+// The default amount of fixing is minimal fixing, so all fixups are set to `false` by `Default`.
+// Fixups should be turned on in a targeted fashion where needed.
+#[derive(Copy, Clone, Debug, Default)]
 pub(crate) struct FixupContext {
     /// Print expression such that it can be parsed back as a statement
     /// consisting of the original expression.
@@ -93,30 +95,16 @@ pub(crate) struct FixupContext {
     parenthesize_exterior_struct_lit: bool,
 }
 
-/// The default amount of fixing is minimal fixing. Fixups should be turned on
-/// in a targeted fashion where needed.
-impl Default for FixupContext {
-    fn default() -> Self {
-        FixupContext {
-            stmt: false,
-            leftmost_subexpression_in_stmt: false,
-            match_arm: false,
-            leftmost_subexpression_in_match_arm: false,
-            parenthesize_exterior_struct_lit: false,
-        }
-    }
-}
-
 impl FixupContext {
     /// Create the initial fixup for printing an expression in statement
     /// position.
-    pub fn new_stmt() -> Self {
+    pub(crate) fn new_stmt() -> Self {
         FixupContext { stmt: true, ..FixupContext::default() }
     }
 
     /// Create the initial fixup for printing an expression as the right-hand
     /// side of a match arm.
-    pub fn new_match_arm() -> Self {
+    pub(crate) fn new_match_arm() -> Self {
         FixupContext { match_arm: true, ..FixupContext::default() }
     }
 
@@ -124,7 +112,7 @@ impl FixupContext {
     /// of an `if` or `while`. There are a few other positions which are
     /// grammatically equivalent and also use this, such as the iterator
     /// expression in `for` and the scrutinee in `match`.
-    pub fn new_cond() -> Self {
+    pub(crate) fn new_cond() -> Self {
         FixupContext { parenthesize_exterior_struct_lit: true, ..FixupContext::default() }
     }
 
@@ -139,13 +127,27 @@ impl FixupContext {
     ///
     /// Not every expression has a leftmost subexpression. For example neither
     /// `-$a` nor `[$a]` have one.
-    pub fn leftmost_subexpression(self) -> Self {
+    pub(crate) fn leftmost_subexpression(self) -> Self {
         FixupContext {
             stmt: false,
             leftmost_subexpression_in_stmt: self.stmt || self.leftmost_subexpression_in_stmt,
             match_arm: false,
             leftmost_subexpression_in_match_arm: self.match_arm
                 || self.leftmost_subexpression_in_match_arm,
+            ..self
+        }
+    }
+
+    /// Transform this fixup into the one that should apply when printing a
+    /// leftmost subexpression followed by a `.` or `?` token, which confer
+    /// different statement boundary rules compared to other leftmost
+    /// subexpressions.
+    pub(crate) fn leftmost_subexpression_with_dot(self) -> Self {
+        FixupContext {
+            stmt: self.stmt || self.leftmost_subexpression_in_stmt,
+            leftmost_subexpression_in_stmt: false,
+            match_arm: self.match_arm || self.leftmost_subexpression_in_match_arm,
+            leftmost_subexpression_in_match_arm: false,
             ..self
         }
     }
@@ -158,7 +160,7 @@ impl FixupContext {
     /// current expression, and is not surrounded by a paren/bracket/brace. For
     /// example the `$b` in `$a + $b` and `-$b`, but not the one in `[$b]` or
     /// `$a.f($b)`.
-    pub fn subsequent_subexpression(self) -> Self {
+    pub(crate) fn subsequent_subexpression(self) -> Self {
         FixupContext {
             stmt: false,
             leftmost_subexpression_in_stmt: false,
@@ -173,7 +175,7 @@ impl FixupContext {
     ///
     /// The documentation on `FixupContext::leftmost_subexpression_in_stmt` has
     /// examples.
-    pub fn would_cause_statement_boundary(self, expr: &Expr) -> bool {
+    pub(crate) fn would_cause_statement_boundary(self, expr: &Expr) -> bool {
         (self.leftmost_subexpression_in_stmt && !classify::expr_requires_semi_to_be_stmt(expr))
             || (self.leftmost_subexpression_in_match_arm && classify::expr_is_complete(expr))
     }
@@ -189,8 +191,8 @@ impl FixupContext {
     ///
     ///   - `true && false`, because otherwise this would be misinterpreted as a
     ///     "let chain".
-    pub fn needs_par_as_let_scrutinee(self, expr: &Expr) -> bool {
+    pub(crate) fn needs_par_as_let_scrutinee(self, expr: &Expr) -> bool {
         self.parenthesize_exterior_struct_lit && parser::contains_exterior_struct_lit(expr)
-            || parser::needs_par_as_let_scrutinee(expr.precedence().order())
+            || parser::needs_par_as_let_scrutinee(expr.precedence())
     }
 }

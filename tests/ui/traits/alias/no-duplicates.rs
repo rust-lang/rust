@@ -1,4 +1,4 @@
-// The purpose of this test is to demonstrate that duplicating object safe traits
+// The purpose of this test is to demonstrate that duplicating dyn-compatible traits
 // that are not auto traits is rejected with trait aliases even though one could
 // reasonably accept this.
 
@@ -6,7 +6,7 @@
 
 use std::marker::Unpin;
 
-// Some arbitrary object-safe trait:
+// Some arbitrary dyn-compatible trait:
 trait Obj {}
 
 // Nest a few levels deep:

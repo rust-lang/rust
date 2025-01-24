@@ -8,11 +8,11 @@
 use std::collections::VecDeque;
 use std::fmt::{Display, Write};
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_lexer::{Cursor, LiteralKind, TokenKind};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
-use rustc_span::{BytePos, Span, DUMMY_SP};
+use rustc_span::{BytePos, DUMMY_SP, Span};
 
 use super::format::{self, Buffer};
 use crate::clean::PrimitiveType;
@@ -34,7 +34,7 @@ pub(crate) struct HrefContext<'a, 'tcx> {
 /// Decorations are represented as a map from CSS class to vector of character ranges.
 /// Each range will be wrapped in a span with that class.
 #[derive(Default)]
-pub(crate) struct DecorationInfo(pub(crate) FxHashMap<&'static str, Vec<(u32, u32)>>);
+pub(crate) struct DecorationInfo(pub(crate) FxIndexMap<&'static str, Vec<(u32, u32)>>);
 
 #[derive(Eq, PartialEq, Clone, Copy)]
 pub(crate) enum Tooltip {
@@ -58,13 +58,6 @@ pub(crate) fn render_example_with_highlighting(
     write_footer(out, playground_button);
 }
 
-/// Highlights `src` as an item-decl, returning the HTML output.
-pub(crate) fn render_item_decl_with_highlighting(src: &str, out: &mut Buffer) {
-    write!(out, "<pre class=\"rust item-decl\">");
-    write_code(out, src, None, None);
-    write!(out, "</pre>");
-}
-
 fn write_header(
     out: &mut Buffer,
     class: &str,
@@ -72,34 +65,26 @@ fn write_header(
     tooltip: Tooltip,
     extra_classes: &[String],
 ) {
-    write!(
-        out,
-        "<div class=\"example-wrap{}\">",
-        match tooltip {
-            Tooltip::Ignore => " ignore",
-            Tooltip::CompileFail => " compile_fail",
-            Tooltip::ShouldPanic => " should_panic",
-            Tooltip::Edition(_) => " edition",
-            Tooltip::None => "",
-        },
-    );
+    write!(out, "<div class=\"example-wrap{}\">", match tooltip {
+        Tooltip::Ignore => " ignore",
+        Tooltip::CompileFail => " compile_fail",
+        Tooltip::ShouldPanic => " should_panic",
+        Tooltip::Edition(_) => " edition",
+        Tooltip::None => "",
+    },);
 
     if tooltip != Tooltip::None {
         let edition_code;
-        write!(
-            out,
-            "<a href=\"#\" class=\"tooltip\" title=\"{}\">ⓘ</a>",
-            match tooltip {
-                Tooltip::Ignore => "This example is not tested",
-                Tooltip::CompileFail => "This example deliberately fails to compile",
-                Tooltip::ShouldPanic => "This example panics",
-                Tooltip::Edition(edition) => {
-                    edition_code = format!("This example runs with edition {edition}");
-                    &edition_code
-                }
-                Tooltip::None => unreachable!(),
-            },
-        );
+        write!(out, "<a href=\"#\" class=\"tooltip\" title=\"{}\">ⓘ</a>", match tooltip {
+            Tooltip::Ignore => "This example is not tested",
+            Tooltip::CompileFail => "This example deliberately fails to compile",
+            Tooltip::ShouldPanic => "This example panics",
+            Tooltip::Edition(edition) => {
+                edition_code = format!("This example runs with edition {edition}");
+                &edition_code
+            }
+            Tooltip::None => unreachable!(),
+        },);
     }
 
     if let Some(extra) = extra_content {
@@ -159,7 +144,7 @@ struct TokenHandler<'a, 'tcx, F: Write> {
     href_context: Option<HrefContext<'a, 'tcx>>,
 }
 
-impl<'a, 'tcx, F: Write> TokenHandler<'a, 'tcx, F> {
+impl<F: Write> TokenHandler<'_, '_, F> {
     fn handle_exit_span(&mut self) {
         // We can't get the last `closing_tags` element using `pop()` because `closing_tags` is
         // being used in `write_pending_elems`.
@@ -196,6 +181,9 @@ impl<'a, 'tcx, F: Write> TokenHandler<'a, 'tcx, F> {
             // current parent tag is not the same as our pending content.
             let close_tag = if self.pending_elems.len() > 1
                 && let Some(current_class) = current_class
+                // `PreludeTy` can never include more than an ident so it should not generate
+                // a wrapping `span`.
+                && !matches!(current_class, Class::PreludeTy(_))
             {
                 Some(enter_span(self.out, current_class, &self.href_context))
             } else {
@@ -219,7 +207,7 @@ impl<'a, 'tcx, F: Write> TokenHandler<'a, 'tcx, F> {
     }
 }
 
-impl<'a, 'tcx, F: Write> Drop for TokenHandler<'a, 'tcx, F> {
+impl<F: Write> Drop for TokenHandler<'_, '_, F> {
     /// When leaving, we need to flush all pending data to not have missing content.
     fn drop(&mut self) {
         if self.pending_exit_span.is_some() {
@@ -245,7 +233,7 @@ pub(super) fn write_code(
     out: &mut impl Write,
     src: &str,
     href_context: Option<HrefContext<'_, '_>>,
-    decoration_info: Option<DecorationInfo>,
+    decoration_info: Option<&DecorationInfo>,
 ) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
     let src = src.replace("\r\n", "\n");
@@ -348,8 +336,8 @@ enum Class {
     /// `Ident` isn't rendered in the HTML but we still need it for the `Span` it contains.
     Ident(Span),
     Lifetime,
-    PreludeTy,
-    PreludeVal,
+    PreludeTy(Span),
+    PreludeVal(Span),
     QuestionMark,
     Decoration(&'static str),
 }
@@ -396,8 +384,8 @@ impl Class {
             Class::Bool => "bool-val",
             Class::Ident(_) => "",
             Class::Lifetime => "lifetime",
-            Class::PreludeTy => "prelude-ty",
-            Class::PreludeVal => "prelude-val",
+            Class::PreludeTy(_) => "prelude-ty",
+            Class::PreludeVal(_) => "prelude-val",
             Class::QuestionMark => "question-mark",
             Class::Decoration(kind) => kind,
         }
@@ -407,7 +395,11 @@ impl Class {
     /// a "span" (a tuple representing `(lo, hi)` equivalent of `Span`).
     fn get_span(self) -> Option<Span> {
         match self {
-            Self::Ident(sp) | Self::Self_(sp) | Self::Macro(sp) => Some(sp),
+            Self::Ident(sp)
+            | Self::Self_(sp)
+            | Self::Macro(sp)
+            | Self::PreludeTy(sp)
+            | Self::PreludeVal(sp) => Some(sp),
             Self::Comment
             | Self::DocComment
             | Self::Attribute
@@ -418,14 +410,13 @@ impl Class {
             | Self::Number
             | Self::Bool
             | Self::Lifetime
-            | Self::PreludeTy
-            | Self::PreludeVal
             | Self::QuestionMark
             | Self::Decoration(_) => None,
         }
     }
 }
 
+#[derive(Debug)]
 enum Highlight<'a> {
     Token { text: &'a str, class: Option<Class> },
     EnterSpan { class: Class },
@@ -519,12 +510,12 @@ struct Decorations {
 }
 
 impl Decorations {
-    fn new(info: DecorationInfo) -> Self {
+    fn new(info: &DecorationInfo) -> Self {
         // Extract tuples (start, end, kind) into separate sequences of (start, kind) and (end).
         let (mut starts, mut ends): (Vec<_>, Vec<_>) = info
             .0
-            .into_iter()
-            .flat_map(|(kind, ranges)| ranges.into_iter().map(move |(lo, hi)| ((lo, kind), hi)))
+            .iter()
+            .flat_map(|(&kind, ranges)| ranges.into_iter().map(move |&(lo, hi)| ((lo, kind), hi)))
             .unzip();
 
         // Sort the sequences in document order.
@@ -551,7 +542,7 @@ struct Classifier<'src> {
 impl<'src> Classifier<'src> {
     /// Takes as argument the source code to HTML-ify, the rust edition to use and the source code
     /// file span which will be used later on by the `span_correspondence_map`.
-    fn new(src: &str, file_span: Span, decoration_info: Option<DecorationInfo>) -> Classifier<'_> {
+    fn new(src: &'src str, file_span: Span, decoration_info: Option<&DecorationInfo>) -> Self {
         let tokens = PeekIter::new(TokenIter { src, cursor: Cursor::new(src) });
         let decorations = decoration_info.map(Decorations::new);
         Classifier {
@@ -853,6 +844,7 @@ impl<'src> Classifier<'src> {
                 // Number literals.
                 LiteralKind::Float { .. } | LiteralKind::Int { .. } => Class::Number,
             },
+            TokenKind::GuardedStrPrefix => return no_highlight(sink),
             TokenKind::Ident | TokenKind::RawIdent if lookahead == Some(TokenKind::Bang) => {
                 self.in_macro = true;
                 sink(Highlight::EnterSpan { class: Class::Macro(self.new_span(before, text)) });
@@ -861,8 +853,10 @@ impl<'src> Classifier<'src> {
             }
             TokenKind::Ident => match get_real_ident_class(text, false) {
                 None => match text {
-                    "Option" | "Result" => Class::PreludeTy,
-                    "Some" | "None" | "Ok" | "Err" => Class::PreludeVal,
+                    "Option" | "Result" => Class::PreludeTy(self.new_span(before, text)),
+                    "Some" | "None" | "Ok" | "Err" => {
+                        Class::PreludeVal(self.new_span(before, text))
+                    }
                     // "union" is a weak keyword and is only considered as a keyword when declaring
                     // a union type.
                     "union" if self.check_if_is_union_keyword() => Class::KeyWord,
@@ -875,11 +869,12 @@ impl<'src> Classifier<'src> {
                 },
                 Some(c) => c,
             },
-            TokenKind::RawIdent
-            | TokenKind::UnknownPrefix
-            | TokenKind::InvalidPrefix
-            | TokenKind::InvalidIdent => Class::Ident(self.new_span(before, text)),
-            TokenKind::Lifetime { .. } => Class::Lifetime,
+            TokenKind::RawIdent | TokenKind::UnknownPrefix | TokenKind::InvalidIdent => {
+                Class::Ident(self.new_span(before, text))
+            }
+            TokenKind::Lifetime { .. }
+            | TokenKind::RawLifetime
+            | TokenKind::UnknownPrefixLifetime => Class::Lifetime,
             TokenKind::Eof => panic!("Eof in advance"),
         };
         // Anything that didn't return above is the simple case where we the
@@ -1027,7 +1022,7 @@ fn string_without_closing_tag<T: Display>(
                     .ok()
                     .map(|(url, _, _)| url),
                     LinkFromSrc::Doc(def_id) => {
-                        format::href_with_root_path(*def_id, context, Some(&href_context.root_path))
+                        format::href_with_root_path(*def_id, context, Some(href_context.root_path))
                             .ok()
                             .map(|(doc_link, _, _)| doc_link)
                     }

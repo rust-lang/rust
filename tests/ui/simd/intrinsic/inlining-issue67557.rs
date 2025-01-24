@@ -11,12 +11,15 @@ extern "rust-intrinsic" {
 
 #[repr(simd)]
 #[derive(Debug, PartialEq)]
-struct Simd2(u8, u8);
+struct Simd2([u8; 2]);
+
+#[repr(simd)]
+struct SimdShuffleIdx<const LEN: usize>([u32; LEN]);
 
 fn main() {
     unsafe {
-        const IDX: [u32; 2] = [0, 1];
-        let p_res: Simd2 = simd_shuffle(Simd2(10, 11), Simd2(12, 13), IDX);
+        const IDX: SimdShuffleIdx<2> = SimdShuffleIdx([0, 1]);
+        let p_res: Simd2 = simd_shuffle(Simd2([10, 11]), Simd2([12, 13]), IDX);
         let a_res: Simd2 = inline_me();
 
         assert_10_11(p_res);
@@ -26,17 +29,17 @@ fn main() {
 
 #[inline(never)]
 fn assert_10_11(x: Simd2) {
-    assert_eq!(x, Simd2(10, 11));
+    assert_eq!(x, Simd2([10, 11]));
 }
 
 #[inline(never)]
 fn assert_10_13(x: Simd2) {
-    assert_eq!(x, Simd2(10, 13));
+    assert_eq!(x, Simd2([10, 13]));
 }
 
 
 #[inline(always)]
 unsafe fn inline_me() -> Simd2 {
-    const IDX: [u32; 2] = [0, 3];
-    simd_shuffle(Simd2(10, 11), Simd2(12, 13), IDX)
+    const IDX: SimdShuffleIdx<2> = SimdShuffleIdx([0, 3]);
+    simd_shuffle(Simd2([10, 11]), Simd2([12, 13]), IDX)
 }

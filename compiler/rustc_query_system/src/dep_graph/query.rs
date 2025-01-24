@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::graph::implementation::{Direction, Graph, NodeIndex, INCOMING};
+use rustc_data_structures::graph::implementation::{Direction, Graph, INCOMING, NodeIndex};
 use rustc_index::IndexVec;
 
 use super::{DepNode, DepNodeIndex};

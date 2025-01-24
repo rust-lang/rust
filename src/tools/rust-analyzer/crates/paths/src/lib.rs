@@ -1,4 +1,4 @@
-//! Thin wrappers around `std::path`/`camino::path`, distinguishing between absolute and
+//! Thin wrappers around [`camino::path`], distinguishing between absolute and
 //! relative paths.
 
 use std::{
@@ -8,9 +8,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub use camino::*;
+pub use camino::{Utf8Component, Utf8Components, Utf8Path, Utf8PathBuf, Utf8Prefix};
 
-/// Wrapper around an absolute [`Utf8PathBuf`].
+/// A [`Utf8PathBuf`] that is guaranteed to be absolute.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, Hash)]
 pub struct AbsPathBuf(Utf8PathBuf);
 
@@ -70,16 +70,6 @@ impl TryFrom<Utf8PathBuf> for AbsPathBuf {
             return Err(path_buf);
         }
         Ok(AbsPathBuf(path_buf))
-    }
-}
-
-impl TryFrom<PathBuf> for AbsPathBuf {
-    type Error = PathBuf;
-    fn try_from(path_buf: PathBuf) -> Result<AbsPathBuf, PathBuf> {
-        if !path_buf.is_absolute() {
-            return Err(path_buf);
-        }
-        Ok(AbsPathBuf(Utf8PathBuf::from_path_buf(path_buf)?))
     }
 }
 
@@ -150,6 +140,10 @@ impl AbsPathBuf {
     ///   to `.` and `..` are removed.
     pub fn push<P: AsRef<Utf8Path>>(&mut self, suffix: P) {
         self.0.push(suffix)
+    }
+
+    pub fn join(&self, path: impl AsRef<Utf8Path>) -> Self {
+        Self(self.0.join(path))
     }
 }
 

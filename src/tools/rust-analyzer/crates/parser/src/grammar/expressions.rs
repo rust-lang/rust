@@ -66,7 +66,7 @@ pub(super) fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
 
     // test block_items
     // fn a() { fn b() {} }
-    let m = match items::opt_item(p, m) {
+    let m = match items::opt_item(p, m, false) {
         Ok(()) => return,
         Err(m) => m,
     };
@@ -134,10 +134,12 @@ pub(super) fn let_stmt(p: &mut Parser<'_>, with_semi: Semicolon) {
         // test_err let_else_right_curly_brace
         // fn func() { let Some(_) = {Some(1)} else { panic!("h") };}
         if let Some(expr) = expr_after_eq {
-            if BlockLike::is_blocklike(expr.kind()) {
-                p.error(
-                    "right curly brace `}` before `else` in a `let...else` statement not allowed",
-                )
+            if let Some(token) = expr.last_token(p) {
+                if token == T!['}'] {
+                    p.error(
+                        "right curly brace `}` before `else` in a `let...else` statement not allowed"
+                    )
+                }
             }
         }
 
@@ -339,13 +341,20 @@ fn lhs(p: &mut Parser<'_>, r: Restrictions) -> Option<(CompletedMarker, BlockLik
         //     // raw reference operator
         //     let _ = &raw mut foo;
         //     let _ = &raw const foo;
+        //     let _ = &raw foo;
         // }
         T![&] => {
             m = p.start();
             p.bump(T![&]);
-            if p.at_contextual_kw(T![raw]) && [T![mut], T![const]].contains(&p.nth(1)) {
-                p.bump_remap(T![raw]);
-                p.bump_any();
+            if p.at_contextual_kw(T![raw]) {
+                if [T![mut], T![const]].contains(&p.nth(1)) {
+                    p.bump_remap(T![raw]);
+                    p.bump_any();
+                } else if p.nth_at(1, SyntaxKind::IDENT) {
+                    // we treat raw as keyword in this case
+                    // &raw foo;
+                    p.bump_remap(T![raw]);
+                }
             } else {
                 p.eat(T![mut]);
             }
@@ -449,7 +458,9 @@ fn postfix_dot_expr<const FLOAT_RECOVERY: bool>(
     let nth1 = if FLOAT_RECOVERY { 0 } else { 1 };
     let nth2 = if FLOAT_RECOVERY { 1 } else { 2 };
 
-    if p.nth(nth1) == IDENT && (p.nth(nth2) == T!['('] || p.nth_at(nth2, T![::])) {
+    if PATH_NAME_REF_KINDS.contains(p.nth(nth1))
+        && (p.nth(nth2) == T!['('] || p.nth_at(nth2, T![::]))
+    {
         return Ok(method_call_expr::<FLOAT_RECOVERY>(p, lhs));
     }
 
@@ -510,22 +521,27 @@ fn index_expr(p: &mut Parser<'_>, lhs: CompletedMarker) -> CompletedMarker {
 //     y.bar::<T>(1, 2,);
 //     x.0.0.call();
 //     x.0. call();
+//     x.0()
 // }
 fn method_call_expr<const FLOAT_RECOVERY: bool>(
     p: &mut Parser<'_>,
     lhs: CompletedMarker,
 ) -> CompletedMarker {
     if FLOAT_RECOVERY {
-        assert!(p.nth(0) == IDENT && (p.nth(1) == T!['('] || p.nth_at(1, T![::])));
+        assert!(p.at_ts(PATH_NAME_REF_KINDS) && (p.nth(1) == T!['('] || p.nth_at(1, T![::])));
     } else {
-        assert!(p.at(T![.]) && p.nth(1) == IDENT && (p.nth(2) == T!['('] || p.nth_at(2, T![::])));
+        assert!(
+            p.at(T![.])
+                && PATH_NAME_REF_KINDS.contains(p.nth(1))
+                && (p.nth(2) == T!['('] || p.nth_at(2, T![::]))
+        );
     }
     let m = lhs.precede(p);
     if !FLOAT_RECOVERY {
         p.bump(T![.]);
     }
-    name_ref(p);
-    generic_args::opt_generic_arg_list(p, true);
+    name_ref_mod_path(p);
+    generic_args::opt_generic_arg_list_expr(p);
     if p.at(T!['(']) {
         arg_list(p);
     } else {
@@ -543,6 +559,8 @@ fn method_call_expr<const FLOAT_RECOVERY: bool>(
 
 // test field_expr
 // fn foo() {
+//     x.self;
+//     x.Self;
 //     x.foo;
 //     x.0.bar;
 //     x.0.1;
@@ -560,8 +578,8 @@ fn field_expr<const FLOAT_RECOVERY: bool>(
     if !FLOAT_RECOVERY {
         p.bump(T![.]);
     }
-    if p.at(IDENT) || p.at(INT_NUMBER) {
-        name_ref_or_index(p);
+    if p.at_ts(PATH_NAME_REF_OR_INDEX_KINDS) {
+        name_ref_mod_path_or_index(p);
     } else if p.at(FLOAT_NUMBER) {
         return match p.split_float(m) {
             (true, m) => {
@@ -679,34 +697,37 @@ pub(crate) fn record_expr_field_list(p: &mut Parser<'_>) {
             IDENT | INT_NUMBER if p.nth_at(1, T![::]) => {
                 // test_err record_literal_missing_ellipsis_recovery
                 // fn main() {
-                //     S { S::default() }
+                //     S { S::default() };
+                //     S { 0::default() };
                 // }
                 m.abandon(p);
                 p.expect(T![..]);
                 expr(p);
             }
+            IDENT | INT_NUMBER if p.nth_at(1, T![..]) => {
+                // test_err record_literal_before_ellipsis_recovery
+                // fn main() {
+                //     S { field ..S::default() }
+                //     S { 0 ..S::default() }
+                // }
+                name_ref_or_index(p);
+                p.error("expected `:`");
+                m.complete(p, RECORD_EXPR_FIELD);
+            }
             IDENT | INT_NUMBER => {
-                if p.nth_at(1, T![..]) {
-                    // test_err record_literal_before_ellipsis_recovery
-                    // fn main() {
-                    //     S { field ..S::default() }
-                    // }
+                // test_err record_literal_field_eq_recovery
+                // fn main() {
+                //     S { field = foo }
+                //     S { 0 = foo }
+                // }
+                if p.nth_at(1, T![:]) {
                     name_ref_or_index(p);
-                    p.error("expected `:`");
-                } else {
-                    // test_err record_literal_field_eq_recovery
-                    // fn main() {
-                    //     S { field = foo }
-                    // }
-                    if p.nth_at(1, T![:]) {
-                        name_ref_or_index(p);
-                        p.bump(T![:]);
-                    } else if p.nth_at(1, T![=]) {
-                        name_ref_or_index(p);
-                        p.err_and_bump("expected `:`");
-                    }
-                    expr(p);
+                    p.bump(T![:]);
+                } else if p.nth_at(1, T![=]) {
+                    name_ref_or_index(p);
+                    p.err_and_bump("expected `:`");
                 }
+                expr(p);
                 m.complete(p, RECORD_EXPR_FIELD);
             }
             T![.] if p.at(T![..]) => {

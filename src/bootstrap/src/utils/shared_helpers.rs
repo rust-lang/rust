@@ -13,8 +13,9 @@ use std::io::Write;
 use std::process::Command;
 use std::str::FromStr;
 
-#[cfg(test)]
-mod tests;
+// If we were to declare a tests submodule here, the shim binaries that include this
+// module via `#[path]` would fail to find it, which breaks `./x check bootstrap`.
+// So instead the unit tests for this module are in `super::tests::shared_helpers_tests`.
 
 /// Returns the environment variable which the dynamic library lookup path
 /// resides in for this platform.
@@ -49,6 +50,8 @@ pub fn exe(name: &str, target: &str) -> String {
         format!("{name}.exe")
     } else if target.contains("uefi") {
         format!("{name}.efi")
+    } else if target.contains("wasm") {
+        format!("{name}.wasm")
     } else {
         name.to_string()
     }

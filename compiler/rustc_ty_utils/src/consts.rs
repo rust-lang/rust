@@ -1,9 +1,10 @@
 use std::iter;
 
+use rustc_abi::{FIRST_VARIANT, VariantIdx};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
+use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::query::Providers;
 use rustc_middle::thir::visit;
 use rustc_middle::thir::visit::Visitor;
@@ -11,7 +12,6 @@ use rustc_middle::ty::abstract_const::CastKind;
 use rustc_middle::ty::{self, Expr, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, mir, thir};
 use rustc_span::Span;
-use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
 use tracing::{debug, instrument};
 
 use crate::errors::{GenericConstantTooComplex, GenericConstantTooComplexSub};
@@ -118,13 +118,7 @@ fn recurse_build<'tcx>(
         }
         &ExprKind::Literal { lit, neg } => {
             let sp = node.span;
-            match tcx.at(sp).lit_to_const(LitToConstInput { lit: &lit.node, ty: node.ty, neg }) {
-                Ok(c) => c,
-                Err(LitToConstError::Reported(guar)) => ty::Const::new_error(tcx, guar),
-                Err(LitToConstError::TypeError) => {
-                    bug!("encountered type error in lit_to_const")
-                }
-            }
+            tcx.at(sp).lit_to_const(LitToConstInput { lit: &lit.node, ty: node.ty, neg })
         }
         &ExprKind::NonHirLiteral { lit, user_ty: _ } => {
             let val = ty::ValTree::from_scalar_int(lit);
@@ -192,7 +186,7 @@ fn recurse_build<'tcx>(
         ExprKind::Borrow { arg, .. } => {
             let arg_node = &body.exprs[*arg];
 
-            // Skip reborrows for now until we allow Deref/Borrow/AddressOf
+            // Skip reborrows for now until we allow Deref/Borrow/RawBorrow
             // expressions.
             // FIXME(generic_const_exprs): Verify/explain why this is sound
             if let ExprKind::Deref { arg } = arg_node.kind {
@@ -202,7 +196,7 @@ fn recurse_build<'tcx>(
             }
         }
         // FIXME(generic_const_exprs): We may want to support these.
-        ExprKind::AddressOf { .. } | ExprKind::Deref { .. } => maybe_supported_error(
+        ExprKind::RawBorrow { .. } | ExprKind::Deref { .. } => maybe_supported_error(
             GenericConstantTooComplexSub::AddressAndDerefNotSupported(node.span),
         )?,
         ExprKind::Repeat { .. } | ExprKind::Array { .. } => {
@@ -284,7 +278,7 @@ fn error(
 ) -> Result<!, ErrorGuaranteed> {
     let reported = tcx.dcx().emit_err(GenericConstantTooComplex {
         span: root_span,
-        maybe_supported: None,
+        maybe_supported: false,
         sub,
     });
 
@@ -298,7 +292,7 @@ fn maybe_supported_error(
 ) -> Result<!, ErrorGuaranteed> {
     let reported = tcx.dcx().emit_err(GenericConstantTooComplex {
         span: root_span,
-        maybe_supported: Some(()),
+        maybe_supported: true,
         sub,
     });
 
@@ -343,7 +337,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::VarRef { .. }
             | thir::ExprKind::UpvarRef { .. }
             | thir::ExprKind::Borrow { .. }
-            | thir::ExprKind::AddressOf { .. }
+            | thir::ExprKind::RawBorrow { .. }
             | thir::ExprKind::Break { .. }
             | thir::ExprKind::Continue { .. }
             | thir::ExprKind::Return { .. }
@@ -406,7 +400,7 @@ fn thir_abstract_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: LocalDefId,
 ) -> Result<Option<ty::EarlyBinder<'tcx, ty::Const<'tcx>>>, ErrorGuaranteed> {
-    if !tcx.features().generic_const_exprs {
+    if !tcx.features().generic_const_exprs() {
         return Ok(None);
     }
 

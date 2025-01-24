@@ -118,7 +118,7 @@ mod temp_stable_hash_impls {
     }
 }
 
-pub fn build_langcall<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn build_langcall<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &Bx,
     span: Option<Span>,
     li: LangItem,
@@ -129,7 +129,7 @@ pub fn build_langcall<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     (bx.fn_abi_of_instance(instance, ty::List::empty()), bx.get_fn_addr(instance), instance)
 }
 
-pub fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     llty: Bx::Type,
     mask_llty: Bx::Type,
@@ -187,12 +187,15 @@ pub fn i686_decorated_name(
     dll_import: &DllImport,
     mingw: bool,
     disable_name_mangling: bool,
+    force_fully_decorated: bool,
 ) -> String {
     let name = dll_import.name.as_str();
 
-    let (add_prefix, add_suffix) = match dll_import.import_name_type {
-        Some(PeImportNameType::NoPrefix) => (false, true),
-        Some(PeImportNameType::Undecorated) => (false, false),
+    let (add_prefix, add_suffix) = match (force_fully_decorated, dll_import.import_name_type) {
+        // No prefix is a bit weird, in that LLVM/ar_archive_writer won't emit it, so we will
+        // ignore `force_fully_decorated` and always partially decorate it.
+        (_, Some(PeImportNameType::NoPrefix)) => (false, true),
+        (false, Some(PeImportNameType::Undecorated)) => (false, false),
         _ => (true, true),
     };
 
@@ -200,7 +203,8 @@ pub fn i686_decorated_name(
     let mut decorated_name = String::with_capacity(name.len() + 6);
 
     if disable_name_mangling {
-        // LLVM uses a binary 1 ('\x01') prefix to a name to indicate that mangling needs to be disabled.
+        // LLVM uses a binary 1 ('\x01') prefix to a name to indicate that mangling needs to be
+        // disabled.
         decorated_name.push('\x01');
     }
 

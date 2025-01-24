@@ -4,8 +4,7 @@ use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::*;
 use rustc_expand::base::*;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::{Span, sym};
 
 /// This expands to either
 /// - `$crate::panic::panic_2015!(...)` or

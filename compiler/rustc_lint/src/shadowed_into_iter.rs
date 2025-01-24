@@ -61,11 +61,12 @@ declare_lint! {
     "detects calling `into_iter` on boxed slices in Rust 2015, 2018, and 2021",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/intoiterator-box-slice.html>"
     };
 }
 
 #[derive(Copy, Clone)]
-pub struct ShadowedIntoIter;
+pub(crate) struct ShadowedIntoIter;
 
 impl_lint_pass!(ShadowedIntoIter => [ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER]);
 
@@ -94,12 +95,9 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
         fn is_ref_to_array(ty: Ty<'_>) -> bool {
             if let ty::Ref(_, pointee_ty, _) = *ty.kind() { pointee_ty.is_array() } else { false }
         }
-        fn is_boxed_slice(ty: Ty<'_>) -> bool {
-            ty.is_box() && ty.boxed_ty().is_slice()
-        }
         fn is_ref_to_boxed_slice(ty: Ty<'_>) -> bool {
             if let ty::Ref(_, pointee_ty, _) = *ty.kind() {
-                is_boxed_slice(pointee_ty)
+                pointee_ty.boxed_ty().is_some_and(Ty::is_slice)
             } else {
                 false
             }
@@ -119,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
                     .iter()
                     .copied()
                     .take_while(|ty| !is_ref_to_boxed_slice(*ty))
-                    .position(|ty| is_boxed_slice(ty))
+                    .position(|ty| ty.boxed_ty().is_some_and(Ty::is_slice))
             {
                 (BOXED_SLICE_INTO_ITER, "Box<[T]>", "2024", idx == 0)
             } else {
@@ -149,10 +147,11 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
             None
         };
 
-        cx.emit_span_lint(
-            lint,
-            call.ident.span,
-            ShadowedIntoIterDiag { target, edition, suggestion: call.ident.span, sub },
-        );
+        cx.emit_span_lint(lint, call.ident.span, ShadowedIntoIterDiag {
+            target,
+            edition,
+            suggestion: call.ident.span,
+            sub,
+        });
     }
 }

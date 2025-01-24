@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{expr_use_ctxt, is_no_std_crate, ExprUseNode};
+use clippy_utils::{ExprUseNode, expr_use_ctxt, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability, Ty, TyKind};
 use rustc_lint::LateContext;
@@ -25,8 +25,8 @@ pub(super) fn check<'tcx>(
         && let use_cx = expr_use_ctxt(cx, expr)
         // TODO: only block the lint if `cast_expr` is a temporary
         && !matches!(use_cx.use_node(cx), ExprUseNode::LetStmt(_) | ExprUseNode::ConstStatic(_))
+        && let Some(std_or_core) = std_or_core(cx)
     {
-        let core_or_std = if is_no_std_crate(cx) { "core" } else { "std" };
         let fn_name = match to_mutbl {
             Mutability::Not => "from_ref",
             Mutability::Mut => "from_mut",
@@ -56,7 +56,7 @@ pub(super) fn check<'tcx>(
             expr.span,
             "reference as raw pointer",
             "try",
-            format!("{core_or_std}::ptr::{fn_name}{turbofish}({cast_expr_sugg})"),
+            format!("{std_or_core}::ptr::{fn_name}{turbofish}({cast_expr_sugg})"),
             app,
         );
     }

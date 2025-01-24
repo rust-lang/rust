@@ -1,5 +1,4 @@
 #![allow(incomplete_features)]
-#![feature(const_mut_refs)]
 #![feature(adt_const_params, unsized_const_params)]
 
 struct T<const B: &'static bool>;

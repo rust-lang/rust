@@ -1082,7 +1082,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all elements `e` for which `f(&e)` returns false.
+    /// In other words, remove all elements `e` for which `f(&mut e)` returns false.
     /// This method operates in place, visiting each element exactly once in the
     /// original order, and preserves the order of the retained elements.
     ///
@@ -1939,9 +1939,7 @@ pub struct ExtractIf<
     T: 'a,
     F: 'a,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
-> where
-    F: FnMut(&mut T) -> bool,
-{
+> {
     list: &'a mut LinkedList<T, A>,
     it: Option<NonNull<Node<T>>>,
     pred: F,
@@ -1979,10 +1977,7 @@ where
 }
 
 #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
-impl<T: fmt::Debug, F> fmt::Debug for ExtractIf<'_, T, F>
-where
-    F: FnMut(&mut T) -> bool,
-{
+impl<T: fmt::Debug, F> fmt::Debug for ExtractIf<'_, T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("ExtractIf").field(&self.list).finish()
     }

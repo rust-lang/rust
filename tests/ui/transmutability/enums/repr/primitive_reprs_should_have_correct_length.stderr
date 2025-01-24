@@ -10,13 +10,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -32,13 +31,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -54,13 +52,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -76,13 +73,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -98,13 +94,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -120,13 +115,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -142,13 +136,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -164,13 +157,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -186,13 +178,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -208,13 +199,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -230,13 +220,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -252,13 +241,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -274,13 +262,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -296,13 +283,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -318,13 +304,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -340,13 +325,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -362,13 +346,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -384,13 +367,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -406,13 +388,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -428,13 +409,12 @@ note: required by a bound in `is_transmutable`
 LL |       pub fn is_transmutable<Src, Dst>()
    |              --------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 

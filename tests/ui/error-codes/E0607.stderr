@@ -1,4 +1,4 @@
-error[E0607]: cannot cast thin pointer `*const u8` to fat pointer `*const [u8]`
+error[E0607]: cannot cast thin pointer `*const u8` to wide pointer `*const [u8]`
   --> $DIR/E0607.rs:3:5
    |
 LL |     v as *const [u8];

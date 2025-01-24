@@ -1,6 +1,4 @@
-//@revisions: i686 x86_64
-//@[i686] only-target-i686
-//@[x86_64] only-target-x86_64
+//@only-target: i686 x86_64
 
 #[warn(clippy::inline_asm_x86_intel_syntax)]
 mod warn_intel {

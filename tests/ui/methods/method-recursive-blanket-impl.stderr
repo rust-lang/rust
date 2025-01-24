@@ -1,5 +1,5 @@
 warning: trait `Foo` is never used
-  --> $DIR/method-recursive-blanket-impl.rs:14:7
+  --> $DIR/method-recursive-blanket-impl.rs:13:7
    |
 LL | trait Foo<A> {
    |       ^^^

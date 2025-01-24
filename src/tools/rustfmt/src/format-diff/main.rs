@@ -4,12 +4,10 @@
 
 #![deny(warnings)]
 
-#[macro_use]
-extern crate tracing;
-
 use serde::{Deserialize, Serialize};
 use serde_json as json;
 use thiserror::Error;
+use tracing::debug;
 use tracing_subscriber::EnvFilter;
 
 use std::collections::HashSet;

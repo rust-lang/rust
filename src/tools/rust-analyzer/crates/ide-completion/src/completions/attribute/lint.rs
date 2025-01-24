@@ -11,7 +11,7 @@ pub(super) fn complete_lint(
     existing_lints: &[ast::Path],
     lints_completions: &[Lint],
 ) {
-    for &Lint { label, description } in lints_completions {
+    for &Lint { label, description, .. } in lints_completions {
         let (qual, name) = {
             // FIXME: change `Lint`'s label to not store a path in it but split the prefix off instead?
             let mut parts = label.split("::");
@@ -54,7 +54,8 @@ pub(super) fn complete_lint(
             Some(qual) if !is_qualified => format!("{qual}::{name}"),
             _ => name.to_owned(),
         };
-        let mut item = CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), label);
+        let mut item =
+            CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), label, ctx.edition);
         item.documentation(Documentation::new(description.to_owned()));
         item.add_to(acc, ctx.db)
     }

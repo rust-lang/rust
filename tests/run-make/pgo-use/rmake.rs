@@ -5,7 +5,7 @@
 // be marked as cold.
 // See https://github.com/rust-lang/rust/pull/60262
 
-//@ needs-profiler-support
+//@ needs-profiler-runtime
 //@ ignore-cross-compile
 
 use run_make_support::{
@@ -51,5 +51,5 @@ fn main() {
     let lines: Vec<_> = ir.lines().rev().collect();
     let mut reversed_ir = lines.join("\n");
     reversed_ir.push('\n');
-    llvm_filecheck().patterns("filecheck-patterns.txt").stdin(reversed_ir.as_bytes()).run();
+    llvm_filecheck().patterns("filecheck-patterns.txt").stdin_buf(reversed_ir.as_bytes()).run();
 }

@@ -1,11 +1,8 @@
 //@aux-build:proc_macros.rs
-//@no-rustfix
 #![deny(clippy::implicit_hasher)]
-#![allow(unused)]
 
 #[macro_use]
 extern crate proc_macros;
-use proc_macros::external;
 
 use std::cmp::Eq;
 use std::collections::{HashMap, HashSet};
@@ -68,9 +65,11 @@ impl<S: BuildHasher + Default> Foo<i64> for HashSet<String, S> {
     }
 }
 
-pub fn foo(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {}
+pub fn map(map: &mut HashMap<i32, i32>) {}
 
-#[proc_macros::inline_macros]
+pub fn set(set: &mut HashSet<i32>) {}
+
+#[inline_macros]
 pub mod gen {
     use super::*;
     inline! {

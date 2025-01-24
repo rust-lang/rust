@@ -2,15 +2,15 @@
 
 #![feature(rustc_private)]
 #![feature(core_intrinsics)]
-extern crate libc;
-
-#[warn(clippy::cast_ptr_alignment)]
-#[allow(
+#![warn(clippy::cast_ptr_alignment)]
+#![allow(
     clippy::no_effect,
     clippy::unnecessary_operation,
     clippy::cast_lossless,
     clippy::borrow_as_ptr
 )]
+
+extern crate libc;
 
 fn main() {
     /* These should be warned against */

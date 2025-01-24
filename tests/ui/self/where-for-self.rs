@@ -2,6 +2,8 @@
 // Test that we can quantify lifetimes outside a constraint (i.e., including
 // the self type) in a where clause.
 
+// FIXME(static_mut_refs): this could use an atomic
+#![allow(static_mut_refs)]
 
 static mut COUNT: u32 = 1;
 

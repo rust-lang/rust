@@ -1,8 +1,8 @@
 // Adapted from https://github.com/sunfishcode/mir2cranelift/blob/master/rust-examples/nocore-hello-world.rs
 
 #![feature(
-    no_core, unboxed_closures, start, lang_items, never_type, linkage,
-    extern_types, thread_local, raw_ref_op
+    no_core, unboxed_closures, lang_items, never_type, linkage,
+    extern_types, thread_local
 )]
 #![no_core]
 #![allow(dead_code, internal_features, non_camel_case_types)]
@@ -258,13 +258,13 @@ fn main() {
 
     assert_eq!(((|()| 42u8) as fn(()) -> u8)(()), 42);
 
-    extern {
+    extern "C" {
         #[linkage = "weak"]
         static ABC: *const u8;
     }
 
     {
-        extern {
+        extern "C" {
             #[linkage = "weak"]
             static ABC: *const u8;
         }
@@ -430,6 +430,7 @@ pub enum E2<X> {
     V4,
 }
 
+#[allow(unreachable_patterns)]
 fn check_niche_behavior () {
     if let E1::V2 { .. } = (E1::V1 { f: true }) {
         intrinsics::abort();

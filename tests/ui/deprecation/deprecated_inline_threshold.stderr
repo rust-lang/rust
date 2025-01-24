@@ -1,2 +1,0 @@
-warning: the `-Cinline-threshold` flag is deprecated and does nothing (consider using `-Cllvm-args=--inline-threshold=...`)
-

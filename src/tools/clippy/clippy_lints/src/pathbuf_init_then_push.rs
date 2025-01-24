@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::path_to_local_id;
-use clippy_utils::source::{snippet, snippet_opt};
+use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_ast::{LitKind, StrStyle};
 use rustc_errors::Applicability;
@@ -9,7 +9,7 @@ use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, LetStmt, PatKind, QPa
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -21,8 +21,8 @@ declare_clippy_lint! {
     /// `PathBuf::from` instead.
     ///
     /// ### Known problems
-    /// `.join()` introduces an implicit `clone()`. `PathBuf::from` can alternativly be
-    /// used when the `PathBuf` is newly constructed. This will avoild the implicit clone.
+    /// `.join()` introduces an implicit `clone()`. `PathBuf::from` can alternatively be
+    /// used when the `PathBuf` is newly constructed. This will avoid the implicit clone.
     ///
     /// ### Example
     /// ```rust
@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// // or
     /// let path_buf = PathBuf::new().join("foo");
     /// ```
-    #[clippy::version = "1.81.0"]
+    #[clippy::version = "1.82.0"]
     pub PATHBUF_INIT_THEN_PUSH,
     restriction,
     "`push` immediately after `PathBuf` creation"
@@ -60,7 +60,7 @@ struct PathbufPushSearcher<'tcx> {
     err_span: Span,
 }
 
-impl<'tcx> PathbufPushSearcher<'tcx> {
+impl PathbufPushSearcher<'_> {
     /// Try to generate a suggestion with `PathBuf::from`.
     /// Returns `None` if the suggestion would be invalid.
     fn gen_pathbuf_from(&self, cx: &LateContext<'_>) -> Option<String> {
@@ -74,7 +74,7 @@ impl<'tcx> PathbufPushSearcher<'tcx> {
             && let Some(arg) = self.arg
             && let ExprKind::Lit(x) = arg.kind
             && let LitKind::Str(_, StrStyle::Cooked) = x.node
-            && let Some(s) = snippet_opt(cx, arg.span)
+            && let Some(s) = arg.span.get_source_text(cx)
         {
             Some(format!(" = PathBuf::from({s});"))
         } else {
@@ -84,8 +84,8 @@ impl<'tcx> PathbufPushSearcher<'tcx> {
 
     fn gen_pathbuf_join(&self, cx: &LateContext<'_>) -> Option<String> {
         let arg = self.arg?;
-        let arg_str = snippet_opt(cx, arg.span)?;
-        let init_val = snippet_opt(cx, self.init_val.span)?;
+        let arg_str = arg.span.get_source_text(cx)?;
+        let init_val = self.init_val.span.get_source_text(cx)?;
         Some(format!(" = {init_val}.join({arg_str});"))
     }
 
@@ -143,11 +143,11 @@ impl<'tcx> LateLintPass<'tcx> for PathbufThenPush<'tcx> {
             self.searcher = Some(PathbufPushSearcher {
                 local_id: id,
                 lhs_is_let: true,
-                name: name.name,
                 let_ty_span: local.ty.map(|ty| ty.span),
-                err_span: local.span,
                 init_val: *init_expr,
                 arg: None,
+                name: name.name,
+                err_span: local.span,
             });
         }
     }
@@ -165,10 +165,10 @@ impl<'tcx> LateLintPass<'tcx> for PathbufThenPush<'tcx> {
                 local_id: id,
                 lhs_is_let: false,
                 let_ty_span: None,
-                name: name.ident.name,
-                err_span: expr.span,
                 init_val: *right,
                 arg: None,
+                name: name.ident.name,
+                err_span: expr.span,
             });
         }
     }

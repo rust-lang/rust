@@ -7,8 +7,8 @@ use rustc_middle::dep_graph::{
     DepGraph, SerializedDepGraph, WorkProduct, WorkProductId, WorkProductMap,
 };
 use rustc_middle::ty::TyCtxt;
-use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_serialize::Encodable as RustcEncodable;
+use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::Session;
 use tracing::debug;
 
@@ -25,7 +25,7 @@ use crate::errors;
 ///
 /// This function should only run after all queries have completed.
 /// Trying to execute a query afterwards would attempt to read the result cache we just dropped.
-pub fn save_dep_graph(tcx: TyCtxt<'_>) {
+pub(crate) fn save_dep_graph(tcx: TyCtxt<'_>) {
     debug!("save_dep_graph()");
     tcx.dep_graph.with_ignore(|| {
         let sess = tcx.sess;

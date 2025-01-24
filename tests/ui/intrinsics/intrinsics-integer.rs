@@ -1,24 +1,8 @@
 //@ run-pass
 
-#![feature(intrinsics)]
-#![feature(rustc_attrs)]
+#![feature(core_intrinsics)]
 
-mod rusti {
-    extern "rust-intrinsic" {
-        #[rustc_safe_intrinsic]
-        pub fn ctpop<T>(x: T) -> u32;
-        #[rustc_safe_intrinsic]
-        pub fn ctlz<T>(x: T) -> u32;
-        pub fn ctlz_nonzero<T>(x: T) -> u32;
-        #[rustc_safe_intrinsic]
-        pub fn cttz<T>(x: T) -> u32;
-        pub fn cttz_nonzero<T>(x: T) -> u32;
-        #[rustc_safe_intrinsic]
-        pub fn bswap<T>(x: T) -> T;
-        #[rustc_safe_intrinsic]
-        pub fn bitreverse<T>(x: T) -> T;
-    }
-}
+use std::intrinsics as rusti;
 
 pub fn main() {
     use rusti::*;

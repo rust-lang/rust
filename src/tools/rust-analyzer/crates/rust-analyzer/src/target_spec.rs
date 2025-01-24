@@ -112,7 +112,7 @@ impl CargoTargetSpec {
         kind: &RunnableKind,
         cfg: &Option<CfgExpr>,
     ) -> (Vec<String>, Vec<String>) {
-        let config = snap.config.runnables();
+        let config = snap.config.runnables(None);
         let extra_test_binary_args = config.extra_test_binary_args;
 
         let mut cargo_args = Vec::new();
@@ -167,7 +167,7 @@ impl CargoTargetSpec {
             (Default::default(), Default::default())
         };
 
-        let cargo_config = snap.config.cargo();
+        let cargo_config = snap.config.cargo(None);
 
         match &cargo_config.features {
             CargoFeatures::All => {
@@ -263,10 +263,13 @@ mod tests {
     use super::*;
 
     use ide::Edition;
-    use mbe::{syntax_node_to_token_tree, DocCommentDesugarMode, DummyTestSpanMap, DUMMY};
     use syntax::{
         ast::{self, AstNode},
         SmolStr,
+    };
+    use syntax_bridge::{
+        dummy_test_span_utils::{DummyTestSpanMap, DUMMY},
+        syntax_node_to_token_tree, DocCommentDesugarMode,
     };
 
     fn check(cfg: &str, expected_features: &[&str]) {

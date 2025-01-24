@@ -2,31 +2,28 @@
 //!
 //! When the MIR is built, we check `needs_drop` before emitting a `Drop` for a place. This pass is
 //! useful because (unlike MIR building) it runs after type checking, so it can make use of
-//! `Reveal::All` to provide more precise type information.
+//! `TypingMode::PostAnalysis` to provide more precise type information, especially about opaque
+//! types.
 
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use tracing::{debug, trace};
 
 use super::simplify::simplify_cfg;
 
-pub struct RemoveUnneededDrops;
+pub(super) struct RemoveUnneededDrops;
 
-impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
+impl<'tcx> crate::MirPass<'tcx> for RemoveUnneededDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         trace!("Running RemoveUnneededDrops on {:?}", body.source);
 
-        let did = body.source.def_id();
-        let param_env = tcx.param_env_reveal_all_normalized(did);
+        let typing_env = body.typing_env(tcx);
         let mut should_simplify = false;
-
         for block in body.basic_blocks.as_mut() {
             let terminator = block.terminator_mut();
             if let TerminatorKind::Drop { place, target, .. } = terminator.kind {
                 let ty = place.ty(&body.local_decls, tcx);
-                if ty.ty.needs_drop(tcx, param_env) {
-                    continue;
-                }
-                if !tcx.consider_optimizing(|| format!("RemoveUnneededDrops {did:?} ")) {
+                if ty.ty.needs_drop(tcx, typing_env) {
                     continue;
                 }
                 debug!("SUCCESS: replacing `drop` with goto({:?})", target);

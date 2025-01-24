@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::io::Write;
 use std::path::Path;
 
-use anyhow::{bail, format_err, Context, Result};
+use anyhow::{Context, Result, bail, format_err};
 
 use super::{Scripter, Tarballer};
 use crate::compression::{CompressionFormats, CompressionProfile};

@@ -32,24 +32,24 @@ impl Drop for Handler {
     target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
-    target_os = "solaris"
+    target_os = "solaris",
+    target_os = "illumos",
 ))]
 mod imp {
+    use libc::{
+        MAP_ANON, MAP_FAILED, MAP_FIXED, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE, SA_ONSTACK,
+        SA_SIGINFO, SIG_DFL, SIGBUS, SIGSEGV, SS_DISABLE, sigaction, sigaltstack, sighandler_t,
+    };
     #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
     use libc::{mmap as mmap64, mprotect, munmap};
     #[cfg(all(target_os = "linux", target_env = "gnu"))]
     use libc::{mmap64, mprotect, munmap};
-    use libc::{
-        sigaction, sigaltstack, sighandler_t, MAP_ANON, MAP_FAILED, MAP_FIXED, MAP_PRIVATE,
-        PROT_NONE, PROT_READ, PROT_WRITE, SA_ONSTACK, SA_SIGINFO, SIGBUS, SIGSEGV, SIG_DFL,
-        SS_DISABLE,
-    };
 
     use super::Handler;
     use crate::cell::Cell;
     use crate::ops::Range;
-    use crate::sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering};
     use crate::sync::OnceLock;
+    use crate::sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering};
     use crate::sys::pal::unix::os;
     use crate::{io, mem, ptr, thread};
 
@@ -100,10 +100,11 @@ mod imp {
         // If the faulting address is within the guard page, then we print a
         // message saying so and abort.
         if start <= addr && addr < end {
-            rtprintpanic!(
-                "\nthread '{}' has overflowed its stack\n",
-                thread::current().name().unwrap_or("<unknown>")
-            );
+            thread::with_current_name(|name| {
+                let name = name.unwrap_or("<unknown>");
+                rtprintpanic!("\nthread '{name}' has overflowed its stack\n");
+            });
+
             rtabort!("stack overflow");
         } else {
             // Unregister ourselves by reverting back to the default behavior.
@@ -265,9 +266,7 @@ mod imp {
     /// Modern kernels on modern hardware can have dynamic signal stack sizes.
     #[cfg(any(target_os = "linux", target_os = "android"))]
     fn sigstack_size() -> usize {
-        // FIXME: reuse const from libc when available?
-        const AT_MINSIGSTKSZ: crate::ffi::c_ulong = 51;
-        let dynamic_sigstksz = unsafe { libc::getauxval(AT_MINSIGSTKSZ) };
+        let dynamic_sigstksz = unsafe { libc::getauxval(libc::AT_MINSIGSTKSZ) };
         // If getauxval couldn't find the entry, it returns 0,
         // so take the higher of the "constant" and auxval.
         // This transparently supports older kernels which don't provide AT_MINSIGSTKSZ
@@ -280,7 +279,7 @@ mod imp {
         libc::SIGSTKSZ
     }
 
-    #[cfg(target_os = "solaris")]
+    #[cfg(any(target_os = "solaris", target_os = "illumos"))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         let mut current_stack: libc::stack_t = crate::mem::zeroed();
         assert_eq!(libc::stack_getbounds(&mut current_stack), 0);
@@ -426,8 +425,8 @@ mod imp {
             match sysctlbyname.get() {
                 Some(fcn) if unsafe {
                     fcn(oid.as_ptr(),
-                        ptr::addr_of_mut!(guard).cast(),
-                        ptr::addr_of_mut!(size),
+                        (&raw mut guard).cast(),
+                        &raw mut size,
                         ptr::null_mut(),
                         0) == 0
                 } => guard,
@@ -486,7 +485,12 @@ mod imp {
         Some(guardaddr..guardaddr + page_size)
     }
 
-    #[cfg(any(target_os = "macos", target_os = "openbsd", target_os = "solaris"))]
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "openbsd",
+        target_os = "solaris",
+        target_os = "illumos",
+    ))]
     // FIXME: I am probably not unsafe.
     unsafe fn current_guard() -> Option<Range<usize>> {
         let stackptr = get_stack_start()?;
@@ -569,7 +573,8 @@ mod imp {
     target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
-    target_os = "solaris"
+    target_os = "solaris",
+    target_os = "illumos",
 )))]
 mod imp {
     pub unsafe fn init() {}

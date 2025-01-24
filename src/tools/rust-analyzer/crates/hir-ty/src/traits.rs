@@ -14,13 +14,14 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use intern::sym;
-use stdx::panic_context;
+use span::Edition;
+use stdx::{never, panic_context};
 use triomphe::Arc;
 
 use crate::{
     db::HirDatabase, infer::unify::InferenceTable, utils::UnevaluatedConstEvaluatorFolder, AliasEq,
     AliasTy, Canonical, DomainGoal, Goal, Guidance, InEnvironment, Interner, ProjectionTy,
-    ProjectionTyExt, Solution, TraitRefExt, Ty, TyKind, WhereClause,
+    ProjectionTyExt, Solution, TraitRefExt, Ty, TyKind, TypeFlags, WhereClause,
 };
 
 /// This controls how much 'time' we give the Chalk solver before giving up.
@@ -90,6 +91,16 @@ pub(crate) fn normalize_projection_query(
     projection: ProjectionTy,
     env: Arc<TraitEnvironment>,
 ) -> Ty {
+    if projection.substitution.iter(Interner).any(|arg| {
+        arg.ty(Interner)
+            .is_some_and(|ty| ty.data(Interner).flags.intersects(TypeFlags::HAS_TY_INFER))
+    }) {
+        never!(
+            "Invoking `normalize_projection_query` with a projection type containing inference var"
+        );
+        return TyKind::Error.intern(Interner);
+    }
+
     let mut table = InferenceTable::new(db, env);
     let ty = table.normalize_projection_ty(projection);
     table.resolve_completely(ty)
@@ -104,7 +115,7 @@ pub(crate) fn trait_solve_query(
 ) -> Option<Solution> {
     let detail = match &goal.value.goal.data(Interner) {
         GoalData::DomainGoal(DomainGoal::Holds(WhereClause::Implemented(it))) => {
-            db.trait_data(it.hir_trait_id()).name.display(db.upcast()).to_string()
+            db.trait_data(it.hir_trait_id()).name.display(db.upcast(), Edition::LATEST).to_string()
         }
         GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(_))) => "alias_eq".to_owned(),
         _ => "??".to_owned(),
@@ -209,6 +220,10 @@ pub enum FnTrait {
     FnOnce,
     FnMut,
     Fn,
+
+    AsyncFnOnce,
+    AsyncFnMut,
+    AsyncFn,
 }
 
 impl fmt::Display for FnTrait {
@@ -217,6 +232,9 @@ impl fmt::Display for FnTrait {
             FnTrait::FnOnce => write!(f, "FnOnce"),
             FnTrait::FnMut => write!(f, "FnMut"),
             FnTrait::Fn => write!(f, "Fn"),
+            FnTrait::AsyncFnOnce => write!(f, "AsyncFnOnce"),
+            FnTrait::AsyncFnMut => write!(f, "AsyncFnMut"),
+            FnTrait::AsyncFn => write!(f, "AsyncFn"),
         }
     }
 }
@@ -227,6 +245,9 @@ impl FnTrait {
             FnTrait::FnOnce => "call_once",
             FnTrait::FnMut => "call_mut",
             FnTrait::Fn => "call",
+            FnTrait::AsyncFnOnce => "async_call_once",
+            FnTrait::AsyncFnMut => "async_call_mut",
+            FnTrait::AsyncFn => "async_call",
         }
     }
 
@@ -235,6 +256,9 @@ impl FnTrait {
             FnTrait::FnOnce => LangItem::FnOnce,
             FnTrait::FnMut => LangItem::FnMut,
             FnTrait::Fn => LangItem::Fn,
+            FnTrait::AsyncFnOnce => LangItem::AsyncFnOnce,
+            FnTrait::AsyncFnMut => LangItem::AsyncFnMut,
+            FnTrait::AsyncFn => LangItem::AsyncFn,
         }
     }
 
@@ -243,15 +267,19 @@ impl FnTrait {
             LangItem::FnOnce => Some(FnTrait::FnOnce),
             LangItem::FnMut => Some(FnTrait::FnMut),
             LangItem::Fn => Some(FnTrait::Fn),
+            LangItem::AsyncFnOnce => Some(FnTrait::AsyncFnOnce),
+            LangItem::AsyncFnMut => Some(FnTrait::AsyncFnMut),
+            LangItem::AsyncFn => Some(FnTrait::AsyncFn),
             _ => None,
         }
     }
 
     pub const fn to_chalk_ir(self) -> rust_ir::ClosureKind {
+        // Chalk doesn't support async fn traits.
         match self {
-            FnTrait::FnOnce => rust_ir::ClosureKind::FnOnce,
-            FnTrait::FnMut => rust_ir::ClosureKind::FnMut,
-            FnTrait::Fn => rust_ir::ClosureKind::Fn,
+            FnTrait::AsyncFnOnce | FnTrait::FnOnce => rust_ir::ClosureKind::FnOnce,
+            FnTrait::AsyncFnMut | FnTrait::FnMut => rust_ir::ClosureKind::FnMut,
+            FnTrait::AsyncFn | FnTrait::Fn => rust_ir::ClosureKind::Fn,
         }
     }
 
@@ -260,6 +288,9 @@ impl FnTrait {
             FnTrait::FnOnce => Name::new_symbol_root(sym::call_once.clone()),
             FnTrait::FnMut => Name::new_symbol_root(sym::call_mut.clone()),
             FnTrait::Fn => Name::new_symbol_root(sym::call.clone()),
+            FnTrait::AsyncFnOnce => Name::new_symbol_root(sym::async_call_once.clone()),
+            FnTrait::AsyncFnMut => Name::new_symbol_root(sym::async_call_mut.clone()),
+            FnTrait::AsyncFn => Name::new_symbol_root(sym::async_call.clone()),
         }
     }
 

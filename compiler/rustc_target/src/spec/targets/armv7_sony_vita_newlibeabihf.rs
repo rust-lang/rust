@@ -1,15 +1,15 @@
 use crate::abi::Endian;
-use crate::spec::{cvs, Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions};
+use crate::spec::{Cc, FloatAbi, LinkerFlavor, Lld, RelocModel, Target, TargetOptions, cvs};
 
 /// A base target for PlayStation Vita devices using the VITASDK toolchain (using newlib).
 ///
 /// Requires the VITASDK toolchain on the host system.
 
-pub fn target() -> Target {
-    let pre_link_args = TargetOptions::link_args(
-        LinkerFlavor::Gnu(Cc::Yes, Lld::No),
-        &["-Wl,-q", "-Wl,--pic-veneer"],
-    );
+pub(crate) fn target() -> Target {
+    let pre_link_args = TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &[
+        "-Wl,-q",
+        "-Wl,--pic-veneer",
+    ]);
 
     Target {
         llvm_target: "thumbv7a-vita-eabihf".into(),
@@ -32,6 +32,7 @@ pub fn target() -> Target {
             env: "newlib".into(),
             vendor: "sony".into(),
             abi: "eabihf".into(),
+            llvm_floatabi: Some(FloatAbi::Hard),
             linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),
             no_default_libraries: false,
             cpu: "cortex-a9".into(),

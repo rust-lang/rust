@@ -64,18 +64,17 @@ LL +     }
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> tests/ui/single_match_else.rs:101:5
    |
-LL | /     match Result::<i32, Infallible>::Ok(1) {
+LL | /     match Result::<i32, &Infallible>::Ok(1) {
 LL | |         Ok(a) => println!("${:?}", a),
 LL | |         Err(_) => {
 LL | |             println!("else block");
-LL | |             return;
-LL | |         }
+...  |
 LL | |     }
    | |_____^
    |
 help: try
    |
-LL ~     if let Ok(a) = Result::<i32, Infallible>::Ok(1) { println!("${:?}", a) } else {
+LL ~     if let Ok(a) = Result::<i32, &Infallible>::Ok(1) { println!("${:?}", a) } else {
 LL +         println!("else block");
 LL +         return;
 LL +     }
@@ -88,8 +87,7 @@ LL | /     match Cow::from("moo") {
 LL | |         Cow::Owned(a) => println!("${:?}", a),
 LL | |         Cow::Borrowed(_) => {
 LL | |             println!("else block");
-LL | |             return;
-LL | |         }
+...  |
 LL | |     }
    | |_____^
    |
@@ -197,5 +195,17 @@ LL +         println!("None");
 LL +     }
    |
 
-error: aborting due to 9 previous errors
+error: this pattern is irrefutable, `match` is useless
+  --> tests/ui/single_match_else.rs:204:5
+   |
+LL | /     match ExprNode::Butterflies {
+LL | |         ExprNode::Butterflies => Some(&NODE),
+LL | |         _ => {
+LL | |             let x = 5;
+LL | |             None
+LL | |         },
+LL | |     }
+   | |_____^ help: try: `Some(&NODE)`
+
+error: aborting due to 10 previous errors
 

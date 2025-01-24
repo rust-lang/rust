@@ -2,6 +2,7 @@
 use anyhow::format_err;
 use ide::{Annotation, AnnotationKind, AssistKind, LineCol};
 use ide_db::{line_index::WideLineCol, FileId, FilePosition, FileRange};
+use paths::Utf8PathBuf;
 use syntax::{TextRange, TextSize};
 use vfs::AbsPathBuf;
 
@@ -13,7 +14,7 @@ use crate::{
 
 pub(crate) fn abs_path(url: &lsp_types::Url) -> anyhow::Result<AbsPathBuf> {
     let path = url.to_file_path().map_err(|()| anyhow::format_err!("url is not a file"))?;
-    Ok(AbsPathBuf::try_from(path).unwrap())
+    Ok(AbsPathBuf::try_from(Utf8PathBuf::from_path_buf(path).unwrap()).unwrap())
 }
 
 pub(crate) fn vfs_path(url: &lsp_types::Url) -> anyhow::Result<vfs::VfsPath> {
@@ -34,10 +35,18 @@ pub(crate) fn offset(
                 .ok_or_else(|| format_err!("Invalid wide col offset"))?
         }
     };
-    let text_size = line_index.index.offset(line_col).ok_or_else(|| {
+    let line_range = line_index.index.line(line_col.line).ok_or_else(|| {
         format_err!("Invalid offset {line_col:?} (line index length: {:?})", line_index.index.len())
     })?;
-    Ok(text_size)
+    let col = TextSize::from(line_col.col);
+    let clamped_len = col.min(line_range.len());
+    if clamped_len < col {
+        tracing::error!(
+            "Position {line_col:?} column exceeds line length {}, clamping it",
+            u32::from(line_range.len()),
+        );
+    }
+    Ok(line_range.start() + clamped_len)
 }
 
 pub(crate) fn text_range(

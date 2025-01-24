@@ -4,7 +4,7 @@ use smallvec::smallvec;
 
 use crate::data_structures::HashSet;
 use crate::inherent::*;
-use crate::outlives::{push_outlives_components, Component};
+use crate::outlives::{Component, push_outlives_components};
 use crate::{self as ty, Interner, Upcast as _};
 
 /// "Elaboration" is the process of identifying all the predicates that
@@ -41,6 +41,39 @@ pub trait Elaboratable<I: Interner> {
         parent_trait_pred: ty::Binder<I, ty::TraitPredicate<I>>,
         index: usize,
     ) -> Self;
+}
+
+pub struct ClauseWithSupertraitSpan<I: Interner> {
+    pub pred: I::Predicate,
+    // Span of the supertrait predicatae that lead to this clause.
+    pub supertrait_span: I::Span,
+}
+impl<I: Interner> ClauseWithSupertraitSpan<I> {
+    pub fn new(pred: I::Predicate, span: I::Span) -> Self {
+        ClauseWithSupertraitSpan { pred, supertrait_span: span }
+    }
+}
+impl<I: Interner> Elaboratable<I> for ClauseWithSupertraitSpan<I> {
+    fn predicate(&self) -> <I as Interner>::Predicate {
+        self.pred
+    }
+
+    fn child(&self, clause: <I as Interner>::Clause) -> Self {
+        ClauseWithSupertraitSpan {
+            pred: clause.as_predicate(),
+            supertrait_span: self.supertrait_span,
+        }
+    }
+
+    fn child_with_derived_cause(
+        &self,
+        clause: <I as Interner>::Clause,
+        supertrait_span: <I as Interner>::Span,
+        _parent_trait_pred: crate::Binder<I, crate::TraitPredicate<I>>,
+        _index: usize,
+    ) -> Self {
+        ClauseWithSupertraitSpan { pred: clause.as_predicate(), supertrait_span }
+    }
 }
 
 pub fn elaborate<I: Interner, O: Elaboratable<I>>(
@@ -115,6 +148,16 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                     ),
                 };
             }
+            // `T: ~const Trait` implies `T: ~const Supertrait`.
+            ty::ClauseKind::HostEffect(data) => self.extend_deduped(
+                cx.explicit_implied_const_bounds(data.def_id()).iter_identity().map(|trait_ref| {
+                    elaboratable.child(
+                        trait_ref
+                            .to_host_effect_clause(cx, data.constness)
+                            .instantiate_supertrait(cx, bound_clause.rebind(data.trait_ref)),
+                    )
+                }),
+            ),
             ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty_max, r_min)) => {
                 // We know that `T: 'a` for some type `T`. We can
                 // often elaborate this. For example, if we know that

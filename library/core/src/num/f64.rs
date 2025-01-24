@@ -16,6 +16,7 @@ use crate::convert::FloatToInt;
 use crate::intrinsics;
 use crate::mem;
 use crate::num::FpCategory;
+use crate::panic::const_assert;
 
 /// The radix or base of the internal representation of `f64`.
 /// Use [`f64::RADIX`] instead.
@@ -414,6 +415,7 @@ impl f64 {
     /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
     /// [`MANTISSA_DIGITS`]: f64::MANTISSA_DIGITS
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "f64_epsilon")]
     pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
 
     /// Smallest finite `f64` value.
@@ -515,21 +517,11 @@ impl f64 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     #[allow(clippy::eq_op)] // > if you intended to check if the operand is NaN, use `.is_nan()` instead :)
     pub const fn is_nan(self) -> bool {
         self != self
-    }
-
-    // FIXME(#50145): `abs` is publicly unavailable in core due to
-    // concerns about portability, so this implementation is for
-    // private use internally.
-    #[inline]
-    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
-    pub(crate) const fn abs_private(self) -> f64 {
-        // SAFETY: This transmutation is fine. Probably. For the reasons std is using it.
-        unsafe { mem::transmute::<u64, f64>(mem::transmute::<f64, u64>(self) & !Self::SIGN_MASK) }
     }
 
     /// Returns `true` if this value is positive infinity or negative infinity, and
@@ -549,7 +541,7 @@ impl f64 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_infinite(self) -> bool {
         // Getting clever with transmutation can result in incorrect answers on some FPUs
@@ -574,12 +566,12 @@ impl f64 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
         // the comparison is not true, exactly as desired.
-        self.abs_private() < Self::INFINITY
+        self.abs() < Self::INFINITY
     }
 
     /// Returns `true` if the number is [subnormal].
@@ -602,7 +594,7 @@ impl f64 {
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[must_use]
     #[stable(feature = "is_subnormal", since = "1.53.0")]
-    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_subnormal(self) -> bool {
         matches!(self.classify(), FpCategory::Subnormal)
@@ -629,7 +621,7 @@ impl f64 {
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_normal(self) -> bool {
         matches!(self.classify(), FpCategory::Normal)
@@ -649,58 +641,14 @@ impl f64 {
     /// assert_eq!(inf.classify(), FpCategory::Infinite);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     pub const fn classify(self) -> FpCategory {
-        // A previous implementation tried to only use bitmask-based checks,
-        // using f64::to_bits to transmute the float to its bit repr and match on that.
-        // Unfortunately, floating point numbers can be much worse than that.
-        // This also needs to not result in recursive evaluations of f64::to_bits.
-        //
-        // On some processors, in some cases, LLVM will "helpfully" lower floating point ops,
-        // in spite of a request for them using f32 and f64, to things like x87 operations.
-        // These have an f64's mantissa, but can have a larger than normal exponent.
-        // FIXME(jubilee): Using x87 operations is never necessary in order to function
-        // on x86 processors for Rust-to-Rust calls, so this issue should not happen.
-        // Code generation should be adjusted to use non-C calling conventions, avoiding this.
-        //
-        // Thus, a value may compare unequal to infinity, despite having a "full" exponent mask.
-        // And it may not be NaN, as it can simply be an "overextended" finite value.
-        if self.is_nan() {
-            FpCategory::Nan
-        } else {
-            // However, std can't simply compare to zero to check for zero, either,
-            // as correctness requires avoiding equality tests that may be Subnormal == -0.0
-            // because it may be wrong under "denormals are zero" and "flush to zero" modes.
-            // Most of std's targets don't use those, but they are used for thumbv7neon.
-            // So, this does use bitpattern matching for the rest.
-
-            // SAFETY: f64 to u64 is fine. Usually.
-            // If control flow has gotten this far, the value is definitely in one of the categories
-            // that f64::partial_classify can correctly analyze.
-            unsafe { f64::partial_classify(self) }
-        }
-    }
-
-    // This doesn't actually return a right answer for NaN on purpose,
-    // seeing as how it cannot correctly discern between a floating point NaN,
-    // and some normal floating point numbers truncated from an x87 FPU.
-    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
-    const unsafe fn partial_classify(self) -> FpCategory {
-        // SAFETY: The caller is not asking questions for which this will tell lies.
-        let b = unsafe { mem::transmute::<f64, u64>(self) };
-        match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
-            (0, Self::EXP_MASK) => FpCategory::Infinite,
-            (0, 0) => FpCategory::Zero,
-            (_, 0) => FpCategory::Subnormal,
-            _ => FpCategory::Normal,
-        }
-    }
-
-    // This operates on bits, and only bits, so it can ignore concerns about weird FPUs.
-    // FIXME(jubilee): In a just world, this would be the entire impl for classify,
-    // plus a transmute. We do not live in a just world, but we can make it more so.
-    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
-    const fn classify_bits(b: u64) -> FpCategory {
+        // We used to have complicated logic here that avoids the simple bit-based tests to work
+        // around buggy codegen for x87 targets (see
+        // https://github.com/rust-lang/rust/issues/114479). However, some LLVM versions later, none
+        // of our tests is able to find any difference between the complicated and the naive
+        // version, so now we are back to the naive version.
+        let b = self.to_bits();
         match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
             (0, Self::EXP_MASK) => FpCategory::Infinite,
             (_, Self::EXP_MASK) => FpCategory::Nan,
@@ -716,8 +664,9 @@ impl f64 {
     /// Note that IEEE 754 doesn't assign any meaning to the sign bit in case of
     /// a NaN, and as Rust doesn't guarantee that the bit pattern of NaNs are
     /// conserved over arithmetic operations, the result of `is_sign_positive` on
-    /// a NaN might produce an unexpected result in some cases. See [explanation
-    /// of NaN as a special value](f32) for more info.
+    /// a NaN might produce an unexpected or non-portable result. See the [specification
+    /// of NaN bit patterns](f32#nan-bit-patterns) for more info. Use `self.signum() == 1.0`
+    /// if you need fully portable behavior (will return `false` for all NaNs).
     ///
     /// ```
     /// let f = 7.0_f64;
@@ -728,7 +677,7 @@ impl f64 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_sign_positive(self) -> bool {
         !self.is_sign_negative()
@@ -749,8 +698,9 @@ impl f64 {
     /// Note that IEEE 754 doesn't assign any meaning to the sign bit in case of
     /// a NaN, and as Rust doesn't guarantee that the bit pattern of NaNs are
     /// conserved over arithmetic operations, the result of `is_sign_negative` on
-    /// a NaN might produce an unexpected result in some cases. See [explanation
-    /// of NaN as a special value](f32) for more info.
+    /// a NaN might produce an unexpected or non-portable result. See the [specification
+    /// of NaN bit patterns](f32#nan-bit-patterns) for more info. Use `self.signum() == -1.0`
+    /// if you need fully portable behavior (will return `false` for all NaNs).
     ///
     /// ```
     /// let f = 7.0_f64;
@@ -761,7 +711,7 @@ impl f64 {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
     pub const fn is_sign_negative(self) -> bool {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
@@ -793,7 +743,6 @@ impl f64 {
     /// is finite `x == x.next_up().next_down()` also holds.
     ///
     /// ```rust
-    /// #![feature(float_next_up_down)]
     /// // f64::EPSILON is the difference between 1.0 and the next number up.
     /// assert_eq!(1.0f64.next_up(), 1.0 + f64::EPSILON);
     /// // But not for most numbers.
@@ -801,12 +750,16 @@ impl f64 {
     /// assert_eq!(9007199254740992f64.next_up(), 9007199254740994.0);
     /// ```
     ///
+    /// This operation corresponds to IEEE-754 `nextUp`.
+    ///
     /// [`NEG_INFINITY`]: Self::NEG_INFINITY
     /// [`INFINITY`]: Self::INFINITY
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
-    #[unstable(feature = "float_next_up_down", issue = "91399")]
-    #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
+    #[inline]
+    #[doc(alias = "nextUp")]
+    #[stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
     pub const fn next_up(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -841,7 +794,6 @@ impl f64 {
     /// is finite `x == x.next_down().next_up()` also holds.
     ///
     /// ```rust
-    /// #![feature(float_next_up_down)]
     /// let x = 1.0f64;
     /// // Clamp value into range [0, 1).
     /// let clamped = x.clamp(0.0, 1.0f64.next_down());
@@ -849,12 +801,16 @@ impl f64 {
     /// assert_eq!(clamped.next_up(), 1.0);
     /// ```
     ///
+    /// This operation corresponds to IEEE-754 `nextDown`.
+    ///
     /// [`NEG_INFINITY`]: Self::NEG_INFINITY
     /// [`INFINITY`]: Self::INFINITY
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
-    #[unstable(feature = "float_next_up_down", issue = "91399")]
-    #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
+    #[inline]
+    #[doc(alias = "nextDown")]
+    #[stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
     pub const fn next_down(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -885,8 +841,9 @@ impl f64 {
     /// ```
     #[must_use = "this returns the result of the operation, without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
-    pub fn recip(self) -> f64 {
+    pub const fn recip(self) -> f64 {
         1.0 / self
     }
 
@@ -902,8 +859,9 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
-    pub fn to_degrees(self) -> f64 {
+    pub const fn to_degrees(self) -> f64 {
         // The division here is correctly rounded with respect to the true
         // value of 180/π. (This differs from f32, where a constant must be
         // used to ensure a correctly rounded result.)
@@ -922,8 +880,9 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
-    pub fn to_radians(self) -> f64 {
+    pub const fn to_radians(self) -> f64 {
         const RADS_PER_DEG: f64 = consts::PI / 180.0;
         self * RADS_PER_DEG
     }
@@ -943,8 +902,9 @@ impl f64 {
     /// ```
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
-    pub fn max(self, other: f64) -> f64 {
+    pub const fn max(self, other: f64) -> f64 {
         intrinsics::maxnumf64(self, other)
     }
 
@@ -963,8 +923,9 @@ impl f64 {
     /// ```
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
-    pub fn min(self, other: f64) -> f64 {
+    pub const fn min(self, other: f64) -> f64 {
         intrinsics::minnumf64(self, other)
     }
 
@@ -987,11 +948,11 @@ impl f64 {
     /// Note that this follows the semantics specified in IEEE 754-2019.
     ///
     /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
-    /// operand is conserved; see [explanation of NaN as a special value](f32) for more info.
+    /// operand is conserved; see the [specification of NaN bit patterns](f32#nan-bit-patterns) for more info.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
-    pub fn maximum(self, other: f64) -> f64 {
+    pub const fn maximum(self, other: f64) -> f64 {
         if self > other {
             self
         } else if other > self {
@@ -1022,11 +983,11 @@ impl f64 {
     /// Note that this follows the semantics specified in IEEE 754-2019.
     ///
     /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
-    /// operand is conserved; see [explanation of NaN as a special value](f32) for more info.
+    /// operand is conserved; see the [specification of NaN bit patterns](f32#nan-bit-patterns) for more info.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
-    pub fn minimum(self, other: f64) -> f64 {
+    pub const fn minimum(self, other: f64) -> f64 {
         if self < other {
             self
         } else if other < self {
@@ -1047,18 +1008,19 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(num_midpoint)]
     /// assert_eq!(1f64.midpoint(4.0), 2.5);
     /// assert_eq!((-5.5f64).midpoint(8.0), 1.25);
     /// ```
-    #[unstable(feature = "num_midpoint", issue = "110840")]
-    pub fn midpoint(self, other: f64) -> f64 {
+    #[inline]
+    #[stable(feature = "num_midpoint", since = "1.85.0")]
+    #[rustc_const_stable(feature = "num_midpoint", since = "1.85.0")]
+    pub const fn midpoint(self, other: f64) -> f64 {
         const LO: f64 = f64::MIN_POSITIVE * 2.;
         const HI: f64 = f64::MAX / 2.;
 
         let (a, b) = (self, other);
-        let abs_a = a.abs_private();
-        let abs_b = b.abs_private();
+        let abs_a = a.abs();
+        let abs_b = b.abs();
 
         if abs_a <= HI && abs_b <= HI {
             // Overflow is impossible
@@ -1127,37 +1089,11 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[inline]
     pub const fn to_bits(self) -> u64 {
         // SAFETY: `u64` is a plain old datatype so we can always transmute to it.
-        // ...sorta.
-        //
-        // See the SAFETY comment in f64::from_bits for more.
-        #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
-        const fn ct_f64_to_u64(ct: f64) -> u64 {
-            match ct.classify() {
-                FpCategory::Nan => {
-                    panic!("const-eval error: cannot use f64::to_bits on a NaN")
-                }
-                FpCategory::Subnormal => {
-                    panic!("const-eval error: cannot use f64::to_bits on a subnormal number")
-                }
-                FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero => {
-                    // SAFETY: We have a normal floating point number. Now we transmute, i.e. do a bitcopy.
-                    unsafe { mem::transmute::<f64, u64>(ct) }
-                }
-            }
-        }
-
-        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
-        fn rt_f64_to_u64(rt: f64) -> u64 {
-            // SAFETY: `u64` is a plain old datatype so we can always... uh...
-            // ...look, just pretend you forgot what you just read.
-            // Stability concerns.
-            unsafe { mem::transmute::<f64, u64>(rt) }
-        }
-        intrinsics::const_eval_select((self,), ct_f64_to_u64, rt_f64_to_u64)
+        unsafe { mem::transmute(self) }
     }
 
     /// Raw transmutation from `u64`.
@@ -1197,63 +1133,13 @@ impl f64 {
     /// assert_eq!(v, 12.5);
     /// ```
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[must_use]
     #[inline]
     pub const fn from_bits(v: u64) -> Self {
         // It turns out the safety issues with sNaN were overblown! Hooray!
-        // SAFETY: `u64` is a plain old datatype so we can always transmute from it
-        // ...sorta.
-        //
-        // It turns out that at runtime, it is possible for a floating point number
-        // to be subject to floating point modes that alter nonzero subnormal numbers
-        // to zero on reads and writes, aka "denormals are zero" and "flush to zero".
-        // This is not a problem usually, but at least one tier2 platform for Rust
-        // actually exhibits an FTZ behavior by default: thumbv7neon
-        // aka "the Neon FPU in AArch32 state"
-        //
-        // Even with this, not all instructions exhibit the FTZ behaviors on thumbv7neon,
-        // so this should load the same bits if LLVM emits the "correct" instructions,
-        // but LLVM sometimes makes interesting choices about float optimization,
-        // and other FPUs may do similar. Thus, it is wise to indulge luxuriously in caution.
-        //
-        // In addition, on x86 targets with SSE or SSE2 disabled and the x87 FPU enabled,
-        // i.e. not soft-float, the way Rust does parameter passing can actually alter
-        // a number that is "not infinity" to have the same exponent as infinity,
-        // in a slightly unpredictable manner.
-        //
-        // And, of course evaluating to a NaN value is fairly nondeterministic.
-        // More precisely: when NaN should be returned is knowable, but which NaN?
-        // So far that's defined by a combination of LLVM and the CPU, not Rust.
-        // This function, however, allows observing the bitstring of a NaN,
-        // thus introspection on CTFE.
-        //
-        // In order to preserve, at least for the moment, const-to-runtime equivalence,
-        // reject any of these possible situations from happening.
-        #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
-        const fn ct_u64_to_f64(ct: u64) -> f64 {
-            match f64::classify_bits(ct) {
-                FpCategory::Subnormal => {
-                    panic!("const-eval error: cannot use f64::from_bits on a subnormal number")
-                }
-                FpCategory::Nan => {
-                    panic!("const-eval error: cannot use f64::from_bits on NaN")
-                }
-                FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero => {
-                    // SAFETY: It's not a frumious number
-                    unsafe { mem::transmute::<u64, f64>(ct) }
-                }
-            }
-        }
-
-        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
-        fn rt_u64_to_f64(rt: u64) -> f64 {
-            // SAFETY: `u64` is a plain old datatype so we can always... uh...
-            // ...look, just pretend you forgot what you just read.
-            // Stability concerns.
-            unsafe { mem::transmute::<u64, f64>(rt) }
-        }
-        intrinsics::const_eval_select((v,), ct_u64_to_f64, rt_u64_to_f64)
+        // SAFETY: `u64` is a plain old datatype so we can always transmute from it.
+        unsafe { mem::transmute(v) }
     }
 
     /// Returns the memory representation of this floating point number as a byte array in
@@ -1271,7 +1157,7 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[inline]
     pub const fn to_be_bytes(self) -> [u8; 8] {
         self.to_bits().to_be_bytes()
@@ -1292,7 +1178,7 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[inline]
     pub const fn to_le_bytes(self) -> [u8; 8] {
         self.to_bits().to_le_bytes()
@@ -1326,7 +1212,7 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[inline]
     pub const fn to_ne_bytes(self) -> [u8; 8] {
         self.to_bits().to_ne_bytes()
@@ -1344,7 +1230,7 @@ impl f64 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[must_use]
     #[inline]
     pub const fn from_be_bytes(bytes: [u8; 8]) -> Self {
@@ -1363,7 +1249,7 @@ impl f64 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[must_use]
     #[inline]
     pub const fn from_le_bytes(bytes: [u8; 8]) -> Self {
@@ -1393,7 +1279,7 @@ impl f64 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[must_use]
     #[inline]
     pub const fn from_ne_bytes(bytes: [u8; 8]) -> Self {
@@ -1516,9 +1402,17 @@ impl f64 {
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
-    pub fn clamp(mut self, min: f64, max: f64) -> f64 {
-        assert!(min <= max, "min > max, or either was NaN. min = {min:?}, max = {max:?}");
+    pub const fn clamp(mut self, min: f64, max: f64) -> f64 {
+        const_assert!(
+            min <= max,
+            "min > max, or either was NaN",
+            "min > max, or either was NaN. min = {min:?}, max = {max:?}",
+            min: f64,
+            max: f64,
+        );
+
         if self < min {
             self = min;
         }
@@ -1526,5 +1420,88 @@ impl f64 {
             self = max;
         }
         self
+    }
+
+    /// Computes the absolute value of `self`.
+    ///
+    /// This function always returns the precise result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = 3.5_f64;
+    /// let y = -3.5_f64;
+    ///
+    /// assert_eq!(x.abs(), x);
+    /// assert_eq!(y.abs(), -y);
+    ///
+    /// assert!(f64::NAN.abs().is_nan());
+    /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
+    #[inline]
+    pub const fn abs(self) -> f64 {
+        // SAFETY: this is actually a safe intrinsic
+        unsafe { intrinsics::fabsf64(self) }
+    }
+
+    /// Returns a number that represents the sign of `self`.
+    ///
+    /// - `1.0` if the number is positive, `+0.0` or `INFINITY`
+    /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
+    /// - NaN if the number is NaN
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let f = 3.5_f64;
+    ///
+    /// assert_eq!(f.signum(), 1.0);
+    /// assert_eq!(f64::NEG_INFINITY.signum(), -1.0);
+    ///
+    /// assert!(f64::NAN.signum().is_nan());
+    /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
+    #[inline]
+    pub const fn signum(self) -> f64 {
+        if self.is_nan() { Self::NAN } else { 1.0_f64.copysign(self) }
+    }
+
+    /// Returns a number composed of the magnitude of `self` and the sign of
+    /// `sign`.
+    ///
+    /// Equal to `self` if the sign of `self` and `sign` are the same, otherwise equal to `-self`.
+    /// If `self` is a NaN, then a NaN with the same payload as `self` and the sign bit of `sign` is
+    /// returned.
+    ///
+    /// If `sign` is a NaN, then this operation will still carry over its sign into the result. Note
+    /// that IEEE 754 doesn't assign any meaning to the sign bit in case of a NaN, and as Rust
+    /// doesn't guarantee that the bit pattern of NaNs are conserved over arithmetic operations, the
+    /// result of `copysign` with `sign` being a NaN might produce an unexpected or non-portable
+    /// result. See the [specification of NaN bit patterns](primitive@f32#nan-bit-patterns) for more
+    /// info.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let f = 3.5_f64;
+    ///
+    /// assert_eq!(f.copysign(0.42), 3.5_f64);
+    /// assert_eq!(f.copysign(-0.42), -3.5_f64);
+    /// assert_eq!((-f).copysign(0.42), 3.5_f64);
+    /// assert_eq!((-f).copysign(-0.42), -3.5_f64);
+    ///
+    /// assert!(f64::NAN.copysign(1.0).is_nan());
+    /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[stable(feature = "copysign", since = "1.35.0")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
+    #[inline]
+    pub const fn copysign(self, sign: f64) -> f64 {
+        // SAFETY: this is actually a safe intrinsic
+        unsafe { intrinsics::copysignf64(self, sign) }
     }
 }

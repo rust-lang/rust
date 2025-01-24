@@ -2,11 +2,9 @@
 //@ edition:2021
 //@ build-pass
 
-#![feature(async_closure)]
-
 extern crate block_on;
 
-fn force_fnonce<T: async FnOnce()>(t: T) -> T { t }
+fn force_fnonce<T: AsyncFnOnce()>(t: T) -> T { t }
 
 fn main() {
     block_on::block_on(async {

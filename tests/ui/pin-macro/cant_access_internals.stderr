@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'unsafe_pin_internals'
+error[E0658]: use of unstable library feature `unsafe_pin_internals`
   --> $DIR/cant_access_internals.rs:11:15
    |
 LL |     mem::take(phantom_pinned.__pointer);

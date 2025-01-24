@@ -1,5 +1,5 @@
 //@ run-pass
-//@ aux-build:attr-args.rs
+//@ proc-macro: attr-args.rs
 
 #![allow(warnings)]
 

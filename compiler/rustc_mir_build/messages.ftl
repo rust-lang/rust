@@ -30,7 +30,7 @@ mir_build_call_to_deprecated_safe_fn_requires_unsafe =
     call to deprecated safe function `{$function}` is unsafe and requires unsafe block
     .note = consult the function's documentation for information on how to avoid undefined behavior
     .label = call to unsafe function
-    .suggestion = you can wrap the call in an `unsafe` block if you can guarantee the code is only ever called from single-threaded code
+    .suggestion = you can wrap the call in an `unsafe` block if you can guarantee {$guarantee}
 
 mir_build_call_to_fn_with_requires_unsafe =
     call to function `{$function}` with `#[target_feature]` is unsafe and requires unsafe block
@@ -84,12 +84,17 @@ mir_build_call_to_unsafe_fn_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
 
 mir_build_confused = missing patterns are not covered because `{$variable}` is interpreted as a constant pattern, not a new variable
 
-mir_build_const_param_in_pattern = const parameters cannot be referenced in patterns
+mir_build_const_defined_here = constant defined here
 
-mir_build_const_pattern_depends_on_generic_parameter =
-    constant pattern depends on a generic parameter
+mir_build_const_param_in_pattern = constant parameters cannot be referenced in patterns
+    .label = can't be used in patterns
+mir_build_const_param_in_pattern_def = constant defined here
+
+mir_build_const_pattern_depends_on_generic_parameter = constant pattern cannot depend on generic parameters
+    .label = `const` depends on a generic parameter
 
 mir_build_could_not_eval_const_pattern = could not evaluate constant pattern
+    .label = could not evaluate constant
 
 mir_build_deref_raw_pointer_requires_unsafe =
     dereference of raw pointer is unsafe and requires unsafe block
@@ -125,6 +130,16 @@ mir_build_initializing_type_with_requires_unsafe_unsafe_op_in_unsafe_fn_allowed 
     .note = initializing a layout restricted type's field with a value outside the valid range is undefined behavior
     .label = initializing type with `rustc_layout_scalar_valid_range` attr
 
+mir_build_initializing_type_with_unsafe_field_requires_unsafe =
+    initializing type with an unsafe field is unsafe and requires unsafe block
+    .note = unsafe fields may carry library invariants
+    .label = initialization of struct with unsafe field
+
+mir_build_initializing_type_with_unsafe_field_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
+    initializing type with an unsafe field is unsafe and requires unsafe block
+    .note = unsafe fields may carry library invariants
+    .label = initialization of struct with unsafe field
+
 mir_build_inline_assembly_requires_unsafe =
     use of inline assembly is unsafe and requires unsafe block
     .note = inline assembly is entirely unchecked and can cause undefined behavior
@@ -137,7 +152,8 @@ mir_build_inline_assembly_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
 
 mir_build_interpreted_as_const = introduce a variable instead
 
-mir_build_invalid_pattern = `{$non_sm_ty}` cannot be used in patterns
+mir_build_invalid_pattern = {$prefix} `{$non_sm_ty}` cannot be used in patterns
+    .label = {$prefix} can't be used in patterns
 
 mir_build_irrefutable_let_patterns_if_let = irrefutable `if let` {$count ->
         [one] pattern
@@ -203,7 +219,7 @@ mir_build_lower_range_bound_must_be_less_than_or_equal_to_upper =
 
 mir_build_lower_range_bound_must_be_less_than_upper = lower range bound must be less than upper
 
-mir_build_more_information = for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+mir_build_more_information = for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 
 mir_build_moved = value is moved into `{$name}` here
 
@@ -234,10 +250,12 @@ mir_build_mutation_of_layout_constrained_field_requires_unsafe_unsafe_op_in_unsa
     .label = mutation of layout constrained field
 
 mir_build_nan_pattern = cannot use NaN in patterns
+    .label = evaluates to `NaN`, which is not allowed in patterns
     .note = NaNs compare inequal to everything, even themselves, so this pattern would never match
     .help = try using the `is_nan` method instead
 
 mir_build_non_const_path = runtime values cannot be referenced in patterns
+    .label = references a runtime value
 
 mir_build_non_empty_never_pattern =
     mismatched types
@@ -255,24 +273,23 @@ mir_build_non_exhaustive_patterns_type_not_empty = non-exhaustive patterns: type
     .suggestion = ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
     .help = ensure that all possible cases are being handled by adding a match arm with a wildcard pattern
 
-mir_build_non_partial_eq_match =
-    to use a constant of type `{$non_peq_ty}` in a pattern, the type must implement `PartialEq`
+mir_build_non_partial_eq_match = constant of non-structural type `{$ty}` in a pattern
+    .label = constant of non-structural type
 
 mir_build_pattern_not_covered = refutable pattern in {$origin}
     .pattern_ty = the matched value is of type `{$pattern_ty}`
 
-mir_build_pointer_pattern = function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+mir_build_pointer_pattern = function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+    .label = can't be used in patterns
+    .note = see https://github.com/rust-lang/rust/issues/70861 for details
 
 mir_build_privately_uninhabited = pattern `{$witness_1}` is currently uninhabited, but this variant contains private fields which may become inhabited in the future
 
-mir_build_rust_2024_incompatible_pat = the semantics of this pattern will change in edition 2024
-
-mir_build_rustc_box_attribute_error = `#[rustc_box]` attribute used incorrectly
-    .attributes = no other attributes may be applied
-    .not_box = `#[rustc_box]` may only be applied to a `Box::new()` call
-    .missing_box = `#[rustc_box]` requires the `owned_box` lang item
+mir_build_rust_2024_incompatible_pat = this pattern relies on behavior which may change in edition 2024
 
 mir_build_static_in_pattern = statics cannot be referenced in patterns
+    .label = can't be used in patterns
+mir_build_static_in_pattern_def = `static` defined here
 
 mir_build_suggest_attempted_int_lit = alternatively, you could prepend the pattern with an underscore to define a new named variable; identifiers cannot begin with digits
 
@@ -300,18 +317,12 @@ mir_build_trailing_irrefutable_let_patterns = trailing irrefutable {$count ->
         *[other] them
     } into the body
 
-mir_build_type_not_structural =
-     to use a constant of type `{$non_sm_ty}` in a pattern, `{$non_sm_ty}` must be annotated with `#[derive(PartialEq)]`
-
+mir_build_type_not_structural = constant of non-structural type `{$ty}` in a pattern
+    .label = constant of non-structural type
+mir_build_type_not_structural_def = `{$ty}` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
 mir_build_type_not_structural_more_info = see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
-
-mir_build_type_not_structural_tip = the traits must be derived, manual `impl`s are not sufficient
-
-mir_build_unconditional_recursion = function cannot return without recursing
-    .label = cannot return without recursing
-    .help = a `loop` may express intention better if this is on purpose
-
-mir_build_unconditional_recursion_call_site_label = recursive call site
+mir_build_type_not_structural_tip =
+    the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
 mir_build_union_field_requires_unsafe =
     access to union field is unsafe and requires unsafe block
@@ -324,17 +335,39 @@ mir_build_union_field_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
     .label = access to union field
 
 mir_build_union_pattern = cannot use unions in constant patterns
+    .label = can't use a `union` here
 
 mir_build_unreachable_making_this_unreachable = collectively making this unreachable
+
+mir_build_unreachable_making_this_unreachable_n_more = ...and {$covered_by_many_n_more_count} other patterns collectively make this unreachable
 
 mir_build_unreachable_matches_same_values = matches some of the same values
 
 mir_build_unreachable_pattern = unreachable pattern
-    .label = unreachable pattern
-    .unreachable_matches_no_values = this pattern matches no values because `{$ty}` is uninhabited
+    .label = no value can reach this
+    .unreachable_matches_no_values = matches no values because `{$matches_no_values_ty}` is uninhabited
+    .unreachable_uninhabited_note = to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
     .unreachable_covered_by_catchall = matches any value
-    .unreachable_covered_by_one = matches all the values already
-    .unreachable_covered_by_many = these patterns collectively make the last one unreachable
+    .unreachable_covered_by_one = matches all the relevant values
+    .unreachable_covered_by_many = multiple earlier patterns match some of the same values
+    .unreachable_pattern_const_reexport_accessible = there is a constant of the same name imported in another scope, which could have been used to pattern match against its value instead of introducing a new catch-all binding, but it needs to be imported in the pattern's scope
+    .unreachable_pattern_wanted_const = you might have meant to pattern match against the value of {$is_typo ->
+        [true] similarly named constant
+        *[false] constant
+        } `{$const_name}` instead of introducing a new catch-all binding
+    .unreachable_pattern_const_inaccessible = there is a constant of the same name, which could have been used to pattern match against its value instead of introducing a new catch-all binding, but it is not accessible from this scope
+    .unreachable_pattern_let_binding = there is a binding of the same name; if you meant to pattern match against the value of that binding, that is a feature of constants that is not available for `let` bindings
+    .suggestion = remove the match arm
+
+mir_build_unsafe_field_requires_unsafe =
+    use of unsafe field is unsafe and requires unsafe block
+    .note = unsafe fields may carry library invariants
+    .label = use of unsafe field
+
+mir_build_unsafe_field_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
+    use of unsafe field is unsafe and requires unsafe block
+    .note = unsafe fields may carry library invariants
+    .label = use of unsafe field
 
 mir_build_unsafe_fn_safe_body = an unsafe function restricts its caller, but its body is safe by default
 mir_build_unsafe_not_inherited = items do not inherit unsafety from separate enclosing items
@@ -384,6 +417,11 @@ mir_build_unsafe_op_in_unsafe_fn_initializing_type_with_requires_unsafe =
     .note = initializing a layout restricted type's field with a value outside the valid range is undefined behavior
     .label = initializing type with `rustc_layout_scalar_valid_range` attr
 
+mir_build_unsafe_op_in_unsafe_fn_initializing_type_with_unsafe_field_requires_unsafe =
+    initializing type with an unsafe field is unsafe and requires unsafe block
+    .note = unsafe fields may carry library invariants
+    .label = initialization of struct with unsafe field
+
 mir_build_unsafe_op_in_unsafe_fn_inline_assembly_requires_unsafe =
     use of inline assembly is unsafe and requires unsafe block
     .note = inline assembly is entirely unchecked and can cause undefined behavior
@@ -403,6 +441,11 @@ mir_build_unsafe_op_in_unsafe_fn_union_field_requires_unsafe =
     access to union field is unsafe and requires unsafe block
     .note = the field may not be properly initialized: using uninitialized data will cause undefined behavior
     .label = access to union field
+
+mir_build_unsafe_op_in_unsafe_fn_unsafe_field_requires_unsafe =
+    use of unsafe field is unsafe and requires unsafe block
+    .note = unsafe fields may carry library invariants
+    .label = use of unsafe field
 
 mir_build_unsized_pattern = cannot use unsized non-slice type `{$non_sm_ty}` in constant patterns
 

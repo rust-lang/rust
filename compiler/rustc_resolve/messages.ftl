@@ -11,7 +11,7 @@ resolve_added_macro_use =
 resolve_ancestor_only =
     visibilities can only be restricted to ancestor modules
 
-resolve_anonymous_livetime_non_gat_report_error =
+resolve_anonymous_lifetime_non_gat_report_error =
     in the trait associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
     .label = this lifetime must come from the implemented type
 
@@ -257,8 +257,14 @@ resolve_lowercase_self =
     attempt to use a non-constant value in a constant
     .suggestion = try using `Self`
 
+resolve_macro_cannot_use_as_attr =
+    `{$ident}` exists, but a declarative macro cannot be used as an attribute macro
+
+resolve_macro_cannot_use_as_derive =
+     `{$ident}` exists, but a declarative macro cannot be used as a derive macro
+
 resolve_macro_defined_later =
-    a macro with the same name exists, but it appears later at here
+    a macro with the same name exists, but it appears later
 
 resolve_macro_expanded_extern_crate_cannot_shadow_extern_arguments =
     macro-expanded `extern crate` items cannot shadow names passed with `--extern`

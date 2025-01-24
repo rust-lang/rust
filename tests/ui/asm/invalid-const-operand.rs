@@ -2,8 +2,6 @@
 //@ ignore-nvptx64
 //@ ignore-spirv
 
-#![feature(asm_const)]
-
 use std::arch::{asm, global_asm};
 
 // Const operands must be integers and must be constants.

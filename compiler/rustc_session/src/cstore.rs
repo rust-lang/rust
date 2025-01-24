@@ -5,16 +5,15 @@
 use std::any::Any;
 use std::path::PathBuf;
 
+use rustc_abi::ExternAbi;
 use rustc_ast as ast;
 use rustc_data_structures::sync::{self, AppendOnlyIndexVec, FreezeLock};
 use rustc_hir::def_id::{
-    CrateNum, DefId, LocalDefId, StableCrateId, StableCrateIdMap, LOCAL_CRATE,
+    CrateNum, DefId, LOCAL_CRATE, LocalDefId, StableCrateId, StableCrateIdMap,
 };
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, Definitions};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::symbol::Symbol;
-use rustc_span::Span;
-use rustc_target::spec::abi::Abi;
+use rustc_span::{Span, Symbol};
 
 use crate::search_paths::PathKind;
 use crate::utils::NativeLibKind;
@@ -43,7 +42,7 @@ pub enum CrateDepKind {
     /// A dependency that is only used for its macros.
     MacrosOnly,
     /// A dependency that is always injected into the dependency list and so
-    /// doesn't need to be linked to an rlib, e.g., the injected allocator.
+    /// doesn't need to be linked to an rlib, e.g., the injected panic runtime.
     Implicit,
     /// A dependency that is required by an rlib version of this crate.
     /// Ordinary `extern crate`s result in `Explicit` dependencies.
@@ -72,7 +71,7 @@ pub struct NativeLib {
     pub name: Symbol,
     /// If packed_bundled_libs enabled, actual filename of library is stored.
     pub filename: Option<Symbol>,
-    pub cfg: Option<ast::MetaItem>,
+    pub cfg: Option<ast::MetaItemInner>,
     pub foreign_module: Option<DefId>,
     pub verbatim: Option<bool>,
     pub dll_imports: Vec<DllImport>,
@@ -130,6 +129,11 @@ impl DllImport {
             None
         }
     }
+
+    pub fn is_missing_decorations(&self) -> bool {
+        self.import_name_type == Some(PeImportNameType::Undecorated)
+            || self.import_name_type == Some(PeImportNameType::NoPrefix)
+    }
 }
 
 /// Calling convention for a function defined in an external library.
@@ -148,7 +152,7 @@ pub enum DllCallingConvention {
 pub struct ForeignModule {
     pub foreign_items: Vec<DefId>,
     pub def_id: DefId,
-    pub abi: Abi,
+    pub abi: ExternAbi,
 }
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]

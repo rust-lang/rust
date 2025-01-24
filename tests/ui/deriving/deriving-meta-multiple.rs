@@ -1,7 +1,6 @@
 //@ run-pass
 #![allow(unused_must_use)]
 #![allow(unused_imports)]
-//@ pretty-expanded FIXME #23616
 #![allow(deprecated)]
 
 use std::hash::{Hash, SipHasher};

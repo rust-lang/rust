@@ -1,5 +1,5 @@
 error: Undefined Behavior: constructing invalid value: encountered null pointer, but expected a vtable pointer
-  --> $DIR/invalid_wide_raw.rs:LL:CC
+  --> tests/fail/validity/invalid_wide_raw.rs:LL:CC
    |
 LL |     dbg!(S { x: unsafe { std::mem::transmute((0usize, 0usize)) } });
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered null pointer, but expected a vtable pointer
@@ -7,7 +7,7 @@ LL |     dbg!(S { x: unsafe { std::mem::transmute((0usize, 0usize)) } });
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/invalid_wide_raw.rs:LL:CC
+   = note: inside `main` at tests/fail/validity/invalid_wide_raw.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

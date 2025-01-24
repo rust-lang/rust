@@ -3,23 +3,21 @@
 //! This is in a dedicated file so that changes to this file can be reviewed more carefully.
 //! The intention is that this file only contains datatype declarations, no code.
 
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece, Mutability};
 use rustc_data_structures::packed::Pu128;
-use rustc_hir::def_id::DefId;
 use rustc_hir::CoroutineKind;
+use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Symbol;
-use rustc_span::Span;
-use rustc_target::abi::{FieldIdx, VariantIdx};
+use rustc_span::{Span, Symbol};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use smallvec::SmallVec;
 
 use super::{BasicBlock, Const, Local, UserTypeProjection};
 use crate::mir::coverage::CoverageKind;
-use crate::traits::Reveal;
 use crate::ty::adjustment::PointerCoercion;
 use crate::ty::{self, GenericArgsRef, List, Region, Ty, UserTypeAnnotationIndex};
 
@@ -99,13 +97,6 @@ impl MirPhase {
             MirPhase::Runtime(RuntimePhase::Initial) => "runtime",
             MirPhase::Runtime(RuntimePhase::PostCleanup) => "runtime-post-cleanup",
             MirPhase::Runtime(RuntimePhase::Optimized) => "runtime-optimized",
-        }
-    }
-
-    pub fn reveal(&self) -> Reveal {
-        match *self {
-            MirPhase::Built | MirPhase::Analysis(_) => Reveal::UserFacing,
-            MirPhase::Runtime(_) => Reveal::All,
         }
     }
 }
@@ -395,7 +386,7 @@ pub enum StatementKind<'tcx> {
     /// `PlaceMention(PLACE)`.
     ///
     /// When executed at runtime, this computes the given place, but then discards
-    /// it without doing a load. It is UB if the place is not pointing to live memory.
+    /// it without doing a load. `let _ = *ptr;` is fine even if the pointer is dangling.
     PlaceMention(Box<Place<'tcx>>),
 
     /// Encodes a user's type ascription. These need to be preserved
@@ -440,6 +431,18 @@ pub enum StatementKind<'tcx> {
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
+
+    /// Marker statement indicating where `place` would be dropped.
+    /// This is semantically equivalent to `Nop`, so codegen and MIRI should interpret this
+    /// statement as such.
+    /// The only use case of this statement is for linting in MIR to detect temporary lifetime
+    /// changes.
+    BackwardIncompatibleDropHint {
+        /// Place to drop
+        place: Box<Place<'tcx>>,
+        /// Reason for backward incompatibility
+        reason: BackwardIncompatibleDropReason,
+    },
 }
 
 impl StatementKind<'_> {
@@ -460,6 +463,7 @@ impl StatementKind<'_> {
             StatementKind::Intrinsic(..) => "Intrinsic",
             StatementKind::ConstEvalCounter => "ConstEvalCounter",
             StatementKind::Nop => "Nop",
+            StatementKind::BackwardIncompatibleDropHint { .. } => "BackwardIncompatibleDropHint",
         }
     }
 }
@@ -579,7 +583,8 @@ pub struct CopyNonOverlapping<'tcx> {
     pub count: Operand<'tcx>,
 }
 
-/// Represents how a `TerminatorKind::Call` was constructed, used for diagnostics
+/// Represents how a [`TerminatorKind::Call`] was constructed.
+/// Used only for diagnostics.
 #[derive(Clone, Copy, TyEncodable, TyDecodable, Debug, PartialEq, Hash, HashStable)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum CallSource {
@@ -601,6 +606,25 @@ pub enum CallSource {
 impl CallSource {
     pub fn from_hir_call(self) -> bool {
         matches!(self, CallSource::Normal)
+    }
+}
+
+#[derive(Clone, Copy, Debug, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+#[derive(TypeFoldable, TypeVisitable)]
+/// The macro that an inline assembly block was created by
+pub enum InlineAsmMacro {
+    /// The `asm!` macro
+    Asm,
+    /// The `naked_asm!` macro
+    NakedAsm,
+}
+
+impl InlineAsmMacro {
+    pub const fn diverges(self, options: InlineAsmOptions) -> bool {
+        match self {
+            InlineAsmMacro::Asm => options.contains(InlineAsmOptions::NORETURN),
+            InlineAsmMacro::NakedAsm => true,
+        }
     }
 }
 
@@ -797,6 +821,11 @@ pub enum TerminatorKind<'tcx> {
     /// continues at the `resume` basic block, with the second argument written to the `resume_arg`
     /// place. If the coroutine is dropped before then, the `drop` basic block is invoked.
     ///
+    /// Note that coroutines can be (unstably) cloned under certain conditions, which means that
+    /// this terminator can **return multiple times**! MIR optimizations that reorder code into
+    /// different basic blocks needs to be aware of that.
+    /// See <https://github.com/rust-lang/rust/issues/95360>.
+    ///
     /// Not permitted in bodies that are not coroutine bodies, or after coroutine lowering.
     ///
     /// **Needs clarification**: What about the evaluation order of the `resume_arg` and `value`?
@@ -858,6 +887,9 @@ pub enum TerminatorKind<'tcx> {
     /// Block ends with an inline assembly block. This is a terminator since
     /// inline assembly is allowed to diverge.
     InlineAsm {
+        /// Macro used to create this inline asm: one of `asm!` or `naked_asm!`
+        asm_macro: InlineAsmMacro,
+
         /// The template for the inline assembly, with placeholders.
         template: &'tcx [InlineAsmTemplatePiece],
 
@@ -873,13 +905,28 @@ pub enum TerminatorKind<'tcx> {
 
         /// Valid targets for the inline assembly.
         /// The first element is the fallthrough destination, unless
-        /// InlineAsmOptions::NORETURN is set.
+        /// asm_macro == InlineAsmMacro::NakedAsm or InlineAsmOptions::NORETURN is set.
         targets: Box<[BasicBlock]>,
 
         /// Action to be taken if the inline assembly unwinds. This is present
         /// if and only if InlineAsmOptions::MAY_UNWIND is set.
         unwind: UnwindAction,
     },
+}
+
+#[derive(
+    Clone,
+    Debug,
+    TyEncodable,
+    TyDecodable,
+    Hash,
+    HashStable,
+    PartialEq,
+    TypeFoldable,
+    TypeVisitable
+)]
+pub enum BackwardIncompatibleDropReason {
+    Edition2024,
 }
 
 impl TerminatorKind<'_> {
@@ -1094,7 +1141,7 @@ pub struct Place<'tcx> {
     pub projection: &'tcx List<PlaceElem<'tcx>>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum ProjectionElem<V, T> {
     Deref,
@@ -1134,8 +1181,10 @@ pub enum ProjectionElem<V, T> {
     ConstantIndex {
         /// index or -index (in Python terms), depending on from_end
         offset: u64,
-        /// The thing being indexed must be at least this long. For arrays this
-        /// is always the exact length.
+        /// The thing being indexed must be at least this long -- otherwise, the
+        /// projection is UB.
+        ///
+        /// For arrays this is always the exact length.
         min_length: u64,
         /// Counting backwards from end? This is always false when indexing an
         /// array.
@@ -1293,20 +1342,23 @@ pub enum Rvalue<'tcx> {
     /// nature of this operation?
     ThreadLocalRef(DefId),
 
-    /// Creates a pointer with the indicated mutability to the place.
+    /// Creates a raw pointer with the indicated mutability to the place.
     ///
-    /// This is generated by pointer casts like `&v as *const _` or raw address of expressions like
-    /// `&raw v` or `addr_of!(v)`.
+    /// This is generated by pointer casts like `&v as *const _` or raw borrow expressions like
+    /// `&raw const v`.
     ///
     /// Like with references, the semantics of this operation are heavily dependent on the aliasing
     /// model.
-    AddressOf(Mutability, Place<'tcx>),
+    RawPtr(Mutability, Place<'tcx>),
 
     /// Yields the length of the place, as a `usize`.
     ///
     /// If the type of the place is an array, this is the array length. For slices (`[T]`, not
     /// `&[T]`) this accesses the place's metadata to determine the length. This rvalue is
     /// ill-formed for places of other types.
+    ///
+    /// This cannot be a `UnOp(PtrMetadata, _)` because that expects a value, and we only
+    /// have a place, and `UnOp(PtrMetadata, RawPtr(place))` is not a thing.
     Len(Place<'tcx>),
 
     /// Performs essentially all of the casts that can be performed via `as`.
@@ -1400,9 +1452,7 @@ pub enum CastKind {
     /// * [`PointerCoercion::MutToConstPointer`]
     ///
     /// Both are runtime nops, so should be [`CastKind::PtrToPtr`] instead in runtime MIR.
-    PointerCoercion(PointerCoercion),
-    /// Cast into a dyn* object.
-    DynStar,
+    PointerCoercion(PointerCoercion, CoercionSource),
     IntToInt,
     FloatToInt,
     FloatToFloat,
@@ -1416,6 +1466,16 @@ pub enum CastKind {
     ///
     /// Allowed only in [`MirPhase::Runtime`]; Earlier it's a [`TerminatorKind::Call`].
     Transmute,
+}
+
+/// Represents how a [`CastKind::PointerCoercion`] was constructed.
+/// Used only for diagnostics.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+pub enum CoercionSource {
+    /// The coercion was manually written by the user with an `as` cast.
+    AsCast,
+    /// The coercion was automatically inserted by the compiler.
+    Implicit,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
@@ -1465,7 +1525,7 @@ pub enum NullOp<'tcx> {
     UbChecks,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum UnOp {
     /// The `!` operator for logical inversion
@@ -1483,7 +1543,7 @@ pub enum UnOp {
     PtrMetadata,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum BinOp {
     /// The `+` operator (addition)

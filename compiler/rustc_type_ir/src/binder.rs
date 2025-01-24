@@ -6,9 +6,7 @@ use std::ops::{ControlFlow, Deref};
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
-#[cfg(feature = "nightly")]
-use rustc_serialize::Decodable;
-use tracing::debug;
+use tracing::instrument;
 
 use crate::data_structures::SsoHashSet;
 use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
@@ -69,14 +67,14 @@ macro_rules! impl_binder_encode_decode {
                     self.as_ref().skip_binder().encode(e);
                 }
             }
-            impl<I: Interner, D: crate::TyDecoder<I = I>> Decodable<D> for ty::Binder<I, $t>
+            impl<I: Interner, D: crate::TyDecoder<I = I>> rustc_serialize::Decodable<D> for ty::Binder<I, $t>
             where
                 $t: TypeVisitable<I> + rustc_serialize::Decodable<D>,
                 I::BoundVarKinds: rustc_serialize::Decodable<D>,
             {
                 fn decode(decoder: &mut D) -> Self {
-                    let bound_vars = Decodable::decode(decoder);
-                    ty::Binder::bind_with_vars(<$t>::decode(decoder), bound_vars)
+                    let bound_vars = rustc_serialize::Decodable::decode(decoder);
+                    ty::Binder::bind_with_vars(rustc_serialize::Decodable::decode(decoder), bound_vars)
                 }
             }
         )*
@@ -86,10 +84,12 @@ macro_rules! impl_binder_encode_decode {
 #[cfg(feature = "nightly")]
 impl_binder_encode_decode! {
     ty::FnSig<I>,
+    ty::FnSigTys<I>,
     ty::TraitPredicate<I>,
     ty::ExistentialPredicate<I>,
     ty::TraitRef<I>,
     ty::ExistentialTraitRef<I>,
+    ty::HostEffectPredicate<I>,
 }
 
 impl<I: Interner, T> Binder<I, T>
@@ -246,21 +246,6 @@ impl<I: Interner, T> Binder<I, T> {
     {
         // `self.value` is equivalent to `self.skip_binder()`
         if self.value.has_escaping_bound_vars() { None } else { Some(self.skip_binder()) }
-    }
-
-    /// Splits the contents into two things that share the same binder
-    /// level as the original, returning two distinct binders.
-    ///
-    /// `f` should consider bound regions at depth 1 to be free, and
-    /// anything it produces with bound regions at depth 1 will be
-    /// bound in the resulting return values.
-    pub fn split<U, V, F>(self, f: F) -> (Binder<I, U>, Binder<I, V>)
-    where
-        F: FnOnce(T) -> (U, V),
-    {
-        let Binder { value, bound_vars } = self;
-        let (u, v) = f(value);
-        (Binder { value: u, bound_vars }, Binder { value: v, bound_vars })
     }
 }
 
@@ -510,8 +495,8 @@ where
 
     /// Similar to [`instantiate_identity`](EarlyBinder::instantiate_identity),
     /// but on an iterator of values that deref to a `TypeFoldable`.
-    pub fn iter_identity_copied(self) -> impl Iterator<Item = <Iter::Item as Deref>::Target> {
-        self.value.into_iter().map(|v| *v)
+    pub fn iter_identity_copied(self) -> IterIdentityCopied<Iter> {
+        IterIdentityCopied { it: self.value.into_iter() }
     }
 }
 
@@ -560,6 +545,44 @@ where
 {
 }
 
+pub struct IterIdentityCopied<Iter: IntoIterator> {
+    it: Iter::IntoIter,
+}
+
+impl<Iter: IntoIterator> Iterator for IterIdentityCopied<Iter>
+where
+    Iter::Item: Deref,
+    <Iter::Item as Deref>::Target: Copy,
+{
+    type Item = <Iter::Item as Deref>::Target;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.it.next().map(|i| *i)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
+    }
+}
+
+impl<Iter: IntoIterator> DoubleEndedIterator for IterIdentityCopied<Iter>
+where
+    Iter::IntoIter: DoubleEndedIterator,
+    Iter::Item: Deref,
+    <Iter::Item as Deref>::Target: Copy,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.it.next_back().map(|i| *i)
+    }
+}
+
+impl<Iter: IntoIterator> ExactSizeIterator for IterIdentityCopied<Iter>
+where
+    Iter::IntoIter: ExactSizeIterator,
+    Iter::Item: Deref,
+    <Iter::Item as Deref>::Target: Copy,
+{
+}
 pub struct EarlyBinderIter<I, T> {
     t: T,
     _tcx: PhantomData<I>,
@@ -781,7 +804,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     #[inline(never)]
     fn region_param_out_of_range(&self, ebr: I::EarlyParamRegion, r: I::Region) -> ! {
         panic!(
-            "const parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
+            "region parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
             ebr,
             r,
             ebr.index(),
@@ -790,7 +813,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     }
 
     /// It is sometimes necessary to adjust the De Bruijn indices during instantiation. This occurs
-    /// when we are instantating a type with escaping bound vars into a context where we have
+    /// when we are instantiating a type with escaping bound vars into a context where we have
     /// passed through binders. That's quite a mouthful. Let's see an example:
     ///
     /// ```
@@ -831,28 +854,20 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     /// As indicated in the diagram, here the same type `&'a i32` is instantiated once, but in the
     /// first case we do not increase the De Bruijn index and in the second case we do. The reason
     /// is that only in the second case have we passed through a fn binder.
+    #[instrument(level = "trace", skip(self), fields(binders_passed = self.binders_passed), ret)]
     fn shift_vars_through_binders<T: TypeFoldable<I>>(&self, val: T) -> T {
-        debug!(
-            "shift_vars(val={:?}, binders_passed={:?}, has_escaping_bound_vars={:?})",
-            val,
-            self.binders_passed,
-            val.has_escaping_bound_vars()
-        );
-
         if self.binders_passed == 0 || !val.has_escaping_bound_vars() {
-            return val;
+            val
+        } else {
+            ty::fold::shift_vars(self.cx, val, self.binders_passed)
         }
-
-        let result = ty::fold::shift_vars(TypeFolder::cx(self), val, self.binders_passed);
-        debug!("shift_vars: shifted result = {:?}", result);
-
-        result
     }
 
     fn shift_region_through_binders(&self, region: I::Region) -> I::Region {
         if self.binders_passed == 0 || !region.has_escaping_bound_vars() {
-            return region;
+            region
+        } else {
+            ty::fold::shift_region(self.cx, region, self.binders_passed)
         }
-        ty::fold::shift_region(self.cx, region, self.binders_passed)
     }
 }

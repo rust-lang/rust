@@ -3,7 +3,6 @@
 // issue: rust-lang/rust#121413
 //@ compile-flags: -Zextra-const-ub-checks
 // ignore-tidy-linelength
-#![feature(const_refs_to_static)]
 const REF_INTERIOR_MUT: &usize = {
     //~^ HELP consider importing this struct
     static FOO: Sync = AtomicUsize::new(0);
@@ -12,7 +11,7 @@ const REF_INTERIOR_MUT: &usize = {
     //~| ERROR the size for values of type `(dyn Sync + 'static)` cannot be known at compilation time
     //~| ERROR the size for values of type `(dyn Sync + 'static)` cannot be known at compilation time
     //~| WARN this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-    //~| HELP if this is an object-safe trait, use `dyn`
+    //~| HELP if this is a dyn-compatible trait, use `dyn`
     //~| HELP the trait `Sized` is not implemented for `(dyn Sync + 'static)`
     //~| HELP the trait `Sized` is not implemented for `(dyn Sync + 'static)`
     unsafe { &*(&FOO as *const _ as *const usize) }

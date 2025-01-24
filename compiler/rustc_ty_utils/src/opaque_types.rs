@@ -2,7 +2,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{intravisit, CRATE_HIR_ID};
+use rustc_hir::{CRATE_HIR_ID, intravisit};
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
@@ -132,21 +132,21 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         TaitInBodyFinder { collector: self }.visit_expr(body);
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn visit_opaque_ty(&mut self, alias_ty: ty::AliasTy<'tcx>) {
         if !self.seen.insert(alias_ty.def_id.expect_local()) {
             return;
         }
 
         // TAITs outside their defining scopes are ignored.
-        let origin = self.tcx.opaque_type_origin(alias_ty.def_id.expect_local());
+        let origin = self.tcx.local_opaque_ty_origin(alias_ty.def_id.expect_local());
         trace!(?origin);
         match origin {
-            rustc_hir::OpaqueTyOrigin::FnReturn(_) | rustc_hir::OpaqueTyOrigin::AsyncFn(_) => {}
+            rustc_hir::OpaqueTyOrigin::FnReturn { .. }
+            | rustc_hir::OpaqueTyOrigin::AsyncFn { .. } => {}
             rustc_hir::OpaqueTyOrigin::TyAlias { in_assoc_ty, .. } => {
-                if !in_assoc_ty {
-                    if !self.check_tait_defining_scope(alias_ty.def_id.expect_local()) {
-                        return;
-                    }
+                if !in_assoc_ty && !self.check_tait_defining_scope(alias_ty.def_id.expect_local()) {
+                    return;
                 }
             }
         }
@@ -348,7 +348,8 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::Impl { .. } => {}
+        | DefKind::Impl { .. }
+        | DefKind::SyntheticCoroutineBody => {}
         // Closures and coroutines are type checked with their parent, so we need to allow all
         // opaques from the closure signature *and* from the parent body.
         DefKind::Closure | DefKind::InlineConst => {

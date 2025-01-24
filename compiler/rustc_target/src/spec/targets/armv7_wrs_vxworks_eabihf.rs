@@ -1,6 +1,6 @@
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{FloatAbi, Target, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv7-unknown-linux-gnueabihf".into(),
         metadata: crate::spec::TargetMetadata {
@@ -14,6 +14,7 @@ pub fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabihf".into(),
+            llvm_floatabi: Some(FloatAbi::Hard),
             // Info about features at https://wiki.debian.org/ArmHardFloatPort
             features: "+v7,+vfp3,-d32,+thumb2,-neon".into(),
             max_atomic_width: Some(64),

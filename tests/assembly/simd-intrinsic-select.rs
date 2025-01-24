@@ -7,7 +7,6 @@
 //@ [x86-avx512] needs-llvm-components: x86
 //@ [aarch64] compile-flags: --target=aarch64-unknown-linux-gnu
 //@ [aarch64] needs-llvm-components: aarch64
-//@ [aarch64] min-llvm-version: 18.0
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -O -C panic=abort
 

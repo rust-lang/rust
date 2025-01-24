@@ -25,7 +25,7 @@ LL |         println!("{:?}", take_array_from_mut(&mut arr, i));
    = note: required for `[i32; _]` to implement `Debug`
    = note: 1 redundant requirement hidden
    = note: required for `&mut [i32; _]` to implement `Debug`
-note: required by a bound in `core::fmt::rt::Argument::<'a>::new_debug`
+note: required by a bound in `core::fmt::rt::Argument::<'_>::new_debug`
   --> $SRC_DIR/core/src/fmt/rt.rs:LL:COL
 help: consider specifying the generic arguments
    |

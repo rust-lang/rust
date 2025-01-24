@@ -18,7 +18,7 @@ All intrinsic fallback bodies are automatically made cross-crate inlineable (lik
 by the codegen backend, but not the MIR inliner.
 
 ```rust
-#![feature(rustc_attrs)]
+#![feature(intrinsics)]
 #![allow(internal_features)]
 
 #[rustc_intrinsic]
@@ -28,7 +28,7 @@ const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
 Since these are just regular functions, it is perfectly ok to create the intrinsic twice:
 
 ```rust
-#![feature(rustc_attrs)]
+#![feature(intrinsics)]
 #![allow(internal_features)]
 
 #[rustc_intrinsic]

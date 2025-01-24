@@ -1,14 +1,15 @@
 use either::Either;
+use rustc_abi::Size;
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::mir::NullOp;
+use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, ScalarInt, Ty};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 use tracing::trace;
 
-use super::{throw_ub, ImmTy, InterpCx, Machine, MemPlaceMeta};
+use super::{ImmTy, InterpCx, Machine, MemPlaceMeta, interp_ok, throw_ub};
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn three_way_compare<T: Ord>(&self, lhs: T, rhs: T) -> ImmTy<'tcx, M::Provenance> {
@@ -63,8 +64,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         use rustc_middle::mir::BinOp::*;
 
         // Performs appropriate non-deterministic adjustments of NaN results.
-        let adjust_nan =
-            |f: F| -> F { if f.is_nan() { M::generate_nan(self, &[l, r]) } else { f } };
+        let adjust_nan = |f: F| -> F { self.adjust_nan(f, &[l, r]) };
 
         match bin_op {
             Eq => ImmTy::from_bool(l == r, *self.tcx),
@@ -114,7 +114,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             let l_bits = left.layout.size.bits();
             // Compute the equivalent shift modulo `size` that is in the range `0..size`. (This is
             // the one MIR operator that does *not* directly map to a single LLVM operation.)
-            let (shift_amount, overflow) = if right.layout.abi.is_signed() {
+            let (shift_amount, overflow) = if right.layout.backend_repr.is_signed() {
                 let shift_amount = r_signed();
                 let rem = shift_amount.rem_euclid(l_bits.into());
                 // `rem` is guaranteed positive, so the `unwrap` cannot fail
@@ -126,7 +126,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             };
             let shift_amount = u32::try_from(shift_amount).unwrap(); // we brought this in the range `0..size` so this will always fit
             // Compute the shifted result.
-            let result = if left.layout.abi.is_signed() {
+            let result = if left.layout.backend_repr.is_signed() {
                 let l = l_signed();
                 let result = match bin_op {
                     Shl | ShlUnchecked => l.checked_shl(shift_amount).unwrap(),
@@ -147,7 +147,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             if overflow && let Some(intrinsic) = throw_ub_on_overflow {
                 throw_ub!(ShiftOverflow {
                     intrinsic,
-                    shift_amount: if right.layout.abi.is_signed() {
+                    shift_amount: if right.layout.backend_repr.is_signed() {
                         Either::Right(r_signed())
                     } else {
                         Either::Left(r_unsigned())
@@ -155,7 +155,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 });
             }
 
-            return Ok(ImmTy::from_scalar_int(result, left.layout));
+            return interp_ok(ImmTy::from_scalar_int(result, left.layout));
         }
 
         // For the remaining ops, the types must be the same on both sides
@@ -171,7 +171,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let size = left.layout.size;
 
         // Operations that need special treatment for signed integers
-        if left.layout.abi.is_signed() {
+        if left.layout.backend_repr.is_signed() {
             let op: Option<fn(&i128, &i128) -> bool> = match bin_op {
                 Lt => Some(i128::lt),
                 Le => Some(i128::le),
@@ -180,10 +180,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 _ => None,
             };
             if let Some(op) = op {
-                return Ok(ImmTy::from_bool(op(&l_signed(), &r_signed()), *self.tcx));
+                return interp_ok(ImmTy::from_bool(op(&l_signed(), &r_signed()), *self.tcx));
             }
             if bin_op == Cmp {
-                return Ok(self.three_way_compare(l_signed(), r_signed()));
+                return interp_ok(self.three_way_compare(l_signed(), r_signed()));
             }
             let op: Option<fn(i128, i128) -> (i128, bool)> = match bin_op {
                 Div if r.is_null() => throw_ub!(DivisionByZero),
@@ -220,9 +220,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     throw_ub!(ArithOverflow { intrinsic });
                 }
                 let res = ImmTy::from_scalar_int(result, left.layout);
-                return Ok(if with_overflow {
+                return interp_ok(if with_overflow {
                     let overflow = ImmTy::from_bool(overflow, *self.tcx);
-                    ImmTy::from_pair(res, overflow, *self.tcx)
+                    ImmTy::from_pair(res, overflow, self)
                 } else {
                     res
                 });
@@ -233,10 +233,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let r = r_unsigned();
 
         if bin_op == Cmp {
-            return Ok(self.three_way_compare(l, r));
+            return interp_ok(self.three_way_compare(l, r));
         }
 
-        Ok(match bin_op {
+        interp_ok(match bin_op {
             Eq => ImmTy::from_bool(l == r, *self.tcx),
             Ne => ImmTy::from_bool(l != r, *self.tcx),
 
@@ -250,7 +250,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             BitXor => ImmTy::from_uint(l ^ r, left.layout),
 
             _ => {
-                assert!(!left.layout.abi.is_signed());
+                assert!(!left.layout.backend_repr.is_signed());
                 let op: fn(u128, u128) -> (u128, bool) = match bin_op {
                     Add | AddUnchecked | AddWithOverflow => u128::overflowing_add,
                     Sub | SubUnchecked | SubWithOverflow => u128::overflowing_sub,
@@ -279,12 +279,26 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let res = ImmTy::from_scalar_int(result, left.layout);
                 if with_overflow {
                     let overflow = ImmTy::from_bool(overflow, *self.tcx);
-                    ImmTy::from_pair(res, overflow, *self.tcx)
+                    ImmTy::from_pair(res, overflow, self)
                 } else {
                     res
                 }
             }
         })
+    }
+
+    /// Computes the total size of this access, `count * elem_size`,
+    /// checking for overflow beyond isize::MAX.
+    pub fn compute_size_in_bytes(&self, elem_size: Size, count: u64) -> Option<Size> {
+        // `checked_mul` applies `u64` limits independent of the target pointer size... but the
+        // subsequent check for `max_size_of_val` means we also handle 32bit targets correctly.
+        // (We cannot use `Size::checked_mul` as that enforces `obj_size_bound` as the limit, which
+        // would be wrong here.)
+        elem_size
+            .bytes()
+            .checked_mul(count)
+            .map(Size::from_bytes)
+            .filter(|&total| total <= self.max_size_of_val())
     }
 
     fn binary_ptr_op(
@@ -301,10 +315,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let ptr = left.to_scalar().to_pointer(self)?;
                 let pointee_ty = left.layout.ty.builtin_deref(true).unwrap();
                 let pointee_layout = self.layout_of(pointee_ty)?;
-                assert!(pointee_layout.abi.is_sized());
+                assert!(pointee_layout.is_sized());
 
-                // We cannot overflow i64 as a type's size must be <= isize::MAX.
+                // The size always fits in `i64` as it can be at most `isize::MAX`.
                 let pointee_size = i64::try_from(pointee_layout.size.bytes()).unwrap();
+                // This uses the same type as `right`, which can be `isize` or `usize`.
+                // `pointee_size` is guaranteed to fit into both types.
                 let pointee_size = ImmTy::from_int(pointee_size, right.layout);
                 // Multiply element size and element count.
                 let (val, overflowed) = self
@@ -316,8 +332,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
 
                 let offset_bytes = val.to_target_isize(self)?;
+                if !right.layout.backend_repr.is_signed() && offset_bytes < 0 {
+                    // We were supposed to do an unsigned offset but the result is negative -- this
+                    // can only mean that the cast wrapped around.
+                    throw_ub!(PointerArithOverflow)
+                }
                 let offset_ptr = self.ptr_offset_inbounds(ptr, offset_bytes)?;
-                Ok(ImmTy::from_scalar(Scalar::from_maybe_pointer(offset_ptr, self), left.layout))
+                interp_ok(ImmTy::from_scalar(
+                    Scalar::from_maybe_pointer(offset_ptr, self),
+                    left.layout,
+                ))
             }
 
             // Fall back to machine hook so Miri can support more pointer ops.
@@ -344,20 +368,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 assert_eq!(left.layout.ty, right.layout.ty);
                 let left = left.to_scalar();
                 let right = right.to_scalar();
-                Ok(self.binary_char_op(bin_op, left.to_char()?, right.to_char()?))
+                interp_ok(self.binary_char_op(bin_op, left.to_char()?, right.to_char()?))
             }
             ty::Bool => {
                 assert_eq!(left.layout.ty, right.layout.ty);
                 let left = left.to_scalar();
                 let right = right.to_scalar();
-                Ok(self.binary_bool_op(bin_op, left.to_bool()?, right.to_bool()?))
+                interp_ok(self.binary_bool_op(bin_op, left.to_bool()?, right.to_bool()?))
             }
             ty::Float(fty) => {
                 assert_eq!(left.layout.ty, right.layout.ty);
                 let layout = left.layout;
                 let left = left.to_scalar();
                 let right = right.to_scalar();
-                Ok(match fty {
+                interp_ok(match fty {
                     FloatTy::F16 => {
                         self.binary_float_op(bin_op, layout, left.to_f16()?, right.to_f16()?)
                     }
@@ -425,7 +449,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     Not => !val,
                     _ => span_bug!(self.cur_span(), "Invalid bool op {:?}", un_op),
                 };
-                Ok(ImmTy::from_bool(res, *self.tcx))
+                interp_ok(ImmTy::from_bool(res, *self.tcx))
             }
             ty::Float(fty) => {
                 let val = val.to_scalar();
@@ -440,7 +464,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     FloatTy::F64 => Scalar::from_f64(-val.to_f64()?),
                     FloatTy::F128 => Scalar::from_f128(-val.to_f128()?),
                 };
-                Ok(ImmTy::from_scalar(res, layout))
+                interp_ok(ImmTy::from_scalar(res, layout))
             }
             ty::Int(..) => {
                 let val = val.to_scalar().to_int(layout.size)?;
@@ -450,7 +474,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     _ => span_bug!(self.cur_span(), "Invalid integer op {:?}", un_op),
                 };
                 let res = ScalarInt::truncate_from_int(res, layout.size).0;
-                Ok(ImmTy::from_scalar(res.into(), layout))
+                interp_ok(ImmTy::from_scalar(res.into(), layout))
             }
             ty::Uint(..) => {
                 let val = val.to_scalar().to_uint(layout.size)?;
@@ -459,12 +483,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     _ => span_bug!(self.cur_span(), "Invalid unsigned integer op {:?}", un_op),
                 };
                 let res = ScalarInt::truncate_from_uint(res, layout.size).0;
-                Ok(ImmTy::from_scalar(res.into(), layout))
+                interp_ok(ImmTy::from_scalar(res.into(), layout))
             }
             ty::RawPtr(..) | ty::Ref(..) => {
                 assert_eq!(un_op, PtrMetadata);
                 let (_, meta) = val.to_scalar_and_meta();
-                Ok(match meta {
+                interp_ok(match meta {
                     MemPlaceMeta::Meta(scalar) => {
                         let ty = un_op.ty(*self.tcx, val.layout.ty);
                         let layout = self.layout_of(ty)?;
@@ -492,16 +516,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let layout = self.layout_of(arg_ty)?;
         let usize_layout = || self.layout_of(self.tcx.types.usize).unwrap();
 
-        Ok(match null_op {
+        interp_ok(match null_op {
             SizeOf => {
-                if !layout.abi.is_sized() {
+                if !layout.is_sized() {
                     span_bug!(self.cur_span(), "unsized type for `NullaryOp::SizeOf`");
                 }
                 let val = layout.size.bytes();
                 ImmTy::from_uint(val, usize_layout())
             }
             AlignOf => {
-                if !layout.abi.is_sized() {
+                if !layout.is_sized() {
                     span_bug!(self.cur_span(), "unsized type for `NullaryOp::AlignOf`");
                 }
                 let val = layout.align.abi.bytes();
@@ -509,10 +533,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             OffsetOf(fields) => {
                 let val =
-                    self.tcx.offset_of_subfield(self.param_env, layout, fields.iter()).bytes();
+                    self.tcx.offset_of_subfield(self.typing_env, layout, fields.iter()).bytes();
                 ImmTy::from_uint(val, usize_layout())
             }
-            UbChecks => ImmTy::from_bool(self.tcx.sess.ub_checks(), *self.tcx),
+            UbChecks => ImmTy::from_bool(M::ub_checks(self)?, *self.tcx),
         })
     }
 }

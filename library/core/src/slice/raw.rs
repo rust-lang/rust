@@ -11,13 +11,13 @@ use crate::{array, ptr, ub_checks};
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `data` must be [valid] for reads for `len * mem::size_of::<T>()` many bytes,
+/// * `data` must be non-null, [valid] for reads for `len * mem::size_of::<T>()` many bytes,
 ///   and it must be properly aligned. This means in particular:
 ///
 ///     * The entire memory range of this slice must be contained within a single allocated object!
 ///       Slices can never span across multiple allocated objects. See [below](#incorrect-usage)
 ///       for an example incorrectly not taking this into account.
-///     * `data` must be non-null and aligned even for zero-length slices. One
+///     * `data` must be non-null and aligned even for zero-length slices or slices of ZSTs. One
 ///       reason for this is that enum layout optimizations may rely on references
 ///       (including slices of any length) being aligned and non-null to distinguish
 ///       them from other data. You can obtain a pointer that is usable as `data`
@@ -132,7 +132,7 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
                 align: usize = align_of::<T>(),
                 len: usize = len,
             ) =>
-            ub_checks::is_aligned_and_not_null(data, align)
+            ub_checks::maybe_is_aligned_and_not_null(data, align, false)
                 && ub_checks::is_valid_allocation_size(size, len)
         );
         &*ptr::slice_from_raw_parts(data, len)
@@ -146,12 +146,12 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `data` must be [valid] for both reads and writes for `len * mem::size_of::<T>()` many bytes,
+/// * `data` must be non-null, [valid] for both reads and writes for `len * mem::size_of::<T>()` many bytes,
 ///   and it must be properly aligned. This means in particular:
 ///
 ///     * The entire memory range of this slice must be contained within a single allocated object!
 ///       Slices can never span across multiple allocated objects.
-///     * `data` must be non-null and aligned even for zero-length slices. One
+///     * `data` must be non-null and aligned even for zero-length slices or slices of ZSTs. One
 ///       reason for this is that enum layout optimizations may rely on references
 ///       (including slices of any length) being aligned and non-null to distinguish
 ///       them from other data. You can obtain a pointer that is usable as `data`
@@ -171,7 +171,7 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 /// [`NonNull::dangling()`]: ptr::NonNull::dangling
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_slice_from_raw_parts_mut", issue = "67456")]
+#[rustc_const_stable(feature = "const_slice_from_raw_parts_mut", since = "1.83.0")]
 #[must_use]
 #[rustc_diagnostic_item = "slice_from_raw_parts_mut"]
 pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
@@ -186,7 +186,7 @@ pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a m
                 align: usize = align_of::<T>(),
                 len: usize = len,
             ) =>
-            ub_checks::is_aligned_and_not_null(data, align)
+            ub_checks::maybe_is_aligned_and_not_null(data, align, false)
                 && ub_checks::is_valid_allocation_size(size, len)
         );
         &mut *ptr::slice_from_raw_parts_mut(data, len)
@@ -203,7 +203,7 @@ pub const fn from_ref<T>(s: &T) -> &[T] {
 
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
-#[rustc_const_unstable(feature = "const_slice_from_ref", issue = "90206")]
+#[rustc_const_stable(feature = "const_slice_from_ref", since = "1.83.0")]
 #[must_use]
 pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
     array::from_mut(s)
@@ -219,7 +219,7 @@ pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * The `start` pointer of the range must be a [valid] and properly aligned pointer
+/// * The `start` pointer of the range must be a non-null, [valid] and properly aligned pointer
 ///   to the first element of a slice.
 ///
 /// * The `end` pointer must be a [valid] and properly aligned pointer to *one past*
@@ -235,7 +235,7 @@ pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
 ///   of lifetime `'a`, except inside an `UnsafeCell`.
 ///
 /// * The total length of the range must be no larger than `isize::MAX`,
-///   and adding that size to `data` must not "wrap around" the address space.
+///   and adding that size to `start` must not "wrap around" the address space.
 ///   See the safety documentation of [`pointer::offset`].
 ///
 /// Note that a range created from [`slice::as_ptr_range`] fulfills these requirements.
@@ -288,7 +288,7 @@ pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * The `start` pointer of the range must be a [valid] and properly aligned pointer
+/// * The `start` pointer of the range must be a non-null, [valid] and properly aligned pointer
 ///   to the first element of a slice.
 ///
 /// * The `end` pointer must be a [valid] and properly aligned pointer to *one past*
@@ -305,7 +305,7 @@ pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
 ///   Both read and write accesses are forbidden.
 ///
 /// * The total length of the range must be no larger than `isize::MAX`,
-///   and adding that size to `data` must not "wrap around" the address space.
+///   and adding that size to `start` must not "wrap around" the address space.
 ///   See the safety documentation of [`pointer::offset`].
 ///
 /// Note that a range created from [`slice::as_mut_ptr_range`] fulfills these requirements.

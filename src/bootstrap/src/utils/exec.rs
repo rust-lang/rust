@@ -120,7 +120,7 @@ impl BootstrapCommand {
         Self { failure_behavior: BehaviorOnFailure::DelayFail, ..self }
     }
 
-    #[must_use]
+    #[allow(dead_code)]
     pub fn fail_fast(self) -> Self {
         Self { failure_behavior: BehaviorOnFailure::Exit, ..self }
     }
@@ -275,7 +275,7 @@ impl CommandOutput {
         !self.is_success()
     }
 
-    #[must_use]
+    #[allow(dead_code)]
     pub fn status(&self) -> Option<ExitStatus> {
         match self.status {
             CommandStatus::Finished(status) => Some(status),
@@ -292,6 +292,11 @@ impl CommandOutput {
     }
 
     #[must_use]
+    pub fn stdout_if_present(&self) -> Option<String> {
+        self.stdout.as_ref().and_then(|s| String::from_utf8(s.clone()).ok())
+    }
+
+    #[must_use]
     pub fn stdout_if_ok(&self) -> Option<String> {
         if self.is_success() { Some(self.stdout()) } else { None }
     }
@@ -302,6 +307,11 @@ impl CommandOutput {
             self.stderr.clone().expect("Accessing stderr of a command that did not capture stderr"),
         )
         .expect("Cannot parse process stderr as UTF-8")
+    }
+
+    #[must_use]
+    pub fn stderr_if_present(&self) -> Option<String> {
+        self.stderr.as_ref().and_then(|s| String::from_utf8(s.clone()).ok())
     }
 }
 

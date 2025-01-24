@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-disable-isolation -Zmiri-preemption-rate=0
-//@ignore-target-windows: No libc env support on Windows
+//@ignore-target: windows # No libc env support on Windows
 
 use std::ffi::CStr;
 use std::thread;

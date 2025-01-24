@@ -14,6 +14,6 @@ fn mk_opaque() -> OpaqueType {
 trait AnotherTrait {}
 impl<T: Send> AnotherTrait for T {}
 impl AnotherTrait for OpaqueType {}
-//[stock]~^ conflicting implementations of trait `AnotherTrait` for type `OpaqueType`
+//[stock]~^ conflicting implementations of trait `AnotherTrait`
 
 fn main() {}

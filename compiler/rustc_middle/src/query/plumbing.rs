@@ -5,11 +5,11 @@ use rustc_data_structures::sync::{AtomicU64, WorkerLocal};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
 use rustc_macros::HashStable;
+use rustc_query_system::HandleCycleError;
 use rustc_query_system::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
-use rustc_query_system::HandleCycleError;
-use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
 use crate::dep_graph;
 use crate::dep_graph::DepKind;
@@ -44,16 +44,16 @@ pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub format_value: fn(&C::Value) -> String,
 }
 
-pub struct QuerySystemFns<'tcx> {
+pub struct QuerySystemFns {
     pub engine: QueryEngine,
     pub local_providers: Providers,
     pub extern_providers: ExternProviders,
-    pub encode_query_results: fn(
+    pub encode_query_results: for<'tcx> fn(
         tcx: TyCtxt<'tcx>,
         encoder: &mut CacheEncoder<'_, 'tcx>,
         query_result_index: &mut EncodedDepNodeIndex,
     ),
-    pub try_mark_green: fn(tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool,
+    pub try_mark_green: for<'tcx> fn(tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool,
 }
 
 pub struct QuerySystem<'tcx> {
@@ -66,9 +66,9 @@ pub struct QuerySystem<'tcx> {
     /// Do not access this directly. It is only meant to be used by
     /// `DepGraph::try_mark_green()` and the query infrastructure.
     /// This is `None` if we are not incremental compilation mode
-    pub on_disk_cache: Option<OnDiskCache<'tcx>>,
+    pub on_disk_cache: Option<OnDiskCache>,
 
-    pub fns: QuerySystemFns<'tcx>,
+    pub fns: QuerySystemFns,
 
     pub jobs: AtomicU64,
 }
@@ -289,10 +289,10 @@ macro_rules! define_callbacks {
 
                 /// This type alias specifies the type returned from query providers and the type
                 /// used for decoding. For regular queries this is the declared returned type `V`,
-                /// but `arena_cache` will use `<V as Deref>::Target` instead.
+                /// but `arena_cache` will use `<V as ArenaCached>::Provided` instead.
                 pub type ProvidedValue<'tcx> = query_if_arena!(
                     [$($modifiers)*]
-                    (<$V as Deref>::Target)
+                    (<$V as $crate::query::arena_cached::ArenaCached<'tcx>>::Provided)
                     ($V)
                 );
 
@@ -307,10 +307,18 @@ macro_rules! define_callbacks {
                 ) -> Erase<Value<'tcx>> {
                     erase(query_if_arena!([$($modifiers)*]
                         {
-                            if mem::needs_drop::<ProvidedValue<'tcx>>() {
-                                &*_tcx.query_system.arenas.$name.alloc(value)
+                            use $crate::query::arena_cached::ArenaCached;
+
+                            if mem::needs_drop::<<$V as ArenaCached<'tcx>>::Allocated>() {
+                                <$V as ArenaCached>::alloc_in_arena(
+                                    |v| _tcx.query_system.arenas.$name.alloc(v),
+                                    value,
+                                )
                             } else {
-                                &*_tcx.arena.dropless.alloc(value)
+                                <$V as ArenaCached>::alloc_in_arena(
+                                    |v| _tcx.arena.dropless.alloc(v),
+                                    value,
+                                )
                             }
                         }
                         (value)
@@ -319,11 +327,11 @@ macro_rules! define_callbacks {
 
                 pub type Storage<'tcx> = <$($K)* as keys::Key>::Cache<Erase<$V>>;
 
-                // Ensure that keys grow no larger than 72 bytes by accident.
+                // Ensure that keys grow no larger than 80 bytes by accident.
                 // Increase this limit if necessary, but do try to keep the size low if possible
                 #[cfg(target_pointer_width = "64")]
                 const _: () = {
-                    if mem::size_of::<Key<'static>>() > 72 {
+                    if mem::size_of::<Key<'static>>() > 88 {
                         panic!("{}", concat!(
                             "the query `",
                             stringify!($name),
@@ -337,6 +345,7 @@ macro_rules! define_callbacks {
                 // Ensure that values grow no larger than 64 bytes by accident.
                 // Increase this limit if necessary, but do try to keep the size low if possible
                 #[cfg(target_pointer_width = "64")]
+                #[cfg(not(feature = "rustc_randomized_layouts"))]
                 const _: () = {
                     if mem::size_of::<Value<'static>>() > 64 {
                         panic!("{}", concat!(
@@ -353,7 +362,7 @@ macro_rules! define_callbacks {
 
         pub struct QueryArenas<'tcx> {
             $($(#[$attr])* pub $name: query_if_arena!([$($modifiers)*]
-                (TypedArena<<$V as Deref>::Target>)
+                (TypedArena<<$V as $crate::query::arena_cached::ArenaCached<'tcx>>::Allocated>)
                 ()
             ),)*
         }
@@ -547,7 +556,6 @@ macro_rules! define_feedable {
                         let dep_node_index = tcx.dep_graph.with_feed_task(
                             dep_node,
                             tcx,
-                            key,
                             &value,
                             hash_result!([$($modifiers)*]),
                         );

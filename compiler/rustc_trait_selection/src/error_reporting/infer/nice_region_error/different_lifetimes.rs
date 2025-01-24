@@ -2,13 +2,14 @@
 //! where both the regions are anonymous.
 
 use rustc_errors::{Diag, ErrorGuaranteed, Subdiagnostic};
-use rustc_hir::def_id::LocalDefId;
 use rustc_hir::Ty;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{Region, TyCtxt};
+use tracing::debug;
 
+use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::error_reporting::infer::nice_region_error::find_anon_type::find_anon_type;
 use crate::error_reporting::infer::nice_region_error::util::AnonymousParamInfo;
-use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::errors::{AddLifetimeParamsSuggestion, LifetimeMismatch, LifetimeMismatchLabels};
 use crate::infer::{RegionResolutionError, SubregionOrigin};
 
@@ -62,26 +63,16 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
 
         // Determine whether the sub and sup consist of both anonymous (elided) regions.
-        let anon_reg_sup = self.tcx().is_suitable_region(self.generic_param_scope, sup)?;
+        let sup_info = self.tcx().is_suitable_region(self.generic_param_scope, sup)?;
 
-        let anon_reg_sub = self.tcx().is_suitable_region(self.generic_param_scope, sub)?;
-        let scope_def_id_sup = anon_reg_sup.def_id;
-        let bregion_sup = anon_reg_sup.bound_region;
-        let scope_def_id_sub = anon_reg_sub.def_id;
-        let bregion_sub = anon_reg_sub.bound_region;
+        let sub_info = self.tcx().is_suitable_region(self.generic_param_scope, sub)?;
 
-        let ty_sup = find_anon_type(self.tcx(), self.generic_param_scope, sup, &bregion_sup)?;
+        let ty_sup = find_anon_type(self.tcx(), self.generic_param_scope, sup)?;
 
-        let ty_sub = find_anon_type(self.tcx(), self.generic_param_scope, sub, &bregion_sub)?;
+        let ty_sub = find_anon_type(self.tcx(), self.generic_param_scope, sub)?;
 
-        debug!(
-            "try_report_anon_anon_conflict: found_param1={:?} sup={:?} br1={:?}",
-            ty_sub, sup, bregion_sup
-        );
-        debug!(
-            "try_report_anon_anon_conflict: found_param2={:?} sub={:?} br2={:?}",
-            ty_sup, sub, bregion_sub
-        );
+        debug!("try_report_anon_anon_conflict: found_param1={:?} sup={:?}", ty_sub, sup);
+        debug!("try_report_anon_anon_conflict: found_param2={:?} sub={:?}", ty_sup, sub);
 
         let (ty_sup, ty_fndecl_sup) = ty_sup;
         let (ty_sub, ty_fndecl_sub) = ty_sub;
@@ -92,9 +83,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             self.find_param_with_region(sub, sub)?;
 
         let sup_is_ret_type =
-            self.is_return_type_anon(scope_def_id_sup, bregion_sup, ty_fndecl_sup);
+            self.is_return_type_anon(sup_info.scope, sup_info.region_def_id, ty_fndecl_sup);
         let sub_is_ret_type =
-            self.is_return_type_anon(scope_def_id_sub, bregion_sub, ty_fndecl_sub);
+            self.is_return_type_anon(sub_info.scope, sub_info.region_def_id, ty_fndecl_sub);
 
         debug!(
             "try_report_anon_anon_conflict: sub_is_ret_type={:?} sup_is_ret_type={:?}",

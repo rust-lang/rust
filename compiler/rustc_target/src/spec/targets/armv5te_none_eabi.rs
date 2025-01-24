@@ -1,8 +1,8 @@
 //! Targets the ARMv5TE, with code as `a32` code by default.
 
-use crate::spec::{base, cvs, FramePointer, Target, TargetOptions};
+use crate::spec::{FloatAbi, FramePointer, Target, TargetOptions, base, cvs};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv5te-none-eabi".into(),
         metadata: crate::spec::TargetMetadata {
@@ -26,6 +26,7 @@ pub fn target() -> Target {
 
         options: TargetOptions {
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             // extra args passed to the external assembler (assuming `arm-none-eabi-as`):
             // * activate t32/a32 interworking
             // * use arch ARMv5TE

@@ -151,7 +151,8 @@ impl<'a> Sugg<'a> {
             | ExprKind::Become(..)
             | ExprKind::Struct(..)
             | ExprKind::Tup(..)
-            | ExprKind::Err(_) => Sugg::NonParen(get_snippet(expr.span)),
+            | ExprKind::Err(_)
+            | ExprKind::UnsafeBinderCast(..) => Sugg::NonParen(get_snippet(expr.span)),
             ExprKind::DropTemps(inner) => Self::hir_from_snippet(inner, get_snippet),
             ExprKind::Assign(lhs, rhs, _) => {
                 Sugg::BinOp(AssocOp::Assign, get_snippet(lhs.span), get_snippet(rhs.span))
@@ -180,8 +181,10 @@ impl<'a> Sugg<'a> {
     ) -> Self {
         use rustc_ast::ast::RangeLimits;
 
+        let mut snippet = |span: Span| snippet_with_context(cx, span, ctxt, default, app).0;
+
         match expr.kind {
-            _ if expr.span.ctxt() != ctxt => Sugg::NonParen(snippet_with_context(cx, expr.span, ctxt, default, app).0),
+            _ if expr.span.ctxt() != ctxt => Sugg::NonParen(snippet(expr.span)),
             ast::ExprKind::AddrOf(..)
             | ast::ExprKind::Closure { .. }
             | ast::ExprKind::If(..)
@@ -224,46 +227,39 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::While(..)
             | ast::ExprKind::Await(..)
             | ast::ExprKind::Err(_)
-            | ast::ExprKind::Dummy => Sugg::NonParen(snippet_with_context(cx, expr.span, ctxt, default, app).0),
+            | ast::ExprKind::Dummy
+            | ast::ExprKind::UnsafeBinderCast(..) => Sugg::NonParen(snippet(expr.span)),
             ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::HalfOpen) => Sugg::BinOp(
                 AssocOp::DotDot,
-                lhs.as_ref().map_or("".into(), |lhs| {
-                    snippet_with_context(cx, lhs.span, ctxt, default, app).0
-                }),
-                rhs.as_ref().map_or("".into(), |rhs| {
-                    snippet_with_context(cx, rhs.span, ctxt, default, app).0
-                }),
+                lhs.as_ref().map_or("".into(), |lhs| snippet(lhs.span)),
+                rhs.as_ref().map_or("".into(), |rhs| snippet(rhs.span)),
             ),
             ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::Closed) => Sugg::BinOp(
                 AssocOp::DotDotEq,
-                lhs.as_ref().map_or("".into(), |lhs| {
-                    snippet_with_context(cx, lhs.span, ctxt, default, app).0
-                }),
-                rhs.as_ref().map_or("".into(), |rhs| {
-                    snippet_with_context(cx, rhs.span, ctxt, default, app).0
-                }),
+                lhs.as_ref().map_or("".into(), |lhs| snippet(lhs.span)),
+                rhs.as_ref().map_or("".into(), |rhs| snippet(rhs.span)),
             ),
             ast::ExprKind::Assign(ref lhs, ref rhs, _) => Sugg::BinOp(
                 AssocOp::Assign,
-                snippet_with_context(cx, lhs.span, ctxt, default, app).0,
-                snippet_with_context(cx, rhs.span, ctxt, default, app).0,
+                snippet(lhs.span),
+                snippet(rhs.span),
             ),
             ast::ExprKind::AssignOp(op, ref lhs, ref rhs) => Sugg::BinOp(
                 astbinop2assignop(op),
-                snippet_with_context(cx, lhs.span, ctxt, default, app).0,
-                snippet_with_context(cx, rhs.span, ctxt, default, app).0,
+                snippet(lhs.span),
+                snippet(rhs.span),
             ),
             ast::ExprKind::Binary(op, ref lhs, ref rhs) => Sugg::BinOp(
                 AssocOp::from_ast_binop(op.node),
-                snippet_with_context(cx, lhs.span, ctxt, default, app).0,
-                snippet_with_context(cx, rhs.span, ctxt, default, app).0,
+                snippet(lhs.span),
+                snippet(rhs.span),
             ),
             ast::ExprKind::Cast(ref lhs, ref ty) |
             //FIXME(chenyukang), remove this after type ascription is removed from AST
             ast::ExprKind::Type(ref lhs, ref ty) => Sugg::BinOp(
                 AssocOp::As,
-                snippet_with_context(cx, lhs.span, ctxt, default, app).0,
-                snippet_with_context(cx, ty.span, ctxt, default, app).0,
+                snippet(lhs.span),
+                snippet(ty.span),
             ),
         }
     }
@@ -911,7 +907,7 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
             _ => return false,
         };
 
-        ty.map_or(false, |ty| matches!(ty.kind(), ty::Ref(_, inner, _) if inner.is_ref()))
+        ty.is_some_and(|ty| matches!(ty.kind(), ty::Ref(_, inner, _) if inner.is_ref()))
     }
 }
 

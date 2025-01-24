@@ -1,0 +1,54 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          RECORD_PAT
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "R"
+            WHITESPACE " "
+            RECORD_PAT_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              RECORD_PAT_FIELD
+                NAME_REF
+                  IDENT "a"
+                COLON ":"
+                WHITESPACE " "
+                OR_PAT
+                  PIPE "|"
+                  WHITESPACE " "
+                  LITERAL_PAT
+                    LITERAL
+                      INT_NUMBER "1"
+                  WHITESPACE " "
+                  PIPE "|"
+                  WHITESPACE " "
+                  LITERAL_PAT
+                    LITERAL
+                      INT_NUMBER "2"
+              WHITESPACE " "
+              R_CURLY "}"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "0"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"

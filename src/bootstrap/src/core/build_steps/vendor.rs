@@ -4,6 +4,29 @@ use crate::core::build_steps::tool::SUBMODULES_FOR_RUSTBOOK;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::utils::exec::command;
 
+/// Returns the cargo workspaces to vendor for `x vendor` and dist tarballs.
+///
+/// Returns a `Vec` of `(path_to_manifest, submodules_required)` where
+/// `path_to_manifest` is the cargo workspace, and `submodules_required` is
+/// the set of submodules that must be available.
+pub fn default_paths_to_vendor(builder: &Builder<'_>) -> Vec<(PathBuf, Vec<&'static str>)> {
+    [
+        ("src/tools/cargo/Cargo.toml", vec!["src/tools/cargo"]),
+        ("src/tools/rust-analyzer/Cargo.toml", vec![]),
+        ("compiler/rustc_codegen_cranelift/Cargo.toml", vec![]),
+        ("compiler/rustc_codegen_gcc/Cargo.toml", vec![]),
+        ("library/Cargo.toml", vec![]),
+        ("src/bootstrap/Cargo.toml", vec![]),
+        ("src/tools/rustbook/Cargo.toml", SUBMODULES_FOR_RUSTBOOK.into()),
+        ("src/tools/rustc-perf/Cargo.toml", vec!["src/tools/rustc-perf"]),
+        ("src/tools/opt-dist/Cargo.toml", vec![]),
+        ("src/doc/book/packages/trpl/Cargo.toml", vec![]),
+    ]
+    .into_iter()
+    .map(|(path, submodules)| (builder.src.join(path), submodules))
+    .collect()
+}
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub(crate) struct Vendor {
     sync_args: Vec<PathBuf>,
@@ -36,22 +59,17 @@ impl Step for Vendor {
             cmd.arg("--versioned-dirs");
         }
 
+        let to_vendor = default_paths_to_vendor(builder);
         // These submodules must be present for `x vendor` to work.
-        for submodule in SUBMODULES_FOR_RUSTBOOK.iter().chain(["src/tools/cargo"].iter()) {
-            builder.build.require_submodule(submodule, None);
+        for (_, submodules) in &to_vendor {
+            for submodule in submodules {
+                builder.build.require_submodule(submodule, None);
+            }
         }
 
         // Sync these paths by default.
-        for p in [
-            "src/tools/cargo/Cargo.toml",
-            "src/tools/rust-analyzer/Cargo.toml",
-            "compiler/rustc_codegen_cranelift/Cargo.toml",
-            "compiler/rustc_codegen_gcc/Cargo.toml",
-            "library/Cargo.toml",
-            "src/bootstrap/Cargo.toml",
-            "src/tools/rustbook/Cargo.toml",
-        ] {
-            cmd.arg("--sync").arg(builder.src.join(p));
+        for (p, _) in &to_vendor {
+            cmd.arg("--sync").arg(p);
         }
 
         // Also sync explicitly requested paths.

@@ -1,5 +1,5 @@
 use rustc_infer::infer::relate::{
-    self, structurally_relate_tys, Relate, RelateResult, TypeRelation,
+    self, Relate, RelateResult, TypeRelation, structurally_relate_tys,
 };
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
@@ -21,12 +21,12 @@ use tracing::instrument;
 /// Like subtyping, matching is really a binary relation, so the only
 /// important thing about the result is Ok/Err. Also, matching never
 /// affects any type variables or unification state.
-pub struct MatchAgainstFreshVars<'tcx> {
+pub(crate) struct MatchAgainstFreshVars<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
 impl<'tcx> MatchAgainstFreshVars<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>) -> MatchAgainstFreshVars<'tcx> {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>) -> MatchAgainstFreshVars<'tcx> {
         MatchAgainstFreshVars { tcx }
     }
 }
@@ -70,7 +70,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstFreshVars<'tcx> {
             ) => Ok(a),
 
             (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
-                Err(TypeError::Sorts(ExpectedFound::new(true, a, b)))
+                Err(TypeError::Sorts(ExpectedFound::new(a, b)))
             }
 
             (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(Ty::new_error(self.cx(), guar)),
@@ -95,7 +95,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstFreshVars<'tcx> {
             }
 
             (ty::ConstKind::Infer(_), _) | (_, ty::ConstKind::Infer(_)) => {
-                return Err(TypeError::ConstMismatch(ExpectedFound::new(true, a, b)));
+                return Err(TypeError::ConstMismatch(ExpectedFound::new(a, b)));
             }
 
             _ => {}

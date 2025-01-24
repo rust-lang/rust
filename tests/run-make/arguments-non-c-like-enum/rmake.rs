@@ -4,8 +4,6 @@
 use run_make_support::{cc, extra_c_flags, extra_cxx_flags, run, rustc, static_lib_name};
 
 pub fn main() {
-    use std::path::Path;
-
     rustc().input("nonclike.rs").crate_type("staticlib").run();
     cc().input("test.c")
         .input(static_lib_name("nonclike"))

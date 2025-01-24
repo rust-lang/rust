@@ -4,8 +4,7 @@ error[E0308]: mismatched types
 LL | /             if true {
 LL | |                 Err(1)
    | |                 ^^^^^^ expected `()`, found `Result<_, {integer}>`
-LL | |
-LL | |
+...  |
 LL | |             }
    | |_____________- expected this to be `()`
    |
@@ -22,8 +21,7 @@ error[E0308]: mismatched types
 LL | /             if true {
 LL | |                 Err(1)
    | |                 ^^^^^^ expected `()`, found `Result<_, {integer}>`
-LL | |
-LL | |
+...  |
 LL | |             }
    | |_____________- expected this to be `()`
    |

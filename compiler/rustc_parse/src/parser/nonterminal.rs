@@ -1,13 +1,15 @@
+use rustc_ast::HasTokens;
 use rustc_ast::ptr::P;
 use rustc_ast::token::Nonterminal::*;
 use rustc_ast::token::NtExprKind::*;
 use rustc_ast::token::NtPatKind::*;
-use rustc_ast::token::{self, Delimiter, NonterminalKind, Token};
-use rustc_ast::HasTokens;
+use rustc_ast::token::{
+    self, Delimiter, InvisibleOrigin, MetaVarKind, Nonterminal, NonterminalKind, Token,
+};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
-use rustc_span::symbol::{kw, Ident};
+use rustc_span::{Ident, kw};
 
 use crate::errors::UnexpectedNonterminal;
 use crate::parser::pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
@@ -22,7 +24,28 @@ impl<'a> Parser<'a> {
     #[inline]
     pub fn nonterminal_may_begin_with(kind: NonterminalKind, token: &Token) -> bool {
         /// Checks whether the non-terminal may contain a single (non-keyword) identifier.
-        fn may_be_ident(nt: &token::Nonterminal) -> bool {
+        fn may_be_ident(kind: MetaVarKind) -> bool {
+            match kind {
+                MetaVarKind::Stmt
+                | MetaVarKind::Pat(_)
+                | MetaVarKind::Expr { .. }
+                | MetaVarKind::Ty
+                | MetaVarKind::Literal // `true`, `false`
+                | MetaVarKind::Meta
+                | MetaVarKind::Path => true,
+
+                MetaVarKind::Item
+                | MetaVarKind::Block
+                | MetaVarKind::Vis => false,
+
+                MetaVarKind::Ident
+                | MetaVarKind::Lifetime
+                | MetaVarKind::TT => unreachable!(),
+            }
+        }
+
+        /// Old variant of `may_be_ident`. Being phased out.
+        fn nt_may_be_ident(nt: &Nonterminal) -> bool {
             match nt {
                 NtStmt(_)
                 | NtPat(_)
@@ -69,7 +92,8 @@ impl<'a> Parser<'a> {
                 | token::Ident(..)
                 | token::NtIdent(..)
                 | token::NtLifetime(..)
-                | token::Interpolated(_) => true,
+                | token::Interpolated(_)
+                | token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(_))) => true,
                 _ => token.can_begin_type(),
             },
             NonterminalKind::Block => match &token.kind {
@@ -79,34 +103,34 @@ impl<'a> Parser<'a> {
                     NtBlock(_) | NtStmt(_) | NtExpr(_) | NtLiteral(_) => true,
                     NtItem(_) | NtPat(_) | NtTy(_) | NtMeta(_) | NtPath(_) | NtVis(_) => false,
                 },
+                token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(k))) => match k {
+                    MetaVarKind::Block
+                    | MetaVarKind::Stmt
+                    | MetaVarKind::Expr { .. }
+                    | MetaVarKind::Literal => true,
+                    MetaVarKind::Item
+                    | MetaVarKind::Pat(_)
+                    | MetaVarKind::Ty
+                    | MetaVarKind::Meta
+                    | MetaVarKind::Path
+                    | MetaVarKind::Vis => false,
+                    MetaVarKind::Lifetime | MetaVarKind::Ident | MetaVarKind::TT => {
+                        unreachable!()
+                    }
+                },
                 _ => false,
             },
             NonterminalKind::Path | NonterminalKind::Meta => match &token.kind {
                 token::PathSep | token::Ident(..) | token::NtIdent(..) => true,
-                token::Interpolated(nt) => may_be_ident(nt),
+                token::Interpolated(nt) => nt_may_be_ident(nt),
+                token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(kind))) => {
+                    may_be_ident(*kind)
+                }
                 _ => false,
             },
-            NonterminalKind::Pat(pat_kind) => match &token.kind {
-                // box, ref, mut, and other identifiers (can stricten)
-                token::Ident(..) | token::NtIdent(..) |
-                token::OpenDelim(Delimiter::Parenthesis) |  // tuple pattern
-                token::OpenDelim(Delimiter::Bracket) |      // slice pattern
-                token::BinOp(token::And) |                  // reference
-                token::BinOp(token::Minus) |                // negative literal
-                token::AndAnd |                             // double reference
-                token::Literal(_) |                         // literal
-                token::DotDot |                             // range pattern (future compat)
-                token::DotDotDot |                          // range pattern (future compat)
-                token::PathSep |                             // path
-                token::Lt |                                 // path (UFCS constant)
-                token::BinOp(token::Shl) => true,           // path (double UFCS)
-                // leading vert `|` or-pattern
-                token::BinOp(token::Or) => matches!(pat_kind, PatWithOr),
-                token::Interpolated(nt) => may_be_ident(nt),
-                _ => false,
-            },
+            NonterminalKind::Pat(pat_kind) => token.can_begin_pattern(pat_kind),
             NonterminalKind::Lifetime => match &token.kind {
-                token::Lifetime(_) | token::NtLifetime(..) => true,
+                token::Lifetime(..) | token::NtLifetime(..) => true,
                 _ => false,
             },
             NonterminalKind::TT | NonterminalKind::Item | NonterminalKind::Stmt => {
@@ -150,7 +174,7 @@ impl<'a> Parser<'a> {
             NonterminalKind::Pat(pat_kind) => {
                 NtPat(self.collect_tokens_no_attrs(|this| match pat_kind {
                     PatParam { .. } => this.parse_pat_no_top_alt(None, None),
-                    PatWithOr => this.parse_pat_allow_top_alt(
+                    PatWithOr => this.parse_pat_no_top_guard(
                         None,
                         RecoverComma::No,
                         RecoverColon::No,
@@ -189,9 +213,9 @@ impl<'a> Parser<'a> {
             NonterminalKind::Lifetime => {
                 // We want to keep `'keyword` parsing, just like `keyword` is still
                 // an ident for nonterminal purposes.
-                return if let Some(ident) = self.token.lifetime() {
+                return if let Some((ident, is_raw)) = self.token.lifetime() {
                     self.bump();
-                    Ok(ParseNtResult::Lifetime(ident))
+                    Ok(ParseNtResult::Lifetime(ident, is_raw))
                 } else {
                     Err(self.dcx().create_err(UnexpectedNonterminal::Lifetime {
                         span: self.token.span,

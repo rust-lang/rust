@@ -1,5 +1,5 @@
 use clippy_config::Conf;
-use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -92,27 +92,30 @@ impl SemicolonBlock {
             semi_span,
             "consider moving the `;` inside the block for consistent formatting",
             |diag| {
-                multispan_sugg_with_applicability(
-                    diag,
+                diag.multipart_suggestion(
                     "put the `;` here",
+                    vec![(remove_span, String::new()), (insert_span, ";".to_owned())],
                     Applicability::MachineApplicable,
-                    [(remove_span, String::new()), (insert_span, ";".to_owned())],
                 );
             },
         );
     }
 
-    fn semicolon_outside_block(
-        &self,
-        cx: &LateContext<'_>,
-        block: &Block<'_>,
-        tail_stmt_expr: &Expr<'_>,
-        semi_span: Span,
-    ) {
+    fn semicolon_outside_block(&self, cx: &LateContext<'_>, block: &Block<'_>, tail_stmt_expr: &Expr<'_>) {
         let insert_span = block.span.with_lo(block.span.hi());
-        // account for macro calls
-        let semi_span = cx.sess().source_map().stmt_span(semi_span, block.span);
-        let remove_span = semi_span.with_lo(tail_stmt_expr.span.source_callsite().hi());
+
+        // For macro call semicolon statements (`mac!();`), the statement's span does not actually
+        // include the semicolon itself, so use `mac_call_stmt_semi_span`, which finds the semicolon
+        // based on a source snippet.
+        // (Does not use `stmt_span` as that requires `.from_expansion()` to return true,
+        // which is not the case for e.g. `line!();` and `asm!();`)
+        let Some(remove_span) = cx
+            .sess()
+            .source_map()
+            .mac_call_stmt_semi_span(tail_stmt_expr.span.source_callsite())
+        else {
+            return;
+        };
 
         if self.semicolon_outside_block_ignore_multiline && get_line(cx, remove_span) != get_line(cx, insert_span) {
             return;
@@ -124,11 +127,10 @@ impl SemicolonBlock {
             block.span,
             "consider moving the `;` outside the block for consistent formatting",
             |diag| {
-                multispan_sugg_with_applicability(
-                    diag,
+                diag.multipart_suggestion(
                     "put the `;` here",
+                    vec![(remove_span, String::new()), (insert_span, ";".to_owned())],
                     Applicability::MachineApplicable,
-                    [(remove_span, String::new()), (insert_span, ";".to_owned())],
                 );
             },
         );
@@ -152,13 +154,12 @@ impl LateLintPass<'_> for SemicolonBlock {
                 };
                 let &Stmt {
                     kind: StmtKind::Semi(expr),
-                    span,
                     ..
                 } = stmt
                 else {
                     return;
                 };
-                self.semicolon_outside_block(cx, block, expr, span);
+                self.semicolon_outside_block(cx, block, expr);
             },
             StmtKind::Semi(Expr {
                 kind: ExprKind::Block(block @ Block { expr: Some(tail), .. }, _),

@@ -11,13 +11,30 @@ use std::str::FromStr;
 use std::{env, process};
 
 use bootstrap::{
-    find_recent_config_change_ids, human_readable_changes, t, Build, Config, Subcommand,
-    CONFIG_CHANGE_HISTORY,
+    Build, CONFIG_CHANGE_HISTORY, Config, Flags, Subcommand, find_recent_config_change_ids,
+    human_readable_changes, t,
 };
+use build_helper::ci::CiEnv;
+#[cfg(feature = "tracing")]
+use tracing::*;
+#[cfg(feature = "tracing")]
+use tracing_subscriber::EnvFilter;
+#[cfg(feature = "tracing")]
+use tracing_subscriber::prelude::*;
 
+#[cfg_attr(feature = "tracing", instrument(level = "trace", name = "main"))]
 fn main() {
+    #[cfg(feature = "tracing")]
+    setup_tracing();
+
     let args = env::args().skip(1).collect::<Vec<_>>();
-    let config = Config::parse(&args);
+
+    if Flags::try_parse_verbose_help(&args) {
+        return;
+    }
+
+    let flags = Flags::parse(&args);
+    let config = Config::parse(flags);
 
     let mut build_lock;
     let _build_lock_guard;
@@ -26,7 +43,7 @@ fn main() {
         // Display PID of process holding the lock
         // PID will be stored in a lock file
         let lock_path = config.out.join("lock");
-        let pid = fs::read_to_string(&lock_path).unwrap_or_default();
+        let pid = fs::read_to_string(&lock_path);
 
         build_lock = fd_lock::RwLock::new(t!(fs::OpenOptions::new()
             .write(true)
@@ -40,7 +57,11 @@ fn main() {
             }
             err => {
                 drop(err);
-                println!("WARNING: build directory locked by process {pid}, waiting for lock");
+                if let Ok(pid) = pid {
+                    println!("WARNING: build directory locked by process {pid}, waiting for lock");
+                } else {
+                    println!("WARNING: build directory locked, waiting for lock");
+                }
                 let mut lock = t!(build_lock.write());
                 t!(lock.write(process::id().to_string().as_ref()));
                 lock
@@ -48,9 +69,12 @@ fn main() {
         };
     }
 
-    // check_version warnings are not printed during setup
-    let changelog_suggestion =
-        if matches!(config.cmd, Subcommand::Setup { .. }) { None } else { check_version(&config) };
+    // check_version warnings are not printed during setup, or during CI
+    let changelog_suggestion = if matches!(config.cmd, Subcommand::Setup { .. }) || CiEnv::is_ci() {
+        None
+    } else {
+        check_version(&config)
+    };
 
     // NOTE: Since `./configure` generates a `config.toml`, distro maintainers will see the
     // changelog warning, not the `x.py setup` message.
@@ -85,7 +109,7 @@ fn main() {
     // HACK: Since the commit script uses hard links, we can't actually tell if it was installed by x.py setup or not.
     // We could see if it's identical to src/etc/pre-push.sh, but pre-push may have been modified in the meantime.
     // Instead, look for this comment, which is almost certainly not in any custom hook.
-    if fs::read_to_string(pre_commit).map_or(false, |contents| {
+    if fs::read_to_string(pre_commit).is_ok_and(|contents| {
         contents.contains("https://github.com/rust-lang/rust/issues/77620#issuecomment-705144570")
     }) {
         println!(
@@ -172,4 +196,29 @@ fn check_version(config: &Config) -> Option<String> {
     };
 
     Some(msg)
+}
+
+// # Note on `tracing` usage in bootstrap
+//
+// Due to the conditional compilation via the `tracing` cargo feature, this means that `tracing`
+// usages in bootstrap need to be also gated behind the `tracing` feature:
+//
+// - `tracing` macros (like `trace!`) and anything from `tracing`, `tracing_subscriber` and
+//   `tracing-tree` will need to be gated by `#[cfg(feature = "tracing")]`.
+// - `tracing`'s `#[instrument(..)]` macro will need to be gated like `#![cfg_attr(feature =
+//   "tracing", instrument(..))]`.
+#[cfg(feature = "tracing")]
+fn setup_tracing() {
+    let filter = EnvFilter::from_env("BOOTSTRAP_TRACING");
+    let layer = tracing_tree::HierarchicalLayer::default()
+        .with_writer(std::io::stderr)
+        .with_ansi(true)
+        .with_targets(true)
+        .with_bracketed_fields(true)
+        .with_indent_amount(2)
+        .with_indent_lines(true);
+    let subscriber = tracing_subscriber::registry().with(filter).with(layer);
+
+    tracing::subscriber::set_global_default(subscriber).unwrap();
+    trace!("tracing subscriber setup");
 }

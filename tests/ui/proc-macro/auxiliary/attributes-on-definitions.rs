@@ -1,10 +1,5 @@
-//@ force-host
-//@ no-prefer-dynamic
-
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
-
-#![crate_type = "proc-macro"]
 
 extern crate proc_macro;
 use proc_macro::*;

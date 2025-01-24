@@ -1,10 +1,13 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 //@compile-flags: -Zmiri-strict-provenance
-#![feature(strict_provenance, strict_provenance_atomic_ptr)]
-use std::sync::atomic::{
-    compiler_fence, fence, AtomicBool, AtomicIsize, AtomicPtr, AtomicU64, Ordering::*,
-};
+
+#![feature(strict_provenance_atomic_ptr)]
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
+use std::sync::atomic::Ordering::*;
+use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicPtr, AtomicU64, compiler_fence, fence};
 
 fn main() {
     atomic_bool();

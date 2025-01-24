@@ -19,7 +19,7 @@ fi
 if [[ "${DEPLOY-0}" -eq "1" ]] || [[ "${DEPLOY_ALT-0}" -eq "1" ]]; then
     dist_dir="${build_dir}/dist"
     rm -rf "${dist_dir}/doc"
-    cp -r "${dist_dir}"/* "${upload_dir}"
+    mv "${dist_dir}"/* "${upload_dir}"
 fi
 
 # CPU usage statistics.
@@ -55,7 +55,7 @@ then
   echo "# CI artifacts" >> "${GITHUB_STEP_SUMMARY}"
 
   for filename in "${upload_dir}"/*.xz; do
-    filename=`basename "${filename}"`
+    filename=$(basename "${filename}")
     echo "- [${filename}](${access_url}/${filename})" >> "${GITHUB_STEP_SUMMARY}"
   done
 fi

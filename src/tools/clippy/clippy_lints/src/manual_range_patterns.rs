@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, PatKind, RangeEnd, UnOp};
+use rustc_hir::{PatExpr, PatExprKind, PatKind, RangeEnd};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -38,14 +38,13 @@ declare_clippy_lint! {
 }
 declare_lint_pass!(ManualRangePatterns => [MANUAL_RANGE_PATTERNS]);
 
-fn expr_as_i128(expr: &Expr<'_>) -> Option<i128> {
-    if let ExprKind::Unary(UnOp::Neg, expr) = expr.kind {
-        expr_as_i128(expr).map(|num| -num)
-    } else if let ExprKind::Lit(lit) = expr.kind
+fn expr_as_i128(expr: &PatExpr<'_>) -> Option<i128> {
+    if let PatExprKind::Lit { lit, negated } = expr.kind
         && let LitKind::Int(num, _) = lit.node
     {
         // Intentionally not handling numbers greater than i128::MAX (for u128 literals) for now.
-        num.get().try_into().ok()
+        let n = i128::try_from(num.get()).ok()?;
+        Some(if negated { -n } else { n })
     } else {
         None
     }
@@ -58,7 +57,7 @@ struct Num {
 }
 
 impl Num {
-    fn new(expr: &Expr<'_>) -> Option<Self> {
+    fn new(expr: &PatExpr<'_>) -> Option<Self> {
         Some(Self {
             val: expr_as_i128(expr)?,
             span: expr.span,
@@ -77,9 +76,10 @@ impl Num {
 impl LateLintPass<'_> for ManualRangePatterns {
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &'_ rustc_hir::Pat<'_>) {
         // a pattern like 1 | 2 seems fine, lint if there are at least 3 alternatives
-        // or at least one range
+        // or more then one range (exclude triggering on stylistic using OR with one element
+        // like described https://github.com/rust-lang/rust-clippy/issues/11825)
         if let PatKind::Or(pats) = pat.kind
-            && (pats.len() >= 3 || pats.iter().any(|p| matches!(p.kind, PatKind::Range(..))))
+            && (pats.len() >= 3 || (pats.len() > 1 && pats.iter().any(|p| matches!(p.kind, PatKind::Range(..)))))
             && !in_external_macro(cx.sess(), pat.span)
         {
             let mut min = Num::dummy(i128::MAX);
@@ -89,7 +89,7 @@ impl LateLintPass<'_> for ManualRangePatterns {
             let mut ranges_found = Vec::new();
 
             for pat in pats {
-                if let PatKind::Lit(lit) = pat.kind
+                if let PatKind::Expr(lit) = pat.kind
                     && let Some(num) = Num::new(lit)
                 {
                     numbers_found.insert(num.val);
@@ -143,8 +143,8 @@ impl LateLintPass<'_> for ManualRangePatterns {
                 pat.span,
                 "this OR pattern can be rewritten using a range",
                 |diag| {
-                    if let Some(min) = snippet_opt(cx, min.span)
-                        && let Some(max) = snippet_opt(cx, max.span)
+                    if let Some(min) = min.span.get_source_text(cx)
+                        && let Some(max) = max.span.get_source_text(cx)
                     {
                         diag.span_suggestion(
                             pat.span,

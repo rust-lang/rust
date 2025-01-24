@@ -5,7 +5,7 @@
 // whether it can make a direct call instead of the indirect call.
 // See https://github.com/rust-lang/rust/pull/66631
 
-//@ needs-profiler-support
+//@ needs-profiler-runtime
 // Reason: llvm_profdata is used
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
@@ -29,5 +29,8 @@ fn main() {
         .codegen_units(1)
         .emit("llvm-ir")
         .run();
-    llvm_filecheck().patterns("filecheck-patterns.txt").stdin(rfs::read("interesting.ll")).run();
+    llvm_filecheck()
+        .patterns("filecheck-patterns.txt")
+        .stdin_buf(rfs::read("interesting.ll"))
+        .run();
 }

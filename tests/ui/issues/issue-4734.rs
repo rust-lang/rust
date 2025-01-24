@@ -3,7 +3,8 @@
 // Ensures that destructors are run for expressions of the form "e;" where
 // `e` is a type which requires a destructor.
 
-
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
 #![allow(path_statements)]
 
 struct A { n: isize }

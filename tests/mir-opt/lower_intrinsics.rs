@@ -197,7 +197,7 @@ pub fn with_overflow(a: i32, b: i32) {
 pub fn read_via_copy_primitive(r: &i32) -> i32 {
     // CHECK-LABEL: fn read_via_copy_primitive(
     // CHECK: [[tmp:_.*]] = &raw const (*_1);
-    // CHECK: _0 = (*[[tmp]]);
+    // CHECK: _0 = copy (*[[tmp]]);
     // CHECK: return;
 
     unsafe { core::intrinsics::read_via_copy(r) }
@@ -207,7 +207,7 @@ pub fn read_via_copy_primitive(r: &i32) -> i32 {
 pub fn read_via_copy_uninhabited(r: &Never) -> Never {
     // CHECK-LABEL: fn read_via_copy_uninhabited(
     // CHECK: [[tmp:_.*]] = &raw const (*_1);
-    // CHECK: _0 = (*[[tmp]]);
+    // CHECK: _0 = copy (*[[tmp]]);
     // CHECK: unreachable;
 
     unsafe { core::intrinsics::read_via_copy(r) }

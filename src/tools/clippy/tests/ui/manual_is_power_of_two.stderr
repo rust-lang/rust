@@ -1,0 +1,41 @@
+error: manually reimplementing `is_power_of_two`
+  --> tests/ui/manual_is_power_of_two.rs:6:13
+   |
+LL |     let _ = a.count_ones() == 1;
+   |             ^^^^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `a.is_power_of_two()`
+   |
+   = note: `-D clippy::manual-is-power-of-two` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_is_power_of_two)]`
+
+error: manually reimplementing `is_power_of_two`
+  --> tests/ui/manual_is_power_of_two.rs:7:13
+   |
+LL |     let _ = a & (a - 1) == 0;
+   |             ^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `a.is_power_of_two()`
+
+error: manually reimplementing `is_power_of_two`
+  --> tests/ui/manual_is_power_of_two.rs:10:13
+   |
+LL |     let _ = 1 == a.count_ones();
+   |             ^^^^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `a.is_power_of_two()`
+
+error: manually reimplementing `is_power_of_two`
+  --> tests/ui/manual_is_power_of_two.rs:11:13
+   |
+LL |     let _ = (a - 1) & a == 0;
+   |             ^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `a.is_power_of_two()`
+
+error: manually reimplementing `is_power_of_two`
+  --> tests/ui/manual_is_power_of_two.rs:12:13
+   |
+LL |     let _ = 0 == a & (a - 1);
+   |             ^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `a.is_power_of_two()`
+
+error: manually reimplementing `is_power_of_two`
+  --> tests/ui/manual_is_power_of_two.rs:13:13
+   |
+LL |     let _ = 0 == (a - 1) & a;
+   |             ^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `a.is_power_of_two()`
+
+error: aborting due to 6 previous errors
+

@@ -1,4 +1,5 @@
 //@ check-pass
+//@ reference: attributes.diagnostic.namespace.unknown-invalid-syntax
 #[diagnostic::non_existing_attribute]
 //~^WARN unknown diagnostic attribute
 pub trait Bar {

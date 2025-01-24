@@ -4,7 +4,6 @@
 //@ compile-flags: -C llvm-args=--x86-asm-syntax=intel
 //@ compile-flags: -C symbol-mangling-version=v0
 
-#![feature(asm_const)]
 #![crate_type = "rlib"]
 
 use std::arch::global_asm;

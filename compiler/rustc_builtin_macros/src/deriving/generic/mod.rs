@@ -178,19 +178,18 @@ use std::cell::RefCell;
 use std::ops::Not;
 use std::{iter, vec};
 
-use rustc_ast::ptr::P;
-use rustc_ast::{
-    self as ast, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
-    Mutability, PatKind, VariantData,
-};
-use rustc_attr as attr;
-use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
-use thin_vec::{thin_vec, ThinVec};
-use ty::{Bounds, Path, Ref, Self_, Ty};
 pub(crate) use StaticFields::*;
 pub(crate) use SubstructureFields::*;
+use rustc_ast::ptr::P;
+use rustc_ast::{
+    self as ast, AnonConst, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind,
+    Generics, Mutability, PatKind, VariantData,
+};
+use rustc_attr_parsing as attr;
+use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use thin_vec::{ThinVec, thin_vec};
+use ty::{Bounds, Path, Ref, Self_, Ty};
 
 use crate::{deriving, errors};
 
@@ -296,7 +295,7 @@ pub(crate) enum StaticFields {
     /// Tuple and unit structs/enum variants like this.
     Unnamed(Vec<Span>, IsTuple),
     /// Normal structs/struct variants.
-    Named(Vec<(Ident, Span)>),
+    Named(Vec<(Ident, Span, Option<AnonConst>)>),
 }
 
 /// A summary of the possible sets of fields.
@@ -351,15 +350,15 @@ struct TypeParameter {
 pub(crate) struct BlockOrExpr(ThinVec<ast::Stmt>, Option<P<Expr>>);
 
 impl BlockOrExpr {
-    pub fn new_stmts(stmts: ThinVec<ast::Stmt>) -> BlockOrExpr {
+    pub(crate) fn new_stmts(stmts: ThinVec<ast::Stmt>) -> BlockOrExpr {
         BlockOrExpr(stmts, None)
     }
 
-    pub fn new_expr(expr: P<Expr>) -> BlockOrExpr {
+    pub(crate) fn new_expr(expr: P<Expr>) -> BlockOrExpr {
         BlockOrExpr(ThinVec::new(), Some(expr))
     }
 
-    pub fn new_mixed(stmts: ThinVec<ast::Stmt>, expr: Option<P<Expr>>) -> BlockOrExpr {
+    pub(crate) fn new_mixed(stmts: ThinVec<ast::Stmt>, expr: Option<P<Expr>>) -> BlockOrExpr {
         BlockOrExpr(stmts, expr)
     }
 
@@ -378,8 +377,8 @@ impl BlockOrExpr {
                 None => cx.expr_block(cx.block(span, ThinVec::new())),
                 Some(expr) => expr,
             }
-        } else if self.0.len() == 1
-            && let ast::StmtKind::Expr(expr) = &self.0[0].kind
+        } else if let [stmt] = self.0.as_slice()
+            && let ast::StmtKind::Expr(expr) = &stmt.kind
             && self.1.is_none()
         {
             // There's only a single statement expression. Pull it out.
@@ -461,7 +460,7 @@ fn find_type_parameters(
 }
 
 impl<'a> TraitDef<'a> {
-    pub fn expand(
+    pub(crate) fn expand(
         self,
         cx: &ExtCtxt<'_>,
         mitem: &ast::MetaItem,
@@ -471,7 +470,7 @@ impl<'a> TraitDef<'a> {
         self.expand_ext(cx, mitem, item, push, false);
     }
 
-    pub fn expand_ext(
+    pub(crate) fn expand_ext(
         self,
         cx: &ExtCtxt<'_>,
         mitem: &ast::MetaItem,
@@ -680,29 +679,20 @@ impl<'a> TraitDef<'a> {
                     param_clone
                 }
             })
+            .map(|mut param| {
+                // Remove all attributes, because there might be helper attributes
+                // from other macros that will not be valid in the expanded implementation.
+                param.attrs.clear();
+                param
+            })
             .collect();
 
         // and similarly for where clauses
         where_clause.predicates.extend(generics.where_clause.predicates.iter().map(|clause| {
-            match clause {
-                ast::WherePredicate::BoundPredicate(wb) => {
-                    let span = wb.span.with_ctxt(ctxt);
-                    ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                        span,
-                        ..wb.clone()
-                    })
-                }
-                ast::WherePredicate::RegionPredicate(wr) => {
-                    let span = wr.span.with_ctxt(ctxt);
-                    ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
-                        span,
-                        ..wr.clone()
-                    })
-                }
-                ast::WherePredicate::EqPredicate(we) => {
-                    let span = we.span.with_ctxt(ctxt);
-                    ast::WherePredicate::EqPredicate(ast::WhereEqPredicate { span, ..we.clone() })
-                }
+            ast::WherePredicate {
+                kind: clause.kind.clone(),
+                id: ast::DUMMY_NODE_ID,
+                span: clause.span.with_ctxt(ctxt),
             }
         }));
 
@@ -751,13 +741,14 @@ impl<'a> TraitDef<'a> {
 
                     if !bounds.is_empty() {
                         let predicate = ast::WhereBoundPredicate {
-                            span: self.span,
                             bound_generic_params: field_ty_param.bound_generic_params,
                             bounded_ty: field_ty_param.ty,
                             bounds,
                         };
 
-                        let predicate = ast::WherePredicate::BoundPredicate(predicate);
+                        let kind = ast::WherePredicateKind::BoundPredicate(predicate);
+                        let predicate =
+                            ast::WherePredicate { kind, id: ast::DUMMY_NODE_ID, span: self.span };
                         where_clause.predicates.push(predicate);
                     }
                 }
@@ -1228,12 +1219,10 @@ impl<'a> MethodDef<'a> {
 
             let discr_let_stmts: ThinVec<_> = iter::zip(&discr_idents, &selflike_args)
                 .map(|(&ident, selflike_arg)| {
-                    let variant_value = deriving::call_intrinsic(
-                        cx,
-                        span,
-                        sym::discriminant_value,
-                        thin_vec![selflike_arg.clone()],
-                    );
+                    let variant_value =
+                        deriving::call_intrinsic(cx, span, sym::discriminant_value, thin_vec![
+                            selflike_arg.clone()
+                        ]);
                     cx.stmt_let(span, false, ident, variant_value)
                 })
                 .collect();
@@ -1273,7 +1262,7 @@ impl<'a> MethodDef<'a> {
                     }
                     FieldlessVariantsStrategy::Default => (),
                 }
-            } else if variants.len() == 1 {
+            } else if let [variant] = variants.as_slice() {
                 // If there is a single variant, we don't need an operation on
                 // the discriminant(s). Just use the most degenerate result.
                 return self.call_substructure_method(
@@ -1281,7 +1270,7 @@ impl<'a> MethodDef<'a> {
                     trait_,
                     type_ident,
                     nonselflike_args,
-                    &EnumMatching(0, &variants[0], Vec::new()),
+                    &EnumMatching(0, variant, Vec::new()),
                 );
             }
         }
@@ -1445,7 +1434,7 @@ impl<'a> TraitDef<'a> {
         for field in struct_def.fields() {
             let sp = field.span.with_ctxt(self.span.ctxt());
             match field.ident {
-                Some(ident) => named_idents.push((ident, sp)),
+                Some(ident) => named_idents.push((ident, sp, field.default.clone())),
                 _ => just_spans.push(sp),
             }
         }

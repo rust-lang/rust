@@ -1,12 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{fn_def_id, is_from_proc_macro, is_lint_allowed};
-use hir::intravisit::{walk_expr, Visitor};
-use hir::{Expr, ExprKind, FnRetTy, FnSig, Node};
+use hir::intravisit::{Visitor, walk_expr};
+use hir::{Expr, ExprKind, FnRetTy, FnSig, Node, TyKind};
 use rustc_ast::Label;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
+use rustc_span::sym;
 
 use super::INFINITE_LOOP;
 
@@ -25,13 +26,7 @@ pub(super) fn check<'tcx>(
         return;
     };
     // Or, its parent function is already returning `Never`
-    if matches!(
-        parent_fn_ret,
-        FnRetTy::Return(hir::Ty {
-            kind: hir::TyKind::Never,
-            ..
-        })
-    ) {
+    if is_never_return(parent_fn_ret) {
         return;
     }
 
@@ -42,8 +37,9 @@ pub(super) fn check<'tcx>(
     let mut loop_visitor = LoopVisitor {
         cx,
         label,
-        is_finite: false,
+        inner_labels: label.into_iter().collect(),
         loop_depth: 0,
+        is_finite: false,
     };
     loop_visitor.visit_block(loop_block);
 
@@ -68,8 +64,22 @@ pub(super) fn check<'tcx>(
 fn get_parent_fn_ret_ty<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<FnRetTy<'tcx>> {
     for (_, parent_node) in cx.tcx.hir().parent_iter(expr.hir_id) {
         match parent_node {
+            // Skip `Coroutine` closures, these are the body of `async fn`, not async closures.
+            // This is because we still need to backtrack one parent node to get the `OpaqueDef` ty.
+            Node::Expr(Expr {
+                kind:
+                    ExprKind::Closure(hir::Closure {
+                        kind: hir::ClosureKind::Coroutine(_),
+                        ..
+                    }),
+                ..
+            }) => (),
             Node::Item(hir::Item {
-                kind: hir::ItemKind::Fn(FnSig { decl, .. }, _, _),
+                kind:
+                    hir::ItemKind::Fn {
+                        sig: FnSig { decl, .. },
+                        ..
+                    },
                 ..
             })
             | Node::TraitItem(hir::TraitItem {
@@ -93,6 +103,7 @@ fn get_parent_fn_ret_ty<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option
 struct LoopVisitor<'hir, 'tcx> {
     cx: &'hir LateContext<'tcx>,
     label: Option<Label>,
+    inner_labels: Vec<Label>,
     loop_depth: usize,
     is_finite: bool,
 }
@@ -108,11 +119,24 @@ impl<'hir> Visitor<'hir> for LoopVisitor<'hir, '_> {
                     self.is_finite = true;
                 }
             },
+            ExprKind::Continue(hir::Destination { label, .. }) => {
+                // Check whether we are leaving this loop by continuing into an outer loop
+                // whose label we did not encounter.
+                if label.is_some_and(|label| !self.inner_labels.contains(&label)) {
+                    self.is_finite = true;
+                }
+            },
             ExprKind::Ret(..) => self.is_finite = true,
-            ExprKind::Loop(..) => {
+            ExprKind::Loop(_, label, _, _) => {
+                if let Some(label) = label {
+                    self.inner_labels.push(*label);
+                }
                 self.loop_depth += 1;
                 walk_expr(self, ex);
-                self.loop_depth = self.loop_depth.saturating_sub(1);
+                self.loop_depth -= 1;
+                if label.is_some() {
+                    self.inner_labels.pop();
+                }
             },
             _ => {
                 // Calls to a function that never return
@@ -126,5 +150,43 @@ impl<'hir> Visitor<'hir> for LoopVisitor<'hir, '_> {
                 walk_expr(self, ex);
             },
         }
+    }
+}
+
+/// Return `true` if the given [`FnRetTy`] is never (!).
+///
+/// Note: This function also take care of return type of async fn,
+/// as the actual type is behind an [`OpaqueDef`](TyKind::OpaqueDef).
+fn is_never_return(ret_ty: FnRetTy<'_>) -> bool {
+    let FnRetTy::Return(hir_ty) = ret_ty else { return false };
+
+    match hir_ty.kind {
+        TyKind::Never => true,
+        TyKind::OpaqueDef(hir::OpaqueTy {
+            origin: hir::OpaqueTyOrigin::AsyncFn { .. },
+            bounds,
+            ..
+        }) => {
+            if let Some(trait_ref) = bounds.iter().find_map(|b| b.trait_ref())
+                && let Some(segment) = trait_ref
+                    .path
+                    .segments
+                    .iter()
+                    .find(|seg| seg.ident.name == sym::future_trait)
+                && let Some(args) = segment.args
+                && let Some(cst_kind) = args
+                    .constraints
+                    .iter()
+                    .find_map(|cst| (cst.ident.name == sym::Output).then_some(cst.kind))
+                && let hir::AssocItemConstraintKind::Equality {
+                    term: hir::Term::Ty(ty),
+                } = cst_kind
+            {
+                matches!(ty.kind, TyKind::Never)
+            } else {
+                false
+            }
+        },
+        _ => false,
     }
 }

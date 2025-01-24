@@ -1,5 +1,5 @@
-#[allow(clippy::unnecessary_operation)]
-#[allow(clippy::implicit_clone)]
+#![allow(clippy::unnecessary_operation)]
+#![allow(clippy::implicit_clone)]
 
 fn main() {
     let x = &Baz;

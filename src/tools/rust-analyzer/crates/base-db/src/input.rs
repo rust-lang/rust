@@ -288,6 +288,11 @@ pub struct CrateData {
     /// The cfg options that could be used by the crate
     pub potential_cfg_options: Option<Arc<CfgOptions>>,
     pub env: Env,
+    /// The dependencies of this crate.
+    ///
+    /// Note that this may contain more dependencies than the crate actually uses.
+    /// A common example is the test crate which is included but only actually is active when
+    /// declared in source via `extern crate test`.
     pub dependencies: Vec<Dependency>,
     pub origin: CrateOrigin,
     pub is_proc_macro: bool,
@@ -374,37 +379,6 @@ impl CrateGraph {
         self.arena.alloc(data)
     }
 
-    /// Remove the crate from crate graph. If any crates depend on this crate, the dependency would be replaced
-    /// with the second input.
-    pub fn remove_and_replace(
-        &mut self,
-        id: CrateId,
-        replace_with: CrateId,
-    ) -> Result<(), CyclicDependenciesError> {
-        for (x, data) in self.arena.iter() {
-            if x == id {
-                continue;
-            }
-            for edge in &data.dependencies {
-                if edge.crate_id == id {
-                    self.check_cycle_after_dependency(edge.crate_id, replace_with)?;
-                }
-            }
-        }
-        // if everything was ok, start to replace
-        for (x, data) in self.arena.iter_mut() {
-            if x == id {
-                continue;
-            }
-            for edge in &mut data.dependencies {
-                if edge.crate_id == id {
-                    edge.crate_id = replace_with;
-                }
-            }
-        }
-        Ok(())
-    }
-
     pub fn add_dep(
         &mut self,
         from: CrateId,
@@ -412,26 +386,17 @@ impl CrateGraph {
     ) -> Result<(), CyclicDependenciesError> {
         let _p = tracing::info_span!("add_dep").entered();
 
-        self.check_cycle_after_dependency(from, dep.crate_id)?;
-
-        self.arena[from].add_dep(dep);
-        Ok(())
-    }
-
-    /// Check if adding a dep from `from` to `to` creates a cycle. To figure
-    /// that out, look for a  path in the *opposite* direction, from `to` to
-    /// `from`.
-    fn check_cycle_after_dependency(
-        &self,
-        from: CrateId,
-        to: CrateId,
-    ) -> Result<(), CyclicDependenciesError> {
-        if let Some(path) = self.find_path(&mut FxHashSet::default(), to, from) {
+        // Check if adding a dep from `from` to `to` creates a cycle. To figure
+        // that out, look for a  path in the *opposite* direction, from `to` to
+        // `from`.
+        if let Some(path) = self.find_path(&mut FxHashSet::default(), dep.crate_id, from) {
             let path = path.into_iter().map(|it| (it, self[it].display_name.clone())).collect();
             let err = CyclicDependenciesError { path };
-            assert!(err.from().0 == from && err.to().0 == to);
+            assert!(err.from().0 == from && err.to().0 == dep.crate_id);
             return Err(err);
         }
+
+        self.arena[from].add_dep(dep);
         Ok(())
     }
 
@@ -525,27 +490,24 @@ impl CrateGraph {
         }
     }
 
-    pub fn sort_deps(&mut self) {
-        self.arena
-            .iter_mut()
-            .for_each(|(_, data)| data.dependencies.sort_by_key(|dep| dep.crate_id));
-    }
-
-    /// Extends this crate graph by adding a complete disjoint second crate
+    /// Extends this crate graph by adding a complete second crate
     /// graph and adjust the ids in the [`ProcMacroPaths`] accordingly.
     ///
     /// This will deduplicate the crates of the graph where possible.
-    /// Note that for deduplication to fully work, `self`'s crate dependencies must be sorted by crate id.
-    /// If the crate dependencies were sorted, the resulting graph from this `extend` call will also
-    /// have the crate dependencies sorted.
+    /// Furthermore dependencies are sorted by crate id to make deduplication easier.
     ///
-    /// Returns a mapping from `other`'s crate ids to the new crate ids in `self`.
+    /// Returns a map mapping `other`'s IDs to the new IDs in `self`.
     pub fn extend(
         &mut self,
         mut other: CrateGraph,
         proc_macros: &mut ProcMacroPaths,
-        merge: impl Fn((CrateId, &mut CrateData), (CrateId, &CrateData)) -> bool,
     ) -> FxHashMap<CrateId, CrateId> {
+        // Sorting here is a bit pointless because the input is likely already sorted.
+        // However, the overhead is small and it makes the `extend` method harder to misuse.
+        self.arena
+            .iter_mut()
+            .for_each(|(_, data)| data.dependencies.sort_by_key(|dep| dep.crate_id));
+
         let m = self.len();
         let topo = other.crates_in_topological_order();
         let mut id_map: FxHashMap<CrateId, CrateId> = FxHashMap::default();
@@ -554,20 +516,14 @@ impl CrateGraph {
 
             crate_data.dependencies.iter_mut().for_each(|dep| dep.crate_id = id_map[&dep.crate_id]);
             crate_data.dependencies.sort_by_key(|dep| dep.crate_id);
-            let res = self
-                .arena
-                .iter_mut()
-                .take(m)
-                .find_map(|(id, data)| merge((id, data), (topo, crate_data)).then_some(id));
 
-            let new_id =
-                if let Some(res) = res { res } else { self.arena.alloc(crate_data.clone()) };
+            let find = self.arena.iter().take(m).find_map(|(k, v)| (v == crate_data).then_some(k));
+            let new_id = find.unwrap_or_else(|| self.arena.alloc(crate_data.clone()));
             id_map.insert(topo, new_id);
         }
 
         *proc_macros =
             mem::take(proc_macros).into_iter().map(|(id, macros)| (id_map[&id], macros)).collect();
-
         id_map
     }
 
@@ -594,29 +550,6 @@ impl CrateGraph {
         }
 
         None
-    }
-
-    // Work around for https://github.com/rust-lang/rust-analyzer/issues/6038.
-    // As hacky as it gets.
-    pub fn patch_cfg_if(&mut self) -> bool {
-        // we stupidly max by version in an attempt to have all duplicated std's depend on the same cfg_if so that deduplication still works
-        let cfg_if =
-            self.hacky_find_crate("cfg_if").max_by_key(|&it| self.arena[it].version.clone());
-        let std = self.hacky_find_crate("std").next();
-        match (cfg_if, std) {
-            (Some(cfg_if), Some(std)) => {
-                self.arena[cfg_if].dependencies.clear();
-                self.arena[std]
-                    .dependencies
-                    .push(Dependency::new(CrateName::new("cfg_if").unwrap(), cfg_if));
-                true
-            }
-            _ => false,
-        }
-    }
-
-    fn hacky_find_crate<'a>(&'a self, display_name: &'a str) -> impl Iterator<Item = CrateId> + 'a {
-        self.iter().filter(move |it| self[*it].display_name.as_deref() == Some(display_name))
     }
 
     /// Removes all crates from this crate graph except for the ones in `to_keep` and fixes up the dependencies.
@@ -690,6 +623,14 @@ impl Env {
     pub fn extend_from_other(&mut self, other: &Env) {
         self.entries.extend(other.entries.iter().map(|(x, y)| (x.to_owned(), y.to_owned())));
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    pub fn insert(&mut self, k: impl Into<String>, v: impl Into<String>) -> Option<String> {
+        self.entries.insert(k.into(), v.into())
+    }
 }
 
 impl From<Env> for Vec<(String, String)> {
@@ -697,6 +638,15 @@ impl From<Env> for Vec<(String, String)> {
         let mut entries: Vec<_> = env.entries.into_iter().collect();
         entries.sort();
         entries
+    }
+}
+
+impl<'a> IntoIterator for &'a Env {
+    type Item = (&'a String, &'a String);
+    type IntoIter = std::collections::hash_map::Iter<'a, String, String>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.entries.iter()
     }
 }
 

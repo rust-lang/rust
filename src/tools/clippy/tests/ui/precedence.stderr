@@ -43,5 +43,29 @@ error: operator precedence can trip the unwary
 LL |     3 & 5 - 2;
    |     ^^^^^^^^^ help: consider parenthesizing your expression: `3 & (5 - 2)`
 
-error: aborting due to 7 previous errors
+error: operator precedence can trip the unwary
+  --> tests/ui/precedence.rs:23:5
+   |
+LL |     0x0F00 & 0x00F0 << 4;
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider parenthesizing your expression: `0x0F00 & (0x00F0 << 4)`
+
+error: operator precedence can trip the unwary
+  --> tests/ui/precedence.rs:24:5
+   |
+LL |     0x0F00 & 0xF000 >> 4;
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider parenthesizing your expression: `0x0F00 & (0xF000 >> 4)`
+
+error: operator precedence can trip the unwary
+  --> tests/ui/precedence.rs:25:5
+   |
+LL |     0x0F00 << 1 ^ 3;
+   |     ^^^^^^^^^^^^^^^ help: consider parenthesizing your expression: `(0x0F00 << 1) ^ 3`
+
+error: operator precedence can trip the unwary
+  --> tests/ui/precedence.rs:26:5
+   |
+LL |     0x0F00 << 1 | 2;
+   |     ^^^^^^^^^^^^^^^ help: consider parenthesizing your expression: `(0x0F00 << 1) | 2`
+
+error: aborting due to 11 previous errors
 

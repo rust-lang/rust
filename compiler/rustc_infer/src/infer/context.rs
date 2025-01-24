@@ -1,27 +1,27 @@
 ///! Definition of `InferCtxtLike` from the librarified type layer.
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::traits::solve::{Goal, NoSolution, SolverMode};
+use rustc_hir::def_id::DefId;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::relate::RelateResult;
+use rustc_middle::ty::relate::combine::PredicateEmittingRelation;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::DUMMY_SP;
-use rustc_type_ir::relate::Relate;
-use rustc_type_ir::InferCtxtLike;
+use rustc_span::{DUMMY_SP, ErrorGuaranteed};
 
-use super::{BoundRegionConversionTime, InferCtxt, SubregionOrigin};
+use super::{BoundRegionConversionTime, InferCtxt, RegionVariableOrigin, SubregionOrigin};
 
-impl<'tcx> InferCtxtLike for InferCtxt<'tcx> {
+impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     type Interner = TyCtxt<'tcx>;
 
     fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
-    fn solver_mode(&self) -> ty::solve::SolverMode {
-        match self.intercrate {
-            true => SolverMode::Coherence,
-            false => SolverMode::Normal,
-        }
+    fn next_trait_solver(&self) -> bool {
+        self.next_trait_solver
+    }
+
+    fn typing_mode(&self) -> ty::TypingMode<'tcx> {
+        self.typing_mode()
     }
 
     fn universe(&self) -> ty::UniverseIndex {
@@ -83,21 +83,12 @@ impl<'tcx> InferCtxtLike for InferCtxt<'tcx> {
         }
     }
 
-    fn opportunistic_resolve_effect_var(&self, vid: ty::EffectVid) -> ty::Const<'tcx> {
-        match self.probe_effect_var(vid) {
-            Some(ct) => ct,
-            None => {
-                ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(self.root_effect_var(vid)))
-            }
-        }
-    }
-
     fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> ty::Region<'tcx> {
         self.inner.borrow_mut().unwrap_region_constraints().opportunistic_resolve_var(self.tcx, vid)
     }
 
-    fn defining_opaque_types(&self) -> &'tcx ty::List<LocalDefId> {
-        self.defining_opaque_types()
+    fn next_region_infer(&self) -> ty::Region<'tcx> {
+        self.next_region_var(RegionVariableOrigin::MiscVariable(DUMMY_SP))
     }
 
     fn next_ty_infer(&self) -> Ty<'tcx> {
@@ -123,7 +114,7 @@ impl<'tcx> InferCtxtLike for InferCtxt<'tcx> {
         )
     }
 
-    fn enter_forall<T: TypeFoldable<TyCtxt<'tcx>> + Copy, U>(
+    fn enter_forall<T: TypeFoldable<TyCtxt<'tcx>>, U>(
         &self,
         value: ty::Binder<'tcx, T>,
         f: impl FnOnce(T) -> U,
@@ -131,28 +122,74 @@ impl<'tcx> InferCtxtLike for InferCtxt<'tcx> {
         self.enter_forall(value, f)
     }
 
-    fn relate<T: Relate<TyCtxt<'tcx>>>(
-        &self,
-        param_env: ty::ParamEnv<'tcx>,
-        lhs: T,
-        variance: ty::Variance,
-        rhs: T,
-    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
-        self.at(&ObligationCause::dummy(), param_env).relate_no_trace(lhs, variance, rhs)
+    fn equate_ty_vids_raw(&self, a: rustc_type_ir::TyVid, b: rustc_type_ir::TyVid) {
+        self.inner.borrow_mut().type_variables().equate(a, b);
     }
 
-    fn eq_structurally_relating_aliases<T: Relate<TyCtxt<'tcx>>>(
+    fn equate_int_vids_raw(&self, a: rustc_type_ir::IntVid, b: rustc_type_ir::IntVid) {
+        self.inner.borrow_mut().int_unification_table().union(a, b);
+    }
+
+    fn equate_float_vids_raw(&self, a: rustc_type_ir::FloatVid, b: rustc_type_ir::FloatVid) {
+        self.inner.borrow_mut().float_unification_table().union(a, b);
+    }
+
+    fn equate_const_vids_raw(&self, a: rustc_type_ir::ConstVid, b: rustc_type_ir::ConstVid) {
+        self.inner.borrow_mut().const_unification_table().union(a, b);
+    }
+
+    fn instantiate_ty_var_raw<R: PredicateEmittingRelation<Self>>(
         &self,
-        param_env: ty::ParamEnv<'tcx>,
-        lhs: T,
-        rhs: T,
-    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
-        self.at(&ObligationCause::dummy(), param_env)
-            .eq_structurally_relating_aliases_no_trace(lhs, rhs)
+        relation: &mut R,
+        target_is_expected: bool,
+        target_vid: rustc_type_ir::TyVid,
+        instantiation_variance: rustc_type_ir::Variance,
+        source_ty: Ty<'tcx>,
+    ) -> RelateResult<'tcx, ()> {
+        self.instantiate_ty_var(
+            relation,
+            target_is_expected,
+            target_vid,
+            instantiation_variance,
+            source_ty,
+        )
+    }
+
+    fn instantiate_int_var_raw(
+        &self,
+        vid: rustc_type_ir::IntVid,
+        value: rustc_type_ir::IntVarValue,
+    ) {
+        self.inner.borrow_mut().int_unification_table().union_value(vid, value);
+    }
+
+    fn instantiate_float_var_raw(
+        &self,
+        vid: rustc_type_ir::FloatVid,
+        value: rustc_type_ir::FloatVarValue,
+    ) {
+        self.inner.borrow_mut().float_unification_table().union_value(vid, value);
+    }
+
+    fn instantiate_const_var_raw<R: PredicateEmittingRelation<Self>>(
+        &self,
+        relation: &mut R,
+        target_is_expected: bool,
+        target_vid: rustc_type_ir::ConstVid,
+        source_ct: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ()> {
+        self.instantiate_const_var(relation, target_is_expected, target_vid, source_ct)
+    }
+
+    fn set_tainted_by_errors(&self, e: ErrorGuaranteed) {
+        self.set_tainted_by_errors(e)
     }
 
     fn shallow_resolve(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.shallow_resolve(ty)
+    }
+    fn shallow_resolve_const(&self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        self.shallow_resolve_const(ct)
     }
 
     fn resolve_vars_if_possible<T>(&self, value: T) -> T
@@ -167,7 +204,19 @@ impl<'tcx> InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn sub_regions(&self, sub: ty::Region<'tcx>, sup: ty::Region<'tcx>) {
-        self.sub_regions(SubregionOrigin::RelateRegionParamBound(DUMMY_SP), sub, sup)
+        self.inner.borrow_mut().unwrap_region_constraints().make_subregion(
+            SubregionOrigin::RelateRegionParamBound(DUMMY_SP, None),
+            sub,
+            sup,
+        );
+    }
+
+    fn equate_regions(&self, a: ty::Region<'tcx>, b: ty::Region<'tcx>) {
+        self.inner.borrow_mut().unwrap_region_constraints().make_eqregion(
+            SubregionOrigin::RelateRegionParamBound(DUMMY_SP, None),
+            a,
+            b,
+        );
     }
 
     fn register_ty_outlives(&self, ty: Ty<'tcx>, r: ty::Region<'tcx>) {

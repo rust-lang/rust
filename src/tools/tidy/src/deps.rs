@@ -1,19 +1,24 @@
 //! Checks the licenses of third-party dependencies.
 
 use std::collections::HashSet;
-use std::fs::read_dir;
+use std::fs::{File, read_dir};
+use std::io::Write;
 use std::path::Path;
 
 use build_helper::ci::CiEnv;
 use cargo_metadata::{Metadata, Package, PackageId};
+
+#[path = "../../../bootstrap/src/utils/proc_macro_deps.rs"]
+mod proc_macro_deps;
 
 /// These are licenses that are allowed for all crates, including the runtime,
 /// rustc, tools, etc.
 #[rustfmt::skip]
 const LICENSES: &[&str] = &[
     // tidy-alphabetical-start
-    "(MIT OR Apache-2.0) AND Unicode-DFS-2016",            // unicode_ident
-    "0BSD OR MIT OR Apache-2.0",                           // adler license
+    "(MIT OR Apache-2.0) AND Unicode-3.0",                 // unicode_ident (1.0.14)
+    "(MIT OR Apache-2.0) AND Unicode-DFS-2016",            // unicode_ident (1.0.12)
+    "0BSD OR MIT OR Apache-2.0",                           // adler2 license
     "0BSD",
     "Apache-2.0 / MIT",
     "Apache-2.0 OR ISC OR MIT",
@@ -24,6 +29,8 @@ const LICENSES: &[&str] = &[
     "BSD-2-Clause OR Apache-2.0 OR MIT",                   // zerocopy
     "ISC",
     "MIT / Apache-2.0",
+    "MIT AND (MIT OR Apache-2.0)",
+    "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)", // compiler-builtins
     "MIT OR Apache-2.0 OR LGPL-2.1-or-later",              // r-efi, r-efi-alloc
     "MIT OR Apache-2.0 OR Zlib",                           // tinyvec_macros
     "MIT OR Apache-2.0",
@@ -64,9 +71,6 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>,
     ),
     // tidy-alphabetical-start
     ("compiler/rustc_codegen_gcc", EXCEPTIONS_GCC, None, &[]),
-    //("library/backtrace", &[], None), // FIXME uncomment once rust-lang/backtrace#562 has been synced back to the rust repo
-    //("library/portable-simd", &[], None), // FIXME uncomment once rust-lang/portable-simd#363 has been synced back to the rust repo
-    //("library/stdarch", EXCEPTIONS_STDARCH, None), // FIXME uncomment once rust-lang/stdarch#1462 has been synced back to the rust repo
     ("src/bootstrap", EXCEPTIONS_BOOTSTRAP, None, &[]),
     ("src/ci/docker/host-x86_64/test-various/uefi_qemu_test", EXCEPTIONS_UEFI_QEMU_TEST, None, &[]),
     ("src/etc/test-float-parse", EXCEPTIONS, None, &[]),
@@ -88,23 +92,19 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>,
 const EXCEPTIONS: ExceptionList = &[
     // tidy-alphabetical-start
     ("ar_archive_writer", "Apache-2.0 WITH LLVM-exception"), // rustc
+    ("arrayref", "BSD-2-Clause"),                            // rustc
+    ("blake3", "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception"),  // rustc
     ("colored", "MPL-2.0"),                                  // rustfmt
+    ("constant_time_eq", "CC0-1.0 OR MIT-0 OR Apache-2.0"),  // rustc
     ("dissimilar", "Apache-2.0"),                            // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
     ("fluent-langneg", "Apache-2.0"),                        // rustc (fluent translations)
-    ("instant", "BSD-3-Clause"),                             // rustc_driver/tracing-subscriber/parking_lot
+    ("foldhash", "Zlib"),                                    // rustc
     ("mdbook", "MPL-2.0"),                                   // mdbook
     ("option-ext", "MPL-2.0"),                               // cargo-miri (via `directories`)
     ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),     // rustc (license is the same as LLVM uses)
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0                       // cargo/... (because of serde)
     ("self_cell", "Apache-2.0"),                             // rustc (fluent translations)
-    ("snap", "BSD-3-Clause"),                                // rustc
-    ("wasm-encoder", "Apache-2.0 WITH LLVM-exception"),      // rustc
-    ("wasm-metadata", "Apache-2.0 WITH LLVM-exception"),     // rustc
-    ("wasmparser", "Apache-2.0 WITH LLVM-exception"),        // rustc
-    ("wast", "Apache-2.0 WITH LLVM-exception"),              // rustc
-    ("wat", "Apache-2.0 WITH LLVM-exception"),               // rustc
-    ("wit-component", "Apache-2.0 WITH LLVM-exception"),     // rustc
-    ("wit-parser", "Apache-2.0 WITH LLVM-exception"),        // rustc
+    ("wasi-preview1-component-adapter-provider", "Apache-2.0 WITH LLVM-exception"), // rustc
     // tidy-alphabetical-end
 ];
 
@@ -119,24 +119,16 @@ const EXCEPTIONS_STDLIB: ExceptionList = &[
     // tidy-alphabetical-end
 ];
 
-// FIXME uncomment once rust-lang/stdarch#1462 lands
-/*
-const EXCEPTIONS_STDARCH: ExceptionList = &[
-    // tidy-alphabetical-start
-    ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
-    ("wasmparser", "Apache-2.0 WITH LLVM-exception"),
-    ("wasmprinter", "Apache-2.0 WITH LLVM-exception"),
-    // tidy-alphabetical-end
-];
-*/
-
 const EXCEPTIONS_CARGO: ExceptionList = &[
     // tidy-alphabetical-start
+    ("arrayref", "BSD-2-Clause"),
     ("bitmaps", "MPL-2.0+"),
+    ("blake3", "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception"),
     ("bytesize", "Apache-2.0"),
     ("ciborium", "Apache-2.0"),
     ("ciborium-io", "Apache-2.0"),
     ("ciborium-ll", "Apache-2.0"),
+    ("constant_time_eq", "CC0-1.0 OR MIT-0 OR Apache-2.0"),
     ("dunce", "CC0-1.0 OR MIT-0 OR Apache-2.0"),
     ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"),
     ("fiat-crypto", "MIT OR Apache-2.0 OR BSD-1-Clause"),
@@ -162,7 +154,6 @@ const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
     ("scip", "Apache-2.0"),
-    ("snap", "BSD-3-Clause"),
     // tidy-alphabetical-end
 ];
 
@@ -192,6 +183,7 @@ const EXCEPTIONS_RUSTBOOK: ExceptionList = &[
 const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     // tidy-alphabetical-start
     ("cranelift-bforest", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-bitset", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen-meta", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen-shared", "Apache-2.0 WITH LLVM-exception"),
@@ -203,7 +195,8 @@ const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     ("cranelift-module", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-native", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-object", "Apache-2.0 WITH LLVM-exception"),
-    ("mach", "BSD-2-Clause"),
+    ("foldhash", "Zlib"),
+    ("mach2", "BSD-2-Clause OR MIT OR Apache-2.0"),
     ("regalloc2", "Apache-2.0 WITH LLVM-exception"),
     ("target-lexicon", "Apache-2.0 WITH LLVM-exception"),
     ("wasmtime-jit-icache-coherence", "Apache-2.0 WITH LLVM-exception"),
@@ -222,7 +215,7 @@ const EXCEPTIONS_BOOTSTRAP: ExceptionList = &[
 ];
 
 const EXCEPTIONS_UEFI_QEMU_TEST: ExceptionList = &[
-    ("r-efi", "MIT OR Apache-2.0 OR LGPL-2.1-or-later"), // LGPL is not acceptible, but we use it under MIT OR Apache-2.0
+    ("r-efi", "MIT OR Apache-2.0 OR LGPL-2.1-or-later"), // LGPL is not acceptable, but we use it under MIT OR Apache-2.0
 ];
 
 /// Placeholder for non-standard license file.
@@ -247,21 +240,24 @@ const PERMITTED_DEPS_LOCATION: &str = concat!(file!(), ":", line!());
 /// rustc. Please check with the compiler team before adding an entry.
 const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
-    "adler",
+    "adler2",
     "ahash",
     "aho-corasick",
     "allocator-api2", // FIXME: only appears in Cargo.lock due to https://github.com/rust-lang/cargo/issues/10801
     "annotate-snippets",
     "anstyle",
     "ar_archive_writer",
+    "arrayref",
     "arrayvec",
     "autocfg",
     "bitflags",
+    "blake3",
     "block-buffer",
     "byteorder", // via ruzstd in object in thorin-dwp
     "cc",
     "cfg-if",
     "cfg_aliases",
+    "constant_time_eq",
     "cpufeatures",
     "crc32fast",
     "crossbeam-channel",
@@ -276,7 +272,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "datafrog",
     "deranged",
     "derive-where",
-    "derive_more",
     "derive_setters",
     "digest",
     "displaydoc",
@@ -295,6 +290,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "fluent-langneg",
     "fluent-syntax",
     "fnv",
+    "foldhash",
     "generic-array",
     "getopts",
     "getrandom",
@@ -316,7 +312,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "intl_pluralrules",
     "itertools",
     "itoa",
-    "jemalloc-sys",
     "jobserver",
     "lazy_static",
     "leb128",
@@ -387,7 +382,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "sharded-slab",
     "shlex",
     "smallvec",
-    "snap",
     "stable_deref_trait",
     "stacker",
     "static_assertions",
@@ -402,6 +396,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "thiserror-impl",
     "thorin-dwp",
     "thread_local",
+    "tikv-jemalloc-sys",
     "time",
     "time-core",
     "time-macros",
@@ -440,6 +435,10 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "winapi-x86_64-pc-windows-gnu",
     "windows",
     "windows-core",
+    "windows-implement",
+    "windows-interface",
+    "windows-result",
+    "windows-strings",
     "windows-sys",
     "windows-targets",
     "windows_aarch64_gnullvm",
@@ -465,7 +464,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
 const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
     "addr2line",
-    "adler",
+    "adler2",
     "allocator-api2",
     "cc",
     "cfg-if",
@@ -486,6 +485,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "rand_core",
     "rand_xorshift",
     "rustc-demangle",
+    "shlex",
     "unicode-width",
     "unwinding",
     "wasi",
@@ -504,13 +504,14 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
 
 const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
-    "ahash",
+    "allocator-api2",
     "anyhow",
     "arbitrary",
     "bitflags",
     "bumpalo",
     "cfg-if",
     "cranelift-bforest",
+    "cranelift-bitset",
     "cranelift-codegen",
     "cranelift-codegen-meta",
     "cranelift-codegen-shared",
@@ -525,32 +526,29 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "crc32fast",
     "equivalent",
     "fallible-iterator",
+    "foldhash",
     "gimli",
     "hashbrown",
     "indexmap",
     "libc",
     "libloading",
     "log",
-    "mach",
+    "mach2",
     "memchr",
     "object",
-    "once_cell",
     "proc-macro2",
     "quote",
     "regalloc2",
     "region",
     "rustc-hash",
-    "slice-group-by",
+    "serde",
+    "serde_derive",
     "smallvec",
     "stable_deref_trait",
     "syn",
     "target-lexicon",
     "unicode-ident",
-    "version_check",
     "wasmtime-jit-icache-coherence",
-    "winapi",
-    "winapi-i686-pc-windows-gnu",
-    "winapi-x86_64-pc-windows-gnu",
     "windows-sys",
     "windows-targets",
     "windows_aarch64_gnullvm",
@@ -561,8 +559,6 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "windows_x86_64_gnu",
     "windows_x86_64_gnullvm",
     "windows_x86_64_msvc",
-    "zerocopy",
-    "zerocopy-derive",
     // tidy-alphabetical-end
 ];
 
@@ -570,8 +566,10 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
 ///
 /// `root` is path to the directory with the root `Cargo.toml` (for the workspace). `cargo` is path
 /// to the cargo executable.
-pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
+pub fn check(root: &Path, cargo: &Path, bless: bool, bad: &mut bool) {
     let mut checked_runtime_licenses = false;
+
+    check_proc_macro_dep_list(root, cargo, bless, bad);
 
     for &(workspace, exceptions, permitted_deps, submodules) in WORKSPACES {
         if has_missing_submodule(root, submodules) {
@@ -604,6 +602,74 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
     // Sanity check to ensure we don't accidentally remove the workspace containing the runtime
     // crates.
     assert!(checked_runtime_licenses);
+}
+
+/// Ensure the list of proc-macro crate transitive dependencies is up to date
+fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, bad: &mut bool) {
+    let mut cmd = cargo_metadata::MetadataCommand::new();
+    cmd.cargo_path(cargo)
+        .manifest_path(root.join("Cargo.toml"))
+        .features(cargo_metadata::CargoOpt::AllFeatures)
+        .other_options(vec!["--locked".to_owned()]);
+    let metadata = t!(cmd.exec());
+    let is_proc_macro_pkg = |pkg: &Package| pkg.targets.iter().any(|target| target.is_proc_macro());
+
+    let mut proc_macro_deps = HashSet::new();
+    for pkg in metadata.packages.iter().filter(|pkg| is_proc_macro_pkg(*pkg)) {
+        deps_of(&metadata, &pkg.id, &mut proc_macro_deps);
+    }
+    // Remove the proc-macro crates themselves
+    proc_macro_deps.retain(|pkg| !is_proc_macro_pkg(&metadata[pkg]));
+
+    let proc_macro_deps: HashSet<_> =
+        proc_macro_deps.into_iter().map(|dep| metadata[dep].name.clone()).collect();
+    let expected = proc_macro_deps::CRATES.iter().map(|s| s.to_string()).collect::<HashSet<_>>();
+
+    let needs_blessing = proc_macro_deps.difference(&expected).next().is_some()
+        || expected.difference(&proc_macro_deps).next().is_some();
+
+    if needs_blessing && bless {
+        let mut proc_macro_deps: Vec<_> = proc_macro_deps.into_iter().collect();
+        proc_macro_deps.sort();
+        let mut file = File::create(root.join("src/bootstrap/src/utils/proc_macro_deps.rs"))
+            .expect("`proc_macro_deps` should exist");
+        writeln!(
+            &mut file,
+            "/// Do not update manually - use `./x.py test tidy --bless`
+/// Holds all direct and indirect dependencies of proc-macro crates in tree.
+/// See <https://github.com/rust-lang/rust/issues/134863>
+pub static CRATES: &[&str] = &[
+    // tidy-alphabetical-start"
+        )
+        .unwrap();
+        for dep in proc_macro_deps {
+            writeln!(&mut file, "    {dep:?},").unwrap();
+        }
+        writeln!(
+            &mut file,
+            "    // tidy-alphabetical-end
+];"
+        )
+        .unwrap();
+    } else {
+        let old_bad = *bad;
+
+        for missing in proc_macro_deps.difference(&expected) {
+            tidy_error!(
+                bad,
+                "proc-macro crate dependency `{missing}` is not registered in `src/bootstrap/src/utils/proc_macro_deps.rs`",
+            );
+        }
+        for extra in expected.difference(&proc_macro_deps) {
+            tidy_error!(
+                bad,
+                "`{extra}` is not registered in `src/bootstrap/src/utils/proc_macro_deps.rs`, but is not a proc-macro crate dependency",
+            );
+        }
+        if *bad != old_bad {
+            eprintln!("Run `./x.py test tidy --bless` to regenerate the list");
+        }
+    }
 }
 
 /// Used to skip a check if a submodule is not checked out, and not in a CI environment.

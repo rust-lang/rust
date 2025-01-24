@@ -1,6 +1,8 @@
 //! The underlying OsString/OsStr implementation on Unix and many other
 //! systems: just a `Vec<u8>`/`[u8]`.
 
+use core::clone::CloneToUninit;
+
 use crate::borrow::Cow;
 use crate::collections::TryReserveError;
 use crate::fmt::Write;
@@ -343,5 +345,15 @@ impl Slice {
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
         self.inner.eq_ignore_ascii_case(&other.inner)
+    }
+}
+
+#[unstable(feature = "clone_to_uninit", issue = "126799")]
+unsafe impl CloneToUninit for Slice {
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    unsafe fn clone_to_uninit(&self, dst: *mut u8) {
+        // SAFETY: we're just a transparent wrapper around [u8]
+        unsafe { self.inner.clone_to_uninit(dst) }
     }
 }

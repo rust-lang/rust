@@ -188,95 +188,6 @@ impl f16 {
         self - self.trunc()
     }
 
-    /// Computes the absolute value of `self`.
-    ///
-    /// This function always returns the precise result.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(f16)]
-    /// # #[cfg(reliable_f16)] {
-    ///
-    /// let x = 3.5_f16;
-    /// let y = -3.5_f16;
-    ///
-    /// assert_eq!(x.abs(), x);
-    /// assert_eq!(y.abs(), -y);
-    ///
-    /// assert!(f16::NAN.abs().is_nan());
-    /// # }
-    /// ```
-    #[inline]
-    #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16", issue = "116909")]
-    #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn abs(self) -> Self {
-        // FIXME(f16_f128): replace with `intrinsics::fabsf16` when available
-        Self::from_bits(self.to_bits() & !(1 << 15))
-    }
-
-    /// Returns a number that represents the sign of `self`.
-    ///
-    /// - `1.0` if the number is positive, `+0.0` or `INFINITY`
-    /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
-    /// - NaN if the number is NaN
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(f16)]
-    /// # #[cfg(reliable_f16_math)] {
-    ///
-    /// let f = 3.5_f16;
-    ///
-    /// assert_eq!(f.signum(), 1.0);
-    /// assert_eq!(f16::NEG_INFINITY.signum(), -1.0);
-    ///
-    /// assert!(f16::NAN.signum().is_nan());
-    /// # }
-    /// ```
-    #[inline]
-    #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16", issue = "116909")]
-    #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn signum(self) -> f16 {
-        if self.is_nan() { Self::NAN } else { 1.0_f16.copysign(self) }
-    }
-
-    /// Returns a number composed of the magnitude of `self` and the sign of
-    /// `sign`.
-    ///
-    /// Equal to `self` if the sign of `self` and `sign` are the same, otherwise
-    /// equal to `-self`. If `self` is a NaN, then a NaN with the sign bit of
-    /// `sign` is returned. Note, however, that conserving the sign bit on NaN
-    /// across arithmetical operations is not generally guaranteed.
-    /// See [explanation of NaN as a special value](primitive@f16) for more info.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(f16)]
-    /// # #[cfg(reliable_f16_math)] {
-    ///
-    /// let f = 3.5_f16;
-    ///
-    /// assert_eq!(f.copysign(0.42), 3.5_f16);
-    /// assert_eq!(f.copysign(-0.42), -3.5_f16);
-    /// assert_eq!((-f).copysign(0.42), 3.5_f16);
-    /// assert_eq!((-f).copysign(-0.42), -3.5_f16);
-    ///
-    /// assert!(f16::NAN.copysign(1.0).is_nan());
-    /// # }
-    /// ```
-    #[inline]
-    #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "f16", issue = "116909")]
-    #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn copysign(self, sign: f16) -> f16 {
-        unsafe { intrinsics::copysignf16(self, sign) }
-    }
-
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error, yielding a more accurate result than an unfused multiply-add.
     ///
@@ -317,6 +228,7 @@ impl f16 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    #[doc(alias = "fmaf16", alias = "fusedMultiplyAdd")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn mul_add(self, a: f16, b: f16) -> f16 {
         unsafe { intrinsics::fmaf16(self, a, b) }
@@ -473,6 +385,7 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
+    #[doc(alias = "squareRoot")]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]

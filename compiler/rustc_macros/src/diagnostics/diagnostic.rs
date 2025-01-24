@@ -8,7 +8,7 @@ use syn::spanned::Spanned;
 use synstructure::Structure;
 
 use crate::diagnostics::diagnostic_builder::DiagnosticDeriveKind;
-use crate::diagnostics::error::{span_err, DiagnosticDeriveError};
+use crate::diagnostics::error::{DiagnosticDeriveError, span_err};
 use crate::diagnostics::utils::SetOnce;
 
 /// The central struct for constructing the `into_diag` method from an annotated struct.

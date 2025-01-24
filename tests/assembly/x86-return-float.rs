@@ -305,8 +305,10 @@ pub unsafe fn call_other_f64(x: &mut (usize, f64)) {
 // CHECK-LABEL: return_f16:
 #[no_mangle]
 pub fn return_f16(x: f16) -> f16 {
-    // CHECK: pinsrw $0, {{.*}}(%ebp), %xmm0
-    // CHECK-NOT: xmm0
+    // CHECK: pushl %ebp
+    // CHECK: movl %esp, %ebp
+    // CHECK: movzwl 8(%ebp), %eax
+    // CHECK: popl %ebp
     // CHECK: retl
     x
 }
@@ -315,10 +317,10 @@ pub fn return_f16(x: f16) -> f16 {
 #[no_mangle]
 pub fn return_f128(x: f128) -> f128 {
     // CHECK: movl [[#%d,OFFSET:]](%ebp), %[[PTR:.*]]
-    // CHECK-NEXT: movl [[#%d,OFFSET+16]](%ebp), %[[VAL4:.*]]
     // CHECK-NEXT: movl [[#%d,OFFSET+4]](%ebp), %[[VAL1:.*]]
     // CHECK-NEXT: movl [[#%d,OFFSET+8]](%ebp), %[[VAL2:.*]]
     // CHECK-NEXT: movl [[#%d,OFFSET+12]](%ebp), %[[VAL3:.*]]
+    // CHECK-NEXT: movl [[#%d,OFFSET+16]](%ebp), %[[VAL4:.*]]
     // CHECK-NEXT: movl %[[VAL4:.*]] 12(%[[PTR]])
     // CHECK-NEXT: movl %[[VAL3:.*]] 8(%[[PTR]])
     // CHECK-NEXT: movl %[[VAL2:.*]] 4(%[[PTR]])

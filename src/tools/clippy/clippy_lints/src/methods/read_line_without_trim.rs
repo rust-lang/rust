@@ -1,6 +1,7 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::paths::STDIN;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_local_use_after_expr;
@@ -33,7 +34,7 @@ fn parse_fails_on_trailing_newline(ty: Ty<'_>) -> bool {
 
 pub fn check(cx: &LateContext<'_>, call: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<'_>) {
     if let Some(recv_adt) = cx.typeck_results().expr_ty(recv).ty_adt_def()
-        && match_def_path(cx, recv_adt.did(), &["std", "io", "stdio", "Stdin"])
+        && match_def_path(cx, recv_adt.did(), &STDIN)
         && let ExprKind::Path(QPath::Resolved(_, path)) = arg.peel_borrows().kind
         && let Res::Local(local_id) = path.res
     {
@@ -43,7 +44,8 @@ pub fn check(cx: &LateContext<'_>, call: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<
         for_each_local_use_after_expr(cx, local_id, call.hir_id, |expr| {
             if let Some(parent) = get_parent_expr(cx, expr) {
                 let data = if let ExprKind::MethodCall(segment, recv, args, span) = parent.kind {
-                    if segment.ident.name == sym!(parse)
+                    if args.is_empty()
+                        && segment.ident.name.as_str() == "parse"
                         && let parse_result_ty = cx.typeck_results().expr_ty(parent)
                         && is_type_diagnostic_item(cx, parse_result_ty, sym::Result)
                         && let ty::Adt(_, substs) = parse_result_ty.kind()
@@ -57,7 +59,7 @@ pub fn check(cx: &LateContext<'_>, call: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<
                             "calling `.parse()` on a string without trimming the trailing newline character",
                             "checking",
                         ))
-                    } else if segment.ident.name == sym!(ends_with)
+                    } else if segment.ident.name.as_str() == "ends_with"
                         && recv.span == expr.span
                         && let [arg] = args
                         && expr_is_string_literal_without_trailing_newline(arg)

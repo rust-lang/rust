@@ -1,7 +1,7 @@
-use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_abi::Align;
+use rustc_attr_parsing::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_span::symbol::Symbol;
-use rustc_target::abi::Align;
+use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
 
 use crate::mir::mono::Linkage;
@@ -28,7 +28,10 @@ pub struct CodegenFnAttrs {
     pub link_ordinal: Option<u16>,
     /// The `#[target_feature(enable = "...")]` attribute and the enabled
     /// features (only enabled features are supported right now).
+    /// Implied target features have already been applied.
     pub target_features: Vec<TargetFeature>,
+    /// Whether the function was declared safe, but has target features
+    pub safe_target_features: bool,
     /// The `#[linkage = "..."]` attribute on Rust-defined items and the value we found.
     pub linkage: Option<Linkage>,
     /// The `#[linkage = "..."]` attribute on foreign items and the value we found.
@@ -120,9 +123,7 @@ bitflags::bitflags! {
         /// #[ffi_const]: applies clang's `const` attribute to a foreign function
         /// declaration.
         const FFI_CONST                 = 1 << 12;
-        /// #[cmse_nonsecure_entry]: with a TrustZone-M extension, declare a
-        /// function as an entry function from Non-Secure code.
-        const CMSE_NONSECURE_ENTRY      = 1 << 13;
+        // (Bit 13 was used for `#[cmse_nonsecure_entry]`, but is now unused.)
         // (Bit 14 was used for `#[coverage(off)]`, but is now unused.)
         /// `#[used(linker)]`:
         /// indicates that neither LLVM nor the linker will eliminate this function.
@@ -151,6 +152,7 @@ impl CodegenFnAttrs {
             link_name: None,
             link_ordinal: None,
             target_features: vec![],
+            safe_target_features: false,
             linkage: None,
             import_linkage: None,
             link_section: None,

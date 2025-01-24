@@ -15,6 +15,14 @@ struct Foo {
     z: i32,
 }
 
+#[derive(Default)]
+#[allow(clippy::inconsistent_struct_constructor)]
+struct Bar {
+    x: i32,
+    y: i32,
+    z: i32,
+}
+
 mod without_base {
     use super::Foo;
 
@@ -52,7 +60,11 @@ mod with_base {
         let z = 1;
 
         // Should lint.
-        Foo { x, z, ..Default::default() };
+        Foo {
+            x,
+            z,
+            ..Default::default()
+        };
 
         // Should NOT lint because the order is consistent with the definition.
         Foo {
@@ -67,6 +79,19 @@ mod with_base {
             x,
             ..Default::default()
         };
+    }
+}
+
+mod with_allow_ty_def {
+    use super::Bar;
+
+    fn test() {
+        let x = 1;
+        let y = 1;
+        let z = 1;
+
+        // Should NOT lint because `Bar` is defined with `#[allow(clippy::inconsistent_struct_constructor)]`
+        Bar { y, x, z };
     }
 }
 

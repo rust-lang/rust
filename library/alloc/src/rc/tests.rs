@@ -349,9 +349,9 @@ fn test_unsized() {
 #[test]
 fn test_maybe_thin_unsized() {
     // If/when custom thin DSTs exist, this test should be updated to use one
-    use std::ffi::{CStr, CString};
+    use std::ffi::CStr;
 
-    let x: Rc<CStr> = Rc::from(CString::new("swordfish").unwrap().into_boxed_c_str());
+    let x: Rc<CStr> = Rc::from(c"swordfish");
     assert_eq!(format!("{x:?}"), "\"swordfish\"");
     let y: Weak<CStr> = Rc::downgrade(&x);
     drop(x);
@@ -448,7 +448,11 @@ fn test_from_box_str() {
     use std::string::String;
 
     let s = String::from("foo").into_boxed_str();
+    assert_eq!((&&&s).as_str(), "foo");
+
     let r: Rc<str> = Rc::from(s);
+    assert_eq!((&r).as_str(), "foo");
+    assert_eq!(r.as_str(), "foo");
 
     assert_eq!(&r[..], "foo");
 }

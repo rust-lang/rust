@@ -3,17 +3,17 @@
 use std::iter;
 
 use hir::{db::DefDatabase, DefMap, InFile, ModuleSource};
+use ide_db::text_edit::TextEdit;
 use ide_db::{
-    base_db::{FileLoader, SourceDatabaseExt},
+    base_db::{FileLoader, SourceDatabase, SourceRootDatabase},
     source_change::SourceChange,
     FileId, FileRange, LineIndexDatabase,
 };
 use paths::Utf8Component;
 use syntax::{
     ast::{self, edit::IndentLevel, HasModuleItem, HasName},
-    AstNode, TextRange, ToSmolStr,
+    AstNode, TextRange,
 };
-use text_edit::TextEdit;
 
 use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
 
@@ -47,7 +47,7 @@ pub(crate) fn unlinked_file(
         //
         // Only show this diagnostic on the first three characters of
         // the file, to avoid overwhelming the user during startup.
-        range = FileLoader::file_text(ctx.sema.db, file_id)
+        range = SourceDatabase::file_text(ctx.sema.db, file_id)
             .char_indices()
             .take(3)
             .last()
@@ -112,8 +112,7 @@ fn fixes(
                 // shouldn't occur
                 _ => continue 'crates,
             };
-            match current.children.iter().find(|(name, _)| name.display_no_db().to_smolstr() == seg)
-            {
+            match current.children.iter().find(|(name, _)| name.eq_ident(seg)) {
                 Some((_, &child)) => current = &crate_def_map[child],
                 None => continue 'crates,
             }
@@ -162,11 +161,7 @@ fn fixes(
             // try finding a parent that has an inline tree from here on
             let mut current = module;
             for s in stack.iter().rev() {
-                match module
-                    .children
-                    .iter()
-                    .find(|(name, _)| name.display_no_db().to_smolstr() == s)
-                {
+                match module.children.iter().find(|(name, _)| name.eq_ident(s)) {
                     Some((_, child)) => {
                         current = &crate_def_map[*child];
                     }
@@ -499,6 +494,18 @@ $0
 mod bar {
     mod foo;
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn include_macro_works() {
+        check_diagnostics(
+            r#"
+//- minicore: include
+//- /main.rs
+include!("bar/foo/mod.rs");
+//- /bar/foo/mod.rs
 "#,
         );
     }

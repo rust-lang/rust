@@ -1,4 +1,4 @@
-//@only-target-windows: Uses win32 api functions
+//@only-target: windows # Uses win32 api functions
 //@error-in-other-file: Undefined Behavior: trying to join a detached thread
 
 // Joining a detached thread is undefined behavior.

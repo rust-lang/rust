@@ -12,14 +12,10 @@ use ide_db::{
     FileId, FileRange, RootDatabase,
 };
 use itertools::Itertools;
-use span::Edition;
 use stdx::{always, never};
-use syntax::{
-    ast, utils::is_raw_identifier, AstNode, SmolStr, SyntaxKind, SyntaxNode, TextRange, TextSize,
-    ToSmolStr,
-};
+use syntax::{ast, AstNode, SyntaxKind, SyntaxNode, TextRange, TextSize};
 
-use text_edit::TextEdit;
+use ide_db::text_edit::TextEdit;
 
 use crate::{FilePosition, RangeInfo, SourceChange};
 
@@ -102,7 +98,7 @@ pub(crate) fn rename(
             // FIXME: This can use the `ide_db::rename_reference` (or def.rename) method once we can
             // properly find "direct" usages/references.
             .map(|(.., def)| {
-                match IdentifierKind::classify(Edition::CURRENT_FIXME, new_name)? {
+                match IdentifierKind::classify(new_name)? {
                     IdentifierKind::Ident => (),
                     IdentifierKind::Lifetime => {
                         bail!("Cannot alias reference to a lifetime identifier")
@@ -124,7 +120,10 @@ pub(crate) fn rename(
 
                 let mut source_change = SourceChange::default();
                 source_change.extend(usages.references.get_mut(&file_id).iter().map(|refs| {
-                    (position.file_id, source_edit_from_references(refs, def, new_name))
+                    (
+                        position.file_id,
+                        source_edit_from_references(refs, def, new_name, file_id.edition()),
+                    )
                 }));
 
                 Ok(source_change)
@@ -162,11 +161,7 @@ pub(crate) fn will_rename_file(
     let sema = Semantics::new(db);
     let module = sema.file_to_module_def(file_id)?;
     let def = Definition::Module(module);
-    let mut change = if is_raw_identifier(new_name_stem) {
-        def.rename(&sema, &SmolStr::from_iter(["r#", new_name_stem])).ok()?
-    } else {
-        def.rename(&sema, new_name_stem).ok()?
-    };
+    let mut change = def.rename(&sema, new_name_stem).ok()?;
     change.file_system_edits.clear();
     Some(change)
 }
@@ -232,8 +227,7 @@ fn find_definitions(
                 ast::NameLike::Name(name)
                     if name
                         .syntax()
-                        .parent()
-                        .map_or(false, |it| ast::Rename::can_cast(it.kind()))
+                        .parent().is_some_and(|it| ast::Rename::can_cast(it.kind()))
                         // FIXME: uncomment this once we resolve to usages to extern crate declarations
                         // && name
                         //     .syntax()
@@ -247,7 +241,7 @@ fn find_definitions(
                 ast::NameLike::Name(name) => NameClass::classify(sema, name)
                     .map(|class| match class {
                         NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                        NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
+                        NameClass::PatFieldShorthand { local_def, field_ref: _, adt_subst: _ } => {
                             Definition::Local(local_def)
                         }
                     })
@@ -255,8 +249,8 @@ fn find_definitions(
                 ast::NameLike::NameRef(name_ref) => {
                     NameRefClass::classify(sema, name_ref)
                         .map(|class| match class {
-                            NameRefClass::Definition(def) => def,
-                            NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
+                            NameRefClass::Definition(def, _) => def,
+                            NameRefClass::FieldShorthand { local_ref, field_ref: _, adt_subst: _ } => {
                                 Definition::Local(local_ref)
                             }
                             NameRefClass::ExternCrateShorthand { decl, .. } => {
@@ -269,8 +263,7 @@ fn find_definitions(
                         .and_then(|def| {
                             // if the name differs from the definitions name it has to be an alias
                             if def
-                                .name(sema.db)
-                                .map_or(false, |it| it.display_no_db().to_smolstr() != name_ref.text().as_str())
+                                .name(sema.db).is_some_and(|it| !it.eq_ident(name_ref.text().as_str()))
                             {
                                 Err(format_err!("Renaming aliases is currently unsupported"))
                             } else {
@@ -281,7 +274,7 @@ fn find_definitions(
                 ast::NameLike::Lifetime(lifetime) => {
                     NameRefClass::classify_lifetime(sema, lifetime)
                         .and_then(|class| match class {
-                            NameRefClass::Definition(def) => Some(def),
+                            NameRefClass::Definition(def, _) => Some(def),
                             _ => None,
                         })
                         .or_else(|| {
@@ -377,7 +370,7 @@ fn rename_to_self(
     let usages = def.usages(sema).all();
     let mut source_change = SourceChange::default();
     source_change.extend(usages.iter().map(|(file_id, references)| {
-        (file_id.into(), source_edit_from_references(references, def, "self"))
+        (file_id.into(), source_edit_from_references(references, def, "self", file_id.edition()))
     }));
     source_change.insert_source_edit(
         file_id.original_file(sema.db),
@@ -398,7 +391,7 @@ fn rename_self_to_param(
         return Ok(SourceChange::default());
     }
 
-    let identifier_kind = IdentifierKind::classify(Edition::CURRENT_FIXME, new_name)?;
+    let identifier_kind = IdentifierKind::classify(new_name)?;
 
     let InFile { file_id, value: self_param } =
         sema.source(self_param).ok_or_else(|| format_err!("cannot find function source"))?;
@@ -413,7 +406,7 @@ fn rename_self_to_param(
     let mut source_change = SourceChange::default();
     source_change.insert_source_edit(file_id.original_file(sema.db), edit);
     source_change.extend(usages.iter().map(|(file_id, references)| {
-        (file_id.into(), source_edit_from_references(references, def, new_name))
+        (file_id.into(), source_edit_from_references(references, def, new_name, file_id.edition()))
     }));
     Ok(source_change)
 }
@@ -426,35 +419,48 @@ fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Opt
         None
     }
 
-    let impl_def = self_param.syntax().ancestors().find_map(ast::Impl::cast)?;
-    let type_name = target_type_name(&impl_def)?;
+    match self_param.syntax().ancestors().find_map(ast::Impl::cast) {
+        Some(impl_def) => {
+            let type_name = target_type_name(&impl_def)?;
 
-    let mut replacement_text = String::from(new_name);
-    replacement_text.push_str(": ");
-    match (self_param.amp_token(), self_param.mut_token()) {
-        (Some(_), None) => replacement_text.push('&'),
-        (Some(_), Some(_)) => replacement_text.push_str("&mut "),
-        (_, _) => (),
-    };
-    replacement_text.push_str(type_name.as_str());
+            let mut replacement_text = String::from(new_name);
+            replacement_text.push_str(": ");
+            match (self_param.amp_token(), self_param.mut_token()) {
+                (Some(_), None) => replacement_text.push('&'),
+                (Some(_), Some(_)) => replacement_text.push_str("&mut "),
+                (_, _) => (),
+            };
+            replacement_text.push_str(type_name.as_str());
 
-    Some(TextEdit::replace(self_param.syntax().text_range(), replacement_text))
+            Some(TextEdit::replace(self_param.syntax().text_range(), replacement_text))
+        }
+        None => {
+            cov_mark::hit!(rename_self_outside_of_methods);
+            let mut replacement_text = String::from(new_name);
+            replacement_text.push_str(": _");
+            Some(TextEdit::replace(self_param.syntax().text_range(), replacement_text))
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
     use ide_db::source_change::SourceChange;
+    use ide_db::text_edit::TextEdit;
     use stdx::trim_indent;
     use test_utils::assert_eq_text;
-    use text_edit::TextEdit;
 
     use crate::fixture;
 
     use super::{RangeInfo, RenameError};
 
     #[track_caller]
-    fn check(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
+    fn check(
+        new_name: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+    ) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = fixture::position(ra_fixture_before);
         if !ra_fixture_after.starts_with("error: ") {
@@ -492,14 +498,22 @@ mod tests {
         };
     }
 
-    fn check_expect(new_name: &str, ra_fixture: &str, expect: Expect) {
+    fn check_expect(
+        new_name: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+    ) {
         let (analysis, position) = fixture::position(ra_fixture);
         let source_change =
             analysis.rename(position, new_name).unwrap().expect("Expect returned a RenameError");
         expect.assert_eq(&filter_expect(source_change))
     }
 
-    fn check_expect_will_rename_file(new_name: &str, ra_fixture: &str, expect: Expect) {
+    fn check_expect_will_rename_file(
+        new_name: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+    ) {
         let (analysis, position) = fixture::position(ra_fixture);
         let source_change = analysis
             .will_rename_file(position.file_id, new_name)
@@ -508,7 +522,7 @@ mod tests {
         expect.assert_eq(&filter_expect(source_change))
     }
 
-    fn check_prepare(ra_fixture: &str, expect: Expect) {
+    fn check_prepare(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
         let result = analysis
             .prepare_rename(position)
@@ -634,9 +648,9 @@ impl Foo {
     #[test]
     fn test_rename_to_invalid_identifier3() {
         check(
-            "let",
+            "super",
             r#"fn main() { let i$0 = 1; }"#,
-            "error: Invalid name `let`: not an identifier",
+            "error: Invalid name `super`: not an identifier",
         );
     }
 
@@ -685,11 +699,7 @@ impl Foo {
 
     #[test]
     fn test_rename_mod_invalid_raw_ident() {
-        check(
-            "r#self",
-            r#"mod foo$0 {}"#,
-            "error: Invalid name: `self` cannot be a raw identifier",
-        );
+        check("r#self", r#"mod foo$0 {}"#, "error: Invalid name `self`: not an identifier");
     }
 
     #[test]
@@ -1544,6 +1554,228 @@ pub fn baz() {}
     }
 
     #[test]
+    fn test_rename_each_usage_gets_appropriate_rawness() {
+        check_expect(
+            "dyn",
+            r#"
+//- /a.rs crate:a edition:2015
+pub fn foo() {}
+
+//- /b.rs crate:b edition:2018 deps:a new_source_root:local
+fn bar() {
+    a::foo$0();
+}
+    "#,
+            expect![[r#"
+                source_file_edits: [
+                    (
+                        FileId(
+                            0,
+                        ),
+                        [
+                            Indel {
+                                insert: "dyn",
+                                delete: 7..10,
+                            },
+                        ],
+                    ),
+                    (
+                        FileId(
+                            1,
+                        ),
+                        [
+                            Indel {
+                                insert: "r#dyn",
+                                delete: 18..21,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: []
+            "#]],
+        );
+
+        check_expect(
+            "dyn",
+            r#"
+//- /a.rs crate:a edition:2018
+pub fn foo() {}
+
+//- /b.rs crate:b edition:2015 deps:a new_source_root:local
+fn bar() {
+    a::foo$0();
+}
+    "#,
+            expect![[r#"
+                source_file_edits: [
+                    (
+                        FileId(
+                            0,
+                        ),
+                        [
+                            Indel {
+                                insert: "r#dyn",
+                                delete: 7..10,
+                            },
+                        ],
+                    ),
+                    (
+                        FileId(
+                            1,
+                        ),
+                        [
+                            Indel {
+                                insert: "dyn",
+                                delete: 18..21,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: []
+            "#]],
+        );
+
+        check_expect(
+            "r#dyn",
+            r#"
+//- /a.rs crate:a edition:2018
+pub fn foo$0() {}
+
+//- /b.rs crate:b edition:2015 deps:a new_source_root:local
+fn bar() {
+    a::foo();
+}
+    "#,
+            expect![[r#"
+                source_file_edits: [
+                    (
+                        FileId(
+                            0,
+                        ),
+                        [
+                            Indel {
+                                insert: "r#dyn",
+                                delete: 7..10,
+                            },
+                        ],
+                    ),
+                    (
+                        FileId(
+                            1,
+                        ),
+                        [
+                            Indel {
+                                insert: "dyn",
+                                delete: 18..21,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn rename_raw_identifier() {
+        check_expect(
+            "abc",
+            r#"
+//- /a.rs crate:a edition:2015
+pub fn dyn() {}
+
+fn foo() {
+    dyn$0();
+}
+
+//- /b.rs crate:b edition:2018 deps:a new_source_root:local
+fn bar() {
+    a::r#dyn();
+}
+    "#,
+            expect![[r#"
+                source_file_edits: [
+                    (
+                        FileId(
+                            0,
+                        ),
+                        [
+                            Indel {
+                                insert: "abc",
+                                delete: 7..10,
+                            },
+                            Indel {
+                                insert: "abc",
+                                delete: 32..35,
+                            },
+                        ],
+                    ),
+                    (
+                        FileId(
+                            1,
+                        ),
+                        [
+                            Indel {
+                                insert: "abc",
+                                delete: 18..23,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: []
+            "#]],
+        );
+
+        check_expect(
+            "abc",
+            r#"
+//- /a.rs crate:a edition:2018
+pub fn r#dyn() {}
+
+fn foo() {
+    r#dyn$0();
+}
+
+//- /b.rs crate:b edition:2015 deps:a new_source_root:local
+fn bar() {
+    a::dyn();
+}
+    "#,
+            expect![[r#"
+                source_file_edits: [
+                    (
+                        FileId(
+                            0,
+                        ),
+                        [
+                            Indel {
+                                insert: "abc",
+                                delete: 7..12,
+                            },
+                            Indel {
+                                insert: "abc",
+                                delete: 34..39,
+                            },
+                        ],
+                    ),
+                    (
+                        FileId(
+                            1,
+                        ),
+                        [
+                            Indel {
+                                insert: "abc",
+                                delete: 18..21,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: []
+            "#]],
+        );
+    }
+
+    #[test]
     fn test_enum_variant_from_module_1() {
         cov_mark::check!(rename_non_local);
         check(
@@ -1759,6 +1991,26 @@ impl Foo {
     fn f(foo: Foo) -> i32 {
         foo.i
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_self_outside_of_methods() {
+        cov_mark::check!(rename_self_outside_of_methods);
+        check(
+            "foo",
+            r#"
+fn f($0self) -> i32 {
+    use self as _;
+    self.i
+}
+"#,
+            r#"
+fn f(foo: _) -> i32 {
+    use self as _;
+    foo.i
 }
 "#,
         );
@@ -2763,6 +3015,62 @@ fn test() {
     }
 
     #[test]
+    fn asm_operand() {
+        check(
+            "bose",
+            r#"
+//- minicore: asm
+fn test() {
+    core::arch::asm!(
+        "push {base}",
+        base$0 = const 0
+    );
+}
+"#,
+            r#"
+fn test() {
+    core::arch::asm!(
+        "push {bose}",
+        bose = const 0
+    );
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn asm_operand2() {
+        check(
+            "bose",
+            r#"
+//- minicore: asm
+fn test() {
+    core::arch::asm!(
+        "push {base$0}",
+        "push {base}",
+        boo = const 0,
+        virtual_free = sym VIRTUAL_FREE,
+        base = const 0,
+        boo = const 0,
+    );
+}
+"#,
+            r#"
+fn test() {
+    core::arch::asm!(
+        "push {bose}",
+        "push {bose}",
+        boo = const 0,
+        virtual_free = sym VIRTUAL_FREE,
+        bose = const 0,
+        boo = const 0,
+    );
+}
+"#,
+        );
+    }
+
+    #[test]
     fn rename_path_inside_use_tree() {
         check(
             "Baz",
@@ -2804,6 +3112,75 @@ fn main() { let _: S; }
             r#"
 use lib::S as Baz;
 fn main() { let _: Baz; }
+"#,
+        );
+    }
+
+    #[test]
+    fn rename_type_param_ref_in_use_bound() {
+        check(
+            "U",
+            r#"
+fn foo<T>() -> impl use<T$0> Trait {}
+"#,
+            r#"
+fn foo<U>() -> impl use<U> Trait {}
+"#,
+        );
+    }
+
+    #[test]
+    fn rename_type_param_in_use_bound() {
+        check(
+            "U",
+            r#"
+fn foo<T$0>() -> impl use<T> Trait {}
+"#,
+            r#"
+fn foo<U>() -> impl use<U> Trait {}
+"#,
+        );
+    }
+
+    #[test]
+    fn rename_lifetime_param_ref_in_use_bound() {
+        check(
+            "u",
+            r#"
+fn foo<'t>() -> impl use<'t$0> Trait {}
+"#,
+            r#"
+fn foo<'u>() -> impl use<'u> Trait {}
+"#,
+        );
+    }
+
+    #[test]
+    fn rename_lifetime_param_in_use_bound() {
+        check(
+            "u",
+            r#"
+fn foo<'t$0>() -> impl use<'t> Trait {}
+"#,
+            r#"
+fn foo<'u>() -> impl use<'u> Trait {}
+"#,
+        );
+    }
+
+    #[test]
+    fn rename_parent_type_param_in_use_bound() {
+        check(
+            "U",
+            r#"
+trait Trait<T> {
+    fn foo() -> impl use<T$0> Trait {}
+}
+"#,
+            r#"
+trait Trait<U> {
+    fn foo() -> impl use<U> Trait {}
+}
 "#,
         );
     }

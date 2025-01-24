@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: use of undeclared crate or module `assert_mem_uninitialized_valid`
-  --> $DIR/rustc-error2.rs:LL:CC
+  --> tests/fail/rustc-error2.rs:LL:CC
    |
 LL |     fn deref(&self) -> &assert_mem_uninitialized_valid::Target {
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of undeclared crate or module `assert_mem_uninitialized_valid`

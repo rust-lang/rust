@@ -7,7 +7,7 @@
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f32x4(pub f32, pub f32, pub f32, pub f32);
+pub struct f32x4(pub [f32; 4]);
 
 extern "rust-intrinsic" {
     fn simd_fmin<T>(x: T, y: T) -> T;

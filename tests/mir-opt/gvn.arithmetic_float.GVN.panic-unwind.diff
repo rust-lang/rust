@@ -38,9 +38,9 @@
           StorageLive(_2);
           StorageLive(_3);
           StorageLive(_4);
-          _4 = _1;
+          _4 = copy _1;
 -         _3 = Add(move _4, const 0f64);
-+         _3 = Add(_1, const 0f64);
++         _3 = Add(copy _1, const 0f64);
           StorageDead(_4);
           _2 = opaque::<f64>(move _3) -> [return: bb1, unwind continue];
       }
@@ -51,9 +51,9 @@
           StorageLive(_5);
           StorageLive(_6);
           StorageLive(_7);
-          _7 = _1;
+          _7 = copy _1;
 -         _6 = Sub(move _7, const 0f64);
-+         _6 = Sub(_1, const 0f64);
++         _6 = Sub(copy _1, const 0f64);
           StorageDead(_7);
           _5 = opaque::<f64>(move _6) -> [return: bb2, unwind continue];
       }
@@ -64,9 +64,9 @@
           StorageLive(_8);
           StorageLive(_9);
           StorageLive(_10);
-          _10 = _1;
+          _10 = copy _1;
 -         _9 = Mul(move _10, const 0f64);
-+         _9 = Mul(_1, const 0f64);
++         _9 = Mul(copy _1, const 0f64);
           StorageDead(_10);
           _8 = opaque::<f64>(move _9) -> [return: bb3, unwind continue];
       }
@@ -77,9 +77,9 @@
           StorageLive(_11);
           StorageLive(_12);
           StorageLive(_13);
-          _13 = _1;
+          _13 = copy _1;
 -         _12 = Div(move _13, const 0f64);
-+         _12 = Div(_1, const 0f64);
++         _12 = Div(copy _1, const 0f64);
           StorageDead(_13);
           _11 = opaque::<f64>(move _12) -> [return: bb4, unwind continue];
       }
@@ -90,9 +90,9 @@
           StorageLive(_14);
           StorageLive(_15);
           StorageLive(_16);
-          _16 = _1;
+          _16 = copy _1;
 -         _15 = Div(const 0f64, move _16);
-+         _15 = Div(const 0f64, _1);
++         _15 = Div(const 0f64, copy _1);
           StorageDead(_16);
           _14 = opaque::<f64>(move _15) -> [return: bb5, unwind continue];
       }
@@ -103,9 +103,9 @@
           StorageLive(_17);
           StorageLive(_18);
           StorageLive(_19);
-          _19 = _1;
+          _19 = copy _1;
 -         _18 = Rem(move _19, const 0f64);
-+         _18 = Rem(_1, const 0f64);
++         _18 = Rem(copy _1, const 0f64);
           StorageDead(_19);
           _17 = opaque::<f64>(move _18) -> [return: bb6, unwind continue];
       }
@@ -116,9 +116,9 @@
           StorageLive(_20);
           StorageLive(_21);
           StorageLive(_22);
-          _22 = _1;
+          _22 = copy _1;
 -         _21 = Rem(const 0f64, move _22);
-+         _21 = Rem(const 0f64, _1);
++         _21 = Rem(const 0f64, copy _1);
           StorageDead(_22);
           _20 = opaque::<f64>(move _21) -> [return: bb7, unwind continue];
       }
@@ -129,11 +129,11 @@
           StorageLive(_23);
           StorageLive(_24);
           StorageLive(_25);
-          _25 = _1;
+          _25 = copy _1;
           StorageLive(_26);
-          _26 = _1;
+          _26 = copy _1;
 -         _24 = Eq(move _25, move _26);
-+         _24 = Eq(_1, _1);
++         _24 = Eq(copy _1, copy _1);
           StorageDead(_26);
           StorageDead(_25);
           _23 = opaque::<bool>(move _24) -> [return: bb8, unwind continue];
@@ -145,11 +145,11 @@
           StorageLive(_27);
           StorageLive(_28);
           StorageLive(_29);
-          _29 = _1;
+          _29 = copy _1;
           StorageLive(_30);
-          _30 = _1;
+          _30 = copy _1;
 -         _28 = Ne(move _29, move _30);
-+         _28 = Ne(_1, _1);
++         _28 = Ne(copy _1, copy _1);
           StorageDead(_30);
           StorageDead(_29);
           _27 = opaque::<bool>(move _28) -> [return: bb9, unwind continue];

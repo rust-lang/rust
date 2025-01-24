@@ -50,8 +50,11 @@ compare-elements-size-near: (
 set-window-size: (900, 900)
 
 // First we check the current width, height and position.
-assert-css: ("#crate-search", {"width": "223px"})
-assert-css: (".search-results-title", {"height": "50px", "width": "640px"})
+assert-css: ("#crate-search", {"width": "159px"})
+store-size: (".search-results-title", {
+    "height": search_results_title_height,
+    "width": search_results_title_width,
+})
 assert-css: ("#search", {"width": "640px"})
 
 // Then we update the text of one of the `<option>`.
@@ -61,10 +64,12 @@ set-text: (
 )
 
 // Then we compare again to confirm the height didn't change.
-assert-size: ("#crate-search", {"width": 527})
-assert-size: (".search-results-title", {"height": 50, "width": 640})
-// And we check that the `<select>` isn't bigger than its container (".search-results-title").
+assert-size: ("#crate-search", {"width": 370})
+assert-size: (".search-results-title", {
+    "height": |search_results_title_height|,
+})
 assert-css: ("#search", {"width": "640px"})
+assert: |search_results_title_width| <= 640
 
 // Now checking that the crate filter is working as expected too.
 show-text: true

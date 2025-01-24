@@ -1,23 +1,25 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
+use rustc_abi::{ExternAbi, FIRST_VARIANT, Size};
+use rustc_attr_parsing::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::LangItem;
-use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
-use rustc_infer::traits::Reveal;
+use rustc_index::bit_set::DenseBitSet;
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{
-    self, CoroutineArgsExt, InstanceKind, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
-    Variance,
+    self, CoroutineArgsExt, InstanceKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Variance,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_target::abi::{Size, FIRST_VARIANT};
-use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::traits::ObligationCtxt;
+use rustc_type_ir::Upcast;
 
-use crate::util::{is_within_packed, relate_types};
+use crate::util::{self, is_within_packed};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum EdgeKind {
@@ -25,18 +27,12 @@ enum EdgeKind {
     Normal,
 }
 
-pub struct Validator {
+pub(super) struct Validator {
     /// Describes at which point in the pipeline this validation is happening.
     pub when: String,
-    /// The phase for which we are upholding the dialect. If the given phase forbids a specific
-    /// element, this validator will now emit errors if that specific element is encountered.
-    /// Note that phases that change the dialect cause all *following* phases to check the
-    /// invariants of the new dialect. A phase that changes dialects never checks the new invariants
-    /// itself.
-    pub mir_phase: MirPhase,
 }
 
-impl<'tcx> MirPass<'tcx> for Validator {
+impl<'tcx> crate::MirPass<'tcx> for Validator {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // FIXME(JakobDegen): These bodies never instantiated in codegend anyway, so it's not
         // terribly important that they pass the validator. However, I think other passes might
@@ -46,13 +42,8 @@ impl<'tcx> MirPass<'tcx> for Validator {
             return;
         }
         let def_id = body.source.def_id();
-        let mir_phase = self.mir_phase;
-        let param_env = match mir_phase.reveal() {
-            Reveal::UserFacing => tcx.param_env(def_id),
-            Reveal::All => tcx.param_env_reveal_all_normalized(def_id),
-        };
-
-        let can_unwind = if mir_phase <= MirPhase::Runtime(RuntimePhase::Initial) {
+        let typing_env = body.typing_env(tcx);
+        let can_unwind = if body.phase <= MirPhase::Runtime(RuntimePhase::Initial) {
             // In this case `AbortUnwindingCalls` haven't yet been executed.
             true
         } else if !tcx.def_kind(def_id).is_fn_like() {
@@ -61,14 +52,12 @@ impl<'tcx> MirPass<'tcx> for Validator {
             let body_ty = tcx.type_of(def_id).skip_binder();
             let body_abi = match body_ty.kind() {
                 ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
-                ty::Closure(..) => Abi::RustCall,
-                ty::CoroutineClosure(..) => Abi::RustCall,
-                ty::Coroutine(..) => Abi::Rust,
+                ty::Closure(..) => ExternAbi::RustCall,
+                ty::CoroutineClosure(..) => ExternAbi::RustCall,
+                ty::Coroutine(..) => ExternAbi::Rust,
                 // No need to do MIR validation on error bodies
                 ty::Error(_) => return,
-                _ => {
-                    span_bug!(body.span, "unexpected body ty: {:?} phase {:?}", body_ty, mir_phase)
-                }
+                _ => span_bug!(body.span, "unexpected body ty: {body_ty:?}"),
             };
 
             ty::layout::fn_can_unwind(tcx, Some(def_id), body_abi)
@@ -78,7 +67,6 @@ impl<'tcx> MirPass<'tcx> for Validator {
             when: &self.when,
             body,
             tcx,
-            mir_phase,
             unwind_edge_count: 0,
             reachable_blocks: traversal::reachable_as_bitset(body),
             value_cache: FxHashSet::default(),
@@ -88,7 +76,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
         cfg_checker.check_cleanup_control_flow();
 
         // Also run the TypeChecker.
-        for (location, msg) in validate_types(tcx, self.mir_phase, param_env, body, body) {
+        for (location, msg) in validate_types(tcx, typing_env, body, body) {
             cfg_checker.fail(location, msg);
         }
 
@@ -102,25 +90,6 @@ impl<'tcx> MirPass<'tcx> for Validator {
                 }
             }
         }
-
-        // Enforce that coroutine-closure layouts are identical.
-        if let Some(layout) = body.coroutine_layout_raw()
-            && let Some(by_move_body) = body.coroutine_by_move_body()
-            && let Some(by_move_layout) = by_move_body.coroutine_layout_raw()
-        {
-            // FIXME(async_closures): We could do other validation here?
-            if layout.variant_fields.len() != by_move_layout.variant_fields.len() {
-                cfg_checker.fail(
-                    Location::START,
-                    format!(
-                        "Coroutine layout has different number of variant fields from \
-                        by-move coroutine layout:\n\
-                        layout: {layout:#?}\n\
-                        by_move_layout: {by_move_layout:#?}",
-                    ),
-                );
-            }
-        }
     }
 }
 
@@ -128,9 +97,8 @@ struct CfgChecker<'a, 'tcx> {
     when: &'a str,
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-    mir_phase: MirPhase,
     unwind_edge_count: usize,
-    reachable_blocks: BitSet<BasicBlock>,
+    reachable_blocks: DenseBitSet<BasicBlock>,
     value_cache: FxHashSet<u128>,
     // If `false`, then the MIR must not contain `UnwindAction::Continue` or
     // `TerminatorKind::Resume`.
@@ -315,7 +283,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match &statement.kind {
             StatementKind::AscribeUserType(..) => {
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
                         location,
                         "`AscribeUserType` should have been removed after drop lowering phase",
@@ -323,7 +291,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 }
             }
             StatementKind::FakeRead(..) => {
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
                         location,
                         "`FakeRead` should have been removed after drop lowering phase",
@@ -331,17 +299,17 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 }
             }
             StatementKind::SetDiscriminant { .. } => {
-                if self.mir_phase < MirPhase::Runtime(RuntimePhase::Initial) {
+                if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(location, "`SetDiscriminant`is not allowed until deaggregation");
                 }
             }
             StatementKind::Deinit(..) => {
-                if self.mir_phase < MirPhase::Runtime(RuntimePhase::Initial) {
+                if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(location, "`Deinit`is not allowed until deaggregation");
                 }
             }
             StatementKind::Retag(kind, _) => {
-                // FIXME(JakobDegen) The validator should check that `self.mir_phase <
+                // FIXME(JakobDegen) The validator should check that `self.body.phase <
                 // DropsLowered`. However, this causes ICEs with generation of drop shims, which
                 // seem to fail to set their `MirPhase` correctly.
                 if matches!(kind, RetagKind::TwoPhase) {
@@ -349,7 +317,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 }
             }
             StatementKind::Coverage(kind) => {
-                if self.mir_phase >= MirPhase::Analysis(AnalysisPhase::PostCleanup)
+                if self.body.phase >= MirPhase::Analysis(AnalysisPhase::PostCleanup)
                     && let CoverageKind::BlockMarker { .. } | CoverageKind::SpanMarker { .. } = kind
                 {
                     self.fail(
@@ -364,6 +332,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
             | StatementKind::Intrinsic(_)
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
+            | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::Nop => {}
         }
 
@@ -398,7 +367,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_edge(location, *target, EdgeKind::Normal);
                 self.check_unwind_edge(location, *unwind);
             }
-            TerminatorKind::Call { args, .. } | TerminatorKind::TailCall { args, .. } => {
+            TerminatorKind::Call { func, args, .. }
+            | TerminatorKind::TailCall { func, args, .. } => {
                 // FIXME(explicit_tail_calls): refactor this & add tail-call specific checks
                 if let TerminatorKind::Call { target, unwind, destination, .. } = terminator.kind {
                     if let Some(target) = target {
@@ -406,11 +376,12 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     }
                     self.check_unwind_edge(location, unwind);
 
-                    // The code generation assumes that there are no critical call edges. The assumption
-                    // is used to simplify inserting code that should be executed along the return edge
-                    // from the call. FIXME(tmiasko): Since this is a strictly code generation concern,
-                    // the code generation should be responsible for handling it.
-                    if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Optimized)
+                    // The code generation assumes that there are no critical call edges. The
+                    // assumption is used to simplify inserting code that should be executed along
+                    // the return edge from the call. FIXME(tmiasko): Since this is a strictly code
+                    // generation concern, the code generation should be responsible for handling
+                    // it.
+                    if self.body.phase >= MirPhase::Runtime(RuntimePhase::Optimized)
                         && self.is_critical_call_edge(target, unwind)
                     {
                         self.fail(
@@ -422,8 +393,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                         );
                     }
 
-                    // The call destination place and Operand::Move place used as an argument might be
-                    // passed by a reference to the callee. Consequently they cannot be packed.
+                    // The call destination place and Operand::Move place used as an argument might
+                    // be passed by a reference to the callee. Consequently they cannot be packed.
                     if is_within_packed(self.tcx, &self.body.local_decls, destination).is_some() {
                         // This is bad! The callee will expect the memory to be aligned.
                         self.fail(
@@ -450,6 +421,13 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                         }
                     }
                 }
+
+                if let ty::FnDef(did, ..) = func.ty(&self.body.local_decls, self.tcx).kind()
+                    && self.body.phase >= MirPhase::Runtime(RuntimePhase::Optimized)
+                    && matches!(self.tcx.codegen_fn_attrs(did).inline, InlineAttr::Force { .. })
+                {
+                    self.fail(location, "`#[rustc_force_inline]`-annotated function not inlined");
+                }
             }
             TerminatorKind::Assert { target, unwind, .. } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
@@ -459,7 +437,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 if self.body.coroutine.is_none() {
                     self.fail(location, "`Yield` cannot appear outside coroutine bodies");
                 }
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(location, "`Yield` should have been replaced by coroutine lowering");
                 }
                 self.check_edge(location, *resume, EdgeKind::Normal);
@@ -468,7 +446,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::FalseEdge { real_target, imaginary_target } => {
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
                         location,
                         "`FalseEdge` should have been removed after drop elaboration",
@@ -478,7 +456,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_edge(location, *imaginary_target, EdgeKind::Normal);
             }
             TerminatorKind::FalseUnwind { real_target, unwind } => {
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
                         location,
                         "`FalseUnwind` should have been removed after drop elaboration",
@@ -497,7 +475,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 if self.body.coroutine.is_none() {
                     self.fail(location, "`CoroutineDrop` cannot appear outside coroutine bodies");
                 }
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
                         location,
                         "`CoroutineDrop` should have been replaced by coroutine lowering",
@@ -549,15 +527,13 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 ///
 /// `caller_body` is used to detect cycles in MIR inlining and MIR validation before
 /// `optimized_mir` is available.
-pub fn validate_types<'tcx>(
+pub(super) fn validate_types<'tcx>(
     tcx: TyCtxt<'tcx>,
-    mir_phase: MirPhase,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     body: &Body<'tcx>,
     caller_body: &Body<'tcx>,
 ) -> Vec<(Location, String)> {
-    let mut type_checker =
-        TypeChecker { body, caller_body, tcx, param_env, mir_phase, failures: Vec::new() };
+    let mut type_checker = TypeChecker { body, caller_body, tcx, typing_env, failures: Vec::new() };
     type_checker.visit_body(body);
     type_checker.failures
 }
@@ -566,8 +542,7 @@ struct TypeChecker<'a, 'tcx> {
     body: &'a Body<'tcx>,
     caller_body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
-    mir_phase: MirPhase,
+    typing_env: ty::TypingEnv<'tcx>,
     failures: Vec<(Location, String)>,
 }
 
@@ -596,13 +571,40 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         // After borrowck subtyping should be fully explicit via
         // `Subtype` projections.
-        let variance = if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+        let variance = if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
             Variance::Invariant
         } else {
             Variance::Covariant
         };
 
-        crate::util::relate_types(self.tcx, self.param_env, variance, src, dest)
+        crate::util::relate_types(self.tcx, self.typing_env, variance, src, dest)
+    }
+
+    /// Check that the given predicate definitely holds in the param-env of this MIR body.
+    fn predicate_must_hold_modulo_regions(
+        &self,
+        pred: impl Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>,
+    ) -> bool {
+        let pred: ty::Predicate<'tcx> = pred.upcast(self.tcx);
+
+        // We sometimes have to use `defining_opaque_types` for predicates
+        // to succeed here and figuring out how exactly that should work
+        // is annoying. It is harmless enough to just not validate anything
+        // in that case. We still check this after analysis as all opaque
+        // types have been revealed at this point.
+        if pred.has_opaque_types() {
+            return true;
+        }
+
+        let (infcx, param_env) = self.tcx.infer_ctxt().build_with_typing_env(self.typing_env);
+        let ocx = ObligationCtxt::new(&infcx);
+        ocx.register_obligation(Obligation::new(
+            self.tcx,
+            ObligationCause::dummy(),
+            param_env,
+            pred,
+        ));
+        ocx.select_all_or_error().is_empty()
     }
 }
 
@@ -610,13 +612,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         // This check is somewhat expensive, so only run it when -Zvalidate-mir is passed.
         if self.tcx.sess.opts.unstable_opts.validate_mir
-            && self.mir_phase < MirPhase::Runtime(RuntimePhase::Initial)
+            && self.body.phase < MirPhase::Runtime(RuntimePhase::Initial)
         {
             // `Operand::Copy` is only supposed to be used with `Copy` types.
             if let Operand::Copy(place) = operand {
                 let ty = place.ty(&self.body.local_decls, self.tcx).ty;
 
-                if !ty.is_copy_modulo_regions(self.tcx, self.param_env) {
+                if !self.tcx.type_is_copy_modulo_regions(self.typing_env, ty) {
                     self.fail(location, format!("`Operand::Copy` with non-`Copy` type {ty}"));
                 }
             }
@@ -634,11 +636,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     ) {
         match elem {
             ProjectionElem::OpaqueCast(ty)
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) =>
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) =>
             {
                 self.fail(
                     location,
-                    format!("explicit opaque type cast to `{ty}` after `RevealAll`"),
+                    format!("explicit opaque type cast to `{ty}` after `PostAnalysisNormalize`"),
                 )
             }
             ProjectionElem::Index(index) => {
@@ -648,7 +650,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             ProjectionElem::Deref
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::PostCleanup) =>
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::PostCleanup) =>
             {
                 let base_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
 
@@ -733,7 +735,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             // since we may be in the process of computing this MIR in the
                             // first place.
                             let layout = if def_id == self.caller_body.source.def_id() {
-                                // FIXME: This is not right for async closures.
+                                self.caller_body.coroutine_layout_raw()
+                            } else if self.tcx.needs_coroutine_by_move_body_def_id(def_id)
+                                && let ty::ClosureKind::FnOnce =
+                                    args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap()
+                                && self.caller_body.source.def_id()
+                                    == self.tcx.coroutine_by_move_body_def_id(def_id)
+                            {
+                                // Same if this is the by-move body of a coroutine-closure.
                                 self.caller_body.coroutine_layout_raw()
                             } else {
                                 self.tcx.coroutine_layout(def_id, args.as_coroutine().kind_ty())
@@ -779,10 +788,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             ProjectionElem::Subtype(ty) => {
-                if !relate_types(
+                if !util::sub_types(
                     self.tcx,
-                    self.param_env,
-                    Variance::Covariant,
+                    self.typing_env,
                     ty,
                     place_ref.ty(&self.body.local_decls, self.tcx).ty,
                 ) {
@@ -842,7 +850,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         // Set off any `bug!`s in the type computation code
         let _ = place.ty(&self.body.local_decls, self.tcx);
 
-        if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial)
+        if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial)
             && place.projection.len() > 1
             && cntxt != PlaceContext::NonUse(NonUseContext::VarDebugInfo)
             && place.projection[1..].contains(&ProjectionElem::Deref)
@@ -895,11 +903,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     assert!(adt_def.is_union());
                     assert_eq!(idx, FIRST_VARIANT);
                     let dest_ty = self.tcx.normalize_erasing_regions(
-                        self.param_env,
+                        self.typing_env,
                         adt_def.non_enum_variant().fields[field].ty(self.tcx, args),
                     );
-                    if fields.len() == 1 {
-                        let src_ty = fields.raw[0].ty(self.body, self.tcx);
+                    if let [field] = fields.raw.as_slice() {
+                        let src_ty = field.ty(self.body, self.tcx);
                         if !self.mir_assign_valid_types(src_ty, dest_ty) {
                             self.fail(location, "union field has the wrong type");
                         }
@@ -917,7 +925,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     for (src, dest) in std::iter::zip(fields, &variant.fields) {
                         let dest_ty = self
                             .tcx
-                            .normalize_erasing_regions(self.param_env, dest.ty(self.tcx, args));
+                            .normalize_erasing_regions(self.typing_env, dest.ty(self.tcx, args));
                         if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest_ty) {
                             self.fail(location, "adt field has the wrong type");
                         }
@@ -960,25 +968,23 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
                 AggregateKind::RawPtr(pointee_ty, mutability) => {
-                    if !matches!(self.mir_phase, MirPhase::Runtime(_)) {
-                        // It would probably be fine to support this in earlier phases,
-                        // but at the time of writing it's only ever introduced from intrinsic lowering,
-                        // so earlier things just `bug!` on it.
+                    if !matches!(self.body.phase, MirPhase::Runtime(_)) {
+                        // It would probably be fine to support this in earlier phases, but at the
+                        // time of writing it's only ever introduced from intrinsic lowering, so
+                        // earlier things just `bug!` on it.
                         self.fail(location, "RawPtr should be in runtime MIR only");
                     }
 
-                    if fields.len() != 2 {
-                        self.fail(location, "raw pointer aggregate must have 2 fields");
-                    } else {
-                        let data_ptr_ty = fields.raw[0].ty(self.body, self.tcx);
-                        let metadata_ty = fields.raw[1].ty(self.body, self.tcx);
+                    if let [data_ptr, metadata] = fields.raw.as_slice() {
+                        let data_ptr_ty = data_ptr.ty(self.body, self.tcx);
+                        let metadata_ty = metadata.ty(self.body, self.tcx);
                         if let ty::RawPtr(in_pointee, in_mut) = data_ptr_ty.kind() {
                             if *in_mut != mutability {
                                 self.fail(location, "input and output mutability must match");
                             }
 
                             // FIXME: check `Thin` instead of `Sized`
-                            if !in_pointee.is_sized(self.tcx, self.param_env) {
+                            if !in_pointee.is_sized(self.tcx, self.typing_env) {
                                 self.fail(location, "input pointer must be thin");
                             }
                         } else {
@@ -993,16 +999,18 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             if !self.mir_assign_valid_types(metadata_ty, self.tcx.types.usize) {
                                 self.fail(location, "slice metadata must be usize");
                             }
-                        } else if pointee_ty.is_sized(self.tcx, self.param_env) {
+                        } else if pointee_ty.is_sized(self.tcx, self.typing_env) {
                             if metadata_ty != self.tcx.types.unit {
                                 self.fail(location, "metadata for pointer-to-thin must be unit");
                             }
                         }
+                    } else {
+                        self.fail(location, "raw pointer aggregate must have 2 fields");
                     }
                 }
             },
             Rvalue::Ref(_, BorrowKind::Fake(_), _) => {
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
                         location,
                         "`Assign` statement with a `Fake` borrow should have been removed in runtime MIR",
@@ -1116,11 +1124,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         );
                     }
                     UnOp::PtrMetadata => {
-                        if !matches!(self.mir_phase, MirPhase::Runtime(_)) {
-                            // It would probably be fine to support this in earlier phases,
-                            // but at the time of writing it's only ever introduced from intrinsic lowering
-                            // or other runtime-phase optimization passes,
-                            // so earlier things can just `bug!` on it.
+                        if !matches!(self.body.phase, MirPhase::Runtime(_)) {
+                            // It would probably be fine to support this in earlier phases, but at
+                            // the time of writing it's only ever introduced from intrinsic
+                            // lowering or other runtime-phase optimization passes, so earlier
+                            // things can just `bug!` on it.
                             self.fail(location, "PtrMetadata should be in runtime MIR only");
                         }
 
@@ -1139,12 +1147,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             Rvalue::Cast(kind, operand, target_type) => {
                 let op_ty = operand.ty(self.body, self.tcx);
                 match kind {
-                    CastKind::DynStar => {
-                        // FIXME(dyn-star): make sure nothing needs to be done here.
-                    }
                     // FIXME: Add Checks for these
                     CastKind::PointerWithExposedProvenance | CastKind::PointerExposeProvenance => {}
-                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, _) => {
                         // FIXME: check signature compatibility.
                         check_kinds!(
                             op_ty,
@@ -1157,7 +1162,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty::FnPtr(..)
                         );
                     }
-                    CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer, _) => {
                         // FIXME: check safety and signature compatibility.
                         check_kinds!(
                             op_ty,
@@ -1170,7 +1175,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty::FnPtr(..)
                         );
                     }
-                    CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(..)) => {
+                    CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(..), _) => {
                         // FIXME: check safety, captures, and signature compatibility.
                         check_kinds!(
                             op_ty,
@@ -1183,7 +1188,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty::FnPtr(..)
                         );
                     }
-                    CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::MutToConstPointer, _) => {
                         // FIXME: check same pointee?
                         check_kinds!(
                             op_ty,
@@ -1195,11 +1200,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             "CastKind::{kind:?} output must be a raw const pointer, not {:?}",
                             ty::RawPtr(_, Mutability::Not)
                         );
-                        if self.mir_phase >= MirPhase::Analysis(AnalysisPhase::PostCleanup) {
+                        if self.body.phase >= MirPhase::Analysis(AnalysisPhase::PostCleanup) {
                             self.fail(location, format!("After borrowck, MIR disallows {kind:?}"));
                         }
                     }
-                    CastKind::PointerCoercion(PointerCoercion::ArrayToPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::ArrayToPointer, _) => {
                         // FIXME: Check pointee types
                         check_kinds!(
                             op_ty,
@@ -1211,13 +1216,26 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             "CastKind::{kind:?} output must be a raw pointer, not {:?}",
                             ty::RawPtr(..)
                         );
-                        if self.mir_phase >= MirPhase::Analysis(AnalysisPhase::PostCleanup) {
+                        if self.body.phase >= MirPhase::Analysis(AnalysisPhase::PostCleanup) {
                             self.fail(location, format!("After borrowck, MIR disallows {kind:?}"));
                         }
                     }
-                    CastKind::PointerCoercion(PointerCoercion::Unsize) => {
-                        // This is used for all `CoerceUnsized` types,
-                        // not just pointers/references, so is hard to check.
+                    CastKind::PointerCoercion(PointerCoercion::Unsize, _) => {
+                        // Pointers being unsize coerced should at least implement
+                        // `CoerceUnsized`.
+                        if !self.predicate_must_hold_modulo_regions(ty::TraitRef::new(
+                            self.tcx,
+                            self.tcx.require_lang_item(
+                                LangItem::CoerceUnsized,
+                                Some(self.body.source_info(location).span),
+                            ),
+                            [op_ty, *target_type],
+                        )) {
+                            self.fail(location, format!("Unsize coercion, but `{op_ty}` isn't coercible to `{target_type}`"));
+                        }
+                    }
+                    CastKind::PointerCoercion(PointerCoercion::DynStar, _) => {
+                        // FIXME(dyn-star): make sure nothing needs to be done here.
                     }
                     CastKind::IntToInt | CastKind::IntToFloat => {
                         let input_valid = op_ty.is_integral() || op_ty.is_char() || op_ty.is_bool();
@@ -1264,14 +1282,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::Transmute => {
-                        if let MirPhase::Runtime(..) = self.mir_phase {
+                        if let MirPhase::Runtime(..) = self.body.phase {
                             // Unlike `mem::transmute`, a MIR `Transmute` is well-formed
                             // for any two `Sized` types, just potentially UB to run.
 
                             if !self
                                 .tcx
-                                .normalize_erasing_regions(self.param_env, op_ty)
-                                .is_sized(self.tcx, self.param_env)
+                                .normalize_erasing_regions(self.typing_env, op_ty)
+                                .is_sized(self.tcx, self.typing_env)
                             {
                                 self.fail(
                                     location,
@@ -1280,8 +1298,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             }
                             if !self
                                 .tcx
-                                .normalize_erasing_regions(self.param_env, *target_type)
-                                .is_sized(self.tcx, self.param_env)
+                                .normalize_erasing_regions(self.typing_env, *target_type)
+                                .is_sized(self.tcx, self.typing_env)
                             {
                                 self.fail(
                                     location,
@@ -1293,7 +1311,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 location,
                                 format!(
                                     "Transmute is not supported in non-runtime phase {:?}.",
-                                    self.mir_phase
+                                    self.body.phase
                                 ),
                             );
                         }
@@ -1322,7 +1340,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 return;
                             };
 
-                            current_ty = self.tcx.normalize_erasing_regions(self.param_env, f_ty);
+                            current_ty = self.tcx.normalize_erasing_regions(self.typing_env, f_ty);
                         }
                         ty::Adt(adt_def, args) => {
                             let Some(field) = adt_def.variant(variant).fields.get(field) else {
@@ -1331,7 +1349,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             };
 
                             let f_ty = field.ty(self.tcx, args);
-                            current_ty = self.tcx.normalize_erasing_regions(self.param_env, f_ty);
+                            current_ty = self.tcx.normalize_erasing_regions(self.typing_env, f_ty);
                         }
                         _ => {
                             self.fail(
@@ -1345,7 +1363,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             Rvalue::Repeat(_, _)
             | Rvalue::ThreadLocalRef(_)
-            | Rvalue::AddressOf(_, _)
+            | Rvalue::RawPtr(_, _)
             | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::UbChecks, _)
             | Rvalue::Discriminant(_) => {}
         }
@@ -1380,7 +1398,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             StatementKind::AscribeUserType(..) => {
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
                         location,
                         "`AscribeUserType` should have been removed after drop lowering phase",
@@ -1388,7 +1406,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             StatementKind::FakeRead(..) => {
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
                         location,
                         "`FakeRead` should have been removed after drop lowering phase",
@@ -1439,7 +1457,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             StatementKind::SetDiscriminant { place, .. } => {
-                if self.mir_phase < MirPhase::Runtime(RuntimePhase::Initial) {
+                if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(location, "`SetDiscriminant`is not allowed until deaggregation");
                 }
                 let pty = place.ty(&self.body.local_decls, self.tcx).ty.kind();
@@ -1453,12 +1471,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             StatementKind::Deinit(..) => {
-                if self.mir_phase < MirPhase::Runtime(RuntimePhase::Initial) {
+                if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(location, "`Deinit`is not allowed until deaggregation");
                 }
             }
             StatementKind::Retag(kind, _) => {
-                // FIXME(JakobDegen) The validator should check that `self.mir_phase <
+                // FIXME(JakobDegen) The validator should check that `self.body.phase <
                 // DropsLowered`. However, this causes ICEs with generation of drop shims, which
                 // seem to fail to set their `MirPhase` correctly.
                 if matches!(kind, RetagKind::TwoPhase) {
@@ -1470,6 +1488,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | StatementKind::Coverage(_)
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
+            | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::Nop => {}
         }
 
@@ -1514,7 +1533,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
 
                 if let TerminatorKind::TailCall { .. } = terminator.kind {
-                    // FIXME(explicit_tail_calls): implement tail-call specific checks here (such as signature matching, forbidding closures, etc)
+                    // FIXME(explicit_tail_calls): implement tail-call specific checks here (such
+                    // as signature matching, forbidding closures, etc)
                 }
             }
             TerminatorKind::Assert { cond, .. } => {

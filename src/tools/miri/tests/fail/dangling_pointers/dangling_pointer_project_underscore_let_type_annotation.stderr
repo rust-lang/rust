@@ -1,5 +1,5 @@
 error: Undefined Behavior: out-of-bounds pointer arithmetic: ALLOC has been freed, so this pointer is dangling
-  --> $DIR/dangling_pointer_project_underscore_let_type_annotation.rs:LL:CC
+  --> tests/fail/dangling_pointers/dangling_pointer_project_underscore_let_type_annotation.rs:LL:CC
    |
 LL |         let _: u8 = (*p).1;
    |                     ^^^^^^ out-of-bounds pointer arithmetic: ALLOC has been freed, so this pointer is dangling
@@ -7,17 +7,17 @@ LL |         let _: u8 = (*p).1;
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
 help: ALLOC was allocated here:
-  --> $DIR/dangling_pointer_project_underscore_let_type_annotation.rs:LL:CC
+  --> tests/fail/dangling_pointers/dangling_pointer_project_underscore_let_type_annotation.rs:LL:CC
    |
 LL |         let b = Box::new(42);
    |                 ^^^^^^^^^^^^
 help: ALLOC was deallocated here:
-  --> $DIR/dangling_pointer_project_underscore_let_type_annotation.rs:LL:CC
+  --> tests/fail/dangling_pointers/dangling_pointer_project_underscore_let_type_annotation.rs:LL:CC
    |
 LL |     };
    |     ^
    = note: BACKTRACE (of the first span):
-   = note: inside `main` at $DIR/dangling_pointer_project_underscore_let_type_annotation.rs:LL:CC
+   = note: inside `main` at tests/fail/dangling_pointers/dangling_pointer_project_underscore_let_type_annotation.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

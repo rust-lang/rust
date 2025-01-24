@@ -3,7 +3,7 @@
 //! RFC for reference.
 
 use derive_where::derive_where;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 
 use crate::data_structures::SsoHashSet;
 use crate::inherent::*;
@@ -68,6 +68,9 @@ struct OutlivesCollector<'a, I: Interner> {
 }
 
 impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
+    #[cfg(not(feature = "nightly"))]
+    type Result = ();
+
     fn visit_ty(&mut self, ty: I::Ty) -> Self::Result {
         if !self.visited.insert(ty) {
             return;
@@ -106,6 +109,18 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
 
             ty::Coroutine(_, args) => {
                 args.as_coroutine().tupled_upvars_ty().visit_with(self);
+
+                // Coroutines may not outlive a region unless the resume
+                // ty outlives a region. This is because the resume ty may
+                // store data that lives shorter than this outlives region
+                // across yield points, which may subsequently be accessed
+                // after the coroutine is resumed again.
+                //
+                // Conceptually, you may think of the resume arg as an upvar
+                // of `&mut Option<ResumeArgTy>`, since it is kinda like
+                // storage shared between the callee of the coroutine and the
+                // coroutine body.
+                args.as_coroutine().resume_ty().visit_with(self);
 
                 // We ignore regions in the coroutine interior as we don't
                 // want these to affect region inference
@@ -186,7 +201,8 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
             | ty::Slice(_)
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
+            | ty::UnsafeBinder(_)
             | ty::Dynamic(_, _, _)
             | ty::Tuple(_) => {
                 ty.super_visit_with(self);

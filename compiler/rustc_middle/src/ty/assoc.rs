@@ -3,15 +3,15 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{Decodable, Encodable, HashStable};
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::{Ident, Symbol};
 
 use super::{TyCtxt, Visibility};
 use crate::ty;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable, Hash, Encodable, Decodable)]
 pub enum AssocItemContainer {
-    TraitContainer,
-    ImplContainer,
+    Trait,
+    Impl,
 }
 
 /// Information about an associated item
@@ -34,8 +34,6 @@ pub struct AssocItem {
     /// return-position `impl Trait` in trait desugaring. The `ImplTraitInTraitData`
     /// provides additional information about its source.
     pub opt_rpitit_info: Option<ty::ImplTraitInTraitData>,
-
-    pub is_effects_desugaring: bool,
 }
 
 impl AssocItem {
@@ -65,16 +63,16 @@ impl AssocItem {
     #[inline]
     pub fn trait_container(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self.container {
-            AssocItemContainer::ImplContainer => None,
-            AssocItemContainer::TraitContainer => Some(tcx.parent(self.def_id)),
+            AssocItemContainer::Impl => None,
+            AssocItemContainer::Trait => Some(tcx.parent(self.def_id)),
         }
     }
 
     #[inline]
     pub fn impl_container(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self.container {
-            AssocItemContainer::ImplContainer => Some(tcx.parent(self.def_id)),
-            AssocItemContainer::TraitContainer => None,
+            AssocItemContainer::Impl => Some(tcx.parent(self.def_id)),
+            AssocItemContainer::Trait => None,
         }
     }
 
@@ -95,6 +93,15 @@ impl AssocItem {
                     tcx.type_of(self.def_id).instantiate_identity()
                 )
             }
+        }
+    }
+
+    pub fn descr(&self) -> &'static str {
+        match self.kind {
+            ty::AssocKind::Const => "const",
+            ty::AssocKind::Fn if self.fn_has_self_parameter => "method",
+            ty::AssocKind::Fn => "associated function",
+            ty::AssocKind::Type => "type",
         }
     }
 

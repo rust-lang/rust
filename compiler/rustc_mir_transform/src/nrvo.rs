@@ -1,13 +1,12 @@
 //! See the docs for [`RenameReturnPlace`].
 
 use rustc_hir::Mutability;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutVisitor, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, BasicBlock, Local, Location};
 use rustc_middle::ty::TyCtxt;
-
-use crate::MirPass;
+use tracing::{debug, trace};
 
 /// This pass looks for MIR that always copies the same local into the return place and eliminates
 /// the copy by renaming all uses of that local to `_0`.
@@ -31,9 +30,9 @@ use crate::MirPass;
 ///
 /// [#47954]: https://github.com/rust-lang/rust/pull/47954
 /// [#71003]: https://github.com/rust-lang/rust/pull/71003
-pub struct RenameReturnPlace;
+pub(super) struct RenameReturnPlace;
 
-impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
+impl<'tcx> crate::MirPass<'tcx> for RenameReturnPlace {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         // unsound: #111005
         sess.mir_opt_level() > 0 && sess.opts.unstable_opts.unsound_mir_opts
@@ -45,10 +44,6 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
             debug!("`{:?}` was ineligible for NRVO", def_id);
             return;
         };
-
-        if !tcx.consider_optimizing(|| format!("RenameReturnPlace {def_id:?}")) {
-            return;
-        }
 
         debug!(
             "`{:?}` was eligible for NRVO, making {:?} the return place",
@@ -121,7 +116,7 @@ fn local_eligible_for_nrvo(body: &mir::Body<'_>) -> Option<Local> {
 
 fn find_local_assigned_to_return_place(start: BasicBlock, body: &mir::Body<'_>) -> Option<Local> {
     let mut block = start;
-    let mut seen = BitSet::new_empty(body.basic_blocks.len());
+    let mut seen = DenseBitSet::new_empty(body.basic_blocks.len());
 
     // Iterate as long as `block` has exactly one predecessor that we have not yet visited.
     while seen.insert(block) {

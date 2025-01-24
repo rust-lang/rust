@@ -10,10 +10,10 @@ use crate::collections::BTreeMap;
 use crate::env::consts::{EXE_EXTENSION, EXE_SUFFIX};
 use crate::ffi::{OsStr, OsString};
 use crate::io::{self, Error, ErrorKind};
-use crate::mem::MaybeUninit;
 use crate::num::NonZero;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle};
+use crate::os::windows::process::ProcThreadAttributeList;
 use crate::path::{Path, PathBuf};
 use crate::sync::Mutex;
 use crate::sys::args::{self, Arg};
@@ -22,8 +22,8 @@ use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::{cvt, path, stdio};
-use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::sys_common::IntoInner;
+use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::{cmp, env, fmt, mem, ptr};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,7 +47,7 @@ impl EnvKey {
     }
 }
 
-// Comparing Windows environment variable keys[1] are behaviourally the
+// Comparing Windows environment variable keys[1] are behaviorally the
 // composition of two operations[2]:
 //
 // 1. Case-fold both strings. This is done using a language-independent
@@ -142,11 +142,11 @@ impl AsRef<OsStr> for EnvKey {
     }
 }
 
-pub(crate) fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
-    if str.as_ref().encode_wide().any(|b| b == 0) {
-        Err(io::const_io_error!(ErrorKind::InvalidInput, "nul byte found in provided data"))
+pub(crate) fn ensure_no_nuls<T: AsRef<OsStr>>(s: T) -> io::Result<T> {
+    if s.as_ref().encode_wide().any(|b| b == 0) {
+        Err(io::const_error!(ErrorKind::InvalidInput, "nul byte found in provided data"))
     } else {
-        Ok(str)
+        Ok(s)
     }
 }
 
@@ -162,7 +162,6 @@ pub struct Command {
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
     force_quotes_enabled: bool,
-    proc_thread_attributes: BTreeMap<usize, ProcThreadAttributeValue>,
 }
 
 pub enum Stdio {
@@ -194,7 +193,6 @@ impl Command {
             stdout: None,
             stderr: None,
             force_quotes_enabled: false,
-            proc_thread_attributes: Default::default(),
         }
     }
 
@@ -248,21 +246,19 @@ impl Command {
         self.cwd.as_ref().map(Path::new)
     }
 
-    pub unsafe fn raw_attribute<T: Copy + Send + Sync + 'static>(
-        &mut self,
-        attribute: usize,
-        value: T,
-    ) {
-        self.proc_thread_attributes.insert(
-            attribute,
-            ProcThreadAttributeValue { size: mem::size_of::<T>(), data: Box::new(value) },
-        );
-    }
-
     pub fn spawn(
         &mut self,
         default: Stdio,
         needs_stdin: bool,
+    ) -> io::Result<(Process, StdioPipes)> {
+        self.spawn_with_attributes(default, needs_stdin, None)
+    }
+
+    pub fn spawn_with_attributes(
+        &mut self,
+        default: Stdio,
+        needs_stdin: bool,
+        proc_thread_attribute_list: Option<&ProcThreadAttributeList<'_>>,
     ) -> io::Result<(Process, StdioPipes)> {
         let maybe_env = self.env.capture_if_changed();
 
@@ -272,11 +268,24 @@ impl Command {
             None
         };
         let program = resolve_exe(&self.program, || env::var_os("PATH"), child_paths)?;
-        // Case insensitive "ends_with" of UTF-16 encoded ".bat" or ".cmd"
-        let is_batch_file = matches!(
-            program.len().checked_sub(5).and_then(|i| program.get(i..)),
-            Some([46, 98 | 66, 97 | 65, 116 | 84, 0] | [46, 99 | 67, 109 | 77, 100 | 68, 0])
-        );
+        let has_bat_extension = |program: &[u16]| {
+            matches!(
+                // Case insensitive "ends_with" of UTF-16 encoded ".bat" or ".cmd"
+                program.len().checked_sub(4).and_then(|i| program.get(i..)),
+                Some([46, 98 | 66, 97 | 65, 116 | 84] | [46, 99 | 67, 109 | 77, 100 | 68])
+            )
+        };
+        let is_batch_file = if path::is_verbatim(&program) {
+            has_bat_extension(&program[..program.len() - 1])
+        } else {
+            super::fill_utf16_buf(
+                |buffer, size| unsafe {
+                    // resolve the path so we can test the final file name.
+                    c::GetFullPathNameW(program.as_ptr(), size, buffer, ptr::null_mut())
+                },
+                |program| has_bat_extension(program),
+            )?
+        };
         let (program, mut cmd_str) = if is_batch_file {
             (
                 command_prompt()?,
@@ -325,8 +334,8 @@ impl Command {
 
         // If at least one of stdin, stdout or stderr are set (i.e. are non null)
         // then set the `hStd` fields in `STARTUPINFO`.
-        // Otherwise skip this and allow the OS to apply its default behaviour.
-        // This provides more consistent behaviour between Win7 and Win8+.
+        // Otherwise skip this and allow the OS to apply its default behavior.
+        // This provides more consistent behavior between Win7 and Win8+.
         let is_set = |stdio: &Handle| !stdio.as_raw_handle().is_null();
         if is_set(&stderr) || is_set(&stdout) || is_set(&stdin) {
             si.dwFlags |= c::STARTF_USESTDHANDLES;
@@ -342,23 +351,23 @@ impl Command {
 
         let si_ptr: *mut c::STARTUPINFOW;
 
-        let mut proc_thread_attribute_list;
         let mut si_ex;
 
-        if !self.proc_thread_attributes.is_empty() {
+        if let Some(proc_thread_attribute_list) = proc_thread_attribute_list {
             si.cb = mem::size_of::<c::STARTUPINFOEXW>() as u32;
             flags |= c::EXTENDED_STARTUPINFO_PRESENT;
 
-            proc_thread_attribute_list =
-                make_proc_thread_attribute_list(&self.proc_thread_attributes)?;
             si_ex = c::STARTUPINFOEXW {
                 StartupInfo: si,
-                lpAttributeList: proc_thread_attribute_list.0.as_mut_ptr() as _,
+                // SAFETY: Casting this `*const` pointer to a `*mut` pointer is "safe"
+                // here because windows does not internally mutate the attribute list.
+                // Ideally this should be reflected in the interface of the `windows-sys` crate.
+                lpAttributeList: proc_thread_attribute_list.as_ptr().cast::<c_void>().cast_mut(),
             };
-            si_ptr = core::ptr::addr_of_mut!(si_ex) as _;
+            si_ptr = (&raw mut si_ex) as _;
         } else {
             si.cb = mem::size_of::<c::STARTUPINFOW>() as u32;
-            si_ptr = core::ptr::addr_of_mut!(si) as _;
+            si_ptr = (&raw mut si) as _;
         }
 
         unsafe {
@@ -426,10 +435,9 @@ fn resolve_exe<'a>(
 ) -> io::Result<Vec<u16>> {
     // Early return if there is no filename.
     if exe_path.is_empty() || path::has_trailing_slash(exe_path) {
-        return Err(io::const_io_error!(
-            io::ErrorKind::InvalidInput,
-            "program path has no file name",
-        ));
+        return Err(
+            io::const_error!(io::ErrorKind::InvalidInput, "program path has no file name",),
+        );
     }
     // Test if the file name has the `exe` extension.
     // This does a case-insensitive `ends_with`.
@@ -479,7 +487,7 @@ fn resolve_exe<'a>(
         }
     }
     // If we get here then the executable cannot be found.
-    Err(io::const_io_error!(io::ErrorKind::NotFound, "program not found"))
+    Err(io::const_error!(io::ErrorKind::NotFound, "program not found"))
 }
 
 // Calls `f` for every path that should be used to find an executable.
@@ -494,7 +502,7 @@ where
     Exists: FnMut(PathBuf) -> Option<Vec<u16>>,
 {
     // 1. Child paths
-    // This is for consistency with Rust's historic behaviour.
+    // This is for consistency with Rust's historic behavior.
     if let Some(paths) = child_paths {
         for path in env::split_paths(paths).filter(|p| !p.as_os_str().is_empty()) {
             if let Some(path) = exists(path) {
@@ -882,79 +890,6 @@ fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
         }
         None => Ok((ptr::null(), Vec::new())),
     }
-}
-
-struct ProcThreadAttributeList(Box<[MaybeUninit<u8>]>);
-
-impl Drop for ProcThreadAttributeList {
-    fn drop(&mut self) {
-        let lp_attribute_list = self.0.as_mut_ptr() as _;
-        unsafe { c::DeleteProcThreadAttributeList(lp_attribute_list) }
-    }
-}
-
-/// Wrapper around the value data to be used as a Process Thread Attribute.
-struct ProcThreadAttributeValue {
-    data: Box<dyn Send + Sync>,
-    size: usize,
-}
-
-fn make_proc_thread_attribute_list(
-    attributes: &BTreeMap<usize, ProcThreadAttributeValue>,
-) -> io::Result<ProcThreadAttributeList> {
-    // To initialize our ProcThreadAttributeList, we need to determine
-    // how many bytes to allocate for it. The Windows API simplifies this process
-    // by allowing us to call `InitializeProcThreadAttributeList` with
-    // a null pointer to retrieve the required size.
-    let mut required_size = 0;
-    let Ok(attribute_count) = attributes.len().try_into() else {
-        return Err(io::const_io_error!(
-            ErrorKind::InvalidInput,
-            "maximum number of ProcThreadAttributes exceeded",
-        ));
-    };
-    unsafe {
-        c::InitializeProcThreadAttributeList(
-            ptr::null_mut(),
-            attribute_count,
-            0,
-            &mut required_size,
-        )
-    };
-
-    let mut proc_thread_attribute_list =
-        ProcThreadAttributeList(vec![MaybeUninit::uninit(); required_size].into_boxed_slice());
-
-    // Once we've allocated the necessary memory, it's safe to invoke
-    // `InitializeProcThreadAttributeList` to properly initialize the list.
-    cvt(unsafe {
-        c::InitializeProcThreadAttributeList(
-            proc_thread_attribute_list.0.as_mut_ptr() as *mut _,
-            attribute_count,
-            0,
-            &mut required_size,
-        )
-    })?;
-
-    // # Add our attributes to the buffer.
-    // It's theoretically possible for the attribute count to exceed a u32 value.
-    // Therefore, we ensure that we don't add more attributes than the buffer was initialized for.
-    for (&attribute, value) in attributes.iter().take(attribute_count as usize) {
-        let value_ptr = core::ptr::addr_of!(*value.data) as _;
-        cvt(unsafe {
-            c::UpdateProcThreadAttribute(
-                proc_thread_attribute_list.0.as_mut_ptr() as _,
-                0,
-                attribute,
-                value_ptr,
-                value.size,
-                ptr::null_mut(),
-                ptr::null_mut(),
-            )
-        })?;
-    }
-
-    Ok(proc_thread_attribute_list)
 }
 
 pub struct CommandArgs<'a> {

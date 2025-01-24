@@ -1,5 +1,5 @@
 //@ check-pass
-//@ compile-flags: -Z parse-only
+//@ compile-flags: -Z parse-crate-root-only
 
 impl <*const u8>::AssocTy {} // OK
 impl <Type as Trait>::AssocTy {} // OK

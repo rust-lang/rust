@@ -64,6 +64,7 @@ mod in_path {
 
 // This must not err, as the `&` actually resolves to `'a`.
 fn resolved_anonymous<'a, T: 'a>(f: impl Fn(&'a str) -> &T) {
+    //~^ WARNING elided lifetime has a name
     f("f");
 }
 

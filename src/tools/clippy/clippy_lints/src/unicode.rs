@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_lint_allowed;
 use clippy_utils::macros::span_is_local;
 use clippy_utils::source::snippet;
@@ -105,45 +105,51 @@ fn check_str(cx: &LateContext<'_>, span: Span, id: HirId) {
 
     let string = snippet(cx, span, "");
     if string.chars().any(|c| ['\u{200B}', '\u{ad}', '\u{2060}'].contains(&c)) {
-        span_lint_and_sugg(
-            cx,
-            INVISIBLE_CHARACTERS,
-            span,
-            "invisible character detected",
-            "consider replacing the string with",
-            string
-                .replace('\u{200B}', "\\u{200B}")
-                .replace('\u{ad}', "\\u{AD}")
-                .replace('\u{2060}', "\\u{2060}"),
-            Applicability::MachineApplicable,
-        );
+        #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+        span_lint_and_then(cx, INVISIBLE_CHARACTERS, span, "invisible character detected", |diag| {
+            diag.span_suggestion(
+                span,
+                "consider replacing the string with",
+                string
+                    .replace('\u{200B}', "\\u{200B}")
+                    .replace('\u{ad}', "\\u{AD}")
+                    .replace('\u{2060}', "\\u{2060}"),
+                Applicability::MachineApplicable,
+            );
+        });
     }
 
     if string.chars().any(|c| c as u32 > 0x7F) {
-        span_lint_and_sugg(
+        #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+        span_lint_and_then(
             cx,
             NON_ASCII_LITERAL,
             span,
             "literal non-ASCII character detected",
-            "consider replacing the string with",
-            if is_lint_allowed(cx, UNICODE_NOT_NFC, id) {
-                escape(string.chars())
-            } else {
-                escape(string.nfc())
+            |diag| {
+                diag.span_suggestion(
+                    span,
+                    "consider replacing the string with",
+                    if is_lint_allowed(cx, UNICODE_NOT_NFC, id) {
+                        escape(string.chars())
+                    } else {
+                        escape(string.nfc())
+                    },
+                    Applicability::MachineApplicable,
+                );
             },
-            Applicability::MachineApplicable,
         );
     }
 
     if is_lint_allowed(cx, NON_ASCII_LITERAL, id) && string.chars().zip(string.nfc()).any(|(a, b)| a != b) {
-        span_lint_and_sugg(
-            cx,
-            UNICODE_NOT_NFC,
-            span,
-            "non-NFC Unicode sequence detected",
-            "consider replacing the string with",
-            string.nfc().collect::<String>(),
-            Applicability::MachineApplicable,
-        );
+        #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+        span_lint_and_then(cx, UNICODE_NOT_NFC, span, "non-NFC Unicode sequence detected", |diag| {
+            diag.span_suggestion(
+                span,
+                "consider replacing the string with",
+                string.nfc().collect::<String>(),
+                Applicability::MachineApplicable,
+            );
+        });
     }
 }

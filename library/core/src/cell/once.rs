@@ -262,7 +262,9 @@ impl<T> OnceCell<T> {
     ///
     /// let value = cell.get_mut_or_try_init(|| "1234".parse());
     /// assert_eq!(value, Ok(&mut 1234));
-    /// *value.unwrap() += 2;
+    ///
+    /// let Ok(value) = value else { return; };
+    /// *value += 2;
     /// assert_eq!(cell.get(), Some(&1236))
     /// ```
     #[unstable(feature = "once_cell_get_mut", issue = "121641")]
@@ -304,12 +306,14 @@ impl<T> OnceCell<T> {
     /// assert_eq!(cell.into_inner(), None);
     ///
     /// let cell = OnceCell::new();
-    /// cell.set("hello".to_string()).unwrap();
-    /// assert_eq!(cell.into_inner(), Some("hello".to_string()));
+    /// let _ = cell.set("hello".to_owned());
+    /// assert_eq!(cell.into_inner(), Some("hello".to_owned()));
     /// ```
     #[inline]
     #[stable(feature = "once_cell", since = "1.70.0")]
-    pub fn into_inner(self) -> Option<T> {
+    #[rustc_const_stable(feature = "const_cell_into_inner", since = "1.83.0")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    pub const fn into_inner(self) -> Option<T> {
         // Because `into_inner` takes `self` by value, the compiler statically verifies
         // that it is not currently borrowed. So it is safe to move out `Option<T>`.
         self.inner.into_inner()
@@ -330,8 +334,8 @@ impl<T> OnceCell<T> {
     /// assert_eq!(cell.take(), None);
     ///
     /// let mut cell = OnceCell::new();
-    /// cell.set("hello".to_string()).unwrap();
-    /// assert_eq!(cell.take(), Some("hello".to_string()));
+    /// let _ = cell.set("hello".to_owned());
+    /// assert_eq!(cell.take(), Some("hello".to_owned()));
     /// assert_eq!(cell.get(), None);
     /// ```
     #[inline]

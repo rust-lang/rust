@@ -1,5 +1,4 @@
 //@ check-pass
-#![feature(raw_ref_op)]
 use std::ptr;
 
 // see https://github.com/rust-lang/rust/issues/125833

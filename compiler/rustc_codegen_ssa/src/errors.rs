@@ -1,7 +1,9 @@
 //! Errors emitted by codegen_ssa
 
 use std::borrow::Cow;
+use std::ffi::OsString;
 use std::io::Error;
+use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
@@ -9,9 +11,9 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
-use rustc_macros::Diagnostic;
-use rustc_middle::ty::layout::LayoutError;
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::layout::LayoutError;
 use rustc_span::{Span, Symbol};
 use rustc_type_ir::FloatTy;
 
@@ -21,7 +23,7 @@ use crate::fluent_generated as fluent;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_incorrect_cgu_reuse_type)]
-pub struct IncorrectCguReuseType<'a> {
+pub(crate) struct IncorrectCguReuseType<'a> {
     #[primary_span]
     pub span: Span,
     pub cgu_user_name: &'a str,
@@ -32,14 +34,14 @@ pub struct IncorrectCguReuseType<'a> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_cgu_not_recorded)]
-pub struct CguNotRecorded<'a> {
+pub(crate) struct CguNotRecorded<'a> {
     pub cgu_user_name: &'a str,
     pub cgu_name: &'a str,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unknown_reuse_kind)]
-pub struct UnknownReuseKind {
+pub(crate) struct UnknownReuseKind {
     #[primary_span]
     pub span: Span,
     pub kind: Symbol,
@@ -47,14 +49,14 @@ pub struct UnknownReuseKind {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_missing_query_depgraph)]
-pub struct MissingQueryDepGraph {
+pub(crate) struct MissingQueryDepGraph {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_malformed_cgu_name)]
-pub struct MalformedCguName {
+pub(crate) struct MalformedCguName {
     #[primary_span]
     pub span: Span,
     pub user_path: String,
@@ -63,7 +65,7 @@ pub struct MalformedCguName {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_no_module_named)]
-pub struct NoModuleNamed<'a> {
+pub(crate) struct NoModuleNamed<'a> {
     #[primary_span]
     pub span: Span,
     pub user_path: &'a str,
@@ -73,7 +75,7 @@ pub struct NoModuleNamed<'a> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_field_associated_value_expected)]
-pub struct FieldAssociatedValueExpected {
+pub(crate) struct FieldAssociatedValueExpected {
     #[primary_span]
     pub span: Span,
     pub name: Symbol,
@@ -81,7 +83,7 @@ pub struct FieldAssociatedValueExpected {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_no_field)]
-pub struct NoField {
+pub(crate) struct NoField {
     #[primary_span]
     pub span: Span,
     pub name: Symbol,
@@ -89,49 +91,49 @@ pub struct NoField {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_lib_def_write_failure)]
-pub struct LibDefWriteFailure {
+pub(crate) struct LibDefWriteFailure {
     pub error: Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_version_script_write_failure)]
-pub struct VersionScriptWriteFailure {
+pub(crate) struct VersionScriptWriteFailure {
     pub error: Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_symbol_file_write_failure)]
-pub struct SymbolFileWriteFailure {
+pub(crate) struct SymbolFileWriteFailure {
     pub error: Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_ld64_unimplemented_modifier)]
-pub struct Ld64UnimplementedModifier;
+pub(crate) struct Ld64UnimplementedModifier;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_linker_unsupported_modifier)]
-pub struct LinkerUnsupportedModifier;
+pub(crate) struct LinkerUnsupportedModifier;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_L4Bender_exporting_symbols_unimplemented)]
-pub struct L4BenderExportingSymbolsUnimplemented;
+pub(crate) struct L4BenderExportingSymbolsUnimplemented;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_no_natvis_directory)]
-pub struct NoNatvisDirectory {
+pub(crate) struct NoNatvisDirectory {
     pub error: Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_no_saved_object_file)]
-pub struct NoSavedObjectFile<'a> {
+pub(crate) struct NoSavedObjectFile<'a> {
     pub cgu_name: &'a str,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_copy_path_buf)]
-pub struct CopyPathBuf {
+pub(crate) struct CopyPathBuf {
     pub source_file: PathBuf,
     pub output_path: PathBuf,
     pub error: Error,
@@ -180,20 +182,20 @@ pub struct IgnoringOutput {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_create_temp_dir)]
-pub struct CreateTempDir {
+pub(crate) struct CreateTempDir {
     pub error: Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_add_native_library)]
-pub struct AddNativeLibrary {
+pub(crate) struct AddNativeLibrary {
     pub library_path: PathBuf,
     pub error: Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_multiple_external_func_decl)]
-pub struct MultipleExternalFuncDecl<'a> {
+pub(crate) struct MultipleExternalFuncDecl<'a> {
     #[primary_span]
     pub span: Span,
     pub function: Symbol,
@@ -215,7 +217,7 @@ pub enum LinkRlibError {
     IncompatibleDependencyFormats { ty1: String, ty2: String, list1: String, list2: String },
 }
 
-pub struct ThorinErrorWrapper(pub thorin::Error);
+pub(crate) struct ThorinErrorWrapper(pub thorin::Error);
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for ThorinErrorWrapper {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
@@ -343,22 +345,83 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ThorinErrorWrapper {
     }
 }
 
-pub struct LinkingFailed<'a> {
-    pub linker_path: &'a PathBuf,
+pub(crate) struct LinkingFailed<'a> {
+    pub linker_path: &'a Path,
     pub exit_status: ExitStatus,
-    pub command: &'a Command,
+    pub command: Command,
     pub escaped_output: String,
+    pub verbose: bool,
 }
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+    fn into_diag(mut self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let mut diag = Diag::new(dcx, level, fluent::codegen_ssa_linking_failed);
         diag.arg("linker_path", format!("{}", self.linker_path.display()));
         diag.arg("exit_status", format!("{}", self.exit_status));
 
         let contains_undefined_ref = self.escaped_output.contains("undefined reference to");
 
-        diag.note(format!("{:?}", self.command)).note(self.escaped_output);
+        if self.verbose {
+            diag.note(format!("{:?}", self.command));
+        } else {
+            enum ArgGroup {
+                Regular(OsString),
+                Objects(usize),
+                Rlibs(PathBuf, Vec<OsString>),
+            }
+
+            // Omit rust object files and fold rlibs in the error by default to make linker errors a
+            // bit less verbose.
+            let orig_args = self.command.take_args();
+            let mut args: Vec<ArgGroup> = vec![];
+            for arg in orig_args {
+                if arg.as_encoded_bytes().ends_with(b".rcgu.o") {
+                    if let Some(ArgGroup::Objects(n)) = args.last_mut() {
+                        *n += 1;
+                    } else {
+                        args.push(ArgGroup::Objects(1));
+                    }
+                } else if arg.as_encoded_bytes().ends_with(b".rlib") {
+                    let rlib_path = Path::new(&arg);
+                    let dir = rlib_path.parent().unwrap();
+                    let filename = rlib_path.file_name().unwrap().to_owned();
+                    if let Some(ArgGroup::Rlibs(parent, rlibs)) = args.last_mut() {
+                        if parent == dir {
+                            rlibs.push(filename);
+                        } else {
+                            args.push(ArgGroup::Rlibs(dir.to_owned(), vec![filename]));
+                        }
+                    } else {
+                        args.push(ArgGroup::Rlibs(dir.to_owned(), vec![filename]));
+                    }
+                } else {
+                    args.push(ArgGroup::Regular(arg));
+                }
+            }
+            self.command.args(args.into_iter().map(|arg_group| match arg_group {
+                ArgGroup::Regular(arg) => arg,
+                ArgGroup::Objects(n) => OsString::from(format!("<{n} object files omitted>")),
+                ArgGroup::Rlibs(dir, rlibs) => {
+                    let mut arg = dir.into_os_string();
+                    arg.push("/{");
+                    let mut first = true;
+                    for rlib in rlibs {
+                        if !first {
+                            arg.push(",");
+                        }
+                        first = false;
+                        arg.push(rlib);
+                    }
+                    arg.push("}");
+                    arg
+                }
+            }));
+
+            diag.note(format!("{:?}", self.command));
+            diag.note("some arguments are omitted. use `--verbose` to show all linker arguments");
+        }
+
+        diag.note(self.escaped_output);
 
         // Trying to match an error from OS linkers
         // which by now we have no way to translate.
@@ -376,28 +439,28 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_link_exe_unexpected_error)]
-pub struct LinkExeUnexpectedError;
+pub(crate) struct LinkExeUnexpectedError;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_repair_vs_build_tools)]
-pub struct RepairVSBuildTools;
+pub(crate) struct RepairVSBuildTools;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_missing_cpp_build_tool_component)]
-pub struct MissingCppBuildToolComponent;
+pub(crate) struct MissingCppBuildToolComponent;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_select_cpp_build_tool_workload)]
-pub struct SelectCppBuildToolWorkload;
+pub(crate) struct SelectCppBuildToolWorkload;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_visual_studio_not_installed)]
-pub struct VisualStudioNotInstalled;
+pub(crate) struct VisualStudioNotInstalled;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_linker_not_found)]
 #[note]
-pub struct LinkerNotFound {
+pub(crate) struct LinkerNotFound {
     pub linker_path: PathBuf,
     pub error: Error,
 }
@@ -406,7 +469,7 @@ pub struct LinkerNotFound {
 #[diag(codegen_ssa_unable_to_exe_linker)]
 #[note]
 #[note(codegen_ssa_command_note)]
-pub struct UnableToExeLinker {
+pub(crate) struct UnableToExeLinker {
     pub linker_path: PathBuf,
     pub error: Error,
     pub command_formatted: String,
@@ -414,38 +477,38 @@ pub struct UnableToExeLinker {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_msvc_missing_linker)]
-pub struct MsvcMissingLinker;
+pub(crate) struct MsvcMissingLinker;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_self_contained_linker_missing)]
-pub struct SelfContainedLinkerMissing;
+pub(crate) struct SelfContainedLinkerMissing;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_check_installed_visual_studio)]
-pub struct CheckInstalledVisualStudio;
+pub(crate) struct CheckInstalledVisualStudio;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_insufficient_vs_code_product)]
-pub struct InsufficientVSCodeProduct;
+pub(crate) struct InsufficientVSCodeProduct;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_processing_dymutil_failed)]
 #[note]
-pub struct ProcessingDymutilFailed {
+pub(crate) struct ProcessingDymutilFailed {
     pub status: ExitStatus,
     pub output: String,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unable_to_run_dsymutil)]
-pub struct UnableToRunDsymutil {
+pub(crate) struct UnableToRunDsymutil {
     pub error: Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_stripping_debug_info_failed)]
 #[note]
-pub struct StrippingDebugInfoFailed<'a> {
+pub(crate) struct StrippingDebugInfoFailed<'a> {
     pub util: &'a str,
     pub status: ExitStatus,
     pub output: String,
@@ -453,58 +516,59 @@ pub struct StrippingDebugInfoFailed<'a> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unable_to_run)]
-pub struct UnableToRun<'a> {
+pub(crate) struct UnableToRun<'a> {
     pub util: &'a str,
     pub error: Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_linker_file_stem)]
-pub struct LinkerFileStem;
+pub(crate) struct LinkerFileStem;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_static_library_native_artifacts)]
-pub struct StaticLibraryNativeArtifacts;
+pub(crate) struct StaticLibraryNativeArtifacts;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_static_library_native_artifacts_to_file)]
-pub struct StaticLibraryNativeArtifactsToFile<'a> {
+pub(crate) struct StaticLibraryNativeArtifactsToFile<'a> {
     pub path: &'a Path,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_link_script_unavailable)]
-pub struct LinkScriptUnavailable;
+pub(crate) struct LinkScriptUnavailable;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_link_script_write_failure)]
-pub struct LinkScriptWriteFailure {
+pub(crate) struct LinkScriptWriteFailure {
     pub path: PathBuf,
     pub error: Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_failed_to_write)]
-pub struct FailedToWrite {
+pub(crate) struct FailedToWrite {
     pub path: PathBuf,
     pub error: Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unable_to_write_debugger_visualizer)]
-pub struct UnableToWriteDebuggerVisualizer {
+pub(crate) struct UnableToWriteDebuggerVisualizer {
     pub path: PathBuf,
     pub error: Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_rlib_archive_build_failure)]
-pub struct RlibArchiveBuildFailure {
+pub(crate) struct RlibArchiveBuildFailure {
     pub path: PathBuf,
     pub error: Error,
 }
 
 #[derive(Diagnostic)]
+// Public for rustc_codegen_llvm::back::archive
 pub enum ExtractBundledLibsError<'a> {
     #[diag(codegen_ssa_extract_bundled_libs_open_file)]
     OpenFile { rlib: &'a Path, error: Box<dyn std::error::Error> },
@@ -533,26 +597,34 @@ pub enum ExtractBundledLibsError<'a> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unsupported_arch)]
-pub struct UnsupportedArch<'a> {
+pub(crate) struct UnsupportedArch<'a> {
     pub arch: &'a str,
     pub os: &'a str,
 }
 
 #[derive(Diagnostic)]
-pub enum AppleSdkRootError<'a> {
+pub(crate) enum AppleDeploymentTarget {
+    #[diag(codegen_ssa_apple_deployment_target_invalid)]
+    Invalid { env_var: &'static str, error: ParseIntError },
+    #[diag(codegen_ssa_apple_deployment_target_too_low)]
+    TooLow { env_var: &'static str, version: String, os_min: String },
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum AppleSdkRootError<'a> {
     #[diag(codegen_ssa_apple_sdk_error_sdk_path)]
     SdkPath { sdk_name: &'a str, error: Error },
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_read_file)]
-pub struct ReadFileError {
+pub(crate) struct ReadFileError {
     pub message: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unsupported_link_self_contained)]
-pub struct UnsupportedLinkSelfContained;
+pub(crate) struct UnsupportedLinkSelfContained;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_archive_build_failure)]
@@ -571,7 +643,7 @@ pub struct UnknownArchiveKind<'a> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_expected_used_symbol)]
-pub struct ExpectedUsedSymbol {
+pub(crate) struct ExpectedUsedSymbol {
     #[primary_span]
     pub span: Span,
 }
@@ -579,45 +651,45 @@ pub struct ExpectedUsedSymbol {
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_multiple_main_functions)]
 #[help]
-pub struct MultipleMainFunctions {
+pub(crate) struct MultipleMainFunctions {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_metadata_object_file_write)]
-pub struct MetadataObjectFileWrite {
+pub(crate) struct MetadataObjectFileWrite {
     pub error: Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_invalid_windows_subsystem)]
-pub struct InvalidWindowsSubsystem {
+pub(crate) struct InvalidWindowsSubsystem {
     pub subsystem: Symbol,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_shuffle_indices_evaluation)]
-pub struct ShuffleIndicesEvaluation {
+pub(crate) struct ShuffleIndicesEvaluation {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_missing_memory_ordering)]
-pub struct MissingMemoryOrdering;
+pub(crate) struct MissingMemoryOrdering;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unknown_atomic_ordering)]
-pub struct UnknownAtomicOrdering;
+pub(crate) struct UnknownAtomicOrdering;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_atomic_compare_exchange)]
-pub struct AtomicCompareExchange;
+pub(crate) struct AtomicCompareExchange;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unknown_atomic_operation)]
-pub struct UnknownAtomicOperation;
+pub(crate) struct UnknownAtomicOperation;
 
 #[derive(Diagnostic)]
 pub enum InvalidMonomorphization<'tcx> {
@@ -915,8 +987,8 @@ pub enum InvalidMonomorphization<'tcx> {
         ret_ty: Ty<'tcx>,
     },
 
-    #[diag(codegen_ssa_invalid_monomorphization_cast_fat_pointer, code = E0511)]
-    CastFatPointer {
+    #[diag(codegen_ssa_invalid_monomorphization_cast_wide_pointer, code = E0511)]
+    CastWidePointer {
         #[primary_span]
         span: Span,
         name: Symbol,
@@ -986,7 +1058,7 @@ impl IntoDiagArg for ExpectedPointerMutability {
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_invalid_no_sanitize)]
 #[note]
-pub struct InvalidNoSanitize {
+pub(crate) struct InvalidNoSanitize {
     #[primary_span]
     pub span: Span,
 }
@@ -994,7 +1066,7 @@ pub struct InvalidNoSanitize {
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_invalid_link_ordinal_nargs)]
 #[note]
-pub struct InvalidLinkOrdinalNargs {
+pub(crate) struct InvalidLinkOrdinalNargs {
     #[primary_span]
     pub span: Span,
 }
@@ -1002,19 +1074,28 @@ pub struct InvalidLinkOrdinalNargs {
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_illegal_link_ordinal_format)]
 #[note]
-pub struct InvalidLinkOrdinalFormat {
+pub(crate) struct InvalidLinkOrdinalFormat {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_target_feature_safe_trait)]
-pub struct TargetFeatureSafeTrait {
+pub(crate) struct TargetFeatureSafeTrait {
     #[primary_span]
     #[label]
     pub span: Span,
     #[label(codegen_ssa_label_def)]
     pub def: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_forbidden_target_feature_attr)]
+pub struct ForbiddenTargetFeatureAttr<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub feature: &'a str,
+    pub reason: &'a str,
 }
 
 #[derive(Diagnostic)]
@@ -1050,7 +1131,7 @@ pub(crate) struct ErrorCallingDllTool<'a> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_error_creating_remark_dir)]
-pub struct ErrorCreatingRemarkDir {
+pub(crate) struct ErrorCreatingRemarkDir {
     pub error: std::io::Error,
 }
 
@@ -1059,4 +1140,51 @@ pub struct ErrorCreatingRemarkDir {
 pub struct CompilerBuiltinsCannotCall {
     pub caller: String,
     pub callee: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_error_creating_import_library)]
+pub(crate) struct ErrorCreatingImportLibrary<'a> {
+    pub lib_name: &'a str,
+    pub error: String,
+}
+
+pub struct TargetFeatureDisableOrEnable<'a> {
+    pub features: &'a [&'a str],
+    pub span: Option<Span>,
+    pub missing_features: Option<MissingFeatures>,
+}
+
+#[derive(Subdiagnostic)]
+#[help(codegen_ssa_missing_features)]
+pub struct MissingFeatures;
+
+impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+        let mut diag = Diag::new(dcx, level, fluent::codegen_ssa_target_feature_disable_or_enable);
+        if let Some(span) = self.span {
+            diag.span(span);
+        };
+        if let Some(missing_features) = self.missing_features {
+            diag.subdiagnostic(missing_features);
+        }
+        diag.arg("features", self.features.join(", "));
+        diag
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_aix_strip_not_used)]
+pub(crate) struct AixStripNotUsed;
+
+#[derive(LintDiagnostic)]
+#[diag(codegen_ssa_mixed_export_name_and_no_mangle)]
+pub(crate) struct MixedExportNameAndNoMangle {
+    #[label]
+    pub no_mangle: Span,
+    pub no_mangle_attr: String,
+    #[note]
+    pub export_name: Span,
+    #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
+    pub removal_span: Span,
 }

@@ -12,13 +12,13 @@ const PARSED = [
                 [
                     "output",
                     [{
-                        name: "f",
+                        name: "F",
                         fullPath: ["f"],
                         pathWithoutLast: [],
                         pathLast: "f",
                         generics: [
                             {
-                                name: "p",
+                                name: "P",
                                 fullPath: ["p"],
                                 pathWithoutLast: [],
                                 pathLast: "p",
@@ -32,9 +32,8 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: "(-> F<P>)",
+        userQuery: "(-> F<P>)",
         returned: [],
-        userQuery: "(-> f<p>)",
         error: null,
     },
     {
@@ -49,7 +48,7 @@ const PARSED = [
                 [
                     "output",
                     [{
-                        name: "p",
+                        name: "P",
                         fullPath: ["p"],
                         pathWithoutLast: [],
                         pathLast: "p",
@@ -61,9 +60,8 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: "(-> P)",
+        userQuery: "(-> P)",
         returned: [],
-        userQuery: "(-> p)",
         error: null,
     },
     {
@@ -90,9 +88,8 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: "(->,a)",
-        returned: [],
         userQuery: "(->,a)",
+        returned: [],
         error: null,
     },
     {
@@ -103,13 +100,13 @@ const PARSED = [
             pathWithoutLast: [],
             pathLast: "->",
             generics: [{
-                name: "f",
+                name: "F",
                 fullPath: ["f"],
                 pathWithoutLast: [],
                 pathLast: "f",
                 generics: [
                     {
-                        name: "p",
+                        name: "P",
                         fullPath: ["p"],
                         pathWithoutLast: [],
                         pathLast: "p",
@@ -127,9 +124,8 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: "(F<P> ->)",
+        userQuery: "(F<P> ->)",
         returned: [],
-        userQuery: "(f<p> ->)",
         error: null,
     },
     {
@@ -140,7 +136,7 @@ const PARSED = [
             pathWithoutLast: [],
             pathLast: "->",
             generics: [{
-                name: "p",
+                name: "P",
                 fullPath: ["p"],
                 pathWithoutLast: [],
                 pathLast: "p",
@@ -156,9 +152,8 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: "(P ->)",
+        userQuery: "(P ->)",
         returned: [],
-        userQuery: "(p ->)",
         error: null,
     },
     {
@@ -185,9 +180,8 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: "(,a->)",
-        returned: [],
         userQuery: "(,a->)",
+        returned: [],
         error: null,
     },
     {
@@ -221,9 +215,8 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: "(aaaaa->a)",
-        returned: [],
         userQuery: "(aaaaa->a)",
+        returned: [],
         error: null,
     },
     {
@@ -267,9 +260,8 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: "(aaaaa, b -> a)",
-        returned: [],
         userQuery: "(aaaaa, b -> a)",
+        returned: [],
         error: null,
     },
     {
@@ -313,9 +305,8 @@ const PARSED = [
             typeFilter: 1,
         }],
         foundElems: 1,
-        original: "primitive:(aaaaa, b -> a)",
-        returned: [],
         userQuery: "primitive:(aaaaa, b -> a)",
+        returned: [],
         error: null,
     },
     {
@@ -369,16 +360,15 @@ const PARSED = [
             }
         ],
         foundElems: 2,
-        original: "x, trait:(aaaaa, b -> a)",
-        returned: [],
         userQuery: "x, trait:(aaaaa, b -> a)",
+        returned: [],
         error: null,
     },
     // Rust-style HOF
     {
         query: "Fn () -> F<P>",
         elems: [{
-            name: "fn",
+            name: "Fn",
             fullPath: ["fn"],
             pathWithoutLast: [],
             pathLast: "fn",
@@ -387,13 +377,13 @@ const PARSED = [
                 [
                     "output",
                     [{
-                        name: "f",
+                        name: "F",
                         fullPath: ["f"],
                         pathWithoutLast: [],
                         pathLast: "f",
                         generics: [
                             {
-                                name: "p",
+                                name: "P",
                                 fullPath: ["p"],
                                 pathWithoutLast: [],
                                 pathLast: "p",
@@ -407,15 +397,14 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: "Fn () -> F<P>",
+        userQuery: "Fn () -> F<P>",
         returned: [],
-        userQuery: "fn () -> f<p>",
         error: null,
     },
     {
         query: "FnMut() -> P",
         elems: [{
-            name: "fnmut",
+            name: "FnMut",
             fullPath: ["fnmut"],
             pathWithoutLast: [],
             pathLast: "fnmut",
@@ -424,7 +413,7 @@ const PARSED = [
                 [
                     "output",
                     [{
-                        name: "p",
+                        name: "P",
                         fullPath: ["p"],
                         pathWithoutLast: [],
                         pathLast: "p",
@@ -436,15 +425,14 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: "FnMut() -> P",
+        userQuery: "FnMut() -> P",
         returned: [],
-        userQuery: "fnmut() -> p",
         error: null,
     },
     {
         query: "(FnMut() -> P)",
         elems: [{
-            name: "fnmut",
+            name: "FnMut",
             fullPath: ["fnmut"],
             pathWithoutLast: [],
             pathLast: "fnmut",
@@ -453,7 +441,7 @@ const PARSED = [
                 [
                     "output",
                     [{
-                        name: "p",
+                        name: "P",
                         fullPath: ["p"],
                         pathWithoutLast: [],
                         pathLast: "p",
@@ -465,26 +453,25 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: "(FnMut() -> P)",
+        userQuery: "(FnMut() -> P)",
         returned: [],
-        userQuery: "(fnmut() -> p)",
         error: null,
     },
     {
         query: "Fn(F<P>)",
         elems: [{
-            name: "fn",
+            name: "Fn",
             fullPath: ["fn"],
             pathWithoutLast: [],
             pathLast: "fn",
             generics: [{
-                name: "f",
+                name: "F",
                 fullPath: ["f"],
                 pathWithoutLast: [],
                 pathLast: "f",
                 generics: [
                     {
-                        name: "p",
+                        name: "P",
                         fullPath: ["p"],
                         pathWithoutLast: [],
                         pathLast: "p",
@@ -502,9 +489,8 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: "Fn(F<P>)",
+        userQuery: "Fn(F<P>)",
         returned: [],
-        userQuery: "fn(f<p>)",
         error: null,
     },
     {
@@ -548,9 +534,8 @@ const PARSED = [
             typeFilter: 1,
         }],
         foundElems: 1,
-        original: "primitive:fnonce(aaaaa, b) -> a",
-        returned: [],
         userQuery: "primitive:fnonce(aaaaa, b) -> a",
+        returned: [],
         error: null,
     },
     {
@@ -594,9 +579,8 @@ const PARSED = [
             typeFilter: 1,
         }],
         foundElems: 1,
-        original: "primitive:fnonce(aaaaa, keyword:b) -> trait:a",
-        returned: [],
         userQuery: "primitive:fnonce(aaaaa, keyword:b) -> trait:a",
+        returned: [],
         error: null,
     },
     {
@@ -665,9 +649,8 @@ const PARSED = [
             }
         ],
         foundElems: 2,
-        original: "x, trait:fn(aaaaa, b -> a)",
-        returned: [],
         userQuery: "x, trait:fn(aaaaa, b -> a)",
+        returned: [],
         error: null,
     },
     {
@@ -704,9 +687,8 @@ const PARSED = [
             }
         ],
         foundElems: 2,
-        original: "a,b(c)",
-        returned: [],
         userQuery: "a,b(c)",
+        returned: [],
         error: null,
     },
 ];

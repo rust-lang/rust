@@ -1,7 +1,7 @@
 # `wasm-component-ld`
 
-This wrapper is a wrapper around the [`wasm-component-ld`] crates.io crate. That
-crate. That crate is itself a thin wrapper around two pieces:
+This wrapper is a wrapper around the [`wasm-component-ld`] crates.io crate.
+That crate is itself a thin wrapper around two pieces:
 
 * `wasm-ld` - the LLVM-based linker distributed as part of LLD and packaged in
   Rust as `rust-lld`.

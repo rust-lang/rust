@@ -16,7 +16,7 @@
 +         nop;
           StorageLive(_3);
           _3 = &(*_1);
-          _2 = move _3 as &[i32] (PointerCoercion(Unsize));
+          _2 = move _3 as &[i32] (PointerCoercion(Unsize, Implicit));
           StorageDead(_3);
           StorageLive(_4);
           _4 = &raw const (*_2);

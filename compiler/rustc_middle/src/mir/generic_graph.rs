@@ -2,7 +2,7 @@ use gsgdt::{Edge, Graph, Node, NodeStyle};
 use rustc_middle::mir::*;
 
 /// Convert an MIR function into a gsgdt Graph
-pub fn mir_fn_to_generic_graph<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Graph {
+pub(crate) fn mir_fn_to_generic_graph<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Graph {
     let def_id = body.source.def_id();
     let def_name = graphviz_safe_def_name(def_id);
     let graph_name = format!("Mir_{def_name}");

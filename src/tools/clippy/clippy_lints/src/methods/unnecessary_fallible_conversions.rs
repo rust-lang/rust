@@ -6,7 +6,7 @@ use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use super::UNNECESSARY_FALLIBLE_CONVERSIONS;
 

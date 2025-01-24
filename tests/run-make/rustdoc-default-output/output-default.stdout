@@ -172,8 +172,30 @@ Options:
         --scrape-tests  Include test code when scraping examples
         --with-examples path to function call information (for displaying examples in the documentation)
                         
+        --merge none|shared|finalize
+                        Controls how rustdoc handles files from previously
+                        documented crates in the doc root
+                        none = Do not write cross-crate information to the
+                        --out-dir
+                        shared = Append current crate's info to files found in
+                        the --out-dir
+                        finalize = Write current crate's info and
+                        --include-parts-dir info to the --out-dir, overwriting
+                        conflicting files
+        --parts-out-dir path/to/doc.parts/<crate-name>
+                        Writes trait implementations and other info for the
+                        current crate to provided path. Only use with
+                        --merge=none
+        --include-parts-dir path/to/doc.parts/<crate-name>
+                        Includes trait implementations and other crate info
+                        from provided path. Only use with --merge=finalize
+        --html-no-source 
+                        Disable HTML source code pages generation
+        --doctest-compilation-args add arguments to be used when compiling doctests
+                        
         --disable-minification 
-                        removed
+                        disable the minification of CSS/JS files
+                        (perma-unstable, do not use with cached files)
         --plugin-path DIR
                         removed, see issue #44136
                         <https://github.com/rust-lang/rust/issues/44136> for
@@ -192,8 +214,6 @@ Options:
                         removed, see issue #44136
                         <https://github.com/rust-lang/rust/issues/44136> for
                         more information
-        --html-no-source 
-                        Disable HTML source code pages generation
 
     @path               Read newline separated options from `path`
 

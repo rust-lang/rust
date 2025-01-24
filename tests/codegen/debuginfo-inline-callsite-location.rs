@@ -9,13 +9,12 @@
 // CHECK:       tail call void @{{[A-Za-z0-9_]+4core6option13unwrap_failed}}
 // CHECK-SAME:  !dbg ![[#second_dbg:]]
 
-// CHECK-DAG:   ![[#func_dbg:]] = distinct !DISubprogram(name: "unwrap<i32>"
-// CHECK-DAG:   ![[#first_scope:]] = distinct !DILexicalBlock(scope: ![[#func_dbg]],
-// CHECK:       ![[#second_scope:]] = distinct !DILexicalBlock(scope: ![[#func_dbg]],
+// CHECK-DAG:   ![[#func_scope:]] = distinct !DISubprogram(name: "unwrap<i32>"
+// CHECK-DAG:   ![[#]] = !DILocalVariable(name: "self",{{( arg: 1,)?}} scope: ![[#func_scope]]
 // CHECK:       ![[#first_dbg]] = !DILocation(line: [[#]]
-// CHECK-SAME:  scope: ![[#first_scope]], inlinedAt: ![[#]])
+// CHECK-SAME:  scope: ![[#func_scope]], inlinedAt: ![[#]])
 // CHECK:       ![[#second_dbg]] = !DILocation(line: [[#]]
-// CHECK-SAME:  scope: ![[#second_scope]], inlinedAt: ![[#]])
+// CHECK-SAME:  scope: ![[#func_scope]], inlinedAt: ![[#]])
 
 #![crate_type = "lib"]
 

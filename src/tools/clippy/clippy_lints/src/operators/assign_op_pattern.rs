@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{binop_traits, eq_expr_value, trait_ref_of_method};
@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(
             if let Some((_, lang_item)) = binop_traits(op.node)
                 && let Some(trait_id) = cx.tcx.lang_items().get(lang_item)
                 && let parent_fn = cx.tcx.hir().get_parent_item(e.hir_id).def_id
-                && trait_ref_of_method(cx, parent_fn).map_or(true, |t| t.path.res.def_id() != trait_id)
+                && trait_ref_of_method(cx, parent_fn).is_none_or(|t| t.path.res.def_id() != trait_id)
                 && implements_trait(cx, ty, trait_id, &[rty.into()])
             {
                 // Primitive types execute assign-ops right-to-left. Every other type is left-to-right.
@@ -46,8 +46,8 @@ pub(super) fn check<'tcx>(
                     expr.span,
                     "manual implementation of an assign operation",
                     |diag| {
-                        if let (Some(snip_a), Some(snip_r)) =
-                            (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span))
+                        if let Some(snip_a) = assignee.span.get_source_text(cx)
+                            && let Some(snip_r) = rhs.span.get_source_text(cx)
                         {
                             diag.span_suggestion(
                                 expr.span,
@@ -102,7 +102,7 @@ fn imm_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> HirIdSet {
     struct S(HirIdSet);
     impl Delegate<'_> for S {
         fn borrow(&mut self, place: &PlaceWithHirId<'_>, _: HirId, kind: BorrowKind) {
-            if matches!(kind, BorrowKind::ImmBorrow | BorrowKind::UniqueImmBorrow) {
+            if matches!(kind, BorrowKind::Immutable | BorrowKind::UniqueImmutable) {
                 self.0.insert(match place.place.base {
                     PlaceBase::Local(id) => id,
                     PlaceBase::Upvar(id) => id.var_path.hir_id,
@@ -127,7 +127,7 @@ fn mut_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> HirIdSet {
     struct S(HirIdSet);
     impl Delegate<'_> for S {
         fn borrow(&mut self, place: &PlaceWithHirId<'_>, _: HirId, kind: BorrowKind) {
-            if matches!(kind, BorrowKind::MutBorrow) {
+            if matches!(kind, BorrowKind::Mutable) {
                 self.0.insert(match place.place.base {
                     PlaceBase::Local(id) => id,
                     PlaceBase::Upvar(id) => id.var_path.hir_id,

@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{is_res_lang_ctor, last_path_segment, path_res, MaybePath};
+use clippy_utils::{MaybePath, is_res_lang_ctor, last_path_segment, path_res};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;

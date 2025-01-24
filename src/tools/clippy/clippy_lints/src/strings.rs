@@ -1,9 +1,9 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{
-    get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, is_path_diagnostic_item, method_calls,
-    peel_blocks, SpanlessEq,
+    SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, is_path_diagnostic_item,
+    method_calls, peel_blocks,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -190,7 +190,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                 }
             },
             ExprKind::Index(target, _idx, _) => {
-                let e_ty = cx.typeck_results().expr_ty(target).peel_refs();
+                let e_ty = cx.typeck_results().expr_ty_adjusted(target).peel_refs();
                 if e_ty.is_str() || is_type_lang_item(cx, e_ty, LangItem::String) {
                     span_lint(
                         cx,
@@ -253,18 +253,17 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         use rustc_ast::LitKind;
 
-        if let ExprKind::Call(fun, args) = e.kind
+        if let ExprKind::Call(fun, [bytes_arg]) = e.kind
             // Find std::str::converts::from_utf8
             && is_path_diagnostic_item(cx, fun, sym::str_from_utf8)
 
             // Find string::as_bytes
-            && let ExprKind::AddrOf(BorrowKind::Ref, _, args) = args[0].kind
+            && let ExprKind::AddrOf(BorrowKind::Ref, _, args) = bytes_arg.kind
             && let ExprKind::Index(left, right, _) = args.kind
             && let (method_names, expressions, _) = method_calls(left, 1)
-            && method_names.len() == 1
+            && method_names == [sym!(as_bytes)]
             && expressions.len() == 1
             && expressions[0].1.is_empty()
-            && method_names[0] == sym!(as_bytes)
 
             // Check for slicer
             && let ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), _, _) = right.kind
@@ -287,7 +286,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
 
         if !in_external_macro(cx.sess(), e.span)
             && let ExprKind::MethodCall(path, receiver, ..) = &e.kind
-            && path.ident.name == sym!(as_bytes)
+            && path.ident.name.as_str() == "as_bytes"
             && let ExprKind::Lit(lit) = &receiver.kind
             && let LitKind::Str(lit_content, _) = &lit.node
         {
@@ -333,7 +332,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
         }
 
         if let ExprKind::MethodCall(path, recv, [], _) = &e.kind
-            && path.ident.name == sym!(into_bytes)
+            && path.ident.name.as_str() == "into_bytes"
             && let ExprKind::MethodCall(path, recv, [], _) = &recv.kind
             && matches!(path.ident.name.as_str(), "to_owned" | "to_string")
             && let ExprKind::Lit(lit) = &recv.kind
@@ -371,12 +370,10 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// // example code where clippy issues a warning
     /// let _ = "str".to_string();
     /// ```
     /// Use instead:
     /// ```no_run
-    /// // example code which does not raise clippy warning
     /// let _ = "str".to_owned();
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -393,23 +390,22 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
             return;
         }
 
-        if let ExprKind::MethodCall(path, self_arg, ..) = &expr.kind
+        if let ExprKind::MethodCall(path, self_arg, [], _) = &expr.kind
             && path.ident.name == sym::to_string
             && let ty = cx.typeck_results().expr_ty(self_arg)
             && let ty::Ref(_, ty, ..) = ty.kind()
             && ty.is_str()
         {
-            let mut applicability = Applicability::MachineApplicable;
-            let snippet = snippet_with_applicability(cx, self_arg.span, "..", &mut applicability);
-
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 STR_TO_STRING,
                 expr.span,
                 "`to_string()` called on a `&str`",
-                "try",
-                format!("{snippet}.to_owned()"),
-                applicability,
+                |diag| {
+                    let mut applicability = Applicability::MachineApplicable;
+                    let snippet = snippet_with_applicability(cx, self_arg.span, "..", &mut applicability);
+                    diag.span_suggestion(expr.span, "try", format!("{snippet}.to_owned()"), applicability);
+                },
             );
         }
     }
@@ -426,13 +422,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// // example code where clippy issues a warning
     /// let msg = String::from("Hello World");
     /// let _ = msg.to_string();
     /// ```
     /// Use instead:
     /// ```no_run
-    /// // example code which does not raise clippy warning
     /// let msg = String::from("Hello World");
     /// let _ = msg.clone();
     /// ```
@@ -450,18 +444,20 @@ impl<'tcx> LateLintPass<'tcx> for StringToString {
             return;
         }
 
-        if let ExprKind::MethodCall(path, self_arg, ..) = &expr.kind
+        if let ExprKind::MethodCall(path, self_arg, [], _) = &expr.kind
             && path.ident.name == sym::to_string
             && let ty = cx.typeck_results().expr_ty(self_arg)
             && is_type_lang_item(cx, ty, LangItem::String)
         {
-            span_lint_and_help(
+            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+            span_lint_and_then(
                 cx,
                 STRING_TO_STRING,
                 expr.span,
                 "`to_string()` called on a `String`",
-                None,
-                "consider using `.clone()`",
+                |diag| {
+                    diag.help("consider using `.clone()`");
+                },
             );
         }
     }
@@ -493,7 +489,7 @@ impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         let tyckres = cx.typeck_results();
         if let ExprKind::MethodCall(path, split_recv, [], split_ws_span) = expr.kind
-            && path.ident.name == sym!(split_whitespace)
+            && path.ident.name.as_str() == "split_whitespace"
             && let Some(split_ws_def_id) = tyckres.type_dependent_def_id(expr.hir_id)
             && cx.tcx.is_diagnostic_item(sym::str_split_whitespace, split_ws_def_id)
             && let ExprKind::MethodCall(path, _trim_recv, [], trim_span) = split_recv.kind

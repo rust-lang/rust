@@ -45,10 +45,6 @@ ast_lowering_bad_return_type_notation_output =
 
 ast_lowering_bad_return_type_notation_position = return type notation not allowed in this position yet
 
-ast_lowering_base_expression_double_dot =
-    base expression required after `..`
-    .suggestion = add a base expression here
-
 ast_lowering_clobber_abi_not_supported =
     `clobber_abi` is not supported on this target
 
@@ -56,6 +52,9 @@ ast_lowering_closure_cannot_be_static = closures cannot be static
 
 ast_lowering_coroutine_too_many_parameters =
     too many parameters for a coroutine (expected 0 or 1 parameters)
+
+ast_lowering_default_field_in_tuple = default fields are not supported in tuple structs
+    .label = default fields are only supported on structs
 
 ast_lowering_does_not_support_modifiers =
     the `{$class_name}` register class does not support template modifiers
@@ -103,6 +102,12 @@ ast_lowering_invalid_asm_template_modifier_reg_class =
 ast_lowering_invalid_asm_template_modifier_sym =
     asm template modifiers are not allowed for `sym` arguments
 
+ast_lowering_invalid_legacy_const_generic_arg =
+    invalid argument to a legacy const generic: cannot have const blocks, closures, async blocks or items
+
+ast_lowering_invalid_legacy_const_generic_arg_suggestion =
+    try using a const generic argument instead
+
 ast_lowering_invalid_register =
     invalid register `{$reg}`: {$error}
 
@@ -146,6 +151,8 @@ ast_lowering_register2 = register `{$reg2_name}`
 
 ast_lowering_register_class_only_clobber =
     register class `{$reg_class_name}` can only be used as a clobber, not as an input or output
+ast_lowering_register_class_only_clobber_stable =
+    register class `{$reg_class_name}` can only be used as a clobber in stable
 
 ast_lowering_register_conflict =
     register `{$reg1_name}` conflicts with register `{$reg2_name}`
@@ -167,11 +174,23 @@ ast_lowering_template_modifier = template modifier
 
 ast_lowering_this_not_async = this is not `async`
 
+ast_lowering_underscore_array_length_unstable =
+    using `_` for array lengths is unstable
+
 ast_lowering_underscore_expr_lhs_assign =
     in expressions, `_` can only be used on the left-hand side of an assignment
     .label = `_` not allowed here
 
+ast_lowering_unstable_inline_assembly = inline assembly is not stable yet on this architecture
+ast_lowering_unstable_inline_assembly_label_operand_with_outputs =
+    using both label and output operands for inline assembly is unstable
+ast_lowering_unstable_inline_assembly_label_operands =
+    label operands for inline assembly are unstable
+ast_lowering_unstable_may_unwind = the `may_unwind` option is unstable
+
 ast_lowering_use_angle_brackets = use angle brackets instead
+
+ast_lowering_yield = yield syntax is experimental
 ast_lowering_yield_in_closure =
     `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
     .suggestion = use `#[coroutine]` to make this closure a coroutine

@@ -1,0 +1,5 @@
+error: Argument to option 'print' missing
+       Usage:
+           --print [crate-name|file-names|sysroot|target-libdir|cfg|check-cfg|calling-conventions|target-list|target-cpus|target-features|relocation-models|code-models|tls-models|target-spec-json|all-target-specs-json|native-static-libs|stack-protector-strategies|link-args|deployment-target]
+                               Compiler information to print on stdout
+

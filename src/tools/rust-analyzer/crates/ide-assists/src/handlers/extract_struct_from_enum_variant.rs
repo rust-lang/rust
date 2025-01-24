@@ -1,7 +1,7 @@
 use std::iter;
 
 use either::Either;
-use hir::{Module, ModuleDef, Name, Variant};
+use hir::{HasCrate, Module, ModuleDef, Name, Variant};
 use ide_db::{
     defs::Definition,
     helpers::mod_path_to_ast,
@@ -16,7 +16,7 @@ use syntax::{
         self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, HasAttrs, HasGenericParams,
         HasName, HasVisibility,
     },
-    match_ast, ted, SyntaxElement,
+    match_ast, ted, Edition, SyntaxElement,
     SyntaxKind::*,
     SyntaxNode, T,
 };
@@ -58,6 +58,7 @@ pub(crate) fn extract_struct_from_enum_variant(
         "Extract struct from enum variant",
         target,
         |builder| {
+            let edition = enum_hir.krate(ctx.db()).edition(ctx.db());
             let variant_hir_name = variant_hir.name(ctx.db());
             let enum_module_def = ModuleDef::from(enum_hir);
             let usages = Definition::Variant(variant_hir).usages(&ctx.sema).all();
@@ -82,7 +83,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                     references,
                 );
                 processed.into_iter().for_each(|(path, node, import)| {
-                    apply_references(ctx.config.insert_use, path, node, import)
+                    apply_references(ctx.config.insert_use, path, node, import, edition)
                 });
             }
             builder.edit_file(ctx.file_id());
@@ -98,7 +99,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                     references,
                 );
                 processed.into_iter().for_each(|(path, node, import)| {
-                    apply_references(ctx.config.insert_use, path, node, import)
+                    apply_references(ctx.config.insert_use, path, node, import, edition)
                 });
             }
 
@@ -169,7 +170,7 @@ fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &Va
             ),
             _ => false,
         })
-        .any(|(name, _)| name.display(db).to_string() == variant_name.to_string())
+        .any(|(name, _)| name.eq_ident(variant_name.text().as_str()))
 }
 
 fn extract_generic_params(
@@ -359,9 +360,10 @@ fn apply_references(
     segment: ast::PathSegment,
     node: SyntaxNode,
     import: Option<(ImportScope, hir::ModPath)>,
+    edition: Edition,
 ) {
     if let Some((scope, path)) = import {
-        insert_use(&scope, mod_path_to_ast(&path), &insert_use_cfg);
+        insert_use(&scope, mod_path_to_ast(&path, edition), &insert_use_cfg);
     }
     // deep clone to prevent cycle
     let path = make::path_from_segments(iter::once(segment.clone_subtree()), false);

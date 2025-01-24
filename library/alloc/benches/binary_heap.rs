@@ -1,7 +1,7 @@
 use std::collections::BinaryHeap;
 
 use rand::seq::SliceRandom;
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 #[bench]
 fn bench_find_smallest_1000(b: &mut Bencher) {

@@ -1,97 +1,123 @@
 //@aux-build:../../ui/auxiliary/proc_macros.rs
-//@aux-build:helper.rs
-//@revisions: allow_crates disallow_crates
+//@revisions: default allow_crates allow_long no_short
+//@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/default
 //@[allow_crates] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/allow_crates
-//@[disallow_crates] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/disallow_crates
-#![allow(clippy::no_effect, clippy::legacy_numeric_constants, unused)]
-#![warn(clippy::absolute_paths)]
-#![feature(decl_macro)]
+//@[allow_long] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/allow_long
+//@[no_short] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/no_short
+#![deny(clippy::absolute_paths)]
 
-extern crate helper;
-#[macro_use]
 extern crate proc_macros;
+use proc_macros::{external, inline_macros, with_span};
 
-pub mod a {
-    pub mod b {
-        pub mod c {
-            pub struct C;
+#[inline_macros]
+fn main() {
+    let _ = std::path::is_separator(' ');
+    //~[default]^ absolute_paths
+    //~[allow_crates]| absolute_paths
+    //~[no_short]| absolute_paths
 
-            impl C {
-                pub const ZERO: u32 = 0;
-            }
+    // Make sure this is treated as having three path segments, not four.
+    let _ = ::std::path::MAIN_SEPARATOR;
+    //~[default]^ absolute_paths
+    //~[allow_crates]| absolute_paths
+    //~[no_short]| absolute_paths
 
-            pub mod d {
-                pub mod e {
-                    pub mod f {
-                        pub struct F;
-                    }
-                }
+    let _ = std::collections::hash_map::HashMap::<i32, i32>::new(); //~ absolute_paths
+
+    // Note `std::path::Path::new` is treated as having three parts
+    let _: &std::path::Path = std::path::Path::new("");
+    //~[default]^ absolute_paths
+    //~[default]| absolute_paths
+    //~[allow_crates]| absolute_paths
+    //~[allow_crates]| absolute_paths
+    //~[no_short]| absolute_paths
+    //~[no_short]| absolute_paths
+
+    // Treated as having three parts.
+    let _ = ::core::clone::Clone::clone(&0i32);
+    //~[default]^ absolute_paths
+    //~[no_short]| absolute_paths
+    let _ = <i32 as core::clone::Clone>::clone(&0i32);
+    //~[default]^ absolute_paths
+    //~[no_short]| absolute_paths
+    let _ = std::option::Option::None::<i32>;
+    //~[default]^ absolute_paths
+    //~[allow_crates]| absolute_paths
+    //~[no_short]| absolute_paths
+
+    {
+        // FIXME: macro calls should be checked.
+        let x = 1i32;
+        let _ = core::ptr::addr_of!(x);
+    }
+
+    {
+        // FIXME: derive macro paths should be checked.
+        #[derive(core::clone::Clone)]
+        struct S;
+    }
+
+    {
+        use core::fmt;
+        use core::marker::PhantomData;
+
+        struct X<T>(PhantomData<T>);
+        impl<T: core::cmp::Eq> core::fmt::Display for X<T>
+        //~[default]^ absolute_paths
+        //~[default]| absolute_paths
+        //~[no_short]| absolute_paths
+        //~[no_short]| absolute_paths
+        where T: core::clone::Clone
+        //~[no_short]^ absolute_paths
+        //~[default]| absolute_paths
+        {
+            fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
+                Ok(())
             }
         }
-
-        pub struct B;
     }
 
-    pub struct A;
-}
+    {
+        mod m1 {
+            pub(crate) mod m2 {
+                pub(crate) const FOO: i32 = 0;
+            }
+        }
+        let _ = m1::m2::FOO;
+    }
 
-fn main() {
-    f32::max(1.0, 2.0);
-    std::f32::MAX;
-    core::f32::MAX;
-    ::core::f32::MAX;
-    crate::a::b::c::C;
-    crate::a::b::c::d::e::f::F;
-    crate::a::A;
-    crate::a::b::B;
-    crate::a::b::c::C::ZERO;
-    helper::b::c::d::e::f();
-    ::helper::b::c::d::e::f();
-    fn b() -> a::b::B {
-        todo!()
-    }
-    std::println!("a");
-    let x = 1;
-    std::ptr::addr_of!(x);
-    // Test we handle max segments with `PathRoot` properly; this has 4 segments but we should say it
-    // has 3
-    ::std::f32::MAX;
-    // Do not lint due to the above
-    ::helper::a();
-    // Do not lint
-    helper::a();
-    use crate::a::b::c::C;
-    use a::b;
-    use std::f32::MAX;
-    a::b::c::d::e::f::F;
-    b::c::C;
-    fn a() -> a::A {
-        todo!()
-    }
-    use a::b::c;
-
-    fn c() -> c::C {
-        todo!()
-    }
-    fn d() -> Result<(), ()> {
-        todo!()
-    }
-    external! {
-        crate::a::b::c::C::ZERO;
-    }
-    // For some reason, `path.span.from_expansion()` takes care of this for us
     with_span! {
         span
-        crate::a::b::c::C::ZERO;
+        let _ = std::path::is_separator(' ');
     }
-    macro_rules! local_crate {
-        () => {
-            crate::a::b::c::C::ZERO;
-        };
+
+    external! {
+        let _ = std::path::is_separator(' ');
     }
-    macro local_crate_2_0() {
-        crate::a::b::c::C::ZERO;
+
+    inline! {
+        let _ = std::path::is_separator(' ');
     }
-    local_crate!();
-    local_crate_2_0!();
+}
+
+pub use core::cmp::Ordering;
+pub use std::fs::File;
+
+#[derive(Clone)]
+pub struct S;
+mod m1 {
+    pub use crate::S;
+}
+
+//~[no_short]v absolute_paths
+pub const _: crate::S = {
+    let crate::S = m1::S; //~[no_short] absolute_paths
+
+    crate::m1::S
+    //~[default]^ absolute_paths
+    //~[no_short]| absolute_paths
+};
+
+pub fn f() {
+    let _ = <crate::S as Clone>::clone(&m1::S); //~[no_short] absolute_paths
 }

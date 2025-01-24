@@ -20,7 +20,8 @@ use super::*;
 pub(super) fn mod_contents(p: &mut Parser<'_>, stop_on_r_curly: bool) {
     attributes::inner_attrs(p);
     while !(p.at(EOF) || (p.at(T!['}']) && stop_on_r_curly)) {
-        item_or_macro(p, stop_on_r_curly);
+        // We can set `is_in_extern=true`, because it only allows `safe fn`, and there is no ambiguity here.
+        item_or_macro(p, stop_on_r_curly, true);
     }
 }
 
@@ -41,11 +42,11 @@ pub(super) const ITEM_RECOVERY_SET: TokenSet = TokenSet::new(&[
     T![;],
 ]);
 
-pub(super) fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
+pub(super) fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool, is_in_extern: bool) {
     let m = p.start();
     attributes::outer_attrs(p);
 
-    let m = match opt_item(p, m) {
+    let m = match opt_item(p, m, is_in_extern) {
         Ok(()) => {
             if p.at(T![;]) {
                 p.err_and_bump(
@@ -71,8 +72,19 @@ pub(super) fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
     // macro_rules! ()
     // macro_rules! []
     if paths::is_use_path_start(p) {
-        macro_call(p, m);
-        return;
+        paths::use_path(p);
+        // Do not create a MACRO_CALL node here if this isn't a macro call, this causes problems with completion.
+
+        // test_err path_item_without_excl
+        // foo
+        if p.at(T![!]) {
+            macro_call(p, m);
+            return;
+        } else {
+            m.complete(p, ERROR);
+            p.error("expected an item");
+            return;
+        }
     }
 
     m.abandon(p);
@@ -91,7 +103,7 @@ pub(super) fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
 }
 
 /// Try to parse an item, completing `m` in case of success.
-pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
+pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker, is_in_extern: bool) -> Result<(), Marker> {
     // test_err pub_expr
     // fn foo() { pub 92; }
     let has_visibility = opt_visibility(p, false);
@@ -132,6 +144,13 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
     // fn foo(){} unsafe { } fn bar(){}
     if p.at(T![unsafe]) && p.nth(1) != T!['{'] {
         p.eat(T![unsafe]);
+        has_mods = true;
+    }
+
+    // test safe_outside_of_extern
+    // fn foo() { safe = true; }
+    if is_in_extern && p.at_contextual_kw(T![safe]) {
+        p.eat_contextual_kw(T![safe]);
         has_mods = true;
     }
 
@@ -189,6 +208,7 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
         T![fn] => fn_(p, m),
 
         T![const] if p.nth(1) != T!['{'] => consts::konst(p, m),
+        T![static] if matches!(p.nth(1), IDENT | T![_] | T![mut]) => consts::static_(p, m),
 
         T![trait] => traits::trait_(p, m),
         T![impl] => traits::impl_(p, m),
@@ -245,22 +265,16 @@ fn opt_item_without_modifiers(p: &mut Parser<'_>, m: Marker) -> Result<(), Marke
 
 // test extern_crate
 // extern crate foo;
+// extern crate self;
 fn extern_crate(p: &mut Parser<'_>, m: Marker) {
     p.bump(T![extern]);
     p.bump(T![crate]);
 
-    if p.at(T![self]) {
-        // test extern_crate_self
-        // extern crate self;
-        let m = p.start();
-        p.bump(T![self]);
-        m.complete(p, NAME_REF);
-    } else {
-        name_ref(p);
-    }
+    name_ref_or_self(p);
 
     // test extern_crate_rename
     // extern crate foo as bar;
+    // extern crate self as bar;
     opt_rename(p);
     p.expect(T![;]);
     m.complete(p, EXTERN_CRATE);
@@ -407,8 +421,7 @@ fn fn_(p: &mut Parser<'_>, m: Marker) {
 }
 
 fn macro_call(p: &mut Parser<'_>, m: Marker) {
-    assert!(paths::is_use_path_start(p));
-    paths::use_path(p);
+    assert!(p.at(T![!]));
     match macro_call_after_excl(p) {
         BlockLike::Block => (),
         BlockLike::NotBlock => {

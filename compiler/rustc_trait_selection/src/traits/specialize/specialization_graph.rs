@@ -5,6 +5,7 @@ use rustc_middle::bug;
 pub use rustc_middle::traits::specialization_graph::*;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use tracing::{debug, instrument};
 
 use super::OverlapError;
 use crate::traits;
@@ -40,7 +41,7 @@ impl<'tcx> Children {
     fn insert_blindly(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().skip_binder();
         if let Some(st) =
-            fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::AsCandidateKey)
+            fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::InstantiateWithInfer)
         {
             debug!("insert_blindly: impl_def_id={:?} st={:?}", impl_def_id, st);
             self.non_blanket_impls.entry(st).or_default().push(impl_def_id)
@@ -57,7 +58,7 @@ impl<'tcx> Children {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().skip_binder();
         let vec: &mut Vec<DefId>;
         if let Some(st) =
-            fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::AsCandidateKey)
+            fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::InstantiateWithInfer)
         {
             debug!("remove_existing: impl_def_id={:?} st={:?}", impl_def_id, st);
             vec = self.non_blanket_impls.get_mut(&st).unwrap();
@@ -278,7 +279,7 @@ impl<'tcx> Graph {
         let mut parent = trait_def_id;
         let mut last_lint = None;
         let simplified =
-            fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::AsCandidateKey);
+            fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::InstantiateWithInfer);
 
         // Descend the specialization tree, where `parent` is the current parent node.
         loop {
@@ -375,6 +376,12 @@ pub(crate) fn assoc_def(
     // If there is no such item in that impl, this function will fail with a
     // cycle error if the specialization graph is currently being built.
     if let Some(&impl_item_id) = tcx.impl_item_implementor_ids(impl_def_id).get(&assoc_def_id) {
+        // Ensure that the impl is constrained, otherwise projection may give us
+        // bad unconstrained infer vars.
+        if let Some(impl_def_id) = impl_def_id.as_local() {
+            tcx.ensure().enforce_impl_non_lifetime_params_are_constrained(impl_def_id)?;
+        }
+
         let item = tcx.associated_item(impl_item_id);
         let impl_node = Node::Impl(impl_def_id);
         return Ok(LeafDef {
@@ -390,6 +397,14 @@ pub(crate) fn assoc_def(
 
     let ancestors = trait_def.ancestors(tcx, impl_def_id)?;
     if let Some(assoc_item) = ancestors.leaf_def(tcx, assoc_def_id) {
+        // Ensure that the impl is constrained, otherwise projection may give us
+        // bad unconstrained infer vars.
+        if assoc_item.item.container == ty::AssocItemContainer::Impl
+            && let Some(impl_def_id) = assoc_item.item.container_id(tcx).as_local()
+        {
+            tcx.ensure().enforce_impl_non_lifetime_params_are_constrained(impl_def_id)?;
+        }
+
         Ok(assoc_item)
     } else {
         // This is saying that neither the trait nor

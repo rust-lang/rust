@@ -1,5 +1,5 @@
 error: Undefined Behavior: reborrow through <TAG> at ALLOC[0x0] is forbidden
-  --> $DIR/protector-write-lazy.rs:LL:CC
+  --> tests/fail/tree_borrows/protector-write-lazy.rs:LL:CC
    |
 LL |     unsafe { println!("Value of funky: {}", *funky_ptr_lazy_on_fst_elem) }
    |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ reborrow through <TAG> at ALLOC[0x0] is forbidden
@@ -7,18 +7,18 @@ LL |     unsafe { println!("Value of funky: {}", *funky_ptr_lazy_on_fst_elem) }
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> has state Disabled which forbids this reborrow (acting as a child read access)
 help: the accessed tag <TAG> was created here, in the initial state Reserved
-  --> $DIR/protector-write-lazy.rs:LL:CC
+  --> tests/fail/tree_borrows/protector-write-lazy.rs:LL:CC
    |
 LL |         unsafe { (&mut *(ptr_to_vec.wrapping_add(1))) as *mut i32 }.wrapping_sub(1);
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the accessed tag <TAG> later transitioned to Disabled due to a protector release (acting as a foreign write access) on every location previously accessed by this tag
-  --> $DIR/protector-write-lazy.rs:LL:CC
+  --> tests/fail/tree_borrows/protector-write-lazy.rs:LL:CC
    |
 LL | }
    |  ^
    = help: this transition corresponds to a loss of read and write permissions
    = note: BACKTRACE (of the first span):
-   = note: inside `main` at $DIR/protector-write-lazy.rs:LL:CC
+   = note: inside `main` at tests/fail/tree_borrows/protector-write-lazy.rs:LL:CC
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

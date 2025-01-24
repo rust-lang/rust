@@ -5,8 +5,6 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
-#![feature(async_closure)]
-
 use std::future::Future;
 
 extern crate block_on;

@@ -153,7 +153,7 @@ pub trait FileExt {
     ///
     /// It is possible to inadvertently set this flag, like in the example below.
     /// Therefore, it is important to be vigilant while changing options to mitigate
-    /// unexpected behaviour.
+    /// unexpected behavior.
     ///
     /// ```no_run
     /// use std::fs::File;
@@ -334,6 +334,7 @@ pub trait PermissionsExt {
     /// assert_eq!(permissions.mode(), 0o644);
     /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "permissions_from_mode")]
     fn from_mode(mode: u32) -> Self;
 }
 
@@ -985,6 +986,11 @@ impl DirBuilderExt for fs::DirBuilder {
 /// Changing the owner typically requires privileges, such as root or a specific capability.
 /// Changing the group typically requires either being the owner and a member of the group, or
 /// having privileges.
+///
+/// Be aware that changing owner clears the `suid` and `sgid` permission bits in most cases
+/// according to POSIX, usually even if the user is root. The sgid is not cleared when
+/// the file is non-group-executable. See: <https://www.man7.org/linux/man-pages/man2/chown.2.html>
+/// This call may also clear file capabilities, if there was any.
 ///
 /// If called on a symbolic link, this will change the owner and group of the link target. To
 /// change the owner and group of the link itself, see [`lchown`].

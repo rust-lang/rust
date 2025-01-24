@@ -4,7 +4,7 @@ error: conditional `else if` is not supported for `let...else`
 LL |     let Some(_) = Some(()) else if true {
    |                                 ^^ expected `{`
    |
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL ~     let Some(_) = Some(()) else { if true {
 LL |

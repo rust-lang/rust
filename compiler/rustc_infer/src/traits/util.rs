@@ -1,7 +1,6 @@
 use rustc_data_structures::fx::FxHashSet;
-use rustc_middle::ty::{self, ToPolyTraitRef, TyCtxt};
-use rustc_span::symbol::Ident;
-use rustc_span::Span;
+use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::{Ident, Span};
 pub use rustc_type_ir::elaborate::*;
 
 use crate::traits::{self, Obligation, ObligationCauseCode, PredicateObligation};
@@ -123,11 +122,11 @@ pub fn transitive_bounds_that_define_assoc_item<'tcx>(
 
             stack.extend(
                 tcx.explicit_supertraits_containing_assoc_item((trait_ref.def_id(), assoc_name))
-                    .instantiate_own_identity()
+                    .iter_identity_copied()
                     .map(|(clause, _)| clause.instantiate_supertrait(tcx, trait_ref))
                     .filter_map(|clause| clause.as_trait_clause())
-                    // FIXME: Negative supertraits are elaborated here lol
-                    .map(|trait_pred| trait_pred.to_poly_trait_ref()),
+                    .filter(|clause| clause.polarity() == ty::PredicatePolarity::Positive)
+                    .map(|clause| clause.map_bound(|clause| clause.trait_ref)),
             );
 
             return Some(trait_ref);

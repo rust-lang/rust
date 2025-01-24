@@ -14,12 +14,13 @@ LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unreachable expression
-  --> $DIR/expr_assign.rs:20:14
+  --> $DIR/expr_assign.rs:20:9
    |
 LL |         *p = return;
-   |         --   ^^^^^^ unreachable expression
-   |         |
-   |         any code following this expression is unreachable
+   |         ^^^^^------
+   |         |    |
+   |         |    any code following this expression is unreachable
+   |         unreachable expression
 
 error: unreachable expression
   --> $DIR/expr_assign.rs:26:15

@@ -26,8 +26,8 @@ fn big_box() {
         //~^ NOTE: Capturing t[(0, 0),Deref,(0, 0)] -> ByValue
         //~| NOTE: Min Capture t[(0, 0)] -> ByValue
         println!("{} {:?}", t.1, p);
-        //~^ NOTE: Capturing t[(1, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture t[(1, 0)] -> ImmBorrow
+        //~^ NOTE: Capturing t[(1, 0)] -> Immutable
+        //~| NOTE: Min Capture t[(1, 0)] -> Immutable
     };
 
     c();

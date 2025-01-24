@@ -578,10 +578,11 @@ LL |     let (&X(_t),) = (&x.clone(),);
    |             data moved here
    |             move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
-help: consider borrowing the pattern binding
+help: consider removing the borrow
    |
-LL |     let (&X(ref _t),) = (&x.clone(),);
-   |             +++
+LL -     let (&X(_t),) = (&x.clone(),);
+LL +     let (X(_t),) = (&x.clone(),);
+   |
 
 error[E0507]: cannot move out of a shared reference
   --> $DIR/simple.rs:223:34
@@ -592,10 +593,11 @@ LL |     if let (&Either::One(_t),) = (&e.clone(),) { }
    |                          data moved here
    |                          move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
-help: consider borrowing the pattern binding
+help: consider removing the borrow
    |
-LL |     if let (&Either::One(ref _t),) = (&e.clone(),) { }
-   |                          +++
+LL -     if let (&Either::One(_t),) = (&e.clone(),) { }
+LL +     if let (Either::One(_t),) = (&e.clone(),) { }
+   |
 
 error[E0507]: cannot move out of a shared reference
   --> $DIR/simple.rs:226:37
@@ -606,10 +608,11 @@ LL |     while let (&Either::One(_t),) = (&e.clone(),) { }
    |                             data moved here
    |                             move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
-help: consider borrowing the pattern binding
+help: consider removing the borrow
    |
-LL |     while let (&Either::One(ref _t),) = (&e.clone(),) { }
-   |                             +++
+LL -     while let (&Either::One(_t),) = (&e.clone(),) { }
+LL +     while let (Either::One(_t),) = (&e.clone(),) { }
+   |
 
 error[E0507]: cannot move out of a shared reference
   --> $DIR/simple.rs:229:11
@@ -623,10 +626,11 @@ LL |         (&Either::One(_t),)
    |                       data moved here
    |                       move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
-help: consider borrowing the pattern binding
+help: consider removing the borrow
    |
-LL |         (&Either::One(ref _t),)
-   |                       +++
+LL -         (&Either::One(_t),)
+LL +         (Either::One(_t),)
+   |
 
 error[E0507]: cannot move out of a mutable reference
   --> $DIR/simple.rs:239:25
@@ -637,10 +641,11 @@ LL |     let (&mut X(_t),) = (&mut xm.clone(),);
    |                 data moved here
    |                 move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
-help: consider borrowing the pattern binding
+help: consider removing the mutable borrow
    |
-LL |     let (&mut X(ref _t),) = (&mut xm.clone(),);
-   |                 +++
+LL -     let (&mut X(_t),) = (&mut xm.clone(),);
+LL +     let (X(_t),) = (&mut xm.clone(),);
+   |
 
 error[E0507]: cannot move out of a mutable reference
   --> $DIR/simple.rs:242:38
@@ -651,10 +656,11 @@ LL |     if let (&mut Either::One(_t),) = (&mut em.clone(),) { }
    |                              data moved here
    |                              move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
-help: consider borrowing the pattern binding
+help: consider removing the mutable borrow
    |
-LL |     if let (&mut Either::One(ref _t),) = (&mut em.clone(),) { }
-   |                              +++
+LL -     if let (&mut Either::One(_t),) = (&mut em.clone(),) { }
+LL +     if let (Either::One(_t),) = (&mut em.clone(),) { }
+   |
 
 error[E0507]: cannot move out of a mutable reference
   --> $DIR/simple.rs:245:41
@@ -665,10 +671,11 @@ LL |     while let (&mut Either::One(_t),) = (&mut em.clone(),) { }
    |                                 data moved here
    |                                 move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
-help: consider borrowing the pattern binding
+help: consider removing the mutable borrow
    |
-LL |     while let (&mut Either::One(ref _t),) = (&mut em.clone(),) { }
-   |                                 +++
+LL -     while let (&mut Either::One(_t),) = (&mut em.clone(),) { }
+LL +     while let (Either::One(_t),) = (&mut em.clone(),) { }
+   |
 
 error[E0507]: cannot move out of a mutable reference
   --> $DIR/simple.rs:248:11
@@ -683,14 +690,16 @@ LL |         (&mut Either::Two(_t),) => (),
    |                           -- ...and here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
-help: consider borrowing the pattern binding
+help: consider removing the mutable borrow
    |
-LL |         (&mut Either::One(ref _t),) => (),
-   |                           +++
-help: consider borrowing the pattern binding
+LL -         (&mut Either::One(_t),) => (),
+LL +         (Either::One(_t),) => (),
    |
-LL |         (&mut Either::Two(ref _t),) => (),
-   |                           +++
+help: consider removing the mutable borrow
+   |
+LL -         (&mut Either::Two(_t),) => (),
+LL +         (Either::Two(_t),) => (),
+   |
 
 error[E0507]: cannot move out of a shared reference
   --> $DIR/simple.rs:261:18
@@ -947,10 +956,11 @@ LL |     fn f3((&X(_t),): (&X,)) { }
    |               data moved here
    |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
-help: consider borrowing the pattern binding
+help: consider removing the borrow
    |
-LL |     fn f3((&X(ref _t),): (&X,)) { }
-   |               +++
+LL -     fn f3((&X(_t),): (&X,)) { }
+LL +     fn f3((X(_t),): (&X,)) { }
+   |
 
 error[E0507]: cannot move out of a mutable reference
   --> $DIR/simple.rs:255:11
@@ -961,10 +971,11 @@ LL |     fn f4((&mut X(_t),): (&mut X,)) { }
    |                   data moved here
    |                   move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
-help: consider borrowing the pattern binding
+help: consider removing the mutable borrow
    |
-LL |     fn f4((&mut X(ref _t),): (&mut X,)) { }
-   |                   +++
+LL -     fn f4((&mut X(_t),): (&mut X,)) { }
+LL +     fn f4((X(_t),): (&mut X,)) { }
+   |
 
 error[E0507]: cannot move out of `a.a` as enum variant `Some` which is behind a shared reference
   --> $DIR/simple.rs:331:20

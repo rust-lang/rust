@@ -13,6 +13,13 @@ export type RunnableEnvCfgItem = {
 };
 export type RunnableEnvCfg = Record<string, string> | RunnableEnvCfgItem[];
 
+type ShowStatusBar =
+    | "always"
+    | "never"
+    | {
+          documentSelector: vscode.DocumentSelector;
+      };
+
 export class Config {
     readonly extensionId = "rust-lang.rust-analyzer";
     configureLang: vscode.Disposable | undefined;
@@ -24,6 +31,7 @@ export class Config {
         "serverPath",
         "server",
         "files",
+        "cfg",
     ].map((opt) => `${this.rootSection}.${opt}`);
 
     private readonly requiresWindowReloadOpts = ["testExplorer"].map(
@@ -252,10 +260,6 @@ export class Config {
         await this.cfg.update("checkOnSave", !(value || false), target || null, overrideInLanguage);
     }
 
-    get discoverProjectRunner(): string | undefined {
-        return this.get<string | undefined>("discoverProjectRunner");
-    }
-
     get problemMatcher(): string[] {
         return this.get<string[]>("runnables.problemMatcher") || [];
     }
@@ -264,9 +268,9 @@ export class Config {
         return this.get<boolean | undefined>("testExplorer");
     }
 
-    get runnablesExtraEnv() {
+    runnablesExtraEnv(label: string): Record<string, string> | undefined {
         const item = this.get<any>("runnables.extraEnv") ?? this.get<any>("runnableEnv");
-        if (!item) return item;
+        if (!item) return undefined;
         const fixRecord = (r: Record<string, any>) => {
             for (const key in r) {
                 if (typeof r[key] !== "string") {
@@ -274,11 +278,28 @@ export class Config {
                 }
             }
         };
+
+        const platform = process.platform;
+        const checkPlatform = (it: RunnableEnvCfgItem) => {
+            if (it.platform) {
+                const platforms = Array.isArray(it.platform) ? it.platform : [it.platform];
+                return platforms.indexOf(platform) >= 0;
+            }
+            return true;
+        };
+
         if (item instanceof Array) {
-            item.forEach((x) => fixRecord(x.env));
-        } else {
-            fixRecord(item);
+            const env = {};
+            for (const it of item) {
+                const masked = !it.mask || new RegExp(it.mask).test(label);
+                if (masked && checkPlatform(it)) {
+                    Object.assign(env, it.env);
+                }
+            }
+            fixRecord(env);
+            return env;
         }
+        fixRecord(item);
         return item;
     }
 
@@ -303,6 +324,7 @@ export class Config {
             engine: this.get<string>("debug.engine"),
             engineSettings: this.get<object>("debug.engineSettings") ?? {},
             openDebugPane: this.get<boolean>("debug.openDebugPane"),
+            buildBeforeRestart: this.get<boolean>("debug.buildBeforeRestart"),
             sourceFileMap: sourceFileMap,
         };
     }
@@ -329,8 +351,27 @@ export class Config {
         return this.get<boolean>("showDependenciesExplorer");
     }
 
+    get showSyntaxTree() {
+        return this.get<boolean>("showSyntaxTree");
+    }
+
     get statusBarClickAction() {
         return this.get<string>("statusBar.clickAction");
+    }
+
+    get statusBarShowStatusBar() {
+        return this.get<ShowStatusBar>("statusBar.showStatusBar");
+    }
+
+    get initializeStopped() {
+        return this.get<boolean>("initializeStopped");
+    }
+
+    get askBeforeUpdateTest() {
+        return this.get<boolean>("runnables.askBeforeUpdateTest");
+    }
+    async setAskBeforeUpdateTest(value: boolean) {
+        await this.cfg.update("runnables.askBeforeUpdateTest", value, true);
     }
 }
 

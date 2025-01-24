@@ -1,7 +1,8 @@
 [package]
 name = "hir-ty"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "The type system for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
@@ -28,7 +29,6 @@ chalk-ir.workspace = true
 chalk-recursive.workspace = true
 chalk-derive.workspace = true
 la-arena.workspace = true
-once_cell = "1.17.0"
 triomphe.workspace = true
 nohash-hasher.workspace = true
 typed-arena = "2.0.1"

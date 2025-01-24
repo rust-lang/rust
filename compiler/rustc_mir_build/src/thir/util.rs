@@ -1,6 +1,6 @@
 use rustc_hir as hir;
 use rustc_middle::bug;
-use rustc_middle::ty::{self, CanonicalUserType, TyCtxt, UserType};
+use rustc_middle::ty::{self, CanonicalUserType, TyCtxt};
 use tracing::debug;
 
 pub(crate) trait UserAnnotatedTyHelpers<'tcx> {
@@ -21,7 +21,7 @@ pub(crate) trait UserAnnotatedTyHelpers<'tcx> {
         let ty = self.typeck_results().node_type(hir_id);
         match ty.kind() {
             ty::Adt(adt_def, ..) => {
-                if let UserType::TypeOf(ref mut did, _) = &mut user_ty.value {
+                if let ty::UserTypeKind::TypeOf(ref mut did, _) = &mut user_ty.value.kind {
                     *did = adt_def.did();
                 }
                 Some(user_ty)

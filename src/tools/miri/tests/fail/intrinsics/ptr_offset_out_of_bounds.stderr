@@ -1,5 +1,5 @@
 error: Undefined Behavior: out-of-bounds pointer arithmetic: expected a pointer to 5 bytes of memory, but got ALLOC which is only 4 bytes from the end of the allocation
-  --> $DIR/ptr_offset_out_of_bounds.rs:LL:CC
+  --> tests/fail/intrinsics/ptr_offset_out_of_bounds.rs:LL:CC
    |
 LL |     let x = unsafe { x.offset(5) };
    |                      ^^^^^^^^^^^ out-of-bounds pointer arithmetic: expected a pointer to 5 bytes of memory, but got ALLOC which is only 4 bytes from the end of the allocation
@@ -7,12 +7,12 @@ LL |     let x = unsafe { x.offset(5) };
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
 help: ALLOC was allocated here:
-  --> $DIR/ptr_offset_out_of_bounds.rs:LL:CC
+  --> tests/fail/intrinsics/ptr_offset_out_of_bounds.rs:LL:CC
    |
 LL |     let v = [0i8; 4];
    |         ^
    = note: BACKTRACE (of the first span):
-   = note: inside `main` at $DIR/ptr_offset_out_of_bounds.rs:LL:CC
+   = note: inside `main` at tests/fail/intrinsics/ptr_offset_out_of_bounds.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

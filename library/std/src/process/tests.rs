@@ -96,9 +96,23 @@ fn stdout_works() {
 #[test]
 #[cfg_attr(any(windows, target_os = "vxworks"), ignore)]
 fn set_current_dir_works() {
+    // On many Unix platforms this will use the posix_spawn path.
     let mut cmd = shell_cmd();
     cmd.arg("-c").arg("pwd").current_dir("/").stdout(Stdio::piped());
     assert_eq!(run_output(cmd), "/\n");
+
+    // Also test the fork/exec path by setting a pre_exec function.
+    #[cfg(unix)]
+    {
+        use crate::os::unix::process::CommandExt;
+
+        let mut cmd = shell_cmd();
+        cmd.arg("-c").arg("pwd").current_dir("/").stdout(Stdio::piped());
+        unsafe {
+            cmd.pre_exec(|| Ok(()));
+        }
+        assert_eq!(run_output(cmd), "/\n");
+    }
 }
 
 #[test]
@@ -436,8 +450,8 @@ fn test_creation_flags() {
 fn test_proc_thread_attributes() {
     use crate::mem;
     use crate::os::windows::io::AsRawHandle;
-    use crate::os::windows::process::CommandExt;
-    use crate::sys::c::{CloseHandle, BOOL, HANDLE};
+    use crate::os::windows::process::{CommandExt, ProcThreadAttributeList};
+    use crate::sys::c::{BOOL, CloseHandle, HANDLE};
     use crate::sys::cvt;
 
     #[repr(C)]
@@ -476,12 +490,14 @@ fn test_proc_thread_attributes() {
 
     let mut child_cmd = Command::new("cmd");
 
-    unsafe {
-        child_cmd
-            .raw_attribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, parent.0.as_raw_handle() as isize);
-    }
+    let parent_process_handle = parent.0.as_raw_handle();
 
-    let child = ProcessDropGuard(child_cmd.spawn().unwrap());
+    let mut attribute_list = ProcThreadAttributeList::build()
+        .attribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &parent_process_handle)
+        .finish()
+        .unwrap();
+
+    let child = ProcessDropGuard(child_cmd.spawn_with_attributes(&mut attribute_list).unwrap());
 
     let h_snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
 

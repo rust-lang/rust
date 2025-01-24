@@ -6,7 +6,7 @@ pub struct ReprC {
 }
 #[repr(simd, packed(2))]
 pub struct ReprSimd {
-    field: u8,
+    field: [u8; 1],
 }
 #[repr(transparent)]
 pub struct ReprTransparent {

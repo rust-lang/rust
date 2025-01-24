@@ -134,6 +134,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_str_len", since = "1.39.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "str_len")]
     #[must_use]
     #[inline]
     pub const fn len(&self) -> usize {
@@ -184,8 +185,9 @@ impl str {
     /// ```
     #[must_use]
     #[stable(feature = "is_char_boundary", since = "1.9.0")]
+    #[rustc_const_unstable(feature = "const_is_char_boundary", issue = "131516")]
     #[inline]
-    pub fn is_char_boundary(&self, index: usize) -> bool {
+    pub const fn is_char_boundary(&self, index: usize) -> bool {
         // 0 is always ok.
         // Test for 0 explicitly so that it can optimize out the check
         // easily and skip reading string data for that case.
@@ -194,8 +196,8 @@ impl str {
             return true;
         }
 
-        match self.as_bytes().get(index) {
-            // For `None` we have two options:
+        if index >= self.len() {
+            // For `true` we have two options:
             //
             // - index == self.len()
             //   Empty strings are valid, so return true
@@ -204,19 +206,21 @@ impl str {
             //
             // The check is placed exactly here, because it improves generated
             // code on higher opt-levels. See PR #84751 for more details.
-            None => index == self.len(),
-
-            Some(&b) => b.is_utf8_char_boundary(),
+            index == self.len()
+        } else {
+            self.as_bytes()[index].is_utf8_char_boundary()
         }
     }
 
-    /// Finds the closest `x` not exceeding `index` where `is_char_boundary(x)` is `true`.
+    /// Finds the closest `x` not exceeding `index` where [`is_char_boundary(x)`] is `true`.
     ///
     /// This method can help you truncate a string so that it's still valid UTF-8, but doesn't
     /// exceed a given number of bytes. Note that this is done purely at the character level
     /// and can still visually split graphemes, even though the underlying characters aren't
     /// split. For example, the emoji 🧑‍🔬 (scientist) could be split so that the string only
     /// includes 🧑 (person) instead.
+    ///
+    /// [`is_char_boundary(x)`]: Self::is_char_boundary
     ///
     /// # Examples
     ///
@@ -246,7 +250,7 @@ impl str {
         }
     }
 
-    /// Finds the closest `x` not below `index` where `is_char_boundary(x)` is `true`.
+    /// Finds the closest `x` not below `index` where [`is_char_boundary(x)`] is `true`.
     ///
     /// If `index` is greater than the length of the string, this returns the length of the string.
     ///
@@ -254,7 +258,7 @@ impl str {
     /// for more details.
     ///
     /// [`floor_char_boundary`]: str::floor_char_boundary
-    ///
+    /// [`is_char_boundary(x)`]: Self::is_char_boundary
     ///
     /// # Examples
     ///
@@ -338,9 +342,10 @@ impl str {
     /// assert_eq!("🍔∈🌏", s);
     /// ```
     #[stable(feature = "str_mut_extras", since = "1.20.0")]
+    #[rustc_const_stable(feature = "const_str_as_mut", since = "1.83.0")]
     #[must_use]
     #[inline(always)]
-    pub unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
+    pub const unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
         // SAFETY: the cast from `&str` to `&[u8]` is safe since `str`
         // has the same layout as `&[u8]` (only std can make this guarantee).
         // The pointer dereference is safe since it comes from a mutable reference which
@@ -368,6 +373,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "rustc_str_as_ptr", since = "1.32.0")]
     #[rustc_never_returns_null_ptr]
+    #[rustc_as_ptr]
     #[must_use]
     #[inline(always)]
     pub const fn as_ptr(&self) -> *const u8 {
@@ -383,10 +389,12 @@ impl str {
     /// It is your responsibility to make sure that the string slice only gets
     /// modified in a way that it remains valid UTF-8.
     #[stable(feature = "str_as_mut_ptr", since = "1.36.0")]
+    #[rustc_const_stable(feature = "const_str_as_mut", since = "1.83.0")]
     #[rustc_never_returns_null_ptr]
+    #[rustc_as_ptr]
     #[must_use]
     #[inline(always)]
-    pub fn as_mut_ptr(&mut self) -> *mut u8 {
+    pub const fn as_mut_ptr(&mut self) -> *mut u8 {
         self as *mut str as *mut u8
     }
 
@@ -634,7 +642,8 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "str_split_at", since = "1.4.0")]
-    pub fn split_at(&self, mid: usize) -> (&str, &str) {
+    #[rustc_const_unstable(feature = "const_str_split_at", issue = "131518")]
+    pub const fn split_at(&self, mid: usize) -> (&str, &str) {
         match self.split_at_checked(mid) {
             None => slice_error_fail(self, 0, mid),
             Some(pair) => pair,
@@ -674,7 +683,8 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "str_split_at", since = "1.4.0")]
-    pub fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str) {
+    #[rustc_const_unstable(feature = "const_str_split_at", issue = "131518")]
+    pub const fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str) {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
             // SAFETY: just checked that `mid` is on a char boundary.
@@ -713,11 +723,12 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "split_at_checked", since = "1.80.0")]
-    pub fn split_at_checked(&self, mid: usize) -> Option<(&str, &str)> {
+    #[rustc_const_unstable(feature = "const_str_split_at", issue = "131518")]
+    pub const fn split_at_checked(&self, mid: usize) -> Option<(&str, &str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
             // SAFETY: just checked that `mid` is on a char boundary.
-            Some(unsafe { (self.get_unchecked(0..mid), self.get_unchecked(mid..self.len())) })
+            Some(unsafe { self.split_at_unchecked(mid) })
         } else {
             None
         }
@@ -753,7 +764,8 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "split_at_checked", since = "1.80.0")]
-    pub fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut str, &mut str)> {
+    #[rustc_const_unstable(feature = "const_str_split_at", issue = "131518")]
+    pub const fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut str, &mut str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
             // SAFETY: just checked that `mid` is on a char boundary.
@@ -769,7 +781,25 @@ impl str {
     ///
     /// The caller must ensure that `mid` is a valid byte offset from the start
     /// of the string and falls on the boundary of a UTF-8 code point.
-    unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut str, &mut str) {
+    const unsafe fn split_at_unchecked(&self, mid: usize) -> (&str, &str) {
+        let len = self.len();
+        let ptr = self.as_ptr();
+        // SAFETY: caller guarantees `mid` is on a char boundary.
+        unsafe {
+            (
+                from_utf8_unchecked(slice::from_raw_parts(ptr, mid)),
+                from_utf8_unchecked(slice::from_raw_parts(ptr.add(mid), len - mid)),
+            )
+        }
+    }
+
+    /// Divides one string slice into two at an index.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `mid` is a valid byte offset from the start
+    /// of the string and falls on the boundary of a UTF-8 code point.
+    const unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut str, &mut str) {
         let len = self.len();
         let ptr = self.as_mut_ptr();
         // SAFETY: caller guarantees `mid` is on a char boundary.
@@ -830,6 +860,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "str_chars")]
     pub fn chars(&self) -> Chars<'_> {
         Chars { iter: self.as_bytes().iter() }
     }
@@ -1154,6 +1185,7 @@ impl str {
     /// assert!(bananas.starts_with(&['a', 'b', 'c', 'd']));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "str_starts_with")]
     pub fn starts_with<P: Pattern>(&self, pat: P) -> bool {
         pat.is_prefix_of(self)
     }
@@ -1178,6 +1210,7 @@ impl str {
     /// assert!(!bananas.ends_with("nana"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "str_ends_with")]
     pub fn ends_with<P: Pattern>(&self, pat: P) -> bool
     where
         for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
@@ -2163,7 +2196,7 @@ impl str {
     /// Returns a string slice with the prefix removed.
     ///
     /// If the string starts with the pattern `prefix`, returns the substring after the prefix,
-    /// wrapped in `Some`. Unlike `trim_start_matches`, this method removes the prefix exactly once.
+    /// wrapped in `Some`. Unlike [`trim_start_matches`], this method removes the prefix exactly once.
     ///
     /// If the string does not start with `prefix`, returns `None`.
     ///
@@ -2172,6 +2205,7 @@ impl str {
     ///
     /// [`char`]: prim@char
     /// [pattern]: self::pattern
+    /// [`trim_start_matches`]: Self::trim_start_matches
     ///
     /// # Examples
     ///
@@ -2190,7 +2224,7 @@ impl str {
     /// Returns a string slice with the suffix removed.
     ///
     /// If the string ends with the pattern `suffix`, returns the substring before the suffix,
-    /// wrapped in `Some`.  Unlike `trim_end_matches`, this method removes the suffix exactly once.
+    /// wrapped in `Some`.  Unlike [`trim_end_matches`], this method removes the suffix exactly once.
     ///
     /// If the string does not end with `suffix`, returns `None`.
     ///
@@ -2199,6 +2233,7 @@ impl str {
     ///
     /// [`char`]: prim@char
     /// [pattern]: self::pattern
+    /// [`trim_end_matches`]: Self::trim_end_matches
     ///
     /// # Examples
     ///
@@ -2367,7 +2402,7 @@ impl str {
     ///
     /// # Examples
     ///
-    /// Basic usage
+    /// Basic usage:
     ///
     /// ```
     /// let four: u32 = "4".parse().unwrap();
@@ -2441,9 +2476,10 @@ impl str {
     /// assert!(!"Ferrös".eq_ignore_ascii_case("FERRÖS"));
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_unstable(feature = "const_eq_ignore_ascii_case", issue = "131719")]
     #[must_use]
     #[inline]
-    pub fn eq_ignore_ascii_case(&self, other: &str) -> bool {
+    pub const fn eq_ignore_ascii_case(&self, other: &str) -> bool {
         self.as_bytes().eq_ignore_ascii_case(other.as_bytes())
     }
 
@@ -2467,8 +2503,9 @@ impl str {
     /// assert_eq!("GRüßE, JüRGEN ❤", s);
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_stable(feature = "const_make_ascii", since = "1.84.0")]
     #[inline]
-    pub fn make_ascii_uppercase(&mut self) {
+    pub const fn make_ascii_uppercase(&mut self) {
         // SAFETY: changing ASCII letters only does not invalidate UTF-8.
         let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_uppercase()
@@ -2494,8 +2531,9 @@ impl str {
     /// assert_eq!("grÜße, jÜrgen ❤", s);
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_stable(feature = "const_make_ascii", since = "1.84.0")]
     #[inline]
-    pub fn make_ascii_lowercase(&mut self) {
+    pub const fn make_ascii_lowercase(&mut self) {
         // SAFETY: changing ASCII letters only does not invalidate UTF-8.
         let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_lowercase()
@@ -2734,6 +2772,17 @@ impl str {
     pub fn substr_range(&self, substr: &str) -> Option<Range<usize>> {
         self.as_bytes().subslice_range(substr.as_bytes())
     }
+
+    /// Returns the same string as a string slice `&str`.
+    ///
+    /// This method is redundant when used directly on `&str`, but
+    /// it helps dereferencing other string-like types to string slices,
+    /// for example references to `Box<str>` or `Arc<str>`.
+    #[inline]
+    #[unstable(feature = "str_as_str", issue = "130366")]
+    pub fn as_str(&self) -> &str {
+        self
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2818,5 +2867,5 @@ impl_fn_for_zst! {
 }
 
 // This is required to make `impl From<&str> for Box<dyn Error>` and `impl<E> From<E> for Box<dyn Error>` not overlap.
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "error_in_core_neg_impl", since = "1.65.0")]
 impl !crate::error::Error for &str {}

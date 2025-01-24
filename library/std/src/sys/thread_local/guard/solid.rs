@@ -19,6 +19,9 @@ pub fn enable() {
     }
 
     unsafe extern "C" fn tls_dtor(_unused: *mut u8) {
-        unsafe { destructors::run() };
+        unsafe {
+            destructors::run();
+            crate::rt::thread_cleanup();
+        }
     }
 }

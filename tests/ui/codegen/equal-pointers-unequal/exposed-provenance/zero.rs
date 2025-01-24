@@ -4,8 +4,6 @@
 
 // Derived from https://github.com/rust-lang/rust/issues/107975#issuecomment-1431758601
 
-#![feature(exposed_provenance)]
-
 use std::ptr;
 
 fn main() {

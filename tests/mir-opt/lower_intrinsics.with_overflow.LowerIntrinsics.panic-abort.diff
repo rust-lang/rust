@@ -27,9 +27,9 @@
       bb0: {
           StorageLive(_3);
           StorageLive(_4);
-          _4 = _1;
+          _4 = copy _1;
           StorageLive(_5);
-          _5 = _2;
+          _5 = copy _2;
 -         _3 = add_with_overflow::<i32>(move _4, move _5) -> [return: bb1, unwind unreachable];
 +         _3 = AddWithOverflow(move _4, move _5);
 +         goto -> bb1;
@@ -40,9 +40,9 @@
           StorageDead(_4);
           StorageLive(_6);
           StorageLive(_7);
-          _7 = _1;
+          _7 = copy _1;
           StorageLive(_8);
-          _8 = _2;
+          _8 = copy _2;
 -         _6 = sub_with_overflow::<i32>(move _7, move _8) -> [return: bb2, unwind unreachable];
 +         _6 = SubWithOverflow(move _7, move _8);
 +         goto -> bb2;
@@ -53,9 +53,9 @@
           StorageDead(_7);
           StorageLive(_9);
           StorageLive(_10);
-          _10 = _1;
+          _10 = copy _1;
           StorageLive(_11);
-          _11 = _2;
+          _11 = copy _2;
 -         _9 = mul_with_overflow::<i32>(move _10, move _11) -> [return: bb3, unwind unreachable];
 +         _9 = MulWithOverflow(move _10, move _11);
 +         goto -> bb3;

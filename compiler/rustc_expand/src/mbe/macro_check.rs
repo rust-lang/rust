@@ -108,18 +108,17 @@
 use std::iter;
 
 use rustc_ast::token::{Delimiter, IdentIsRaw, Token, TokenKind};
-use rustc_ast::{NodeId, DUMMY_NODE_ID};
+use rustc_ast::{DUMMY_NODE_ID, NodeId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_session::lint::builtin::{META_VARIABLE_MISUSE, MISSING_FRAGMENT_SPECIFIER};
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::{kw, MacroRulesNormalizedIdent};
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, MacroRulesNormalizedIdent, Span, kw};
 use smallvec::SmallVec;
 
-use super::quoted::VALID_FRAGMENT_NAMES_MSG_2021;
+use super::quoted::VALID_FRAGMENT_NAMES_MSG;
 use crate::errors;
 use crate::mbe::{KleeneToken, TokenTree};
 
@@ -274,7 +273,7 @@ fn check_binders(
                     psess.dcx().emit_err(errors::MissingFragmentSpecifier {
                         span,
                         add_span: span.shrink_to_hi(),
-                        valid: VALID_FRAGMENT_NAMES_MSG_2021,
+                        valid: VALID_FRAGMENT_NAMES_MSG,
                     });
                 } else {
                     psess.buffer_lint(

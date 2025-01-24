@@ -1,57 +1,16 @@
 use std::ffi::OsStr;
-use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{fs, io};
 
-use crate::build_sysroot::STDLIB_SRC;
 use crate::path::{Dirs, RelPath};
-use crate::rustc_info::get_default_sysroot;
-use crate::utils::{
-    copy_dir_recursively, git_command, remove_dir_if_exists, retry_spawn_and_wait, spawn_and_wait,
-};
+use crate::utils::{copy_dir_recursively, ensure_empty_dir, spawn_and_wait};
 
 pub(crate) fn prepare(dirs: &Dirs) {
-    RelPath::DOWNLOAD.ensure_exists(dirs);
+    std::fs::create_dir_all(&dirs.download_dir).unwrap();
     crate::tests::RAND_REPO.fetch(dirs);
     crate::tests::REGEX_REPO.fetch(dirs);
-}
-
-pub(crate) fn prepare_stdlib(dirs: &Dirs, rustc: &Path) {
-    let sysroot_src_orig = get_default_sysroot(rustc).join("lib/rustlib/src/rust");
-    assert!(sysroot_src_orig.exists());
-
-    apply_patches(dirs, "stdlib", &sysroot_src_orig, &STDLIB_SRC.to_path(dirs));
-
-    std::fs::write(
-        STDLIB_SRC.to_path(dirs).join("Cargo.toml"),
-        r#"
-[workspace]
-resolver = "1"
-members = ["./library/sysroot"]
-
-[patch.crates-io]
-rustc-std-workspace-core = { path = "./library/rustc-std-workspace-core" }
-rustc-std-workspace-alloc = { path = "./library/rustc-std-workspace-alloc" }
-rustc-std-workspace-std = { path = "./library/rustc-std-workspace-std" }
-
-# Mandatory for correctly compiling compiler-builtins
-[profile.dev.package.compiler_builtins]
-debug-assertions = false
-overflow-checks = false
-codegen-units = 10000
-
-[profile.release.package.compiler_builtins]
-debug-assertions = false
-overflow-checks = false
-codegen-units = 10000
-"#,
-    )
-    .unwrap();
-
-    let source_lockfile = RelPath::PATCHES.to_path(dirs).join("stdlib-lock.toml");
-    let target_lockfile = STDLIB_SRC.to_path(dirs).join("Cargo.lock");
-    fs::copy(source_lockfile, target_lockfile).unwrap();
 }
 
 pub(crate) struct GitRepo {
@@ -120,13 +79,26 @@ impl GitRepo {
 
     fn download_dir(&self, dirs: &Dirs) -> PathBuf {
         match self.url {
-            GitRepoUrl::Github { user: _, repo } => RelPath::DOWNLOAD.join(repo).to_path(dirs),
+            GitRepoUrl::Github { user: _, repo } => dirs.download_dir.join(repo),
         }
     }
 
     pub(crate) const fn source_dir(&self) -> RelPath {
         match self.url {
-            GitRepoUrl::Github { user: _, repo } => RelPath::BUILD.join(repo),
+            GitRepoUrl::Github { user: _, repo } => RelPath::build(repo),
+        }
+    }
+
+    fn verify_checksum(&self, dirs: &Dirs) {
+        let download_dir = self.download_dir(dirs);
+        let actual_hash = format!("{:016x}", hash_dir(&download_dir));
+        if actual_hash != self.content_hash {
+            eprintln!(
+                "Mismatched content hash for {download_dir}: {actual_hash} != {content_hash}. Please run ./y.sh prepare again.",
+                download_dir = download_dir.display(),
+                content_hash = self.content_hash,
+            );
+            std::process::exit(1);
         }
     }
 
@@ -149,12 +121,16 @@ impl GitRepo {
 
         match self.url {
             GitRepoUrl::Github { user, repo } => {
-                clone_repo_shallow_github(dirs, &download_dir, user, repo, self.rev);
+                clone_repo(
+                    &download_dir,
+                    &format!("https://github.com/{}/{}.git", user, repo),
+                    self.rev,
+                );
             }
         }
 
         let source_lockfile =
-            RelPath::PATCHES.to_path(dirs).join(format!("{}-lock.toml", self.patch_name));
+            dirs.source_dir.join("patches").join(format!("{}-lock.toml", self.patch_name));
         let target_lockfile = download_dir.join("Cargo.lock");
         if source_lockfile.exists() {
             assert!(!target_lockfile.exists());
@@ -163,18 +139,11 @@ impl GitRepo {
             assert!(target_lockfile.exists());
         }
 
-        let actual_hash = format!("{:016x}", hash_dir(&download_dir));
-        if actual_hash != self.content_hash {
-            eprintln!(
-                "Download of {download_dir} failed with mismatched content hash: {actual_hash} != {content_hash}",
-                download_dir = download_dir.display(),
-                content_hash = self.content_hash,
-            );
-            std::process::exit(1);
-        }
+        self.verify_checksum(dirs);
     }
 
     pub(crate) fn patch(&self, dirs: &Dirs) {
+        self.verify_checksum(dirs);
         apply_patches(
             dirs,
             self.patch_name,
@@ -184,9 +153,15 @@ impl GitRepo {
     }
 }
 
-#[allow(dead_code)]
 fn clone_repo(download_dir: &Path, repo: &str, rev: &str) {
     eprintln!("[CLONE] {}", repo);
+
+    match fs::remove_dir_all(download_dir) {
+        Ok(()) => {}
+        Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+        Err(err) => panic!("Failed to remove {path}: {err}", path = download_dir.display()),
+    }
+
     // Ignore exit code as the repo may already have been checked out
     git_command(None, "clone").arg(repo).arg(download_dir).spawn().unwrap().wait().unwrap();
 
@@ -199,55 +174,6 @@ fn clone_repo(download_dir: &Path, repo: &str, rev: &str) {
     spawn_and_wait(checkout_cmd);
 
     std::fs::remove_dir_all(download_dir.join(".git")).unwrap();
-}
-
-fn clone_repo_shallow_github(dirs: &Dirs, download_dir: &Path, user: &str, repo: &str, rev: &str) {
-    if cfg!(windows) {
-        // Older windows doesn't have tar or curl by default. Fall back to using git.
-        clone_repo(download_dir, &format!("https://github.com/{}/{}.git", user, repo), rev);
-        return;
-    }
-
-    let archive_url = format!("https://github.com/{}/{}/archive/{}.tar.gz", user, repo, rev);
-    let archive_file = RelPath::DOWNLOAD.to_path(dirs).join(format!("{}.tar.gz", rev));
-    let archive_dir = RelPath::DOWNLOAD.to_path(dirs).join(format!("{}-{}", repo, rev));
-
-    eprintln!("[DOWNLOAD] {}/{} from {}", user, repo, archive_url);
-
-    // Remove previous results if they exists
-    let _ = std::fs::remove_file(&archive_file);
-    let _ = std::fs::remove_dir_all(&archive_dir);
-    let _ = std::fs::remove_dir_all(&download_dir);
-
-    // Download zip archive
-    let mut download_cmd = Command::new("curl");
-    download_cmd
-        .arg("--max-time")
-        .arg("600")
-        .arg("-y")
-        .arg("30")
-        .arg("-Y")
-        .arg("10")
-        .arg("--connect-timeout")
-        .arg("30")
-        .arg("--continue-at")
-        .arg("-")
-        .arg("--location")
-        .arg("--output")
-        .arg(&archive_file)
-        .arg(archive_url);
-    retry_spawn_and_wait(5, download_cmd);
-
-    // Unpack tar archive
-    let mut unpack_cmd = Command::new("tar");
-    unpack_cmd.arg("xf").arg(&archive_file).current_dir(RelPath::DOWNLOAD.to_path(dirs));
-    spawn_and_wait(unpack_cmd);
-
-    // Rename unpacked dir to the expected name
-    std::fs::rename(archive_dir, &download_dir).unwrap();
-
-    // Cleanup
-    std::fs::remove_file(archive_file).unwrap();
 }
 
 fn init_git_repo(repo_dir: &Path) {
@@ -265,7 +191,7 @@ fn init_git_repo(repo_dir: &Path) {
 }
 
 fn get_patches(dirs: &Dirs, crate_name: &str) -> Vec<PathBuf> {
-    let mut patches: Vec<_> = fs::read_dir(RelPath::PATCHES.to_path(dirs))
+    let mut patches: Vec<_> = fs::read_dir(dirs.source_dir.join("patches"))
         .unwrap()
         .map(|entry| entry.unwrap().path())
         .filter(|path| path.extension() == Some(OsStr::new("patch")))
@@ -289,8 +215,7 @@ pub(crate) fn apply_patches(dirs: &Dirs, crate_name: &str, source_dir: &Path, ta
 
     eprintln!("[COPY] {crate_name} source");
 
-    remove_dir_if_exists(target_dir);
-    fs::create_dir_all(target_dir).unwrap();
+    ensure_empty_dir(target_dir);
     if crate_name == "stdlib" {
         fs::create_dir(target_dir.join("library")).unwrap();
         copy_dir_recursively(&source_dir.join("library"), &target_dir.join("library"));
@@ -314,4 +239,23 @@ pub(crate) fn apply_patches(dirs: &Dirs, crate_name: &str, source_dir: &Path, ta
         apply_patch_cmd.arg(patch).arg("-q");
         spawn_and_wait(apply_patch_cmd);
     }
+}
+
+#[must_use]
+fn git_command<'a>(repo_dir: impl Into<Option<&'a Path>>, cmd: &str) -> Command {
+    let mut git_cmd = Command::new("git");
+    git_cmd
+        .arg("-c")
+        .arg("user.name=Dummy")
+        .arg("-c")
+        .arg("user.email=dummy@example.com")
+        .arg("-c")
+        .arg("core.autocrlf=false")
+        .arg("-c")
+        .arg("commit.gpgSign=false")
+        .arg(cmd);
+    if let Some(repo_dir) = repo_dir.into() {
+        git_cmd.current_dir(repo_dir);
+    }
+    git_cmd
 }

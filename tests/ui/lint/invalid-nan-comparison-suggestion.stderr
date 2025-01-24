@@ -1,10 +1,34 @@
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:6:13
+  --> $DIR/invalid-nan-comparison-suggestion.rs:8:13
+   |
+LL |     let _ = x == f16::NAN;
+   |             ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(invalid_nan_comparisons)]` on by default
+help: use `f32::is_nan()` or `f64::is_nan()` instead
+   |
+LL -     let _ = x == f16::NAN;
+LL +     let _ = x.is_nan();
+   |
+
+warning: incorrect NaN comparison, NaN cannot be directly compared to itself
+  --> $DIR/invalid-nan-comparison-suggestion.rs:10:13
+   |
+LL |     let _ = x != f16::NAN;
+   |             ^^^^^^^^^^^^^
+   |
+help: use `f32::is_nan()` or `f64::is_nan()` instead
+   |
+LL -     let _ = x != f16::NAN;
+LL +     let _ = !x.is_nan();
+   |
+
+warning: incorrect NaN comparison, NaN cannot be directly compared to itself
+  --> $DIR/invalid-nan-comparison-suggestion.rs:14:13
    |
 LL |     let _ = x == f32::NAN;
    |             ^^^^^^^^^^^^^
    |
-   = note: `#[warn(invalid_nan_comparisons)]` on by default
 help: use `f32::is_nan()` or `f64::is_nan()` instead
    |
 LL -     let _ = x == f32::NAN;
@@ -12,7 +36,7 @@ LL +     let _ = x.is_nan();
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:8:13
+  --> $DIR/invalid-nan-comparison-suggestion.rs:16:13
    |
 LL |     let _ = x != f32::NAN;
    |             ^^^^^^^^^^^^^
@@ -24,7 +48,7 @@ LL +     let _ = !x.is_nan();
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:12:13
+  --> $DIR/invalid-nan-comparison-suggestion.rs:20:13
    |
 LL |     let _ = x == f64::NAN;
    |             ^^^^^^^^^^^^^
@@ -36,7 +60,7 @@ LL +     let _ = x.is_nan();
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:14:13
+  --> $DIR/invalid-nan-comparison-suggestion.rs:22:13
    |
 LL |     let _ = x != f64::NAN;
    |             ^^^^^^^^^^^^^
@@ -48,7 +72,31 @@ LL +     let _ = !x.is_nan();
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:18:8
+  --> $DIR/invalid-nan-comparison-suggestion.rs:26:13
+   |
+LL |     let _ = x == f128::NAN;
+   |             ^^^^^^^^^^^^^^
+   |
+help: use `f32::is_nan()` or `f64::is_nan()` instead
+   |
+LL -     let _ = x == f128::NAN;
+LL +     let _ = x.is_nan();
+   |
+
+warning: incorrect NaN comparison, NaN cannot be directly compared to itself
+  --> $DIR/invalid-nan-comparison-suggestion.rs:28:13
+   |
+LL |     let _ = x != f128::NAN;
+   |             ^^^^^^^^^^^^^^
+   |
+help: use `f32::is_nan()` or `f64::is_nan()` instead
+   |
+LL -     let _ = x != f128::NAN;
+LL +     let _ = !x.is_nan();
+   |
+
+warning: incorrect NaN comparison, NaN cannot be directly compared to itself
+  --> $DIR/invalid-nan-comparison-suggestion.rs:32:8
    |
 LL |     if b != &f32::NAN {}
    |        ^^^^^^^^^^^^^^
@@ -60,7 +108,7 @@ LL +     if !b.is_nan() {}
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:22:8
+  --> $DIR/invalid-nan-comparison-suggestion.rs:36:8
    |
 LL |     if b != { &f32::NAN } {}
    |        ^^^^^^^^^^^^^^^^^^
@@ -72,7 +120,7 @@ LL +     if !b.is_nan() {}
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:26:9
+  --> $DIR/invalid-nan-comparison-suggestion.rs:40:9
    |
 LL | /         b != {
 LL | |
@@ -87,7 +135,7 @@ LL +         !b.is_nan();
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:35:13
+  --> $DIR/invalid-nan-comparison-suggestion.rs:49:13
    |
 LL |     let _ = nan!() == number!();
    |             ^^^^^^^^^^^^^^^^^^^
@@ -99,7 +147,7 @@ LL +     let _ = number!().is_nan();
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:37:13
+  --> $DIR/invalid-nan-comparison-suggestion.rs:51:13
    |
 LL |     let _ = number!() != nan!();
    |             ^^^^^^^^^^^^^^^^^^^
@@ -110,5 +158,5 @@ LL -     let _ = number!() != nan!();
 LL +     let _ = !number!().is_nan();
    |
 
-warning: 9 warnings emitted
+warning: 13 warnings emitted
 

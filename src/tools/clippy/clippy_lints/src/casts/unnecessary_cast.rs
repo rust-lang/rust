@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal::NumericLiteral;
-use clippy_utils::source::snippet_opt;
-use clippy_utils::visitors::{for_each_expr_without_closures, Visitable};
+use clippy_utils::source::{SpanRangeExt, snippet_opt};
+use clippy_utils::visitors::{Visitable, for_each_expr_without_closures};
 use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, is_ty_alias, path_to_local};
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
@@ -104,7 +104,7 @@ pub(super) fn check<'tcx>(
         let literal_str = &cast_str;
 
         if let LitKind::Int(n, _) = lit.node
-            && let Some(src) = snippet_opt(cx, cast_expr.span)
+            && let Some(src) = cast_expr.span.get_source_text(cx)
             && cast_to.is_floating_point()
             && let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node)
             && let from_nbits = 128 - n.get().leading_zeros()
@@ -131,7 +131,7 @@ pub(super) fn check<'tcx>(
             | LitKind::Float(_, LitFloatType::Suffixed(_))
                 if cast_from.kind() == cast_to.kind() =>
             {
-                if let Some(src) = snippet_opt(cx, cast_expr.span) {
+                if let Some(src) = cast_expr.span.get_source_text(cx) {
                     if let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node) {
                         lint_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
                         return true;
@@ -159,8 +159,7 @@ pub(super) fn check<'tcx>(
         // The same is true if the expression encompassing the cast expression is a unary
         // expression or an addressof expression.
         let needs_block = matches!(cast_expr.kind, ExprKind::Unary(..) | ExprKind::AddrOf(..))
-            || get_parent_expr(cx, expr)
-                .map_or(false, |e| matches!(e.kind, ExprKind::Unary(..) | ExprKind::AddrOf(..)));
+            || get_parent_expr(cx, expr).is_some_and(|e| matches!(e.kind, ExprKind::Unary(..) | ExprKind::AddrOf(..)));
 
         span_lint_and_sugg(
             cx,
@@ -253,7 +252,7 @@ fn is_cast_from_ty_alias<'tcx>(cx: &LateContext<'tcx>, expr: impl Visitable<'tcx
             let res = cx.qpath_res(&qpath, expr.hir_id);
             // Function call
             if let Res::Def(DefKind::Fn, def_id) = res {
-                let Some(snippet) = snippet_opt(cx, cx.tcx.def_span(def_id)) else {
+                let Some(snippet) = cx.tcx.def_span(def_id).get_source_text(cx) else {
                     return ControlFlow::Continue(());
                 };
                 // This is the worst part of this entire function. This is the only way I know of to
@@ -268,8 +267,7 @@ fn is_cast_from_ty_alias<'tcx>(cx: &LateContext<'tcx>, expr: impl Visitable<'tcx
                 if !snippet
                     .split("->")
                     .skip(1)
-                    .map(|s| snippet_eq_ty(s, cast_from) || s.split("where").any(|ty| snippet_eq_ty(ty, cast_from)))
-                    .any(|a| a)
+                    .any(|s| snippet_eq_ty(s, cast_from) || s.split("where").any(|ty| snippet_eq_ty(ty, cast_from)))
                 {
                     return ControlFlow::Break(());
                 }

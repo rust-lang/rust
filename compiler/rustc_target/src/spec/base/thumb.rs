@@ -29,7 +29,7 @@
 
 use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, PanicStrategy, RelocModel, TargetOptions};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     // See rust-lang/rfcs#1645 for a discussion about these defaults
     TargetOptions {
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),

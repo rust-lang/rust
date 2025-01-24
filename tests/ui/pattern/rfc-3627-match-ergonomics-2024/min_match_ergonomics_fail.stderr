@@ -1,0 +1,188 @@
+error[E0308]: mismatched types
+  --> $DIR/min_match_ergonomics_fail.rs:23:20
+   |
+LL | test_pat_on_type![(&x,): &(T,)];
+   |                    ^^    ----- expected due to this
+   |                    |
+   |                    expected `T`, found `&_`
+   |
+   = note: expected struct `T`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL - test_pat_on_type![(&x,): &(T,)];
+LL + test_pat_on_type![(x,): &(T,)];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/min_match_ergonomics_fail.rs:25:20
+   |
+LL | test_pat_on_type![(&x,): &(&mut T,)];
+   |                    ^^    ---------- expected due to this
+   |                    |
+   |                    types differ in mutability
+   |
+   = note: expected mutable reference `&mut T`
+                      found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL - test_pat_on_type![(&x,): &(&mut T,)];
+LL + test_pat_on_type![(x,): &(&mut T,)];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/min_match_ergonomics_fail.rs:26:20
+   |
+LL | test_pat_on_type![(&mut x,): &(&T,)];
+   |                    ^^^^^^    ------ expected due to this
+   |                    |
+   |                    types differ in mutability
+   |
+   = note:      expected reference `&T`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut x`
+  --> $DIR/min_match_ergonomics_fail.rs:26:20
+   |
+LL | test_pat_on_type![(&mut x,): &(&T,)];
+   |                    ^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL - test_pat_on_type![(&mut x,): &(&T,)];
+LL + test_pat_on_type![(x,): &(&T,)];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/min_match_ergonomics_fail.rs:28:20
+   |
+LL | test_pat_on_type![(&x,): &&mut &(T,)];
+   |                    ^^    ----------- expected due to this
+   |                    |
+   |                    expected `T`, found `&_`
+   |
+   = note: expected struct `T`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL - test_pat_on_type![(&x,): &&mut &(T,)];
+LL + test_pat_on_type![(x,): &&mut &(T,)];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/min_match_ergonomics_fail.rs:29:29
+   |
+LL | test_pat_on_type![Foo { f: (&x,) }: Foo];
+   |                             ^^      --- expected due to this
+   |                             |
+   |                             expected `u8`, found `&_`
+   |
+   = note:   expected type `u8`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL - test_pat_on_type![Foo { f: (&x,) }: Foo];
+LL + test_pat_on_type![Foo { f: (x,) }: Foo];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/min_match_ergonomics_fail.rs:30:29
+   |
+LL | test_pat_on_type![Foo { f: (&x,) }: &mut Foo];
+   |                             ^^      -------- expected due to this
+   |                             |
+   |                             expected `u8`, found `&_`
+   |
+   = note:   expected type `u8`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL - test_pat_on_type![Foo { f: (&x,) }: &mut Foo];
+LL + test_pat_on_type![Foo { f: (x,) }: &mut Foo];
+   |
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/min_match_ergonomics_fail.rs:24:20
+   |
+LL | test_pat_on_type![(&x,): &(&T,)];
+   |                    ^ cannot implicitly match against multiple layers of reference
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL | test_pat_on_type![&(&x,): &(&T,)];
+   |                   +
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/min_match_ergonomics_fail.rs:27:20
+   |
+LL | test_pat_on_type![(&mut x,): &(&mut T,)];
+   |                    ^^^^ cannot implicitly match against multiple layers of reference
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL | test_pat_on_type![&(&mut x,): &(&mut T,)];
+   |                   +
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/min_match_ergonomics_fail.rs:31:28
+   |
+LL | test_pat_on_type![Foo { f: &(x,) }: &Foo];
+   |                            ^ cannot implicitly match against multiple layers of reference
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL | test_pat_on_type![&Foo { f: &(x,) }: &Foo];
+   |                   +
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/min_match_ergonomics_fail.rs:32:20
+   |
+LL | test_pat_on_type![(mut x,): &(T,)];
+   |                    ^^^ requires binding by-value, but the implicit default is by-reference
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL | test_pat_on_type![&(mut x,): &(T,)];
+   |                   +
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/min_match_ergonomics_fail.rs:33:20
+   |
+LL | test_pat_on_type![(ref x,): &(T,)];
+   |                    ^^^ cannot override to bind by-reference when that is the implicit default
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL | test_pat_on_type![&(ref x,): &(T,)];
+   |                   +
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/min_match_ergonomics_fail.rs:34:20
+   |
+LL | test_pat_on_type![(ref mut x,): &mut (T,)];
+   |                    ^^^^^^^ cannot override to bind by-reference when that is the implicit default
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL | test_pat_on_type![&mut (ref mut x,): &mut (T,)];
+   |                   ++++
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/min_match_ergonomics_fail.rs:43:10
+   |
+LL |         (&x,) => x,
+   |          ^ cannot implicitly match against multiple layers of reference
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL |         &(&x,) => x,
+   |         +
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

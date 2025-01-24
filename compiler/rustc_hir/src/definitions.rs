@@ -11,11 +11,11 @@ use rustc_data_structures::stable_hasher::{Hash64, StableHasher};
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::{Symbol, kw, sym};
 use tracing::{debug, instrument};
 
 pub use crate::def_id::DefPathHash;
-use crate::def_id::{CrateNum, DefIndex, LocalDefId, StableCrateId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::def_id::{CRATE_DEF_INDEX, CrateNum, DefIndex, LOCAL_CRATE, LocalDefId, StableCrateId};
 use crate::def_path_hash_map::DefPathHashMap;
 
 /// The `DefPathTable` maps `DefIndex`es to `DefKey`s and vice versa.
@@ -289,8 +289,6 @@ pub enum DefPathData {
     /// An existential `impl Trait` type node.
     /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
     OpaqueTy,
-    /// An anonymous struct or union type i.e. `struct { foo: Type }` or `union { bar: Type }`
-    AnonAdt,
 }
 
 impl Definitions {
@@ -415,7 +413,7 @@ impl DefPathData {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
 
             Impl | ForeignMod | CrateRoot | Use | GlobalAsm | Closure | Ctor | AnonConst
-            | OpaqueTy | AnonAdt => None,
+            | OpaqueTy => None,
         }
     }
 
@@ -438,7 +436,6 @@ impl DefPathData {
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
             AnonConst => DefPathDataName::Anon { namespace: sym::constant },
             OpaqueTy => DefPathDataName::Anon { namespace: sym::opaque },
-            AnonAdt => DefPathDataName::Anon { namespace: sym::anon_adt },
         }
     }
 }

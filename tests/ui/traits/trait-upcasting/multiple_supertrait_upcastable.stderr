@@ -1,4 +1,4 @@
-error: `C` is object-safe and has multiple supertraits
+error: `C` is dyn-compatible and has multiple supertraits
   --> $DIR/multiple_supertrait_upcastable.rs:7:1
    |
 LL | trait C: A + B {}

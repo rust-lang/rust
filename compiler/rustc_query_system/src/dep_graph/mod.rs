@@ -9,14 +9,14 @@ use std::panic;
 
 pub use dep_node::{DepKind, DepKindStruct, DepNode, DepNodeParams, WorkProductId};
 pub(crate) use graph::DepGraphData;
-pub use graph::{hash_result, DepGraph, DepNodeIndex, TaskDepsRef, WorkProduct, WorkProductMap};
+pub use graph::{DepGraph, DepNodeIndex, TaskDepsRef, WorkProduct, WorkProductMap, hash_result};
 pub use query::DepGraphQuery;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_session::Session;
 pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 use tracing::instrument;
 
-use self::graph::{print_markframe_trace, MarkFrame};
+use self::graph::{MarkFrame, print_markframe_trace};
 use crate::ich::StableHashingContext;
 
 pub trait DepContext: Copy {

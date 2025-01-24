@@ -8,7 +8,7 @@ fn main() {
     match std::fs::create_dir(&non_unicode) {
         // If an error occurs, check if creating a directory with a valid Unicode name would
         // succeed.
-        Err(e) if std::fs::create_dir("valid_unicode").is_ok() => {
+        Err(_) if std::fs::create_dir("valid_unicode").is_ok() => {
             // Filesystem doesn't appear support non-Unicode paths.
             return;
         }

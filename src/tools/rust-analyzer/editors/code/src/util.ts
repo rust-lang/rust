@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { strict as nativeAssert } from "assert";
-import { exec, type ExecOptions } from "child_process";
+import { exec, spawn, type SpawnOptionsWithoutStdio, type ExecOptions } from "child_process";
 import { inspect } from "util";
 import type { CargoRunnableArgs, ShellRunnableArgs } from "./lsp_ext";
 
@@ -232,4 +232,56 @@ export function expectNotUndefined<T>(input: Undefinable<T>, msg: string): NotUn
 
 export function unwrapUndefinable<T>(input: Undefinable<T>): NotUndefined<T> {
     return expectNotUndefined(input, `unwrapping \`undefined\``);
+}
+
+interface SpawnAsyncReturns {
+    stdout: string;
+    stderr: string;
+    status: number | null;
+    error?: Error | undefined;
+}
+
+export async function spawnAsync(
+    path: string,
+    args?: ReadonlyArray<string>,
+    options?: SpawnOptionsWithoutStdio,
+): Promise<SpawnAsyncReturns> {
+    const child = spawn(path, args, options);
+    const stdout: Array<Buffer> = [];
+    const stderr: Array<Buffer> = [];
+    try {
+        const res = await new Promise<{ stdout: string; stderr: string; status: number | null }>(
+            (resolve, reject) => {
+                child.stdout.on("data", (chunk) => stdout.push(Buffer.from(chunk)));
+                child.stderr.on("data", (chunk) => stderr.push(Buffer.from(chunk)));
+                child.on("error", (error) =>
+                    reject({
+                        stdout: Buffer.concat(stdout).toString("utf8"),
+                        stderr: Buffer.concat(stderr).toString("utf8"),
+                        error,
+                    }),
+                );
+                child.on("close", (status) =>
+                    resolve({
+                        stdout: Buffer.concat(stdout).toString("utf8"),
+                        stderr: Buffer.concat(stderr).toString("utf8"),
+                        status,
+                    }),
+                );
+            },
+        );
+
+        return {
+            stdout: res.stdout,
+            stderr: res.stderr,
+            status: res.status,
+        };
+    } catch (e: any) {
+        return {
+            stdout: e.stdout,
+            stderr: e.stderr,
+            status: e.status,
+            error: e.error,
+        };
+    }
 }

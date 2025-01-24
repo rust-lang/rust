@@ -9,13 +9,14 @@
 
 use rustc_span::edition::Edition;
 
-use crate::{declare_lint, declare_lint_pass, FutureIncompatibilityReason};
+use crate::{FutureIncompatibilityReason, declare_lint, declare_lint_pass};
 
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
     HardwiredLints => [
         // tidy-alphabetical-start
+        ABI_UNSUPPORTED_VECTOR_TYPES,
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
         AMBIGUOUS_GLOB_IMPORTS,
@@ -29,19 +30,18 @@ declare_lint_pass! {
         CENUM_IMPL_DROP_CAST,
         COHERENCE_LEAK_CHECK,
         CONFLICTING_REPR_HINTS,
-        CONST_EVAL_MUTABLE_PTR_IN_FINAL_VALUE,
         CONST_EVALUATABLE_UNCHECKED,
         CONST_ITEM_MUTATION,
         DEAD_CODE,
         DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
         DEPRECATED,
-        DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DEPRECATED_IN_FUTURE,
         DEPRECATED_SAFE_2024,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
         ELIDED_LIFETIMES_IN_PATHS,
+        ELIDED_NAMED_LIFETIMES,
         EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
         EXPORTED_PRIVATE_DEPENDENCIES,
         FFI_UNWIND_CALLS,
@@ -81,6 +81,7 @@ declare_lint_pass! {
         PRIVATE_INTERFACES,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         PTR_CAST_ADD_AUTO_TO_OBJECT,
+        PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
         REDUNDANT_IMPORTS,
         REDUNDANT_LIFETIMES,
@@ -92,6 +93,7 @@ declare_lint_pass! {
         RUST_2021_INCOMPATIBLE_OR_PATTERNS,
         RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
         RUST_2021_PRELUDE_COLLISIONS,
+        RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
         RUST_2024_INCOMPATIBLE_PAT,
         RUST_2024_PRELUDE_COLLISIONS,
         SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
@@ -99,7 +101,7 @@ declare_lint_pass! {
         SINGLE_USE_LIFETIMES,
         SOFT_UNSTABLE,
         STABLE_FEATURES,
-        STATIC_MUT_REFS,
+        TAIL_EXPR_DROP_ORDER,
         TEST_UNSTABLE_LINT,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
         TRIVIAL_CASTS,
@@ -123,7 +125,7 @@ declare_lint_pass! {
         UNSAFE_OP_IN_UNSAFE_FN,
         UNSTABLE_NAME_COLLISIONS,
         UNSTABLE_SYNTAX_PRE_EXPANSION,
-        UNSUPPORTED_CALLING_CONVENTIONS,
+        UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS,
         UNUSED_ASSIGNMENTS,
         UNUSED_ASSOCIATED_TYPE_BOUNDS,
         UNUSED_ATTRIBUTES,
@@ -142,7 +144,6 @@ declare_lint_pass! {
         USELESS_DEPRECATED,
         WARNINGS,
         WASM_C_ABI,
-        WRITES_THROUGH_IMMUTABLE_POINTER,
         // tidy-alphabetical-end
     ]
 }
@@ -156,7 +157,7 @@ declare_lint! {
     ///
     /// ```rust
     /// #![forbid(warnings)]
-    /// #![deny(bad_style)]
+    /// #![warn(bad_style)]
     ///
     /// fn main() {}
     /// ```
@@ -178,7 +179,7 @@ declare_lint! {
     Warn,
     "applying forbid to lint-groups",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #81670 <https://github.com/rust-lang/rust/issues/81670>",
     };
 }
@@ -251,7 +252,7 @@ declare_lint! {
     Deny,
     "conflicts between `#[repr(..)]` hints that were previously accepted and used in practice",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #68585 <https://github.com/rust-lang/rust/issues/68585>",
     };
 }
@@ -378,7 +379,8 @@ declare_lint! {
     /// will not overflow.
     pub ARITHMETIC_OVERFLOW,
     Deny,
-    "arithmetic operation overflows"
+    "arithmetic operation overflows",
+    @eval_always = true
 }
 
 declare_lint! {
@@ -402,7 +404,8 @@ declare_lint! {
     /// `panic!` or `unreachable!` macro instead in case the panic is intended.
     pub UNCONDITIONAL_PANIC,
     Deny,
-    "operation will cause a panic at runtime"
+    "operation will cause a panic at runtime",
+    @eval_always = true
 }
 
 declare_lint! {
@@ -633,7 +636,8 @@ declare_lint! {
     /// is only available in a newer version.
     pub UNKNOWN_LINTS,
     Warn,
-    "unrecognized lint attribute"
+    "unrecognized lint attribute",
+    @eval_always = true
 }
 
 declare_lint! {
@@ -1651,7 +1655,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,edition2021
-    /// #![feature(ref_pat_eat_one_layer_2024)]
     /// #![warn(rust_2024_incompatible_pat)]
     ///
     /// if let Some(&a) = &Some(&0u8) {
@@ -1672,12 +1675,10 @@ declare_lint! {
     pub RUST_2024_INCOMPATIBLE_PAT,
     Allow,
     "detects patterns whose meaning will change in Rust 2024",
-    @feature_gate = ref_pat_eat_one_layer_2024;
-    // FIXME uncomment below upon stabilization
-    /*@future_incompatible = FutureIncompatibleInfo {
+    @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "123076",
-    };*/
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>",
+    };
 }
 
 declare_lint! {
@@ -1864,6 +1865,38 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `elided_named_lifetimes` lint detects when an elided
+    /// lifetime ends up being a named lifetime, such as `'static`
+    /// or some lifetime parameter `'a`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(elided_named_lifetimes)]
+    /// struct Foo;
+    /// impl Foo {
+    ///     pub fn get_mut(&'static self, x: &mut u8) -> &mut u8 {
+    ///         unsafe { &mut *(x as *mut _) }
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Lifetime elision is quite useful, because it frees you from having
+    /// to give each lifetime its own name, but sometimes it can produce
+    /// somewhat surprising resolutions. In safe code, it is mostly okay,
+    /// because the borrow checker prevents any unsoundness, so the worst
+    /// case scenario is you get a confusing error message in some other place.
+    /// But with `unsafe` code, such unexpected resolutions may lead to unsound code.
+    pub ELIDED_NAMED_LIFETIMES,
+    Warn,
+    "detects when an elided lifetime gets resolved to be `'static` or some named parameter"
+}
+
+declare_lint! {
     /// The `bare_trait_objects` lint suggests using `dyn Trait` for trait
     /// objects.
     ///
@@ -1892,57 +1925,6 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
         reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>",
-    };
-}
-
-declare_lint! {
-    /// The `static_mut_refs` lint checks for shared or mutable references
-    /// of mutable static inside `unsafe` blocks and `unsafe` functions.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,edition2021
-    /// fn main() {
-    ///     static mut X: i32 = 23;
-    ///     static mut Y: i32 = 24;
-    ///
-    ///     unsafe {
-    ///         let y = &X;
-    ///         let ref x = X;
-    ///         let (x, y) = (&X, &Y);
-    ///         foo(&X);
-    ///     }
-    /// }
-    ///
-    /// unsafe fn _foo() {
-    ///     static mut X: i32 = 23;
-    ///     static mut Y: i32 = 24;
-    ///
-    ///     let y = &X;
-    ///     let ref x = X;
-    ///     let (x, y) = (&X, &Y);
-    ///     foo(&X);
-    /// }
-    ///
-    /// fn foo<'a>(_x: &'a i32) {}
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Shared or mutable references of mutable static are almost always a mistake and
-    /// can lead to undefined behavior and various other problems in your code.
-    ///
-    /// This lint is "warn" by default on editions up to 2021, in 2024 there is
-    /// a hard error instead.
-    pub STATIC_MUT_REFS,
-    Warn,
-    "shared references or mutable references of mutable static is discouraged",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "issue #114447 <https://github.com/rust-lang/rust/issues/114447>",
-        explain_reason: false,
     };
 }
 
@@ -2624,7 +2606,7 @@ declare_lint! {
     "unsafe operations in unsafe functions without an explicit unsafe block are deprecated",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "issue #71668 <https://github.com/rust-lang/rust/issues/71668>",
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>",
         explain_reason: false
     };
     @edition Edition2024 => Warn;
@@ -2689,7 +2671,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(strict_provenance)]
+    /// #![feature(strict_provenance_lints)]
     /// #![warn(fuzzy_provenance_casts)]
     ///
     /// fn main() {
@@ -2723,7 +2705,7 @@ declare_lint! {
     pub FUZZY_PROVENANCE_CASTS,
     Allow,
     "a fuzzy integer to pointer cast is used",
-    @feature_gate = strict_provenance;
+    @feature_gate = strict_provenance_lints;
 }
 
 declare_lint! {
@@ -2733,7 +2715,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(strict_provenance)]
+    /// #![feature(strict_provenance_lints)]
     /// #![warn(lossy_provenance_casts)]
     ///
     /// fn main() {
@@ -2769,52 +2751,7 @@ declare_lint! {
     pub LOSSY_PROVENANCE_CASTS,
     Allow,
     "a lossy pointer to integer cast is used",
-    @feature_gate = strict_provenance;
-}
-
-declare_lint! {
-    /// The `const_eval_mutable_ptr_in_final_value` lint detects if a mutable pointer
-    /// has leaked into the final value of a const expression.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// pub enum JsValue {
-    ///     Undefined,
-    ///     Object(std::cell::Cell<bool>),
-    /// }
-    ///
-    /// impl ::std::ops::Drop for JsValue {
-    ///     fn drop(&mut self) {}
-    /// }
-    ///
-    /// const UNDEFINED: &JsValue = &JsValue::Undefined;
-    ///
-    /// fn main() {
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// In the 1.77 release, the const evaluation machinery adopted some
-    /// stricter rules to reject expressions with values that could
-    /// end up holding mutable references to state stored in static memory
-    /// (which is inherently immutable).
-    ///
-    /// This is a [future-incompatible] lint to ease the transition to an error.
-    /// See [issue #122153] for more details.
-    ///
-    /// [issue #122153]: https://github.com/rust-lang/rust/issues/122153
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub CONST_EVAL_MUTABLE_PTR_IN_FINAL_VALUE,
-    Warn,
-    "detects a mutable pointer that has leaked into final value of a const expression",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #122153 <https://github.com/rust-lang/rust/issues/122153>",
-    };
+    @feature_gate = strict_provenance_lints;
 }
 
 declare_lint! {
@@ -2990,16 +2927,16 @@ declare_lint! {
     /// ```rust
     /// #![feature(asm_experimental_arch, naked_functions)]
     ///
-    /// use std::arch::asm;
+    /// use std::arch::naked_asm;
     ///
     /// #[naked]
     /// pub fn default_abi() -> u32 {
-    ///     unsafe { asm!("", options(noreturn)); }
+    ///     unsafe { naked_asm!(""); }
     /// }
     ///
     /// #[naked]
     /// pub extern "Rust" fn rust_abi() -> u32 {
-    ///     unsafe { asm!("", options(noreturn)); }
+    ///     unsafe { naked_asm!(""); }
     /// }
     /// ```
     ///
@@ -3209,42 +3146,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `deprecated_cfg_attr_crate_type_name` lint detects uses of the
-    /// `#![cfg_attr(..., crate_type = "...")]` and
-    /// `#![cfg_attr(..., crate_name = "...")]` attributes to conditionally
-    /// specify the crate type and name in the source code.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![cfg_attr(debug_assertions, crate_type = "lib")]
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    ///
-    /// ### Explanation
-    ///
-    /// The `#![crate_type]` and `#![crate_name]` attributes require a hack in
-    /// the compiler to be able to change the used crate type and crate name
-    /// after macros have been expanded. Neither attribute works in combination
-    /// with Cargo as it explicitly passes `--crate-type` and `--crate-name` on
-    /// the commandline. These values must match the value used in the source
-    /// code to prevent an error.
-    ///
-    /// To fix the warning use `--crate-type` on the commandline when running
-    /// rustc instead of `#![cfg_attr(..., crate_type = "...")]` and
-    /// `--crate-name` instead of `#![cfg_attr(..., crate_name = "...")]`.
-    pub DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
-    Deny,
-    "detects usage of `#![cfg_attr(..., crate_type/crate_name = \"...\")]`",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #91632 <https://github.com/rust-lang/rust/issues/91632>",
-    };
-}
-
-declare_lint! {
     /// The `unexpected_cfgs` lint detects unexpected conditional compilation conditions.
     ///
     /// ### Example
@@ -3287,6 +3188,7 @@ declare_lint! {
     pub UNEXPECTED_CFGS,
     Warn,
     "detects unexpected names and values in `#[cfg]` conditions",
+    report_in_external_macro
 }
 
 declare_lint! {
@@ -3674,7 +3576,7 @@ declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);
 
 declare_lint! {
     /// The `missing_abi` lint detects cases where the ABI is omitted from
-    /// extern declarations.
+    /// `extern` declarations.
     ///
     /// ### Example
     ///
@@ -3688,12 +3590,14 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// Historically, Rust implicitly selected C as the ABI for extern
-    /// declarations. We expect to add new ABIs, like `C-unwind`, in the future,
-    /// though this has not yet happened, and especially with their addition
-    /// seeing the ABI easily will make code review easier.
+    /// For historic reasons, Rust implicitly selects `C` as the default ABI for
+    /// `extern` declarations. [Other ABIs] like `C-unwind` and `system` have
+    /// been added since then, and especially with their addition seeing the ABI
+    /// easily makes code review easier.
+    ///
+    /// [Other ABIs]: https://doc.rust-lang.org/reference/items/external-blocks.html#abi
     pub MISSING_ABI,
-    Allow,
+    Warn,
     "No declared ABI for extern declaration"
 }
 
@@ -3891,36 +3795,33 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `unsupported_calling_conventions` lint is output whenever there is a use of the
-    /// `stdcall`, `fastcall`, `thiscall`, `vectorcall` calling conventions (or their unwind
-    /// variants) on targets that cannot meaningfully be supported for the requested target.
+    /// The `unsupported_fn_ptr_calling_conventions` lint is output whenever there is a use of
+    /// a target dependent calling convention on a target that does not support this calling
+    /// convention on a function pointer.
     ///
     /// For example `stdcall` does not make much sense for a x86_64 or, more apparently, powerpc
     /// code, because this calling convention was never specified for those targets.
     ///
-    /// Historically MSVC toolchains have fallen back to the regular C calling convention for
-    /// targets other than x86, but Rust doesn't really see a similar need to introduce a similar
-    /// hack across many more targets.
-    ///
     /// ### Example
     ///
     /// ```rust,ignore (needs specific targets)
-    /// extern "stdcall" fn stdcall() {}
+    /// fn stdcall_ptr(f: extern "stdcall" fn ()) {
+    ///     f()
+    /// }
     /// ```
     ///
     /// This will produce:
     ///
     /// ```text
-    /// warning: use of calling convention not supported on this target
-    ///   --> $DIR/unsupported.rs:39:1
+    /// warning: the calling convention `"stdcall"` is not supported on this target
+    ///   --> $DIR/unsupported.rs:34:15
     ///    |
-    /// LL | extern "stdcall" fn stdcall() {}
-    ///    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    /// LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
+    ///    |               ^^^^^^^^^^^^^^^^^^^^^^^^
     ///    |
-    ///    = note: `#[warn(unsupported_calling_conventions)]` on by default
-    ///    = warning: this was previously accepted by the compiler but is being phased out;
-    ///               it will become a hard error in a future release!
-    ///    = note: for more information, see issue ...
+    ///    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+    ///    = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
     /// ```
     ///
     /// ### Explanation
@@ -3928,12 +3829,12 @@ declare_lint! {
     /// On most of the targets the behaviour of `stdcall` and similar calling conventions is not
     /// defined at all, but was previously accepted due to a bug in the implementation of the
     /// compiler.
-    pub UNSUPPORTED_CALLING_CONVENTIONS,
+    pub UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS,
     Warn,
-    "use of unsupported calling convention",
+    "use of unsupported calling convention for function pointer",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #87678 <https://github.com/rust-lang/rust/issues/87678>",
+        reference: "issue #130260 <https://github.com/rust-lang/rust/issues/130260>",
     };
 }
 
@@ -4030,6 +3931,7 @@ declare_lint! {
 }
 
 declare_lint! {
+    #[allow(text_direction_codepoint_in_literal)]
     /// The `text_direction_codepoint_in_comment` lint detects Unicode codepoints in comments that
     /// change the visual representation of text on screen in a way that does not correspond to
     /// their on memory representation.
@@ -4133,6 +4035,8 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
+    /// // This lint is intentionally used to test the compiler's behavior
+    /// // when an unstable lint is enabled without the corresponding feature gate.
     /// #![allow(test_unstable_lint)]
     /// ```
     ///
@@ -4288,8 +4192,8 @@ declare_lint! {
     Warn,
     "never type fallback affecting unsafe function calls",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
-        reference: "issue #123748 <https://github.com/rust-lang/rust/issues/123748>",
+        reason: FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(Edition::Edition2024),
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>",
     };
     @edition Edition2024 => Deny;
     report_in_external_macro
@@ -4342,8 +4246,8 @@ declare_lint! {
     Warn,
     "never type fallback affecting unsafe function calls",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #123748 <https://github.com/rust-lang/rust/issues/123748>",
+        reason: FutureIncompatibilityReason::EditionAndFutureReleaseError(Edition::Edition2024),
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>",
     };
     report_in_external_macro
 }
@@ -4462,7 +4366,7 @@ declare_lint! {
     /// ### Explanation
     ///
     /// It is often expected that if you can obtain an object of type `T`, then
-    /// you can name the type `T` as well, this lint attempts to enforce this rule.
+    /// you can name the type `T` as well; this lint attempts to enforce this rule.
     /// The recommended action is to either reexport the type properly to make it nameable,
     /// or document that users are not supposed to be able to name it for one reason or another.
     ///
@@ -4697,40 +4601,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `writes_through_immutable_pointer` lint detects writes through pointers derived from
-    /// shared references.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![feature(const_mut_refs)]
-    /// const WRITE_AFTER_CAST: () = unsafe {
-    ///     let mut x = 0;
-    ///     let ptr = &x as *const i32 as *mut i32;
-    ///     *ptr = 0;
-    /// };
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Shared references are immutable (when there is no `UnsafeCell` involved),
-    /// and writing through them or through pointers derived from them is Undefined Behavior.
-    /// The compiler recently learned to detect such Undefined Behavior during compile-time
-    /// evaluation, and in the future this will raise a hard error.
-    ///
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub WRITES_THROUGH_IMMUTABLE_POINTER,
-    Warn,
-    "shared references are immutable, and pointers derived from them must not be written to",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #X <https://github.com/rust-lang/rust/issues/X>",
-    };
-}
-
-declare_lint! {
     /// The `private_macro_use` lint detects private macros that are imported
     /// with `#[macro_use]`.
     ///
@@ -4806,7 +4676,7 @@ declare_lint! {
     /// version of Rust this will be fixed and therefore dependencies relying
     /// on the non-spec-compliant C ABI will stop functioning.
     pub WASM_C_ABI,
-    Warn,
+    Deny,
     "detects dependencies that are incompatible with the Wasm C ABI",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
@@ -4924,7 +4794,7 @@ declare_lint! {
     "detects unsafe functions being used as safe functions",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "issue #27970 <https://github.com/rust-lang/rust/issues/27970>",
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/newly-unsafe-functions.html>",
     };
 }
 
@@ -4960,7 +4830,7 @@ declare_lint! {
     "detects missing unsafe keyword on extern declarations",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "issue #123743 <https://github.com/rust-lang/rust/issues/123743>",
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-extern.html>",
     };
 }
 
@@ -4971,7 +4841,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(unsafe_attributes)]
     /// #![warn(unsafe_attr_outside_unsafe)]
     ///
     /// #[no_mangle]
@@ -5002,7 +4871,7 @@ declare_lint! {
     "detects unsafe attributes outside of unsafe",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "issue #123757 <https://github.com/rust-lang/rust/issues/123757>",
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-attributes.html>",
     };
 }
 
@@ -5094,5 +4963,222 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #124535 <https://github.com/rust-lang/rust/issues/124535>",
+    };
+}
+
+declare_lint! {
+    /// The `ptr_to_integer_transmute_in_consts` lint detects pointer to integer
+    /// transmute in const functions and associated constants.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// const fn foo(ptr: *const u8) -> usize {
+    ///    unsafe {
+    ///        std::mem::transmute::<*const u8, usize>(ptr)
+    ///    }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Transmuting pointers to integers in a `const` context is undefined behavior.
+    /// Any attempt to use the resulting integer will abort const-evaluation.
+    ///
+    /// But sometimes the compiler might not emit an error for pointer to integer transmutes
+    /// inside const functions and associated consts because they are evaluated only when referenced.
+    /// Therefore, this lint serves as an extra layer of defense to prevent any undefined behavior
+    /// from compiling without any warnings or errors.
+    ///
+    /// See [std::mem::transmute] in the reference for more details.
+    ///
+    /// [std::mem::transmute]: https://doc.rust-lang.org/std/mem/fn.transmute.html
+    pub PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
+    Warn,
+    "detects pointer to integer transmutes in const functions and associated constants",
+}
+
+declare_lint! {
+    /// The `tail_expr_drop_order` lint looks for those values generated at the tail expression location,
+    /// that runs a custom `Drop` destructor.
+    /// Some of them may be dropped earlier in Edition 2024 that they used to in Edition 2021 and prior.
+    /// This lint detects those cases and provides you information on those values and their custom destructor implementations.
+    /// Your discretion on this information is required.
+    ///
+    /// ### Example
+    /// ```rust,edition2021
+    /// #![warn(tail_expr_drop_order)]
+    /// struct Droppy(i32);
+    /// impl Droppy {
+    ///     fn get(&self) -> i32 {
+    ///         self.0
+    ///     }
+    /// }
+    /// impl Drop for Droppy {
+    ///     fn drop(&mut self) {
+    ///         // This is a custom destructor and it induces side-effects that is observable
+    ///         // especially when the drop order at a tail expression changes.
+    ///         println!("loud drop {}", self.0);
+    ///     }
+    /// }
+    /// fn edition_2021() -> i32 {
+    ///     let another_droppy = Droppy(0);
+    ///     Droppy(1).get()
+    /// }
+    /// fn main() {
+    ///     edition_2021();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In tail expression of blocks or function bodies,
+    /// values of type with significant `Drop` implementation has an ill-specified drop order
+    /// before Edition 2024 so that they are dropped only after dropping local variables.
+    /// Edition 2024 introduces a new rule with drop orders for them,
+    /// so that they are dropped first before dropping local variables.
+    ///
+    /// A significant `Drop::drop` destructor here refers to an explicit, arbitrary
+    /// implementation of the `Drop` trait on the type, with exceptions including `Vec`,
+    /// `Box`, `Rc`, `BTreeMap` and `HashMap` that are marked by the compiler otherwise
+    /// so long that the generic types have no significant destructor recursively.
+    /// In other words, a type has a significant drop destructor when it has a `Drop` implementation
+    /// or its destructor invokes a significant destructor on a type.
+    /// Since we cannot completely reason about the change by just inspecting the existence of
+    /// a significant destructor, this lint remains only a suggestion and is set to `allow` by default.
+    ///
+    /// This lint only points out the issue with `Droppy`, which will be dropped before `another_droppy`
+    /// does in Edition 2024.
+    /// No fix will be proposed by this lint.
+    /// However, the most probable fix is to hoist `Droppy` into its own local variable binding.
+    /// ```rust
+    /// struct Droppy(i32);
+    /// impl Droppy {
+    ///     fn get(&self) -> i32 {
+    ///         self.0
+    ///     }
+    /// }
+    /// fn edition_2024() -> i32 {
+    ///     let value = Droppy(0);
+    ///     let another_droppy = Droppy(1);
+    ///     value.get()
+    /// }
+    /// ```
+    pub TAIL_EXPR_DROP_ORDER,
+    Allow,
+    "Detect and warn on significant change in drop order in tail expression location",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>",
+    };
+}
+
+declare_lint! {
+    /// The `rust_2024_guarded_string_incompatible_syntax` lint detects `#` tokens
+    /// that will be parsed as part of a guarded string literal in Rust 2024.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,edition2021,compile_fail
+    /// #![deny(rust_2024_guarded_string_incompatible_syntax)]
+    ///
+    /// macro_rules! m {
+    ///     (# $x:expr #) => ();
+    ///     (# $x:expr) => ();
+    /// }
+    ///
+    /// m!(#"hey"#);
+    /// m!(#"hello");
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Prior to Rust 2024, `#"hey"#` is three tokens: the first `#`
+    /// followed by the string literal `"hey"` then the final `#`.
+    /// In Rust 2024, the whole sequence is considered a single token.
+    ///
+    /// This lint suggests to add whitespace between the leading `#`
+    /// and the string to keep them separated in Rust 2024.
+    // Allow this lint -- rustdoc doesn't yet support threading edition into this lint's parser.
+    #[allow(rustdoc::invalid_rust_codeblocks)]
+    pub RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
+    Allow,
+    "will be parsed as a guarded string in Rust 2024",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>",
+    };
+    crate_level_only
+}
+
+declare_lint! {
+    /// The `abi_unsupported_vector_types` lint detects function definitions and calls
+    /// whose ABI depends on enabling certain target features, but those features are not enabled.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (fails on non-x86_64)
+    /// extern "C" fn missing_target_feature(_: std::arch::x86_64::__m256) {
+    ///   todo!()
+    /// }
+    ///
+    /// #[target_feature(enable = "avx")]
+    /// unsafe extern "C" fn with_target_feature(_: std::arch::x86_64::__m256) {
+    ///   todo!()
+    /// }
+    ///
+    /// fn main() {
+    ///   let v = unsafe { std::mem::zeroed() };
+    ///   unsafe { with_target_feature(v); }
+    /// }
+    /// ```
+    ///
+    /// ```text
+    /// warning: ABI error: this function call uses a avx vector type, which is not enabled in the caller
+    ///  --> lint_example.rs:18:12
+    ///   |
+    ///   |   unsafe { with_target_feature(v); }
+    ///   |            ^^^^^^^^^^^^^^^^^^^^^^ function called here
+    ///   |
+    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///   = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
+    ///   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
+    ///   = note: `#[warn(abi_unsupported_vector_types)]` on by default
+    ///
+    ///
+    /// warning: ABI error: this function definition uses a avx vector type, which is not enabled
+    ///  --> lint_example.rs:3:1
+    ///   |
+    ///   | pub extern "C" fn with_target_feature(_: std::arch::x86_64::__m256) {
+    ///   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
+    ///   |
+    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///   = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
+    ///   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
+    /// ```
+    ///
+    ///
+    ///
+    /// ### Explanation
+    ///
+    /// The C ABI for `__m256` requires the value to be passed in an AVX register,
+    /// which is only possible when the `avx` target feature is enabled.
+    /// Therefore, `missing_target_feature` cannot be compiled without that target feature.
+    /// A similar (but complementary) message is triggered when `with_target_feature` is called
+    /// by a function that does not enable the `avx` target feature.
+    ///
+    /// Note that this lint is very similar to the `-Wpsabi` warning in `gcc`/`clang`.
+    pub ABI_UNSUPPORTED_VECTOR_TYPES,
+    Warn,
+    "this function call or definition uses a vector type which is not enabled",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reference: "issue #116558 <https://github.com/rust-lang/rust/issues/116558>",
     };
 }

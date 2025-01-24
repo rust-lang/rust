@@ -1,11 +1,11 @@
 use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
-use rustc_ast_pretty::pprust::state::State as Printer;
 use rustc_ast_pretty::pprust::PrintState;
+use rustc_ast_pretty::pprust::state::State as Printer;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{Ident, Symbol, kw};
 
 /// Render a macro matcher in a format suitable for displaying to the user
 /// as part of an item declaration.
@@ -131,7 +131,7 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
     use State::*;
 
     let mut state = Start;
-    for tt in tts.trees() {
+    for tt in tts.iter() {
         let (needs_space, next_state) = match &tt {
             TokenTree::Token(tt, _) => match (state, &tt.kind) {
                 (Dollar, token::Ident(..)) => (false, DollarIdent),

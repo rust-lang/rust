@@ -39,15 +39,13 @@ rm tests/ui/simd/dont-invalid-bitcast-x86_64.rs # unimplemented llvm.x86.sse41.r
 # exotic linkages
 rm tests/incremental/hashes/function_interfaces.rs
 rm tests/incremental/hashes/statics.rs
+rm -r tests/run-make/naked-symbol-visibility
 
 # variadic arguments
 rm tests/ui/abi/mir/mir_codegen_calls_variadic.rs # requires float varargs
 rm tests/ui/abi/variadic-ffi.rs # requires callee side vararg support
 rm -r tests/run-make/c-link-to-rust-va-list-fn # requires callee side vararg support
 rm tests/ui/delegation/fn-header.rs
-
-# unsized locals
-rm -r tests/run-pass-valgrind/unsized-locals
 
 # misc unimplemented things
 rm tests/ui/target-feature/missing-plusminus.rs # error not implemented
@@ -58,6 +56,8 @@ rm -r tests/run-make/mismatching-target-triples # same
 rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't work entirely correctly
 rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
 rm tests/ui/simd/simd-bitmask-notpow2.rs # non-pow-of-2 simd vector sizes
+rm -r tests/run-make/embed-source-dwarf # embedding sources in debuginfo
+rm tests/ui/simd-abi-checks.rs # vector types >128bits not yet supported
 
 # requires LTO
 rm -r tests/run-make/cdylib
@@ -74,6 +74,10 @@ rm -r tests/ui/instrument-coverage/
 
 # missing f16/f128 support
 rm tests/ui/half-open-range-patterns/half-open-range-pats-semantics.rs
+rm tests/ui/asm/aarch64/type-f16.rs
+rm tests/ui/float/conv-bits-runtime-const.rs
+rm tests/ui/consts/const-eval/float_methods.rs
+rm tests/ui/match/match-float.rs
 
 # optimization tests
 # ==================
@@ -118,12 +122,17 @@ rm tests/ui/mir/mir_misc_casts.rs # depends on deduplication of constants
 rm tests/ui/mir/mir_raw_fat_ptr.rs # same
 rm tests/ui/consts/issue-33537.rs # same
 rm tests/ui/consts/const-mut-refs-crate.rs # same
+rm tests/ui/abi/large-byval-align.rs # exceeds implementation limit of Cranelift
 
 # doesn't work due to the way the rustc test suite is invoked.
 # should work when using ./x.py test the way it is intended
 # ============================================================
 rm -r tests/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
+rm -r tests/run-make/strip # same
 rm -r tests/run-make/compiler-builtins # Expects lib/rustlib/src/rust to contains the standard library source
+rm -r tests/run-make/missing-unstable-trait-bound # This disables support for unstable features, but running cg_clif needs some unstable features
+rm -r tests/run-make/const-trait-stable-toolchain # same
+rm -r tests/run-make/incr-add-rust-src-component
 
 # genuine bugs
 # ============
@@ -134,13 +143,21 @@ rm tests/ui/deprecation/deprecated_inline_threshold.rs # missing deprecation war
 # bugs in the test suite
 # ======================
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
+rm tests/ui/backtrace/synchronized-panic-handler.rs # missing needs-unwind annotation
+rm tests/ui/lint/non-snake-case/lint-non-snake-case-crate.rs # same
+rm -r tests/ui/codegen/equal-pointers-unequal # make incorrect assumptions about the location of stack variables
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
+rm tests/ui/intrinsics/panic-uninitialized-zeroed.rs # same
+rm tests/ui/process/process-panic-after-fork.rs # same
 
 cp ../dist/bin/rustdoc-clif ../dist/bin/rustdoc # some tests expect bin/rustdoc to exist
+cp $(../dist/rustc-clif --print target-libdir)/libstd-*.so ../dist/lib/
 
 # prevent $(RUSTDOC) from picking up the sysroot built by x.py. It conflicts with the one used by
 # rustdoc-clif
+# FIXME remove the bootstrap changes once it is no longer necessary to revert rust-lang/rust#130642
+# to avoid building rustc when testing stage0 run-make.
 cat <<EOF | git apply -
 diff --git a/tests/run-make/tools.mk b/tests/run-make/tools.mk
 index ea06b620c4c..b969d0009c6 100644
@@ -157,19 +174,30 @@ index ea06b620c4c..b969d0009c6 100644
  RUSTDOC := \$(RUSTDOC) -Clinker='\$(RUSTC_LINKER)'
 diff --git a/src/tools/run-make-support/src/rustdoc.rs b/src/tools/run-make-support/src/rustdoc.rs
 index 9607ff02f96..b7d97caf9a2 100644
---- a/src/tools/run-make-support/src/rustdoc.rs
-+++ b/src/tools/run-make-support/src/rustdoc.rs
-@@ -34,8 +34,6 @@ pub fn bare() -> Self {
+--- a/src/tools/run-make-support/src/external_deps/rustdoc.rs
++++ b/src/tools/run-make-support/src/external_deps/rustdoc.rs
+@@ -34,7 +34,6 @@ pub fn bare() -> Self {
      #[track_caller]
      pub fn new() -> Self {
          let mut cmd = setup_common();
--        let target_rpath_dir = env_var_os("TARGET_RPATH_DIR");
--        cmd.arg(format!("-L{}", target_rpath_dir.to_string_lossy()));
+-        cmd.arg("-L").arg(env_var_os("TARGET_RPATH_DIR"));
          Self { cmd }
      }
+
+diff --git a/src/tools/compiletest/src/runtest/run_make.rs b/src/tools/compiletest/src/runtest/run_make.rs
+index e7ae773ffa1d3..04bc2d7787da7 100644
+--- a/src/tools/compiletest/src/runtest/run_make.rs
++++ b/src/tools/compiletest/src/runtest/run_make.rs
+@@ -329,7 +329,6 @@ impl TestCx<'_> {
+             .arg(format!("run_make_support={}", &support_lib_path.to_string_lossy()))
+             .arg("--edition=2021")
+             .arg(&self.testpaths.file.join("rmake.rs"))
+-            .arg("-Cprefer-dynamic")
+             // Provide necessary library search paths for rustc.
+             .env(dylib_env_var(), &env::join_paths(host_dylib_search_paths).unwrap());
 
 EOF
 
 echo "[TEST] rustc test suite"
-COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 --test-args=--nocapture tests/{codegen-units,run-make,run-pass-valgrind,ui,incremental}
+COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 --test-args=--no-capture tests/{codegen-units,run-make,ui,incremental}
 popd

@@ -19,6 +19,8 @@ mod ok {
     #[test]
     fn as_precedence() { run_and_expect_no_errors("test_data/parser/inline/ok/as_precedence.rs"); }
     #[test]
+    fn asm_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_expr.rs"); }
+    #[test]
     fn assoc_const_eq() {
         run_and_expect_no_errors("test_data/parser/inline/ok/assoc_const_eq.rs");
     }
@@ -37,14 +39,6 @@ mod ok {
     #[test]
     fn assoc_type_eq() { run_and_expect_no_errors("test_data/parser/inline/ok/assoc_type_eq.rs"); }
     #[test]
-    fn associated_return_type_bounds() {
-        run_and_expect_no_errors("test_data/parser/inline/ok/associated_return_type_bounds.rs");
-    }
-    #[test]
-    fn associated_type_bounds() {
-        run_and_expect_no_errors("test_data/parser/inline/ok/associated_type_bounds.rs");
-    }
-    #[test]
     fn async_trait_bound() {
         run_and_expect_no_errors("test_data/parser/inline/ok/async_trait_bound.rs");
     }
@@ -58,12 +52,6 @@ mod ok {
     fn bare_dyn_types_with_leading_lifetime() {
         run_and_expect_no_errors(
             "test_data/parser/inline/ok/bare_dyn_types_with_leading_lifetime.rs",
-        );
-    }
-    #[test]
-    fn bare_dyn_types_with_paren_as_generic_args() {
-        run_and_expect_no_errors(
-            "test_data/parser/inline/ok/bare_dyn_types_with_paren_as_generic_args.rs",
         );
     }
     #[test]
@@ -202,6 +190,13 @@ mod ok {
         );
     }
     #[test]
+    fn edition_2015_dyn_prefix_inside_generic_arg() {
+        run_and_expect_no_errors_with_edition(
+            "test_data/parser/inline/ok/edition_2015_dyn_prefix_inside_generic_arg.rs",
+            crate::Edition::Edition2015,
+        );
+    }
+    #[test]
     fn effect_blocks() { run_and_expect_no_errors("test_data/parser/inline/ok/effect_blocks.rs"); }
     #[test]
     fn exclusive_range_pat() {
@@ -220,10 +215,6 @@ mod ok {
     #[test]
     fn extern_crate_rename() {
         run_and_expect_no_errors("test_data/parser/inline/ok/extern_crate_rename.rs");
-    }
-    #[test]
-    fn extern_crate_self() {
-        run_and_expect_no_errors("test_data/parser/inline/ok/extern_crate_self.rs");
     }
     #[test]
     fn field_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/field_expr.rs"); }
@@ -282,6 +273,10 @@ mod ok {
     }
     #[test]
     fn generic_arg() { run_and_expect_no_errors("test_data/parser/inline/ok/generic_arg.rs"); }
+    #[test]
+    fn generic_arg_bounds() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/generic_arg_bounds.rs");
+    }
     #[test]
     fn generic_param_attribute() {
         run_and_expect_no_errors("test_data/parser/inline/ok/generic_param_attribute.rs");
@@ -425,10 +420,6 @@ mod ok {
     #[test]
     fn param_list() { run_and_expect_no_errors("test_data/parser/inline/ok/param_list.rs"); }
     #[test]
-    fn param_list_opt_patterns() {
-        run_and_expect_no_errors("test_data/parser/inline/ok/param_list_opt_patterns.rs");
-    }
-    #[test]
     fn param_list_vararg() {
         run_and_expect_no_errors("test_data/parser/inline/ok/param_list_vararg.rs");
     }
@@ -495,6 +486,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/record_field_list.rs");
     }
     #[test]
+    fn record_field_pat_leading_or() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/record_field_pat_leading_or.rs");
+    }
+    #[test]
     fn record_lit() { run_and_expect_no_errors("test_data/parser/inline/ok/record_lit.rs"); }
     #[test]
     fn record_literal_field_with_attr() {
@@ -518,6 +513,14 @@ mod ok {
     }
     #[test]
     fn return_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/return_expr.rs"); }
+    #[test]
+    fn return_type_syntax_in_path() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/return_type_syntax_in_path.rs");
+    }
+    #[test]
+    fn safe_outside_of_extern() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/safe_outside_of_extern.rs");
+    }
     #[test]
     fn self_param() { run_and_expect_no_errors("test_data/parser/inline/ok/self_param.rs"); }
     #[test]
@@ -669,10 +672,6 @@ mod ok {
     #[test]
     fn use_tree_star() { run_and_expect_no_errors("test_data/parser/inline/ok/use_tree_star.rs"); }
     #[test]
-    fn value_parameters_no_patterns() {
-        run_and_expect_no_errors("test_data/parser/inline/ok/value_parameters_no_patterns.rs");
-    }
-    #[test]
     fn variant_discriminant() {
         run_and_expect_no_errors("test_data/parser/inline/ok/variant_discriminant.rs");
     }
@@ -712,6 +711,8 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/async_without_semicolon.rs");
     }
     #[test]
+    fn bad_asm_expr() { run_and_expect_errors("test_data/parser/inline/err/bad_asm_expr.rs"); }
+    #[test]
     fn comma_after_functional_update_syntax() {
         run_and_expect_errors(
             "test_data/parser/inline/err/comma_after_functional_update_syntax.rs",
@@ -738,6 +739,10 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/generic_arg_list_recover.rs");
     }
     #[test]
+    fn generic_arg_list_recover_expr() {
+        run_and_expect_errors("test_data/parser/inline/err/generic_arg_list_recover_expr.rs");
+    }
+    #[test]
     fn generic_param_list_recover() {
         run_and_expect_errors("test_data/parser/inline/err/generic_param_list_recover.rs");
     }
@@ -756,6 +761,8 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/match_arms_recovery.rs");
     }
     #[test]
+    fn meta_recovery() { run_and_expect_errors("test_data/parser/inline/err/meta_recovery.rs"); }
+    #[test]
     fn method_call_missing_argument_list() {
         run_and_expect_errors("test_data/parser/inline/err/method_call_missing_argument_list.rs");
     }
@@ -768,8 +775,16 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/missing_fn_param_type.rs");
     }
     #[test]
+    fn path_item_without_excl() {
+        run_and_expect_errors("test_data/parser/inline/err/path_item_without_excl.rs");
+    }
+    #[test]
     fn pointer_type_no_mutability() {
         run_and_expect_errors("test_data/parser/inline/err/pointer_type_no_mutability.rs");
+    }
+    #[test]
+    fn precise_capturing_invalid() {
+        run_and_expect_errors("test_data/parser/inline/err/precise_capturing_invalid.rs");
     }
     #[test]
     fn pub_expr() { run_and_expect_errors("test_data/parser/inline/err/pub_expr.rs"); }

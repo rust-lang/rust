@@ -2,9 +2,9 @@ error: unreachable pattern
   --> $DIR/reachability.rs:18:17
    |
 LL |     m!(0u8, 42, 42);
-   |             --  ^^ unreachable pattern
+   |             --  ^^ no value can reach this
    |             |
-   |             matches all the values already
+   |             matches all the relevant values
    |
 note: the lint level is defined here
   --> $DIR/reachability.rs:3:9
@@ -16,129 +16,129 @@ error: unreachable pattern
   --> $DIR/reachability.rs:22:22
    |
 LL |     m!(0u8, 20..=30, 20);
-   |             -------  ^^ unreachable pattern
+   |             -------  ^^ no value can reach this
    |             |
-   |             matches all the values already
+   |             matches all the relevant values
 
 error: unreachable pattern
   --> $DIR/reachability.rs:23:22
    |
 LL |     m!(0u8, 20..=30, 21);
-   |             -------  ^^ unreachable pattern
+   |             -------  ^^ no value can reach this
    |             |
-   |             matches all the values already
+   |             matches all the relevant values
 
 error: unreachable pattern
   --> $DIR/reachability.rs:24:22
    |
 LL |     m!(0u8, 20..=30, 25);
-   |             -------  ^^ unreachable pattern
+   |             -------  ^^ no value can reach this
    |             |
-   |             matches all the values already
+   |             matches all the relevant values
 
 error: unreachable pattern
   --> $DIR/reachability.rs:25:22
    |
 LL |     m!(0u8, 20..=30, 29);
-   |             -------  ^^ unreachable pattern
+   |             -------  ^^ no value can reach this
    |             |
-   |             matches all the values already
+   |             matches all the relevant values
 
 error: unreachable pattern
   --> $DIR/reachability.rs:26:22
    |
 LL |     m!(0u8, 20..=30, 30);
-   |             -------  ^^ unreachable pattern
+   |             -------  ^^ no value can reach this
    |             |
-   |             matches all the values already
+   |             matches all the relevant values
 
 error: unreachable pattern
   --> $DIR/reachability.rs:29:21
    |
 LL |     m!(0u8, 20..30, 20);
-   |             ------  ^^ unreachable pattern
+   |             ------  ^^ no value can reach this
    |             |
-   |             matches all the values already
+   |             matches all the relevant values
 
 error: unreachable pattern
   --> $DIR/reachability.rs:30:21
    |
 LL |     m!(0u8, 20..30, 21);
-   |             ------  ^^ unreachable pattern
+   |             ------  ^^ no value can reach this
    |             |
-   |             matches all the values already
+   |             matches all the relevant values
 
 error: unreachable pattern
   --> $DIR/reachability.rs:31:21
    |
 LL |     m!(0u8, 20..30, 25);
-   |             ------  ^^ unreachable pattern
+   |             ------  ^^ no value can reach this
    |             |
-   |             matches all the values already
+   |             matches all the relevant values
 
 error: unreachable pattern
   --> $DIR/reachability.rs:32:21
    |
 LL |     m!(0u8, 20..30, 29);
-   |             ------  ^^ unreachable pattern
+   |             ------  ^^ no value can reach this
    |             |
-   |             matches all the values already
+   |             matches all the relevant values
 
 error: unreachable pattern
   --> $DIR/reachability.rs:36:22
    |
 LL |     m!(0u8, 20..=30, 20..=30);
-   |             -------  ^^^^^^^ unreachable pattern
+   |             -------  ^^^^^^^ no value can reach this
    |             |
-   |             matches all the values already
+   |             matches all the relevant values
 
 error: unreachable pattern
   --> $DIR/reachability.rs:37:22
    |
 LL |     m!(0u8, 20.. 30, 20.. 30);
-   |             -------  ^^^^^^^ unreachable pattern
+   |             -------  ^^^^^^^ no value can reach this
    |             |
-   |             matches all the values already
+   |             matches all the relevant values
 
 error: unreachable pattern
   --> $DIR/reachability.rs:38:22
    |
 LL |     m!(0u8, 20..=30, 20.. 30);
-   |             -------  ^^^^^^^ unreachable pattern
+   |             -------  ^^^^^^^ no value can reach this
    |             |
-   |             matches all the values already
+   |             matches all the relevant values
 
 error: unreachable pattern
   --> $DIR/reachability.rs:40:22
    |
 LL |     m!(0u8, 20..=30, 21..=30);
-   |             -------  ^^^^^^^ unreachable pattern
+   |             -------  ^^^^^^^ no value can reach this
    |             |
-   |             matches all the values already
+   |             matches all the relevant values
 
 error: unreachable pattern
   --> $DIR/reachability.rs:41:22
    |
 LL |     m!(0u8, 20..=30, 20..=29);
-   |             -------  ^^^^^^^ unreachable pattern
+   |             -------  ^^^^^^^ no value can reach this
    |             |
-   |             matches all the values already
+   |             matches all the relevant values
 
 error: unreachable pattern
   --> $DIR/reachability.rs:43:24
    |
 LL |     m!('a', 'A'..='z', 'a'..='z');
-   |             ---------  ^^^^^^^^^ unreachable pattern
+   |             ---------  ^^^^^^^^^ no value can reach this
    |             |
-   |             matches all the values already
+   |             matches all the relevant values
 
 error: unreachable pattern
   --> $DIR/reachability.rs:50:9
    |
 LL |         5..=8 => {},
-   |         ^^^^^ unreachable pattern
+   |         ^^^^^ no value can reach this
    |
-note: these patterns collectively make the last one unreachable
+note: multiple earlier patterns match some of the same values
   --> $DIR/reachability.rs:50:9
    |
 LL |         5 => {},
@@ -156,9 +156,9 @@ error: unreachable pattern
   --> $DIR/reachability.rs:56:9
    |
 LL |         5..15 => {},
-   |         ^^^^^ unreachable pattern
+   |         ^^^^^ no value can reach this
    |
-note: these patterns collectively make the last one unreachable
+note: multiple earlier patterns match some of the same values
   --> $DIR/reachability.rs:56:9
    |
 LL |         0..10 => {},
@@ -172,9 +172,9 @@ error: unreachable pattern
   --> $DIR/reachability.rs:63:9
    |
 LL |         5..25 => {},
-   |         ^^^^^ unreachable pattern
+   |         ^^^^^ no value can reach this
    |
-note: these patterns collectively make the last one unreachable
+note: multiple earlier patterns match some of the same values
   --> $DIR/reachability.rs:63:9
    |
 LL |         0..10 => {},
@@ -190,9 +190,9 @@ error: unreachable pattern
   --> $DIR/reachability.rs:71:9
    |
 LL |         5..25 => {},
-   |         ^^^^^ unreachable pattern
+   |         ^^^^^ no value can reach this
    |
-note: these patterns collectively make the last one unreachable
+note: multiple earlier patterns match some of the same values
   --> $DIR/reachability.rs:71:9
    |
 LL |         0..10 => {},
@@ -210,9 +210,9 @@ error: unreachable pattern
   --> $DIR/reachability.rs:77:9
    |
 LL |         5..15 => {},
-   |         ^^^^^ unreachable pattern
+   |         ^^^^^ no value can reach this
    |
-note: these patterns collectively make the last one unreachable
+note: multiple earlier patterns match some of the same values
   --> $DIR/reachability.rs:77:9
    |
 LL |         0..10 => {},
@@ -228,15 +228,15 @@ error: unreachable pattern
 LL |         _ => {},
    |         - matches any value
 LL |         '\u{D7FF}'..='\u{E000}' => {},
-   |         ^^^^^^^^^^^^^^^^^^^^^^^ unreachable pattern
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ no value can reach this
 
 error: unreachable pattern
   --> $DIR/reachability.rs:89:9
    |
 LL |         '\u{D7FF}'..='\u{E000}' => {},
-   |         ^^^^^^^^^^^^^^^^^^^^^^^ unreachable pattern
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ no value can reach this
    |
-note: these patterns collectively make the last one unreachable
+note: multiple earlier patterns match some of the same values
   --> $DIR/reachability.rs:89:9
    |
 LL |         '\u{0}'..='\u{D7FF}' => {},
@@ -250,18 +250,18 @@ error: unreachable pattern
   --> $DIR/reachability.rs:105:9
    |
 LL |         &42 => {}
-   |         --- matches all the values already
+   |         --- matches all the relevant values
 LL |         &FOO => {}
-   |         ^^^^ unreachable pattern
+   |         ^^^^ no value can reach this
 
 error: unreachable pattern
   --> $DIR/reachability.rs:106:9
    |
 LL |         &42 => {}
-   |         --- matches all the values already
+   |         --- matches all the relevant values
 LL |         &FOO => {}
 LL |         BAR => {}
-   |         ^^^ unreachable pattern
+   |         ^^^ no value can reach this
 
 error: aborting due to 25 previous errors
 

@@ -1,21 +1,20 @@
 //! This file provides API for compiler consumers.
 
-use std::rc::Rc;
-
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::{Body, Promoted};
 use rustc_middle::ty::TyCtxt;
 
+pub use super::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
 pub use super::constraints::OutlivesConstraint;
-pub use super::dataflow::{calculate_borrows_out_of_scope_at_location, BorrowIndex, Borrows};
-pub use super::facts::{AllFacts as PoloniusInput, RustcFacts};
-pub use super::location::{LocationTable, RichLocation};
-pub use super::nll::PoloniusOutput;
+pub use super::dataflow::{BorrowIndex, Borrows, calculate_borrows_out_of_scope_at_location};
 pub use super::place_ext::PlaceExt;
-pub use super::places_conflict::{places_conflict, PlaceConflictBias};
+pub use super::places_conflict::{PlaceConflictBias, places_conflict};
+pub use super::polonius::legacy::{
+    PoloniusFacts as PoloniusInput, PoloniusLocationTable, PoloniusOutput, PoloniusRegionVid,
+    RichLocation, RustcFacts,
+};
 pub use super::region_infer::RegionInferenceContext;
-use crate::borrow_set::BorrowSet;
 
 /// Options determining the output behavior of [`get_body_with_borrowck_facts`].
 ///
@@ -34,7 +33,7 @@ pub enum ConsumerOptions {
     /// without significant slowdowns.
     ///
     /// Implies [`RegionInferenceContext`](ConsumerOptions::RegionInferenceContext),
-    /// and additionally retrieve the [`LocationTable`] and [`PoloniusInput`] that
+    /// and additionally retrieve the [`PoloniusLocationTable`] and [`PoloniusInput`] that
     /// would be given to Polonius. Critically, this does not run Polonius, which
     /// one may want to avoid due to performance issues on large bodies.
     PoloniusInputFacts,
@@ -65,21 +64,21 @@ pub struct BodyWithBorrowckFacts<'tcx> {
     /// The mir bodies of promoteds.
     pub promoted: IndexVec<Promoted, Body<'tcx>>,
     /// The set of borrows occurring in `body` with data about them.
-    pub borrow_set: Rc<BorrowSet<'tcx>>,
+    pub borrow_set: BorrowSet<'tcx>,
     /// Context generated during borrowck, intended to be passed to
     /// [`calculate_borrows_out_of_scope_at_location`].
-    pub region_inference_context: Rc<RegionInferenceContext<'tcx>>,
+    pub region_inference_context: RegionInferenceContext<'tcx>,
     /// The table that maps Polonius points to locations in the table.
     /// Populated when using [`ConsumerOptions::PoloniusInputFacts`]
     /// or [`ConsumerOptions::PoloniusOutputFacts`].
-    pub location_table: Option<LocationTable>,
+    pub location_table: Option<PoloniusLocationTable>,
     /// Polonius input facts.
     /// Populated when using [`ConsumerOptions::PoloniusInputFacts`]
     /// or [`ConsumerOptions::PoloniusOutputFacts`].
     pub input_facts: Option<Box<PoloniusInput>>,
     /// Polonius output facts. Populated when using
     /// [`ConsumerOptions::PoloniusOutputFacts`].
-    pub output_facts: Option<Rc<PoloniusOutput>>,
+    pub output_facts: Option<Box<PoloniusOutput>>,
 }
 
 /// This function computes borrowck facts for the given body. The [`ConsumerOptions`]

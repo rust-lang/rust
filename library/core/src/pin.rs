@@ -331,7 +331,7 @@
 //!
 //! Note that this invariant is enforced by simply making it impossible to call code that would
 //! perform a move on the pinned value. This is the case since the only way to access that pinned
-//! value is through the pinning <code>[Pin]<[&mut] T>></code>, which in turn restricts our access.
+//! value is through the pinning <code>[Pin]<[&mut] T></code>, which in turn restricts our access.
 //!
 //! ## [`Unpin`]
 //!
@@ -373,13 +373,13 @@
 //! exactly what we did with our `AddrTracker` example above. Without doing this, you *must not*
 //! rely on pinning-related guarantees to apply to your type!
 //!
-//! If need to truly pin a value of a foreign or built-in type that implements [`Unpin`], you'll
-//! need to create your own wrapper type around the [`Unpin`] type you want to pin and then
-//! opts-out of [`Unpin`] using [`PhantomPinned`].
+//! If you really need to pin a value of a foreign or built-in type that implements [`Unpin`],
+//! you'll need to create your own wrapper type around the [`Unpin`] type you want to pin and then
+//! opt-out of [`Unpin`] using [`PhantomPinned`].
 //!
 //! Exposing access to the inner field which you want to remain pinned must then be carefully
 //! considered as well! Remember, exposing a method that gives access to a
-//! <code>[Pin]<[&mut] InnerT>></code> where <code>InnerT: [Unpin]</code> would allow safe code to
+//! <code>[Pin]<[&mut] InnerT></code> where <code>InnerT: [Unpin]</code> would allow safe code to
 //! trivially move the inner value out of that pinning pointer, which is precisely what you're
 //! seeking to prevent! Exposing a field of a pinned value through a pinning pointer is called
 //! "projecting" a pin, and the more general case of deciding in which cases a pin should be able
@@ -595,7 +595,7 @@
 //! [drop-impl]: self#implementing-drop-for-types-with-address-sensitive-states
 //!
 //! The [`drop`] function takes [`&mut self`], but this is called *even if that `self` has been
-//! pinned*! Implementing [`Drop`] for a type with address-sensitive states, because if `self` was
+//! pinned*! Implementing [`Drop`] for a type with address-sensitive states requires some care, because if `self` was
 //! indeed in an address-sensitive state before [`drop`] was called, it is as if the compiler
 //! automatically called [`Pin::get_unchecked_mut`].
 //!
@@ -921,7 +921,7 @@
 #![stable(feature = "pin", since = "1.33.0")]
 
 use crate::hash::{Hash, Hasher};
-use crate::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, Receiver};
+use crate::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
 #[allow(unused_imports)]
 use crate::{
     cell::{RefCell, UnsafeCell},
@@ -1084,6 +1084,7 @@ use crate::{cmp, fmt};
 #[lang = "pin"]
 #[fundamental]
 #[repr(transparent)]
+#[rustc_pub_transparent]
 #[derive(Copy, Clone)]
 pub struct Pin<Ptr> {
     // FIXME(#93176): this field is made `#[unstable] #[doc(hidden)] pub` to:
@@ -1185,7 +1186,7 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
     /// let mut pinned: Pin<&mut u8> = Pin::new(&mut val);
     /// ```
     #[inline(always)]
-    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const fn new(pointer: Ptr) -> Pin<Ptr> {
         // SAFETY: the value pointed to is `Unpin`, and so has no requirements
@@ -1213,7 +1214,8 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
     /// assert_eq!(*r, 5);
     /// ```
     #[inline(always)]
-    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin_into_inner", since = "1.39.0")]
     pub const fn into_inner(pin: Pin<Ptr>) -> Ptr {
         pin.__pointer
@@ -1291,8 +1293,8 @@ impl<Ptr: Deref> Pin<Ptr> {
     ///     // Now, if `x` was the only reference, we have a mutable reference to
     ///     // data that we pinned above, which we could use to move it as we have
     ///     // seen in the previous example. We have violated the pinning API contract.
-    ///  }
-    ///  ```
+    /// }
+    /// ```
     ///
     /// ## Pinning of closure captures
     ///
@@ -1350,7 +1352,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     /// [`pin` module docs]: self
     #[lang = "new_unchecked"]
     #[inline(always)]
-    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const unsafe fn new_unchecked(pointer: Ptr) -> Pin<Ptr> {
         Pin { __pointer: pointer }
@@ -1369,33 +1371,14 @@ impl<Ptr: Deref> Pin<Ptr> {
         // SAFETY: see documentation on this function
         unsafe { Pin::new_unchecked(&*self.__pointer) }
     }
-
-    /// Unwraps this `Pin<Ptr>`, returning the underlying `Ptr`.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe. You must guarantee that you will continue to
-    /// treat the pointer `Ptr` as pinned after you call this function, so that
-    /// the invariants on the `Pin` type can be upheld. If the code using the
-    /// resulting `Ptr` does not continue to maintain the pinning invariants that
-    /// is a violation of the API contract and may lead to undefined behavior in
-    /// later (safe) operations.
-    ///
-    /// Note that you must be able to guarantee that the data pointed to by `Ptr`
-    /// will be treated as pinned all the way until its `drop` handler is complete!
-    ///
-    /// *For more information, see the [`pin` module docs][self]*
-    ///
-    /// If the underlying data is [`Unpin`], [`Pin::into_inner`] should be used
-    /// instead.
-    #[inline(always)]
-    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
-    #[stable(feature = "pin_into_inner", since = "1.39.0")]
-    pub const unsafe fn into_inner_unchecked(pin: Pin<Ptr>) -> Ptr {
-        pin.__pointer
-    }
 }
 
+// These methods being in a `Ptr: DerefMut` impl block concerns semver stability.
+// Currently, calling e.g. `.set()` on a `Pin<&T>` sees that `Ptr: DerefMut`
+// doesn't hold, and goes to check for a `.set()` method on `T`. But, if the
+// `where Ptr: DerefMut` bound is moved to the method, rustc sees the impl block
+// as a valid candidate, and doesn't go on to check other candidates when it
+// sees that the bound on the method.
 impl<Ptr: DerefMut> Pin<Ptr> {
     /// Gets a mutable reference to the pinned value this `Pin<Ptr>` points to.
     ///
@@ -1433,6 +1416,44 @@ impl<Ptr: DerefMut> Pin<Ptr> {
         unsafe { Pin::new_unchecked(&mut *self.__pointer) }
     }
 
+    /// Gets `Pin<&mut T>` to the underlying pinned value from this nested `Pin`-pointer.
+    ///
+    /// This is a generic method to go from `Pin<&mut Pin<Pointer<T>>>` to `Pin<&mut T>`. It is
+    /// safe because the existence of a `Pin<Pointer<T>>` ensures that the pointee, `T`, cannot
+    /// move in the future, and this method does not enable the pointee to move. "Malicious"
+    /// implementations of `Ptr::DerefMut` are likewise ruled out by the contract of
+    /// `Pin::new_unchecked`.
+    #[stable(feature = "pin_deref_mut", since = "1.84.0")]
+    #[must_use = "`self` will be dropped if the result is not used"]
+    #[inline(always)]
+    pub fn as_deref_mut(self: Pin<&mut Pin<Ptr>>) -> Pin<&mut Ptr::Target> {
+        // SAFETY: What we're asserting here is that going from
+        //
+        //     Pin<&mut Pin<Ptr>>
+        //
+        // to
+        //
+        //     Pin<&mut Ptr::Target>
+        //
+        // is safe.
+        //
+        // We need to ensure that two things hold for that to be the case:
+        //
+        // 1) Once we give out a `Pin<&mut Ptr::Target>`, a `&mut Ptr::Target` will not be given out.
+        // 2) By giving out a `Pin<&mut Ptr::Target>`, we do not risk violating
+        // `Pin<&mut Pin<Ptr>>`
+        //
+        // The existence of `Pin<Ptr>` is sufficient to guarantee #1: since we already have a
+        // `Pin<Ptr>`, it must already uphold the pinning guarantees, which must mean that
+        // `Pin<&mut Ptr::Target>` does as well, since `Pin::as_mut` is safe. We do not have to rely
+        // on the fact that `Ptr` is _also_ pinned.
+        //
+        // For #2, we need to ensure that code given a `Pin<&mut Ptr::Target>` cannot cause the
+        // `Pin<Ptr>` to move? That is not possible, since `Pin<&mut Ptr::Target>` no longer retains
+        // any access to the `Ptr` itself, much less the `Pin<Ptr>`.
+        unsafe { self.get_unchecked_mut() }.as_mut()
+    }
+
     /// Assigns a new value to the memory location pointed to by the `Pin<Ptr>`.
     ///
     /// This overwrites pinned data, but that is okay: the original pinned value's destructor gets
@@ -1460,6 +1481,34 @@ impl<Ptr: DerefMut> Pin<Ptr> {
         Ptr::Target: Sized,
     {
         *(self.__pointer) = value;
+    }
+}
+
+impl<Ptr: Deref> Pin<Ptr> {
+    /// Unwraps this `Pin<Ptr>`, returning the underlying `Ptr`.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe. You must guarantee that you will continue to
+    /// treat the pointer `Ptr` as pinned after you call this function, so that
+    /// the invariants on the `Pin` type can be upheld. If the code using the
+    /// resulting `Ptr` does not continue to maintain the pinning invariants that
+    /// is a violation of the API contract and may lead to undefined behavior in
+    /// later (safe) operations.
+    ///
+    /// Note that you must be able to guarantee that the data pointed to by `Ptr`
+    /// will be treated as pinned all the way until its `drop` handler is complete!
+    ///
+    /// *For more information, see the [`pin` module docs][self]*
+    ///
+    /// If the underlying data is [`Unpin`], [`Pin::into_inner`] should be used
+    /// instead.
+    #[inline(always)]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
+    #[stable(feature = "pin_into_inner", since = "1.39.0")]
+    pub const unsafe fn into_inner_unchecked(pin: Pin<Ptr>) -> Ptr {
+        pin.__pointer
     }
 }
 
@@ -1512,7 +1561,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// ["pinning projections"]: self#projections-and-structural-pinning
     #[inline(always)]
     #[must_use]
-    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const fn get_ref(self) -> &'a T {
         self.__pointer
@@ -1523,7 +1572,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// Converts this `Pin<&mut T>` into a `Pin<&T>` with the same lifetime.
     #[inline(always)]
     #[must_use = "`self` will be dropped if the result is not used"]
-    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const fn into_ref(self) -> Pin<&'a T> {
         Pin { __pointer: self.__pointer }
@@ -1541,7 +1590,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     #[inline(always)]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "pin", since = "1.33.0")]
-    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     pub const fn get_mut(self) -> &'a mut T
     where
         T: Unpin,
@@ -1562,7 +1611,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     #[inline(always)]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "pin", since = "1.33.0")]
-    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     pub const unsafe fn get_unchecked_mut(self) -> &'a mut T {
         self.__pointer
     }
@@ -1605,51 +1654,11 @@ impl<T: ?Sized> Pin<&'static T> {
     /// This is safe because `T` is borrowed immutably for the `'static` lifetime, which
     /// never ends.
     #[stable(feature = "pin_static_ref", since = "1.61.0")]
-    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     pub const fn static_ref(r: &'static T) -> Pin<&'static T> {
         // SAFETY: The 'static borrow guarantees the data will not be
         // moved/invalidated until it gets dropped (which is never).
         unsafe { Pin::new_unchecked(r) }
-    }
-}
-
-impl<'a, Ptr: DerefMut> Pin<&'a mut Pin<Ptr>> {
-    /// Gets `Pin<&mut T>` to the underlying pinned value from this nested `Pin`-pointer.
-    ///
-    /// This is a generic method to go from `Pin<&mut Pin<Pointer<T>>>` to `Pin<&mut T>`. It is
-    /// safe because the existence of a `Pin<Pointer<T>>` ensures that the pointee, `T`, cannot
-    /// move in the future, and this method does not enable the pointee to move. "Malicious"
-    /// implementations of `Ptr::DerefMut` are likewise ruled out by the contract of
-    /// `Pin::new_unchecked`.
-    #[unstable(feature = "pin_deref_mut", issue = "86918")]
-    #[must_use = "`self` will be dropped if the result is not used"]
-    #[inline(always)]
-    pub fn as_deref_mut(self) -> Pin<&'a mut Ptr::Target> {
-        // SAFETY: What we're asserting here is that going from
-        //
-        //     Pin<&mut Pin<Ptr>>
-        //
-        // to
-        //
-        //     Pin<&mut Ptr::Target>
-        //
-        // is safe.
-        //
-        // We need to ensure that two things hold for that to be the case:
-        //
-        // 1) Once we give out a `Pin<&mut Ptr::Target>`, a `&mut Ptr::Target` will not be given out.
-        // 2) By giving out a `Pin<&mut Ptr::Target>`, we do not risk violating
-        // `Pin<&mut Pin<Ptr>>`
-        //
-        // The existence of `Pin<Ptr>` is sufficient to guarantee #1: since we already have a
-        // `Pin<Ptr>`, it must already uphold the pinning guarantees, which must mean that
-        // `Pin<&mut Ptr::Target>` does as well, since `Pin::as_mut` is safe. We do not have to rely
-        // on the fact that `Ptr` is _also_ pinned.
-        //
-        // For #2, we need to ensure that code given a `Pin<&mut Ptr::Target>` cannot cause the
-        // `Pin<Ptr>` to move? That is not possible, since `Pin<&mut Ptr::Target>` no longer retains
-        // any access to the `Ptr` itself, much less the `Pin<Ptr>`.
-        unsafe { self.get_unchecked_mut() }.as_mut()
     }
 }
 
@@ -1659,7 +1668,7 @@ impl<T: ?Sized> Pin<&'static mut T> {
     /// This is safe because `T` is borrowed for the `'static` lifetime, which
     /// never ends.
     #[stable(feature = "pin_static_ref", since = "1.61.0")]
-    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     pub const fn static_mut(r: &'static mut T) -> Pin<&'static mut T> {
         // SAFETY: The 'static borrow guarantees the data will not be
         // moved/invalidated until it gets dropped (which is never).
@@ -1685,8 +1694,8 @@ impl<Ptr: DerefMut<Target: Unpin>> DerefMut for Pin<Ptr> {
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<Ptr: DerefPure> DerefPure for Pin<Ptr> {}
 
-#[unstable(feature = "receiver_trait", issue = "none")]
-impl<Ptr: Receiver> Receiver for Pin<Ptr> {}
+#[unstable(feature = "legacy_receiver_trait", issue = "none")]
+impl<Ptr: LegacyReceiver> LegacyReceiver for Pin<Ptr> {}
 
 #[stable(feature = "pin", since = "1.33.0")]
 impl<Ptr: fmt::Debug> fmt::Debug for Pin<Ptr> {

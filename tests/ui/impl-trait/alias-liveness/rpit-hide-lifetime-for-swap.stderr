@@ -8,10 +8,10 @@ LL | fn hide<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap + 'a {
 LL |     x
    |     ^
    |
-help: to declare that `impl Swap + 'a` captures `'b`, you can add an explicit `'b` lifetime bound
+help: add a `use<...>` bound to explicitly capture `'b`
    |
-LL | fn hide<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap + 'a + 'b {
-   |                                                                          ++++
+LL | fn hide<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap + 'a + use<'a, 'b, T> {
+   |                                                                          ++++++++++++++++
 
 error: aborting due to 1 previous error
 

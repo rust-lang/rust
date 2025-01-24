@@ -11,8 +11,8 @@
       bb0: {
           StorageLive(_1);
           _1 = const 0_i32;
--         _1 = Add(_1, const 1_i32);
--         _1 = Add(_1, const 1_i32);
+-         _1 = Add(copy _1, const 1_i32);
+-         _1 = Add(copy _1, const 1_i32);
 +         _1 = const 1_i32;
 +         _1 = const 2_i32;
           _0 = const ();

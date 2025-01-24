@@ -5,9 +5,9 @@ use clippy_utils::source::snippet;
 use clippy_utils::{get_expr_use_or_unification_node, is_res_lang_ctor, path_res, std_or_core};
 
 use rustc_errors::Applicability;
+use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::HirId;
-use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::LateContext;
 

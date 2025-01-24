@@ -1,4 +1,4 @@
-use crate::ffi::{c_char, CStr, OsString};
+use crate::ffi::{CStr, OsString, c_char};
 use crate::os::hermit::ffi::OsStringExt;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use crate::sync::atomic::{AtomicIsize, AtomicPtr};

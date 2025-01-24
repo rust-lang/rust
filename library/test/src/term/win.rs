@@ -5,7 +5,7 @@
 use std::io;
 use std::io::prelude::*;
 
-use super::{color, Terminal};
+use super::{Terminal, color};
 
 /// A Terminal implementation that uses the Win32 Console API.
 pub(crate) struct WinConsole<T> {

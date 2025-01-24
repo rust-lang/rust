@@ -5,22 +5,17 @@
 //@[v0] compile-flags: -Csymbol-mangling-version=v0
 //@[legacy] compile-flags: -Csymbol-mangling-version=legacy -Zunstable-options
 
-// FIXME(async_closures): When `fn_sig_for_fn_abi` is fixed, remove this.
-//@ ignore-pass (test emits codegen-time warnings)
-
-#![feature(async_closure, noop_waker)]
-
 extern crate block_on;
 
 use std::future::Future;
 use std::pin::pin;
 use std::task::*;
 
-async fn call_mut(f: &mut impl async FnMut()) {
+async fn call_mut(f: &mut impl AsyncFnMut()) {
     f().await;
 }
 
-async fn call_once(f: impl async FnOnce()) {
+async fn call_once(f: impl AsyncFnOnce()) {
     f().await;
 }
 

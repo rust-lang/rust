@@ -20,6 +20,9 @@
 | '?2: '?3 due to Assignment at Single(bb1[0]) ($DIR/region_subtyping_basic.rs:19:13: 19:18 (#0)
 | '?3: '?4 due to Assignment at Single(bb1[3]) ($DIR/region_subtyping_basic.rs:20:13: 20:14 (#0)
 |
+| Borrows
+| bw0: issued at bb1[0] in '?2
+|
 fn main() -> () {
     let mut _0: ();
     let mut _1: [usize; ValTree(Leaf(0x0000000000000003): usize)];
@@ -50,15 +53,15 @@ fn main() -> () {
         StorageLive(_3);
         _3 = const ConstValue(Scalar(0x0000000000000000): usize);
         _4 = Len(_1);
-        _5 = Lt(_3, _4);
-        assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, _3) -> [success: bb1, unwind: bb7];
+        _5 = Lt(copy _3, copy _4);
+        assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, copy _3) -> [success: bb1, unwind: bb7];
     }
 
     bb1: {
         _2 = &'?2 _1[_3];
         FakeRead(ForLet(None), _2);
         StorageLive(_6);
-        _6 = _2;
+        _6 = copy _2;
         FakeRead(ForLet(None), _6);
         StorageLive(_7);
         _7 = const ConstValue(Scalar(0x01): bool);
@@ -68,7 +71,7 @@ fn main() -> () {
     bb2: {
         StorageLive(_8);
         StorageLive(_9);
-        _9 = (*_6);
+        _9 = copy (*_6);
         _8 = ConstValue(ZeroSized: fn(usize) -> bool {use_x})(move _9) -> [return: bb3, unwind: bb7];
     }
 

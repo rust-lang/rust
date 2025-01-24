@@ -1,43 +1,56 @@
-error: `foo` is not yet stable as a const fn
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo)]`
   --> $DIR/min_const_unsafe_fn_libstd_stability.rs:16:41
    |
 LL | const unsafe fn bar() -> u32 { unsafe { foo() } }
    |                                         ^^^^^
    |
-   = help: const-stable functions can only call other const-stable functions
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const unsafe fn bar() -> u32 { unsafe { foo() } }
+   |
+help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
+   |
+LL + #[rustc_allow_const_fn_unstable(foo)]
+LL | const unsafe fn bar() -> u32 { unsafe { foo() } }
+   |
 
-error: `foo2` is not yet stable as a const fn
-  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:24:42
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo2)]`
+  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:25:42
    |
 LL | const unsafe fn bar2() -> u32 { unsafe { foo2() } }
    |                                          ^^^^^^
    |
-   = help: const-stable functions can only call other const-stable functions
-
-error: const-stable function cannot use `#[feature(const_fn_floating_point_arithmetic)]`
-  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:29:33
-   |
-LL | const unsafe fn bar3() -> u32 { (5f32 + 6f32) as u32 }
-   |                                 ^^^^^^^^^^^^^
-   |
-help: if it is not part of the public API, make this function unstably const
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const unsafe fn bar3() -> u32 { (5f32 + 6f32) as u32 }
+LL | const unsafe fn bar2() -> u32 { unsafe { foo2() } }
    |
-help: otherwise `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks
+help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
    |
-LL + #[rustc_allow_const_fn_unstable(const_fn_floating_point_arithmetic)]
-LL | const unsafe fn bar3() -> u32 { (5f32 + 6f32) as u32 }
+LL + #[rustc_allow_const_fn_unstable(foo2)]
+LL | const unsafe fn bar2() -> u32 { unsafe { foo2() } }
    |
 
-error: `foo2_gated` is not yet stable as a const fn
-  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:39:48
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo2)]`
+  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:35:48
    |
 LL | const unsafe fn bar2_gated() -> u32 { unsafe { foo2_gated() } }
    |                                                ^^^^^^^^^^^^
    |
-   = help: const-stable functions can only call other const-stable functions
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const unsafe fn bar2_gated() -> u32 { unsafe { foo2_gated() } }
+   |
+help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
+   |
+LL + #[rustc_allow_const_fn_unstable(foo2)]
+LL | const unsafe fn bar2_gated() -> u32 { unsafe { foo2_gated() } }
+   |
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 

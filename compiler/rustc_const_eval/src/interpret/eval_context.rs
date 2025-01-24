@@ -1,29 +1,31 @@
+use std::assert_matches::debug_assert_matches;
+
 use either::{Left, Right};
+use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::at::ToTrace;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers, TyAndLayout,
 };
-use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt, TypeFoldable, Variance};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypingEnv, Variance};
 use rustc_middle::{mir, span_bug};
 use rustc_session::Limit;
 use rustc_span::Span;
-use rustc_target::abi::call::FnAbi;
-use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
+use rustc_target::callconv::FnAbi;
 use rustc_trait_selection::traits::ObligationCtxt;
-use tracing::{debug, trace};
+use tracing::{debug, instrument, trace};
 
 use super::{
-    err_inval, throw_inval, throw_ub, throw_ub_custom, Frame, FrameInfo, GlobalId, InterpErrorInfo,
-    InterpResult, MPlaceTy, Machine, MemPlaceMeta, Memory, OpTy, Place, PlaceTy, PointerArithmetic,
-    Projectable, Provenance,
+    Frame, FrameInfo, GlobalId, InterpErrorInfo, InterpErrorKind, InterpResult, MPlaceTy, Machine,
+    MemPlaceMeta, Memory, OpTy, Place, PlaceTy, PointerArithmetic, Projectable, Provenance,
+    err_inval, interp_ok, throw_inval, throw_ub, throw_ub_custom,
 };
-use crate::{fluent_generated as fluent, util, ReportErrorExt};
+use crate::{ReportErrorExt, fluent_generated as fluent, util};
 
 pub struct InterpCx<'tcx, M: Machine<'tcx>> {
     /// Stores the `Machine` instance.
@@ -36,8 +38,9 @@ pub struct InterpCx<'tcx, M: Machine<'tcx>> {
     /// we are evaluating (if this is CTFE).
     pub tcx: TyCtxtAt<'tcx>,
 
-    /// Bounds in scope for polymorphic evaluations.
-    pub(crate) param_env: ty::ParamEnv<'tcx>,
+    /// The current context in case we're evaluating in a
+    /// polymorphic context. This always uses `ty::TypingMode::PostAnalysis`.
+    pub(super) typing_env: ty::TypingEnv<'tcx>,
 
     /// The virtual memory system.
     pub memory: Memory<'tcx, M>,
@@ -63,17 +66,17 @@ where
     }
 }
 
-impl<'tcx, M> layout::HasParamEnv<'tcx> for InterpCx<'tcx, M>
+impl<'tcx, M> layout::HasTypingEnv<'tcx> for InterpCx<'tcx, M>
 where
     M: Machine<'tcx>,
 {
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        self.typing_env
     }
 }
 
 impl<'tcx, M: Machine<'tcx>> LayoutOfHelpers<'tcx> for InterpCx<'tcx, M> {
-    type LayoutOfResult = InterpResult<'tcx, TyAndLayout<'tcx>>;
+    type LayoutOfResult = Result<TyAndLayout<'tcx>, InterpErrorKind<'tcx>>;
 
     #[inline]
     fn layout_tcx_at_span(&self) -> Span {
@@ -87,24 +90,24 @@ impl<'tcx, M: Machine<'tcx>> LayoutOfHelpers<'tcx> for InterpCx<'tcx, M> {
         err: LayoutError<'tcx>,
         _: Span,
         _: Ty<'tcx>,
-    ) -> InterpErrorInfo<'tcx> {
-        err_inval!(Layout(err)).into()
+    ) -> InterpErrorKind<'tcx> {
+        err_inval!(Layout(err))
     }
 }
 
 impl<'tcx, M: Machine<'tcx>> FnAbiOfHelpers<'tcx> for InterpCx<'tcx, M> {
-    type FnAbiOfResult = InterpResult<'tcx, &'tcx FnAbi<'tcx, Ty<'tcx>>>;
+    type FnAbiOfResult = Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, InterpErrorKind<'tcx>>;
 
     fn handle_fn_abi_err(
         &self,
         err: FnAbiError<'tcx>,
         _span: Span,
         _fn_abi_request: FnAbiRequest<'tcx>,
-    ) -> InterpErrorInfo<'tcx> {
+    ) -> InterpErrorKind<'tcx> {
         match err {
-            FnAbiError::Layout(err) => err_inval!(Layout(err)).into(),
+            FnAbiError::Layout(err) => err_inval!(Layout(err)),
             FnAbiError::AdjustForForeignAbi(err) => {
-                err_inval!(FnAbiAdjustForForeignAbi(err)).into()
+                err_inval!(FnAbiAdjustForForeignAbi(err))
             }
         }
     }
@@ -114,7 +117,7 @@ impl<'tcx, M: Machine<'tcx>> FnAbiOfHelpers<'tcx> for InterpCx<'tcx, M> {
 /// This test should be symmetric, as it is primarily about layout compatibility.
 pub(super) fn mir_assign_valid_types<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: TypingEnv<'tcx>,
     src: TyAndLayout<'tcx>,
     dest: TyAndLayout<'tcx>,
 ) -> bool {
@@ -122,7 +125,7 @@ pub(super) fn mir_assign_valid_types<'tcx>(
     // all normal lifetimes are erased, higher-ranked types with their
     // late-bound lifetimes are still around and can lead to type
     // differences.
-    if util::relate_types(tcx, param_env, Variance::Covariant, src.ty, dest.ty) {
+    if util::relate_types(tcx, typing_env, Variance::Covariant, src.ty, dest.ty) {
         // Make sure the layout is equal, too -- just to be safe. Miri really
         // needs layout equality. For performance reason we skip this check when
         // the types are equal. Equal types *can* have different layouts when
@@ -142,7 +145,7 @@ pub(super) fn mir_assign_valid_types<'tcx>(
 #[cfg_attr(not(debug_assertions), inline(always))]
 pub(super) fn from_known_layout<'tcx>(
     tcx: TyCtxtAt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: TypingEnv<'tcx>,
     known_layout: Option<TyAndLayout<'tcx>>,
     compute: impl FnOnce() -> InterpResult<'tcx, TyAndLayout<'tcx>>,
 ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
@@ -151,7 +154,7 @@ pub(super) fn from_known_layout<'tcx>(
         Some(known_layout) => {
             if cfg!(debug_assertions) {
                 let check_layout = compute()?;
-                if !mir_assign_valid_types(tcx.tcx, param_env, check_layout, known_layout) {
+                if !mir_assign_valid_types(tcx.tcx, typing_env, check_layout, known_layout) {
                     span_bug!(
                         tcx.span,
                         "expected type differs from actual type.\nexpected: {}\nactual: {}",
@@ -160,7 +163,7 @@ pub(super) fn from_known_layout<'tcx>(
                     );
                 }
             }
-            Ok(known_layout)
+            interp_ok(known_layout)
         }
     }
 }
@@ -189,13 +192,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         root_span: Span,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         machine: M,
     ) -> Self {
+        // Const eval always happens in post analysis mode in order to be able to use the hidden types of
+        // opaque types. This is needed for trivial things like `size_of`, but also for using associated
+        // types that are not specified in the opaque type. We also use MIR bodies whose opaque types have
+        // already been revealed, so we'd be able to at least partially observe the hidden types anyways.
+        debug_assert_matches!(typing_env.typing_mode, ty::TypingMode::PostAnalysis);
         InterpCx {
             machine,
             tcx: tcx.at(root_span),
-            param_env,
+            typing_env,
             memory: Memory::new(),
             recursion_limit: tcx.recursion_limit(),
         }
@@ -243,7 +251,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     #[inline]
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(*self.tcx, self.param_env)
+        ty.is_freeze(*self.tcx, self.typing_env)
     }
 
     pub fn load_mir(
@@ -260,9 +268,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
         // do not continue if typeck errors occurred (can only occur in local crate)
         if let Some(err) = body.tainted_by_errors {
-            throw_inval!(AlreadyReported(ReportedErrorInfo::tainted_by_errors(err)));
+            throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(err)));
         }
-        Ok(body)
+        interp_ok(body)
     }
 
     /// Call this on things you got out of the MIR (so it is as generic as the current
@@ -289,32 +297,35 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             .instance
             .try_instantiate_mir_and_normalize_erasing_regions(
                 *self.tcx,
-                self.param_env,
+                self.typing_env,
                 ty::EarlyBinder::bind(value),
             )
             .map_err(|_| ErrorHandled::TooGeneric(self.cur_span()))
     }
 
-    /// The `args` are assumed to already be in our interpreter "universe" (param_env).
+    /// The `args` are assumed to already be in our interpreter "universe".
     pub(super) fn resolve(
         &self,
         def: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
         trace!("resolve: {:?}, {:#?}", def, args);
-        trace!("param_env: {:#?}", self.param_env);
+        trace!("typing_env: {:#?}", self.typing_env);
         trace!("args: {:#?}", args);
-        match ty::Instance::try_resolve(*self.tcx, self.param_env, def, args) {
-            Ok(Some(instance)) => Ok(instance),
+        match ty::Instance::try_resolve(*self.tcx, self.typing_env, def, args) {
+            Ok(Some(instance)) => interp_ok(instance),
             Ok(None) => throw_inval!(TooGeneric),
 
             // FIXME(eddyb) this could be a bit more specific than `AlreadyReported`.
-            Err(error_reported) => throw_inval!(AlreadyReported(error_reported.into())),
+            Err(error_guaranteed) => throw_inval!(AlreadyReported(
+                ReportedErrorInfo::non_const_eval_error(error_guaranteed)
+            )),
         }
     }
 
-    /// Check if the two things are equal in the current param_env, using an infctx to get proper
+    /// Check if the two things are equal in the current param_env, using an infcx to get proper
     /// equality checks.
+    #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn eq_in_param_env<T>(&self, a: T, b: T) -> bool
     where
         T: PartialEq + TypeFoldable<TyCtxt<'tcx>> + ToTrace<'tcx>,
@@ -324,19 +335,26 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return true;
         }
         // Slow path: spin up an inference context to check if these traits are sufficiently equal.
-        let infcx = self.tcx.infer_ctxt().build();
+        let (infcx, param_env) = self.tcx.infer_ctxt().build_with_typing_env(self.typing_env);
         let ocx = ObligationCtxt::new(&infcx);
         let cause = ObligationCause::dummy_with_span(self.cur_span());
         // equate the two trait refs after normalization
-        let a = ocx.normalize(&cause, self.param_env, a);
-        let b = ocx.normalize(&cause, self.param_env, b);
-        if ocx.eq(&cause, self.param_env, a, b).is_ok() {
-            if ocx.select_all_or_error().is_empty() {
-                // All good.
-                return true;
-            }
+        let a = ocx.normalize(&cause, param_env, a);
+        let b = ocx.normalize(&cause, param_env, b);
+
+        if let Err(terr) = ocx.eq(&cause, param_env, a, b) {
+            trace!(?terr);
+            return false;
         }
-        return false;
+
+        let errors = ocx.select_all_or_error();
+        if !errors.is_empty() {
+            trace!(?errors);
+            return false;
+        }
+
+        // All good.
+        true
     }
 
     /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a
@@ -393,7 +411,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         layout: &TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
         if layout.is_sized() {
-            return Ok(Some((layout.size, layout.align.abi)));
+            return interp_ok(Some((layout.size, layout.align.abi)));
         }
         match layout.ty.kind() {
             ty::Adt(..) | ty::Tuple(..) => {
@@ -417,7 +435,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 else {
                     // A field with an extern type. We don't know the actual dynamic size
                     // or the alignment.
-                    return Ok(None);
+                    return interp_ok(None);
                 };
 
                 // # First compute the dynamic alignment
@@ -448,12 +466,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 if full_size > self.max_size_of_val() {
                     throw_ub!(InvalidMeta(InvalidMetaKind::TooBig));
                 }
-                Ok(Some((full_size, full_align)))
+                interp_ok(Some((full_size, full_align)))
             }
             ty::Dynamic(expected_trait, _, ty::Dyn) => {
                 let vtable = metadata.unwrap_meta().to_pointer(self)?;
                 // Read size and align from vtable (already checks size).
-                Ok(Some(self.get_vtable_size_and_align(vtable, Some(expected_trait))?))
+                interp_ok(Some(self.get_vtable_size_and_align(vtable, Some(expected_trait))?))
             }
 
             ty::Slice(_) | ty::Str => {
@@ -466,10 +484,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 if size > self.max_size_of_val() {
                     throw_ub!(InvalidMeta(InvalidMetaKind::SliceTooBig));
                 }
-                Ok(Some((size, elem.align.abi)))
+                interp_ok(Some((size, elem.align.abi)))
             }
 
-            ty::Foreign(_) => Ok(None),
+            ty::Foreign(_) => interp_ok(None),
 
             _ => span_bug!(self.cur_span(), "size_and_align_of::<{}> not supported", layout.ty),
         }
@@ -495,7 +513,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn return_to_block(&mut self, target: Option<mir::BasicBlock>) -> InterpResult<'tcx> {
         if let Some(target) = target {
             self.go_to_block(target);
-            Ok(())
+            interp_ok(())
         } else {
             throw_ub!(Unreachable)
         }
@@ -522,10 +540,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 M::unwind_terminate(self, reason)?;
                 // This might have pushed a new stack frame, or it terminated execution.
                 // Either way, `loc` will not be updated.
-                return Ok(());
+                return interp_ok(());
             }
         };
-        Ok(())
+        interp_ok(())
     }
 
     /// Call a query that can return `ErrorHandled`. Should be used for statics and other globals.
@@ -549,10 +567,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let val = if self.tcx.is_static(gid.instance.def_id()) {
             let alloc_id = self.tcx.reserve_and_set_static_alloc(gid.instance.def_id());
 
-            let ty = instance.ty(self.tcx.tcx, self.param_env);
+            let ty = instance.ty(self.tcx.tcx, self.typing_env);
             mir::ConstAlloc { alloc_id, ty }
         } else {
-            self.ctfe_query(|tcx| tcx.eval_to_allocation_raw(self.param_env.and(gid)))?
+            self.ctfe_query(|tcx| tcx.eval_to_allocation_raw(self.typing_env.as_query_input(gid)))?
         };
         self.raw_const_to_mplace(val)
     }
@@ -564,17 +582,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         M::eval_mir_constant(self, *val, span, layout, |ecx, val, span, layout| {
-            let const_val = val.eval(*ecx.tcx, ecx.param_env, span).map_err(|err| {
+            let const_val = val.eval(*ecx.tcx, ecx.typing_env, span).map_err(|err| {
                 if M::ALL_CONSTS_ARE_PRECHECKED {
                     match err {
                         ErrorHandled::TooGeneric(..) => {},
                         ErrorHandled::Reported(reported, span) => {
-                            if reported.is_tainted_by_errors() {
-                                // const-eval will return "tainted" errors if e.g. the layout cannot
-                                // be computed as the type references non-existing names.
-                                // See <https://github.com/rust-lang/rust/issues/124348>.
+                            if reported.is_allowed_in_infallible() {
+                                // These errors can just sometimes happen, even when the expression
+                                // is nominally "infallible", e.g. when running out of memory
+                                // or when some layout could not be computed.
                             } else {
-                                // Looks like the const is not captued by `required_consts`, that's bad.
+                                // Looks like the const is not captured by `required_consts`, that's bad.
                                 span_bug!(span, "interpret const eval failure of {val:?} which is not in required_consts");
                             }
                         }
@@ -595,6 +613,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     #[must_use]
     pub fn generate_stacktrace(&self) -> Vec<FrameInfo<'tcx>> {
         Frame::generate_stacktrace_from_stack(self.stack())
+    }
+
+    pub fn adjust_nan<F1, F2>(&self, f: F2, inputs: &[F1]) -> F2
+    where
+        F1: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F2>,
+        F2: rustc_apfloat::Float,
+    {
+        if f.is_nan() { M::generate_nan(self, inputs) } else { f }
     }
 }
 

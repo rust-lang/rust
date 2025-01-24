@@ -4,10 +4,9 @@ use std::iter;
 
 use hir::{HirFileIdExt, Module};
 use ide_db::{
-    base_db::{SourceDatabaseExt, VfsPath},
+    base_db::{SourceRootDatabase, VfsPath},
     FxHashSet, RootDatabase, SymbolKind,
 };
-use stdx::IsNoneOr;
 use syntax::{ast, AstNode, SyntaxKind, ToSmolStr};
 
 use crate::{context::CompletionContext, CompletionItem, Completions};
@@ -53,7 +52,7 @@ pub(crate) fn complete_mod(
 
     let existing_mod_declarations = current_module
         .children(ctx.db)
-        .filter_map(|module| Some(module.name(ctx.db)?.display(ctx.db).to_string()))
+        .filter_map(|module| Some(module.name(ctx.db)?.display(ctx.db, ctx.edition).to_string()))
         .filter(|module| module != ctx.original_token.text())
         .collect::<FxHashSet<_>>();
 
@@ -66,7 +65,7 @@ pub(crate) fn complete_mod(
         .iter()
         .filter(|&submodule_candidate_file| submodule_candidate_file != module_definition_file)
         .filter(|&submodule_candidate_file| {
-            IsNoneOr::is_none_or(module_declaration_file, |it| it != submodule_candidate_file)
+            module_declaration_file.is_none_or(|it| it != submodule_candidate_file)
         })
         .filter_map(|submodule_file| {
             let submodule_path = source_root.path_for_file(&submodule_file)?;
@@ -99,7 +98,8 @@ pub(crate) fn complete_mod(
             if mod_under_caret.semicolon_token().is_none() {
                 label.push(';');
             }
-            let item = CompletionItem::new(SymbolKind::Module, ctx.source_range(), &label);
+            let item =
+                CompletionItem::new(SymbolKind::Module, ctx.source_range(), &label, ctx.edition);
             item.add_to(acc, ctx.db)
         });
 
@@ -140,7 +140,9 @@ fn directory_to_look_for_submodules(
     module_chain_to_containing_module_file(module, db)
         .into_iter()
         .filter_map(|module| module.name(db))
-        .try_fold(base_directory, |path, name| path.join(&name.display_no_db().to_smolstr()))
+        .try_fold(base_directory, |path, name| {
+            path.join(&name.unescaped().display_no_db().to_smolstr())
+        })
 }
 
 fn module_chain_to_containing_module_file(
@@ -157,14 +159,9 @@ fn module_chain_to_containing_module_file(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::expect;
 
-    use crate::tests::completion_list;
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture);
-        expect.assert_eq(&actual);
-    }
+    use crate::tests::check;
 
     #[test]
     fn lib_module_completion() {

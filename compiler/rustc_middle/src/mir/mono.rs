@@ -1,23 +1,24 @@
 use std::fmt;
 use std::hash::Hash;
 
-use rustc_attr::InlineAttr;
-use rustc_data_structures::base_n::{BaseNString, ToBaseN, CASE_INSENSITIVE};
+use rustc_attr_parsing::InlineAttr;
+use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::unord::UnordMap;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::ItemId;
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_index::Idx;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
-use rustc_span::symbol::Symbol;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
+use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
 
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
+use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::{GenericArgs, Instance, InstanceKind, SymbolName, TyCtxt};
 
 /// Describes how a monomorphization will be instantiated in object files.
@@ -45,7 +46,7 @@ pub enum InstantiationMode {
     LocalCopy,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable, TyEncodable, TyDecodable)]
 pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
     Static(DefId),
@@ -65,31 +66,16 @@ impl<'tcx> MonoItem<'tcx> {
     // change NON_INCR_MIN_CGU_SIZE as well.
     pub fn size_estimate(&self, tcx: TyCtxt<'tcx>) -> usize {
         match *self {
-            MonoItem::Fn(instance) => {
-                match instance.def {
-                    // "Normal" functions size estimate: the number of
-                    // statements, plus one for the terminator.
-                    InstanceKind::Item(..)
-                    | InstanceKind::DropGlue(..)
-                    | InstanceKind::AsyncDropGlueCtorShim(..) => {
-                        let mir = tcx.instance_mir(instance.def);
-                        mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
-                    }
-                    // Other compiler-generated shims size estimate: 1
-                    _ => 1,
-                }
-            }
+            MonoItem::Fn(instance) => tcx.size_estimate(instance),
             // Conservatively estimate the size of a static declaration or
             // assembly item to be 1.
             MonoItem::Static(_) | MonoItem::GlobalAsm(_) => 1,
         }
     }
 
-    pub fn is_generic_fn(&self, tcx: TyCtxt<'tcx>) -> bool {
+    pub fn is_generic_fn(&self) -> bool {
         match self {
-            MonoItem::Fn(instance) => {
-                instance.args.non_erasable_generics(tcx, instance.def_id()).next().is_some()
-            }
+            MonoItem::Fn(instance) => instance.args.non_erasable_generics().next().is_some(),
             MonoItem::Static(..) | MonoItem::GlobalAsm(..) => false,
         }
     }
@@ -118,11 +104,20 @@ impl<'tcx> MonoItem<'tcx> {
                 let entry_def_id = tcx.entry_fn(()).map(|(id, _)| id);
                 // If this function isn't inlined or otherwise has an extern
                 // indicator, then we'll be creating a globally shared version.
-                if tcx.codegen_fn_attrs(instance.def_id()).contains_extern_indicator()
+                let codegen_fn_attrs = tcx.codegen_fn_attrs(instance.def_id());
+                if codegen_fn_attrs.contains_extern_indicator()
+                    || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED)
                     || !instance.def.generates_cgu_internal_copy(tcx)
                     || Some(instance.def_id()) == entry_def_id
                 {
                     return InstantiationMode::GloballyShared { may_conflict: false };
+                }
+
+                if let InlineAttr::Never = tcx.codegen_fn_attrs(instance.def_id()).inline
+                    && self.is_generic_fn()
+                {
+                    // Upgrade inline(never) to a globally shared instance.
+                    return InstantiationMode::GloballyShared { may_conflict: true };
                 }
 
                 // At this point we don't have explicit linkage and we're an
@@ -137,9 +132,10 @@ impl<'tcx> MonoItem<'tcx> {
                 // creating one copy of this `#[inline]` function which may
                 // conflict with upstream crates as it could be an exported
                 // symbol.
-                match tcx.codegen_fn_attrs(instance.def_id()).inline {
-                    InlineAttr::Always => InstantiationMode::LocalCopy,
-                    _ => InstantiationMode::GloballyShared { may_conflict: true },
+                if tcx.codegen_fn_attrs(instance.def_id()).inline.always() {
+                    InstantiationMode::LocalCopy
+                } else {
+                    InstantiationMode::GloballyShared { may_conflict: true }
                 }
             }
             MonoItem::Static(..) | MonoItem::GlobalAsm(..) => {
@@ -298,11 +294,33 @@ pub enum Linkage {
     Common,
 }
 
+/// Specifies the symbol visibility with regards to dynamic linking.
+///
+/// Visibility doesn't have any effect when linkage is internal.
+///
+/// DSO means dynamic shared object, that is a dynamically linked executable or dylib.
 #[derive(Copy, Clone, PartialEq, Debug, HashStable)]
 pub enum Visibility {
+    /// Export the symbol from the DSO and apply overrides of the symbol by outside DSOs to within
+    /// the DSO if the object file format supports this.
     Default,
+    /// Hide the symbol outside of the defining DSO even when external linkage is used to export it
+    /// from the object file.
     Hidden,
+    /// Export the symbol from the DSO, but don't apply overrides of the symbol by outside DSOs to
+    /// within the DSO. Equivalent to default visibility with object file formats that don't support
+    /// overriding exported symbols by another DSO.
     Protected,
+}
+
+impl From<SymbolVisibility> for Visibility {
+    fn from(value: SymbolVisibility) -> Self {
+        match value {
+            SymbolVisibility::Hidden => Visibility::Hidden,
+            SymbolVisibility::Protected => Visibility::Protected,
+            SymbolVisibility::Interposable => Visibility::Default,
+        }
+    }
 }
 
 impl<'tcx> CodegenUnit<'tcx> {
@@ -396,7 +414,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        pub struct ItemSortKey<'tcx>(Option<usize>, SymbolName<'tcx>);
+        struct ItemSortKey<'tcx>(Option<usize>, SymbolName<'tcx>);
 
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
             ItemSortKey(
@@ -415,7 +433,6 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceKind::Virtual(..)
                             | InstanceKind::ClosureOnceShim { .. }
                             | InstanceKind::ConstructCoroutineInClosureShim { .. }
-                            | InstanceKind::CoroutineKindShim { .. }
                             | InstanceKind::DropGlue(..)
                             | InstanceKind::CloneShim(..)
                             | InstanceKind::ThreadLocalShim(..)
@@ -547,4 +564,22 @@ impl<'tcx> CodegenUnitNameBuilder<'tcx> {
 
         Symbol::intern(&cgu_name)
     }
+}
+
+/// See module-level docs of `rustc_monomorphize::collector` on some context for "mentioned" items.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+pub enum CollectionMode {
+    /// Collect items that are used, i.e., actually needed for codegen.
+    ///
+    /// Which items are used can depend on optimization levels, as MIR optimizations can remove
+    /// uses.
+    UsedItems,
+    /// Collect items that are mentioned. The goal of this mode is that it is independent of
+    /// optimizations: the set of "mentioned" items is computed before optimizations are run.
+    ///
+    /// The exact contents of this set are *not* a stable guarantee. (For instance, it is currently
+    /// computed after drop-elaboration. If we ever do some optimizations even in debug builds, we
+    /// might decide to run them before computing mentioned items.) The key property of this set is
+    /// that it is optimization-independent.
+    MentionedItems,
 }

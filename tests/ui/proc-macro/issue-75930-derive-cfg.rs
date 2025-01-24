@@ -1,6 +1,6 @@
 //@ check-pass
 //@ compile-flags: -Z span-debug
-//@ aux-build:test-macros.rs
+//@ proc-macro: test-macros.rs
 
 // Regression test for issue #75930
 // Tests that we cfg-strip all targets before invoking

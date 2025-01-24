@@ -15,9 +15,12 @@
 //! `NO_DEBUG_ASSERTIONS=1`). If debug assertions are disabled, then we can check for the absence of
 //! additional `usize` formatting and padding related symbols.
 
-// Reason: This test is `ignore-windows` because the `no_std` test (using `#[link(name = "c")])`
-// doesn't link on windows.
 //@ ignore-windows
+// Reason:
+// - MSVC targets really need to parse the .pdb file (aka the debug information).
+//   On Windows there's an API for that (dbghelp) which maybe we can use
+// - MinGW targets have a lot of symbols included in their runtime which we can't avoid.
+//   We would need to make the symbols we're looking for more specific for this test to work.
 //@ ignore-cross-compile
 
 use run_make_support::env::no_debug_assertions;

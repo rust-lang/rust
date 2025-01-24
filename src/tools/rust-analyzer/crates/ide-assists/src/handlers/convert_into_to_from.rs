@@ -51,7 +51,10 @@ pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext<'_>) -
             Some(hir::PathResolution::Def(module_def)) => module_def,
             _ => return None,
         };
-        mod_path_to_ast(&module.find_path(ctx.db(), src_type_def, cfg)?)
+        mod_path_to_ast(
+            &module.find_path(ctx.db(), src_type_def, cfg)?,
+            module.krate().edition(ctx.db()),
+        )
     };
 
     let dest_type = match &ast_trait {

@@ -51,5 +51,33 @@ LL -     { m!(()); }
 LL +     { m!(()) };
    |
 
-error: aborting due to 4 previous errors
+error: consider moving the `;` outside the block for consistent formatting
+  --> tests/ui/semicolon_outside_block.rs:83:5
+   |
+LL | /     unsafe {
+LL | |         std::arch::asm!("");
+LL | |     }
+   | |_____^
+   |
+help: put the `;` here
+   |
+LL ~         std::arch::asm!("")
+LL ~     };
+   |
+
+error: consider moving the `;` outside the block for consistent formatting
+  --> tests/ui/semicolon_outside_block.rs:87:5
+   |
+LL | /     {
+LL | |         line!();
+LL | |     }
+   | |_____^
+   |
+help: put the `;` here
+   |
+LL ~         line!()
+LL ~     };
+   |
+
+error: aborting due to 6 previous errors
 

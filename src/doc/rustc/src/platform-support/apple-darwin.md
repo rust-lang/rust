@@ -5,9 +5,6 @@ Apple macOS targets.
 **Tier: 1**
 
 - `x86_64-apple-darwin`: macOS on 64-bit x86.
-
-**Tier: 2 (with Host Tools)**
-
 - `aarch64-apple-darwin`: macOS on ARM64 (M1-family or later Apple Silicon CPUs).
 
 ## Target maintainers
@@ -54,6 +51,11 @@ x86 binaries can be run on Apple Silicon by using Rosetta.
 Cross-compilation of these targets are supported using Clang, but may require
 Xcode or the macOS SDK (`MacOSX.sdk`) to be available to compile C code and
 to link.
+
+The Clang target is suffixed with `-macosx`. Clang's `-darwin` target refers
+to Darwin platforms in general (macOS/iOS/tvOS/watchOS/visionOS), and requires
+the `-mmacosx-version-min=...`, `-miphoneos-version-min=...` or similar flags
+to disambiguate.
 
 The path to the SDK can be passed to `rustc` using the common `SDKROOT`
 environment variable.

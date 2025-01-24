@@ -1,8 +1,9 @@
 use super::FOR_KV_MAP;
-use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{pat_is_wild, sugg};
+use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
@@ -40,13 +41,13 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx
                     format!("you seem to want to iterate on a map's {kind}s"),
                     |diag| {
                         let map = sugg::Sugg::hir(cx, arg, "map");
-                        multispan_sugg(
-                            diag,
+                        diag.multipart_suggestion(
                             "use the corresponding method",
                             vec![
                                 (pat_span, snippet(cx, new_pat_span, kind).into_owned()),
                                 (arg_span, format!("{}.{kind}s{mutbl}()", map.maybe_par())),
                             ],
+                            Applicability::MachineApplicable,
                         );
                     },
                 );

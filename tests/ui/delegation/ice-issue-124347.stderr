@@ -1,5 +1,5 @@
 error: recursive delegation is not supported yet
-  --> $DIR/ice-issue-124347.rs:5:18
+  --> $DIR/ice-issue-124347.rs:6:18
    |
 LL |     reuse Trait::foo { &self.0 }
    |                  ^^^ callee defined here

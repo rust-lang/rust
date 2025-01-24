@@ -203,9 +203,9 @@ impl<T: Eq + Hash + Copy> TransitiveRelation<T> {
     /// exists). See `postdom_upper_bound` for details.
     pub fn mutual_immediate_postdominator(&self, mut mubs: Vec<T>) -> Option<T> {
         loop {
-            match mubs.len() {
-                0 => return None,
-                1 => return Some(mubs[0]),
+            match mubs[..] {
+                [] => return None,
+                [mub] => return Some(mub),
                 _ => {
                     let m = mubs.pop().unwrap();
                     let n = mubs.pop().unwrap();

@@ -1,4 +1,5 @@
 //@ run-pass
+#![allow(unreachable_patterns)]
 
 //! Make sure that we read and write enum discriminants correctly for corner cases caused
 //! by layout optimizations.

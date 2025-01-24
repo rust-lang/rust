@@ -33,7 +33,7 @@
           StorageDead(_2);
           StorageLive(_3);
           StorageLive(_4);
-          _4 = _1;
+          _4 = copy _1;
           _3 = Eq(move _4, const 0f64);
           switchInt(move _3) -> [0: bb5, otherwise: bb4];
       }

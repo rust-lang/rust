@@ -10,16 +10,14 @@ use crate::sync::Arc;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 pub use crate::sys_common::fs::exists;
+use crate::sys_common::ignore_notfound;
+
+type CIntNotMinusOne = core::num::niche_types::NotAllOnes<c_int>;
 
 /// A file descriptor.
 #[derive(Clone, Copy)]
-#[rustc_layout_scalar_valid_range_start(0)]
-// libstd/os/raw/mod.rs assures me that every libstd-supported platform has a
-// 32-bit c_int. Below is -2, in two's complement, but that only works out
-// because c_int is 32 bits.
-#[rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
 struct FileDesc {
-    fd: c_int,
+    fd: CIntNotMinusOne,
 }
 
 impl FileDesc {
@@ -28,12 +26,13 @@ impl FileDesc {
         assert_ne!(fd, -1i32);
         // Safety: we just asserted that the value is in the valid range and
         // isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
-        unsafe { FileDesc { fd } }
+        let fd = unsafe { CIntNotMinusOne::new_unchecked(fd) };
+        FileDesc { fd }
     }
 
     #[inline]
     fn raw(&self) -> c_int {
-        self.fd
+        self.fd.as_inner()
     }
 }
 
@@ -302,7 +301,7 @@ fn cstr(path: &Path) -> io::Result<CString> {
 
     if !path.starts_with(br"\") {
         // Relative paths aren't supported
-        return Err(crate::io::const_io_error!(
+        return Err(crate::io::const_error!(
             crate::io::ErrorKind::Unsupported,
             "relative path is not supported on this platform",
         ));
@@ -313,10 +312,7 @@ fn cstr(path: &Path) -> io::Result<CString> {
     let wrapped_path = [SAFE_PREFIX, &path, &[0]].concat();
 
     CString::from_vec_with_nul(wrapped_path).map_err(|_| {
-        crate::io::const_io_error!(
-            io::ErrorKind::InvalidInput,
-            "path provided contains a nul byte",
-        )
+        crate::io::const_error!(io::ErrorKind::InvalidInput, "path provided contains a nul byte",)
     })
 }
 
@@ -347,6 +343,26 @@ impl File {
 
     pub fn datasync(&self) -> io::Result<()> {
         self.flush()
+    }
+
+    pub fn lock(&self) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn lock_shared(&self) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn try_lock(&self) -> io::Result<bool> {
+        unsupported()
+    }
+
+    pub fn try_lock_shared(&self) -> io::Result<bool> {
+        unsupported()
+    }
+
+    pub fn unlock(&self) -> io::Result<()> {
+        unsupported()
     }
 
     pub fn truncate(&self, _size: u64) -> io::Result<()> {
@@ -491,7 +507,7 @@ impl fmt::Debug for File {
 
 pub fn unlink(p: &Path) -> io::Result<()> {
     if stat(p)?.file_type().is_dir() {
-        Err(io::const_io_error!(io::ErrorKind::IsADirectory, "is a directory"))
+        Err(io::const_error!(io::ErrorKind::IsADirectory, "is a directory"))
     } else {
         error::SolidError::err_if_negative(unsafe { abi::SOLID_FS_Unlink(cstr(p)?.as_ptr()) })
             .map_err(|e| e.as_io_error())?;
@@ -521,27 +537,35 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
             .map_err(|e| e.as_io_error())?;
         Ok(())
     } else {
-        Err(io::const_io_error!(io::ErrorKind::NotADirectory, "not a directory"))
+        Err(io::const_error!(io::ErrorKind::NotADirectory, "not a directory"))
     }
 }
 
 pub fn remove_dir_all(path: &Path) -> io::Result<()> {
     for child in readdir(path)? {
-        let child = child?;
-        let child_type = child.file_type()?;
-        if child_type.is_dir() {
-            remove_dir_all(&child.path())?;
-        } else {
-            unlink(&child.path())?;
+        let result: io::Result<()> = try {
+            let child = child?;
+            let child_type = child.file_type()?;
+            if child_type.is_dir() {
+                remove_dir_all(&child.path())?;
+            } else {
+                unlink(&child.path())?;
+            }
+        };
+        // ignore internal NotFound errors
+        if let Err(err) = &result
+            && err.kind() != io::ErrorKind::NotFound
+        {
+            return result;
         }
     }
-    rmdir(path)
+    ignore_notfound(rmdir(path))
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
     // This target doesn't support symlinks
     stat(p)?;
-    Err(io::const_io_error!(io::ErrorKind::InvalidInput, "not a symbolic link"))
+    Err(io::const_error!(io::ErrorKind::InvalidInput, "not a symbolic link"))
 }
 
 pub fn symlink(_original: &Path, _link: &Path) -> io::Result<()> {

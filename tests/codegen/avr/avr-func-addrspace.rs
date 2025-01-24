@@ -18,8 +18,8 @@ pub trait Sized {}
 #[lang = "copy"]
 pub trait Copy {}
 impl<T: ?Sized> Copy for *const T {}
-#[lang = "receiver"]
-pub trait Receiver {}
+#[lang = "legacy_receiver"]
+pub trait LegacyReceiver {}
 #[lang = "tuple_trait"]
 pub trait Tuple {}
 
@@ -86,7 +86,7 @@ pub extern "C" fn test() {
 
     // A call through the Fn trait must use address space 1.
     //
-    // CHECK: call{{.+}}addrspace(1) void @call_through_fn_trait()
+    // CHECK: call{{.+}}addrspace(1) void @call_through_fn_trait({{.*}})
     call_through_fn_trait(&mut update_bar_value);
 
     // A call through a global variable must use address space 1.

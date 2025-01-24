@@ -69,7 +69,7 @@ use la_arena::Arena;
 use rustc_hash::{FxHashMap, FxHashSet};
 use span::{Edition, EditionedFileId, FileAstId, FileId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
-use syntax::{ast, SmolStr};
+use syntax::{ast, AstNode, SmolStr, SyntaxNode};
 use triomphe::Arc;
 use tt::TextRange;
 
@@ -84,6 +84,8 @@ use crate::{
     AstId, BlockId, BlockLoc, CrateRootModuleId, EnumId, EnumVariantId, ExternCrateId, FunctionId,
     FxIndexMap, LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
 };
+
+pub use self::path_resolution::ResolvePathResultPrefixInfo;
 
 const PREDEFINED_TOOLS: &[SmolStr] = &[
     SmolStr::new_static("clippy"),
@@ -291,7 +293,7 @@ impl ModuleOrigin {
 
     /// Returns a node which defines this module.
     /// That is, a file or a `mod foo {}` with items.
-    fn definition_source(&self, db: &dyn DefDatabase) -> InFile<ModuleSource> {
+    pub fn definition_source(&self, db: &dyn DefDatabase) -> InFile<ModuleSource> {
         match self {
             &ModuleOrigin::File { definition, .. } | &ModuleOrigin::CrateRoot { definition } => {
                 let sf = db.parse(definition).tree();
@@ -327,6 +329,10 @@ pub struct ModuleData {
 impl DefMap {
     /// The module id of a crate or block root.
     pub const ROOT: LocalModuleId = LocalModuleId::from_raw(la_arena::RawIdx::from_u32(0));
+
+    pub fn edition(&self) -> Edition {
+        self.data.edition
+    }
 
     pub(crate) fn crate_def_map_query(db: &dyn DefDatabase, crate_id: CrateId) -> Arc<DefMap> {
         let crate_graph = db.crate_graph();
@@ -550,7 +556,7 @@ impl DefMap {
             for (name, child) in
                 map.modules[module].children.iter().sorted_by(|a, b| Ord::cmp(&a.0, &b.0))
             {
-                let path = format!("{path}::{}", name.display(db.upcast()));
+                let path = format!("{path}::{}", name.display(db.upcast(), Edition::LATEST));
                 buf.push('\n');
                 go(buf, db, map, &path, *child);
             }
@@ -611,13 +617,15 @@ impl DefMap {
         (res.resolved_def, res.segment_index)
     }
 
+    /// The first `Option<usize>` points at the `Enum` segment in case of `Enum::Variant`, the second
+    /// points at the unresolved segments.
     pub(crate) fn resolve_path_locally(
         &self,
         db: &dyn DefDatabase,
         original_module: LocalModuleId,
         path: &ModPath,
         shadow: BuiltinShadowMode,
-    ) -> (PerNs, Option<usize>) {
+    ) -> (PerNs, Option<usize>, ResolvePathResultPrefixInfo) {
         let res = self.resolve_path_fp_with_macro_single(
             db,
             ResolveMode::Other,
@@ -626,7 +634,7 @@ impl DefMap {
             shadow,
             None, // Currently this function isn't used for macro resolution.
         );
-        (res.resolved_def, res.segment_index)
+        (res.resolved_def, res.segment_index, res.prefix_info)
     }
 
     /// Ascends the `DefMap` hierarchy and calls `f` with every `DefMap` and containing module.
@@ -722,6 +730,16 @@ pub enum ModuleSource {
     SourceFile(ast::SourceFile),
     Module(ast::Module),
     BlockExpr(ast::BlockExpr),
+}
+
+impl ModuleSource {
+    pub fn node(&self) -> SyntaxNode {
+        match self {
+            ModuleSource::SourceFile(it) => it.syntax().clone(),
+            ModuleSource::Module(it) => it.syntax().clone(),
+            ModuleSource::BlockExpr(it) => it.syntax().clone(),
+        }
+    }
 }
 
 /// See `sub_namespace_match()`.

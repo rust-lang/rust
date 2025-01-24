@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::DefId;
-use rustc_macros::{extension, HashStable};
+use rustc_macros::{HashStable, extension};
 use rustc_type_ir as ir;
 use tracing::instrument;
 
@@ -19,6 +19,7 @@ pub type ExistentialPredicate<'tcx> = ir::ExistentialPredicate<TyCtxt<'tcx>>;
 pub type ExistentialTraitRef<'tcx> = ir::ExistentialTraitRef<TyCtxt<'tcx>>;
 pub type ExistentialProjection<'tcx> = ir::ExistentialProjection<TyCtxt<'tcx>>;
 pub type TraitPredicate<'tcx> = ir::TraitPredicate<TyCtxt<'tcx>>;
+pub type HostEffectPredicate<'tcx> = ir::HostEffectPredicate<TyCtxt<'tcx>>;
 pub type ClauseKind<'tcx> = ir::ClauseKind<TyCtxt<'tcx>>;
 pub type PredicateKind<'tcx> = ir::PredicateKind<TyCtxt<'tcx>>;
 pub type NormalizesTo<'tcx> = ir::NormalizesTo<TyCtxt<'tcx>>;
@@ -36,7 +37,7 @@ pub type PolyProjectionPredicate<'tcx> = ty::Binder<'tcx, ProjectionPredicate<'t
 
 /// A statement that can be proven by a trait solver. This includes things that may
 /// show up in where clauses, such as trait predicates and projection predicates,
-/// and also things that are emitted as part of type checking such as `ObjectSafe`
+/// and also things that are emitted as part of type checking such as `DynCompatible`
 /// predicate which is emitted when a type is coerced to a trait object.
 ///
 /// Use this rather than `PredicateKind`, whenever possible.
@@ -143,11 +144,12 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::AliasRelate(..)
             | PredicateKind::NormalizesTo(..) => false,
             PredicateKind::Clause(ClauseKind::Trait(_))
+            | PredicateKind::Clause(ClauseKind::HostEffect(..))
             | PredicateKind::Clause(ClauseKind::RegionOutlives(_))
             | PredicateKind::Clause(ClauseKind::TypeOutlives(_))
             | PredicateKind::Clause(ClauseKind::Projection(_))
             | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
-            | PredicateKind::ObjectSafe(_)
+            | PredicateKind::DynCompatible(_)
             | PredicateKind::Subtype(_)
             | PredicateKind::Coerce(_)
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(_))
@@ -179,6 +181,10 @@ pub struct Clause<'tcx>(
 );
 
 impl<'tcx> rustc_type_ir::inherent::Clause<TyCtxt<'tcx>> for Clause<'tcx> {
+    fn as_predicate(self) -> Predicate<'tcx> {
+        self.as_predicate()
+    }
+
     fn instantiate_supertrait(self, tcx: TyCtxt<'tcx>, trait_ref: ty::PolyTraitRef<'tcx>) -> Self {
         self.instantiate_supertrait(tcx, trait_ref)
     }
@@ -470,16 +476,6 @@ impl<'tcx> Clause<'tcx> {
     }
 }
 
-pub trait ToPolyTraitRef<'tcx> {
-    fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx>;
-}
-
-impl<'tcx> ToPolyTraitRef<'tcx> for PolyTraitPredicate<'tcx> {
-    fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
-        self.map_bound_ref(|trait_pred| trait_pred.trait_ref)
-    }
-}
-
 impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PredicateKind<'tcx>> for Predicate<'tcx> {
     fn upcast_from(from: PredicateKind<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         ty::Binder::dummy(from).upcast(tcx)
@@ -628,6 +624,28 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyProjectionPredicate<'tcx>> for Clause<'t
     }
 }
 
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>>
+    for Predicate<'tcx>
+{
+    fn upcast_from(
+        from: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+        tcx: TyCtxt<'tcx>,
+    ) -> Self {
+        from.map_bound(ty::ClauseKind::HostEffect).upcast(tcx)
+    }
+}
+
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>>
+    for Clause<'tcx>
+{
+    fn upcast_from(
+        from: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+        tcx: TyCtxt<'tcx>,
+    ) -> Self {
+        from.map_bound(ty::ClauseKind::HostEffect).upcast(tcx)
+    }
+}
+
 impl<'tcx> UpcastFrom<TyCtxt<'tcx>, NormalizesTo<'tcx>> for Predicate<'tcx> {
     fn upcast_from(from: NormalizesTo<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         PredicateKind::NormalizesTo(from).upcast(tcx)
@@ -640,6 +658,7 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::Clause(ClauseKind::Trait(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(ClauseKind::Projection(..))
+            | PredicateKind::Clause(ClauseKind::HostEffect(..))
             | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
             | PredicateKind::NormalizesTo(..)
             | PredicateKind::AliasRelate(..)
@@ -647,7 +666,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(ClauseKind::RegionOutlives(..))
             | PredicateKind::Clause(ClauseKind::WellFormed(..))
-            | PredicateKind::ObjectSafe(..)
+            | PredicateKind::DynCompatible(..)
             | PredicateKind::Clause(ClauseKind::TypeOutlives(..))
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
@@ -660,6 +679,7 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::Clause(ClauseKind::Projection(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(ClauseKind::Trait(..))
+            | PredicateKind::Clause(ClauseKind::HostEffect(..))
             | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
             | PredicateKind::NormalizesTo(..)
             | PredicateKind::AliasRelate(..)
@@ -667,7 +687,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(ClauseKind::RegionOutlives(..))
             | PredicateKind::Clause(ClauseKind::WellFormed(..))
-            | PredicateKind::ObjectSafe(..)
+            | PredicateKind::DynCompatible(..)
             | PredicateKind::Clause(ClauseKind::TypeOutlives(..))
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)

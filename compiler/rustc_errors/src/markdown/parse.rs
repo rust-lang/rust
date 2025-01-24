@@ -74,13 +74,13 @@ enum ParseOpt {
 }
 
 /// Parse a buffer
-pub fn entrypoint(txt: &str) -> MdStream<'_> {
+pub(crate) fn entrypoint(txt: &str) -> MdStream<'_> {
     let ctx = Context { top_block: true, prev: Prev::Newline };
     normalize(parse_recursive(txt.trim().as_bytes(), ctx), &mut Vec::new())
 }
 
 /// Parse a buffer with specified context
-fn parse_recursive<'a>(buf: &'a [u8], ctx: Context) -> MdStream<'_> {
+fn parse_recursive<'a>(buf: &'a [u8], ctx: Context) -> MdStream<'a> {
     use ParseOpt as Po;
     use Prev::{Escape, Newline, Whitespace};
 
@@ -346,7 +346,7 @@ fn parse_with_end_pat<'a>(
     None
 }
 
-/// Resturn `(match, residual)` to end of line. The EOL is returned with the
+/// Return `(match, residual)` to end of line. The EOL is returned with the
 /// residual.
 fn parse_to_newline(buf: &[u8]) -> (&[u8], &[u8]) {
     buf.iter().position(|ch| *ch == b'\n').map_or((buf, &[]), |pos| buf.split_at(pos))
@@ -487,7 +487,7 @@ fn is_break_ty(val: &MdTree<'_>) -> bool {
         || matches!(val, MdTree::PlainText(txt) if txt.trim().is_empty())
 }
 
-/// Perform tranformations to text. This splits paragraphs, replaces patterns,
+/// Perform transformations to text. This splits paragraphs, replaces patterns,
 /// and corrects newlines.
 ///
 /// To avoid allocating strings (and using a different heavier tt type), our

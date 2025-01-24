@@ -1,70 +1,49 @@
+//@ add-core-stubs
 //@ revisions: base d32 neon
 //@ assembly-output: emit-asm
 //@ compile-flags: --target armv7-unknown-linux-gnueabihf
 //@ compile-flags: -C opt-level=0
+//@ compile-flags: -Zmerge-functions=disabled
 //@[d32] compile-flags: -C target-feature=+d32
 //@[neon] compile-flags: -C target-feature=+neon --cfg d32
 //@[neon] filecheck-flags: --check-prefix d32
 //@ needs-llvm-components: arm
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd, f16)]
+#![feature(no_core, repr_simd, f16)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! concat {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! stringify {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 type ptr = *mut u8;
 
 #[repr(simd)]
-pub struct i8x8(i8, i8, i8, i8, i8, i8, i8, i8);
+pub struct i8x8([i8; 8]);
 #[repr(simd)]
-pub struct i16x4(i16, i16, i16, i16);
+pub struct i16x4([i16; 4]);
 #[repr(simd)]
-pub struct i32x2(i32, i32);
+pub struct i32x2([i32; 2]);
 #[repr(simd)]
-pub struct i64x1(i64);
+pub struct i64x1([i64; 1]);
 #[repr(simd)]
-pub struct f16x4(f16, f16, f16, f16);
+pub struct f16x4([f16; 4]);
 #[repr(simd)]
-pub struct f32x2(f32, f32);
+pub struct f32x2([f32; 2]);
 #[repr(simd)]
-pub struct i8x16(i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8);
+pub struct i8x16([i8; 16]);
 #[repr(simd)]
-pub struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
+pub struct i16x8([i16; 8]);
 #[repr(simd)]
-pub struct i32x4(i32, i32, i32, i32);
+pub struct i32x4([i32; 4]);
 #[repr(simd)]
-pub struct i64x2(i64, i64);
+pub struct i64x2([i64; 2]);
 #[repr(simd)]
-pub struct f16x8(f16, f16, f16, f16, f16, f16, f16, f16);
+pub struct f16x8([f16; 8]);
 #[repr(simd)]
-pub struct f32x4(f32, f32, f32, f32);
+pub struct f32x4([f32; 4]);
 
-impl Copy for i8 {}
-impl Copy for i16 {}
-impl Copy for i32 {}
-impl Copy for f16 {}
-impl Copy for f32 {}
-impl Copy for i64 {}
-impl Copy for f64 {}
-impl Copy for ptr {}
 impl Copy for i8x8 {}
 impl Copy for i16x4 {}
 impl Copy for i32x2 {}
@@ -114,12 +93,6 @@ macro_rules! check {
     ($func:ident $ty:ident $class:ident $mov:literal) => {
         #[no_mangle]
         pub unsafe fn $func(x: $ty) -> $ty {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let y;
             asm!(concat!($mov, " {}, {}"), out($class) y, in($class) x);
             y
@@ -131,12 +104,6 @@ macro_rules! check_reg {
     ($func:ident $ty:ident $reg:tt $mov:literal) => {
         #[no_mangle]
         pub unsafe fn $func(x: $ty) -> $ty {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let y;
             asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
             y

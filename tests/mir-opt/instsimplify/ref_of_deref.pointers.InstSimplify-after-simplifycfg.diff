@@ -39,12 +39,12 @@
           _5 = &mut (*_2);
           StorageLive(_6);
 -         _6 = &raw const (*_1);
-+         _6 = _1;
++         _6 = copy _1;
           StorageLive(_7);
           _7 = &raw const (*_2);
           StorageLive(_8);
 -         _8 = &raw mut (*_2);
-+         _8 = _2;
++         _8 = copy _2;
           _0 = const ();
           StorageDead(_8);
           StorageDead(_7);

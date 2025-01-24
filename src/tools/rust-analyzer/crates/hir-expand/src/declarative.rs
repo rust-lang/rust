@@ -1,11 +1,11 @@
-//! Compiled declarative macro expanders (`macro_rules!`` and `macro`)
+//! Compiled declarative macro expanders (`macro_rules!` and `macro`)
 
 use base_db::CrateId;
 use intern::sym;
-use mbe::DocCommentDesugarMode;
-use span::{Edition, MacroCallId, Span, SyntaxContextId};
+use span::{Edition, HirFileIdRepr, MacroCallId, Span, SyntaxContextId};
 use stdx::TupleExt;
 use syntax::{ast, AstNode};
+use syntax_bridge::DocCommentDesugarMode;
 use triomphe::Arc;
 
 use crate::{
@@ -20,27 +20,28 @@ use crate::{
 pub struct DeclarativeMacroExpander {
     pub mac: mbe::DeclarativeMacro,
     pub transparency: Transparency,
+    edition: Edition,
 }
 
 impl DeclarativeMacroExpander {
     pub fn expand(
         &self,
         db: &dyn ExpandDatabase,
-        tt: tt::Subtree,
+        tt: tt::TopSubtree,
         call_id: MacroCallId,
         span: Span,
-    ) -> ExpandResult<(tt::Subtree, Option<u32>)> {
+    ) -> ExpandResult<(tt::TopSubtree, Option<u32>)> {
         let loc = db.lookup_intern_macro_call(call_id);
         match self.mac.err() {
             Some(_) => ExpandResult::new(
-                (tt::Subtree::empty(tt::DelimSpan { open: span, close: span }), None),
+                (tt::TopSubtree::empty(tt::DelimSpan { open: span, close: span }), None),
                 ExpandError::new(span, ExpandErrorKind::MacroDefinition),
             ),
             None => self
                 .mac
                 .expand(
                     &tt,
-                    |s| s.ctx = apply_mark(db, s.ctx, call_id, self.transparency),
+                    |s| s.ctx = apply_mark(db, s.ctx, call_id, self.transparency, self.edition),
                     span,
                     loc.def.edition,
                 )
@@ -50,13 +51,13 @@ impl DeclarativeMacroExpander {
 
     pub fn expand_unhygienic(
         &self,
-        tt: tt::Subtree,
+        tt: tt::TopSubtree,
         call_site: Span,
         def_site_edition: Edition,
-    ) -> ExpandResult<tt::Subtree> {
+    ) -> ExpandResult<tt::TopSubtree> {
         match self.mac.err() {
             Some(_) => ExpandResult::new(
-                tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
+                tt::TopSubtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
                 ExpandError::new(call_site, ExpandErrorKind::MacroDefinition),
             ),
             None => self
@@ -78,7 +79,7 @@ impl DeclarativeMacroExpander {
         let transparency = |node| {
             // ... would be nice to have the item tree here
             let attrs = RawAttrs::new(db, node, map.as_ref()).filter(db, def_crate);
-            match &*attrs
+            match attrs
                 .iter()
                 .find(|it| {
                     it.path
@@ -87,7 +88,8 @@ impl DeclarativeMacroExpander {
                         .unwrap_or(false)
                 })?
                 .token_tree_value()?
-                .token_trees
+                .token_trees()
+                .flat_tokens()
             {
                 [tt::TokenTree::Leaf(tt::Leaf::Ident(i)), ..] => match &i.sym {
                     s if *s == sym::transparent => Some(Transparency::Transparent),
@@ -112,7 +114,7 @@ impl DeclarativeMacroExpander {
             ast::Macro::MacroRules(macro_rules) => (
                 match macro_rules.token_tree() {
                     Some(arg) => {
-                        let tt = mbe::syntax_node_to_token_tree(
+                        let tt = syntax_bridge::syntax_node_to_token_tree(
                             arg.syntax(),
                             map.as_ref(),
                             map.span_for_range(
@@ -135,14 +137,14 @@ impl DeclarativeMacroExpander {
                         let span =
                             map.span_for_range(macro_def.macro_token().unwrap().text_range());
                         let args = macro_def.args().map(|args| {
-                            mbe::syntax_node_to_token_tree(
+                            syntax_bridge::syntax_node_to_token_tree(
                                 args.syntax(),
                                 map.as_ref(),
                                 span,
                                 DocCommentDesugarMode::Mbe,
                             )
                         });
-                        let body = mbe::syntax_node_to_token_tree(
+                        let body = syntax_bridge::syntax_node_to_token_tree(
                             body.syntax(),
                             map.as_ref(),
                             span,
@@ -158,6 +160,10 @@ impl DeclarativeMacroExpander {
                 transparency(&macro_def).unwrap_or(Transparency::Opaque),
             ),
         };
-        Arc::new(DeclarativeMacroExpander { mac, transparency })
+        let edition = ctx_edition(match id.file_id.repr() {
+            HirFileIdRepr::MacroFile(macro_file) => macro_file.macro_call_id.lookup(db).ctxt,
+            HirFileIdRepr::FileId(file) => SyntaxContextId::root(file.edition()),
+        });
+        Arc::new(DeclarativeMacroExpander { mac, transparency, edition })
     }
 }

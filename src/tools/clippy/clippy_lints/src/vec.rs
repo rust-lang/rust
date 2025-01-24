@@ -1,23 +1,22 @@
 use std::collections::BTreeMap;
 use std::ops::ControlFlow;
 
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;
-use clippy_utils::{get_parent_expr, higher, is_in_test, is_trait_method};
+use clippy_utils::{get_parent_expr, higher, is_in_test, is_trait_method, span_contains_comment};
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, LetStmt, Mutability, Node, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, DesugaringKind, Span};
+use rustc_span::{DesugaringKind, Span, sym};
 
-#[expect(clippy::module_name_repetitions)]
 pub struct UselessVec {
     too_large_for_stack: u64,
     msrv: Msrv,
@@ -133,9 +132,19 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
     fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
         for (span, lint_opt) in &self.span_to_lint_map {
             if let Some((hir_id, suggest_slice, snippet, applicability)) = lint_opt {
-                let help_msg = format!("you can use {} directly", suggest_slice.desc(),);
+                let help_msg = format!("you can use {} directly", suggest_slice.desc());
                 span_lint_hir_and_then(cx, USELESS_VEC, *hir_id, *span, "useless use of `vec!`", |diag| {
-                    diag.span_suggestion(*span, help_msg, snippet, *applicability);
+                    // If the `vec!` macro contains comment, better not make the suggestion machine
+                    // applicable as it would remove them.
+                    let applicability = if *applicability != Applicability::Unspecified
+                        && let source_map = cx.tcx.sess.source_map()
+                        && span_contains_comment(source_map, *span)
+                    {
+                        Applicability::Unspecified
+                    } else {
+                        *applicability
+                    };
+                    diag.span_suggestion(*span, help_msg, snippet, applicability);
                 });
             }
         }
@@ -159,7 +168,7 @@ impl UselessVec {
 
         let snippet = match *vec_args {
             higher::VecArgs::Repeat(elem, len) => {
-                if let Some(Constant::Int(len_constant)) = constant(cx, cx.typeck_results(), len) {
+                if let Some(Constant::Int(len_constant)) = ConstEvalCtxt::new(cx).eval(len) {
                     // vec![ty; N] works when ty is Clone, [ty; N] requires it to be Copy also
                     if !is_copy(cx, cx.typeck_results().expr_ty(elem)) {
                         return;
@@ -214,9 +223,11 @@ impl SuggestedType {
     }
 
     fn snippet(self, cx: &LateContext<'_>, args_span: Option<Span>, len_span: Option<Span>) -> String {
-        let maybe_args = args_span.and_then(|sp| snippet_opt(cx, sp)).unwrap_or_default();
+        let maybe_args = args_span
+            .and_then(|sp| sp.get_source_text(cx))
+            .map_or(String::new(), |x| x.to_owned());
         let maybe_len = len_span
-            .and_then(|sp| snippet_opt(cx, sp).map(|s| format!("; {s}")))
+            .and_then(|sp| sp.get_source_text(cx).map(|s| format!("; {s}")))
             .unwrap_or_default();
 
         match self {
@@ -242,7 +253,7 @@ fn adjusts_to_slice(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 pub fn is_allowed_vec_method(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     const ALLOWED_METHOD_NAMES: &[&str] = &["len", "as_ptr", "is_empty"];
 
-    if let ExprKind::MethodCall(path, ..) = e.kind {
+    if let ExprKind::MethodCall(path, _, [], _) = e.kind {
         ALLOWED_METHOD_NAMES.contains(&path.ident.name.as_str())
     } else {
         is_trait_method(cx, e, sym::IntoIterator)

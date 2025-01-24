@@ -16,6 +16,7 @@
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use rustc_middle::query::Providers;
@@ -28,7 +29,6 @@ mod errors;
 mod implied_bounds;
 mod instance;
 mod layout;
-mod layout_sanity_check;
 mod needs_drop;
 mod opaque_types;
 mod representability;

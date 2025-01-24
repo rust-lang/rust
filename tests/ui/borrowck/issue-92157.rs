@@ -5,7 +5,7 @@
 
 #[cfg(target_os = "linux")]
 #[link(name = "c")]
-extern {}
+extern "C" {}
 
 #[lang = "start"]
 fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8) -> isize {

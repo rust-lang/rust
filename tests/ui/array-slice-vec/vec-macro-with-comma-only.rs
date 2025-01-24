@@ -1,3 +1,3 @@
 pub fn main() {
-    vec![,]; //~ ERROR no rules expected the token `,`
+    vec![,]; //~ ERROR no rules expected `,`
 }

@@ -8,7 +8,7 @@ use rustc_hir::{Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -65,11 +65,11 @@ impl LateLintPass<'_> for RcCloneInVecInit {
 
 fn loop_init_suggestion(elem: &str, len: &str, indent: &str) -> String {
     format!(
-        r#"{{
+        r"{{
 {indent}    let mut v = Vec::with_capacity({len});
 {indent}    (0..{len}).for_each(|_| v.push({elem}));
 {indent}    v
-{indent}}}"#
+{indent}}}"
     )
 }
 

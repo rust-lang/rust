@@ -1,66 +1,14 @@
-error[E0575]: expected associated type, found associated function `Tr::method`
-  --> $DIR/bare-path.rs:15:5
-   |
-LL |     <T as Tr>::method(..): Send,
-   |     ^^^^^^^^^^^^^^^^^^^^^ not a associated type
-
-warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/bare-path.rs:1:12
-   |
-LL | #![feature(return_type_notation)]
-   |            ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error: return type notation not allowed in this position yet
-  --> $DIR/bare-path.rs:19:23
+  --> $DIR/bare-path.rs:14:23
    |
 LL |     let _ = T::CONST::(..);
    |                       ^^^^
 
 error: return type notation not allowed in this position yet
-  --> $DIR/bare-path.rs:21:21
+  --> $DIR/bare-path.rs:16:12
    |
 LL |     let _: T::method(..);
-   |                     ^^^^
+   |            ^^^^^^^^^^^^^
 
-error: return type notation not allowed in this position yet
-  --> $DIR/bare-path.rs:12:14
-   |
-LL |     T::method(..): Send,
-   |              ^^^^
+error: aborting due to 2 previous errors
 
-error: return type notation not allowed in this position yet
-  --> $DIR/bare-path.rs:15:22
-   |
-LL |     <T as Tr>::method(..): Send,
-   |                      ^^^^
-
-error: expected type, found function
-  --> $DIR/bare-path.rs:12:8
-   |
-LL |     T::method(..): Send,
-   |        ^^^^^^ unexpected function
-   |
-note: the associated function is defined here
-  --> $DIR/bare-path.rs:7:5
-   |
-LL |     fn method() -> impl Sized;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: expected type, found function
-  --> $DIR/bare-path.rs:21:15
-   |
-LL |     let _: T::method(..);
-   |               ^^^^^^ unexpected function
-   |
-note: the associated function is defined here
-  --> $DIR/bare-path.rs:7:5
-   |
-LL |     fn method() -> impl Sized;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 7 previous errors; 1 warning emitted
-
-For more information about this error, try `rustc --explain E0575`.

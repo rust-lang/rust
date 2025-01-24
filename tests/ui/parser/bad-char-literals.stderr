@@ -15,7 +15,7 @@ error: character constant must be escaped: `\n`
 LL |       '
    |  ______^
 LL | | ';
-   | |_
+   | |_^
    |
 help: escape the character
    |

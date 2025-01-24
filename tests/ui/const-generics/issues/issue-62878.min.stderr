@@ -12,7 +12,7 @@ error: `[u8; N]` is forbidden as the type of a const generic parameter
 LL | fn foo<const N: usize, const A: [u8; N]>() {}
    |                                 ^^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(adt_const_params)]

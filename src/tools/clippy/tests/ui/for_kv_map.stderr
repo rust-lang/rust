@@ -55,5 +55,16 @@ help: use the corresponding method
 LL |     for k in rm.keys() {
    |         ~    ~~~~~~~~~
 
-error: aborting due to 5 previous errors
+error: you seem to want to iterate on a map's keys
+  --> tests/ui/for_kv_map.rs:45:32
+   |
+LL |     'label: for (k, _value) in rm {
+   |                                ^^
+   |
+help: use the corresponding method
+   |
+LL |     'label: for k in rm.keys() {
+   |                 ~    ~~~~~~~~~
+
+error: aborting due to 6 previous errors
 

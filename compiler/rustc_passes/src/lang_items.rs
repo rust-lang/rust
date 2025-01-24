@@ -11,13 +11,12 @@ use rustc_ast as ast;
 use rustc_ast::visit;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::lang_items::{extract, GenericRequirement};
+use rustc_hir::lang_items::{GenericRequirement, extract};
 use rustc_hir::{LangItem, LanguageItems, MethodKind, Target};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::cstore::ExternCrate;
-use rustc_span::symbol::kw::Empty;
-use rustc_span::Span;
+use rustc_span::{Span, kw};
 
 use crate::errors::{
     DuplicateLangItem, IncorrectTarget, LangItemOnIncorrectTarget, UnknownLangItem,
@@ -99,7 +98,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
         {
             let lang_item_name = lang_item.name();
             let crate_name = self.tcx.crate_name(item_def_id.krate);
-            let mut dependency_of = Empty;
+            let mut dependency_of = kw::Empty;
             let is_local = item_def_id.is_local();
             let path = if is_local {
                 String::new()
@@ -113,8 +112,8 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
             };
 
             let first_defined_span = self.item_spans.get(&original_def_id).copied();
-            let mut orig_crate_name = Empty;
-            let mut orig_dependency_of = Empty;
+            let mut orig_crate_name = kw::Empty;
+            let mut orig_dependency_of = kw::Empty;
             let orig_is_local = original_def_id.is_local();
             let orig_path = if orig_is_local {
                 String::new()
@@ -130,7 +129,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
             if first_defined_span.is_none() {
                 orig_crate_name = self.tcx.crate_name(original_def_id.krate);
                 if let Some(ExternCrate { dependency_of: inner_dependency_of, .. }) =
-                    self.tcx.extern_crate(original_def_id)
+                    self.tcx.extern_crate(original_def_id.krate)
                 {
                     orig_dependency_of = self.tcx.crate_name(*inner_dependency_of);
                 }
@@ -139,7 +138,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
             let duplicate = if item_span.is_some() {
                 Duplicate::Plain
             } else {
-                match self.tcx.extern_crate(item_def_id) {
+                match self.tcx.extern_crate(item_def_id.krate) {
                     Some(ExternCrate { dependency_of: inner_dependency_of, .. }) => {
                         dependency_of = self.tcx.crate_name(*inner_dependency_of);
                         Duplicate::CrateDepends
@@ -359,6 +358,6 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.get_lang_items = get_lang_items;
 }

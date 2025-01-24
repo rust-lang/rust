@@ -19,7 +19,7 @@
 //! function is called. In the worst case, multiple threads may all end up
 //! importing the same function unnecessarily.
 
-use crate::ffi::{c_void, CStr};
+use crate::ffi::{CStr, c_void};
 use crate::ptr::NonNull;
 use crate::sys::c;
 
@@ -198,11 +198,10 @@ macro_rules! compat_fn_with_fallback {
 
 /// Optionally loaded functions.
 ///
-/// Actual loading of the function defers to $load_functions.
+/// Relies on the functions being pre-loaded elsewhere.
 #[cfg(target_vendor = "win7")]
 macro_rules! compat_fn_optional {
-    ($load_functions:expr;
-    $(
+    ($(
         $(#[$meta:meta])*
         $vis:vis fn $symbol:ident($($argname:ident: $argtype:ty),*) $(-> $rettype:ty)?;
     )+) => (
@@ -221,9 +220,6 @@ macro_rules! compat_fn_optional {
 
                 #[inline(always)]
                 pub fn option() -> Option<F> {
-                    // Miri does not understand the way we do preloading
-                    // therefore load the function here instead.
-                    #[cfg(miri)] $load_functions;
                     NonNull::new(PTR.load(Ordering::Relaxed)).map(|f| unsafe { mem::transmute(f) })
                 }
             }

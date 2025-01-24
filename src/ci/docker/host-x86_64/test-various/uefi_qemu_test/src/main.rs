@@ -6,7 +6,7 @@
 
 use core::{panic, ptr};
 
-use r_efi::efi::{Char16, Handle, Status, SystemTable, RESET_SHUTDOWN};
+use r_efi::efi::{Char16, Handle, RESET_SHUTDOWN, Status, SystemTable};
 
 #[panic_handler]
 fn panic_handler(_info: &panic::PanicInfo) -> ! {

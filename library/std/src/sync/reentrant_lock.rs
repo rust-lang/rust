@@ -1,4 +1,4 @@
-#[cfg(all(test, not(target_os = "emscripten")))]
+#[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
 mod tests;
 
 use cfg_if::cfg_if;
@@ -8,7 +8,7 @@ use crate::fmt;
 use crate::ops::Deref;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sys::sync as sys;
-use crate::thread::{current_id, ThreadId};
+use crate::thread::{ThreadId, current_id};
 
 /// A re-entrant mutual exclusion lock
 ///
@@ -136,7 +136,7 @@ cfg_if!(
             // match do we read out the actual TID.
             // Note also that we can use relaxed atomic operations here, because
             // we only ever read from the tid if `tls_addr` matches the current
-            // TLS address. In that case, either the the tid has been set by
+            // TLS address. In that case, either the tid has been set by
             // the current thread, or by a thread that has terminated before
             // the current thread was created. In either case, no further
             // synchronization is needed (as per <https://github.com/rust-lang/miri/issues/3450>)

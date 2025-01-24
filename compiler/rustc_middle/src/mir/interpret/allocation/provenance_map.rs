@@ -3,13 +3,13 @@
 
 use std::cmp;
 
+use rustc_abi::{HasDataLayout, Size};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use rustc_target::abi::{HasDataLayout, Size};
 use tracing::trace;
 
-use super::{alloc_range, AllocError, AllocRange, AllocResult, CtfeProvenance, Provenance};
+use super::{AllocError, AllocRange, AllocResult, CtfeProvenance, Provenance, alloc_range};
 
 /// Stores the provenance information of pointers stored in memory.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -97,7 +97,7 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         debug_assert!(prov.len() <= 1);
         if let Some(entry) = prov.first() {
             // If it overlaps with this byte, it is on this byte.
-            debug_assert!(self.bytes.as_ref().map_or(true, |b| b.get(&offset).is_none()));
+            debug_assert!(self.bytes.as_ref().is_none_or(|b| !b.contains_key(&offset)));
             Some(entry.1)
         } else {
             // Look up per-byte provenance.
@@ -195,6 +195,25 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
 
         Ok(())
     }
+
+    /// Overwrites all provenance in the allocation with wildcard provenance.
+    ///
+    /// Provided for usage in Miri and panics otherwise.
+    pub fn write_wildcards(&mut self, alloc_size: usize) {
+        assert!(
+            Prov::OFFSET_IS_ADDR,
+            "writing wildcard provenance is not supported when `OFFSET_IS_ADDR` is false"
+        );
+        let wildcard = Prov::WILDCARD.unwrap();
+
+        // Remove all pointer provenances, then write wildcards into the whole byte range.
+        self.ptrs.clear();
+        let last = Size::from_bytes(alloc_size);
+        let bytes = self.bytes.get_or_insert_with(Box::default);
+        for offset in Size::ZERO..last {
+            bytes.insert(offset, wildcard);
+        }
+    }
 }
 
 /// A partial, owned list of provenance to transfer into another allocation.
@@ -282,7 +301,7 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
                 // For really small copies, make sure we don't start before `src` does.
                 let entry_start = cmp::max(entry.0, src.start);
                 for offset in entry_start..src.end() {
-                    if bytes.last().map_or(true, |bytes_entry| bytes_entry.0 < offset) {
+                    if bytes.last().is_none_or(|bytes_entry| bytes_entry.0 < offset) {
                         // The last entry, if it exists, has a lower offset than us.
                         bytes.push((offset, entry.1));
                     } else {

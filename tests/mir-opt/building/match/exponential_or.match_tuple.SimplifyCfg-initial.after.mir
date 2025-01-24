@@ -19,7 +19,7 @@ fn match_tuple(_1: (u32, bool, Option<i32>, u32)) -> u32 {
 
     bb0: {
         PlaceMention(_1);
-        switchInt((_1.0: u32)) -> [1: bb2, 4: bb2, otherwise: bb1];
+        switchInt(copy (_1.0: u32)) -> [1: bb2, 4: bb2, otherwise: bb1];
     }
 
     bb1: {
@@ -33,26 +33,26 @@ fn match_tuple(_1: (u32, bool, Option<i32>, u32)) -> u32 {
     }
 
     bb3: {
-        switchInt((((_1.2: std::option::Option<i32>) as Some).0: i32)) -> [1: bb4, 8: bb4, otherwise: bb1];
+        switchInt(copy (((_1.2: std::option::Option<i32>) as Some).0: i32)) -> [1: bb4, 8: bb4, otherwise: bb1];
     }
 
     bb4: {
-        _5 = Le(const 6_u32, (_1.3: u32));
+        _5 = Le(const 6_u32, copy (_1.3: u32));
         switchInt(move _5) -> [0: bb5, otherwise: bb7];
     }
 
     bb5: {
-        _3 = Le(const 13_u32, (_1.3: u32));
+        _3 = Le(const 13_u32, copy (_1.3: u32));
         switchInt(move _3) -> [0: bb1, otherwise: bb6];
     }
 
     bb6: {
-        _4 = Le((_1.3: u32), const 16_u32);
+        _4 = Le(copy (_1.3: u32), const 16_u32);
         switchInt(move _4) -> [0: bb1, otherwise: bb8];
     }
 
     bb7: {
-        _6 = Le((_1.3: u32), const 9_u32);
+        _6 = Le(copy (_1.3: u32), const 9_u32);
         switchInt(move _6) -> [0: bb5, otherwise: bb8];
     }
 
@@ -62,13 +62,13 @@ fn match_tuple(_1: (u32, bool, Option<i32>, u32)) -> u32 {
 
     bb9: {
         StorageLive(_7);
-        _7 = (_1.0: u32);
+        _7 = copy (_1.0: u32);
         StorageLive(_8);
-        _8 = (_1.3: u32);
+        _8 = copy (_1.3: u32);
         StorageLive(_9);
-        _9 = _7;
+        _9 = copy _7;
         StorageLive(_10);
-        _10 = _8;
+        _10 = copy _8;
         _0 = BitXor(move _9, move _10);
         StorageDead(_10);
         StorageDead(_9);

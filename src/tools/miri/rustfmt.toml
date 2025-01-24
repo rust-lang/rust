@@ -1,5 +1,10 @@
-version = "Two"
+# This matches rustc
+style_edition = "2024"
 use_small_heuristics = "Max"
+group_imports = "StdExternalCrate"
+imports_granularity = "Module"
+
+# Miri-specific settings
+force_multiline_blocks = true
 match_arm_blocks = false
 match_arm_leading_pipes = "Preserve"
-force_multiline_blocks = true

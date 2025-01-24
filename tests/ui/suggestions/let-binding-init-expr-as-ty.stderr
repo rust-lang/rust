@@ -6,29 +6,22 @@ LL |     let foo: i32::from_be(num);
    |            |
    |            help: use `=` if you meant to assign
 
-error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/let-binding-init-expr-as-ty.rs:2:19
+error: argument types not allowed with return type notation
+  --> $DIR/let-binding-init-expr-as-ty.rs:2:26
    |
 LL |     let foo: i32::from_be(num);
-   |                   ^^^^^^^^^^^^ only `Fn` traits may use parentheses
+   |                          ^^^^^ help: remove the input types: `()`
    |
-help: use angle brackets instead
-   |
-LL |     let foo: i32::from_be<num>;
-   |                          ~   ~
+   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
+   = help: add `#![feature(return_type_notation)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0223]: ambiguous associated type
+error: return type notation not allowed in this position yet
   --> $DIR/let-binding-init-expr-as-ty.rs:2:14
    |
 LL |     let foo: i32::from_be(num);
    |              ^^^^^^^^^^^^^^^^^
-   |
-help: if there were a trait named `Example` with associated type `from_be` implemented for `i32`, you could use the fully-qualified path
-   |
-LL |     let foo: <i32 as Example>::from_be;
-   |              ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0214, E0223, E0573.
-For more information about an error, try `rustc --explain E0214`.
+For more information about this error, try `rustc --explain E0573`.

@@ -1,6 +1,6 @@
 // Regression test for issue #64803 (initial attribute resolution can disappear later).
 
-//@ aux-build:test-macros.rs
+//@ proc-macro: test-macros.rs
 
 #[macro_use]
 extern crate test_macros;

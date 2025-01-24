@@ -1,7 +1,7 @@
 //@ compile-flags: -Zunleash-the-miri-inside-of-you
 //@ aux-build:static_cross_crate.rs
-//@ normalize-stderr-test: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
-//@ normalize-stderr-test: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
+//@ normalize-stderr: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
+//@ normalize-stderr: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
 #![feature(half_open_range_patterns_in_slices)]
 #![allow(static_mut_refs)]
 
@@ -37,16 +37,14 @@ const U8_MUT3: &u8 = {
 
 pub fn test(x: &[u8; 1]) -> bool {
     match x {
-        SLICE_MUT => true,
-        //~^ ERROR could not evaluate constant pattern
+        SLICE_MUT => true, // ok, `const` error already emitted
         &[1..] => false,
     }
 }
 
 pub fn test2(x: &u8) -> bool {
     match x {
-        U8_MUT => true,
-        //~^ ERROR could not evaluate constant pattern
+        U8_MUT => true, // ok, `const` error already emitted
         &(1..) => false,
     }
 }
@@ -55,15 +53,13 @@ pub fn test2(x: &u8) -> bool {
 // the errors above otherwise stop compilation too early?
 pub fn test3(x: &u8) -> bool {
     match x {
-        U8_MUT2 => true,
-        //~^ ERROR could not evaluate constant pattern
+        U8_MUT2 => true, // ok, `const` error already emitted
         &(1..) => false,
     }
 }
 pub fn test4(x: &u8) -> bool {
     match x {
-        U8_MUT3 => true,
-        //~^ ERROR could not evaluate constant pattern
+        U8_MUT3 => true, // ok, `const` error already emitted
         &(1..) => false,
     }
 }

@@ -76,16 +76,16 @@ fn render(
     };
     let (qualified_name, escaped_qualified_name) = (
         qualified_name.unescaped().display(ctx.db()).to_string(),
-        qualified_name.display(ctx.db()).to_string(),
+        qualified_name.display(ctx.db(), completion.edition).to_string(),
     );
     let snippet_cap = ctx.snippet_cap();
 
     let mut rendered = match kind {
         StructKind::Tuple if should_add_parens => {
-            render_tuple_lit(db, snippet_cap, &fields, &escaped_qualified_name)
+            render_tuple_lit(db, snippet_cap, &fields, &escaped_qualified_name, completion.edition)
         }
         StructKind::Record if should_add_parens => {
-            render_record_lit(db, snippet_cap, &fields, &escaped_qualified_name)
+            render_record_lit(db, snippet_cap, &fields, &escaped_qualified_name, completion.edition)
         }
         _ => RenderedLiteral {
             literal: escaped_qualified_name.clone(),
@@ -103,7 +103,10 @@ fn render(
     }
     let label = format_literal_label(&qualified_name, kind, snippet_cap);
     let lookup = if qualified {
-        format_literal_lookup(&short_qualified_name.display(ctx.db()).to_string(), kind)
+        format_literal_lookup(
+            &short_qualified_name.display(ctx.db(), completion.edition).to_string(),
+            kind,
+        )
     } else {
         format_literal_lookup(&qualified_name, kind)
     };
@@ -112,6 +115,7 @@ fn render(
         CompletionItemKind::SymbolKind(thing.symbol_kind()),
         ctx.source_range(),
         label,
+        completion.edition,
     );
 
     item.lookup_by(lookup);

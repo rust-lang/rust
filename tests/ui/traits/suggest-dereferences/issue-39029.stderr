@@ -2,7 +2,7 @@ error[E0277]: the trait bound `NoToSocketAddrs: ToSocketAddrs` is not satisfied
   --> $DIR/issue-39029.rs:16:38
    |
 LL |     let _errors = TcpListener::bind(&bad);
-   |                   -----------------  ^^^ the trait `ToSocketAddrs` is not implemented for `NoToSocketAddrs`, which is required by `&NoToSocketAddrs: ToSocketAddrs`
+   |                   -----------------  ^^^ the trait `ToSocketAddrs` is not implemented for `NoToSocketAddrs`
    |                   |
    |                   required by a bound introduced by this call
    |

@@ -11,36 +11,36 @@
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-struct u32x4(pub u32, pub u32, pub u32, pub u32);
+struct u32x4(pub [u32; 4]);
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-struct u8x4(pub u8, pub u8, pub u8, pub u8);
+struct u8x4(pub [u8; 4]);
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-struct Tx4<T>(pub T, pub T, pub T, pub T);
+struct Tx4<T>(pub [T; 4]);
 
 extern "rust-intrinsic" {
     fn simd_bitmask<T, U>(x: T) -> U;
 }
 
 fn main() {
-    let z = u32x4(0, 0, 0, 0);
+    let z = u32x4([0, 0, 0, 0]);
     let ez = 0_u8;
 
-    let o = u32x4(!0, !0, !0, !0);
+    let o = u32x4([!0, !0, !0, !0]);
     let eo = 0b_1111_u8;
 
-    let m0 = u32x4(!0, 0, !0, 0);
+    let m0 = u32x4([!0, 0, !0, 0]);
     let e0 = 0b_0000_0101_u8;
 
     // Check that the MSB is extracted:
-    let m = u8x4(0b_1000_0000, 0b_0100_0001, 0b_1100_0001, 0b_1111_1111);
+    let m = u8x4([0b_1000_0000, 0b_0100_0001, 0b_1100_0001, 0b_1111_1111]);
     let e = 0b_1101;
 
     // Check usize / isize
-    let msize: Tx4<usize> = Tx4(usize::MAX, 0, usize::MAX, usize::MAX);
+    let msize: Tx4<usize> = Tx4([usize::MAX, 0, usize::MAX, usize::MAX]);
 
     unsafe {
         let r: u8 = simd_bitmask(z);

@@ -2,17 +2,17 @@
 //! when all of their successors are unreachable. This is achieved through a
 //! post-order traversal of the blocks.
 
+use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_target::abi::Size;
 
-pub struct UnreachablePropagation;
+pub(super) struct UnreachablePropagation;
 
-impl MirPass<'_> for UnreachablePropagation {
+impl crate::MirPass<'_> for UnreachablePropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         // Enable only under -Zmir-opt-level=2 as this can make programs less debuggable.
         sess.mir_opt_level() >= 2
@@ -26,7 +26,8 @@ impl MirPass<'_> for UnreachablePropagation {
             let terminator = bb_data.terminator();
             let is_unreachable = match &terminator.kind {
                 TerminatorKind::Unreachable => true,
-                // This will unconditionally run into an unreachable and is therefore unreachable as well.
+                // This will unconditionally run into an unreachable and is therefore unreachable
+                // as well.
                 TerminatorKind::Goto { target } if unreachable_blocks.contains(target) => {
                     patch.patch_terminator(bb, TerminatorKind::Unreachable);
                     true
@@ -40,12 +41,6 @@ impl MirPass<'_> for UnreachablePropagation {
             if is_unreachable {
                 unreachable_blocks.insert(bb);
             }
-        }
-
-        if !tcx
-            .consider_optimizing(|| format!("UnreachablePropagation {:?} ", body.source.def_id()))
-        {
-            return;
         }
 
         patch.apply(body);
@@ -85,8 +80,9 @@ fn remove_successors_from_switch<'tcx>(
     //     }
     // }
     //
-    // This generates a `switchInt() -> [0: 0, 1: 1, otherwise: unreachable]`, which allows us or LLVM to
-    // turn it into just `x` later. Without the unreachable, such a transformation would be illegal.
+    // This generates a `switchInt() -> [0: 0, 1: 1, otherwise: unreachable]`, which allows us or
+    // LLVM to turn it into just `x` later. Without the unreachable, such a transformation would be
+    // illegal.
     //
     // In order to preserve this information, we record reachable and unreachable targets as
     // `Assume` statements in MIR.

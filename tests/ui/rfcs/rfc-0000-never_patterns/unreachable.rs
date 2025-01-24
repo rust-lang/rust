@@ -1,8 +1,6 @@
-//@ revisions: normal exh_pats
-//@[normal] check-pass
+#![feature(exhaustive_patterns)]
 #![feature(never_patterns)]
 #![allow(incomplete_features)]
-#![cfg_attr(exh_pats, feature(min_exhaustive_patterns))]
 #![allow(dead_code, unreachable_code)]
 #![deny(unreachable_patterns)]
 
@@ -15,17 +13,17 @@ fn main() {
     match res_void {
         Ok(_x) => {}
         Err(!),
-        //[exh_pats]~^ ERROR unreachable
+        //~^ ERROR unreachable
     }
     let (Ok(_x) | Err(!)) = res_void;
-    //[exh_pats]~^ ERROR unreachable
+    //~^ ERROR unreachable
     if let Err(!) = res_void {}
-    //[exh_pats]~^ ERROR unreachable
+    //~^ ERROR unreachable
     if let (Ok(true) | Err(!)) = res_void {}
-    //[exh_pats]~^ ERROR unreachable
+    //~^ ERROR unreachable
     for (Ok(mut _x) | Err(!)) in [res_void] {}
-    //[exh_pats]~^ ERROR unreachable
+    //~^ ERROR unreachable
 }
 
 fn foo((Ok(_x) | Err(!)): Result<bool, Void>) {}
-//[exh_pats]~^ ERROR unreachable
+//~^ ERROR unreachable

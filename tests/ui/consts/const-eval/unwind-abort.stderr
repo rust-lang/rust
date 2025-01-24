@@ -1,16 +1,16 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/unwind-abort.rs:4:5
+  --> $DIR/unwind-abort.rs:2:5
    |
 LL |     panic!()
-   |     ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/unwind-abort.rs:4:5
+   |     ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/unwind-abort.rs:2:5
    |
 note: inside `foo`
-  --> $DIR/unwind-abort.rs:4:5
+  --> $DIR/unwind-abort.rs:2:5
    |
 LL |     panic!()
    |     ^^^^^^^^
 note: inside `_`
-  --> $DIR/unwind-abort.rs:7:15
+  --> $DIR/unwind-abort.rs:5:15
    |
 LL | const _: () = foo();
    |               ^^^^^

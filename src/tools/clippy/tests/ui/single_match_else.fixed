@@ -89,7 +89,7 @@ fn main() {
 
     // lint here
     use std::convert::Infallible;
-    if let Ok(a) = Result::<i32, Infallible>::Ok(1) { println!("${:?}", a) } else {
+    if let Ok(a) = Result::<i32, &Infallible>::Ok(1) { println!("${:?}", a) } else {
         println!("else block");
         return;
     }
@@ -170,4 +170,8 @@ fn issue_10808(bar: Option<i32>) {
             }
         },
     }
+}
+
+fn irrefutable_match() -> Option<&'static ExprNode> {
+    Some(&NODE)
 }

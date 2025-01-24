@@ -2,8 +2,6 @@
 //@[pre_expansion] check-pass
 //@ edition: 2021
 
-#![feature(precise_capturing)]
-
 #[cfg(real)]
 trait Foo: use<> {
     //[real]~^ ERROR `use<...>` precise capturing syntax not allowed

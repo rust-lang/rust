@@ -17,7 +17,13 @@ fn single_match() {
     };
 
     let x = Some(1u8);
-    if let Some(y) = x { println!("{:?}", y) }
+    match x {
+        // Note the missing block braces.
+        // We suggest `if let Some(y) = x { .. }` because the macro
+        // is expanded before we can do anything.
+        Some(y) => println!("{:?}", y),
+        _ => (),
+    }
 
     let z = (1u8, 1u8);
     if let (2..=3, 7..=9) = z { dummy() };
@@ -39,8 +45,8 @@ enum Foo {
     Bar,
     Baz(u8),
 }
-use std::borrow::Cow;
 use Foo::*;
+use std::borrow::Cow;
 
 fn single_match_know_enum() {
     let x = Some(1u8);
@@ -251,5 +257,96 @@ mod issue8634 {
                 */
             },
         }
+    }
+}
+
+fn issue11365() {
+    enum Foo {
+        A,
+        B,
+        C,
+    }
+    use Foo::{A, B, C};
+
+    match Some(A) {
+        Some(A | B | C) => println!(),
+        None => {},
+    }
+
+    match Some(A) {
+        Some(A | B) => println!(),
+        Some { 0: C } | None => {},
+    }
+
+    match [A, A] {
+        [A, _] => println!(),
+        [_, A | B | C] => {},
+    }
+
+    match Ok::<_, u32>(Some(A)) {
+        Ok(Some(A)) => println!(),
+        Err(_) | Ok(None | Some(B | C)) => {},
+    }
+
+    if let Ok(Some(A)) = Ok::<_, u32>(Some(A)) { println!() }
+
+    match &Some(A) {
+        Some(A | B | C) => println!(),
+        None => {},
+    }
+
+    match &Some(A) {
+        &Some(A | B | C) => println!(),
+        None => {},
+    }
+
+    if let Some(A | B) = &Some(A) { println!() }
+}
+
+fn issue12758(s: &[u8]) {
+    if &s[0..3] == b"foo" { println!() }
+}
+
+#[derive(Eq, PartialEq)]
+pub struct Data([u8; 4]);
+
+const DATA: Data = Data([1, 2, 3, 4]);
+const CONST_I32: i32 = 1;
+
+fn irrefutable_match() {
+    println!();
+
+    println!();
+
+    let i = 0;
+    {
+        let a = 1;
+        let b = 2;
+    }
+
+    
+
+    
+
+    println!();
+
+    let mut x = vec![1i8];
+
+    // Should not lint.
+    match x.pop() {
+        // bla
+        Some(u) => println!("{u}"),
+        // more comments!
+        None => {},
+    }
+    // Should not lint.
+    match x.pop() {
+        // bla
+        Some(u) => {
+            // bla
+            println!("{u}");
+        },
+        // bla
+        None => {},
     }
 }

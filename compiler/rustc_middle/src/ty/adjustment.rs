@@ -1,8 +1,9 @@
+use rustc_abi::FieldIdx;
 use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
-use rustc_target::abi::FieldIdx;
 
 use crate::ty::{self, Ty, TyCtxt};
 
@@ -25,16 +26,19 @@ pub enum PointerCoercion {
     ArrayToPointer,
 
     /// Unsize a pointer/reference value, e.g., `&[T; n]` to
-    /// `&[T]`. Note that the source could be a thin or fat pointer.
-    /// This will do things like convert thin pointers to fat
+    /// `&[T]`. Note that the source could be a thin or wide pointer.
+    /// This will do things like convert thin pointers to wide
     /// pointers, or convert structs containing thin pointers to
-    /// structs containing fat pointers, or convert between fat
+    /// structs containing wide pointers, or convert between wide
     /// pointers. We don't store the details of how the transform is
     /// done (in fact, we don't know that, because it might depend on
     /// the precise type parameters). We just store the target
     /// type. Codegen backends and miri figure out what has to be done
     /// based on the precise source/target type at hand.
     Unsize,
+
+    /// Go from a pointer-like type to a `dyn*` object.
+    DynStar,
 }
 
 /// Represents coercing a value to a different type of value.
@@ -79,7 +83,7 @@ pub enum PointerCoercion {
 ///    `Box<[i32]>` is an `Adjust::Unsize` with the target `Box<[i32]>`.
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Adjustment<'tcx> {
-    pub kind: Adjust<'tcx>,
+    pub kind: Adjust,
     pub target: Ty<'tcx>,
 }
 
@@ -90,20 +94,20 @@ impl<'tcx> Adjustment<'tcx> {
 }
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
-pub enum Adjust<'tcx> {
+pub enum Adjust {
     /// Go from ! to any type.
     NeverToAny,
 
     /// Dereference once, producing a place.
-    Deref(Option<OverloadedDeref<'tcx>>),
+    Deref(Option<OverloadedDeref>),
 
     /// Take the address and produce either a `&` or `*` pointer.
-    Borrow(AutoBorrow<'tcx>),
+    Borrow(AutoBorrow),
 
     Pointer(PointerCoercion),
 
-    /// Cast into a dyn* object.
-    DynStar,
+    /// Take a pinned reference and reborrow as a `Pin<&mut T>` or `Pin<&T>`.
+    ReborrowPin(hir::Mutability),
 }
 
 /// An overloaded autoderef step, representing a `Deref(Mut)::deref(_mut)`
@@ -112,28 +116,26 @@ pub enum Adjust<'tcx> {
 /// being those shared by both the receiver and the returned reference.
 #[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
 #[derive(TypeFoldable, TypeVisitable)]
-pub struct OverloadedDeref<'tcx> {
-    pub region: ty::Region<'tcx>,
+pub struct OverloadedDeref {
     pub mutbl: hir::Mutability,
     /// The `Span` associated with the field access or method call
     /// that triggered this overloaded deref.
     pub span: Span,
 }
 
-impl<'tcx> OverloadedDeref<'tcx> {
-    /// Get the zst function item type for this method call.
-    pub fn method_call(&self, tcx: TyCtxt<'tcx>, source: Ty<'tcx>) -> Ty<'tcx> {
+impl OverloadedDeref {
+    /// Get the [`DefId`] of the method call for the given `Deref`/`DerefMut` trait
+    /// for this overloaded deref's mutability.
+    pub fn method_call<'tcx>(&self, tcx: TyCtxt<'tcx>) -> DefId {
         let trait_def_id = match self.mutbl {
             hir::Mutability::Not => tcx.require_lang_item(LangItem::Deref, None),
             hir::Mutability::Mut => tcx.require_lang_item(LangItem::DerefMut, None),
         };
-        let method_def_id = tcx
-            .associated_items(trait_def_id)
+        tcx.associated_items(trait_def_id)
             .in_definition_order()
             .find(|m| m.kind == ty::AssocKind::Fn)
             .unwrap()
-            .def_id;
-        Ty::new_fn_def(tcx, method_def_id, [source])
+            .def_id
     }
 }
 
@@ -184,9 +186,9 @@ impl From<AutoBorrowMutability> for hir::Mutability {
 
 #[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
 #[derive(TypeFoldable, TypeVisitable)]
-pub enum AutoBorrow<'tcx> {
+pub enum AutoBorrow {
     /// Converts from T to &T.
-    Ref(ty::Region<'tcx>, AutoBorrowMutability),
+    Ref(AutoBorrowMutability),
 
     /// Converts from T to *T.
     RawPtr(hir::Mutability),

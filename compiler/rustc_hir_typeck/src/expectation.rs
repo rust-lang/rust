@@ -7,7 +7,7 @@ use super::FnCtxt;
 /// When type-checking an expression, we propagate downward
 /// whatever type hint we are able in the form of an `Expectation`.
 #[derive(Copy, Clone, Debug)]
-pub enum Expectation<'tcx> {
+pub(crate) enum Expectation<'tcx> {
     /// We know nothing about what type this expression should have.
     NoExpectation,
 
@@ -39,10 +39,14 @@ impl<'a, 'tcx> Expectation<'tcx> {
     // an expected type. Otherwise, we might write parts of the type
     // when checking the 'then' block which are incompatible with the
     // 'else' branch.
-    pub(super) fn adjust_for_branches(&self, fcx: &FnCtxt<'a, 'tcx>) -> Expectation<'tcx> {
+    pub(super) fn try_structurally_resolve_and_adjust_for_branches(
+        &self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        span: Span,
+    ) -> Expectation<'tcx> {
         match *self {
             ExpectHasType(ety) => {
-                let ety = fcx.shallow_resolve(ety);
+                let ety = fcx.try_structurally_resolve_type(span, ety);
                 if !ety.is_ty_var() { ExpectHasType(ety) } else { NoExpectation }
             }
             ExpectRvalueLikeUnsized(ety) => ExpectRvalueLikeUnsized(ety),
@@ -55,7 +59,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// be checked higher up, as is the case with `&expr` and `box expr`), but
     /// is useful in determining the concrete type.
     ///
-    /// The primary use case is where the expected type is a fat pointer,
+    /// The primary use case is where the expected type is a wide pointer,
     /// like `&[isize]`. For example, consider the following statement:
     ///
     ///    let x: &[isize] = &[1, 2, 3];
@@ -70,7 +74,8 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// See the test case `test/ui/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
     pub(super) fn rvalue_hint(fcx: &FnCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
-        match fcx.tcx.struct_tail_without_normalization(ty).kind() {
+        // FIXME: This is not right, even in the old solver...
+        match fcx.tcx.struct_tail_raw(ty, |ty| ty, || {}).kind() {
             ty::Slice(_) | ty::Str | ty::Dynamic(..) => ExpectRvalueLikeUnsized(ty),
             _ => ExpectHasType(ty),
         }

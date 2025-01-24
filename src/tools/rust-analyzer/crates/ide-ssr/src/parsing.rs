@@ -190,7 +190,7 @@ impl RawPattern {
         let mut res = FxHashMap::default();
         for t in &self.tokens {
             if let PatternElement::Placeholder(placeholder) = t {
-                res.insert(SmolStr::new(placeholder.stand_in_name.clone()), placeholder.clone());
+                res.insert(SmolStr::new(&placeholder.stand_in_name), placeholder.clone());
             }
         }
         res

@@ -7,9 +7,9 @@
 //@ ignore-windows-gnu mingw has troubles with linking https://github.com/rust-lang/rust/pull/116837
 
 #![feature(rustc_private)]
-#![feature(control_flow_enum)]
 
 extern crate rustc_hir;
+extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_smir;
 extern crate rustc_driver;

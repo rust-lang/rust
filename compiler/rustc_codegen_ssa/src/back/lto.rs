@@ -1,12 +1,15 @@
 use std::ffi::CString;
 use std::sync::Arc;
 
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_data_structures::memmap::Mmap;
 use rustc_errors::FatalError;
+use rustc_middle::ty::TyCtxt;
 
 use super::write::CodegenContext;
-use crate::traits::*;
 use crate::ModuleCodegen;
+use crate::back::write::ModuleConfig;
+use crate::traits::*;
 
 pub struct ThinModule<B: WriteBackendMethods> {
     pub shared: Arc<ThinShared<B>>,
@@ -41,18 +44,14 @@ pub struct ThinShared<B: WriteBackendMethods> {
 }
 
 pub enum LtoModuleCodegen<B: WriteBackendMethods> {
-    Fat {
-        module: ModuleCodegen<B::Module>,
-        _serialized_bitcode: Vec<SerializedModule<B::ModuleBuffer>>,
-    },
-
+    Fat(ModuleCodegen<B::Module>),
     Thin(ThinModule<B>),
 }
 
 impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
     pub fn name(&self) -> &str {
         match *self {
-            LtoModuleCodegen::Fat { .. } => "everything",
+            LtoModuleCodegen::Fat(_) => "everything",
             LtoModuleCodegen::Thin(ref m) => m.name(),
         }
     }
@@ -68,7 +67,7 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
         cgcx: &CodegenContext<B>,
     ) -> Result<ModuleCodegen<B::Module>, FatalError> {
         match self {
-            LtoModuleCodegen::Fat { mut module, .. } => {
+            LtoModuleCodegen::Fat(mut module) => {
                 B::optimize_fat(cgcx, &mut module)?;
                 Ok(module)
             }
@@ -81,9 +80,27 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
     pub fn cost(&self) -> u64 {
         match *self {
             // Only one module with fat LTO, so the cost doesn't matter.
-            LtoModuleCodegen::Fat { .. } => 0,
+            LtoModuleCodegen::Fat(_) => 0,
             LtoModuleCodegen::Thin(ref m) => m.cost(),
         }
+    }
+
+    /// Run autodiff on Fat LTO module
+    pub unsafe fn autodiff(
+        self,
+        cgcx: &CodegenContext<B>,
+        tcx: TyCtxt<'_>,
+        diff_fncs: Vec<AutoDiffItem>,
+        config: &ModuleConfig,
+    ) -> Result<LtoModuleCodegen<B>, FatalError> {
+        match &self {
+            LtoModuleCodegen::Fat(module) => {
+                B::autodiff(cgcx, tcx, &module, diff_fncs, config)?;
+            }
+            _ => panic!("autodiff called with non-fat LTO module"),
+        }
+
+        Ok(self)
     }
 }
 

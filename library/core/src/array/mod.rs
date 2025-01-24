@@ -2,7 +2,7 @@
 //!
 //! *[See also the array primitive type](array).*
 
-#![stable(feature = "core_array", since = "1.36.0")]
+#![stable(feature = "core_array", since = "1.35.0")]
 
 use crate::borrow::{Borrow, BorrowMut};
 use crate::cmp::Ordering;
@@ -10,11 +10,13 @@ use crate::convert::Infallible;
 use crate::error::Error;
 use crate::fmt;
 use crate::hash::{self, Hash};
-use crate::iter::{repeat_n, UncheckedIterator};
+use crate::intrinsics::transmute_unchecked;
+use crate::iter::{UncheckedIterator, repeat_n};
 use crate::mem::{self, MaybeUninit};
 use crate::ops::{
     ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
 };
+use crate::ptr::{null, null_mut};
 use crate::slice::{Iter, IterMut};
 
 mod ascii;
@@ -37,7 +39,7 @@ pub use iter::IntoIter;
 ///
 /// # Example
 ///
-/// Creating muliple copies of a `String`:
+/// Creating multiple copies of a `String`:
 /// ```rust
 /// #![feature(array_repeat)]
 ///
@@ -146,7 +148,7 @@ pub const fn from_ref<T>(s: &T) -> &[T; 1] {
 
 /// Converts a mutable reference to `T` into a mutable reference to an array of length 1 (without copying).
 #[stable(feature = "array_from_ref", since = "1.53.0")]
-#[rustc_const_unstable(feature = "const_array_from_ref", issue = "90206")]
+#[rustc_const_stable(feature = "const_array_from_ref", since = "1.83.0")]
 pub const fn from_mut<T>(s: &mut T) -> &mut [T; 1] {
     // SAFETY: Converting `&mut T` to `&mut [T; 1]` is sound.
     unsafe { &mut *(s as *mut T).cast::<[T; 1]>() }
@@ -154,10 +156,11 @@ pub const fn from_mut<T>(s: &mut T) -> &mut [T; 1] {
 
 /// The error type returned when a conversion from a slice to an array fails.
 #[stable(feature = "try_from", since = "1.34.0")]
+#[rustc_allowed_through_unstable_modules]
 #[derive(Debug, Copy, Clone)]
 pub struct TryFromSliceError(());
 
-#[stable(feature = "core_array", since = "1.36.0")]
+#[stable(feature = "core_array", since = "1.35.0")]
 impl fmt::Display for TryFromSliceError {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -211,8 +214,8 @@ impl<T, const N: usize> BorrowMut<[T]> for [T; N] {
     }
 }
 
-/// Tries to create an array `[T; N]` by copying from a slice `&[T]`. Succeeds if
-/// `slice.len() == N`.
+/// Tries to create an array `[T; N]` by copying from a slice `&[T]`.
+/// Succeeds if `slice.len() == N`.
 ///
 /// ```
 /// let bytes: [u8; 3] = [1, 0, 2];
@@ -279,13 +282,7 @@ impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
 
     #[inline]
     fn try_from(slice: &'a [T]) -> Result<&'a [T; N], TryFromSliceError> {
-        if slice.len() == N {
-            let ptr = slice.as_ptr() as *const [T; N];
-            // SAFETY: ok because we just checked that the length fits
-            unsafe { Ok(&*ptr) }
-        } else {
-            Err(TryFromSliceError(()))
-        }
+        slice.as_array().ok_or(TryFromSliceError(()))
     }
 }
 
@@ -307,13 +304,7 @@ impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N] {
 
     #[inline]
     fn try_from(slice: &'a mut [T]) -> Result<&'a mut [T; N], TryFromSliceError> {
-        if slice.len() == N {
-            let ptr = slice.as_mut_ptr() as *mut [T; N];
-            // SAFETY: ok because we just checked that the length fits
-            unsafe { Ok(&mut *ptr) }
-        } else {
-            Err(TryFromSliceError(()))
-        }
+        slice.as_mut_array().ok_or(TryFromSliceError(()))
     }
 }
 
@@ -576,7 +567,8 @@ impl<T, const N: usize> [T; N] {
     /// Returns a mutable slice containing the entire array. Equivalent to
     /// `&mut s[..]`.
     #[stable(feature = "array_as_slice", since = "1.57.0")]
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
+    #[rustc_const_unstable(feature = "const_array_as_mut_slice", issue = "133333")]
+    pub const fn as_mut_slice(&mut self) -> &mut [T] {
         self
     }
 
@@ -605,8 +597,20 @@ impl<T, const N: usize> [T; N] {
     /// assert_eq!(strings.len(), 3);
     /// ```
     #[stable(feature = "array_methods", since = "1.77.0")]
-    pub fn each_ref(&self) -> [&T; N] {
-        from_trusted_iterator(self.iter())
+    #[rustc_const_unstable(feature = "const_array_each_ref", issue = "133289")]
+    pub const fn each_ref(&self) -> [&T; N] {
+        let mut buf = [null::<T>(); N];
+
+        // FIXME(const-hack): We would like to simply use iterators for this (as in the original implementation), but this is not allowed in constant expressions.
+        let mut i = 0;
+        while i < N {
+            buf[i] = &raw const self[i];
+
+            i += 1;
+        }
+
+        // SAFETY: `*const T` has the same layout as `&T`, and we've also initialised each pointer as a valid reference.
+        unsafe { transmute_unchecked(buf) }
     }
 
     /// Borrows each element mutably and returns an array of mutable references
@@ -624,8 +628,20 @@ impl<T, const N: usize> [T; N] {
     /// assert_eq!(floats, [0.0, 2.7, -1.0]);
     /// ```
     #[stable(feature = "array_methods", since = "1.77.0")]
-    pub fn each_mut(&mut self) -> [&mut T; N] {
-        from_trusted_iterator(self.iter_mut())
+    #[rustc_const_unstable(feature = "const_array_each_ref", issue = "133289")]
+    pub const fn each_mut(&mut self) -> [&mut T; N] {
+        let mut buf = [null_mut::<T>(); N];
+
+        // FIXME(const-hack): We would like to simply use iterators for this (as in the original implementation), but this is not allowed in constant expressions.
+        let mut i = 0;
+        while i < N {
+            buf[i] = &raw mut self[i];
+
+            i += 1;
+        }
+
+        // SAFETY: `*mut T` has the same layout as `&mut T`, and we've also initialised each pointer as a valid reference.
+        unsafe { transmute_unchecked(buf) }
     }
 
     /// Divides one array reference into two at an index.
@@ -877,7 +893,7 @@ impl<T> Guard<'_, T> {
     ///
     /// No more than N elements must be initialized.
     #[inline]
-    pub unsafe fn push_unchecked(&mut self, item: T) {
+    pub(crate) unsafe fn push_unchecked(&mut self, item: T) {
         // SAFETY: If `initialized` was correct before and the caller does not
         // invoke this method more than N times then writes will be in-bounds
         // and slots will not be initialized more than once.
@@ -889,14 +905,13 @@ impl<T> Guard<'_, T> {
 }
 
 impl<T> Drop for Guard<'_, T> {
+    #[inline]
     fn drop(&mut self) {
         debug_assert!(self.initialized <= self.array_mut.len());
 
         // SAFETY: this slice will contain only initialized objects.
         unsafe {
-            crate::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(
-                self.array_mut.get_unchecked_mut(..self.initialized),
-            ));
+            self.array_mut.get_unchecked_mut(..self.initialized).assume_init_drop();
         }
     }
 }

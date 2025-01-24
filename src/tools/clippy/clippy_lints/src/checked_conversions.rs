@@ -1,10 +1,8 @@
-//! lint on manually implemented checked conversions that could be transformed into `try_from`
-
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{in_constant, is_integer_literal, SpanlessEq};
+use clippy_utils::{SpanlessEq, is_in_const_context, is_integer_literal};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -50,7 +48,7 @@ impl CheckedConversions {
 
 impl_lint_pass!(CheckedConversions => [CHECKED_CONVERSIONS]);
 
-impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
+impl LateLintPass<'_> for CheckedConversions {
     fn check_expr(&mut self, cx: &LateContext<'_>, item: &Expr<'_>) {
         if let ExprKind::Binary(op, lhs, rhs) = item.kind
             && let (lt1, gt1, op2) = match op.node {
@@ -67,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
                 _ => return,
             }
             && !in_external_macro(cx.sess(), item.span)
-            && !in_constant(cx, item.hir_id)
+            && !is_in_const_context(cx)
             && self.msrv.meets(msrvs::TRY_FROM)
             && let Some(cv) = match op2 {
                 // todo: check for case signed -> larger unsigned == only x >= 0
@@ -234,7 +232,7 @@ fn get_types_from_cast<'a>(
     // or `to_type::MAX as from_type`
     let call_from_cast: Option<(&Expr<'_>, &str)> = if let ExprKind::Cast(limit, from_type) = &expr.kind
         // to_type::max_value(), from_type
-        && let TyKind::Path(ref from_type_path) = &from_type.kind
+        && let TyKind::Path(from_type_path) = &from_type.kind
         && let Some(from_sym) = int_ty_to_sym(from_type_path)
     {
         Some((limit, from_sym))
@@ -247,7 +245,7 @@ fn get_types_from_cast<'a>(
         if let ExprKind::Call(from_func, [limit]) = &expr.kind
             // `from_type::from, to_type::max_value()`
             // `from_type::from`
-            && let ExprKind::Path(ref path) = &from_func.kind
+            && let ExprKind::Path(path) = &from_func.kind
             && let Some(from_sym) = get_implementing_type(path, INTS, "from")
         {
             Some((limit, from_sym))

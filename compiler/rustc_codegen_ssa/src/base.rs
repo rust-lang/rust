@@ -3,11 +3,11 @@ use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
 
 use itertools::Itertools;
-use rustc_ast::expand::allocator::{global_fn_name, AllocatorKind, ALLOCATOR_METHODS};
-use rustc_attr as attr;
+use rustc_abi::FIRST_VARIANT;
+use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, AllocatorKind, global_fn_name};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
-use rustc_data_structures::sync::par_map;
+use rustc_data_structures::sync::{Lrc, par_map};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
@@ -17,74 +17,53 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_middle::middle::{exported_symbols, lang_items};
-use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::mir::BinOp;
+use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
 use rustc_session::Session;
-use rustc_span::symbol::sym;
-use rustc_span::{Symbol, DUMMY_SP};
-use rustc_target::abi::FIRST_VARIANT;
+use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
+use rustc_span::{DUMMY_SP, Symbol, sym};
+use rustc_trait_selection::infer::at::ToTrace;
+use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
+use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
+use {rustc_ast as ast, rustc_attr_parsing as attr};
 
 use crate::assert_module_sources::CguReuse;
 use crate::back::link::are_upstream_rust_objects_already_included;
 use crate::back::metadata::create_compressed_metadata_file;
 use crate::back::write::{
-    compute_per_cgu_lto_type, start_async_codegen, submit_codegened_module_to_llvm,
-    submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm, ComputedLtoType, OngoingCodegen,
+    ComputedLtoType, OngoingCodegen, compute_per_cgu_lto_type, start_async_codegen,
+    submit_codegened_module_to_llvm, submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm,
 };
 use crate::common::{self, IntPredicate, RealPredicate, TypeKind};
+use crate::meth::load_vtable;
 use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
 use crate::{
-    errors, meth, mir, CachedModuleCodegen, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
+    CachedModuleCodegen, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind, errors, meth, mir,
 };
 
-pub fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
-    match op {
-        BinOp::Eq => IntPredicate::IntEQ,
-        BinOp::Ne => IntPredicate::IntNE,
-        BinOp::Lt => {
-            if signed {
-                IntPredicate::IntSLT
-            } else {
-                IntPredicate::IntULT
-            }
-        }
-        BinOp::Le => {
-            if signed {
-                IntPredicate::IntSLE
-            } else {
-                IntPredicate::IntULE
-            }
-        }
-        BinOp::Gt => {
-            if signed {
-                IntPredicate::IntSGT
-            } else {
-                IntPredicate::IntUGT
-            }
-        }
-        BinOp::Ge => {
-            if signed {
-                IntPredicate::IntSGE
-            } else {
-                IntPredicate::IntUGE
-            }
-        }
-        op => bug!(
-            "comparison_op_to_icmp_predicate: expected comparison operator, \
-             found {:?}",
-            op
-        ),
+pub(crate) fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
+    match (op, signed) {
+        (BinOp::Eq, _) => IntPredicate::IntEQ,
+        (BinOp::Ne, _) => IntPredicate::IntNE,
+        (BinOp::Lt, true) => IntPredicate::IntSLT,
+        (BinOp::Lt, false) => IntPredicate::IntULT,
+        (BinOp::Le, true) => IntPredicate::IntSLE,
+        (BinOp::Le, false) => IntPredicate::IntULE,
+        (BinOp::Gt, true) => IntPredicate::IntSGT,
+        (BinOp::Gt, false) => IntPredicate::IntUGT,
+        (BinOp::Ge, true) => IntPredicate::IntSGE,
+        (BinOp::Ge, false) => IntPredicate::IntUGE,
+        op => bug!("bin_op_to_icmp_predicate: expected comparison operator, found {:?}", op),
     }
 }
 
-pub fn bin_op_to_fcmp_predicate(op: BinOp) -> RealPredicate {
+pub(crate) fn bin_op_to_fcmp_predicate(op: BinOp) -> RealPredicate {
     match op {
         BinOp::Eq => RealPredicate::RealOEQ,
         BinOp::Ne => RealPredicate::RealUNE,
@@ -92,13 +71,7 @@ pub fn bin_op_to_fcmp_predicate(op: BinOp) -> RealPredicate {
         BinOp::Le => RealPredicate::RealOLE,
         BinOp::Gt => RealPredicate::RealOGT,
         BinOp::Ge => RealPredicate::RealOGE,
-        op => {
-            bug!(
-                "comparison_op_to_fcmp_predicate: expected comparison operator, \
-                 found {:?}",
-                op
-            );
-        }
+        op => bug!("bin_op_to_fcmp_predicate: expected comparison operator, found {:?}", op),
     }
 }
 
@@ -130,12 +103,61 @@ pub fn compare_simd_types<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx.sext(cmp, ret_ty)
 }
 
+/// Codegen takes advantage of the additional assumption, where if the
+/// principal trait def id of what's being casted doesn't change,
+/// then we don't need to adjust the vtable at all. This
+/// corresponds to the fact that `dyn Tr<A>: Unsize<dyn Tr<B>>`
+/// requires that `A = B`; we don't allow *upcasting* objects
+/// between the same trait with different args. If we, for
+/// some reason, were to relax the `Unsize` trait, it could become
+/// unsound, so let's validate here that the trait refs are subtypes.
+pub fn validate_trivial_unsize<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    source_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+    target_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+) -> bool {
+    match (source_data.principal(), target_data.principal()) {
+        (Some(hr_source_principal), Some(hr_target_principal)) => {
+            let (infcx, param_env) =
+                tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv::fully_monomorphized());
+            let universe = infcx.universe();
+            let ocx = ObligationCtxt::new(&infcx);
+            infcx.enter_forall(hr_target_principal, |target_principal| {
+                let source_principal = infcx.instantiate_binder_with_fresh_vars(
+                    DUMMY_SP,
+                    BoundRegionConversionTime::HigherRankedType,
+                    hr_source_principal,
+                );
+                let Ok(()) = ocx.eq_trace(
+                    &ObligationCause::dummy(),
+                    param_env,
+                    ToTrace::to_trace(
+                        &ObligationCause::dummy(),
+                        hr_target_principal,
+                        hr_source_principal,
+                    ),
+                    target_principal,
+                    source_principal,
+                ) else {
+                    return false;
+                };
+                if !ocx.select_all_or_error().is_empty() {
+                    return false;
+                }
+                infcx.leak_check(universe, None).is_ok()
+            })
+        }
+        (_, None) => true,
+        _ => false,
+    }
+}
+
 /// Retrieves the information we are losing (making dynamic) in an unsizing
 /// adjustment.
 ///
 /// The `old_info` argument is a bit odd. It is intended for use in an upcast,
 /// where the new vtable for an object will be derived from the old one.
-pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     source: Ty<'tcx>,
     target: Ty<'tcx>,
@@ -143,18 +165,36 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> Bx::Value {
     let cx = bx.cx();
     let (source, target) =
-        cx.tcx().struct_lockstep_tails_erasing_lifetimes(source, target, bx.param_env());
+        cx.tcx().struct_lockstep_tails_for_codegen(source, target, bx.typing_env());
     match (source.kind(), target.kind()) {
-        (&ty::Array(_, len), &ty::Slice(_)) => {
-            cx.const_usize(len.eval_target_usize(cx.tcx(), ty::ParamEnv::reveal_all()))
-        }
+        (&ty::Array(_, len), &ty::Slice(_)) => cx.const_usize(
+            len.try_to_target_usize(cx.tcx()).expect("expected monomorphic const in codegen"),
+        ),
         (&ty::Dynamic(data_a, _, src_dyn_kind), &ty::Dynamic(data_b, _, target_dyn_kind))
             if src_dyn_kind == target_dyn_kind =>
         {
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
-            if data_a.principal_def_id() == data_b.principal_def_id() {
-                // A NOP cast that doesn't actually change anything, should be allowed even with invalid vtables.
+            let b_principal_def_id = data_b.principal_def_id();
+            if data_a.principal_def_id() == b_principal_def_id || b_principal_def_id.is_none() {
+                // Codegen takes advantage of the additional assumption, where if the
+                // principal trait def id of what's being casted doesn't change,
+                // then we don't need to adjust the vtable at all. This
+                // corresponds to the fact that `dyn Tr<A>: Unsize<dyn Tr<B>>`
+                // requires that `A = B`; we don't allow *upcasting* objects
+                // between the same trait with different args. If we, for
+                // some reason, were to relax the `Unsize` trait, it could become
+                // unsound, so let's assert here that the trait refs are *equal*.
+                debug_assert!(
+                    validate_trivial_unsize(cx.tcx(), data_a, data_b),
+                    "NOP unsize vtable changed principal trait ref: {data_a} -> {data_b}"
+                );
+
+                // A NOP cast that doesn't actually change anything, let's avoid any
+                // unnecessary work. This relies on the assumption that if the principal
+                // traits are equal, then the associated type bounds (`dyn Trait<Assoc=T>`)
+                // are also equal, which is ensured by the fact that normalization is
+                // a function and we do not allow overlapping impls.
                 return old_info;
             }
 
@@ -164,14 +204,8 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             if let Some(entry_idx) = vptr_entry_idx {
                 let ptr_size = bx.data_layout().pointer_size;
-                let ptr_align = bx.data_layout().pointer_align.abi;
                 let vtable_byte_offset = u64::try_from(entry_idx).unwrap() * ptr_size.bytes();
-                let gep = bx.inbounds_ptradd(old_info, bx.const_usize(vtable_byte_offset));
-                let new_vptr = bx.load(bx.type_ptr(), gep, ptr_align);
-                bx.nonnull_metadata(new_vptr);
-                // VTable loads are invariant.
-                bx.set_invariant_load(new_vptr);
-                new_vptr
+                load_vtable(bx, old_info, bx.type_ptr(), vtable_byte_offset, source, true)
             } else {
                 old_info
             }
@@ -182,7 +216,7 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 }
 
 /// Coerces `src` to `dst_ty`. `src_ty` must be a pointer.
-pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: Bx::Value,
     src_ty: Ty<'tcx>,
@@ -227,7 +261,7 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 }
 
 /// Coerces `src` to `dst_ty` which is guaranteed to be a `dyn*` type.
-pub fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: Bx::Value,
     src_ty_and_layout: TyAndLayout<'tcx>,
@@ -250,7 +284,7 @@ pub fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
 /// Coerces `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty`, and stores the result in `dst`.
-pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: PlaceRef<'tcx, Bx::Value>,
     dst: PlaceRef<'tcx, Bx::Value>,
@@ -305,7 +339,7 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ///
 /// If `is_unchecked` is true, this does no masking, and adds sufficient `assume`
 /// calls or operation flags to preserve as much freedom to optimize as possible.
-pub fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     lhs: Bx::Value,
     mut rhs: Bx::Value,
@@ -354,7 +388,8 @@ pub fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 // exceptions. This means that the VM does the unwinding for
 // us
 pub fn wants_wasm_eh(sess: &Session) -> bool {
-    sess.target.is_like_wasm && sess.target.os != "emscripten"
+    sess.target.is_like_wasm
+        && (sess.target.os != "emscripten" || sess.opts.unstable_opts.emscripten_wasm_eh)
 }
 
 /// Returns `true` if this session's target will use SEH-based unwinding.
@@ -369,11 +404,11 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
 /// Returns `true` if this session's target requires the new exception
 /// handling LLVM IR instructions (catchpad / cleanuppad / ... instead
 /// of landingpad)
-pub fn wants_new_eh_instructions(sess: &Session) -> bool {
+pub(crate) fn wants_new_eh_instructions(sess: &Session) -> bool {
     wants_wasm_eh(sess) || wants_msvc_seh(sess)
 }
 
-pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     instance: Instance<'tcx>,
 ) {
@@ -432,10 +467,9 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = cx.tcx().normalize_erasing_regions(
-            ty::ParamEnv::reveal_all(),
-            main_ret_ty.no_bound_vars().unwrap(),
-        );
+        let main_ret_ty = cx
+            .tcx()
+            .normalize_erasing_regions(cx.typing_env(), main_ret_ty.no_bound_vars().unwrap());
 
         let Some(llfn) = cx.declare_c_main(llfty) else {
             // FIXME: We should be smart and show a better diagnostic here.
@@ -454,14 +488,14 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
         let isize_ty = cx.type_isize();
         let ptr_ty = cx.type_ptr();
-        let (arg_argc, arg_argv) = get_argc_argv(cx, &mut bx);
+        let (arg_argc, arg_argv) = get_argc_argv(&mut bx);
 
-        let (start_fn, start_ty, args, instance) = if let EntryFnType::Main { sigpipe } = entry_type
-        {
+        let EntryFnType::Main { sigpipe } = entry_type;
+        let (start_fn, start_ty, args, instance) = {
             let start_def_id = cx.tcx().require_lang_item(LangItem::Start, None);
             let start_instance = ty::Instance::expect_resolve(
                 cx.tcx(),
-                ty::ParamEnv::reveal_all(),
+                cx.typing_env(),
                 start_def_id,
                 cx.tcx().mk_args(&[main_ret_ty.into()]),
                 DUMMY_SP,
@@ -478,10 +512,6 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 vec![rust_main, arg_argc, arg_argv, arg_sigpipe],
                 Some(start_instance),
             )
-        } else {
-            debug!("using user-defined start fn");
-            let start_ty = cx.type_func(&[isize_ty, ptr_ty], isize_ty);
-            (rust_main, start_ty, vec![arg_argc, arg_argv], None)
         };
 
         let result = bx.call(start_ty, None, None, start_fn, &args, None, instance);
@@ -496,34 +526,32 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-/// Obtain the `argc` and `argv` values to pass to the rust start function.
-fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    cx: &'a Bx::CodegenCx,
-    bx: &mut Bx,
-) -> (Bx::Value, Bx::Value) {
-    if cx.sess().target.os.contains("uefi") {
+/// Obtain the `argc` and `argv` values to pass to the rust start function
+/// (i.e., the "start" lang item).
+fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(bx: &mut Bx) -> (Bx::Value, Bx::Value) {
+    if bx.cx().sess().target.os.contains("uefi") {
         // Params for UEFI
         let param_handle = bx.get_param(0);
         let param_system_table = bx.get_param(1);
         let ptr_size = bx.tcx().data_layout.pointer_size;
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
-        let arg_argc = bx.const_int(cx.type_isize(), 2);
+        let arg_argc = bx.const_int(bx.cx().type_isize(), 2);
         let arg_argv = bx.alloca(2 * ptr_size, ptr_align);
         bx.store(param_handle, arg_argv, ptr_align);
         let arg_argv_el1 = bx.inbounds_ptradd(arg_argv, bx.const_usize(ptr_size.bytes()));
         bx.store(param_system_table, arg_argv_el1, ptr_align);
         (arg_argc, arg_argv)
-    } else if cx.sess().target.main_needs_argc_argv {
+    } else if bx.cx().sess().target.main_needs_argc_argv {
         // Params from native `main()` used as args for rust start function
         let param_argc = bx.get_param(0);
         let param_argv = bx.get_param(1);
-        let arg_argc = bx.intcast(param_argc, cx.type_isize(), true);
+        let arg_argc = bx.intcast(param_argc, bx.cx().type_isize(), true);
         let arg_argv = param_argv;
         (arg_argc, arg_argv)
     } else {
         // The Rust start function doesn't need `argc` and `argv`, so just pass zeros.
-        let arg_argc = bx.const_int(cx.type_int(), 0);
-        let arg_argv = bx.const_null(cx.type_ptr());
+        let arg_argc = bx.const_int(bx.cx().type_int(), 0);
+        let arg_argv = bx.const_null(bx.cx().type_ptr());
         (arg_argc, arg_argv)
     }
 }
@@ -842,7 +870,8 @@ impl CrateInfo {
             crate_types.iter().map(|&c| (c, crate::back::linker::linked_symbols(tcx, c))).collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
         let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
-        let subsystem = attr::first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
+        let subsystem =
+            ast::attr::first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
         let windows_subsystem = subsystem.map(|subsystem| {
             if subsystem != sym::windows && subsystem != sym::console {
                 tcx.dcx().emit_fatal(errors::InvalidWindowsSubsystem { subsystem });
@@ -857,7 +886,7 @@ impl CrateInfo {
         // below.
         //
         // In order to get this left-to-right dependency ordering, we use the reverse
-        // postorder of all crates putting the leaves at the right-most positions.
+        // postorder of all crates putting the leaves at the rightmost positions.
         let mut compiler_builtins = None;
         let mut used_crates: Vec<_> = tcx
             .postorder_cnums(())
@@ -892,7 +921,7 @@ impl CrateInfo {
             crate_name: UnordMap::with_capacity(n_crates),
             used_crates,
             used_crate_source: UnordMap::with_capacity(n_crates),
-            dependency_formats: tcx.dependency_formats(()).clone(),
+            dependency_formats: Lrc::clone(tcx.dependency_formats(())),
             windows_subsystem,
             natvis_debugger_visualizers: Default::default(),
         };
@@ -905,7 +934,7 @@ impl CrateInfo {
             info.crate_name.insert(cnum, tcx.crate_name(cnum));
 
             let used_crate_source = tcx.used_crate_source(cnum);
-            info.used_crate_source.insert(cnum, used_crate_source.clone());
+            info.used_crate_source.insert(cnum, Lrc::clone(used_crate_source));
             if tcx.is_profiler_runtime(cnum) {
                 info.profiler_runtime = Some(cnum);
             }
@@ -985,7 +1014,8 @@ impl CrateInfo {
                 false
             }
             CrateType::Staticlib | CrateType::Rlib => {
-                // We don't invoke the linker for these, so we don't need to collect the NatVis for them.
+                // We don't invoke the linker for these, so we don't need to collect the NatVis for
+                // them.
                 false
             }
         });
@@ -999,7 +1029,7 @@ impl CrateInfo {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.backend_optimization_level = |tcx, cratenum| {
         let for_speed = match tcx.sess.opts.optimize {
             // If globally no optimisation is done, #[optimize] has no effect.

@@ -3,8 +3,7 @@
 // Avoid accidental synchronization via address reuse inside `thread::spawn`.
 //@compile-flags: -Zmiri-address-reuse-cross-thread-rate=0
 
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread::spawn;
 
 #[derive(Copy, Clone)]

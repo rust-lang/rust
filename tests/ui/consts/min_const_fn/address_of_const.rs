@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(raw_ref_op)]
-
 const fn const_address_of_in_const() {
     let mut a = 0;
     let b = &raw const a;

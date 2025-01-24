@@ -121,7 +121,6 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     {
         match self.try_fold(init, |b, item| Ok::<B, !>(f(b, item))) {
             Ok(b) => b,
-            Err(e) => match e {},
         }
     }
 
@@ -242,7 +241,6 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
     {
         match self.try_rfold(init, |b, item| Ok::<B, !>(f(b, item))) {
             Ok(b) => b,
-            Err(e) => match e {},
         }
     }
 }

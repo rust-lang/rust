@@ -1,4 +1,4 @@
-use hir::{DescendPreference, GenericParam};
+use hir::GenericParam;
 use ide_db::{base_db::Upcast, defs::Definition, helpers::pick_best_token, RootDatabase};
 use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, T};
 
@@ -24,9 +24,10 @@ pub(crate) fn goto_type_definition(
     let file: ast::SourceFile = sema.parse_guess_edition(file_id);
     let token: SyntaxToken =
         pick_best_token(file.syntax().token_at_offset(offset), |kind| match kind {
-            IDENT | INT_NUMBER | T![self] => 2,
+            IDENT | INT_NUMBER | T![self] => 3,
             kind if kind.is_trivia() => 0,
-            _ => 1,
+            T![;] => 1,
+            _ => 2,
         })?;
 
     let mut res = Vec::new();
@@ -69,7 +70,7 @@ pub(crate) fn goto_type_definition(
     }
 
     let range = token.text_range();
-    sema.descend_into_macros(DescendPreference::None, token)
+    sema.descend_into_macros_no_opaque(token)
         .into_iter()
         .filter_map(|token| {
             let ty = sema
@@ -118,7 +119,7 @@ mod tests {
 
     use crate::fixture;
 
-    fn check(ra_fixture: &str) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);
         let navs = analysis.goto_type_definition(position).unwrap().unwrap().info;
         assert!(!navs.is_empty(), "navigation is empty");

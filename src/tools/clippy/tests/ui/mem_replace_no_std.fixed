@@ -1,6 +1,5 @@
-#![allow(unused)]
+#![allow(unused, clippy::needless_lifetimes)]
 #![warn(
-    clippy::all,
     clippy::style,
     clippy::mem_replace_option_with_none,
     clippy::mem_replace_with_default

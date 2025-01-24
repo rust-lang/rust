@@ -98,12 +98,12 @@ pub fn read_crates(toml_path: &Path) -> (Vec<CrateWithSource>, RecursiveOptions)
     let crate_list: SourceList =
         toml::from_str(&toml_content).unwrap_or_else(|e| panic!("Failed to parse {}: \n{e}", toml_path.display()));
     // parse the hashmap of the toml file into a list of crates
-    let tomlcrates: Vec<TomlCrate> = crate_list.crates.into_values().collect();
+    let toml_crates: Vec<TomlCrate> = crate_list.crates.into_values().collect();
 
     // flatten TomlCrates into CrateSources (one TomlCrates may represent several versions of a crate =>
-    // multiple Cratesources)
+    // multiple CrateSources)
     let mut crate_sources = Vec::new();
-    for tk in tomlcrates {
+    for tk in toml_crates {
         if let Some(ref path) = tk.path {
             crate_sources.push(CrateWithSource {
                 name: tk.name.clone(),

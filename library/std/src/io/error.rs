@@ -76,31 +76,31 @@ impl fmt::Debug for Error {
 #[allow(dead_code)]
 impl Error {
     pub(crate) const INVALID_UTF8: Self =
-        const_io_error!(ErrorKind::InvalidData, "stream did not contain valid UTF-8");
+        const_error!(ErrorKind::InvalidData, "stream did not contain valid UTF-8");
 
     pub(crate) const READ_EXACT_EOF: Self =
-        const_io_error!(ErrorKind::UnexpectedEof, "failed to fill whole buffer");
+        const_error!(ErrorKind::UnexpectedEof, "failed to fill whole buffer");
 
-    pub(crate) const UNKNOWN_THREAD_COUNT: Self = const_io_error!(
+    pub(crate) const UNKNOWN_THREAD_COUNT: Self = const_error!(
         ErrorKind::NotFound,
         "The number of hardware threads is not known for the target platform"
     );
 
     pub(crate) const UNSUPPORTED_PLATFORM: Self =
-        const_io_error!(ErrorKind::Unsupported, "operation not supported on this platform");
+        const_error!(ErrorKind::Unsupported, "operation not supported on this platform");
 
     pub(crate) const WRITE_ALL_EOF: Self =
-        const_io_error!(ErrorKind::WriteZero, "failed to write whole buffer");
+        const_error!(ErrorKind::WriteZero, "failed to write whole buffer");
 
     pub(crate) const ZERO_TIMEOUT: Self =
-        const_io_error!(ErrorKind::InvalidInput, "cannot set a 0 duration timeout");
+        const_error!(ErrorKind::InvalidInput, "cannot set a 0 duration timeout");
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<alloc::ffi::NulError> for Error {
     /// Converts a [`alloc::ffi::NulError`] into a [`Error`].
     fn from(_: alloc::ffi::NulError) -> Error {
-        const_io_error!(ErrorKind::InvalidInput, "data provided contains a nul byte")
+        const_error!(ErrorKind::InvalidInput, "data provided contains a nul byte")
     }
 }
 
@@ -151,27 +151,38 @@ pub type RawOsError = sys::RawOsError;
 // (For the sake of being explicit: the alignment requirement here only matters
 // if `error/repr_bitpacked.rs` is in use — for the unpacked repr it doesn't
 // matter at all)
+#[doc(hidden)]
+#[unstable(feature = "io_const_error_internals", issue = "none")]
 #[repr(align(4))]
 #[derive(Debug)]
-pub(crate) struct SimpleMessage {
-    kind: ErrorKind,
-    message: &'static str,
+pub struct SimpleMessage {
+    pub kind: ErrorKind,
+    pub message: &'static str,
 }
 
-impl SimpleMessage {
-    pub(crate) const fn new(kind: ErrorKind, message: &'static str) -> Self {
-        Self { kind, message }
-    }
-}
-
-/// Creates and returns an `io::Error` for a given `ErrorKind` and constant
-/// message. This doesn't allocate.
-pub(crate) macro const_io_error($kind:expr, $message:expr $(,)?) {
-    $crate::io::error::Error::from_static_message({
-        const MESSAGE_DATA: $crate::io::error::SimpleMessage =
-            $crate::io::error::SimpleMessage::new($kind, $message);
-        &MESSAGE_DATA
-    })
+/// Creates a new I/O error from a known kind of error and a string literal.
+///
+/// Contrary to [`Error::new`], this macro does not allocate and can be used in
+/// `const` contexts.
+///
+/// # Example
+/// ```
+/// #![feature(io_const_error)]
+/// use std::io::{const_error, Error, ErrorKind};
+///
+/// const FAIL: Error = const_error!(ErrorKind::Unsupported, "tried something that never works");
+///
+/// fn not_here() -> Result<(), Error> {
+///     Err(FAIL)
+/// }
+/// ```
+#[rustc_macro_transparency = "semitransparent"]
+#[unstable(feature = "io_const_error", issue = "133448")]
+#[allow_internal_unstable(hint_must_use, io_const_error_internals)]
+pub macro const_error($kind:expr, $message:expr $(,)?) {
+    $crate::hint::must_use($crate::io::Error::from_static_message(
+        const { &$crate::io::SimpleMessage { kind: $kind, message: $message } },
+    ))
 }
 
 // As with `SimpleMessage`: `#[repr(align(4))]` here is just because
@@ -223,10 +234,10 @@ pub enum ErrorKind {
     #[stable(feature = "rust1", since = "1.0.0")]
     ConnectionReset,
     /// The remote host is not reachable.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     HostUnreachable,
     /// The network containing the remote host is not reachable.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     NetworkUnreachable,
     /// The connection was aborted (terminated) by the remote server.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -243,7 +254,7 @@ pub enum ErrorKind {
     #[stable(feature = "rust1", since = "1.0.0")]
     AddrNotAvailable,
     /// The system's networking is down.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     NetworkDown,
     /// The operation failed because a pipe was closed.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -259,18 +270,18 @@ pub enum ErrorKind {
     ///
     /// For example, a filesystem path was specified where one of the intermediate directory
     /// components was, in fact, a plain file.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     NotADirectory,
     /// The filesystem object is, unexpectedly, a directory.
     ///
     /// A directory was specified when a non-directory was expected.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     IsADirectory,
     /// A non-empty directory was specified where an empty directory was expected.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     DirectoryNotEmpty,
     /// The filesystem or storage medium is read-only, but a write operation was attempted.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     ReadOnlyFilesystem,
     /// Loop in the filesystem or IO subsystem; often, too many levels of symbolic links.
     ///
@@ -285,7 +296,7 @@ pub enum ErrorKind {
     ///
     /// With some network filesystems, notably NFS, an open file (or directory) can be invalidated
     /// by problems with the network or server.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     StaleNetworkFileHandle,
     /// A parameter was incorrect.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -319,46 +330,46 @@ pub enum ErrorKind {
     /// The underlying storage (typically, a filesystem) is full.
     ///
     /// This does not include out of quota errors.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     StorageFull,
     /// Seek on unseekable file.
     ///
     /// Seeking was attempted on an open file handle which is not suitable for seeking - for
     /// example, on Unix, a named pipe opened with `File::open`.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     NotSeekable,
-    /// Filesystem quota was exceeded.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    FilesystemQuotaExceeded,
+    /// Filesystem quota or some other kind of quota was exceeded.
+    #[stable(feature = "io_error_quota_exceeded", since = "1.85.0")]
+    QuotaExceeded,
     /// File larger than allowed or supported.
     ///
     /// This might arise from a hard limit of the underlying filesystem or file access API, or from
     /// an administratively imposed resource limitation.  Simple disk full, and out of quota, have
     /// their own errors.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     FileTooLarge,
     /// Resource is busy.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     ResourceBusy,
     /// Executable file is busy.
     ///
     /// An attempt was made to write to a file which is also in use as a running program.  (Not all
     /// operating systems detect this situation.)
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     ExecutableFileBusy,
     /// Deadlock (avoided).
     ///
     /// A file locking operation would result in deadlock.  This situation is typically detected, if
     /// at all, on a best-effort basis.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     Deadlock,
     /// Cross-device or cross-filesystem (hard) link or rename.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_crosses_devices", since = "1.85.0")]
     CrossesDevices,
     /// Too many (hard) links to the same filesystem object.
     ///
     /// The filesystem does not support making so many hardlinks to the same file.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     TooManyLinks,
     /// A filename was invalid.
     ///
@@ -369,7 +380,7 @@ pub enum ErrorKind {
     ///
     /// When trying to run an external program, a system or process limit on the size of the
     /// arguments would have been exceeded.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     ArgumentListTooLong,
     /// This operation was interrupted.
     ///
@@ -399,6 +410,11 @@ pub enum ErrorKind {
     /// to allocate enough memory.
     #[stable(feature = "out_of_memory_error", since = "1.54.0")]
     OutOfMemory,
+
+    /// The operation was partially successful and needs to be checked
+    /// later on due to not blocking.
+    #[unstable(feature = "io_error_inprogress", issue = "130840")]
+    InProgress,
 
     // "Unusual" error kinds which do not correspond simply to (sets
     // of) OS error codes, should be added just above this comment.
@@ -430,8 +446,8 @@ pub enum ErrorKind {
 impl ErrorKind {
     pub(crate) fn as_str(&self) -> &'static str {
         use ErrorKind::*;
-        // tidy-alphabetical-start
         match *self {
+            // tidy-alphabetical-start
             AddrInUse => "address in use",
             AddrNotAvailable => "address not available",
             AlreadyExists => "entity already exists",
@@ -444,10 +460,10 @@ impl ErrorKind {
             Deadlock => "deadlock",
             DirectoryNotEmpty => "directory not empty",
             ExecutableFileBusy => "executable file busy",
-            FileTooLarge => "file too large",
             FilesystemLoop => "filesystem loop or indirection limit (e.g. symlink loop)",
-            FilesystemQuotaExceeded => "filesystem quota exceeded",
+            FileTooLarge => "file too large",
             HostUnreachable => "host unreachable",
+            InProgress => "in progress",
             Interrupted => "operation interrupted",
             InvalidData => "invalid data",
             InvalidFilename => "invalid filename",
@@ -462,6 +478,7 @@ impl ErrorKind {
             Other => "other error",
             OutOfMemory => "out of memory",
             PermissionDenied => "permission denied",
+            QuotaExceeded => "quota exceeded",
             ReadOnlyFilesystem => "read-only filesystem or storage medium",
             ResourceBusy => "resource busy",
             StaleNetworkFileHandle => "stale network file handle",
@@ -473,8 +490,8 @@ impl ErrorKind {
             Unsupported => "unsupported",
             WouldBlock => "operation would block",
             WriteZero => "write zero",
+            // tidy-alphabetical-end
         }
-        // tidy-alphabetical-end
     }
 }
 
@@ -586,13 +603,15 @@ impl Error {
     ///
     /// This function does not allocate.
     ///
-    /// You should not use this directly, and instead use the `const_io_error!`
-    /// macro: `io::const_io_error!(ErrorKind::Something, "some_message")`.
+    /// You should not use this directly, and instead use the `const_error!`
+    /// macro: `io::const_error!(ErrorKind::Something, "some_message")`.
     ///
     /// This function should maybe change to `from_static_message<const MSG: &'static
     /// str>(kind: ErrorKind)` in the future, when const generics allow that.
     #[inline]
-    pub(crate) const fn from_static_message(msg: &'static SimpleMessage) -> Error {
+    #[doc(hidden)]
+    #[unstable(feature = "io_const_error_internals", issue = "none")]
+    pub const fn from_static_message(msg: &'static SimpleMessage) -> Error {
         Self { repr: Repr::new_simple_message(msg) }
     }
 
@@ -812,10 +831,12 @@ impl Error {
 
     /// Consumes the `Error`, returning its inner error (if any).
     ///
-    /// If this [`Error`] was constructed via [`new`] then this function will
-    /// return [`Some`], otherwise it will return [`None`].
+    /// If this [`Error`] was constructed via [`new`] or [`other`],
+    /// then this function will return [`Some`],
+    /// otherwise it will return [`None`].
     ///
     /// [`new`]: Error::new
+    /// [`other`]: Error::other
     ///
     /// # Examples
     ///

@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(raw_ref_op)]
-
 fn raw_reborrow() {
     let x = &0;
     let y = &mut 0;

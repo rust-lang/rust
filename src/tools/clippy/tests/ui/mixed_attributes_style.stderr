@@ -46,13 +46,14 @@ error: item has both inner and outer attributes
   --> tests/ui/mixed_attributes_style.rs:85:5
    |
 LL | /     /// Nested mod
+LL | |
 LL | |     #[allow(unused)]
 LL | |     mod nest_mod_2 {
 LL | |         #![allow(unused)]
    | |_________________________^
 
 error: item has both inner and outer attributes
-  --> tests/ui/mixed_attributes_style.rs:90:9
+  --> tests/ui/mixed_attributes_style.rs:91:9
    |
 LL | /         #[allow(dead_code)]
 LL | |         mod inner_mod {

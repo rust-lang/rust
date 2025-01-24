@@ -9,16 +9,16 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AssocItem, Ty, TypeFoldable, TypeVisitableExt};
-use rustc_span::symbol::sym;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCause;
+use tracing::instrument;
 
 use super::method::probe;
 use crate::FnCtxt;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn emit_type_mismatch_suggestions(
+    pub(crate) fn emit_type_mismatch_suggestions(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
@@ -30,7 +30,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if expr_ty == expected {
             return;
         }
-
         self.annotate_alternative_method_deref(err, expr, error);
         self.explain_self_literal(err, expr, expected, expr_ty);
 
@@ -39,6 +38,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_missing_unwrap_expect(err, expr, expected, expr_ty)
             || self.suggest_remove_last_method_call(err, expr, expected)
             || self.suggest_associated_const(err, expr, expected)
+            || self.suggest_semicolon_in_repeat_expr(err, expr, expr_ty)
             || self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr)
             || self.suggest_option_to_bool(err, expr, expr_ty, expected)
             || self.suggest_compatible_variants(err, expr, expected, expr_ty)
@@ -70,7 +70,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn emit_coerce_suggestions(
+    pub(crate) fn emit_coerce_suggestions(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
@@ -85,6 +85,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.annotate_expected_due_to_let_ty(err, expr, error);
         self.annotate_loop_expected_due_to_inference(err, expr, error);
+        if self.annotate_mut_binding_to_immutable_binding(err, expr, error) {
+            return;
+        }
 
         // FIXME(#73154): For now, we do leak check when coercing function
         // pointers in typeck, instead of only during borrowck. This can lead
@@ -165,13 +168,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Requires that the two types unify, and prints an error message if
     /// they don't.
-    pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
+    pub(crate) fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
         if let Err(e) = self.demand_suptype_diag(sp, expected, actual) {
             e.emit();
         }
     }
 
-    pub fn demand_suptype_diag(
+    pub(crate) fn demand_suptype_diag(
         &'a self,
         sp: Span,
         expected: Ty<'tcx>,
@@ -181,7 +184,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    pub fn demand_suptype_with_origin(
+    pub(crate) fn demand_suptype_with_origin(
         &'a self,
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
@@ -190,16 +193,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.at(cause, self.param_env)
             .sup(DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
-            .map_err(|e| self.err_ctxt().report_mismatched_types(cause, expected, actual, e))
+            .map_err(|e| {
+                self.err_ctxt().report_mismatched_types(cause, self.param_env, expected, actual, e)
+            })
     }
 
-    pub fn demand_eqtype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
+    pub(crate) fn demand_eqtype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
         if let Err(err) = self.demand_eqtype_diag(sp, expected, actual) {
             err.emit();
         }
     }
 
-    pub fn demand_eqtype_diag(
+    pub(crate) fn demand_eqtype_diag(
         &'a self,
         sp: Span,
         expected: Ty<'tcx>,
@@ -208,7 +213,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.demand_eqtype_with_origin(&self.misc(sp), expected, actual)
     }
 
-    pub fn demand_eqtype_with_origin(
+    pub(crate) fn demand_eqtype_with_origin(
         &'a self,
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
@@ -217,10 +222,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.at(cause, self.param_env)
             .eq(DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
-            .map_err(|e| self.err_ctxt().report_mismatched_types(cause, expected, actual, e))
+            .map_err(|e| {
+                self.err_ctxt().report_mismatched_types(cause, self.param_env, expected, actual, e)
+            })
     }
 
-    pub fn demand_coerce(
+    pub(crate) fn demand_coerce(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         checked_ty: Ty<'tcx>,
@@ -246,7 +253,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// N.B., this code relies on `self.diverges` to be accurate. In particular, assignments to `!`
     /// will be permitted if the diverges flag is currently "always".
     #[instrument(level = "debug", skip(self, expr, expected_ty_expr, allow_two_phase))]
-    pub fn demand_coerce_diag(
+    pub(crate) fn demand_coerce_diag(
         &'a self,
         mut expr: &'tcx hir::Expr<'tcx>,
         checked_ty: Ty<'tcx>,
@@ -270,7 +277,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr = expr.peel_drop_temps();
         let cause = self.misc(expr.span);
         let expr_ty = self.resolve_vars_if_possible(checked_ty);
-        let mut err = self.err_ctxt().report_mismatched_types(&cause, expected, expr_ty, e);
+        let mut err =
+            self.err_ctxt().report_mismatched_types(&cause, self.param_env, expected, expr_ty, e);
 
         self.emit_coerce_suggestions(&mut err, expr, expr_ty, expected, expected_ty_expr, Some(e));
 
@@ -279,7 +287,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Notes the point at which a variable is constrained to some type incompatible
     /// with some expectation given by `source`.
-    pub fn note_source_of_type_mismatch_constraint(
+    pub(crate) fn note_source_of_type_mismatch_constraint(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
@@ -558,7 +566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     // When encountering a type error on the value of a `break`, try to point at the reason for the
     // expected type.
-    pub fn annotate_loop_expected_due_to_inference(
+    pub(crate) fn annotate_loop_expected_due_to_inference(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
@@ -790,6 +798,98 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Detect the following case
+    ///
+    /// ```text
+    /// fn change_object(mut a: &Ty) {
+    ///     let a = Ty::new();
+    ///     b = a;
+    /// }
+    /// ```
+    ///
+    /// where the user likely meant to modify the value behind there reference, use `a` as an out
+    /// parameter, instead of mutating the local binding. When encountering this we suggest:
+    ///
+    /// ```text
+    /// fn change_object(a: &'_ mut Ty) {
+    ///     let a = Ty::new();
+    ///     *b = a;
+    /// }
+    /// ```
+    fn annotate_mut_binding_to_immutable_binding(
+        &self,
+        err: &mut Diag<'_>,
+        expr: &hir::Expr<'_>,
+        error: Option<TypeError<'tcx>>,
+    ) -> bool {
+        if let Some(TypeError::Sorts(ExpectedFound { expected, found })) = error
+            && let ty::Ref(_, inner, hir::Mutability::Not) = expected.kind()
+
+            // The difference between the expected and found values is one level of borrowing.
+            && self.can_eq(self.param_env, *inner, found)
+
+            // We have an `ident = expr;` assignment.
+            && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Assign(lhs, rhs, _), .. }) =
+                self.tcx.parent_hir_node(expr.hir_id)
+            && rhs.hir_id == expr.hir_id
+
+            // We are assigning to some binding.
+            && let hir::ExprKind::Path(hir::QPath::Resolved(
+                None,
+                hir::Path { res: hir::def::Res::Local(hir_id), .. },
+            )) = lhs.kind
+            && let hir::Node::Pat(pat) = self.tcx.hir_node(*hir_id)
+
+            // The pattern we have is an fn argument.
+            && let hir::Node::Param(hir::Param { ty_span, .. }) =
+                self.tcx.parent_hir_node(pat.hir_id)
+            && let item = self.tcx.hir().get_parent_item(pat.hir_id)
+            && let item = self.tcx.hir_owner_node(item)
+            && let Some(fn_decl) = item.fn_decl()
+
+            // We have a mutable binding in the argument.
+            && let hir::PatKind::Binding(hir::BindingMode::MUT, _hir_id, ident, _) = pat.kind
+
+            // Look for the type corresponding to the argument pattern we have in the argument list.
+            && let Some(ty_sugg) = fn_decl
+                .inputs
+                .iter()
+                .filter_map(|ty| {
+                    if ty.span == *ty_span
+                        && let hir::TyKind::Ref(lt, x) = ty.kind
+                    {
+                        // `&'name Ty` -> `&'name mut Ty` or `&Ty` -> `&mut Ty`
+                        Some((
+                            x.ty.span.shrink_to_lo(),
+                            format!(
+                                "{}mut ",
+                                if lt.ident.span.lo() == lt.ident.span.hi() { "" } else { " " }
+                            ),
+                        ))
+                    } else {
+                        None
+                    }
+                })
+                .next()
+        {
+            let sugg = vec![
+                ty_sugg,
+                (pat.span.until(ident.span), String::new()),
+                (lhs.span.shrink_to_lo(), "*".to_string()),
+            ];
+            // We suggest changing the argument from `mut ident: &Ty` to `ident: &'_ mut Ty` and the
+            // assignment from `ident = val;` to `*ident = val;`.
+            err.multipart_suggestion_verbose(
+                "you might have meant to mutate the pointed at value being passed in, instead of \
+                changing the reference in the local binding",
+                sugg,
+                Applicability::MaybeIncorrect,
+            );
+            return true;
+        }
+        false
+    }
+
     fn annotate_alternative_method_deref(
         &self,
         err: &mut Diag<'_>,
@@ -911,7 +1011,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             [candidate] => format!(
                 "the method of the same name on {} `{}`",
                 match candidate.kind {
-                    probe::CandidateKind::InherentImplCandidate(_) => "the inherent impl for",
+                    probe::CandidateKind::InherentImplCandidate { .. } => "the inherent impl for",
                     _ => "trait",
                 },
                 self.tcx.def_path_str(candidate.item.container_id(self.tcx))
@@ -964,7 +1064,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
     }
 
-    pub fn get_conversion_methods_for_diagnostic(
+    pub(crate) fn get_conversion_methods_for_diagnostic(
         &self,
         span: Span,
         expected: Ty<'tcx>,
@@ -1041,7 +1141,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     fn explain_self_literal(
@@ -1112,7 +1212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Constructor,
         }
         let mut maybe_emit_help = |def_id: hir::def_id::DefId,
-                                   callable: rustc_span::symbol::Ident,
+                                   callable: Ident,
                                    args: &[hir::Expr<'_>],
                                    kind: CallableKind| {
             let arg_idx = args.iter().position(|a| a.hir_id == expr.hir_id).unwrap();
@@ -1186,7 +1286,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-pub enum TypeMismatchSource<'tcx> {
+pub(crate) enum TypeMismatchSource<'tcx> {
     /// Expected the binding to have the given type, but it was found to have
     /// a different type. Find out when that type first became incompatible.
     Ty(Ty<'tcx>),

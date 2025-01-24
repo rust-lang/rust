@@ -5,7 +5,7 @@
 
 use std::fmt::{self, Write};
 
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 #[derive(Default)]
 struct CountingWriter {

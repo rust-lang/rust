@@ -2,7 +2,7 @@
 
 use core::marker::PhantomPinned;
 use core::mem::{drop as stuff, transmute};
-use core::pin::{pin, Pin};
+use core::pin::{Pin, pin};
 
 #[test]
 fn basic() {

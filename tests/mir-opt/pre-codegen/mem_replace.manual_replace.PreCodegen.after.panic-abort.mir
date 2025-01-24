@@ -9,8 +9,8 @@ fn manual_replace(_1: &mut u32, _2: u32) -> u32 {
     }
 
     bb0: {
-        _0 = (*_1);
-        (*_1) = _2;
+        _0 = copy (*_1);
+        (*_1) = copy _2;
         return;
     }
 }

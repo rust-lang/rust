@@ -18,21 +18,14 @@
 #![allow(rustc::untranslatable_diagnostic)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(box_patterns)]
-#![feature(control_flow_enum)]
+#![feature(assert_matches)]
 #![feature(extend_one)]
-#![feature(if_let_guard)]
-#![feature(iter_intersperse)]
 #![feature(iterator_try_collect)]
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
-#![feature(try_blocks)]
-#![feature(yeet_expr)]
 #![recursion_limit = "512"] // For rustdoc
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
-
-#[macro_use]
-extern crate tracing;
 
 mod errors;
 pub mod infer;

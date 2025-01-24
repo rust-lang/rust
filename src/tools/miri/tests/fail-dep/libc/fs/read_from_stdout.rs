@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-disable-isolation
-//@ignore-target-windows: No libc IO on Windows
+//@ignore-target: windows # No libc IO on Windows
 
 fn main() -> std::io::Result<()> {
     let mut bytes = [0u8; 512];

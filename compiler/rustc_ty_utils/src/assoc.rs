@@ -4,10 +4,9 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, ImplTraitInTraitData, Ty, TyCtxt};
+use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::sym;
-use rustc_span::symbol::kw;
+use rustc_span::kw;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
@@ -15,7 +14,6 @@ pub(crate) fn provide(providers: &mut Providers) {
         associated_item_def_ids,
         associated_items,
         associated_types_for_impl_traits_in_associated_fn,
-        associated_type_for_effects,
         associated_type_for_impl_trait_in_trait,
         impl_item_implementor_ids,
         ..*providers
@@ -46,8 +44,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
                                 )
                             })
                             .copied(),
-                    )
-                    .chain(tcx.associated_type_for_effects(def_id)),
+                    ),
             )
         }
         hir::ItemKind::Impl(impl_) => {
@@ -73,8 +70,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
                                 )
                             })
                             .copied()
-                    }))
-                    .chain(tcx.associated_type_for_effects(def_id)),
+                    })),
             )
         }
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait"),
@@ -144,10 +140,9 @@ fn associated_item_from_trait_item_ref(trait_item_ref: &hir::TraitItemRef) -> ty
         kind,
         def_id: owner_id.to_def_id(),
         trait_item_def_id: Some(owner_id.to_def_id()),
-        container: ty::TraitContainer,
+        container: ty::AssocItemContainer::Trait,
         fn_has_self_parameter: has_self,
         opt_rpitit_info: None,
-        is_effects_desugaring: false,
     }
 }
 
@@ -164,139 +159,10 @@ fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::A
         kind,
         def_id: def_id.to_def_id(),
         trait_item_def_id: impl_item_ref.trait_item_def_id,
-        container: ty::ImplContainer,
+        container: ty::AssocItemContainer::Impl,
         fn_has_self_parameter: has_self,
         opt_rpitit_info: None,
-        is_effects_desugaring: false,
     }
-}
-
-/// Given an `def_id` of a trait or a trait impl:
-///
-/// If `def_id` is a trait that has `#[const_trait]`, then it synthesizes
-/// a new def id corresponding to a new associated type for the effects.
-///
-/// If `def_id` is an impl, then synthesize the associated type according
-/// to the constness of the impl.
-fn associated_type_for_effects(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<DefId> {
-    // don't synthesize the associated type even if the user has written `const_trait`
-    // if the effects feature is disabled.
-    if !tcx.features().effects {
-        return None;
-    }
-    let (feed, parent_did) = match tcx.def_kind(def_id) {
-        DefKind::Trait => {
-            let trait_def_id = def_id;
-            let attr = tcx.get_attr(def_id, sym::const_trait)?;
-
-            let span = attr.span;
-            let trait_assoc_ty = tcx.at(span).create_def(trait_def_id, kw::Empty, DefKind::AssocTy);
-
-            let local_def_id = trait_assoc_ty.def_id();
-            let def_id = local_def_id.to_def_id();
-
-            // Copy span of the attribute.
-            trait_assoc_ty.def_ident_span(Some(span));
-
-            trait_assoc_ty.associated_item(ty::AssocItem {
-                name: kw::Empty,
-                kind: ty::AssocKind::Type,
-                def_id,
-                trait_item_def_id: None,
-                container: ty::TraitContainer,
-                fn_has_self_parameter: false,
-                opt_rpitit_info: None,
-                is_effects_desugaring: true,
-            });
-
-            // No default type
-            trait_assoc_ty.defaultness(hir::Defaultness::Default { has_value: false });
-
-            trait_assoc_ty.is_type_alias_impl_trait(false);
-
-            (trait_assoc_ty, trait_def_id)
-        }
-        DefKind::Impl { .. } => {
-            let impl_def_id = def_id;
-            let trait_id = tcx.trait_id_of_impl(def_id.to_def_id())?;
-
-            // first get the DefId of the assoc type on the trait, if there is not,
-            // then we don't need to generate it on the impl.
-            let trait_assoc_id = tcx.associated_type_for_effects(trait_id)?;
-
-            // FIXME(effects): span
-            let span = tcx.def_ident_span(def_id).unwrap();
-
-            let impl_assoc_ty = tcx.at(span).create_def(def_id, kw::Empty, DefKind::AssocTy);
-
-            let local_def_id = impl_assoc_ty.def_id();
-            let def_id = local_def_id.to_def_id();
-
-            impl_assoc_ty.def_ident_span(Some(span));
-
-            impl_assoc_ty.associated_item(ty::AssocItem {
-                name: kw::Empty,
-                kind: ty::AssocKind::Type,
-                def_id,
-                trait_item_def_id: Some(trait_assoc_id),
-                container: ty::ImplContainer,
-                fn_has_self_parameter: false,
-                opt_rpitit_info: None,
-                is_effects_desugaring: true,
-            });
-
-            // no default value.
-            impl_assoc_ty.defaultness(hir::Defaultness::Final);
-
-            // set the type of the associated type! If this is a const impl,
-            // we set to Maybe, otherwise we set to `Runtime`.
-            let type_def_id = if tcx.is_const_trait_impl_raw(impl_def_id.to_def_id()) {
-                tcx.require_lang_item(hir::LangItem::EffectsMaybe, Some(span))
-            } else {
-                tcx.require_lang_item(hir::LangItem::EffectsRuntime, Some(span))
-            };
-            // FIXME(effects): make impls use `Min` for their effect types
-            impl_assoc_ty.type_of(ty::EarlyBinder::bind(Ty::new_adt(
-                tcx,
-                tcx.adt_def(type_def_id),
-                ty::GenericArgs::empty(),
-            )));
-
-            (impl_assoc_ty, impl_def_id)
-        }
-        def_kind => bug!(
-            "associated_type_for_effects: {:?} should be Trait or Impl but is {:?}",
-            def_id,
-            def_kind
-        ),
-    };
-
-    feed.feed_hir();
-
-    // visibility is public.
-    feed.visibility(ty::Visibility::Public);
-
-    // Copy generics_of of the trait/impl, making the trait/impl as parent.
-    feed.generics_of({
-        let parent_generics = tcx.generics_of(parent_did);
-        let parent_count = parent_generics.parent_count + parent_generics.own_params.len();
-
-        ty::Generics {
-            parent: Some(parent_did.to_def_id()),
-            parent_count,
-            own_params: vec![],
-            param_def_id_to_index: parent_generics.param_def_id_to_index.clone(),
-            has_self: false,
-            has_late_bound_regions: None,
-            host_effect_index: parent_generics.host_effect_index,
-        }
-    });
-    feed.explicit_item_super_predicates(ty::EarlyBinder::bind(&[]));
-
-    // There are no inferred outlives for the synthesized associated type.
-    feed.inferred_outlives_of(&[]);
-
-    Some(feed.def_id().to_def_id())
 }
 
 /// Given an `fn_def_id` of a trait or a trait implementation:
@@ -316,19 +182,16 @@ fn associated_types_for_impl_traits_in_associated_fn(
 
     match tcx.def_kind(parent_def_id) {
         DefKind::Trait => {
-            struct RPITVisitor<'tcx> {
+            struct RPITVisitor {
                 rpits: FxIndexSet<LocalDefId>,
-                tcx: TyCtxt<'tcx>,
             }
 
-            impl<'tcx> Visitor<'tcx> for RPITVisitor<'tcx> {
+            impl<'tcx> Visitor<'tcx> for RPITVisitor {
                 fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
-                    if let hir::TyKind::OpaqueDef(item_id, _, _) = ty.kind
-                        && self.rpits.insert(item_id.owner_id.def_id)
+                    if let hir::TyKind::OpaqueDef(opaq) = ty.kind
+                        && self.rpits.insert(opaq.def_id)
                     {
-                        let opaque_item =
-                            self.tcx.hir().expect_item(item_id.owner_id.def_id).expect_opaque_ty();
-                        for bound in opaque_item.bounds {
+                        for bound in opaq.bounds {
                             intravisit::walk_param_bound(self, bound);
                         }
                     }
@@ -336,7 +199,7 @@ fn associated_types_for_impl_traits_in_associated_fn(
                 }
             }
 
-            let mut visitor = RPITVisitor { tcx, rpits: FxIndexSet::default() };
+            let mut visitor = RPITVisitor { rpits: FxIndexSet::default() };
 
             if let Some(output) = tcx.hir().get_fn_output(fn_def_id) {
                 visitor.visit_fn_ret_ty(output);
@@ -379,8 +242,9 @@ fn associated_type_for_impl_trait_in_trait(
     tcx: TyCtxt<'_>,
     opaque_ty_def_id: LocalDefId,
 ) -> LocalDefId {
-    let (hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id)) =
-        tcx.opaque_type_origin(opaque_ty_def_id)
+    let (hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, .. }
+    | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id, .. }) =
+        tcx.local_opaque_ty_origin(opaque_ty_def_id)
     else {
         bug!("expected opaque for {opaque_ty_def_id:?}");
     };
@@ -403,13 +267,12 @@ fn associated_type_for_impl_trait_in_trait(
         kind: ty::AssocKind::Type,
         def_id,
         trait_item_def_id: None,
-        container: ty::TraitContainer,
+        container: ty::AssocItemContainer::Trait,
         fn_has_self_parameter: false,
         opt_rpitit_info: Some(ImplTraitInTraitData::Trait {
             fn_def_id: fn_def_id.to_def_id(),
             opaque_def_id: opaque_ty_def_id.to_def_id(),
         }),
-        is_effects_desugaring: false,
     });
 
     // Copy visility of the containing function.
@@ -417,8 +280,6 @@ fn associated_type_for_impl_trait_in_trait(
 
     // Copy defaultness of the containing function.
     trait_assoc_ty.defaultness(tcx.defaultness(fn_def_id));
-
-    trait_assoc_ty.is_type_alias_impl_trait(false);
 
     // There are no inferred outlives for the synthesized associated type.
     trait_assoc_ty.inferred_outlives_of(&[]);
@@ -458,10 +319,9 @@ fn associated_type_for_impl_trait_in_impl(
         kind: ty::AssocKind::Type,
         def_id,
         trait_item_def_id: Some(trait_assoc_def_id),
-        container: ty::ImplContainer,
+        container: ty::AssocItemContainer::Impl,
         fn_has_self_parameter: false,
         opt_rpitit_info: Some(ImplTraitInTraitData::Impl { fn_def_id: impl_fn_def_id.to_def_id() }),
-        is_effects_desugaring: false,
     });
 
     // Copy visility of the containing function.
@@ -496,7 +356,6 @@ fn associated_type_for_impl_trait_in_impl(
             param_def_id_to_index,
             has_self: false,
             has_late_bound_regions: trait_assoc_generics.has_late_bound_regions,
-            host_effect_index: parent_generics.host_effect_index,
         }
     });
 

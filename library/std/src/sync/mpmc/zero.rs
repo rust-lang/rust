@@ -9,8 +9,8 @@ use super::utils::Backoff;
 use super::waker::Waker;
 use crate::cell::UnsafeCell;
 use crate::marker::PhantomData;
-use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::Mutex;
+use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::time::Instant;
 use crate::{fmt, ptr};
 
@@ -185,16 +185,13 @@ impl<T> Channel<T> {
             // Prepare for blocking until a receiver wakes us up.
             let oper = Operation::hook(token);
             let mut packet = Packet::<T>::message_on_stack(msg);
-            inner.senders.register_with_packet(
-                oper,
-                core::ptr::addr_of_mut!(packet) as *mut (),
-                cx,
-            );
+            inner.senders.register_with_packet(oper, (&raw mut packet) as *mut (), cx);
             inner.receivers.notify();
             drop(inner);
 
             // Block the current thread.
-            let sel = cx.wait_until(deadline);
+            // SAFETY: the context belongs to the current thread.
+            let sel = unsafe { cx.wait_until(deadline) };
 
             match sel {
                 Selected::Waiting => unreachable!(),
@@ -256,16 +253,13 @@ impl<T> Channel<T> {
             // Prepare for blocking until a sender wakes us up.
             let oper = Operation::hook(token);
             let mut packet = Packet::<T>::empty_on_stack();
-            inner.receivers.register_with_packet(
-                oper,
-                core::ptr::addr_of_mut!(packet) as *mut (),
-                cx,
-            );
+            inner.receivers.register_with_packet(oper, (&raw mut packet) as *mut (), cx);
             inner.senders.notify();
             drop(inner);
 
             // Block the current thread.
-            let sel = cx.wait_until(deadline);
+            // SAFETY: the context belongs to the current thread.
+            let sel = unsafe { cx.wait_until(deadline) };
 
             match sel {
                 Selected::Waiting => unreachable!(),

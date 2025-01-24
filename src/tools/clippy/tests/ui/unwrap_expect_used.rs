@@ -31,7 +31,7 @@ fn main() {
 
     // Don't trigger on unwrap_err on an option
     Some(3).unwrap_err();
-    Some(3).expect_err("Hellow none!");
+    Some(3).expect_err("Hello none!");
 
     // Issue #11245: The `Err` variant can never be constructed so do not lint this.
     let x: Result<(), !> = Ok(());

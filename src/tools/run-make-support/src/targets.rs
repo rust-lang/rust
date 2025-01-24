@@ -28,6 +28,30 @@ pub fn is_darwin() -> bool {
     target().contains("darwin")
 }
 
+/// Check if target uses AIX.
+#[must_use]
+pub fn is_aix() -> bool {
+    target().contains("aix")
+}
+
+/// Get the target OS on Apple operating systems.
+#[must_use]
+pub fn apple_os() -> &'static str {
+    if target().contains("darwin") {
+        "macos"
+    } else if target().contains("ios") {
+        "ios"
+    } else if target().contains("tvos") {
+        "tvos"
+    } else if target().contains("watchos") {
+        "watchos"
+    } else if target().contains("visionos") {
+        "visionos"
+    } else {
+        panic!("not an Apple OS")
+    }
+}
+
 /// Check if `component` is within `LLVM_COMPONENTS`
 #[must_use]
 pub fn llvm_components_contain(component: &str) -> bool {

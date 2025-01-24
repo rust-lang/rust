@@ -1,18 +1,18 @@
 //@ only-aarch64
 //@ compile-flags: -C target-feature=+neon
 
-#![feature(repr_simd, asm_const)]
+#![feature(repr_simd)]
 
 use std::arch::aarch64::float64x2_t;
 use std::arch::{asm, global_asm};
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
-struct Simd256bit(f64, f64, f64, f64);
+struct Simd256bit([f64; 4]);
 
 fn main() {
     let f64x2: float64x2_t = unsafe { std::mem::transmute(0i128) };
-    let f64x4 = Simd256bit(0.0, 0.0, 0.0, 0.0);
+    let f64x4 = Simd256bit([0.0, 0.0, 0.0, 0.0]);
 
     unsafe {
         // Types must be listed in the register class.

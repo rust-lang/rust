@@ -1,17 +1,17 @@
 use crate::abi::Endian;
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "mipsisa64r6-unknown-linux-gnuabi64".into(),
         metadata: crate::spec::TargetMetadata {
             description: Some("64-bit MIPS Release 6 Big Endian".into()),
             tier: Some(3),
             host_tools: Some(false),
-            std: None, // ?
+            std: Some(true),
         },
         pointer_width: 64,
-        data_layout: "E-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128".into(),
+        data_layout: "E-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".into(),
         arch: "mips64r6".into(),
         options: TargetOptions {
             abi: "abi64".into(),

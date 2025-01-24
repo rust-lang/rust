@@ -17,12 +17,12 @@ use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::middle::region::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::lint;
 use rustc_span::source_map;
-
-use super::errs::{maybe_expr_static_mut, maybe_stmt_static_mut};
+use tracing::debug;
 
 #[derive(Debug, Copy, Clone)]
-pub struct Context {
+struct Context {
     /// The scope that contains any new variables declared, plus its depth in
     /// the scope tree.
     var_parent: Option<(Scope, ScopeDepth)>,
@@ -31,7 +31,7 @@ pub struct Context {
     parent: Option<(Scope, ScopeDepth)>,
 }
 
-struct RegionResolutionVisitor<'tcx> {
+struct ScopeResolutionVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 
     // The number of expressions and patterns visited in the current body.
@@ -71,7 +71,7 @@ struct RegionResolutionVisitor<'tcx> {
 }
 
 /// Records the lifetime of a local variable as `cx.var_parent`
-fn record_var_lifetime(visitor: &mut RegionResolutionVisitor<'_>, var_id: hir::ItemLocalId) {
+fn record_var_lifetime(visitor: &mut ScopeResolutionVisitor<'_>, var_id: hir::ItemLocalId) {
     match visitor.cx.var_parent {
         None => {
             // this can happen in extern fn declarations like
@@ -82,7 +82,7 @@ fn record_var_lifetime(visitor: &mut RegionResolutionVisitor<'_>, var_id: hir::I
     }
 }
 
-fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx hir::Block<'tcx>) {
+fn resolve_block<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, blk: &'tcx hir::Block<'tcx>) {
     debug!("resolve_block(blk.hir_id={:?})", blk.hir_id);
 
     let prev_cx = visitor.cx;
@@ -129,7 +129,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
                     let mut prev_cx = visitor.cx;
 
                     visitor.enter_scope(Scope {
-                        id: blk.hir_id.local_id,
+                        local_id: blk.hir_id.local_id,
                         data: ScopeData::Remainder(FirstStatementIndex::new(i)),
                     });
                     visitor.cx.var_parent = visitor.cx.parent;
@@ -154,7 +154,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
                     // the first such subscope, which has the block itself as a
                     // parent.
                     visitor.enter_scope(Scope {
-                        id: blk.hir_id.local_id,
+                        local_id: blk.hir_id.local_id,
                         data: ScopeData::Remainder(FirstStatementIndex::new(i)),
                     });
                     visitor.cx.var_parent = visitor.cx.parent;
@@ -168,10 +168,23 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
             }
         }
         if let Some(tail_expr) = blk.expr {
-            if visitor.tcx.features().shorter_tail_lifetimes
-                && blk.span.edition().at_least_rust_2024()
+            let local_id = tail_expr.hir_id.local_id;
+            let edition = blk.span.edition();
+            if edition.at_least_rust_2024() {
+                visitor.terminating_scopes.insert(local_id);
+            } else if !visitor
+                .tcx
+                .lints_that_dont_need_to_run(())
+                .contains(&lint::LintId::of(lint::builtin::TAIL_EXPR_DROP_ORDER))
             {
-                visitor.terminating_scopes.insert(tail_expr.hir_id.local_id);
+                // If this temporary scope will be changing once the codebase adopts Rust 2024,
+                // and we are linting about possible semantic changes that would result,
+                // then record this node-id in the field `backwards_incompatible_scope`
+                // for future reference.
+                visitor
+                    .scope_tree
+                    .backwards_incompatible_scope
+                    .insert(local_id, Scope { local_id, data: ScopeData::Node });
             }
             visitor.visit_expr(tail_expr);
         }
@@ -180,7 +193,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
     visitor.cx = prev_cx;
 }
 
-fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
+fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
     fn has_let_expr(expr: &Expr<'_>) -> bool {
         match &expr.kind {
             hir::ExprKind::Binary(_, lhs, rhs) => has_let_expr(lhs) || has_let_expr(rhs),
@@ -207,8 +220,8 @@ fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir
     visitor.cx = prev_cx;
 }
 
-fn resolve_pat<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, pat: &'tcx hir::Pat<'tcx>) {
-    visitor.record_child_scope(Scope { id: pat.hir_id.local_id, data: ScopeData::Node });
+fn resolve_pat<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, pat: &'tcx hir::Pat<'tcx>) {
+    visitor.record_child_scope(Scope { local_id: pat.hir_id.local_id, data: ScopeData::Node });
 
     // If this is a binding then record the lifetime of that binding.
     if let PatKind::Binding(..) = pat.kind {
@@ -224,11 +237,9 @@ fn resolve_pat<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, pat: &'tcx hir
     debug!("resolve_pat - post-increment {} pat = {:?}", visitor.expr_and_pat_count, pat);
 }
 
-fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx hir::Stmt<'tcx>) {
+fn resolve_stmt<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, stmt: &'tcx hir::Stmt<'tcx>) {
     let stmt_id = stmt.hir_id.local_id;
     debug!("resolve_stmt(stmt.id={:?})", stmt_id);
-
-    maybe_stmt_static_mut(visitor.tcx, *stmt);
 
     // Every statement will clean up the temporaries created during
     // execution of that statement. Therefore each statement has an
@@ -245,10 +256,8 @@ fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx h
     visitor.cx.parent = prev_parent;
 }
 
-fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
+fn resolve_expr<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
     debug!("resolve_expr - pre-increment {} expr = {:?}", visitor.expr_and_pat_count, expr);
-
-    maybe_expr_static_mut(visitor.tcx, *expr);
 
     let prev_cx = visitor.cx;
     visitor.enter_node_scope_with_dtor(expr.hir_id.local_id);
@@ -411,10 +420,10 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
     // properly, we can't miss any types.
 
     match expr.kind {
-        // Manually recurse over closures and inline consts, because they are the only
-        // case of nested bodies that share the parent environment.
-        hir::ExprKind::Closure(&hir::Closure { body, .. })
-        | hir::ExprKind::ConstBlock(hir::ConstBlock { body, .. }) => {
+        // Manually recurse over closures, because they are nested bodies
+        // that share the parent environment. We handle const blocks in
+        // `visit_inline_const`.
+        hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
             let body = visitor.tcx.hir().body(body);
             visitor.visit_body(body);
         }
@@ -471,7 +480,12 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
         hir::ExprKind::If(cond, then, Some(otherwise)) => {
             let expr_cx = visitor.cx;
-            visitor.enter_scope(Scope { id: then.hir_id.local_id, data: ScopeData::IfThen });
+            let data = if expr.span.at_least_rust_2024() {
+                ScopeData::IfThenRescope
+            } else {
+                ScopeData::IfThen
+            };
+            visitor.enter_scope(Scope { local_id: then.hir_id.local_id, data });
             visitor.cx.var_parent = visitor.cx.parent;
             visitor.visit_expr(cond);
             visitor.visit_expr(then);
@@ -481,7 +495,12 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
         hir::ExprKind::If(cond, then, None) => {
             let expr_cx = visitor.cx;
-            visitor.enter_scope(Scope { id: then.hir_id.local_id, data: ScopeData::IfThen });
+            let data = if expr.span.at_least_rust_2024() {
+                ScopeData::IfThenRescope
+            } else {
+                ScopeData::IfThen
+            };
+            visitor.enter_scope(Scope { local_id: then.hir_id.local_id, data });
             visitor.cx.var_parent = visitor.cx.parent;
             visitor.visit_expr(cond);
             visitor.visit_expr(then);
@@ -497,7 +516,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
     if let hir::ExprKind::Yield(_, source) = &expr.kind {
         // Mark this expr's scope and all parent scopes as containing `yield`.
-        let mut scope = Scope { id: expr.hir_id.local_id, data: ScopeData::Node };
+        let mut scope = Scope { local_id: expr.hir_id.local_id, data: ScopeData::Node };
         loop {
             let span = match expr.kind {
                 hir::ExprKind::Yield(expr, hir::YieldSource::Await { .. }) => {
@@ -535,7 +554,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 }
 
 fn resolve_local<'tcx>(
-    visitor: &mut RegionResolutionVisitor<'tcx>,
+    visitor: &mut ScopeResolutionVisitor<'tcx>,
     pat: Option<&'tcx hir::Pat<'tcx>>,
     init: Option<&'tcx hir::Expr<'tcx>>,
 ) {
@@ -635,6 +654,7 @@ fn resolve_local<'tcx>(
     ///        | ( ..., P&, ... )
     ///        | ... "|" P& "|" ...
     ///        | box P&
+    ///        | P& if ...
     /// ```
     fn is_binding_pat(pat: &hir::Pat<'_>) -> bool {
         // Note that the code below looks for *explicit* refs only, that is, it won't
@@ -675,14 +695,16 @@ fn resolve_local<'tcx>(
             | PatKind::TupleStruct(_, subpats, _)
             | PatKind::Tuple(subpats, _) => subpats.iter().any(|p| is_binding_pat(p)),
 
-            PatKind::Box(subpat) | PatKind::Deref(subpat) => is_binding_pat(subpat),
+            PatKind::Box(subpat) | PatKind::Deref(subpat) | PatKind::Guard(subpat, _) => {
+                is_binding_pat(subpat)
+            }
 
             PatKind::Ref(_, _)
             | PatKind::Binding(hir::BindingMode(hir::ByRef::No, _), ..)
             | PatKind::Wild
             | PatKind::Never
             | PatKind::Path(_)
-            | PatKind::Lit(_)
+            | PatKind::Expr(_)
             | PatKind::Range(_, _, _)
             | PatKind::Err(_) => false,
         }
@@ -703,7 +725,7 @@ fn resolve_local<'tcx>(
     ///        | ( E& )
     /// ```
     fn record_rvalue_scope_if_borrow_expr<'tcx>(
-        visitor: &mut RegionResolutionVisitor<'tcx>,
+        visitor: &mut ScopeResolutionVisitor<'tcx>,
         expr: &hir::Expr<'_>,
         blk_id: Option<Scope>,
     ) {
@@ -760,7 +782,7 @@ fn resolve_local<'tcx>(
     }
 }
 
-impl<'tcx> RegionResolutionVisitor<'tcx> {
+impl<'tcx> ScopeResolutionVisitor<'tcx> {
     /// Records the current parent (if any) as the parent of `child_scope`.
     /// Returns the depth of `child_scope`.
     fn record_child_scope(&mut self, child_scope: Scope) -> ScopeDepth {
@@ -784,9 +806,9 @@ impl<'tcx> RegionResolutionVisitor<'tcx> {
         // account for the destruction scope representing the scope of
         // the destructors that run immediately after it completes.
         if self.terminating_scopes.contains(&id) {
-            self.enter_scope(Scope { id, data: ScopeData::Destruction });
+            self.enter_scope(Scope { local_id: id, data: ScopeData::Destruction });
         }
-        self.enter_scope(Scope { id, data: ScopeData::Node });
+        self.enter_scope(Scope { local_id: id, data: ScopeData::Node });
     }
 
     fn enter_body(&mut self, hir_id: hir::HirId, f: impl FnOnce(&mut Self)) {
@@ -803,8 +825,8 @@ impl<'tcx> RegionResolutionVisitor<'tcx> {
         let outer_pessimistic_yield = mem::replace(&mut self.pessimistic_yield, false);
         self.terminating_scopes.insert(hir_id.local_id);
 
-        self.enter_scope(Scope { id: hir_id.local_id, data: ScopeData::CallSite });
-        self.enter_scope(Scope { id: hir_id.local_id, data: ScopeData::Arguments });
+        self.enter_scope(Scope { local_id: hir_id.local_id, data: ScopeData::CallSite });
+        self.enter_scope(Scope { local_id: hir_id.local_id, data: ScopeData::Arguments });
 
         f(self);
 
@@ -816,7 +838,7 @@ impl<'tcx> RegionResolutionVisitor<'tcx> {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
+impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
     fn visit_block(&mut self, b: &'tcx Block<'tcx>) {
         resolve_block(self, b);
     }
@@ -884,6 +906,10 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
     fn visit_local(&mut self, l: &'tcx LetStmt<'tcx>) {
         resolve_local(self, Some(l.pat), l.init)
     }
+    fn visit_inline_const(&mut self, c: &'tcx hir::ConstBlock) {
+        let body = self.tcx.hir().body(c.body);
+        self.visit_body(body);
+    }
 }
 
 /// Per-body `region::ScopeTree`. The `DefId` should be the owner `DefId` for the body;
@@ -893,14 +919,14 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
 /// re-use in incremental scenarios. We may sometimes need to rerun the
 /// type checker even when the HIR hasn't changed, and in those cases
 /// we can avoid reconstructing the region scope tree.
-pub fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
+pub(crate) fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
     let typeck_root_def_id = tcx.typeck_root_def_id(def_id);
     if typeck_root_def_id != def_id {
         return tcx.region_scope_tree(typeck_root_def_id);
     }
 
     let scope_tree = if let Some(body) = tcx.hir().maybe_body_owned_by(def_id.expect_local()) {
-        let mut visitor = RegionResolutionVisitor {
+        let mut visitor = ScopeResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),
             expr_and_pat_count: 0,

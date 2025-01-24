@@ -31,7 +31,6 @@ LL | |
 LL | |         if true {
 LL | |             false
 ...  |
-LL | |
 LL | |     })
    | |_____^ expected `bool`, found `Option<()>`
    |

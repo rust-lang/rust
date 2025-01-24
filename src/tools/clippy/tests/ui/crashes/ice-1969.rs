@@ -1,6 +1,6 @@
 #![allow(clippy::all)]
 
-/// Test for https://github.com/rust-lang/rust-clippy/issues/1969
+// Test for https://github.com/rust-lang/rust-clippy/issues/1969
 
 fn main() {}
 

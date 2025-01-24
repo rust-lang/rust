@@ -7,7 +7,6 @@ use ignore::DirEntry;
 
 /// The default directory filter.
 pub fn filter_dirs(path: &Path) -> bool {
-    // FIXME: sync submodule exclusion list with rustfmt.toml
     // bootstrap/etc
     let skip = [
         "tidy-test-file",
@@ -24,6 +23,7 @@ pub fn filter_dirs(path: &Path) -> bool {
         "src/tools/rust-analyzer",
         "src/tools/rustc-perf",
         "src/tools/rustfmt",
+        "src/tools/enzyme",
         "src/doc/book",
         "src/doc/edition-guide",
         "src/doc/embedded-book",
@@ -31,6 +31,7 @@ pub fn filter_dirs(path: &Path) -> bool {
         "src/doc/rust-by-example",
         "src/doc/rustc-dev-guide",
         "src/doc/reference",
+        "src/gcc",
         // Filter RLS output directories
         "target/rls",
         "src/bootstrap/target",

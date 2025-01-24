@@ -8,11 +8,12 @@ use std::{cell::RefCell, fs::read_to_string, panic::AssertUnwindSafe, path::Path
 use hir::{ChangeWithProcMacros, Crate};
 use ide::{AnalysisHost, DiagnosticCode, DiagnosticsConfig};
 use itertools::Either;
+use paths::Utf8PathBuf;
 use profile::StopWatch;
-use project_model::target_data_layout::RustcDataLayoutConfig;
+use project_model::toolchain_info::{target_data_layout, QueryConfig};
 use project_model::{
-    target_data_layout, CargoConfig, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind,
-    RustLibSource, Sysroot,
+    CargoConfig, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, RustLibSource, Sysroot,
+    SysrootSourceWorkspaceConfig,
 };
 
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
@@ -64,14 +65,19 @@ impl Tester {
     fn new() -> Result<Self> {
         let mut path = std::env::temp_dir();
         path.push("ra-rustc-test.rs");
-        let tmp_file = AbsPathBuf::try_from(path).unwrap();
+        let tmp_file = AbsPathBuf::try_from(Utf8PathBuf::from_path_buf(path).unwrap()).unwrap();
         std::fs::write(&tmp_file, "")?;
-        let cargo_config =
-            CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
+        let cargo_config = CargoConfig {
+            sysroot: Some(RustLibSource::Discover),
+            all_targets: true,
+            set_test: true,
+            ..Default::default()
+        };
 
-        let sysroot = Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env, false);
+        let mut sysroot = Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env);
+        sysroot.load_workspace(&SysrootSourceWorkspaceConfig::default_cargo());
         let data_layout = target_data_layout::get(
-            RustcDataLayoutConfig::Rustc(&sysroot),
+            QueryConfig::Rustc(&sysroot, tmp_file.parent().unwrap().as_ref()),
             None,
             &cargo_config.extra_env,
         );
@@ -80,13 +86,14 @@ impl Tester {
             kind: ProjectWorkspaceKind::DetachedFile {
                 file: ManifestPath::try_from(tmp_file).unwrap(),
                 cargo: None,
-                cargo_config_extra_env: Default::default(),
+                set_test: true,
             },
             sysroot,
             rustc_cfg: vec![],
             toolchain: None,
             target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
             cfg_overrides: Default::default(),
+            extra_includes: vec![],
         };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,
@@ -154,7 +161,7 @@ impl Tester {
                     let root_file = self.root_file;
                     move || {
                         let res = std::panic::catch_unwind(move || {
-                            analysis.diagnostics(
+                            analysis.full_diagnostics(
                                 diagnostic_config,
                                 ide::AssistResolveStrategy::None,
                                 root_file,
@@ -292,7 +299,7 @@ impl flags::RustcTests {
                     continue;
                 }
             }
-            if p.extension().map_or(true, |x| x != "rs") {
+            if p.extension().is_none_or(|x| x != "rs") {
                 continue;
             }
             if let Err(e) = std::panic::catch_unwind({

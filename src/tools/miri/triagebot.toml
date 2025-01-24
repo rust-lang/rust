@@ -1,3 +1,6 @@
+## See <https://forge.rust-lang.org/triagebot/index.html> for documentation
+## of these options.
+
 [relabel]
 allow-unauthenticated = [
     "A-*",
@@ -17,3 +20,23 @@ contributing_url = "https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.m
 
 [no-merges]
 exclude_titles = ["Rustup"]
+
+[review-submitted]
+# This label is added when a "request changes" review is submitted.
+reviewed_label = "S-waiting-on-author"
+# These labels are removed when a "request changes" review is submitted.
+review_labels = ["S-waiting-on-review"]
+
+[review-requested]
+# Those labels are removed when PR author requests a review from an assignee
+remove_labels = ["S-waiting-on-author"]
+# Those labels are added when PR author requests a review from an assignee
+add_labels = ["S-waiting-on-review"]
+
+[merge-conflicts]
+remove = []
+add = ["S-waiting-on-author"]
+unless = ["S-blocked", "S-waiting-on-team", "S-waiting-on-review"]
+
+# Automatically close and reopen PRs made by bots to run CI on them
+[bot-pull-requests]

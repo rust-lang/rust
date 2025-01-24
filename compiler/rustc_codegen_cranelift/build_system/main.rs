@@ -81,7 +81,6 @@ fn main() {
 
     let mut out_dir = PathBuf::from(".");
     let mut download_dir = None;
-    let mut channel = "release";
     let mut sysroot_kind = SysrootKind::Clif;
     let mut use_unstable_features = true;
     let mut frozen = false;
@@ -99,7 +98,6 @@ fn main() {
                     arg_error!("--download-dir requires argument");
                 })));
             }
-            "--debug" => channel = "debug",
             "--sysroot" => {
                 sysroot_kind = match args.next().as_deref() {
                     Some("none") => SysrootKind::None,
@@ -158,10 +156,8 @@ fn main() {
         let cargo = rustc_info::get_cargo_path();
         let rustc = rustc_info::get_rustc_path();
         let rustdoc = rustc_info::get_rustdoc_path();
-        let triple = std::env::var("HOST_TRIPLE")
-            .ok()
-            .or_else(|| config::get_value("host"))
-            .unwrap_or_else(|| rustc_info::get_host_triple(&rustc));
+        let triple =
+            std::env::var("HOST_TRIPLE").unwrap_or_else(|_| rustc_info::get_host_triple(&rustc));
         Compiler {
             cargo,
             rustc,
@@ -172,10 +168,8 @@ fn main() {
             runner: vec![],
         }
     };
-    let target_triple = std::env::var("TARGET_TRIPLE")
-        .ok()
-        .or_else(|| config::get_value("target"))
-        .unwrap_or_else(|| bootstrap_host_compiler.triple.clone());
+    let target_triple =
+        std::env::var("TARGET_TRIPLE").unwrap_or_else(|_| bootstrap_host_compiler.triple.clone());
 
     let dirs = path::Dirs {
         source_dir: current_dir.clone(),
@@ -187,12 +181,11 @@ fn main() {
         frozen,
     };
 
-    path::RelPath::BUILD.ensure_exists(&dirs);
+    std::fs::create_dir_all(&dirs.build_dir).unwrap();
 
     {
         // Make sure we always explicitly specify the target dir
-        let target =
-            path::RelPath::BUILD.join("target_dir_should_be_set_explicitly").to_path(&dirs);
+        let target = dirs.build_dir.join("target_dir_should_be_set_explicitly");
         env::set_var("CARGO_TARGET_DIR", &target);
         let _ = std::fs::remove_file(&target);
         std::fs::File::create(target).unwrap();
@@ -206,7 +199,6 @@ fn main() {
     } else {
         CodegenBackend::Local(build_backend::build_backend(
             &dirs,
-            channel,
             &bootstrap_host_compiler,
             use_unstable_features,
         ))
@@ -218,7 +210,6 @@ fn main() {
         Command::Test => {
             tests::run_tests(
                 &dirs,
-                channel,
                 sysroot_kind,
                 use_unstable_features,
                 &skip_tests.iter().map(|test| &**test).collect::<Vec<_>>(),
@@ -234,7 +225,6 @@ fn main() {
                 process::exit(1);
             }
             abi_cafe::run(
-                channel,
                 sysroot_kind,
                 &dirs,
                 &cg_clif_dylib,
@@ -245,7 +235,6 @@ fn main() {
         Command::Build => {
             build_sysroot::build_sysroot(
                 &dirs,
-                channel,
                 sysroot_kind,
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
@@ -254,16 +243,15 @@ fn main() {
             );
         }
         Command::Bench => {
-            build_sysroot::build_sysroot(
+            let compiler = build_sysroot::build_sysroot(
                 &dirs,
-                channel,
                 sysroot_kind,
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
                 rustup_toolchain_name.as_deref(),
                 target_triple,
             );
-            bench::benchmark(&dirs, &bootstrap_host_compiler);
+            bench::benchmark(&dirs, &compiler);
         }
     }
 }

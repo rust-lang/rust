@@ -1,4 +1,4 @@
-use clippy_utils::ty::{read_explicit_enum_value, EnumValue};
+use clippy_utils::ty::{EnumValue, read_explicit_enum_value};
 use rustc_middle::ty::{self, AdtDef, IntTy, Ty, TyCtxt, UintTy, VariantDiscr};
 
 /// Returns the size in bits of an integral type.

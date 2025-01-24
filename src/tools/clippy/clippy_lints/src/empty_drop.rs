@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::peel_blocks;
 use rustc_errors::Applicability;
 use rustc_hir::{Body, ExprKind, Impl, ImplItemKind, Item, ItemKind, Node};
@@ -36,7 +36,7 @@ declare_lint_pass!(EmptyDrop => [EMPTY_DROP]);
 impl LateLintPass<'_> for EmptyDrop {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if let ItemKind::Impl(Impl {
-            of_trait: Some(ref trait_ref),
+            of_trait: Some(trait_ref),
             items: [child],
             ..
         }) = item.kind
@@ -50,15 +50,14 @@ impl LateLintPass<'_> for EmptyDrop {
             && block.stmts.is_empty()
             && block.expr.is_none()
         {
-            span_lint_and_sugg(
-                cx,
-                EMPTY_DROP,
-                item.span,
-                "empty drop implementation",
-                "try removing this impl",
-                String::new(),
-                Applicability::MaybeIncorrect,
-            );
+            span_lint_and_then(cx, EMPTY_DROP, item.span, "empty drop implementation", |diag| {
+                diag.span_suggestion_hidden(
+                    item.span,
+                    "try removing this impl",
+                    String::new(),
+                    Applicability::MaybeIncorrect,
+                );
+            });
         }
     }
 }

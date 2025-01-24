@@ -117,4 +117,11 @@ pub fn skipped_because_of_annotation<'a>(dcx: DiagCtxtHandle<'a>) {
 fn f(_x: impl Into<DiagMessage>, _y: impl Into<SubdiagMessage>) {}
 fn g() {
     f(crate::fluent_generated::no_crate_example, crate::fluent_generated::no_crate_example);
+    f("untranslatable diagnostic", crate::fluent_generated::no_crate_example);
+    //~^ ERROR diagnostics should be created using translatable messages
+    f(crate::fluent_generated::no_crate_example, "untranslatable diagnostic");
+    //~^ ERROR diagnostics should be created using translatable messages
+    f("untranslatable diagnostic", "untranslatable diagnostic");
+    //~^ ERROR diagnostics should be created using translatable messages
+    //~^^ ERROR diagnostics should be created using translatable messages
 }

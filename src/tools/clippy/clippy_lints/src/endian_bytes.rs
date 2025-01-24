@@ -7,7 +7,6 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::Ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::Symbol;
-use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -141,52 +140,6 @@ fn maybe_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: Prefix
         _ => return,
     };
 
-    let mut help = None;
-
-    'build_help: {
-        // all lints disallowed, don't give help here
-        if [&[lint], other_lints.as_slice()]
-            .concat()
-            .iter()
-            .all(|lint| !lint.allowed(cx, expr))
-        {
-            break 'build_help;
-        }
-
-        // ne_bytes and all other lints allowed
-        if lint.as_name(prefix) == ne && other_lints.iter().all(|lint| lint.allowed(cx, expr)) {
-            help = Some(Cow::Borrowed("specify the desired endianness explicitly"));
-            break 'build_help;
-        }
-
-        // le_bytes where ne_bytes allowed but be_bytes is not, or le_bytes where ne_bytes allowed but
-        // le_bytes is not
-        if (lint.as_name(prefix) == le || lint.as_name(prefix) == be) && LintKind::Host.allowed(cx, expr) {
-            help = Some(Cow::Borrowed("use the native endianness instead"));
-            break 'build_help;
-        }
-
-        let allowed_lints = other_lints.iter().filter(|lint| lint.allowed(cx, expr));
-        let len = allowed_lints.clone().count();
-
-        let mut help_str = "use ".to_owned();
-
-        for (i, lint) in allowed_lints.enumerate() {
-            let only_one = len == 1;
-            if !only_one {
-                help_str.push_str("either of ");
-            }
-
-            help_str.push_str(&format!("`{ty}::{}` ", lint.as_name(prefix)));
-
-            if i != len && !only_one {
-                help_str.push_str("or ");
-            }
-        }
-
-        help = Some(Cow::Owned(help_str + "instead"));
-    }
-
     span_lint_and_then(
         cx,
         lint.as_lint(),
@@ -198,9 +151,47 @@ fn maybe_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: Prefix
             if prefix == Prefix::To { " method" } else { "" },
         ),
         move |diag| {
-            if let Some(help) = help {
-                diag.help(help);
+            // all lints disallowed, don't give help here
+            if [&[lint], other_lints.as_slice()]
+                .concat()
+                .iter()
+                .all(|lint| !lint.allowed(cx, expr))
+            {
+                return;
             }
+
+            // ne_bytes and all other lints allowed
+            if lint.as_name(prefix) == ne && other_lints.iter().all(|lint| lint.allowed(cx, expr)) {
+                diag.help("specify the desired endianness explicitly");
+                return;
+            }
+
+            // le_bytes where ne_bytes allowed but be_bytes is not, or le_bytes where ne_bytes allowed but
+            // le_bytes is not
+            if (lint.as_name(prefix) == le || lint.as_name(prefix) == be) && LintKind::Host.allowed(cx, expr) {
+                diag.help("use the native endianness instead");
+                return;
+            }
+
+            let allowed_lints = other_lints.iter().filter(|lint| lint.allowed(cx, expr));
+            let len = allowed_lints.clone().count();
+
+            let mut help_str = "use ".to_owned();
+
+            for (i, lint) in allowed_lints.enumerate() {
+                let only_one = len == 1;
+                if !only_one {
+                    help_str.push_str("either of ");
+                }
+
+                help_str.push_str(&format!("`{ty}::{}` ", lint.as_name(prefix)));
+
+                if i != len && !only_one {
+                    help_str.push_str("or ");
+                }
+            }
+            help_str.push_str("instead");
+            diag.help(help_str);
         },
     );
 }

@@ -8,6 +8,9 @@
 //~^ WARNING unexpected `cfg` condition name
 pub fn f() {}
 
+#[cfg(test)]
+//~^ WARNING unexpected `cfg` condition name
+
 #[cfg(windows)]
 pub fn g() {}
 

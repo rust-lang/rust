@@ -1,5 +1,3 @@
-#![feature(const_refs_to_cell)]
-
 use std::cell::*;
 
 // not ok, because this creates a dangling pointer, just like `let x = Cell::new(42).as_ptr()` would

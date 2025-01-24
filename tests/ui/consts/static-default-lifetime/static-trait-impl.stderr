@@ -30,10 +30,10 @@ LL |     const STATIC: &str = "";
    = note: expected reference `&_`
               found reference `&_`
 note: the anonymous lifetime as defined here...
-  --> $DIR/static-trait-impl.rs:8:10
+  --> $DIR/static-trait-impl.rs:9:19
    |
-LL | impl Bar<'_> for A {
-   |          ^^
+LL |     const STATIC: &str = "";
+   |                   ^
 note: ...does not necessarily outlive the anonymous lifetime as defined here
   --> $DIR/static-trait-impl.rs:8:10
    |

@@ -4,7 +4,7 @@ error[E0220]: associated type `Assoc` not found for `T`
 LL | type AssocOf<T> = T::Assoc;
    |                      ^^^^^ there is an associated type `Assoc` in the trait `Trait`
    |
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Trait`
    |
 LL | type AssocOf<T: Trait> = T::Assoc;
    |               +++++++
@@ -15,7 +15,7 @@ error[E0220]: associated type `Assok` not found for `T`
 LL | type AssokOf<T> = T::Assok;
    |                      ^^^^^ there is a similarly named associated type `Assoc` in the trait `Trait`
    |
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Trait`
    |
 LL | type AssokOf<T: Trait> = T::Assok;
    |               +++++++
@@ -30,7 +30,7 @@ error[E0220]: associated type `Proj` not found for `T`
 LL | type ProjOf<T> = T::Proj;
    |                     ^^^^ there is an associated type `Proj` in the trait `Parametrized`
    |
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Parametrized`
    |
 LL | type ProjOf<T: Parametrized</* 'a, T, N */>> = T::Proj;
    |              ++++++++++++++++++++++++++++++

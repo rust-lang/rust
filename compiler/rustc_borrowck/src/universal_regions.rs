@@ -20,26 +20,27 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Diag;
+use rustc_hir::BodyOwnerKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::BodyOwnerKind;
 use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_macros::extension;
-use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::fold::{TypeFoldable, fold_regions};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty, TyCtxt,
+    self, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty,
+    TyCtxt, TypeVisitableExt,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::{kw, sym};
-use rustc_span::{ErrorGuaranteed, Symbol};
+use rustc_span::{ErrorGuaranteed, kw, sym};
+use tracing::{debug, instrument};
 
-use crate::renumber::RegionCtxt;
 use crate::BorrowckInferCtxt;
+use crate::renumber::RegionCtxt;
 
 #[derive(Debug)]
-pub struct UniversalRegions<'tcx> {
+pub(crate) struct UniversalRegions<'tcx> {
     indices: UniversalRegionIndices<'tcx>,
 
     /// The vid assigned to `'static`
@@ -95,7 +96,7 @@ pub struct UniversalRegions<'tcx> {
 /// regions appear free in the defining type and late-bound regions
 /// appear bound in the signature.
 #[derive(Copy, Clone, Debug)]
-pub enum DefiningTy<'tcx> {
+pub(crate) enum DefiningTy<'tcx> {
     /// The MIR is a closure. The signature is found via
     /// `ClosureArgs::closure_sig_ty`.
     Closure(DefId, GenericArgsRef<'tcx>),
@@ -131,7 +132,7 @@ impl<'tcx> DefiningTy<'tcx> {
     /// not a closure or coroutine, there are no upvars, and hence it
     /// will be an empty list. The order of types in this list will
     /// match up with the upvar order in the HIR, typesystem, and MIR.
-    pub fn upvar_tys(self) -> &'tcx ty::List<Ty<'tcx>> {
+    pub(crate) fn upvar_tys(self) -> &'tcx ty::List<Ty<'tcx>> {
         match self {
             DefiningTy::Closure(_, args) => args.as_closure().upvar_tys(),
             DefiningTy::CoroutineClosure(_, args) => args.as_coroutine_closure().upvar_tys(),
@@ -145,7 +146,7 @@ impl<'tcx> DefiningTy<'tcx> {
     /// Number of implicit inputs -- notably the "environment"
     /// parameter for closures -- that appear in MIR but not in the
     /// user's code.
-    pub fn implicit_inputs(self) -> usize {
+    pub(crate) fn implicit_inputs(self) -> usize {
         match self {
             DefiningTy::Closure(..)
             | DefiningTy::CoroutineClosure(..)
@@ -154,15 +155,15 @@ impl<'tcx> DefiningTy<'tcx> {
         }
     }
 
-    pub fn is_fn_def(&self) -> bool {
+    pub(crate) fn is_fn_def(&self) -> bool {
         matches!(*self, DefiningTy::FnDef(..))
     }
 
-    pub fn is_const(&self) -> bool {
+    pub(crate) fn is_const(&self) -> bool {
         matches!(*self, DefiningTy::Const(..) | DefiningTy::InlineConst(..))
     }
 
-    pub fn def_id(&self) -> DefId {
+    pub(crate) fn def_id(&self) -> DefId {
         match *self {
             DefiningTy::Closure(def_id, ..)
             | DefiningTy::CoroutineClosure(def_id, ..)
@@ -196,7 +197,7 @@ struct UniversalRegionIndices<'tcx> {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum RegionClassification {
+pub(crate) enum RegionClassification {
     /// A **global** region is one that can be named from
     /// anywhere. There is only one, `'static`.
     Global,
@@ -246,12 +247,8 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// MIR -- that is, all the regions that appear in the function's
     /// signature. This will also compute the relationships that are
     /// known between those regions.
-    pub fn new(
-        infcx: &BorrowckInferCtxt<'tcx>,
-        mir_def: LocalDefId,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Self {
-        UniversalRegionsBuilder { infcx, mir_def, param_env }.build()
+    pub(crate) fn new(infcx: &BorrowckInferCtxt<'tcx>, mir_def: LocalDefId) -> Self {
+        UniversalRegionsBuilder { infcx, mir_def }.build()
     }
 
     /// Given a reference to a closure type, extracts all the values
@@ -263,7 +260,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// if the `ClosureRegionRequirements` contains something like
     /// `'1: '2`, then the caller would impose the constraint that
     /// `V[1]: V[2]`.
-    pub fn closure_mapping(
+    pub(crate) fn closure_mapping(
         tcx: TyCtxt<'tcx>,
         closure_args: GenericArgsRef<'tcx>,
         expected_num_vars: usize,
@@ -289,13 +286,13 @@ impl<'tcx> UniversalRegions<'tcx> {
     }
 
     /// Returns `true` if `r` is a member of this set of universal regions.
-    pub fn is_universal_region(&self, r: RegionVid) -> bool {
+    pub(crate) fn is_universal_region(&self, r: RegionVid) -> bool {
         (FIRST_GLOBAL_INDEX..self.num_universals).contains(&r.index())
     }
 
     /// Classifies `r` as a universal region, returning `None` if this
     /// is not a member of this set of universal regions.
-    pub fn region_classification(&self, r: RegionVid) -> Option<RegionClassification> {
+    pub(crate) fn region_classification(&self, r: RegionVid) -> Option<RegionClassification> {
         let index = r.index();
         if (FIRST_GLOBAL_INDEX..self.first_extern_index).contains(&index) {
             Some(RegionClassification::Global)
@@ -310,17 +307,17 @@ impl<'tcx> UniversalRegions<'tcx> {
 
     /// Returns an iterator over all the RegionVids corresponding to
     /// universally quantified free regions.
-    pub fn universal_regions(&self) -> impl Iterator<Item = RegionVid> {
+    pub(crate) fn universal_regions_iter(&self) -> impl Iterator<Item = RegionVid> {
         (FIRST_GLOBAL_INDEX..self.num_universals).map(RegionVid::from_usize)
     }
 
     /// Returns `true` if `r` is classified as a local region.
-    pub fn is_local_free_region(&self, r: RegionVid) -> bool {
+    pub(crate) fn is_local_free_region(&self, r: RegionVid) -> bool {
         self.region_classification(r) == Some(RegionClassification::Local)
     }
 
     /// Returns the number of universal regions created in any category.
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.num_universals
     }
 
@@ -329,19 +326,19 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// closure type (versus those bound in the closure
     /// signature). They are therefore the regions between which the
     /// closure may impose constraints that its creator must verify.
-    pub fn num_global_and_external_regions(&self) -> usize {
+    pub(crate) fn num_global_and_external_regions(&self) -> usize {
         self.first_local_index
     }
 
     /// Gets an iterator over all the early-bound regions that have names.
-    pub fn named_universal_regions<'s>(
+    pub(crate) fn named_universal_regions_iter<'s>(
         &'s self,
     ) -> impl Iterator<Item = (ty::Region<'tcx>, ty::RegionVid)> + 's {
         self.indices.indices.iter().map(|(&r, &v)| (r, v))
     }
 
-    /// See `UniversalRegionIndices::to_region_vid`.
-    pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
+    /// See [UniversalRegionIndices::to_region_vid].
+    pub(crate) fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         self.indices.to_region_vid(r)
     }
 
@@ -416,15 +413,14 @@ impl<'tcx> UniversalRegions<'tcx> {
         }
     }
 
-    pub fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
+    pub(crate) fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
         self.indices.tainted_by_errors.get()
     }
 }
 
-struct UniversalRegionsBuilder<'cx, 'tcx> {
-    infcx: &'cx BorrowckInferCtxt<'tcx>,
+struct UniversalRegionsBuilder<'infcx, 'tcx> {
+    infcx: &'infcx BorrowckInferCtxt<'tcx>,
     mir_def: LocalDefId,
-    param_env: ty::ParamEnv<'tcx>,
 }
 
 const FR: NllRegionVariableOrigin = NllRegionVariableOrigin::FreeRegion;
@@ -433,7 +429,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     fn build(self) -> UniversalRegions<'tcx> {
         debug!("build(mir_def={:?})", self.mir_def);
 
-        let param_env = self.param_env;
+        let param_env = self.infcx.param_env;
         debug!("build: param_env={:?}", param_env);
 
         assert_eq!(FIRST_GLOBAL_INDEX, self.infcx.num_region_vars());
@@ -471,15 +467,13 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 self.infcx.tcx.local_parent(self.mir_def),
                 |r| {
                     debug!(?r);
-                    if !indices.indices.contains_key(&r) {
-                        let region_vid = {
-                            let name = r.get_name_or_anon();
-                            self.infcx.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
-                        };
+                    let region_vid = {
+                        let name = r.get_name_or_anon();
+                        self.infcx.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
+                    };
 
-                        debug!(?region_vid);
-                        indices.insert_late_bound_region(r, region_vid.as_var());
-                    }
+                    debug!(?region_vid);
+                    indices.insert_late_bound_region(r, region_vid.as_var());
                 },
             );
 
@@ -488,21 +482,17 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             self.infcx.num_region_vars()
         };
 
-        // "Liberate" the late-bound regions. These correspond to
-        // "local" free regions.
+        // Converse of above, if this is a function/closure then the late-bound regions declared
+        // on its signature are local.
+        //
+        // We manually loop over `bound_inputs_and_output` instead of using
+        // `for_each_late_bound_region_in_item` as we may need to add the otherwise
+        // implicit `ClosureEnv` region.
         let bound_inputs_and_output = self.compute_inputs_and_output(&indices, defining_ty);
-
-        let inputs_and_output = self.infcx.replace_bound_regions_with_nll_infer_vars(
-            FR,
-            self.mir_def,
-            bound_inputs_and_output,
-            &mut indices,
-        );
-        // Converse of above, if this is a function/closure then the late-bound regions declared on its
-        // signature are local.
-        for_each_late_bound_region_in_item(self.infcx.tcx, self.mir_def, |r| {
-            debug!(?r);
-            if !indices.indices.contains_key(&r) {
+        for (idx, bound_var) in bound_inputs_and_output.bound_vars().iter().enumerate() {
+            if let ty::BoundVariableKind::Region(kind) = bound_var {
+                let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);
+                let r = ty::Region::new_late_param(self.infcx.tcx, self.mir_def.to_def_id(), kind);
                 let region_vid = {
                     let name = r.get_name_or_anon();
                     self.infcx.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
@@ -511,7 +501,12 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 debug!(?region_vid);
                 indices.insert_late_bound_region(r, region_vid.as_var());
             }
-        });
+        }
+        let inputs_and_output = self.infcx.replace_bound_regions_with_nll_infer_vars(
+            self.mir_def,
+            bound_inputs_and_output,
+            &indices,
+        );
 
         let (unnormalized_output_ty, mut unnormalized_input_tys) =
             inputs_and_output.split_last().unwrap();
@@ -527,7 +522,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
                 let reg_vid = self
                     .infcx
-                    .next_nll_region_var(FR, || RegionCtxt::Free(Symbol::intern("c-variadic")))
+                    .next_nll_region_var(FR, || RegionCtxt::Free(sym::c_dash_variadic))
                     .as_var();
 
                 let region = ty::Region::new_var(self.infcx.tcx, reg_vid);
@@ -543,10 +538,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             }
         }
 
-        let fr_fn_body = self
-            .infcx
-            .next_nll_region_var(FR, || RegionCtxt::Free(Symbol::intern("fn_body")))
-            .as_var();
+        let fr_fn_body =
+            self.infcx.next_nll_region_var(FR, || RegionCtxt::Free(sym::fn_body)).as_var();
 
         let num_universals = self.infcx.num_region_vars();
 
@@ -627,10 +620,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     let ty = tcx
                         .typeck(self.mir_def)
                         .node_type(tcx.local_def_id_to_hir_id(self.mir_def));
-                    let args = InlineConstArgs::new(
-                        tcx,
-                        InlineConstArgsParts { parent_args: identity_args, ty },
-                    )
+                    let args = InlineConstArgs::new(tcx, InlineConstArgsParts {
+                        parent_args: identity_args,
+                        ty,
+                    })
                     .args;
                     let args = self.infcx.replace_free_regions_with_nll_infer_vars(FR, args);
                     DefiningTy::InlineConst(self.mir_def.to_def_id(), args)
@@ -687,20 +680,20 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         defining_ty: DefiningTy<'tcx>,
     ) -> ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>> {
         let tcx = self.infcx.tcx;
-        match defining_ty {
+
+        let inputs_and_output = match defining_ty {
             DefiningTy::Closure(def_id, args) => {
                 assert_eq!(self.mir_def.to_def_id(), def_id);
                 let closure_sig = args.as_closure().sig();
                 let inputs_and_output = closure_sig.inputs_and_output();
                 let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
-                    inputs_and_output
-                        .bound_vars()
-                        .iter()
-                        .chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
+                    inputs_and_output.bound_vars().iter().chain(iter::once(
+                        ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
+                    )),
                 );
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                    kind: ty::BrEnv,
+                    kind: ty::BoundRegionKind::ClosureEnv,
                 };
                 let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
                 let closure_ty = tcx.closure_env_ty(
@@ -748,15 +741,13 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             DefiningTy::CoroutineClosure(def_id, args) => {
                 assert_eq!(self.mir_def.to_def_id(), def_id);
                 let closure_sig = args.as_coroutine_closure().coroutine_closure_sig();
-                let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
-                    closure_sig
-                        .bound_vars()
-                        .iter()
-                        .chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
-                );
+                let bound_vars =
+                    tcx.mk_bound_variable_kinds_from_iter(closure_sig.bound_vars().iter().chain(
+                        iter::once(ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv)),
+                    ));
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                    kind: ty::BrEnv,
+                    kind: ty::BoundRegionKind::ClosureEnv,
                 };
                 let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
                 let closure_kind = args.as_coroutine_closure().kind();
@@ -797,6 +788,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 // "output" (the type of the constant).
                 assert_eq!(self.mir_def.to_def_id(), def_id);
                 let ty = tcx.type_of(self.mir_def).instantiate_identity();
+
                 let ty = indices.fold_to_region_vids(tcx, ty);
                 ty::Binder::dummy(tcx.mk_type_list(&[ty]))
             }
@@ -806,7 +798,14 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let ty = args.as_inline_const().ty();
                 ty::Binder::dummy(tcx.mk_type_list(&[ty]))
             }
+        };
+
+        // FIXME(#129952): We probably want a more principled approach here.
+        if let Err(terr) = inputs_and_output.skip_binder().error_reported() {
+            self.infcx.set_tainted_by_errors(terr);
         }
+
+        inputs_and_output
     }
 }
 
@@ -821,7 +820,7 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.infcx.tcx.fold_regions(value, |region, _depth| {
+        fold_regions(self.infcx.tcx, value, |region, _depth| {
             let name = region.get_name_or_anon();
             debug!(?region, ?name);
 
@@ -832,30 +831,19 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
     #[instrument(level = "debug", skip(self, indices))]
     fn replace_bound_regions_with_nll_infer_vars<T>(
         &self,
-        origin: NllRegionVariableOrigin,
         all_outlive_scope: LocalDefId,
         value: ty::Binder<'tcx, T>,
-        indices: &mut UniversalRegionIndices<'tcx>,
+        indices: &UniversalRegionIndices<'tcx>,
     ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let (value, _map) = self.tcx.instantiate_bound_regions(value, |br| {
             debug!(?br);
+            let kind = ty::LateParamRegionKind::from_bound(br.var, br.kind);
             let liberated_region =
-                ty::Region::new_late_param(self.tcx, all_outlive_scope.to_def_id(), br.kind);
-            let region_vid = {
-                let name = match br.kind.get_name() {
-                    Some(name) => name,
-                    _ => sym::anon,
-                };
-
-                self.next_nll_region_var(origin, || RegionCtxt::Bound(name))
-            };
-
-            indices.insert_late_bound_region(liberated_region, region_vid.as_var());
-            debug!(?liberated_region, ?region_vid);
-            region_vid
+                ty::Region::new_late_param(self.tcx, all_outlive_scope.to_def_id(), kind);
+            ty::Region::new_var(self.tcx, indices.to_region_vid(liberated_region))
         });
         value
     }
@@ -869,7 +857,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     /// well. These are used for error reporting.
     fn insert_late_bound_region(&mut self, r: ty::Region<'tcx>, vid: ty::RegionVid) {
         debug!("insert_late_bound_region({:?}, {:?})", r, vid);
-        self.indices.insert(r, vid);
+        assert_eq!(self.indices.insert(r, vid), None);
     }
 
     /// Converts `r` into a local inference variable: `r` can either
@@ -880,7 +868,11 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     /// reference those regions from the `ParamEnv`. It is also used
     /// during initialization. Relies on the `indices` map having been
     /// fully initialized.
-    pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
+    ///
+    /// Panics if `r` is not a registered universal region, most notably
+    /// if it is a placeholder. Handling placeholders requires access to the
+    /// `MirTypeckRegionConstraints`.
+    fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         if let ty::ReVar(..) = *r {
             r.as_var()
         } else if let ty::ReError(guar) = *r {
@@ -899,11 +891,11 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
 
     /// Replaces all free regions in `value` with region vids, as
     /// returned by `to_region_vid`.
-    pub fn fold_to_region_vids<T>(&self, tcx: TyCtxt<'tcx>, value: T) -> T
+    fn fold_to_region_vids<T>(&self, tcx: TyCtxt<'tcx>, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        tcx.fold_regions(value, |region, _| ty::Region::new_var(tcx, self.to_region_vid(region)))
+        fold_regions(tcx, value, |region, _| ty::Region::new_var(tcx, self.to_region_vid(region)))
     }
 }
 
@@ -941,12 +933,13 @@ fn for_each_late_bound_region_in_item<'tcx>(
         return;
     }
 
-    for bound_var in tcx.late_bound_vars(tcx.local_def_id_to_hir_id(mir_def_id)) {
-        let ty::BoundVariableKind::Region(bound_region) = bound_var else {
-            continue;
-        };
-        let liberated_region =
-            ty::Region::new_late_param(tcx, mir_def_id.to_def_id(), bound_region);
-        f(liberated_region);
+    for (idx, bound_var) in
+        tcx.late_bound_vars(tcx.local_def_id_to_hir_id(mir_def_id)).iter().enumerate()
+    {
+        if let ty::BoundVariableKind::Region(kind) = bound_var {
+            let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);
+            let liberated_region = ty::Region::new_late_param(tcx, mir_def_id.to_def_id(), kind);
+            f(liberated_region);
+        }
     }
 }

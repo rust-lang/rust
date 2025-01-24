@@ -30,7 +30,7 @@ error: `mut` must be followed by a named binding
   --> $DIR/issue-65122-mac-invoc-in-mut-patterns.rs:13:13
    |
 LL |         let mut $eval = ();
-   |             ^^^
+   |             ^^^^
 ...
 LL |     mac2! { does_not_exist!() }
    |     --------------------------- in this macro invocation
@@ -40,7 +40,7 @@ LL |     mac2! { does_not_exist!() }
 help: remove the `mut` prefix
    |
 LL -         let mut $eval = ();
-LL +         let  $eval = ();
+LL +         let $eval = ();
    |
 
 error: cannot find macro `does_not_exist` in this scope

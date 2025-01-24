@@ -1,5 +1,5 @@
 error: `impl Trait` must mention all const parameters in scope in `use<...>`
-  --> $DIR/forgot-to-capture-const.rs:3:34
+  --> $DIR/forgot-to-capture-const.rs:1:34
    |
 LL | fn constant<const C: usize>() -> impl Sized + use<> {}
    |             --------------       ^^^^^^^^^^^^^^^^^^

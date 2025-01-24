@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::visitors::{for_each_expr, Descend, Visitable};
+use clippy_utils::visitors::{Descend, Visitable, for_each_expr};
 use core::ops::ControlFlow::Continue;
 use hir::def::{DefKind, Res};
-use hir::{BlockCheckMode, ExprKind, QPath, Safety, UnOp};
+use hir::{BlockCheckMode, ExprKind, QPath, UnOp};
 use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -130,10 +130,10 @@ fn collect_unsafe_exprs<'tcx>(
             ExprKind::Call(path_expr, _) => {
                 let sig = match *cx.typeck_results().expr_ty(path_expr).kind() {
                     ty::FnDef(id, _) => cx.tcx.fn_sig(id).skip_binder(),
-                    ty::FnPtr(sig) => sig,
+                    ty::FnPtr(sig_tys, hdr) => sig_tys.with(hdr),
                     _ => return Continue(Descend::Yes),
                 };
-                if sig.safety() == Safety::Unsafe {
+                if sig.safety().is_unsafe() {
                     unsafe_ops.push(("unsafe function call occurs here", expr.span));
                 }
             },
@@ -144,7 +144,7 @@ fn collect_unsafe_exprs<'tcx>(
                     .type_dependent_def_id(expr.hir_id)
                     .map(|def_id| cx.tcx.fn_sig(def_id))
                 {
-                    if sig.skip_binder().safety() == Safety::Unsafe {
+                    if sig.skip_binder().safety().is_unsafe() {
                         unsafe_ops.push(("unsafe method call occurs here", expr.span));
                     }
                 }
@@ -153,19 +153,16 @@ fn collect_unsafe_exprs<'tcx>(
             ExprKind::AssignOp(_, lhs, rhs) | ExprKind::Assign(lhs, rhs, _) => {
                 if matches!(
                     lhs.kind,
-                    ExprKind::Path(QPath::Resolved(
-                        _,
-                        hir::Path {
-                            res: Res::Def(
-                                DefKind::Static {
-                                    mutability: Mutability::Mut,
-                                    ..
-                                },
-                                _
-                            ),
-                            ..
-                        }
-                    ))
+                    ExprKind::Path(QPath::Resolved(_, hir::Path {
+                        res: Res::Def(
+                            DefKind::Static {
+                                mutability: Mutability::Mut,
+                                ..
+                            },
+                            _
+                        ),
+                        ..
+                    }))
                 ) {
                     unsafe_ops.push(("modification of a mutable static occurs here", expr.span));
                     collect_unsafe_exprs(cx, rhs, unsafe_ops);

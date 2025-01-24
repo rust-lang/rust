@@ -2,12 +2,14 @@
 //!
 //! Tests live in [`bind_pat`][super::bind_pat] module.
 use ide_db::famous_defs::FamousDefs;
+use ide_db::text_edit::{TextRange, TextSize};
 use span::EditionedFileId;
-use stdx::TupleExt;
+use stdx::{never, TupleExt};
 use syntax::ast::{self, AstNode};
-use text_edit::{TextRange, TextSize};
 
-use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
+use crate::{
+    InlayHint, InlayHintLabel, InlayHintLabelPart, InlayHintPosition, InlayHintsConfig, InlayKind,
+};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -27,32 +29,27 @@ pub(super) fn hints(
         return None;
     }
 
-    let move_kw_range = match closure.move_token() {
-        Some(t) => t.text_range(),
+    let (range, label) = match closure.move_token() {
+        Some(t) => (t.text_range(), InlayHintLabel::default()),
         None => {
-            let range = closure.syntax().first_token()?.prev_token()?.text_range();
-            let range = TextRange::new(range.end() - TextSize::from(1), range.end());
-            acc.push(InlayHint {
-                range,
-                kind: InlayKind::ClosureCapture,
-                label: InlayHintLabel::from("move"),
-                text_edit: None,
-                position: InlayHintPosition::After,
-                pad_left: false,
-                pad_right: false,
-            });
-            range
+            let prev_token = closure.syntax().first_token()?.prev_token()?.text_range();
+            (
+                TextRange::new(prev_token.end() - TextSize::from(1), prev_token.end()),
+                InlayHintLabel::from("move"),
+            )
         }
     };
-    acc.push(InlayHint {
-        range: move_kw_range,
+    let mut hint = InlayHint {
+        range,
         kind: InlayKind::ClosureCapture,
-        label: InlayHintLabel::from("("),
+        label,
         text_edit: None,
         position: InlayHintPosition::After,
         pad_left: false,
-        pad_right: false,
-    });
+        pad_right: true,
+        resolve_parent: Some(closure.syntax().text_range()),
+    };
+    hint.label.append_str("(");
     let last = captures.len() - 1;
     for (idx, capture) in captures.into_iter().enumerate() {
         let local = capture.local();
@@ -61,54 +58,33 @@ pub(super) fn hints(
         // force cache the source file, otherwise sema lookup will potentially panic
         _ = sema.parse_or_expand(source.file());
 
-        let label = InlayHintLabel::simple(
-            format!(
-                "{}{}",
-                match capture.kind() {
-                    hir::CaptureKind::SharedRef => "&",
-                    hir::CaptureKind::UniqueSharedRef => "&unique ",
-                    hir::CaptureKind::MutableRef => "&mut ",
-                    hir::CaptureKind::Move => "",
-                },
-                capture.display_place(sema.db)
-            ),
-            None,
-            source.name().and_then(|name| {
+        let label = format!(
+            "{}{}",
+            match capture.kind() {
+                hir::CaptureKind::SharedRef => "&",
+                hir::CaptureKind::UniqueSharedRef => "&unique ",
+                hir::CaptureKind::MutableRef => "&mut ",
+                hir::CaptureKind::Move => "",
+            },
+            capture.display_place(sema.db)
+        );
+        if never!(label.is_empty()) {
+            continue;
+        }
+        hint.label.append_part(InlayHintLabelPart {
+            text: label,
+            linked_location: source.name().and_then(|name| {
                 name.syntax().original_file_range_opt(sema.db).map(TupleExt::head).map(Into::into)
             }),
-        );
-        acc.push(InlayHint {
-            range: move_kw_range,
-            kind: InlayKind::ClosureCapture,
-            label,
-            text_edit: None,
-            position: InlayHintPosition::After,
-            pad_left: false,
-            pad_right: false,
+            tooltip: None,
         });
 
         if idx != last {
-            acc.push(InlayHint {
-                range: move_kw_range,
-                kind: InlayKind::ClosureCapture,
-                label: InlayHintLabel::from(", "),
-                text_edit: None,
-                position: InlayHintPosition::After,
-                pad_left: false,
-                pad_right: false,
-            });
+            hint.label.append_str(", ");
         }
     }
-    acc.push(InlayHint {
-        range: move_kw_range,
-        kind: InlayKind::ClosureCapture,
-        label: InlayHintLabel::from(")"),
-        text_edit: None,
-        position: InlayHintPosition::After,
-        pad_left: false,
-        pad_right: true,
-    });
-
+    hint.label.append_str(")");
+    acc.push(hint);
     Some(())
 }
 
@@ -138,51 +114,25 @@ fn main() {
     let mut baz = NonCopy;
     let qux = &mut NonCopy;
     || {
-// ^ move
-// ^ (
-// ^ &foo
-// ^ , $
-// ^ bar
-// ^ , $
-// ^ baz
-// ^ , $
-// ^ qux
-// ^ )
+// ^ move(&foo, bar, baz, qux)
         foo;
         bar;
         baz;
         qux;
     };
     || {
-// ^ move
-// ^ (
-// ^ &foo
-// ^ , $
-// ^ &bar
-// ^ , $
-// ^ &baz
-// ^ , $
-// ^ &qux
-// ^ )
+// ^ move(&foo, &bar, &baz, &qux)
         &foo;
         &bar;
         &baz;
         &qux;
     };
     || {
-// ^ move
-// ^ (
-// ^ &mut baz
-// ^ )
+// ^ move(&mut baz)
         &mut baz;
     };
     || {
-// ^ move
-// ^ (
-// ^ &mut baz
-// ^ , $
-// ^ &mut *qux
-// ^ )
+// ^ move(&mut baz, &mut *qux)
         baz = NonCopy;
         *qux = NonCopy;
     };
@@ -200,9 +150,7 @@ fn main() {
 fn main() {
     let foo = u32;
     move || {
-//  ^^^^ (
-//  ^^^^ foo
-//  ^^^^ )
+//  ^^^^ (foo)
         foo;
     };
 }

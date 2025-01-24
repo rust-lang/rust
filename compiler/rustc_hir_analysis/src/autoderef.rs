@@ -1,9 +1,11 @@
 use rustc_infer::infer::InferCtxt;
+use rustc_infer::traits::PredicateObligations;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Limit;
-use rustc_span::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_span::Span;
+use rustc_span::def_id::{LOCAL_CRATE, LocalDefId};
 use rustc_trait_selection::traits::ObligationCtxt;
+use tracing::{debug, instrument};
 
 use crate::errors::AutoDerefReachedRecursionLimit;
 use crate::traits;
@@ -16,15 +18,18 @@ pub enum AutoderefKind {
     /// A type which must dispatch to a `Deref` implementation.
     Overloaded,
 }
-
 struct AutoderefSnapshot<'tcx> {
     at_start: bool,
     reached_recursion_limit: bool,
     steps: Vec<(Ty<'tcx>, AutoderefKind)>,
     cur_ty: Ty<'tcx>,
-    obligations: Vec<traits::PredicateObligation<'tcx>>,
+    obligations: PredicateObligations<'tcx>,
 }
 
+/// Recursively dereference a type, considering both built-in
+/// dereferences (`*`) and the `Deref` trait.
+/// Although called `Autoderef` it can be configured to use the
+/// `Receiver` trait instead of the `Deref` trait.
 pub struct Autoderef<'a, 'tcx> {
     // Meta infos:
     infcx: &'a InferCtxt<'tcx>,
@@ -37,6 +42,7 @@ pub struct Autoderef<'a, 'tcx> {
 
     // Configurations:
     include_raw_pointers: bool,
+    use_receiver_trait: bool,
     silence_errors: bool,
 }
 
@@ -67,6 +73,10 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
         }
 
         // Otherwise, deref if type is derefable:
+        // NOTE: in the case of self.use_receiver_trait = true, you might think it would
+        // be better to skip this clause and use the Overloaded case only, since &T
+        // and &mut T implement Receiver. But built-in derefs apply equally to Receiver
+        // and Deref, and this has benefits for const and the emitted MIR.
         let (kind, new_ty) =
             if let Some(ty) = self.state.cur_ty.builtin_deref(self.include_raw_pointers) {
                 debug_assert_eq!(ty, self.infcx.resolve_vars_if_possible(ty));
@@ -76,7 +86,7 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
                 if self.infcx.next_trait_solver()
                     && let ty::Alias(..) = ty.kind()
                 {
-                    let (normalized_ty, obligations) = self.structurally_normalize(ty)?;
+                    let (normalized_ty, obligations) = self.structurally_normalize_ty(ty)?;
                     self.state.obligations.extend(obligations);
                     (AutoderefKind::Builtin, normalized_ty)
                 } else {
@@ -109,7 +119,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         body_def_id: LocalDefId,
         span: Span,
         base_ty: Ty<'tcx>,
-    ) -> Autoderef<'a, 'tcx> {
+    ) -> Self {
         Autoderef {
             infcx,
             span,
@@ -118,11 +128,12 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             state: AutoderefSnapshot {
                 steps: vec![],
                 cur_ty: infcx.resolve_vars_if_possible(base_ty),
-                obligations: vec![],
+                obligations: PredicateObligations::new(),
                 at_start: true,
                 reached_recursion_limit: false,
             },
             include_raw_pointers: false,
+            use_receiver_trait: false,
             silence_errors: false,
         }
     }
@@ -135,8 +146,13 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             return None;
         }
 
-        // <ty as Deref>
-        let trait_ref = ty::TraitRef::new(tcx, tcx.lang_items().deref_trait()?, [ty]);
+        // <ty as Deref>, or whatever the equivalent trait is that we've been asked to walk.
+        let (trait_def_id, trait_target_def_id) = if self.use_receiver_trait {
+            (tcx.lang_items().receiver_trait()?, tcx.lang_items().receiver_target()?)
+        } else {
+            (tcx.lang_items().deref_trait()?, tcx.lang_items().deref_target()?)
+        };
+        let trait_ref = ty::TraitRef::new(tcx, trait_def_id, [ty]);
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
         let obligation = traits::Obligation::new(
             tcx,
@@ -149,11 +165,8 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             return None;
         }
 
-        let (normalized_ty, obligations) = self.structurally_normalize(Ty::new_projection(
-            tcx,
-            tcx.lang_items().deref_target()?,
-            [ty],
-        ))?;
+        let (normalized_ty, obligations) =
+            self.structurally_normalize_ty(Ty::new_projection(tcx, trait_target_def_id, [ty]))?;
         debug!("overloaded_deref_ty({:?}) = ({:?}, {:?})", ty, normalized_ty, obligations);
         self.state.obligations.extend(obligations);
 
@@ -161,12 +174,12 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn structurally_normalize(
+    pub fn structurally_normalize_ty(
         &self,
         ty: Ty<'tcx>,
-    ) -> Option<(Ty<'tcx>, Vec<traits::PredicateObligation<'tcx>>)> {
+    ) -> Option<(Ty<'tcx>, PredicateObligations<'tcx>)> {
         let ocx = ObligationCtxt::new(self.infcx);
-        let Ok(normalized_ty) = ocx.structurally_normalize(
+        let Ok(normalized_ty) = ocx.structurally_normalize_ty(
             &traits::ObligationCause::misc(self.span, self.body_id),
             self.param_env,
             ty,
@@ -203,11 +216,11 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         self.state.steps.len()
     }
 
-    pub fn into_obligations(self) -> Vec<traits::PredicateObligation<'tcx>> {
+    pub fn into_obligations(self) -> PredicateObligations<'tcx> {
         self.state.obligations
     }
 
-    pub fn current_obligations(&self) -> Vec<traits::PredicateObligation<'tcx>> {
+    pub fn current_obligations(&self) -> PredicateObligations<'tcx> {
         self.state.obligations.clone()
     }
 
@@ -229,6 +242,14 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     /// fcx.autoderef(span, ptr_to_Foo).include_raw_ptrs() => [*const Foo, Foo]
     pub fn include_raw_pointers(mut self) -> Self {
         self.include_raw_pointers = true;
+        self
+    }
+
+    /// Use `core::ops::Receiver` and `core::ops::Receiver::Target` as
+    /// the trait and associated type to iterate, instead of
+    /// `core::ops::Deref` and `core::ops::Deref::Target`
+    pub fn use_receiver_trait(mut self) -> Self {
+        self.use_receiver_trait = true;
         self
     }
 

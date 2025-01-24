@@ -2,7 +2,6 @@
 //!
 //! [`std::fs`]: crate::fs
 
-#![deny(unsafe_op_in_unsafe_fn)]
 #![unstable(feature = "wasi_ext", issue = "71213")]
 
 // Used for `File::read` on intra-doc links
@@ -262,7 +261,7 @@ impl FileExt for fs::File {
             a if a == wasi::ADVICE_DONTNEED.raw() => wasi::ADVICE_DONTNEED,
             a if a == wasi::ADVICE_NOREUSE.raw() => wasi::ADVICE_NOREUSE,
             _ => {
-                return Err(io::const_io_error!(
+                return Err(io::const_error!(
                     io::ErrorKind::InvalidInput,
                     "invalid parameter 'advice'",
                 ));
@@ -561,6 +560,5 @@ pub fn symlink_path<P: AsRef<Path>, U: AsRef<Path>>(old_path: P, new_path: U) ->
 }
 
 fn osstr2str(f: &OsStr) -> io::Result<&str> {
-    f.to_str()
-        .ok_or_else(|| io::const_io_error!(io::ErrorKind::Uncategorized, "input must be utf-8"))
+    f.to_str().ok_or_else(|| io::const_error!(io::ErrorKind::Uncategorized, "input must be utf-8"))
 }

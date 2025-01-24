@@ -98,10 +98,6 @@ the target with:
 rustup target add wasm32-wasip1
 ```
 
-> **Note**: the `wasm32-wasip1` target is new and may only be available
-> on nightly by the time you're reading this. If `wasm32-wasip1` isn't
-> available on stable Rust then `wasm32-wasi` should be available instead.
-
 Rust programs can be built for that target:
 
 ```text
@@ -132,3 +128,9 @@ It's recommended to conditionally compile code for this target with:
 
 Note that the `target_env = "p1"` condition first appeared in Rust 1.80. Prior
 to Rust 1.80 the `target_env` condition was not set.
+
+## Enabled WebAssembly features
+
+The default set of WebAssembly features enabled for compilation is currently the
+same as [`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md). See the
+documentation there for more information.

@@ -1,4 +1,3 @@
-#![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(clippy::single_match_else)]
 
@@ -25,7 +24,6 @@ fn consistent_clippy_crate_versions() {
     let clippy_version = read_version("Cargo.toml");
 
     let paths = [
-        "declare_clippy_lint/Cargo.toml",
         "clippy_config/Cargo.toml",
         "clippy_lints/Cargo.toml",
         "clippy_utils/Cargo.toml",

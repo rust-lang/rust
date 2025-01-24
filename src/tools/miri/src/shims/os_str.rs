@@ -1,14 +1,13 @@
 use std::borrow::Cow;
 use std::ffi::{OsStr, OsString};
-use std::path::{Path, PathBuf};
-
 #[cfg(unix)]
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 #[cfg(windows)]
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
+use std::path::{Path, PathBuf};
 
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::layout::LayoutOf;
 
 use crate::*;
 
@@ -20,14 +19,14 @@ pub enum PathConversion {
 
 #[cfg(unix)]
 pub fn bytes_to_os_str<'tcx>(bytes: &[u8]) -> InterpResult<'tcx, &OsStr> {
-    Ok(OsStr::from_bytes(bytes))
+    interp_ok(OsStr::from_bytes(bytes))
 }
 #[cfg(not(unix))]
 pub fn bytes_to_os_str<'tcx>(bytes: &[u8]) -> InterpResult<'tcx, &OsStr> {
     // We cannot use `from_encoded_bytes_unchecked` here since we can't trust `bytes`.
     let s = std::str::from_utf8(bytes)
         .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", bytes))?;
-    Ok(OsStr::new(s))
+    interp_ok(OsStr::new(s))
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -51,13 +50,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     {
         #[cfg(windows)]
         pub fn u16vec_to_osstring<'tcx>(u16_vec: Vec<u16>) -> InterpResult<'tcx, OsString> {
-            Ok(OsString::from_wide(&u16_vec[..]))
+            interp_ok(OsString::from_wide(&u16_vec[..]))
         }
         #[cfg(not(windows))]
         pub fn u16vec_to_osstring<'tcx>(u16_vec: Vec<u16>) -> InterpResult<'tcx, OsString> {
             let s = String::from_utf16(&u16_vec[..])
                 .map_err(|_| err_unsup_format!("{:?} is not a valid utf-16 string", u16_vec))?;
-            Ok(s.into())
+            interp_ok(s.into())
         }
 
         let u16_vec = self.eval_context_ref().read_wide_str(ptr)?;
@@ -88,7 +87,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, (bool, u64)> {
         #[cfg(windows)]
         fn os_str_to_u16vec<'tcx>(os_str: &OsStr) -> InterpResult<'tcx, Vec<u16>> {
-            Ok(os_str.encode_wide().collect())
+            interp_ok(os_str.encode_wide().collect())
         }
         #[cfg(not(windows))]
         fn os_str_to_u16vec<'tcx>(os_str: &OsStr) -> InterpResult<'tcx, Vec<u16>> {
@@ -98,7 +97,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             os_str
                 .to_str()
                 .map(|s| s.encode_utf16().collect())
-                .ok_or_else(|| err_unsup_format!("{:?} is not a valid utf-8 string", os_str).into())
+                .ok_or_else(|| err_unsup_format!("{:?} is not a valid utf-8 string", os_str))
+                .into()
         }
 
         let u16_vec = os_str_to_u16vec(os_str)?;
@@ -110,7 +110,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 self.eval_context_mut().write_wide_str(truncated_data, ptr, size)?;
             assert!(written && written_len == size);
         }
-        Ok((written, size_needed))
+        interp_ok((written, size_needed))
     }
 
     /// Helper function to write an OsStr as a 0x0000-terminated u16-sequence, which is what the
@@ -149,7 +149,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let arg_place = this.allocate(this.layout_of(arg_type).unwrap(), memkind)?;
         let (written, _) = self.write_os_str_to_c_str(os_str, arg_place.ptr(), size).unwrap();
         assert!(written);
-        Ok(arg_place.ptr())
+        interp_ok(arg_place.ptr())
     }
 
     /// Allocate enough memory to store the given `OsStr` as a null-terminated sequence of `u16`.
@@ -165,7 +165,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let arg_place = this.allocate(this.layout_of(arg_type).unwrap(), memkind)?;
         let (written, _) = self.write_os_str_to_wide_str(os_str, arg_place.ptr(), size).unwrap();
         assert!(written);
-        Ok(arg_place.ptr())
+        interp_ok(arg_place.ptr())
     }
 
     /// Read a null-terminated sequence of bytes, and perform path separator conversion if needed.
@@ -176,7 +176,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_ref();
         let os_str = this.read_os_str_from_c_str(ptr)?;
 
-        Ok(match this.convert_path(Cow::Borrowed(os_str), PathConversion::TargetToHost) {
+        interp_ok(match this.convert_path(Cow::Borrowed(os_str), PathConversion::TargetToHost) {
             Cow::Borrowed(x) => Cow::Borrowed(Path::new(x)),
             Cow::Owned(y) => Cow::Owned(PathBuf::from(y)),
         })
@@ -187,7 +187,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_ref();
         let os_str = this.read_os_str_from_wide_str(ptr)?;
 
-        Ok(this.convert_path(Cow::Owned(os_str), PathConversion::TargetToHost).into_owned().into())
+        interp_ok(
+            this.convert_path(Cow::Owned(os_str), PathConversion::TargetToHost).into_owned().into(),
+        )
     }
 
     /// Write a Path to the machine memory (as a null-terminated sequence of bytes),

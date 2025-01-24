@@ -4,11 +4,9 @@
 // sure that we don't ICE or anything, even if precise closure captures means
 // that we can't actually borrowck successfully.
 
-#![feature(async_closure)]
-
 fn outlives<'a>(_: impl Sized + 'a) {}
 
-async fn call_once(f: impl async FnOnce()) {
+async fn call_once(f: impl AsyncFnOnce()) {
     f().await;
 }
 
@@ -38,10 +36,12 @@ fn through_field_and_ref<'a>(x: &S<'a>) {
     let c = async || { println!("{}", *x.0); }; //~ ERROR `x` does not live long enough
     outlives::<'a>(c());
     outlives::<'a>(call_once(c)); //~ ERROR explicit lifetime required in the type of `x`
+}
 
+fn through_field_and_ref_move<'a>(x: &S<'a>) {
     let c = async move || { println!("{}", *x.0); };
     outlives::<'a>(c()); //~ ERROR `c` does not live long enough
-    // outlives::<'a>(call_once(c)); // FIXME(async_closures): Figure out why this fails
+    outlives::<'a>(call_once(c)); //~ ERROR explicit lifetime required in the type of `x`
 }
 
 fn main() {}

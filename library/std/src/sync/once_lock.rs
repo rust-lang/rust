@@ -101,6 +101,7 @@ use crate::sync::Once;
 /// ```
 #[stable(feature = "once_cell", since = "1.70.0")]
 pub struct OnceLock<T> {
+    // FIXME(nonpoison_once): switch to nonpoison version once it is available
     once: Once,
     // Whether or not the value is initialized is tracked by `once.is_completed()`.
     value: UnsafeCell<MaybeUninit<T>>,
@@ -498,6 +499,7 @@ impl<T> OnceLock<T> {
     }
 
     #[cold]
+    #[optimize(size)]
     fn initialize<F, E>(&self, f: F) -> Result<(), E>
     where
         F: FnOnce() -> Result<T, E>,
@@ -516,7 +518,7 @@ impl<T> OnceLock<T> {
                     res = Err(e);
 
                     // Treat the underlying `Once` as poisoned since we
-                    // failed to initialize our value. Calls
+                    // failed to initialize our value.
                     p.poison();
                 }
             }
@@ -633,6 +635,26 @@ impl<T> From<T> for OnceLock<T> {
 
 #[stable(feature = "once_cell", since = "1.70.0")]
 impl<T: PartialEq> PartialEq for OnceLock<T> {
+    /// Equality for two `OnceLock`s.
+    ///
+    /// Two `OnceLock`s are equal if they either both contain values and their
+    /// values are equal, or if neither contains a value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::OnceLock;
+    ///
+    /// let five = OnceLock::new();
+    /// five.set(5).unwrap();
+    ///
+    /// let also_five = OnceLock::new();
+    /// also_five.set(5).unwrap();
+    ///
+    /// assert!(five == also_five);
+    ///
+    /// assert!(OnceLock::<u32>::new() == OnceLock::<u32>::new());
+    /// ```
     #[inline]
     fn eq(&self, other: &OnceLock<T>) -> bool {
         self.get() == other.get()

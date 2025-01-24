@@ -3,7 +3,7 @@
 //! when returning from the closure.
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use run_make_support::{cwd, run_in_tmpdir};
 

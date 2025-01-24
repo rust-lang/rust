@@ -1,10 +1,8 @@
-#![feature(const_trait_impl)]
-#![feature(const_mut_refs)]
+#![feature(const_trait_impl, const_destruct)]
 
 struct A();
 
 impl const Drop for A {
-    //~^ ERROR const `impl` for trait `Drop` which is not marked with `#[const_trait]`
     fn drop(&mut self) {}
 }
 

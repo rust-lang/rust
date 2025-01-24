@@ -45,8 +45,6 @@ declare_clippy_lint! {
 declare_lint_pass!(ImplicitReturn => [IMPLICIT_RETURN]);
 
 fn lint_return(cx: &LateContext<'_>, emission_place: HirId, span: Span) {
-    let mut app = Applicability::MachineApplicable;
-    let snip = snippet_with_applicability(cx, span, "..", &mut app);
     span_lint_hir_and_then(
         cx,
         IMPLICIT_RETURN,
@@ -54,14 +52,14 @@ fn lint_return(cx: &LateContext<'_>, emission_place: HirId, span: Span) {
         span,
         "missing `return` statement",
         |diag| {
-            diag.span_suggestion(span, "add `return` as shown", format!("return {snip}"), app);
+            let mut app = Applicability::MachineApplicable;
+            let snip = snippet_with_applicability(cx, span, "..", &mut app);
+            diag.span_suggestion_verbose(span, "add `return` as shown", format!("return {snip}"), app);
         },
     );
 }
 
 fn lint_break(cx: &LateContext<'_>, emission_place: HirId, break_span: Span, expr_span: Span) {
-    let mut app = Applicability::MachineApplicable;
-    let snip = snippet_with_context(cx, expr_span, break_span.ctxt(), "..", &mut app).0;
     span_lint_hir_and_then(
         cx,
         IMPLICIT_RETURN,
@@ -69,7 +67,9 @@ fn lint_break(cx: &LateContext<'_>, emission_place: HirId, break_span: Span, exp
         break_span,
         "missing `return` statement",
         |diag| {
-            diag.span_suggestion(
+            let mut app = Applicability::MachineApplicable;
+            let snip = snippet_with_context(cx, expr_span, break_span.ctxt(), "..", &mut app).0;
+            diag.span_suggestion_verbose(
                 break_span,
                 "change `break` to `return` as shown",
                 format!("return {snip}"),

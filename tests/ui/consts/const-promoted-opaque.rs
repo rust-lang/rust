@@ -27,7 +27,6 @@ use helper::*;
 const BAR: () = {
     let _: &'static _ = &FOO;
     //[string,atomic]~^ ERROR: destructor of `helper::Foo` cannot be evaluated at compile-time
-    //[atomic]~| ERROR: cannot borrow here
 };
 
 const BAZ: &Foo = &FOO;

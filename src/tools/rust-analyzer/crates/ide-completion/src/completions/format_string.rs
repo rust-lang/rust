@@ -35,7 +35,8 @@ pub(crate) fn format_string(
         CompletionItem::new(
             CompletionItemKind::Binding,
             source_range,
-            name.display_no_db().to_smolstr(),
+            name.display_no_db(ctx.edition).to_smolstr(),
+            ctx.edition,
         )
         .add_to(acc, ctx.db);
     });
@@ -50,7 +51,8 @@ pub(crate) fn format_string(
             CompletionItem::new(
                 CompletionItemKind::SymbolKind(symbol_kind),
                 source_range,
-                name.display_no_db().to_smolstr(),
+                name.display_no_db(ctx.edition).to_smolstr(),
+                ctx.edition,
             )
             .add_to(acc, ctx.db);
         }
@@ -59,18 +61,13 @@ pub(crate) fn format_string(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::expect;
 
-    use crate::tests::{check_edit, completion_list_no_kw};
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list_no_kw(ra_fixture);
-        expect.assert_eq(&actual);
-    }
+    use crate::tests::{check_edit, check_no_kw};
 
     #[test]
     fn works_when_wrapped() {
-        check(
+        check_no_kw(
             r#"
 //- minicore: fmt
 macro_rules! print {
@@ -87,7 +84,7 @@ fn main() {
 
     #[test]
     fn no_completion_without_brace() {
-        check(
+        check_no_kw(
             r#"
 //- minicore: fmt
 fn main() {

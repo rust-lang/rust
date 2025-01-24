@@ -1,5 +1,5 @@
 error: Undefined Behavior: memory access failed: expected a pointer to 129 bytes of memory, but got ALLOC which is only 128 bytes from the end of the allocation
-  --> $DIR/affinity.rs:LL:CC
+  --> tests/fail-dep/libc/affinity.rs:LL:CC
    |
 LL |     let err = unsafe { sched_setaffinity(PID, size_of::<cpu_set_t>() + 1, &cpuset) };
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 129 bytes of memory, but got ALLOC which is only 128 bytes from the end of the allocation
@@ -7,12 +7,12 @@ LL |     let err = unsafe { sched_setaffinity(PID, size_of::<cpu_set_t>() + 1, &
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
 help: ALLOC was allocated here:
-  --> $DIR/affinity.rs:LL:CC
+  --> tests/fail-dep/libc/affinity.rs:LL:CC
    |
 LL |     let cpuset: cpu_set_t = unsafe { core::mem::MaybeUninit::zeroed().assume_init() };
    |         ^^^^^^
    = note: BACKTRACE (of the first span):
-   = note: inside `main` at $DIR/affinity.rs:LL:CC
+   = note: inside `main` at tests/fail-dep/libc/affinity.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

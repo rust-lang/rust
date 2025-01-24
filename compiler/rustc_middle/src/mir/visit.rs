@@ -349,7 +349,6 @@ macro_rules! make_mir_visitor {
                             coroutine_closure_def_id: _def_id,
                             receiver_by_ref: _,
                         } |
-                        ty::InstanceKind::CoroutineKindShim { coroutine_def_id: _def_id } |
                         ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, None) |
                         ty::InstanceKind::DropGlue(_def_id, None) => {}
 
@@ -453,6 +452,7 @@ macro_rules! make_mir_visitor {
                     }
                     StatementKind::ConstEvalCounter => {}
                     StatementKind::Nop => {}
+                    StatementKind::BackwardIncompatibleDropHint { .. } => {}
                 }
             }
 
@@ -577,6 +577,7 @@ macro_rules! make_mir_visitor {
                     }
 
                     TerminatorKind::InlineAsm {
+                        asm_macro: _,
                         template: _,
                         operands,
                         options: _,
@@ -682,13 +683,13 @@ macro_rules! make_mir_visitor {
                         );
                     }
 
-                    Rvalue::AddressOf(m, path) => {
+                    Rvalue::RawPtr(m, path) => {
                         let ctx = match m {
                             Mutability::Mut => PlaceContext::MutatingUse(
-                                MutatingUseContext::AddressOf
+                                MutatingUseContext::RawBorrow
                             ),
                             Mutability::Not => PlaceContext::NonMutatingUse(
-                                NonMutatingUseContext::AddressOf
+                                NonMutatingUseContext::RawBorrow
                             ),
                         };
                         self.visit_place(path, ctx, location);
@@ -1299,8 +1300,8 @@ pub enum NonMutatingUseContext {
     /// FIXME: do we need to distinguish shallow and deep fake borrows? In fact, do we need to
     /// distinguish fake and normal deep borrows?
     FakeBorrow,
-    /// AddressOf for *const pointer.
-    AddressOf,
+    /// `&raw const`.
+    RawBorrow,
     /// PlaceMention statement.
     ///
     /// This statement is executed as a check that the `Place` is live without reading from it,
@@ -1333,8 +1334,8 @@ pub enum MutatingUseContext {
     Drop,
     /// Mutable borrow.
     Borrow,
-    /// AddressOf for *mut pointer.
-    AddressOf,
+    /// `&raw mut`.
+    RawBorrow,
     /// Used as base for another place, e.g., `x` in `x.y`. Could potentially mutate the place.
     /// For example, the projection `x.y` is marked as a mutation in these cases:
     /// ```ignore (illustrative)
@@ -1368,12 +1369,12 @@ pub enum PlaceContext {
 impl PlaceContext {
     /// Returns `true` if this place context represents a drop.
     #[inline]
-    pub fn is_drop(&self) -> bool {
+    pub fn is_drop(self) -> bool {
         matches!(self, PlaceContext::MutatingUse(MutatingUseContext::Drop))
     }
 
     /// Returns `true` if this place context represents a borrow.
-    pub fn is_borrow(&self) -> bool {
+    pub fn is_borrow(self) -> bool {
         matches!(
             self,
             PlaceContext::NonMutatingUse(
@@ -1383,17 +1384,17 @@ impl PlaceContext {
     }
 
     /// Returns `true` if this place context represents an address-of.
-    pub fn is_address_of(&self) -> bool {
+    pub fn is_address_of(self) -> bool {
         matches!(
             self,
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
-                | PlaceContext::MutatingUse(MutatingUseContext::AddressOf)
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow)
+                | PlaceContext::MutatingUse(MutatingUseContext::RawBorrow)
         )
     }
 
     /// Returns `true` if this place context represents a storage live or storage dead marker.
     #[inline]
-    pub fn is_storage_marker(&self) -> bool {
+    pub fn is_storage_marker(self) -> bool {
         matches!(
             self,
             PlaceContext::NonUse(NonUseContext::StorageLive | NonUseContext::StorageDead)
@@ -1402,18 +1403,18 @@ impl PlaceContext {
 
     /// Returns `true` if this place context represents a use that potentially changes the value.
     #[inline]
-    pub fn is_mutating_use(&self) -> bool {
+    pub fn is_mutating_use(self) -> bool {
         matches!(self, PlaceContext::MutatingUse(..))
     }
 
     /// Returns `true` if this place context represents a use.
     #[inline]
-    pub fn is_use(&self) -> bool {
+    pub fn is_use(self) -> bool {
         !matches!(self, PlaceContext::NonUse(..))
     }
 
     /// Returns `true` if this place context represents an assignment statement.
-    pub fn is_place_assignment(&self) -> bool {
+    pub fn is_place_assignment(self) -> bool {
         matches!(
             self,
             PlaceContext::MutatingUse(
@@ -1422,5 +1423,20 @@ impl PlaceContext {
                     | MutatingUseContext::AsmOutput,
             )
         )
+    }
+
+    /// The variance of a place in the given context.
+    pub fn ambient_variance(self) -> ty::Variance {
+        use NonMutatingUseContext::*;
+        use NonUseContext::*;
+        match self {
+            PlaceContext::MutatingUse(_) => ty::Invariant,
+            PlaceContext::NonUse(StorageDead | StorageLive | VarDebugInfo) => ty::Invariant,
+            PlaceContext::NonMutatingUse(
+                Inspect | Copy | Move | PlaceMention | SharedBorrow | FakeBorrow | RawBorrow
+                | Projection,
+            ) => ty::Covariant,
+            PlaceContext::NonUse(AscribeUserTy(variance)) => variance,
+        }
     }
 }

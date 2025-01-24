@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{walk_inf, walk_ty, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_inf, walk_ty};
 use rustc_hir::{GenericParamKind, TyKind};
 use rustc_lint::LateContext;
 use rustc_target::spec::abi::Abi;
@@ -55,7 +55,6 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
             TyKind::TraitObject(param_bounds, _, _) => {
                 let has_lifetime_parameters = param_bounds.iter().any(|bound| {
                     bound
-                        .0
                         .bound_generic_params
                         .iter()
                         .any(|param| matches!(param.kind, GenericParamKind::Lifetime { .. }))

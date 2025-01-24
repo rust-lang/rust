@@ -31,7 +31,7 @@ cfg_if::cfg_if! {
 }
 
 extern "C" {
-    #[cfg(not(any(target_os = "dragonfly", target_os = "vxworks")))]
+    #[cfg(not(any(target_os = "dragonfly", target_os = "vxworks", target_os = "rtems")))]
     #[cfg_attr(
         any(
             target_os = "linux",
@@ -48,6 +48,7 @@ extern "C" {
             target_os = "openbsd",
             target_os = "android",
             target_os = "redox",
+            target_os = "nuttx",
             target_env = "newlib"
         ),
         link_name = "__errno"
@@ -61,13 +62,14 @@ extern "C" {
 }
 
 /// Returns the platform-specific value of errno
-#[cfg(not(any(target_os = "dragonfly", target_os = "vxworks")))]
+#[cfg(not(any(target_os = "dragonfly", target_os = "vxworks", target_os = "rtems")))]
 pub fn errno() -> i32 {
     unsafe { (*errno_location()) as i32 }
 }
 
 /// Sets the platform-specific value of errno
-#[cfg(all(not(target_os = "dragonfly"), not(target_os = "vxworks")))] // needed for readdir and syscall!
+// needed for readdir and syscall!
+#[cfg(all(not(target_os = "dragonfly"), not(target_os = "vxworks"), not(target_os = "rtems")))]
 #[allow(dead_code)] // but not all target cfgs actually end up using it
 pub fn set_errno(e: i32) {
     unsafe { *errno_location() = e as c_int }
@@ -76,6 +78,16 @@ pub fn set_errno(e: i32) {
 #[cfg(target_os = "vxworks")]
 pub fn errno() -> i32 {
     unsafe { libc::errnoGet() }
+}
+
+#[cfg(target_os = "rtems")]
+pub fn errno() -> i32 {
+    extern "C" {
+        #[thread_local]
+        static _tls_errno: c_int;
+    }
+
+    unsafe { _tls_errno as i32 }
 }
 
 #[cfg(target_os = "dragonfly")]
@@ -246,7 +258,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     use crate::env;
     use crate::io::ErrorKind;
 
-    let exe_path = env::args().next().ok_or(io::const_io_error!(
+    let exe_path = env::args().next().ok_or(io::const_error!(
         ErrorKind::NotFound,
         "an executable path was not found because no arguments were provided through argv"
     ))?;
@@ -272,7 +284,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
             }
         }
     }
-    Err(io::const_io_error!(ErrorKind::NotFound, "an executable path was not found"))
+    Err(io::const_error!(ErrorKind::NotFound, "an executable path was not found"))
 }
 
 #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
@@ -328,7 +340,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
                 0,
             ))?;
             if path_len <= 1 {
-                return Err(io::const_io_error!(
+                return Err(io::const_error!(
                     io::ErrorKind::Uncategorized,
                     "KERN_PROC_PATHNAME sysctl returned zero-length string",
                 ));
@@ -351,7 +363,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
         if curproc_exe.is_file() {
             return crate::fs::read_link(curproc_exe);
         }
-        Err(io::const_io_error!(
+        Err(io::const_error!(
             io::ErrorKind::Uncategorized,
             "/proc/curproc/exe doesn't point to regular file.",
         ))
@@ -370,10 +382,9 @@ pub fn current_exe() -> io::Result<PathBuf> {
         cvt(libc::sysctl(mib, 4, argv.as_mut_ptr() as *mut _, &mut argv_len, ptr::null_mut(), 0))?;
         argv.set_len(argv_len as usize);
         if argv[0].is_null() {
-            return Err(io::const_io_error!(
-                io::ErrorKind::Uncategorized,
-                "no current exe available",
-            ));
+            return Err(
+                io::const_error!(io::ErrorKind::Uncategorized, "no current exe available",),
+            );
         }
         let argv0 = CStr::from_ptr(argv[0]).to_bytes();
         if argv0[0] == b'.' || argv0.iter().any(|b| *b == b'/') {
@@ -388,11 +399,12 @@ pub fn current_exe() -> io::Result<PathBuf> {
     target_os = "linux",
     target_os = "hurd",
     target_os = "android",
+    target_os = "nuttx",
     target_os = "emscripten"
 ))]
 pub fn current_exe() -> io::Result<PathBuf> {
     match crate::fs::read_link("/proc/self/exe") {
-        Err(ref e) if e.kind() == io::ErrorKind::NotFound => Err(io::const_io_error!(
+        Err(ref e) if e.kind() == io::ErrorKind::NotFound => Err(io::const_error!(
             io::ErrorKind::Uncategorized,
             "no /proc/self/exe available. Is /proc mounted?",
         )),
@@ -415,11 +427,13 @@ pub fn current_exe() -> io::Result<PathBuf> {
 pub fn current_exe() -> io::Result<PathBuf> {
     unsafe {
         let mut sz: u32 = 0;
+        #[expect(deprecated)]
         libc::_NSGetExecutablePath(ptr::null_mut(), &mut sz);
         if sz == 0 {
             return Err(io::Error::last_os_error());
         }
         let mut v: Vec<u8> = Vec::with_capacity(sz as usize);
+        #[expect(deprecated)]
         let err = libc::_NSGetExecutablePath(v.as_mut_ptr() as *mut i8, &mut sz);
         if err != 0 {
             return Err(io::Error::last_os_error());
@@ -463,7 +477,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
         );
         if result != libc::B_OK {
             use crate::io::ErrorKind;
-            Err(io::const_io_error!(ErrorKind::Uncategorized, "Error getting executable path"))
+            Err(io::const_error!(ErrorKind::Uncategorized, "Error getting executable path"))
         } else {
             // find_path adds the null terminator.
             let name = CStr::from_ptr(name.as_ptr()).to_bytes();
@@ -472,7 +486,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
-#[cfg(target_os = "redox")]
+#[cfg(any(target_os = "redox", target_os = "rtems"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     crate::fs::read_to_string("sys:exe").map(PathBuf::from)
 }
@@ -480,7 +494,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 #[cfg(target_os = "l4re")]
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::io::ErrorKind;
-    Err(io::const_io_error!(ErrorKind::Unsupported, "Not yet implemented!"))
+    Err(io::const_error!(ErrorKind::Unsupported, "Not yet implemented!"))
 }
 
 #[cfg(target_os = "vxworks")]
@@ -510,7 +524,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     use crate::env;
     use crate::io::ErrorKind;
 
-    let exe_path = env::args().next().ok_or(io::const_io_error!(
+    let exe_path = env::args().next().ok_or(io::const_error!(
         ErrorKind::Uncategorized,
         "an executable path was not found because no arguments were provided through argv"
     ))?;
@@ -599,7 +613,7 @@ pub unsafe fn environ() -> *mut *const *const c_char {
     extern "C" {
         static mut environ: *const *const c_char;
     }
-    ptr::addr_of_mut!(environ)
+    &raw mut environ
 }
 
 static ENV_LOCK: RwLock<()> = RwLock::new(());
@@ -685,12 +699,82 @@ pub fn page_size() -> usize {
     unsafe { libc::sysconf(libc::_SC_PAGESIZE) as usize }
 }
 
+// Returns the value for [`confstr(key, ...)`][posix_confstr]. Currently only
+// used on Darwin, but should work on any unix (in case we need to get
+// `_CS_PATH` or `_CS_V[67]_ENV` in the future).
+//
+// [posix_confstr]:
+//     https://pubs.opengroup.org/onlinepubs/9699919799/functions/confstr.html
+//
+// FIXME: Support `confstr` in Miri.
+#[cfg(all(target_vendor = "apple", not(miri)))]
+fn confstr(key: c_int, size_hint: Option<usize>) -> io::Result<OsString> {
+    let mut buf: Vec<u8> = Vec::with_capacity(0);
+    let mut bytes_needed_including_nul = size_hint
+        .unwrap_or_else(|| {
+            // Treat "None" as "do an extra call to get the length". In theory
+            // we could move this into the loop below, but it's hard to do given
+            // that it isn't 100% clear if it's legal to pass 0 for `len` when
+            // the buffer isn't null.
+            unsafe { libc::confstr(key, core::ptr::null_mut(), 0) }
+        })
+        .max(1);
+    // If the value returned by `confstr` is greater than the len passed into
+    // it, then the value was truncated, meaning we need to retry. Note that
+    // while `confstr` results don't seem to change for a process, it's unclear
+    // if this is guaranteed anywhere, so looping does seem required.
+    while bytes_needed_including_nul > buf.capacity() {
+        // We write into the spare capacity of `buf`. This lets us avoid
+        // changing buf's `len`, which both simplifies `reserve` computation,
+        // allows working with `Vec<u8>` instead of `Vec<MaybeUninit<u8>>`, and
+        // may avoid a copy, since the Vec knows that none of the bytes are needed
+        // when reallocating (well, in theory anyway).
+        buf.reserve(bytes_needed_including_nul);
+        // `confstr` returns
+        // - 0 in the case of errors: we break and return an error.
+        // - The number of bytes written, iff the provided buffer is enough to
+        //   hold the entire value: we break and return the data in `buf`.
+        // - Otherwise, the number of bytes needed (including nul): we go
+        //   through the loop again.
+        bytes_needed_including_nul =
+            unsafe { libc::confstr(key, buf.as_mut_ptr().cast::<c_char>(), buf.capacity()) };
+    }
+    // `confstr` returns 0 in the case of an error.
+    if bytes_needed_including_nul == 0 {
+        return Err(io::Error::last_os_error());
+    }
+    // Safety: `confstr(..., buf.as_mut_ptr(), buf.capacity())` returned a
+    // non-zero value, meaning `bytes_needed_including_nul` bytes were
+    // initialized.
+    unsafe {
+        buf.set_len(bytes_needed_including_nul);
+        // Remove the NUL-terminator.
+        let last_byte = buf.pop();
+        // ... and smoke-check that it *was* a NUL-terminator.
+        assert_eq!(last_byte, Some(0), "`confstr` provided a string which wasn't nul-terminated");
+    };
+    Ok(OsString::from_vec(buf))
+}
+
+#[cfg(all(target_vendor = "apple", not(miri)))]
+fn darwin_temp_dir() -> PathBuf {
+    confstr(libc::_CS_DARWIN_USER_TEMP_DIR, Some(64)).map(PathBuf::from).unwrap_or_else(|_| {
+        // It failed for whatever reason (there are several possible reasons),
+        // so return the global one.
+        PathBuf::from("/tmp")
+    })
+}
+
 pub fn temp_dir() -> PathBuf {
     crate::env::var_os("TMPDIR").map(PathBuf::from).unwrap_or_else(|| {
-        if cfg!(target_os = "android") {
-            PathBuf::from("/data/local/tmp")
-        } else {
-            PathBuf::from("/tmp")
+        cfg_if::cfg_if! {
+            if #[cfg(all(target_vendor = "apple", not(miri)))] {
+                darwin_temp_dir()
+            } else if #[cfg(target_os = "android")] {
+                PathBuf::from("/data/local/tmp")
+            } else {
+                PathBuf::from("/tmp")
+            }
         }
     })
 }
@@ -706,6 +790,7 @@ pub fn home_dir() -> Option<PathBuf> {
         target_os = "espidf",
         target_os = "horizon",
         target_os = "vita",
+        target_os = "nuttx",
         all(target_vendor = "apple", not(target_os = "macos")),
     ))]
     unsafe fn fallback() -> Option<OsString> {
@@ -719,6 +804,7 @@ pub fn home_dir() -> Option<PathBuf> {
         target_os = "espidf",
         target_os = "horizon",
         target_os = "vita",
+        target_os = "nuttx",
         all(target_vendor = "apple", not(target_os = "macos")),
     )))]
     unsafe fn fallback() -> Option<OsString> {

@@ -8,8 +8,8 @@ trait Try {
 
 fn w<'a, T: 'a, F: Fn(&'a T)>() {
     let b: &dyn FromResidual = &();
-    //~^ ERROR: the trait `FromResidual` cannot be made into an object
-    //~| ERROR: the trait `FromResidual` cannot be made into an object
+    //~^ ERROR: the trait `FromResidual` is not dyn compatible
+    //~| ERROR: the trait `FromResidual` is not dyn compatible
 }
 
 fn main() {}

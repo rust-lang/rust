@@ -14,7 +14,7 @@ pub(super) fn mangle<'tcx>(
 ) -> String {
     // The symbol of a generic function may be scattered in multiple downstream dylibs.
     // If the symbol of a generic function still contains `crate name`, hash conflicts between the
-    // generic funcion and other symbols of the same `crate` cannot be detected in time during
+    // generic function and other symbols of the same `crate` cannot be detected in time during
     // construction. This symbol conflict is left over until it occurs during run time.
     // In this case, `instantiating-crate name` is used to replace `crate name` can completely
     // eliminate the risk of the preceding potential hash conflict.

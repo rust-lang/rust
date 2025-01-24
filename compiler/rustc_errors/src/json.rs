@@ -19,21 +19,22 @@ use derive_setters::Setters;
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_error_messages::FluentArgs;
 use rustc_lint_defs::Applicability;
+use rustc_span::Span;
 use rustc_span::hygiene::ExpnData;
 use rustc_span::source_map::SourceMap;
-use rustc_span::Span;
 use serde::Serialize;
 use termcolor::{ColorSpec, WriteColor};
 
 use crate::diagnostic::IsLint;
 use crate::emitter::{
-    should_show_source_code, ColorConfig, Destination, Emitter, HumanEmitter,
-    HumanReadableErrorType,
+    ColorConfig, Destination, Emitter, HumanEmitter, HumanReadableErrorType, OutputTheme,
+    should_show_source_code,
 };
 use crate::registry::Registry;
-use crate::translation::{to_fluent_args, Translate};
+use crate::translation::{Translate, to_fluent_args};
 use crate::{
-    CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, Subdiag, TerminalUrl,
+    CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, Subdiag, Suggestions,
+    TerminalUrl,
 };
 
 #[cfg(test)]
@@ -43,7 +44,6 @@ mod tests;
 pub struct JsonEmitter {
     #[setters(skip)]
     dst: IntoDynSyncSend<Box<dyn Write + Send>>,
-    registry: Option<Registry>,
     #[setters(skip)]
     sm: Lrc<SourceMap>,
     fluent_bundle: Option<Lrc<FluentBundle>>,
@@ -55,6 +55,7 @@ pub struct JsonEmitter {
     ignored_directories_in_source_blocks: Vec<String>,
     #[setters(skip)]
     json_rendered: HumanReadableErrorType,
+    color_config: ColorConfig,
     diagnostic_width: Option<usize>,
     macro_backtrace: bool,
     track_diagnostics: bool,
@@ -68,10 +69,10 @@ impl JsonEmitter {
         fallback_bundle: LazyFallbackBundle,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
+        color_config: ColorConfig,
     ) -> JsonEmitter {
         JsonEmitter {
             dst: IntoDynSyncSend(dst),
-            registry: None,
             sm,
             fluent_bundle: None,
             fallback_bundle,
@@ -79,6 +80,7 @@ impl JsonEmitter {
             ui_testing: false,
             ignored_directories_in_source_blocks: Vec::new(),
             json_rendered,
+            color_config,
             diagnostic_width: None,
             macro_backtrace: false,
             track_diagnostics: false,
@@ -107,8 +109,8 @@ enum EmitTyped<'a> {
 }
 
 impl Translate for JsonEmitter {
-    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
-        self.fluent_bundle.as_ref()
+    fn fluent_bundle(&self) -> Option<&FluentBundle> {
+        self.fluent_bundle.as_deref()
     }
 
     fn fallback_fluent_bundle(&self) -> &FluentBundle {
@@ -117,8 +119,8 @@ impl Translate for JsonEmitter {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit_diagnostic(&mut self, diag: crate::DiagInner) {
-        let data = Diagnostic::from_errors_diagnostic(diag, self);
+    fn emit_diagnostic(&mut self, diag: crate::DiagInner, registry: &Registry) {
+        let data = Diagnostic::from_errors_diagnostic(diag, self, registry);
         let result = self.emit(EmitTyped::Diagnostic(data));
         if let Err(e) = result {
             panic!("failed to print diagnostics: {e:?}");
@@ -133,7 +135,7 @@ impl Emitter for JsonEmitter {
         }
     }
 
-    fn emit_future_breakage_report(&mut self, diags: Vec<crate::DiagInner>) {
+    fn emit_future_breakage_report(&mut self, diags: Vec<crate::DiagInner>, registry: &Registry) {
         let data: Vec<FutureBreakageItem<'_>> = diags
             .into_iter()
             .map(|mut diag| {
@@ -147,7 +149,7 @@ impl Emitter for JsonEmitter {
                 }
                 FutureBreakageItem {
                     diagnostic: EmitTyped::Diagnostic(Diagnostic::from_errors_diagnostic(
-                        diag, self,
+                        diag, self, registry,
                     )),
                 }
             })
@@ -168,12 +170,12 @@ impl Emitter for JsonEmitter {
         }
     }
 
-    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
+    fn source_map(&self) -> Option<&SourceMap> {
         Some(&self.sm)
     }
 
     fn should_show_explain(&self) -> bool {
-        !matches!(self.json_rendered, HumanReadableErrorType::Short(_))
+        !self.json_rendered.short()
     }
 }
 
@@ -287,9 +289,13 @@ struct UnusedExterns<'a> {
 
 impl Diagnostic {
     /// Converts from `rustc_errors::DiagInner` to `Diagnostic`.
-    fn from_errors_diagnostic(diag: crate::DiagInner, je: &JsonEmitter) -> Diagnostic {
+    fn from_errors_diagnostic(
+        diag: crate::DiagInner,
+        je: &JsonEmitter,
+        registry: &Registry,
+    ) -> Diagnostic {
         let args = to_fluent_args(diag.args.iter());
-        let sugg = diag.suggestions.iter().flatten().map(|sugg| {
+        let sugg_to_diag = |sugg: &CodeSuggestion| {
             let translated_message =
                 je.translate_message(&sugg.msg, &args).map_err(Report::new).unwrap();
             Diagnostic {
@@ -300,7 +306,12 @@ impl Diagnostic {
                 children: vec![],
                 rendered: None,
             }
-        });
+        };
+        let sugg = match &diag.suggestions {
+            Suggestions::Enabled(suggestions) => suggestions.iter().map(sugg_to_diag),
+            Suggestions::Sealed(suggestions) => suggestions.iter().map(sugg_to_diag),
+            Suggestions::Disabled => [].iter().map(sugg_to_diag),
+        };
 
         // generate regular command line output and store it in the json
 
@@ -335,7 +346,7 @@ impl Diagnostic {
         let code = if let Some(code) = diag.code {
             Some(DiagnosticCode {
                 code: code.to_string(),
-                explanation: je.registry.as_ref().unwrap().try_find_description(code).ok(),
+                explanation: registry.try_find_description(code).ok(),
             })
         } else if let Some(IsLint { name, .. }) = &diag.is_lint {
             Some(DiagnosticCode { code: name.to_string(), explanation: None })
@@ -353,14 +364,14 @@ impl Diagnostic {
 
         let buf = BufWriter::default();
         let mut dst: Destination = Box::new(buf.clone());
-        let (short, color_config) = je.json_rendered.unzip();
-        match color_config {
+        let short = je.json_rendered.short();
+        match je.color_config {
             ColorConfig::Always | ColorConfig::Auto => dst = Box::new(termcolor::Ansi::new(dst)),
             ColorConfig::Never => {}
         }
-        HumanEmitter::new(dst, je.fallback_bundle.clone())
+        HumanEmitter::new(dst, Lrc::clone(&je.fallback_bundle))
             .short_message(short)
-            .sm(Some(je.sm.clone()))
+            .sm(Some(Lrc::clone(&je.sm)))
             .fluent_bundle(je.fluent_bundle.clone())
             .diagnostic_width(je.diagnostic_width)
             .macro_backtrace(je.macro_backtrace)
@@ -368,7 +379,12 @@ impl Diagnostic {
             .terminal_url(je.terminal_url)
             .ui_testing(je.ui_testing)
             .ignored_directories_in_source_blocks(je.ignored_directories_in_source_blocks.clone())
-            .emit_diagnostic(diag);
+            .theme(if let HumanReadableErrorType::Unicode = je.json_rendered {
+                OutputTheme::Unicode
+            } else {
+                OutputTheme::Ascii
+            })
+            .emit_diagnostic(diag, registry);
         let buf = Arc::try_unwrap(buf.0).unwrap().into_inner().unwrap();
         let buf = String::from_utf8(buf).unwrap();
 
@@ -447,7 +463,8 @@ impl DiagnosticSpan {
         // is an empty string, increase the length to include the newline so we don't
         // leave an empty line
         if start.col.0 == 0
-            && suggestion.map_or(false, |(s, _)| s.is_empty())
+            && let Some((suggestion, _)) = suggestion
+            && suggestion.is_empty()
             && let Ok(after) = je.sm.span_to_next_source(span)
             && after.starts_with('\n')
         {

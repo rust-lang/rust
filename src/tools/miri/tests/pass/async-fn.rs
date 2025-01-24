@@ -1,5 +1,4 @@
 #![feature(never_type)]
-#![feature(noop_waker)]
 
 use std::future::Future;
 
@@ -59,6 +58,7 @@ async fn hello_world() {
 }
 
 // This example comes from https://github.com/rust-lang/rust/issues/115145
+#[allow(unreachable_patterns)]
 async fn uninhabited_variant() {
     async fn unreachable(_: Never) {}
 

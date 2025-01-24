@@ -54,8 +54,6 @@ impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
                 && let Some(ty_has_interior_mutability) =
                     is_cast_from_ref_to_mut_ptr(cx, init, &mut peel_casts)
             {
-                let ty_has_interior_mutability = ty_has_interior_mutability.then_some(());
-
                 cx.emit_span_lint(
                     INVALID_REFERENCE_CASTING,
                     expr.span,
@@ -170,7 +168,7 @@ fn is_cast_from_ref_to_mut_ptr<'tcx>(
         // Except on the presence of non concrete skeleton types (ie generics)
         // since there is no way to make it safe for arbitrary types.
         let inner_ty_has_interior_mutability =
-            !inner_ty.is_freeze(cx.tcx, cx.param_env) && inner_ty.has_concrete_skeleton();
+            !inner_ty.is_freeze(cx.tcx, cx.typing_env()) && inner_ty.has_concrete_skeleton();
         (!need_check_freeze || !inner_ty_has_interior_mutability)
             .then_some(inner_ty_has_interior_mutability)
     } else {

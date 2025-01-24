@@ -9,20 +9,22 @@
 
 #![feature(rustc_private)]
 #![feature(assert_matches)]
-#![feature(control_flow_enum)]
 
+extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_smir;
 extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use mir::{mono::Instance, TerminatorKind::*};
+use std::io::Write;
+use std::ops::ControlFlow;
+
+use mir::mono::Instance;
+use mir::TerminatorKind::*;
 use rustc_smir::rustc_internal;
 use stable_mir::ty::{RigidTy, TyKind};
 use stable_mir::*;
-use std::io::Write;
-use std::ops::ControlFlow;
 
 const CRATE_NAME: &str = "input";
 

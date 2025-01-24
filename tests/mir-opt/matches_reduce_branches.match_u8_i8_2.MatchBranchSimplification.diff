@@ -35,8 +35,8 @@
 -         _3 = const -1_i8;
 +         StorageLive(_8);
 +         _8 = move _5;
-+         _2 = _8 as i8 (IntToInt);
-+         _3 = _8 as i8 (IntToInt);
++         _2 = copy _8 as i8 (IntToInt);
++         _3 = copy _8 as i8 (IntToInt);
           _4 = ();
 -         goto -> bb6;
 -     }
@@ -66,9 +66,9 @@
 +         StorageDead(_8);
           StorageDead(_4);
           StorageLive(_6);
-          _6 = _2;
+          _6 = copy _2;
           StorageLive(_7);
-          _7 = _3;
+          _7 = copy _3;
           _0 = (move _6, move _7);
           StorageDead(_7);
           StorageDead(_6);

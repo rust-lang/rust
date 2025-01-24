@@ -1,5 +1,4 @@
 //@ compile-flags: -O -Zmerge-functions=disabled
-//@ min-llvm-version: 18
 #![crate_type = "lib"]
 
 extern crate core;

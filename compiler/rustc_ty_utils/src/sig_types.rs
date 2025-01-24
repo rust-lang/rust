@@ -31,7 +31,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
             // If the type of the item uses `_`, we're gonna error out anyway, but
             // typeck (which type_of invokes below), will call back into opaque_types_defined_by
             // causing a cycle. So we just bail out in this case.
-            if hir_sig.output.get_infer_ret_ty().is_some() {
+            if hir_sig.output.is_suggestable_infer_ty().is_some() {
                 return V::Result::output();
             }
             let ty_sig = tcx.fn_sig(item).instantiate_identity();
@@ -87,7 +87,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         // These are not part of a public API, they can only appear as hidden types, and there
         // the interesting parts are solely in the signature of the containing item's opaque type
         // or dyn type.
-        DefKind::InlineConst | DefKind::Closure => {}
+        DefKind::InlineConst | DefKind::Closure | DefKind::SyntheticCoroutineBody => {}
         DefKind::Impl { of_trait } => {
             if of_trait {
                 let span = tcx.hir_node_by_def_id(item).expect_item().expect_impl().of_trait.unwrap().path.span;

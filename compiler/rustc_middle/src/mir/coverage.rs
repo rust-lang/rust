@@ -3,8 +3,9 @@
 use std::fmt::{self, Debug, Formatter};
 
 use rustc_index::IndexVec;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_span::{Span, Symbol};
+use rustc_span::Span;
 
 rustc_index::newtype_index! {
     /// Used by [`CoverageKind::BlockMarker`] to mark blocks during THIR-to-MIR
@@ -28,7 +29,6 @@ rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[encodable]
     #[orderable]
-    #[max = 0xFFFF_FFFF]
     #[debug_format = "CounterId({})"]
     pub struct CounterId {}
 }
@@ -46,7 +46,6 @@ rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[encodable]
     #[orderable]
-    #[max = 0xFFFF_FFFF]
     #[debug_format = "ExpressionId({})"]
     pub struct ExpressionId {}
 }
@@ -67,16 +66,12 @@ rustc_index::newtype_index! {
 }
 
 impl ConditionId {
-    pub const NONE: Self = Self::from_u32(0);
+    pub const START: Self = Self::from_usize(0);
 }
 
 /// Enum that can hold a constant zero value, the ID of an physical coverage
 /// counter, or the ID of a coverage-counter expression.
-///
-/// This was originally only used for expression operands (and named `Operand`),
-/// but the zero/counter/expression distinction is also useful for representing
-/// the value of code/gap mappings, and the true/false arms of branch mappings.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum CovTerm {
     Zero,
@@ -128,8 +123,8 @@ pub enum CoverageKind {
 
     /// Marks the point in MIR control flow represented by a evaluated condition.
     ///
-    /// This is eventually lowered to `llvm.instrprof.mcdc.condbitmap.update` in LLVM IR.
-    CondBitmapUpdate { id: ConditionId, value: bool, decision_depth: u16 },
+    /// This is eventually lowered to instruments updating mcdc temp variables.
+    CondBitmapUpdate { index: u32, decision_depth: u16 },
 
     /// Marks the point in MIR control flow represented by a evaluated decision.
     ///
@@ -145,39 +140,13 @@ impl Debug for CoverageKind {
             BlockMarker { id } => write!(fmt, "BlockMarker({:?})", id.index()),
             CounterIncrement { id } => write!(fmt, "CounterIncrement({:?})", id.index()),
             ExpressionUsed { id } => write!(fmt, "ExpressionUsed({:?})", id.index()),
-            CondBitmapUpdate { id, value, decision_depth } => {
-                write!(
-                    fmt,
-                    "CondBitmapUpdate({:?}, {:?}, depth={:?})",
-                    id.index(),
-                    value,
-                    decision_depth
-                )
+            CondBitmapUpdate { index, decision_depth } => {
+                write!(fmt, "CondBitmapUpdate(index={:?}, depth={:?})", index, decision_depth)
             }
             TestVectorBitmapUpdate { bitmap_idx, decision_depth } => {
                 write!(fmt, "TestVectorUpdate({:?}, depth={:?})", bitmap_idx, decision_depth)
             }
         }
-    }
-}
-
-#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub struct CodeRegion {
-    pub file_name: Symbol,
-    pub start_line: u32,
-    pub start_col: u32,
-    pub end_line: u32,
-    pub end_col: u32,
-}
-
-impl Debug for CodeRegion {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            fmt,
-            "{}:{}:{} - {}:{}",
-            self.file_name, self.start_line, self.start_col, self.end_line, self.end_col
-        )
     }
 }
 
@@ -198,7 +167,7 @@ impl Op {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Expression {
     pub lhs: CovTerm,
@@ -242,7 +211,7 @@ impl MappingKind {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Mapping {
     pub kind: MappingKind,
-    pub code_region: CodeRegion,
+    pub span: Span,
 }
 
 /// Stores per-function coverage information attached to a `mir::Body`,
@@ -252,8 +221,9 @@ pub struct Mapping {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct FunctionCoverageInfo {
     pub function_source_hash: u64,
+    pub body_span: Span,
     pub num_counters: usize,
-    pub mcdc_bitmap_bytes: u32,
+    pub mcdc_bitmap_bits: usize,
     pub expressions: IndexVec<ExpressionId, Expression>,
     pub mappings: Vec<Mapping>,
     /// The depth of the deepest decision is used to know how many
@@ -275,8 +245,10 @@ pub struct CoverageInfoHi {
     /// data structures without having to scan the entire body first.
     pub num_block_markers: usize,
     pub branch_spans: Vec<BranchSpan>,
-    pub mcdc_branch_spans: Vec<MCDCBranchSpan>,
-    pub mcdc_decision_spans: Vec<MCDCDecisionSpan>,
+    /// Branch spans generated by mcdc. Because of some limits mcdc builder give up generating
+    /// decisions including them so that they are handled as normal branch spans.
+    pub mcdc_degraded_branch_spans: Vec<MCDCBranchSpan>,
+    pub mcdc_spans: Vec<(MCDCDecisionSpan, Vec<MCDCBranchSpan>)>,
 }
 
 #[derive(Clone, Debug)]
@@ -291,30 +263,17 @@ pub struct BranchSpan {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct ConditionInfo {
     pub condition_id: ConditionId,
-    pub true_next_id: ConditionId,
-    pub false_next_id: ConditionId,
-}
-
-impl Default for ConditionInfo {
-    fn default() -> Self {
-        Self {
-            condition_id: ConditionId::NONE,
-            true_next_id: ConditionId::NONE,
-            false_next_id: ConditionId::NONE,
-        }
-    }
+    pub true_next_id: Option<ConditionId>,
+    pub false_next_id: Option<ConditionId>,
 }
 
 #[derive(Clone, Debug)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct MCDCBranchSpan {
     pub span: Span,
-    /// If `None`, this actually represents a normal branch span inserted for
-    /// code that was too complex for MC/DC.
-    pub condition_info: Option<ConditionInfo>,
+    pub condition_info: ConditionInfo,
     pub true_marker: BlockMarkerId,
     pub false_marker: BlockMarkerId,
-    pub decision_depth: u16,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -328,7 +287,45 @@ pub struct DecisionInfo {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct MCDCDecisionSpan {
     pub span: Span,
-    pub num_conditions: usize,
     pub end_markers: Vec<BlockMarkerId>,
     pub decision_depth: u16,
+    pub num_conditions: usize,
+}
+
+/// Summarizes coverage IDs inserted by the `InstrumentCoverage` MIR pass
+/// (for compiler option `-Cinstrument-coverage`), after MIR optimizations
+/// have had a chance to potentially remove some of them.
+///
+/// Used by the `coverage_ids_info` query.
+#[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable)]
+pub struct CoverageIdsInfo {
+    pub counters_seen: DenseBitSet<CounterId>,
+    pub zero_expressions: DenseBitSet<ExpressionId>,
+}
+
+impl CoverageIdsInfo {
+    /// Coverage codegen needs to know how many coverage counters are ever
+    /// incremented within a function, so that it can set the `num-counters`
+    /// argument of the `llvm.instrprof.increment` intrinsic.
+    ///
+    /// This may be less than the highest counter ID emitted by the
+    /// InstrumentCoverage MIR pass, if the highest-numbered counter increments
+    /// were removed by MIR optimizations.
+    pub fn num_counters_after_mir_opts(&self) -> u32 {
+        // FIXME(Zalathar): Currently this treats an unused counter as "used"
+        // if its ID is less than that of the highest counter that really is
+        // used. Fixing this would require adding a renumbering step somewhere.
+        self.counters_seen.last_set_in(..).map_or(0, |max| max.as_u32() + 1)
+    }
+
+    /// Returns `true` if the given term is known to have a value of zero, taking
+    /// into account knowledge of which counters are unused and which expressions
+    /// are always zero.
+    pub fn is_zero_term(&self, term: CovTerm) -> bool {
+        match term {
+            CovTerm::Zero => true,
+            CovTerm::Counter(id) => !self.counters_seen.contains(id),
+            CovTerm::Expression(id) => self.zero_expressions.contains(id),
+        }
+    }
 }

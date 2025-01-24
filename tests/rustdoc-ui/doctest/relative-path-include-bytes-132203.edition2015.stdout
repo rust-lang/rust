@@ -1,0 +1,24 @@
+
+running 1 test
+test $DIR/relative-path-include-bytes-132203.rs - (line 18) ... FAILED
+
+failures:
+
+---- $DIR/relative-path-include-bytes-132203.rs - (line 18) stdout ----
+error: couldn't read `$DIR/relative-dir-empty-file`: No such file or directory (os error 2)
+  --> $DIR/relative-path-include-bytes-132203.rs:19:9
+   |
+LL | let x = include_bytes!("relative-dir-empty-file");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `include_bytes` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+
+failures:
+    $DIR/relative-path-include-bytes-132203.rs - (line 18)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

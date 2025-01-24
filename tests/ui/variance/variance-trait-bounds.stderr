@@ -25,25 +25,25 @@ LL | struct TestBox<U,T:Getter<U>+Setter<U>> {
    = help: consider removing `U`, referring to it in a field, or using a marker such as `PhantomData`
    = help: if you intended `U` to be a const parameter, use `const U: /* Type */` instead
 
-error: [+, +]
+error: [U: +, T: +]
   --> $DIR/variance-trait-bounds.rs:16:1
    |
 LL | struct TestStruct<U,T:Setter<U>> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: [*, +]
+error: [U: *, T: +]
   --> $DIR/variance-trait-bounds.rs:21:1
    |
 LL | enum TestEnum<U,T:Setter<U>> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: [*, +]
+error: [U: *, T: +]
   --> $DIR/variance-trait-bounds.rs:27:1
    |
 LL | struct TestContraStruct<U,T:Setter<U>> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: [*, +]
+error: [U: *, T: +]
   --> $DIR/variance-trait-bounds.rs:33:1
    |
 LL | struct TestBox<U,T:Getter<U>+Setter<U>> {

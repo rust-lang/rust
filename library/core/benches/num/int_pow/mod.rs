@@ -1,5 +1,5 @@
 use rand::Rng;
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 const ITERATIONS: usize = 128; // Uses an ITERATIONS * 20 Byte stack allocation
 type IntType = i128; // Hardest native type to multiply
@@ -25,7 +25,7 @@ macro_rules! pow_bench_template {
                 let mut exp_iter = black_box(&exp_array).into_iter();
 
                 (0..ITERATIONS).fold((0 as IntType, false), |acc, _| {
-                    // Sometimes constants don't propogate all the way to the
+                    // Sometimes constants don't propagate all the way to the
                     // inside of the loop, so we call a custom expression every cycle
                     // rather than iter::repeat(CONST)
                     let base: IntType = $base_macro!(base_iter);

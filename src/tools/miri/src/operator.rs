@@ -1,9 +1,10 @@
 use std::iter;
 
-use rand::{seq::IteratorRandom, Rng};
+use rand::Rng;
+use rand::seq::IteratorRandom;
+use rustc_abi::Size;
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir;
-use rustc_target::abi::Size;
 
 use crate::*;
 
@@ -20,9 +21,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_ref();
         trace!("ptr_op: {:?} {:?} {:?}", *left, bin_op, *right);
 
-        Ok(match bin_op {
+        interp_ok(match bin_op {
             Eq | Ne | Lt | Le | Gt | Ge => {
-                assert_eq!(left.layout.abi, right.layout.abi); // types can differ, e.g. fn ptrs with different `for`
+                assert_eq!(left.layout.backend_repr, right.layout.backend_repr); // types can differ, e.g. fn ptrs with different `for`
                 let size = this.pointer_size();
                 // Just compare the bits. ScalarPairs are compared lexicographically.
                 // We thus always compare pairs and simply fill scalars up with 0.
@@ -113,9 +114,5 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else {
             nan
         }
-    }
-
-    fn adjust_nan<F1: Float + FloatConvert<F2>, F2: Float>(&self, f: F2, inputs: &[F1]) -> F2 {
-        if f.is_nan() { self.generate_nan(inputs) } else { f }
     }
 }

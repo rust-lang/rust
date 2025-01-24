@@ -1,17 +1,21 @@
+// tidy-alphabetical-start
+#![warn(unreachable_pub)]
+// tidy-alphabetical-end
+
+use rustc_abi::ExternAbi;
+use rustc_ast::AttrId;
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::node_id::NodeId;
-use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
 use rustc_error_messages::{DiagMessage, MultiSpan};
 use rustc_hir::def::Namespace;
-use rustc_hir::{HashStableContext, HirId};
+use rustc_hir::{HashStableContext, HirId, MissingLifetimeKind};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::edition::Edition;
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
-use rustc_span::{sym, Span, Symbol};
-use rustc_target::spec::abi::Abi;
+pub use rustc_span::edition::Edition;
+use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, sym};
 use serde::{Deserialize, Serialize};
 
 pub use self::Level::*;
@@ -94,7 +98,7 @@ pub enum LintExpectationId {
     /// stable and can be cached. The additional index ensures that nodes with
     /// several expectations can correctly match diagnostics to the individual
     /// expectation.
-    Stable { hir_id: HirId, attr_index: u16, lint_index: Option<u16>, attr_id: Option<AttrId> },
+    Stable { hir_id: HirId, attr_index: u16, lint_index: Option<u16> },
 }
 
 impl LintExpectationId {
@@ -118,31 +122,13 @@ impl LintExpectationId {
 
         *lint_index = new_lint_index
     }
-
-    /// Prepares the id for hashing. Removes references to the ast.
-    /// Should only be called when the id is stable.
-    pub fn normalize(self) -> Self {
-        match self {
-            Self::Stable { hir_id, attr_index, lint_index, .. } => {
-                Self::Stable { hir_id, attr_index, lint_index, attr_id: None }
-            }
-            Self::Unstable { .. } => {
-                unreachable!("`normalize` called when `ExpectationId` is unstable")
-            }
-        }
-    }
 }
 
 impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
     #[inline]
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
         match self {
-            LintExpectationId::Stable {
-                hir_id,
-                attr_index,
-                lint_index: Some(lint_index),
-                attr_id: _,
-            } => {
+            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
                 hir_id.hash_stable(hcx, hasher);
                 attr_index.hash_stable(hcx, hasher);
                 lint_index.hash_stable(hcx, hasher);
@@ -162,12 +148,9 @@ impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectation
     #[inline]
     fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
         match self {
-            LintExpectationId::Stable {
-                hir_id,
-                attr_index,
-                lint_index: Some(lint_index),
-                attr_id: _,
-            } => (*hir_id, *attr_index, *lint_index),
+            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
+                (*hir_id, *attr_index, *lint_index)
+            }
             _ => {
                 unreachable!("HashStable should only be called for a filled `LintExpectationId`")
             }
@@ -238,8 +221,8 @@ impl Level {
     }
 
     /// Converts an `Attribute` to a level.
-    pub fn from_attr(attr: &Attribute) -> Option<Self> {
-        Self::from_symbol(attr.name_or_empty(), Some(attr.id))
+    pub fn from_attr(attr: &impl AttributeExt) -> Option<Self> {
+        Self::from_symbol(attr.name_or_empty(), Some(attr.id()))
     }
 
     /// Converts a `Symbol` to a level.
@@ -329,6 +312,10 @@ pub struct Lint {
     pub feature_gate: Option<Symbol>,
 
     pub crate_level_only: bool,
+
+    /// `true` if this lint should not be filtered out under any circustamces
+    /// (e.g. the unknown_attributes lint)
+    pub eval_always: bool,
 }
 
 /// Extra information for a future incompatibility lint.
@@ -394,6 +381,8 @@ pub enum FutureIncompatibilityReason {
     /// hard errors (and the lint removed). Preferably when there is some
     /// confidence that the number of impacted projects is very small (few
     /// should have a broken dependency in their dependency tree).
+    ///
+    /// [`EditionAndFutureReleaseError`]: FutureIncompatibilityReason::EditionAndFutureReleaseError
     FutureReleaseErrorReportInDeps,
     /// Code that changes meaning in some way in a
     /// future release.
@@ -432,6 +421,28 @@ pub enum FutureIncompatibilityReason {
     /// slightly changes the text of the diagnostic, but is otherwise the
     /// same.
     EditionSemanticsChange(Edition),
+    /// This will be an error in the provided edition *and* in a future
+    /// release.
+    ///
+    /// This variant a combination of [`FutureReleaseErrorDontReportInDeps`]
+    /// and [`EditionError`]. This is useful in rare cases when we
+    /// want to have "preview" of a breaking change in an edition, but do a
+    /// breaking change later on all editions anyway.
+    ///
+    /// [`EditionError`]: FutureIncompatibilityReason::EditionError
+    /// [`FutureReleaseErrorDontReportInDeps`]: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps
+    EditionAndFutureReleaseError(Edition),
+    /// This will change meaning in the provided edition *and* in a future
+    /// release.
+    ///
+    /// This variant a combination of [`FutureReleaseSemanticsChange`]
+    /// and [`EditionSemanticsChange`]. This is useful in rare cases when we
+    /// want to have "preview" of a breaking change in an edition, but do a
+    /// breaking change later on all editions anyway.
+    ///
+    /// [`EditionSemanticsChange`]: FutureIncompatibilityReason::EditionSemanticsChange
+    /// [`FutureReleaseSemanticsChange`]: FutureIncompatibilityReason::FutureReleaseSemanticsChange
+    EditionAndFutureReleaseSemanticsChange(Edition),
     /// A custom reason.
     ///
     /// Choose this variant if the built-in text of the diagnostic of the
@@ -444,9 +455,29 @@ pub enum FutureIncompatibilityReason {
 impl FutureIncompatibilityReason {
     pub fn edition(self) -> Option<Edition> {
         match self {
-            Self::EditionError(e) => Some(e),
-            Self::EditionSemanticsChange(e) => Some(e),
-            _ => None,
+            Self::EditionError(e)
+            | Self::EditionSemanticsChange(e)
+            | Self::EditionAndFutureReleaseError(e)
+            | Self::EditionAndFutureReleaseSemanticsChange(e) => Some(e),
+
+            FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps
+            | FutureIncompatibilityReason::FutureReleaseErrorReportInDeps
+            | FutureIncompatibilityReason::FutureReleaseSemanticsChange
+            | FutureIncompatibilityReason::Custom(_) => None,
+        }
+    }
+
+    pub fn has_future_breakage(self) -> bool {
+        match self {
+            FutureIncompatibilityReason::FutureReleaseErrorReportInDeps => true,
+
+            FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps
+            | FutureIncompatibilityReason::FutureReleaseSemanticsChange
+            | FutureIncompatibilityReason::EditionError(_)
+            | FutureIncompatibilityReason::EditionSemanticsChange(_)
+            | FutureIncompatibilityReason::EditionAndFutureReleaseError(_)
+            | FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(_)
+            | FutureIncompatibilityReason::Custom(_) => false,
         }
     }
 }
@@ -473,6 +504,7 @@ impl Lint {
             future_incompatible: None,
             feature_gate: None,
             crate_level_only: false,
+            eval_always: false,
         }
     }
 
@@ -573,6 +605,12 @@ pub enum DeprecatedSinceKind {
     InVersion(String),
 }
 
+#[derive(Debug)]
+pub enum ElidedLifetimeResolution {
+    Static,
+    Param(Symbol, Span),
+}
+
 // This could be a closure, but then implementing derive trait
 // becomes hacky (and it gets allocated).
 #[derive(Debug)]
@@ -585,6 +623,10 @@ pub enum BuiltinLintDiag {
     },
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span),
+    ElidedNamedLifetimes {
+        elided: (Span, MissingLifetimeKind),
+        resolution: ElidedLifetimeResolution,
+    },
     UnknownCrateTypes {
         span: Span,
         candidate: Option<Symbol>,
@@ -604,7 +646,7 @@ pub enum BuiltinLintDiag {
         path: String,
         since_kind: DeprecatedSinceKind,
     },
-    MissingAbi(Span, Abi),
+    MissingAbi(Span, ExternAbi),
     UnusedDocComment(Span),
     UnusedBuiltinAttribute {
         attr_name: Symbol,
@@ -619,6 +661,13 @@ pub enum BuiltinLintDiag {
     LegacyDeriveHelpers(Span),
     OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span, String),
+    /// `'r#` in edition < 2021.
+    RawPrefix(Span),
+    /// `##` or `#"` in edition < 2024.
+    ReservedString {
+        is_string: bool,
+        suggestion: Span,
+    },
     TrailingMacro(bool, Ident),
     BreakWithLabelAndLoop(Span),
     UnicodeTextFlow(Span, String),
@@ -725,8 +774,6 @@ pub enum BuiltinLintDiag {
     UnnameableTestItems,
     DuplicateMacroAttribute,
     CfgAttrNoAttributes,
-    CrateTypeInCfgAttr,
-    CrateNameInCfgAttr,
     MissingFragmentSpecifier,
     MetaVariableStillRepeating(MacroRulesNormalizedIdent),
     MetaVariableWrongOperator,
@@ -869,6 +916,7 @@ macro_rules! declare_lint {
         );
     );
     ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
+     $(@eval_always = $eval_always:literal)?
      $(@feature_gate = $gate:ident;)?
      $(@future_incompatible = FutureIncompatibleInfo {
         reason: $reason:expr,
@@ -883,13 +931,14 @@ macro_rules! declare_lint {
             desc: $desc,
             is_externally_loaded: false,
             $($v: true,)*
-            $(feature_gate: Some(rustc_span::symbol::sym::$gate),)?
+            $(feature_gate: Some(rustc_span::sym::$gate),)?
             $(future_incompatible: Some($crate::FutureIncompatibleInfo {
                 reason: $reason,
                 $($field: $val,)*
                 ..$crate::FutureIncompatibleInfo::default_fields_for_macro()
             }),)?
             $(edition_lint_opts: Some(($crate::Edition::$lint_edition, $crate::$edition_level)),)?
+            $(eval_always: $eval_always,)?
             ..$crate::Lint::default_fields_for_macro()
         };
     );
@@ -899,20 +948,23 @@ macro_rules! declare_lint {
 macro_rules! declare_tool_lint {
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level: ident, $desc: expr
+        $(, @eval_always = $eval_always:literal)?
         $(, @feature_gate = $gate:ident;)?
     ) => (
-        $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, false $(, @feature_gate = $gate;)?}
+        $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, false $(, @eval_always = $eval_always)? $(, @feature_gate = $gate;)?}
     );
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
         report_in_external_macro: $rep:expr
+        $(, @eval_always = $eval_always: literal)?
         $(, @feature_gate = $gate:ident;)?
     ) => (
-         $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, $rep $(, @feature_gate = $gate;)?}
+         $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, $rep  $(, @eval_always = $eval_always)? $(, @feature_gate = $gate;)?}
     );
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
         $external:expr
+        $(, @eval_always = $eval_always: literal)?
         $(, @feature_gate = $gate:ident;)?
     ) => (
         $(#[$attr])*
@@ -924,8 +976,9 @@ macro_rules! declare_tool_lint {
             report_in_external_macro: $external,
             future_incompatible: None,
             is_externally_loaded: true,
-            $(feature_gate: Some(rustc_span::symbol::sym::$gate),)?
+            $(feature_gate: Some(rustc_span::sym::$gate),)?
             crate_level_only: false,
+            $(eval_always: $eval_always,)?
             ..$crate::Lint::default_fields_for_macro()
         };
     );
@@ -935,6 +988,7 @@ pub type LintVec = Vec<&'static Lint>;
 
 pub trait LintPass {
     fn name(&self) -> &'static str;
+    fn get_lints(&self) -> LintVec;
 }
 
 /// Implements `LintPass for $ty` with the given list of `Lint` statics.
@@ -943,9 +997,11 @@ macro_rules! impl_lint_pass {
     ($ty:ty => [$($lint:expr),* $(,)?]) => {
         impl $crate::LintPass for $ty {
             fn name(&self) -> &'static str { stringify!($ty) }
+            fn get_lints(&self) -> $crate::LintVec { vec![$($lint),*] }
         }
         impl $ty {
-            pub fn get_lints() -> $crate::LintVec { vec![$($lint),*] }
+            #[allow(unused)]
+            pub fn lint_vec() -> $crate::LintVec { vec![$($lint),*] }
         }
     };
 }

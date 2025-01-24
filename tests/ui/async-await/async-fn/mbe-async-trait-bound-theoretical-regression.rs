@@ -13,9 +13,9 @@ macro_rules! demo {
 }
 
 demo! { impl async Trait }
-//~^ ERROR async closures are unstable
+//~^ ERROR `async` trait bounds are unstable
 
 demo! { dyn async Trait }
-//~^ ERROR async closures are unstable
+//~^ ERROR `async` trait bounds are unstable
 
 fn main() {}

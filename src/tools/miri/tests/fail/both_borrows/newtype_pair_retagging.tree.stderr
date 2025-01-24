@@ -1,47 +1,45 @@
 error: Undefined Behavior: deallocation through <TAG> at ALLOC[0x0] is forbidden
-  --> RUSTLIB/alloc/src/alloc.rs:LL:CC
+  --> RUSTLIB/alloc/src/boxed.rs:LL:CC
    |
-LL |     unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ deallocation through <TAG> at ALLOC[0x0] is forbidden
+LL |                 self.1.deallocate(From::from(ptr.cast()), layout);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ deallocation through <TAG> at ALLOC[0x0] is forbidden
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> is foreign to the protected tag <TAG> (i.e., it is not a child)
    = help: this deallocation (acting as a foreign write access) would cause the protected tag <TAG> (currently Reserved (conflicted)) to become Disabled
    = help: protected tags must never be Disabled
 help: the accessed tag <TAG> was created here
-  --> $DIR/newtype_pair_retagging.rs:LL:CC
+  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
    |
 LL |             || drop(Box::from_raw(ptr)),
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
 help: the protected tag <TAG> was created here, in the initial state Reserved
-  --> $DIR/newtype_pair_retagging.rs:LL:CC
+  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
    |
 LL | fn dealloc_while_running(_n: Newtype<'_>, dealloc: impl FnOnce()) {
    |                          ^^
 help: the protected tag <TAG> later transitioned to Reserved (conflicted) due to a reborrow (acting as a foreign read access) at offsets [0x0..0x4]
-  --> $DIR/newtype_pair_retagging.rs:LL:CC
+  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
    |
 LL |             || drop(Box::from_raw(ptr)),
    |                     ^^^^^^^^^^^^^^^^^^
    = help: this transition corresponds to a temporary loss of write permissions until function exit
    = note: BACKTRACE (of the first span):
-   = note: inside `std::alloc::dealloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: inside `<std::alloc::Global as std::alloc::Allocator>::deallocate` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `<std::boxed::Box<i32> as std::ops::Drop>::drop` at RUSTLIB/alloc/src/boxed.rs:LL:CC
    = note: inside `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
    = note: inside `std::mem::drop::<std::boxed::Box<i32>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
 note: inside closure
-  --> $DIR/newtype_pair_retagging.rs:LL:CC
+  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
    |
 LL |             || drop(Box::from_raw(ptr)),
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
-note: inside `dealloc_while_running::<{closure@$DIR/newtype_pair_retagging.rs:LL:CC}>`
-  --> $DIR/newtype_pair_retagging.rs:LL:CC
+note: inside `dealloc_while_running::<{closure@tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC}>`
+  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
    |
 LL |     dealloc();
    |     ^^^^^^^^^
 note: inside `main`
-  --> $DIR/newtype_pair_retagging.rs:LL:CC
+  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
    |
 LL | /         dealloc_while_running(
 LL | |             Newtype(&mut *ptr, 0),

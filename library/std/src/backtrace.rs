@@ -91,9 +91,9 @@ mod tests;
 use crate::backtrace_rs::{self, BytesOrWideString};
 use crate::ffi::c_void;
 use crate::panic::UnwindSafe;
+use crate::sync::LazyLock;
 use crate::sync::atomic::AtomicU8;
 use crate::sync::atomic::Ordering::Relaxed;
-use crate::sync::LazyLock;
 use crate::sys::backtrace::{lock, output_filename, set_image_base};
 use crate::{env, fmt};
 

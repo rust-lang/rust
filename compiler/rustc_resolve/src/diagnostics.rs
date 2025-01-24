@@ -2,50 +2,49 @@ use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
-    self as ast, Crate, ItemKind, MetaItemKind, ModKind, NestedMetaItem, NodeId, Path,
-    CRATE_NODE_ID,
+    self as ast, CRATE_NODE_ID, Crate, ItemKind, MetaItemInner, MetaItemKind, ModKind, NodeId, Path,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    report_ambiguity_error, struct_span_code_err, Applicability, Diag, DiagCtxtHandle,
-    ErrorGuaranteed, MultiSpan, SuggestionStyle,
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, MultiSpan, SuggestionStyle,
+    report_ambiguity_error, struct_span_code_err,
 };
 use rustc_feature::BUILTIN_ATTRIBUTES;
+use rustc_hir::PrimTy;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PerNS};
-use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
-use rustc_hir::PrimTy;
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::Session;
 use rustc_session::lint::builtin::{
     ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS,
     MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
 use rustc_session::lint::{AmbiguityErrorDiag, BuiltinLintDiag};
-use rustc_session::Session;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, Span, SyntaxContext};
-use thin_vec::{thin_vec, ThinVec};
-use tracing::debug;
+use rustc_span::{BytePos, Ident, Span, Symbol, SyntaxContext, kw, sym};
+use thin_vec::{ThinVec, thin_vec};
+use tracing::{debug, instrument};
 
 use crate::errors::{
     self, AddedMacroUse, ChangeImportBinding, ChangeImportBindingSuggestion, ConsiderAddingADerive,
-    ExplicitUnsafeTraits, MacroDefinedLater, MacroSuggMovePosition, MaybeMissingMacroRulesName,
+    ExplicitUnsafeTraits, MacroDefinedLater, MacroRulesNot, MacroSuggMovePosition,
+    MaybeMissingMacroRulesName,
 };
 use crate::imports::{Import, ImportKind};
 use crate::late::{PatternSource, Rib};
 use crate::{
-    errors as errs, path_names_to_string, AmbiguityError, AmbiguityErrorMisc, AmbiguityKind,
-    BindingError, BindingKey, Finalize, HasGenericParams, LexicalScopeBinding, MacroRulesScope,
-    Module, ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult,
-    PrivacyError, ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used,
-    VisResolutionError,
+    AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, BindingKey, Finalize,
+    HasGenericParams, LexicalScopeBinding, MacroRulesScope, Module, ModuleKind,
+    ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError,
+    ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used, VisResolutionError,
+    errors as errs, path_names_to_string,
 };
 
 type Res = def::Res<ast::NodeId>;
@@ -123,7 +122,7 @@ fn reduce_impl_span_to_impl_keyword(sm: &SourceMap, impl_span: Span) -> Span {
     sm.span_until_whitespace(impl_span)
 }
 
-impl<'a, 'tcx> Resolver<'a, 'tcx> {
+impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn dcx(&self) -> DiagCtxtHandle<'tcx> {
         self.tcx.dcx()
     }
@@ -208,8 +207,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         parent: Module<'_>,
         ident: Ident,
         ns: Namespace,
-        new_binding: NameBinding<'a>,
-        old_binding: NameBinding<'a>,
+        new_binding: NameBinding<'ra>,
+        old_binding: NameBinding<'ra>,
     ) {
         // Error on the second of two conflicting names
         if old_binding.span.lo() > new_binding.span.lo() {
@@ -226,10 +225,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let (name, span) =
             (ident.name, self.tcx.sess.source_map().guess_head_span(new_binding.span));
 
-        if let Some(s) = self.name_already_seen.get(&name) {
-            if s == &span {
-                return;
-            }
+        if self.name_already_seen.get(&name) == Some(&span) {
+            return;
         }
 
         let old_kind = match (ns, old_binding.module()) {
@@ -323,7 +320,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let duplicate = new_binding.res().opt_def_id() == old_binding.res().opt_def_id();
         let has_dummy_span = new_binding.span.is_dummy() || old_binding.span.is_dummy();
         let from_item =
-            self.extern_prelude.get(&ident).map_or(true, |entry| entry.introduced_by_item);
+            self.extern_prelude.get(&ident).is_none_or(|entry| entry.introduced_by_item);
         // Only suggest removing an import if both bindings are to the same def, if both spans
         // aren't dummy spans. Further, if both bindings are imports, then the ident must have
         // been introduced by an item.
@@ -381,20 +378,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 suggestion = Some(format!("self as {suggested_name}"))
             }
             ImportKind::Single { source, .. } => {
-                if let Some(pos) =
-                    source.span.hi().0.checked_sub(binding_span.lo().0).map(|pos| pos as usize)
+                if let Some(pos) = source.span.hi().0.checked_sub(binding_span.lo().0)
+                    && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(binding_span)
+                    && pos as usize <= snippet.len()
                 {
-                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(binding_span) {
-                        if pos <= snippet.len() {
-                            span = binding_span
-                                .with_lo(binding_span.lo() + BytePos(pos as u32))
-                                .with_hi(
-                                    binding_span.hi()
-                                        - BytePos(if snippet.ends_with(';') { 1 } else { 0 }),
-                                );
-                            suggestion = Some(format!(" as {suggested_name}"));
-                        }
-                    }
+                    span = binding_span.with_lo(binding_span.lo() + BytePos(pos)).with_hi(
+                        binding_span.hi() - BytePos(if snippet.ends_with(';') { 1 } else { 0 }),
+                    );
+                    suggestion = Some(format!(" as {suggested_name}"));
                 }
             }
             ImportKind::ExternCrate { source, target, .. } => {
@@ -511,13 +502,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // If the first element of our path was actually resolved to an
         // `ExternCrate` (also used for `crate::...`) then no need to issue a
         // warning, this looks all good!
-        if let Some(binding) = second_binding {
-            if let NameBindingKind::Import { import, .. } = binding.kind {
-                // Careful: we still want to rewrite paths from renamed extern crates.
-                if let ImportKind::ExternCrate { source: None, .. } = import.kind {
-                    return;
-                }
-            }
+        if let Some(binding) = second_binding
+            && let NameBindingKind::Import { import, .. } = binding.kind
+            // Careful: we still want to rewrite paths from renamed extern crates.
+            && let ImportKind::ExternCrate { source: None, .. } = import.kind
+        {
+            return;
         }
 
         let diag = BuiltinLintDiag::AbsPathWithModule(root_span);
@@ -531,19 +521,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     pub(crate) fn add_module_candidates(
         &mut self,
-        module: Module<'a>,
+        module: Module<'ra>,
         names: &mut Vec<TypoSuggestion>,
         filter_fn: &impl Fn(Res) -> bool,
         ctxt: Option<SyntaxContext>,
     ) {
-        for (key, resolution) in self.resolutions(module).borrow().iter() {
-            if let Some(binding) = resolution.borrow().binding {
-                let res = binding.res();
-                if filter_fn(res) && ctxt.map_or(true, |ctxt| ctxt == key.ident.span.ctxt()) {
-                    names.push(TypoSuggestion::typo_from_ident(key.ident, res));
-                }
+        module.for_each_child(self, |_this, ident, _ns, binding| {
+            let res = binding.res();
+            if filter_fn(res) && ctxt.is_none_or(|ctxt| ctxt == ident.span.ctxt()) {
+                names.push(TypoSuggestion::typo_from_ident(ident, res));
             }
-        }
+        });
     }
 
     /// Combines an error with provided span and emits it.
@@ -553,7 +541,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn report_error(
         &mut self,
         span: Span,
-        resolution_error: ResolutionError<'a>,
+        resolution_error: ResolutionError<'ra>,
     ) -> ErrorGuaranteed {
         self.into_struct_error(span, resolution_error).emit()
     }
@@ -561,7 +549,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn into_struct_error(
         &mut self,
         span: Span,
-        resolution_error: ResolutionError<'a>,
+        resolution_error: ResolutionError<'ra>,
     ) -> Diag<'_> {
         match resolution_error {
             ResolutionError::GenericParamsFromOuterItem(
@@ -1002,10 +990,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             VisResolutionError::AncestorOnly(span) => {
                 self.dcx().create_err(errs::AncestorOnly(span))
             }
-            VisResolutionError::FailedToResolve(span, label, suggestion) => self.into_struct_error(
-                span,
-                ResolutionError::FailedToResolve { segment: None, label, suggestion, module: None },
-            ),
+            VisResolutionError::FailedToResolve(span, label, suggestion) => {
+                self.into_struct_error(span, ResolutionError::FailedToResolve {
+                    segment: None,
+                    label,
+                    suggestion,
+                    module: None,
+                })
+            }
             VisResolutionError::ExpectedFound(span, path_str, res) => {
                 self.dcx().create_err(errs::ExpectedModuleFound { span, res, path_str })
             }
@@ -1020,8 +1012,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Lookup typo candidate in scope for a macro or import.
     fn early_lookup_typo_candidate(
         &mut self,
-        scope_set: ScopeSet<'a>,
-        parent_scope: &ParentScope<'a>,
+        scope_set: ScopeSet<'ra>,
+        parent_scope: &ParentScope<'ra>,
         ident: Ident,
         filter_fn: &impl Fn(Res) -> bool,
     ) -> Option<TypoSuggestion> {
@@ -1046,20 +1038,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if filter_fn(res) {
                         for derive in parent_scope.derives {
                             let parent_scope = &ParentScope { derives: &[], ..*parent_scope };
-                            if let Ok((Some(ext), _)) = this.resolve_macro_path(
+                            let Ok((Some(ext), _)) = this.resolve_macro_path(
                                 derive,
                                 Some(MacroKind::Derive),
                                 parent_scope,
                                 false,
                                 false,
                                 None,
-                            ) {
-                                suggestions.extend(
-                                    ext.helper_attrs
-                                        .iter()
-                                        .map(|name| TypoSuggestion::typo_from_name(*name, res)),
-                                );
-                            }
+                            ) else {
+                                continue;
+                            };
+                            suggestions.extend(
+                                ext.helper_attrs
+                                    .iter()
+                                    .map(|name| TypoSuggestion::typo_from_name(*name, res)),
+                            );
                         }
                     }
                 }
@@ -1156,8 +1149,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         lookup_ident: Ident,
         namespace: Namespace,
-        parent_scope: &ParentScope<'a>,
-        start_module: Module<'a>,
+        parent_scope: &ParentScope<'ra>,
+        start_module: Module<'ra>,
         crate_path: ThinVec<ast::PathSegment>,
         filter_fn: FilterFn,
     ) -> Vec<ImportSuggestion>
@@ -1182,7 +1175,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let in_module_is_extern = !in_module.def_id().is_local();
             in_module.for_each_child(self, |this, ident, ns, name_binding| {
                 // avoid non-importable candidates
-                if !name_binding.is_importable() {
+                if !name_binding.is_importable()
+                    // FIXME(import_trait_associated_functions): remove this when `import_trait_associated_functions` is stable
+                    || name_binding.is_assoc_const_or_fn()
+                        && !this.tcx.features().import_trait_associated_functions()
+                {
                     return;
                 }
 
@@ -1210,12 +1207,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
 
                 // #90113: Do not count an inaccessible reexported item as a candidate.
-                if let NameBindingKind::Import { binding, .. } = name_binding.kind {
-                    if this.is_accessible_from(binding.vis, parent_scope.module)
-                        && !this.is_accessible_from(name_binding.vis, parent_scope.module)
-                    {
-                        return;
-                    }
+                if let NameBindingKind::Import { binding, .. } = name_binding.kind
+                    && this.is_accessible_from(binding.vis, parent_scope.module)
+                    && !this.is_accessible_from(name_binding.vis, parent_scope.module)
+                {
+                    return;
                 }
 
                 let res = name_binding.res();
@@ -1224,7 +1220,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     _ => res.opt_def_id(),
                 };
                 let child_doc_visible = doc_visible
-                    && (did.map_or(true, |did| did.is_local() || !this.tcx.is_doc_hidden(did)));
+                    && did.is_none_or(|did| did.is_local() || !this.tcx.is_doc_hidden(did));
 
                 // collect results based on the filter function
                 // avoid suggesting anything from the same module in which we are resolving
@@ -1233,64 +1229,62 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     && ns == namespace
                     && in_module != parent_scope.module
                     && !ident.span.normalize_to_macros_2_0().from_expansion()
+                    && filter_fn(res)
                 {
-                    if filter_fn(res) {
-                        // create the path
-                        let mut segms = if lookup_ident.span.at_least_rust_2018() {
-                            // crate-local absolute paths start with `crate::` in edition 2018
-                            // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
-                            crate_path.clone()
+                    // create the path
+                    let mut segms = if lookup_ident.span.at_least_rust_2018() {
+                        // crate-local absolute paths start with `crate::` in edition 2018
+                        // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
+                        crate_path.clone()
+                    } else {
+                        ThinVec::new()
+                    };
+                    segms.append(&mut path_segments.clone());
+
+                    segms.push(ast::PathSegment::from_ident(ident));
+                    let path = Path { span: name_binding.span, segments: segms, tokens: None };
+
+                    if child_accessible
+                        // Remove invisible match if exists
+                        && let Some(idx) = candidates
+                            .iter()
+                            .position(|v: &ImportSuggestion| v.did == did && !v.accessible)
+                    {
+                        candidates.remove(idx);
+                    }
+
+                    if candidates.iter().all(|v: &ImportSuggestion| v.did != did) {
+                        // See if we're recommending TryFrom, TryInto, or FromIterator and add
+                        // a note about editions
+                        let note = if let Some(did) = did {
+                            let requires_note = !did.is_local()
+                                && this.tcx.get_attrs(did, sym::rustc_diagnostic_item).any(
+                                    |attr| {
+                                        [sym::TryInto, sym::TryFrom, sym::FromIterator]
+                                            .map(|x| Some(x))
+                                            .contains(&attr.value_str())
+                                    },
+                                );
+
+                            requires_note.then(|| {
+                                format!(
+                                    "'{}' is included in the prelude starting in Edition 2021",
+                                    path_names_to_string(&path)
+                                )
+                            })
                         } else {
-                            ThinVec::new()
+                            None
                         };
-                        segms.append(&mut path_segments.clone());
 
-                        segms.push(ast::PathSegment::from_ident(ident));
-                        let path = Path { span: name_binding.span, segments: segms, tokens: None };
-
-                        if child_accessible {
-                            // Remove invisible match if exists
-                            if let Some(idx) = candidates
-                                .iter()
-                                .position(|v: &ImportSuggestion| v.did == did && !v.accessible)
-                            {
-                                candidates.remove(idx);
-                            }
-                        }
-
-                        if candidates.iter().all(|v: &ImportSuggestion| v.did != did) {
-                            // See if we're recommending TryFrom, TryInto, or FromIterator and add
-                            // a note about editions
-                            let note = if let Some(did) = did {
-                                let requires_note = !did.is_local()
-                                    && this.tcx.get_attrs(did, sym::rustc_diagnostic_item).any(
-                                        |attr| {
-                                            [sym::TryInto, sym::TryFrom, sym::FromIterator]
-                                                .map(|x| Some(x))
-                                                .contains(&attr.value_str())
-                                        },
-                                    );
-
-                                requires_note.then(|| {
-                                    format!(
-                                        "'{}' is included in the prelude starting in Edition 2021",
-                                        path_names_to_string(&path)
-                                    )
-                                })
-                            } else {
-                                None
-                            };
-
-                            candidates.push(ImportSuggestion {
-                                did,
-                                descr: res.descr(),
-                                path,
-                                accessible: child_accessible,
-                                doc_visible: child_doc_visible,
-                                note,
-                                via_import,
-                            });
-                        }
+                        candidates.push(ImportSuggestion {
+                            did,
+                            descr: res.descr(),
+                            path,
+                            accessible: child_accessible,
+                            doc_visible: child_doc_visible,
+                            note,
+                            via_import,
+                        });
                     }
                 }
 
@@ -1343,7 +1337,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         lookup_ident: Ident,
         namespace: Namespace,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
         filter_fn: FilterFn,
     ) -> Vec<ImportSuggestion>
     where
@@ -1369,48 +1363,50 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // otherwise cause duplicate suggestions.
                     continue;
                 }
-                let crate_id = self.crate_loader(|c| c.maybe_process_path_extern(ident.name));
-                if let Some(crate_id) = crate_id {
-                    let crate_def_id = crate_id.as_def_id();
-                    let crate_root = self.expect_module(crate_def_id);
+                let Some(crate_id) = self.crate_loader(|c| c.maybe_process_path_extern(ident.name))
+                else {
+                    continue;
+                };
 
-                    // Check if there's already an item in scope with the same name as the crate.
-                    // If so, we have to disambiguate the potential import suggestions by making
-                    // the paths *global* (i.e., by prefixing them with `::`).
-                    let needs_disambiguation =
-                        self.resolutions(parent_scope.module).borrow().iter().any(
-                            |(key, name_resolution)| {
-                                if key.ns == TypeNS
-                                    && key.ident == ident
-                                    && let Some(binding) = name_resolution.borrow().binding
-                                {
-                                    match binding.res() {
-                                        // No disambiguation needed if the identically named item we
-                                        // found in scope actually refers to the crate in question.
-                                        Res::Def(_, def_id) => def_id != crate_def_id,
-                                        Res::PrimTy(_) => true,
-                                        _ => false,
-                                    }
-                                } else {
-                                    false
+                let crate_def_id = crate_id.as_def_id();
+                let crate_root = self.expect_module(crate_def_id);
+
+                // Check if there's already an item in scope with the same name as the crate.
+                // If so, we have to disambiguate the potential import suggestions by making
+                // the paths *global* (i.e., by prefixing them with `::`).
+                let needs_disambiguation =
+                    self.resolutions(parent_scope.module).borrow().iter().any(
+                        |(key, name_resolution)| {
+                            if key.ns == TypeNS
+                                && key.ident == ident
+                                && let Some(binding) = name_resolution.borrow().binding
+                            {
+                                match binding.res() {
+                                    // No disambiguation needed if the identically named item we
+                                    // found in scope actually refers to the crate in question.
+                                    Res::Def(_, def_id) => def_id != crate_def_id,
+                                    Res::PrimTy(_) => true,
+                                    _ => false,
                                 }
-                            },
-                        );
-                    let mut crate_path = ThinVec::new();
-                    if needs_disambiguation {
-                        crate_path.push(ast::PathSegment::path_root(rustc_span::DUMMY_SP));
-                    }
-                    crate_path.push(ast::PathSegment::from_ident(ident));
-
-                    suggestions.extend(self.lookup_import_candidates_from_module(
-                        lookup_ident,
-                        namespace,
-                        parent_scope,
-                        crate_root,
-                        crate_path,
-                        &filter_fn,
-                    ));
+                            } else {
+                                false
+                            }
+                        },
+                    );
+                let mut crate_path = ThinVec::new();
+                if needs_disambiguation {
+                    crate_path.push(ast::PathSegment::path_root(rustc_span::DUMMY_SP));
                 }
+                crate_path.push(ast::PathSegment::from_ident(ident));
+
+                suggestions.extend(self.lookup_import_candidates_from_module(
+                    lookup_ident,
+                    namespace,
+                    parent_scope,
+                    crate_root,
+                    crate_path,
+                    &filter_fn,
+                ));
             }
         }
 
@@ -1421,7 +1417,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         err: &mut Diag<'_>,
         macro_kind: MacroKind,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
         ident: Ident,
         krate: &Crate,
     ) {
@@ -1456,7 +1452,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let label_span = ident.span.shrink_to_hi();
             let mut spans = MultiSpan::from_span(label_span);
             spans.push_span_label(label_span, "put a macro name here");
-            err.subdiagnostic(MaybeMissingMacroRulesName { spans: spans });
+            err.subdiagnostic(MaybeMissingMacroRulesName { spans });
             return;
         }
 
@@ -1466,19 +1462,26 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let unused_macro = self.unused_macros.iter().find_map(|(def_id, (_, unused_ident))| {
-            if unused_ident.name == ident.name {
-                Some((def_id.clone(), unused_ident.clone()))
-            } else {
-                None
-            }
+            if unused_ident.name == ident.name { Some((def_id, unused_ident)) } else { None }
         });
 
         if let Some((def_id, unused_ident)) = unused_macro {
             let scope = self.local_macro_def_scopes[&def_id];
             let parent_nearest = parent_scope.module.nearest_parent_mod();
             if Some(parent_nearest) == scope.opt_def_id() {
-                err.subdiagnostic(MacroDefinedLater { span: unused_ident.span });
-                err.subdiagnostic(MacroSuggMovePosition { span: ident.span, ident });
+                match macro_kind {
+                    MacroKind::Bang => {
+                        err.subdiagnostic(MacroDefinedLater { span: unused_ident.span });
+                        err.subdiagnostic(MacroSuggMovePosition { span: ident.span, ident });
+                    }
+                    MacroKind::Attr => {
+                        err.subdiagnostic(MacroRulesNot::Attr { span: unused_ident.span, ident });
+                    }
+                    MacroKind::Derive => {
+                        err.subdiagnostic(MacroRulesNot::Derive { span: unused_ident.span, ident });
+                    }
+                }
+
                 return;
             }
         }
@@ -1500,7 +1503,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             });
         }
         for ns in [Namespace::MacroNS, Namespace::TypeNS, Namespace::ValueNS] {
-            if let Ok(binding) = self.early_resolve_ident_in_lexical_scope(
+            let Ok(binding) = self.early_resolve_ident_in_lexical_scope(
                 ident,
                 ScopeSet::All(ns),
                 parent_scope,
@@ -1508,53 +1511,53 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 false,
                 None,
                 None,
-            ) {
-                let desc = match binding.res() {
-                    Res::Def(DefKind::Macro(MacroKind::Bang), _) => {
-                        "a function-like macro".to_string()
-                    }
-                    Res::Def(DefKind::Macro(MacroKind::Attr), _) | Res::NonMacroAttr(..) => {
-                        format!("an attribute: `#[{ident}]`")
-                    }
-                    Res::Def(DefKind::Macro(MacroKind::Derive), _) => {
-                        format!("a derive macro: `#[derive({ident})]`")
-                    }
-                    Res::ToolMod => {
-                        // Don't confuse the user with tool modules.
-                        continue;
-                    }
-                    Res::Def(DefKind::Trait, _) if macro_kind == MacroKind::Derive => {
-                        "only a trait, without a derive macro".to_string()
-                    }
-                    res => format!(
-                        "{} {}, not {} {}",
-                        res.article(),
-                        res.descr(),
-                        macro_kind.article(),
-                        macro_kind.descr_expected(),
-                    ),
-                };
-                if let crate::NameBindingKind::Import { import, .. } = binding.kind {
-                    if !import.span.is_dummy() {
-                        let note = errors::IdentImporterHereButItIsDesc {
-                            span: import.span,
-                            imported_ident: ident,
-                            imported_ident_desc: &desc,
-                        };
-                        err.subdiagnostic(note);
-                        // Silence the 'unused import' warning we might get,
-                        // since this diagnostic already covers that import.
-                        self.record_use(ident, binding, Used::Other);
-                        return;
-                    }
+            ) else {
+                continue;
+            };
+
+            let desc = match binding.res() {
+                Res::Def(DefKind::Macro(MacroKind::Bang), _) => "a function-like macro".to_string(),
+                Res::Def(DefKind::Macro(MacroKind::Attr), _) | Res::NonMacroAttr(..) => {
+                    format!("an attribute: `#[{ident}]`")
                 }
-                let note = errors::IdentInScopeButItIsDesc {
+                Res::Def(DefKind::Macro(MacroKind::Derive), _) => {
+                    format!("a derive macro: `#[derive({ident})]`")
+                }
+                Res::ToolMod => {
+                    // Don't confuse the user with tool modules.
+                    continue;
+                }
+                Res::Def(DefKind::Trait, _) if macro_kind == MacroKind::Derive => {
+                    "only a trait, without a derive macro".to_string()
+                }
+                res => format!(
+                    "{} {}, not {} {}",
+                    res.article(),
+                    res.descr(),
+                    macro_kind.article(),
+                    macro_kind.descr_expected(),
+                ),
+            };
+            if let crate::NameBindingKind::Import { import, .. } = binding.kind
+                && !import.span.is_dummy()
+            {
+                let note = errors::IdentImporterHereButItIsDesc {
+                    span: import.span,
                     imported_ident: ident,
                     imported_ident_desc: &desc,
                 };
                 err.subdiagnostic(note);
+                // Silence the 'unused import' warning we might get,
+                // since this diagnostic already covers that import.
+                self.record_use(ident, binding, Used::Other);
                 return;
             }
+            let note = errors::IdentInScopeButItIsDesc {
+                imported_ident: ident,
+                imported_ident_desc: &desc,
+            };
+            err.subdiagnostic(note);
+            return;
         }
     }
 
@@ -1738,18 +1741,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// If the binding refers to a tuple struct constructor with fields,
     /// returns the span of its fields.
     fn ctor_fields_span(&self, binding: NameBinding<'_>) -> Option<Span> {
-        if let NameBindingKind::Res(Res::Def(
+        let NameBindingKind::Res(Res::Def(
             DefKind::Ctor(CtorOf::Struct, CtorKind::Fn),
             ctor_def_id,
         )) = binding.kind
-        {
-            let def_id = self.tcx.parent(ctor_def_id);
-            return self.field_idents(def_id)?.iter().map(|&f| f.span).reduce(Span::to); // None for `struct Foo()`
-        }
-        None
+        else {
+            return None;
+        };
+
+        let def_id = self.tcx.parent(ctor_def_id);
+        self.field_idents(def_id)?.iter().map(|&f| f.span).reduce(Span::to) // None for `struct Foo()`
     }
 
-    fn report_privacy_error(&mut self, privacy_error: &PrivacyError<'a>) {
+    fn report_privacy_error(&mut self, privacy_error: &PrivacyError<'ra>) {
         let PrivacyError { ident, binding, outermost_res, parent_scope, single_nested, dedup_span } =
             *privacy_error;
 
@@ -1954,7 +1958,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn find_similarly_named_module_or_crate(
         &mut self,
         ident: Symbol,
-        current_module: Module<'a>,
+        current_module: Module<'ra>,
     ) -> Option<Symbol> {
         let mut candidates = self
             .extern_prelude
@@ -1972,21 +1976,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             .collect::<Vec<_>>();
         candidates.sort();
         candidates.dedup();
-        match find_best_match_for_name(&candidates, ident, None) {
-            Some(sugg) if sugg == ident => None,
-            sugg => sugg,
-        }
+        find_best_match_for_name(&candidates, ident, None).filter(|sugg| *sugg != ident)
     }
 
     pub(crate) fn report_path_resolution_error(
         &mut self,
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
-        parent_scope: &ParentScope<'a>,
-        ribs: Option<&PerNS<Vec<Rib<'a>>>>,
-        ignore_binding: Option<NameBinding<'a>>,
-        ignore_import: Option<Import<'a>>,
-        module: Option<ModuleOrUniformRoot<'a>>,
+        parent_scope: &ParentScope<'ra>,
+        ribs: Option<&PerNS<Vec<Rib<'ra>>>>,
+        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_import: Option<Import<'ra>>,
+        module: Option<ModuleOrUniformRoot<'ra>>,
         failed_segment_idx: usize,
         ident: Ident,
     ) -> (String, Option<Suggestion>) {
@@ -2224,14 +2225,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     /// Adds suggestions for a path that cannot be resolved.
+    #[instrument(level = "debug", skip(self, parent_scope))]
     pub(crate) fn make_path_suggestion(
         &mut self,
         span: Span,
         mut path: Vec<Segment>,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
-        debug!("make_path_suggestion: span={:?} path={:?}", span, path);
-
         match (path.get(0), path.get(1)) {
             // `{{root}}::ident::...` on both editions.
             // On 2015 `{{root}}` is usually added implicitly.
@@ -2260,15 +2260,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// LL | use foo::Bar;
     ///    |     ^^^ did you mean `self::foo`?
     /// ```
+    #[instrument(level = "debug", skip(self, parent_scope))]
     fn make_missing_self_suggestion(
         &mut self,
         mut path: Vec<Segment>,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `self` and check if that is valid.
         path[0].ident.name = kw::SelfLower;
         let result = self.maybe_resolve_path(&path, None, parent_scope, None);
-        debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
+        debug!(?path, ?result);
         if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
 
@@ -2279,15 +2280,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// LL | use foo::Bar;
     ///    |     ^^^ did you mean `crate::foo`?
     /// ```
+    #[instrument(level = "debug", skip(self, parent_scope))]
     fn make_missing_crate_suggestion(
         &mut self,
         mut path: Vec<Segment>,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Crate;
         let result = self.maybe_resolve_path(&path, None, parent_scope, None);
-        debug!("make_missing_crate_suggestion:  path={:?} result={:?}", path, result);
+        debug!(?path, ?result);
         if let PathResult::Module(..) = result {
             Some((
                 path,
@@ -2310,15 +2312,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// LL | use foo::Bar;
     ///    |     ^^^ did you mean `super::foo`?
     /// ```
+    #[instrument(level = "debug", skip(self, parent_scope))]
     fn make_missing_super_suggestion(
         &mut self,
         mut path: Vec<Segment>,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Super;
         let result = self.maybe_resolve_path(&path, None, parent_scope, None);
-        debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
+        debug!(?path, ?result);
         if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
 
@@ -2332,10 +2335,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     ///
     /// Used when importing a submodule of an external crate but missing that crate's
     /// name as the first part of path.
+    #[instrument(level = "debug", skip(self, parent_scope))]
     fn make_external_crate_suggestion(
         &mut self,
         mut path: Vec<Segment>,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
         if path[1].ident.span.is_rust_2015() {
             return None;
@@ -2352,10 +2356,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // Replace first ident with a crate name and check if that is valid.
             path[0].ident.name = name;
             let result = self.maybe_resolve_path(&path, None, parent_scope, None);
-            debug!(
-                "make_external_crate_suggestion: name={:?} path={:?} result={:?}",
-                name, path, result
-            );
+            debug!(?path, ?name, ?result);
             if let PathResult::Module(..) = result {
                 return Some((path, None));
             }
@@ -2378,8 +2379,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// ```
     pub(crate) fn check_for_module_export_macro(
         &mut self,
-        import: Import<'a>,
-        module: ModuleOrUniformRoot<'a>,
+        import: Import<'ra>,
+        module: ModuleOrUniformRoot<'ra>,
         ident: Ident,
     ) -> Option<(Option<Suggestion>, Option<String>)> {
         let ModuleOrUniformRoot::Module(mut crate_module) = module else {
@@ -2399,121 +2400,115 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let binding_key = BindingKey::new(ident, MacroNS);
         let resolution = resolutions.get(&binding_key)?;
         let binding = resolution.borrow().binding()?;
-        if let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() {
-            let module_name = crate_module.kind.name().unwrap();
-            let import_snippet = match import.kind {
-                ImportKind::Single { source, target, .. } if source != target => {
-                    format!("{source} as {target}")
-                }
-                _ => format!("{ident}"),
-            };
-
-            let mut corrections: Vec<(Span, String)> = Vec::new();
-            if !import.is_nested() {
-                // Assume this is the easy case of `use issue_59764::foo::makro;` and just remove
-                // intermediate segments.
-                corrections.push((import.span, format!("{module_name}::{import_snippet}")));
-            } else {
-                // Find the binding span (and any trailing commas and spaces).
-                //   ie. `use a::b::{c, d, e};`
-                //                      ^^^
-                let (found_closing_brace, binding_span) = find_span_of_binding_until_next_binding(
-                    self.tcx.sess,
-                    import.span,
-                    import.use_span,
-                );
-                debug!(
-                    "check_for_module_export_macro: found_closing_brace={:?} binding_span={:?}",
-                    found_closing_brace, binding_span
-                );
-
-                let mut removal_span = binding_span;
-                if found_closing_brace {
-                    // If the binding span ended with a closing brace, as in the below example:
-                    //   ie. `use a::b::{c, d};`
-                    //                      ^
-                    // Then expand the span of characters to remove to include the previous
-                    // binding's trailing comma.
-                    //   ie. `use a::b::{c, d};`
-                    //                    ^^^
-                    if let Some(previous_span) =
-                        extend_span_to_previous_binding(self.tcx.sess, binding_span)
-                    {
-                        debug!("check_for_module_export_macro: previous_span={:?}", previous_span);
-                        removal_span = removal_span.with_lo(previous_span.lo());
-                    }
-                }
-                debug!("check_for_module_export_macro: removal_span={:?}", removal_span);
-
-                // Remove the `removal_span`.
-                corrections.push((removal_span, "".to_string()));
-
-                // Find the span after the crate name and if it has nested imports immediately
-                // after the crate name already.
-                //   ie. `use a::b::{c, d};`
-                //               ^^^^^^^^^
-                //   or  `use a::{b, c, d}};`
-                //               ^^^^^^^^^^^
-                let (has_nested, after_crate_name) = find_span_immediately_after_crate_name(
-                    self.tcx.sess,
-                    module_name,
-                    import.use_span,
-                );
-                debug!(
-                    "check_for_module_export_macro: has_nested={:?} after_crate_name={:?}",
-                    has_nested, after_crate_name
-                );
-
-                let source_map = self.tcx.sess.source_map();
-
-                // Make sure this is actually crate-relative.
-                let is_definitely_crate = import
-                    .module_path
-                    .first()
-                    .is_some_and(|f| f.ident.name != kw::SelfLower && f.ident.name != kw::Super);
-
-                // Add the import to the start, with a `{` if required.
-                let start_point = source_map.start_point(after_crate_name);
-                if is_definitely_crate
-                    && let Ok(start_snippet) = source_map.span_to_snippet(start_point)
-                {
-                    corrections.push((
-                        start_point,
-                        if has_nested {
-                            // In this case, `start_snippet` must equal '{'.
-                            format!("{start_snippet}{import_snippet}, ")
-                        } else {
-                            // In this case, add a `{`, then the moved import, then whatever
-                            // was there before.
-                            format!("{{{import_snippet}, {start_snippet}")
-                        },
-                    ));
-
-                    // Add a `};` to the end if nested, matching the `{` added at the start.
-                    if !has_nested {
-                        corrections
-                            .push((source_map.end_point(after_crate_name), "};".to_string()));
-                    }
-                } else {
-                    // If the root import is module-relative, add the import separately
-                    corrections.push((
-                        import.use_span.shrink_to_lo(),
-                        format!("use {module_name}::{import_snippet};\n"),
-                    ));
-                }
+        let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() else {
+            return None;
+        };
+        let module_name = crate_module.kind.name().unwrap();
+        let import_snippet = match import.kind {
+            ImportKind::Single { source, target, .. } if source != target => {
+                format!("{source} as {target}")
             }
+            _ => format!("{ident}"),
+        };
 
-            let suggestion = Some((
-                corrections,
-                String::from("a macro with this name exists at the root of the crate"),
-                Applicability::MaybeIncorrect,
-            ));
-            Some((suggestion, Some("this could be because a macro annotated with `#[macro_export]` will be exported \
-            at the root of the crate instead of the module where it is defined"
-               .to_string())))
+        let mut corrections: Vec<(Span, String)> = Vec::new();
+        if !import.is_nested() {
+            // Assume this is the easy case of `use issue_59764::foo::makro;` and just remove
+            // intermediate segments.
+            corrections.push((import.span, format!("{module_name}::{import_snippet}")));
         } else {
-            None
+            // Find the binding span (and any trailing commas and spaces).
+            //   ie. `use a::b::{c, d, e};`
+            //                      ^^^
+            let (found_closing_brace, binding_span) = find_span_of_binding_until_next_binding(
+                self.tcx.sess,
+                import.span,
+                import.use_span,
+            );
+            debug!(found_closing_brace, ?binding_span);
+
+            let mut removal_span = binding_span;
+
+            // If the binding span ended with a closing brace, as in the below example:
+            //   ie. `use a::b::{c, d};`
+            //                      ^
+            // Then expand the span of characters to remove to include the previous
+            // binding's trailing comma.
+            //   ie. `use a::b::{c, d};`
+            //                    ^^^
+            if found_closing_brace
+                && let Some(previous_span) =
+                    extend_span_to_previous_binding(self.tcx.sess, binding_span)
+            {
+                debug!(?previous_span);
+                removal_span = removal_span.with_lo(previous_span.lo());
+            }
+            debug!(?removal_span);
+
+            // Remove the `removal_span`.
+            corrections.push((removal_span, "".to_string()));
+
+            // Find the span after the crate name and if it has nested imports immediately
+            // after the crate name already.
+            //   ie. `use a::b::{c, d};`
+            //               ^^^^^^^^^
+            //   or  `use a::{b, c, d}};`
+            //               ^^^^^^^^^^^
+            let (has_nested, after_crate_name) =
+                find_span_immediately_after_crate_name(self.tcx.sess, module_name, import.use_span);
+            debug!(has_nested, ?after_crate_name);
+
+            let source_map = self.tcx.sess.source_map();
+
+            // Make sure this is actually crate-relative.
+            let is_definitely_crate = import
+                .module_path
+                .first()
+                .is_some_and(|f| f.ident.name != kw::SelfLower && f.ident.name != kw::Super);
+
+            // Add the import to the start, with a `{` if required.
+            let start_point = source_map.start_point(after_crate_name);
+            if is_definitely_crate
+                && let Ok(start_snippet) = source_map.span_to_snippet(start_point)
+            {
+                corrections.push((
+                    start_point,
+                    if has_nested {
+                        // In this case, `start_snippet` must equal '{'.
+                        format!("{start_snippet}{import_snippet}, ")
+                    } else {
+                        // In this case, add a `{`, then the moved import, then whatever
+                        // was there before.
+                        format!("{{{import_snippet}, {start_snippet}")
+                    },
+                ));
+
+                // Add a `};` to the end if nested, matching the `{` added at the start.
+                if !has_nested {
+                    corrections.push((source_map.end_point(after_crate_name), "};".to_string()));
+                }
+            } else {
+                // If the root import is module-relative, add the import separately
+                corrections.push((
+                    import.use_span.shrink_to_lo(),
+                    format!("use {module_name}::{import_snippet};\n"),
+                ));
+            }
         }
+
+        let suggestion = Some((
+            corrections,
+            String::from("a macro with this name exists at the root of the crate"),
+            Applicability::MaybeIncorrect,
+        ));
+        Some((
+            suggestion,
+            Some(
+                "this could be because a macro annotated with `#[macro_export]` will be exported \
+            at the root of the crate instead of the module where it is defined"
+                    .to_string(),
+            ),
+        ))
     }
 
     /// Finds a cfg-ed out item inside `module` with the matching name.
@@ -2542,7 +2537,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             err.subdiagnostic(note);
 
             if let MetaItemKind::List(nested) = &cfg.kind
-                && let NestedMetaItem::MetaItem(meta_item) = &nested[0]
+                && let MetaItemInner::MetaItem(meta_item) = &nested[0]
                 && let MetaItemKind::NameValue(feature_name) = &meta_item.kind
             {
                 let note = errors::ItemWasBehindFeature {
@@ -2666,15 +2661,12 @@ fn extend_span_to_previous_binding(sess: &Session, binding_span: Span) -> Option
 /// use foo::{a, b::{c, d}};
 /// //       ^^^^^^^^^^^^^^^ -- true
 /// ```
+#[instrument(level = "debug", skip(sess))]
 fn find_span_immediately_after_crate_name(
     sess: &Session,
     module_name: Symbol,
     use_span: Span,
 ) -> (bool, Span) {
-    debug!(
-        "find_span_immediately_after_crate_name: module_name={:?} use_span={:?}",
-        module_name, use_span
-    );
     let source_map = sess.source_map();
 
     // Using `use issue_59764::foo::{baz, makro};` as an example throughout..
@@ -2809,11 +2801,11 @@ fn show_candidates(
         path_strings.sort_by(|a, b| a.0.cmp(&b.0));
         path_strings.dedup_by(|a, b| a.0 == b.0);
         let core_path_strings =
-            path_strings.extract_if(|p| p.0.starts_with("core::")).collect::<Vec<_>>();
+            path_strings.extract_if(.., |p| p.0.starts_with("core::")).collect::<Vec<_>>();
         let std_path_strings =
-            path_strings.extract_if(|p| p.0.starts_with("std::")).collect::<Vec<_>>();
+            path_strings.extract_if(.., |p| p.0.starts_with("std::")).collect::<Vec<_>>();
         let foreign_crate_path_strings =
-            path_strings.extract_if(|p| !p.0.starts_with("crate::")).collect::<Vec<_>>();
+            path_strings.extract_if(.., |p| !p.0.starts_with("crate::")).collect::<Vec<_>>();
 
         // We list the `crate` local paths first.
         // Then we list the `std`/`core` paths.
@@ -3040,7 +3032,6 @@ impl<'tcx> visit::Visitor<'tcx> for UsePlacementFinder {
                 self.first_legal_span = Some(inject);
             }
             self.first_use_span = search_for_any_use_in_items(&c.items);
-            return;
         } else {
             visit::walk_crate(self, c);
         }
@@ -3048,13 +3039,12 @@ impl<'tcx> visit::Visitor<'tcx> for UsePlacementFinder {
 
     fn visit_item(&mut self, item: &'tcx ast::Item) {
         if self.target_module == item.id {
-            if let ItemKind::Mod(_, ModKind::Loaded(items, _inline, mod_spans)) = &item.kind {
+            if let ItemKind::Mod(_, ModKind::Loaded(items, _inline, mod_spans, _)) = &item.kind {
                 let inject = mod_spans.inject_use_span;
                 if is_span_suitable_for_use_injection(inject) {
                     self.first_legal_span = Some(inject);
                 }
                 self.first_use_span = search_for_any_use_in_items(items);
-                return;
             }
         } else {
             visit::walk_item(self, item);
@@ -3064,19 +3054,19 @@ impl<'tcx> visit::Visitor<'tcx> for UsePlacementFinder {
 
 fn search_for_any_use_in_items(items: &[P<ast::Item>]) -> Option<Span> {
     for item in items {
-        if let ItemKind::Use(..) = item.kind {
-            if is_span_suitable_for_use_injection(item.span) {
-                let mut lo = item.span.lo();
-                for attr in &item.attrs {
-                    if attr.span.eq_ctxt(item.span) {
-                        lo = std::cmp::min(lo, attr.span.lo());
-                    }
+        if let ItemKind::Use(..) = item.kind
+            && is_span_suitable_for_use_injection(item.span)
+        {
+            let mut lo = item.span.lo();
+            for attr in &item.attrs {
+                if attr.span.eq_ctxt(item.span) {
+                    lo = std::cmp::min(lo, attr.span.lo());
                 }
-                return Some(Span::new(lo, lo, item.span.ctxt(), item.span.parent()));
             }
+            return Some(Span::new(lo, lo, item.span.ctxt(), item.span.parent()));
         }
     }
-    return None;
+    None
 }
 
 fn is_span_suitable_for_use_injection(s: Span) -> bool {

@@ -8,7 +8,15 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
 
-#[cfg(all(test, not(any(target_os = "emscripten", target_env = "sgx", target_os = "xous"))))]
+#[cfg(all(
+    test,
+    not(any(
+        target_os = "emscripten",
+        target_os = "wasi",
+        target_env = "sgx",
+        target_os = "xous"
+    ))
+))]
 mod tests;
 
 use crate::ffi::OsString;
@@ -375,6 +383,45 @@ impl File {
         OpenOptions::new().read(true).open(path.as_ref())
     }
 
+    /// Attempts to open a file in read-only mode with buffering.
+    ///
+    /// See the [`OpenOptions::open`] method, the [`BufReader`][io::BufReader] type,
+    /// and the [`BufRead`][io::BufRead] trait for more details.
+    ///
+    /// If you only need to read the entire file contents,
+    /// consider [`std::fs::read()`][self::read] or
+    /// [`std::fs::read_to_string()`][self::read_to_string] instead.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not already exist,
+    /// or if memory allocation fails for the new buffer.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_buffered)]
+    /// use std::fs::File;
+    /// use std::io::BufRead;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut f = File::open_buffered("foo.txt")?;
+    ///     assert!(f.capacity() > 0);
+    ///     for (line, i) in f.lines().zip(1..) {
+    ///         println!("{i:6}: {}", line?);
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_buffered", issue = "130804")]
+    pub fn open_buffered<P: AsRef<Path>>(path: P) -> io::Result<io::BufReader<File>> {
+        // Allocate the buffer *first* so we don't affect the filesystem otherwise.
+        let buffer = io::BufReader::<Self>::try_new_buffer()?;
+        let file = File::open(path)?;
+        Ok(io::BufReader::with_buffer(file, buffer))
+    }
+
     /// Opens a file in write-only mode.
     ///
     /// This function will create a file if it does not exist,
@@ -402,6 +449,45 @@ impl File {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn create<P: AsRef<Path>>(path: P) -> io::Result<File> {
         OpenOptions::new().write(true).create(true).truncate(true).open(path.as_ref())
+    }
+
+    /// Opens a file in write-only mode with buffering.
+    ///
+    /// This function will create a file if it does not exist,
+    /// and will truncate it if it does.
+    ///
+    /// Depending on the platform, this function may fail if the
+    /// full directory path does not exist.
+    ///
+    /// See the [`OpenOptions::open`] method and the
+    /// [`BufWriter`][io::BufWriter] type for more details.
+    ///
+    /// See also [`std::fs::write()`][self::write] for a simple function to
+    /// create a file with some given data.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_buffered)]
+    /// use std::fs::File;
+    /// use std::io::Write;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut f = File::create_buffered("foo.txt")?;
+    ///     assert!(f.capacity() > 0);
+    ///     for i in 0..100 {
+    ///         writeln!(&mut f, "{i}")?;
+    ///     }
+    ///     f.flush()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_buffered", issue = "130804")]
+    pub fn create_buffered<P: AsRef<Path>>(path: P) -> io::Result<io::BufWriter<File>> {
+        // Allocate the buffer *first* so we don't affect the filesystem otherwise.
+        let buffer = io::BufWriter::<Self>::try_new_buffer()?;
+        let file = File::create(path)?;
+        Ok(io::BufWriter::with_buffer(file, buffer))
     }
 
     /// Creates a new file in read-write mode; error if the file exists.
@@ -466,6 +552,7 @@ impl File {
     /// ```
     #[must_use]
     #[stable(feature = "with_options", since = "1.58.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "file_options")]
     pub fn options() -> OpenOptions {
         OpenOptions::new()
     }
@@ -535,6 +622,223 @@ impl File {
     #[doc(alias = "fdatasync")]
     pub fn sync_data(&self) -> io::Result<()> {
         self.inner.datasync()
+    }
+
+    /// Acquire an exclusive advisory lock on the file. Blocks until the lock can be acquired.
+    ///
+    /// This acquires an exclusive advisory lock; no other file handle to this file may acquire
+    /// another lock.
+    ///
+    /// If this file handle, or a clone of it, already holds an advisory lock the exact behavior is
+    /// unspecified and platform dependent, including the possibility that it will deadlock.
+    /// However, if this method returns, then an exclusive lock is held.
+    ///
+    /// If the file not open for writing, it is unspecified whether this function returns an error.
+    ///
+    /// Note, this is an advisory lock meant to interact with [`lock_shared`], [`try_lock`],
+    /// [`try_lock_shared`], and [`unlock`]. Its interactions with other methods, such as [`read`]
+    /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `flock` function on Unix with the `LOCK_EX` flag,
+    /// and the `LockFileEx` function on Windows with the `LOCKFILE_EXCLUSIVE_LOCK` flag. Note that,
+    /// this [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
+    ///
+    /// [`lock_shared`]: File::lock_shared
+    /// [`try_lock`]: File::try_lock
+    /// [`try_lock_shared`]: File::try_lock_shared
+    /// [`unlock`]: File::unlock
+    /// [`read`]: Read::read
+    /// [`write`]: Write::write
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_lock)]
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::open("foo.txt")?;
+    ///     f.lock()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_lock", issue = "130994")]
+    pub fn lock(&self) -> io::Result<()> {
+        self.inner.lock()
+    }
+
+    /// Acquire a shared advisory lock on the file. Blocks until the lock can be acquired.
+    ///
+    /// This acquires a shared advisory lock; more than one file handle may hold a shared lock, but
+    /// none may hold an exclusive lock.
+    ///
+    /// If this file handle, or a clone of it, already holds an advisory lock, the exact behavior is
+    /// unspecified and platform dependent, including the possibility that it will deadlock.
+    /// However, if this method returns, then a shared lock is held.
+    ///
+    /// Note, this is an advisory lock meant to interact with [`lock`], [`try_lock`],
+    /// [`try_lock_shared`], and [`unlock`]. Its interactions with other methods, such as [`read`]
+    /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `flock` function on Unix with the `LOCK_SH` flag,
+    /// and the `LockFileEx` function on Windows. Note that, this
+    /// [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
+    ///
+    /// [`lock`]: File::lock
+    /// [`try_lock`]: File::try_lock
+    /// [`try_lock_shared`]: File::try_lock_shared
+    /// [`unlock`]: File::unlock
+    /// [`read`]: Read::read
+    /// [`write`]: Write::write
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_lock)]
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::open("foo.txt")?;
+    ///     f.lock_shared()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_lock", issue = "130994")]
+    pub fn lock_shared(&self) -> io::Result<()> {
+        self.inner.lock_shared()
+    }
+
+    /// Acquire an exclusive advisory lock on the file. Returns `Ok(false)` if the file is locked.
+    ///
+    /// This acquires an exclusive advisory lock; no other file handle to this file may acquire
+    /// another lock.
+    ///
+    /// If this file handle, or a clone of it, already holds an advisory lock, the exact behavior is
+    /// unspecified and platform dependent, including the possibility that it will deadlock.
+    /// However, if this method returns, then an exclusive lock is held.
+    ///
+    /// If the file not open for writing, it is unspecified whether this function returns an error.
+    ///
+    /// Note, this is an advisory lock meant to interact with [`lock`], [`lock_shared`],
+    /// [`try_lock_shared`], and [`unlock`]. Its interactions with other methods, such as [`read`]
+    /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `flock` function on Unix with the `LOCK_EX` and
+    /// `LOCK_NB` flags, and the `LockFileEx` function on Windows with the `LOCKFILE_EXCLUSIVE_LOCK`
+    /// and `LOCKFILE_FAIL_IMMEDIATELY` flags. Note that, this
+    /// [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
+    ///
+    /// [`lock`]: File::lock
+    /// [`lock_shared`]: File::lock_shared
+    /// [`try_lock_shared`]: File::try_lock_shared
+    /// [`unlock`]: File::unlock
+    /// [`read`]: Read::read
+    /// [`write`]: Write::write
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_lock)]
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::open("foo.txt")?;
+    ///     f.try_lock()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_lock", issue = "130994")]
+    pub fn try_lock(&self) -> io::Result<bool> {
+        self.inner.try_lock()
+    }
+
+    /// Acquire a shared advisory lock on the file.
+    /// Returns `Ok(false)` if the file is exclusively locked.
+    ///
+    /// This acquires a shared advisory lock; more than one file handle may hold a shared lock, but
+    /// none may hold an exclusive lock.
+    ///
+    /// If this file handle, or a clone of it, already holds an advisory lock, the exact behavior is
+    /// unspecified and platform dependent, including the possibility that it will deadlock.
+    /// However, if this method returns, then a shared lock is held.
+    ///
+    /// Note, this is an advisory lock meant to interact with [`lock`], [`try_lock`],
+    /// [`try_lock`], and [`unlock`]. Its interactions with other methods, such as [`read`]
+    /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `flock` function on Unix with the `LOCK_SH` and
+    /// `LOCK_NB` flags, and the `LockFileEx` function on Windows with the
+    /// `LOCKFILE_FAIL_IMMEDIATELY` flag. Note that, this
+    /// [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
+    ///
+    /// [`lock`]: File::lock
+    /// [`lock_shared`]: File::lock_shared
+    /// [`try_lock`]: File::try_lock
+    /// [`unlock`]: File::unlock
+    /// [`read`]: Read::read
+    /// [`write`]: Write::write
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_lock)]
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::open("foo.txt")?;
+    ///     f.try_lock_shared()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_lock", issue = "130994")]
+    pub fn try_lock_shared(&self) -> io::Result<bool> {
+        self.inner.try_lock_shared()
+    }
+
+    /// Release all locks on the file.
+    ///
+    /// All remaining locks are released when the file handle, and all clones of it, are dropped.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `flock` function on Unix with the `LOCK_UN` flag,
+    /// and the `UnlockFile` function on Windows. Note that, this
+    /// [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_lock)]
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::open("foo.txt")?;
+    ///     f.lock()?;
+    ///     f.unlock()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_lock", issue = "130994")]
+    pub fn unlock(&self) -> io::Result<()> {
+        self.inner.unlock()
     }
 
     /// Truncates or extends the underlying file, updating the size of
@@ -835,7 +1139,7 @@ impl Read for &File {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for &File {
-    /// Writes some bytes from the file.
+    /// Writes some bytes to the file.
     ///
     /// See [`Write::write`] docs for more info.
     ///
@@ -1009,6 +1313,7 @@ impl OpenOptions {
     /// let mut options = OpenOptions::new();
     /// let file = options.read(true).open("foo.txt");
     /// ```
+    #[cfg_attr(not(test), rustc_diagnostic_item = "open_options_new")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub fn new() -> Self {
@@ -1109,7 +1414,7 @@ impl OpenOptions {
 
     /// Sets the option for truncating a previous file.
     ///
-    /// If a file is successfully opened with this option set it will truncate
+    /// If a file is successfully opened with this option set to true, it will truncate
     /// the file to 0 length if it already exists.
     ///
     /// The file must be opened with write access for truncate to work.
@@ -1564,8 +1869,10 @@ impl Permissions {
     ///
     /// # Note
     ///
-    /// This function does not take Access Control Lists (ACLs) or Unix group
-    /// membership into account.
+    /// This function does not take Access Control Lists (ACLs), Unix group
+    /// membership and other nuances into account.
+    /// Therefore the return value of this function cannot be relied upon
+    /// to predict whether attempts to read or write the file will actually succeed.
     ///
     /// # Windows
     ///
@@ -1580,10 +1887,13 @@ impl Permissions {
     /// # Unix (including macOS)
     ///
     /// On Unix-based platforms this checks if *any* of the owner, group or others
-    /// write permission bits are set. It does not check if the current
-    /// user is in the file's assigned group. It also does not check ACLs.
-    /// Therefore the return value of this function cannot be relied upon
-    /// to predict whether attempts to read or write the file will actually succeed.
+    /// write permission bits are set. It does not consider anything else, including:
+    ///
+    /// * Whether the current user is in the file's assigned group.
+    /// * Permissions granted by ACL.
+    /// * That `root` user can write to files that do not have any write bits set.
+    /// * Writable files on a filesystem that is mounted read-only.
+    ///
     /// The [`PermissionsExt`] trait gives direct access to the permission bits but
     /// also does not read ACLs.
     ///
@@ -1989,6 +2299,11 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// * The file doesn't exist.
 /// * The user lacks permissions to remove the file.
 ///
+/// This function will only ever return an error of kind `NotFound` if the given
+/// path does not exist. Note that the inverse is not true,
+/// ie. if a path does not exist, its removal may fail for a number of reasons,
+/// such as insufficient permissions.
+///
 /// # Examples
 ///
 /// ```no_run
@@ -2087,12 +2402,14 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `rename` function on Unix
-/// and the `MoveFileEx` function with the `MOVEFILE_REPLACE_EXISTING` flag on Windows.
+/// and the `SetFileInformationByHandle` function on Windows.
 ///
 /// Because of this, the behavior when both `from` and `to` exist differs. On
 /// Unix, if `from` is a directory, `to` must also be an (empty) directory. If
-/// `from` is not a directory, `to` must also be not a directory. In contrast,
-/// on Windows, `from` can be anything, but `to` must *not* be a directory.
+/// `from` is not a directory, `to` must also be not a directory. The behavior
+/// on Windows is the same on Windows 10 1607 and higher if `FileRenameInfoEx`
+/// is supported by the filesystem; otherwise, `from` can be anything, but
+/// `to` must *not* be a directory.
 ///
 /// Note that, this [may change in the future][changes].
 ///
@@ -2428,6 +2745,10 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 
 /// Removes an empty directory.
 ///
+/// If you want to remove a directory that is not empty, as well as all
+/// of its contents recursively, consider using [`remove_dir_all`]
+/// instead.
+///
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `rmdir` function on Unix
@@ -2445,6 +2766,11 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// * `path` isn't a directory.
 /// * The user lacks permissions to remove the directory at the provided `path`.
 /// * The directory isn't empty.
+///
+/// This function will only ever return an error of kind `NotFound` if the given
+/// path does not exist. Note that the inverse is not true,
+/// ie. if a path does not exist, its removal may fail for a number of reasons,
+/// such as insufficient permissions.
 ///
 /// # Examples
 ///
@@ -2471,25 +2797,27 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to `openat`, `fdopendir`, `unlinkat` and `lstat` functions
-/// on Unix (except for macOS before version 10.10 and REDOX) and the `CreateFileW`,
-/// `GetFileInformationByHandleEx`, `SetFileInformationByHandle`, and `NtCreateFile` functions on
-/// Windows. Note that, this [may change in the future][changes].
+/// on Unix (except for REDOX) and the `CreateFileW`, `GetFileInformationByHandleEx`,
+/// `SetFileInformationByHandle`, and `NtCreateFile` functions on Windows. Note that, this
+/// [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
 ///
-/// On macOS before version 10.10 and REDOX, as well as when running in Miri for any target, this
-/// function is not protected against time-of-check to time-of-use (TOCTOU) race conditions, and
-/// should not be used in security-sensitive code on those platforms. All other platforms are
-/// protected.
+/// On REDOX, as well as when running in Miri for any target, this function is not protected against
+/// time-of-check to time-of-use (TOCTOU) race conditions, and should not be used in
+/// security-sensitive code on those platforms. All other platforms are protected.
 ///
 /// # Errors
 ///
 /// See [`fs::remove_file`] and [`fs::remove_dir`].
 ///
-/// `remove_dir_all` will fail if `remove_dir` or `remove_file` fail on any constituent paths, including the root path.
+/// `remove_dir_all` will fail if `remove_dir` or `remove_file` fail on any constituent paths, including the root `path`.
 /// As a result, the directory you are deleting must exist, meaning that this function is not idempotent.
+/// Additionally, `remove_dir_all` will also fail if the `path` is not a directory.
 ///
 /// Consider ignoring the error if validating the removal is not required for your use case.
+///
+/// [`io::ErrorKind::NotFound`] is only returned if no removal occurs.
 ///
 /// [`fs::remove_file`]: remove_file
 /// [`fs::remove_dir`]: remove_dir
@@ -2519,7 +2847,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `opendir` function on Unix
-/// and the `FindFirstFile` function on Windows. Advancing the iterator
+/// and the `FindFirstFileEx` function on Windows. Advancing the iterator
 /// currently corresponds to `readdir` on Unix and `FindNextFile` on Windows.
 /// Note that, this [may change in the future][changes].
 ///
@@ -2699,7 +3027,7 @@ impl DirBuilder {
         match path.parent() {
             Some(p) => self.create_dir_all(p)?,
             None => {
-                return Err(io::const_io_error!(
+                return Err(io::const_error!(
                     io::ErrorKind::Uncategorized,
                     "failed to create whole tree",
                 ));

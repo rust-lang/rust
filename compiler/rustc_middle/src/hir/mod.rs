@@ -9,7 +9,7 @@ pub mod place;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{try_par_for_each_in, DynSend, DynSync};
+use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::*;
@@ -28,7 +28,9 @@ pub struct ModuleItems {
     trait_items: Box<[TraitItemId]>,
     impl_items: Box<[ImplItemId]>,
     foreign_items: Box<[ForeignItemId]>,
+    opaques: Box<[LocalDefId]>,
     body_owners: Box<[LocalDefId]>,
+    nested_bodies: Box<[LocalDefId]>,
 }
 
 impl ModuleItems {
@@ -65,6 +67,14 @@ impl ModuleItems {
             .chain(self.foreign_items.iter().map(|id| id.owner_id))
     }
 
+    pub fn opaques(&self) -> impl Iterator<Item = LocalDefId> + '_ {
+        self.opaques.iter().copied()
+    }
+
+    pub fn nested_bodies(&self) -> impl Iterator<Item = LocalDefId> + '_ {
+        self.nested_bodies.iter().copied()
+    }
+
     pub fn definitions(&self) -> impl Iterator<Item = LocalDefId> + '_ {
         self.owners().map(|id| id.def_id)
     }
@@ -95,6 +105,13 @@ impl ModuleItems {
         f: impl Fn(ForeignItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
         try_par_for_each_in(&self.foreign_items[..], |&id| f(id))
+    }
+
+    pub fn par_opaques(
+        &self,
+        f: impl Fn(LocalDefId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
+    ) -> Result<(), ErrorGuaranteed> {
+        try_par_for_each_in(&self.opaques[..], |&id| f(id))
     }
 }
 
@@ -139,7 +156,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         node: OwnerNode<'_>,
         bodies: &SortedMap<ItemLocalId, &Body<'_>>,
-        attrs: &SortedMap<ItemLocalId, &[rustc_ast::Attribute]>,
+        attrs: &SortedMap<ItemLocalId, &[Attribute]>,
     ) -> (Option<Fingerprint>, Option<Fingerprint>) {
         if self.needs_crate_hash() {
             self.with_stable_hashing_context(|mut hcx| {
@@ -202,7 +219,7 @@ pub fn provide(providers: &mut Providers) {
             ..
         })
         | Node::ForeignItem(&ForeignItem {
-            kind: ForeignItemKind::Fn(_, idents, _, _),
+            kind: ForeignItemKind::Fn(_, idents, _),
             ..
         }) = tcx.hir_node(tcx.local_def_id_to_hir_id(def_id))
         {

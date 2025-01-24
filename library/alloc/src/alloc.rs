@@ -10,9 +10,6 @@ use core::hint;
 #[cfg(not(test))]
 use core::ptr::{self, NonNull};
 
-#[cfg(test)]
-mod tests;
-
 extern "Rust" {
     // These are the magic symbols to call the global allocator. rustc generates
     // them to call `__rg_alloc` etc. if there is a `#[global_allocator]` attribute
@@ -61,7 +58,7 @@ pub use std::alloc::Global;
 /// of the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
 ///
-/// This function is expected to be deprecated in favor of the `alloc` method
+/// This function is expected to be deprecated in favor of the `allocate` method
 /// of the [`Global`] type when it and the [`Allocator`] trait become stable.
 ///
 /// # Safety
@@ -89,6 +86,7 @@ pub use std::alloc::Global;
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[must_use = "losing the pointer will leak memory"]
 #[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub unsafe fn alloc(layout: Layout) -> *mut u8 {
     unsafe {
         // Make sure we don't accidentally allow omitting the allocator shim in
@@ -105,7 +103,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
 /// of the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
 ///
-/// This function is expected to be deprecated in favor of the `dealloc` method
+/// This function is expected to be deprecated in favor of the `deallocate` method
 /// of the [`Global`] type when it and the [`Allocator`] trait become stable.
 ///
 /// # Safety
@@ -113,6 +111,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
 /// See [`GlobalAlloc::dealloc`].
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
     unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
 }
@@ -123,7 +122,7 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
 /// of the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
 ///
-/// This function is expected to be deprecated in favor of the `realloc` method
+/// This function is expected to be deprecated in favor of the `grow` and `shrink` methods
 /// of the [`Global`] type when it and the [`Allocator`] trait become stable.
 ///
 /// # Safety
@@ -132,6 +131,7 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[must_use = "losing the pointer will leak memory"]
 #[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
     unsafe { __rust_realloc(ptr, layout.size(), layout.align(), new_size) }
 }
@@ -142,7 +142,7 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 /// of the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
 ///
-/// This function is expected to be deprecated in favor of the `alloc_zeroed` method
+/// This function is expected to be deprecated in favor of the `allocate_zeroed` method
 /// of the [`Global`] type when it and the [`Allocator`] trait become stable.
 ///
 /// # Safety
@@ -152,11 +152,14 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 /// # Examples
 ///
 /// ```
-/// use std::alloc::{alloc_zeroed, dealloc, Layout};
+/// use std::alloc::{alloc_zeroed, dealloc, handle_alloc_error, Layout};
 ///
 /// unsafe {
 ///     let layout = Layout::new::<u16>();
 ///     let ptr = alloc_zeroed(layout);
+///     if ptr.is_null() {
+///         handle_alloc_error(layout);
+///     }
 ///
 ///     assert_eq!(*(ptr as *mut u16), 0);
 ///
@@ -166,13 +169,21 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[must_use = "losing the pointer will leak memory"]
 #[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
-    unsafe { __rust_alloc_zeroed(layout.size(), layout.align()) }
+    unsafe {
+        // Make sure we don't accidentally allow omitting the allocator shim in
+        // stable code until it is actually stabilized.
+        core::ptr::read_volatile(&__rust_no_alloc_shim_is_unstable);
+
+        __rust_alloc_zeroed(layout.size(), layout.align())
+    }
 }
 
 #[cfg(not(test))]
 impl Global {
     #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
         match layout.size() {
             0 => Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0)),
@@ -187,6 +198,7 @@ impl Global {
 
     // SAFETY: Same as `Allocator::grow`
     #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     unsafe fn grow_impl(
         &self,
         ptr: NonNull<u8>,
@@ -237,16 +249,19 @@ impl Global {
 #[cfg(not(test))]
 unsafe impl Allocator for Global {
     #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         self.alloc_impl(layout, false)
     }
 
     #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         self.alloc_impl(layout, true)
     }
 
     #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
         if layout.size() != 0 {
             // SAFETY: `layout` is non-zero in size,
@@ -256,6 +271,7 @@ unsafe impl Allocator for Global {
     }
 
     #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     unsafe fn grow(
         &self,
         ptr: NonNull<u8>,
@@ -267,6 +283,7 @@ unsafe impl Allocator for Global {
     }
 
     #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     unsafe fn grow_zeroed(
         &self,
         ptr: NonNull<u8>,
@@ -278,6 +295,7 @@ unsafe impl Allocator for Global {
     }
 
     #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     unsafe fn shrink(
         &self,
         ptr: NonNull<u8>,
@@ -321,10 +339,11 @@ unsafe impl Allocator for Global {
     }
 }
 
-/// The allocator for unique pointers.
+/// The allocator for `Box`.
 #[cfg(all(not(no_global_oom_handling), not(test)))]
 #[lang = "exchange_malloc"]
 #[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
     let layout = unsafe { Layout::from_size_align_unchecked(size, align) };
     match Global.allocate(layout) {
@@ -372,6 +391,7 @@ extern "Rust" {
 #[rustc_const_unstable(feature = "const_alloc_error", issue = "92523")]
 #[cfg(all(not(no_global_oom_handling), not(test)))]
 #[cold]
+#[optimize(size)]
 pub const fn handle_alloc_error(layout: Layout) -> ! {
     const fn ct_error(_: Layout) -> ! {
         panic!("allocation failed");

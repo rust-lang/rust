@@ -1,5 +1,5 @@
 error: Undefined Behavior: accessing memory based on pointer with alignment ALIGN, but alignment ALIGN is required
-  --> $DIR/unaligned_ptr4.rs:LL:CC
+  --> tests/fail/unaligned_pointers/unaligned_ptr4.rs:LL:CC
    |
 LL |         let _val = unsafe { *ptr };
    |                             ^^^^ accessing memory based on pointer with alignment ALIGN, but alignment ALIGN is required
@@ -7,7 +7,7 @@ LL |         let _val = unsafe { *ptr };
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/unaligned_ptr4.rs:LL:CC
+   = note: inside `main` at tests/fail/unaligned_pointers/unaligned_ptr4.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

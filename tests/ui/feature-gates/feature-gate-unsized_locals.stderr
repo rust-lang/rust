@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `(dyn FnOnce() + 'static)` cannot be known at compilation time
-  --> $DIR/feature-gate-unsized_locals.rs:1:6
+  --> $DIR/feature-gate-unsized_locals.rs:1:9
    |
 LL | fn f(f: dyn FnOnce()) {}
-   |      ^ doesn't have a size known at compile-time
+   |         ^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn FnOnce() + 'static)`
    = help: unsized fn params are gated as an unstable feature

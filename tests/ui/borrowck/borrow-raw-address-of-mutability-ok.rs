@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(raw_ref_op)]
-
 fn mutable_address_of() {
     let mut x = 0;
     let y = &raw mut x;

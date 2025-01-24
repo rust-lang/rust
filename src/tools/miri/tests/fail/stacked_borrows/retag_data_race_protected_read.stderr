@@ -1,11 +1,11 @@
 error: Undefined Behavior: Data race detected between (1) non-atomic read on thread `main` and (2) retag write of type `i32` on thread `unnamed-ID` at ALLOC. (2) just happened here
-  --> $DIR/retag_data_race_protected_read.rs:LL:CC
+  --> tests/fail/stacked_borrows/retag_data_race_protected_read.rs:LL:CC
    |
 LL |         retag(unsafe { &mut *ptr.0 });
    |                        ^^^^^^^^^^^ Data race detected between (1) non-atomic read on thread `main` and (2) retag write of type `i32` on thread `unnamed-ID` at ALLOC. (2) just happened here
    |
 help: and (1) occurred earlier here
-  --> $DIR/retag_data_race_protected_read.rs:LL:CC
+  --> tests/fail/stacked_borrows/retag_data_race_protected_read.rs:LL:CC
    |
 LL |     unsafe { ptr.0.read() };
    |              ^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     unsafe { ptr.0.read() };
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE (of the first span) on thread `unnamed-ID`:
-   = note: inside closure at $DIR/retag_data_race_protected_read.rs:LL:CC
+   = note: inside closure at tests/fail/stacked_borrows/retag_data_race_protected_read.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

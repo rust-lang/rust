@@ -9,7 +9,8 @@ use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::Path;
 
-use crate::core::builder::{crate_description, Builder, RunConfig, ShouldRun, Step};
+use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, crate_description};
+use crate::utils::build_stamp::BuildStamp;
 use crate::utils::helpers::t;
 use crate::{Build, Compiler, Kind, Mode, Subcommand};
 
@@ -121,7 +122,7 @@ fn clean(build: &Build, all: bool, stage: Option<u32>) {
 
 fn clean_specific_stage(build: &Build, stage: u32) {
     for host in &build.hosts {
-        let entries = match build.out.join(host.triple).read_dir() {
+        let entries = match build.out.join(host).read_dir() {
             Ok(iter) => iter,
             Err(_) => continue,
         };
@@ -146,9 +147,9 @@ fn clean_default(build: &Build) {
     rm_rf(&build.out.join("dist"));
     rm_rf(&build.out.join("bootstrap").join(".last-warned-change-id"));
     rm_rf(&build.out.join("bootstrap-shims-dump"));
-    rm_rf(&build.out.join("rustfmt.stamp"));
+    rm_rf(BuildStamp::new(&build.out).with_prefix("rustfmt").path());
 
-    let mut hosts: Vec<_> = build.hosts.iter().map(|t| build.out.join(t.triple)).collect();
+    let mut hosts: Vec<_> = build.hosts.iter().map(|t| build.out.join(t)).collect();
     // After cross-compilation, artifacts of the host architecture (which may differ from build.host)
     // might not get removed.
     // Adding its path (linked one for easier accessibility) will solve this problem.
@@ -203,10 +204,8 @@ fn rm_rf(path: &Path) {
 
             do_op(path, "remove dir", |p| match fs::remove_dir(p) {
                 // Check for dir not empty on Windows
-                // FIXME: Once `ErrorKind::DirectoryNotEmpty` is stabilized,
-                // match on `e.kind()` instead.
                 #[cfg(windows)]
-                Err(e) if e.raw_os_error() == Some(145) => Ok(()),
+                Err(e) if e.kind() == ErrorKind::DirectoryNotEmpty => Ok(()),
                 r => r,
             });
         }
@@ -226,6 +225,8 @@ where
         Err(ref e) if e.kind() == ErrorKind::PermissionDenied => {
             let m = t!(path.symlink_metadata());
             let mut p = m.permissions();
+            // this os not unix, so clippy gives FP
+            #[expect(clippy::permissions_set_readonly_false)]
             p.set_readonly(false);
             t!(fs::set_permissions(path, p));
             f(path).unwrap_or_else(|e| {

@@ -1,0 +1,18 @@
+warning: elided lifetime has a name
+  --> $DIR/self_lifetime-async.rs:6:44
+   |
+LL |     async fn foo<'b>(self: &'b Foo<'a>) -> &() { self.0 }
+   |                  --                        ^ this elided lifetime gets resolved as `'b`
+   |                  |
+   |                  lifetime `'b` declared here
+   |
+   = note: `#[warn(elided_named_lifetimes)]` on by default
+
+warning: elided lifetime has a name
+  --> $DIR/self_lifetime-async.rs:12:52
+   |
+LL |     async fn bar<'a>(self: &Alias, arg: &'a ()) -> &() { arg }
+   |                  -- lifetime `'a` declared here    ^ this elided lifetime gets resolved as `'a`
+
+warning: 2 warnings emitted
+

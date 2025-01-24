@@ -21,7 +21,6 @@ All contributors are expected to follow the [Rust Code of Conduct].
     - [Rust Analyzer](#rust-analyzer)
   - [How Clippy works](#how-clippy-works)
   - [Issue and PR triage](#issue-and-pr-triage)
-  - [Bors and Homu](#bors-and-homu)
   - [Contributions](#contributions)
   - [License](#license)
 
@@ -213,16 +212,6 @@ We have prioritization labels and a sync-blocker label, which are described belo
 Or rather: before the sync this should be addressed,
 e.g. by removing a lint again, so it doesn't hit beta/stable.
 
-## Bors and Homu
-
-We use a bot powered by [Homu][homu] to help automate testing and landing of pull
-requests in Clippy. The bot's username is @bors.
-
-You can find the Clippy bors queue [here][homu_queue].
-
-If you have @bors permissions, you can find an overview of the available
-commands [here][homu_instructions].
-
 [triage]: https://forge.rust-lang.org/release/triage-procedure.html
 [l-crash]: https://github.com/rust-lang/rust-clippy/labels/L-crash
 [l-bug]: https://github.com/rust-lang/rust-clippy/labels/L-bug
@@ -230,9 +219,6 @@ commands [here][homu_instructions].
 [p-medium]: https://github.com/rust-lang/rust-clippy/labels/P-medium
 [p-high]: https://github.com/rust-lang/rust-clippy/labels/P-high
 [l-sync-blocker]: https://github.com/rust-lang/rust-clippy/labels/L-sync-blocker
-[homu]: https://github.com/rust-lang/homu
-[homu_instructions]: https://bors.rust-lang.org/
-[homu_queue]: https://bors.rust-lang.org/queue/clippy
 
 ## Contributions
 
@@ -244,7 +230,7 @@ All PRs should include a `changelog` entry with a short comment explaining the c
 "what do you believe is important from an outsider's perspective?" Often, PRs are only related to a single property of a
 lint, and then it's good to mention that one. Otherwise, it's better to include too much detail than too little.
 
-Clippy's [changelog] is created from these comments. Every release, someone gets all commits from bors with a
+Clippy's [changelog] is created from these comments. Every release, someone gets all merge commits with a
 `changelog: XYZ` entry and combines them into the changelog. This is a manual process.
 
 Examples:

@@ -2,15 +2,17 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_hir as hir;
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::bug;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{self, Region, Ty};
 use rustc_span::def_id::DefId;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{Symbol, kw};
 use rustc_trait_selection::traits::auto_trait::{self, RegionTarget};
 use thin_vec::ThinVec;
+use tracing::{debug, instrument};
 
 use crate::clean::{
-    self, clean_generic_param_def, clean_middle_ty, clean_predicate,
-    clean_trait_ref_with_constraints, clean_ty_generics, simplify, Lifetime,
+    self, Lifetime, clean_generic_param_def, clean_middle_ty, clean_predicate,
+    clean_trait_ref_with_constraints, clean_ty_generics, simplify,
 };
 use crate::core::DocContext;
 
@@ -20,7 +22,7 @@ pub(crate) fn synthesize_auto_trait_impls<'tcx>(
     item_def_id: DefId,
 ) -> Vec<clean::Item> {
     let tcx = cx.tcx;
-    let param_env = tcx.param_env(item_def_id);
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, item_def_id);
     let ty = tcx.type_of(item_def_id).instantiate_identity();
 
     let finder = auto_trait::AutoTraitFinder::new(tcx);
@@ -33,7 +35,7 @@ pub(crate) fn synthesize_auto_trait_impls<'tcx>(
                 cx,
                 ty,
                 trait_def_id,
-                param_env,
+                typing_env,
                 item_def_id,
                 &finder,
                 DiscardPositiveImpls::No,
@@ -41,13 +43,13 @@ pub(crate) fn synthesize_auto_trait_impls<'tcx>(
         })
         .collect();
     // We are only interested in case the type *doesn't* implement the `Sized` trait.
-    if !ty.is_sized(tcx, param_env)
+    if !ty.is_sized(tcx, typing_env)
         && let Some(sized_trait_def_id) = tcx.lang_items().sized_trait()
         && let Some(impl_item) = synthesize_auto_trait_impl(
             cx,
             ty,
             sized_trait_def_id,
-            param_env,
+            typing_env,
             item_def_id,
             &finder,
             DiscardPositiveImpls::Yes,
@@ -63,7 +65,7 @@ fn synthesize_auto_trait_impl<'tcx>(
     cx: &mut DocContext<'tcx>,
     ty: Ty<'tcx>,
     trait_def_id: DefId,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     item_def_id: DefId,
     finder: &auto_trait::AutoTraitFinder<'tcx>,
     discard_positive_impls: DiscardPositiveImpls,
@@ -75,7 +77,7 @@ fn synthesize_auto_trait_impl<'tcx>(
         return None;
     }
 
-    let result = finder.find_auto_trait_generics(ty, param_env, trait_def_id, |info| {
+    let result = finder.find_auto_trait_generics(ty, typing_env, trait_def_id, |info| {
         clean_param_env(cx, item_def_id, info.full_user_env, info.region_data, info.vid_to_region)
     });
 
@@ -114,17 +116,20 @@ fn synthesize_auto_trait_impl<'tcx>(
 
     Some(clean::Item {
         name: None,
-        attrs: Default::default(),
+        inner: Box::new(clean::ItemInner {
+            attrs: Default::default(),
+            stability: None,
+            kind: clean::ImplItem(Box::new(clean::Impl {
+                safety: hir::Safety::Safe,
+                generics,
+                trait_: Some(clean_trait_ref_with_constraints(cx, trait_ref, ThinVec::new())),
+                for_: clean_middle_ty(ty::Binder::dummy(ty), cx, None, None),
+                items: Vec::new(),
+                polarity,
+                kind: clean::ImplKind::Auto,
+            })),
+        }),
         item_id: clean::ItemId::Auto { trait_: trait_def_id, for_: item_def_id },
-        kind: Box::new(clean::ImplItem(Box::new(clean::Impl {
-            safety: hir::Safety::Safe,
-            generics,
-            trait_: Some(clean_trait_ref_with_constraints(cx, trait_ref, ThinVec::new())),
-            for_: clean_middle_ty(ty::Binder::dummy(ty), cx, None, None),
-            items: Vec::new(),
-            polarity,
-            kind: clean::ImplKind::Auto,
-        }))),
         cfg: None,
         inline_stmt_id: None,
     })
@@ -152,7 +157,7 @@ fn clean_param_env<'tcx>(
         .iter()
         .inspect(|param| {
             if cfg!(debug_assertions) {
-                debug_assert!(!param.is_anonymous_lifetime() && !param.is_host_effect());
+                debug_assert!(!param.is_anonymous_lifetime());
                 if let ty::GenericParamDefKind::Type { synthetic, .. } = param.kind {
                     debug_assert!(!synthetic && param.name != kw::SelfUpper);
                 }
@@ -178,7 +183,7 @@ fn clean_param_env<'tcx>(
                     .is_some_and(|pred| tcx.lang_items().sized_trait() == Some(pred.def_id()))
         })
         .map(|pred| {
-            tcx.fold_regions(pred, |r, _| match *r {
+            fold_regions(tcx, pred, |r, _| match *r {
                 // FIXME: Don't `unwrap_or`, I think we should panic if we encounter an infer var that
                 // we can't map to a concrete region. However, `AutoTraitFinder` *does* leak those kinds
                 // of `ReVar`s for some reason at the time of writing. See `rustdoc-ui/` tests.
@@ -341,7 +346,7 @@ fn clean_region_outlives_constraints<'tcx>(
                 .map(|&region| {
                     let lifetime = early_bound_region_name(region)
                         .inspect(|name| assert!(region_params.contains(name)))
-                        .map(|name| Lifetime(name))
+                        .map(Lifetime)
                         .unwrap_or(Lifetime::statik());
                     clean::GenericBound::Outlives(lifetime)
                 })

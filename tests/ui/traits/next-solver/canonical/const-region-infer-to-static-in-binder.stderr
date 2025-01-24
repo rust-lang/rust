@@ -10,7 +10,7 @@ error: using function pointers as const generic parameters is forbidden
 LL | struct X<const FN: fn() = { || {} }>;
    |                    ^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: using function pointers as const generic parameters is forbidden
   --> $DIR/const-region-infer-to-static-in-binder.rs:4:20
@@ -18,7 +18,7 @@ error: using function pointers as const generic parameters is forbidden
 LL | struct X<const FN: fn() = { || {} }>;
    |                    ^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 3 previous errors

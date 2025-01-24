@@ -2,7 +2,7 @@
 //! WARNING: this does not keep track of the region depth.
 
 use rustc_data_structures::sso::SsoHashSet;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
 use crate::ty::{self, GenericArg, GenericArgKind, Ty};
@@ -189,9 +189,13 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 stack.extend(args.iter().rev());
             }
             ty::Tuple(ts) => stack.extend(ts.iter().rev().map(GenericArg::from)),
-            ty::FnPtr(sig) => {
-                stack.push(sig.skip_binder().output().into());
-                stack.extend(sig.skip_binder().inputs().iter().copied().rev().map(|ty| ty.into()));
+            ty::FnPtr(sig_tys, _hdr) => {
+                stack.extend(
+                    sig_tys.skip_binder().inputs_and_output.iter().rev().map(|ty| ty.into()),
+                );
+            }
+            ty::UnsafeBinder(bound_ty) => {
+                stack.push(bound_ty.skip_binder().into());
             }
         },
         GenericArgKind::Lifetime(_) => {}

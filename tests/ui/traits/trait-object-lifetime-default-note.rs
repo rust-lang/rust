@@ -8,7 +8,7 @@ fn main() {
     //~| NOTE borrowed value does not live long enough
     //~| NOTE due to object lifetime defaults, `Box<dyn A>` actually means `Box<(dyn A + 'static)>`
     require_box(Box::new(r));
-    //~^ NOTE cast requires that `local` is borrowed for `'static`
+    //~^ NOTE coercion requires that `local` is borrowed for `'static`
 
     let _ = 0;
 } //~ NOTE `local` dropped here while still borrowed

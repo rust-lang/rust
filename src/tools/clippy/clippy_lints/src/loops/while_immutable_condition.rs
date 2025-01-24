@@ -1,16 +1,16 @@
 use super::WHILE_IMMUTABLE_CONDITION;
-use clippy_utils::consts::constant;
+use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::usage::mutated_variables;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefIdMap;
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Expr, ExprKind, HirIdSet, QPath};
 use rustc_lint::LateContext;
 use std::ops::ControlFlow;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'tcx Expr<'_>) {
-    if constant(cx, cx.typeck_results(), cond).is_some() {
+    if ConstEvalCtxt::new(cx).eval(cond).is_some() {
         // A pure constant condition (e.g., `while false`) is not linted.
         return;
     }
@@ -19,10 +19,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'
         cx,
         ids: HirIdSet::default(),
         def_ids: DefIdMap::default(),
-        skip: false,
     };
-    var_visitor.visit_expr(cond);
-    if var_visitor.skip {
+    if var_visitor.visit_expr(cond).is_break() {
         return;
     }
     let used_in_condition = &var_visitor.ids;
@@ -81,10 +79,9 @@ struct VarCollectorVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     ids: HirIdSet,
     def_ids: DefIdMap<bool>,
-    skip: bool,
 }
 
-impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
+impl<'tcx> VarCollectorVisitor<'_, 'tcx> {
     fn insert_def_id(&mut self, ex: &'tcx Expr<'_>) {
         if let ExprKind::Path(ref qpath) = ex.kind
             && let QPath::Resolved(None, _) = *qpath
@@ -103,12 +100,16 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
+impl<'tcx> Visitor<'tcx> for VarCollectorVisitor<'_, 'tcx> {
+    type Result = ControlFlow<()>;
+    fn visit_expr(&mut self, ex: &'tcx Expr<'_>) -> Self::Result {
         match ex.kind {
-            ExprKind::Path(_) => self.insert_def_id(ex),
+            ExprKind::Path(_) => {
+                self.insert_def_id(ex);
+                ControlFlow::Continue(())
+            },
             // If there is any function/method call… we just stop analysis
-            ExprKind::Call(..) | ExprKind::MethodCall(..) => self.skip = true,
+            ExprKind::Call(..) | ExprKind::MethodCall(..) => ControlFlow::Break(()),
 
             _ => walk_expr(self, ex),
         }

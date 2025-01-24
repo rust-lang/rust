@@ -11,14 +11,14 @@
       }
   
       bb1: {
-          switchInt(_4) -> [1: bb2, otherwise: bb3];
+          switchInt(copy _4) -> [1: bb2, otherwise: bb3];
       }
   
       bb2: {
--         _5 = _3;
--         _3 = _2;
--         _2 = _1;
--         _1 = _5;
+-         _5 = copy _3;
+-         _3 = copy _2;
+-         _2 = copy _1;
+-         _1 = copy _5;
 +         nop;
 +         nop;
 +         nop;

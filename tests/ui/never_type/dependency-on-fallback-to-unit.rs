@@ -7,7 +7,7 @@ fn main() {
 
 fn def() {
     //~^ warn: this function depends on never type fallback being `()`
-    //~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
     match true {
         false => <_>::default(),
         true => return,
@@ -18,7 +18,7 @@ fn def() {
 // <https://github.com/rust-lang/rust/issues/39216>
 fn question_mark() -> Result<(), ()> {
     //~^ warn: this function depends on never type fallback being `()`
-    //~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
     deserialize()?;
     Ok(())
 }

@@ -1,61 +1,58 @@
 //@ ignore-lldb
 
-// Require a gdb that can read DW_TAG_variant_part.
-//@ min-gdb-version: 8.2
-
 //@ compile-flags:-g
 
 // gdb-command:run
 
 // gdb-command:print stack_unique.value
 // gdb-check:$1 = 0
-// gdbr-command:print stack_unique.next.val.value
+// gdb-command:print stack_unique.next.val.value
 // gdb-check:$2 = 1
 
-// gdbr-command:print unique_unique.value
+// gdb-command:print unique_unique.value
 // gdb-check:$3 = 2
-// gdbr-command:print unique_unique.next.val.value
+// gdb-command:print unique_unique.next.val.value
 // gdb-check:$4 = 3
 
 // gdb-command:print vec_unique[0].value
 // gdb-check:$5 = 6.5
-// gdbr-command:print vec_unique[0].next.val.value
+// gdb-command:print vec_unique[0].next.val.value
 // gdb-check:$6 = 7.5
 
-// gdbr-command:print borrowed_unique.value
+// gdb-command:print borrowed_unique.value
 // gdb-check:$7 = 8.5
-// gdbr-command:print borrowed_unique.next.val.value
+// gdb-command:print borrowed_unique.next.val.value
 // gdb-check:$8 = 9.5
 
 // LONG CYCLE
 // gdb-command:print long_cycle1.value
 // gdb-check:$9 = 20
-// gdbr-command:print long_cycle1.next.value
+// gdb-command:print long_cycle1.next.value
 // gdb-check:$10 = 21
-// gdbr-command:print long_cycle1.next.next.value
+// gdb-command:print long_cycle1.next.next.value
 // gdb-check:$11 = 22
-// gdbr-command:print long_cycle1.next.next.next.value
+// gdb-command:print long_cycle1.next.next.next.value
 // gdb-check:$12 = 23
 
 // gdb-command:print long_cycle2.value
 // gdb-check:$13 = 24
-// gdbr-command:print long_cycle2.next.value
+// gdb-command:print long_cycle2.next.value
 // gdb-check:$14 = 25
-// gdbr-command:print long_cycle2.next.next.value
+// gdb-command:print long_cycle2.next.next.value
 // gdb-check:$15 = 26
 
 // gdb-command:print long_cycle3.value
 // gdb-check:$16 = 27
-// gdbr-command:print long_cycle3.next.value
+// gdb-command:print long_cycle3.next.value
 // gdb-check:$17 = 28
 
 // gdb-command:print long_cycle4.value
 // gdb-check:$18 = 29.5
 
-// gdbr-command:print long_cycle_w_anon_types.value
+// gdb-command:print long_cycle_w_anon_types.value
 // gdb-check:$19 = 30
 
-// gdbr-command:print long_cycle_w_anon_types.next.val.value
+// gdb-command:print long_cycle_w_anon_types.next.val.value
 // gdb-check:$20 = 31
 
 // gdb-command:continue

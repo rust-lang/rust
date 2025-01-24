@@ -1,5 +1,5 @@
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:13:12
+  --> tests/ui/collapsible_else_if.rs:11:12
    |
 LL |       } else {
    |  ____________^
@@ -19,7 +19,7 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:21:12
+  --> tests/ui/collapsible_else_if.rs:19:12
    |
 LL |       } else {
    |  ____________^
@@ -37,15 +37,13 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:29:12
+  --> tests/ui/collapsible_else_if.rs:27:12
    |
 LL |       } else {
    |  ____________^
 LL | |         if y == "world" {
 LL | |             println!("world")
-LL | |         }
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |
@@ -60,15 +58,13 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:40:12
+  --> tests/ui/collapsible_else_if.rs:38:12
    |
 LL |       } else {
    |  ____________^
 LL | |         if let Some(42) = Some(42) {
 LL | |             println!("world")
-LL | |         }
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |
@@ -83,15 +79,13 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:51:12
+  --> tests/ui/collapsible_else_if.rs:49:12
    |
 LL |       } else {
    |  ____________^
 LL | |         if let Some(42) = Some(42) {
 LL | |             println!("world")
-LL | |         }
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |
@@ -106,15 +100,13 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:62:12
+  --> tests/ui/collapsible_else_if.rs:60:12
    |
 LL |       } else {
    |  ____________^
 LL | |         if x == "hello" {
 LL | |             println!("world")
-LL | |         }
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |
@@ -129,15 +121,13 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:73:12
+  --> tests/ui/collapsible_else_if.rs:71:12
    |
 LL |       } else {
    |  ____________^
 LL | |         if let Some(42) = Some(42) {
 LL | |             println!("world")
-LL | |         }
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |
@@ -152,7 +142,7 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:96:10
+  --> tests/ui/collapsible_else_if.rs:93:10
    |
 LL |       }else{
    |  __________^

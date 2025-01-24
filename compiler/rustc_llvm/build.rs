@@ -220,7 +220,10 @@ fn main() {
     let mut cmd = Command::new(&llvm_config);
     cmd.arg(llvm_link_arg).arg("--libs");
 
-    if !is_crossed {
+    // Don't link system libs if cross-compiling unless targeting Windows.
+    // On Windows system DLLs aren't linked directly, instead import libraries are used.
+    // These import libraries are independent of the host.
+    if !is_crossed || target.contains("windows") {
         cmd.arg("--system-libs");
     }
 
@@ -259,6 +262,7 @@ fn main() {
     cmd.args(&components);
 
     for lib in output(&mut cmd).split_whitespace() {
+        let mut is_static = false;
         let name = if let Some(stripped) = lib.strip_prefix("-l") {
             stripped
         } else if let Some(stripped) = lib.strip_prefix('-') {
@@ -266,8 +270,24 @@ fn main() {
         } else if Path::new(lib).exists() {
             // On MSVC llvm-config will print the full name to libraries, but
             // we're only interested in the name part
-            let name = Path::new(lib).file_name().unwrap().to_str().unwrap();
-            name.trim_end_matches(".lib")
+            // On Unix when we get a static library llvm-config will print the
+            // full name and we *are* interested in the path, but we need to
+            // handle it separately. For example, when statically linking to
+            // libzstd llvm-config will output something like
+            //   -lrt -ldl -lm -lz /usr/local/lib/libzstd.a -lxml2
+            // and we transform the zstd part into
+            //   cargo:rustc-link-search-native=/usr/local/lib
+            //   cargo:rustc-link-lib=static=zstd
+            let path = Path::new(lib);
+            if lib.ends_with(".a") {
+                is_static = true;
+                println!("cargo:rustc-link-search=native={}", path.parent().unwrap().display());
+                let name = path.file_stem().unwrap().to_str().unwrap();
+                name.trim_start_matches("lib")
+            } else {
+                let name = path.file_name().unwrap().to_str().unwrap();
+                name.trim_end_matches(".lib")
+            }
         } else if lib.ends_with(".lib") {
             // Some MSVC libraries just come up with `.lib` tacked on, so chop
             // that off
@@ -285,7 +305,13 @@ fn main() {
             continue;
         }
 
-        let kind = if name.starts_with("LLVM") { llvm_kind } else { "dylib" };
+        let kind = if name.starts_with("LLVM") {
+            llvm_kind
+        } else if is_static {
+            "static"
+        } else {
+            "dylib"
+        };
         println!("cargo:rustc-link-lib={kind}={name}");
     }
 

@@ -32,7 +32,7 @@ fn opt2(x: Option2<u32>, y: Option2<u32>, z: Option2<u32>) -> u32 {
     // CHECK: bb0: {
     // CHECK: [[LOCAL1:_.*]] = discriminant({{.*}});
     // CHECK: [[LOCAL2:_.*]] = discriminant({{.*}});
-    // CHECK: [[CMP_LOCAL]] = Ne([[LOCAL1]], move [[LOCAL2]]);
+    // CHECK: [[CMP_LOCAL]] = Ne(copy [[LOCAL1]], move [[LOCAL2]]);
     // CHECK: switchInt(move [[CMP_LOCAL]]) -> [
     // CHECK-NEXT: }
     match (x, y, z) {

@@ -1,0 +1,20 @@
+error: Undefined Behavior: Data race detected between (1) non-atomic write on thread `unnamed-ID` and (2) non-atomic read on thread `main` at ALLOC. (2) just happened here
+  --> tests/fail-dep/libc/socketpair-data-race.rs:LL:CC
+   |
+LL |     unsafe { assert_eq!({ VAL }, 1) };
+   |                           ^^^ Data race detected between (1) non-atomic write on thread `unnamed-ID` and (2) non-atomic read on thread `main` at ALLOC. (2) just happened here
+   |
+help: and (1) occurred earlier here
+  --> tests/fail-dep/libc/socketpair-data-race.rs:LL:CC
+   |
+LL |         unsafe { VAL = 1 };
+   |                  ^^^^^^^
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE (of the first span):
+   = note: inside `main` at tests/fail-dep/libc/socketpair-data-race.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

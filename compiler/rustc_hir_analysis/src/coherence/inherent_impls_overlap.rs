@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
@@ -10,8 +10,12 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{ErrorGuaranteed, Symbol};
 use rustc_trait_selection::traits::{self, SkipLeakCheck};
 use smallvec::SmallVec;
+use tracing::debug;
 
-pub fn crate_inherent_impls_overlap_check(tcx: TyCtxt<'_>, (): ()) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn crate_inherent_impls_overlap_check(
+    tcx: TyCtxt<'_>,
+    (): (),
+) -> Result<(), ErrorGuaranteed> {
     let mut inherent_overlap_checker = InherentOverlapChecker { tcx };
     let mut res = Ok(());
     for id in tcx.hir().items() {
@@ -173,8 +177,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
             return Ok(());
         }
 
-        let impls = self.tcx.inherent_impls(id.owner_id)?;
-
+        let impls = self.tcx.inherent_impls(id.owner_id);
         let overlap_mode = OverlapMode::get(self.tcx, id.owner_id.to_def_id());
 
         let impls_items = impls
@@ -212,7 +215,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
 
             struct ConnectedRegion {
                 idents: SmallVec<[Symbol; 8]>,
-                impl_blocks: FxHashSet<usize>,
+                impl_blocks: FxIndexSet<usize>,
             }
             let mut connected_regions: IndexVec<RegionId, _> = Default::default();
             // Reverse map from the Symbol to the connected region id.
@@ -248,13 +251,10 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                         for ident in &idents_to_add {
                             connected_region_ids.insert(*ident, id_to_set);
                         }
-                        connected_regions.insert(
-                            id_to_set,
-                            ConnectedRegion {
-                                idents: idents_to_add,
-                                impl_blocks: std::iter::once(i).collect(),
-                            },
-                        );
+                        connected_regions.insert(id_to_set, ConnectedRegion {
+                            idents: idents_to_add,
+                            impl_blocks: std::iter::once(i).collect(),
+                        });
                     }
                     // Take the only id inside the list
                     &[id_to_set] => {
@@ -319,9 +319,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
             // List of connected regions is built. Now, run the overlap check
             // for each pair of impl blocks in the same connected region.
             for region in connected_regions.into_iter().flatten() {
-                let mut impl_blocks =
-                    region.impl_blocks.into_iter().collect::<SmallVec<[usize; 8]>>();
-                impl_blocks.sort_unstable();
+                let impl_blocks = region.impl_blocks.into_iter().collect::<SmallVec<[usize; 8]>>();
                 for (i, &impl1_items_idx) in impl_blocks.iter().enumerate() {
                     let &(&impl1_def_id, impl_items1) = &impls_items[impl1_items_idx];
                     res = res.and(self.check_for_duplicate_items_in_impl(impl1_def_id));

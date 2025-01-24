@@ -49,7 +49,7 @@ fn is_camel_case(name: &str) -> bool {
     let mut fst = None;
     // start with a non-lowercase letter rather than non-uppercase
     // ones (some scripts don't have a concept of upper/lowercase)
-    name.chars().next().map_or(true, |c| !c.is_lowercase())
+    name.chars().next().is_none_or(|c| !c.is_lowercase())
         && !name.contains("__")
         && !name.chars().any(|snd| {
             let ret = match fst {
@@ -111,7 +111,7 @@ mod tests {
         check(to_lower_snake_case, "lower_snake_case", expect![[""]]);
         check(to_lower_snake_case, "UPPER_SNAKE_CASE", expect![["upper_snake_case"]]);
         check(to_lower_snake_case, "Weird_Case", expect![["weird_case"]]);
-        check(to_lower_snake_case, "CamelCase", expect![["camel_case"]]);
+        check(to_lower_snake_case, "UpperCamelCase", expect![["upper_camel_case"]]);
         check(to_lower_snake_case, "lowerCamelCase", expect![["lower_camel_case"]]);
         check(to_lower_snake_case, "a", expect![[""]]);
         check(to_lower_snake_case, "abc", expect![[""]]);
@@ -121,8 +121,8 @@ mod tests {
 
     #[test]
     fn test_to_camel_case() {
-        check(to_camel_case, "CamelCase", expect![[""]]);
-        check(to_camel_case, "CamelCase_", expect![[""]]);
+        check(to_camel_case, "UpperCamelCase", expect![[""]]);
+        check(to_camel_case, "UpperCamelCase_", expect![[""]]);
         check(to_camel_case, "_CamelCase", expect![[""]]);
         check(to_camel_case, "lowerCamelCase", expect![["LowerCamelCase"]]);
         check(to_camel_case, "lower_snake_case", expect![["LowerSnakeCase"]]);
@@ -143,7 +143,7 @@ mod tests {
         check(to_upper_snake_case, "UPPER_SNAKE_CASE", expect![[""]]);
         check(to_upper_snake_case, "lower_snake_case", expect![["LOWER_SNAKE_CASE"]]);
         check(to_upper_snake_case, "Weird_Case", expect![["WEIRD_CASE"]]);
-        check(to_upper_snake_case, "CamelCase", expect![["CAMEL_CASE"]]);
+        check(to_upper_snake_case, "UpperCamelCase", expect![["UPPER_CAMEL_CASE"]]);
         check(to_upper_snake_case, "lowerCamelCase", expect![["LOWER_CAMEL_CASE"]]);
         check(to_upper_snake_case, "A", expect![[""]]);
         check(to_upper_snake_case, "ABC", expect![[""]]);

@@ -7,13 +7,12 @@ LL |               assert_send(g);
 LL | /     type_combinations!(
 LL | |         // OK
 LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
-LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
 ...  |
 LL | |         };
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `{coroutine@$DIR/parent-expression.rs:17:34: 17:41}`, the trait `Send` is not implemented for `derived_drop::Client`, which is required by `{coroutine@$DIR/parent-expression.rs:17:34: 17:41}: Send`
+   = help: within `{coroutine@$DIR/parent-expression.rs:17:34: 17:41}`, the trait `Send` is not implemented for `derived_drop::Client`
 note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/parent-expression.rs:21:22
    |
@@ -26,7 +25,6 @@ LL |                   _ => yield,
 LL | /     type_combinations!(
 LL | |         // OK
 LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
-LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
 ...  |
 LL | |         };
 LL | |     );
@@ -47,13 +45,12 @@ LL |               assert_send(g);
 LL | /     type_combinations!(
 LL | |         // OK
 LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
-LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
 ...  |
 LL | |         };
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `{coroutine@$DIR/parent-expression.rs:17:34: 17:41}`, the trait `Send` is not implemented for `significant_drop::Client`, which is required by `{coroutine@$DIR/parent-expression.rs:17:34: 17:41}: Send`
+   = help: within `{coroutine@$DIR/parent-expression.rs:17:34: 17:41}`, the trait `Send` is not implemented for `significant_drop::Client`
 note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/parent-expression.rs:21:22
    |
@@ -66,7 +63,6 @@ LL |                   _ => yield,
 LL | /     type_combinations!(
 LL | |         // OK
 LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
-LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
 ...  |
 LL | |         };
 LL | |     );
@@ -87,13 +83,12 @@ LL |               assert_send(g);
 LL | /     type_combinations!(
 LL | |         // OK
 LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
-LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
 ...  |
 LL | |         };
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `{coroutine@$DIR/parent-expression.rs:17:34: 17:41}`, the trait `Send` is not implemented for `insignificant_dtor::Client`, which is required by `{coroutine@$DIR/parent-expression.rs:17:34: 17:41}: Send`
+   = help: within `{coroutine@$DIR/parent-expression.rs:17:34: 17:41}`, the trait `Send` is not implemented for `insignificant_dtor::Client`
 note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/parent-expression.rs:21:22
    |
@@ -106,7 +101,6 @@ LL |                   _ => yield,
 LL | /     type_combinations!(
 LL | |         // OK
 LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
-LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
 ...  |
 LL | |         };
 LL | |     );

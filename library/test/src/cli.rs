@@ -44,7 +44,7 @@ impl TestOpts {
 }
 
 /// Result of parsing the options.
-pub type OptRes = Result<TestOpts, String>;
+pub(crate) type OptRes = Result<TestOpts, String>;
 /// Result of parsing the option part.
 type OptPartRes<T> = Result<T, String>;
 

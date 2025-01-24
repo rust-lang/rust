@@ -1,7 +1,6 @@
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::intravisit;
-use rustc_middle::hir::nested_filter::OnlyBodies;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::sym;
 
@@ -10,12 +9,10 @@ pub(crate) fn opaque_hidden_types(tcx: TyCtxt<'_>) {
         return;
     }
 
-    for id in tcx.hir().items() {
-        let DefKind::OpaqueTy = tcx.def_kind(id.owner_id) else { continue };
-
-        let ty = tcx.type_of(id.owner_id).instantiate_identity();
-
-        tcx.dcx().emit_err(crate::errors::TypeOf { span: tcx.def_span(id.owner_id), ty });
+    for id in tcx.hir_crate_items(()).opaques() {
+        let ty = tcx.type_of(id).instantiate_identity();
+        let span = tcx.def_span(id);
+        tcx.dcx().emit_err(crate::errors::TypeOf { span, ty });
     }
 }
 
@@ -45,7 +42,8 @@ pub(crate) fn predicates_and_item_bounds(tcx: TyCtxt<'_>) {
 }
 
 pub(crate) fn def_parents(tcx: TyCtxt<'_>) {
-    for did in tcx.hir().body_owners() {
+    for iid in tcx.hir().items() {
+        let did = iid.owner_id.def_id;
         if tcx.has_attr(did, sym::rustc_dump_def_parents) {
             struct AnonConstFinder<'tcx> {
                 tcx: TyCtxt<'tcx>,
@@ -53,7 +51,7 @@ pub(crate) fn def_parents(tcx: TyCtxt<'_>) {
             }
 
             impl<'tcx> intravisit::Visitor<'tcx> for AnonConstFinder<'tcx> {
-                type NestedFilter = OnlyBodies;
+                type NestedFilter = nested_filter::All;
 
                 fn nested_visit_map(&mut self) -> Self::Map {
                     self.tcx.hir()
@@ -65,11 +63,11 @@ pub(crate) fn def_parents(tcx: TyCtxt<'_>) {
                 }
             }
 
-            // Look for any anon consts inside of this body owner as there is no way to apply
+            // Look for any anon consts inside of this item as there is no way to apply
             // the `rustc_dump_def_parents` attribute to the anon const so it would not be possible
             // to see what its def parent is.
             let mut anon_ct_finder = AnonConstFinder { tcx, anon_consts: vec![] };
-            intravisit::walk_expr(&mut anon_ct_finder, tcx.hir().body_owned_by(did).value);
+            intravisit::walk_item(&mut anon_ct_finder, tcx.hir().item(iid));
 
             for did in [did].into_iter().chain(anon_ct_finder.anon_consts) {
                 let span = tcx.def_span(did);

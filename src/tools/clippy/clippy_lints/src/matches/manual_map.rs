@@ -1,5 +1,5 @@
-use super::manual_utils::{check_with, SomeExpr};
 use super::MANUAL_MAP;
+use super::manual_utils::{SomeExpr, check_with};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 
 use clippy_utils::{is_res_lang_ctor, path_res};

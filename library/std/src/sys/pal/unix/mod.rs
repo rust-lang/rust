@@ -1,13 +1,11 @@
 #![allow(missing_docs, nonstandard_style)]
 
-pub use self::rand::hashmap_random_keys;
 use crate::io::ErrorKind;
 
 #[cfg(not(target_os = "espidf"))]
 #[macro_use]
 pub mod weak;
 
-pub mod alloc;
 pub mod args;
 pub mod env;
 pub mod fd;
@@ -27,9 +25,9 @@ pub use self::l4re::net;
 pub mod os;
 pub mod pipe;
 pub mod process;
-pub mod rand;
 pub mod stack_overflow;
 pub mod stdio;
+pub mod sync;
 pub mod thread;
 pub mod thread_parking;
 pub mod time;
@@ -80,6 +78,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_os = "l4re",
             target_os = "horizon",
             target_os = "vita",
+            target_os = "rtems",
             // The poll on Darwin doesn't set POLLNVAL for closed fds.
             target_vendor = "apple",
         )))]
@@ -116,7 +115,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
                 if pfd.revents & libc::POLLNVAL == 0 {
                     continue;
                 }
-                if open64(c"/dev/null".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
+                if open64(c"/dev/null".as_ptr(), libc::O_RDWR, 0) == -1 {
                     // If the stream is closed but we failed to reopen it, abort the
                     // process. Otherwise we wouldn't preserve the safety of
                     // operations on the corresponding Rust object Stdin, Stdout, or
@@ -147,7 +146,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             use crate::sys::os::errno;
             for fd in 0..3 {
                 if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
-                    if open64(c"/dev/null".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
+                    if open64(c"/dev/null".as_ptr(), libc::O_RDWR, 0) == -1 {
                         // If the stream is closed but we failed to reopen it, abort the
                         // process. Otherwise we wouldn't preserve the safety of
                         // operations on the corresponding Rust object Stdin, Stdout, or
@@ -224,6 +223,7 @@ static ON_BROKEN_PIPE_FLAG_USED: crate::sync::atomic::AtomicBool =
     target_os = "horizon",
     target_os = "vxworks",
     target_os = "vita",
+    target_os = "nuttx",
 )))]
 pub(crate) fn on_broken_pipe_flag_used() -> bool {
     ON_BROKEN_PIPE_FLAG_USED.load(crate::sync::atomic::Ordering::Relaxed)
@@ -254,7 +254,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::ECONNREFUSED => ConnectionRefused,
         libc::ECONNRESET => ConnectionReset,
         libc::EDEADLK => Deadlock,
-        libc::EDQUOT => FilesystemQuotaExceeded,
+        libc::EDQUOT => QuotaExceeded,
         libc::EEXIST => AlreadyExists,
         libc::EFBIG => FileTooLarge,
         libc::EHOSTUNREACH => HostUnreachable,
@@ -281,6 +281,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::ETIMEDOUT => TimedOut,
         libc::ETXTBSY => ExecutableFileBusy,
         libc::EXDEV => CrossesDevices,
+        libc::EINPROGRESS => InProgress,
 
         libc::EACCES | libc::EPERM => PermissionDenied,
 
@@ -426,7 +427,7 @@ cfg_if::cfg_if! {
     }
 }
 
-#[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))]
+#[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita", target_os = "nuttx"))]
 mod unsupported {
     use crate::io;
 

@@ -14,7 +14,7 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: EditionedFileId,
+    file_id: EditionedFileId,
     closure: ast::ClosureExpr,
 ) -> Option<()> {
     if config.closure_return_type_hints == ClosureReturnTypeHints::Never {
@@ -43,7 +43,7 @@ pub(super) fn hints(
         return None;
     }
 
-    let mut label = label_of_ty(famous_defs, config, &ty)?;
+    let mut label = label_of_ty(famous_defs, config, &ty, file_id.edition())?;
 
     if arrow.is_none() {
         label.prepend_str(" -> ");
@@ -52,13 +52,14 @@ pub(super) fn hints(
     let text_edit = if has_block_body {
         ty_to_text_edit(
             sema,
+            config,
             closure.syntax(),
             &ty,
             arrow
                 .as_ref()
                 .map_or_else(|| param_list.syntax().text_range(), |t| t.text_range())
                 .end(),
-            if arrow.is_none() { String::from(" -> ") } else { String::new() },
+            if arrow.is_none() { " -> " } else { "" },
         )
     } else {
         None
@@ -72,6 +73,7 @@ pub(super) fn hints(
         position: InlayHintPosition::After,
         pad_left: false,
         pad_right: false,
+        resolve_parent: Some(closure.syntax().text_range()),
     });
     Some(())
 }

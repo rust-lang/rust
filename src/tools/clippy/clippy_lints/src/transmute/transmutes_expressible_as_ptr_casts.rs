@@ -1,13 +1,13 @@
 use super::TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
-use rustc_ast::ExprPrecedence;
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Node};
 use rustc_hir_typeck::cast::check_cast;
 use rustc_lint::LateContext;
-use rustc_middle::ty::cast::CastKind;
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::cast::CastKind;
 
 /// Checks for `transmutes_expressible_as_ptr_casts` lint.
 /// Returns `true` if it's triggered, otherwise returns `false`.
@@ -44,7 +44,7 @@ pub(super) fn check<'tcx>(
     };
 
     if let Node::Expr(parent) = cx.tcx.parent_hir_node(e.hir_id)
-        && parent.precedence().order() > ExprPrecedence::Cast.order()
+        && parent.precedence() > ExprPrecedence::Cast
     {
         sugg = format!("({sugg})");
     }

@@ -23,6 +23,7 @@
 // We want to be able to build this crate with a stable compiler,
 // so no `#![feature]` attributes should be added.
 #![deny(unstable_features)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod cursor;
@@ -32,6 +33,7 @@ pub mod unescape;
 mod tests;
 
 use unicode_properties::UnicodeEmoji;
+pub use unicode_xid::UNICODE_VERSION as UNICODE_XID_VERSION;
 
 use self::LiteralKind::*;
 use self::TokenKind::*;
@@ -56,11 +58,10 @@ impl Token {
 /// Enum representing common lexeme types.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TokenKind {
-    // Multi-char tokens:
-    /// "// comment"
+    /// A line comment, e.g. `// comment`.
     LineComment { doc_style: Option<DocStyle> },
 
-    /// `/* block comment */`
+    /// A block comment, e.g. `/* block comment */`.
     ///
     /// Block comments can be recursive, so a sequence like `/* /* */`
     /// will not be considered terminated and will result in a parsing error.
@@ -69,18 +70,17 @@ pub enum TokenKind {
     /// Any whitespace character sequence.
     Whitespace,
 
-    /// "ident" or "continue"
-    ///
-    /// At this step, keywords are also considered identifiers.
+    /// An identifier or keyword, e.g. `ident` or `continue`.
     Ident,
 
-    /// Like the above, but containing invalid unicode codepoints.
+    /// An identifier that is invalid because it contains emoji.
     InvalidIdent,
 
-    /// "r#ident"
+    /// A raw identifier, e.g. "r#ident".
     RawIdent,
 
-    /// An unknown prefix, like `foo#`, `foo'`, `foo"`.
+    /// An unknown literal prefix, like `foo#`, `foo'`, `foo"`. Excludes
+    /// literal prefixes that contain emoji, which are considered "invalid".
     ///
     /// Note that only the
     /// prefix (`foo`) is included in the token, not the separator (which is
@@ -90,74 +90,85 @@ pub enum TokenKind {
     /// tokens.
     UnknownPrefix,
 
-    /// Similar to the above, but *always* an error on every edition. This is used
-    /// for emoji identifier recovery, as those are not meant to be ever accepted.
-    InvalidPrefix,
+    /// An unknown prefix in a lifetime, like `'foo#`.
+    ///
+    /// Like `UnknownPrefix`, only the `'` and prefix are included in the token
+    /// and not the separator.
+    UnknownPrefixLifetime,
 
-    /// Examples: `12u8`, `1.0e-40`, `b"123"`. Note that `_` is an invalid
+    /// A raw lifetime, e.g. `'r#foo`. In edition < 2021 it will be split into
+    /// several tokens: `'r` and `#` and `foo`.
+    RawLifetime,
+
+    /// Guarded string literal prefix: `#"` or `##`.
+    ///
+    /// Used for reserving "guarded strings" (RFC 3598) in edition 2024.
+    /// Split into the component tokens on older editions.
+    GuardedStrPrefix,
+
+    /// Literals, e.g. `12u8`, `1.0e-40`, `b"123"`. Note that `_` is an invalid
     /// suffix, but may be present here on string and float literals. Users of
     /// this type will need to check for and reject that case.
     ///
     /// See [LiteralKind] for more details.
     Literal { kind: LiteralKind, suffix_start: u32 },
 
-    /// "'a"
+    /// A lifetime, e.g. `'a`.
     Lifetime { starts_with_number: bool },
 
-    // One-char tokens:
-    /// ";"
+    /// `;`
     Semi,
-    /// ","
+    /// `,`
     Comma,
-    /// "."
+    /// `.`
     Dot,
-    /// "("
+    /// `(`
     OpenParen,
-    /// ")"
+    /// `)`
     CloseParen,
-    /// "{"
+    /// `{`
     OpenBrace,
-    /// "}"
+    /// `}`
     CloseBrace,
-    /// "["
+    /// `[`
     OpenBracket,
-    /// "]"
+    /// `]`
     CloseBracket,
-    /// "@"
+    /// `@`
     At,
-    /// "#"
+    /// `#`
     Pound,
-    /// "~"
+    /// `~`
     Tilde,
-    /// "?"
+    /// `?`
     Question,
-    /// ":"
+    /// `:`
     Colon,
-    /// "$"
+    /// `$`
     Dollar,
-    /// "="
+    /// `=`
     Eq,
-    /// "!"
+    /// `!`
     Bang,
-    /// "<"
+    /// `<`
     Lt,
-    /// ">"
+    /// `>`
     Gt,
-    /// "-"
+    /// `-`
     Minus,
-    /// "&"
+    /// `&`
     And,
-    /// "|"
+    /// `|`
     Or,
-    /// "+"
+    /// `+`
     Plus,
-    /// "*"
+    /// `*`
     Star,
-    /// "/"
+    /// `/`
     Slash,
-    /// "^"
+    /// `^`
     Caret,
-    /// "%"
+    /// `%`
     Percent,
 
     /// Unknown token, not expected by the lexer, e.g. "№"
@@ -181,28 +192,39 @@ pub enum DocStyle {
 /// `rustc_ast::ast::LitKind`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LiteralKind {
-    /// "12_u8", "0o100", "0b120i99", "1f32".
+    /// `12_u8`, `0o100`, `0b120i99`, `1f32`.
     Int { base: Base, empty_int: bool },
-    /// "12.34f32", "1e3", but not "1f32".
+    /// `12.34f32`, `1e3`, but not `1f32`.
     Float { base: Base, empty_exponent: bool },
-    /// "'a'", "'\\'", "'''", "';"
+    /// `'a'`, `'\\'`, `'''`, `';`
     Char { terminated: bool },
-    /// "b'a'", "b'\\'", "b'''", "b';"
+    /// `b'a'`, `b'\\'`, `b'''`, `b';`
     Byte { terminated: bool },
-    /// ""abc"", ""abc"
+    /// `"abc"`, `"abc`
     Str { terminated: bool },
-    /// "b"abc"", "b"abc"
+    /// `b"abc"`, `b"abc`
     ByteStr { terminated: bool },
     /// `c"abc"`, `c"abc`
     CStr { terminated: bool },
-    /// "r"abc"", "r#"abc"#", "r####"ab"###"c"####", "r#"a". `None` indicates
+    /// `r"abc"`, `r#"abc"#`, `r####"ab"###"c"####`, `r#"a`. `None` indicates
     /// an invalid literal.
     RawStr { n_hashes: Option<u8> },
-    /// "br"abc"", "br#"abc"#", "br####"ab"###"c"####", "br#"a". `None`
+    /// `br"abc"`, `br#"abc"#`, `br####"ab"###"c"####`, `br#"a`. `None`
     /// indicates an invalid literal.
     RawByteStr { n_hashes: Option<u8> },
     /// `cr"abc"`, "cr#"abc"#", `cr#"a`. `None` indicates an invalid literal.
     RawCStr { n_hashes: Option<u8> },
+}
+
+/// `#"abc"#`, `##"a"` (fewer closing), or even `#"a` (unterminated).
+///
+/// Can capture fewer closing hashes than starting hashes,
+/// for more efficient lexing and better backwards diagnostics.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct GuardedStr {
+    pub n_hashes: u32,
+    pub terminated: bool,
+    pub token_len: u32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -393,6 +415,12 @@ impl Cursor<'_> {
                 TokenKind::Literal { kind: literal_kind, suffix_start }
             }
 
+            // Guarded string literal prefix: `#"` or `##`
+            '#' if matches!(self.first(), '"' | '#') => {
+                self.bump();
+                TokenKind::GuardedStrPrefix
+            }
+
             // One-symbol tokens.
             ';' => Semi,
             ',' => Comma,
@@ -435,7 +463,7 @@ impl Cursor<'_> {
                 Literal { kind, suffix_start }
             }
             // Identifier starting with an emoji. Only lexed for graceful error recovery.
-            c if !c.is_ascii() && c.is_emoji_char() => self.fake_ident_or_unknown_prefix(),
+            c if !c.is_ascii() && c.is_emoji_char() => self.invalid_ident(),
             _ => Unknown,
         };
         let res = Token::new(token_kind, self.pos_within_token());
@@ -519,41 +547,39 @@ impl Cursor<'_> {
         // we see a prefix here, it is definitely an unknown prefix.
         match self.first() {
             '#' | '"' | '\'' => UnknownPrefix,
-            c if !c.is_ascii() && c.is_emoji_char() => self.fake_ident_or_unknown_prefix(),
+            c if !c.is_ascii() && c.is_emoji_char() => self.invalid_ident(),
             _ => Ident,
         }
     }
 
-    fn fake_ident_or_unknown_prefix(&mut self) -> TokenKind {
+    fn invalid_ident(&mut self) -> TokenKind {
         // Start is already eaten, eat the rest of identifier.
         self.eat_while(|c| {
-            unicode_xid::UnicodeXID::is_xid_continue(c)
-                || (!c.is_ascii() && c.is_emoji_char())
-                || c == '\u{200d}'
+            const ZERO_WIDTH_JOINER: char = '\u{200d}';
+            is_id_continue(c) || (!c.is_ascii() && c.is_emoji_char()) || c == ZERO_WIDTH_JOINER
         });
-        // Known prefixes must have been handled earlier. So if
-        // we see a prefix here, it is definitely an unknown prefix.
-        match self.first() {
-            '#' | '"' | '\'' => InvalidPrefix,
-            _ => InvalidIdent,
-        }
+        // An invalid identifier followed by '#' or '"' or '\'' could be
+        // interpreted as an invalid literal prefix. We don't bother doing that
+        // because the treatment of invalid identifiers and invalid prefixes
+        // would be the same.
+        InvalidIdent
     }
 
     fn c_or_byte_string(
         &mut self,
-        mk_kind: impl FnOnce(bool) -> LiteralKind,
-        mk_kind_raw: impl FnOnce(Option<u8>) -> LiteralKind,
+        mk_kind: fn(bool) -> LiteralKind,
+        mk_kind_raw: fn(Option<u8>) -> LiteralKind,
         single_quoted: Option<fn(bool) -> LiteralKind>,
     ) -> TokenKind {
         match (self.first(), self.second(), single_quoted) {
-            ('\'', _, Some(mk_kind)) => {
+            ('\'', _, Some(single_quoted)) => {
                 self.bump();
                 let terminated = self.single_quoted_string();
                 let suffix_start = self.pos_within_token();
                 if terminated {
                     self.eat_literal_suffix();
                 }
-                let kind = mk_kind(terminated);
+                let kind = single_quoted(terminated);
                 Literal { kind, suffix_start }
             }
             ('"', _, _) => {
@@ -676,9 +702,17 @@ impl Cursor<'_> {
             return Literal { kind, suffix_start };
         }
 
+        if self.first() == 'r' && self.second() == '#' && is_id_start(self.third()) {
+            // Eat "r" and `#`, and identifier start characters.
+            self.bump();
+            self.bump();
+            self.bump();
+            self.eat_while(is_id_continue);
+            return RawLifetime;
+        }
+
         // Either a lifetime or a character literal with
         // length greater than 1.
-
         let starts_with_number = self.first().is_ascii_digit();
 
         // Skip the literal contents.
@@ -687,15 +721,17 @@ impl Cursor<'_> {
         self.bump();
         self.eat_while(is_id_continue);
 
-        // Check if after skipping literal contents we've met a closing
-        // single quote (which means that user attempted to create a
-        // string with single quotes).
-        if self.first() == '\'' {
-            self.bump();
-            let kind = Char { terminated: true };
-            Literal { kind, suffix_start: self.pos_within_token() }
-        } else {
-            Lifetime { starts_with_number }
+        match self.first() {
+            // Check if after skipping literal contents we've met a closing
+            // single quote (which means that user attempted to create a
+            // string with single quotes).
+            '\'' => {
+                self.bump();
+                let kind = Char { terminated: true };
+                Literal { kind, suffix_start: self.pos_within_token() }
+            }
+            '#' if !starts_with_number => UnknownPrefixLifetime,
+            _ => Lifetime { starts_with_number },
         }
     }
 
@@ -758,6 +794,60 @@ impl Cursor<'_> {
         }
         // End of file reached.
         false
+    }
+
+    /// Attempt to lex for a guarded string literal.
+    ///
+    /// Used by `rustc_parse::lexer` to lex for guarded strings
+    /// conditionally based on edition.
+    ///
+    /// Note: this will not reset the `Cursor` when a
+    /// guarded string is not found. It is the caller's
+    /// responsibility to do so.
+    pub fn guarded_double_quoted_string(&mut self) -> Option<GuardedStr> {
+        debug_assert!(self.prev() != '#');
+
+        let mut n_start_hashes: u32 = 0;
+        while self.first() == '#' {
+            n_start_hashes += 1;
+            self.bump();
+        }
+
+        if self.first() != '"' {
+            return None;
+        }
+        self.bump();
+        debug_assert!(self.prev() == '"');
+
+        // Lex the string itself as a normal string literal
+        // so we can recover that for older editions later.
+        let terminated = self.double_quoted_string();
+        if !terminated {
+            let token_len = self.pos_within_token();
+            self.reset_pos_within_token();
+
+            return Some(GuardedStr { n_hashes: n_start_hashes, terminated: false, token_len });
+        }
+
+        // Consume closing '#' symbols.
+        // Note that this will not consume extra trailing `#` characters:
+        // `###"abcde"####` is lexed as a `GuardedStr { n_end_hashes: 3, .. }`
+        // followed by a `#` token.
+        let mut n_end_hashes = 0;
+        while self.first() == '#' && n_end_hashes < n_start_hashes {
+            n_end_hashes += 1;
+            self.bump();
+        }
+
+        // Reserved syntax, always an error, so it doesn't matter if
+        // `n_start_hashes != n_end_hashes`.
+
+        self.eat_literal_suffix();
+
+        let token_len = self.pos_within_token();
+        self.reset_pos_within_token();
+
+        Some(GuardedStr { n_hashes: n_start_hashes, terminated: true, token_len })
     }
 
     /// Eats the double-quoted string and returns `n_hashes` and an error if encountered.

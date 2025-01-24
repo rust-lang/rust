@@ -2,12 +2,13 @@ error[E0277]: `?` couldn't convert the error to `TryFromSliceError`
   --> $DIR/try-block-bad-type.rs:7:16
    |
 LL |         Err("")?;
-   |         -------^ the trait `From<&str>` is not implemented for `TryFromSliceError`, which is required by `Result<u32, TryFromSliceError>: FromResidual<Result<Infallible, &str>>`
+   |         -------^ the trait `From<&str>` is not implemented for `TryFromSliceError`
    |         |
    |         this can't be annotated with `?` because it has type `Result<_, &str>`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-   = help: the trait `From<Infallible>` is implemented for `TryFromSliceError`
+   = help: the trait `From<&str>` is not implemented for `TryFromSliceError`
+           but trait `From<Infallible>` is implemented for it
    = help: for that trait implementation, expected `Infallible`, found `&str`
    = note: required for `Result<u32, TryFromSliceError>` to implement `FromResidual<Result<Infallible, &str>>`
 
@@ -15,13 +16,13 @@ error[E0271]: type mismatch resolving `<Result<i32, i32> as Try>::Output == &str
   --> $DIR/try-block-bad-type.rs:12:9
    |
 LL |         ""
-   |         ^^ expected `i32`, found `&str`
+   |         ^^ expected `&str`, found `i32`
 
 error[E0271]: type mismatch resolving `<Result<i32, i32> as Try>::Output == ()`
   --> $DIR/try-block-bad-type.rs:15:39
    |
 LL |     let res: Result<i32, i32> = try { };
-   |                                       ^ expected `i32`, found `()`
+   |                                       ^ expected `()`, found `i32`
 
 error[E0277]: a `try` block must return `Result` or `Option` (or another type that implements `Try`)
   --> $DIR/try-block-bad-type.rs:17:25

@@ -4,15 +4,15 @@
 #![allow(non_camel_case_types)]
 #[repr(simd)]
 #[derive(Copy, Clone)]
-pub struct i32x4(pub i32, pub i32, pub i32, pub i32);
+pub struct i32x4(pub [i32; 4]);
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
-pub struct x4<T>(pub T, pub T, pub T, pub T);
+pub struct x4<T>(pub [T; 4]);
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
-pub struct f32x4(pub f32, pub f32, pub f32, pub f32);
+pub struct f32x4(pub [f32; 4]);
 
 extern "rust-intrinsic" {
     fn simd_saturating_add<T>(x: T, y: T) -> T;
@@ -20,9 +20,9 @@ extern "rust-intrinsic" {
 }
 
 fn main() {
-    let x = i32x4(0, 0, 0, 0);
-    let y = x4(0_usize, 0, 0, 0);
-    let z = f32x4(0.0, 0.0, 0.0, 0.0);
+    let x = i32x4([0, 0, 0, 0]);
+    let y = x4([0_usize, 0, 0, 0]);
+    let z = f32x4([0.0, 0.0, 0.0, 0.0]);
 
     unsafe {
         simd_saturating_add(x, x);

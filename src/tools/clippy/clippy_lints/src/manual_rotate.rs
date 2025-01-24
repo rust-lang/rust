@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg;
 use rustc_errors::Applicability;
@@ -66,7 +66,7 @@ fn parse_shift<'tcx>(
             BinOpKind::Shr => ShiftDirection::Right,
             _ => return None,
         };
-        let const_expr = constant(cx, cx.typeck_results(), r)?;
+        let const_expr = ConstEvalCtxt::new(cx).eval(r)?;
         if let Constant::Int(shift) = const_expr {
             return Some((dir, shift, l));
         }

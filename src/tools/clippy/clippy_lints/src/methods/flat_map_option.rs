@@ -4,7 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use super::FLAT_MAP_OPTION;
 use clippy_utils::ty::is_type_diagnostic_item;

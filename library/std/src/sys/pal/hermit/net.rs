@@ -87,7 +87,7 @@ impl Socket {
         loop {
             let elapsed = start.elapsed();
             if elapsed >= timeout {
-                return Err(io::const_io_error!(io::ErrorKind::TimedOut, "connection timed out"));
+                return Err(io::const_error!(io::ErrorKind::TimedOut, "connection timed out"));
             }
 
             let timeout = timeout - elapsed;
@@ -114,7 +114,7 @@ impl Socket {
                     // for POLLHUP rather than read readiness
                     if pollfd.revents & netc::POLLHUP != 0 {
                         let e = self.take_error()?.unwrap_or_else(|| {
-                            io::const_io_error!(
+                            io::const_error!(
                                 io::ErrorKind::Uncategorized,
                                 "no error set after POLLHUP",
                             )
@@ -192,7 +192,7 @@ impl Socket {
                 buf.as_mut_ptr(),
                 buf.len(),
                 flags,
-                core::ptr::addr_of_mut!(storage) as *mut _,
+                (&raw mut storage) as *mut _,
                 &mut addrlen,
             )
         })?;
@@ -298,7 +298,7 @@ impl Socket {
             netc::ioctl(
                 self.as_raw_fd(),
                 netc::FIONBIO,
-                core::ptr::addr_of_mut!(nonblocking) as *mut core::ffi::c_void,
+                (&raw mut nonblocking) as *mut core::ffi::c_void,
             )
         })
         .map(drop)

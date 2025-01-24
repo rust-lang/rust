@@ -6,7 +6,6 @@
 // `&Typer<'tcx>` was getting an incorrect binder level, yielding
 // weird compilation ICEs and so forth.
 
-//@ pretty-expanded FIXME #23616
 
 trait Typer<'tcx> {
     fn method(&self, data: &'tcx isize) -> &'tcx isize { data }

@@ -1,6 +1,7 @@
 //@aux-build:paths.rs
 #![deny(clippy::internal)]
 #![feature(rustc_private)]
+#![allow(clippy::unnecessary_map_or)]
 
 extern crate clippy_utils;
 extern crate paths;
@@ -13,7 +14,7 @@ extern crate rustc_span;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item, match_type};
 #[allow(unused)]
 use clippy_utils::{
-    is_expr_path_def_path, is_path_diagnostic_item, is_res_diagnostic_ctor, is_res_lang_ctor, is_trait_method,
+    is_enum_variant_ctor, is_expr_path_def_path, is_path_diagnostic_item, is_res_lang_ctor, is_trait_method,
     match_def_path, match_trait_method, path_res,
 };
 
@@ -22,8 +23,8 @@ use rustc_hir::LangItem;
 #[allow(unused)]
 use rustc_span::sym;
 
-use rustc_hir::def_id::DefId;
 use rustc_hir::Expr;
+use rustc_hir::def_id::DefId;
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
 

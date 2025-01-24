@@ -8,7 +8,7 @@
 
 use core::any::TypeId;
 use core::ffi::c_void;
-use core::mem::{size_of, transmute, MaybeUninit};
+use core::mem::{MaybeUninit, size_of, transmute};
 use core::ptr::NonNull;
 
 fn value<T>() -> T {

@@ -1,7 +1,7 @@
 #[cfg(feature = "master")]
 use gccjit::{FnAttribute, ToRValue};
 use gccjit::{Function, FunctionType, GlobalKind, LValue, RValue, Type};
-use rustc_codegen_ssa::traits::BaseTypeMethods;
+use rustc_codegen_ssa::traits::BaseTypeCodegenMethods;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::abi::call::FnAbi;
@@ -168,7 +168,15 @@ fn declare_raw_fn<'gcc>(
     variadic: bool,
 ) -> Function<'gcc> {
     if name.starts_with("llvm.") {
-        let intrinsic = llvm::intrinsic(name, cx);
+        let intrinsic = match name {
+            "llvm.fma.f16" => {
+                // fma is not a target builtin, but a normal builtin, so we handle it differently
+                // here.
+                cx.context.get_builtin_function("fma")
+            }
+            _ => llvm::intrinsic(name, cx),
+        };
+
         cx.intrinsics.borrow_mut().insert(name.to_string(), intrinsic);
         return intrinsic;
     }

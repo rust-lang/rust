@@ -1,8 +1,8 @@
-//@ known-bug: #103507
+//! This is a regression test for <https://github.com/rust-lang/rust/issues/103507>.
+//@ known-bug: #110395
 
 #![feature(type_alias_impl_trait)]
-#![feature(const_trait_impl)]
-#![feature(const_refs_to_cell)]
+#![feature(const_trait_impl, const_destruct)]
 
 use std::marker::Destruct;
 

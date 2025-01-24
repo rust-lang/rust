@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_def_id_trait_method;
 use rustc_hir::def::DefKind;
-use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};
-use rustc_hir::{Body, Expr, ExprKind, FnDecl, Node, YieldSource};
+use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
+use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId, Node, YieldSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_session::impl_lint_pass;
-use rustc_span::def_id::{LocalDefId, LocalDefIdSet};
 use rustc_span::Span;
+use rustc_span::def_id::{LocalDefId, LocalDefIdSet};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -67,7 +67,7 @@ struct AsyncFnVisitor<'a, 'tcx> {
     async_depth: usize,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for AsyncFnVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for AsyncFnVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
@@ -120,8 +120,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
             let mut visitor = AsyncFnVisitor {
                 cx,
                 found_await: false,
-                async_depth: 0,
                 await_in_async_block: None,
+                async_depth: 0,
             };
             walk_fn(&mut visitor, fn_kind, fn_decl, body.id(), def_id);
             if !visitor.found_await {
@@ -129,25 +129,15 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
                 // The actual linting happens in `check_crate_post`, once we've found all
                 // uses of local async functions that do require asyncness to pass typeck
                 self.unused_async_fns.push(UnusedAsyncFn {
-                    await_in_async_block: visitor.await_in_async_block,
-                    fn_span: span,
                     def_id,
+                    fn_span: span,
+                    await_in_async_block: visitor.await_in_async_block,
                 });
             }
         }
     }
 
-    fn check_path(&mut self, cx: &LateContext<'tcx>, path: &rustc_hir::Path<'tcx>, hir_id: rustc_hir::HirId) {
-        fn is_node_func_call(node: Node<'_>, expected_receiver: Span) -> bool {
-            matches!(
-                node,
-                Node::Expr(Expr {
-                    kind: ExprKind::Call(Expr { span, .. }, _) | ExprKind::MethodCall(_, Expr { span, .. }, ..),
-                    ..
-                }) if *span == expected_receiver
-            )
-        }
-
+    fn check_path(&mut self, cx: &LateContext<'tcx>, path: &rustc_hir::Path<'tcx>, hir_id: HirId) {
         // Find paths to local async functions that aren't immediately called.
         // E.g. `async fn f() {}; let x = f;`
         // Depending on how `x` is used, f's asyncness might be required despite not having any `await`
@@ -156,7 +146,14 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
             && let Some(local_def_id) = def_id.as_local()
             && cx.tcx.def_kind(def_id) == DefKind::Fn
             && cx.tcx.asyncness(def_id).is_async()
-            && !is_node_func_call(cx.tcx.parent_hir_node(hir_id), path.span)
+            && let parent = cx.tcx.parent_hir_node(hir_id)
+            && !matches!(
+                parent,
+                Node::Expr(Expr {
+                    kind: ExprKind::Call(Expr { span, .. }, _),
+                    ..
+                }) if *span == path.span
+            )
         {
             self.async_fns_as_value.insert(local_def_id);
         }

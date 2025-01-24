@@ -1,24 +1,22 @@
-//! checks for attributes
-
 mod allow_attributes;
 mod allow_attributes_without_reason;
 mod blanket_clippy_restriction_lints;
 mod deprecated_cfg_attr;
 mod deprecated_semver;
 mod duplicated_attributes;
-mod empty_line_after;
 mod inline_always;
 mod mixed_attributes_style;
 mod non_minimal_cfg;
+mod repr_attributes;
 mod should_panic_without_expect;
 mod unnecessary_clippy_cfg;
 mod useless_attribute;
 mod utils;
 
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
-use rustc_ast::{Attribute, MetaItemKind, NestedMetaItem};
-use rustc_hir::{ImplItem, Item, ItemKind, TraitItem};
+use clippy_utils::msrvs::{self, Msrv};
+use rustc_ast::{self as ast, Attribute, MetaItemInner, MetaItemKind};
+use rustc_hir::{ImplItem, Item, TraitItem};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
@@ -130,94 +128,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for empty lines after outer attributes
-    ///
-    /// ### Why is this bad?
-    /// Most likely the attribute was meant to be an inner attribute using a '!'.
-    /// If it was meant to be an outer attribute, then the following item
-    /// should not be separated by empty lines.
-    ///
-    /// ### Known problems
-    /// Can cause false positives.
-    ///
-    /// From the clippy side it's difficult to detect empty lines between an attributes and the
-    /// following item because empty lines and comments are not part of the AST. The parsing
-    /// currently works for basic cases but is not perfect.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// #[allow(dead_code)]
-    ///
-    /// fn not_quite_good_code() { }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// // Good (as inner attribute)
-    /// #![allow(dead_code)]
-    ///
-    /// fn this_is_fine() { }
-    ///
-    /// // or
-    ///
-    /// // Good (as outer attribute)
-    /// #[allow(dead_code)]
-    /// fn this_is_fine_too() { }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub EMPTY_LINE_AFTER_OUTER_ATTR,
-    nursery,
-    "empty line after outer attribute"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for empty lines after documentation comments.
-    ///
-    /// ### Why is this bad?
-    /// The documentation comment was most likely meant to be an inner attribute or regular comment.
-    /// If it was intended to be a documentation comment, then the empty line should be removed to
-    /// be more idiomatic.
-    ///
-    /// ### Known problems
-    /// Only detects empty lines immediately following the documentation. If the doc comment is followed
-    /// by an attribute and then an empty line, this lint will not trigger. Use `empty_line_after_outer_attr`
-    /// in combination with this lint to detect both cases.
-    ///
-    /// Does not detect empty lines after doc attributes (e.g. `#[doc = ""]`).
-    ///
-    /// ### Example
-    /// ```no_run
-    /// /// Some doc comment with a blank line after it.
-    ///
-    /// fn not_quite_good_code() { }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// /// Good (no blank line)
-    /// fn this_is_fine() { }
-    /// ```
-    ///
-    /// ```no_run
-    /// // Good (convert to a regular comment)
-    ///
-    /// fn this_is_fine_too() { }
-    /// ```
-    ///
-    /// ```no_run
-    /// //! Good (convert to a comment on an inner attribute)
-    ///
-    /// fn this_is_fine_as_well() { }
-    /// ```
-    #[clippy::version = "1.70.0"]
-    pub EMPTY_LINE_AFTER_DOC_COMMENTS,
-    nursery,
-    "empty line after documentation comments"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for `warn`/`deny`/`forbid` attributes targeting the whole clippy::restriction category.
     ///
     /// ### Why is this bad?
@@ -310,8 +220,8 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// #[allow(unused_mut)]
     /// fn foo() -> usize {
-    ///    let mut a = Vec::new();
-    ///    a.len()
+    ///     let mut a = Vec::new();
+    ///     a.len()
     /// }
     /// ```
     /// Use instead:
@@ -361,6 +271,44 @@ declare_clippy_lint! {
     pub SHOULD_PANIC_WITHOUT_EXPECT,
     pedantic,
     "ensures that all `should_panic` attributes specify its expected panic message"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for items with `#[repr(packed)]`-attribute without ABI qualification
+    ///
+    /// ### Why is this bad?
+    /// Without qualification, `repr(packed)` implies `repr(Rust)`. The Rust-ABI is inherently unstable.
+    /// While this is fine as long as the type is accessed correctly within Rust-code, most uses
+    /// of `#[repr(packed)]` involve FFI and/or data structures specified by network-protocols or
+    /// other external specifications. In such situations, the unstable Rust-ABI implied in
+    /// `#[repr(packed)]` may lead to future bugs should the Rust-ABI change.
+    ///
+    /// In case you are relying on a well defined and stable memory layout, qualify the type's
+    /// representation using the `C`-ABI. Otherwise, if the type in question is only ever
+    /// accessed from Rust-code according to Rust's rules, use the `Rust`-ABI explicitly.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #[repr(packed)]
+    /// struct NetworkPacketHeader {
+    ///     header_length: u8,
+    ///     header_version: u16
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// #[repr(C, packed)]
+    /// struct NetworkPacketHeader {
+    ///     header_length: u8,
+    ///     header_version: u16
+    /// }
+    /// ```
+    #[clippy::version = "1.84.0"]
+    pub REPR_PACKED_WITHOUT_ABI,
+    suspicious,
+    "ensures that `repr(packed)` always comes with a qualified ABI"
 }
 
 declare_clippy_lint! {
@@ -505,15 +453,8 @@ pub struct Attributes {
 }
 
 impl_lint_pass!(Attributes => [
-    ALLOW_ATTRIBUTES,
-    ALLOW_ATTRIBUTES_WITHOUT_REASON,
     INLINE_ALWAYS,
-    DEPRECATED_SEMVER,
-    USELESS_ATTRIBUTE,
-    BLANKET_CLIPPY_RESTRICTION_LINTS,
-    SHOULD_PANIC_WITHOUT_EXPECT,
-    MIXED_ATTRIBUTES_STYLE,
-    DUPLICATED_ATTRIBUTES,
+    REPR_PACKED_WITHOUT_ABI,
 ]);
 
 impl Attributes {
@@ -525,53 +466,12 @@ impl Attributes {
 }
 
 impl<'tcx> LateLintPass<'tcx> for Attributes {
-    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
-        blanket_clippy_restriction_lints::check_command_line(cx);
-        duplicated_attributes::check(cx, cx.tcx.hir().krate_attrs());
-    }
-
-    fn check_attribute(&mut self, cx: &LateContext<'tcx>, attr: &'tcx Attribute) {
-        if let Some(items) = &attr.meta_item_list() {
-            if let Some(ident) = attr.ident() {
-                if is_lint_level(ident.name, attr.id) {
-                    blanket_clippy_restriction_lints::check(cx, ident.name, items);
-                }
-                if matches!(ident.name, sym::allow) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
-                    allow_attributes::check(cx, attr);
-                }
-                if matches!(ident.name, sym::allow | sym::expect) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION)
-                {
-                    allow_attributes_without_reason::check(cx, ident.name, items, attr);
-                }
-                if items.is_empty() || !attr.has_name(sym::deprecated) {
-                    return;
-                }
-                for item in items {
-                    if let NestedMetaItem::MetaItem(mi) = &item
-                        && let MetaItemKind::NameValue(lit) = &mi.kind
-                        && mi.has_name(sym::since)
-                    {
-                        deprecated_semver::check(cx, item.span(), lit);
-                    }
-                }
-            }
-        }
-        if attr.has_name(sym::should_panic) {
-            should_panic_without_expect::check(cx, attr);
-        }
-    }
-
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
         if is_relevant_item(cx, item) {
             inline_always::check(cx, item.span, item.ident.name, attrs);
         }
-        match item.kind {
-            ItemKind::ExternCrate(..) | ItemKind::Use(..) => useless_attribute::check(cx, item, attrs),
-            _ => {},
-        }
-        mixed_attributes_style::check(cx, item.span, attrs);
-        duplicated_attributes::check(cx, attrs);
+        repr_attributes::check(cx, item.span, attrs, &self.msrv);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
@@ -603,22 +503,90 @@ impl EarlyAttributes {
 
 impl_lint_pass!(EarlyAttributes => [
     DEPRECATED_CFG_ATTR,
-    EMPTY_LINE_AFTER_OUTER_ATTR,
-    EMPTY_LINE_AFTER_DOC_COMMENTS,
     NON_MINIMAL_CFG,
     DEPRECATED_CLIPPY_CFG_ATTR,
     UNNECESSARY_CLIPPY_CFG,
 ]);
 
 impl EarlyLintPass for EarlyAttributes {
-    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
-        empty_line_after::check(cx, item);
-    }
-
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
         deprecated_cfg_attr::check(cx, attr, &self.msrv);
         deprecated_cfg_attr::check_clippy(cx, attr);
         non_minimal_cfg::check(cx, attr);
+    }
+
+    extract_msrv_attr!(EarlyContext);
+}
+
+pub struct PostExpansionEarlyAttributes {
+    msrv: Msrv,
+}
+
+impl PostExpansionEarlyAttributes {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
+    }
+}
+
+impl_lint_pass!(PostExpansionEarlyAttributes => [
+    ALLOW_ATTRIBUTES,
+    ALLOW_ATTRIBUTES_WITHOUT_REASON,
+    DEPRECATED_SEMVER,
+    USELESS_ATTRIBUTE,
+    BLANKET_CLIPPY_RESTRICTION_LINTS,
+    SHOULD_PANIC_WITHOUT_EXPECT,
+    MIXED_ATTRIBUTES_STYLE,
+    DUPLICATED_ATTRIBUTES,
+]);
+
+impl EarlyLintPass for PostExpansionEarlyAttributes {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &ast::Crate) {
+        blanket_clippy_restriction_lints::check_command_line(cx);
+        duplicated_attributes::check(cx, &krate.attrs);
+    }
+
+    fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
+        if let Some(items) = &attr.meta_item_list() {
+            if let Some(ident) = attr.ident() {
+                if matches!(ident.name, sym::allow) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
+                    allow_attributes::check(cx, attr);
+                }
+                if matches!(ident.name, sym::allow | sym::expect) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION)
+                {
+                    allow_attributes_without_reason::check(cx, ident.name, items, attr);
+                }
+                if is_lint_level(ident.name, attr.id) {
+                    blanket_clippy_restriction_lints::check(cx, ident.name, items);
+                }
+                if items.is_empty() || !attr.has_name(sym::deprecated) {
+                    return;
+                }
+                for item in items {
+                    if let MetaItemInner::MetaItem(mi) = &item
+                        && let MetaItemKind::NameValue(lit) = &mi.kind
+                        && mi.has_name(sym::since)
+                    {
+                        deprecated_semver::check(cx, item.span(), lit);
+                    }
+                }
+            }
+        }
+
+        if attr.has_name(sym::should_panic) {
+            should_panic_without_expect::check(cx, attr);
+        }
+    }
+
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &'_ ast::Item) {
+        match item.kind {
+            ast::ItemKind::ExternCrate(..) | ast::ItemKind::Use(..) => useless_attribute::check(cx, item, &item.attrs),
+            _ => {},
+        }
+
+        mixed_attributes_style::check(cx, item.span, &item.attrs);
+        duplicated_attributes::check(cx, &item.attrs);
     }
 
     extract_msrv_attr!(EarlyContext);

@@ -1,18 +1,7 @@
-//! Implementation of lint checking.
+//! Basic types for managing and implementing lints.
 //!
-//! The lint checking is mostly consolidated into one pass which runs
-//! after all other analyses. Throughout compilation, lint warnings
-//! can be added via the `add_lint` method on the Session structure. This
-//! requires a span and an ID of the node that the lint is being added to. The
-//! lint isn't actually emitted at that time because it is unknown what the
-//! actual lint level at that location is.
-//!
-//! To actually emit lint warnings/errors, a separate pass is used.
-//! A context keeps track of the current state of all lint levels.
-//! Upon entering a node of the ast which can modify the lint settings, the
-//! previous lint state is pushed onto a stack and the ast is then recursed
-//! upon. As the ast is traversed, this keeps track of the current lint level
-//! for all lint attributes.
+//! See <https://rustc-dev-guide.rust-lang.org/diagnostics.html> for an
+//! overview of how lints are implemented.
 
 use std::cell::Cell;
 use std::{iter, slice};
@@ -22,39 +11,32 @@ use rustc_data_structures::sync;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
 use rustc_feature::Features;
-use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::bug;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::print::{with_no_trimmed_paths, PrintError, PrintTraitRefExt as _, Printer};
-use rustc_middle::ty::{self, GenericArg, RegisteredTools, Ty, TyCtxt};
+use rustc_middle::ty::print::{PrintError, PrintTraitRefExt as _, Printer, with_no_trimmed_paths};
+use rustc_middle::ty::{self, GenericArg, RegisteredTools, Ty, TyCtxt, TypingEnv, TypingMode};
 use rustc_session::lint::{
-    BuiltinLintDiag, FutureIncompatibleInfo, Level, Lint, LintBuffer, LintExpectationId, LintId,
+    FutureIncompatibleInfo, Level, Lint, LintBuffer, LintExpectationId, LintId,
 };
 use rustc_session::{LintStoreMarker, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
-use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::Span;
-use rustc_target::abi;
+use rustc_span::{Ident, Span, Symbol, sym};
 use tracing::debug;
+use {rustc_abi as abi, rustc_hir as hir};
 
 use self::TargetLint::*;
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
-
-mod diagnostics;
 
 type EarlyLintPassFactory = dyn Fn() -> EarlyLintPassObject + sync::DynSend + sync::DynSync;
 type LateLintPassFactory =
     dyn for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx> + sync::DynSend + sync::DynSync;
 
 /// Information about the registered lints.
-///
-/// This is basically the subset of `Context` that we can
-/// build early in the compile pipeline.
 pub struct LintStore {
     /// Registered lints.
     lints: Vec<&'static Lint>,
@@ -251,14 +233,11 @@ impl LintStore {
     }
 
     pub fn register_group_alias(&mut self, lint_name: &'static str, alias: &'static str) {
-        self.lint_groups.insert(
-            alias,
-            LintGroup {
-                lint_ids: vec![],
-                is_externally_loaded: false,
-                depr: Some(LintAlias { name: lint_name, silent: true }),
-            },
-        );
+        self.lint_groups.insert(alias, LintGroup {
+            lint_ids: vec![],
+            is_externally_loaded: false,
+            depr: Some(LintAlias { name: lint_name, silent: true }),
+        });
     }
 
     pub fn register_group(
@@ -273,14 +252,11 @@ impl LintStore {
             .insert(name, LintGroup { lint_ids: to, is_externally_loaded, depr: None })
             .is_none();
         if let Some(deprecated) = deprecated_name {
-            self.lint_groups.insert(
-                deprecated,
-                LintGroup {
-                    lint_ids: vec![],
-                    is_externally_loaded,
-                    depr: Some(LintAlias { name, silent: false }),
-                },
-            );
+            self.lint_groups.insert(deprecated, LintGroup {
+                lint_ids: vec![],
+                is_externally_loaded,
+                depr: Some(LintAlias { name, silent: false }),
+            });
         }
 
         if !new {
@@ -532,38 +508,6 @@ pub struct EarlyContext<'a> {
     pub buffered: LintBuffer,
 }
 
-impl EarlyContext<'_> {
-    /// Emit a lint at the appropriate level, with an associated span and an existing
-    /// diagnostic.
-    ///
-    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[rustc_lint_diagnostics]
-    pub fn span_lint_with_diagnostics(
-        &self,
-        lint: &'static Lint,
-        span: MultiSpan,
-        diagnostic: BuiltinLintDiag,
-    ) {
-        self.opt_span_lint_with_diagnostics(lint, Some(span), diagnostic);
-    }
-
-    /// Emit a lint at the appropriate level, with an optional associated span and an existing
-    /// diagnostic.
-    ///
-    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[rustc_lint_diagnostics]
-    pub fn opt_span_lint_with_diagnostics(
-        &self,
-        lint: &'static Lint,
-        span: Option<MultiSpan>,
-        diagnostic: BuiltinLintDiag,
-    ) {
-        self.opt_span_lint(lint, span, |diag| {
-            diagnostics::decorate_lint(self.sess(), diagnostic, diag);
-        });
-    }
-}
-
 pub trait LintContext {
     fn sess(&self) -> &Session;
 
@@ -719,6 +663,22 @@ impl LintContext for EarlyContext<'_> {
 }
 
 impl<'tcx> LateContext<'tcx> {
+    /// The typing mode of the currently visited node. Use this when
+    /// building a new `InferCtxt`.
+    pub fn typing_mode(&self) -> TypingMode<'tcx> {
+        // FIXME(#132279): In case we're in a body, we should use a typing
+        // mode which reveals the opaque types defined by that body.
+        TypingMode::non_body_analysis()
+    }
+
+    pub fn typing_env(&self) -> TypingEnv<'tcx> {
+        TypingEnv { typing_mode: self.typing_mode(), param_env: self.param_env }
+    }
+
+    pub fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
+        self.tcx.type_is_copy_modulo_regions(self.typing_env(), ty)
+    }
+
     /// Gets the type-checking results for the current body,
     /// or `None` if outside a body.
     pub fn maybe_typeck_results(&self) -> Option<&'tcx ty::TypeckResults<'tcx>> {
@@ -917,7 +877,7 @@ impl<'tcx> LateContext<'tcx> {
             .find_by_name_and_kind(tcx, Ident::from_str(name), ty::AssocKind::Type, trait_id)
             .and_then(|assoc| {
                 let proj = Ty::new_projection(tcx, assoc.def_id, [self_ty]);
-                tcx.try_normalize_erasing_regions(self.param_env, proj).ok()
+                tcx.try_normalize_erasing_regions(self.typing_env(), proj).ok()
             })
     }
 
@@ -1021,10 +981,10 @@ impl<'tcx> ty::layout::HasTyCtxt<'tcx> for LateContext<'tcx> {
     }
 }
 
-impl<'tcx> ty::layout::HasParamEnv<'tcx> for LateContext<'tcx> {
+impl<'tcx> ty::layout::HasTypingEnv<'tcx> for LateContext<'tcx> {
     #[inline]
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        self.typing_env()
     }
 }
 

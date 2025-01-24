@@ -10,11 +10,11 @@
 //! - More information about protocols can be found [here](https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/3_foundation/36_protocols_and_handles)
 
 use r_efi::efi::{self, Guid};
-use r_efi::protocols::{device_path, device_path_to_text};
+use r_efi::protocols::{device_path, device_path_to_text, shell};
 
 use crate::ffi::{OsStr, OsString};
-use crate::io::{self, const_io_error};
-use crate::mem::{size_of, MaybeUninit};
+use crate::io::{self, const_error};
+use crate::mem::{MaybeUninit, size_of};
 use crate::os::uefi::env::boot_services;
 use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
 use crate::os::uefi::{self};
@@ -30,7 +30,7 @@ type BootUninstallMultipleProtocolInterfaces =
     unsafe extern "efiapi" fn(_: r_efi::efi::Handle, _: ...) -> r_efi::efi::Status;
 
 const BOOT_SERVICES_UNAVAILABLE: io::Error =
-    const_io_error!(io::ErrorKind::Other, "Boot Services are no longer available");
+    const_error!(io::ErrorKind::Other, "Boot Services are no longer available");
 
 /// Locates Handles with a particular Protocol GUID.
 ///
@@ -114,7 +114,7 @@ pub(crate) fn open_protocol<T>(
         Err(crate::io::Error::from_raw_os_error(r.as_usize()))
     } else {
         NonNull::new(unsafe { protocol.assume_init() })
-            .ok_or(const_io_error!(io::ErrorKind::Other, "null protocol"))
+            .ok_or(const_error!(io::ErrorKind::Other, "null protocol"))
     }
 }
 
@@ -134,7 +134,7 @@ pub(crate) fn create_event(
     if r.is_error() {
         Err(crate::io::Error::from_raw_os_error(r.as_usize()))
     } else {
-        NonNull::new(event).ok_or(const_io_error!(io::ErrorKind::Other, "null protocol"))
+        NonNull::new(event).ok_or(const_error!(io::ErrorKind::Other, "null protocol"))
     }
 }
 
@@ -155,10 +155,8 @@ pub(crate) unsafe fn close_event(evt: NonNull<crate::ffi::c_void>) -> io::Result
 ///
 /// Note: Some protocols need to be manually freed. It is the caller's responsibility to do so.
 pub(crate) fn image_handle_protocol<T>(protocol_guid: Guid) -> io::Result<NonNull<T>> {
-    let system_handle = uefi::env::try_image_handle().ok_or(io::const_io_error!(
-        io::ErrorKind::NotFound,
-        "Protocol not found in Image handle"
-    ))?;
+    let system_handle = uefi::env::try_image_handle()
+        .ok_or(io::const_error!(io::ErrorKind::NotFound, "Protocol not found in Image handle"))?;
     open_protocol(system_handle, protocol_guid)
 }
 
@@ -177,16 +175,8 @@ pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::R
             )
         };
 
-        // SAFETY: `convert_device_path_to_text` returns a pointer to a null-terminated UTF-16
-        // string, and that string cannot be deallocated prior to dropping the `WStrUnits`, so
-        // it's safe for `WStrUnits` to use.
-        let path_len = unsafe {
-            WStrUnits::new(path_ptr)
-                .ok_or(io::const_io_error!(io::ErrorKind::InvalidData, "Invalid path"))?
-                .count()
-        };
-
-        let path = OsString::from_wide(unsafe { slice::from_raw_parts(path_ptr.cast(), path_len) });
+        let path = os_string_from_raw(path_ptr)
+            .ok_or(io::const_error!(io::ErrorKind::InvalidData, "Invalid path"))?;
 
         if let Some(boot_services) = crate::os::uefi::env::boot_services() {
             let boot_services: NonNull<r_efi::efi::BootServices> = boot_services.cast();
@@ -221,7 +211,7 @@ pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::R
         }
     }
 
-    Err(io::const_io_error!(io::ErrorKind::NotFound, "No device path to text protocol found"))
+    Err(io::const_error!(io::ErrorKind::NotFound, "No device path to text protocol found"))
 }
 
 /// Gets RuntimeServices.
@@ -232,17 +222,17 @@ pub(crate) fn runtime_services() -> Option<NonNull<r_efi::efi::RuntimeServices>>
     NonNull::new(runtime_services)
 }
 
-pub(crate) struct DevicePath(NonNull<r_efi::protocols::device_path::Protocol>);
+pub(crate) struct OwnedDevicePath(NonNull<r_efi::protocols::device_path::Protocol>);
 
-impl DevicePath {
+impl OwnedDevicePath {
     pub(crate) fn from_text(p: &OsStr) -> io::Result<Self> {
         fn inner(
             p: &OsStr,
             protocol: NonNull<r_efi::protocols::device_path_from_text::Protocol>,
-        ) -> io::Result<DevicePath> {
+        ) -> io::Result<OwnedDevicePath> {
             let path_vec = p.encode_wide().chain(Some(0)).collect::<Vec<u16>>();
             if path_vec[..path_vec.len() - 1].contains(&0) {
-                return Err(const_io_error!(
+                return Err(const_error!(
                     io::ErrorKind::InvalidInput,
                     "strings passed to UEFI cannot contain NULs",
                 ));
@@ -251,9 +241,9 @@ impl DevicePath {
             let path =
                 unsafe { ((*protocol.as_ptr()).convert_text_to_device_path)(path_vec.as_ptr()) };
 
-            NonNull::new(path).map(DevicePath).ok_or_else(|| {
-                const_io_error!(io::ErrorKind::InvalidFilename, "Invalid Device Path")
-            })
+            NonNull::new(path)
+                .map(OwnedDevicePath)
+                .ok_or_else(|| const_error!(io::ErrorKind::InvalidFilename, "Invalid Device Path"))
         }
 
         static LAST_VALID_HANDLE: AtomicPtr<crate::ffi::c_void> =
@@ -279,24 +269,33 @@ impl DevicePath {
             }
         }
 
-        io::Result::Err(const_io_error!(
+        io::Result::Err(const_error!(
             io::ErrorKind::NotFound,
             "DevicePathFromText Protocol not found"
         ))
     }
 
-    pub(crate) fn as_ptr(&self) -> *mut r_efi::protocols::device_path::Protocol {
+    pub(crate) const fn as_ptr(&self) -> *mut r_efi::protocols::device_path::Protocol {
         self.0.as_ptr()
     }
 }
 
-impl Drop for DevicePath {
+impl Drop for OwnedDevicePath {
     fn drop(&mut self) {
         if let Some(bt) = boot_services() {
             let bt: NonNull<r_efi::efi::BootServices> = bt.cast();
             unsafe {
                 ((*bt.as_ptr()).free_pool)(self.0.as_ptr() as *mut crate::ffi::c_void);
             }
+        }
+    }
+}
+
+impl crate::fmt::Debug for OwnedDevicePath {
+    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+        match device_path_to_text(self.0) {
+            Ok(p) => p.fmt(f),
+            Err(_) => f.debug_struct("OwnedDevicePath").finish_non_exhaustive(),
         }
     }
 }
@@ -334,7 +333,7 @@ impl<T> OwnedProtocol<T> {
         };
 
         let handle = NonNull::new(handle)
-            .ok_or(io::const_io_error!(io::ErrorKind::Uncategorized, "found null handle"))?;
+            .ok_or(io::const_error!(io::ErrorKind::Uncategorized, "found null handle"))?;
 
         Ok(Self { guid, handle, protocol })
     }
@@ -419,4 +418,37 @@ impl<T> Drop for OwnedTable<T> {
     fn drop(&mut self) {
         unsafe { crate::alloc::dealloc(self.ptr as *mut u8, self.layout) };
     }
+}
+
+/// Create OsString from a pointer to NULL terminated UTF-16 string
+pub(crate) fn os_string_from_raw(ptr: *mut r_efi::efi::Char16) -> Option<OsString> {
+    let path_len = unsafe { WStrUnits::new(ptr)?.count() };
+    Some(OsString::from_wide(unsafe { slice::from_raw_parts(ptr.cast(), path_len) }))
+}
+
+/// Create NULL terminated UTF-16 string
+pub(crate) fn os_string_to_raw(s: &OsStr) -> Option<Box<[r_efi::efi::Char16]>> {
+    let temp = s.encode_wide().chain(Some(0)).collect::<Box<[r_efi::efi::Char16]>>();
+    if temp[..temp.len() - 1].contains(&0) { None } else { Some(temp) }
+}
+
+pub(crate) fn open_shell() -> Option<NonNull<shell::Protocol>> {
+    static LAST_VALID_HANDLE: AtomicPtr<crate::ffi::c_void> =
+        AtomicPtr::new(crate::ptr::null_mut());
+
+    if let Some(handle) = NonNull::new(LAST_VALID_HANDLE.load(Ordering::Acquire)) {
+        if let Ok(protocol) = open_protocol::<shell::Protocol>(handle, shell::PROTOCOL_GUID) {
+            return Some(protocol);
+        }
+    }
+
+    let handles = locate_handles(shell::PROTOCOL_GUID).ok()?;
+    for handle in handles {
+        if let Ok(protocol) = open_protocol::<shell::Protocol>(handle, shell::PROTOCOL_GUID) {
+            LAST_VALID_HANDLE.store(handle.as_ptr(), Ordering::Release);
+            return Some(protocol);
+        }
+    }
+
+    None
 }

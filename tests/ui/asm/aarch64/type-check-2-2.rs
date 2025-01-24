@@ -6,10 +6,10 @@ use std::arch::{asm, global_asm};
 
 #[repr(simd)]
 #[derive(Clone, Copy)]
-struct SimdType(f32, f32, f32, f32);
+struct SimdType([f32; 4]);
 
 #[repr(simd)]
-struct SimdNonCopy(f32, f32, f32, f32);
+struct SimdNonCopy([f32; 4]);
 
 fn main() {
     unsafe {

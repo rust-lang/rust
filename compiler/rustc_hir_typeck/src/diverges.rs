@@ -1,6 +1,6 @@
 use std::{cmp, ops};
 
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 
 /// Tracks whether executing a node may exit normally (versus
 /// return/break/panic, which "diverge", leaving dead code in their
@@ -8,7 +8,7 @@ use rustc_span::{Span, DUMMY_SP};
 /// as diverging), with some manual adjustments for control-flow
 /// primitives (approximating a CFG).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Diverges {
+pub(crate) enum Diverges {
     /// Potentially unknown, some cases converge,
     /// others require a CFG to determine them.
     Maybe,

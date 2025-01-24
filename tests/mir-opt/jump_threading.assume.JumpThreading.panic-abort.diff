@@ -5,11 +5,11 @@
       let mut _0: u8;
   
       bb0: {
-          switchInt(_1) -> [7: bb1, otherwise: bb2];
+          switchInt(copy _1) -> [7: bb1, otherwise: bb2];
       }
   
       bb1: {
-          assume(_2);
+          assume(copy _2);
 -         goto -> bb3;
 +         goto -> bb6;
       }
@@ -19,7 +19,7 @@
       }
   
       bb3: {
-          switchInt(_2) -> [0: bb4, otherwise: bb5];
+          switchInt(copy _2) -> [0: bb4, otherwise: bb5];
       }
   
       bb4: {

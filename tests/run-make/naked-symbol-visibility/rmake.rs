@@ -1,9 +1,9 @@
 //@ ignore-windows
 //@ only-x86_64
-use run_make_support::object::read::{File, Object, Symbol};
 use run_make_support::object::ObjectSymbol;
+use run_make_support::object::read::{File, Object, Symbol};
 use run_make_support::targets::is_windows;
-use run_make_support::{dynamic_lib_name, env_var, rfs, rustc};
+use run_make_support::{dynamic_lib_name, rfs, rustc};
 
 fn main() {
     let rdylib_name = dynamic_lib_name("a_rust_dylib");
@@ -17,10 +17,12 @@ fn main() {
     not_exported(&rdylib, "private_naked");
 
     global_function(&rdylib, "public_vanilla");
-    global_function(&rdylib, "public_naked");
+    global_function(&rdylib, "public_naked_nongeneric");
 
     not_exported(&rdylib, "public_vanilla_generic");
-    not_exported(&rdylib, "public_naked_generic");
+    // #[naked] functions are implicitly #[inline(never)], so they get shared regardless of
+    // -Zshare-generics.
+    global_function(&rdylib, "public_naked_generic");
 
     global_function(&rdylib, "vanilla_external_linkage");
     global_function(&rdylib, "naked_external_linkage");

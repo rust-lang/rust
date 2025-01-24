@@ -1,3 +1,4 @@
+use std::assert_matches::assert_matches;
 use std::ops::ControlFlow;
 
 use hir::intravisit::{self, Visitor};
@@ -7,8 +8,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
-use rustc_span::symbol::{kw, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol, kw};
+use tracing::{debug, instrument};
 
 use crate::delegation::inherit_generics_for_delegation_item;
 use crate::middle::resolve_bound_vars as rbv;
@@ -22,6 +23,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     if let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, opaque_def_id }) =
         tcx.opt_rpitit_info(def_id.to_def_id())
     {
+        debug!("RPITIT fn_def_id={fn_def_id:?} opaque_def_id={opaque_def_id:?}");
         let trait_def_id = tcx.parent(fn_def_id);
         let opaque_ty_generics = tcx.generics_of(opaque_def_id);
         let opaque_ty_parent_count = opaque_ty_generics.parent_count;
@@ -50,13 +52,18 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             param_def_id_to_index,
             has_self: opaque_ty_generics.has_self,
             has_late_bound_regions: opaque_ty_generics.has_late_bound_regions,
-            host_effect_index: parent_generics.host_effect_index,
         };
     }
 
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
     let node = tcx.hir_node(hir_id);
+    if let Some(sig) = node.fn_sig()
+        && let Some(sig_id) = sig.decl.opt_delegation_sig_id()
+    {
+        return inherit_generics_for_delegation_item(tcx, def_id, sig_id);
+    }
+
     let parent_def_id = match node {
         Node::ImplItem(_)
         | Node::TraitItem(_)
@@ -100,7 +107,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 // We do not allow generic parameters in anon consts if we are inside
                 // of a const parameter type, e.g. `struct Foo<const N: usize, const M: [u8; N]>` is not allowed.
                 None
-            } else if tcx.features().generic_const_exprs {
+            } else if tcx.features().generic_const_exprs() {
                 let parent_node = tcx.parent_hir_node(hir_id);
                 debug!(?parent_node);
                 if let Node::Variant(Variant { disr_expr: Some(constant), .. }) = parent_node
@@ -152,7 +159,6 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                         param_def_id_to_index,
                         has_self: generics.has_self,
                         has_late_bound_regions: generics.has_late_bound_regions,
-                        host_effect_index: None,
                     };
                 } else {
                     // HACK(eddyb) this provides the correct generics when
@@ -174,7 +180,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     // expressions' count (i.e. `N` in `[x; N]`), and explicit
                     // `enum` discriminants (i.e. `D` in `enum Foo { Bar = D }`),
                     // as they shouldn't be able to cause query cycle errors.
-                    Node::Expr(Expr { kind: ExprKind::Repeat(_, ArrayLen::Body(ct)), .. })
+                    Node::Expr(Expr { kind: ExprKind::Repeat(_, ct), .. })
                         if ct.anon_const_hir_id() == Some(hir_id) =>
                     {
                         Some(parent_did)
@@ -199,46 +205,33 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         | Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
             Some(tcx.typeck_root_def_id(def_id.to_def_id()))
         }
-        Node::Item(item) => match item.kind {
-            ItemKind::OpaqueTy(&hir::OpaqueTy {
-                origin:
-                    hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
-                in_trait,
-                ..
-            }) => {
-                if in_trait {
-                    assert!(matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn))
-                } else {
-                    assert!(matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn | DefKind::Fn))
-                }
-                Some(fn_def_id.to_def_id())
+        Node::OpaqueTy(&hir::OpaqueTy {
+            origin:
+                hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, in_trait_or_impl }
+                | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id, in_trait_or_impl },
+            ..
+        }) => {
+            if in_trait_or_impl.is_some() {
+                assert_matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn);
+            } else {
+                assert_matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn | DefKind::Fn);
             }
-            ItemKind::OpaqueTy(&hir::OpaqueTy {
-                origin: hir::OpaqueTyOrigin::TyAlias { parent, in_assoc_ty },
-                ..
-            }) => {
-                if in_assoc_ty {
-                    assert!(matches!(tcx.def_kind(parent), DefKind::AssocTy));
-                } else {
-                    assert!(matches!(tcx.def_kind(parent), DefKind::TyAlias));
-                }
-                debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent);
-                // Opaque types are always nested within another item, and
-                // inherit the generics of the item.
-                Some(parent.to_def_id())
+            Some(fn_def_id.to_def_id())
+        }
+        Node::OpaqueTy(&hir::OpaqueTy {
+            origin: hir::OpaqueTyOrigin::TyAlias { parent, in_assoc_ty },
+            ..
+        }) => {
+            if in_assoc_ty {
+                assert_matches!(tcx.def_kind(parent), DefKind::AssocTy);
+            } else {
+                assert_matches!(tcx.def_kind(parent), DefKind::TyAlias);
             }
-            ItemKind::Fn(sig, _, _) => {
-                // For a delegation item inherit generics from callee.
-                if let Some(sig_id) = sig.decl.opt_delegation_sig_id()
-                    && let Some(generics) =
-                        inherit_generics_for_delegation_item(tcx, def_id, sig_id)
-                {
-                    return generics;
-                }
-                None
-            }
-            _ => None,
-        },
+            debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent);
+            // Opaque types are always nested within another item, and
+            // inherit the generics of the item.
+            Some(parent.to_def_id())
+        }
         _ => None,
     };
 
@@ -274,12 +267,13 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 ItemKind::TyAlias(..)
                 | ItemKind::Enum(..)
                 | ItemKind::Struct(..)
-                | ItemKind::OpaqueTy(..)
                 | ItemKind::Union(..) => (None, Defaults::Allowed),
                 ItemKind::Const(..) => (None, Defaults::Deny),
                 _ => (None, Defaults::FutureCompatDisallowed),
             }
         }
+
+        Node::OpaqueTy(..) => (None, Defaults::Allowed),
 
         // GATs
         Node::TraitItem(item) if matches!(item.kind, TraitItemKind::Type(..)) => {
@@ -295,12 +289,10 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     let has_self = opt_self.is_some();
     let mut parent_has_self = false;
     let mut own_start = has_self as u32;
-    let mut host_effect_index = None;
     let parent_count = parent_def_id.map_or(0, |def_id| {
         let generics = tcx.generics_of(def_id);
         assert!(!has_self);
         parent_has_self = generics.has_self;
-        host_effect_index = generics.host_effect_index;
         own_start = generics.count() as u32;
         generics.parent_count + generics.own_params.len()
     });
@@ -364,12 +356,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 kind,
             })
         }
-        GenericParamKind::Const { ty: _, default, is_host_effect, synthetic } => {
-            if !matches!(allow_defaults, Defaults::Allowed)
-                && default.is_some()
-                // `host` effect params are allowed to have defaults.
-                && !is_host_effect
-            {
+        GenericParamKind::Const { ty: _, default, synthetic } => {
+            if !matches!(allow_defaults, Defaults::Allowed) && default.is_some() {
                 tcx.dcx().span_err(
                     param.span,
                     "defaults for const parameters are only allowed in \
@@ -379,27 +367,12 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
             let index = next_index();
 
-            if is_host_effect {
-                if let Some(idx) = host_effect_index {
-                    tcx.dcx().span_delayed_bug(
-                        param.span,
-                        format!("parent also has host effect param? index: {idx}, def: {def_id:?}"),
-                    );
-                }
-
-                host_effect_index = Some(index as usize);
-            }
-
             Some(ty::GenericParamDef {
                 index,
                 name: param.name.ident().name,
                 def_id: param.def_id.to_def_id(),
                 pure_wrt_drop: param.pure_wrt_drop,
-                kind: ty::GenericParamDefKind::Const {
-                    has_default: default.is_some(),
-                    is_host_effect,
-                    synthetic,
-                },
+                kind: ty::GenericParamDefKind::Const { has_default: default.is_some(), synthetic },
             })
         }
     }));
@@ -445,11 +418,26 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     if let Node::ConstBlock(_) = node {
         own_params.push(ty::GenericParamDef {
             index: next_index(),
-            name: Symbol::intern("<const_ty>"),
+            name: rustc_span::sym::const_ty_placeholder,
             def_id: def_id.to_def_id(),
             pure_wrt_drop: false,
             kind: ty::GenericParamDefKind::Type { has_default: false, synthetic: false },
         });
+    }
+
+    if let Node::OpaqueTy(&hir::OpaqueTy { .. }) = node {
+        assert!(own_params.is_empty());
+
+        let lifetimes = tcx.opaque_captured_lifetimes(def_id);
+        debug!(?lifetimes);
+
+        own_params.extend(lifetimes.iter().map(|&(_, param)| ty::GenericParamDef {
+            name: tcx.item_name(param.to_def_id()),
+            index: next_index(),
+            def_id: param.to_def_id(),
+            pure_wrt_drop: false,
+            kind: ty::GenericParamDefKind::Lifetime,
+        }))
     }
 
     let param_def_id_to_index =
@@ -462,7 +450,6 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         param_def_id_to_index,
         has_self: has_self || parent_has_self,
         has_late_bound_regions: has_late_bound_regions(tcx, node),
-        host_effect_index,
     }
 }
 
@@ -477,6 +464,12 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
         fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) -> ControlFlow<Span> {
             match ty.kind {
                 hir::TyKind::BareFn(..) => {
+                    self.outer_index.shift_in(1);
+                    let res = intravisit::walk_ty(self, ty);
+                    self.outer_index.shift_out(1);
+                    res
+                }
+                hir::TyKind::UnsafeBinder(_) => {
                     self.outer_index.shift_in(1);
                     let res = intravisit::walk_ty(self, ty);
                     self.outer_index.shift_out(1);
@@ -543,8 +536,7 @@ impl<'v> Visitor<'v> for AnonConstInParamTyDetector {
     type Result = ControlFlow<()>;
 
     fn visit_generic_param(&mut self, p: &'v hir::GenericParam<'v>) -> Self::Result {
-        if let GenericParamKind::Const { ty, default: _, is_host_effect: _, synthetic: _ } = p.kind
-        {
+        if let GenericParamKind::Const { ty, default: _, synthetic: _ } = p.kind {
             let prev = self.in_param_ty;
             self.in_param_ty = true;
             let res = self.visit_ty(ty);

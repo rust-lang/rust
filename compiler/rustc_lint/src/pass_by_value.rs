@@ -3,7 +3,7 @@ use rustc_hir::def::Res;
 use rustc_hir::{GenericArg, PathSegment, QPath, TyKind};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use crate::lints::PassByValueDiag;
 use crate::{LateContext, LateLintPass, LintContext};
@@ -31,11 +31,10 @@ impl<'tcx> LateLintPass<'tcx> for PassByValue {
                     }
                 }
                 if let Some(t) = path_for_pass_by_value(cx, inner_ty) {
-                    cx.emit_span_lint(
-                        PASS_BY_VALUE,
-                        ty.span,
-                        PassByValueDiag { ty: t, suggestion: ty.span },
-                    );
+                    cx.emit_span_lint(PASS_BY_VALUE, ty.span, PassByValueDiag {
+                        ty: t,
+                        suggestion: ty.span,
+                    });
                 }
             }
             _ => {}

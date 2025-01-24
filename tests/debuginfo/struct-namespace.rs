@@ -1,23 +1,18 @@
 //@ ignore-gdb
 //@ compile-flags:-g
-//@ min-lldb-version: 310
 
 // Check that structs get placed in the correct namespace
 
 // lldb-command:run
 // lldb-command:v struct1
-// lldbg-check:(struct_namespace::Struct1)[...]
-// lldbr-check:(struct_namespace::Struct1) struct1 = Struct1 { a: 0, b: 1 }
+// lldb-check:(struct_namespace::Struct1)[...]
 // lldb-command:v struct2
-// lldbg-check:(struct_namespace::Struct2)[...]
-// lldbr-check:(struct_namespace::Struct2) struct2 = { = 2 }
+// lldb-check:(struct_namespace::Struct2)[...]
 
 // lldb-command:v mod1_struct1
-// lldbg-check:(struct_namespace::mod1::Struct1)[...]
-// lldbr-check:(struct_namespace::mod1::Struct1) mod1_struct1 = Struct1 { a: 3, b: 4 }
+// lldb-check:(struct_namespace::mod1::Struct1)[...]
 // lldb-command:v mod1_struct2
-// lldbg-check:(struct_namespace::mod1::Struct2)[...]
-// lldbr-check:(struct_namespace::mod1::Struct2) mod1_struct2 = { = 5 }
+// lldb-check:(struct_namespace::mod1::Struct2)[...]
 
 #![allow(unused_variables)]
 #![allow(dead_code)]

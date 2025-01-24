@@ -10,9 +10,9 @@ fn x(s: String, n: isize) {
 }
 
 pub fn main() {
-    let t1 = thread::spawn(|| x("hello from first spawned fn".to_string(), 65) );
-    let t2 = thread::spawn(|| x("hello from second spawned fn".to_string(), 66) );
-    let t3 = thread::spawn(|| x("hello from third spawned fn".to_string(), 67) );
+    let t1 = thread::spawn(|| x("hello from first spawned fn".to_string(), 65));
+    let t2 = thread::spawn(|| x("hello from second spawned fn".to_string(), 66));
+    let t3 = thread::spawn(|| x("hello from third spawned fn".to_string(), 67));
     let mut i = 30;
     while i > 0 {
         i = i - 1;

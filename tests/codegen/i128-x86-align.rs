@@ -19,13 +19,15 @@ pub struct ScalarPair {
 #[no_mangle]
 pub fn load(x: &ScalarPair) -> ScalarPair {
     // CHECK-LABEL: @load(
+    // CHECK-SAME: sret([32 x i8]) align 16 dereferenceable(32) %_0,
     // CHECK-SAME: align 16 dereferenceable(32) %x
     // CHECK:      [[A:%.*]] = load i32, ptr %x, align 16
     // CHECK-NEXT: [[GEP:%.*]] = getelementptr inbounds i8, ptr %x, i64 16
     // CHECK-NEXT: [[B:%.*]] = load i128, ptr [[GEP]], align 16
-    // CHECK-NEXT: [[IV1:%.*]] = insertvalue { i32, i128 } poison, i32 [[A]], 0
-    // CHECK-NEXT: [[IV2:%.*]] = insertvalue { i32, i128 } [[IV1]], i128 [[B]], 1
-    // CHECK-NEXT: ret { i32, i128 } [[IV2]]
+    // CHECK-NEXT: store i32 [[A]], ptr %_0, align 16
+    // CHECK-NEXT: [[GEP:%.*]] = getelementptr inbounds i8, ptr %_0, i64 16
+    // CHECK-NEXT: store i128 [[B]], ptr [[GEP]], align 16
+    // CHECK-NEXT: ret void
     *x
 }
 
@@ -53,29 +55,23 @@ pub fn alloca() {
 #[no_mangle]
 pub fn load_volatile(x: &ScalarPair) -> ScalarPair {
     // CHECK-LABEL: @load_volatile(
+    // CHECK-SAME: sret([32 x i8]) align 16 dereferenceable(32) %_0,
     // CHECK-SAME: align 16 dereferenceable(32) %x
-    // CHECK:      [[TMP:%.*]] = alloca [32 x i8], align 16
     // CHECK:      [[LOAD:%.*]] = load volatile %ScalarPair, ptr %x, align 16
-    // CHECK-NEXT: store %ScalarPair [[LOAD]], ptr [[TMP]], align 16
-    // CHECK-NEXT: [[A:%.*]] = load i32, ptr [[TMP]], align 16
-    // CHECK-NEXT: [[GEP:%.*]] = getelementptr inbounds i8, ptr [[TMP]], i64 16
-    // CHECK-NEXT: [[B:%.*]] = load i128, ptr [[GEP]], align 16
+    // CHECK-NEXT: store %ScalarPair [[LOAD]], ptr %_0, align 16
+    // CHECK-NEXT: ret void
     unsafe { std::intrinsics::volatile_load(x) }
 }
 
 #[no_mangle]
 pub fn transmute(x: ScalarPair) -> (std::mem::MaybeUninit<i128>, i128) {
-    // CHECK-LABEL: define { i128, i128 } @transmute(i32 noundef %x.0, i128 noundef %x.1)
-    // CHECK:       [[TMP:%.*]] = alloca [32 x i8], align 16
-    // CHECK-NEXT:  store i32 %x.0, ptr [[TMP]], align 16
-    // CHECK-NEXT:  [[GEP:%.*]] = getelementptr inbounds i8, ptr [[TMP]], i64 16
+    // CHECK-LABEL: @transmute(
+    // CHECK-SAME:  sret([32 x i8]) align 16 dereferenceable(32) %_0,
+    // CHECK-SAME:  i32 noundef %x.0, i128 noundef %x.1
+    // CHECK:       store i32 %x.0, ptr %_0, align 16
+    // CHECK-NEXT:  [[GEP:%.*]] = getelementptr inbounds i8, ptr %_0, i64 16
     // CHECK-NEXT:  store i128 %x.1, ptr [[GEP]], align 16
-    // CHECK-NEXT:  [[LOAD1:%.*]] = load i128, ptr %_0, align 16
-    // CHECK-NEXT:  [[GEP2:%.*]] = getelementptr inbounds i8, ptr [[TMP]], i64 16
-    // CHECK-NEXT:  [[LOAD2:%.*]] = load i128, ptr [[GEP2]], align 16
-    // CHECK-NEXT:  [[IV1:%.*]] = insertvalue { i128, i128 } poison, i128 [[LOAD1]], 0
-    // CHECK-NEXT:  [[IV2:%.*]] = insertvalue { i128, i128 } [[IV1]], i128 [[LOAD2]], 1
-    // CHECK-NEXT:  ret { i128, i128 } [[IV2]]
+    // CHECK-NEXT:  ret void
     unsafe { std::mem::transmute(x) }
 }
 

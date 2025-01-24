@@ -27,7 +27,7 @@
         }
     },
     "engines": {
-        "vscode": "^1.78.0"
+        "vscode": "^1.83.0"
     },
     "enabledApiProposals": [],
     "scripts": {
@@ -49,29 +49,31 @@
         "anser": "^2.1.1",
         "d3": "^7.8.5",
         "d3-graphviz": "^5.0.2",
-        "vscode-languageclient": "^8.1.0"
+        "vscode-languageclient": "^9.0.1"
     },
     "devDependencies": {
         "@tsconfig/strictest": "^2.0.1",
         "@types/node": "~16.11.7",
-        "@types/vscode": "~1.78.1",
+        "@types/vscode": "~1.83",
         "@typescript-eslint/eslint-plugin": "^6.0.0",
         "@typescript-eslint/parser": "^6.0.0",
         "@vscode/test-electron": "^2.3.8",
-        "@vscode/vsce": "^2.19.0",
+        "@vscode/vsce": "^3.0.0",
         "esbuild": "^0.18.12",
         "eslint": "^8.44.0",
         "eslint-config-prettier": "^8.8.0",
         "ovsx": "^0.8.2",
         "prettier": "^3.0.0",
         "tslib": "^2.6.0",
-        "typescript": "^5.1.6"
+        "typescript": "^5.6.0"
     },
     "activationEvents": [
         "workspaceContains:Cargo.toml",
         "workspaceContains:*/Cargo.toml",
         "workspaceContains:rust-project.json",
-        "workspaceContains:*/rust-project.json"
+        "workspaceContains:*/rust-project.json",
+        "workspaceContains:.rust-project.json",
+        "workspaceContains:*/.rust-project.json"
     ],
     "main": "./out/main",
     "contributes": {
@@ -107,11 +109,6 @@
         ],
         "commands": [
             {
-                "command": "rust-analyzer.syntaxTree",
-                "title": "Show Syntax Tree",
-                "category": "rust-analyzer (debug command)"
-            },
-            {
                 "command": "rust-analyzer.viewHir",
                 "title": "View Hir",
                 "category": "rust-analyzer (debug command)"
@@ -123,7 +120,7 @@
             },
             {
                 "command": "rust-analyzer.interpretFunction",
-                "title": "Interpret Function",
+                "title": "Interpret",
                 "category": "rust-analyzer (debug command)"
             },
             {
@@ -287,6 +284,30 @@
                 "category": "rust-analyzer"
             },
             {
+                "command": "rust-analyzer.syntaxTreeReveal",
+                "title": "Reveal Syntax Element",
+                "icon": "$(search)",
+                "category": "rust-analyzer (syntax tree)"
+            },
+            {
+                "command": "rust-analyzer.syntaxTreeCopy",
+                "title": "Copy",
+                "icon": "$(copy)",
+                "category": "rust-analyzer (syntax tree)"
+            },
+            {
+                "command": "rust-analyzer.syntaxTreeHideWhitespace",
+                "title": "Hide Whitespace",
+                "icon": "$(filter)",
+                "category": "rust-analyzer (syntax tree)"
+            },
+            {
+                "command": "rust-analyzer.syntaxTreeShowWhitespace",
+                "title": "Show Whitespace",
+                "icon": "$(filter-filled)",
+                "category": "rust-analyzer (syntax tree)"
+            },
+            {
                 "command": "rust-analyzer.viewMemoryLayout",
                 "title": "View Memory Layout",
                 "category": "rust-analyzer"
@@ -328,14 +349,6 @@
                         "default": false,
                         "type": "boolean"
                     },
-                    "rust-analyzer.discoverProjectRunner": {
-                        "markdownDescription": "Sets the extension responsible for determining which extension the rust-analyzer extension uses to generate `rust-project.json` files. This should should only be used\n if a build system like Buck or Bazel is also in use.",
-                        "default": null,
-                        "type": [
-                            "null",
-                            "string"
-                        ]
-                    },
                     "rust-analyzer.showUnlinkedFileNotification": {
                         "markdownDescription": "Whether to show a notification for unlinked files asking the user to add the corresponding Cargo.toml to the linked projects setting.",
                         "default": true,
@@ -351,8 +364,18 @@
                         "default": true,
                         "type": "boolean"
                     },
+                    "rust-analyzer.showSyntaxTree": {
+                        "markdownDescription": "Whether to show the syntax tree view.",
+                        "default": false,
+                        "type": "boolean"
+                    },
                     "rust-analyzer.testExplorer": {
                         "markdownDescription": "Whether to show the test explorer.",
+                        "default": false,
+                        "type": "boolean"
+                    },
+                    "rust-analyzer.initializeStopped": {
+                        "markdownDescription": "Do not start rust-analyzer server when the extension is activated.",
                         "default": false,
                         "type": "boolean"
                     }
@@ -408,6 +431,11 @@
                             "$rustc"
                         ],
                         "markdownDescription": "Problem matchers to use for `rust-analyzer.run` command, eg `[\"$rustc\", \"$rust-panic\"]`."
+                    },
+                    "rust-analyzer.runnables.askBeforeUpdateTest": {
+                        "type": "boolean",
+                        "default": true,
+                        "markdownDescription": "Ask before updating the test when running it."
                     }
                 }
             },
@@ -426,6 +454,56 @@
                         ],
                         "default": "openLogs",
                         "markdownDescription": "Action to run when clicking the extension status bar item."
+                    },
+                    "rust-analyzer.statusBar.showStatusBar": {
+                        "markdownDescription": "When to show the extension status bar.\n\n`\"always\"` Always show the status bar.\n\n`\"never\"` Never show the status bar.\n\n`{ documentSelector: <DocumentSelector>[] }` Show the status bar if the open file matches any of the given document selectors.\n\nSee [VS Code -- DocumentSelector](https://code.visualstudio.com/api/references/document-selector) for more information.",
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "always",
+                                    "never"
+                                ]
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "documentSelector": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "language": {
+                                                    "type": "string"
+                                                },
+                                                "notebookType": {
+                                                    "type": "string"
+                                                },
+                                                "scheme": {
+                                                    "type": "string"
+                                                },
+                                                "pattern": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "default": {
+                            "documentSelector": [
+                                {
+                                    "language": "rust"
+                                },
+                                {
+                                    "pattern": "**/Cargo.toml"
+                                },
+                                {
+                                    "pattern": "**/Cargo.lock"
+                                }
+                            ]
+                        }
                     }
                 }
             },
@@ -491,15 +569,19 @@
                         "type": "string",
                         "enum": [
                             "auto",
+                            "llvm-vs-code-extensions.lldb-dap",
                             "vadimcn.vscode-lldb",
-                            "ms-vscode.cpptools"
+                            "ms-vscode.cpptools",
+                            "webfreak.debug"
                         ],
                         "default": "auto",
                         "description": "Preferred debug engine.",
                         "markdownEnumDescriptions": [
-                            "First try to use [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb), if it's not installed try to use [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools).",
+                            "Use the first available extension out of [LLDB DAP](https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.lldb-dap), [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb), [C/C++ for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools), and [Native Debug](https://marketplace.visualstudio.com/items?itemName=webfreak.debug).",
+                            "Use [LLDB DAP](https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.lldb-dap)",
                             "Use [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)",
-                            "Use [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)"
+                            "Use [C/C++ for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)",
+                            "Use [Native Debug](https://marketplace.visualstudio.com/items?itemName=webfreak.debug)"
                         ]
                     },
                     "rust-analyzer.debug.sourceFileMap": {
@@ -515,6 +597,11 @@
                     },
                     "rust-analyzer.debug.openDebugPane": {
                         "markdownDescription": "Whether to open up the `Debug Panel` on debugging start.",
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "rust-analyzer.debug.buildBeforeRestart": {
+                        "markdownDescription": "Whether to rebuild the project modules before debugging the same test again",
                         "type": "boolean",
                         "default": false
                     },
@@ -672,26 +759,8 @@
             {
                 "title": "cargo",
                 "properties": {
-                    "rust-analyzer.cargo.buildScripts.invocationLocation": {
-                        "markdownDescription": "Specifies the working directory for running build scripts.\n- \"workspace\": run build scripts for a workspace in the workspace's root directory.\n    This is incompatible with `#rust-analyzer.cargo.buildScripts.invocationStrategy#` set to `once`.\n- \"root\": run build scripts in the project's root directory.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
-                        "default": "workspace",
-                        "type": "string",
-                        "enum": [
-                            "workspace",
-                            "root"
-                        ],
-                        "enumDescriptions": [
-                            "The command will be executed in the corresponding workspace root.",
-                            "The command will be executed in the project root."
-                        ]
-                    }
-                }
-            },
-            {
-                "title": "cargo",
-                "properties": {
                     "rust-analyzer.cargo.buildScripts.invocationStrategy": {
-                        "markdownDescription": "Specifies the invocation strategy to use when running the build scripts command.\nIf `per_workspace` is set, the command will be executed for each workspace.\nIf `once` is set, the command will be executed once.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
+                        "markdownDescription": "Specifies the invocation strategy to use when running the build scripts command.\nIf `per_workspace` is set, the command will be executed for each Rust workspace with the\nworkspace as the working directory.\nIf `once` is set, the command will be executed once with the opened project as the\nworking directory.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
                         "default": "per_workspace",
                         "type": "string",
                         "enum": [
@@ -699,8 +768,8 @@
                             "once"
                         ],
                         "enumDescriptions": [
-                            "The command will be executed for each workspace.",
-                            "The command will be executed once."
+                            "The command will be executed for each Rust workspace with the workspace as the working directory.",
+                            "The command will be executed once with the opened project as the working directory."
                         ]
                     }
                 }
@@ -709,7 +778,7 @@
                 "title": "cargo",
                 "properties": {
                     "rust-analyzer.cargo.buildScripts.overrideCommand": {
-                        "markdownDescription": "Override the command rust-analyzer uses to run build scripts and\nbuild procedural macros. The command is required to output json\nand should therefore include `--message-format=json` or a similar\noption.\n\nIf there are multiple linked projects/workspaces, this command is invoked for\neach of them, with the working directory being the workspace root\n(i.e., the folder containing the `Cargo.toml`). This can be overwritten\nby changing `#rust-analyzer.cargo.buildScripts.invocationStrategy#` and\n`#rust-analyzer.cargo.buildScripts.invocationLocation#`.\n\nBy default, a cargo invocation will be constructed for the configured\ntargets and features, with the following base command line:\n\n```bash\ncargo check --quiet --workspace --message-format=json --all-targets --keep-going\n```\n.",
+                        "markdownDescription": "Override the command rust-analyzer uses to run build scripts and\nbuild procedural macros. The command is required to output json\nand should therefore include `--message-format=json` or a similar\noption.\n\nIf there are multiple linked projects/workspaces, this command is invoked for\neach of them, with the working directory being the workspace root\n(i.e., the folder containing the `Cargo.toml`). This can be overwritten\nby changing `#rust-analyzer.cargo.buildScripts.invocationStrategy#`.\n\nBy default, a cargo invocation will be constructed for the configured\ntargets and features, with the following base command line:\n\n```bash\ncargo check --quiet --workspace --message-format=json --all-targets --keep-going\n```\n.",
                         "default": null,
                         "type": [
                             "null",
@@ -746,11 +815,14 @@
                 "properties": {
                     "rust-analyzer.cargo.cfgs": {
                         "markdownDescription": "List of cfg options to enable with the given values.",
-                        "default": {
-                            "debug_assertions": null,
-                            "miri": null
-                        },
-                        "type": "object"
+                        "default": [
+                            "debug_assertions",
+                            "miri"
+                        ],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 }
             },
@@ -829,16 +901,6 @@
             {
                 "title": "cargo",
                 "properties": {
-                    "rust-analyzer.cargo.sysrootQueryMetadata": {
-                        "markdownDescription": "Whether to run cargo metadata on the sysroot library allowing rust-analyzer to analyze\nthird-party dependencies of the standard libraries.\n\nThis will cause `cargo` to create a lockfile in your sysroot directory. rust-analyzer\nwill attempt to clean up afterwards, but nevertheless requires the location to be\nwritable to.",
-                        "default": false,
-                        "type": "boolean"
-                    }
-                }
-            },
-            {
-                "title": "cargo",
-                "properties": {
                     "rust-analyzer.cargo.sysrootSrc": {
                         "markdownDescription": "Relative path to the sysroot library sources. If left unset, this will default to\n`{cargo.sysroot}/lib/rustlib/src/rust/library`.\n\nThis option does not take effect until rust-analyzer is restarted.",
                         "default": null,
@@ -853,7 +915,7 @@
                 "title": "cargo",
                 "properties": {
                     "rust-analyzer.cargo.target": {
-                        "markdownDescription": "Compilation target override (target triple).",
+                        "markdownDescription": "Compilation target override (target tuple).",
                         "default": null,
                         "type": [
                             "null",
@@ -879,6 +941,16 @@
                                 "type": "string"
                             }
                         ]
+                    }
+                }
+            },
+            {
+                "title": "cfg",
+                "properties": {
+                    "rust-analyzer.cfg.setTest": {
+                        "markdownDescription": "Set `cfg(test)` for local crates. Defaults to true.",
+                        "default": true,
+                        "type": "boolean"
                     }
                 }
             },
@@ -984,24 +1056,6 @@
             {
                 "title": "check",
                 "properties": {
-                    "rust-analyzer.check.invocationLocation": {
-                        "markdownDescription": "Specifies the working directory for running checks.\n- \"workspace\": run checks for workspaces in the corresponding workspaces' root directories.\n    This falls back to \"root\" if `#rust-analyzer.check.invocationStrategy#` is set to `once`.\n- \"root\": run checks in the project's root directory.\nThis config only has an effect when `#rust-analyzer.check.overrideCommand#`\nis set.",
-                        "default": "workspace",
-                        "type": "string",
-                        "enum": [
-                            "workspace",
-                            "root"
-                        ],
-                        "enumDescriptions": [
-                            "The command will be executed in the corresponding workspace root.",
-                            "The command will be executed in the project root."
-                        ]
-                    }
-                }
-            },
-            {
-                "title": "check",
-                "properties": {
                     "rust-analyzer.check.invocationStrategy": {
                         "markdownDescription": "Specifies the invocation strategy to use when running the check command.\nIf `per_workspace` is set, the command will be executed for each workspace.\nIf `once` is set, the command will be executed once.\nThis config only has an effect when `#rust-analyzer.check.overrideCommand#`\nis set.",
                         "default": "per_workspace",
@@ -1011,8 +1065,8 @@
                             "once"
                         ],
                         "enumDescriptions": [
-                            "The command will be executed for each workspace.",
-                            "The command will be executed once."
+                            "The command will be executed for each Rust workspace with the workspace as the working directory.",
+                            "The command will be executed once with the opened project as the working directory."
                         ]
                     }
                 }
@@ -1034,7 +1088,7 @@
                 "title": "check",
                 "properties": {
                     "rust-analyzer.check.overrideCommand": {
-                        "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefore include `--message-format=json` or a similar option\n(if your client supports the `colorDiagnosticOutput` experimental\ncapability, you can use `--message-format=json-diagnostic-rendered-ansi`).\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects/workspaces, this command is invoked for\neach of them, with the working directory being the workspace root\n(i.e., the folder containing the `Cargo.toml`). This can be overwritten\nby changing `#rust-analyzer.check.invocationStrategy#` and\n`#rust-analyzer.check.invocationLocation#`.\n\nIf `$saved_file` is part of the command, rust-analyzer will pass\nthe absolute path of the saved file to the provided command. This is\nintended to be used with non-Cargo build systems.\nNote that `$saved_file` is experimental and may be removed in the future.\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
+                        "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefore include `--message-format=json` or a similar option\n(if your client supports the `colorDiagnosticOutput` experimental\ncapability, you can use `--message-format=json-diagnostic-rendered-ansi`).\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects/workspaces, this command is invoked for\neach of them, with the working directory being the workspace root\n(i.e., the folder containing the `Cargo.toml`). This can be overwritten\nby changing `#rust-analyzer.check.invocationStrategy#`.\n\nIf `$saved_file` is part of the command, rust-analyzer will pass\nthe absolute path of the saved file to the provided command. This is\nintended to be used with non-Cargo build systems.\nNote that `$saved_file` is experimental and may be removed in the future.\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
                         "default": null,
                         "type": [
                             "null",
@@ -1073,7 +1127,17 @@
                 "title": "check",
                 "properties": {
                     "rust-analyzer.check.workspace": {
-                        "markdownDescription": "Whether `--workspace` should be passed to `cargo check`.\nIf false, `-p <package>` will be passed instead.",
+                        "markdownDescription": "Whether `--workspace` should be passed to `cargo check`.\nIf false, `-p <package>` will be passed instead if applicable. In case it is not, no\ncheck will be performed.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "completion",
+                "properties": {
+                    "rust-analyzer.completion.addSemicolonToUnit": {
+                        "markdownDescription": "Whether to automatically add a semicolon when completing unit-returning functions.\n\nIn `match` arms it completes a comma instead.",
                         "default": true,
                         "type": "boolean"
                     }
@@ -1086,6 +1150,51 @@
                         "markdownDescription": "Toggles the additional completions that automatically add imports when completed.\nNote that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.",
                         "default": true,
                         "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "completion",
+                "properties": {
+                    "rust-analyzer.completion.autoimport.exclude": {
+                        "markdownDescription": "A list of full paths to items to exclude from auto-importing completions.\n\nTraits in this list won't have their methods suggested in completions unless the trait\nis in scope.\n\nYou can either specify a string path which defaults to type \"always\" or use the more verbose\nform `{ \"path\": \"path::to::item\", type: \"always\" }`.\n\nFor traits the type \"methods\" can be used to only exclude the methods but not the trait itself.\n\nThis setting also inherits `#rust-analyzer.completion.excludeTraits#`.",
+                        "default": [
+                            {
+                                "path": "core::borrow::Borrow",
+                                "type": "methods"
+                            },
+                            {
+                                "path": "core::borrow::BorrowMut",
+                                "type": "methods"
+                            }
+                        ],
+                        "type": "array",
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "path": {
+                                            "type": "string"
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                            "enum": [
+                                                "always",
+                                                "methods"
+                                            ],
+                                            "enumDescriptions": [
+                                                "Do not show this item or its methods (if it is a trait) in auto-import completions.",
+                                                "Do not show this traits methods in auto-import completions."
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
                     }
                 }
             },
@@ -1122,8 +1231,31 @@
             {
                 "title": "completion",
                 "properties": {
+                    "rust-analyzer.completion.excludeTraits": {
+                        "markdownDescription": "A list of full paths to traits whose methods to exclude from completion.\n\nMethods from these traits won't be completed, even if the trait is in scope. However, they will still be suggested on expressions whose type is `dyn Trait`, `impl Trait` or `T where T: Trait`.\n\nNote that the trait themselves can still be completed.",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            {
+                "title": "completion",
+                "properties": {
                     "rust-analyzer.completion.fullFunctionSignatures.enable": {
                         "markdownDescription": "Whether to show full function/method signatures in completion docs.",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "completion",
+                "properties": {
+                    "rust-analyzer.completion.hideDeprecated": {
+                        "markdownDescription": "Whether to omit deprecated items from autocompletion. By default they are marked as deprecated but not hidden.",
                         "default": false,
                         "type": "boolean"
                     }
@@ -1169,18 +1301,10 @@
                     "rust-analyzer.completion.snippets.custom": {
                         "markdownDescription": "Custom completion snippets.",
                         "default": {
-                            "Arc::new": {
-                                "postfix": "arc",
-                                "body": "Arc::new(${receiver})",
-                                "requires": "std::sync::Arc",
-                                "description": "Put the expression into an `Arc`",
-                                "scope": "expr"
-                            },
-                            "Rc::new": {
-                                "postfix": "rc",
-                                "body": "Rc::new(${receiver})",
-                                "requires": "std::rc::Rc",
-                                "description": "Put the expression into an `Rc`",
+                            "Ok": {
+                                "postfix": "ok",
+                                "body": "Ok(${receiver})",
+                                "description": "Wrap the expression in a `Result::Ok`",
                                 "scope": "expr"
                             },
                             "Box::pin": {
@@ -1190,10 +1314,11 @@
                                 "description": "Put the expression into a pinned `Box`",
                                 "scope": "expr"
                             },
-                            "Err": {
-                                "postfix": "err",
-                                "body": "Err(${receiver})",
-                                "description": "Wrap the expression in a `Result::Err`",
+                            "Arc::new": {
+                                "postfix": "arc",
+                                "body": "Arc::new(${receiver})",
+                                "requires": "std::sync::Arc",
+                                "description": "Put the expression into an `Arc`",
                                 "scope": "expr"
                             },
                             "Some": {
@@ -1202,10 +1327,17 @@
                                 "description": "Wrap the expression in an `Option::Some`",
                                 "scope": "expr"
                             },
-                            "Ok": {
-                                "postfix": "ok",
-                                "body": "Ok(${receiver})",
-                                "description": "Wrap the expression in a `Result::Ok`",
+                            "Err": {
+                                "postfix": "err",
+                                "body": "Err(${receiver})",
+                                "description": "Wrap the expression in a `Result::Err`",
+                                "scope": "expr"
+                            },
+                            "Rc::new": {
+                                "postfix": "rc",
+                                "body": "Rc::new(${receiver})",
+                                "requires": "std::rc::Rc",
+                                "description": "Put the expression into an `Rc`",
                                 "scope": "expr"
                             }
                         },
@@ -1458,6 +1590,16 @@
             {
                 "title": "hover",
                 "properties": {
+                    "rust-analyzer.hover.actions.updateTest.enable": {
+                        "markdownDescription": "Whether to show `Update Test` action. Only applies when\n`#rust-analyzer.hover.actions.enable#` and `#rust-analyzer.hover.actions.run.enable#` are set.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "hover",
+                "properties": {
                     "rust-analyzer.hover.documentation.enable": {
                         "markdownDescription": "Whether to show documentation on hover.",
                         "default": true,
@@ -1482,6 +1624,29 @@
                         "markdownDescription": "Use markdown syntax for links on hover.",
                         "default": true,
                         "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "hover",
+                "properties": {
+                    "rust-analyzer.hover.maxSubstitutionLength": {
+                        "markdownDescription": "Whether to show what types are used as generic arguments in calls etc. on hover, and what is their max length to show such types, beyond it they will be shown with ellipsis.\n\nThis can take three values: `null` means \"unlimited\", the string `\"hide\"` means to not show generic substitutions at all, and a number means to limit them to X characters.\n\nThe default is 20 characters.",
+                        "default": 20,
+                        "anyOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "hide"
+                                ]
+                            },
+                            {
+                                "type": "integer"
+                            }
+                        ]
                     }
                 }
             },
@@ -1943,6 +2108,16 @@
             {
                 "title": "inlayHints",
                 "properties": {
+                    "rust-analyzer.inlayHints.implicitSizedBoundHints.enable": {
+                        "markdownDescription": "Whether to show inlay hints for the implied type parameter `Sized` bound.",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "inlayHints",
+                "properties": {
                     "rust-analyzer.inlayHints.lifetimeElisionHints.enable": {
                         "markdownDescription": "Whether to show inlay type hints for elided lifetimes in function signatures.",
                         "default": "never",
@@ -2213,6 +2388,16 @@
                 }
             },
             {
+                "title": "lens",
+                "properties": {
+                    "rust-analyzer.lens.updateTest.enable": {
+                        "markdownDescription": "Whether to show `Update Test` lens. Only applies when\n`#rust-analyzer.lens.enable#` and `#rust-analyzer.lens.run.enable#` are set.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
                 "title": "general",
                 "properties": {
                     "rust-analyzer.linkedProjects": {
@@ -2350,7 +2535,7 @@
                 "title": "references",
                 "properties": {
                     "rust-analyzer.references.excludeTests": {
-                        "markdownDescription": "Exclude tests from find-all-references.",
+                        "markdownDescription": "Exclude tests from find-all-references and call-hierarchy.",
                         "default": false,
                         "type": "boolean"
                     }
@@ -2560,10 +2745,26 @@
             {
                 "title": "typing",
                 "properties": {
-                    "rust-analyzer.typing.autoClosingAngleBrackets.enable": {
-                        "markdownDescription": "Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.",
-                        "default": false,
-                        "type": "boolean"
+                    "rust-analyzer.typing.triggerChars": {
+                        "markdownDescription": "Specify the characters allowed to invoke special on typing triggers.\n- typing `=` after `let` tries to smartly add `;` if `=` is followed by an existing expression\n- typing `=` between two expressions adds `;` when in statement position\n- typing `=` to turn an assignment into an equality comparison removes `;` when in expression position\n- typing `.` in a chain method call auto-indents\n- typing `{` or `(` in front of an expression inserts a closing `}` or `)` after the expression\n- typing `{` in a use item adds a closing `}` in the right place\n- typing `>` to complete a return type `->` will insert a whitespace after it\n- typing `<` in a path or type position inserts a closing `>` after the path or type.",
+                        "default": "=.",
+                        "type": [
+                            "null",
+                            "string"
+                        ]
+                    }
+                }
+            },
+            {
+                "title": "vfs",
+                "properties": {
+                    "rust-analyzer.vfs.extraIncludes": {
+                        "markdownDescription": "Additional paths to include in the VFS. Generally for code that is\ngenerated or otherwise managed by a build system outside of Cargo,\nthough Cargo might be the eventual consumer.",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 }
             },
@@ -2775,17 +2976,6 @@
                     "endsPattern": "^\\[Finished running\\b"
                 },
                 "pattern": "$rustc"
-            }
-        ],
-        "colors": [
-            {
-                "id": "rust_analyzer.syntaxTreeBorder",
-                "description": "Color of the border displayed in the Rust source code for the selected syntax node (see \"Show Syntax Tree\" command)",
-                "defaults": {
-                    "dark": "#ffffff",
-                    "light": "#b700ff",
-                    "highContrast": "#b700ff"
-                }
             }
         ],
         "semanticTokenTypes": [
@@ -3108,10 +3298,6 @@
         "menus": {
             "commandPalette": [
                 {
-                    "command": "rust-analyzer.syntaxTree",
-                    "when": "inRustProject"
-                },
-                {
                     "command": "rust-analyzer.viewHir",
                     "when": "inRustProject"
                 },
@@ -3193,6 +3379,22 @@
                 },
                 {
                     "command": "rust-analyzer.openWalkthrough"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeReveal",
+                    "when": "false"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeCopy",
+                    "when": "false"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeHideWhitespace",
+                    "when": "false"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeShowWhitespace",
+                    "when": "false"
                 }
             ],
             "editor/context": [
@@ -3206,6 +3408,30 @@
                     "when": "inRustProject && editorTextFocus && editorLangId == rust",
                     "group": "navigation@1001"
                 }
+            ],
+            "view/title": [
+                {
+                    "command": "rust-analyzer.syntaxTreeHideWhitespace",
+                    "group": "navigation",
+                    "when": "view == rustSyntaxTree && !rustSyntaxTree.hideWhitespace"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeShowWhitespace",
+                    "group": "navigation",
+                    "when": "view == rustSyntaxTree && rustSyntaxTree.hideWhitespace"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "rust-analyzer.syntaxTreeCopy",
+                    "group": "inline",
+                    "when": "view == rustSyntaxTree"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeReveal",
+                    "group": "inline",
+                    "when": "view == rustSyntaxTree"
+                }
             ]
         },
         "views": {
@@ -3215,11 +3441,31 @@
                     "name": "Rust Dependencies",
                     "when": "inRustProject && config.rust-analyzer.showDependenciesExplorer"
                 }
+            ],
+            "rustSyntaxTreeContainer": [
+                {
+                    "id": "rustSyntaxTree",
+                    "name": "Rust Syntax Tree",
+                    "when": "inRustProject && config.rust-analyzer.showSyntaxTree"
+                }
+            ]
+        },
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "rustSyntaxTreeContainer",
+                    "title": "Rust Syntax Tree",
+                    "icon": "$(list-tree)"
+                }
             ]
         },
         "jsonValidation": [
             {
                 "fileMatch": "rust-project.json",
+                "url": "https://json.schemastore.org/rust-project.json"
+            },
+            {
+                "fileMatch": ".rust-project.json",
                 "url": "https://json.schemastore.org/rust-project.json"
             }
         ],
@@ -3232,10 +3478,9 @@
                     {
                         "id": "setup",
                         "title": "Useful Setup Tips",
-                        "description": "There are a couple of things you might want to configure upfront to your tastes. We'll name a few here but be sure to check out the docs linked below!\n\n**Marking library sources as readonly**\n\nAdding the following to your settings.json will mark all Rust library sources as readonly:\n```json\n\"files.readonlyInclude\": {\n    \"**/.cargo/registry/src/**/*.rs\": true,\n    \"**/lib/rustlib/src/rust/library/**/*.rs\": true,\n},\n```\n\n**Check on Save**\n\nBy default, rust-analyzer will run `cargo check` on your codebase when you save a file, rendering diagnostics emitted by `cargo check` within your code. This can potentially collide with other `cargo` commands running concurrently, blocking them from running for a certain amount of time. In these cases it is recommended to disable the `rust-analyzer.checkOnSave` configuration and running the `rust-analyzer: Run flycheck` command on-demand instead.",
+                        "description": "There are a couple of things you might want to configure upfront to your tastes. We'll name a few here but be sure to check out the docs linked below!\n\n**Marking library sources as readonly**\n\nAdding the snippet on the right to your settings.json will mark all Rust library sources as readonly.\n\n**Check on Save**\n\nBy default, rust-analyzer will run ``cargo check`` on your codebase when you save a file, rendering diagnostics emitted by ``cargo check`` within your code. This can potentially collide with other ``cargo`` commands running concurrently, blocking them from running for a certain amount of time. In these cases it is recommended to disable the ``rust-analyzer.checkOnSave`` configuration and running the ``rust-analyzer: Run flycheck`` command on-demand instead.",
                         "media": {
-                            "image": "./icon.png",
-                            "altText": "rust-analyzer logo"
+                            "markdown": "./walkthrough-setup-tips.md"
                         }
                     },
                     {
@@ -3253,7 +3498,7 @@
                     {
                         "id": "faq",
                         "title": "FAQ",
-                        "description": "What are these code hints that are being inserted into my code?\n\nThese hints are called inlay hints which rust-analyzer support and are enabled by default in VSCode. If you wish to disable them you can do so via the `editor.inlayHints.enabled` setting.",
+                        "description": "What are these code hints that are being inserted into my code?\n\nThese hints are called inlay hints which rust-analyzer support and are enabled by default in VSCode. If you wish to disable them you can do so via the ``editor.inlayHints.enabled`` setting.",
                         "media": {
                             "image": "icon.png",
                             "altText": "rust-analyzer logo"

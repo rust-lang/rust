@@ -1,5 +1,5 @@
 warning: method `get` is never used
-  --> $DIR/drop-struct-as-object.rs:15:8
+  --> $DIR/drop-struct-as-object.rs:18:8
    |
 LL | trait Dummy {
    |       ----- method in this trait

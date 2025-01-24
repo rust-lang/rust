@@ -438,7 +438,7 @@ need to ensure that the MSRV configured for the project is >= the MSRV of the
 required Rust feature. If multiple features are required, just use the one with
 a lower MSRV.
 
-First, add an MSRV alias for the required feature in [`clippy_config::msrvs`].
+First, add an MSRV alias for the required feature in [`clippy_utils::msrvs`].
 This can be accessed later as `msrvs::STR_STRIP_PREFIX`, for example.
 
 ```rust
@@ -517,7 +517,7 @@ define_Conf! {
 }
 ```
 
-[`clippy_config::msrvs`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_config/msrvs/index.html
+[`clippy_utils::msrvs`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_config/msrvs/index.html
 
 Afterwards update the documentation for the book as described in [Adding configuration to a lint](#adding-configuration-to-a-lint).
 
@@ -739,7 +739,7 @@ for some users. Adding a configuration is done in the following steps:
 
 5. Update [Lint Configuration](../lint_configuration.md)
 
-   Run `cargo collect-metadata` to generate documentation changes for the book.
+   Run `cargo bless --test config-metadata` to generate documentation changes for the book.
 
 [`clippy_config::conf`]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_config/src/conf.rs
 [`clippy_lints` lib file]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/lib.rs

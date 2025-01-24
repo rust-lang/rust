@@ -1,7 +1,7 @@
 use crate::spec::base::xtensa;
 use crate::spec::{Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "xtensa-none-elf".into(),
         pointer_width: 32,
@@ -15,6 +15,7 @@ pub fn target() -> Target {
         },
 
         options: TargetOptions {
+            vendor: "espressif".into(),
             cpu: "esp32".into(),
             linker: Some("xtensa-esp32-elf-gcc".into()),
             max_atomic_width: Some(32),

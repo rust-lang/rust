@@ -16,7 +16,8 @@ use base_db::CrateId;
 use chalk_ir::Mutability;
 use either::Either;
 use hir_def::{
-    hir::{BindingId, Expr, ExprId, Ordering, PatId},
+    body::Body,
+    hir::{BindingAnnotation, BindingId, Expr, ExprId, Ordering, PatId},
     DefWithBodyId, FieldId, StaticId, TupleFieldId, UnionId, VariantId,
 };
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
@@ -158,7 +159,10 @@ impl<V, T> ProjectionElem<V, T> {
                     subst.at(Interner, 0).assert_ty_ref(Interner).clone()
                 }
                 _ => {
-                    never!("Overloaded deref on type {} is not a projection", base.display(db));
+                    never!(
+                        "Overloaded deref on type {} is not a projection",
+                        base.display(db, db.crate_graph()[krate].edition)
+                    );
                     TyKind::Error.intern(Interner)
                 }
             },
@@ -181,8 +185,8 @@ impl<V, T> ProjectionElem<V, T> {
                         never!("Out of bound tuple field");
                         TyKind::Error.intern(Interner)
                     }),
-                _ => {
-                    never!("Only tuple has tuple field");
+                ty => {
+                    never!("Only tuple has tuple field: {:?}", ty);
                     TyKind::Error.intern(Interner)
                 }
             },
@@ -633,6 +637,7 @@ pub enum TerminatorKind {
     },
 }
 
+// Order of variants in this enum matter: they are used to compare borrow kinds.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
@@ -663,15 +668,16 @@ pub enum BorrowKind {
     Mut { kind: MutBorrowKind },
 }
 
+// Order of variants in this enum matter: they are used to compare borrow kinds.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub enum MutBorrowKind {
+    /// Data must be immutable but not aliasable. This kind of borrow cannot currently
+    /// be expressed by the user and is used only in implicit closure bindings.
+    ClosureCapture,
     Default,
     /// This borrow arose from method-call auto-ref
     /// (i.e., adjustment::Adjust::Borrow).
     TwoPhasedBorrow,
-    /// Data must be immutable but not aliasable. This kind of borrow cannot currently
-    /// be expressed by the user and is used only in implicit closure bindings.
-    ClosureCapture,
 }
 
 impl BorrowKind {
@@ -831,7 +837,9 @@ pub enum CastKind {
     PointerFromExposedAddress,
     /// All sorts of pointer-to-pointer casts. Note that reference-to-raw-ptr casts are
     /// translated into `&raw mut/const *r`, i.e., they are not actually casts.
-    Pointer(PointerCast),
+    PtrToPtr,
+    /// Pointer related casts that are done by coercions.
+    PointerCoercion(PointerCast),
     /// Cast into a dyn* object.
     DynStar,
     IntToInt,
@@ -871,7 +879,8 @@ pub enum Rvalue {
     ///
     /// **Needs clarification**: Are there weird additional semantics here related to the runtime
     /// nature of this operation?
-    //ThreadLocalRef(DefId),
+    // ThreadLocalRef(DefId),
+    ThreadLocalRef(std::convert::Infallible),
 
     /// Creates a pointer with the indicated mutability to the place.
     ///
@@ -880,7 +889,8 @@ pub enum Rvalue {
     ///
     /// Like with references, the semantics of this operation are heavily dependent on the aliasing
     /// model.
-    //AddressOf(Mutability, Place),
+    // AddressOf(Mutability, Place),
+    AddressOf(std::convert::Infallible),
 
     /// Yields the length of the place, as a `usize`.
     ///
@@ -898,19 +908,21 @@ pub enum Rvalue {
     Cast(CastKind, Operand, Ty),
 
     // FIXME link to `pointer::offset` when it hits stable.
-    // /// * `Offset` has the same semantics as `pointer::offset`, except that the second
-    // ///   parameter may be a `usize` as well.
-    // /// * The comparison operations accept `bool`s, `char`s, signed or unsigned integers, floats,
-    // ///   raw pointers, or function pointers and return a `bool`. The types of the operands must be
-    // ///   matching, up to the usual caveat of the lifetimes in function pointers.
-    // /// * Left and right shift operations accept signed or unsigned integers not necessarily of the
-    // ///   same type and return a value of the same type as their LHS. Like in Rust, the RHS is
-    // ///   truncated as needed.
-    // /// * The `Bit*` operations accept signed integers, unsigned integers, or bools with matching
-    // ///   types and return a value of that type.
-    // /// * The remaining operations accept signed integers, unsigned integers, or floats with
-    // ///   matching types and return a value of that type.
+    /// * `Offset` has the same semantics as `pointer::offset`, except that the second
+    ///   parameter may be a `usize` as well.
+    /// * The comparison operations accept `bool`s, `char`s, signed or unsigned integers, floats,
+    ///   raw pointers, or function pointers and return a `bool`. The types of the operands must be
+    ///   matching, up to the usual caveat of the lifetimes in function pointers.
+    /// * Left and right shift operations accept signed or unsigned integers not necessarily of the
+    ///   same type and return a value of the same type as their LHS. Like in Rust, the RHS is
+    ///   truncated as needed.
+    /// * The `Bit*` operations accept signed integers, unsigned integers, or bools with matching
+    ///   types and return a value of that type.
+    /// * The remaining operations accept signed integers, unsigned integers, or floats with
+    ///   matching types and return a value of that type.
     //BinaryOp(BinOp, Box<(Operand, Operand)>),
+    BinaryOp(std::convert::Infallible),
+
     /// Same as `BinaryOp`, but yields `(T, bool)` with a `bool` indicating an error condition.
     ///
     /// When overflow checking is disabled and we are generating run-time code, the error condition
@@ -929,6 +941,7 @@ pub enum Rvalue {
 
     /// Computes a value as described by the operation.
     //NullaryOp(NullOp, Ty),
+    NullaryOp(std::convert::Infallible),
 
     /// Exactly like `BinaryOp`, but less operands.
     ///
@@ -1087,6 +1100,10 @@ impl MirBody {
                                     for_operand(op, &mut f, &mut self.projection_store);
                                 }
                             }
+                            Rvalue::ThreadLocalRef(n)
+                            | Rvalue::AddressOf(n)
+                            | Rvalue::BinaryOp(n)
+                            | Rvalue::NullaryOp(n) => match *n {},
                         }
                     }
                     StatementKind::FakeRead(p) | StatementKind::Deinit(p) => {
@@ -1167,6 +1184,20 @@ pub enum MirSpan {
     BindingId(BindingId),
     SelfParam,
     Unknown,
+}
+
+impl MirSpan {
+    pub fn is_ref_span(&self, body: &Body) -> bool {
+        match *self {
+            MirSpan::ExprId(expr) => matches!(body[expr], Expr::Ref { .. }),
+            // FIXME: Figure out if this is correct wrt. match ergonomics.
+            MirSpan::BindingId(binding) => matches!(
+                body.bindings[binding].mode,
+                BindingAnnotation::Ref | BindingAnnotation::RefMut
+            ),
+            MirSpan::PatId(_) | MirSpan::SelfParam | MirSpan::Unknown => false,
+        }
+    }
 }
 
 impl_from!(ExprId, PatId for MirSpan);

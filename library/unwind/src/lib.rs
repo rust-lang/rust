@@ -2,14 +2,13 @@
 #![unstable(feature = "panic_unwind", issue = "32837")]
 #![feature(link_cfg)]
 #![feature(staged_api)]
-#![feature(strict_provenance)]
-#![cfg_attr(target_arch = "wasm64", feature(simd_wasm64))]
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
 #![cfg_attr(
-    all(target_family = "wasm", not(target_os = "emscripten")),
-    feature(link_llvm_intrinsics)
+    all(target_family = "wasm", any(not(target_os = "emscripten"), emscripten_wasm_eh)),
+    feature(simd_wasm64, wasm_exception_handling_intrinsics)
 )]
 #![allow(internal_features)]
+#![cfg_attr(not(bootstrap), feature(cfg_emscripten_wasm_eh))]
 
 // Force libc to be included even if unused. This is required by many platforms.
 #[cfg(not(all(windows, target_env = "msvc")))]
@@ -22,6 +21,7 @@ cfg_if::cfg_if! {
         target_os = "l4re",
         target_os = "none",
         target_os = "espidf",
+        target_os = "nuttx",
     ))] {
         // These "unix" family members do not have unwinder.
     } else if #[cfg(any(
@@ -165,9 +165,21 @@ extern "C" {}
 extern "C" {}
 
 #[cfg(target_os = "nto")]
-#[link(name = "gcc_s")]
-extern "C" {}
+cfg_if::cfg_if! {
+    if #[cfg(target_env = "nto70")] {
+        #[link(name = "gcc")]
+        extern "C" {}
+    } else {
+        #[link(name = "gcc_s")]
+        extern "C" {}
+    }
+}
 
 #[cfg(target_os = "hurd")]
 #[link(name = "gcc_s")]
+extern "C" {}
+
+#[cfg(all(target_os = "windows", target_env = "gnu", target_abi = "llvm"))]
+#[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
+#[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
 extern "C" {}

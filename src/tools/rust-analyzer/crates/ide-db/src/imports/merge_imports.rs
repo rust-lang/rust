@@ -290,7 +290,7 @@ pub fn try_normalize_use_tree_mut(
 fn recursive_normalize(use_tree: &ast::UseTree, style: NormalizationStyle) -> Option<()> {
     let use_tree_list = use_tree.use_tree_list()?;
     let merge_subtree_into_parent_tree = |single_subtree: &ast::UseTree| {
-        let subtree_is_only_self = single_subtree.path().as_ref().map_or(false, path_is_self);
+        let subtree_is_only_self = single_subtree.path().as_ref().is_some_and(path_is_self);
 
         let merged_path = match (use_tree.path(), single_subtree.path()) {
             // If the subtree is `{self}` then we cannot merge: `use
@@ -614,7 +614,7 @@ fn path_segment_cmp(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
                 (Some(_), None) => Ordering::Greater,
                 (None, Some(_)) => Ordering::Less,
                 (Some(a_name), Some(b_name)) => {
-                    // snake_case < CamelCase < UPPER_SNAKE_CASE
+                    // snake_case < UpperCamelCase < UPPER_SNAKE_CASE
                     let a_text = a_name.as_str().trim_start_matches("r#");
                     let b_text = b_name.as_str().trim_start_matches("r#");
                     if a_text.starts_with(char::is_lowercase)

@@ -15,10 +15,10 @@ LLVM, the Rust compiler and the linker are providing
 TrustZone-M feature.
 
 One of the things provided, with this unstable feature, is the
-`cmse_nonsecure_entry` attribute.  This attribute marks a Secure function as an
+`C-cmse-nonsecure-entry` ABI. This ABI marks a Secure function as an
 entry function (see [section
 5.4](https://developer.arm.com/documentation/ecm0359818/latest/) for details).
-With this attribute, the compiler will do the following:
+With this ABI, the compiler will do the following:
 * add a special symbol on the function which is the `__acle_se_` prefix and the
   standard function name
 * constrain the number of parameters to avoid using the Non-Secure stack
@@ -38,11 +38,11 @@ gateway veneer.
 <!-- NOTE(ignore) this example is specific to thumbv8m targets -->
 
 ``` rust,ignore
+#![no_std]
 #![feature(cmse_nonsecure_entry)]
 
 #[no_mangle]
-#[cmse_nonsecure_entry]
-pub extern "C" fn entry_function(input: u32) -> u32 {
+pub extern "C-cmse-nonsecure-entry" fn entry_function(input: u32) -> u32 {
     input + 6
 }
 ```

@@ -14,7 +14,7 @@ where
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
     ) -> QueryResult<I> {
-        if let Some(normalized_const) = self.try_const_eval_resolve(
+        if let Some(normalized_const) = self.evaluate_const(
             goal.param_env,
             ty::UnevaluatedConst::new(goal.predicate.alias.def_id, goal.predicate.alias.args),
         ) {

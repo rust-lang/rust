@@ -4,7 +4,7 @@ error: abi: ScalarPair(Initialized { value: Int(I?, false), valid_range: $VALID_
 LL | enum ScalarPairPointerWithInt {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: abi: Aggregate { sized: true }
+error: abi: Memory { sized: true }
   --> $DIR/enum-scalar-pair-int-ptr.rs:21:1
    |
 LL | enum NotScalarPairPointerWithSmallerInt {

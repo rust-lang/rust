@@ -4,8 +4,8 @@ pub struct Stdin;
 pub struct Stdout {}
 pub struct Stderr;
 
-use crate::os::xous::ffi::{lend, try_lend, try_scalar, Connection};
-use crate::os::xous::services::{log_server, try_connect, LogLend, LogScalar};
+use crate::os::xous::ffi::{Connection, lend, try_lend, try_scalar};
+use crate::os::xous::services::{LogLend, LogScalar, log_server, try_connect};
 
 impl Stdin {
     pub const fn new() -> Stdin {

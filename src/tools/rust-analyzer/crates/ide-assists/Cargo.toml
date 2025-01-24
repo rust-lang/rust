@@ -1,7 +1,8 @@
 [package]
 name = "ide-assists"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Code assists for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
@@ -22,7 +23,6 @@ tracing.workspace = true
 # local deps
 stdx.workspace = true
 syntax.workspace = true
-text-edit.workspace = true
 ide-db.workspace = true
 hir.workspace = true
 
@@ -32,6 +32,9 @@ expect-test = "1.4.0"
 # local deps
 test-utils.workspace = true
 test-fixture.workspace = true
+
+[features]
+in-rust-tree = []
 
 [lints]
 workspace = true

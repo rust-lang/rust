@@ -1,5 +1,5 @@
 #![warn(clippy::temporary_assignment)]
-#![allow(const_item_mutation)]
+#![allow(clippy::needless_lifetimes)]
 
 use std::ops::{Deref, DerefMut};
 

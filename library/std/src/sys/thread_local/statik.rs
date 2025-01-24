@@ -1,7 +1,8 @@
 //! On some targets like wasm there's no threads, so no need to generate
 //! thread locals and we can instead just use plain statics!
 
-use crate::cell::UnsafeCell;
+use crate::cell::{Cell, UnsafeCell};
+use crate::ptr;
 
 #[doc(hidden)]
 #[allow_internal_unstable(thread_local_internals)]
@@ -13,12 +14,11 @@ pub macro thread_local_inner {
     (@key $t:ty, const $init:expr) => {{
         const __INIT: $t = $init;
 
+        // NOTE: Please update the shadowing test in `tests/thread.rs` if these types are renamed.
         unsafe {
-            use $crate::thread::LocalKey;
-            use $crate::thread::local_impl::EagerStorage;
-
-            LocalKey::new(|_| {
-                static VAL: EagerStorage<$t> = EagerStorage { value: __INIT };
+            $crate::thread::LocalKey::new(|_| {
+                static VAL: $crate::thread::local_impl::EagerStorage<$t> =
+                    $crate::thread::local_impl::EagerStorage { value: __INIT };
                 &VAL.value
             })
         }
@@ -93,3 +93,33 @@ impl<T> LazyStorage<T> {
 
 // SAFETY: the target doesn't have threads.
 unsafe impl<T> Sync for LazyStorage<T> {}
+
+#[rustc_macro_transparency = "semitransparent"]
+pub(crate) macro local_pointer {
+    () => {},
+    ($vis:vis static $name:ident; $($rest:tt)*) => {
+        $vis static $name: $crate::sys::thread_local::LocalPointer = $crate::sys::thread_local::LocalPointer::__new();
+        $crate::sys::thread_local::local_pointer! { $($rest)* }
+    },
+}
+
+pub(crate) struct LocalPointer {
+    p: Cell<*mut ()>,
+}
+
+impl LocalPointer {
+    pub const fn __new() -> LocalPointer {
+        LocalPointer { p: Cell::new(ptr::null_mut()) }
+    }
+
+    pub fn get(&self) -> *mut () {
+        self.p.get()
+    }
+
+    pub fn set(&self, p: *mut ()) {
+        self.p.set(p)
+    }
+}
+
+// SAFETY: the target doesn't have threads.
+unsafe impl Sync for LocalPointer {}

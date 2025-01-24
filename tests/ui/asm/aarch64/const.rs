@@ -2,8 +2,6 @@
 //@ run-pass
 //@ needs-asm-support
 
-#![feature(asm_const)]
-
 use std::arch::{asm, global_asm};
 
 fn const_generic<const X: usize>() -> usize {

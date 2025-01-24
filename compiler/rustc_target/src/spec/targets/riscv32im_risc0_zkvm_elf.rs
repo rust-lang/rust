@@ -1,6 +1,6 @@
 use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         data_layout: "e-m:e-p:32:32-i64:64-n32-S128".into(),
         llvm_target: "riscv32".into(),
@@ -29,6 +29,7 @@ pub fn target() -> Target {
             atomic_cas: true,
 
             features: "+m".into(),
+            llvm_abiname: "ilp32".into(),
             executables: true,
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,

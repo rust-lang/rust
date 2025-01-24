@@ -27,7 +27,7 @@ jobs:
   not-waiting-on-bors:
     if: github.repository_owner == 'rust-lang'
     name: skip if S-waiting-on-bors
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -47,7 +47,7 @@ jobs:
     if: github.repository_owner == 'rust-lang'
     name: update dependencies
     needs: not-waiting-on-bors
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: checkout the source code
         uses: actions/checkout@v4
@@ -61,19 +61,26 @@ jobs:
           rustup toolchain install --no-self-update --profile minimal $TOOLCHAIN
           rustup default $TOOLCHAIN
 
-      - name: cargo update
+      - name: cargo update compiler & tools
         # Remove first line that always just says "Updating crates.io index"
-        run: cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
+        run: |
+          echo -e "\ncompiler & tools dependencies:" >> cargo_update.log
+          cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
+      - name: cargo update library
+        run: |
+          echo -e "\nlibrary dependencies:" >> cargo_update.log
+          cargo update --manifest-path library/Cargo.toml 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
       - name: cargo update rustbook
         run: |
           echo -e "\nrustbook dependencies:" >> cargo_update.log
-          cargo update --manifest-path src/tools/rustbook 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
+          cargo update --manifest-path src/tools/rustbook/Cargo.toml 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
       - name: upload Cargo.lock artifact for use in PR
         uses: actions/upload-artifact@v4
         with:
           name: Cargo-lock
           path: |
             Cargo.lock
+            library/Cargo.lock
             src/tools/rustbook/Cargo.lock
           retention-days: 1
       - name: upload cargo-update log artifact for use in PR
@@ -87,7 +94,7 @@ jobs:
     if: github.repository_owner == 'rust-lang'
     name: amend PR
     needs: update
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       pull-requests: write
@@ -119,7 +126,7 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git switch --force-create cargo_update
-          git add ./Cargo.lock ./src/tools/rustbook/Cargo.lock
+          git add ./Cargo.lock ./library/Cargo.lock ./src/tools/rustbook/Cargo.lock
           git commit --no-verify --file=commit.txt
 
       - name: push

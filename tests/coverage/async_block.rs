@@ -1,6 +1,8 @@
 #![feature(coverage_attribute)]
-#![feature(noop_waker)]
 //@ edition: 2021
+
+//@ aux-build: executor.rs
+extern crate executor;
 
 fn main() {
     for i in 0..16 {
@@ -12,23 +14,5 @@ fn main() {
             }
         };
         executor::block_on(future);
-    }
-}
-
-mod executor {
-    use core::future::Future;
-    use core::pin::pin;
-    use core::task::{Context, Poll, Waker};
-
-    #[coverage(off)]
-    pub fn block_on<F: Future>(mut future: F) -> F::Output {
-        let mut future = pin!(future);
-        let mut context = Context::from_waker(Waker::noop());
-
-        loop {
-            if let Poll::Ready(val) = future.as_mut().poll(&mut context) {
-                break val;
-            }
-        }
     }
 }

@@ -3,6 +3,7 @@ use std::hash::{BuildHasherDefault, Hasher};
 
 pub type UnhashMap<K, V> = HashMap<K, V, BuildHasherDefault<Unhasher>>;
 pub type UnhashSet<V> = HashSet<V, BuildHasherDefault<Unhasher>>;
+pub type UnindexMap<K, V> = indexmap::IndexMap<K, V, BuildHasherDefault<Unhasher>>;
 
 /// This no-op hasher expects only a single `write_u64` call. It's intended for
 /// map keys that already have hash-like quality, like `Fingerprint`.

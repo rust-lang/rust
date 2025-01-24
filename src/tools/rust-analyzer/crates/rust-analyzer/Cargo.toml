@@ -2,7 +2,7 @@
 name = "rust-analyzer"
 version = "0.0.0"
 homepage = "https://rust-analyzer.github.io/"
-repository = "https://github.com/rust-analyzer/rust-analyzer"
+repository.workspace = true
 description = "A language server for the Rust programming language"
 documentation = "https://rust-analyzer.github.io/manual.html"
 autobins = false
@@ -21,11 +21,13 @@ path = "src/bin/main.rs"
 
 [dependencies]
 anyhow.workspace = true
-crossbeam-channel = "0.5.5"
+base64 = "0.22"
+crossbeam-channel.workspace = true
 dirs = "5.0.1"
 dissimilar.workspace = true
+ide-completion.workspace = true
 itertools.workspace = true
-scip = "0.3.3"
+scip = "0.5.1"
 lsp-types = { version = "=0.95.0", features = ["proposed"] }
 parking_lot = "0.12.1"
 xflags = "0.3.0"
@@ -34,6 +36,8 @@ rayon.workspace = true
 rustc-hash.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
 serde.workspace = true
+serde_derive.workspace = true
+tenthash = "0.4.0"
 num_cpus = "1.15.0"
 mimalloc = { version = "0.1.30", default-features = false, optional = true }
 lsp-server.workspace = true
@@ -47,9 +51,10 @@ always-assert = "0.2.0"
 walkdir = "2.3.2"
 semver.workspace = true
 memchr = "2.7.1"
+cargo_metadata.workspace = true
+process-wrap.workspace = true
 
 cfg.workspace = true
-flycheck.workspace = true
 hir-def.workspace = true
 hir-ty.workspace = true
 hir.workspace = true
@@ -71,7 +76,10 @@ vfs.workspace = true
 paths.workspace = true
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.52", features = ["Win32_System_Threading"] }
+windows-sys = { version = "0.59", features = [
+  "Win32_System_Diagnostics_Debug",
+  "Win32_System_Threading",
+] }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 jemallocator = { version = "0.5.0", package = "tikv-jemallocator", optional = true }
@@ -82,20 +90,20 @@ xshell.workspace = true
 
 test-utils.workspace = true
 test-fixture.workspace = true
-mbe.workspace = true
+syntax-bridge.workspace = true
 
 [features]
 jemalloc = ["jemallocator", "profile/jemalloc"]
 force-always-assert = ["always-assert/force"]
 sysroot-abi = []
 in-rust-tree = [
-    "sysroot-abi",
-    "syntax/in-rust-tree",
-    "parser/in-rust-tree",
-    "hir/in-rust-tree",
-    "hir-def/in-rust-tree",
-    "hir-ty/in-rust-tree",
-    "load-cargo/in-rust-tree",
+  "sysroot-abi",
+  "syntax/in-rust-tree",
+  "parser/in-rust-tree",
+  "hir/in-rust-tree",
+  "hir-def/in-rust-tree",
+  "hir-ty/in-rust-tree",
+  "load-cargo/in-rust-tree",
 ]
 
 [lints]

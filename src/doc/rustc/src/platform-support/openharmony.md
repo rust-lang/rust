@@ -2,6 +2,14 @@
 
 **Tier: 2**
 
+* aarch64-unknown-linux-ohos
+* armv7-unknown-linux-ohos
+* x86_64-unknown-linux-ohos
+
+**Tier: 3**
+
+* loongarch64-unknown-linux-ohos
+
 Targets for the [OpenHarmony](https://gitee.com/openharmony/docs/) operating
 system.
 

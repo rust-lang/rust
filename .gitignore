@@ -20,9 +20,12 @@ Session.vim
 .vscode
 .project
 .vim/
+.helix/
+.zed/
 .favorites.json
 .settings/
 .vs/
+.dir-locals.el
 
 ## Tool
 .valgrindrc
@@ -43,8 +46,7 @@ no_llvm_build
 /inst/
 /llvm/
 /mingw-build/
-build/
-!/compiler/rustc_mir_build/src/build/
+/build
 /build-rust-analyzer/
 /dist/
 /unicode-downloads
@@ -54,7 +56,11 @@ build/
 /src/tools/x/target
 # Created by default with `src/ci/docker/run.sh`
 /obj/
-/rustc-ice*
+# Created by nix dev shell / .envrc
+src/tools/nix-dev-shell/flake.lock
+
+## ICE reports
+rustc-ice-*.txt
 
 ## Temporary files
 *~
@@ -77,8 +83,18 @@ __pycache__/
 node_modules
 package-lock.json
 package.json
+/src/doc/rustc-dev-guide/mermaid.min.js
 
 ## Rustdoc GUI tests
 tests/rustdoc-gui/src/**.lock
+
+## direnv
+/.envrc
+/.direnv/
+
+## nix
+/flake.nix
+flake.lock
+/default.nix
 
 # Before adding new lines, see the comment at the top.

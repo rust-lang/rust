@@ -1,9 +1,6 @@
-//@ ignore-windows failing on win32 bot
+//@ ignore-windows-gnu: #128981
 //@ ignore-android: FIXME(#10381)
 //@ compile-flags:-g
-//@ min-gdb-version: 8.1
-//@ ignore-gdb-version: 7.11.90 - 8.0.9
-//@ min-lldb-version: 310
 
 // === GDB TESTS ===================================================================================
 

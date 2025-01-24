@@ -5,11 +5,11 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::{Diag, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_macros::HashStable;
-use rustc_session::lint::builtin::{self, FORBIDDEN_LINT_GROUPS};
-use rustc_session::lint::{FutureIncompatibilityReason, Level, Lint, LintId};
 use rustc_session::Session;
+use rustc_session::lint::builtin::{self, FORBIDDEN_LINT_GROUPS};
+use rustc_session::lint::{FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
-use rustc_span::{symbol, DesugaringKind, Span, Symbol, DUMMY_SP};
+use rustc_span::{DUMMY_SP, DesugaringKind, Span, Symbol, kw};
 use tracing::instrument;
 
 use crate::ty::TyCtxt;
@@ -37,7 +37,7 @@ pub enum LintLevelSource {
 impl LintLevelSource {
     pub fn name(&self) -> Symbol {
         match *self {
-            LintLevelSource::Default => symbol::kw::Default,
+            LintLevelSource::Default => kw::Default,
             LintLevelSource::Node { name, .. } => name,
             LintLevelSource::CommandLine(name, _) => name,
         }
@@ -61,6 +61,7 @@ pub type LevelAndSource = (Level, LintLevelSource);
 /// by the attributes for *a single HirId*.
 #[derive(Default, Debug, HashStable)]
 pub struct ShallowLintLevelMap {
+    pub expectations: Vec<(LintExpectationId, LintExpectation)>,
     pub specs: SortedMap<ItemLocalId, FxIndexMap<LintId, LevelAndSource>>,
 }
 
@@ -228,9 +229,11 @@ pub fn explain_lint_level_source(
                 err.note_once(format!(
                     "`{flag} {hyphen_case_lint_name}` implied by `{flag} {hyphen_case_flag_val}`"
                 ));
-                err.help_once(format!(
-                    "to override `{flag} {hyphen_case_flag_val}` add `#[allow({name})]`"
-                ));
+                if matches!(orig_level, Level::Warn | Level::Deny) {
+                    err.help_once(format!(
+                        "to override `{flag} {hyphen_case_flag_val}` add `#[allow({name})]`"
+                    ));
+                }
             }
         }
         LintLevelSource::Node { name: lint_attr_name, span, reason, .. } => {
@@ -287,12 +290,7 @@ pub fn lint_level(
         let has_future_breakage = future_incompatible.map_or(
             // Default allow lints trigger too often for testing.
             sess.opts.unstable_opts.future_incompat_test && lint.default_level != Level::Allow,
-            |incompat| {
-                matches!(
-                    incompat.reason,
-                    FutureIncompatibilityReason::FutureReleaseErrorReportInDeps
-                )
-            },
+            |incompat| incompat.reason.has_future_breakage(),
         );
 
         // Convert lint level to error level.
@@ -378,6 +376,17 @@ pub fn lint_level(
                 }
                 FutureIncompatibilityReason::EditionSemanticsChange(edition) => {
                     format!("this changes meaning in Rust {edition}")
+                }
+                FutureIncompatibilityReason::EditionAndFutureReleaseError(edition) => {
+                    format!(
+                        "this was previously accepted by the compiler but is being phased out; \
+                         it will become a hard error in Rust {edition} and in a future release in all editions!"
+                    )
+                }
+                FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(edition) => {
+                    format!(
+                        "this changes meaning in Rust {edition} and in a future release in all editions!"
+                    )
                 }
                 FutureIncompatibilityReason::Custom(reason) => reason.to_owned(),
             };

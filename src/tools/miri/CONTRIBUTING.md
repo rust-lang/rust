@@ -8,9 +8,61 @@ find useful.
 Check out the issues on this GitHub repository for some ideas. In particular,
 look for the green `E-*` labels which mark issues that should be rather
 well-suited for onboarding. For more ideas or help with hacking on Miri, you can
-contact us (`oli-obk` and `RalfJ`) on the [Rust Zulip].
+contact us on the [Rust Zulip]. See the [Rust website](https://www.rust-lang.org/governance/teams/compiler#team-miri)
+for a list of Miri maintainers.
 
 [Rust Zulip]: https://rust-lang.zulipchat.com
+
+### Pull review process
+
+When you get a review, please take care of the requested changes in new commits. Do not amend
+existing commits. Generally avoid force-pushing. The only time you should force push is when there
+is a conflict with the master branch (in that case you should rebase across master, not merge), and
+all the way at the end of the review process when the reviewer tells you that the PR is done and you
+should squash the commits. For the latter case, use `git rebase --keep-base ...` to squash without
+changing the base commit your PR branches off of. Use your own judgment and the reviewer's guidance
+to decide whether the PR should be squashed into a single commit or multiple logically separate
+commits. (All this is to work around the fact that Github is quite bad at dealing with force pushes
+and does not support `git range-diff`. Maybe one day Github will be good at git and then life can
+become easier.)
+
+Most PRs bounce back and forth between the reviewer and the author several times, so it is good to
+keep track of who is expected to take the next step. We are using the `S-waiting-for-review` and
+`S-waiting-for-author` labels for that. If a reviewer asked you to do some changes and you think
+they are all taken care of, post a comment saying `@rustbot ready` to mark a PR as ready for the
+next round of review.
+
+### Larger-scale contributions
+
+If you are thinking about making a larger-scale contribution -- in particular anything that needs
+more than can reasonably fit in a single PR to be feature-complete -- then please talk to us before
+writing significant amounts of code. Generally, we will ask that you follow a three-step "project"
+process for such contributions:
+
+1. Clearly define the **goal** of the project. This defines the scope of the project, i.e. which
+   part of which APIs should be supported. If this involves functions that expose a big API surface
+   with lots of flags, the project may want to support only a tiny subset of flags; that should be
+   documented. A good way to express the goal is with one or more test cases that Miri should be
+   able to successfully execute when the project is completed. It is a good idea to get feedback
+   from team members already at this stage to ensure that the project is reasonably scoped and
+   aligns with our interests.
+2. Make a **design** for how to realize the goal. A larger project will likely have to do global
+   changes to Miri, like adding new global state to the `Machine` type or new methods to the
+   `FileDescription` trait. Often we have to iterate on those changes, which can quite substantially
+   change how the final implementation looks like.
+
+    The design should be reasonably concrete, i.e. for new global state or methods the corresponding
+   Rust types and method signatures should be spelled out. We realize that it can be hard to make a
+   design without doing implementation work, in particular if you are not yet familiar with the
+   codebase. Doing draft implementations in phase 2 of this process is perfectly fine, just please
+   be aware that we might request fundamental changes that can require significantly reworking what
+   you already did. If you open a PR in this stage, please clearly indicate that this project is
+   still in the design stage.
+
+3. Finish the **implementation** and have it reviewed.
+
+This process is largely informal, and its primary goal is to more clearly communicate expectations.
+Please get in touch with us if you have any questions!
 
 ## Preparing the build environment
 
@@ -160,50 +212,48 @@ Miri comes with a few benchmarks; you can run `./miri bench` to run them with th
 Miri. Note: this will run `./miri install` as a side-effect. Also requires `hyperfine` to be
 installed (`cargo install hyperfine`).
 
+To compare the benchmark results with a baseline, do the following:
+- Before applying your changes, run `./miri bench --save-baseline=baseline.json`.
+- Then do your changes.
+- Then run `./miri bench --load-baseline=baseline.json`; the results will include
+  a comparison with the baseline.
+
+You can run only some of the benchmarks by listing them, e.g. `./miri bench mse`.
+The names refer to the folders in `bench-cargo-miri`.
+
 ## Configuring `rust-analyzer`
 
-To configure `rust-analyzer` and VS Code for working on Miri, save the following
-to `.vscode/settings.json` in your local Miri clone:
+To configure `rust-analyzer` and the IDE for working on Miri, copy one of the provided
+configuration files according to the instructions below. You can also set up a symbolic
+link to keep the configuration in sync with our recommendations.
 
-```json
-{
-    "rust-analyzer.rustc.source": "discover",
-    "rust-analyzer.linkedProjects": [
-        "Cargo.toml",
-        "cargo-miri/Cargo.toml",
-        "miri-script/Cargo.toml",
-    ],
-    "rust-analyzer.check.overrideCommand": [
-        "env",
-        "MIRI_AUTO_OPS=no",
-        "./miri",
-        "cargo",
-        "clippy", // make this `check` when working with a locally built rustc
-        "--message-format=json",
-        "--all-targets",
-    ],
-    // Contrary to what the name suggests, this also affects proc macros.
-    "rust-analyzer.cargo.buildScripts.overrideCommand": [
-        "env",
-        "MIRI_AUTO_OPS=no",
-        "./miri",
-        "cargo",
-        "check",
-        "--message-format=json",
-        "--all-targets",
-    ],
-}
-```
+### Visual Studio Code
 
-> #### Note
->
-> If you are [building Miri with a locally built rustc][], set
-> `rust-analyzer.rustcSource` to the relative path from your Miri clone to the
-> root `Cargo.toml` of the locally built rustc. For example, the path might look
-> like `../rust/Cargo.toml`.
+Copy [`etc/rust_analyzer_vscode.json`] to `.vscode/settings.json` in the project root directory.
+
+[`etc/rust_analyzer_vscode.json`]: https://github.com/rust-lang/miri/blob/master/etc/rust_analyzer_vscode.json
+
+### Helix
+
+Copy [`etc/rust_analyzer_helix.toml`] to `.helix/languages.toml` in the project root directory.
+
+Since working on Miri requires a custom toolchain, and Helix requires the language server
+to be installed with the toolchain, you have to run `./miri toolchain -c rust-analyzer`
+when installing the Miri toolchain. Alternatively, set the `RUSTUP_TOOLCHAIN` environment variable according to
+[the documentation](https://rust-analyzer.github.io/manual.html#toolchain).
+
+[`etc/rust_analyzer_helix.toml`]: https://github.com/rust-lang/miri/blob/master/etc/rust_analyzer_helix.toml
+
+### Advanced configuration
+
+If you are building Miri with a locally built rustc, set
+`rust-analyzer.rustcSource` to the relative path from your Miri clone to the
+root `Cargo.toml` of the locally built rustc. For example, the path might look
+like `../rust/Cargo.toml`. In addition to that, replace `clippy` by `check`
+in the `rust-analyzer.check.overrideCommand` setting.
 
 See the rustc-dev-guide's docs on ["Configuring `rust-analyzer` for `rustc`"][rdg-r-a]
-for more information about configuring VS Code and `rust-analyzer`.
+for more information about configuring the IDE and `rust-analyzer`.
 
 [rdg-r-a]: https://rustc-dev-guide.rust-lang.org/building/suggested.html#configuring-rust-analyzer-for-rustc
 
@@ -240,7 +290,7 @@ We use the [`josh` proxy](https://github.com/josh-project/josh) to transmit chan
 rustc and Miri repositories. You can install it as follows:
 
 ```sh
-RUSTFLAGS="--cap-lints=warn" cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r23.12.04
+cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r24.10.04
 ```
 
 Josh will automatically be started and stopped by `./miri`.
@@ -309,6 +359,7 @@ anyone but Miri itself. They are used to communicate between different Miri
 binaries, and as such worth documenting:
 
 * `CARGO_EXTRA_FLAGS` is understood by `./miri` and passed to all host cargo invocations.
+  It is reserved for CI usage; setting the wrong flags this way can easily confuse the script.
 * `MIRI_BE_RUSTC` can be set to `host` or `target`. It tells the Miri driver to
   actually not interpret the code but compile it like rustc would. With `target`, Miri sets
   some compiler flags to prepare the code for interpretation; with `host`, this is not done.

@@ -1,7 +1,7 @@
+use crate::sync::OnceLock;
 use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::SeqCst;
 use crate::sync::mpsc::channel;
-use crate::sync::OnceLock;
 use crate::{panic, thread};
 
 fn spawn_and_wait<R: Send + 'static>(f: impl FnOnce() -> R + Send + 'static) -> R {
@@ -9,7 +9,7 @@ fn spawn_and_wait<R: Send + 'static>(f: impl FnOnce() -> R + Send + 'static) -> 
 }
 
 #[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
 fn sync_once_cell() {
     static ONCE_CELL: OnceLock<i32> = OnceLock::new();
 
@@ -43,7 +43,7 @@ fn sync_once_cell_get_unchecked() {
 }
 
 #[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
 fn sync_once_cell_drop() {
     static DROP_CNT: AtomicUsize = AtomicUsize::new(0);
     struct Dropper;
@@ -81,6 +81,7 @@ fn clone() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn get_or_try_init() {
     let cell: OnceLock<String> = OnceLock::new();
     assert!(cell.get().is_none());
@@ -154,7 +155,7 @@ fn eval_once_macro() {
 }
 
 #[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
 fn sync_once_cell_does_not_leak_partially_constructed_boxes() {
     static ONCE_CELL: OnceLock<String> = OnceLock::new();
 

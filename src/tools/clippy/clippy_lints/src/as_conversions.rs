@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -52,13 +52,15 @@ impl<'tcx> LateLintPass<'tcx> for AsConversions {
             && !in_external_macro(cx.sess(), expr.span)
             && !is_from_proc_macro(cx, expr)
         {
-            span_lint_and_help(
+            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+            span_lint_and_then(
                 cx,
                 AS_CONVERSIONS,
                 expr.span,
                 "using a potentially dangerous silent `as` conversion",
-                None,
-                "consider using a safe wrapper for this conversion",
+                |diag| {
+                    diag.help("consider using a safe wrapper for this conversion");
+                },
             );
         }
     }

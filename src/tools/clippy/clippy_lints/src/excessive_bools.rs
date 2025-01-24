@@ -5,8 +5,8 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, Item, ItemKind, TraitFn, TraitItem, TraitItemKind, Ty};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
+use rustc_span::def_id::LocalDefId;
 use rustc_target::spec::abi::Abi;
 
 declare_clippy_lint! {
@@ -165,7 +165,7 @@ impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
             && fn_header.abi == Abi::Rust
             && fn_decl.inputs.len() as u64 > self.max_fn_params_bools
             && get_parent_as_impl(cx.tcx, cx.tcx.local_def_id_to_hir_id(def_id))
-                .map_or(true, |impl_item| impl_item.of_trait.is_none())
+                .is_none_or(|impl_item| impl_item.of_trait.is_none())
         {
             check_fn_decl(cx, fn_decl, span, self.max_fn_params_bools);
         }

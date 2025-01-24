@@ -1,0 +1,152 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/autodiff_illegal.rs:54:5
+   |
+LL |     #[autodiff(df7, Forward, Dual)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: Duplicated can not be used for this type
+  --> $DIR/autodiff_illegal.rs:14:14
+   |
+LL | pub fn f1(x: f64) {
+   |              ^^^
+
+error: expected 1 activities, but found 2
+  --> $DIR/autodiff_illegal.rs:20:1
+   |
+LL | #[autodiff(df3, Reverse, Duplicated, Const)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected 1 activities, but found 0
+  --> $DIR/autodiff_illegal.rs:27:1
+   |
+LL | #[autodiff(df4, Reverse)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: Dual can not be used in Reverse Mode
+  --> $DIR/autodiff_illegal.rs:34:1
+   |
+LL | #[autodiff(df5, Reverse, Dual)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: Duplicated can not be used in Forward Mode
+  --> $DIR/autodiff_illegal.rs:41:1
+   |
+LL | #[autodiff(df6, Forward, Duplicated)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: Duplicated can not be used for this type
+  --> $DIR/autodiff_illegal.rs:42:14
+   |
+LL | pub fn f6(x: f64) {
+   |              ^^^
+
+error: autodiff must be applied to function
+  --> $DIR/autodiff_illegal.rs:51:5
+   |
+LL |     let mut x = 5;
+   |     ^^^^^^^^^^^^^^
+
+error: autodiff must be applied to function
+  --> $DIR/autodiff_illegal.rs:55:5
+   |
+LL |     x = x + 3;
+   |     ^
+
+error: autodiff must be applied to function
+  --> $DIR/autodiff_illegal.rs:60:5
+   |
+LL |     let add_one_v2 = |x: u32| -> u32 { x + 1 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: autodiff must be applied to function
+  --> $DIR/autodiff_illegal.rs:66:1
+   |
+LL | / pub fn f7(x: f64) {
+LL | |
+LL | |     unimplemented!()
+LL | | }
+   | |_^
+
+error: autodiff requires at least a name and mode
+  --> $DIR/autodiff_illegal.rs:73:1
+   |
+LL | / pub fn f8(x: f64) {
+LL | |
+LL | |     unimplemented!()
+LL | | }
+   | |_^
+
+error: autodiff must be applied to function
+  --> $DIR/autodiff_illegal.rs:80:1
+   |
+LL | / pub fn f9(x: f64) {
+LL | |
+LL | |     unimplemented!()
+LL | | }
+   | |_^
+
+error[E0428]: the name `fn_exists` is defined multiple times
+  --> $DIR/autodiff_illegal.rs:88:1
+   |
+LL | fn fn_exists() {}
+   | -------------- previous definition of the value `fn_exists` here
+...
+LL | #[autodiff(fn_exists, Reverse, Active)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `fn_exists` redefined here
+   |
+   = note: `fn_exists` must be defined only once in the value namespace of this module
+   = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: autodiff requires at least a name and mode
+  --> $DIR/autodiff_illegal.rs:96:1
+   |
+LL | / pub fn f11() {
+LL | |
+LL | |     unimplemented!()
+LL | | }
+   | |_^
+
+error: unknown Mode: `Debug`. Use `Forward` or `Reverse`
+  --> $DIR/autodiff_illegal.rs:102:18
+   |
+LL | #[autodiff(df12, Debug)]
+   |                  ^^^^^
+
+error: did not recognize Activity: `Reverse`
+  --> $DIR/autodiff_illegal.rs:110:27
+   |
+LL | #[autodiff(df13, Forward, Reverse)]
+   |                           ^^^^^^^
+
+error[E0433]: failed to resolve: use of undeclared type `MyFloat`
+  --> $DIR/autodiff_illegal.rs:131:1
+   |
+LL | #[autodiff(df15, Reverse, Active, Active)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `MyFloat`
+   |
+   = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: use of undeclared type `F64Trans`
+  --> $DIR/autodiff_illegal.rs:153:1
+   |
+LL | #[autodiff(df18, Reverse, Active, Active)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `F64Trans`
+   |
+   = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 19 previous errors
+
+Some errors have detailed explanations: E0428, E0433, E0658.
+For more information about an error, try `rustc --explain E0428`.

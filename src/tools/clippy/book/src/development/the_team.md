@@ -72,7 +72,7 @@ you to the alumni group. You're always welcome to come back.
 
 ## The Clippy Team
 
-[The Clippy team](https://www.rust-lang.org/governance/teams/dev-tools#Clippy%20team)
+[The Clippy team](https://www.rust-lang.org/governance/teams/dev-tools#team-clippy)
 is responsible for maintaining Clippy.
 
 ### Duties

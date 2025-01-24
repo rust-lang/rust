@@ -44,8 +44,8 @@ use std::io::{self, IsTerminal};
 
 use tracing_core::{Event, Subscriber};
 use tracing_subscriber::filter::{Directive, EnvFilter, LevelFilter};
-use tracing_subscriber::fmt::format::{self, FormatEvent, FormatFields};
 use tracing_subscriber::fmt::FmtContext;
+use tracing_subscriber::fmt::format::{self, FormatEvent, FormatFields};
 use tracing_subscriber::layer::SubscriberExt;
 
 /// The values of all the environment variables that matter for configuring a logger.
@@ -130,11 +130,11 @@ pub fn init_logger(cfg: LoggerConfig) -> Result<(), Error> {
 
     let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
     match cfg.backtrace {
-        Ok(str) => {
+        Ok(backtrace_target) => {
             let fmt_layer = tracing_subscriber::fmt::layer()
                 .with_writer(io::stderr)
                 .without_time()
-                .event_format(BacktraceFormatter { backtrace_target: str });
+                .event_format(BacktraceFormatter { backtrace_target });
             let subscriber = subscriber.with(fmt_layer);
             tracing::subscriber::set_global_default(subscriber).unwrap();
         }

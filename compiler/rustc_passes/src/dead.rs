@@ -5,8 +5,9 @@
 
 use std::mem;
 
-use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use hir::ItemKind;
+use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
+use rustc_abi::FieldIdx;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::MultiSpan;
 use rustc_hir as hir;
@@ -21,8 +22,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_session::lint::builtin::DEAD_CODE;
-use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::FieldIdx;
+use rustc_span::{Symbol, sym};
 
 use crate::errors::{
     ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UselessAssignment,
@@ -41,6 +41,7 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
             | Node::TraitItem(..)
             | Node::Variant(..)
             | Node::AnonConst(..)
+            | Node::OpaqueTy(..)
     )
 }
 
@@ -272,7 +273,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             data.get(expr.hir_id).expect("no offset_of_data for offset_of");
 
         let body_did = self.typeck_results().hir_owner.to_def_id();
-        let param_env = self.tcx.param_env(body_did);
+        let typing_env = ty::TypingEnv::non_body_analysis(self.tcx, body_did);
 
         let mut current_ty = container;
 
@@ -284,13 +285,13 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     self.insert_def_id(field.did);
                     let field_ty = field.ty(self.tcx, args);
 
-                    current_ty = self.tcx.normalize_erasing_regions(param_env, field_ty);
+                    current_ty = self.tcx.normalize_erasing_regions(typing_env, field_ty);
                 }
                 // we don't need to mark tuple fields as live,
                 // but we may need to mark subfields
                 ty::Tuple(tys) => {
                     current_ty =
-                        self.tcx.normalize_erasing_regions(param_env, tys[field.as_usize()]);
+                        self.tcx.normalize_erasing_regions(typing_env, tys[field.as_usize()]);
                 }
                 _ => span_bug!(expr.span, "named field access on non-ADT"),
             }
@@ -394,7 +395,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             }
         }
 
-        return false;
+        false
     }
 
     fn visit_node(&mut self, node: Node<'tcx>) {
@@ -439,7 +440,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 _ => intravisit::walk_item(self, item),
             },
             Node::TraitItem(trait_item) => {
-                // mark corresponing ImplTerm live
+                // mark corresponding ImplTerm live
                 let trait_item_id = trait_item.owner_id.to_def_id();
                 if let Some(trait_id) = self.tcx.trait_of_item(trait_item_id) {
                     // mark the trait live
@@ -494,6 +495,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             Node::ForeignItem(foreign_item) => {
                 intravisit::walk_foreign_item(self, foreign_item);
             }
+            Node::OpaqueTy(opaq) => intravisit::walk_opaque_ty(self, opaq),
             _ => {}
         }
         self.repr_has_repr_simd = had_repr_simd;
@@ -653,14 +655,6 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) {
         self.handle_res(path.res);
         intravisit::walk_path(self, path);
-    }
-
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
-        if let TyKind::OpaqueDef(item_id, _, _) = ty.kind {
-            let item = self.tcx.hir().item(item_id);
-            intravisit::walk_item(self, item);
-        }
-        intravisit::walk_ty(self, ty);
     }
 
     fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
@@ -950,7 +944,10 @@ impl<'tcx> DeadVisitor<'tcx> {
         if is_positional
             && self
                 .tcx
-                .layout_of(self.tcx.param_env(field.did).and(field_type))
+                .layout_of(
+                    ty::TypingEnv::non_body_analysis(self.tcx, field.did)
+                        .as_query_input(field_type),
+                )
                 .map_or(true, |layout| layout.is_zst())
         {
             return ShouldWarnAboutField::No;
@@ -1035,7 +1032,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         };
 
         let encl_def_id = parent_item.unwrap_or(first_item.def_id);
-        // If parent of encl_def_id is an enum, use the parent ID intead.
+        // If parent of encl_def_id is an enum, use the parent ID instead.
         let encl_def_id = get_parent_if_enum_variant(tcx, encl_def_id);
 
         let ignored_derived_impls =
@@ -1234,7 +1231,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
                     continue;
                 }
 
-                let is_positional = variant.fields.raw.first().map_or(false, |field| {
+                let is_positional = variant.fields.raw.first().is_some_and(|field| {
                     field.name.as_str().starts_with(|c: char| c.is_ascii_digit())
                 });
                 let report_on =

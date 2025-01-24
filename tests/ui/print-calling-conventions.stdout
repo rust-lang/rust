@@ -1,5 +1,6 @@
 C
 C-cmse-nonsecure-call
+C-cmse-nonsecure-entry
 C-unwind
 Rust
 aapcs
@@ -11,6 +12,7 @@ cdecl-unwind
 efiapi
 fastcall
 fastcall-unwind
+gpu-kernel
 msp430-interrupt
 ptx-kernel
 riscv-interrupt-m

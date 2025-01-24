@@ -1,12 +1,13 @@
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::infer::InferOk;
+use rustc_infer::infer::resolve::OpportunisticRegionResolver;
+use rustc_infer::traits::query::type_op::ImpliedOutlivesBounds;
 use rustc_macros::extension;
 use rustc_middle::infer::canonical::{OriginalQueryValues, QueryRegionConstraints};
-use rustc_middle::span_bug;
 pub use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, ParamEnv, Ty, TypeFolder, TypeVisitableExt};
 use rustc_span::def_id::LocalDefId;
+use tracing::instrument;
 
 use crate::infer::InferCtxt;
 use crate::traits::{ObligationCause, ObligationCtxt};
@@ -53,11 +54,12 @@ fn implied_outlives_bounds<'a, 'tcx>(
     assert!(!ty.has_non_region_infer());
 
     let mut canonical_var_values = OriginalQueryValues::default();
-    let canonical_ty = infcx.canonicalize_query(param_env.and(ty), &mut canonical_var_values);
+    let input = ImpliedOutlivesBounds { ty };
+    let canonical = infcx.canonicalize_query(param_env.and(input), &mut canonical_var_values);
     let implied_bounds_result = if compat {
-        infcx.tcx.implied_outlives_bounds_compat(canonical_ty)
+        infcx.tcx.implied_outlives_bounds_compat(canonical)
     } else {
-        infcx.tcx.implied_outlives_bounds(canonical_ty)
+        infcx.tcx.implied_outlives_bounds(canonical)
     };
     let Ok(canonical_result) = implied_bounds_result else {
         return vec![];
@@ -76,23 +78,19 @@ fn implied_outlives_bounds<'a, 'tcx>(
     else {
         return vec![];
     };
-    assert_eq!(&obligations, &[]);
+    assert_eq!(obligations.len(), 0);
 
     // Because of #109628, we may have unexpected placeholders. Ignore them!
     // FIXME(#109628): panic in this case once the issue is fixed.
     bounds.retain(|bound| !bound.has_placeholders());
 
     if !constraints.is_empty() {
-        debug!(?constraints);
-        if !constraints.member_constraints.is_empty() {
-            span_bug!(span, "{:#?}", constraints.member_constraints);
-        }
-
+        let QueryRegionConstraints { outlives } = constraints;
         // Instantiation may have produced new inference variables and constraints on those
         // variables. Process these constraints.
         let ocx = ObligationCtxt::new(infcx);
         let cause = ObligationCause::misc(span, body_id);
-        for &constraint in &constraints.outlives {
+        for &constraint in &outlives {
             ocx.register_obligation(infcx.query_outlives_constraint_to_obligation(
                 constraint,
                 cause.clone(),

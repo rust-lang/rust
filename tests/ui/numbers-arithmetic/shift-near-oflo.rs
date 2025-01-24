@@ -1,6 +1,9 @@
 //@ run-pass
 //@ compile-flags: -C debug-assertions
 
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 // Check that we do *not* overflow on a number of edge cases.
 // (compare with test/run-fail/overflowing-{lsh,rsh}*.rs)
 

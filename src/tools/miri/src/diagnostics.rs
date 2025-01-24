@@ -1,9 +1,9 @@
 use std::fmt::{self, Write};
 use std::num::NonZero;
 
+use rustc_abi::{Align, Size};
 use rustc_errors::{Diag, DiagMessage, Level};
-use rustc_span::{SpanData, Symbol, DUMMY_SP};
-use rustc_target::abi::{Align, Size};
+use rustc_span::{DUMMY_SP, SpanData, Symbol};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;
 use crate::borrow_tracker::tree_borrows::diagnostics as tree_diagnostics;
@@ -12,7 +12,7 @@ use crate::*;
 /// Details of premature program termination.
 pub enum TerminationInfo {
     Exit {
-        code: i64,
+        code: i32,
         leak_check: bool,
     },
     Abort(String),
@@ -116,7 +116,6 @@ pub enum NonHaltingDiagnostic {
     CreatedPointerTag(NonZero<u64>, Option<String>, Option<(AllocId, AllocRange, ProvenanceExtra)>),
     /// This `Item` was popped from the borrow stack. The string explains the reason.
     PoppedPointerTag(Item, String),
-    CreatedCallId(CallId),
     CreatedAlloc(AllocId, Size, Align, MemoryKind),
     FreedAlloc(AllocId),
     AccessedAlloc(AllocId, AccessKind),
@@ -127,6 +126,7 @@ pub enum NonHaltingDiagnostic {
     Int2Ptr {
         details: bool,
     },
+    NativeCallSharedMem,
     WeakMemoryOutdatedLoad {
         ptr: Pointer,
     },
@@ -196,7 +196,7 @@ pub fn prune_stacktrace<'tcx>(
                 // This len check ensures that we don't somehow remove every frame, as doing so breaks
                 // the primary error message.
                 while stacktrace.len() > 1
-                    && stacktrace.last().map_or(false, |frame| !machine.is_local(frame))
+                    && stacktrace.last().is_some_and(|frame| !machine.is_local(frame))
                 {
                     stacktrace.pop();
                 }
@@ -214,8 +214,8 @@ pub fn prune_stacktrace<'tcx>(
 pub fn report_error<'tcx>(
     ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
     e: InterpErrorInfo<'tcx>,
-) -> Option<(i64, bool)> {
-    use InterpError::*;
+) -> Option<(i32, bool)> {
+    use InterpErrorKind::*;
     use UndefinedBehaviorInfo::*;
 
     let mut msg = vec![];
@@ -224,7 +224,7 @@ pub fn report_error<'tcx>(
         let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
         use TerminationInfo::*;
         let title = match info {
-            Exit { code, leak_check } => return Some((*code, *leak_check)),
+            &Exit { code, leak_check } => return Some((code, leak_check)),
             Abort(_) => Some("abnormal termination"),
             UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance | UnsupportedForeignItem(_) =>
                 Some("unsupported operation"),
@@ -474,14 +474,14 @@ pub fn report_leaks<'tcx>(
     leaks: Vec<(AllocId, MemoryKind, Allocation<Provenance, AllocExtra<'tcx>, MiriAllocBytes>)>,
 ) {
     let mut any_pruned = false;
-    for (id, kind, mut alloc) in leaks {
+    for (id, kind, alloc) in leaks {
         let mut title = format!(
             "memory leaked: {id:?} ({}, size: {:?}, align: {:?})",
             kind,
             alloc.size().bytes(),
             alloc.align.bytes()
         );
-        let Some(backtrace) = alloc.extra.backtrace.take() else {
+        let Some(backtrace) = alloc.extra.backtrace else {
             ecx.tcx.dcx().err(title);
             continue;
         };
@@ -603,11 +603,12 @@ impl<'tcx> MiriMachine<'tcx> {
             RejectedIsolatedOp(_) =>
                 ("operation rejected by isolation".to_string(), DiagLevel::Warning),
             Int2Ptr { .. } => ("integer-to-pointer cast".to_string(), DiagLevel::Warning),
+            NativeCallSharedMem =>
+                ("sharing memory with a native function".to_string(), DiagLevel::Warning),
             ExternTypeReborrow =>
                 ("reborrow of reference to `extern type`".to_string(), DiagLevel::Warning),
             CreatedPointerTag(..)
             | PoppedPointerTag(..)
-            | CreatedCallId(..)
             | CreatedAlloc(..)
             | AccessedAlloc(..)
             | FreedAlloc(..)
@@ -625,7 +626,6 @@ impl<'tcx> MiriMachine<'tcx> {
                     "created tag {tag:?} with {perm} at {alloc_id:?}{range:?} derived from {orig_tag:?}"
                 ),
             PoppedPointerTag(item, cause) => format!("popped tracked tag for item {item:?}{cause}"),
-            CreatedCallId(id) => format!("function call with id {id}"),
             CreatedAlloc(AllocId(id), size, align, kind) =>
                 format!(
                     "created {kind} allocation of {size} bytes (alignment {align} bytes) with id {id}",
@@ -640,6 +640,7 @@ impl<'tcx> MiriMachine<'tcx> {
             ProgressReport { .. } =>
                 format!("progress report: current operation being executed is here"),
             Int2Ptr { .. } => format!("integer-to-pointer cast"),
+            NativeCallSharedMem => format!("sharing memory with a native function called via FFI"),
             WeakMemoryOutdatedLoad { ptr } =>
                 format!("weak memory emulation: outdated value returned from load at {ptr}"),
             ExternTypeReborrow =>
@@ -682,7 +683,29 @@ impl<'tcx> MiriMachine<'tcx> {
                 }
                 v
             }
+            NativeCallSharedMem => {
+                vec![
+                    note!(
+                        "when memory is shared with a native function call, Miri stops tracking initialization and provenance for that memory"
+                    ),
+                    note!(
+                        "in particular, Miri assumes that the native call initializes all memory it has access to"
+                    ),
+                    note!(
+                        "Miri also assumes that any part of this memory may be a pointer that is permitted to point to arbitrary exposed memory"
+                    ),
+                    note!(
+                        "what this means is that Miri will easily miss Undefined Behavior related to incorrect usage of this shared memory, so you should not take a clean Miri run as a signal that your FFI code is UB-free"
+                    ),
+                ]
+            }
             ExternTypeReborrow => {
+                assert!(self.borrow_tracker.as_ref().is_some_and(|b| {
+                    matches!(
+                        b.borrow().borrow_tracker_method(),
+                        BorrowTrackerMethod::StackedBorrows
+                    )
+                }));
                 vec![
                     note!(
                         "`extern type` are not compatible with the Stacked Borrows aliasing model implemented by Miri; Miri may miss bugs in this code"

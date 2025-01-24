@@ -4,7 +4,7 @@ error: future cannot be sent between threads safely
 LL |     is_send(foo());
    |             ^^^^^ future returned by `foo` is not `Send`
    |
-   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `MutexGuard<'_, u32>`, which is required by `impl Future<Output = ()>: Send`
+   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `MutexGuard<'_, u32>`
 note: future is not `Send` as this value is used across an await
   --> $DIR/issue-64130-non-send-future-diags.rs:17:11
    |

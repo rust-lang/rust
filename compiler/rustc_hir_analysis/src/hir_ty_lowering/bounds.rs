@@ -4,20 +4,22 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
+use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::bug;
 use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TyCtxt};
-use rustc_span::symbol::Ident;
-use rustc_span::{sym, ErrorGuaranteed, Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::traits;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use smallvec::SmallVec;
+use tracing::{debug, instrument};
 
+use super::errors::GenericsArgsErrExtend;
 use crate::bounds::Bounds;
 use crate::errors;
 use crate::hir_ty_lowering::{
-    AssocItemQSelf, HirTyLowerer, OnlySelfBounds, PredicateFilter, RegionInferReason,
+    AssocItemQSelf, FeedConstTy, HirTyLowerer, PredicateFilter, RegionInferReason,
 };
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
@@ -41,33 +43,32 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut unbounds: SmallVec<[_; 1]> = SmallVec::new();
         let mut search_bounds = |hir_bounds: &'tcx [hir::GenericBound<'tcx>]| {
             for hir_bound in hir_bounds {
-                let hir::GenericBound::Trait(ptr, modifier) = hir_bound else {
+                let hir::GenericBound::Trait(ptr) = hir_bound else {
                     continue;
                 };
-                match modifier {
-                    hir::TraitBoundModifier::Maybe => unbounds.push(ptr),
-                    hir::TraitBoundModifier::Negative => {
+                match ptr.modifiers.polarity {
+                    hir::BoundPolarity::Maybe(_) => unbounds.push(ptr),
+                    hir::BoundPolarity::Negative(_) => {
                         if let Some(sized_def_id) = sized_def_id
                             && ptr.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
                         {
                             seen_negative_sized_bound = true;
                         }
                     }
-                    hir::TraitBoundModifier::None => {
+                    hir::BoundPolarity::Positive => {
                         if let Some(sized_def_id) = sized_def_id
                             && ptr.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
                         {
                             seen_positive_sized_bound = true;
                         }
                     }
-                    _ => {}
                 }
             }
         };
         search_bounds(hir_bounds);
         if let Some((self_ty, where_clause)) = self_ty_where_predicates {
             for clause in where_clause {
-                if let hir::WherePredicate::BoundPredicate(pred) = clause
+                if let hir::WherePredicateKind::BoundPredicate(pred) = clause.kind
                     && pred.is_param_bound(self_ty.to_def_id())
                 {
                     search_bounds(pred.bounds);
@@ -88,7 +89,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             };
             if seen_repeat {
                 self.dcx().emit_err(err);
-            } else if !tcx.features().more_maybe_bounds {
+            } else if !tcx.features().more_maybe_bounds() {
                 self.tcx().sess.create_feature_err(err, sym::more_maybe_bounds).emit();
             };
         }
@@ -141,34 +142,33 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// There is an implied binder around `param_ty` and `hir_bounds`.
     /// See `lower_poly_trait_ref` for more details.
     #[instrument(level = "debug", skip(self, hir_bounds, bounds))]
-    pub(crate) fn lower_poly_bounds<'hir, I: Iterator<Item = &'hir hir::GenericBound<'tcx>>>(
+    pub(crate) fn lower_bounds<'hir, I: IntoIterator<Item = &'hir hir::GenericBound<'tcx>>>(
         &self,
         param_ty: Ty<'tcx>,
         hir_bounds: I,
         bounds: &mut Bounds<'tcx>,
         bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
-        only_self_bounds: OnlySelfBounds,
+        predicate_filter: PredicateFilter,
     ) where
         'tcx: 'hir,
     {
         for hir_bound in hir_bounds {
+            // In order to avoid cycles, when we're lowering `SelfTraitThatDefines`,
+            // we skip over any traits that don't define the given associated type.
+            if let PredicateFilter::SelfTraitThatDefines(assoc_name) = predicate_filter {
+                if let Some(trait_ref) = hir_bound.trait_ref()
+                    && let Some(trait_did) = trait_ref.trait_def_id()
+                    && self.tcx().trait_may_define_assoc_item(trait_did, assoc_name)
+                {
+                    // Okay
+                } else {
+                    continue;
+                }
+            }
+
             match hir_bound {
-                hir::GenericBound::Trait(poly_trait_ref, modifier) => {
-                    let (constness, polarity) = match modifier {
-                        hir::TraitBoundModifier::Const => {
-                            (ty::BoundConstness::Const, ty::PredicatePolarity::Positive)
-                        }
-                        hir::TraitBoundModifier::MaybeConst => {
-                            (ty::BoundConstness::ConstIfConst, ty::PredicatePolarity::Positive)
-                        }
-                        hir::TraitBoundModifier::None => {
-                            (ty::BoundConstness::NotConst, ty::PredicatePolarity::Positive)
-                        }
-                        hir::TraitBoundModifier::Negative => {
-                            (ty::BoundConstness::NotConst, ty::PredicatePolarity::Negative)
-                        }
-                        hir::TraitBoundModifier::Maybe => continue,
-                    };
+                hir::GenericBound::Trait(poly_trait_ref) => {
+                    let hir::TraitBoundModifiers { constness, polarity } = poly_trait_ref.modifiers;
                     let _ = self.lower_poly_trait_ref(
                         &poly_trait_ref.trait_ref,
                         poly_trait_ref.span,
@@ -176,10 +176,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         polarity,
                         param_ty,
                         bounds,
-                        only_self_bounds,
+                        predicate_filter,
                     );
                 }
                 hir::GenericBound::Outlives(lifetime) => {
+                    // `ConstIfConst` is only interested in `~const` bounds.
+                    if matches!(
+                        predicate_filter,
+                        PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst
+                    ) {
+                        continue;
+                    }
+
                     let region = self.lower_lifetime(lifetime, RegionInferReason::OutlivesBound);
                     bounds.push_region_bound(
                         self.tcx(),
@@ -195,56 +203,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
         }
-    }
-
-    /// Lower HIR bounds into `bounds` given the self type `param_ty` and *no* overarching late-bound vars.
-    ///
-    /// ### Example
-    ///
-    /// ```ignore (illustrative)
-    /// fn foo<T: Bar + Baz>() { }
-    /// //     ^  ^^^^^^^^^ hir_bounds
-    /// //     param_ty
-    /// ```
-    pub(crate) fn lower_mono_bounds(
-        &self,
-        param_ty: Ty<'tcx>,
-        hir_bounds: &[hir::GenericBound<'tcx>],
-        filter: PredicateFilter,
-    ) -> Bounds<'tcx> {
-        let mut bounds = Bounds::default();
-
-        let only_self_bounds = match filter {
-            PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {
-                OnlySelfBounds(false)
-            }
-            PredicateFilter::SelfOnly | PredicateFilter::SelfThatDefines(_) => OnlySelfBounds(true),
-        };
-
-        self.lower_poly_bounds(
-            param_ty,
-            hir_bounds.iter().filter(|bound| match filter {
-                PredicateFilter::All
-                | PredicateFilter::SelfOnly
-                | PredicateFilter::SelfAndAssociatedTypeBounds => true,
-                PredicateFilter::SelfThatDefines(assoc_name) => {
-                    if let Some(trait_ref) = bound.trait_ref()
-                        && let Some(trait_did) = trait_ref.trait_def_id()
-                        && self.tcx().trait_may_define_assoc_item(trait_did, assoc_name)
-                    {
-                        true
-                    } else {
-                        false
-                    }
-                }
-            }),
-            &mut bounds,
-            ty::List::empty(),
-            only_self_bounds,
-        );
-        debug!(?bounds);
-
-        bounds
     }
 
     /// Lower an associated item constraint from the HIR into `bounds`.
@@ -264,7 +222,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         bounds: &mut Bounds<'tcx>,
         duplicates: &mut FxIndexMap<DefId, Span>,
         path_span: Span,
-        only_self_bounds: OnlySelfBounds,
+        predicate_filter: PredicateFilter,
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx();
 
@@ -331,74 +289,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .or_insert(constraint.span);
 
         let projection_term = if let ty::AssocKind::Fn = assoc_kind {
-            let mut emitted_bad_param_err = None;
-            // If we have an method return type bound, then we need to instantiate
-            // the method's early bound params with suitable late-bound params.
-            let mut num_bound_vars = candidate.bound_vars().len();
-            let args =
-                candidate.skip_binder().args.extend_to(tcx, assoc_item.def_id, |param, _| {
-                    let arg = match param.kind {
-                        ty::GenericParamDefKind::Lifetime => ty::Region::new_bound(
-                            tcx,
-                            ty::INNERMOST,
-                            ty::BoundRegion {
-                                var: ty::BoundVar::from_usize(num_bound_vars),
-                                kind: ty::BoundRegionKind::BrNamed(param.def_id, param.name),
-                            },
-                        )
-                        .into(),
-                        ty::GenericParamDefKind::Type { .. } => {
-                            let guar = *emitted_bad_param_err.get_or_insert_with(|| {
-                                self.dcx().emit_err(
-                                    crate::errors::ReturnTypeNotationIllegalParam::Type {
-                                        span: path_span,
-                                        param_span: tcx.def_span(param.def_id),
-                                    },
-                                )
-                            });
-                            Ty::new_error(tcx, guar).into()
-                        }
-                        ty::GenericParamDefKind::Const { .. } => {
-                            let guar = *emitted_bad_param_err.get_or_insert_with(|| {
-                                self.dcx().emit_err(
-                                    crate::errors::ReturnTypeNotationIllegalParam::Const {
-                                        span: path_span,
-                                        param_span: tcx.def_span(param.def_id),
-                                    },
-                                )
-                            });
-                            ty::Const::new_error(tcx, guar).into()
-                        }
-                    };
-                    num_bound_vars += 1;
-                    arg
-                });
-
-            // Next, we need to check that the return-type notation is being used on
-            // an RPITIT (return-position impl trait in trait) or AFIT (async fn in trait).
-            let output = tcx.fn_sig(assoc_item.def_id).skip_binder().output();
-            let output = if let ty::Alias(ty::Projection, alias_ty) = *output.skip_binder().kind()
-                && tcx.is_impl_trait_in_trait(alias_ty.def_id)
-            {
-                alias_ty.into()
-            } else {
-                return Err(self.dcx().emit_err(crate::errors::ReturnTypeNotationOnNonRpitit {
-                    span: constraint.span,
-                    ty: tcx.liberate_late_bound_regions(assoc_item.def_id, output),
-                    fn_span: tcx.hir().span_if_local(assoc_item.def_id),
-                    note: (),
-                }));
-            };
-
-            // Finally, move the fn return type's bound vars over to account for the early bound
-            // params (and trait ref's late bound params). This logic is very similar to
-            // `rustc_middle::ty::predicate::Clause::instantiate_supertrait`
-            // and it's no coincidence why.
-            let shifted_output = tcx.shift_bound_var_indices(num_bound_vars, output);
-            let instantiation_output = ty::EarlyBinder::bind(shifted_output).instantiate(tcx, args);
-
             let bound_vars = tcx.late_bound_vars(constraint.hir_id);
-            ty::Binder::bind_with_vars(instantiation_output, bound_vars)
+            ty::Binder::bind_with_vars(
+                self.lower_return_type_notation_ty(candidate, assoc_item.def_id, path_span)?.into(),
+                bound_vars,
+            )
         } else {
             // Create the generic arguments for the associated type or constant by joining the
             // parent arguments (the arguments of the trait) and the own arguments (the ones of
@@ -452,9 +347,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::AssocItemConstraintKind::Equality { term } => {
                 let term = match term {
                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
-                    hir::Term::Const(ct) => {
-                        ty::Const::from_const_arg(tcx, ct, ty::FeedConstTy::No).into()
-                    }
+                    hir::Term::Const(ct) => self.lower_const_arg(ct, FeedConstTy::No).into(),
                 };
 
                 // Find any late-bound regions declared in `ty` that are not
@@ -492,48 +385,324 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     },
                 );
 
-                bounds.push_projection_bound(
-                    tcx,
-                    projection_term.map_bound(|projection_term| ty::ProjectionPredicate {
-                        projection_term,
-                        term,
-                    }),
-                    constraint.span,
-                );
+                match predicate_filter {
+                    PredicateFilter::All
+                    | PredicateFilter::SelfOnly
+                    | PredicateFilter::SelfAndAssociatedTypeBounds => {
+                        bounds.push_projection_bound(
+                            tcx,
+                            projection_term.map_bound(|projection_term| ty::ProjectionPredicate {
+                                projection_term,
+                                term,
+                            }),
+                            constraint.span,
+                        );
+                    }
+                    // SelfTraitThatDefines is only interested in trait predicates.
+                    PredicateFilter::SelfTraitThatDefines(_) => {}
+                    // `ConstIfConst` is only interested in `~const` bounds.
+                    PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => {}
+                }
             }
             // Lower a constraint like `Item: Debug` as found in HIR bound `T: Iterator<Item: Debug>`
             // to a bound involving a projection: `<T as Iterator>::Item: Debug`.
             hir::AssocItemConstraintKind::Bound { bounds: hir_bounds } => {
-                // NOTE: If `only_self_bounds` is true, do NOT expand this associated type bound into
-                // a trait predicate, since we only want to add predicates for the `Self` type.
-                if !only_self_bounds.0 {
-                    let projection_ty = projection_term
-                        .map_bound(|projection_term| projection_term.expect_ty(self.tcx()));
-                    // Calling `skip_binder` is okay, because `lower_bounds` expects the `param_ty`
-                    // parameter to have a skipped binder.
-                    let param_ty = Ty::new_alias(tcx, ty::Projection, projection_ty.skip_binder());
-                    self.lower_poly_bounds(
-                        param_ty,
-                        hir_bounds.iter(),
-                        bounds,
-                        projection_ty.bound_vars(),
-                        only_self_bounds,
-                    );
+                match predicate_filter {
+                    PredicateFilter::All
+                    | PredicateFilter::SelfAndAssociatedTypeBounds
+                    | PredicateFilter::ConstIfConst => {
+                        let projection_ty = projection_term
+                            .map_bound(|projection_term| projection_term.expect_ty(self.tcx()));
+                        // Calling `skip_binder` is okay, because `lower_bounds` expects the `param_ty`
+                        // parameter to have a skipped binder.
+                        let param_ty =
+                            Ty::new_alias(tcx, ty::Projection, projection_ty.skip_binder());
+                        self.lower_bounds(
+                            param_ty,
+                            hir_bounds,
+                            bounds,
+                            projection_ty.bound_vars(),
+                            predicate_filter,
+                        );
+                    }
+                    PredicateFilter::SelfOnly
+                    | PredicateFilter::SelfTraitThatDefines(_)
+                    | PredicateFilter::SelfConstIfConst => {}
                 }
             }
         }
         Ok(())
     }
+
+    /// Lower a type, possibly specially handling the type if it's a return type notation
+    /// which we otherwise deny in other positions.
+    pub fn lower_ty_maybe_return_type_notation(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
+        let hir::TyKind::Path(qpath) = hir_ty.kind else {
+            return self.lower_ty(hir_ty);
+        };
+
+        let tcx = self.tcx();
+        match qpath {
+            hir::QPath::Resolved(opt_self_ty, path)
+                if let [mod_segments @ .., trait_segment, item_segment] = &path.segments[..]
+                    && item_segment.args.is_some_and(|args| {
+                        matches!(
+                            args.parenthesized,
+                            hir::GenericArgsParentheses::ReturnTypeNotation
+                        )
+                    }) =>
+            {
+                // We don't allow generics on the module segments.
+                let _ =
+                    self.prohibit_generic_args(mod_segments.iter(), GenericsArgsErrExtend::None);
+
+                let item_def_id = match path.res {
+                    Res::Def(DefKind::AssocFn, item_def_id) => item_def_id,
+                    Res::Err => {
+                        return Ty::new_error_with_message(
+                            tcx,
+                            hir_ty.span,
+                            "failed to resolve RTN",
+                        );
+                    }
+                    _ => bug!("only expected method resolution for fully qualified RTN"),
+                };
+                let trait_def_id = tcx.parent(item_def_id);
+
+                // Good error for `where Trait::method(..): Send`.
+                let Some(self_ty) = opt_self_ty else {
+                    return self.error_missing_qpath_self_ty(
+                        trait_def_id,
+                        hir_ty.span,
+                        item_segment,
+                    );
+                };
+                let self_ty = self.lower_ty(self_ty);
+
+                let trait_ref = self.lower_mono_trait_ref(
+                    hir_ty.span,
+                    trait_def_id,
+                    self_ty,
+                    trait_segment,
+                    false,
+                );
+
+                // SUBTLE: As noted at the end of `try_append_return_type_notation_params`
+                // in `resolve_bound_vars`, we stash the explicit bound vars of the where
+                // clause onto the item segment of the RTN type. This allows us to know
+                // how many bound vars are *not* coming from the signature of the function
+                // from lowering RTN itself.
+                //
+                // For example, in `where for<'a> <T as Trait<'a>>::method(..): Other`,
+                // the `late_bound_vars` of the where clause predicate (i.e. this HIR ty's
+                // parent) will include `'a` AND all the early- and late-bound vars of the
+                // method. But when lowering the RTN type, we just want the list of vars
+                // we used to resolve the trait ref. We explicitly stored those back onto
+                // the item segment, since there's no other good place to put them.
+                let candidate =
+                    ty::Binder::bind_with_vars(trait_ref, tcx.late_bound_vars(item_segment.hir_id));
+
+                match self.lower_return_type_notation_ty(candidate, item_def_id, hir_ty.span) {
+                    Ok(ty) => Ty::new_alias(tcx, ty::Projection, ty),
+                    Err(guar) => Ty::new_error(tcx, guar),
+                }
+            }
+            hir::QPath::TypeRelative(qself, item_segment)
+                if item_segment.args.is_some_and(|args| {
+                    matches!(args.parenthesized, hir::GenericArgsParentheses::ReturnTypeNotation)
+                }) =>
+            {
+                match self
+                    .resolve_type_relative_return_type_notation(
+                        qself,
+                        item_segment,
+                        hir_ty.hir_id,
+                        hir_ty.span,
+                    )
+                    .and_then(|(candidate, item_def_id)| {
+                        self.lower_return_type_notation_ty(candidate, item_def_id, hir_ty.span)
+                    }) {
+                    Ok(ty) => Ty::new_alias(tcx, ty::Projection, ty),
+                    Err(guar) => Ty::new_error(tcx, guar),
+                }
+            }
+            _ => self.lower_ty(hir_ty),
+        }
+    }
+
+    /// Perform type-dependent lookup for a *method* for return type notation.
+    /// This generally mirrors `<dyn HirTyLowerer>::lower_assoc_path`.
+    fn resolve_type_relative_return_type_notation(
+        &self,
+        qself: &'tcx hir::Ty<'tcx>,
+        item_segment: &'tcx hir::PathSegment<'tcx>,
+        qpath_hir_id: HirId,
+        span: Span,
+    ) -> Result<(ty::PolyTraitRef<'tcx>, DefId), ErrorGuaranteed> {
+        let tcx = self.tcx();
+        let qself_ty = self.lower_ty(qself);
+        let assoc_ident = item_segment.ident;
+        let qself_res = if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = &qself.kind {
+            path.res
+        } else {
+            Res::Err
+        };
+
+        let bound = match (qself_ty.kind(), qself_res) {
+            (_, Res::SelfTyAlias { alias_to: impl_def_id, is_trait_impl: true, .. }) => {
+                // `Self` in an impl of a trait -- we have a concrete self type and a
+                // trait reference.
+                let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) else {
+                    // A cycle error occurred, most likely.
+                    self.dcx().span_bug(span, "expected cycle error");
+                };
+
+                self.probe_single_bound_for_assoc_item(
+                    || {
+                        traits::supertraits(
+                            tcx,
+                            ty::Binder::dummy(trait_ref.instantiate_identity()),
+                        )
+                    },
+                    AssocItemQSelf::SelfTyAlias,
+                    ty::AssocKind::Fn,
+                    assoc_ident,
+                    span,
+                    None,
+                )?
+            }
+            (
+                &ty::Param(_),
+                Res::SelfTyParam { trait_: param_did } | Res::Def(DefKind::TyParam, param_did),
+            ) => self.probe_single_ty_param_bound_for_assoc_item(
+                param_did.expect_local(),
+                qself.span,
+                ty::AssocKind::Fn,
+                assoc_ident,
+                span,
+            )?,
+            _ => {
+                if let Err(reported) = qself_ty.error_reported() {
+                    return Err(reported);
+                } else {
+                    // FIXME(return_type_notation): Provide some structured suggestion here.
+                    let err = struct_span_code_err!(
+                        self.dcx(),
+                        span,
+                        E0223,
+                        "ambiguous associated function"
+                    );
+                    return Err(err.emit());
+                }
+            }
+        };
+
+        // Don't let `T::method` resolve to some `for<'a> <T as Tr<'a>>::method`,
+        // which may happen via a higher-ranked where clause or supertrait.
+        // This is the same restrictions as associated types; even though we could
+        // support it, it just makes things a lot more difficult to support in
+        // `resolve_bound_vars`, since we'd need to introduce those as elided
+        // bound vars on the where clause too.
+        if bound.has_bound_vars() {
+            return Err(self.tcx().dcx().emit_err(
+                errors::AssociatedItemTraitUninferredGenericParams {
+                    span,
+                    inferred_sugg: Some(span.with_hi(item_segment.ident.span.lo())),
+                    bound: format!("{}::", tcx.anonymize_bound_vars(bound).skip_binder(),),
+                    mpart_sugg: None,
+                    what: "function",
+                },
+            ));
+        }
+
+        let trait_def_id = bound.def_id();
+        let assoc_ty = self
+            .probe_assoc_item(assoc_ident, ty::AssocKind::Fn, qpath_hir_id, span, trait_def_id)
+            .expect("failed to find associated type");
+
+        Ok((bound, assoc_ty.def_id))
+    }
+
+    /// Do the common parts of lowering an RTN type. This involves extending the
+    /// candidate binder to include all of the early- and late-bound vars that are
+    /// defined on the function itself, and constructing a projection to the RPITIT
+    /// return type of that function.
+    fn lower_return_type_notation_ty(
+        &self,
+        candidate: ty::PolyTraitRef<'tcx>,
+        item_def_id: DefId,
+        path_span: Span,
+    ) -> Result<ty::AliasTy<'tcx>, ErrorGuaranteed> {
+        let tcx = self.tcx();
+        let mut emitted_bad_param_err = None;
+        // If we have an method return type bound, then we need to instantiate
+        // the method's early bound params with suitable late-bound params.
+        let mut num_bound_vars = candidate.bound_vars().len();
+        let args = candidate.skip_binder().args.extend_to(tcx, item_def_id, |param, _| {
+            let arg = match param.kind {
+                ty::GenericParamDefKind::Lifetime => {
+                    ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
+                        var: ty::BoundVar::from_usize(num_bound_vars),
+                        kind: ty::BoundRegionKind::Named(param.def_id, param.name),
+                    })
+                    .into()
+                }
+                ty::GenericParamDefKind::Type { .. } => {
+                    let guar = *emitted_bad_param_err.get_or_insert_with(|| {
+                        self.dcx().emit_err(crate::errors::ReturnTypeNotationIllegalParam::Type {
+                            span: path_span,
+                            param_span: tcx.def_span(param.def_id),
+                        })
+                    });
+                    Ty::new_error(tcx, guar).into()
+                }
+                ty::GenericParamDefKind::Const { .. } => {
+                    let guar = *emitted_bad_param_err.get_or_insert_with(|| {
+                        self.dcx().emit_err(crate::errors::ReturnTypeNotationIllegalParam::Const {
+                            span: path_span,
+                            param_span: tcx.def_span(param.def_id),
+                        })
+                    });
+                    ty::Const::new_error(tcx, guar).into()
+                }
+            };
+            num_bound_vars += 1;
+            arg
+        });
+
+        // Next, we need to check that the return-type notation is being used on
+        // an RPITIT (return-position impl trait in trait) or AFIT (async fn in trait).
+        let output = tcx.fn_sig(item_def_id).skip_binder().output();
+        let output = if let ty::Alias(ty::Projection, alias_ty) = *output.skip_binder().kind()
+            && tcx.is_impl_trait_in_trait(alias_ty.def_id)
+        {
+            alias_ty
+        } else {
+            return Err(self.dcx().emit_err(crate::errors::ReturnTypeNotationOnNonRpitit {
+                span: path_span,
+                ty: tcx.liberate_late_bound_regions(item_def_id, output),
+                fn_span: tcx.hir().span_if_local(item_def_id),
+                note: (),
+            }));
+        };
+
+        // Finally, move the fn return type's bound vars over to account for the early bound
+        // params (and trait ref's late bound params). This logic is very similar to
+        // `rustc_middle::ty::predicate::Clause::instantiate_supertrait`
+        // and it's no coincidence why.
+        let shifted_output = tcx.shift_bound_var_indices(num_bound_vars, output);
+        Ok(ty::EarlyBinder::bind(shifted_output).instantiate(tcx, args))
+    }
 }
 
 /// Detect and reject early-bound & escaping late-bound generic params in the type of assoc const bindings.
 ///
-/// FIXME(const_generics): This is a temporary and semi-artifical restriction until the
+/// FIXME(const_generics): This is a temporary and semi-artificial restriction until the
 /// arrival of *generic const generics*[^1].
 ///
 /// It might actually be possible that we can already support early-bound generic params
 /// in such types if we just lifted some more checks in other places, too, for example
-/// inside [`ty::Const::from_anon_const`]. However, even if that were the case, we should
+/// inside `HirTyLowerer::lower_anon_const`. However, even if that were the case, we should
 /// probably gate this behind another feature flag.
 ///
 /// [^1]: <https://github.com/rust-lang/project-const-generics/issues/28>.
@@ -575,7 +744,7 @@ fn check_assoc_const_binding_type<'tcx>(
     let generics = tcx.generics_of(enclosing_item_owner_id);
     for index in collector.params {
         let param = generics.param_at(index as _, tcx);
-        let is_self_param = param.name == rustc_span::symbol::kw::SelfUpper;
+        let is_self_param = param.name == kw::SelfUpper;
         guar.get_or_insert(cx.dcx().emit_err(crate::errors::ParamInTyOfAssocConstBinding {
             span: assoc_const.span,
             assoc_const,
@@ -660,8 +829,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 't
             }
             ty::ReBound(db, br) if db >= self.depth => {
                 self.vars.insert(match br.kind {
-                    ty::BrNamed(def_id, name) => (def_id, name),
-                    ty::BrAnon | ty::BrEnv => {
+                    ty::BoundRegionKind::Named(def_id, name) => (def_id, name),
+                    ty::BoundRegionKind::Anon | ty::BoundRegionKind::ClosureEnv => {
                         let guar = self
                             .cx
                             .dcx()

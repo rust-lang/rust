@@ -1,6 +1,7 @@
 //@no-rustfix
 //@aux-build:proc_macros.rs
 #![warn(clippy::iter_without_into_iter)]
+#![allow(clippy::needless_lifetimes)]
 extern crate proc_macros;
 
 pub struct S1;

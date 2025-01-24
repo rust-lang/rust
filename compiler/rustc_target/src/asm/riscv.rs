@@ -1,7 +1,7 @@
 use std::fmt;
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_span::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 
 use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
 use crate::spec::{RelocModel, Target};
@@ -54,6 +54,10 @@ impl RiscVInlineAsmRegClass {
     }
 }
 
+pub(crate) fn is_e(target_features: &FxIndexSet<Symbol>) -> bool {
+    target_features.contains(&sym::e)
+}
+
 fn not_e(
     _arch: InlineAsmArch,
     _reloc_model: RelocModel,
@@ -61,7 +65,7 @@ fn not_e(
     _target: &Target,
     _is_clobber: bool,
 ) -> Result<(), &'static str> {
-    if target_features.contains(&sym::e) {
+    if is_e(target_features) {
         Err("register can't be used with the `e` target feature")
     } else {
         Ok(())

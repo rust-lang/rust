@@ -1,19 +1,19 @@
 use std::path::PathBuf;
 
 use rinja::Template;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 
-use super::static_files::{StaticFiles, STATIC_FILES};
+use super::static_files::{STATIC_FILES, StaticFiles};
 use crate::externalfiles::ExternalHtml;
 use crate::html::format::{Buffer, Print};
-use crate::html::render::{ensure_trailing_slash, StylePath};
+use crate::html::render::{StylePath, ensure_trailing_slash};
 
 #[derive(Clone)]
 pub(crate) struct Layout {
     pub(crate) logo: String,
     pub(crate) favicon: String,
     pub(crate) external_html: ExternalHtml,
-    pub(crate) default_settings: FxHashMap<String, String>,
+    pub(crate) default_settings: FxIndexMap<String, String>,
     pub(crate) krate: String,
     pub(crate) krate_version: String,
     /// The given user css file which allow to customize the generated
@@ -33,7 +33,7 @@ pub(crate) struct Page<'a> {
     pub(crate) rust_logo: bool,
 }
 
-impl<'a> Page<'a> {
+impl Page<'_> {
     pub(crate) fn get_static_root_path(&self) -> String {
         match self.static_root_path {
             Some(s) => s.to_string(),

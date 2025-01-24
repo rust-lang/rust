@@ -3,11 +3,12 @@ use std::fmt;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Diag, IntoDiagArg};
 use rustc_hir::def::Namespace;
-use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_middle::bug;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};
 use rustc_middle::ty::{self, GenericArgsRef, RePlaceholder, Region, TyCtxt};
+use tracing::{debug, instrument};
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::errors::{
@@ -20,9 +21,10 @@ use crate::traits::{ObligationCause, ObligationCauseCode};
 // HACK(eddyb) maybe move this in a more central location.
 #[derive(Copy, Clone)]
 pub struct Highlighted<'tcx, T> {
-    tcx: TyCtxt<'tcx>,
-    highlight: RegionHighlightMode<'tcx>,
-    value: T,
+    pub tcx: TyCtxt<'tcx>,
+    pub highlight: RegionHighlightMode<'tcx>,
+    pub value: T,
+    pub ns: Namespace,
 }
 
 impl<'tcx, T> IntoDiagArg for Highlighted<'tcx, T>
@@ -36,7 +38,7 @@ where
 
 impl<'tcx, T> Highlighted<'tcx, T> {
     fn map<U>(self, f: impl FnOnce(T) -> U) -> Highlighted<'tcx, U> {
-        Highlighted { tcx: self.tcx, highlight: self.highlight, value: f(self.value) }
+        Highlighted { tcx: self.tcx, highlight: self.highlight, value: f(self.value), ns: self.ns }
     }
 }
 
@@ -45,7 +47,7 @@ where
     T: for<'a> Print<'tcx, FmtPrinter<'a, 'tcx>>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS);
+        let mut printer = ty::print::FmtPrinter::new(self.tcx, self.ns);
         printer.region_highlight_mode = self.highlight;
 
         self.value.print(&mut printer)?;
@@ -236,7 +238,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         expected_args: GenericArgsRef<'tcx>,
         actual_args: GenericArgsRef<'tcx>,
     ) -> Diag<'tcx> {
-        let span = cause.span();
+        let span = cause.span;
 
         let (leading_ellipsis, satisfy_span, where_span, dup_span, def_id) =
             if let ObligationCauseCode::WhereClause(def_id, span)
@@ -380,6 +382,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             tcx: self.tcx(),
             highlight: RegionHighlightMode::default(),
             value: trait_ref,
+            ns: Namespace::TypeNS,
         };
 
         let same_self_type = actual_trait_ref.self_ty() == expected_trait_ref.self_ty();

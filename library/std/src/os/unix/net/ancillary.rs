@@ -1,6 +1,6 @@
 // FIXME: This is currently disabled on *BSD.
 
-use super::{sockaddr_un, SocketAddr};
+use super::{SocketAddr, sockaddr_un};
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::marker::PhantomData;
 use crate::mem::zeroed;
@@ -37,7 +37,7 @@ pub(super) fn recv_vectored_with_ancillary_from(
     unsafe {
         let mut msg_name: libc::sockaddr_un = zeroed();
         let mut msg: libc::msghdr = zeroed();
-        msg.msg_name = core::ptr::addr_of_mut!(msg_name) as *mut _;
+        msg.msg_name = (&raw mut msg_name) as *mut _;
         msg.msg_namelen = size_of::<libc::sockaddr_un>() as libc::socklen_t;
         msg.msg_iov = bufs.as_mut_ptr().cast();
         msg.msg_iovlen = bufs.len() as _;
@@ -70,7 +70,7 @@ pub(super) fn send_vectored_with_ancillary_to(
             if let Some(path) = path { sockaddr_un(path)? } else { (zeroed(), 0) };
 
         let mut msg: libc::msghdr = zeroed();
-        msg.msg_name = core::ptr::addr_of_mut!(msg_name) as *mut _;
+        msg.msg_name = (&raw mut msg_name) as *mut _;
         msg.msg_namelen = msg_namelen;
         msg.msg_iov = bufs.as_ptr() as *mut _;
         msg.msg_iovlen = bufs.len() as _;

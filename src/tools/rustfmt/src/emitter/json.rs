@@ -1,5 +1,5 @@
 use super::*;
-use crate::rustfmt_diff::{make_diff, DiffLine, Mismatch};
+use crate::rustfmt_diff::{DiffLine, Mismatch, make_diff};
 use serde::Serialize;
 use serde_json::to_string as to_json_string;
 

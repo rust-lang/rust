@@ -1,4 +1,4 @@
-#![deny(unsafe_op_in_unsafe_fn)]
+#![forbid(unsafe_op_in_unsafe_fn)]
 
 use crate::marker::PhantomData;
 use crate::os::fd::{AsFd, AsRawFd};
@@ -30,7 +30,7 @@ impl<'a> IoSlice<'a> {
     }
 
     #[inline]
-    pub fn as_slice(&self) -> &[u8] {
+    pub const fn as_slice(&self) -> &'a [u8] {
         unsafe { slice::from_raw_parts(self.vec.buf as *const u8, self.vec.buf_len) }
     }
 }
@@ -65,6 +65,11 @@ impl<'a> IoSliceMut<'a> {
     #[inline]
     pub fn as_slice(&self) -> &[u8] {
         unsafe { slice::from_raw_parts(self.vec.buf as *const u8, self.vec.buf_len) }
+    }
+
+    #[inline]
+    pub const fn into_slice(self) -> &'a mut [u8] {
+        unsafe { slice::from_raw_parts_mut(self.vec.buf as *mut u8, self.vec.buf_len) }
     }
 
     #[inline]

@@ -1,9 +1,8 @@
-use core::ptr::addr_of;
-
 use super::api::{self, WinError};
-use super::{to_u16s, IoResult};
+use super::{IoResult, to_u16s};
+use crate::alloc::{alloc, handle_alloc_error};
 use crate::borrow::Cow;
-use crate::ffi::{c_void, OsStr, OsString};
+use crate::ffi::{OsStr, OsString, c_void};
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem::{self, MaybeUninit};
 use crate::os::windows::io::{AsHandle, BorrowedHandle};
@@ -13,9 +12,12 @@ use crate::sync::Arc;
 use crate::sys::handle::Handle;
 use crate::sys::path::maybe_verbatim;
 use crate::sys::time::SystemTime;
-use crate::sys::{c, cvt, Align8};
+use crate::sys::{Align8, c, cvt};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
-use crate::{fmt, ptr, slice, thread};
+use crate::{fmt, ptr, slice};
+
+mod remove_dir_all;
+use remove_dir_all::remove_dir_all_iterative;
 
 pub struct File {
     handle: Handle,
@@ -113,7 +115,7 @@ impl Iterator for ReadDir {
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         if self.handle.0 == c::INVALID_HANDLE_VALUE {
             // This iterator was initialized with an `INVALID_HANDLE_VALUE` as its handle.
-            // Simply return `None` because this is only the case when `FindFirstFileW` in
+            // Simply return `None` because this is only the case when `FindFirstFileExW` in
             // the construction of this iterator returns `ERROR_FILE_NOT_FOUND` which means
             // no matchhing files can be found.
             return None;
@@ -314,19 +316,28 @@ impl File {
                 && api::get_last_error() == WinError::ALREADY_EXISTS
             {
                 unsafe {
-                    // This originally used `FileAllocationInfo` instead of
-                    // `FileEndOfFileInfo` but that wasn't supported by WINE.
-                    // It's arguable which fits the semantics of `OpenOptions`
-                    // better so let's just use the more widely supported method.
-                    let eof = c::FILE_END_OF_FILE_INFO { EndOfFile: 0 };
+                    // This first tries `FileAllocationInfo` but falls back to
+                    // `FileEndOfFileInfo` in order to support WINE.
+                    // If WINE gains support for FileAllocationInfo, we should
+                    // remove the fallback.
+                    let alloc = c::FILE_ALLOCATION_INFO { AllocationSize: 0 };
                     let result = c::SetFileInformationByHandle(
                         handle.as_raw_handle(),
-                        c::FileEndOfFileInfo,
-                        ptr::addr_of!(eof).cast::<c_void>(),
-                        mem::size_of::<c::FILE_END_OF_FILE_INFO>() as u32,
+                        c::FileAllocationInfo,
+                        (&raw const alloc).cast::<c_void>(),
+                        mem::size_of::<c::FILE_ALLOCATION_INFO>() as u32,
                     );
                     if result == 0 {
-                        return Err(io::Error::last_os_error());
+                        let eof = c::FILE_END_OF_FILE_INFO { EndOfFile: 0 };
+                        let result = c::SetFileInformationByHandle(
+                            handle.as_raw_handle(),
+                            c::FileEndOfFileInfo,
+                            (&raw const eof).cast::<c_void>(),
+                            mem::size_of::<c::FILE_END_OF_FILE_INFO>() as u32,
+                        );
+                        if result == 0 {
+                            return Err(io::Error::last_os_error());
+                        }
                     }
                 }
             }
@@ -345,6 +356,120 @@ impl File {
         self.fsync()
     }
 
+    fn acquire_lock(&self, flags: c::LOCK_FILE_FLAGS) -> io::Result<()> {
+        unsafe {
+            let mut overlapped: c::OVERLAPPED = mem::zeroed();
+            let event = c::CreateEventW(ptr::null_mut(), c::FALSE, c::FALSE, ptr::null());
+            if event.is_null() {
+                return Err(io::Error::last_os_error());
+            }
+            overlapped.hEvent = event;
+            let lock_result = cvt(c::LockFileEx(
+                self.handle.as_raw_handle(),
+                flags,
+                0,
+                u32::MAX,
+                u32::MAX,
+                &mut overlapped,
+            ));
+
+            let final_result = match lock_result {
+                Ok(_) => Ok(()),
+                Err(err) => {
+                    if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32) {
+                        // Wait for the lock to be acquired, and get the lock operation status.
+                        // This can happen asynchronously, if the file handle was opened for async IO
+                        let mut bytes_transferred = 0;
+                        cvt(c::GetOverlappedResult(
+                            self.handle.as_raw_handle(),
+                            &mut overlapped,
+                            &mut bytes_transferred,
+                            c::TRUE,
+                        ))
+                        .map(|_| ())
+                    } else {
+                        Err(err)
+                    }
+                }
+            };
+            c::CloseHandle(overlapped.hEvent);
+            final_result
+        }
+    }
+
+    pub fn lock(&self) -> io::Result<()> {
+        self.acquire_lock(c::LOCKFILE_EXCLUSIVE_LOCK)
+    }
+
+    pub fn lock_shared(&self) -> io::Result<()> {
+        self.acquire_lock(0)
+    }
+
+    pub fn try_lock(&self) -> io::Result<bool> {
+        let result = cvt(unsafe {
+            let mut overlapped = mem::zeroed();
+            c::LockFileEx(
+                self.handle.as_raw_handle(),
+                c::LOCKFILE_EXCLUSIVE_LOCK | c::LOCKFILE_FAIL_IMMEDIATELY,
+                0,
+                u32::MAX,
+                u32::MAX,
+                &mut overlapped,
+            )
+        });
+
+        match result {
+            Ok(_) => Ok(true),
+            Err(err)
+                if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
+                    || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) =>
+            {
+                Ok(false)
+            }
+            Err(err) => Err(err),
+        }
+    }
+
+    pub fn try_lock_shared(&self) -> io::Result<bool> {
+        let result = cvt(unsafe {
+            let mut overlapped = mem::zeroed();
+            c::LockFileEx(
+                self.handle.as_raw_handle(),
+                c::LOCKFILE_FAIL_IMMEDIATELY,
+                0,
+                u32::MAX,
+                u32::MAX,
+                &mut overlapped,
+            )
+        });
+
+        match result {
+            Ok(_) => Ok(true),
+            Err(err)
+                if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
+                    || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) =>
+            {
+                Ok(false)
+            }
+            Err(err) => Err(err),
+        }
+    }
+
+    pub fn unlock(&self) -> io::Result<()> {
+        // Unlock the handle twice because LockFileEx() allows a file handle to acquire
+        // both an exclusive and shared lock, in which case the documentation states that:
+        // "...two unlock operations are necessary to unlock the region; the first unlock operation
+        // unlocks the exclusive lock, the second unlock operation unlocks the shared lock"
+        cvt(unsafe { c::UnlockFile(self.handle.as_raw_handle(), 0, 0, u32::MAX, u32::MAX) })?;
+        let result =
+            cvt(unsafe { c::UnlockFile(self.handle.as_raw_handle(), 0, 0, u32::MAX, u32::MAX) });
+        match result {
+            Ok(_) => Ok(()),
+            Err(err) if err.raw_os_error() == Some(c::ERROR_NOT_LOCKED as i32) => Ok(()),
+            Err(err) => Err(err),
+        }
+    }
+
     pub fn truncate(&self, size: u64) -> io::Result<()> {
         let info = c::FILE_END_OF_FILE_INFO { EndOfFile: size as i64 };
         api::set_file_information_by_handle(self.handle.as_raw_handle(), &info).io_result()
@@ -361,7 +486,7 @@ impl File {
                 cvt(c::GetFileInformationByHandleEx(
                     self.handle.as_raw_handle(),
                     c::FileAttributeTagInfo,
-                    ptr::addr_of_mut!(attr_tag).cast(),
+                    (&raw mut attr_tag).cast(),
                     mem::size_of::<c::FILE_ATTRIBUTE_TAG_INFO>().try_into().unwrap(),
                 ))?;
                 if attr_tag.FileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
@@ -393,7 +518,7 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileBasicInfo,
-                core::ptr::addr_of_mut!(info) as *mut c_void,
+                (&raw mut info) as *mut c_void,
                 size as u32,
             ))?;
             let mut attr = FileAttr {
@@ -425,7 +550,7 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileStandardInfo,
-                core::ptr::addr_of_mut!(info) as *mut c_void,
+                (&raw mut info) as *mut c_void,
                 size as u32,
             ))?;
             attr.file_size = info.AllocationSize as u64;
@@ -435,7 +560,7 @@ impl File {
                 cvt(c::GetFileInformationByHandleEx(
                     self.handle.as_raw_handle(),
                     c::FileAttributeTagInfo,
-                    ptr::addr_of_mut!(attr_tag).cast(),
+                    (&raw mut attr_tag).cast(),
                     mem::size_of::<c::FILE_ATTRIBUTE_TAG_INFO>().try_into().unwrap(),
                 ))?;
                 if attr_tag.FileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
@@ -542,29 +667,27 @@ impl File {
         unsafe {
             let (path_buffer, subst_off, subst_len, relative) = match (*buf).ReparseTag {
                 c::IO_REPARSE_TAG_SYMLINK => {
-                    let info: *mut c::SYMBOLIC_LINK_REPARSE_BUFFER =
-                        ptr::addr_of_mut!((*buf).rest).cast();
+                    let info: *mut c::SYMBOLIC_LINK_REPARSE_BUFFER = (&raw mut (*buf).rest).cast();
                     assert!(info.is_aligned());
                     (
-                        ptr::addr_of_mut!((*info).PathBuffer).cast::<u16>(),
+                        (&raw mut (*info).PathBuffer).cast::<u16>(),
                         (*info).SubstituteNameOffset / 2,
                         (*info).SubstituteNameLength / 2,
                         (*info).Flags & c::SYMLINK_FLAG_RELATIVE != 0,
                     )
                 }
                 c::IO_REPARSE_TAG_MOUNT_POINT => {
-                    let info: *mut c::MOUNT_POINT_REPARSE_BUFFER =
-                        ptr::addr_of_mut!((*buf).rest).cast();
+                    let info: *mut c::MOUNT_POINT_REPARSE_BUFFER = (&raw mut (*buf).rest).cast();
                     assert!(info.is_aligned());
                     (
-                        ptr::addr_of_mut!((*info).PathBuffer).cast::<u16>(),
+                        (&raw mut (*info).PathBuffer).cast::<u16>(),
                         (*info).SubstituteNameOffset / 2,
                         (*info).SubstituteNameLength / 2,
                         false,
                     )
                 }
                 _ => {
-                    return Err(io::const_io_error!(
+                    return Err(io::const_error!(
                         io::ErrorKind::Uncategorized,
                         "Unsupported reparse point type",
                     ));
@@ -605,7 +728,7 @@ impl File {
             || times.modified.map_or(false, is_zero)
             || times.created.map_or(false, is_zero)
         {
-            return Err(io::const_io_error!(
+            return Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
                 "Cannot set file timestamp to 0",
             ));
@@ -615,7 +738,7 @@ impl File {
             || times.modified.map_or(false, is_max)
             || times.created.map_or(false, is_max)
         {
-            return Err(io::const_io_error!(
+            return Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
                 "Cannot set file timestamp to 0xFFFF_FFFF_FFFF_FFFF",
             ));
@@ -640,12 +763,28 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileBasicInfo,
-                core::ptr::addr_of_mut!(info) as *mut c_void,
+                (&raw mut info) as *mut c_void,
                 size as u32,
             ))?;
             Ok(info)
         }
     }
+
+    /// Deletes the file, consuming the file handle to ensure the delete occurs
+    /// as immediately as possible.
+    /// This attempts to use `posix_delete` but falls back to `win32_delete`
+    /// if that is not supported by the filesystem.
+    #[allow(unused)]
+    fn delete(self) -> Result<(), WinError> {
+        // If POSIX delete is not supported for this filesystem then fallback to win32 delete.
+        match self.posix_delete() {
+            Err(WinError::INVALID_PARAMETER)
+            | Err(WinError::NOT_SUPPORTED)
+            | Err(WinError::INVALID_FUNCTION) => self.win32_delete(),
+            result => result,
+        }
+    }
+
     /// Delete using POSIX semantics.
     ///
     /// Files will be deleted as soon as the handle is closed. This is supported
@@ -654,21 +793,23 @@ impl File {
     ///
     /// If the operation is not supported for this filesystem or OS version
     /// then errors will be `ERROR_NOT_SUPPORTED` or `ERROR_INVALID_PARAMETER`.
-    fn posix_delete(&self) -> io::Result<()> {
+    #[allow(unused)]
+    fn posix_delete(&self) -> Result<(), WinError> {
         let info = c::FILE_DISPOSITION_INFO_EX {
             Flags: c::FILE_DISPOSITION_FLAG_DELETE
                 | c::FILE_DISPOSITION_FLAG_POSIX_SEMANTICS
                 | c::FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE,
         };
-        api::set_file_information_by_handle(self.handle.as_raw_handle(), &info).io_result()
+        api::set_file_information_by_handle(self.handle.as_raw_handle(), &info)
     }
 
     /// Delete a file using win32 semantics. The file won't actually be deleted
     /// until all file handles are closed. However, marking a file for deletion
     /// will prevent anyone from opening a new handle to the file.
-    fn win32_delete(&self) -> io::Result<()> {
+    #[allow(unused)]
+    fn win32_delete(&self) -> Result<(), WinError> {
         let info = c::FILE_DISPOSITION_INFO { DeleteFile: c::TRUE as _ };
-        api::set_file_information_by_handle(self.handle.as_raw_handle(), &info).io_result()
+        api::set_file_information_by_handle(self.handle.as_raw_handle(), &info)
     }
 
     /// Fill the given buffer with as many directory entries as will fit.
@@ -684,21 +825,23 @@ impl File {
     /// A symlink directory is simply an empty directory with some "reparse" metadata attached.
     /// So if you open a link (not its target) and iterate the directory,
     /// you will always iterate an empty directory regardless of the target.
-    fn fill_dir_buff(&self, buffer: &mut DirBuff, restart: bool) -> io::Result<bool> {
+    #[allow(unused)]
+    fn fill_dir_buff(&self, buffer: &mut DirBuff, restart: bool) -> Result<bool, WinError> {
         let class =
             if restart { c::FileIdBothDirectoryRestartInfo } else { c::FileIdBothDirectoryInfo };
 
         unsafe {
-            let result = cvt(c::GetFileInformationByHandleEx(
-                self.handle.as_raw_handle(),
+            let result = c::GetFileInformationByHandleEx(
+                self.as_raw_handle(),
                 class,
                 buffer.as_mut_ptr().cast(),
                 buffer.capacity() as _,
-            ));
-            match result {
-                Ok(_) => Ok(true),
-                Err(e) if e.raw_os_error() == Some(c::ERROR_NO_MORE_FILES as _) => Ok(false),
-                Err(e) => Err(e),
+            );
+            if result == 0 {
+                let err = api::get_last_error();
+                if err.code == c::ERROR_NO_MORE_FILES { Ok(false) } else { Err(err) }
+            } else {
+                Ok(true)
             }
         }
     }
@@ -767,11 +910,11 @@ impl<'a> Iterator for DirBuffIter<'a> {
             // it does not seem that reality is so kind, and assuming this
             // caused crashes in some cases (https://github.com/rust-lang/rust/issues/104530)
             // presumably, this can be blamed on buggy filesystem drivers, but who knows.
-            let next_entry = ptr::addr_of!((*info).NextEntryOffset).read_unaligned() as usize;
-            let length = ptr::addr_of!((*info).FileNameLength).read_unaligned() as usize;
-            let attrs = ptr::addr_of!((*info).FileAttributes).read_unaligned();
+            let next_entry = (&raw const (*info).NextEntryOffset).read_unaligned() as usize;
+            let length = (&raw const (*info).FileNameLength).read_unaligned() as usize;
+            let attrs = (&raw const (*info).FileAttributes).read_unaligned();
             let name = from_maybe_unaligned(
-                ptr::addr_of!((*info).FileName).cast::<u16>(),
+                (&raw const (*info).FileName).cast::<u16>(),
                 length / size_of::<u16>(),
             );
             let is_directory = (attrs & c::FILE_ATTRIBUTE_DIRECTORY) != 0;
@@ -800,62 +943,6 @@ unsafe fn from_maybe_unaligned<'a>(p: *const u16, len: usize) -> Cow<'a, [u16]> 
             Cow::Borrowed(crate::slice::from_raw_parts(p, len))
         } else {
             Cow::Owned((0..len).map(|i| p.add(i).read_unaligned()).collect())
-        }
-    }
-}
-
-/// Open a link relative to the parent directory, ensure no symlinks are followed.
-fn open_link_no_reparse(parent: &File, name: &[u16], access: u32) -> io::Result<File> {
-    // This is implemented using the lower level `NtCreateFile` function as
-    // unfortunately opening a file relative to a parent is not supported by
-    // win32 functions. It is however a fundamental feature of the NT kernel.
-    //
-    // See https://docs.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntcreatefile
-    unsafe {
-        let mut handle = ptr::null_mut();
-        let mut io_status = c::IO_STATUS_BLOCK::PENDING;
-        let mut name_str = c::UNICODE_STRING::from_ref(name);
-        use crate::sync::atomic::{AtomicU32, Ordering};
-        // The `OBJ_DONT_REPARSE` attribute ensures that we haven't been
-        // tricked into following a symlink. However, it may not be available in
-        // earlier versions of Windows.
-        static ATTRIBUTES: AtomicU32 = AtomicU32::new(c::OBJ_DONT_REPARSE);
-        let object = c::OBJECT_ATTRIBUTES {
-            ObjectName: &mut name_str,
-            RootDirectory: parent.as_raw_handle(),
-            Attributes: ATTRIBUTES.load(Ordering::Relaxed),
-            ..c::OBJECT_ATTRIBUTES::default()
-        };
-        let status = c::NtCreateFile(
-            &mut handle,
-            access,
-            &object,
-            &mut io_status,
-            crate::ptr::null_mut(),
-            0,
-            c::FILE_SHARE_DELETE | c::FILE_SHARE_READ | c::FILE_SHARE_WRITE,
-            c::FILE_OPEN,
-            // If `name` is a symlink then open the link rather than the target.
-            c::FILE_OPEN_REPARSE_POINT,
-            crate::ptr::null_mut(),
-            0,
-        );
-        // Convert an NTSTATUS to the more familiar Win32 error codes (aka "DosError")
-        if c::nt_success(status) {
-            Ok(File::from_raw_handle(handle))
-        } else if status == c::STATUS_DELETE_PENDING {
-            // We make a special exception for `STATUS_DELETE_PENDING` because
-            // otherwise this will be mapped to `ERROR_ACCESS_DENIED` which is
-            // very unhelpful.
-            Err(io::Error::from_raw_os_error(c::ERROR_DELETE_PENDING as i32))
-        } else if status == c::STATUS_INVALID_PARAMETER
-            && ATTRIBUTES.load(Ordering::Relaxed) == c::OBJ_DONT_REPARSE
-        {
-            // Try without `OBJ_DONT_REPARSE`. See above.
-            ATTRIBUTES.store(0, Ordering::Relaxed);
-            open_link_no_reparse(parent, name, access)
-        } else {
-            Err(io::Error::from_raw_os_error(c::RtlNtStatusToDosError(status) as _))
         }
     }
 }
@@ -1084,8 +1171,22 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let path = maybe_verbatim(&star)?;
 
     unsafe {
-        let mut wfd = mem::zeroed();
-        let find_handle = c::FindFirstFileW(path.as_ptr(), &mut wfd);
+        let mut wfd: c::WIN32_FIND_DATAW = mem::zeroed();
+        // this is like FindFirstFileW (see https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstfileexw),
+        // but with FindExInfoBasic it should skip filling WIN32_FIND_DATAW.cAlternateFileName
+        // (see https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-win32_find_dataw)
+        // (which will be always null string value and currently unused) and should be faster.
+        //
+        // We can pass FIND_FIRST_EX_LARGE_FETCH to dwAdditionalFlags to speed up things more,
+        // but as we don't know user's use profile of this function, lets be conservative.
+        let find_handle = c::FindFirstFileExW(
+            path.as_ptr(),
+            c::FindExInfoBasic,
+            &mut wfd as *mut _ as _,
+            c::FindExSearchNameMatch,
+            ptr::null(),
+            0,
+        );
 
         if find_handle != c::INVALID_HANDLE_VALUE {
             Ok(ReadDir {
@@ -1094,7 +1195,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
                 first: Some(wfd),
             })
         } else {
-            // The status `ERROR_FILE_NOT_FOUND` is returned by the `FindFirstFileW` function
+            // The status `ERROR_FILE_NOT_FOUND` is returned by the `FindFirstFileExW` function
             // if no matching files can be found, but not necessarily that the path to find the
             // files in does not exist.
             //
@@ -1116,7 +1217,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 
             // Just return the error constructed from the raw OS error if the above is not the case.
             //
-            // Note: `ERROR_PATH_NOT_FOUND` would have been returned by the `FindFirstFileW` function
+            // Note: `ERROR_PATH_NOT_FOUND` would have been returned by the `FindFirstFileExW` function
             // when the path to search in does not exist in the first place.
             Err(Error::from_raw_os_error(last_error.code as i32))
         }
@@ -1132,7 +1233,142 @@ pub fn unlink(p: &Path) -> io::Result<()> {
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     let old = maybe_verbatim(old)?;
     let new = maybe_verbatim(new)?;
-    cvt(unsafe { c::MoveFileExW(old.as_ptr(), new.as_ptr(), c::MOVEFILE_REPLACE_EXISTING) })?;
+
+    let new_len_without_nul_in_bytes = (new.len() - 1).try_into().unwrap();
+
+    // The last field of FILE_RENAME_INFO, the file name, is unsized,
+    // and FILE_RENAME_INFO has two padding bytes.
+    // Therefore we need to make sure to not allocate less than
+    // size_of::<c::FILE_RENAME_INFO>() bytes, which would be the case with
+    // 0 or 1 character paths + a null byte.
+    let struct_size = mem::size_of::<c::FILE_RENAME_INFO>()
+        .max(mem::offset_of!(c::FILE_RENAME_INFO, FileName) + new.len() * mem::size_of::<u16>());
+
+    let struct_size: u32 = struct_size.try_into().unwrap();
+
+    let create_file = |extra_access, extra_flags| {
+        let handle = unsafe {
+            HandleOrInvalid::from_raw_handle(c::CreateFileW(
+                old.as_ptr(),
+                c::SYNCHRONIZE | c::DELETE | extra_access,
+                c::FILE_SHARE_READ | c::FILE_SHARE_WRITE | c::FILE_SHARE_DELETE,
+                ptr::null(),
+                c::OPEN_EXISTING,
+                c::FILE_ATTRIBUTE_NORMAL | c::FILE_FLAG_BACKUP_SEMANTICS | extra_flags,
+                ptr::null_mut(),
+            ))
+        };
+
+        OwnedHandle::try_from(handle).map_err(|_| io::Error::last_os_error())
+    };
+
+    // The following code replicates `MoveFileEx`'s behavior as reverse-engineered from its disassembly.
+    // If `old` refers to a mount point, we move it instead of the target.
+    let handle = match create_file(c::FILE_READ_ATTRIBUTES, c::FILE_FLAG_OPEN_REPARSE_POINT) {
+        Ok(handle) => {
+            let mut file_attribute_tag_info: MaybeUninit<c::FILE_ATTRIBUTE_TAG_INFO> =
+                MaybeUninit::uninit();
+
+            let result = unsafe {
+                cvt(c::GetFileInformationByHandleEx(
+                    handle.as_raw_handle(),
+                    c::FileAttributeTagInfo,
+                    file_attribute_tag_info.as_mut_ptr().cast(),
+                    mem::size_of::<c::FILE_ATTRIBUTE_TAG_INFO>().try_into().unwrap(),
+                ))
+            };
+
+            if let Err(err) = result {
+                if err.raw_os_error() == Some(c::ERROR_INVALID_PARAMETER as _)
+                    || err.raw_os_error() == Some(c::ERROR_INVALID_FUNCTION as _)
+                {
+                    // `GetFileInformationByHandleEx` documents that not all underlying drivers support all file information classes.
+                    // Since we know we passed the correct arguments, this means the underlying driver didn't understand our request;
+                    // `MoveFileEx` proceeds by reopening the file without inhibiting reparse point behavior.
+                    None
+                } else {
+                    Some(Err(err))
+                }
+            } else {
+                // SAFETY: The struct has been initialized by GetFileInformationByHandleEx
+                let file_attribute_tag_info = unsafe { file_attribute_tag_info.assume_init() };
+                let file_type = FileType::new(
+                    file_attribute_tag_info.FileAttributes,
+                    file_attribute_tag_info.ReparseTag,
+                );
+
+                if file_type.is_symlink() {
+                    // The file is a mount point, junction point or symlink so
+                    // don't reopen the file so that the link gets renamed.
+                    Some(Ok(handle))
+                } else {
+                    // Otherwise reopen the file without inhibiting reparse point behavior.
+                    None
+                }
+            }
+        }
+        // The underlying driver may not support `FILE_FLAG_OPEN_REPARSE_POINT`: Retry without it.
+        Err(err) if err.raw_os_error() == Some(c::ERROR_INVALID_PARAMETER as _) => None,
+        Err(err) => Some(Err(err)),
+    }
+    .unwrap_or_else(|| create_file(0, 0))?;
+
+    let layout = core::alloc::Layout::from_size_align(
+        struct_size as _,
+        mem::align_of::<c::FILE_RENAME_INFO>(),
+    )
+    .unwrap();
+
+    let file_rename_info = unsafe { alloc(layout) } as *mut c::FILE_RENAME_INFO;
+
+    if file_rename_info.is_null() {
+        handle_alloc_error(layout);
+    }
+
+    // SAFETY: file_rename_info is a non-null pointer pointing to memory allocated by the global allocator.
+    let mut file_rename_info = unsafe { Box::from_raw(file_rename_info) };
+
+    // SAFETY: We have allocated enough memory for a full FILE_RENAME_INFO struct and a filename.
+    unsafe {
+        (&raw mut (*file_rename_info).Anonymous).write(c::FILE_RENAME_INFO_0 {
+            Flags: c::FILE_RENAME_FLAG_REPLACE_IF_EXISTS | c::FILE_RENAME_FLAG_POSIX_SEMANTICS,
+        });
+
+        (&raw mut (*file_rename_info).RootDirectory).write(ptr::null_mut());
+        (&raw mut (*file_rename_info).FileNameLength).write(new_len_without_nul_in_bytes);
+
+        new.as_ptr()
+            .copy_to_nonoverlapping((&raw mut (*file_rename_info).FileName) as *mut u16, new.len());
+    }
+
+    // We don't use `set_file_information_by_handle` here as `FILE_RENAME_INFO` is used for both `FileRenameInfo` and `FileRenameInfoEx`.
+    let result = unsafe {
+        cvt(c::SetFileInformationByHandle(
+            handle.as_raw_handle(),
+            c::FileRenameInfoEx,
+            (&raw const *file_rename_info).cast::<c_void>(),
+            struct_size,
+        ))
+    };
+
+    if let Err(err) = result {
+        if err.raw_os_error() == Some(c::ERROR_INVALID_PARAMETER as _) {
+            // FileRenameInfoEx and FILE_RENAME_FLAG_POSIX_SEMANTICS were added in Windows 10 1607; retry with FileRenameInfo.
+            file_rename_info.Anonymous.ReplaceIfExists = 1;
+
+            cvt(unsafe {
+                c::SetFileInformationByHandle(
+                    handle.as_raw_handle(),
+                    c::FileRenameInfo,
+                    (&raw const *file_rename_info).cast::<c_void>(),
+                    struct_size,
+                )
+            })?;
+        } else {
+            return Err(err);
+        }
+    }
+
     Ok(())
 }
 
@@ -1142,114 +1378,22 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
     Ok(())
 }
 
-/// Open a file or directory without following symlinks.
-fn open_link(path: &Path, access_mode: u32) -> io::Result<File> {
+pub fn remove_dir_all(path: &Path) -> io::Result<()> {
+    // Open a file or directory without following symlinks.
     let mut opts = OpenOptions::new();
-    opts.access_mode(access_mode);
+    opts.access_mode(c::FILE_LIST_DIRECTORY);
     // `FILE_FLAG_BACKUP_SEMANTICS` allows opening directories.
     // `FILE_FLAG_OPEN_REPARSE_POINT` opens a link instead of its target.
     opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | c::FILE_FLAG_OPEN_REPARSE_POINT);
-    File::open(path, &opts)
-}
-
-pub fn remove_dir_all(path: &Path) -> io::Result<()> {
-    let file = open_link(path, c::DELETE | c::FILE_LIST_DIRECTORY)?;
+    let file = File::open(path, &opts)?;
 
     // Test if the file is not a directory or a symlink to a directory.
     if (file.basic_info()?.FileAttributes & c::FILE_ATTRIBUTE_DIRECTORY) == 0 {
         return Err(io::Error::from_raw_os_error(c::ERROR_DIRECTORY as _));
     }
 
-    match remove_dir_all_iterative(&file, File::posix_delete) {
-        Err(e) => {
-            if let Some(code) = e.raw_os_error() {
-                match code as u32 {
-                    // If POSIX delete is not supported for this filesystem then fallback to win32 delete.
-                    c::ERROR_NOT_SUPPORTED
-                    | c::ERROR_INVALID_FUNCTION
-                    | c::ERROR_INVALID_PARAMETER => {
-                        remove_dir_all_iterative(&file, File::win32_delete)
-                    }
-                    _ => Err(e),
-                }
-            } else {
-                Err(e)
-            }
-        }
-        ok => ok,
-    }
-}
-
-fn remove_dir_all_iterative(f: &File, delete: fn(&File) -> io::Result<()>) -> io::Result<()> {
-    // When deleting files we may loop this many times when certain error conditions occur.
-    // This allows remove_dir_all to succeed when the error is temporary.
-    const MAX_RETRIES: u32 = 10;
-
-    let mut buffer = DirBuff::new();
-    let mut dirlist = vec![f.duplicate()?];
-
-    // FIXME: This is a hack so we can push to the dirlist vec after borrowing from it.
-    fn copy_handle(f: &File) -> mem::ManuallyDrop<File> {
-        unsafe { mem::ManuallyDrop::new(File::from_raw_handle(f.as_raw_handle())) }
-    }
-
-    let mut restart = true;
-    while let Some(dir) = dirlist.last() {
-        let dir = copy_handle(dir);
-
-        // Fill the buffer and iterate the entries.
-        let more_data = dir.fill_dir_buff(&mut buffer, restart)?;
-        restart = false;
-        for (name, is_directory) in buffer.iter() {
-            if is_directory {
-                let child_dir = open_link_no_reparse(
-                    &dir,
-                    &name,
-                    c::SYNCHRONIZE | c::DELETE | c::FILE_LIST_DIRECTORY,
-                );
-                // On success, add the handle to the queue.
-                // If opening the directory fails we treat it the same as a file
-                if let Ok(child_dir) = child_dir {
-                    dirlist.push(child_dir);
-                    continue;
-                }
-            }
-            for i in 1..=MAX_RETRIES {
-                let result = open_link_no_reparse(&dir, &name, c::SYNCHRONIZE | c::DELETE);
-                match result {
-                    Ok(f) => delete(&f)?,
-                    // Already deleted, so skip.
-                    Err(e) if e.kind() == io::ErrorKind::NotFound => break,
-                    // Retry a few times if the file is locked or a delete is already in progress.
-                    Err(e)
-                        if i < MAX_RETRIES
-                            && (e.raw_os_error() == Some(c::ERROR_DELETE_PENDING as _)
-                                || e.raw_os_error() == Some(c::ERROR_SHARING_VIOLATION as _)) => {}
-                    // Otherwise return the error.
-                    Err(e) => return Err(e),
-                }
-                thread::yield_now();
-            }
-        }
-        // If there were no more files then delete the directory.
-        if !more_data {
-            if let Some(dir) = dirlist.pop() {
-                // Retry deleting a few times in case we need to wait for a file to be deleted.
-                for i in 1..=MAX_RETRIES {
-                    let result = delete(&dir);
-                    if let Err(e) = result {
-                        if i == MAX_RETRIES || e.kind() != io::ErrorKind::DirectoryNotEmpty {
-                            return Err(e);
-                        }
-                        thread::yield_now();
-                    } else {
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    Ok(())
+    // Remove the directory and all its contents.
+    remove_dir_all_iterative(file).io_result()
 }
 
 pub fn readlink(path: &Path) -> io::Result<PathBuf> {
@@ -1274,7 +1418,7 @@ pub fn symlink_inner(original: &Path, link: &Path, dir: bool) -> io::Result<()> 
     // Formerly, symlink creation required the SeCreateSymbolicLink privilege. For the Windows 10
     // Creators Update, Microsoft loosened this to allow unprivileged symlink creation if the
     // computer is in Developer Mode, but SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE must be
-    // added to dwFlags to opt into this behaviour.
+    // added to dwFlags to opt into this behavior.
     let result = cvt(unsafe {
         c::CreateSymbolicLinkW(
             link.as_ptr(),
@@ -1306,10 +1450,9 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
 
 #[cfg(target_vendor = "uwp")]
 pub fn link(_original: &Path, _link: &Path) -> io::Result<()> {
-    return Err(io::const_io_error!(
-        io::ErrorKind::Unsupported,
-        "hard link are not supported on UWP",
-    ));
+    return Err(
+        io::const_error!(io::ErrorKind::Unsupported, "hard link are not supported on UWP",),
+    );
 }
 
 pub fn stat(path: &Path) -> io::Result<FileAttr> {
@@ -1349,7 +1492,7 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
     opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | reparse.as_flag());
 
     // Attempt to open the file normally.
-    // If that fails with `ERROR_SHARING_VIOLATION` then retry using `FindFirstFileW`.
+    // If that fails with `ERROR_SHARING_VIOLATION` then retry using `FindFirstFileExW`.
     // If the fallback fails for any reason we return the original error.
     match File::open(path, &opts) {
         Ok(file) => file.file_attr(),
@@ -1366,13 +1509,20 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
             unsafe {
                 let path = maybe_verbatim(path)?;
 
-                // `FindFirstFileW` accepts wildcard file names.
+                // `FindFirstFileExW` accepts wildcard file names.
                 // Fortunately wildcards are not valid file names and
                 // `ERROR_SHARING_VIOLATION` means the file exists (but is locked)
                 // therefore it's safe to assume the file name given does not
                 // include wildcards.
-                let mut wfd = mem::zeroed();
-                let handle = c::FindFirstFileW(path.as_ptr(), &mut wfd);
+                let mut wfd: c::WIN32_FIND_DATAW = mem::zeroed();
+                let handle = c::FindFirstFileExW(
+                    path.as_ptr(),
+                    c::FindExInfoBasic,
+                    &mut wfd as *mut _ as _,
+                    c::FindExSearchNameMatch,
+                    ptr::null(),
+                    0,
+                );
 
                 if handle == c::INVALID_HANDLE_VALUE {
                     // This can fail if the user does not have read access to the
@@ -1382,7 +1532,7 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
                     // We no longer need the find handle.
                     c::FindClose(handle);
 
-                    // `FindFirstFileW` reads the cached file information from the
+                    // `FindFirstFileExW` reads the cached file information from the
                     // directory. The downside is that this metadata may be outdated.
                     let attrs = FileAttr::from(wfd);
                     if reparse == ReparsePoint::Follow && attrs.file_type().is_symlink() {
@@ -1451,7 +1601,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             pfrom.as_ptr(),
             pto.as_ptr(),
             Some(callback),
-            core::ptr::addr_of_mut!(size) as *mut _,
+            (&raw mut size) as *mut _,
             ptr::null_mut(),
             0,
         )
@@ -1489,7 +1639,7 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
             let bytes = unsafe { OsStr::from_encoded_bytes_unchecked(&abs_path[2..]) };
             r"\??\UNC\".encode_utf16().chain(bytes.encode_wide()).collect()
         } else {
-            return Err(io::const_io_error!(io::ErrorKind::InvalidInput, "path is not valid"));
+            return Err(io::const_error!(io::ErrorKind::InvalidInput, "path is not valid"));
         }
     };
     // Defined inline so we don't have to mess about with variable length buffer.
@@ -1506,10 +1656,7 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
     }
     let data_len = 12 + (abs_path.len() * 2);
     if data_len > u16::MAX as usize {
-        return Err(io::const_io_error!(
-            io::ErrorKind::InvalidInput,
-            "`original` path is too long"
-        ));
+        return Err(io::const_error!(io::ErrorKind::InvalidInput, "`original` path is too long"));
     }
     let data_len = data_len as u16;
     let mut header = MountPointBuffer {
@@ -1530,7 +1677,7 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
         cvt(c::DeviceIoControl(
             d.as_raw_handle(),
             c::FSCTL_SET_REPARSE_POINT,
-            addr_of!(header).cast::<c_void>(),
+            (&raw const header).cast::<c_void>(),
             data_len as u32 + 8,
             ptr::null_mut(),
             0,

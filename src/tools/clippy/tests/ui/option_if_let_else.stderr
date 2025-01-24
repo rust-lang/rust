@@ -115,8 +115,7 @@ LL |       let _ = if let Some(x) = arg {
    |  _____________^
 LL | |         x
 LL | |     } else {
-LL | |         // map_or_else must be suggested
-LL | |         side_effect()
+...  |
 LL | |     };
    | |_____^ help: try: `arg.map_or_else(side_effect, |x| x)`
 

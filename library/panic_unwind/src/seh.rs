@@ -50,7 +50,6 @@ use alloc::boxed::Box;
 use core::any::Any;
 use core::ffi::{c_int, c_uint, c_void};
 use core::mem::{self, ManuallyDrop};
-use core::ptr::{addr_of, addr_of_mut};
 
 // NOTE(nbdd0121): The `canary` field is part of stable ABI.
 #[repr(C)]
@@ -112,18 +111,18 @@ struct Exception {
 mod imp {
     #[repr(transparent)]
     #[derive(Copy, Clone)]
-    pub struct ptr_t(*mut u8);
+    pub(super) struct ptr_t(*mut u8);
 
     impl ptr_t {
-        pub const fn null() -> Self {
+        pub(super) const fn null() -> Self {
             Self(core::ptr::null_mut())
         }
 
-        pub const fn new(ptr: *mut u8) -> Self {
+        pub(super) const fn new(ptr: *mut u8) -> Self {
             Self(ptr)
         }
 
-        pub const fn raw(self) -> *mut u8 {
+        pub(super) const fn raw(self) -> *mut u8 {
             self.0
         }
     }
@@ -131,23 +130,21 @@ mod imp {
 
 #[cfg(not(target_arch = "x86"))]
 mod imp {
-    use core::ptr::addr_of;
-
     // On 64-bit systems, SEH represents pointers as 32-bit offsets from `__ImageBase`.
     #[repr(transparent)]
     #[derive(Copy, Clone)]
-    pub struct ptr_t(u32);
+    pub(super) struct ptr_t(u32);
 
     extern "C" {
-        pub static __ImageBase: u8;
+        static __ImageBase: u8;
     }
 
     impl ptr_t {
-        pub const fn null() -> Self {
+        pub(super) const fn null() -> Self {
             Self(0)
         }
 
-        pub fn new(ptr: *mut u8) -> Self {
+        pub(super) fn new(ptr: *mut u8) -> Self {
             // We need to expose the provenance of the pointer because it is not carried by
             // the `u32`, while the FFI needs to have this provenance to excess our statics.
             //
@@ -157,15 +154,12 @@ mod imp {
             // going to be cross-lang LTOed anyway. However, using expose is shorter and
             // requires less unsafe.
             let addr: usize = ptr.expose_provenance();
-            #[cfg(bootstrap)]
-            let image_base = unsafe { addr_of!(__ImageBase) }.addr();
-            #[cfg(not(bootstrap))]
-            let image_base = addr_of!(__ImageBase).addr();
+            let image_base = (&raw const __ImageBase).addr();
             let offset: usize = addr - image_base;
             Self(offset as u32)
         }
 
-        pub const fn raw(self) -> u32 {
+        pub(super) const fn raw(self) -> u32 {
             self.0
         }
     }
@@ -174,7 +168,7 @@ mod imp {
 use imp::ptr_t;
 
 #[repr(C)]
-pub struct _ThrowInfo {
+struct _ThrowInfo {
     pub attributes: c_uint,
     pub pmfnUnwind: ptr_t,
     pub pForwardCompat: ptr_t,
@@ -182,13 +176,13 @@ pub struct _ThrowInfo {
 }
 
 #[repr(C)]
-pub struct _CatchableTypeArray {
+struct _CatchableTypeArray {
     pub nCatchableTypes: c_int,
     pub arrayOfCatchableTypes: [ptr_t; 1],
 }
 
 #[repr(C)]
-pub struct _CatchableType {
+struct _CatchableType {
     pub properties: c_uint,
     pub pType: ptr_t,
     pub thisDisplacement: _PMD,
@@ -197,14 +191,14 @@ pub struct _CatchableType {
 }
 
 #[repr(C)]
-pub struct _PMD {
+struct _PMD {
     pub mdisp: c_int,
     pub pdisp: c_int,
     pub vdisp: c_int,
 }
 
 #[repr(C)]
-pub struct _TypeDescriptor {
+struct _TypeDescriptor {
     pub pVFTable: *const u8,
     pub spare: *mut u8,
     pub name: [u8; 11],
@@ -253,10 +247,7 @@ extern "C" {
 // This is fine since the MSVC runtime uses string comparison on the type name
 // to match TypeDescriptors rather than pointer equality.
 static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
-    #[cfg(bootstrap)]
-    pVFTable: unsafe { addr_of!(TYPE_INFO_VTABLE) } as *const _,
-    #[cfg(not(bootstrap))]
-    pVFTable: addr_of!(TYPE_INFO_VTABLE) as *const _,
+    pVFTable: (&raw const TYPE_INFO_VTABLE) as *const _,
     spare: core::ptr::null_mut(),
     name: TYPE_NAME,
 };
@@ -297,7 +288,7 @@ cfg_if::cfg_if! {
    }
 }
 
-pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
+pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     use core::intrinsics::atomic_store_seqcst;
 
     // _CxxThrowException executes entirely on this stack frame, so there's no
@@ -308,8 +299,8 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     // dropped when unwinding. Instead it will be dropped by exception_cleanup
     // which is invoked by the C++ runtime.
     let mut exception =
-        ManuallyDrop::new(Exception { canary: addr_of!(TYPE_DESCRIPTOR), data: Some(data) });
-    let throw_ptr = addr_of_mut!(exception) as *mut _;
+        ManuallyDrop::new(Exception { canary: (&raw const TYPE_DESCRIPTOR), data: Some(data) });
+    let throw_ptr = (&raw mut exception) as *mut _;
 
     // This... may seems surprising, and justifiably so. On 32-bit MSVC the
     // pointers between these structure are just that, pointers. On 64-bit MSVC,
@@ -332,23 +323,23 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     // In any case, we basically need to do something like this until we can
     // express more operations in statics (and we may never be able to).
     atomic_store_seqcst(
-        addr_of_mut!(THROW_INFO.pmfnUnwind).cast(),
+        (&raw mut THROW_INFO.pmfnUnwind).cast(),
         ptr_t::new(exception_cleanup as *mut u8).raw(),
     );
     atomic_store_seqcst(
-        addr_of_mut!(THROW_INFO.pCatchableTypeArray).cast(),
-        ptr_t::new(addr_of_mut!(CATCHABLE_TYPE_ARRAY).cast()).raw(),
+        (&raw mut THROW_INFO.pCatchableTypeArray).cast(),
+        ptr_t::new((&raw mut CATCHABLE_TYPE_ARRAY).cast()).raw(),
     );
     atomic_store_seqcst(
-        addr_of_mut!(CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0]).cast(),
-        ptr_t::new(addr_of_mut!(CATCHABLE_TYPE).cast()).raw(),
+        (&raw mut CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0]).cast(),
+        ptr_t::new((&raw mut CATCHABLE_TYPE).cast()).raw(),
     );
     atomic_store_seqcst(
-        addr_of_mut!(CATCHABLE_TYPE.pType).cast(),
-        ptr_t::new(addr_of_mut!(TYPE_DESCRIPTOR).cast()).raw(),
+        (&raw mut CATCHABLE_TYPE.pType).cast(),
+        ptr_t::new((&raw mut TYPE_DESCRIPTOR).cast()).raw(),
     );
     atomic_store_seqcst(
-        addr_of_mut!(CATCHABLE_TYPE.copyFunction).cast(),
+        (&raw mut CATCHABLE_TYPE.copyFunction).cast(),
         ptr_t::new(exception_copy as *mut u8).raw(),
     );
 
@@ -356,18 +347,18 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
         fn _CxxThrowException(pExceptionObject: *mut c_void, pThrowInfo: *mut u8) -> !;
     }
 
-    _CxxThrowException(throw_ptr, addr_of_mut!(THROW_INFO) as *mut _);
+    _CxxThrowException(throw_ptr, (&raw mut THROW_INFO) as *mut _);
 }
 
-pub unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
+pub(crate) unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
     // A null payload here means that we got here from the catch (...) of
     // __rust_try. This happens when a non-Rust foreign exception is caught.
     if payload.is_null() {
         super::__rust_foreign_exception();
     }
     let exception = payload as *mut Exception;
-    let canary = addr_of!((*exception).canary).read();
-    if !core::ptr::eq(canary, addr_of!(TYPE_DESCRIPTOR)) {
+    let canary = (&raw const (*exception).canary).read();
+    if !core::ptr::eq(canary, &raw const TYPE_DESCRIPTOR) {
         // A foreign Rust exception.
         super::__rust_foreign_exception();
     }

@@ -5,7 +5,7 @@ type T = impl Sized;
 struct Foo;
 
 impl Into<T> for Foo {
-//~^ ERROR conflicting implementations of trait `Into<T>` for type `Foo`
+//~^ ERROR conflicting implementations of trait `Into<_>` for type `Foo`
     fn into(self) -> T {
         Foo
     }

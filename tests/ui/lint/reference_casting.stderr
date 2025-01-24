@@ -103,7 +103,7 @@ error: casting `&T` to `&mut T` is undefined behavior, even if the reference is 
   --> $DIR/reference_casting.rs:45:16
    |
 LL |     let deferred = num as *const i32 as *mut i32;
-   |                    ----------------------------- casting happend here
+   |                    ----------------------------- casting happened here
 LL |     let _num = &mut *deferred;
    |                ^^^^^^^^^^^^^^
    |
@@ -113,7 +113,7 @@ error: casting `&T` to `&mut T` is undefined behavior, even if the reference is 
   --> $DIR/reference_casting.rs:48:16
    |
 LL |     let deferred = (std::ptr::from_ref(num) as *const i32 as *const i32).cast_mut() as *mut i32;
-   |                    ---------------------------------------------------------------------------- casting happend here
+   |                    ---------------------------------------------------------------------------- casting happened here
 LL |     let _num = &mut *deferred;
    |                ^^^^^^^^^^^^^^
    |
@@ -123,7 +123,7 @@ error: casting `&T` to `&mut T` is undefined behavior, even if the reference is 
   --> $DIR/reference_casting.rs:51:16
    |
 LL |     let deferred = (std::ptr::from_ref(num) as *const i32 as *const i32).cast_mut() as *mut i32;
-   |                    ---------------------------------------------------------------------------- casting happend here
+   |                    ---------------------------------------------------------------------------- casting happened here
 ...
 LL |     let _num = &mut *deferred_rebind;
    |                ^^^^^^^^^^^^^^^^^^^^^
@@ -150,7 +150,7 @@ error: casting `&T` to `&mut T` is undefined behavior, even if the reference is 
   --> $DIR/reference_casting.rs:62:16
    |
 LL |     let num = NUM as *const i32 as *mut i32;
-   |               ----------------------------- casting happend here
+   |               ----------------------------- casting happened here
 ...
 LL |     let _num = &mut *num;
    |                ^^^^^^^^^
@@ -279,7 +279,7 @@ error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
   --> $DIR/reference_casting.rs:115:5
    |
 LL |     let value = num as *const i32 as *mut i32;
-   |                 ----------------------------- casting happend here
+   |                 ----------------------------- casting happened here
 LL |     *value = 1;
    |     ^^^^^^^^^^
    |
@@ -289,7 +289,7 @@ error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
   --> $DIR/reference_casting.rs:119:5
    |
 LL |     let value = value as *mut i32;
-   |                 ----------------- casting happend here
+   |                 ----------------- casting happened here
 LL |     *value = 1;
    |     ^^^^^^^^^^
    |
@@ -299,7 +299,7 @@ error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
   --> $DIR/reference_casting.rs:122:5
    |
 LL |     let value = num as *const i32 as *mut i32;
-   |                 ----------------------------- casting happend here
+   |                 ----------------------------- casting happened here
 LL |     *value = 1;
    |     ^^^^^^^^^^
    |
@@ -309,7 +309,7 @@ error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
   --> $DIR/reference_casting.rs:125:5
    |
 LL |     let value = num as *const i32 as *mut i32;
-   |                 ----------------------------- casting happend here
+   |                 ----------------------------- casting happened here
 ...
 LL |     *value_rebind = 1;
    |     ^^^^^^^^^^^^^^^^^
@@ -336,7 +336,7 @@ error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
   --> $DIR/reference_casting.rs:131:5
    |
 LL |     let value = num as *const i32 as *mut i32;
-   |                 ----------------------------- casting happend here
+   |                 ----------------------------- casting happened here
 ...
 LL |     std::ptr::write(value, 2);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -347,7 +347,7 @@ error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
   --> $DIR/reference_casting.rs:133:5
    |
 LL |     let value = num as *const i32 as *mut i32;
-   |                 ----------------------------- casting happend here
+   |                 ----------------------------- casting happened here
 ...
 LL |     std::ptr::write_unaligned(value, 2);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -358,7 +358,7 @@ error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
   --> $DIR/reference_casting.rs:135:5
    |
 LL |     let value = num as *const i32 as *mut i32;
-   |                 ----------------------------- casting happend here
+   |                 ----------------------------- casting happened here
 ...
 LL |     std::ptr::write_volatile(value, 2);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -496,7 +496,7 @@ LL |         let w: *mut [u16; 2] = &mut l as *mut [u8; 2] as *mut _;
    |                                --------------------------------
    |                                |    |
    |                                |    backing allocation comes from here
-   |                                casting happend here
+   |                                casting happened here
 LL |         let w: *mut [u16] = unsafe {&mut *w};
    |                                     ^^^^^^^
    |

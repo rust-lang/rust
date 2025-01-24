@@ -1,9 +1,8 @@
 use std::collections::VecDeque;
 
 use rustc_index::Idx;
-use rustc_middle::ty::layout::TyAndLayout;
 
-use super::sync::EvalContextExtPriv as _;
+use super::thread::DynUnblockCallback;
 use super::vector_clock::VClock;
 use crate::*;
 
@@ -26,41 +25,8 @@ pub(super) struct InitOnce {
     clock: VClock,
 }
 
-impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
-trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    /// Provides the closure with the next InitOnceId. Creates that InitOnce if the closure returns None,
-    /// otherwise returns the value from the closure.
-    #[inline]
-    fn init_once_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, InitOnceId>
-    where
-        F: FnOnce(&mut MiriInterpCx<'tcx>, InitOnceId) -> InterpResult<'tcx, Option<InitOnceId>>,
-    {
-        let this = self.eval_context_mut();
-        let next_index = this.machine.sync.init_onces.next_index();
-        if let Some(old) = existing(this, next_index)? {
-            Ok(old)
-        } else {
-            let new_index = this.machine.sync.init_onces.push(Default::default());
-            assert_eq!(next_index, new_index);
-            Ok(new_index)
-        }
-    }
-}
-
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn init_once_get_or_create_id(
-        &mut self,
-        lock_op: &OpTy<'tcx>,
-        lock_layout: TyAndLayout<'tcx>,
-        offset: u64,
-    ) -> InterpResult<'tcx, InitOnceId> {
-        let this = self.eval_context_mut();
-        this.init_once_get_or_create(|ecx, next_id| {
-            ecx.get_or_create_id(next_id, lock_op, lock_layout, offset)
-        })
-    }
-
     #[inline]
     fn init_once_status(&mut self, id: InitOnceId) -> InitOnceStatus {
         let this = self.eval_context_ref();
@@ -69,11 +35,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Put the thread into the queue waiting for the initialization.
     #[inline]
-    fn init_once_enqueue_and_block(
-        &mut self,
-        id: InitOnceId,
-        callback: impl UnblockCallback<'tcx> + 'tcx,
-    ) {
+    fn init_once_enqueue_and_block(&mut self, id: InitOnceId, callback: DynUnblockCallback<'tcx>) {
         let this = self.eval_context_mut();
         let thread = this.active_thread();
         let init_once = &mut this.machine.sync.init_onces[id];
@@ -111,7 +73,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Each complete happens-before the end of the wait
         if let Some(data_race) = &this.machine.data_race {
-            init_once.clock.clone_from(&data_race.release_clock(&this.machine.threads));
+            data_race
+                .release_clock(&this.machine.threads, |clock| init_once.clock.clone_from(clock));
         }
 
         // Wake up everyone.
@@ -120,7 +83,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.unblock_thread(waiter, BlockReason::InitOnce(id))?;
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     #[inline]
@@ -137,7 +100,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Each complete happens-before the end of the wait
         if let Some(data_race) = &this.machine.data_race {
-            init_once.clock.clone_from(&data_race.release_clock(&this.machine.threads));
+            data_race
+                .release_clock(&this.machine.threads, |clock| init_once.clock.clone_from(clock));
         }
 
         // Wake up one waiting thread, so they can go ahead and try to init this.
@@ -145,7 +109,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.unblock_thread(waiter, BlockReason::InitOnce(id))?;
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     /// Synchronize with the previous completion of an InitOnce.

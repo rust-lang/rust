@@ -9,17 +9,17 @@
 //!  - or-fun-call
 //!  - option-if-let-else
 
-use crate::consts::{constant, FullInt};
+use crate::consts::{ConstEvalCtxt, FullInt};
 use crate::ty::{all_predicates_of, is_copy};
 use crate::visitors::is_const_evaluatable;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
-use rustc_span::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 use std::{cmp, ops};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -105,7 +105,7 @@ fn res_has_significant_drop(res: Res, cx: &LateContext<'_>, e: &Expr<'_>) -> boo
     {
         cx.typeck_results()
             .expr_ty(e)
-            .has_significant_drop(cx.tcx, cx.param_env)
+            .has_significant_drop(cx.tcx, cx.typing_env())
     } else {
         false
     }
@@ -118,7 +118,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
         eagerness: EagernessSuggestion,
     }
 
-    impl<'cx, 'tcx> Visitor<'tcx> for V<'cx, 'tcx> {
+    impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
         fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
             use EagernessSuggestion::{ForceNoChange, Lazy, NoChange};
             if self.eagerness == ForceNoChange {
@@ -206,7 +206,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 },
 
                 // `-i32::MIN` panics with overflow checks
-                ExprKind::Unary(UnOp::Neg, right) if constant(self.cx, self.cx.typeck_results(), right).is_none() => {
+                ExprKind::Unary(UnOp::Neg, right) if ConstEvalCtxt::new(self.cx).eval(right).is_none() => {
                     self.eagerness |= NoChange;
                 },
 
@@ -232,7 +232,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 // Thus, we would realistically only delay the lint.
                 ExprKind::Binary(op, _, right)
                     if matches!(op.node, BinOpKind::Shl | BinOpKind::Shr)
-                        && constant(self.cx, self.cx.typeck_results(), right).is_none() =>
+                        && ConstEvalCtxt::new(self.cx).eval(right).is_none() =>
                 {
                     self.eagerness |= NoChange;
                 },
@@ -240,9 +240,9 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 ExprKind::Binary(op, left, right)
                     if matches!(op.node, BinOpKind::Div | BinOpKind::Rem)
                         && let right_ty = self.cx.typeck_results().expr_ty(right)
-                        && let left = constant(self.cx, self.cx.typeck_results(), left)
-                        && let right = constant(self.cx, self.cx.typeck_results(), right)
-                            .and_then(|c| c.int_value(self.cx, right_ty))
+                        && let ecx = ConstEvalCtxt::new(self.cx)
+                        && let left = ecx.eval(left)
+                        && let right = ecx.eval(right).and_then(|c| c.int_value(self.cx.tcx, right_ty))
                         && matches!(
                             (left, right),
                             // `1 / x`: x might be zero
@@ -261,8 +261,8 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 ExprKind::Binary(op, left, right)
                     if matches!(op.node, BinOpKind::Add | BinOpKind::Sub | BinOpKind::Mul)
                         && !self.cx.typeck_results().expr_ty(e).is_floating_point()
-                        && (constant(self.cx, self.cx.typeck_results(), left).is_none()
-                            || constant(self.cx, self.cx.typeck_results(), right).is_none()) =>
+                        && let ecx = ConstEvalCtxt::new(self.cx)
+                        && (ecx.eval(left).is_none() || ecx.eval(right).is_none()) =>
                 {
                     self.eagerness |= NoChange;
                 },
@@ -303,7 +303,8 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 | ExprKind::AddrOf(..)
                 | ExprKind::Repeat(..)
                 | ExprKind::Block(Block { stmts: [], .. }, _)
-                | ExprKind::OffsetOf(..) => (),
+                | ExprKind::OffsetOf(..)
+                | ExprKind::UnsafeBinderCast(..) => (),
 
                 // Assignment might be to a local defined earlier, so don't eagerly evaluate.
                 // Blocks with multiple statements might be expensive, so don't eagerly evaluate.

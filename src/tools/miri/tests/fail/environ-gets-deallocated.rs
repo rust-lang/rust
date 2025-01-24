@@ -1,4 +1,4 @@
-//@ignore-target-windows: Windows does not have a global environ list that the program can access directly
+//@ignore-target: windows # Windows does not have a global environ list that the program can access directly
 
 fn get_environ() -> *const *const u8 {
     extern "C" {

@@ -1,5 +1,5 @@
 use rustc_ast::ast;
-use rustc_builtin_macros::asm::{parse_asm_args, AsmArgs};
+use rustc_builtin_macros::asm::{AsmArgs, parse_asm_args};
 
 use crate::rewrite::RewriteContext;
 
@@ -7,5 +7,5 @@ use crate::rewrite::RewriteContext;
 pub(crate) fn parse_asm(context: &RewriteContext<'_>, mac: &ast::MacCall) -> Option<AsmArgs> {
     let ts = mac.args.tokens.clone();
     let mut parser = super::build_parser(context, ts);
-    parse_asm_args(&mut parser, mac.span(), false).ok()
+    parse_asm_args(&mut parser, mac.span(), ast::AsmMacro::Asm).ok()
 }

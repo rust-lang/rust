@@ -18,6 +18,6 @@ enum U {
 #[repr(Rust, simd)]
 //~^ ERROR conflicting representation hints
 //~| ERROR SIMD types are experimental and possibly buggy
-struct F32x4(f32, f32, f32, f32);
+struct F32x4([f32; 4]);
 
 fn main() {}

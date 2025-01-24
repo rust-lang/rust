@@ -6,7 +6,7 @@
       let mut _2: u8;
   
       bb0: {
-          switchInt(_1) -> [1: bb1, otherwise: bb2];
+          switchInt(copy _1) -> [1: bb1, otherwise: bb2];
       }
   
       bb1: {
@@ -14,7 +14,7 @@
       }
   
       bb2: {
-          _0 = _2;
+          _0 = copy _2;
           return;
       }
   }

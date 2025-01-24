@@ -28,13 +28,13 @@ pub enum SpanMapRef<'a> {
     RealSpanMap(&'a RealSpanMap),
 }
 
-impl mbe::SpanMapper<Span> for SpanMap {
+impl syntax_bridge::SpanMapper<Span> for SpanMap {
     fn span_for(&self, range: TextRange) -> Span {
         self.span_for_range(range)
     }
 }
 
-impl mbe::SpanMapper<Span> for SpanMapRef<'_> {
+impl syntax_bridge::SpanMapper<Span> for SpanMapRef<'_> {
     fn span_for(&self, range: TextRange) -> Span {
         self.span_for_range(range)
     }

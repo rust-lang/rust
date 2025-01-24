@@ -10,8 +10,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn ref_self<'b>(&'b self, f: &'b u32) -> &u32 {
-   |                      ++++  ++           ++
+LL |     async fn ref_self<'b>(&self, f: &'b u32) -> &'b u32 {
+   |                      ++++            ++          ++
 
 error: lifetime may not live long enough
   --> $DIR/lt-ref-self-async.rs:22:9
@@ -25,8 +25,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn ref_Self<'b>(self: &'b Self, f: &'b u32) -> &u32 {
-   |                      ++++        ++           ++
+LL |     async fn ref_Self<'b>(self: &Self, f: &'b u32) -> &'b u32 {
+   |                      ++++                  ++          ++
 
 error: lifetime may not live long enough
   --> $DIR/lt-ref-self-async.rs:27:9
@@ -40,8 +40,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn box_ref_Self<'b>(self: Box<&'b Self>, f: &'b u32) -> &u32 {
-   |                          ++++            ++            ++
+LL |     async fn box_ref_Self<'b>(self: Box<&Self>, f: &'b u32) -> &'b u32 {
+   |                          ++++                       ++          ++
 
 error: lifetime may not live long enough
   --> $DIR/lt-ref-self-async.rs:32:9
@@ -55,8 +55,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn pin_ref_Self<'b>(self: Pin<&'b Self>, f: &'b u32) -> &u32 {
-   |                          ++++            ++            ++
+LL |     async fn pin_ref_Self<'b>(self: Pin<&Self>, f: &'b u32) -> &'b u32 {
+   |                          ++++                       ++          ++
 
 error: lifetime may not live long enough
   --> $DIR/lt-ref-self-async.rs:37:9
@@ -70,8 +70,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn box_box_ref_Self<'b>(self: Box<Box<&'b Self>>, f: &'b u32) -> &u32 {
-   |                              ++++                ++             ++
+LL |     async fn box_box_ref_Self<'b>(self: Box<Box<&Self>>, f: &'b u32) -> &'b u32 {
+   |                              ++++                            ++          ++
 
 error: lifetime may not live long enough
   --> $DIR/lt-ref-self-async.rs:42:9
@@ -85,8 +85,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn box_pin_Self<'b>(self: Box<Pin<&'b Self>>, f: &'b u32) -> &u32 {
-   |                          ++++                ++             ++
+LL |     async fn box_pin_Self<'b>(self: Box<Pin<&Self>>, f: &'b u32) -> &'b u32 {
+   |                          ++++                            ++          ++
 
 error: aborting due to 6 previous errors
 

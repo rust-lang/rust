@@ -1,21 +1,19 @@
-use crate::utils::internal_lints::metadata_collector::is_deprecated_lint;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::{is_lint_allowed, match_def_path, paths};
 use rustc_ast::ast::LitKind;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ExprKind, HirId, Item, MutTy, Mutability, Path, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
-use rustc_semver::RustcVersion;
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
-use rustc_span::{sym, Span};
-use {rustc_ast as ast, rustc_hir as hir};
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -23,7 +21,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// The compiler only knows lints via a `LintPass`. Without
-    /// putting a lint to a `LintPass::get_lints()`'s return, the compiler will not
+    /// putting a lint to a `LintPass::lint_vec()`'s return, the compiler will not
     /// know the name of the lint.
     ///
     /// ### Known problems
@@ -87,82 +85,37 @@ declare_clippy_lint! {
     "found clippy lint without `clippy::version` attribute"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for cases of an auto-generated deprecated lint without an updated reason,
-    /// i.e. `"default deprecation note"`.
-    ///
-    /// ### Why is this bad?
-    /// Indicates that the documentation is incomplete.
-    ///
-    /// ### Example
-    /// ```rust,ignore
-    /// declare_deprecated_lint! {
-    ///     /// ### What it does
-    ///     /// Nothing. This lint has been deprecated.
-    ///     ///
-    ///     /// ### Deprecation reason
-    ///     /// TODO
-    ///     #[clippy::version = "1.63.0"]
-    ///     pub COOL_LINT,
-    ///     "default deprecation note"
-    /// }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```rust,ignore
-    /// declare_deprecated_lint! {
-    ///     /// ### What it does
-    ///     /// Nothing. This lint has been deprecated.
-    ///     ///
-    ///     /// ### Deprecation reason
-    ///     /// This lint has been replaced by `cooler_lint`
-    ///     #[clippy::version = "1.63.0"]
-    ///     pub COOL_LINT,
-    ///     "this lint has been replaced by `cooler_lint`"
-    /// }
-    /// ```
-    pub DEFAULT_DEPRECATION_REASON,
-    internal,
-    "found 'default deprecation note' in a deprecated lint declaration"
-}
-
 #[derive(Clone, Debug, Default)]
 pub struct LintWithoutLintPass {
-    declared_lints: FxHashMap<Symbol, Span>,
-    registered_lints: FxHashSet<Symbol>,
+    declared_lints: FxIndexMap<Symbol, Span>,
+    registered_lints: FxIndexSet<Symbol>,
 }
 
-impl_lint_pass!(LintWithoutLintPass => [DEFAULT_LINT, LINT_WITHOUT_LINT_PASS, INVALID_CLIPPY_VERSION_ATTRIBUTE, MISSING_CLIPPY_VERSION_ATTRIBUTE, DEFAULT_DEPRECATION_REASON]);
+impl_lint_pass!(LintWithoutLintPass => [
+    DEFAULT_LINT,
+    LINT_WITHOUT_LINT_PASS,
+    INVALID_CLIPPY_VERSION_ATTRIBUTE,
+    MISSING_CLIPPY_VERSION_ATTRIBUTE,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if is_lint_allowed(cx, DEFAULT_LINT, item.hir_id())
-            || is_lint_allowed(cx, DEFAULT_DEPRECATION_REASON, item.hir_id())
-        {
+        if is_lint_allowed(cx, DEFAULT_LINT, item.hir_id()) {
             return;
         }
 
         if let hir::ItemKind::Static(ty, Mutability::Not, body_id) = item.kind {
-            let is_lint_ref_ty = is_lint_ref_type(cx, ty);
-            if is_deprecated_lint(cx, ty) || is_lint_ref_ty {
+            if is_lint_ref_type(cx, ty) {
                 check_invalid_clippy_version_attribute(cx, item);
 
                 let expr = &cx.tcx.hir().body(body_id).value;
-                let fields;
-                if is_lint_ref_ty {
-                    if let ExprKind::AddrOf(_, _, inner_exp) = expr.kind
-                        && let ExprKind::Struct(_, struct_fields, _) = inner_exp.kind
-                    {
-                        fields = struct_fields;
-                    } else {
-                        return;
-                    }
-                } else if let ExprKind::Struct(_, struct_fields, _) = expr.kind {
-                    fields = struct_fields;
+                let fields = if let ExprKind::AddrOf(_, _, inner_exp) = expr.kind
+                    && let ExprKind::Struct(_, struct_fields, _) = inner_exp.kind
+                {
+                    struct_fields
                 } else {
                     return;
-                }
+                };
 
                 let field = fields
                     .iter()
@@ -170,30 +123,20 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                     .expect("lints must have a description field");
 
                 if let ExprKind::Lit(Spanned {
-                    node: LitKind::Str(ref sym, _),
+                    node: LitKind::Str(sym, _),
                     ..
                 }) = field.expr.kind
                 {
                     let sym_str = sym.as_str();
-                    if is_lint_ref_ty {
-                        if sym_str == "default lint description" {
-                            span_lint(
-                                cx,
-                                DEFAULT_LINT,
-                                item.span,
-                                format!("the lint `{}` has the default lint description", item.ident.name),
-                            );
-                        }
-
-                        self.declared_lints.insert(item.ident.name, item.span);
-                    } else if sym_str == "default deprecation note" {
+                    if sym_str == "default lint description" {
                         span_lint(
                             cx,
-                            DEFAULT_DEPRECATION_REASON,
+                            DEFAULT_LINT,
                             item.span,
-                            format!("the lint `{}` has the default deprecation reason", item.ident.name),
+                            format!("the lint `{}` has the default lint description", item.ident.name),
                         );
                     }
+                    self.declared_lints.insert(item.ident.name, item.span);
                 }
             }
         } else if let Some(macro_call) = root_macro_call_first_node(cx, item) {
@@ -216,8 +159,8 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                 let body = cx.tcx.hir().body_owned_by(
                     impl_item_refs
                         .iter()
-                        .find(|iiref| iiref.ident.as_str() == "get_lints")
-                        .expect("LintPass needs to implement get_lints")
+                        .find(|iiref| iiref.ident.as_str() == "lint_vec")
+                        .expect("LintPass needs to implement lint_vec")
                         .id
                         .owner_id
                         .def_id,
@@ -275,13 +218,11 @@ pub(super) fn is_lint_ref_type(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
 
 fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'_>) {
     if let Some(value) = extract_clippy_version_value(cx, item) {
-        // The `sym!` macro doesn't work as it only expects a single token.
-        // It's better to keep it this way and have a direct `Symbol::intern` call here.
-        if value == Symbol::intern("pre 1.29.0") {
+        if value.as_str() == "pre 1.29.0" {
             return;
         }
 
-        if RustcVersion::parse(value.as_str()).is_err() {
+        if rustc_attr_parsing::parse_version(value).is_none() {
             span_lint_and_help(
                 cx,
                 INVALID_CLIPPY_VERSION_ATTRIBUTE,
@@ -308,11 +249,11 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
 pub(super) fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<'_>) -> Option<Symbol> {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
     attrs.iter().find_map(|attr| {
-        if let ast::AttrKind::Normal(ref attr_kind) = &attr.kind
+        if let hir::AttrKind::Normal(attr_kind) = &attr.kind
             // Identify attribute
-            && let [tool_name, attr_name] = &attr_kind.item.path.segments[..]
-            && tool_name.ident.name == sym::clippy
-            && attr_name.ident.name == sym::version
+            && let [tool_name, attr_name] = &attr_kind.path.segments[..]
+            && tool_name.name == sym::clippy
+            && attr_name.name == sym::version
             && let Some(version) = attr.value_str()
         {
             Some(version)
@@ -323,11 +264,11 @@ pub(super) fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<
 }
 
 struct LintCollector<'a, 'tcx> {
-    output: &'a mut FxHashSet<Symbol>,
+    output: &'a mut FxIndexSet<Symbol>,
     cx: &'a LateContext<'tcx>,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for LintCollector<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for LintCollector<'_, 'tcx> {
     type NestedFilter = nested_filter::All;
 
     fn visit_path(&mut self, path: &Path<'_>, _: HirId) {

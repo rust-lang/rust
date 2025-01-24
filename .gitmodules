@@ -22,10 +22,6 @@
 	path = library/stdarch
 	url = https://github.com/rust-lang/stdarch.git
 	shallow = true
-[submodule "src/doc/rustc-dev-guide"]
-	path = src/doc/rustc-dev-guide
-	url = https://github.com/rust-lang/rustc-dev-guide.git
-	shallow = true
 [submodule "src/doc/edition-guide"]
 	path = src/doc/edition-guide
 	url = https://github.com/rust-lang/edition-guide.git
@@ -33,7 +29,7 @@
 [submodule "src/llvm-project"]
 	path = src/llvm-project
 	url = https://github.com/rust-lang/llvm-project.git
-	branch = rustc/19.1-2024-07-30
+	branch = rustc/19.1-2024-12-03
 	shallow = true
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
@@ -46,4 +42,12 @@
 [submodule "src/tools/rustc-perf"]
 	path = src/tools/rustc-perf
 	url = https://github.com/rust-lang/rustc-perf.git
+	shallow = true
+[submodule "src/tools/enzyme"]
+	path = src/tools/enzyme
+	url = https://github.com/EnzymeAD/Enzyme.git
+	shallow = true
+[submodule "src/gcc"]
+	path = src/gcc
+	url = https://github.com/rust-lang/gcc.git
 	shallow = true

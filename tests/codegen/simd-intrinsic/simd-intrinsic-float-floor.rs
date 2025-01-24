@@ -7,23 +7,19 @@
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f32x2(pub f32, pub f32);
+pub struct f32x2(pub [f32; 2]);
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f32x4(pub f32, pub f32, pub f32, pub f32);
+pub struct f32x4(pub [f32; 4]);
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f32x8(pub f32, pub f32, pub f32, pub f32,
-                 pub f32, pub f32, pub f32, pub f32);
+pub struct f32x8(pub [f32; 8]);
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f32x16(pub f32, pub f32, pub f32, pub f32,
-                  pub f32, pub f32, pub f32, pub f32,
-                  pub f32, pub f32, pub f32, pub f32,
-                  pub f32, pub f32, pub f32, pub f32);
+pub struct f32x16(pub [f32; 16]);
 
 extern "rust-intrinsic" {
     fn simd_floor<T>(x: T) -> T;
@@ -59,16 +55,15 @@ pub unsafe fn floor_32x16(a: f32x16) -> f32x16 {
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f64x2(pub f64, pub f64);
+pub struct f64x2(pub [f64; 2]);
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f64x4(pub f64, pub f64, pub f64, pub f64);
+pub struct f64x4(pub [f64; 4]);
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f64x8(pub f64, pub f64, pub f64, pub f64,
-                 pub f64, pub f64, pub f64, pub f64);
+pub struct f64x8(pub [f64; 8]);
 
 // CHECK-LABEL: @floor_64x4
 #[no_mangle]

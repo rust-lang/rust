@@ -3,7 +3,7 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, Subdiagnostic};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{walk_ty, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_ty};
 use rustc_hir::{
     self as hir, GenericBound, GenericParam, GenericParamKind, Item, ItemKind, Lifetime,
     LifetimeName, LifetimeParamKind, MissingLifetimeKind, Node, TyKind,
@@ -12,8 +12,8 @@ use rustc_middle::ty::{
     self, AssocItemContainer, StaticLifetimeVisitor, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
 };
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::Ident;
-use rustc_span::Span;
+use rustc_span::{Ident, Span};
+use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::errors::{
@@ -49,7 +49,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     // This may have a closure and it would cause ICE
                     // through `find_param_with_region` (#78262).
                     let anon_reg_sup = tcx.is_suitable_region(self.generic_param_scope, *sup_r)?;
-                    let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.def_id);
+                    let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.scope);
                     if fn_returns.is_empty() {
                         return None;
                     }
@@ -58,11 +58,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     let simple_ident = param.param.pat.simple_ident();
 
                     let (has_impl_path, impl_path) = match ctxt.assoc_item.container {
-                        AssocItemContainer::TraitContainer => {
+                        AssocItemContainer::Trait => {
                             let id = ctxt.assoc_item.container_id(tcx);
                             (true, tcx.def_path_str(id))
                         }
-                        AssocItemContainer::ImplContainer => (false, String::new()),
+                        AssocItemContainer::Impl => (false, String::new()),
                     };
 
                     let mut err = self.tcx().dcx().create_err(ButCallingIntroduces {
@@ -195,7 +195,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         let mut err = self.tcx().dcx().create_err(diag);
 
-        let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.def_id);
+        let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.scope);
 
         let mut override_error_code = None;
         if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = &sup_origin
@@ -249,7 +249,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             Some(arg),
             captures,
             Some((param.param_ty_span, param.param_ty.to_string())),
-            Some(anon_reg_sup.def_id),
+            Some(anon_reg_sup.scope),
         );
 
         let reported = err.emit();
@@ -283,14 +283,9 @@ pub fn suggest_new_region_bound(
         }
         match fn_return.kind {
             // FIXME(precise_captures): Suggest adding to `use<...>` list instead.
-            TyKind::OpaqueDef(item_id, _, _) => {
-                let item = tcx.hir().item(item_id);
-                let ItemKind::OpaqueTy(opaque) = &item.kind else {
-                    return;
-                };
-
+            TyKind::OpaqueDef(opaque) => {
                 // Get the identity type for this RPIT
-                let did = item_id.owner_id.to_def_id();
+                let did = opaque.def_id.to_def_id();
                 let ty = Ty::new_opaque(tcx, did, ty::GenericArgs::identity_for_item(tcx, did));
 
                 if let Some(span) = opaque.bounds.iter().find_map(|arg| match arg {
@@ -328,12 +323,9 @@ pub fn suggest_new_region_bound(
                             .params
                             .iter()
                             .filter(|p| {
-                                matches!(
-                                    p.kind,
-                                    GenericParamKind::Lifetime {
-                                        kind: hir::LifetimeParamKind::Explicit
-                                    }
-                                )
+                                matches!(p.kind, GenericParamKind::Lifetime {
+                                    kind: hir::LifetimeParamKind::Explicit
+                                })
                             })
                             .map(|p| {
                                 if let hir::ParamName::Plain(name) = p.name {
@@ -428,8 +420,8 @@ fn make_elided_region_spans_suggs<'a>(
 
     let mut process_consecutive_brackets =
         |span: Option<Span>, spans_suggs: &mut Vec<(Span, String)>| {
-            if span
-                .is_some_and(|span| bracket_span.map_or(true, |bracket_span| span == bracket_span))
+            if let Some(span) = span
+                && bracket_span.is_none_or(|bracket_span| span == bracket_span)
             {
                 consecutive_brackets += 1;
             } else if let Some(bracket_span) = bracket_span.take() {
@@ -535,7 +527,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         // Find the method being called.
         let Ok(Some(instance)) = ty::Instance::try_resolve(
             tcx,
-            ctxt.param_env,
+            self.cx.typing_env(ctxt.param_env),
             ctxt.assoc_item.def_id,
             self.cx.resolve_vars_if_possible(ctxt.args),
         ) else {
@@ -606,7 +598,7 @@ impl<'a, 'tcx> Visitor<'tcx> for HirTraitObjectVisitor<'a> {
             _,
         ) = t.kind
         {
-            for (ptr, _) in poly_trait_refs {
+            for ptr in poly_trait_refs {
                 if Some(self.1) == ptr.trait_ref.trait_def_id() {
                     self.0.push(ptr.span);
                 }

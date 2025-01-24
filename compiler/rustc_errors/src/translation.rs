@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::env;
 use std::error::Report;
 
-use rustc_data_structures::sync::Lrc;
 pub use rustc_error_messages::FluentArgs;
 use tracing::{debug, trace};
 
@@ -33,7 +32,7 @@ pub trait Translate {
     /// Return `FluentBundle` with localized diagnostics for the locale requested by the user. If no
     /// language was requested by the user then this will be `None` and `fallback_fluent_bundle`
     /// should be used.
-    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>>;
+    fn fluent_bundle(&self) -> Option<&FluentBundle>;
 
     /// Return `FluentBundle` with localized diagnostics for the default locale of the compiler.
     /// Used when the user has not requested a specific language or when a localized diagnostic is
@@ -59,7 +58,7 @@ pub trait Translate {
         &'a self,
         message: &'a DiagMessage,
         args: &'a FluentArgs<'_>,
-    ) -> Result<Cow<'_, str>, TranslateError<'_>> {
+    ) -> Result<Cow<'a, str>, TranslateError<'a>> {
         trace!(?message, ?args);
         let (identifier, attr) = match message {
             DiagMessage::Str(msg) | DiagMessage::Translated(msg) => {

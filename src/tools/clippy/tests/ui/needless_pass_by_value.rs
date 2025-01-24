@@ -5,7 +5,8 @@
     clippy::redundant_clone,
     clippy::redundant_pattern_matching,
     clippy::single_match,
-    clippy::uninlined_format_args
+    clippy::uninlined_format_args,
+    clippy::needless_lifetimes
 )]
 //@no-rustfix
 use std::borrow::Borrow;
@@ -84,7 +85,7 @@ trait Serialize {}
 impl<'a, T> Serialize for &'a T where T: Serialize {}
 impl Serialize for i32 {}
 
-fn test_blanket_ref<T: Foo, S: Serialize>(_foo: T, _serializable: S) {}
+fn test_blanket_ref<T: Foo, S: Serialize>(vals: T, serializable: S) {}
 //~^ ERROR: this argument is passed by value, but not consumed in the function body
 
 fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
@@ -116,7 +117,7 @@ impl<T: Serialize, U> S<T, U> {
     ) {
     }
 
-    fn baz(&self, _u: U, _s: Self) {}
+    fn baz(&self, uu: U, ss: Self) {}
     //~^ ERROR: this argument is passed by value, but not consumed in the function body
     //~| ERROR: this argument is passed by value, but not consumed in the function body
 }
@@ -162,13 +163,13 @@ fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: CopyWrapper) {
 // The following 3 lines should not cause an ICE. See #2831
 trait Bar<'a, A> {}
 impl<'b, T> Bar<'b, T> for T {}
-fn some_fun<'b, S: Bar<'b, ()>>(_item: S) {}
+fn some_fun<'b, S: Bar<'b, ()>>(items: S) {}
 //~^ ERROR: this argument is passed by value, but not consumed in the function body
 
 // Also this should not cause an ICE. See #2831
 trait Club<'a, A> {}
 impl<T> Club<'static, T> for T {}
-fn more_fun(_item: impl Club<'static, i32>) {}
+fn more_fun(items: impl Club<'static, i32>) {}
 //~^ ERROR: this argument is passed by value, but not consumed in the function body
 
 fn is_sync<T>(_: T)
@@ -176,6 +177,10 @@ where
     T: Sync,
 {
 }
+
+struct Obj(String);
+
+fn prefix_test(_unused_with_prefix: Obj) {}
 
 fn main() {
     // This should not cause an ICE either

@@ -1,6 +1,6 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::visitors::for_each_local_use_after_expr;
 use clippy_utils::{is_from_proc_macro, path_to_local};
 use itertools::Itertools;
@@ -190,7 +190,7 @@ fn all_bindings_are_for_conv<'tcx>(
                     tys.len() == elements.len() && tys.iter().chain(final_tys.iter().copied()).all_equal()
                 },
                 (ToType::Tuple, ty::Array(ty, len)) => {
-                    let Some(len) = len.try_eval_target_usize(cx.tcx, cx.param_env) else { return false };
+                    let Some(len) = len.try_to_target_usize(cx.tcx) else { return false };
                     len as usize == elements.len() && final_tys.iter().chain(once(ty)).all_equal()
                 },
                 _ => false,

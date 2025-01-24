@@ -1,5 +1,5 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
-use libc::{self, c_char, c_int, RTP_ID};
+use libc::{self, RTP_ID, c_char, c_int};
 
 use crate::io::{self, ErrorKind};
 use crate::num::NonZero;
@@ -22,7 +22,7 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return Err(io::const_io_error!(
+            return Err(io::const_error!(
                 ErrorKind::InvalidInput,
                 "nul byte found in provided data",
             ));
@@ -57,7 +57,7 @@ impl Command {
                 t!(cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO)));
             }
 
-            if let Some(ref cwd) = *self.get_cwd() {
+            if let Some(cwd) = self.get_cwd() {
                 t!(cvt(libc::chdir(cwd.as_ptr())));
             }
 

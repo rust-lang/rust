@@ -12,8 +12,7 @@
 pub unsafe extern "C" fn c_variadic(_: usize, _: ...) {
     // CHECK-NOT: va_start
     // CHECK-NOT: alloca
-    core::arch::asm! {
+    core::arch::naked_asm! {
         "ret",
-        options(noreturn),
     }
 }

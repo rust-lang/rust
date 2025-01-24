@@ -1,5 +1,5 @@
 warning: method `dummy` is never used
-  --> $DIR/dst-coercions.rs:8:14
+  --> $DIR/dst-coercions.rs:7:14
    |
 LL | trait T { fn dummy(&self) { } }
    |       -      ^^^^^

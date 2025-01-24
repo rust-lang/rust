@@ -332,9 +332,9 @@ impl<'tcx> Operand<'tcx> {
         span: Span,
     ) -> Operand<'tcx> {
         debug_assert!({
-            let param_env_and_ty = ty::ParamEnv::empty().and(ty);
+            let typing_env = ty::TypingEnv::fully_monomorphized();
             let type_size = tcx
-                .layout_of(param_env_and_ty)
+                .layout_of(typing_env.as_query_input(ty))
                 .unwrap_or_else(|e| panic!("could not compute layout for {ty:?}: {e:?}"))
                 .size;
             let scalar_size = match val {
@@ -423,7 +423,7 @@ impl<'tcx> Rvalue<'tcx> {
             | Rvalue::Repeat(_, _)
             | Rvalue::Ref(_, _, _)
             | Rvalue::ThreadLocalRef(_)
-            | Rvalue::AddressOf(_, _)
+            | Rvalue::RawPtr(_, _)
             | Rvalue::Len(_)
             | Rvalue::Cast(
                 CastKind::IntToInt
@@ -432,9 +432,8 @@ impl<'tcx> Rvalue<'tcx> {
                 | CastKind::IntToFloat
                 | CastKind::FnPtrToPtr
                 | CastKind::PtrToPtr
-                | CastKind::PointerCoercion(_)
+                | CastKind::PointerCoercion(_, _)
                 | CastKind::PointerWithExposedProvenance
-                | CastKind::DynStar
                 | CastKind::Transmute,
                 _,
                 _,
@@ -457,6 +456,8 @@ impl BorrowKind {
         }
     }
 
+    /// Returns whether borrows represented by this kind are allowed to be split into separate
+    /// Reservation and Activation phases.
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
             BorrowKind::Shared

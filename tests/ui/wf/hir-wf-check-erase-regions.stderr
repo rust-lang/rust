@@ -4,7 +4,7 @@ error[E0277]: `&'a T` is not an iterator
 LL |     type IntoIter = std::iter::Flatten<std::slice::Iter<'a, T>>;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&'a T` is not an iterator
    |
-   = help: the trait `Iterator` is not implemented for `&'a T`, which is required by `Flatten<std::slice::Iter<'a, T>>: Iterator`
+   = help: the trait `Iterator` is not implemented for `&'a T`
    = help: the trait `Iterator` is implemented for `&mut I`
    = note: required for `Flatten<std::slice::Iter<'a, T>>` to implement `Iterator`
 note: required by a bound in `std::iter::IntoIterator::IntoIter`
@@ -16,7 +16,7 @@ error[E0277]: `&'a T` is not an iterator
 LL |     type IntoIter = std::iter::Flatten<std::slice::Iter<'a, T>>;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&'a T` is not an iterator
    |
-   = help: the trait `Iterator` is not implemented for `&'a T`, which is required by `&'a T: IntoIterator`
+   = help: the trait `Iterator` is not implemented for `&'a T`
    = help: the trait `Iterator` is implemented for `&mut I`
    = note: required for `&'a T` to implement `IntoIterator`
 note: required by a bound in `Flatten`
@@ -28,7 +28,7 @@ error[E0277]: `&'a T` is not an iterator
 LL |     fn into_iter(self) -> Self::IntoIter {
    |                           ^^^^^^^^^^^^^^ `&'a T` is not an iterator
    |
-   = help: the trait `Iterator` is not implemented for `&'a T`, which is required by `&'a T: IntoIterator`
+   = help: the trait `Iterator` is not implemented for `&'a T`
    = help: the trait `Iterator` is implemented for `&mut I`
    = note: required for `&'a T` to implement `IntoIterator`
 note: required by a bound in `Flatten`

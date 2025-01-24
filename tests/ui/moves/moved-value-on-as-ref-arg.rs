@@ -18,8 +18,8 @@ impl AsMut<Bar> for Bar {
 
 fn foo<T: AsRef<Bar>>(_: T) {}
 fn qux<T: AsMut<Bar>>(_: T) {}
-fn bat<T: Borrow<T>>(_: T) {}
-fn baz<T: BorrowMut<T>>(_: T) {}
+fn bat<T: Borrow<Bar>>(_: T) {}
+fn baz<T: BorrowMut<Bar>>(_: T) {}
 
 pub fn main() {
     let bar = Bar;

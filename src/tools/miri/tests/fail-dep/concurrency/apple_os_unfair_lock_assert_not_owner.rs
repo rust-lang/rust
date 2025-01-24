@@ -1,4 +1,4 @@
-//@ only-target-darwin
+//@only-target: darwin
 
 use std::cell::UnsafeCell;
 

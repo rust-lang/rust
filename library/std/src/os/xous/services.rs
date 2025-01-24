@@ -19,7 +19,7 @@ pub(crate) use ticktimer::*;
 
 mod ns {
     const NAME_MAX_LENGTH: usize = 64;
-    use crate::os::xous::ffi::{lend_mut, Connection};
+    use crate::os::xous::ffi::{Connection, lend_mut};
     // By making this repr(C), the layout of this struct becomes well-defined
     // and no longer shifts around.
     // By marking it as `align(4096)` we define that it will be page-aligned,

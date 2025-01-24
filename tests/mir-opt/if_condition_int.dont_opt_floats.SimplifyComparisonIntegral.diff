@@ -10,7 +10,7 @@
       bb0: {
           StorageLive(_2);
           StorageLive(_3);
-          _3 = _1;
+          _3 = copy _1;
           _2 = Eq(move _3, const -42f32);
           switchInt(move _2) -> [0: bb2, otherwise: bb1];
       }

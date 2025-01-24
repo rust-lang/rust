@@ -82,7 +82,8 @@ mod issue_12530 {
             #![allow(dead_code)]
         }
     }
-    /// Nested mod //~ ERROR: item has both inner and outer attributes
+    /// Nested mod
+    //~^ ERROR: item has both inner and outer attributes
     #[allow(unused)]
     mod nest_mod_2 {
         #![allow(unused)]

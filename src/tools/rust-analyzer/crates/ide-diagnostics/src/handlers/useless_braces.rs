@@ -1,8 +1,8 @@
 use hir::InFile;
+use ide_db::text_edit::TextEdit;
 use ide_db::{source_change::SourceChange, EditionedFileId, FileRange};
 use itertools::Itertools;
 use syntax::{ast, AstNode, SyntaxNode, SyntaxNodePtr};
-use text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, DiagnosticCode};
 

@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Trait<for<'a> fn(<_ as WithAssoc1<'a>>::Assoc, <_ as WithAssoc2<'a>>::Assoc)>` for type `(_, _)`
-  --> $DIR/issue-102048.rs:39:1
+  --> $DIR/issue-102048.rs:38:1
    |
 LL | / impl<T, U> Trait<for<'a> fn(<T as WithAssoc1<'a>>::Assoc, <U as WithAssoc2<'a>>::Assoc)> for (T, U)
 LL | | where

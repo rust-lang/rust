@@ -10,10 +10,10 @@
       bb0: {
           StorageLive(_2);
           StorageLive(_3);
-          _3 = _1;
+          _3 = copy _1;
           _2 = Repr { f: move _3 };
           StorageDead(_3);
-          _0 = (_2.1: u32);
+          _0 = copy (_2.1: u32);
           StorageDead(_2);
           return;
       }

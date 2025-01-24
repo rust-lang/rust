@@ -1,0 +1,107 @@
+#![allow(clippy::all)]
+#![deny(clippy::manual_ignore_case_cmp)]
+
+use std::ffi::{OsStr, OsString};
+
+fn main() {}
+
+fn variants(a: &str, b: &str) {
+    if a.eq_ignore_ascii_case(b) {
+        return;
+    }
+    if a.eq_ignore_ascii_case(b) {
+        return;
+    }
+    let r = a.eq_ignore_ascii_case(b);
+    let r = r || a.eq_ignore_ascii_case(b);
+    r && a.eq_ignore_ascii_case(&b.to_uppercase());
+    // !=
+    if !a.eq_ignore_ascii_case(b) {
+        return;
+    }
+    if !a.eq_ignore_ascii_case(b) {
+        return;
+    }
+    let r = !a.eq_ignore_ascii_case(b);
+    let r = r || !a.eq_ignore_ascii_case(b);
+    r && !a.eq_ignore_ascii_case(&b.to_uppercase());
+}
+
+fn unsupported(a: char, b: char) {
+    // TODO:: these are rare, and might not be worth supporting
+    a.to_ascii_lowercase() == char::to_ascii_lowercase(&b);
+    char::to_ascii_lowercase(&a) == b.to_ascii_lowercase();
+    char::to_ascii_lowercase(&a) == char::to_ascii_lowercase(&b);
+}
+
+fn char(a: char, b: char) {
+    a.eq_ignore_ascii_case(&b);
+    a.to_ascii_lowercase() == *&b.to_ascii_lowercase();
+    *&a.to_ascii_lowercase() == b.to_ascii_lowercase();
+    a.eq_ignore_ascii_case(&'a');
+    'a'.eq_ignore_ascii_case(&b);
+}
+fn u8(a: u8, b: u8) {
+    a.eq_ignore_ascii_case(&b);
+    a.eq_ignore_ascii_case(&b'a');
+    b'a'.eq_ignore_ascii_case(&b);
+}
+fn ref_str(a: &str, b: &str) {
+    a.eq_ignore_ascii_case(b);
+    a.to_uppercase().eq_ignore_ascii_case(b);
+    a.eq_ignore_ascii_case("a");
+    "a".eq_ignore_ascii_case(b);
+}
+fn ref_ref_str(a: &&str, b: &&str) {
+    a.eq_ignore_ascii_case(b);
+    a.to_uppercase().eq_ignore_ascii_case(b);
+    a.eq_ignore_ascii_case("a");
+    "a".eq_ignore_ascii_case(b);
+}
+fn string(a: String, b: String) {
+    a.eq_ignore_ascii_case(&b);
+    a.eq_ignore_ascii_case("a");
+    "a".eq_ignore_ascii_case(&b);
+    &a.to_ascii_lowercase() == &b.to_ascii_lowercase();
+    &&a.to_ascii_lowercase() == &&b.to_ascii_lowercase();
+    a.eq_ignore_ascii_case("a");
+    "a".eq_ignore_ascii_case(&b);
+}
+fn ref_string(a: String, b: &String) {
+    a.eq_ignore_ascii_case(b);
+    a.eq_ignore_ascii_case("a");
+    "a".eq_ignore_ascii_case(b);
+
+    b.eq_ignore_ascii_case(&a);
+    b.eq_ignore_ascii_case("a");
+    "a".eq_ignore_ascii_case(&a);
+}
+fn string_ref_str(a: String, b: &str) {
+    a.eq_ignore_ascii_case(b);
+    a.eq_ignore_ascii_case("a");
+    "a".eq_ignore_ascii_case(b);
+
+    b.eq_ignore_ascii_case(&a);
+    b.eq_ignore_ascii_case("a");
+    "a".eq_ignore_ascii_case(&a);
+}
+fn ref_u8slice(a: &[u8], b: &[u8]) {
+    a.eq_ignore_ascii_case(b);
+}
+fn u8vec(a: Vec<u8>, b: Vec<u8>) {
+    a.eq_ignore_ascii_case(&b);
+}
+fn ref_u8vec(a: Vec<u8>, b: &Vec<u8>) {
+    a.eq_ignore_ascii_case(b);
+    b.eq_ignore_ascii_case(&a);
+}
+fn ref_osstr(a: &OsStr, b: &OsStr) {
+    a.eq_ignore_ascii_case(b);
+}
+fn osstring(a: OsString, b: OsString) {
+    a.eq_ignore_ascii_case(b);
+}
+fn ref_osstring(a: OsString, b: &OsString) {
+    a.eq_ignore_ascii_case(b);
+    b.eq_ignore_ascii_case(a);
+}

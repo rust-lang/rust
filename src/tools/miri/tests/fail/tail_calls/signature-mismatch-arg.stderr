@@ -1,5 +1,5 @@
 error: Undefined Behavior: calling a function with argument of type i32 passing data of type u32
-  --> $DIR/signature-mismatch-arg.rs:LL:CC
+  --> tests/fail/tail_calls/signature-mismatch-arg.rs:LL:CC
    |
 LL |     f(0);
    |     ^^^^ calling a function with argument of type i32 passing data of type u32
@@ -9,7 +9,7 @@ LL |     f(0);
    = help: this means these two types are not *guaranteed* to be ABI-compatible across all targets
    = help: if you think this code should be accepted anyway, please report an issue with Miri
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/signature-mismatch-arg.rs:LL:CC
+   = note: inside `main` at tests/fail/tail_calls/signature-mismatch-arg.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

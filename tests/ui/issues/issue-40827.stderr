@@ -6,7 +6,7 @@ LL |     f(Foo(Arc::new(Bar::B(None))));
    |     |
    |     required by a bound introduced by this call
    |
-   = help: within `Bar`, the trait `Sync` is not implemented for `Rc<Foo>`, which is required by `Foo: Send`
+   = help: within `Bar`, the trait `Sync` is not implemented for `Rc<Foo>`
 note: required because it appears within the type `Bar`
   --> $DIR/issue-40827.rs:6:6
    |
@@ -32,7 +32,7 @@ LL |     f(Foo(Arc::new(Bar::B(None))));
    |     |
    |     required by a bound introduced by this call
    |
-   = help: within `Bar`, the trait `Send` is not implemented for `Rc<Foo>`, which is required by `Foo: Send`
+   = help: within `Bar`, the trait `Send` is not implemented for `Rc<Foo>`
 note: required because it appears within the type `Bar`
   --> $DIR/issue-40827.rs:6:6
    |

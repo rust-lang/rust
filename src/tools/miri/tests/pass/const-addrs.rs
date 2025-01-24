@@ -7,7 +7,6 @@
 // MIR inlining will put every evaluation of the const we're repeatedly evaluating into the same
 // stack frame, breaking this test.
 //@compile-flags: -Zinline-mir=no
-#![feature(strict_provenance)]
 
 const EVALS: usize = 256;
 

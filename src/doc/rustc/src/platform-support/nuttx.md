@@ -35,7 +35,7 @@ The following target names are defined:
 
 ## Building the target
 
-The target can be built by enabled in the `rustc` build:
+The target can be built by enabling it in the `rustc` build:
 
 ```toml
 [build]

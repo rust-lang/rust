@@ -1,10 +1,12 @@
+use rustc_abi::{BackendRepr, FieldsShape, Scalar, Variants};
 use rustc_middle::bug;
-use rustc_middle::ty::layout::{LayoutCx, LayoutError, LayoutOf, TyAndLayout, ValidityRequirement};
-use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
-use rustc_target::abi::{Abi, FieldsShape, Scalar, Variants};
+use rustc_middle::ty::layout::{
+    HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, ValidityRequirement,
+};
+use rustc_middle::ty::{PseudoCanonicalInput, Ty, TyCtxt};
 
 use crate::const_eval::{CanAccessMutGlobal, CheckAlignment, CompileTimeMachine};
-use crate::interpret::{InterpCx, MemoryKind, OpTy};
+use crate::interpret::{InterpCx, MemoryKind};
 
 /// Determines if this type permits "raw" initialization by just transmuting some memory into an
 /// instance of `T`.
@@ -21,33 +23,33 @@ use crate::interpret::{InterpCx, MemoryKind, OpTy};
 pub fn check_validity_requirement<'tcx>(
     tcx: TyCtxt<'tcx>,
     kind: ValidityRequirement,
-    param_env_and_ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
+    input: PseudoCanonicalInput<'tcx, Ty<'tcx>>,
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
-    let layout = tcx.layout_of(param_env_and_ty)?;
+    let layout = tcx.layout_of(input)?;
 
     // There is nothing strict or lax about inhabitedness.
     if kind == ValidityRequirement::Inhabited {
-        return Ok(!layout.abi.is_uninhabited());
+        return Ok(!layout.is_uninhabited());
     }
 
-    let layout_cx = LayoutCx { tcx, param_env: param_env_and_ty.param_env };
+    let layout_cx = LayoutCx::new(tcx, input.typing_env);
     if kind == ValidityRequirement::Uninit || tcx.sess.opts.unstable_opts.strict_init_checks {
-        might_permit_raw_init_strict(layout, &layout_cx, kind)
+        check_validity_requirement_strict(layout, &layout_cx, kind)
     } else {
-        might_permit_raw_init_lax(layout, &layout_cx, kind)
+        check_validity_requirement_lax(layout, &layout_cx, kind)
     }
 }
 
-/// Implements the 'strict' version of the `might_permit_raw_init` checks; see that function for
-/// details.
-fn might_permit_raw_init_strict<'tcx>(
+/// Implements the 'strict' version of the [`check_validity_requirement`] checks; see that function
+/// for details.
+fn check_validity_requirement_strict<'tcx>(
     ty: TyAndLayout<'tcx>,
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: &LayoutCx<'tcx>,
     kind: ValidityRequirement,
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
     let machine = CompileTimeMachine::new(CanAccessMutGlobal::No, CheckAlignment::Error);
 
-    let mut cx = InterpCx::new(cx.tcx, rustc_span::DUMMY_SP, cx.param_env, machine);
+    let mut cx = InterpCx::new(cx.tcx(), rustc_span::DUMMY_SP, cx.typing_env, machine);
 
     let allocated = cx
         .allocate(ty, MemoryKind::Machine(crate::const_eval::MemoryKind::Heap))
@@ -61,20 +63,27 @@ fn might_permit_raw_init_strict<'tcx>(
         .expect("failed to write bytes for zero valid check");
     }
 
-    let ot: OpTy<'_, _> = allocated.into();
-
     // Assume that if it failed, it's a validation failure.
     // This does *not* actually check that references are dereferenceable, but since all types that
     // require dereferenceability also require non-null, we don't actually get any false negatives
     // due to this.
-    Ok(cx.validate_operand(&ot, /*recursive*/ false).is_ok())
+    // The value we are validating is temporary and discarded at the end of this function, so
+    // there is no point in reseting provenance and padding.
+    Ok(cx
+        .validate_operand(
+            &allocated.into(),
+            /*recursive*/ false,
+            /*reset_provenance_and_padding*/ false,
+        )
+        .discard_err()
+        .is_some())
 }
 
-/// Implements the 'lax' (default) version of the `might_permit_raw_init` checks; see that function for
-/// details.
-fn might_permit_raw_init_lax<'tcx>(
+/// Implements the 'lax' (default) version of the [`check_validity_requirement`] checks; see that
+/// function for details.
+fn check_validity_requirement_lax<'tcx>(
     this: TyAndLayout<'tcx>,
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: &LayoutCx<'tcx>,
     init_kind: ValidityRequirement,
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
     let scalar_allows_raw_init = move |s: Scalar| -> bool {
@@ -102,12 +111,12 @@ fn might_permit_raw_init_lax<'tcx>(
     };
 
     // Check the ABI.
-    let valid = match this.abi {
-        Abi::Uninhabited => false, // definitely UB
-        Abi::Scalar(s) => scalar_allows_raw_init(s),
-        Abi::ScalarPair(s1, s2) => scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2),
-        Abi::Vector { element: s, count } => count == 0 || scalar_allows_raw_init(s),
-        Abi::Aggregate { .. } => true, // Fields are checked below.
+    let valid = match this.backend_repr {
+        BackendRepr::Uninhabited => false, // definitely UB
+        BackendRepr::Scalar(s) => scalar_allows_raw_init(s),
+        BackendRepr::ScalarPair(s1, s2) => scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2),
+        BackendRepr::Vector { element: s, count } => count == 0 || scalar_allows_raw_init(s),
+        BackendRepr::Memory { .. } => true, // Fields are checked below.
     };
     if !valid {
         // This is definitely not okay.
@@ -137,7 +146,7 @@ fn might_permit_raw_init_lax<'tcx>(
         }
         FieldsShape::Arbitrary { offsets, .. } => {
             for idx in 0..offsets.len() {
-                if !might_permit_raw_init_lax(this.field(cx, idx), cx, init_kind)? {
+                if !check_validity_requirement_lax(this.field(cx, idx), cx, init_kind)? {
                     // We found a field that is unhappy with this kind of initialization.
                     return Ok(false);
                 }
@@ -146,6 +155,7 @@ fn might_permit_raw_init_lax<'tcx>(
     }
 
     match &this.variants {
+        Variants::Empty => return Ok(false),
         Variants::Single { .. } => {
             // All fields of this single variant have already been checked above, there is nothing
             // else to do.

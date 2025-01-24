@@ -9,9 +9,11 @@
 //! The default link script is very likely wrong, so you should use
 //! `-Clink-arg=-Tmy_script.ld` to override that with a correct linker script.
 
-use crate::spec::{cvs, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{
+    Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions, cvs,
+};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv4t-none-eabi".into(),
         metadata: crate::spec::TargetMetadata {
@@ -34,6 +36,7 @@ pub fn target() -> Target {
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
         options: TargetOptions {
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
             asm_args: cvs!["-mthumb-interwork", "-march=armv4t", "-mlittle-endian",],

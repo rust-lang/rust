@@ -8,10 +8,11 @@
 use hir::{
     db::{DefDatabase as _, HirDatabase as _},
     mir::{MirSpan, TerminatorKind},
-    ChalkTyInterner, DefWithBody, Semantics,
+    ChalkTyInterner, DefWithBody,
 };
-use ide_db::{FileRange, RootDatabase};
+use ide_db::{famous_defs::FamousDefs, FileRange};
 
+use span::EditionedFileId;
 use syntax::{
     ast::{self, AstNode},
     match_ast, ToSmolStr,
@@ -21,15 +22,16 @@ use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, Inla
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
-    sema: &Semantics<'_, RootDatabase>,
+    FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    def: &ast::Fn,
+    file_id: EditionedFileId,
+    node: &ast::Fn,
 ) -> Option<()> {
     if !config.implicit_drop_hints {
         return None;
     }
 
-    let def = sema.to_def(def)?;
+    let def = sema.to_def(node)?;
     let def: DefWithBody = def.into();
 
     let (hir, source_map) = sema.db.body_with_source_map(def.into());
@@ -100,13 +102,13 @@ pub(super) fn hints(
                     })
                 });
             let binding = &hir.bindings[*binding];
-            let name = binding.name.display_no_db().to_smolstr();
+            let name = binding.name.display_no_db(file_id.edition()).to_smolstr();
             if name.starts_with("<ra@") {
                 continue; // Ignore desugared variables
             }
             let mut label = InlayHintLabel::simple(
                 name,
-                Some(crate::InlayTooltip::String("moz".into())),
+                Some(config.lazy_tooltip(|| crate::InlayTooltip::String("moz".into()))),
                 binding_source,
             );
             label.prepend_str("drop(");
@@ -119,6 +121,7 @@ pub(super) fn hints(
                 kind: InlayKind::Drop,
                 label,
                 text_edit: None,
+                resolve_parent: Some(node.syntax().text_range()),
             })
         }
     }

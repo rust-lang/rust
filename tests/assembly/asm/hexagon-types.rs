@@ -1,37 +1,19 @@
+//@ add-core-stubs
 //@ assembly-output: emit-asm
 //@ compile-flags: --target hexagon-unknown-linux-musl
+//@ compile-flags: -Zmerge-functions=disabled
 //@ needs-llvm-components: hexagon
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_experimental_arch)]
+#![feature(no_core, asm_experimental_arch)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! concat {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! stringify {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 type ptr = *const i32;
 
-impl Copy for i8 {}
-impl Copy for i16 {}
-impl Copy for i32 {}
-impl Copy for f32 {}
-impl Copy for ptr {}
 extern "C" {
     fn extern_func();
     static extern_static: u8;
@@ -41,12 +23,6 @@ macro_rules! check {
     ($func:ident $ty:ident $class:ident) => {
         #[no_mangle]
         pub unsafe fn $func(x: $ty) -> $ty {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let y;
             asm!("{} = {}", out($class) y, in($class) x);
             y
@@ -58,12 +34,6 @@ macro_rules! check_reg {
     ($func:ident $ty:ident $reg:tt) => {
         #[no_mangle]
         pub unsafe fn $func(x: $ty) -> $ty {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let y;
             asm!(concat!($reg, " = ", $reg), lateout($reg) y, in($reg) x);
             y
@@ -77,12 +47,6 @@ macro_rules! check_reg {
 // CHECK: InlineAsm End
 #[no_mangle]
 pub unsafe fn sym_static() {
-    // Hack to avoid function merging
-    extern "Rust" {
-        fn dont_merge(s: &str);
-    }
-    dont_merge(stringify!($func));
-
     asm!("r0 = #{}", sym extern_static);
 }
 
@@ -92,12 +56,6 @@ pub unsafe fn sym_static() {
 // CHECK: InlineAsm End
 #[no_mangle]
 pub unsafe fn sym_fn() {
-    // Hack to avoid function merging
-    extern "Rust" {
-        fn dont_merge(s: &str);
-    }
-    dont_merge(stringify!($func));
-
     asm!("r0 = #{}", sym extern_func);
 }
 

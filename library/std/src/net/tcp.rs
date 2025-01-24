@@ -1,6 +1,13 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
-#[cfg(all(test, not(any(target_os = "emscripten", target_os = "xous"))))]
+#[cfg(all(
+    test,
+    not(any(
+        target_os = "emscripten",
+        all(target_os = "wasi", target_env = "p1"),
+        target_os = "xous"
+    ))
+))]
 mod tests;
 
 use crate::fmt;
@@ -8,7 +15,7 @@ use crate::io::prelude::*;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::iter::FusedIterator;
 use crate::net::{Shutdown, SocketAddr, ToSocketAddrs};
-use crate::sys_common::{net as net_imp, AsInner, FromInner, IntoInner};
+use crate::sys_common::{AsInner, FromInner, IntoInner, net as net_imp};
 use crate::time::Duration;
 
 /// A TCP stream between a local and a remote socket.
@@ -561,7 +568,7 @@ impl TcpStream {
 
     /// Moves this TCP stream into or out of nonblocking mode.
     ///
-    /// This will result in `read`, `write`, `recv` and `send` operations
+    /// This will result in `read`, `write`, `recv` and `send` system operations
     /// becoming nonblocking, i.e., immediately returning from their calls.
     /// If the IO operation is successful, `Ok` is returned and no further
     /// action is required. If the IO operation could not be completed and needs

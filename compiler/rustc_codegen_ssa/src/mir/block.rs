@@ -1,19 +1,20 @@
 use std::cmp;
 
+use rustc_abi::{self as abi, ExternAbi, HasDataLayout, WrappingRange};
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::mir::{self, AssertKind, BasicBlock, SwitchTargets, UnwindTerminateReason};
+use rustc_middle::mir::{
+    self, AssertKind, BasicBlock, InlineAsmMacro, SwitchTargets, UnwindTerminateReason,
+};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Spanned;
-use rustc_span::{sym, Span};
-use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode, Reg};
-use rustc_target::abi::{self, HasDataLayout, WrappingRange};
-use rustc_target::spec::abi::Abi;
+use rustc_span::{Span, sym};
+use rustc_target::callconv::{ArgAbi, FnAbi, PassMode, Reg};
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
@@ -24,7 +25,7 @@ use crate::base::{self, is_call_from_compiler_builtins_to_upstream_monomorphizat
 use crate::common::{self, IntPredicate};
 use crate::errors::CompilerBuiltinsCannotCall;
 use crate::traits::*;
-use crate::{meth, MemFlags};
+use crate::{MemFlags, meth};
 
 // Indicates if we are in the middle of merging a BB's successor into it. This
 // can happen when BB jumps directly to its successor and the successor has no
@@ -376,20 +377,32 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // If there are two targets (one conditional, one fallback), emit `br` instead of
             // `switch`.
             let (test_value, target) = target_iter.next().unwrap();
-            let lltrue = helper.llbb_with_cleanup(self, target);
-            let llfalse = helper.llbb_with_cleanup(self, targets.otherwise());
+            let otherwise = targets.otherwise();
+            let lltarget = helper.llbb_with_cleanup(self, target);
+            let llotherwise = helper.llbb_with_cleanup(self, otherwise);
+            let target_cold = self.cold_blocks[target];
+            let otherwise_cold = self.cold_blocks[otherwise];
+            // If `target_cold == otherwise_cold`, the branches have the same weight
+            // so there is no expectation. If they differ, the `target` branch is expected
+            // when the `otherwise` branch is cold.
+            let expect = if target_cold == otherwise_cold { None } else { Some(otherwise_cold) };
             if switch_ty == bx.tcx().types.bool {
                 // Don't generate trivial icmps when switching on bool.
                 match test_value {
-                    0 => bx.cond_br(discr_value, llfalse, lltrue),
-                    1 => bx.cond_br(discr_value, lltrue, llfalse),
+                    0 => {
+                        let expect = expect.map(|e| !e);
+                        bx.cond_br_with_expect(discr_value, llotherwise, lltarget, expect);
+                    }
+                    1 => {
+                        bx.cond_br_with_expect(discr_value, lltarget, llotherwise, expect);
+                    }
                     _ => bug!(),
                 }
             } else {
                 let switch_llty = bx.immediate_backend_type(bx.layout_of(switch_ty));
                 let llval = bx.const_uint_big(switch_llty, test_value);
                 let cmp = bx.icmp(IntPredicate::IntEQ, discr_value, llval);
-                bx.cond_br(cmp, lltrue, llfalse);
+                bx.cond_br_with_expect(cmp, lltarget, llotherwise, expect);
             }
         } else if self.cx.sess().opts.optimize == OptLevel::No
             && target_iter.len() == 2
@@ -436,7 +449,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 _ => bug!("C-variadic function must have a `VaList` place"),
             }
         }
-        if self.fn_abi.ret.layout.abi.is_uninhabited() {
+        if self.fn_abi.ret.layout.is_uninhabited() {
             // Functions with uninhabited return values are marked `noreturn`,
             // so we should make sure that we never actually do.
             // We play it safe by using a well-defined `abort`, but we could go for immediate UB
@@ -764,7 +777,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             let do_panic = !bx
                 .tcx()
-                .check_validity_requirement((requirement, bx.param_env().and(ty)))
+                .check_validity_requirement((requirement, bx.typing_env().as_query_input(ty)))
                 .expect("expect to have layout during codegen");
 
             let layout = bx.layout_of(ty);
@@ -772,7 +785,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Some(if do_panic {
                 let msg_str = with_no_visible_paths!({
                     with_no_trimmed_paths!({
-                        if layout.abi.is_uninhabited() {
+                        if layout.is_uninhabited() {
                             // Use this error even for the other intrinsics as it is more precise.
                             format!("attempted to instantiate uninhabited type `{ty}`")
                         } else if requirement == ValidityRequirement::Zero {
@@ -834,19 +847,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let (instance, mut llfn) = match *callee.layout.ty.kind() {
             ty::FnDef(def_id, args) => (
-                Some(
-                    ty::Instance::expect_resolve(
-                        bx.tcx(),
-                        ty::ParamEnv::reveal_all(),
-                        def_id,
-                        args,
-                        fn_span,
-                    )
-                    .polymorphize(bx.tcx()),
-                ),
+                Some(ty::Instance::expect_resolve(
+                    bx.tcx(),
+                    bx.typing_env(),
+                    def_id,
+                    args,
+                    fn_span,
+                )),
                 None,
             ),
-            ty::FnPtr(_) => (None, Some(callee.immediate())),
+            ty::FnPtr(..) => (None, Some(callee.immediate())),
             _ => bug!("{} is not callable", callee.layout.ty),
         };
 
@@ -915,28 +925,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 };
 
-                let args: Vec<_> = args
-                    .iter()
-                    .enumerate()
-                    .map(|(i, arg)| {
-                        // The indices passed to simd_shuffle in the
-                        // third argument must be constant. This is
-                        // checked by the type-checker.
-                        if i == 2 && intrinsic.name == sym::simd_shuffle {
-                            if let mir::Operand::Constant(constant) = &arg.node {
-                                let (llval, ty) = self.simd_shuffle_indices(bx, constant);
-                                return OperandRef {
-                                    val: Immediate(llval),
-                                    layout: bx.layout_of(ty),
-                                };
-                            } else {
-                                span_bug!(span, "shuffle indices must be constant");
-                            }
-                        }
-
-                        self.codegen_operand(bx, &arg.node)
-                    })
-                    .collect();
+                let args: Vec<_> =
+                    args.iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect();
 
                 if matches!(intrinsic, ty::IntrinsicDef { name: sym::caller_location, .. }) {
                     let location = self
@@ -995,7 +985,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         });
 
         // Split the rust-call tupled arguments off.
-        let (first_args, untuple) = if abi == Abi::RustCall && !args.is_empty() {
+        let (first_args, untuple) = if abi == ExternAbi::RustCall && !args.is_empty() {
             let (tup, args) = args.split_last().unwrap();
             (args, Some(tup))
         } else {
@@ -1010,13 +1000,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 match op.val {
                     Pair(data_ptr, meta) => {
                         // In the case of Rc<Self>, we need to explicitly pass a
-                        // *mut RcBox<Self> with a Scalar (not ScalarPair) ABI. This is a hack
+                        // *mut RcInner<Self> with a Scalar (not ScalarPair) ABI. This is a hack
                         // that is understood elsewhere in the compiler as a method on
                         // `dyn Trait`.
-                        // To get a `*mut RcBox<Self>`, we just keep unwrapping newtypes until
+                        // To get a `*mut RcInner<Self>`, we just keep unwrapping newtypes until
                         // we get a value of a built-in pointer type.
                         //
-                        // This is also relevant for `Pin<&mut Self>`, where we need to peel the `Pin`.
+                        // This is also relevant for `Pin<&mut Self>`, where we need to peel the
+                        // `Pin`.
                         while !op.layout.ty.is_unsafe_ptr() && !op.layout.ty.is_ref() {
                             let (idx, _) = op.layout.non_1zst_field(bx).expect(
                                 "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
@@ -1024,9 +1015,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             op = op.extract_field(bx, idx);
                         }
 
-                        // now that we have `*dyn Trait` or `&dyn Trait`, split it up into its
+                        // Now that we have `*dyn Trait` or `&dyn Trait`, split it up into its
                         // data pointer and vtable. Look up the method in the vtable, and pass
-                        // the data pointer as the first argument
+                        // the data pointer as the first argument.
                         llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
                             bx,
                             meta,
@@ -1152,6 +1143,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
         bx: &mut Bx,
+        asm_macro: InlineAsmMacro,
         terminator: &mir::Terminator<'tcx>,
         template: &[ast::InlineAsmTemplatePiece],
         operands: &[mir::InlineAsmOperand<'tcx>],
@@ -1196,7 +1188,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     if let ty::FnDef(def_id, args) = *const_.ty().kind() {
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             bx.tcx(),
-                            ty::ParamEnv::reveal_all(),
+                            bx.typing_env(),
                             def_id,
                             args,
                         )
@@ -1222,20 +1214,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             &operands,
             options,
             line_spans,
-            if options.contains(InlineAsmOptions::NORETURN) {
-                None
-            } else {
-                targets.get(0).copied()
-            },
+            if asm_macro.diverges(options) { None } else { targets.get(0).copied() },
             unwind,
             instance,
             mergeable_succ,
         )
     }
-}
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn codegen_block(&mut self, mut bb: mir::BasicBlock) {
+    pub(crate) fn codegen_block(&mut self, mut bb: mir::BasicBlock) {
         let llbb = match self.try_llbb(bb) {
             Some(llbb) => llbb,
             None => return,
@@ -1275,7 +1261,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    pub fn codegen_block_as_unreachable(&mut self, bb: mir::BasicBlock) {
+    pub(crate) fn codegen_block_as_unreachable(&mut self, bb: mir::BasicBlock) {
         let llbb = match self.try_llbb(bb) {
             Some(llbb) => llbb,
             None => return,
@@ -1402,6 +1388,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::InlineAsm {
+                asm_macro,
                 template,
                 ref operands,
                 options,
@@ -1411,6 +1398,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             } => self.codegen_asm_terminator(
                 helper,
                 bx,
+                asm_macro,
                 terminator,
                 template,
                 operands,
@@ -1460,8 +1448,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (mut llval, align, by_ref) = match op.val {
             Immediate(_) | Pair(..) => match arg.mode {
                 PassMode::Indirect { attrs, .. } => {
-                    // Indirect argument may have higher alignment requirements than the type's alignment.
-                    // This can happen, e.g. when passing types with <4 byte alignment on the stack on x86.
+                    // Indirect argument may have higher alignment requirements than the type's
+                    // alignment. This can happen, e.g. when passing types with <4 byte alignment
+                    // on the stack on x86.
                     let required_align = match attrs.pointee_align {
                         Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
                         None => arg.layout.align.abi,
@@ -1551,7 +1540,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // the load would just produce `OperandValue::Ref` instead
                 // of the `OperandValue::Immediate` we need for the call.
                 llval = bx.load(bx.backend_type(arg.layout), llval, align);
-                if let abi::Abi::Scalar(scalar) = arg.layout.abi {
+                if let abi::BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
                     if scalar.is_bool() {
                         bx.range_metadata(llval, WrappingRange { start: 0, end: 1 });
                     }
@@ -1610,10 +1599,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let Some(slot) = self.personality_slot {
             slot
         } else {
-            let layout = cx.layout_of(Ty::new_tup(
-                cx.tcx(),
-                &[Ty::new_mut_ptr(cx.tcx(), cx.tcx().types.u8), cx.tcx().types.i32],
-            ));
+            let layout = cx.layout_of(Ty::new_tup(cx.tcx(), &[
+                Ty::new_mut_ptr(cx.tcx(), cx.tcx().types.u8),
+                cx.tcx().types.i32,
+            ]));
             let slot = PlaceRef::alloca(bx, layout);
             self.personality_slot = Some(slot);
             slot
@@ -1760,7 +1749,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     /// Like `llbb`, but may fail if the basic block should be skipped.
-    pub fn try_llbb(&mut self, bb: mir::BasicBlock) -> Option<Bx::BasicBlock> {
+    pub(crate) fn try_llbb(&mut self, bb: mir::BasicBlock) -> Option<Bx::BasicBlock> {
         match self.cached_llbbs[bb] {
             CachedLlbb::None => {
                 let llbb = Bx::append_block(self.cx, self.llfn, &format!("{bb:?}"));

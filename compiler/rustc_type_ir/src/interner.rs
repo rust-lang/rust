@@ -3,7 +3,7 @@ use std::hash::Hash;
 use std::ops::Deref;
 
 use rustc_ast_ir::Movability;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use smallvec::SmallVec;
 
 use crate::fold::TypeFoldable;
@@ -11,14 +11,9 @@ use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::lang_items::TraitSolverLangItem;
 use crate::relate::Relate;
-use crate::solve::inspect::CanonicalGoalEvaluationStep;
-use crate::solve::{
-    CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult, SolverMode,
-};
+use crate::solve::{CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{
-    search_graph, {self as ty},
-};
+use crate::{self as ty, search_graph};
 
 pub trait Interner:
     Sized
@@ -27,6 +22,7 @@ pub trait Interner:
     + IrPrint<ty::AliasTerm<Self>>
     + IrPrint<ty::TraitRef<Self>>
     + IrPrint<ty::TraitPredicate<Self>>
+    + IrPrint<ty::HostEffectPredicate<Self>>
     + IrPrint<ty::ExistentialTraitRef<Self>>
     + IrPrint<ty::ExistentialProjection<Self>>
     + IrPrint<ty::ProjectionPredicate<Self>>
@@ -37,7 +33,7 @@ pub trait Interner:
 {
     type DefId: DefId<Self>;
     type LocalDefId: Copy + Debug + Hash + Eq + Into<Self::DefId> + TypeFoldable<Self>;
-    type Span: Copy + Debug + Hash + Eq + TypeFoldable<Self>;
+    type Span: Span<Self>;
 
     type GenericArgs: GenericArgs<Self>;
     type GenericArgsSlice: Copy + Debug + Hash + Eq + SliceLike<Item = Self::GenericArg>;
@@ -65,11 +61,6 @@ pub trait Interner:
         + Eq
         + TypeVisitable<Self>
         + SliceLike<Item = Self::LocalDefId>;
-    type CanonicalGoalEvaluationStepRef: Copy
-        + Debug
-        + Hash
-        + Eq
-        + Deref<Target = CanonicalGoalEvaluationStep<Self>>;
 
     type CanonicalVars: Copy
         + Debug
@@ -137,11 +128,9 @@ pub trait Interner:
     type Clause: Clause<Self>;
     type Clauses: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
 
-    fn with_global_cache<R>(
-        self,
-        mode: SolverMode,
-        f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R,
-    ) -> R;
+    fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R;
+
+    fn evaluation_is_concurrent(&self) -> bool;
 
     fn expand_abstract_consts<T: TypeFoldable<Self>>(self, t: T) -> T;
 
@@ -177,10 +166,9 @@ pub trait Interner:
 
     fn debug_assert_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs);
 
-    fn intern_canonical_goal_evaluation_step(
-        self,
-        step: CanonicalGoalEvaluationStep<Self>,
-    ) -> Self::CanonicalGoalEvaluationStepRef;
+    /// Assert that the args from an `ExistentialTraitRef` or `ExistentialProjection`
+    /// are compatible with the `DefId`.
+    fn debug_assert_existential_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs);
 
     fn mk_type_list_from_iter<I, T>(self, args: I) -> T::Output
     where
@@ -235,6 +223,18 @@ pub trait Interner:
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
 
+    fn impl_is_const(self, def_id: Self::DefId) -> bool;
+    fn fn_is_const(self, def_id: Self::DefId) -> bool;
+    fn alias_has_const_conditions(self, def_id: Self::DefId) -> bool;
+    fn const_conditions(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = ty::Binder<Self, ty::TraitRef<Self>>>>;
+    fn explicit_implied_const_bounds(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = ty::Binder<Self, ty::TraitRef<Self>>>>;
+
     fn has_target_features(self, def_id: Self::DefId) -> bool;
 
     fn require_lang_item(self, lang_item: TraitSolverLangItem) -> Self::DefId;
@@ -264,11 +264,16 @@ pub trait Interner:
 
     fn trait_is_alias(self, trait_def_id: Self::DefId) -> bool;
 
-    fn trait_is_object_safe(self, trait_def_id: Self::DefId) -> bool;
+    fn trait_is_dyn_compatible(self, trait_def_id: Self::DefId) -> bool;
 
     fn trait_is_fundamental(self, def_id: Self::DefId) -> bool;
 
     fn trait_may_be_implemented_via_object(self, trait_def_id: Self::DefId) -> bool;
+
+    /// Returns `true` if this is an `unsafe trait`.
+    fn trait_is_unsafe(self, trait_def_id: Self::DefId) -> bool;
+
+    fn is_impl_trait_in_trait(self, def_id: Self::DefId) -> bool;
 
     fn delay_bug(self, msg: impl ToString) -> Self::ErrorGuaranteed;
 
@@ -277,9 +282,7 @@ pub trait Interner:
     fn coroutine_is_gen(self, coroutine_def_id: Self::DefId) -> bool;
     fn coroutine_is_async_gen(self, coroutine_def_id: Self::DefId) -> bool;
 
-    fn layout_is_pointer_like(self, param_env: Self::ParamEnv, ty: Self::Ty) -> bool;
-
-    type UnsizingParams: Deref<Target = BitSet<u32>>;
+    type UnsizingParams: Deref<Target = DenseBitSet<u32>>;
     fn unsizing_params_for_adt(self, adt_def_id: Self::DefId) -> Self::UnsizingParams;
 
     fn find_const_ty_from_env(
@@ -292,6 +295,11 @@ pub trait Interner:
         self,
         binder: ty::Binder<Self, T>,
     ) -> ty::Binder<Self, T>;
+
+    fn opaque_types_defined_by(
+        self,
+        defining_anchor: Self::LocalDefId,
+    ) -> Self::DefiningOpaqueTypes;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`
@@ -390,7 +398,6 @@ impl<T, R, E> CollectAndApply<T, R> for Result<T, E> {
 }
 
 impl<I: Interner> search_graph::Cx for I {
-    type ProofTree = Option<I::CanonicalGoalEvaluationStepRef>;
     type Input = CanonicalInput<I>;
     type Result = QueryResult<I>;
 
@@ -409,11 +416,10 @@ impl<I: Interner> search_graph::Cx for I {
     fn with_cached_task<T>(self, task: impl FnOnce() -> T) -> (T, I::DepNodeIndex) {
         I::with_cached_task(self, task)
     }
-    fn with_global_cache<R>(
-        self,
-        mode: SolverMode,
-        f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R,
-    ) -> R {
-        I::with_global_cache(self, mode, f)
+    fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R {
+        I::with_global_cache(self, f)
+    }
+    fn evaluation_is_concurrent(&self) -> bool {
+        self.evaluation_is_concurrent()
     }
 }

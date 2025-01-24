@@ -2,7 +2,7 @@ error[E0277]: the trait bound `Bar: Copy` is not satisfied
   --> $DIR/fn-call-in-non-const.rs:14:32
    |
 LL |     let _: [Option<Bar>; 2] = [no_copy(); 2];
-   |                                ^^^^^^^^^ the trait `Copy` is not implemented for `Bar`, which is required by `Option<Bar>: Copy`
+   |                                ^^^^^^^^^ the trait `Copy` is not implemented for `Bar`
    |
    = note: required for `Option<Bar>` to implement `Copy`
    = note: the `Copy` trait is required because this value will be copied for each element of the array

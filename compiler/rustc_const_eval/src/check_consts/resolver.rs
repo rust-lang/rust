@@ -5,15 +5,15 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::MixedBitSet;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
     self, BasicBlock, CallReturnPlaces, Local, Location, Statement, StatementKind, TerminatorEdges,
 };
 use rustc_mir_dataflow::fmt::DebugWithContext;
-use rustc_mir_dataflow::{Analysis, AnalysisDomain, JoinSemiLattice};
+use rustc_mir_dataflow::{Analysis, JoinSemiLattice};
 
-use super::{qualifs, ConstCx, Qualif};
+use super::{ConstCx, Qualif, qualifs};
 
 /// A `Visitor` that propagates qualifs between locals. This defines the transfer function of
 /// `FlowSensitiveAnalysis`.
@@ -96,7 +96,7 @@ where
     }
 
     fn address_of_allows_mutation(&self) -> bool {
-        // Exact set of permissions granted by AddressOf is undecided. Conservatively assume that
+        // Exact set of permissions granted by RawPtr is undecided. Conservatively assume that
         // it might allow mutation until resolution of #56604.
         true
     }
@@ -120,7 +120,7 @@ where
     ///
     /// [rust-lang/unsafe-code-guidelines#134]: https://github.com/rust-lang/unsafe-code-guidelines/issues/134
     fn shared_borrow_allows_mutation(&self, place: mir::Place<'tcx>) -> bool {
-        !place.ty(self.ccx.body, self.ccx.tcx).ty.is_freeze(self.ccx.tcx, self.ccx.param_env)
+        !place.ty(self.ccx.body, self.ccx.tcx).ty.is_freeze(self.ccx.tcx, self.ccx.typing_env)
     }
 }
 
@@ -170,7 +170,7 @@ where
         self.super_rvalue(rvalue, location);
 
         match rvalue {
-            mir::Rvalue::AddressOf(_mt, borrowed_place) => {
+            mir::Rvalue::RawPtr(_mt, borrowed_place) => {
                 if !borrowed_place.is_indirect() && self.address_of_allows_mutation() {
                     let place_ty = borrowed_place.ty(self.ccx.body, self.ccx.tcx).ty;
                     if Q::in_any_value_of_ty(self.ccx, place_ty) {
@@ -246,12 +246,14 @@ where
 }
 
 #[derive(Debug, PartialEq, Eq)]
+/// The state for the `FlowSensitiveAnalysis` dataflow analysis. This domain is likely homogeneous,
+/// and has a big size, so we use a bitset that can be sparse (c.f. issue #134404).
 pub(super) struct State {
     /// Describes whether a local contains qualif.
-    pub qualif: BitSet<Local>,
+    pub qualif: MixedBitSet<Local>,
     /// Describes whether a local's address escaped and it might become qualified as a result an
     /// indirect mutation.
-    pub borrow: BitSet<Local>,
+    pub borrow: MixedBitSet<Local>,
 }
 
 impl Clone for State {
@@ -310,7 +312,7 @@ impl JoinSemiLattice for State {
     }
 }
 
-impl<'tcx, Q> AnalysisDomain<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
+impl<'tcx, Q> Analysis<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
 where
     Q: Qualif,
 {
@@ -320,21 +322,16 @@ where
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
         State {
-            qualif: BitSet::new_empty(body.local_decls.len()),
-            borrow: BitSet::new_empty(body.local_decls.len()),
+            qualif: MixedBitSet::new_empty(body.local_decls.len()),
+            borrow: MixedBitSet::new_empty(body.local_decls.len()),
         }
     }
 
     fn initialize_start_block(&self, _body: &mir::Body<'tcx>, state: &mut Self::Domain) {
         self.transfer_function(state).initialize_state();
     }
-}
 
-impl<'tcx, Q> Analysis<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
-where
-    Q: Qualif,
-{
-    fn apply_statement_effect(
+    fn apply_primary_statement_effect(
         &mut self,
         state: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
@@ -343,7 +340,7 @@ where
         self.transfer_function(state).visit_statement(statement, location);
     }
 
-    fn apply_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect<'mir>(
         &mut self,
         state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,

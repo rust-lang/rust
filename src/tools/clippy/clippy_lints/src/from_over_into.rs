@@ -1,11 +1,13 @@
-use clippy_config::msrvs::{self, Msrv};
+use std::ops::ControlFlow;
+
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::span_is_local;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::path_def_id;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_path, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_path};
 use rustc_hir::{
     FnRetTy, GenericArg, GenericArgs, HirId, Impl, ImplItemKind, ImplItemRef, Item, ItemKind, PatKind, Path,
     PathSegment, Ty, TyKind,
@@ -90,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
                 |diag| {
                     // If the target type is likely foreign mention the orphan rules as it's a common source of
                     // confusion
-                    if path_def_id(cx, target_ty.peel_refs()).map_or(true, |id| !id.is_local()) {
+                    if path_def_id(cx, target_ty.peel_refs()).is_none_or(|id| !id.is_local()) {
                         diag.help(
                             "`impl From<Local> for Foreign` is allowed by the orphan rules, for more information see\n\
                             https://doc.rust-lang.org/reference/items/implementations.html#trait-implementation-coherence"
@@ -115,25 +117,26 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
 }
 
 /// Finds the occurrences of `Self` and `self`
+///
+/// Returns `ControlFlow::break` if any of the `self`/`Self` usages were from an expansion, or the
+/// body contained a binding already named `val`.
 struct SelfFinder<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     /// Occurrences of `Self`
     upper: Vec<Span>,
     /// Occurrences of `self`
     lower: Vec<Span>,
-    /// If any of the `self`/`Self` usages were from an expansion, or the body contained a binding
-    /// already named `val`
-    invalid: bool,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for SelfFinder<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for SelfFinder<'_, 'tcx> {
+    type Result = ControlFlow<()>;
     type NestedFilter = OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {
         self.cx.tcx.hir()
     }
 
-    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {
+    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) -> Self::Result {
         for segment in path.segments {
             match segment.ident.name {
                 kw::SelfLower => self.lower.push(segment.ident.span),
@@ -141,17 +144,19 @@ impl<'a, 'tcx> Visitor<'tcx> for SelfFinder<'a, 'tcx> {
                 _ => continue,
             }
 
-            self.invalid |= segment.ident.span.from_expansion();
+            if segment.ident.span.from_expansion() {
+                return ControlFlow::Break(());
+            }
         }
 
-        if !self.invalid {
-            walk_path(self, path);
-        }
+        walk_path(self, path)
     }
 
-    fn visit_name(&mut self, name: Symbol) {
+    fn visit_name(&mut self, name: Symbol) -> Self::Result {
         if name == sym::val {
-            self.invalid = true;
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
         }
     }
 }
@@ -178,8 +183,8 @@ fn convert_to_from(
         return None;
     };
 
-    let from = snippet_opt(cx, self_ty.span)?;
-    let into = snippet_opt(cx, target_ty.span)?;
+    let from = self_ty.span.get_source_text(cx)?;
+    let into = target_ty.span.get_source_text(cx)?;
 
     let mut suggestions = vec![
         // impl Into<T> for U  ->  impl From<T> for U
@@ -187,10 +192,10 @@ fn convert_to_from(
         (into_trait_seg.ident.span, String::from("From")),
         // impl Into<T> for U  ->  impl Into<U> for U
         //           ~                       ~
-        (target_ty.span, from.clone()),
+        (target_ty.span, from.to_owned()),
         // impl Into<T> for U  ->  impl Into<T> for T
         //                  ~                       ~
-        (self_ty.span, into),
+        (self_ty.span, into.to_owned()),
         // fn into(self) -> T  ->  fn from(self) -> T
         //    ~~~~                    ~~~~
         (impl_item.ident.span, String::from("from")),
@@ -209,11 +214,9 @@ fn convert_to_from(
         cx,
         upper: Vec::new(),
         lower: Vec::new(),
-        invalid: false,
     };
-    finder.visit_expr(body.value);
 
-    if finder.invalid {
+    if finder.visit_expr(body.value).is_break() {
         return None;
     }
 
@@ -223,7 +226,7 @@ fn convert_to_from(
     }
 
     for span in finder.upper {
-        suggestions.push((span, from.clone()));
+        suggestions.push((span, from.to_owned()));
     }
     for span in finder.lower {
         suggestions.push((span, String::from("val")));

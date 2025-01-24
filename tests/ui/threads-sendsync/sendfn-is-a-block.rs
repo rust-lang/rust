@@ -1,7 +1,9 @@
 //@ run-pass
 
-
-fn test<F>(f: F) -> usize where F: FnOnce(usize) -> usize {
+fn test<F>(f: F) -> usize
+where
+    F: FnOnce(usize) -> usize,
+{
     return f(22);
 }
 

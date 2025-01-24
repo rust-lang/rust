@@ -7,11 +7,11 @@
 use std::mem::MaybeUninit;
 
 mod assert {
-    use std::mem::{Assume, BikeshedIntrinsicFrom};
+    use std::mem::{Assume, TransmuteFrom};
 
     pub fn is_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, {
+        Dst: TransmuteFrom<Src, {
             Assume {
                 alignment: false,
                 lifetimes: false,
@@ -23,7 +23,7 @@ mod assert {
 
     pub fn is_maybe_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, {
+        Dst: TransmuteFrom<Src, {
             Assume {
                 alignment: false,
                 lifetimes: false,

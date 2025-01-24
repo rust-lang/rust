@@ -1,4 +1,4 @@
-//@ignore-target-windows: No `dlsym` on Windows
+//@ignore-target: windows # No `dlsym` on Windows
 //@compile-flags: -Zmiri-permissive-provenance
 
 #[path = "../utils/mod.rs"]

@@ -6,7 +6,6 @@ const EXPECTED = [
         'correction': null,
         'others': [
             { 'path': 'assoc_type_backtrack::MyTrait', 'name': 'fold' },
-            { 'path': 'assoc_type_backtrack::Cloned', 'name': 'fold' },
         ],
     },
     {
@@ -14,6 +13,19 @@ const EXPECTED = [
         'correction': null,
         'others': [
             { 'path': 'assoc_type_backtrack::MyTrait', 'name': 'fold' },
+        ],
+    },
+    {
+        'query': 'cloned<mytrait>, mytrait2 -> T',
+        'correction': null,
+        'others': [
+            { 'path': 'assoc_type_backtrack::Cloned', 'name': 'fold' },
+        ],
+    },
+    {
+        'query': 'cloned<mytrait<U>>, mytrait2 -> T',
+        'correction': null,
+        'others': [
             { 'path': 'assoc_type_backtrack::Cloned', 'name': 'fold' },
         ],
     },
@@ -22,7 +34,6 @@ const EXPECTED = [
         'correction': null,
         'others': [
             { 'path': 'assoc_type_backtrack::MyTrait', 'name': 'fold' },
-            { 'path': 'assoc_type_backtrack::Cloned', 'name': 'fold' },
         ],
     },
     {
@@ -50,14 +61,14 @@ const EXPECTED = [
         ],
     },
     {
-        'query': 'mytrait<U> -> Option<T>',
+        'query': 'cloned<mytrait<U>> -> Option<T>',
         'correction': null,
         'others': [
             { 'path': 'assoc_type_backtrack::Cloned', 'name': 'next' },
         ],
     },
     {
-        'query': 'mytrait<Item=U> -> Option<T>',
+        'query': 'cloned<mytrait<Item=U>> -> Option<T>',
         'correction': null,
         'others': [
             { 'path': 'assoc_type_backtrack::Cloned', 'name': 'next' },
@@ -89,19 +100,21 @@ const EXPECTED = [
         ],
     },
     {
-        'query': 'myintofuture<myfuture<t>> -> myfuture<t>',
+        'query': 'myintofuture<t, myfuture<t>> -> myfuture<t>',
         'correction': null,
         'others': [
             { 'path': 'assoc_type_backtrack::MyIntoFuture', 'name': 'into_future' },
             { 'path': 'assoc_type_backtrack::MyIntoFuture', 'name': 'into_future_2' },
         ],
     },
-    // Invalid unboxing of the one-argument case.
-    // If you unbox one of the myfutures, you need to unbox both of them.
+    // Unboxings of the one-argument case.
     {
         'query': 'myintofuture<fut=t> -> myfuture<t>',
         'correction': null,
-        'others': [],
+        'others': [
+            { 'path': 'assoc_type_backtrack::MyIntoFuture', 'name': 'into_future' },
+            { 'path': 'assoc_type_backtrack::MyIntoFuture', 'name': 'into_future_2' },
+        ],
     },
     // Unboxings of the two-argument case.
     {
@@ -119,7 +132,7 @@ const EXPECTED = [
         ],
     },
     {
-        'query': 'myintofuture<myfuture>, myintofuture<myfuture> -> myfuture',
+        'query': 'myintofuture<t, myfuture>, myintofuture<t, myfuture> -> myfuture',
         'correction': null,
         'others': [
             { 'path': 'assoc_type_backtrack::MyIntoFuture', 'name': 'into_future_2' },
@@ -132,24 +145,29 @@ const EXPECTED = [
             { 'path': 'assoc_type_backtrack::MyIntoFuture', 'name': 'into_future_2' },
         ],
     },
-    // Invalid unboxings of the two-argument case.
-    // If you unbox one of the myfutures, you need to unbox all of them.
+    // If you unbox one of the myfutures, you don't need to unbox all of them.
     {
         'query': 'myintofuture<fut=t>, myintofuture<fut=myfuture<t>> -> myfuture<t>',
         'correction': null,
-        'others': [],
+        'others': [
+            { 'path': 'assoc_type_backtrack::MyIntoFuture', 'name': 'into_future_2' },
+        ],
     },
     {
         'query': 'myintofuture<fut=myfuture<t>>, myintofuture<fut=t> -> myfuture<t>',
         'correction': null,
-        'others': [],
+        'others': [
+            { 'path': 'assoc_type_backtrack::MyIntoFuture', 'name': 'into_future_2' },
+        ],
     },
     {
         'query': 'myintofuture<fut=myfuture<t>>, myintofuture<fut=myfuture<t>> -> t',
         'correction': null,
-        'others': [],
+        'others': [
+            { 'path': 'assoc_type_backtrack::MyIntoFuture', 'name': 'into_future_2' },
+        ],
     },
-    // different generics don't match up either
+    // different generics must match up
     {
         'query': 'myintofuture<fut=myfuture<u>>, myintofuture<fut=myfuture<t>> -> myfuture<t>',
         'correction': null,

@@ -1,11 +1,10 @@
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ElidedLifetimeInPathSubdiag, MultiSpan};
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{Ident, Span, Symbol};
 
-use crate::late::PatternSource;
 use crate::Res;
+use crate::late::PatternSource;
 
 #[derive(Diagnostic)]
 #[diag(resolve_generic_params_from_outer_item, code = E0401)]
@@ -666,6 +665,22 @@ pub(crate) struct MacroSuggMovePosition {
 }
 
 #[derive(Subdiagnostic)]
+pub(crate) enum MacroRulesNot {
+    #[label(resolve_macro_cannot_use_as_attr)]
+    Attr {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+    #[label(resolve_macro_cannot_use_as_derive)]
+    Derive {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+}
+
+#[derive(Subdiagnostic)]
 #[note(resolve_missing_macro_rules_name)]
 pub(crate) struct MaybeMissingMacroRulesName {
     #[primary_span]
@@ -850,7 +865,7 @@ pub(crate) struct MacroExternDeprecated {
     #[primary_span]
     pub(crate) span: Span,
     #[help]
-    pub inner_attribute: Option<()>,
+    pub inner_attribute: bool,
 }
 
 #[derive(Diagnostic)]
@@ -894,7 +909,7 @@ pub(crate) struct LendingIteratorReportError {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_anonymous_livetime_non_gat_report_error)]
+#[diag(resolve_anonymous_lifetime_non_gat_report_error)]
 pub(crate) struct AnonymousLivetimeNonGatReportError {
     #[primary_span]
     #[label]

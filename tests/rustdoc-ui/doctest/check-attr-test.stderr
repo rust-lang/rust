@@ -8,8 +8,8 @@ error: unknown attribute `compile-fail`
 9 | | /// ```
   | |_______^
   |
-  = help: there is an attribute with a similar name: `compile_fail`
-  = help: the code block will either not be tested if not marked as a rust one or won't fail if it compiles successfully
+  = help: use `compile_fail` to invert the results of this test, so that it passes if it cannot be compiled and fails if it can
+  = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 note: the lint level is defined here
  --> $DIR/check-attr-test.rs:3:9
   |
@@ -26,8 +26,8 @@ error: unknown attribute `compilefail`
 9 | | /// ```
   | |_______^
   |
-  = help: there is an attribute with a similar name: `compile_fail`
-  = help: the code block will either not be tested if not marked as a rust one or won't fail if it compiles successfully
+  = help: use `compile_fail` to invert the results of this test, so that it passes if it cannot be compiled and fails if it can
+  = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `comPile_fail`
  --> $DIR/check-attr-test.rs:5:1
@@ -39,8 +39,8 @@ error: unknown attribute `comPile_fail`
 9 | | /// ```
   | |_______^
   |
-  = help: there is an attribute with a similar name: `compile_fail`
-  = help: the code block will either not be tested if not marked as a rust one or won't fail if it compiles successfully
+  = help: use `compile_fail` to invert the results of this test, so that it passes if it cannot be compiled and fails if it can
+  = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `should-panic`
   --> $DIR/check-attr-test.rs:12:1
@@ -52,8 +52,8 @@ error: unknown attribute `should-panic`
 16 | | /// ```
    | |_______^
    |
-   = help: there is an attribute with a similar name: `should_panic`
-   = help: the code block will either not be tested if not marked as a rust one or won't fail if it doesn't panic when running
+   = help: use `should_panic` to invert the results of this test, so that if passes if it panics and fails if it does not
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `shouldpanic`
   --> $DIR/check-attr-test.rs:12:1
@@ -65,8 +65,8 @@ error: unknown attribute `shouldpanic`
 16 | | /// ```
    | |_______^
    |
-   = help: there is an attribute with a similar name: `should_panic`
-   = help: the code block will either not be tested if not marked as a rust one or won't fail if it doesn't panic when running
+   = help: use `should_panic` to invert the results of this test, so that if passes if it panics and fails if it does not
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `shOuld_panic`
   --> $DIR/check-attr-test.rs:12:1
@@ -78,8 +78,8 @@ error: unknown attribute `shOuld_panic`
 16 | | /// ```
    | |_______^
    |
-   = help: there is an attribute with a similar name: `should_panic`
-   = help: the code block will either not be tested if not marked as a rust one or won't fail if it doesn't panic when running
+   = help: use `should_panic` to invert the results of this test, so that if passes if it panics and fails if it does not
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `no-run`
   --> $DIR/check-attr-test.rs:19:1
@@ -91,8 +91,8 @@ error: unknown attribute `no-run`
 23 | | /// ```
    | |_______^
    |
-   = help: there is an attribute with a similar name: `no_run`
-   = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
+   = help: use `no_run` to compile, but not run, the code sample during testing
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `norun`
   --> $DIR/check-attr-test.rs:19:1
@@ -104,8 +104,8 @@ error: unknown attribute `norun`
 23 | | /// ```
    | |_______^
    |
-   = help: there is an attribute with a similar name: `no_run`
-   = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
+   = help: use `no_run` to compile, but not run, the code sample during testing
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `nO_run`
   --> $DIR/check-attr-test.rs:19:1
@@ -117,8 +117,8 @@ error: unknown attribute `nO_run`
 23 | | /// ```
    | |_______^
    |
-   = help: there is an attribute with a similar name: `no_run`
-   = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
+   = help: use `no_run` to compile, but not run, the code sample during testing
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `test-harness`
   --> $DIR/check-attr-test.rs:26:1
@@ -130,8 +130,8 @@ error: unknown attribute `test-harness`
 30 | | /// ```
    | |_______^
    |
-   = help: there is an attribute with a similar name: `test_harness`
-   = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
+   = help: use `test_harness` to run functions marked `#[test]` instead of a potentially-implicit `main` function
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `testharness`
   --> $DIR/check-attr-test.rs:26:1
@@ -143,8 +143,8 @@ error: unknown attribute `testharness`
 30 | | /// ```
    | |_______^
    |
-   = help: there is an attribute with a similar name: `test_harness`
-   = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
+   = help: use `test_harness` to run functions marked `#[test]` instead of a potentially-implicit `main` function
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `tesT_harness`
   --> $DIR/check-attr-test.rs:26:1
@@ -156,8 +156,8 @@ error: unknown attribute `tesT_harness`
 30 | | /// ```
    | |_______^
    |
-   = help: there is an attribute with a similar name: `test_harness`
-   = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
+   = help: use `test_harness` to run functions marked `#[test]` instead of a potentially-implicit `main` function
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: aborting due to 12 previous errors
 

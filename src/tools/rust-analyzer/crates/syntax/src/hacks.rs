@@ -6,12 +6,17 @@ use parser::Edition;
 
 use crate::{ast, AstNode};
 
-pub fn parse_expr_from_str(s: &str) -> Option<ast::Expr> {
+pub fn parse_expr_from_str(s: &str, edition: Edition) -> Option<ast::Expr> {
     let s = s.trim();
-    let file = ast::SourceFile::parse(&format!("const _: () = {s};"), Edition::CURRENT);
-    let expr = file.syntax_node().descendants().find_map(ast::Expr::cast)?;
-    if expr.syntax().text() != s {
-        return None;
-    }
-    Some(expr)
+
+    let file = ast::SourceFile::parse(
+        // Need a newline because the text may contain line comments.
+        &format!("const _: () = ({s}\n);"),
+        edition,
+    );
+    let expr = file.syntax_node().descendants().find_map(ast::ParenExpr::cast)?;
+    // Can't check the text because the original text may contain whitespace and comments.
+    // Wrap in parentheses to better allow for verification. Of course, the real fix is
+    // to get rid of this hack.
+    expr.expr()
 }

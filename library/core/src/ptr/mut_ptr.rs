@@ -12,14 +12,17 @@ impl<T: ?Sized> *mut T {
     /// Therefore, two pointers that are null may still not compare equal to
     /// each other.
     ///
-    /// ## Behavior during const evaluation
+    /// # Panics during const evaluation
     ///
-    /// When this function is used during const evaluation, it may return `false` for pointers
-    /// that turn out to be null at runtime. Specifically, when a pointer to some memory
-    /// is offset beyond its bounds in such a way that the resulting pointer is null,
-    /// the function will still return `false`. There is no way for CTFE to know
-    /// the absolute position of that memory, so we cannot tell if the pointer is
-    /// null or not.
+    /// If this method is used during const evaluation, and `self` is a pointer
+    /// that is offset beyond the bounds of the memory it initially pointed to,
+    /// then there might not be enough information to determine whether the
+    /// pointer is null. This is because the absolute address in memory is not
+    /// known at compile time. If the nullness of the pointer cannot be
+    /// determined, this method will panic.
+    ///
+    /// In-bounds pointers are never null, so the method will never panic for
+    /// such pointers.
     ///
     /// # Examples
     ///
@@ -29,26 +32,11 @@ impl<T: ?Sized> *mut T {
     /// assert!(!ptr.is_null());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_ptr_is_null", issue = "74939")]
+    #[rustc_const_stable(feature = "const_ptr_is_null", since = "1.84.0")]
     #[rustc_diagnostic_item = "ptr_is_null"]
     #[inline]
     pub const fn is_null(self) -> bool {
-        #[inline]
-        fn runtime_impl(ptr: *mut u8) -> bool {
-            ptr.addr() == 0
-        }
-
-        #[inline]
-        const fn const_impl(ptr: *mut u8) -> bool {
-            // Compare via a cast to a thin pointer, so fat pointers are only
-            // considering their "data" part for null-ness.
-            match (ptr).guaranteed_eq(null_mut()) {
-                None => false,
-                Some(res) => res,
-            }
-        }
-
-        const_eval_select((self as *mut u8,), const_impl, runtime_impl)
+        self.cast_const().is_null()
     }
 
     /// Casts to a pointer of another type.
@@ -60,21 +48,22 @@ impl<T: ?Sized> *mut T {
         self as _
     }
 
-    /// Uses the pointer value in a new pointer of another type.
+    /// Uses the address value in a new pointer of another type.
     ///
-    /// In case `meta` is a (fat) pointer to an unsized type, this operation
-    /// will ignore the pointer part, whereas for (thin) pointers to sized
-    /// types, this has the same effect as a simple cast.
+    /// This operation will ignore the address part of its `meta` operand and discard existing
+    /// metadata of `self`. For pointers to a sized types (thin pointers), this has the same effect
+    /// as a simple cast. For pointers to an unsized type (fat pointers) this recombines the address
+    /// with new metadata such as slice lengths or `dyn`-vtable.
     ///
-    /// The resulting pointer will have provenance of `self`, i.e., for a fat
-    /// pointer, this operation is semantically the same as creating a new
-    /// fat pointer with the data pointer value of `self` but the metadata of
-    /// `meta`.
+    /// The resulting pointer will have provenance of `self`. This operation is semantically the
+    /// same as creating a new pointer with the data pointer value of `self` but the metadata of
+    /// `meta`, being fat or thin depending on the `meta` operand.
     ///
     /// # Examples
     ///
-    /// This function is primarily useful for allowing byte-wise pointer
-    /// arithmetic on potentially fat pointers:
+    /// This function is primarily useful for enabling pointer arithmetic on potentially fat
+    /// pointers. The pointer is cast to a sized pointee to utilize offset operations and then
+    /// recombined with its own original metadata.
     ///
     /// ```
     /// #![feature(set_ptr_value)]
@@ -88,8 +77,26 @@ impl<T: ?Sized> *mut T {
     ///     println!("{:?}", &*ptr); // will print "3"
     /// }
     /// ```
+    ///
+    /// # *Incorrect* usage
+    ///
+    /// The provenance from pointers is *not* combined. The result must only be used to refer to the
+    /// address allowed by `self`.
+    ///
+    /// ```rust,no_run
+    /// #![feature(set_ptr_value)]
+    /// let mut x = 0u32;
+    /// let mut y = 1u32;
+    ///
+    /// let x = (&mut x) as *mut u32;
+    /// let y = (&mut y) as *mut u32;
+    ///
+    /// let offset = (x as usize - y as usize) / 4;
+    /// let bad = x.wrapping_add(offset).with_metadata_of(y);
+    ///
+    /// // This dereference is UB. The pointer only has provenance for `x` but points to `y`.
+    /// println!("{:?}", unsafe { &*bad });
     #[unstable(feature = "set_ptr_value", issue = "75091")]
-    #[rustc_const_unstable(feature = "set_ptr_value", issue = "75091")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
     pub const fn with_metadata_of<U>(self, meta: *const U) -> *mut U
@@ -119,12 +126,12 @@ impl<T: ?Sized> *mut T {
 
     /// Gets the "address" portion of the pointer.
     ///
-    /// This is similar to `self as usize`, which semantically discards *provenance* and
-    /// *address-space* information. However, unlike `self as usize`, casting the returned address
-    /// back to a pointer yields a [pointer without provenance][without_provenance_mut], which is undefined
-    /// behavior to dereference. To properly restore the lost information and obtain a
-    /// dereferenceable pointer, use [`with_addr`][pointer::with_addr] or
-    /// [`map_addr`][pointer::map_addr].
+    /// This is similar to `self as usize`, except that the [provenance][crate::ptr#provenance] of
+    /// the pointer is discarded and not [exposed][crate::ptr#exposed-provenance]. This means that
+    /// casting the returned address back to a pointer yields a [pointer without
+    /// provenance][without_provenance_mut], which is undefined behavior to dereference. To properly
+    /// restore the lost information and obtain a dereferenceable pointer, use
+    /// [`with_addr`][pointer::with_addr] or [`map_addr`][pointer::map_addr].
     ///
     /// If using those APIs is not possible because there is no way to preserve a pointer with the
     /// required provenance, then Strict Provenance might not be for you. Use pointer-integer casts
@@ -138,89 +145,80 @@ impl<T: ?Sized> *mut T {
     /// perform a change of representation to produce a value containing only the address
     /// portion of the pointer. What that means is up to the platform to define.
     ///
-    /// This API and its claimed semantics are part of the Strict Provenance experiment, and as such
-    /// might change in the future (including possibly weakening this so it becomes wholly
-    /// equivalent to `self as usize`). See the [module documentation][crate::ptr] for details.
+    /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
     #[must_use]
     #[inline(always)]
-    #[unstable(feature = "strict_provenance", issue = "95228")]
+    #[stable(feature = "strict_provenance", since = "1.84.0")]
     pub fn addr(self) -> usize {
-        // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+        // A pointer-to-integer transmute currently has exactly the right semantics: it returns the
+        // address without exposing the provenance. Note that this is *not* a stable guarantee about
+        // transmute semantics, it relies on sysroot crates having special status.
         // SAFETY: Pointer-to-integer transmutes are valid (if you are okay with losing the
         // provenance).
         unsafe { mem::transmute(self.cast::<()>()) }
     }
 
-    /// Exposes the "provenance" part of the pointer for future use in
-    /// [`with_exposed_provenance`][] and returns the "address" portion.
+    /// Exposes the ["provenance"][crate::ptr#provenance] part of the pointer for future use in
+    /// [`with_exposed_provenance_mut`] and returns the "address" portion.
     ///
-    /// This is equivalent to `self as usize`, which semantically discards *provenance* and
-    /// *address-space* information. Furthermore, this (like the `as` cast) has the implicit
-    /// side-effect of marking the provenance as 'exposed', so on platforms that support it you can
-    /// later call [`with_exposed_provenance_mut`][] to reconstitute the original pointer including its
-    /// provenance. (Reconstructing address space information, if required, is your responsibility.)
+    /// This is equivalent to `self as usize`, which semantically discards provenance information.
+    /// Furthermore, this (like the `as` cast) has the implicit side-effect of marking the
+    /// provenance as 'exposed', so on platforms that support it you can later call
+    /// [`with_exposed_provenance_mut`] to reconstitute the original pointer including its provenance.
     ///
-    /// Using this method means that code is *not* following [Strict
-    /// Provenance][super#strict-provenance] rules. Supporting
-    /// [`with_exposed_provenance_mut`][] complicates specification and reasoning and may not be supported
-    /// by tools that help you to stay conformant with the Rust memory model, so it is recommended
-    /// to use [`addr`][pointer::addr] wherever possible.
+    /// Due to its inherent ambiguity, [`with_exposed_provenance_mut`] may not be supported by tools
+    /// that help you to stay conformant with the Rust memory model. It is recommended to use
+    /// [Strict Provenance][crate::ptr#strict-provenance] APIs such as [`with_addr`][pointer::with_addr]
+    /// wherever possible, in which case [`addr`][pointer::addr] should be used instead of `expose_provenance`.
     ///
     /// On most platforms this will produce a value with the same bytes as the original pointer,
     /// because all the bytes are dedicated to describing the address. Platforms which need to store
     /// additional information in the pointer may not support this operation, since the 'expose'
-    /// side-effect which is required for [`with_exposed_provenance_mut`][] to work is typically not
+    /// side-effect which is required for [`with_exposed_provenance_mut`] to work is typically not
     /// available.
     ///
-    /// It is unclear whether this method can be given a satisfying unambiguous specification. This
-    /// API and its claimed semantics are part of [Exposed Provenance][super#exposed-provenance].
+    /// This is an [Exposed Provenance][crate::ptr#exposed-provenance] API.
     ///
     /// [`with_exposed_provenance_mut`]: with_exposed_provenance_mut
     #[inline(always)]
-    #[unstable(feature = "exposed_provenance", issue = "95228")]
+    #[stable(feature = "exposed_provenance", since = "1.84.0")]
     pub fn expose_provenance(self) -> usize {
-        // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
         self.cast::<()>() as usize
     }
 
-    /// Creates a new pointer with the given address.
+    /// Creates a new pointer with the given address and the [provenance][crate::ptr#provenance] of
+    /// `self`.
     ///
-    /// This performs the same operation as an `addr as ptr` cast, but copies
-    /// the *address-space* and *provenance* of `self` to the new pointer.
-    /// This allows us to dynamically preserve and propagate this important
-    /// information in a way that is otherwise impossible with a unary cast.
+    /// This is similar to a `addr as *mut T` cast, but copies
+    /// the *provenance* of `self` to the new pointer.
+    /// This avoids the inherent ambiguity of the unary cast.
     ///
     /// This is equivalent to using [`wrapping_offset`][pointer::wrapping_offset] to offset
     /// `self` to the given address, and therefore has all the same capabilities and restrictions.
     ///
-    /// This API and its claimed semantics are an extension to the Strict Provenance experiment,
-    /// see the [module documentation][crate::ptr] for details.
+    /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
     #[must_use]
     #[inline]
-    #[unstable(feature = "strict_provenance", issue = "95228")]
+    #[stable(feature = "strict_provenance", since = "1.84.0")]
     pub fn with_addr(self, addr: usize) -> Self {
-        // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
-        //
-        // In the mean-time, this operation is defined to be "as if" it was
-        // a wrapping_offset, so we can emulate it as such. This should properly
-        // restore pointer provenance even under today's compiler.
+        // This should probably be an intrinsic to avoid doing any sort of arithmetic, but
+        // meanwhile, we can implement it with `wrapping_offset`, which preserves the pointer's
+        // provenance.
         let self_addr = self.addr() as isize;
         let dest_addr = addr as isize;
         let offset = dest_addr.wrapping_sub(self_addr);
-
-        // This is the canonical desugaring of this operation
         self.wrapping_byte_offset(offset)
     }
 
-    /// Creates a new pointer by mapping `self`'s address to a new one.
+    /// Creates a new pointer by mapping `self`'s address to a new one, preserving the original
+    /// pointer's [provenance][crate::ptr#provenance].
     ///
     /// This is a convenience for [`with_addr`][pointer::with_addr], see that method for details.
     ///
-    /// This API and its claimed semantics are part of the Strict Provenance experiment,
-    /// see the [module documentation][crate::ptr] for details.
+    /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
     #[must_use]
     #[inline]
-    #[unstable(feature = "strict_provenance", issue = "95228")]
+    #[stable(feature = "strict_provenance", since = "1.84.0")]
     pub fn map_addr(self, f: impl FnOnce(usize) -> usize) -> Self {
         self.with_addr(f(self.addr()))
     }
@@ -229,7 +227,6 @@ impl<T: ?Sized> *mut T {
     ///
     /// The pointer can be later reconstructed with [`from_raw_parts_mut`].
     #[unstable(feature = "ptr_metadata", issue = "81513")]
-    #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
     #[inline]
     pub const fn to_raw_parts(self) -> (*mut (), <T as super::Pointee>::Metadata) {
         (self.cast(), super::metadata(self))
@@ -247,24 +244,14 @@ impl<T: ?Sized> *mut T {
     /// # Safety
     ///
     /// When calling this method, you have to ensure that *either* the pointer is null *or*
-    /// all of the following is true:
+    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     ///
-    /// * The pointer must be properly aligned.
+    /// # Panics during const evaluation
     ///
-    /// * It must be "dereferenceable" in the sense defined in [the module documentation].
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
     ///
-    /// * The pointer must point to an initialized instance of `T`.
-    ///
-    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
-    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, while this reference exists, the memory the pointer points to must
-    ///   not get mutated (except inside `UnsafeCell`).
-    ///
-    /// This applies even if the result of this method is unused!
-    /// (The part about being initialized is not yet fully decided, but until
-    /// it is, the only safe approach is to ensure that they are indeed initialized.)
-    ///
-    /// [the module documentation]: crate::ptr#safety
+    /// [`is_null`]: #method.is_null-1
     ///
     /// # Examples
     ///
@@ -293,7 +280,7 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    #[rustc_const_stable(feature = "const_ptr_is_null", since = "1.84.0")]
     #[inline]
     pub const unsafe fn as_ref<'a>(self) -> Option<&'a T> {
         // SAFETY: the caller must guarantee that `self` is valid for a
@@ -313,24 +300,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that all of the following is true:
-    ///
-    /// * The pointer must be properly aligned.
-    ///
-    /// * It must be "dereferenceable" in the sense defined in [the module documentation].
-    ///
-    /// * The pointer must point to an initialized instance of `T`.
-    ///
-    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
-    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, while this reference exists, the memory the pointer points to must
-    ///   not get mutated (except inside `UnsafeCell`).
-    ///
-    /// This applies even if the result of this method is unused!
-    /// (The part about being initialized is not yet fully decided, but until
-    /// it is, the only safe approach is to ensure that they are indeed initialized.)
-    ///
-    /// [the module documentation]: crate::ptr#safety
+    /// When calling this method, you have to ensure that the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     ///
     /// # Examples
     ///
@@ -344,7 +314,6 @@ impl<T: ?Sized> *mut T {
     /// ```
     // FIXME: mention it in the docs for `as_ref` and `as_uninit_ref` once stabilized.
     #[unstable(feature = "ptr_as_ref_unchecked", issue = "122034")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_ref_unchecked<'a>(self) -> &'a T {
@@ -364,20 +333,16 @@ impl<T: ?Sized> *mut T {
     /// # Safety
     ///
     /// When calling this method, you have to ensure that *either* the pointer is null *or*
-    /// all of the following is true:
+    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    /// Note that because the created reference is to `MaybeUninit<T>`, the
+    /// source pointer can point to uninitialized memory.
     ///
-    /// * The pointer must be properly aligned.
+    /// # Panics during const evaluation
     ///
-    /// * It must be "dereferenceable" in the sense defined in [the module documentation].
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
     ///
-    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
-    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, while this reference exists, the memory the pointer points to must
-    ///   not get mutated (except inside `UnsafeCell`).
-    ///
-    /// This applies even if the result of this method is unused!
-    ///
-    /// [the module documentation]: crate::ptr#safety
+    /// [`is_null`]: #method.is_null-1
     ///
     /// # Examples
     ///
@@ -394,7 +359,6 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
     pub const unsafe fn as_uninit_ref<'a>(self) -> Option<&'a MaybeUninit<T>>
     where
         T: Sized,
@@ -404,7 +368,7 @@ impl<T: ?Sized> *mut T {
         if self.is_null() { None } else { Some(unsafe { &*(self as *const MaybeUninit<T>) }) }
     }
 
-    /// Adds an offset to a pointer.
+    /// Adds a signed offset to a pointer.
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
@@ -413,9 +377,10 @@ impl<T: ?Sized> *mut T {
     ///
     /// If any of the following conditions are violated, the result is Undefined Behavior:
     ///
-    /// * The computed offset, `count * size_of::<T>()` bytes, must not overflow `isize`.
+    /// * The offset in bytes, `count * size_of::<T>()`, computed on mathematical integers (without
+    ///   "wrapping around"), must fit in an `isize`.
     ///
-    /// * If the computed offset is non-zero, then `self` must be derived from a pointer to some
+    /// * If the computed offset is non-zero, then `self` must be [derived from][crate::ptr#provenance] a pointer to some
     ///   [allocated object], and the entire memory range between `self` and the result must be in
     ///   bounds of that allocated object. In particular, this range must not "wrap around" the edge
     ///   of the address space.
@@ -452,13 +417,43 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
+        #[inline]
+        #[rustc_allow_const_fn_unstable(const_eval_select)]
+        const fn runtime_offset_nowrap(this: *const (), count: isize, size: usize) -> bool {
+            // We can use const_eval_select here because this is only for UB checks.
+            const_eval_select!(
+                @capture { this: *const (), count: isize, size: usize } -> bool:
+                if const {
+                    true
+                } else {
+                    // `size` is the size of a Rust type, so we know that
+                    // `size <= isize::MAX` and thus `as` cast here is not lossy.
+                    let Some(byte_offset) = count.checked_mul(size as isize) else {
+                        return false;
+                    };
+                    let (_, overflow) = this.addr().overflowing_add_signed(byte_offset);
+                    !overflow
+                }
+            )
+        }
+
+        ub_checks::assert_unsafe_precondition!(
+            check_language_ub,
+            "ptr::offset requires the address calculation to not overflow",
+            (
+                this: *const () = self as *const (),
+                count: isize = count,
+                size: usize = size_of::<T>(),
+            ) => runtime_offset_nowrap(this, count, size)
+        );
+
         // SAFETY: the caller must uphold the safety contract for `offset`.
         // The obtained pointer is valid for writes since the caller must
         // guarantee that it points to the same allocated object as `self`.
         unsafe { intrinsics::offset(self, count) }
     }
 
-    /// Calculates the offset from a pointer in bytes.
+    /// Adds a signed offset in bytes to a pointer.
     ///
     /// `count` is in units of **bytes**.
     ///
@@ -472,14 +467,14 @@ impl<T: ?Sized> *mut T {
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
     #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
-    #[rustc_allow_const_fn_unstable(set_ptr_value)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_offset(self, count: isize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `offset`.
         unsafe { self.cast::<u8>().offset(count).with_metadata_of(self) }
     }
 
-    /// Calculates the offset from a pointer using wrapping arithmetic.
+    /// Adds a signed offset to a pointer using wrapping arithmetic.
+    ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
@@ -538,7 +533,7 @@ impl<T: ?Sized> *mut T {
         unsafe { intrinsics::arith_offset(self, count) as *mut T }
     }
 
-    /// Calculates the offset from a pointer in bytes using wrapping arithmetic.
+    /// Adds a signed offset in bytes to a pointer using wrapping arithmetic.
     ///
     /// `count` is in units of **bytes**.
     ///
@@ -552,7 +547,6 @@ impl<T: ?Sized> *mut T {
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
     #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
-    #[rustc_allow_const_fn_unstable(set_ptr_value)]
     pub const fn wrapping_byte_offset(self, count: isize) -> Self {
         self.cast::<u8>().wrapping_offset(count).with_metadata_of(self)
     }
@@ -567,7 +561,7 @@ impl<T: ?Sized> *mut T {
     /// ## Examples
     ///
     /// ```
-    /// #![feature(ptr_mask, strict_provenance)]
+    /// #![feature(ptr_mask)]
     /// let mut v = 17_u32;
     /// let ptr: *mut u32 = &mut v;
     ///
@@ -609,25 +603,16 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that *either* the pointer is null *or*
-    /// all of the following is true:
+    /// When calling this method, you have to ensure that *either*
+    /// the pointer is null *or*
+    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     ///
-    /// * The pointer must be properly aligned.
+    /// # Panics during const evaluation
     ///
-    /// * It must be "dereferenceable" in the sense defined in [the module documentation].
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
     ///
-    /// * The pointer must point to an initialized instance of `T`.
-    ///
-    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
-    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, while this reference exists, the memory the pointer points to must
-    ///   not get accessed (read or written) through any other pointer.
-    ///
-    /// This applies even if the result of this method is unused!
-    /// (The part about being initialized is not yet fully decided, but until
-    /// it is, the only safe approach is to ensure that they are indeed initialized.)
-    ///
-    /// [the module documentation]: crate::ptr#safety
+    /// [`is_null`]: #method.is_null-1
     ///
     /// # Examples
     ///
@@ -655,7 +640,7 @@ impl<T: ?Sized> *mut T {
     /// println!("{s:?}"); // It'll print: "[4, 2, 3]".
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    #[rustc_const_stable(feature = "const_ptr_is_null", since = "1.84.0")]
     #[inline]
     pub const unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
         // SAFETY: the caller must guarantee that `self` is be valid for
@@ -675,24 +660,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that all of the following is true:
-    ///
-    /// * The pointer must be properly aligned.
-    ///
-    /// * It must be "dereferenceable" in the sense defined in [the module documentation].
-    ///
-    /// * The pointer must point to an initialized instance of `T`.
-    ///
-    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
-    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, while this reference exists, the memory the pointer points to must
-    ///   not get mutated (except inside `UnsafeCell`).
-    ///
-    /// This applies even if the result of this method is unused!
-    /// (The part about being initialized is not yet fully decided, but until
-    /// it is, the only safe approach is to ensure that they are indeed initialized.)
-    ///
-    /// [the module documentation]: crate::ptr#safety
+    /// When calling this method, you have to ensure that
+    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     ///
     /// # Examples
     ///
@@ -707,7 +676,6 @@ impl<T: ?Sized> *mut T {
     /// ```
     // FIXME: mention it in the docs for `as_mut` and `as_uninit_mut` once stabilized.
     #[unstable(feature = "ptr_as_ref_unchecked", issue = "122034")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_mut_unchecked<'a>(self) -> &'a mut T {
@@ -727,23 +695,16 @@ impl<T: ?Sized> *mut T {
     /// # Safety
     ///
     /// When calling this method, you have to ensure that *either* the pointer is null *or*
-    /// all of the following is true:
+    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     ///
-    /// * The pointer must be properly aligned.
+    /// # Panics during const evaluation
     ///
-    /// * It must be "dereferenceable" in the sense defined in [the module documentation].
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
     ///
-    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
-    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, while this reference exists, the memory the pointer points to must
-    ///   not get accessed (read or written) through any other pointer.
-    ///
-    /// This applies even if the result of this method is unused!
-    ///
-    /// [the module documentation]: crate::ptr#safety
+    /// [`is_null`]: #method.is_null-1
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
     pub const unsafe fn as_uninit_mut<'a>(self) -> Option<&'a mut MaybeUninit<T>>
     where
         T: Sized,
@@ -807,7 +768,7 @@ impl<T: ?Sized> *mut T {
         (self as *const T).guaranteed_ne(other as _)
     }
 
-    /// Calculates the distance between two pointers. The returned value is in
+    /// Calculates the distance between two pointers within the same allocation. The returned value is in
     /// units of T: the distance in bytes divided by `mem::size_of::<T>()`.
     ///
     /// This is equivalent to `(self as isize - origin as isize) / (mem::size_of::<T>() as isize)`,
@@ -830,7 +791,7 @@ impl<T: ?Sized> *mut T {
     /// * `self` and `origin` must either
     ///
     ///   * point to the same address, or
-    ///   * both be *derived from* a pointer to the same [allocated object], and the memory range between
+    ///   * both be [derived from][crate::ptr#provenance] a pointer to the same [allocated object], and the memory range between
     ///     the two pointers must be in bounds of that object. (See below for an example.)
     ///
     /// * The distance between the pointers, in bytes, must be an exact multiple
@@ -900,7 +861,7 @@ impl<T: ?Sized> *mut T {
         unsafe { (self as *const T).offset_from(origin) }
     }
 
-    /// Calculates the distance between two pointers. The returned value is in
+    /// Calculates the distance between two pointers within the same allocation. The returned value is in
     /// units of **bytes**.
     ///
     /// This is purely a convenience for casting to a `u8` pointer and
@@ -912,14 +873,13 @@ impl<T: ?Sized> *mut T {
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
     #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
-    #[rustc_allow_const_fn_unstable(set_ptr_value)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_offset_from<U: ?Sized>(self, origin: *const U) -> isize {
         // SAFETY: the caller must uphold the safety contract for `offset_from`.
         unsafe { self.cast::<u8>().offset_from(origin.cast::<u8>()) }
     }
 
-    /// Calculates the distance between two pointers, *where it's known that
+    /// Calculates the distance between two pointers within the same allocation, *where it's known that
     /// `self` is equal to or greater than `origin`*. The returned value is in
     /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
     ///
@@ -930,7 +890,7 @@ impl<T: ?Sized> *mut T {
     /// but it provides slightly more information to the optimizer, which can
     /// sometimes allow it to optimize slightly better with some backends.
     ///
-    /// This method can be though of as recovering the `count` that was passed
+    /// This method can be thought of as recovering the `count` that was passed
     /// to [`add`](#method.add) (or, with the parameters in the other order,
     /// to [`sub`](#method.sub)).  The following are all equivalent, assuming
     /// that their safety preconditions are met:
@@ -992,7 +952,30 @@ impl<T: ?Sized> *mut T {
         unsafe { (self as *const T).sub_ptr(origin) }
     }
 
-    /// Adds an offset to a pointer (convenience for `.offset(count as isize)`).
+    /// Calculates the distance between two pointers within the same allocation, *where it's known that
+    /// `self` is equal to or greater than `origin`*. The returned value is in
+    /// units of **bytes**.
+    ///
+    /// This is purely a convenience for casting to a `u8` pointer and
+    /// using [`sub_ptr`][pointer::sub_ptr] on it. See that method for
+    /// documentation and safety requirements.
+    ///
+    /// For non-`Sized` pointees this operation considers only the data pointers,
+    /// ignoring the metadata.
+    #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
+    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn byte_sub_ptr<U: ?Sized>(self, origin: *mut U) -> usize {
+        // SAFETY: the caller must uphold the safety contract for `byte_sub_ptr`.
+        unsafe { (self as *const T).byte_sub_ptr(origin) }
+    }
+
+    /// Adds an unsigned offset to a pointer.
+    ///
+    /// This can only move the pointer forward (or not move it). If you need to move forward or
+    /// backward depending on the value, then you might want [`offset`](#method.offset) instead
+    /// which takes a signed offset.
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
@@ -1001,9 +984,10 @@ impl<T: ?Sized> *mut T {
     ///
     /// If any of the following conditions are violated, the result is Undefined Behavior:
     ///
-    /// * The computed offset, `count * size_of::<T>()` bytes, must not overflow `isize`.
+    /// * The offset in bytes, `count * size_of::<T>()`, computed on mathematical integers (without
+    ///   "wrapping around"), must fit in an `isize`.
     ///
-    /// * If the computed offset is non-zero, then `self` must be derived from a pointer to some
+    /// * If the computed offset is non-zero, then `self` must be [derived from][crate::ptr#provenance] a pointer to some
     ///   [allocated object], and the entire memory range between `self` and the result must be in
     ///   bounds of that allocated object. In particular, this range must not "wrap around" the edge
     ///   of the address space.
@@ -1040,11 +1024,40 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
+        #[cfg(debug_assertions)]
+        #[inline]
+        #[rustc_allow_const_fn_unstable(const_eval_select)]
+        const fn runtime_add_nowrap(this: *const (), count: usize, size: usize) -> bool {
+            const_eval_select!(
+                @capture { this: *const (), count: usize, size: usize } -> bool:
+                if const {
+                    true
+                } else {
+                    let Some(byte_offset) = count.checked_mul(size) else {
+                        return false;
+                    };
+                    let (_, overflow) = this.addr().overflowing_add(byte_offset);
+                    byte_offset <= (isize::MAX as usize) && !overflow
+                }
+            )
+        }
+
+        #[cfg(debug_assertions)] // Expensive, and doesn't catch much in the wild.
+        ub_checks::assert_unsafe_precondition!(
+            check_language_ub,
+            "ptr::add requires that the address calculation does not overflow",
+            (
+                this: *const () = self as *const (),
+                count: usize = count,
+                size: usize = size_of::<T>(),
+            ) => runtime_add_nowrap(this, count, size)
+        );
+
         // SAFETY: the caller must uphold the safety contract for `offset`.
         unsafe { intrinsics::offset(self, count) }
     }
 
-    /// Calculates the offset from a pointer in bytes (convenience for `.byte_offset(count as isize)`).
+    /// Adds an unsigned offset in bytes to a pointer.
     ///
     /// `count` is in units of bytes.
     ///
@@ -1058,15 +1071,17 @@ impl<T: ?Sized> *mut T {
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
     #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
-    #[rustc_allow_const_fn_unstable(set_ptr_value)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_add(self, count: usize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `add`.
         unsafe { self.cast::<u8>().add(count).with_metadata_of(self) }
     }
 
-    /// Subtracts an offset from a pointer (convenience for
-    /// `.offset((count as isize).wrapping_neg())`).
+    /// Subtracts an unsigned offset from a pointer.
+    ///
+    /// This can only move the pointer backward (or not move it). If you need to move forward or
+    /// backward depending on the value, then you might want [`offset`](#method.offset) instead
+    /// which takes a signed offset.
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
@@ -1075,9 +1090,10 @@ impl<T: ?Sized> *mut T {
     ///
     /// If any of the following conditions are violated, the result is Undefined Behavior:
     ///
-    /// * The computed offset, `count * size_of::<T>()` bytes, must not overflow `isize`.
+    /// * The offset in bytes, `count * size_of::<T>()`, computed on mathematical integers (without
+    ///   "wrapping around"), must fit in an `isize`.
     ///
-    /// * If the computed offset is non-zero, then `self` must be derived from a pointer to some
+    /// * If the computed offset is non-zero, then `self` must be [derived from][crate::ptr#provenance] a pointer to some
     ///   [allocated object], and the entire memory range between `self` and the result must be in
     ///   bounds of that allocated object. In particular, this range must not "wrap around" the edge
     ///   of the address space.
@@ -1108,13 +1124,40 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
-    #[rustc_allow_const_fn_unstable(unchecked_neg)]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn sub(self, count: usize) -> Self
     where
         T: Sized,
     {
+        #[cfg(debug_assertions)]
+        #[inline]
+        #[rustc_allow_const_fn_unstable(const_eval_select)]
+        const fn runtime_sub_nowrap(this: *const (), count: usize, size: usize) -> bool {
+            const_eval_select!(
+                @capture { this: *const (), count: usize, size: usize } -> bool:
+                if const {
+                    true
+                } else {
+                    let Some(byte_offset) = count.checked_mul(size) else {
+                        return false;
+                    };
+                    byte_offset <= (isize::MAX as usize) && this.addr() >= byte_offset
+                }
+            )
+        }
+
+        #[cfg(debug_assertions)] // Expensive, and doesn't catch much in the wild.
+        ub_checks::assert_unsafe_precondition!(
+            check_language_ub,
+            "ptr::sub requires that the address calculation does not overflow",
+            (
+                this: *const () = self as *const (),
+                count: usize = count,
+                size: usize = size_of::<T>(),
+            ) => runtime_sub_nowrap(this, count, size)
+        );
+
         if T::IS_ZST {
             // Pointer arithmetic does nothing when the pointee is a ZST.
             self
@@ -1122,12 +1165,11 @@ impl<T: ?Sized> *mut T {
             // SAFETY: the caller must uphold the safety contract for `offset`.
             // Because the pointee is *not* a ZST, that means that `count` is
             // at most `isize::MAX`, and thus the negation cannot overflow.
-            unsafe { self.offset((count as isize).unchecked_neg()) }
+            unsafe { intrinsics::offset(self, intrinsics::unchecked_sub(0, count as isize)) }
         }
     }
 
-    /// Calculates the offset from a pointer in bytes (convenience for
-    /// `.byte_offset((count as isize).wrapping_neg())`).
+    /// Subtracts an unsigned offset in bytes from a pointer.
     ///
     /// `count` is in units of bytes.
     ///
@@ -1141,15 +1183,13 @@ impl<T: ?Sized> *mut T {
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
     #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
-    #[rustc_allow_const_fn_unstable(set_ptr_value)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_sub(self, count: usize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `sub`.
         unsafe { self.cast::<u8>().sub(count).with_metadata_of(self) }
     }
 
-    /// Calculates the offset from a pointer using wrapping arithmetic.
-    /// (convenience for `.wrapping_offset(count as isize)`)
+    /// Adds an unsigned offset to a pointer using wrapping arithmetic.
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
@@ -1208,8 +1248,7 @@ impl<T: ?Sized> *mut T {
         self.wrapping_offset(count as isize)
     }
 
-    /// Calculates the offset from a pointer in bytes using wrapping arithmetic.
-    /// (convenience for `.wrapping_byte_offset(count as isize)`)
+    /// Adds an unsigned offset in bytes to a pointer using wrapping arithmetic.
     ///
     /// `count` is in units of bytes.
     ///
@@ -1222,13 +1261,11 @@ impl<T: ?Sized> *mut T {
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
     #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
-    #[rustc_allow_const_fn_unstable(set_ptr_value)]
     pub const fn wrapping_byte_add(self, count: usize) -> Self {
         self.cast::<u8>().wrapping_add(count).with_metadata_of(self)
     }
 
-    /// Calculates the offset from a pointer using wrapping arithmetic.
-    /// (convenience for `.wrapping_offset((count as isize).wrapping_neg())`)
+    /// Subtracts an unsigned offset from a pointer using wrapping arithmetic.
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
@@ -1287,8 +1324,7 @@ impl<T: ?Sized> *mut T {
         self.wrapping_offset((count as isize).wrapping_neg())
     }
 
-    /// Calculates the offset from a pointer in bytes using wrapping arithmetic.
-    /// (convenience for `.wrapping_offset((count as isize).wrapping_neg())`)
+    /// Subtracts an unsigned offset in bytes from a pointer using wrapping arithmetic.
     ///
     /// `count` is in units of bytes.
     ///
@@ -1301,7 +1337,6 @@ impl<T: ?Sized> *mut T {
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
     #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
-    #[rustc_allow_const_fn_unstable(set_ptr_value)]
     pub const fn wrapping_byte_sub(self, count: usize) -> Self {
         self.cast::<u8>().wrapping_sub(count).with_metadata_of(self)
     }
@@ -1373,7 +1408,7 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
-    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1393,7 +1428,7 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
-    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1413,7 +1448,7 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
-    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1433,7 +1468,7 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
-    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1464,7 +1499,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::write`]: crate::ptr::write()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+    #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn write(self, val: T)
@@ -1483,7 +1518,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::write_bytes`]: crate::ptr::write_bytes()
     #[doc(alias = "memset")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+    #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn write_bytes(self, val: u8, count: usize)
@@ -1524,7 +1559,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::write_unaligned`]: crate::ptr::write_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+    #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn write_unaligned(self, val: T)
@@ -1559,7 +1594,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::swap`]: crate::ptr::swap()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+    #[rustc_const_stable(feature = "const_swap", since = "1.85.0")]
     #[inline(always)]
     pub const unsafe fn swap(self, with: *mut T)
     where
@@ -1581,15 +1616,6 @@ impl<T: ?Sized> *mut T {
     /// There are no guarantees whatsoever that offsetting the pointer will not overflow or go
     /// beyond the allocation that the pointer points into. It is up to the caller to ensure that
     /// the returned offset is correct in all terms other than alignment.
-    ///
-    /// When this is called during compile-time evaluation (which is unstable), the implementation
-    /// may return `usize::MAX` in cases where that can never happen at runtime. This is because the
-    /// actual alignment of pointers is not known yet during compile-time, so an offset with
-    /// guaranteed alignment can sometimes not be computed. For example, a buffer declared as `[u8;
-    /// N]` might be allocated at an odd or an even address, but at compile-time this is not yet
-    /// known, so the execution has to be correct for either choice. It is therefore impossible to
-    /// find an offset that is guaranteed to be 2-aligned. (This behavior is subject to change, as usual
-    /// for unstable APIs.)
     ///
     /// # Panics
     ///
@@ -1621,8 +1647,7 @@ impl<T: ?Sized> *mut T {
     #[must_use]
     #[inline]
     #[stable(feature = "align_offset", since = "1.36.0")]
-    #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
-    pub const fn align_offset(self, align: usize) -> usize
+    pub fn align_offset(self, align: usize) -> usize
     where
         T: Sized,
     {
@@ -1660,96 +1685,10 @@ impl<T: ?Sized> *mut T {
     /// assert!(ptr.is_aligned());
     /// assert!(!ptr.wrapping_byte_add(1).is_aligned());
     /// ```
-    ///
-    /// # At compiletime
-    /// **Note: Alignment at compiletime is experimental and subject to change. See the
-    /// [tracking issue] for details.**
-    ///
-    /// At compiletime, the compiler may not know where a value will end up in memory.
-    /// Calling this function on a pointer created from a reference at compiletime will only
-    /// return `true` if the pointer is guaranteed to be aligned. This means that the pointer
-    /// is never aligned if cast to a type with a stricter alignment than the reference's
-    /// underlying allocation.
-    ///
-    /// ```
-    /// #![feature(const_pointer_is_aligned)]
-    /// #![feature(const_mut_refs)]
-    ///
-    /// // On some platforms, the alignment of primitives is less than their size.
-    /// #[repr(align(4))]
-    /// struct AlignedI32(i32);
-    /// #[repr(align(8))]
-    /// struct AlignedI64(i64);
-    ///
-    /// const _: () = {
-    ///     let mut data = AlignedI32(42);
-    ///     let ptr = &mut data as *mut AlignedI32;
-    ///     assert!(ptr.is_aligned());
-    ///
-    ///     // At runtime either `ptr1` or `ptr2` would be aligned, but at compiletime neither is aligned.
-    ///     let ptr1 = ptr.cast::<AlignedI64>();
-    ///     let ptr2 = ptr.wrapping_add(1).cast::<AlignedI64>();
-    ///     assert!(!ptr1.is_aligned());
-    ///     assert!(!ptr2.is_aligned());
-    /// };
-    /// ```
-    ///
-    /// Due to this behavior, it is possible that a runtime pointer derived from a compiletime
-    /// pointer is aligned, even if the compiletime pointer wasn't aligned.
-    ///
-    /// ```
-    /// #![feature(const_pointer_is_aligned)]
-    ///
-    /// // On some platforms, the alignment of primitives is less than their size.
-    /// #[repr(align(4))]
-    /// struct AlignedI32(i32);
-    /// #[repr(align(8))]
-    /// struct AlignedI64(i64);
-    ///
-    /// // At compiletime, neither `COMPTIME_PTR` nor `COMPTIME_PTR + 1` is aligned.
-    /// // Also, note that mutable references are not allowed in the final value of constants.
-    /// const COMPTIME_PTR: *mut AlignedI32 = (&AlignedI32(42) as *const AlignedI32).cast_mut();
-    /// const _: () = assert!(!COMPTIME_PTR.cast::<AlignedI64>().is_aligned());
-    /// const _: () = assert!(!COMPTIME_PTR.wrapping_add(1).cast::<AlignedI64>().is_aligned());
-    ///
-    /// // At runtime, either `runtime_ptr` or `runtime_ptr + 1` is aligned.
-    /// let runtime_ptr = COMPTIME_PTR;
-    /// assert_ne!(
-    ///     runtime_ptr.cast::<AlignedI64>().is_aligned(),
-    ///     runtime_ptr.wrapping_add(1).cast::<AlignedI64>().is_aligned(),
-    /// );
-    /// ```
-    ///
-    /// If a pointer is created from a fixed address, this function behaves the same during
-    /// runtime and compiletime.
-    ///
-    /// ```
-    /// #![feature(const_pointer_is_aligned)]
-    ///
-    /// // On some platforms, the alignment of primitives is less than their size.
-    /// #[repr(align(4))]
-    /// struct AlignedI32(i32);
-    /// #[repr(align(8))]
-    /// struct AlignedI64(i64);
-    ///
-    /// const _: () = {
-    ///     let ptr = 40 as *mut AlignedI32;
-    ///     assert!(ptr.is_aligned());
-    ///
-    ///     // For pointers with a known address, runtime and compiletime behavior are identical.
-    ///     let ptr1 = ptr.cast::<AlignedI64>();
-    ///     let ptr2 = ptr.wrapping_add(1).cast::<AlignedI64>();
-    ///     assert!(ptr1.is_aligned());
-    ///     assert!(!ptr2.is_aligned());
-    /// };
-    /// ```
-    ///
-    /// [tracking issue]: https://github.com/rust-lang/rust/issues/104203
     #[must_use]
     #[inline]
     #[stable(feature = "pointer_is_aligned", since = "1.79.0")]
-    #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
-    pub const fn is_aligned(self) -> bool
+    pub fn is_aligned(self) -> bool
     where
         T: Sized,
     {
@@ -1786,106 +1725,15 @@ impl<T: ?Sized> *mut T {
     ///
     /// assert_ne!(ptr.is_aligned_to(8), ptr.wrapping_add(1).is_aligned_to(8));
     /// ```
-    ///
-    /// # At compiletime
-    /// **Note: Alignment at compiletime is experimental and subject to change. See the
-    /// [tracking issue] for details.**
-    ///
-    /// At compiletime, the compiler may not know where a value will end up in memory.
-    /// Calling this function on a pointer created from a reference at compiletime will only
-    /// return `true` if the pointer is guaranteed to be aligned. This means that the pointer
-    /// cannot be stricter aligned than the reference's underlying allocation.
-    ///
-    /// ```
-    /// #![feature(pointer_is_aligned_to)]
-    /// #![feature(const_pointer_is_aligned)]
-    /// #![feature(const_mut_refs)]
-    ///
-    /// // On some platforms, the alignment of i32 is less than 4.
-    /// #[repr(align(4))]
-    /// struct AlignedI32(i32);
-    ///
-    /// const _: () = {
-    ///     let mut data = AlignedI32(42);
-    ///     let ptr = &mut data as *mut AlignedI32;
-    ///
-    ///     assert!(ptr.is_aligned_to(1));
-    ///     assert!(ptr.is_aligned_to(2));
-    ///     assert!(ptr.is_aligned_to(4));
-    ///
-    ///     // At compiletime, we know for sure that the pointer isn't aligned to 8.
-    ///     assert!(!ptr.is_aligned_to(8));
-    ///     assert!(!ptr.wrapping_add(1).is_aligned_to(8));
-    /// };
-    /// ```
-    ///
-    /// Due to this behavior, it is possible that a runtime pointer derived from a compiletime
-    /// pointer is aligned, even if the compiletime pointer wasn't aligned.
-    ///
-    /// ```
-    /// #![feature(pointer_is_aligned_to)]
-    /// #![feature(const_pointer_is_aligned)]
-    ///
-    /// // On some platforms, the alignment of i32 is less than 4.
-    /// #[repr(align(4))]
-    /// struct AlignedI32(i32);
-    ///
-    /// // At compiletime, neither `COMPTIME_PTR` nor `COMPTIME_PTR + 1` is aligned.
-    /// // Also, note that mutable references are not allowed in the final value of constants.
-    /// const COMPTIME_PTR: *mut AlignedI32 = (&AlignedI32(42) as *const AlignedI32).cast_mut();
-    /// const _: () = assert!(!COMPTIME_PTR.is_aligned_to(8));
-    /// const _: () = assert!(!COMPTIME_PTR.wrapping_add(1).is_aligned_to(8));
-    ///
-    /// // At runtime, either `runtime_ptr` or `runtime_ptr + 1` is aligned.
-    /// let runtime_ptr = COMPTIME_PTR;
-    /// assert_ne!(
-    ///     runtime_ptr.is_aligned_to(8),
-    ///     runtime_ptr.wrapping_add(1).is_aligned_to(8),
-    /// );
-    /// ```
-    ///
-    /// If a pointer is created from a fixed address, this function behaves the same during
-    /// runtime and compiletime.
-    ///
-    /// ```
-    /// #![feature(pointer_is_aligned_to)]
-    /// #![feature(const_pointer_is_aligned)]
-    ///
-    /// const _: () = {
-    ///     let ptr = 40 as *mut u8;
-    ///     assert!(ptr.is_aligned_to(1));
-    ///     assert!(ptr.is_aligned_to(2));
-    ///     assert!(ptr.is_aligned_to(4));
-    ///     assert!(ptr.is_aligned_to(8));
-    ///     assert!(!ptr.is_aligned_to(16));
-    /// };
-    /// ```
-    ///
-    /// [tracking issue]: https://github.com/rust-lang/rust/issues/104203
     #[must_use]
     #[inline]
     #[unstable(feature = "pointer_is_aligned_to", issue = "96284")]
-    #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
-    pub const fn is_aligned_to(self, align: usize) -> bool {
+    pub fn is_aligned_to(self, align: usize) -> bool {
         if !align.is_power_of_two() {
             panic!("is_aligned_to: align is not a power-of-two");
         }
 
-        #[inline]
-        fn runtime_impl(ptr: *mut (), align: usize) -> bool {
-            ptr.addr() & (align - 1) == 0
-        }
-
-        #[inline]
-        const fn const_impl(ptr: *mut (), align: usize) -> bool {
-            // We can't use the address of `self` in a `const fn`, so we use `align_offset` instead.
-            ptr.align_offset(align) == 0
-        }
-
-        // The cast to `()` is used to
-        //   1. deal with fat pointers; and
-        //   2. ensure that `align_offset` (in `const_impl`) doesn't actually try to compute an offset.
-        const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl)
+        self.addr() & (align - 1) == 0
     }
 }
 
@@ -1908,7 +1756,6 @@ impl<T> *mut [T] {
     #[inline(always)]
     #[stable(feature = "slice_ptr_len", since = "1.79.0")]
     #[rustc_const_stable(feature = "const_slice_ptr_len", since = "1.79.0")]
-    #[rustc_allow_const_fn_unstable(ptr_metadata)]
     pub const fn len(self) -> usize {
         metadata(self)
     }
@@ -1928,6 +1775,21 @@ impl<T> *mut [T] {
     #[rustc_const_stable(feature = "const_slice_ptr_len", since = "1.79.0")]
     pub const fn is_empty(self) -> bool {
         self.len() == 0
+    }
+
+    /// Gets a raw, mutable pointer to the underlying array.
+    ///
+    /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
+    #[unstable(feature = "slice_as_array", issue = "133508")]
+    #[inline]
+    #[must_use]
+    pub const fn as_mut_array<const N: usize>(self) -> Option<*mut [T; N]> {
+        if self.len() == N {
+            let me = self.as_mut_ptr() as *mut [T; N];
+            Some(me)
+        } else {
+            None
+        }
     }
 
     /// Divides one mutable raw slice into two at an index.
@@ -2043,7 +1905,6 @@ impl<T> *mut [T] {
     /// ```
     #[inline(always)]
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
-    #[rustc_const_unstable(feature = "slice_ptr_get", issue = "74265")]
     pub const fn as_mut_ptr(self) -> *mut T {
         self as *mut T
     }
@@ -2118,9 +1979,15 @@ impl<T> *mut [T] {
     ///
     /// [valid]: crate::ptr#safety
     /// [allocated object]: crate::ptr#allocated-object
+    ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: #method.is_null-1
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
     pub const unsafe fn as_uninit_slice<'a>(self) -> Option<&'a [MaybeUninit<T>]> {
         if self.is_null() {
             None
@@ -2170,9 +2037,15 @@ impl<T> *mut [T] {
     ///
     /// [valid]: crate::ptr#safety
     /// [allocated object]: crate::ptr#allocated-object
+    ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: #method.is_null-1
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
     pub const unsafe fn as_uninit_slice_mut<'a>(self) -> Option<&'a mut [MaybeUninit<T>]> {
         if self.is_null() {
             None
@@ -2199,7 +2072,6 @@ impl<T, const N: usize> *mut [T; N] {
     /// ```
     #[inline]
     #[unstable(feature = "array_ptr_get", issue = "119834")]
-    #[rustc_const_unstable(feature = "array_ptr_get", issue = "119834")]
     pub const fn as_mut_ptr(self) -> *mut T {
         self as *mut T
     }
@@ -2220,7 +2092,6 @@ impl<T, const N: usize> *mut [T; N] {
     /// ```
     #[inline]
     #[unstable(feature = "array_ptr_get", issue = "119834")]
-    #[rustc_const_unstable(feature = "array_ptr_get", issue = "119834")]
     pub const fn as_mut_slice(self) -> *mut [T] {
         self
     }

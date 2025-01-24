@@ -1,13 +1,14 @@
 // This test ensures that the elements in ".search-form" have the expected display.
 include: "utils.goml"
-go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=test"
+wait-for: "#search-tabs" // Waiting for the search.js to load.
 show-text: true
 
 define-function: (
     "check-search-colors",
     [
         theme, border, background, search_input_color, search_input_border_focus,
-        menu_button_border, menu_button_a_color, menu_button_a_border_hover, menu_a_color,
+        menu_button_a_color, menu_button_a_border_hover, menu_a_color,
     ],
     block {
         call-function: ("switch-theme", {"theme": |theme|})
@@ -30,29 +31,21 @@ define-function: (
             },
         )
         assert-css: (
-            "#help-button",
-            {"border-color": |menu_button_border|},
-        )
-        assert-css: (
             "#help-button > a",
             {
                 "color": |menu_button_a_color|,
-                "border-color": |border|,
-                "background-color": |background|,
+                "border-color": "transparent",
+                "background-color": "transparent",
             },
         )
         // Hover help button.
         move-cursor-to: "#help-button"
         assert-css: (
-            "#help-button:hover",
-            {"border-color": |menu_button_border|},
-        )
-        assert-css: (
             "#help-button > a",
             {
                 "color": |menu_button_a_color|,
                 "border-color": |menu_button_a_border_hover|,
-                "background-color": |background|,
+                "background-color": "transparent",
             },
         )
         // Link color inside
@@ -64,29 +57,21 @@ define-function: (
             },
         )
         assert-css: (
-            "#settings-menu",
-            {"border-color": |menu_button_border|},
-        )
-        assert-css: (
             "#settings-menu > a",
             {
                 "color": |menu_button_a_color|,
-                "border-color": |border|,
-                "background-color": |background|,
+                "border-color": "transparent",
+                "background-color": "transparent",
             },
         )
         // Hover settings menu.
         move-cursor-to: "#settings-menu"
         assert-css: (
-            "#settings-menu:hover",
-            {"border-color": |menu_button_border|},
-        )
-        assert-css: (
             "#settings-menu:hover > a",
             {
                 "color": |menu_button_a_color|,
                 "border-color": |menu_button_a_border_hover|,
-                "background-color": |background|,
+                "background-color": "transparent",
             },
         )
     },
@@ -100,8 +85,7 @@ call-function: (
         "background": "#141920",
         "search_input_color": "#fff",
         "search_input_border_focus": "#5c6773",
-        "menu_button_border": "#c5c5c5",
-        "menu_button_a_color": "#fff",
+        "menu_button_a_color": "#c5c5c5",
         "menu_button_a_border_hover": "#e0e0e0",
         "menu_a_color": "#39afd7",
     }
@@ -114,8 +98,7 @@ call-function: (
         "background": "#f0f0f0",
         "search_input_color": "#111",
         "search_input_border_focus": "#008dfd",
-        "menu_button_border": "#ddd",
-        "menu_button_a_color": "#000",
+        "menu_button_a_color": "#ddd",
         "menu_button_a_border_hover": "#ffb900",
         "menu_a_color": "#d2991d",
     }
@@ -128,7 +111,6 @@ call-function: (
         "background": "#fff",
         "search_input_color": "#000",
         "search_input_border_focus": "#66afe9",
-        "menu_button_border": "#000",
         "menu_button_a_color": "#000",
         "menu_button_a_border_hover": "#717171",
         "menu_a_color": "#3873ad",

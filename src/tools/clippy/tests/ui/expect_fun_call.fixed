@@ -5,8 +5,6 @@
     clippy::unnecessary_literal_unwrap
 )]
 
-/// Checks implementation of the `EXPECT_FUN_CALL` lint
-
 macro_rules! one {
     () => {
         1

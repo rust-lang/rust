@@ -5,18 +5,18 @@
 
 use std::fmt::{self, Debug};
 
+use rustc_abi::TyAndLayout;
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_hir::def::Namespace;
 use rustc_span::source_map::Spanned;
-use rustc_target::abi::TyAndLayout;
 use rustc_type_ir::ConstKind;
 
 use super::print::PrettyPrinter;
 use super::{GenericArg, GenericArgKind, Pattern, Region};
 use crate::mir::interpret;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
-use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
+use crate::ty::print::{FmtPrinter, Printer, with_no_trimmed_paths};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use crate::ty::{self, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
 
@@ -62,22 +62,38 @@ impl<'tcx> fmt::Debug for ty::adjustment::Adjustment<'tcx> {
 impl fmt::Debug for ty::BoundRegionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::BrAnon => write!(f, "BrAnon"),
-            ty::BrNamed(did, name) => {
+            ty::BoundRegionKind::Anon => write!(f, "BrAnon"),
+            ty::BoundRegionKind::Named(did, name) => {
                 if did.is_crate_root() {
                     write!(f, "BrNamed({name})")
                 } else {
                     write!(f, "BrNamed({did:?}, {name})")
                 }
             }
-            ty::BrEnv => write!(f, "BrEnv"),
+            ty::BoundRegionKind::ClosureEnv => write!(f, "BrEnv"),
         }
     }
 }
 
 impl fmt::Debug for ty::LateParamRegion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ReLateParam({:?}, {:?})", self.scope, self.bound_region)
+        write!(f, "ReLateParam({:?}, {:?})", self.scope, self.kind)
+    }
+}
+
+impl fmt::Debug for ty::LateParamRegionKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            ty::LateParamRegionKind::Anon(idx) => write!(f, "BrAnon({idx})"),
+            ty::LateParamRegionKind::Named(did, name) => {
+                if did.is_crate_root() {
+                    write!(f, "BrNamed({name})")
+                } else {
+                    write!(f, "BrNamed({did:?}, {name})")
+                }
+            }
+            ty::LateParamRegionKind::ClosureEnv => write!(f, "BrEnv"),
+        }
     }
 }
 
@@ -218,13 +234,12 @@ TrivialLiftImpls! {
 // provide any traversal implementations, we need to provide a traversal
 // implementation (only for TyCtxt<'_> interners).
 TrivialTypeTraversalImpls! {
-    ::rustc_target::abi::FieldIdx,
-    ::rustc_target::abi::VariantIdx,
+    ::rustc_abi::FieldIdx,
+    ::rustc_abi::VariantIdx,
     crate::middle::region::Scope,
     ::rustc_ast::InlineAsmOptions,
     ::rustc_ast::InlineAsmTemplatePiece,
     ::rustc_ast::NodeId,
-    ::rustc_span::symbol::Symbol,
     ::rustc_hir::def::Res,
     ::rustc_hir::def_id::LocalDefId,
     ::rustc_hir::ByRef,
@@ -237,7 +252,6 @@ TrivialTypeTraversalImpls! {
     crate::mir::coverage::ConditionId,
     crate::mir::Local,
     crate::mir::Promoted,
-    crate::traits::Reveal,
     crate::ty::adjustment::AutoBorrowMutability,
     crate::ty::AdtKind,
     crate::ty::BoundRegion,
@@ -253,8 +267,9 @@ TrivialTypeTraversalImpls! {
     crate::ty::Placeholder<ty::BoundVar>,
     crate::ty::LateParamRegion,
     crate::ty::adjustment::PointerCoercion,
+    ::rustc_span::Ident,
     ::rustc_span::Span,
-    ::rustc_span::symbol::Ident,
+    ::rustc_span::Symbol,
     ty::BoundVar,
     ty::ValTree<'tcx>,
 }
@@ -264,8 +279,6 @@ TrivialTypeTraversalImpls! {
 // interners).
 TrivialTypeTraversalAndLiftImpls! {
     ::rustc_hir::def_id::DefId,
-    ::rustc_hir::Safety,
-    ::rustc_target::spec::abi::Abi,
     crate::ty::ClosureKind,
     crate::ty::ParamConst,
     crate::ty::ParamTy,
@@ -273,7 +286,12 @@ TrivialTypeTraversalAndLiftImpls! {
     interpret::AllocId,
     interpret::CtfeProvenance,
     interpret::Scalar,
-    rustc_target::abi::Size,
+    rustc_abi::Size,
+}
+
+TrivialLiftImpls! {
+    ::rustc_hir::Safety,
+    ::rustc_abi::ExternAbi,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -374,7 +392,8 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             ),
             ty::Tuple(ts) => ty::Tuple(ts.try_fold_with(folder)?),
             ty::FnDef(def_id, args) => ty::FnDef(def_id, args.try_fold_with(folder)?),
-            ty::FnPtr(f) => ty::FnPtr(f.try_fold_with(folder)?),
+            ty::FnPtr(sig_tys, hdr) => ty::FnPtr(sig_tys.try_fold_with(folder)?, hdr),
+            ty::UnsafeBinder(f) => ty::UnsafeBinder(f.try_fold_with(folder)?),
             ty::Ref(r, ty, mutbl) => {
                 ty::Ref(r.try_fold_with(folder)?, ty.try_fold_with(folder)?, mutbl)
             }
@@ -424,7 +443,8 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
             }
             ty::Tuple(ts) => ts.visit_with(visitor),
             ty::FnDef(_, args) => args.visit_with(visitor),
-            ty::FnPtr(ref f) => f.visit_with(visitor),
+            ty::FnPtr(ref sig_tys, _) => sig_tys.visit_with(visitor),
+            ty::UnsafeBinder(ref f) => f.visit_with(visitor),
             ty::Ref(r, ty, _) => {
                 try_visit!(r.visit_with(visitor));
                 ty.visit_with(visitor)

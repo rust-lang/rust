@@ -1,7 +1,7 @@
 use core::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use core::str::FromStr;
 
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 const IPV4_STR: &str = "192.168.0.1";
 const IPV4_STR_PORT: &str = "192.168.0.1:8080";

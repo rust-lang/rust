@@ -1,12 +1,11 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use rustc_ast::{attr, token, NodeId, PatKind};
-use rustc_feature::{AttributeGate, BuiltinAttribute, Features, GateIssue, BUILTIN_ATTRIBUTE_MAP};
-use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
+use rustc_ast::{NodeId, PatKind, attr, token};
+use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features, GateIssue};
 use rustc_session::Session;
+use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::abi;
 use thin_vec::ThinVec;
 
@@ -15,13 +14,13 @@ use crate::errors;
 /// The common case.
 macro_rules! gate {
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr) => {{
-        if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
+        if !$visitor.features.$feature() && !$span.allows_unstable(sym::$feature) {
             #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
             feature_err(&$visitor.sess, sym::$feature, $span, $explain).emit();
         }
     }};
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr, $help:expr) => {{
-        if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
+        if !$visitor.features.$feature() && !$span.allows_unstable(sym::$feature) {
             // FIXME: make this translatable
             #[allow(rustc::diagnostic_outside_of_impl)]
             #[allow(rustc::untranslatable_diagnostic)]
@@ -43,7 +42,7 @@ macro_rules! gate_alt {
 /// The case involving a multispan.
 macro_rules! gate_multi {
     ($visitor:expr, $feature:ident, $spans:expr, $explain:expr) => {{
-        if !$visitor.features.$feature {
+        if !$visitor.features.$feature() {
             let spans: Vec<_> =
                 $spans.filter(|span| !span.allows_unstable(sym::$feature)).collect();
             if !spans.is_empty() {
@@ -56,7 +55,7 @@ macro_rules! gate_multi {
 /// The legacy case.
 macro_rules! gate_legacy {
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr) => {{
-        if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
+        if !$visitor.features.$feature() && !$span.allows_unstable(sym::$feature) {
             feature_warn(&$visitor.sess, sym::$feature, $span, $explain);
         }
     }};
@@ -75,21 +74,8 @@ struct PostExpansionVisitor<'a> {
 
 impl<'a> PostExpansionVisitor<'a> {
     #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-    fn check_abi(&self, abi: ast::StrLit, constness: ast::Const) {
+    fn check_abi(&self, abi: ast::StrLit) {
         let ast::StrLit { symbol_unescaped, span, .. } = abi;
-
-        if let ast::Const::Yes(_) = constness {
-            match symbol_unescaped {
-                // Stable
-                sym::Rust | sym::C => {}
-                abi => gate!(
-                    &self,
-                    const_extern_fn,
-                    span,
-                    format!("`{}` as a `const fn` ABI is unstable", abi)
-                ),
-            }
-        }
 
         match abi::is_enabled(self.features, span, symbol_unescaped.as_str()) {
             Ok(()) => (),
@@ -97,7 +83,7 @@ impl<'a> PostExpansionVisitor<'a> {
                 feature_err_issue(&self.sess, feature, span, GateIssue::Language, explain).emit();
             }
             Err(abi::AbiDisabled::Unrecognized) => {
-                if self.sess.opts.pretty.map_or(true, |ppm| ppm.needs_hir()) {
+                if self.sess.opts.pretty.is_none_or(|ppm| ppm.needs_hir()) {
                     self.sess.dcx().span_delayed_bug(
                         span,
                         format!(
@@ -110,9 +96,9 @@ impl<'a> PostExpansionVisitor<'a> {
         }
     }
 
-    fn check_extern(&self, ext: ast::Extern, constness: ast::Const) {
+    fn check_extern(&self, ext: ast::Extern) {
         if let ast::Extern::Explicit(abi, _) = ext {
-            self.check_abi(abi, constness);
+            self.check_abi(abi);
         }
     }
 
@@ -163,7 +149,7 @@ impl<'a> PostExpansionVisitor<'a> {
 
         // FIXME(non_lifetime_binders): Const bound params are pretty broken.
         // Let's keep users from using this feature accidentally.
-        if self.features.non_lifetime_binders {
+        if self.features.non_lifetime_binders() {
             let const_param_spans: Vec<_> = params
                 .iter()
                 .filter_map(|param| match param.kind {
@@ -199,9 +185,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
         // Check unstable flavors of the `#[doc]` attribute.
         if attr.has_name(sym::doc) {
-            for nested_meta in attr.meta_item_list().unwrap_or_default() {
+            for meta_item_inner in attr.meta_item_list().unwrap_or_default() {
                 macro_rules! gate_doc { ($($s:literal { $($name:ident => $feature:ident)* })*) => {
-                    $($(if nested_meta.has_name(sym::$name) {
+                    $($(if meta_item_inner.has_name(sym::$name) {
                         let msg = concat!("`#[doc(", stringify!($name), ")]` is ", $s);
                         gate!(self, $feature, attr.span, msg);
                     })*)*
@@ -217,13 +203,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     "meant for internal use only" {
                         keyword => rustdoc_internals
                         fake_variadic => rustdoc_internals
+                        search_unbox => rustdoc_internals
                     }
                 );
             }
         }
 
         // Emit errors for non-staged-api crates.
-        if !self.features.staged_api {
+        if !self.features.staged_api() {
             if attr.has_name(sym::unstable)
                 || attr.has_name(sym::stable)
                 || attr.has_name(sym::rustc_const_unstable)
@@ -239,23 +226,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match &i.kind {
             ast::ItemKind::ForeignMod(foreign_module) => {
                 if let Some(abi) = foreign_module.abi {
-                    self.check_abi(abi, ast::Const::No);
+                    self.check_abi(abi);
                 }
             }
 
-            ast::ItemKind::Fn(..) => {
-                if attr::contains_name(&i.attrs, sym::start) {
-                    gate!(
-                        &self,
-                        start,
-                        i.span,
-                        "`#[start]` functions are experimental and their signature may change \
-                         over time"
-                    );
-                }
-            }
-
-            ast::ItemKind::Struct(..) => {
+            ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..) => {
                 for attr in attr::filter_by_name(&i.attrs, sym::repr) {
                     for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
                         if item.has_name(sym::simd) {
@@ -276,7 +251,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         &self,
                         negative_impls,
                         span.to(of_trait.as_ref().map_or(span, |t| t.path.span)),
-                        "negative trait bounds are not yet fully implemented; \
+                        "negative trait bounds are not fully implemented; \
                          use marker types for now"
                     );
                 }
@@ -341,7 +316,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match &ty.kind {
             ast::TyKind::BareFn(bare_fn_ty) => {
                 // Function pointers cannot be `const`
-                self.check_extern(bare_fn_ty.ext, ast::Const::No);
+                self.check_extern(bare_fn_ty.ext);
                 self.check_late_bound_lifetime_defs(&bare_fn_ty.generic_params);
             }
             ast::TyKind::Never => {
@@ -357,8 +332,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_generics(&mut self, g: &'a ast::Generics) {
         for predicate in &g.where_clause.predicates {
-            match predicate {
-                ast::WherePredicate::BoundPredicate(bound_pred) => {
+            match &predicate.kind {
+                ast::WherePredicateKind::BoundPredicate(bound_pred) => {
                     // A type bound (e.g., `for<'c> Foo: Send + Clone + 'c`).
                     self.check_late_bound_lifetime_defs(&bound_pred.bound_generic_params);
                 }
@@ -446,7 +421,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
         if let Some(header) = fn_kind.header() {
             // Stability of const fn methods are covered in `visit_assoc_item` below.
-            self.check_extern(header.ext, header.constness);
+            self.check_extern(header.ext);
         }
 
         if let FnKind::Closure(ast::ClosureBinder::For { generic_params, .. }, ..) = fn_kind {
@@ -483,7 +458,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             // Limit `min_specialization` to only specializing functions.
             gate_alt!(
                 &self,
-                self.features.specialization || (is_fn && self.features.min_specialization),
+                self.features.specialization() || (is_fn && self.features.min_specialization()),
                 sym::specialization,
                 i.span,
                 "specialization is unstable"
@@ -496,6 +471,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     maybe_stage_features(sess, features, krate);
     check_incompatible_features(sess, features);
+    check_new_solver_banned_features(sess, features);
+
     let mut visitor = PostExpansionVisitor { sess, features };
 
     let spans = sess.psess.gated_spans.spans.borrow();
@@ -522,9 +499,9 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     );
     gate_all!(let_chains, "`let` expressions in this position are unstable");
     gate_all!(
-        async_closure,
-        "async closures are unstable",
-        "to use an async block, remove the `||`: `async {`"
+        async_trait_bounds,
+        "`async` trait bounds are unstable",
+        "use the desugared name of the async trait, such as `AsyncFn`"
     );
     gate_all!(async_for_loop, "`for await` loops are experimental");
     gate_all!(
@@ -533,13 +510,21 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         "consider removing `for<...>`"
     );
     gate_all!(more_qualified_paths, "usage of qualified paths in this context is experimental");
-    for &span in spans.get(&sym::yield_expr).iter().copied().flatten() {
-        if !span.at_least_rust_2024() {
-            gate!(&visitor, coroutines, span, "yield syntax is experimental");
+    // yield can be enabled either by `coroutines` or `gen_blocks`
+    if let Some(spans) = spans.get(&sym::yield_expr) {
+        for span in spans {
+            if (!visitor.features.coroutines() && !span.allows_unstable(sym::coroutines))
+                && (!visitor.features.gen_blocks() && !span.allows_unstable(sym::gen_blocks))
+            {
+                #[allow(rustc::untranslatable_diagnostic)]
+                // Don't know which of the two features to include in the
+                // error message, so I am arbitrarily picking one.
+                feature_err(&visitor.sess, sym::coroutines, *span, "yield syntax is experimental")
+                    .emit();
+            }
         }
     }
     gate_all!(gen_blocks, "gen blocks are experimental");
-    gate_all!(raw_ref_op, "raw address of syntax is experimental");
     gate_all!(const_trait_impl, "const trait impls are experimental");
     gate_all!(
         half_open_range_patterns_in_slices,
@@ -553,16 +538,18 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(builtin_syntax, "`builtin #` syntax is unstable");
     gate_all!(explicit_tail_calls, "`become` expression is experimental");
     gate_all!(generic_const_items, "generic const items are experimental");
-    gate_all!(unnamed_fields, "unnamed fields are not yet fully implemented");
+    gate_all!(guard_patterns, "guard patterns are experimental", "consider using match arm guards");
+    gate_all!(default_field_values, "default values on fields are experimental");
     gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
     gate_all!(postfix_match, "postfix match is experimental");
     gate_all!(mut_ref, "mutable by-reference bindings are experimental");
-    gate_all!(precise_capturing, "precise captures on `impl Trait` are experimental");
     gate_all!(global_registration, "global registration is experimental");
-    gate_all!(unsafe_attributes, "`#[unsafe()]` markers for attributes are experimental");
     gate_all!(return_type_notation, "return type notation is experimental");
+    gate_all!(pin_ergonomics, "pinned reference syntax is experimental");
+    gate_all!(unsafe_fields, "`unsafe` fields are experimental");
+    gate_all!(unsafe_binders, "unsafe binder types are experimental");
 
-    if !visitor.features.never_patterns {
+    if !visitor.features.never_patterns() {
         if let Some(spans) = spans.get(&sym::never_patterns) {
             for &span in spans {
                 if span.allows_unstable(sym::never_patterns) {
@@ -586,7 +573,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         }
     }
 
-    if !visitor.features.negative_bounds {
+    if !visitor.features.negative_bounds() {
         for &span in spans.get(&sym::negative_bounds).iter().copied().flatten() {
             sess.dcx().emit_err(errors::NegativeBoundUnsupported { span });
         }
@@ -614,59 +601,61 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
 }
 
 fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate) {
-    // checks if `#![feature]` has been used to enable any lang feature
-    // does not check the same for lib features unless there's at least one
-    // declared lang feature
-    if !sess.opts.unstable_features.is_nightly_build() {
-        if features.declared_features.is_empty() {
-            return;
-        }
-        for attr in krate.attrs.iter().filter(|attr| attr.has_name(sym::feature)) {
-            let mut err = errors::FeatureOnNonNightly {
-                span: attr.span,
-                channel: option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)"),
-                stable_features: vec![],
-                sugg: None,
-            };
-
-            let mut all_stable = true;
-            for ident in
-                attr.meta_item_list().into_iter().flatten().flat_map(|nested| nested.ident())
-            {
-                let name = ident.name;
-                let stable_since = features
-                    .declared_lang_features
-                    .iter()
-                    .flat_map(|&(feature, _, since)| if feature == name { since } else { None })
-                    .next();
-                if let Some(since) = stable_since {
-                    err.stable_features.push(errors::StableFeature { name, since });
-                } else {
-                    all_stable = false;
-                }
-            }
-            if all_stable {
-                err.sugg = Some(attr.span);
-            }
-            sess.dcx().emit_err(err);
-        }
+    // checks if `#![feature]` has been used to enable any feature.
+    if sess.opts.unstable_features.is_nightly_build() {
+        return;
     }
+    if features.enabled_features().is_empty() {
+        return;
+    }
+    let mut errored = false;
+    for attr in krate.attrs.iter().filter(|attr| attr.has_name(sym::feature)) {
+        // `feature(...)` used on non-nightly. This is definitely an error.
+        let mut err = errors::FeatureOnNonNightly {
+            span: attr.span,
+            channel: option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)"),
+            stable_features: vec![],
+            sugg: None,
+        };
+
+        let mut all_stable = true;
+        for ident in attr.meta_item_list().into_iter().flatten().flat_map(|nested| nested.ident()) {
+            let name = ident.name;
+            let stable_since = features
+                .enabled_lang_features()
+                .iter()
+                .find(|feat| feat.gate_name == name)
+                .map(|feat| feat.stable_since)
+                .flatten();
+            if let Some(since) = stable_since {
+                err.stable_features.push(errors::StableFeature { name, since });
+            } else {
+                all_stable = false;
+            }
+        }
+        if all_stable {
+            err.sugg = Some(attr.span);
+        }
+        sess.dcx().emit_err(err);
+        errored = true;
+    }
+    // Just make sure we actually error if anything is listed in `enabled_features`.
+    assert!(errored);
 }
 
 fn check_incompatible_features(sess: &Session, features: &Features) {
-    let declared_features = features
-        .declared_lang_features
-        .iter()
-        .copied()
-        .map(|(name, span, _)| (name, span))
-        .chain(features.declared_lib_features.iter().copied());
+    let enabled_lang_features =
+        features.enabled_lang_features().iter().map(|feat| (feat.gate_name, feat.attr_sp));
+    let enabled_lib_features =
+        features.enabled_lib_features().iter().map(|feat| (feat.gate_name, feat.attr_sp));
+    let enabled_features = enabled_lang_features.chain(enabled_lib_features);
 
     for (f1, f2) in rustc_feature::INCOMPATIBLE_FEATURES
         .iter()
-        .filter(|&&(f1, f2)| features.active(f1) && features.active(f2))
+        .filter(|(f1, f2)| features.enabled(*f1) && features.enabled(*f2))
     {
-        if let Some((f1_name, f1_span)) = declared_features.clone().find(|(name, _)| name == f1) {
-            if let Some((f2_name, f2_span)) = declared_features.clone().find(|(name, _)| name == f2)
+        if let Some((f1_name, f1_span)) = enabled_features.clone().find(|(name, _)| name == f1) {
+            if let Some((f2_name, f2_span)) = enabled_features.clone().find(|(name, _)| name == f2)
             {
                 let spans = vec![f1_span, f2_span];
                 sess.dcx().emit_err(errors::IncompatibleFeatures {
@@ -676,5 +665,26 @@ fn check_incompatible_features(sess: &Session, features: &Features) {
                 });
             }
         }
+    }
+}
+
+fn check_new_solver_banned_features(sess: &Session, features: &Features) {
+    if !sess.opts.unstable_opts.next_solver.globally {
+        return;
+    }
+
+    // Ban GCE with the new solver, because it does not implement GCE correctly.
+    if let Some(gce_span) = features
+        .enabled_lang_features()
+        .iter()
+        .find(|feat| feat.gate_name == sym::generic_const_exprs)
+        .map(|feat| feat.attr_sp)
+    {
+        #[allow(rustc::symbol_intern_string_literal)]
+        sess.dcx().emit_err(errors::IncompatibleFeatures {
+            spans: vec![gce_span],
+            f1: Symbol::intern("-Znext-solver=globally"),
+            f2: sym::generic_const_exprs,
+        });
     }
 }

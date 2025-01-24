@@ -1,4 +1,4 @@
-FROM ubuntu:23.04
+FROM ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 COPY scripts/android-base-apt-get.sh /scripts/
@@ -11,7 +11,8 @@ RUN . /scripts/android-ndk.sh && \
 RUN dpkg --add-architecture i386 && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-  libgl1-mesa-glx \
+  libgl1 \
+  libglx-mesa0 \
   libpulse0 \
   libstdc++6:i386 \
   openjdk-8-jre-headless \

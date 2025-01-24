@@ -17,7 +17,7 @@ where
     let mirs = def_ids
         .iter()
         .flat_map(|def_id| {
-            if tcx.is_const_fn_raw(*def_id) {
+            if tcx.is_const_fn(*def_id) {
                 vec![tcx.optimized_mir(*def_id), tcx.mir_for_ctfe(*def_id)]
             } else {
                 vec![tcx.instance_mir(ty::InstanceKind::Item(*def_id))]

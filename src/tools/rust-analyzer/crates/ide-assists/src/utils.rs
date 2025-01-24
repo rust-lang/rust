@@ -1,10 +1,15 @@
 //! Assorted functions shared by several assists.
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
-use hir::{db::HirDatabase, HasAttrs as HirHasAttrs, HirDisplay, InFile, Semantics};
+use hir::{
+    db::{ExpandDatabase, HirDatabase},
+    HasAttrs as HirHasAttrs, HirDisplay, InFile, ModuleDef, PathResolution, Semantics,
+};
 use ide_db::{
-    famous_defs::FamousDefs, path_transform::PathTransform,
-    syntax_helpers::insert_whitespace_into_node::insert_ws_into, RootDatabase,
+    famous_defs::FamousDefs,
+    path_transform::PathTransform,
+    syntax_helpers::{node_ext::preorder_expr, prettify_macro_expansion},
+    RootDatabase,
 };
 use stdx::format_to;
 use syntax::{
@@ -14,16 +19,15 @@ use syntax::{
         edit_in_place::{AttrsOwnerEdit, Indent, Removable},
         make, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
     },
-    ted, AstNode, AstToken, Direction, NodeOrToken, SourceFile,
+    ted, AstNode, AstToken, Direction, Edition, NodeOrToken, SourceFile,
     SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TextRange, TextSize, T,
+    SyntaxNode, SyntaxToken, TextRange, TextSize, WalkEvent, T,
 };
 
 use crate::assist_context::{AssistContext, SourceChangeBuilder};
 
 mod gen_trait_fn_body;
 pub(crate) mod ref_field_expr;
-pub(crate) mod suggest_name;
 
 pub(crate) fn unwrap_trivial_block(block_expr: ast::BlockExpr) -> ast::Expr {
     extract_trivial_expression(&block_expr)
@@ -174,15 +178,20 @@ pub fn add_trait_assoc_items_to_impl(
     original_items: &[InFile<ast::AssocItem>],
     trait_: hir::Trait,
     impl_: &ast::Impl,
-    target_scope: hir::SemanticsScope<'_>,
+    target_scope: &hir::SemanticsScope<'_>,
 ) -> ast::AssocItem {
     let new_indent_level = IndentLevel::from_node(impl_.syntax()) + 1;
     let items = original_items.iter().map(|InFile { file_id, value: original_item }| {
         let cloned_item = {
-            if file_id.is_macro() {
-                if let Some(formatted) =
-                    ast::AssocItem::cast(insert_ws_into(original_item.syntax().clone()))
-                {
+            if let Some(macro_file) = file_id.macro_file() {
+                let span_map = sema.db.expansion_span_map(macro_file);
+                let item_prettified = prettify_macro_expansion(
+                    sema.db,
+                    original_item.syntax().clone(),
+                    &span_map,
+                    target_scope.krate().into(),
+                );
+                if let Some(formatted) = ast::AssocItem::cast(item_prettified) {
                     return formatted;
                 } else {
                     stdx::never!("formatted `AssocItem` could not be cast back to `AssocItem`");
@@ -195,7 +204,7 @@ pub fn add_trait_assoc_items_to_impl(
             // FIXME: Paths in nested macros are not handled well. See
             // `add_missing_impl_members::paths_in_nested_macro_should_get_transformed` test.
             let transform =
-                PathTransform::trait_impl(&target_scope, &source_scope, trait_, impl_.clone());
+                PathTransform::trait_impl(target_scope, &source_scope, trait_, impl_.clone());
             transform.apply(cloned_item.syntax());
         }
         cloned_item.remove_attrs_and_docs();
@@ -237,7 +246,7 @@ pub(crate) fn vis_offset(node: &SyntaxNode) -> TextSize {
 }
 
 pub(crate) fn invert_boolean_expression(expr: ast::Expr) -> ast::Expr {
-    invert_special_case(&expr).unwrap_or_else(|| make::expr_prefix(T![!], expr))
+    invert_special_case(&expr).unwrap_or_else(|| make::expr_prefix(T![!], expr).into())
 }
 
 fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
@@ -253,7 +262,7 @@ fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
                 T![>] => T![<=],
                 T![>=] => T![<],
                 // Parenthesize other expressions before prefixing `!`
-                _ => return Some(make::expr_prefix(T![!], make::expr_paren(expr.clone()))),
+                _ => return Some(make::expr_prefix(T![!], make::expr_paren(expr.clone())).into()),
             };
             ted::replace(op_token, make::token(rev_token));
             Some(bin.into())
@@ -307,43 +316,73 @@ pub(crate) fn does_pat_match_variant(pat: &ast::Pat, var: &ast::Pat) -> bool {
     pat_head == var_head
 }
 
-pub(crate) fn does_nested_pattern(pat: &ast::Pat) -> bool {
-    let depth = calc_depth(pat, 0);
-
-    if 1 < depth {
-        return true;
-    }
-    false
+pub(crate) fn does_pat_variant_nested_or_literal(ctx: &AssistContext<'_>, pat: &ast::Pat) -> bool {
+    check_pat_variant_nested_or_literal_with_depth(ctx, pat, 0)
 }
 
-fn calc_depth(pat: &ast::Pat, depth: usize) -> usize {
-    match pat {
-        ast::Pat::IdentPat(_)
-        | ast::Pat::BoxPat(_)
-        | ast::Pat::RestPat(_)
-        | ast::Pat::LiteralPat(_)
-        | ast::Pat::MacroPat(_)
-        | ast::Pat::OrPat(_)
-        | ast::Pat::ParenPat(_)
-        | ast::Pat::PathPat(_)
-        | ast::Pat::WildcardPat(_)
-        | ast::Pat::RangePat(_)
-        | ast::Pat::RecordPat(_)
-        | ast::Pat::RefPat(_)
-        | ast::Pat::SlicePat(_)
-        | ast::Pat::TuplePat(_)
-        | ast::Pat::ConstBlockPat(_) => depth,
+fn check_pat_variant_from_enum(ctx: &AssistContext<'_>, pat: &ast::Pat) -> bool {
+    ctx.sema.type_of_pat(pat).is_none_or(|ty: hir::TypeInfo| {
+        ty.adjusted().as_adt().is_some_and(|adt| matches!(adt, hir::Adt::Enum(_)))
+    })
+}
 
-        // FIXME: Other patterns may also be nested. Currently it simply supports only `TupleStructPat`
-        ast::Pat::TupleStructPat(pat) => {
-            let mut max_depth = depth;
-            for p in pat.fields() {
-                let d = calc_depth(&p, depth + 1);
-                if d > max_depth {
-                    max_depth = d
-                }
-            }
-            max_depth
+fn check_pat_variant_nested_or_literal_with_depth(
+    ctx: &AssistContext<'_>,
+    pat: &ast::Pat,
+    depth_after_refutable: usize,
+) -> bool {
+    if depth_after_refutable > 1 {
+        return true;
+    }
+
+    match pat {
+        ast::Pat::RestPat(_) | ast::Pat::WildcardPat(_) | ast::Pat::RefPat(_) => false,
+
+        ast::Pat::LiteralPat(_)
+        | ast::Pat::RangePat(_)
+        | ast::Pat::MacroPat(_)
+        | ast::Pat::PathPat(_)
+        | ast::Pat::BoxPat(_)
+        | ast::Pat::ConstBlockPat(_) => true,
+
+        ast::Pat::IdentPat(ident_pat) => ident_pat.pat().is_some_and(|pat| {
+            check_pat_variant_nested_or_literal_with_depth(ctx, &pat, depth_after_refutable)
+        }),
+        ast::Pat::ParenPat(paren_pat) => paren_pat.pat().is_none_or(|pat| {
+            check_pat_variant_nested_or_literal_with_depth(ctx, &pat, depth_after_refutable)
+        }),
+        ast::Pat::TuplePat(tuple_pat) => tuple_pat.fields().any(|pat| {
+            check_pat_variant_nested_or_literal_with_depth(ctx, &pat, depth_after_refutable)
+        }),
+        ast::Pat::RecordPat(record_pat) => {
+            let adjusted_next_depth =
+                depth_after_refutable + if check_pat_variant_from_enum(ctx, pat) { 1 } else { 0 };
+            record_pat.record_pat_field_list().is_none_or(|pat| {
+                pat.fields().any(|pat| {
+                    pat.pat().is_none_or(|pat| {
+                        check_pat_variant_nested_or_literal_with_depth(
+                            ctx,
+                            &pat,
+                            adjusted_next_depth,
+                        )
+                    })
+                })
+            })
+        }
+        ast::Pat::OrPat(or_pat) => or_pat.pats().any(|pat| {
+            check_pat_variant_nested_or_literal_with_depth(ctx, &pat, depth_after_refutable)
+        }),
+        ast::Pat::TupleStructPat(tuple_struct_pat) => {
+            let adjusted_next_depth =
+                depth_after_refutable + if check_pat_variant_from_enum(ctx, pat) { 1 } else { 0 };
+            tuple_struct_pat.fields().any(|pat| {
+                check_pat_variant_nested_or_literal_with_depth(ctx, &pat, adjusted_next_depth)
+            })
+        }
+        ast::Pat::SlicePat(slice_pat) => {
+            let mut pats = slice_pat.pats();
+            pats.next()
+                .is_none_or(|pat| !matches!(pat, ast::Pat::RestPat(_)) || pats.next().is_some())
         }
     }
 }
@@ -684,31 +723,31 @@ enum ReferenceConversionType {
 }
 
 impl ReferenceConversion {
-    pub(crate) fn convert_type(&self, db: &dyn HirDatabase) -> ast::Type {
+    pub(crate) fn convert_type(&self, db: &dyn HirDatabase, edition: Edition) -> ast::Type {
         let ty = match self.conversion {
-            ReferenceConversionType::Copy => self.ty.display(db).to_string(),
+            ReferenceConversionType::Copy => self.ty.display(db, edition).to_string(),
             ReferenceConversionType::AsRefStr => "&str".to_owned(),
             ReferenceConversionType::AsRefSlice => {
                 let type_argument_name =
-                    self.ty.type_arguments().next().unwrap().display(db).to_string();
+                    self.ty.type_arguments().next().unwrap().display(db, edition).to_string();
                 format!("&[{type_argument_name}]")
             }
             ReferenceConversionType::Dereferenced => {
                 let type_argument_name =
-                    self.ty.type_arguments().next().unwrap().display(db).to_string();
+                    self.ty.type_arguments().next().unwrap().display(db, edition).to_string();
                 format!("&{type_argument_name}")
             }
             ReferenceConversionType::Option => {
                 let type_argument_name =
-                    self.ty.type_arguments().next().unwrap().display(db).to_string();
+                    self.ty.type_arguments().next().unwrap().display(db, edition).to_string();
                 format!("Option<&{type_argument_name}>")
             }
             ReferenceConversionType::Result => {
                 let mut type_arguments = self.ty.type_arguments();
                 let first_type_argument_name =
-                    type_arguments.next().unwrap().display(db).to_string();
+                    type_arguments.next().unwrap().display(db, edition).to_string();
                 let second_type_argument_name =
-                    type_arguments.next().unwrap().display(db).to_string();
+                    type_arguments.next().unwrap().display(db, edition).to_string();
                 format!("Result<&{first_type_argument_name}, &{second_type_argument_name}>")
             }
         };
@@ -958,4 +997,38 @@ pub(crate) fn tt_from_syntax(node: SyntaxNode) -> Vec<NodeOrToken<ast::TokenTree
     }
 
     tt_stack.pop().expect("parent token tree was closed before it was completed").1
+}
+
+pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bool {
+    let mut is_const = true;
+    preorder_expr(expr, &mut |ev| {
+        let expr = match ev {
+            WalkEvent::Enter(_) if !is_const => return true,
+            WalkEvent::Enter(expr) => expr,
+            WalkEvent::Leave(_) => return false,
+        };
+        match expr {
+            ast::Expr::CallExpr(call) => {
+                if let Some(ast::Expr::PathExpr(path_expr)) = call.expr() {
+                    if let Some(PathResolution::Def(ModuleDef::Function(func))) =
+                        path_expr.path().and_then(|path| sema.resolve_path(&path))
+                    {
+                        is_const &= func.is_const(sema.db);
+                    }
+                }
+            }
+            ast::Expr::MethodCallExpr(call) => {
+                is_const &=
+                    sema.resolve_method_call(&call).map(|it| it.is_const(sema.db)).unwrap_or(true)
+            }
+            ast::Expr::ForExpr(_)
+            | ast::Expr::ReturnExpr(_)
+            | ast::Expr::TryExpr(_)
+            | ast::Expr::YieldExpr(_)
+            | ast::Expr::AwaitExpr(_) => is_const = false,
+            _ => (),
+        }
+        !is_const
+    });
+    is_const
 }

@@ -18,7 +18,8 @@
 #[cfg(test)]
 mod tests;
 
-use core::char::{encode_utf16_raw, encode_utf8_raw};
+use core::char::{encode_utf8_raw, encode_utf16_raw};
+use core::clone::CloneToUninit;
 use core::str::next_code_point;
 
 use crate::borrow::Cow;
@@ -203,8 +204,8 @@ impl Wtf8Buf {
     ///
     /// Since WTF-8 is a superset of UTF-8, this always succeeds.
     #[inline]
-    pub fn from_str(str: &str) -> Wtf8Buf {
-        Wtf8Buf { bytes: <[_]>::to_vec(str.as_bytes()), is_known_utf8: true }
+    pub fn from_str(s: &str) -> Wtf8Buf {
+        Wtf8Buf { bytes: <[_]>::to_vec(s.as_bytes()), is_known_utf8: true }
     }
 
     pub fn clear(&mut self) {
@@ -1044,5 +1045,15 @@ impl Hash for Wtf8 {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write(&self.bytes);
         0xfeu8.hash(state)
+    }
+}
+
+#[unstable(feature = "clone_to_uninit", issue = "126799")]
+unsafe impl CloneToUninit for Wtf8 {
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    unsafe fn clone_to_uninit(&self, dst: *mut u8) {
+        // SAFETY: we're just a transparent wrapper around [u8]
+        unsafe { self.bytes.clone_to_uninit(dst) }
     }
 }

@@ -9,13 +9,13 @@ mod style {
     pub struct Color;
 }
 
-//@ is "$.index[*][?(@.docs=='First re-export')].inner.import.id" $color_struct_id
-//@ is "$.index[*][?(@.docs=='First re-export')].inner.import.name" \"Color\"
+//@ is "$.index[*][?(@.docs=='First re-export')].inner.use.id" $color_struct_id
+//@ is "$.index[*][?(@.docs=='First re-export')].inner.use.name" \"Color\"
 //@ set color_export_id = "$.index[*][?(@.docs=='First re-export')].id"
 /// First re-export
 pub use style::Color;
-//@ is "$.index[*][?(@.docs=='Second re-export')].inner.import.id" $color_struct_id
-//@ is "$.index[*][?(@.docs=='Second re-export')].inner.import.name" \"Colour\"
+//@ is "$.index[*][?(@.docs=='Second re-export')].inner.use.id" $color_struct_id
+//@ is "$.index[*][?(@.docs=='Second re-export')].inner.use.name" \"Colour\"
 //@ set colour_export_id = "$.index[*][?(@.docs=='Second re-export')].id"
 /// Second re-export
 pub use style::Color as Colour;

@@ -13,6 +13,7 @@
 
 use std::fmt::Write;
 
+use rustc_abi::Integer;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
@@ -20,11 +21,7 @@ use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathD
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Mutability};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
-use rustc_middle::ty::{
-    self, ExistentialProjection, GenericArgKind, GenericArgsRef, ParamEnv, Ty, TyCtxt,
-};
-use rustc_span::DUMMY_SP;
-use rustc_target::abi::Integer;
+use rustc_middle::ty::{self, ExistentialProjection, GenericArgKind, GenericArgsRef, Ty, TyCtxt};
 use smallvec::SmallVec;
 
 use crate::debuginfo::wants_c_like_enum_debuginfo;
@@ -83,9 +80,9 @@ fn push_debuginfo_type_name<'tcx>(
         ty::Adt(def, args) => {
             // `layout_for_cpp_like_fallback` will be `Some` if we want to use the fallback encoding.
             let layout_for_cpp_like_fallback = if cpp_like_debuginfo && def.is_enum() {
-                match tcx.layout_of(ParamEnv::reveal_all().and(t)) {
+                match tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(t)) {
                     Ok(layout) => {
-                        if !wants_c_like_enum_debuginfo(layout) {
+                        if !wants_c_like_enum_debuginfo(tcx, layout) {
                             Some(layout)
                         } else {
                             // This is a C-like enum so we don't want to use the fallback encoding
@@ -95,7 +92,8 @@ fn push_debuginfo_type_name<'tcx>(
                     }
                     Err(e) => {
                         // Computing the layout can still fail here, e.g. if the target architecture
-                        // cannot represent the type. See https://github.com/rust-lang/rust/issues/94961.
+                        // cannot represent the type. See
+                        // https://github.com/rust-lang/rust/issues/94961.
                         tcx.dcx().emit_fatal(e.into_diagnostic());
                     }
                 }
@@ -106,17 +104,18 @@ fn push_debuginfo_type_name<'tcx>(
 
             if let Some(ty_and_layout) = layout_for_cpp_like_fallback {
                 msvc_enum_fallback(
+                    tcx,
                     ty_and_layout,
                     &|output, visited| {
                         push_item_name(tcx, def.did(), true, output);
-                        push_generic_params_internal(tcx, args, def.did(), output, visited);
+                        push_generic_params_internal(tcx, args, output, visited);
                     },
                     output,
                     visited,
                 );
             } else {
                 push_item_name(tcx, def.did(), qualified, output);
-                push_generic_params_internal(tcx, args, def.did(), output, visited);
+                push_generic_params_internal(tcx, args, output, visited);
             }
         }
         ty::Tuple(component_types) => {
@@ -186,7 +185,8 @@ fn push_debuginfo_type_name<'tcx>(
                     _ => write!(
                         output,
                         ",{}>",
-                        len.eval_target_usize(tcx, ty::ParamEnv::reveal_all())
+                        len.try_to_target_usize(tcx)
+                            .expect("expected monomorphic const in codegen")
                     )
                     .unwrap(),
                 }
@@ -198,7 +198,8 @@ fn push_debuginfo_type_name<'tcx>(
                     _ => write!(
                         output,
                         "; {}]",
-                        len.eval_target_usize(tcx, ty::ParamEnv::reveal_all())
+                        len.try_to_target_usize(tcx)
+                            .expect("expected monomorphic const in codegen")
                     )
                     .unwrap(),
                 }
@@ -235,28 +236,23 @@ fn push_debuginfo_type_name<'tcx>(
             let has_enclosing_parens = if cpp_like_debuginfo {
                 output.push_str("dyn$<");
                 false
+            } else if trait_data.len() > 1 && auto_traits.len() != 0 {
+                // We need enclosing parens because there is more than one trait
+                output.push_str("(dyn ");
+                true
             } else {
-                if trait_data.len() > 1 && auto_traits.len() != 0 {
-                    // We need enclosing parens because there is more than one trait
-                    output.push_str("(dyn ");
-                    true
-                } else {
-                    output.push_str("dyn ");
-                    false
-                }
+                output.push_str("dyn ");
+                false
             };
 
             if let Some(principal) = trait_data.principal() {
-                let principal =
-                    tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), principal);
-                push_item_name(tcx, principal.def_id, qualified, output);
-                let principal_has_generic_params = push_generic_params_internal(
-                    tcx,
-                    principal.args,
-                    principal.def_id,
-                    output,
-                    visited,
+                let principal = tcx.normalize_erasing_late_bound_regions(
+                    ty::TypingEnv::fully_monomorphized(),
+                    principal,
                 );
+                push_item_name(tcx, principal.def_id, qualified, output);
+                let principal_has_generic_params =
+                    push_generic_params_internal(tcx, principal.args, output, visited);
 
                 let projection_bounds: SmallVec<[_; 4]> = trait_data
                     .projection_bounds()
@@ -331,7 +327,7 @@ fn push_debuginfo_type_name<'tcx>(
                 output.push(')');
             }
         }
-        ty::FnDef(..) | ty::FnPtr(_) => {
+        ty::FnDef(..) | ty::FnPtr(..) => {
             // We've encountered a weird 'recursive type'
             // Currently, the only way to generate such a type
             // is by using 'impl trait':
@@ -354,8 +350,10 @@ fn push_debuginfo_type_name<'tcx>(
                 return;
             }
 
-            let sig =
-                tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), t.fn_sig(tcx));
+            let sig = tcx.normalize_erasing_late_bound_regions(
+                ty::TypingEnv::fully_monomorphized(),
+                t.fn_sig(tcx),
+            );
 
             if cpp_like_debuginfo {
                 // Format as a C++ function pointer: return_type (*)(params...)
@@ -368,7 +366,7 @@ fn push_debuginfo_type_name<'tcx>(
             } else {
                 output.push_str(sig.safety.prefix_str());
 
-                if sig.abi != rustc_target::spec::abi::Abi::Rust {
+                if sig.abi != rustc_abi::ExternAbi::Rust {
                     output.push_str("extern \"");
                     output.push_str(sig.abi.name());
                     output.push_str("\" ");
@@ -419,8 +417,10 @@ fn push_debuginfo_type_name<'tcx>(
             // In the case of cpp-like debuginfo, the name additionally gets wrapped inside of
             // an artificial `enum2$<>` type, as defined in msvc_enum_fallback().
             if cpp_like_debuginfo && t.is_coroutine() {
-                let ty_and_layout = tcx.layout_of(ParamEnv::reveal_all().and(t)).unwrap();
+                let ty_and_layout =
+                    tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(t)).unwrap();
                 msvc_enum_fallback(
+                    tcx,
                     ty_and_layout,
                     &|output, visited| {
                         push_closure_or_coroutine_name(tcx, def_id, args, true, output, visited);
@@ -432,11 +432,9 @@ fn push_debuginfo_type_name<'tcx>(
                 push_closure_or_coroutine_name(tcx, def_id, args, qualified, output, visited);
             }
         }
-        // Type parameters from polymorphized functions.
-        ty::Param(_) => {
-            write!(output, "{t:?}").unwrap();
-        }
-        ty::Error(_)
+        ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binders)"),
+        ty::Param(_)
+        | ty::Error(_)
         | ty::Infer(_)
         | ty::Placeholder(..)
         | ty::Alias(..)
@@ -455,12 +453,13 @@ fn push_debuginfo_type_name<'tcx>(
     // debugger. For more information, look in
     // rustc_codegen_llvm/src/debuginfo/metadata/enums/cpp_like.rs.
     fn msvc_enum_fallback<'tcx>(
+        tcx: TyCtxt<'tcx>,
         ty_and_layout: TyAndLayout<'tcx>,
         push_inner: &dyn Fn(/*output*/ &mut String, /*visited*/ &mut FxHashSet<Ty<'tcx>>),
         output: &mut String,
         visited: &mut FxHashSet<Ty<'tcx>>,
     ) {
-        assert!(!wants_c_like_enum_debuginfo(ty_and_layout));
+        assert!(!wants_c_like_enum_debuginfo(tcx, ty_and_layout));
         output.push_str("enum2$<");
         push_inner(output, visited);
         push_close_angle_bracket(true, output);
@@ -531,17 +530,11 @@ pub fn compute_debuginfo_vtable_name<'tcx>(
     }
 
     if let Some(trait_ref) = trait_ref {
-        let trait_ref =
-            tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), trait_ref);
+        let trait_ref = tcx
+            .normalize_erasing_late_bound_regions(ty::TypingEnv::fully_monomorphized(), trait_ref);
         push_item_name(tcx, trait_ref.def_id, true, &mut vtable_name);
         visited.clear();
-        push_generic_params_internal(
-            tcx,
-            trait_ref.args,
-            trait_ref.def_id,
-            &mut vtable_name,
-            &mut visited,
-        );
+        push_generic_params_internal(tcx, trait_ref.args, &mut vtable_name, &mut visited);
     } else {
         vtable_name.push('_');
     }
@@ -574,33 +567,20 @@ pub fn push_item_name(tcx: TyCtxt<'_>, def_id: DefId, qualified: bool, output: &
 }
 
 fn coroutine_kind_label(coroutine_kind: Option<CoroutineKind>) -> &'static str {
+    use CoroutineDesugaring::*;
+    use CoroutineKind::*;
+    use CoroutineSource::*;
     match coroutine_kind {
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::Gen, CoroutineSource::Block)) => {
-            "gen_block"
-        }
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::Gen, CoroutineSource::Closure)) => {
-            "gen_closure"
-        }
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::Gen, CoroutineSource::Fn)) => "gen_fn",
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Block)) => {
-            "async_block"
-        }
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Closure)) => {
-            "async_closure"
-        }
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Fn)) => {
-            "async_fn"
-        }
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, CoroutineSource::Block)) => {
-            "async_gen_block"
-        }
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, CoroutineSource::Closure)) => {
-            "async_gen_closure"
-        }
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, CoroutineSource::Fn)) => {
-            "async_gen_fn"
-        }
-        Some(CoroutineKind::Coroutine(_)) => "coroutine",
+        Some(Desugared(Gen, Block)) => "gen_block",
+        Some(Desugared(Gen, Closure)) => "gen_closure",
+        Some(Desugared(Gen, Fn)) => "gen_fn",
+        Some(Desugared(Async, Block)) => "async_block",
+        Some(Desugared(Async, Closure)) => "async_closure",
+        Some(Desugared(Async, Fn)) => "async_fn",
+        Some(Desugared(AsyncGen, Block)) => "async_gen_block",
+        Some(Desugared(AsyncGen, Closure)) => "async_gen_closure",
+        Some(Desugared(AsyncGen, Fn)) => "async_gen_fn",
+        Some(Coroutine(_)) => "coroutine",
         None => "closure",
     }
 }
@@ -657,12 +637,11 @@ fn push_unqualified_item_name(
 fn push_generic_params_internal<'tcx>(
     tcx: TyCtxt<'tcx>,
     args: GenericArgsRef<'tcx>,
-    def_id: DefId,
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
 ) -> bool {
-    assert_eq!(args, tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), args));
-    let mut args = args.non_erasable_generics(tcx, def_id).peekable();
+    assert_eq!(args, tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), args));
+    let mut args = args.non_erasable_generics().peekable();
     if args.peek().is_none() {
         return false;
     }
@@ -694,21 +673,25 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
         ty::ConstKind::Param(param) => {
             write!(output, "{}", param.name)
         }
-        ty::ConstKind::Value(ty, _) => {
+        ty::ConstKind::Value(ty, valtree) => {
             match ty.kind() {
                 ty::Int(ity) => {
                     // FIXME: directly extract the bits from a valtree instead of evaluating an
-                    // alreay evaluated `Const` in order to get the bits.
-                    let bits = ct.eval_bits(tcx, ty::ParamEnv::reveal_all());
+                    // already evaluated `Const` in order to get the bits.
+                    let bits = ct
+                        .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
+                        .expect("expected monomorphic const in codegen");
                     let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
                     write!(output, "{val}")
                 }
                 ty::Uint(_) => {
-                    let val = ct.eval_bits(tcx, ty::ParamEnv::reveal_all());
+                    let val = ct
+                        .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
+                        .expect("expected monomorphic const in codegen");
                     write!(output, "{val}")
                 }
                 ty::Bool => {
-                    let val = ct.try_eval_bool(tcx, ty::ParamEnv::reveal_all()).unwrap();
+                    let val = ct.try_to_bool().expect("expected monomorphic const in codegen");
                     write!(output, "{val}")
                 }
                 _ => {
@@ -720,8 +703,9 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
                     // avoiding collisions and will make the emitted type names shorter.
                     let hash_short = tcx.with_stable_hashing_context(|mut hcx| {
                         let mut hasher = StableHasher::new();
-                        let ct = ct.eval(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP).unwrap();
-                        hcx.while_hashing_spans(false, |hcx| ct.hash_stable(hcx, &mut hasher));
+                        hcx.while_hashing_spans(false, |hcx| {
+                            (ty, valtree).hash_stable(hcx, &mut hasher)
+                        });
                         hasher.finish::<Hash64>()
                     });
 
@@ -741,12 +725,11 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
 pub fn push_generic_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     args: GenericArgsRef<'tcx>,
-    def_id: DefId,
     output: &mut String,
 ) {
     let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
     let mut visited = FxHashSet::default();
-    push_generic_params_internal(tcx, args, def_id, output, &mut visited);
+    push_generic_params_internal(tcx, args, output, &mut visited);
 }
 
 fn push_closure_or_coroutine_name<'tcx>(
@@ -791,7 +774,7 @@ fn push_closure_or_coroutine_name<'tcx>(
     // FIXME(async_closures): This is probably not going to be correct w.r.t.
     // multiple coroutine flavors. Maybe truncate to (parent + 1)?
     let args = args.truncate_to(tcx, generics);
-    push_generic_params_internal(tcx, args, enclosing_fn_def_id, output, visited);
+    push_generic_params_internal(tcx, args, output, visited);
 }
 
 fn push_close_angle_bracket(cpp_like_debuginfo: bool, output: &mut String) {

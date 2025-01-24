@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint;
-use rustc_ast::ast;
 use rustc_hir as hir;
+use rustc_hir::Attribute;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::ty::AssocItemContainer;
 use rustc_session::declare_lint_pass;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -62,7 +63,7 @@ declare_clippy_lint! {
     "detects missing `#[inline]` attribute for public callables (functions, trait methods, methods...)"
 }
 
-fn check_missing_inline_attrs(cx: &LateContext<'_>, attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
+fn check_missing_inline_attrs(cx: &LateContext<'_>, attrs: &[Attribute], sp: Span, desc: &'static str) {
     let has_inline = attrs.iter().any(|a| a.has_name(sym::inline));
     if !has_inline {
         span_lint(
@@ -95,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
             return;
         }
         match it.kind {
-            hir::ItemKind::Fn(..) => {
+            hir::ItemKind::Fn { .. } => {
                 let desc = "a function";
                 let attrs = cx.tcx.hir().attrs(it.hir_id());
                 check_missing_inline_attrs(cx, attrs, it.span, desc);
@@ -130,7 +131,6 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
             | hir::ItemKind::GlobalAsm(..)
             | hir::ItemKind::TyAlias(..)
             | hir::ItemKind::Union(..)
-            | hir::ItemKind::OpaqueTy(..)
             | hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::Impl { .. }
@@ -139,7 +139,6 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
-        use rustc_middle::ty::{ImplContainer, TraitContainer};
         if rustc_middle::lint::in_external_macro(cx.sess(), impl_item.span) || is_executable_or_proc_macro(cx) {
             return;
         }
@@ -157,8 +156,8 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
         let assoc_item = cx.tcx.associated_item(impl_item.owner_id);
         let container_id = assoc_item.container_id(cx.tcx);
         let trait_def_id = match assoc_item.container {
-            TraitContainer => Some(container_id),
-            ImplContainer => cx.tcx.impl_trait_ref(container_id).map(|t| t.skip_binder().def_id),
+            AssocItemContainer::Trait => Some(container_id),
+            AssocItemContainer::Impl => cx.tcx.impl_trait_ref(container_id).map(|t| t.skip_binder().def_id),
         };
 
         if let Some(trait_def_id) = trait_def_id {

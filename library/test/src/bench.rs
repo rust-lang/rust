@@ -1,15 +1,15 @@
 //! Benchmarking module.
 
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::{cmp, io};
 
+use super::Sender;
 use super::event::CompletedTest;
 use super::options::BenchMode;
 use super::test_result::TestResult;
 use super::types::{TestDesc, TestId};
-use super::Sender;
 use crate::stats;
 
 /// An identity function that *__hints__* to the compiler to be maximally pessimistic about what

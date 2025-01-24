@@ -16,25 +16,26 @@ use hir_def::{
         GenericParamDataRef, GenericParams, LifetimeParamData, TypeOrConstParamData,
         TypeParamProvenance,
     },
+    type_ref::TypesMap,
     ConstParamId, GenericDefId, GenericParamId, ItemContainerId, LifetimeParamId,
     LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
 };
-use intern::Interned;
 use itertools::chain;
 use stdx::TupleExt;
+use triomphe::Arc;
 
 use crate::{db::HirDatabase, lt_to_placeholder_idx, to_placeholder_idx, Interner, Substitution};
 
-pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
+pub fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
     let parent_generics = parent_generic_def(db, def).map(|def| Box::new(generics(db, def)));
     let params = db.generic_params(def);
     let has_trait_self_param = params.trait_self_param().is_some();
     Generics { def, params, parent_generics, has_trait_self_param }
 }
 #[derive(Clone, Debug)]
-pub(crate) struct Generics {
+pub struct Generics {
     def: GenericDefId,
-    params: Interned<GenericParams>,
+    params: Arc<GenericParams>,
     parent_generics: Option<Box<Generics>>,
     has_trait_self_param: bool,
 }
@@ -52,6 +53,10 @@ where
 impl Generics {
     pub(crate) fn def(&self) -> GenericDefId {
         self.def
+    }
+
+    pub(crate) fn self_types_map(&self) -> &TypesMap {
+        &self.params.types_map
     }
 
     pub(crate) fn iter_id(&self) -> impl Iterator<Item = GenericParamId> + '_ {
@@ -83,6 +88,16 @@ impl Generics {
         &self,
     ) -> impl DoubleEndedIterator<Item = (GenericParamId, GenericParamDataRef<'_>)> + '_ {
         self.iter_self().chain(self.iter_parent())
+    }
+
+    pub(crate) fn iter_parents_with_types_map(
+        &self,
+    ) -> impl Iterator<Item = ((GenericParamId, GenericParamDataRef<'_>), &TypesMap)> + '_ {
+        self.iter_parent().zip(
+            self.parent_generics()
+                .into_iter()
+                .flat_map(|it| std::iter::repeat(&it.params.types_map)),
+        )
     }
 
     /// Iterate over the params without parent params.
@@ -138,7 +153,7 @@ impl Generics {
         (parent_len, self_param, type_params, const_params, impl_trait_params, lifetime_params)
     }
 
-    pub(crate) fn type_or_const_param_idx(&self, param: TypeOrConstParamId) -> Option<usize> {
+    pub fn type_or_const_param_idx(&self, param: TypeOrConstParamId) -> Option<usize> {
         self.find_type_or_const_param(param)
     }
 
@@ -159,7 +174,7 @@ impl Generics {
         }
     }
 
-    pub(crate) fn lifetime_idx(&self, lifetime: LifetimeParamId) -> Option<usize> {
+    pub fn lifetime_idx(&self, lifetime: LifetimeParamId) -> Option<usize> {
         self.find_lifetime(lifetime)
     }
 
@@ -222,6 +237,23 @@ impl Generics {
                 }
             }),
         )
+    }
+}
+
+pub(crate) fn trait_self_param_idx(db: &dyn DefDatabase, def: GenericDefId) -> Option<usize> {
+    match def {
+        GenericDefId::TraitId(_) | GenericDefId::TraitAliasId(_) => {
+            let params = db.generic_params(def);
+            params.trait_self_param().map(|idx| idx.into_raw().into_u32() as usize)
+        }
+        GenericDefId::ImplId(_) => None,
+        _ => {
+            let parent_def = parent_generic_def(db, def)?;
+            let parent_params = db.generic_params(parent_def);
+            let parent_self_idx = parent_params.trait_self_param()?.into_raw().into_u32() as usize;
+            let self_params = db.generic_params(def);
+            Some(self_params.len() + parent_self_idx)
+        }
     }
 }
 

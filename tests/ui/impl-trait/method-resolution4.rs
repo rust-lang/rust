@@ -14,7 +14,6 @@ fn foo(b: bool) -> impl Iterator<Item = ()> {
         //[next]~^ type annotations needed
     }
     std::iter::empty()
-    //[next]~^ mismatched types
 }
 
 fn main() {}

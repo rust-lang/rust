@@ -1,8 +1,6 @@
 // This test makes sure that the LLDB pretty printer does not throw an exception
 // for nested closures and coroutines.
 
-// Require a gdb that can read DW_TAG_variant_part.
-//@ min-gdb-version: 8.2
 //@ min-lldb-version: 1800
 //@ compile-flags:-g
 
@@ -21,10 +19,10 @@
 // lldb-command:run
 
 // lldb-command:v g
-// lldbg-check:(issue_57822::main::{closure_env#1}) g = { f = { x = 1 } }
+// lldb-check:(issue_57822::main::{closure_env#1}) g = { f = { x = 1 } }
 
 // lldb-command:v b
-// lldbg-check:(issue_57822::main::{coroutine_env#3}) b = { value = { a = { value = { y = 2 } $discr$ = '\x02' } } $discr$ = '\x02' }
+// lldb-check:(issue_57822::main::{coroutine_env#3}) b = { value = { a = { value = { y = 2 } $discr$ = '\x02' } } $discr$ = '\x02' }
 
 #![feature(omit_gdb_pretty_printer_section, coroutines, coroutine_trait, stmt_expr_attributes)]
 #![omit_gdb_pretty_printer_section]

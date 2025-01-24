@@ -1,7 +1,7 @@
 use core::ops::ControlFlow;
 
 use hir::def::CtorKind;
-use hir::intravisit::{walk_expr, walk_stmt, Visitor};
+use hir::intravisit::{Visitor, walk_expr, walk_stmt};
 use hir::{LetStmt, QPath};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag};
@@ -14,10 +14,11 @@ use rustc_middle::traits::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
+use tracing::debug;
 
-use crate::error_reporting::infer::hir::Path;
 use crate::error_reporting::TypeErrCtxt;
+use crate::error_reporting::infer::hir::Path;
 use crate::errors::{
     ConsiderAddingAwait, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
     FunctionPointerSuggestion, SuggestAccessingField, SuggestRemoveSemiOrReturnBinding,
@@ -166,6 +167,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             exp_span, exp_found.expected, exp_found.found,
         );
 
+        match self.tcx.coroutine_kind(cause.body_id) {
+            Some(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async | hir::CoroutineDesugaring::AsyncGen,
+                _,
+            )) => (),
+            None
+            | Some(
+                hir::CoroutineKind::Coroutine(_)
+                | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _),
+            ) => return,
+        }
+
         if let ObligationCauseCode::CompareImplItem { .. } = cause.code() {
             return;
         }
@@ -209,7 +222,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (Some(ty), _) if self.same_type_modulo_infer(ty, exp_found.found) => match cause.code()
             {
                 ObligationCauseCode::Pattern { span: Some(then_span), origin_expr, .. } => {
-                    origin_expr.then_some(ConsiderAddingAwait::FutureSugg {
+                    origin_expr.is_some().then_some(ConsiderAddingAwait::FutureSugg {
                         span: then_span.shrink_to_hi(),
                     })
                 }
@@ -382,9 +395,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         if !expected_inner.is_fn() || !found_inner.is_fn() {
             return;
         }
-        match (&expected_inner.kind(), &found_inner.kind()) {
-            (ty::FnPtr(sig), ty::FnDef(did, args)) => {
-                let expected_sig = &(self.normalize_fn_sig)(*sig);
+        match (expected_inner.kind(), found_inner.kind()) {
+            (ty::FnPtr(sig_tys, hdr), ty::FnDef(did, args)) => {
+                let sig = sig_tys.with(*hdr);
+                let expected_sig = &(self.normalize_fn_sig)(sig);
                 let found_sig =
                     &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
 
@@ -402,11 +416,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     (false, true) => FunctionPointerSuggestion::RemoveRef { span, fn_name },
                     (true, true) => {
                         diag.subdiagnostic(FnItemsAreDistinct);
-                        FunctionPointerSuggestion::CastRef { span, fn_name, sig: *sig }
+                        FunctionPointerSuggestion::CastRef { span, fn_name, sig }
                     }
                     (false, false) => {
                         diag.subdiagnostic(FnItemsAreDistinct);
-                        FunctionPointerSuggestion::Cast { span, fn_name, sig: *sig }
+                        FunctionPointerSuggestion::Cast { span, fn_name, sig }
                     }
                 };
                 diag.subdiagnostic(sugg);
@@ -449,10 +463,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                 diag.subdiagnostic(sug);
             }
-            (ty::FnDef(did, args), ty::FnPtr(sig)) => {
+            (ty::FnDef(did, args), ty::FnPtr(sig_tys, hdr)) => {
                 let expected_sig =
                     &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
-                let found_sig = &(self.normalize_fn_sig)(*sig);
+                let found_sig = &(self.normalize_fn_sig)(sig_tys.with(*hdr));
 
                 if !self.same_type_modulo_infer(*found_sig, *expected_sig) {
                     return;
@@ -729,18 +743,19 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let exp_local_id = exp_def_id.as_local()?;
 
                 match (
-                    &self.tcx.hir().expect_item(last_local_id).kind,
-                    &self.tcx.hir().expect_item(exp_local_id).kind,
+                    &self.tcx.hir().expect_opaque_ty(last_local_id),
+                    &self.tcx.hir().expect_opaque_ty(exp_local_id),
                 ) {
                     (
-                        hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: last_bounds, .. }),
-                        hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: exp_bounds, .. }),
+                        hir::OpaqueTy { bounds: last_bounds, .. },
+                        hir::OpaqueTy { bounds: exp_bounds, .. },
                     ) if std::iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| match (
                         left, right,
                     ) {
-                        (hir::GenericBound::Trait(tl, ml), hir::GenericBound::Trait(tr, mr))
+                        // FIXME: Suspicious
+                        (hir::GenericBound::Trait(tl), hir::GenericBound::Trait(tr))
                             if tl.trait_ref.trait_def_id() == tr.trait_ref.trait_def_id()
-                                && ml == mr =>
+                                && tl.modifiers == tr.modifiers =>
                         {
                             true
                         }
@@ -814,7 +829,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     pat.walk(&mut find_compatible_candidates);
                 }
 
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body), .. })
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { body, .. }, .. })
                 | hir::Node::ImplItem(hir::ImplItem {
                     kind: hir::ImplItemKind::Fn(_, body), ..
                 })

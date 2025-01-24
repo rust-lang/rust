@@ -1,6 +1,6 @@
-use crate::spec::{add_link_args, Cc, LinkerFlavor, Lld, PanicStrategy, RelroLevel, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelroLevel, TargetOptions, add_link_args};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     let lld_args = &["-zmax-page-size=4096", "-znow", "-ztext", "--execute-only"];
     let cc_args = &["-Wl,-zmax-page-size=4096", "-Wl,-znow", "-Wl,-ztext", "-mexecute-only"];
 

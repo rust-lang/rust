@@ -1,5 +1,5 @@
 #![warn(clippy::if_then_some_else_none)]
-#![allow(clippy::redundant_pattern_matching)]
+#![allow(clippy::redundant_pattern_matching, clippy::unnecessary_lazy_evaluations)]
 
 fn main() {
     // Should issue an error.
@@ -129,6 +129,10 @@ fn issue11394(b: bool, v: Result<(), ()>) -> Result<(), ()> {
     };
 
     Ok(())
+}
+
+fn issue13407(s: &str) -> Option<bool> {
+    if s == "1" { Some(true) } else { None }
 }
 
 const fn issue12103(x: u32) -> Option<u32> {

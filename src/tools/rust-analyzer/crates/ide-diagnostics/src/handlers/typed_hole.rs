@@ -3,13 +3,13 @@ use hir::{
     term_search::{term_search, TermSearchConfig, TermSearchCtx},
     ClosureStyle, HirDisplay, ImportPathConfig,
 };
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, GroupLabel},
     label::Label,
     source_change::SourceChange,
 };
 use itertools::Itertools;
-use text_edit::TextEdit;
 
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
@@ -26,7 +26,9 @@ pub(crate) fn typed_hole(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Di
         (
             format!(
                 "invalid `_` expression, expected type `{}`",
-                d.expected.display(ctx.sema.db).with_closure_style(ClosureStyle::ClosureWithId),
+                d.expected
+                    .display(ctx.sema.db, ctx.edition)
+                    .with_closure_style(ClosureStyle::ClosureWithId),
             ),
             fixes(ctx, d),
         )
@@ -69,6 +71,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
                     prefer_prelude: ctx.config.prefer_prelude,
                     prefer_absolute: ctx.config.prefer_absolute,
                 },
+                ctx.edition,
             )
             .ok()
         })
@@ -397,6 +400,28 @@ fn f() {
     f()
 }"#,
             ],
+        );
+    }
+
+    #[test]
+    fn underscore_in_asm() {
+        check_diagnostics(
+            r#"
+//- minicore: asm
+fn rdtscp() -> u64 {
+    let hi: u64;
+    let lo: u64;
+    unsafe {
+        core::arch::asm!(
+            "rdtscp",
+            out("rdx") hi,
+            out("rax") lo,
+            out("rcx") _,
+            options(nomem, nostack, preserves_flags)
+        );
+    }
+    (hi << 32) | lo
+}"#,
         );
     }
 }

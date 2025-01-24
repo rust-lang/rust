@@ -7,7 +7,7 @@
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{GenericArgs, Instance, TyCtxt};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 
 use crate::errors::{Kind, TestOutput};
 
@@ -18,7 +18,7 @@ pub fn report_symbol_names(tcx: TyCtxt<'_>) {
     // if the `rustc_attrs` feature is not enabled, then the
     // attributes we are interested in cannot be present anyway, so
     // skip the walk.
-    if !tcx.features().rustc_attrs {
+    if !tcx.features().rustc_attrs() {
         return;
     }
 

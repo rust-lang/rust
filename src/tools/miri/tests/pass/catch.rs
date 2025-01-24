@@ -1,4 +1,4 @@
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 
 fn main() {
     let mut i = 3;

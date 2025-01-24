@@ -11,10 +11,10 @@ mod bar {
     }
 }
 
-//@ set import = "$.index[*][?(@.inner.import)].id"
+//@ set import = "$.index[*][?(@.inner.use)].id"
 pub use bar::Baz;
 
 //@ is "$.index[*].inner.module.items[*]" $import
-//@ is "$.index[*].inner.import.id" $baz
+//@ is "$.index[*].inner.use.id" $baz
 //@ has "$.index[*][?(@.name == 'Baz')].inner.struct.impls[*]" $impl
 //@ is "$.index[*][?(@.docs=='impl')].inner.impl.items[*]" $doit

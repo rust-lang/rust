@@ -1,58 +1,30 @@
+//@ add-core-stubs
 //@ revisions: mips32 mips64
 //@ assembly-output: emit-asm
 //@[mips32] compile-flags: --target mips-unknown-linux-gnu
 //@[mips32] needs-llvm-components: mips
 //@[mips64] compile-flags: --target mips64-unknown-linux-gnuabi64
 //@[mips64] needs-llvm-components: mips
+//@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_experimental_arch)]
+#![feature(no_core, asm_experimental_arch)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! concat {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! stringify {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 type ptr = *const i32;
 
-impl Copy for i8 {}
-impl Copy for u8 {}
-impl Copy for i16 {}
-impl Copy for i32 {}
-impl Copy for i64 {}
-impl Copy for f32 {}
-impl Copy for f64 {}
-impl Copy for ptr {}
 extern "C" {
     fn extern_func();
     static extern_static: u8;
 }
 
-// Hack to avoid function merging
-extern "Rust" {
-    fn dont_merge(s: &str);
-}
-
 macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
     #[no_mangle]
     pub unsafe fn $func(x: $ty) -> $ty {
-        dont_merge(stringify!($func));
-
         let y;
         asm!(concat!($mov," {}, {}"), out($class) y, in($class) x);
         y
@@ -62,8 +34,6 @@ macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
 macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
     #[no_mangle]
     pub unsafe fn $func(x: $ty) -> $ty {
-        dont_merge(stringify!($func));
-
         let y;
         asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
         y

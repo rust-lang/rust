@@ -5,7 +5,7 @@
 use std::arch::{asm, global_asm};
 
 #[repr(simd)]
-struct SimdNonCopy(f32, f32, f32, f32);
+struct SimdNonCopy([f32; 4]);
 
 fn main() {
     unsafe {
@@ -29,7 +29,7 @@ fn main() {
 
         // Register operands must be Copy
 
-        asm!("{}", in(xmm_reg) SimdNonCopy(0.0, 0.0, 0.0, 0.0));
+        asm!("{}", in(xmm_reg) SimdNonCopy([0.0, 0.0, 0.0, 0.0]));
         //~^ ERROR arguments for inline assembly must be copyable
 
         // Register operands must be integers, floats, SIMD vectors, pointers or

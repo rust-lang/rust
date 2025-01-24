@@ -162,19 +162,21 @@ pub use self::async_function::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 pub use self::bit::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 pub use self::bit::{BitAndAssign, BitOrAssign, BitXorAssign, ShlAssign, ShrAssign};
-#[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+#[stable(feature = "control_flow_enum_type", since = "1.55.0")]
 pub use self::control_flow::ControlFlow;
 #[unstable(feature = "coroutine_trait", issue = "43122")]
 pub use self::coroutine::{Coroutine, CoroutineState};
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 pub use self::deref::DerefPure;
-#[unstable(feature = "receiver_trait", issue = "none")]
+#[unstable(feature = "legacy_receiver_trait", issue = "none")]
+pub use self::deref::LegacyReceiver;
+#[unstable(feature = "arbitrary_self_types", issue = "44874")]
 pub use self::deref::Receiver;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::deref::{Deref, DerefMut};
-pub(crate) use self::drop::fallback_surface_drop;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::drop::Drop;
+pub(crate) use self::drop::fallback_surface_drop;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::function::{Fn, FnMut, FnOnce};
 #[stable(feature = "rust1", since = "1.0.0")]

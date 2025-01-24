@@ -1,5 +1,7 @@
-use super::header::extract_llvm_version;
-use super::*;
+use std::ffi::OsString;
+
+use crate::debuggers::{extract_gdb_version, extract_lldb_version};
+use crate::is_test;
 
 #[test]
 fn test_extract_gdb_version() {
@@ -48,12 +50,12 @@ fn test_extract_gdb_version() {
 #[test]
 fn test_extract_lldb_version() {
     // Apple variants
-    assert_eq!(extract_lldb_version("LLDB-179.5"), Some((179, false)));
-    assert_eq!(extract_lldb_version("lldb-300.2.51"), Some((300, false)));
+    assert_eq!(extract_lldb_version("LLDB-179.5"), Some(179));
+    assert_eq!(extract_lldb_version("lldb-300.2.51"), Some(300));
 
     // Upstream versions
-    assert_eq!(extract_lldb_version("lldb version 6.0.1"), Some((600, false)));
-    assert_eq!(extract_lldb_version("lldb version 9.0.0"), Some((900, false)));
+    assert_eq!(extract_lldb_version("lldb version 6.0.1"), Some(600));
+    assert_eq!(extract_lldb_version("lldb version 9.0.0"), Some(900));
 }
 
 #[test]
@@ -66,13 +68,28 @@ fn is_test_test() {
 }
 
 #[test]
-fn test_extract_llvm_version() {
-    assert_eq!(extract_llvm_version("8.1.2-rust"), Some(80102));
-    assert_eq!(extract_llvm_version("9.0.1-rust-1.43.0-dev"), Some(90001));
-    assert_eq!(extract_llvm_version("9.3.1-rust-1.43.0-dev"), Some(90301));
-    assert_eq!(extract_llvm_version("10.0.0-rust"), Some(100000));
-    assert_eq!(extract_llvm_version("11.1.0"), Some(110100));
-    assert_eq!(extract_llvm_version("12.0.0libcxx"), Some(120000));
-    assert_eq!(extract_llvm_version("12.0.0-rc3"), Some(120000));
-    assert_eq!(extract_llvm_version("13.0.0git"), Some(130000));
+fn string_enums() {
+    // These imports are needed for the macro-generated code
+    use std::fmt;
+    use std::str::FromStr;
+
+    crate::common::string_enum! {
+        #[derive(Clone, Copy, Debug, PartialEq)]
+        enum Animal {
+            Cat => "meow",
+            Dog => "woof",
+        }
+    }
+
+    // General assertions, mostly to silence the dead code warnings
+    assert_eq!(Animal::VARIANTS.len(), 2);
+    assert_eq!(Animal::STR_VARIANTS.len(), 2);
+
+    // Correct string conversions
+    assert_eq!(Animal::Cat, "meow".parse().unwrap());
+    assert_eq!(Animal::Dog, "woof".parse().unwrap());
+
+    // Invalid conversions
+    let animal = "nya".parse::<Animal>();
+    assert_eq!("unknown `Animal` variant: `nya`", animal.unwrap_err());
 }

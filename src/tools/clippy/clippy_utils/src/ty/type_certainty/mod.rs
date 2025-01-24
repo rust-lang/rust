@@ -14,14 +14,14 @@
 use crate::def_path_res;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{walk_qpath, walk_ty, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_qpath, walk_ty};
 use rustc_hir::{self as hir, Expr, ExprKind, GenericArgs, HirId, Node, PathSegment, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, AdtDef, GenericArgKind, Ty};
 use rustc_span::{Span, Symbol};
 
 mod certainty;
-use certainty::{join, meet, Certainty, Meet};
+use certainty::{Certainty, Meet, join, meet};
 
 pub fn expr_type_is_certain(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     expr_type_certainty(cx, expr).is_certain()
@@ -108,7 +108,7 @@ impl<'cx, 'tcx> CertaintyVisitor<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx> Visitor<'cx> for CertaintyVisitor<'cx, 'tcx> {
+impl<'cx> Visitor<'cx> for CertaintyVisitor<'cx, '_> {
     fn visit_qpath(&mut self, qpath: &'cx QPath<'_>, hir_id: HirId, _: Span) {
         self.certainty = self.certainty.meet(qpath_certainty(self.cx, qpath, true));
         if self.certainty != Certainty::Uncertain {
@@ -207,16 +207,7 @@ fn path_segment_certainty(
             if cx.tcx.res_generics_def_id(path_segment.res).is_some() {
                 let generics = cx.tcx.generics_of(def_id);
 
-                let own_count = generics.own_params.len()
-                    - usize::from(generics.host_effect_index.is_some_and(|index| {
-                        // Check that the host index actually belongs to this resolution.
-                        // E.g. for `Add::add`, host_effect_index is `Some(2)`, but it's part of the parent `Add`
-                        // trait's generics.
-                        // Add params:      [Self#0, Rhs#1, host#2]   parent_count=0, count=3
-                        // Add::add params: []                        parent_count=3, count=3
-                        // (3..3).contains(&host_effect_index) => false
-                        (generics.parent_count..generics.count()).contains(&index)
-                    }));
+                let own_count = generics.own_params.len();
                 let lhs = if (parent_certainty.is_certain() || generics.parent_count == 0) && own_count == 0 {
                     Certainty::Certain(None)
                 } else {
@@ -310,11 +301,10 @@ fn type_is_inferable_from_arguments(cx: &LateContext<'_>, expr: &Expr<'_>) -> bo
 
     // Check that all type parameters appear in the functions input types.
     (0..(generics.parent_count + generics.own_params.len()) as u32).all(|index| {
-        Some(index as usize) == generics.host_effect_index
-            || fn_sig
-                .inputs()
-                .iter()
-                .any(|input_ty| contains_param(*input_ty.skip_binder(), index))
+        fn_sig
+            .inputs()
+            .iter()
+            .any(|input_ty| contains_param(*input_ty.skip_binder(), index))
     })
 }
 

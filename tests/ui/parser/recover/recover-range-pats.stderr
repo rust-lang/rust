@@ -613,7 +613,7 @@ LL |     mac2!(0, 1);
    |     ----------- in this macro invocation
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -627,7 +627,7 @@ LL |     mac2!(0, 1);
    |     ----------- in this macro invocation
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -641,7 +641,7 @@ LL |     mac2!(0, 1);
    |     ----------- in this macro invocation
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -655,7 +655,7 @@ LL |     mac!(0);
    |     ------- in this macro invocation
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -669,7 +669,7 @@ LL |     mac!(0);
    |     ------- in this macro invocation
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -683,7 +683,7 @@ LL |     mac!(0);
    |     ------- in this macro invocation
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -697,7 +697,7 @@ LL |     mac!(0);
    |     ------- in this macro invocation
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -711,7 +711,7 @@ LL |     mac!(0);
    |     ------- in this macro invocation
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -725,7 +725,7 @@ LL |     mac!(0);
    |     ------- in this macro invocation
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `i32`
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 

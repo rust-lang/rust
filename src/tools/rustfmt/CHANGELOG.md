@@ -1,6 +1,66 @@
 # Changelog
 
-## [Unreleased]
+## [1.8.0] 2024-09-20
+
+### Fixed
+- Fix issue where rustfmt would crash on Windows when using the `ignore` option [#6178](https://github.com/rust-lang/rustfmt/issues/6178)
+
+### Changed
+- `rustfmt --version` now prints a commit hash that is 10 characters long [#6258](https://github.com/rust-lang/rustfmt/pull/6258)
+- `rustfmt --version` will no longer print empty git information when git information isn't available at build time.
+  For example, git information is not available when building rustfmt from a source tarball [#6266](https://github.com/rust-lang/rustfmt/pull/6266)
+- `version` has been soft deprecated and replaced by `style_edition`.
+  `style_edition=2024` is equivalent to `version=Two` and `style_edition={2015|2018|2021}`
+  are equivalent to `version=One` [#6247](https://github.com/rust-lang/rustfmt/pull/6247)
+- When `style_edition=2024` is configured `overflow_delimited_expr` will default to `true` [#6260](https://github.com/rust-lang/rustfmt/pull/6260).
+  ```rust
+  // with style_edition=2015
+  do_thing(
+      x,
+      Bar {
+          x: value,
+          y: value2,
+      },
+  );
+
+  // with style_edition=2024
+  do_thing(x, Bar {
+      x: value,
+      y: value2,
+  });
+  ```
+- When `style_edition=2024` is configured rustfmt will apply the [style guide's version sorting algorithm]
+  when sorting imports [#6284](https://github.com/rust-lang/rustfmt/pull/6284)
+  ```rust
+  // with style_edition=2015
+  use std::num::{NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8};
+
+  // with style_edition=2024
+  use std::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64};
+  ```
+  [style guide's version sorting algorithm]: https://doc.rust-lang.org/nightly/style-guide/#sorting
+- When parsing rustfmt configurations fails, rustfmt will now include the path to the toml file in the erorr message [#6302](https://github.com/rust-lang/rustfmt/issues/6302)
+
+### Added
+- rustfmt now formats trailing where clauses in type aliases [#5887](https://github.com/rust-lang/rustfmt/pull/5887)
+  ```rust
+  type Foo
+      = Bar
+  where
+      A: B,
+      C: D;
+  ```
+- Users can now configure which `style_edition` rustfmt uses when formatting their code as specified
+  in [RFC 3338](https://rust-lang.github.io/rfcs/3338-style-evolution.html). Users are encouraged to configure `style_edition`
+  in their `rustfmt.toml` files, but the value can also be specified via the cli with `--unstable-features --style-edition={style_edition}`.
+  When `style_edition` is not explicitly configured it will be inferred from the `edition` configuration.
+  When neither `style_edition` nor `edition` are configured `style_edition` defaults to `2015` [#6247](https://github.com/rust-lang/rustfmt/pull/6247)
+
+### Misc
+- Removed `tracing-attributes` dependency [#6208](https://github.com/rust-lang/rustfmt/pull/6208)
+- Reduced syn's features in the internal `config_proc_macro` crate [#6237](https://github.com/rust-lang/rustfmt/pull/6237)
+
+## [1.7.1] 2024-06-24
 
 ### Fixed
 
@@ -238,7 +298,7 @@
 
 ### Added
 
-- New configuration option (`skip_macro_invocations`)[https://rust-lang.github.io/rustfmt/?version=master&search=#skip_macro_invocations] [#5347](https://github.com/rust-lang/rustfmt/pull/5347) that can be used to globally define a single enumerated list of macro calls that rustfmt should skip formatting. rustfmt [currently also supports this via a custom tool attribute](https://github.com/rust-lang/rustfmt#tips), however, these cannot be used in all contexts because [custom inner attributes are unstable](https://github.com/rust-lang/rust/issues/54726)
+- New configuration option [`skip_macro_invocations`](https://rust-lang.github.io/rustfmt/?version=master&search=#skip_macro_invocations) [#5347](https://github.com/rust-lang/rustfmt/pull/5347) that can be used to globally define a single enumerated list of macro calls that rustfmt should skip formatting. rustfmt [currently also supports this via a custom tool attribute](https://github.com/rust-lang/rustfmt#tips), however, these cannot be used in all contexts because [custom inner attributes are unstable](https://github.com/rust-lang/rust/issues/54726)
 
 ### Misc
 

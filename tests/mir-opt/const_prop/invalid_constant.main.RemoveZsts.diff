@@ -31,13 +31,13 @@
           StorageLive(_1);
           StorageLive(_2);
           _2 = InvalidChar { int: const 1114113_u32 };
-          _1 = (_2.1: char);
+          _1 = copy (_2.1: char);
           StorageDead(_2);
           StorageLive(_3);
           StorageLive(_4);
           StorageLive(_5);
           _5 = InvalidTag { int: const 4_u32 };
-          _4 = (_5.1: E);
+          _4 = copy (_5.1: E);
           _3 = [move _4];
           StorageDead(_4);
           StorageDead(_5);
@@ -47,7 +47,7 @@
 +         nop;
           StorageLive(_8);
           _8 = NoVariants { int: const 0_u32 };
--         _7 = (_8.1: Empty);
+-         _7 = copy (_8.1: Empty);
 -         _6 = [move _7];
 -         StorageDead(_7);
 +         nop;

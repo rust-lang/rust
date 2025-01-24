@@ -7,16 +7,16 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
-use rustc_target::abi::call::{Conv, FnAbi, PassMode};
+use rustc_target::callconv::{Conv, FnAbi, PassMode};
 use tracing::instrument;
 
 mod encode;
 mod transform;
-use crate::cfi::typeid::itanium_cxx_abi::encode::{encode_ty, DictKey, EncodeTyOptions};
-use crate::cfi::typeid::itanium_cxx_abi::transform::{
-    transform_instance, TransformTy, TransformTyOptions,
-};
 use crate::cfi::typeid::TypeIdOptions;
+use crate::cfi::typeid::itanium_cxx_abi::encode::{DictKey, EncodeTyOptions, encode_ty};
+use crate::cfi::typeid::itanium_cxx_abi::transform::{
+    TransformTy, TransformTyOptions, transform_instance,
+};
 
 /// Returns a type metadata identifier for the specified FnAbi using the Itanium C++ ABI with vendor
 /// extended type qualifiers and types for Rust types that are not used at the FFI boundary.
@@ -117,7 +117,9 @@ pub fn typeid_for_instance<'tcx>(
         .unwrap_or_else(|| bug!("typeid_for_instance: invalid option(s) `{:?}`", options.bits()));
     let instance = transform_instance(tcx, instance, transform_ty_options);
     let fn_abi = tcx
-        .fn_abi_of_instance(ty::ParamEnv::reveal_all().and((instance, ty::List::empty())))
+        .fn_abi_of_instance(
+            ty::TypingEnv::fully_monomorphized().as_query_input((instance, ty::List::empty())),
+        )
         .unwrap_or_else(|error| {
             bug!("typeid_for_instance: couldn't get fn_abi of instance {instance:?}: {error:?}")
         });

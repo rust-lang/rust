@@ -1,12 +1,12 @@
-use clippy_utils::consts::{constant_simple, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::def_path_res;
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
 use rustc_hir::Item;
+use rustc_hir::def::DefKind;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::FloatTy;
+use rustc_middle::ty::{self, FloatTy};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
 
@@ -32,9 +32,12 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
         let mod_name = &cx.tcx.item_name(local_def_id.to_def_id());
         if mod_name.as_str() == "paths"
             && let hir::ItemKind::Const(.., body_id) = item.kind
-            && let body = cx.tcx.hir().body(body_id)
-            && let typeck_results = cx.tcx.typeck_body(body_id)
-            && let Some(Constant::Vec(path)) = constant_simple(cx, typeck_results, body.value)
+            && let Some(Constant::Vec(path)) = ConstEvalCtxt::with_env(
+                cx.tcx,
+                ty::TypingEnv::post_analysis(cx.tcx, item.owner_id),
+                cx.tcx.typeck(item.owner_id),
+            )
+            .eval_simple(cx.tcx.hir().body(body_id).value)
             && let Some(path) = path
                 .iter()
                 .map(|x| {
@@ -70,10 +73,10 @@ pub fn check_path(cx: &LateContext<'_>, path: &[&str]) -> bool {
         SimplifiedType::Slice,
         SimplifiedType::Str,
         SimplifiedType::Bool,
+        SimplifiedType::Char,
     ]
     .iter()
-    .flat_map(|&ty| cx.tcx.incoherent_impls(ty).into_iter())
-    .flatten()
+    .flat_map(|&ty| cx.tcx.incoherent_impls(ty).iter())
     .copied();
     for item_def_id in lang_items.iter().map(|(_, def_id)| def_id).chain(incoherent_impls) {
         let lang_item_path = cx.get_def_path(item_def_id);

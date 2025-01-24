@@ -7,7 +7,7 @@ use std::cell::UnsafeCell as TotallySafeCell;
 //~| NOTE: `-D clippy::unsafe-removed-from-name` implied by `-D warnings`
 
 use std::cell::UnsafeCell as TotallySafeCellAgain;
-//~^ ERROR: removed `unsafe` from the name of `UnsafeCell` in use as `TotallySafeCellAgain
+//~^ ERROR: removed `unsafe` from the name of `UnsafeCell` in use as `TotallySafeCellAgain`
 
 // Shouldn't error
 use std::cell::RefCell as ProbablyNotUnsafe;

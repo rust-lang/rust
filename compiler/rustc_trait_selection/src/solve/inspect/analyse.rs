@@ -9,18 +9,21 @@
 //! coherence right now and was annoying to implement, so I am leaving it
 //! as is until we start using it for something else.
 
+use std::assert_matches::assert_matches;
+
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_macros::extension;
-use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, NoSolution, QueryResult};
 use rustc_middle::traits::ObligationCause;
+use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, NoSolution, QueryResult};
 use rustc_middle::ty::{TyCtxt, TypeFoldable};
 use rustc_middle::{bug, ty};
 use rustc_next_trait_solver::resolve::EagerResolver;
 use rustc_next_trait_solver::solve::inspect::{self, instantiate_canonical_state};
 use rustc_next_trait_solver::solve::{GenerateProofTree, MaybeCause, SolverDelegateEvalExt as _};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
+use tracing::instrument;
 
 use crate::solve::delegate::SolverDelegate;
 use crate::traits::ObligationCtxt;
@@ -273,10 +276,10 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                     steps.push(step)
                 }
                 inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty: c } => {
-                    assert!(matches!(
+                    assert_matches!(
                         shallow_certainty.replace(c),
                         None | Some(Certainty::Maybe(MaybeCause::Ambiguity))
-                    ));
+                    );
                 }
                 inspect::ProbeStep::NestedProbe(ref probe) => {
                     match probe.kind {
@@ -289,7 +292,8 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                         | inspect::ProbeKind::Root { .. }
                         | inspect::ProbeKind::TryNormalizeNonRigid { .. }
                         | inspect::ProbeKind::TraitCandidate { .. }
-                        | inspect::ProbeKind::OpaqueTypeStorageLookup { .. } => {
+                        | inspect::ProbeKind::OpaqueTypeStorageLookup { .. }
+                        | inspect::ProbeKind::RigidAlias { .. } => {
                             // Nested probes have to prove goals added in their parent
                             // but do not leak them, so we truncate the added goals
                             // afterwards.
@@ -313,7 +317,8 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             inspect::ProbeKind::Root { result }
             | inspect::ProbeKind::TryNormalizeNonRigid { result }
             | inspect::ProbeKind::TraitCandidate { source: _, result }
-            | inspect::ProbeKind::OpaqueTypeStorageLookup { result } => {
+            | inspect::ProbeKind::OpaqueTypeStorageLookup { result }
+            | inspect::ProbeKind::RigidAlias { result } => {
                 // We only add a candidate if `shallow_certainty` was set, which means
                 // that we ended up calling `evaluate_added_goals_and_make_canonical_response`.
                 if let Some(shallow_certainty) = shallow_certainty {
@@ -332,18 +337,14 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
 
     pub fn candidates(&'a self) -> Vec<InspectCandidate<'a, 'tcx>> {
         let mut candidates = vec![];
-        let last_eval_step = match self.evaluation_kind {
-            inspect::CanonicalGoalEvaluationKind::Overflow
-            | inspect::CanonicalGoalEvaluationKind::CycleInStack
-            | inspect::CanonicalGoalEvaluationKind::ProvisionalCacheHit => {
-                warn!("unexpected root evaluation: {:?}", self.evaluation_kind);
-                return vec![];
-            }
+        let last_eval_step = match &self.evaluation_kind {
+            // An annoying edge case in case the recursion limit is 0.
+            inspect::CanonicalGoalEvaluationKind::Overflow => return vec![],
             inspect::CanonicalGoalEvaluationKind::Evaluation { final_revision } => final_revision,
         };
 
         let mut nested_goals = vec![];
-        self.candidates_recur(&mut candidates, &mut nested_goals, &last_eval_step.evaluation);
+        self.candidates_recur(&mut candidates, &mut nested_goals, &last_eval_step);
 
         candidates
     }

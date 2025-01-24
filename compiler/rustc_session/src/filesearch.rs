@@ -4,51 +4,44 @@ use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
-use smallvec::{smallvec, SmallVec};
-use tracing::debug;
+use rustc_target::spec::Target;
+use smallvec::{SmallVec, smallvec};
 
 use crate::search_paths::{PathKind, SearchPath};
 
 #[derive(Clone)]
-pub struct FileSearch<'a> {
-    sysroot: &'a Path,
-    triple: &'a str,
-    cli_search_paths: &'a [SearchPath],
-    tlib_path: &'a SearchPath,
-    kind: PathKind,
+pub struct FileSearch {
+    cli_search_paths: Vec<SearchPath>,
+    tlib_path: SearchPath,
 }
 
-impl<'a> FileSearch<'a> {
-    pub fn cli_search_paths(&self) -> impl Iterator<Item = &'a SearchPath> {
-        let kind = self.kind;
+impl FileSearch {
+    pub fn cli_search_paths<'b>(&'b self, kind: PathKind) -> impl Iterator<Item = &'b SearchPath> {
         self.cli_search_paths.iter().filter(move |sp| sp.kind.matches(kind))
     }
 
-    pub fn search_paths(&self) -> impl Iterator<Item = &'a SearchPath> {
-        let kind = self.kind;
+    pub fn search_paths<'b>(&'b self, kind: PathKind) -> impl Iterator<Item = &'b SearchPath> {
         self.cli_search_paths
             .iter()
             .filter(move |sp| sp.kind.matches(kind))
-            .chain(std::iter::once(self.tlib_path))
+            .chain(std::iter::once(&self.tlib_path))
     }
 
-    pub fn get_lib_path(&self) -> PathBuf {
-        make_target_lib_path(self.sysroot, self.triple)
+    pub fn new(cli_search_paths: &[SearchPath], tlib_path: &SearchPath, target: &Target) -> Self {
+        let this = FileSearch {
+            cli_search_paths: cli_search_paths.to_owned(),
+            tlib_path: tlib_path.clone(),
+        };
+        this.refine(&["lib", &target.staticlib_prefix, &target.dll_prefix])
     }
+    // Produce a new file search from this search that has a smaller set of candidates.
+    fn refine(mut self, allowed_prefixes: &[&str]) -> FileSearch {
+        self.cli_search_paths
+            .iter_mut()
+            .for_each(|search_paths| search_paths.files.retain(allowed_prefixes));
+        self.tlib_path.files.retain(allowed_prefixes);
 
-    pub fn get_self_contained_lib_path(&self) -> PathBuf {
-        self.get_lib_path().join("self-contained")
-    }
-
-    pub fn new(
-        sysroot: &'a Path,
-        triple: &'a str,
-        cli_search_paths: &'a [SearchPath],
-        tlib_path: &'a SearchPath,
-        kind: PathKind,
-    ) -> FileSearch<'a> {
-        debug!("using sysroot = {}, triple = {}", sysroot.display(), triple);
-        FileSearch { sysroot, triple, cli_search_paths, tlib_path, kind }
+        self
     }
 }
 
@@ -98,7 +91,7 @@ fn current_dll_path() -> Result<PathBuf, String> {
         loop {
             if libc::loadquery(
                 libc::L_GETINFO,
-                buffer.as_mut_ptr() as *mut i8,
+                buffer.as_mut_ptr() as *mut u8,
                 (std::mem::size_of::<libc::ld_info>() * buffer.len()) as u32,
             ) >= 0
             {
@@ -135,11 +128,11 @@ fn current_dll_path() -> Result<PathBuf, String> {
     use std::io;
     use std::os::windows::prelude::*;
 
-    use windows::core::PCWSTR;
     use windows::Win32::Foundation::HMODULE;
     use windows::Win32::System::LibraryLoader::{
-        GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+        GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, GetModuleFileNameW, GetModuleHandleExW,
     };
+    use windows::core::PCWSTR;
 
     let mut module = HMODULE::default();
     unsafe {
@@ -152,7 +145,7 @@ fn current_dll_path() -> Result<PathBuf, String> {
     .map_err(|e| e.to_string())?;
 
     let mut filename = vec![0; 1024];
-    let n = unsafe { GetModuleFileNameW(module, &mut filename) } as usize;
+    let n = unsafe { GetModuleFileNameW(Some(module), &mut filename) } as usize;
     if n == 0 {
         return Err(format!("GetModuleFileNameW failed: {}", io::Error::last_os_error()));
     }
@@ -166,7 +159,7 @@ fn current_dll_path() -> Result<PathBuf, String> {
 }
 
 pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
-    let target = crate::config::host_triple();
+    let target = crate::config::host_tuple();
     let mut sysroot_candidates: SmallVec<[PathBuf; 2]> =
         smallvec![get_or_default_sysroot().expect("Failed finding sysroot")];
     let path = current_dll_path().and_then(|s| try_canonicalize(s).map_err(|e| e.to_string()));
@@ -196,7 +189,7 @@ pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
         }
     }
 
-    return sysroot_candidates;
+    sysroot_candidates
 }
 
 /// Returns the provided sysroot or calls [`get_or_default_sysroot`] if it's none.
@@ -232,7 +225,7 @@ pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
         ))?;
 
         // if `dir` points target's dir, move up to the sysroot
-        let mut sysroot_dir = if dir.ends_with(crate::config::host_triple()) {
+        let mut sysroot_dir = if dir.ends_with(crate::config::host_tuple()) {
             dir.parent() // chop off `$target`
                 .and_then(|p| p.parent()) // chop off `rustlib`
                 .and_then(|p| p.parent()) // chop off `lib`

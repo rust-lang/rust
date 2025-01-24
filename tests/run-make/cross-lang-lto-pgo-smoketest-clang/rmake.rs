@@ -9,7 +9,7 @@
 // RUSTBUILD_FORCE_CLANG_BASED_TESTS and only runs tests which contain "clang" in their
 // name.
 
-//@ needs-profiler-support
+//@ needs-profiler-runtime
 // FIXME(Oneirical): Except that due to the reliance on llvm-profdata, this test
 // never runs, because `x86_64-gnu-debug` does not have the `profiler_builtins` crate.
 

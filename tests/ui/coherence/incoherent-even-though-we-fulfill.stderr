@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Foo` for type `()`
-  --> $DIR/incoherent-even-though-we-fulfill.rs:17:1
+  --> $DIR/incoherent-even-though-we-fulfill.rs:15:1
    |
 LL | impl<T> Foo for T where (): Mirror<Assoc = T> {}
    | --------------------------------------------- first implementation here

@@ -1,11 +1,11 @@
 error: unknown diagnostic attribute
-  --> $DIR/suggest_typos.rs:3:15
+  --> $DIR/suggest_typos.rs:4:15
    |
 LL | #[diagnostic::onunimplemented]
    |               ^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/suggest_typos.rs:1:9
+  --> $DIR/suggest_typos.rs:2:9
    |
 LL | #![deny(unknown_or_malformed_diagnostic_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL | #[diagnostic::on_unimplemented]
    |               ~~~~~~~~~~~~~~~~
 
 error: unknown diagnostic attribute
-  --> $DIR/suggest_typos.rs:8:15
+  --> $DIR/suggest_typos.rs:9:15
    |
 LL | #[diagnostic::un_onimplemented]
    |               ^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL | #[diagnostic::on_unimplemented]
    |               ~~~~~~~~~~~~~~~~
 
 error: unknown diagnostic attribute
-  --> $DIR/suggest_typos.rs:13:15
+  --> $DIR/suggest_typos.rs:14:15
    |
 LL | #[diagnostic::on_implemented]
    |               ^^^^^^^^^^^^^^

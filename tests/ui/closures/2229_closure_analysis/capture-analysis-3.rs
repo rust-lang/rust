@@ -27,7 +27,7 @@ fn main() {
         //~^ NOTE: Capturing a[(0, 0),(0, 0)] -> ByValue
         //~| NOTE: a[(0, 0)] captured as ByValue here
         println!("{:?}", a.b);
-        //~^ NOTE: Capturing a[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Capturing a[(0, 0)] -> Immutable
         //~| NOTE: Min Capture a[(0, 0)] -> ByValue
         //~| NOTE: a[(0, 0)] used here
     };

@@ -30,20 +30,20 @@ fn main() {
         // whether we got the distance correct:
         // If the output shows
         //
-        //    |- <XYZ: uniq>
-        //    '- <XYZ: uniq>
+        //    ├─ <TAG=base.as_ptr()>
+        //    └─ <TAG=base.as_ptr()>
         //
         // then `nth_parent` is not big enough.
         // The correct value for `nth_parent` should be the minimum
         // integer for which the output shows
         //
-        //    '- <XYZ: uniq, uniq>
+        //    └─ <TAG=base.as_ptr(), base.as_ptr(), ...>
         // )
         //
         // Ultimately we want pointers obtained through independent
         // calls of `as_ptr` to be able to alias, which will probably involve
         // a new permission that allows aliasing when there is no protector.
-        let nth_parent = if cfg!(uniq) { 2 } else { 0 };
+        let nth_parent = if cfg!(uniq) { 9 } else { 0 };
         name!(base.as_ptr()=>nth_parent);
         name!(base.as_ptr()=>nth_parent);
 

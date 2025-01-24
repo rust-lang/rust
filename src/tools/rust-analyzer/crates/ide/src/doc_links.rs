@@ -10,10 +10,7 @@ use pulldown_cmark_to_cmark::{cmark_resume_with_options, Options as CMarkOptions
 use stdx::format_to;
 use url::Url;
 
-use hir::{
-    db::HirDatabase, sym, Adt, AsAssocItem, AssocItem, AssocItemContainer, DescendPreference,
-    HasAttrs,
-};
+use hir::{db::HirDatabase, sym, Adt, AsAssocItem, AssocItem, AssocItemContainer, HasAttrs};
 use ide_db::{
     base_db::{CrateOrigin, LangCrateOrigin, ReleaseChannel, SourceDatabase},
     defs::{Definition, NameClass, NameRefClass},
@@ -144,14 +141,14 @@ pub(crate) fn external_docs(
         kind if kind.is_trivia() => 0,
         _ => 1,
     })?;
-    let token = sema.descend_into_macros_single(DescendPreference::None, token);
+    let token = sema.descend_into_macros_single_exact(token);
 
     let node = token.parent()?;
     let definition = match_ast! {
         match node {
             ast::NameRef(name_ref) => match NameRefClass::classify(sema, &name_ref)? {
-                NameRefClass::Definition(def) => def,
-                NameRefClass::FieldShorthand { local_ref: _, field_ref } => {
+                NameRefClass::Definition(def, _) => def,
+                NameRefClass::FieldShorthand { local_ref: _, field_ref, adt_subst: _ } => {
                     Definition::Field(field_ref)
                 }
                 NameRefClass::ExternCrateShorthand { decl, .. } => {
@@ -160,7 +157,7 @@ pub(crate) fn external_docs(
             },
             ast::Name(name) => match NameClass::classify(sema, &name)? {
                 NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                NameClass::PatFieldShorthand { local_def: _, field_ref } => Definition::Field(field_ref),
+                NameClass::PatFieldShorthand { local_def: _, field_ref, adt_subst: _ } => Definition::Field(field_ref),
             },
             _ => return None
         }
@@ -202,6 +199,7 @@ pub(crate) fn resolve_doc_path_for_def(
 ) -> Option<Definition> {
     match def {
         Definition::Module(it) => it.resolve_doc_path(db, link, ns),
+        Definition::Crate(it) => it.resolve_doc_path(db, link, ns),
         Definition::Function(it) => it.resolve_doc_path(db, link, ns),
         Definition::Adt(it) => it.resolve_doc_path(db, link, ns),
         Definition::Variant(it) => it.resolve_doc_path(db, link, ns),
@@ -222,7 +220,9 @@ pub(crate) fn resolve_doc_path_for_def(
         | Definition::Local(_)
         | Definition::GenericParam(_)
         | Definition::Label(_)
-        | Definition::DeriveHelper(_) => None,
+        | Definition::DeriveHelper(_)
+        | Definition::InlineAsmRegOrRegClass(_)
+        | Definition::InlineAsmOperand(_) => None,
     }
     .map(Definition::from)
 }
@@ -289,7 +289,7 @@ impl DocCommentToken {
         let original_start = doc_token.text_range().start();
         let relative_comment_offset = offset - original_start - prefix_len;
 
-        sema.descend_into_macros(DescendPreference::None, doc_token).into_iter().find_map(|t| {
+        sema.descend_into_macros(doc_token).into_iter().find_map(|t| {
             let (node, descended_prefix_len) = match_ast! {
                 match t {
                     ast::Comment(comment) => (t.parent()?, TextSize::try_from(comment.prefix().len()).ok()?),
@@ -413,7 +413,8 @@ fn rewrite_url_link(db: &RootDatabase, def: Definition, target: &str) -> Option<
 fn mod_path_of_def(db: &RootDatabase, def: Definition) -> Option<String> {
     def.canonical_module_path(db).map(|it| {
         let mut path = String::new();
-        it.flat_map(|it| it.name(db)).for_each(|name| format_to!(path, "{}/", name.display(db)));
+        it.flat_map(|it| it.name(db))
+            .for_each(|name| format_to!(path, "{}/", name.unescaped().display(db)));
         path
     })
 }
@@ -588,10 +589,13 @@ fn filename_and_frag_for_def(
 
     let res = match def {
         Definition::Adt(adt) => match adt {
-            Adt::Struct(s) => format!("struct.{}.html", s.name(db).display(db.upcast())),
-            Adt::Enum(e) => format!("enum.{}.html", e.name(db).display(db.upcast())),
-            Adt::Union(u) => format!("union.{}.html", u.name(db).display(db.upcast())),
+            Adt::Struct(s) => {
+                format!("struct.{}.html", s.name(db).unescaped().display(db.upcast()))
+            }
+            Adt::Enum(e) => format!("enum.{}.html", e.name(db).unescaped().display(db.upcast())),
+            Adt::Union(u) => format!("union.{}.html", u.name(db).unescaped().display(db.upcast())),
         },
+        Definition::Crate(_) => String::from("index.html"),
         Definition::Module(m) => match m.name(db) {
             // `#[doc(keyword = "...")]` is internal used only by rust compiler
             Some(name) => {
@@ -599,34 +603,48 @@ fn filename_and_frag_for_def(
                     Some(kw) => {
                         format!("keyword.{}.html", kw)
                     }
-                    None => format!("{}/index.html", name.display(db.upcast())),
+                    None => format!("{}/index.html", name.unescaped().display(db.upcast())),
                 }
             }
             None => String::from("index.html"),
         },
-        Definition::Trait(t) => format!("trait.{}.html", t.name(db).display(db.upcast())),
-        Definition::TraitAlias(t) => format!("traitalias.{}.html", t.name(db).display(db.upcast())),
-        Definition::TypeAlias(t) => format!("type.{}.html", t.name(db).display(db.upcast())),
-        Definition::BuiltinType(t) => format!("primitive.{}.html", t.name().display(db.upcast())),
-        Definition::Function(f) => format!("fn.{}.html", f.name(db).display(db.upcast())),
+        Definition::Trait(t) => {
+            format!("trait.{}.html", t.name(db).unescaped().display(db.upcast()))
+        }
+        Definition::TraitAlias(t) => {
+            format!("traitalias.{}.html", t.name(db).unescaped().display(db.upcast()))
+        }
+        Definition::TypeAlias(t) => {
+            format!("type.{}.html", t.name(db).unescaped().display(db.upcast()))
+        }
+        Definition::BuiltinType(t) => {
+            format!("primitive.{}.html", t.name().unescaped().display(db.upcast()))
+        }
+        Definition::Function(f) => {
+            format!("fn.{}.html", f.name(db).unescaped().display(db.upcast()))
+        }
         Definition::Variant(ev) => {
             format!(
                 "enum.{}.html#variant.{}",
-                ev.parent_enum(db).name(db).display(db.upcast()),
-                ev.name(db).display(db.upcast())
+                ev.parent_enum(db).name(db).unescaped().display(db.upcast()),
+                ev.name(db).unescaped().display(db.upcast())
             )
         }
-        Definition::Const(c) => format!("const.{}.html", c.name(db)?.display(db.upcast())),
-        Definition::Static(s) => format!("static.{}.html", s.name(db).display(db.upcast())),
+        Definition::Const(c) => {
+            format!("const.{}.html", c.name(db)?.unescaped().display(db.upcast()))
+        }
+        Definition::Static(s) => {
+            format!("static.{}.html", s.name(db).unescaped().display(db.upcast()))
+        }
         Definition::Macro(mac) => match mac.kind(db) {
             hir::MacroKind::Declarative
             | hir::MacroKind::BuiltIn
             | hir::MacroKind::Attr
             | hir::MacroKind::ProcMacro => {
-                format!("macro.{}.html", mac.name(db).display(db.upcast()))
+                format!("macro.{}.html", mac.name(db).unescaped().display(db.upcast()))
             }
             hir::MacroKind::Derive => {
-                format!("derive.{}.html", mac.name(db).display(db.upcast()))
+                format!("derive.{}.html", mac.name(db).unescaped().display(db.upcast()))
             }
         },
         Definition::Field(field) => {
@@ -639,7 +657,7 @@ fn filename_and_frag_for_def(
             return Some((
                 def,
                 file,
-                Some(format!("structfield.{}", field.name(db).display(db.upcast()))),
+                Some(format!("structfield.{}", field.name(db).unescaped().display(db.upcast()))),
             ));
         }
         Definition::SelfType(impl_) => {
@@ -649,7 +667,7 @@ fn filename_and_frag_for_def(
             return Some((adt, file, Some(String::from("impl"))));
         }
         Definition::ExternCrateDecl(it) => {
-            format!("{}/index.html", it.name(db).display(db.upcast()))
+            format!("{}/index.html", it.name(db).unescaped().display(db.upcast()))
         }
         Definition::Local(_)
         | Definition::GenericParam(_)
@@ -658,7 +676,9 @@ fn filename_and_frag_for_def(
         | Definition::BuiltinAttr(_)
         | Definition::BuiltinLifetime(_)
         | Definition::ToolModule(_)
-        | Definition::DeriveHelper(_) => return None,
+        | Definition::DeriveHelper(_)
+        | Definition::InlineAsmRegOrRegClass(_)
+        | Definition::InlineAsmOperand(_) => return None,
     };
 
     Some((def, res, None))
@@ -679,14 +699,16 @@ fn get_assoc_item_fragment(db: &dyn HirDatabase, assoc_item: hir::AssocItem) -> 
             // Rustdoc makes this decision based on whether a method 'has defaultness'.
             // Currently this is only the case for provided trait methods.
             if is_trait_method && !function.has_body(db) {
-                format!("tymethod.{}", function.name(db).display(db.upcast()))
+                format!("tymethod.{}", function.name(db).unescaped().display(db.upcast()))
             } else {
-                format!("method.{}", function.name(db).display(db.upcast()))
+                format!("method.{}", function.name(db).unescaped().display(db.upcast()))
             }
         }
         AssocItem::Const(constant) => {
-            format!("associatedconstant.{}", constant.name(db)?.display(db.upcast()))
+            format!("associatedconstant.{}", constant.name(db)?.unescaped().display(db.upcast()))
         }
-        AssocItem::TypeAlias(ty) => format!("associatedtype.{}", ty.name(db).display(db.upcast())),
+        AssocItem::TypeAlias(ty) => {
+            format!("associatedtype.{}", ty.name(db).unescaped().display(db.upcast()))
+        }
     })
 }

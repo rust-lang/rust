@@ -18,7 +18,7 @@ impl IndexRange {
     /// # Safety
     /// - `start <= end`
     #[inline]
-    pub const unsafe fn new_unchecked(start: usize, end: usize) -> Self {
+    pub(crate) const unsafe fn new_unchecked(start: usize, end: usize) -> Self {
         ub_checks::assert_unsafe_precondition!(
             check_library_ub,
             "IndexRange::new_unchecked requires `start <= end`",
@@ -28,24 +28,25 @@ impl IndexRange {
     }
 
     #[inline]
-    pub const fn zero_to(end: usize) -> Self {
+    pub(crate) const fn zero_to(end: usize) -> Self {
         IndexRange { start: 0, end }
     }
 
     #[inline]
-    pub const fn start(&self) -> usize {
+    pub(crate) const fn start(&self) -> usize {
         self.start
     }
 
     #[inline]
-    pub const fn end(&self) -> usize {
+    pub(crate) const fn end(&self) -> usize {
         self.end
     }
 
     #[inline]
-    pub const fn len(&self) -> usize {
+    pub(crate) const fn len(&self) -> usize {
         // SAFETY: By invariant, this cannot wrap
-        unsafe { self.end.unchecked_sub(self.start) }
+        // Using the intrinsic because a UB check here impedes LLVM optimization. (#131563)
+        unsafe { crate::intrinsics::unchecked_sub(self.end, self.start) }
     }
 
     /// # Safety
@@ -78,11 +79,12 @@ impl IndexRange {
     ///
     /// This is designed to help implement `Iterator::advance_by`.
     #[inline]
-    pub fn take_prefix(&mut self, n: usize) -> Self {
+    pub(crate) fn take_prefix(&mut self, n: usize) -> Self {
         let mid = if n <= self.len() {
             // SAFETY: We just checked that this will be between start and end,
             // and thus the addition cannot overflow.
-            unsafe { self.start.unchecked_add(n) }
+            // Using the intrinsic avoids a superfluous UB check.
+            unsafe { crate::intrinsics::unchecked_add(self.start, n) }
         } else {
             self.end
         };
@@ -97,11 +99,12 @@ impl IndexRange {
     ///
     /// This is designed to help implement `Iterator::advance_back_by`.
     #[inline]
-    pub fn take_suffix(&mut self, n: usize) -> Self {
+    pub(crate) fn take_suffix(&mut self, n: usize) -> Self {
         let mid = if n <= self.len() {
             // SAFETY: We just checked that this will be between start and end,
-            // and thus the addition cannot overflow.
-            unsafe { self.end.unchecked_sub(n) }
+            // and thus the subtraction cannot overflow.
+            // Using the intrinsic avoids a superfluous UB check.
+            unsafe { crate::intrinsics::unchecked_sub(self.end, n) }
         } else {
             self.start
         };

@@ -13,5 +13,5 @@ max_line_length = 100
 [*.md]
 indent_size = 2
 
-[*.{yml, yaml}]
+[*.{yml,yaml}]
 indent_size = 2

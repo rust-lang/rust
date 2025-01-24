@@ -2,10 +2,11 @@
 name = "test-fixture"
 version = "0.0.0"
 rust-version.workspace = true
+description = "Test fixtures for rust-analyzer."
+
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
-publish = false
 
 [dependencies]
 hir-expand.workspace = true

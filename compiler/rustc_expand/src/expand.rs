@@ -8,10 +8,10 @@ use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::visit::{self, try_visit, walk_list, AssocCtxt, Visitor, VisitorResult};
+use rustc_ast::visit::{self, AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
     AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, ExprKind, ForeignItemKind,
-    HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemKind, ModKind, NestedMetaItem,
+    HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner, MetaItemKind, ModKind,
     NodeId, PatKind, StmtKind, TyKind,
 };
 use rustc_ast_pretty::pprust;
@@ -21,15 +21,15 @@ use rustc_errors::PResult;
 use rustc_feature::Features;
 use rustc_parse::parser::{
     AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser, RecoverColon, RecoverComma,
+    token_descr,
 };
 use rustc_parse::validate_attr;
-use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::lint::BuiltinLintDiag;
+use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::parse::feature_err;
 use rustc_session::{Limit, Session};
 use rustc_span::hygiene::SyntaxContext;
-use rustc_span::symbol::{sym, Ident};
-use rustc_span::{ErrorGuaranteed, FileName, LocalExpnId, Span};
+use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, sym};
 use smallvec::SmallVec;
 
 use crate::base::*;
@@ -39,9 +39,12 @@ use crate::errors::{
     RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported, UnsupportedKeyValue,
     WrongFragmentKind,
 };
+use crate::fluent_generated;
 use crate::mbe::diagnostics::annotate_err_with_kind;
-use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
-use crate::placeholders::{placeholder, PlaceholderExpander};
+use crate::module::{
+    DirOwnership, ParsedExternalMod, mod_dir_path, mod_file_path_from_attr, parse_external_mod,
+};
+use crate::placeholders::{PlaceholderExpander, placeholder};
 
 macro_rules! ast_fragments {
     (
@@ -719,7 +722,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     item_inner.kind,
                                     ItemKind::Mod(
                                         _,
-                                        ModKind::Unloaded | ModKind::Loaded(_, Inline::No, _),
+                                        ModKind::Unloaded | ModKind::Loaded(_, Inline::No, _, _),
                                     )
                                 ) =>
                         {
@@ -728,7 +731,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         _ => item.to_tokens(),
                     };
                     let attr_item = attr.unwrap_normal_item();
-                    if let AttrArgs::Eq(..) = attr_item.args {
+                    if let AttrArgs::Eq { .. } = attr_item.args {
                         self.cx.dcx().emit_err(UnsupportedKeyValue { span });
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
@@ -864,7 +867,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             | Annotatable::FieldDef(..)
             | Annotatable::Variant(..) => panic!("unexpected annotatable"),
         };
-        if self.cx.ecfg.features.proc_macro_hygiene {
+        if self.cx.ecfg.features.proc_macro_hygiene() {
             return;
         }
         feature_err(
@@ -882,17 +885,16 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
 
         impl<'ast, 'a> Visitor<'ast> for GateProcMacroInput<'a> {
-            #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
             fn visit_item(&mut self, item: &'ast ast::Item) {
                 match &item.kind {
                     ItemKind::Mod(_, mod_kind)
-                        if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _)) =>
+                        if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _, _)) =>
                     {
                         feature_err(
                             self.sess,
                             sym::proc_macro_hygiene,
                             item.span,
-                            "non-inline modules in proc macro input are unstable",
+                            fluent_generated::expand_non_inline_modules_in_proc_macro_input_are_unstable,
                         )
                         .emit();
                     }
@@ -903,7 +905,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
         }
 
-        if !self.cx.ecfg.features.proc_macro_hygiene {
+        if !self.cx.ecfg.features.proc_macro_hygiene() {
             annotatable.visit_with(&mut GateProcMacroInput { sess: &self.cx.sess });
         }
     }
@@ -987,7 +989,7 @@ pub fn parse_ast_fragment<'a>(
             }
         }
         AstFragmentKind::Ty => AstFragment::Ty(this.parse_ty()?),
-        AstFragmentKind::Pat => AstFragment::Pat(this.parse_pat_allow_top_alt(
+        AstFragmentKind::Pat => AstFragment::Pat(this.parse_pat_allow_top_guard(
             None,
             RecoverComma::No,
             RecoverColon::Yes,
@@ -1011,7 +1013,7 @@ pub(crate) fn ensure_complete_parse<'a>(
     span: Span,
 ) {
     if parser.token != token::Eof {
-        let token = pprust::token_to_string(&parser.token);
+        let descr = token_descr(&parser.token);
         // Avoid emitting backtrace info twice.
         let def_site_span = parser.token.span.with_ctxt(SyntaxContext::root());
 
@@ -1027,11 +1029,11 @@ pub(crate) fn ensure_complete_parse<'a>(
 
         parser.dcx().emit_err(IncompleteParse {
             span: def_site_span,
-            token,
+            descr,
             label_span: span,
             macro_path,
             kind_name,
-            expands_to_match_arm: expands_to_match_arm.then_some(()),
+            expands_to_match_arm,
             add_semicolon,
         });
     }
@@ -1192,7 +1194,7 @@ impl InvocationCollectorNode for P<ast::Item> {
 
         let ecx = &mut collector.cx;
         let (file_path, dir_path, dir_ownership) = match mod_kind {
-            ModKind::Loaded(_, inline, _) => {
+            ModKind::Loaded(_, inline, _, _) => {
                 // Inline `mod foo { ... }`, but we still need to push directories.
                 let (dir_path, dir_ownership) = mod_dir_path(
                     ecx.sess,
@@ -1202,21 +1204,33 @@ impl InvocationCollectorNode for P<ast::Item> {
                     ecx.current_expansion.dir_ownership,
                     *inline,
                 );
+                // If the module was parsed from an external file, recover its path.
+                // This lets `parse_external_mod` catch cycles if it's self-referential.
+                let file_path = match inline {
+                    Inline::Yes => None,
+                    Inline::No => mod_file_path_from_attr(ecx.sess, &attrs, &dir_path),
+                };
                 node.attrs = attrs;
-                (None, dir_path, dir_ownership)
+                (file_path, dir_path, dir_ownership)
             }
             ModKind::Unloaded => {
                 // We have an outline `mod foo;` so we need to parse the file.
                 let old_attrs_len = attrs.len();
-                let ParsedExternalMod { items, spans, file_path, dir_path, dir_ownership } =
-                    parse_external_mod(
-                        ecx.sess,
-                        ident,
-                        span,
-                        &ecx.current_expansion.module,
-                        ecx.current_expansion.dir_ownership,
-                        &mut attrs,
-                    );
+                let ParsedExternalMod {
+                    items,
+                    spans,
+                    file_path,
+                    dir_path,
+                    dir_ownership,
+                    had_parse_error,
+                } = parse_external_mod(
+                    ecx.sess,
+                    ident,
+                    span,
+                    &ecx.current_expansion.module,
+                    ecx.current_expansion.dir_ownership,
+                    &mut attrs,
+                );
 
                 if let Some(lint_store) = ecx.lint_store {
                     lint_store.pre_expansion_lint(
@@ -1230,7 +1244,7 @@ impl InvocationCollectorNode for P<ast::Item> {
                     );
                 }
 
-                *mod_kind = ModKind::Loaded(items, Inline::No, spans);
+                *mod_kind = ModKind::Loaded(items, Inline::No, spans, had_parse_error);
                 node.attrs = attrs;
                 if node.attrs.len() > old_attrs_len {
                     // If we loaded an out-of-line module and added some inner attributes,
@@ -1294,7 +1308,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, TraitItemTag>
         fragment.make_trait_items()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_item(visitor, self.wrapped)
+        walk_flat_map_assoc_item(visitor, self.wrapped, AssocCtxt::Trait)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
@@ -1335,7 +1349,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, ImplItemTag> 
         fragment.make_impl_items()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_item(visitor, self.wrapped)
+        walk_flat_map_assoc_item(visitor, self.wrapped, AssocCtxt::Impl)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
@@ -1373,7 +1387,7 @@ impl InvocationCollectorNode for P<ast::ForeignItem> {
         fragment.make_foreign_items()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_item(visitor, self)
+        walk_flat_map_foreign_item(visitor, self)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ForeignItemKind::MacCall(..))
@@ -1855,8 +1869,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         .iter()
                         .filter(|a| a.has_name(sym::derive))
                         .flat_map(|a| a.meta_item_list().unwrap_or_default())
-                        .filter_map(|nested_meta| match nested_meta {
-                            NestedMetaItem::MetaItem(ast::MetaItem {
+                        .filter_map(|meta_item_inner| match meta_item_inner {
+                            MetaItemInner::MetaItem(ast::MetaItem {
                                 kind: MetaItemKind::Word,
                                 path,
                                 ..
@@ -1876,14 +1890,13 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     // Detect use of feature-gated or invalid attributes on macro invocations
     // since they will not be detected after macro expansion.
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn check_attributes(&self, attrs: &[ast::Attribute], call: &ast::MacCall) {
         let features = self.cx.ecfg.features;
         let mut attrs = attrs.iter().peekable();
         let mut span: Option<Span> = None;
         while let Some(attr) = attrs.next() {
             rustc_ast_passes::feature_gate::check_attribute(attr, self.cx.sess, features);
-            validate_attr::check_attr(features, &self.cx.sess.psess, attr);
+            validate_attr::check_attr(&self.cx.sess.psess, attr);
 
             let current_span = if let Some(sp) = span { sp.to(attr.span) } else { attr.span };
             span = Some(current_span);
@@ -1899,7 +1912,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     self.cx.current_expansion.lint_node_id,
                     BuiltinLintDiag::UnusedDocComment(attr.span),
                 );
-            } else if rustc_attr::is_builtin_attr(attr) {
+            } else if rustc_attr_parsing::is_builtin_attr(attr) {
                 let attr_name = attr.ident().unwrap().name;
                 // `#[cfg]` and `#[cfg_attr]` are special - they are
                 // eagerly evaluated.

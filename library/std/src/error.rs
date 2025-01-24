@@ -7,7 +7,7 @@ mod tests;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::error::Error;
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
-pub use core::error::{request_ref, request_value, Request};
+pub use core::error::{Request, request_ref, request_value};
 
 use crate::backtrace::Backtrace;
 use crate::fmt::{self, Write};

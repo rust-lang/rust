@@ -224,13 +224,14 @@ pub macro assert_matches {
 ///     }
 /// }
 /// ```
+#[cfg(bootstrap)]
 #[unstable(feature = "cfg_match", issue = "115585")]
 #[rustc_diagnostic_item = "cfg_match"]
 pub macro cfg_match {
     // with a final wildcard
     (
-        $(cfg($initial_meta:meta) => { $($initial_tokens:item)* })+
-        _ => { $($extra_tokens:item)* }
+        $(cfg($initial_meta:meta) => { $($initial_tokens:tt)* })+
+        _ => { $($extra_tokens:tt)* }
     ) => {
         cfg_match! {
             @__items ();
@@ -241,7 +242,7 @@ pub macro cfg_match {
 
     // without a final wildcard
     (
-        $(cfg($extra_meta:meta) => { $($extra_tokens:item)* })*
+        $(cfg($extra_meta:meta) => { $($extra_tokens:tt)* })*
     ) => {
         cfg_match! {
             @__items ();
@@ -256,7 +257,7 @@ pub macro cfg_match {
     (@__items ($($_:meta,)*);) => {},
     (
         @__items ($($no:meta,)*);
-        (($($yes:meta)?) ($($tokens:item)*)),
+        (($($yes:meta)?) ($($tokens:tt)*)),
         $($rest:tt,)*
     ) => {
         // Emit all items within one block, applying an appropriate #[cfg]. The
@@ -279,9 +280,60 @@ pub macro cfg_match {
 
     // Internal macro to make __apply work out right for different match types,
     // because of how macros match/expand stuff.
-    (@__identity $($tokens:item)*) => {
+    (@__identity $($tokens:tt)*) => {
         $($tokens)*
     }
+}
+
+/// A macro for defining `#[cfg]` match-like statements.
+///
+/// It is similar to the `if/elif` C preprocessor macro by allowing definition of a cascade of
+/// `#[cfg]` cases, emitting the implementation which matches first.
+///
+/// This allows you to conveniently provide a long list `#[cfg]`'d blocks of code
+/// without having to rewrite each clause multiple times.
+///
+/// Trailing `_` wildcard match arms are **optional** and they indicate a fallback branch when
+/// all previous declarations do not evaluate to true.
+///
+/// # Example
+///
+/// ```
+/// #![feature(cfg_match)]
+///
+/// cfg_match! {
+///     unix => {
+///         fn foo() { /* unix specific functionality */ }
+///     }
+///     target_pointer_width = "32" => {
+///         fn foo() { /* non-unix, 32-bit functionality */ }
+///     }
+///     _ => {
+///         fn foo() { /* fallback implementation */ }
+///     }
+/// }
+/// ```
+#[cfg(not(bootstrap))]
+#[unstable(feature = "cfg_match", issue = "115585")]
+#[rustc_diagnostic_item = "cfg_match"]
+pub macro cfg_match {
+    ({ $($tt:tt)* }) => {{
+        cfg_match! { $($tt)* }
+    }},
+    (_ => { $($output:tt)* }) => {
+        $($output)*
+    },
+    (
+        $cfg:meta => $output:tt
+        $($( $rest:tt )+)?
+    ) => {
+        #[cfg($cfg)]
+        cfg_match! { _ => $output }
+        $(
+            #[cfg(not($cfg))]
+            cfg_match! { $($rest)+ }
+        )?
+    },
 }
 
 /// Asserts that a boolean expression is `true` at runtime.
@@ -1072,7 +1124,7 @@ pub(crate) mod builtin {
     /// If the environment variable is not defined, then a compilation error
     /// will be emitted. To not emit a compile error, use the [`option_env!`]
     /// macro instead. A compilation error will also be emitted if the
-    /// environment variable is not a vaild Unicode string.
+    /// environment variable is not a valid Unicode string.
     ///
     /// # Examples
     ///
@@ -1107,17 +1159,19 @@ pub(crate) mod builtin {
     ///
     /// If the named environment variable is present at compile time, this will
     /// expand into an expression of type `Option<&'static str>` whose value is
-    /// `Some` of the value of the environment variable. If the environment
-    /// variable is not present, then this will expand to `None`. See
-    /// [`Option<T>`][Option] for more information on this type.  Use
-    /// [`std::env::var`] instead if you want to read the value at runtime.
+    /// `Some` of the value of the environment variable (a compilation error
+    /// will be emitted if the environment variable is not a valid Unicode
+    /// string). If the environment variable is not present, then this will
+    /// expand to `None`. See [`Option<T>`][Option] for more information on this
+    /// type.  Use [`std::env::var`] instead if you want to read the value at
+    /// runtime.
     ///
     /// [`std::env::var`]: ../std/env/fn.var.html
     ///
-    /// A compile time error is never emitted when using this macro regardless
-    /// of whether the environment variable is present or not.
-    /// To emit a compile error if the environment variable is not present,
-    /// use the [`env!`] macro instead.
+    /// A compile time error is only emitted when using this macro if the
+    /// environment variable exists and is not a valid Unicode string. To also
+    /// emit a compile error if the environment variable is not present, use the
+    /// [`env!`] macro instead.
     ///
     /// # Examples
     ///
@@ -1537,6 +1591,23 @@ pub(crate) mod builtin {
     #[rustc_diagnostic_item = "include_macro"] // useful for external lints
     macro_rules! include {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
+    }
+
+    /// Automatic Differentiation macro which allows generating a new function to compute
+    /// the derivative of a given function. It may only be applied to a function.
+    /// The expected usage syntax is
+    /// `#[autodiff(NAME, MODE, INPUT_ACTIVITIES, OUTPUT_ACTIVITY)]`
+    /// where:
+    /// NAME is a string that represents a valid function name.
+    /// MODE is any of Forward, Reverse, ForwardFirst, ReverseFirst.
+    /// INPUT_ACTIVITIES consists of one valid activity for each input parameter.
+    /// OUTPUT_ACTIVITY must not be set if we implicitly return nothing (or explicitly return
+    /// `-> ()`). Otherwise it must be set to one of the allowed activities.
+    #[unstable(feature = "autodiff", issue = "124509")]
+    #[allow_internal_unstable(rustc_attrs)]
+    #[rustc_builtin_macro]
+    pub macro autodiff($item:item) {
+        /* compiler built-in */
     }
 
     /// Asserts that a boolean expression is `true` at runtime.

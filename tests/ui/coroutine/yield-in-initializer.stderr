@@ -4,10 +4,7 @@ warning: unused coroutine that must be used
 LL |       #[coroutine] static || {
    |  __________________^
 LL | |         loop {
-LL | |             // Test that `opt` is not live across the yield, even when borrowed in a loop
-LL | |             // See https://github.com/rust-lang/rust/issues/52792
 ...  |
-LL | |         }
 LL | |     };
    | |_____^
    |

@@ -10,7 +10,9 @@
 fn main() {
     // CHECK-LABEL: fn main(
     // CHECK: asm!(
-    // CHECK-SAME: unwind terminate(abi)
+    // CHECK-SAME: unwind: [[unwind:bb.*]]]
+    // CHECK: [[unwind]] (cleanup)
+    // CHECK-NEXT: terminate(abi)
     unsafe {
         std::arch::asm!("", options(may_unwind));
     }

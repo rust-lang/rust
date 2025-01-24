@@ -1,4 +1,4 @@
-use rustc_span::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 
 use crate::html::format::href_relative_parts;
 

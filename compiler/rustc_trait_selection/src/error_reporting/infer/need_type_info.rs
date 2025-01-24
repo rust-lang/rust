@@ -6,7 +6,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Diag, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, LetStmt, LocalSource};
 use rustc_middle::bug;
@@ -17,9 +17,10 @@ use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, GenericArgsRef, InferConst, IsSuggestable, Ty, TyCtxt,
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeckResults,
 };
-use rustc_span::symbol::{sym, Ident};
-use rustc_span::{BytePos, Span, DUMMY_SP};
+use rustc_span::{BytePos, DUMMY_SP, FileName, Ident, Span, sym};
+use tracing::{debug, instrument, warn};
 
+use super::nice_region_error::placeholder_error::Highlighted;
 use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{
     AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError,
@@ -44,12 +45,12 @@ pub enum TypeAnnotationNeeded {
     E0284,
 }
 
-impl Into<ErrCode> for TypeAnnotationNeeded {
-    fn into(self) -> ErrCode {
-        match self {
-            Self::E0282 => E0282,
-            Self::E0283 => E0283,
-            Self::E0284 => E0284,
+impl From<TypeAnnotationNeeded> for ErrCode {
+    fn from(val: TypeAnnotationNeeded) -> Self {
+        match val {
+            TypeAnnotationNeeded::E0282 => E0282,
+            TypeAnnotationNeeded::E0283 => E0283,
+            TypeAnnotationNeeded::E0284 => E0284,
         }
     }
 }
@@ -278,8 +279,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn extract_inference_diagnostics_data(
         &self,
         arg: GenericArg<'tcx>,
-        highlight: Option<ty::print::RegionHighlightMode<'tcx>>,
+        highlight: ty::print::RegionHighlightMode<'tcx>,
     ) -> InferenceDiagnosticsData {
+        let tcx = self.tcx;
         match arg.unpack() {
             GenericArgKind::Type(ty) => {
                 if let ty::Infer(ty::TyVar(ty_vid)) = *ty.kind() {
@@ -299,13 +301,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }
 
-                let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS);
-                if let Some(highlight) = highlight {
-                    printer.region_highlight_mode = highlight;
-                }
-                ty.print(&mut printer).unwrap();
                 InferenceDiagnosticsData {
-                    name: printer.into_buffer(),
+                    name: Highlighted { highlight, ns: Namespace::TypeNS, tcx, value: ty }
+                        .to_string(),
                     span: None,
                     kind: UnderspecifiedArgKind::Type { prefix: ty.prefix_string(self.tcx) },
                     parent: None,
@@ -324,13 +322,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
 
                     debug_assert!(!origin.span.is_dummy());
-                    let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::ValueNS);
-                    if let Some(highlight) = highlight {
-                        printer.region_highlight_mode = highlight;
-                    }
-                    ct.print(&mut printer).unwrap();
                     InferenceDiagnosticsData {
-                        name: printer.into_buffer(),
+                        name: Highlighted { highlight, ns: Namespace::ValueNS, tcx, value: ct }
+                            .to_string(),
                         span: Some(origin.span),
                         kind: UnderspecifiedArgKind::Const { is_parameter: false },
                         parent: None,
@@ -342,13 +336,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // FIXME: Ideally we should look into the generic constant
                     // to figure out which inference var is actually unresolved so that
                     // this path is unreachable.
-                    let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::ValueNS);
-                    if let Some(highlight) = highlight {
-                        printer.region_highlight_mode = highlight;
-                    }
-                    ct.print(&mut printer).unwrap();
                     InferenceDiagnosticsData {
-                        name: printer.into_buffer(),
+                        name: Highlighted { highlight, ns: Namespace::ValueNS, tcx, value: ct }
+                            .to_string(),
                         span: None,
                         kind: UnderspecifiedArgKind::Const { is_parameter: false },
                         parent: None,
@@ -382,8 +372,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-                was_written: None,
+                was_written: false,
                 path: Default::default(),
+                time_version: false,
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
                 span,
@@ -393,7 +384,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-                was_written: None,
+                was_written: false,
                 path: Default::default(),
             }),
             TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
@@ -404,7 +395,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-                was_written: None,
+                was_written: false,
                 path: Default::default(),
             }),
         }
@@ -420,7 +411,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         should_label_span: bool,
     ) -> Diag<'a> {
         let arg = self.resolve_vars_if_possible(arg);
-        let arg_data = self.extract_inference_diagnostics_data(arg, None);
+        let arg_data =
+            self.extract_inference_diagnostics_data(arg, ty::print::RegionHighlightMode::default());
 
         let Some(typeck_results) = &self.typeck_results else {
             // If we don't have any typeck results we're outside
@@ -549,10 +541,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         ] => "",
                         [
                             ..,
-                            Adjustment {
-                                kind: Adjust::Borrow(AutoBorrow::Ref(_, mut_)),
-                                target: _,
-                            },
+                            Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(mut_)), target: _ },
                         ] => hir::Mutability::from(*mut_).ref_prefix_str(),
                         _ => "",
                     };
@@ -577,6 +566,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
         }
+
+        let time_version =
+            self.detect_old_time_crate_version(failure_span, &kind, &mut infer_subdiags);
+
         match error_code {
             TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
                 span,
@@ -586,8 +579,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-                was_written: path.as_ref().map(|_| ()),
+                was_written: path.is_some(),
                 path: path.unwrap_or_default(),
+                time_version,
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
                 span,
@@ -597,7 +591,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-                was_written: path.as_ref().map(|_| ()),
+                was_written: path.is_some(),
                 path: path.unwrap_or_default(),
             }),
             TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
@@ -608,10 +602,46 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-                was_written: path.as_ref().map(|_| ()),
+                was_written: path.is_some(),
                 path: path.unwrap_or_default(),
             }),
         }
+    }
+
+    /// Detect the inference regression on crate `time` <= 0.3.35 and emit a more targeted error.
+    /// <https://github.com/rust-lang/rust/issues/127343>
+    // FIXME: we should figure out a more generic version of doing this, ideally in cargo itself.
+    fn detect_old_time_crate_version(
+        &self,
+        span: Option<Span>,
+        kind: &InferSourceKind<'_>,
+        // We will clear the non-actionable suggestion from the error to reduce noise.
+        infer_subdiags: &mut Vec<SourceKindSubdiag<'_>>,
+    ) -> bool {
+        // FIXME(#129461): We are time-boxing this code in the compiler. It'll start failing
+        // compilation once we promote 1.89 to beta, which will happen in 9 months from now.
+        #[cfg(not(version("1.89")))]
+        const fn version_check() {}
+        #[cfg(version("1.89"))]
+        const fn version_check() {
+            panic!("remove this check as presumably the ecosystem has moved from needing it");
+        }
+        const { version_check() };
+        // Only relevant when building the `time` crate.
+        if self.infcx.tcx.crate_name(LOCAL_CRATE) == sym::time
+            && let Some(span) = span
+            && let InferSourceKind::LetBinding { pattern_name, .. } = kind
+            && let Some(name) = pattern_name
+            && name.as_str() == "items"
+            && let FileName::Real(file) = self.infcx.tcx.sess.source_map().span_to_filename(span)
+        {
+            let path = file.local_path_if_available().to_string_lossy();
+            if path.contains("format_description") && path.contains("parse") {
+                infer_subdiags.clear();
+                return true;
+            }
+        }
+        false
     }
 }
 
@@ -1253,6 +1283,9 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             && let Some(def_id) = self.typeck_results.type_dependent_def_id(expr.hir_id)
             && self.tecx.tcx.trait_of_item(def_id).is_some()
             && !has_impl_trait(def_id)
+            // FIXME(fn_delegation): In delegation item argument spans are equal to last path
+            // segment. This leads to ICE's when emitting `multipart_suggestion`.
+            && tcx.hir().opt_delegation_sig_id(expr.hir_id.owner.def_id).is_none()
         {
             let successor =
                 method_args.get(0).map_or_else(|| (")", span.hi()), |arg| (", ", arg.span.lo()));

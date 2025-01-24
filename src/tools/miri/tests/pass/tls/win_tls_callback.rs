@@ -1,5 +1,5 @@
 //! Ensure that we call Windows TLS callbacks in the local crate.
-//@only-target-windows
+//@only-target: windows
 // Calling eprintln in the callback seems to (re-)initialize some thread-local storage
 // and then leak the memory allocated for that. Let's just ignore these leaks,
 // that's not what this test is about.

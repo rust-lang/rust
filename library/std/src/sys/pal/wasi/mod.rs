@@ -14,8 +14,6 @@
 //! compiling for wasm. That way it's a compile time error for something that's
 //! guaranteed to be a runtime error!
 
-#[path = "../unix/alloc.rs"]
-pub mod alloc;
 pub mod args;
 pub mod env;
 pub mod fd;
@@ -49,4 +47,4 @@ mod helpers;
 // then the compiler complains about conflicts.
 
 use helpers::err2io;
-pub use helpers::{abort_internal, decode_error_kind, hashmap_random_keys, is_interrupted};
+pub use helpers::{abort_internal, decode_error_kind, is_interrupted};

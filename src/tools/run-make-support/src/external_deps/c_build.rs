@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::artifact_names::{dynamic_lib_name, static_lib_name};
-use crate::external_deps::cc::{cc, cxx};
+use crate::external_deps::c_cxx_compiler::{cc, cxx};
 use crate::external_deps::llvm::llvm_ar;
 use crate::path_helpers::path;
 use crate::targets::{is_darwin, is_msvc, is_windows};

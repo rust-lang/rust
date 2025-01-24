@@ -2,7 +2,7 @@
 
 #![unstable(feature = "thread_local_internals", issue = "none")]
 
-#[cfg(all(test, not(target_os = "emscripten")))]
+#[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
 mod tests;
 
 #[cfg(test)]
@@ -12,7 +12,7 @@ use crate::cell::{Cell, RefCell};
 use crate::error::Error;
 use crate::fmt;
 
-/// A thread local storage key which owns its contents.
+/// A thread local storage (TLS) key which owns its contents.
 ///
 /// This key uses the fastest possible implementation available to it for the
 /// target platform. It is instantiated with the [`thread_local!`] macro and the
@@ -230,6 +230,14 @@ impl fmt::Display for AccessError {
 #[stable(feature = "thread_local_try_with", since = "1.26.0")]
 impl Error for AccessError {}
 
+// This ensures the panicking code is outlined from `with` for `LocalKey`.
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[track_caller]
+#[cold]
+fn panic_access_error(err: AccessError) -> ! {
+    panic!("cannot access a Thread Local Storage value during or after destruction: {err:?}")
+}
+
 impl<T: 'static> LocalKey<T> {
     #[doc(hidden)]
     #[unstable(
@@ -237,7 +245,6 @@ impl<T: 'static> LocalKey<T> {
         reason = "recently added to create a key",
         issue = "none"
     )]
-    #[rustc_const_unstable(feature = "thread_local_internals", issue = "none")]
     pub const unsafe fn new(inner: fn(Option<&mut Option<T>>) -> *const T) -> LocalKey<T> {
         LocalKey { inner }
     }
@@ -252,15 +259,28 @@ impl<T: 'static> LocalKey<T> {
     /// This function will `panic!()` if the key currently has its
     /// destructor running, and it **may** panic if the destructor has
     /// previously been run for this thread.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// thread_local! {
+    ///     pub static STATIC: String = String::from("I am");
+    /// }
+    ///
+    /// assert_eq!(
+    ///     STATIC.with(|original_value| format!("{original_value} initialized")),
+    ///     "I am initialized",
+    /// );
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with<F, R>(&'static self, f: F) -> R
     where
         F: FnOnce(&T) -> R,
     {
-        self.try_with(f).expect(
-            "cannot access a Thread Local Storage value \
-             during or after destruction",
-        )
+        match self.try_with(f) {
+            Ok(r) => r,
+            Err(err) => panic_access_error(err),
+        }
     }
 
     /// Acquires a reference to the value in this TLS key.
@@ -273,6 +293,19 @@ impl<T: 'static> LocalKey<T> {
     ///
     /// This function will still `panic!()` if the key is uninitialized and the
     /// key's initializer panics.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// thread_local! {
+    ///     pub static STATIC: String = String::from("I am");
+    /// }
+    ///
+    /// assert_eq!(
+    ///     STATIC.try_with(|original_value| format!("{original_value} initialized")),
+    ///     Ok(String::from("I am initialized")),
+    /// );
+    /// ```
     #[stable(feature = "thread_local_try_with", since = "1.26.0")]
     #[inline]
     pub fn try_with<F, R>(&'static self, f: F) -> Result<R, AccessError>
@@ -302,10 +335,10 @@ impl<T: 'static> LocalKey<T> {
         let mut init = Some(init);
 
         let reference = unsafe {
-            (self.inner)(Some(&mut init)).as_ref().expect(
-                "cannot access a Thread Local Storage value \
-                 during or after destruction",
-            )
+            match (self.inner)(Some(&mut init)).as_ref() {
+                Some(r) => r,
+                None => panic_access_error(AccessError),
+            }
         };
 
         f(init, reference)
@@ -452,7 +485,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     /// Panics if the key currently has its destructor running,
     /// and it **may** panic if the destructor has previously been run for this thread.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::cell::RefCell;
@@ -483,7 +516,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     /// Panics if the key currently has its destructor running,
     /// and it **may** panic if the destructor has previously been run for this thread.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::cell::RefCell;

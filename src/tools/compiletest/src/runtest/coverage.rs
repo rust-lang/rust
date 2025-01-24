@@ -18,7 +18,7 @@ impl<'test> TestCx<'test> {
             .unwrap_or_else(|| self.fatal("missing --coverage-dump"))
     }
 
-    pub(crate) fn run_coverage_map_test(&self) {
+    pub(super) fn run_coverage_map_test(&self) {
         let coverage_dump_path = self.coverage_dump_path();
 
         let (proc_res, llvm_ir_path) = self.compile_test_and_save_ir();
@@ -39,18 +39,22 @@ impl<'test> TestCx<'test> {
         let expected_coverage_dump = self.load_expected_output(kind);
         let actual_coverage_dump = self.normalize_output(&proc_res.stdout, &[]);
 
-        let coverage_dump_errors =
-            self.compare_output(kind, &actual_coverage_dump, &expected_coverage_dump);
+        let coverage_dump_compare_outcome = self.compare_output(
+            kind,
+            &actual_coverage_dump,
+            &proc_res.stdout,
+            &expected_coverage_dump,
+        );
 
-        if coverage_dump_errors > 0 {
+        if coverage_dump_compare_outcome.should_error() {
             self.fatal_proc_rec(
-                &format!("{coverage_dump_errors} errors occurred comparing coverage output."),
+                &format!("an error occurred comparing coverage output."),
                 &proc_res,
             );
         }
     }
 
-    pub(crate) fn run_coverage_run_test(&self) {
+    pub(super) fn run_coverage_run_test(&self) {
         let should_run = self.run_if_enabled();
         let proc_res = self.compile_test(should_run, Emit::None);
 
@@ -135,12 +139,16 @@ impl<'test> TestCx<'test> {
                 self.fatal_proc_rec(&err, &proc_res);
             });
 
-        let coverage_errors =
-            self.compare_output(kind, &normalized_actual_coverage, &expected_coverage);
+        let coverage_dump_compare_outcome = self.compare_output(
+            kind,
+            &normalized_actual_coverage,
+            &proc_res.stdout,
+            &expected_coverage,
+        );
 
-        if coverage_errors > 0 {
+        if coverage_dump_compare_outcome.should_error() {
             self.fatal_proc_rec(
-                &format!("{} errors occurred comparing coverage output.", coverage_errors),
+                &format!("an error occurred comparing coverage output."),
                 &proc_res,
             );
         }

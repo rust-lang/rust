@@ -1,7 +1,6 @@
-//@ ignore-windows-gnu: pretty-printers are not loaded
+//@ ignore-windows-gnu: #128981
 //@ compile-flags:-g
 
-//@ min-gdb-version: 8.1
 //@ min-cdb-version: 10.0.18317.1001
 
 // === GDB TESTS ==================================================================================

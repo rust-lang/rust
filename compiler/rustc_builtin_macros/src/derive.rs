@@ -1,13 +1,12 @@
 use rustc_ast as ast;
-use rustc_ast::{GenericParamKind, ItemKind, MetaItemKind, NestedMetaItem, StmtKind};
+use rustc_ast::{GenericParamKind, ItemKind, MetaItemInner, MetaItemKind, StmtKind};
 use rustc_expand::base::{
     Annotatable, DeriveResolution, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier,
 };
 use rustc_feature::AttributeTemplate;
 use rustc_parse::validate_attr;
 use rustc_session::Session;
-use rustc_span::symbol::{sym, Ident};
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Ident, Span, sym};
 
 use crate::cfg_eval::cfg_eval;
 use crate::errors;
@@ -40,7 +39,6 @@ impl MultiItemModifier for Expander {
                     ..Default::default()
                 };
                 validate_attr::check_builtin_meta_item(
-                    features,
                     &sess.psess,
                     meta_item,
                     ast::AttrStyle::Outer,
@@ -52,9 +50,9 @@ impl MultiItemModifier for Expander {
                 let mut resolutions = match &meta_item.kind {
                     MetaItemKind::List(list) => {
                         list.iter()
-                            .filter_map(|nested_meta| match nested_meta {
-                                NestedMetaItem::MetaItem(meta) => Some(meta),
-                                NestedMetaItem::Lit(lit) => {
+                            .filter_map(|meta_item_inner| match meta_item_inner {
+                                MetaItemInner::MetaItem(meta) => Some(meta),
+                                MetaItemInner::Lit(lit) => {
                                     // Reject `#[derive("Debug")]`.
                                     report_unexpected_meta_item_lit(sess, lit);
                                     None

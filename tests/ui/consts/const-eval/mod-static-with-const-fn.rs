@@ -1,8 +1,6 @@
 // New test for #53818: modifying static memory at compile-time is not allowed.
 // The test should never compile successfully
 
-#![feature(const_mut_refs)]
-
 use std::cell::UnsafeCell;
 
 struct Foo(UnsafeCell<u32>);

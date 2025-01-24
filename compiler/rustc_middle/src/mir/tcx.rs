@@ -5,6 +5,7 @@
 
 use rustc_hir as hir;
 use tracing::{debug, instrument};
+use ty::CoroutineArgsExt;
 
 use crate::mir::*;
 
@@ -25,29 +26,63 @@ impl<'tcx> PlaceTy<'tcx> {
         PlaceTy { ty, variant_index: None }
     }
 
-    /// `place_ty.field_ty(tcx, f)` computes the type at a given field
-    /// of a record or enum-variant. (Most clients of `PlaceTy` can
-    /// instead just extract the relevant type directly from their
-    /// `PlaceElem`, but some instances of `ProjectionElem<V, T>` do
-    /// not carry a `Ty` for `T`.)
+    /// `place_ty.field_ty(tcx, f)` computes the type of a given field.
+    ///
+    /// Most clients of `PlaceTy` can instead just extract the relevant type
+    /// directly from their `PlaceElem`, but some instances of `ProjectionElem<V, T>`
+    /// do not carry a `Ty` for `T`.
     ///
     /// Note that the resulting type has not been normalized.
     #[instrument(level = "debug", skip(tcx), ret)]
     pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: FieldIdx) -> Ty<'tcx> {
-        match self.ty.kind() {
-            ty::Adt(adt_def, args) => {
-                let variant_def = match self.variant_index {
-                    None => adt_def.non_enum_variant(),
-                    Some(variant_index) => {
-                        assert!(adt_def.is_enum());
-                        adt_def.variant(variant_index)
-                    }
-                };
-                let field_def = &variant_def.fields[f];
-                field_def.ty(tcx, args)
+        if let Some(variant_index) = self.variant_index {
+            match *self.ty.kind() {
+                ty::Adt(adt_def, args) if adt_def.is_enum() => {
+                    adt_def.variant(variant_index).fields[f].ty(tcx, args)
+                }
+                ty::Coroutine(def_id, args) => {
+                    let mut variants = args.as_coroutine().state_tys(def_id, tcx);
+                    let Some(mut variant) = variants.nth(variant_index.into()) else {
+                        bug!("variant {variant_index:?} of coroutine out of range: {self:?}");
+                    };
+
+                    variant
+                        .nth(f.index())
+                        .unwrap_or_else(|| bug!("field {f:?} out of range: {self:?}"))
+                }
+                _ => bug!("can't downcast non-adt non-coroutine type: {self:?}"),
             }
-            ty::Tuple(tys) => tys[f.index()],
-            _ => bug!("extracting field of non-tuple non-adt: {:?}", self),
+        } else {
+            match self.ty.kind() {
+                ty::Adt(adt_def, args) if !adt_def.is_enum() => {
+                    adt_def.non_enum_variant().fields[f].ty(tcx, args)
+                }
+                ty::Closure(_, args) => args
+                    .as_closure()
+                    .upvar_tys()
+                    .get(f.index())
+                    .copied()
+                    .unwrap_or_else(|| bug!("field {f:?} out of range: {self:?}")),
+                ty::CoroutineClosure(_, args) => args
+                    .as_coroutine_closure()
+                    .upvar_tys()
+                    .get(f.index())
+                    .copied()
+                    .unwrap_or_else(|| bug!("field {f:?} out of range: {self:?}")),
+                // Only prefix fields (upvars and current state) are
+                // accessible without a variant index.
+                ty::Coroutine(_, args) => args
+                    .as_coroutine()
+                    .prefix_tys()
+                    .get(f.index())
+                    .copied()
+                    .unwrap_or_else(|| bug!("field {f:?} out of range: {self:?}")),
+                ty::Tuple(tys) => tys
+                    .get(f.index())
+                    .copied()
+                    .unwrap_or_else(|| bug!("field {f:?} out of range: {self:?}")),
+                _ => bug!("can't project out of {self:?}"),
+            }
         }
     }
 
@@ -55,7 +90,7 @@ impl<'tcx> PlaceTy<'tcx> {
     /// `PlaceElem`, where we can just use the `Ty` that is already
     /// stored inline on field projection elems.
     pub fn projection_ty(self, tcx: TyCtxt<'tcx>, elem: PlaceElem<'tcx>) -> PlaceTy<'tcx> {
-        self.projection_ty_core(tcx, ty::ParamEnv::empty(), &elem, |_, _, ty| ty, |_, ty| ty)
+        self.projection_ty_core(tcx, &elem, |_, _, ty| ty, |_, ty| ty)
     }
 
     /// `place_ty.projection_ty_core(tcx, elem, |...| { ... })`
@@ -66,7 +101,6 @@ impl<'tcx> PlaceTy<'tcx> {
     pub fn projection_ty_core<V, T>(
         self,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
         elem: &ProjectionElem<V, T>,
         mut handle_field: impl FnMut(&Self, FieldIdx, T) -> Ty<'tcx>,
         mut handle_opaque_cast_and_subtype: impl FnMut(&Self, T) -> Ty<'tcx>,
@@ -93,7 +127,9 @@ impl<'tcx> PlaceTy<'tcx> {
                     ty::Slice(..) => self.ty,
                     ty::Array(inner, _) if !from_end => Ty::new_array(tcx, *inner, to - from),
                     ty::Array(inner, size) if from_end => {
-                        let size = size.eval_target_usize(tcx, param_env);
+                        let size = size
+                            .try_to_target_usize(tcx)
+                            .expect("expected subslice projection on fixed-size array");
                         let len = size - from - to;
                         Ty::new_array(tcx, *inner, len)
                     }
@@ -170,7 +206,7 @@ impl<'tcx> Rvalue<'tcx> {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ref(tcx, reg, place_ty, bk.to_mutbl_lossy())
             }
-            Rvalue::AddressOf(mutability, ref place) => {
+            Rvalue::RawPtr(mutability, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ptr(tcx, place_ty, mutability)
             }

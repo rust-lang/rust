@@ -1,4 +1,3 @@
-//@ min-llvm-version: 17.0.2
 //@ compile-flags: -Copt-level=3
 #![crate_type = "lib"]
 

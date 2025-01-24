@@ -9,11 +9,11 @@
       }
   
       bb1: {
-          switchInt(_1) -> [0: bb1, otherwise: bb2];
+          switchInt(copy _1) -> [0: bb1, otherwise: bb2];
       }
   
       bb2: {
-          switchInt(_1) -> [0: bb1, otherwise: bb2];
+          switchInt(copy _1) -> [0: bb1, otherwise: bb2];
       }
   }
   

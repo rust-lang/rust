@@ -24,10 +24,12 @@ mod single_match;
 mod try_err;
 mod wild_in_or_pats;
 
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::walk_span_to_context;
-use clippy_utils::{higher, in_constant, is_direct_expn_of, is_span_match, span_contains_cfg};
+use clippy_utils::{
+    higher, is_direct_expn_of, is_in_const_context, is_span_match, span_contains_cfg, span_extract_comments,
+};
 use rustc_hir::{Arm, Expr, ExprKind, LetStmt, MatchSource, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -581,11 +583,6 @@ declare_clippy_lint! {
     /// are the same on purpose, you can factor them
     /// [using `|`](https://doc.rust-lang.org/book/patterns.html#multiple-patterns).
     ///
-    /// ### Known problems
-    /// False positive possible with order dependent `match`
-    /// (see issue
-    /// [#860](https://github.com/rust-lang/rust-clippy/issues/860)).
-    ///
     /// ### Example
     /// ```rust,ignore
     /// match foo {
@@ -1045,7 +1042,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             if !from_expansion {
                 // These don't depend on a relationship between multiple arms
                 match_wild_err_arm::check(cx, ex, arms);
-                wild_in_or_pats::check(cx, arms);
+                wild_in_or_pats::check(cx, ex, arms);
             }
 
             if let MatchSource::TryDesugar(_) = source {
@@ -1059,7 +1056,28 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     }
 
                     redundant_pattern_match::check_match(cx, expr, ex, arms);
-                    single_match::check(cx, ex, arms, expr);
+                    let source_map = cx.tcx.sess.source_map();
+                    let mut match_comments = span_extract_comments(source_map, expr.span);
+                    // We remove comments from inside arms block.
+                    if !match_comments.is_empty() {
+                        for arm in arms {
+                            for comment in span_extract_comments(source_map, arm.body.span) {
+                                if let Some(index) = match_comments
+                                    .iter()
+                                    .enumerate()
+                                    .find(|(_, cm)| **cm == comment)
+                                    .map(|(index, _)| index)
+                                {
+                                    match_comments.remove(index);
+                                }
+                            }
+                        }
+                    }
+                    // If there are still comments, it means they are outside of the arms, therefore
+                    // we should not lint.
+                    if match_comments.is_empty() {
+                        single_match::check(cx, ex, arms, expr);
+                    }
                     match_bool::check(cx, ex, arms, expr);
                     overlapping_arms::check(cx, ex, arms);
                     match_wild_enum::check(cx, ex, arms);
@@ -1069,7 +1087,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     match_str_case_mismatch::check(cx, ex, arms);
                     redundant_guards::check(cx, arms, &self.msrv);
 
-                    if !in_constant(cx, expr.hir_id) {
+                    if !is_in_const_context(cx) {
                         manual_unwrap_or::check_match(cx, expr, ex, arms);
                         manual_map::check_match(cx, expr, ex, arms);
                         manual_filter::check_match(cx, ex, arms, expr);
@@ -1098,7 +1116,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                             else_expr,
                         );
                     }
-                    if !in_constant(cx, expr.hir_id) {
+                    if !is_in_const_context(cx) {
                         manual_unwrap_or::check_if_let(
                             cx,
                             expr,

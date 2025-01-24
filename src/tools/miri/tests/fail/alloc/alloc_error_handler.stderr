@@ -13,7 +13,7 @@ LL |     ABORT();
    = note: inside `std::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `std::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
 note: inside `main`
-  --> $DIR/alloc_error_handler.rs:LL:CC
+  --> tests/fail/alloc/alloc_error_handler.rs:LL:CC
    |
 LL |     handle_alloc_error(Layout::for_value(&0));
    | ^

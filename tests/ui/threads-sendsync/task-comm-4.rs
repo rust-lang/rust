@@ -3,7 +3,9 @@
 
 use std::sync::mpsc::channel;
 
-pub fn main() { test00(); }
+pub fn main() {
+    test00();
+}
 
 fn test00() {
     let mut r: isize = 0;

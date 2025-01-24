@@ -1,4 +1,4 @@
-use std::future::{join, Future};
+use std::future::{Future, join};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll, Wake};

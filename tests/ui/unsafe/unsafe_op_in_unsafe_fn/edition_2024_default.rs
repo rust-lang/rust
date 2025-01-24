@@ -1,5 +1,4 @@
 //@ edition: 2024
-//@ compile-flags: -Zunstable-options
 //@ check-pass
 
 // Tests that `unsafe_op_in_unsafe_fn` is warn-by-default in edition 2024 and that the

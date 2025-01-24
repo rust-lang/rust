@@ -2,7 +2,7 @@
 
 // Show how precise captures allow us to skip capturing a higher-ranked lifetime
 
-#![feature(lifetime_capture_rules_2024, precise_capturing)]
+#![feature(lifetime_capture_rules_2024)]
 
 trait Trait<'a> {
     type Item;

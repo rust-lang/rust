@@ -1,9 +1,9 @@
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Block, BlockCheckMode, Closure, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_trait_method;
@@ -133,7 +133,7 @@ struct RetCollector {
     loop_depth: u16,
 }
 
-impl<'tcx> Visitor<'tcx> for RetCollector {
+impl Visitor<'_> for RetCollector {
     fn visit_expr(&mut self, expr: &Expr<'_>) {
         match expr.kind {
             ExprKind::Ret(..) => {

@@ -2,7 +2,7 @@
 
 fn numbered(_1: (u32, i32)) -> () {
     debug first => (_1.0: u32);
-    debug second => (_1.0: u32);
+    debug second => (_1.1: i32);
     let mut _0: ();
 
     bb0: {

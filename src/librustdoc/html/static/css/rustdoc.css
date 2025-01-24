@@ -34,6 +34,10 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 </g></svg>');
 	--button-left-margin: 4px;
 	--button-border-radius: 2px;
+	--toolbar-button-border-radius: 6px;
+	--code-block-border-radius: 6px;
+	--impl-items-indent: 0.3em;
+	--docblock-indent: 24px;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -42,7 +46,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-style: normal;
 	font-weight: 400;
 	src: local('Fira Sans'),
-		url("FiraSans-Regular-018c141bf0843ffd.woff2") format("woff2");
+		url("FiraSans-Regular-0fe48ade.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -50,7 +54,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-style: normal;
 	font-weight: 500;
 	src: local('Fira Sans Medium'),
-		url("FiraSans-Medium-8f9a781e4970d388.woff2") format("woff2");
+		url("FiraSans-Medium-e1aa3f0a.woff2") format("woff2");
 	font-display: swap;
 }
 
@@ -60,7 +64,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-style: normal;
 	font-weight: 400;
 	src: local('Source Serif 4'),
-		url("SourceSerif4-Regular-46f98efaafac5295.ttf.woff2") format("woff2");
+		url("SourceSerif4-Regular-6b053e98.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -68,7 +72,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-style: italic;
 	font-weight: 400;
 	src: local('Source Serif 4 Italic'),
-		url("SourceSerif4-It-acdfaf1a8af734b1.ttf.woff2") format("woff2");
+		url("SourceSerif4-It-ca3b17ed.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -76,7 +80,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-style: normal;
 	font-weight: 700;
 	src: local('Source Serif 4 Bold'),
-		url("SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2") format("woff2");
+		url("SourceSerif4-Bold-6d4fd4c0.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 
@@ -87,28 +91,28 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-weight: 400;
 	/* Avoid using locally installed font because bad versions are in circulation:
 	 * see https://github.com/rust-lang/rust/issues/24355 */
-	src: url("SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2") format("woff2");
+	src: url("SourceCodePro-Regular-8badfe75.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: italic;
 	font-weight: 400;
-	src: url("SourceCodePro-It-1cc31594bf4f1f79.ttf.woff2") format("woff2");
+	src: url("SourceCodePro-It-fc8b9304.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 600;
-	src: url("SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2") format("woff2");
+	src: url("SourceCodePro-Semibold-aa29a496.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 
 /* Avoid using legacy CJK serif fonts in Windows like Batang. */
 @font-face {
 	font-family: 'NanumBarunGothic';
-	src: url("NanumBarunGothic-0f09457c7a19b7c6.ttf.woff2") format("woff2");
+	src: url("NanumBarunGothic-13b3dcba.ttf.woff2") format("woff2");
 	font-display: swap;
 	unicode-range: U+AC00-D7AF, U+1100-11FF, U+3130-318F, U+A960-A97F, U+D7B0-D7FF;
 }
@@ -165,7 +169,7 @@ h1, h2, h3, h4 {
 .main-heading h1 {
 	margin: 0;
 	padding: 0;
-	flex-grow: 1;
+	grid-area: main-heading-h1;
 	/* We use overflow-wrap: break-word for Safari, which doesn't recognize
 	   `anywhere`: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-wrap */
 	overflow-wrap: break-word;
@@ -174,10 +178,29 @@ h1, h2, h3, h4 {
 	overflow-wrap: anywhere;
 }
 .main-heading {
-	display: flex;
-	flex-wrap: wrap;
+	position: relative;
+	display: grid;
+	grid-template-areas:
+		"main-heading-breadcrumbs main-heading-breadcrumbs"
+		"main-heading-h1 main-heading-toolbar"
+		"main-heading-sub-heading main-heading-toolbar";
+	grid-template-columns: minmax(105px, 1fr) minmax(0, max-content);
+	grid-template-rows: minmax(25px, min-content) min-content min-content;
 	padding-bottom: 6px;
 	margin-bottom: 15px;
+}
+.rustdoc-breadcrumbs {
+	grid-area: main-heading-breadcrumbs;
+	line-height: 1.25;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: end;
+	padding-top: 5px;
+}
+.rustdoc-breadcrumbs a {
+	padding: 4px 0;
+	margin: -4px 0;
+	z-index: 1;
 }
 /* The only headings that get underlines are:
 	 Markdown-generated headings within the top-doc
@@ -209,6 +232,9 @@ h4.code-header {
 	padding: 0;
 	white-space: pre-wrap;
 }
+.structfield, .sub-variant-field {
+	margin: 0.6em 0;
+}
 
 #crate-search,
 h1, h2, h3, h4, h5, h6,
@@ -216,13 +242,15 @@ h1, h2, h3, h4, h5, h6,
 .mobile-topbar,
 .search-input,
 .search-results .result-name,
-.item-name > a,
+.item-table dt > a,
 .out-of-band,
+.sub-heading,
 span.since,
 a.src,
-#help-button > a,
+rustdoc-toolbar,
 summary.hideme,
 .scraped-example-list,
+.rustdoc-breadcrumbs,
 /* This selector is for the items listed in the "all items" page. */
 ul.all-items {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
@@ -238,6 +266,7 @@ a.anchor,
 .mobile-topbar h2 a,
 h1 a,
 .search-results a,
+.search-results li,
 .stab,
 .result-name i {
 	color: var(--main-color);
@@ -353,14 +382,14 @@ details:not(.toggle) summary {
 	margin-bottom: .6em;
 }
 
-code, pre, a.test-arrow, .code-header {
+code, pre, .code-header, .type-signature {
 	font-family: "Source Code Pro", monospace;
 }
-.docblock code, .docblock-short code {
+.docblock code, .item-table dd code {
 	border-radius: 3px;
 	padding: 0 0.125em;
 }
-.docblock pre code, .docblock-short pre code {
+.docblock pre code, .item-table dd pre code {
 	padding: 0;
 }
 pre {
@@ -378,7 +407,7 @@ pre.item-decl {
 .src .content pre {
 	padding: 20px;
 }
-.rustdoc.src .example-wrap pre.src-line-numbers  {
+.rustdoc.src .example-wrap .src-line-numbers  {
 	padding: 20px 0 20px 4px;
 }
 
@@ -568,10 +597,14 @@ img {
 	width: 48px;
 }
 
-ul.block, .block li {
+ul.block, .block li, .block ul {
 	padding: 0;
 	margin: 0;
 	list-style: none;
+}
+
+.block ul a {
+	padding-left: 1rem;
 }
 
 .sidebar-elems a,
@@ -583,6 +616,14 @@ ul.block, .block li {
 	border-left: solid var(--sidebar-elems-left-padding) transparent;
 	margin-left: calc(-0.25rem - var(--sidebar-elems-left-padding));
 	background-clip: border-box;
+}
+
+.hide-toc #rustdoc-toc, .hide-toc .in-crate {
+	display: none;
+}
+
+.hide-modnav #rustdoc-modnav {
+	display: none;
 }
 
 .sidebar h2 {
@@ -745,8 +786,30 @@ ul.block, .block li {
 	margin-bottom: 10px;
 }
 
-.rustdoc .example-wrap > pre {
+.rustdoc .example-wrap > pre,
+.rustdoc .scraped-example .src-line-numbers,
+.rustdoc .scraped-example .src-line-numbers > pre {
 	border-radius: 6px;
+}
+
+/*
+If the code example line numbers are displayed, there will be a weird radius in the middle from
+both the code example and the line numbers, so we need to remove the radius in this case.
+*/
+.rustdoc .example-wrap > .example-line-numbers,
+.rustdoc .scraped-example .src-line-numbers,
+.rustdoc .scraped-example .src-line-numbers > pre {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+}
+.rustdoc .example-wrap > .example-line-numbers + pre,
+.rustdoc .scraped-example .rust {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
+.rustdoc .scraped-example {
+	position: relative;
 }
 
 /* For the last child of a div, the margin will be taken care of
@@ -760,23 +823,51 @@ ul.block, .block li {
 	flex-grow: 1;
 }
 
-.rustdoc:not(.src) .example-wrap pre {
+.scraped-example:not(.expanded) .example-wrap {
+	/* scrape-examples.js has a constant DEFAULT_MAX_LINES (call it N) for the number
+	 * of lines shown in the un-expanded example code viewer. This pre needs to have
+	 * a max-height equal to line-height * N. The line-height is currently 1.5em,
+	 * and we include additional 10px for padding. */
+	max-height: calc(1.5em * 5 + 10px);
+}
+.more-scraped-examples .scraped-example:not(.expanded) .example-wrap {
+	max-height: calc(1.5em * 10 + 10px);
+}
+
+.rustdoc:not(.src) .scraped-example:not(.expanded) .src-line-numbers,
+.rustdoc:not(.src) .scraped-example:not(.expanded) .src-line-numbers > pre,
+.rustdoc:not(.src) .scraped-example:not(.expanded) pre.rust {
+	padding-bottom: 0;
+	/* See above comment, should be the same max-height. */
 	overflow: auto hidden;
+}
+.rustdoc:not(.src) .scraped-example .src-line-numbers {
+	padding-top: 0;
+}
+.rustdoc:not(.src) .scraped-example.expanded .src-line-numbers {
+	padding-bottom: 0;
+}
+
+.rustdoc:not(.src) .example-wrap pre {
+	overflow: auto;
 }
 
 .rustdoc .example-wrap pre.example-line-numbers,
-.rustdoc .example-wrap pre.src-line-numbers {
-	flex-grow: 0;
+.rustdoc .example-wrap .src-line-numbers {
 	min-width: fit-content; /* prevent collapsing into nothing in truncated scraped examples */
-	overflow: initial;
+	flex-grow: 0;
 	text-align: right;
 	-webkit-user-select: none;
 	user-select: none;
 	padding: 14px 8px;
+	padding-right: 2px;
 	color: var(--src-line-numbers-span-color);
 }
 
-.rustdoc .example-wrap pre.src-line-numbers {
+.rustdoc .scraped-example .example-wrap .src-line-numbers {
+	padding: 0;
+}
+.rustdoc .src-line-numbers pre {
 	padding: 14px 0;
 }
 .src-line-numbers a, .src-line-numbers span {
@@ -796,13 +887,13 @@ ul.block, .block li {
 	text-align: center;
 }
 
-.docblock-short {
+.item-table dd {
 	overflow-wrap: break-word;
 	overflow-wrap: anywhere;
 }
 /* Wrap non-pre code blocks (`text`) but not (```text```). */
 .docblock :not(pre) > code,
-.docblock-short code {
+.item-table dd code {
 	white-space: pre-wrap;
 }
 
@@ -820,7 +911,7 @@ ul.block, .block li {
 .docblock h6 { font-size: 0.875rem; }
 
 .docblock {
-	margin-left: 24px;
+	margin-left: var(--docblock-indent);
 	position: relative;
 }
 
@@ -829,14 +920,30 @@ ul.block, .block li {
 	overflow-x: auto;
 }
 
-.out-of-band {
+.sub-heading {
+	font-size: 1rem;
 	flex-grow: 0;
-	font-size: 1.125rem;
+	grid-area: main-heading-sub-heading;
+	line-height: 1.25;
+	padding-bottom: 4px;
 }
 
-.docblock code, .docblock-short code,
-pre, .rustdoc.src .example-wrap {
+.main-heading rustdoc-toolbar, .main-heading .out-of-band {
+	grid-area: main-heading-toolbar;
+}
+rustdoc-toolbar {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	min-height: 60px;
+}
+
+.docblock code, .item-table dd code,
+pre, .rustdoc.src .example-wrap, .example-wrap .src-line-numbers {
 	background-color: var(--code-block-background-color);
+	border-radius: var(--code-block-border-radius);
+	/* code blocks within links (such as in most intra-doc links) should be underlined */
+	text-decoration: inherit;
 }
 
 #main-content {
@@ -857,8 +964,18 @@ pre, .rustdoc.src .example-wrap {
 	background: var(--table-alt-row-background-color);
 }
 
-.docblock .stab, .docblock-short .stab {
+.docblock .stab, .item-table dd .stab, .docblock p code {
 	display: inline-block;
+}
+
+.docblock li {
+	margin-bottom: .4em;
+}
+.docblock li p:not(:last-child) {
+	/* This margin is voluntarily smaller than `.docblock li` to keep the visual
+	   list element items separated while also having a visual separation (although
+	   smaller) for paragraphs. */
+	margin-bottom: .3em;
 }
 
 /* "where ..." clauses with block display are also smaller */
@@ -869,7 +986,11 @@ div.where {
 
 .item-info {
 	display: block;
-	margin-left: 24px;
+	margin-left: var(--docblock-indent);
+}
+.impl-items > .item-info {
+	/* Margin of docblocks + margin of impl block items. */
+	margin-left: calc(var(--docblock-indent) + var(--impl-items-indent));
 }
 
 .item-info code {
@@ -883,7 +1004,7 @@ div.where {
 nav.sub {
 	flex-grow: 1;
 	flex-flow: row nowrap;
-	margin: 4px 0 25px 0;
+	margin: 4px 0 0 0;
 	display: flex;
 	align-items: center;
 }
@@ -892,9 +1013,10 @@ nav.sub {
 	display: flex;
 	height: 34px;
 	flex-grow: 1;
+	margin-bottom: 4px;
 }
 .src nav.sub {
-	margin: 0 0 15px 0;
+	margin: 0 0 -10px 0;
 }
 
 .section-header {
@@ -946,8 +1068,8 @@ because of the `[-]` element which would overlap with it. */
 .main-heading a:hover,
 .example-wrap .rust a:hover,
 .all-items a:hover,
-.docblock a:not(.test-arrow):not(.scrape-help):not(.tooltip):hover:not(.doc-anchor),
-.docblock-short a:not(.test-arrow):not(.scrape-help):not(.tooltip):hover,
+.docblock a:not(.scrape-help):not(.tooltip):hover:not(.doc-anchor),
+.item-table dd a:not(.scrape-help):not(.tooltip):hover,
 .item-info a {
 	text-decoration: underline;
 }
@@ -980,19 +1102,16 @@ table,
 }
 
 .item-table {
-	display: table;
 	padding: 0;
 	margin: 0;
 	width: 100%;
 }
-.item-table > li {
-	display: table-row;
-}
-.item-table > li > div {
-	display: table-cell;
-}
-.item-table > li > .item-name {
+.item-table > dt {
 	padding-right: 1.25rem;
+}
+.item-table > dd {
+	margin-inline-start: 0;
+	margin-left: 0;
 }
 
 .search-results-title {
@@ -1004,15 +1123,20 @@ table,
 	with boxes (i.e. from the flex layout) */
 	align-items: baseline;
 }
+.search-results-title + .sub-heading {
+	color: var(--main-color);
+	display: flex;
+	align-items: baseline;
+	white-space: nowrap;
+}
 #crate-search-div {
 	/* ensures that 100% in properties of #crate-search-div:after
 	are relative to the size of this div */
 	position: relative;
 	/* allows this div (and with it the <select>-element "#crate-search") to be shrunk */
-	min-width: 5em;
+	min-width: 0;
 }
 #crate-search {
-	min-width: 115px;
 	padding: 0 23px 0 4px;
 	/* prevents the <select> from overflowing the containing div in case it's shrunk */
 	max-width: 100%;
@@ -1087,22 +1211,28 @@ so that we can apply CSS-filters to change the arrow color in themes */
 
 .search-results.active {
 	display: block;
+	margin: 0;
+	padding: 0;
 }
 
 .search-results > a {
-	display: flex;
+	display: grid;
+	grid-template-areas:
+		"search-result-name search-result-desc"
+		"search-result-type-signature search-result-type-signature";
+	grid-template-columns: .6fr .4fr;
 	/* A little margin ensures the browser's outlining of focused links has room to display. */
 	margin-left: 2px;
 	margin-right: 2px;
 	border-bottom: 1px solid var(--search-result-border-color);
-	gap: 1em;
+	column-gap: 1em;
 }
 
 .search-results > a > div.desc {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
-	flex: 2;
+	grid-area: search-result-desc;
 }
 
 .search-results a:hover,
@@ -1114,7 +1244,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	display: flex;
 	align-items: center;
 	justify-content: start;
-	flex: 3;
+	grid-area: search-result-name;
 }
 .search-results .result-name .alias {
 	color: var(--search-results-alias-color);
@@ -1134,6 +1264,10 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 .search-results .result-name .path > * {
 	display: inline;
+}
+.search-results .type-signature {
+	grid-area: search-result-type-signature;
+	white-space: pre-wrap;
 }
 
 .popover {
@@ -1227,10 +1361,16 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	border-color: var(--settings-input-color) !important;
 }
 
+#settings.popover {
+	--popover-arrow-offset: 202px;
+	top: calc(100% - 16px);
+}
+
 /* use larger max-width for help popover, but not for help.html */
 #help.popover {
 	max-width: 600px;
-	--popover-arrow-offset: 48px;
+	--popover-arrow-offset: 118px;
+	top: calc(100% - 16px);
 }
 
 #help dt {
@@ -1238,10 +1378,15 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	clear: left;
 	margin-right: 0.5rem;
 }
+#help dd {
+	margin-bottom: 0.5rem;
+}
 #help span.top, #help span.bottom {
 	text-align: center;
 	display: block;
 	font-size: 1.125rem;
+	padding: 0 0.5rem;
+	text-wrap-style: balance;
 }
 #help span.top {
 	margin: 10px 0;
@@ -1253,10 +1398,13 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	clear: both;
 	border-top: 1px solid var(--border-color);
 }
+.side-by-side {
+	display: flex;
+	margin-bottom: 20px;
+}
 .side-by-side > div {
 	width: 50%;
-	float: left;
-	padding: 0 20px 20px 17px;
+	padding: 0 20px 0 17px;
 }
 
 .item-info .stab {
@@ -1264,7 +1412,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	padding: 3px;
 	margin-bottom: 5px;
 }
-.item-name .stab {
+.item-table dt .stab {
 	margin-left: 0.3125em;
 }
 .stab {
@@ -1319,7 +1467,9 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 
 .rightside:not(a),
-.out-of-band {
+.out-of-band,
+.sub-heading,
+rustdoc-toolbar {
 	color: var(--right-side-color);
 }
 
@@ -1461,22 +1611,17 @@ documentation. */
 	z-index: 1;
 }
 a.test-arrow {
-	padding: 5px 7px;
-	border-radius: var(--button-border-radius);
-	font-size: 1rem;
-	color: var(--test-arrow-color);
-	background-color: var(--test-arrow-background-color);
+	height: var(--copy-path-height);
+	padding: 6px 4px 0 11px;
 }
-a.test-arrow:hover {
-	color: var(--test-arrow-hover-color);
-	background-color: var(--test-arrow-hover-background-color);
+a.test-arrow::before {
+	content: url('data:image/svg+xml,<svg viewBox="0 0 20 20" width="18" height="20" \
+		xmlns="http://www.w3.org/2000/svg"><path d="M0 0l18 10-18 10z"/></svg>');
 }
 .example-wrap .button-holder {
 	display: flex;
 }
-.example-wrap:hover > .test-arrow {
-	padding: 2px 7px;
-}
+
 /*
 On iPad, the ":hover" state sticks around, making things work not greatly. Do work around
 it, we move it into this media query. More information can be found at:
@@ -1486,29 +1631,40 @@ However, using `@media (hover: hover)` makes this rule never to be applied in GU
 instead, we check that it's not a "finger" cursor.
 */
 @media not (pointer: coarse) {
-	.example-wrap:hover > .test-arrow, .example-wrap:hover > .button-holder {
+	.example-wrap:hover > a.test-arrow, .example-wrap:hover > .button-holder {
 		visibility: visible;
 	}
 }
 .example-wrap .button-holder.keep-visible {
 	visibility: visible;
 }
-.example-wrap .button-holder .copy-button {
-	color: var(--copy-path-button-color);
+.example-wrap .button-holder > * {
 	background: var(--main-background-color);
-	height: var(--copy-path-height);
-	width: var(--copy-path-width);
-	margin-left: var(--button-left-margin);
-	padding: 2px 0 0 4px;
-	border: 0;
 	cursor: pointer;
 	border-radius: var(--button-border-radius);
+	height: var(--copy-path-height);
+	width: var(--copy-path-width);
+	border: 0;
+	color: var(--code-example-button-color);
+}
+.example-wrap .button-holder > *:hover {
+	color: var(--code-example-button-hover-color);
+}
+.example-wrap .button-holder > *:not(:first-child) {
+	margin-left: var(--button-left-margin);
+}
+.example-wrap .button-holder .copy-button {
+	padding: 2px 0 0 4px;
+}
+.example-wrap .button-holder .copy-button::before,
+.example-wrap .test-arrow::before {
+	filter: var(--copy-path-img-filter);
 }
 .example-wrap .button-holder .copy-button::before {
-	filter: var(--copy-path-img-filter);
 	content: var(--clipboard-image);
 }
-.example-wrap .button-holder .copy-button:hover::before {
+.example-wrap .button-holder .copy-button:hover::before,
+.example-wrap .test-arrow:hover::before {
 	filter: var(--copy-path-img-hover-filter);
 }
 .example-wrap .button-holder .copy-button.clicked::before {
@@ -1527,8 +1683,8 @@ instead, we check that it's not a "finger" cursor.
 	display: block;
 }
 
-.out-of-band > span.since {
-	font-size: 1.25rem;
+.main-heading span.since::before {
+	content: "Since ";
 }
 
 .sub-variant h4 {
@@ -1545,6 +1701,18 @@ instead, we check that it's not a "finger" cursor.
 
 .sub-variant > .sub-variant-field {
 	margin-left: 24px;
+}
+
+@keyframes targetfadein {
+	from {
+		background-color: var(--main-background-color);
+	}
+	10% {
+		background-color: var(--target-border-color);
+	}
+	to {
+		background-color: var(--target-background-color);
+	}
 }
 
 :target {
@@ -1575,12 +1743,18 @@ a.tooltip:hover::after {
 	content: "\00a0";
 }
 
-/* This animation is layered onto the mistake-proofing delay for dismissing
-	a hovered tooltip, to ensure it feels responsive even with the delay.
-	*/
-.fade-out {
-	opacity: 0;
-	transition: opacity 0.45s cubic-bezier(0, 0, 0.1, 1.0);
+@media not (prefers-reduced-motion) {
+	:target {
+		animation: 0.65s cubic-bezier(0, 0, 0.1, 1.0) 0.1s targetfadein;
+	}
+
+	/* This animation is layered onto the mistake-proofing delay for dismissing
+		a hovered tooltip, to ensure it feels responsive even with the delay.
+		*/
+	.fade-out {
+		opacity: 0;
+		transition: opacity 0.45s cubic-bezier(0, 0, 0.1, 1.0);
+	}
 }
 
 .popover.tooltip .content {
@@ -1617,6 +1791,7 @@ a.tooltip:hover::after {
 }
 
 #search-tabs {
+	margin-top: 0.25rem;
 	display: flex;
 	flex-direction: row;
 	gap: 1px;
@@ -1678,9 +1853,11 @@ a.tooltip:hover::after {
 	border-bottom: 1px solid var(--border-color);
 }
 
-#settings-menu, #help-button {
+#settings-menu, #help-button, button#toggle-all-docs {
 	margin-left: var(--button-left-margin);
 	display: flex;
+	line-height: 1.25;
+	min-width: 14px;
 }
 #sidebar-button {
 	display: none;
@@ -1704,33 +1881,39 @@ a.tooltip:hover::after {
 .hide-sidebar .src #sidebar-button {
 	position: static;
 }
-#settings-menu > a, #help-button > a, #sidebar-button > a {
+#settings-menu > a, #help-button > a, #sidebar-button > a, button#toggle-all-docs {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background-color: var(--button-background-color);
-	border: 1px solid var(--border-color);
+	flex-direction: column;
+	border: 1px solid transparent;
 	border-radius: var(--button-border-radius);
-	color: var(--settings-button-color);
-	/* Rare exception to specifying font sizes in rem. Since this is acting
-	   as an icon, it's okay to specify their sizes in pixels. */
-	font-size: 20px;
+	color: var(--main-color);
+}
+#settings-menu > a, #help-button > a, button#toggle-all-docs {
+	width: 80px;
+	border-radius: var(--toolbar-button-border-radius);
+}
+#settings-menu > a, #help-button > a {
+	min-width: 0;
+}
+#sidebar-button > a {
+	background-color: var(--button-background-color);
+	border-color: var(--border-color);
 	width: 33px;
 }
 
-#settings-menu > a:hover, #settings-menu > a:focus,
-#help-button > a:hover, #help-button > a:focus,
-#sidebar-button > a:hover, #sidebar-button > a:focus {
+#settings-menu > a:hover, #settings-menu > a:focus-visible,
+#help-button > a:hover, #help-button > a:focus-visible,
+#sidebar-button > a:hover, #sidebar-button > a:focus-visible,
+button#toggle-all-docs:hover, button#toggle-all-docs:focus-visible {
 	border-color: var(--settings-button-border-focus);
+	text-decoration: none;
 }
 
-#settings-menu > a {
-	line-height: 0;
-	font-size: 0;
-}
 #settings-menu > a:before {
 	/* Wheel <https://www.svgrepo.com/svg/384069/settings-cog-gear> */
-	content: url('data:image/svg+xml,<svg width="22" height="22" viewBox="0 0 12 12" \
+	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
 	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
 	<path d="M10.25,6c0-0.1243286-0.0261841-0.241333-0.0366211-0.362915l1.6077881-1.5545654l\
 	-1.25-2.1650391  c0,0-1.2674561,0.3625488-2.1323853,0.6099854c-0.2034912-0.1431885-0.421875\
@@ -1743,16 +1926,70 @@ a.tooltip:hover::after {
 	-0.3701782l2.1323853,0.6099854l1.25-2.1650391L10.2133789,6.362915  C10.2238159,6.241333,\
 	10.25,6.1243286,10.25,6z M6,7.5C5.1715698,7.5,4.5,6.8284302,4.5,6S5.1715698,4.5,6,4.5S7.5\
 	,5.1715698,7.5,6  S6.8284302,7.5,6,7.5z" fill="black"/></svg>');
-	width: 22px;
-	height: 22px;
+	width: 18px;
+	height: 18px;
 	filter: var(--settings-menu-filter);
+}
+
+button#toggle-all-docs:before {
+	/* Custom arrow icon */
+	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
+	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
+	<path d="M2,2l4,4l4,-4M2,6l4,4l4,-4" stroke="black" fill="none" stroke-width="2px"/></svg>');
+	width: 18px;
+	height: 18px;
+	filter: var(--settings-menu-filter);
+}
+
+#help-button > a:before {
+	/* Question mark with circle */
+	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
+	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg" fill="none">\
+	<circle r="5.25" cx="6" cy="6" stroke-width="1.25" stroke="black"/>\
+	<text x="6" y="7" style="font:8px sans-serif;font-weight:1000" text-anchor="middle" \
+		dominant-baseline="middle" fill="black">?</text></svg>');
+	width: 18px;
+	height: 18px;
+	filter: var(--settings-menu-filter);
+}
+
+button#toggle-all-docs:before,
+#help-button > a:before,
+#settings-menu > a:before {
+	filter: var(--settings-menu-filter);
+	margin: 8px;
+}
+
+@media not (pointer: coarse) {
+	button#toggle-all-docs:hover:before,
+	#help-button > a:hover:before,
+	#settings-menu > a:hover:before {
+		filter: var(--settings-menu-hover-filter);
+	}
+}
+
+button[disabled]#toggle-all-docs {
+	opacity: 0.25;
+	border: solid 1px var(--main-background-color);
+	background-size: cover;
+}
+
+button[disabled]#toggle-all-docs:hover {
+	border: solid 1px var(--main-background-color);
+	cursor: not-allowed;
+}
+
+rustdoc-toolbar span.label {
+	font-size: 1rem;
+	flex-grow: 1;
+	padding-bottom: 4px;
 }
 
 #sidebar-button > a:before {
 	/* sidebar resizer image */
 	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" \
 		fill="none" stroke="black">\
-		<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5"/>\
+		<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5" stroke="%23777"/>\
 		<circle cx="4.375" cy="4.375" r="1" stroke-width=".75"/>\
 		<path d="m7.6121 3v16 M5.375 7.625h-2 m2 3h-2 m2 3h-2" stroke-width="1.25"/></svg>');
 	width: 22px;
@@ -1839,6 +2076,11 @@ details.toggle {
 	position: relative;
 }
 
+details.big-toggle {
+	/* This makes [-] on the same line as <summary>. */
+	contain: inline-size;
+}
+
 /* The hideme class is used on summary tags that contain a span with
 	placeholder text shown only when the toggle is closed. For instance,
 	"Expand description" or "Show methods". */
@@ -1862,10 +2104,10 @@ details.toggle > summary.hideme > span {
 }
 
 details.toggle > summary::before {
-	/* toggle plus */
-	background: url('data:image/svg+xml,<svg width="17" height="17" \
-shape-rendering="crispEdges" stroke="black" fill="none" xmlns="http://www.w3.org/2000/svg"><path \
-d="M5 2.5H2.5v12H5m7-12h2.5v12H12M5 8.5h7M8.5 12V8.625v0V5"/></svg>') no-repeat top left;
+	/* arrow pointing left */
+	background: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 12 12" \
+	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
+	<path d="M4,2l4,4l-4,4" stroke="black" fill="none" stroke-width="1px"/></svg>');
 	content: "";
 	cursor: pointer;
 	width: 16px;
@@ -1929,6 +2171,20 @@ details.toggle > summary:not(.hideme)::before {
 	left: -24px;
 }
 
+/* We indent items of an impl block to have a visual marker that these items are part
+	of this impl block. */
+.impl-items > *:not(.item-info),
+/* We also indent the first top doc comment the same to still keep an indent on the
+	doc block while aligning it with the impl block items. */
+.implementors-toggle > .docblock {
+	margin-left: var(--impl-items-indent);
+}
+
+details.big-toggle > summary:not(.hideme)::before {
+	left: -34px;
+	top: 9px;
+}
+
 /* When a "hideme" summary is open and the "Expand description" or "Show
 	methods" text is hidden, we want the [-] toggle that remains to not
 	affect the layout of the items to its right. To do that, we use
@@ -1943,14 +2199,47 @@ details.toggle[open] > summary.hideme > span {
 }
 
 details.toggle[open] > summary::before {
-	/* toggle minus */
-	background: url('data:image/svg+xml,<svg width="17" height="17" \
-shape-rendering="crispEdges" stroke="black" fill="none" xmlns="http://www.w3.org/2000/svg"><path \
-d="M5 2.5H2.5v12H5m7-12h2.5v12H12M5 8.5h7"/></svg>') no-repeat top left;
+	/* arrow pointing down */
+	background: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 12 12" \
+	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
+	<path d="M2,4l4,4l4,-4" stroke="black" fill="none" stroke-width="1px"/></svg>');
 }
 
 details.toggle[open] > summary::after {
 	content: "Collapse";
+}
+
+details.toggle:not([open]) > summary .docblock {
+	max-height: calc(1.5em + 0.75em);
+	overflow-y: hidden;
+}
+details.toggle:not([open]) > summary .docblock > :first-child {
+	max-width: 100%;
+	overflow: hidden;
+	width: fit-content;
+	white-space: nowrap;
+	position: relative;
+	padding-right: 1em;
+}
+details.toggle:not([open]) > summary .docblock > :first-child::after {
+	content: "…";
+	position: absolute;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	z-index: 1;
+	background-color: var(--main-background-color);
+	font: 1rem/1.5 "Source Serif 4", NanumBarunGothic, serif;
+	/* To make it look a bit better and not have it stuck to the preceding element. */
+	padding-left: 0.2em;
+}
+details.toggle:not([open]) > summary .docblock > div:first-child::after {
+	/* This is to make the "..." always appear at the bottom. */
+	padding-top: calc(1.5em + 0.75em - 1.2rem);
+}
+
+details.toggle > summary .docblock {
+	margin-top: 0.75em;
 }
 
 /* This is needed in docblocks to have the "▶" element to be on the same line. */
@@ -1999,6 +2288,12 @@ However, it's not needed with smaller screen width because the doc/code block is
 	#search-tabs .count {
 		display: block;
 	}
+	.side-by-side {
+		flex-direction: column-reverse;
+	}
+	.side-by-side > div {
+		width: auto;
+	}
 }
 
 /*
@@ -2007,12 +2302,40 @@ If you update this line, then you also need to update the line with the same war
 in src-script.js and main.js
 */
 @media (max-width: 700px) {
+	:root {
+		--impl-items-indent: 0.7em;
+	}
+
 	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
 	   or visiting a URL with a fragment like `#method.new`, we don't want the item to be obscured
 	   by the topbar. Anything with an `id` gets scroll-margin-top equal to .mobile-topbar's size.
 	*/
 	*[id] {
 		scroll-margin-top: 45px;
+	}
+
+	/* We don't display this button on mobile devices. */
+	#copy-path {
+		/* display: none; avoided as a layout hack.
+			When there's one line, we get an effective line-height of 34px,
+			because that's how big the image is, but if the header wraps,
+			they're packed more tightly than that. */
+		width: 0;
+		visibility: hidden;
+	}
+
+	/* Text label takes up too much space at this size. */
+	rustdoc-toolbar span.label {
+		display: none;
+	}
+	#settings-menu > a, #help-button > a, button#toggle-all-docs {
+		width: 33px;
+	}
+	#settings.popover {
+		--popover-arrow-offset: 86px;
+	}
+	#help.popover {
+		--popover-arrow-offset: 48px;
 	}
 
 	.rustdoc {
@@ -2024,20 +2347,6 @@ in src-script.js and main.js
 	main {
 		padding-left: 15px;
 		padding-top: 0px;
-	}
-
-	.main-heading {
-		flex-direction: column;
-	}
-
-	.out-of-band {
-		text-align: left;
-		margin-left: initial;
-		padding: initial;
-	}
-
-	.out-of-band .since::before {
-		content: "Since ";
 	}
 
 	/* Hide the logo and item name from the sidebar. Those are displayed
@@ -2071,6 +2380,9 @@ in src-script.js and main.js
 	}
 	.src .search-form {
 		margin-left: 40px;
+	}
+	.src .main-heading {
+		margin-left: 8px;
 	}
 	.hide-sidebar .search-form {
 		margin-left: 32px;
@@ -2143,16 +2455,11 @@ in src-script.js and main.js
 		left: -11px;
 	}
 
-	/* We don't display these buttons on mobile devices. */
-	#copy-path, #help-button {
-		display: none;
-	}
-
 	/* sidebar button becomes topbar button */
 	#sidebar-button > a:before {
 		content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
 			viewBox="0 0 22 22" fill="none" stroke="black">\
-			<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5"/>\
+			<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5" stroke="%23777"/>\
 			<circle cx="4.375" cy="4.375" r="1" stroke-width=".75"/>\
 			<path d="m3 7.375h16m0-3h-4" stroke-width="1.25"/></svg>');
 		width: 22px;
@@ -2166,7 +2473,6 @@ in src-script.js and main.js
 	}
 
 	/* Display an alternating layout on tablets and phones */
-	.item-table, .item-row, .item-table > li, .item-table > li > div,
 	.search-results > a, .search-results > a > div {
 		display: block;
 	}
@@ -2175,7 +2481,7 @@ in src-script.js and main.js
 	.search-results > a {
 		padding: 5px 0px;
 	}
-	.search-results > a > div.desc, .item-table > li > div.desc {
+	.search-results > a > div.desc, .item-table dd {
 		padding-left: 2em;
 	}
 	.search-results .result-name {
@@ -2198,26 +2504,28 @@ in src-script.js and main.js
 		padding-top: 0;
 	}
 
-	/* Position of the "[-]" element. */
-	details.toggle:not(.top-doc) > summary {
+	details.implementors-toggle:not(.top-doc) > summary  {
 		margin-left: 10px;
 	}
-	.impl-items > details.toggle > summary:not(.hideme)::before,
-	#main-content > details.toggle:not(.top-doc) > summary::before,
-	#main-content > div > details.toggle > summary::before {
-		left: -11px;
+
+	.impl-items > details.toggle > summary:not(.hideme)::before {
+		left: -20px;
 	}
 
 	/* Align summary-nested and unnested item-info gizmos. */
+	summary > .item-info {
+		margin-left: 10px;
+	}
 	.impl-items > .item-info {
-		margin-left: 34px;
+		margin-left: calc(var(--impl-items-indent) + 10px);
 	}
 
 	.src nav.sub {
-		margin: 0;
+		margin: 0 0 -25px 0;
 		padding: var(--nav-sub-mobile-padding);
 	}
 }
+
 
 /* Should have min-width: (N + 1)px where N is the mobile breakpoint above. */
 @media (min-width: 701px) {
@@ -2234,23 +2542,31 @@ in src-script.js and main.js
 		box-shadow: 0 0 4px var(--main-background-color);
 	}
 
-	.item-table > li > .item-name {
-		width: 33%;
+	/* Since the screen is wide enough, we show items on their description on the same line. */
+	.item-table:not(.reexports) {
+		display: grid;
+		grid-template-columns: 33% 67%;
 	}
-	.item-table > li > div {
+	.item-table > dt, .item-table > dd {
 		overflow-wrap: anywhere;
+	}
+	.item-table > dt {
+		grid-column-start: 1;
+	}
+	.item-table > dd {
+		grid-column-start: 2;
 	}
 }
 
 @media print {
+	:root {
+		--docblock-indent: 0;
+	}
+
 	nav.sidebar, nav.sub, .out-of-band, a.src, #copy-path,
 	details.toggle[open] > summary::before, details.toggle > summary::before,
 	details.toggle.top-doc > summary {
 		display: none;
-	}
-
-	.docblock {
-		margin-left: 0;
 	}
 
 	main {
@@ -2259,8 +2575,8 @@ in src-script.js and main.js
 }
 
 @media (max-width: 464px) {
-	.docblock {
-		margin-left: 12px;
+	:root {
+		--docblock-indent: 12px;
 	}
 
 	.docblock code {
@@ -2321,99 +2637,41 @@ in src-script.js and main.js
 	color: var(--scrape-example-help-hover-color);
 }
 
-.scraped-example {
-	/* So .scraped-example-title can be positioned absolutely */
-	position: relative;
-}
-
-.scraped-example .code-wrapper {
-	position: relative;
-	display: flex;
-	flex-direction: row;
-	flex-wrap: wrap;
-	width: 100%;
-}
-
-.scraped-example:not(.expanded) .code-wrapper {
-	/* scrape-examples.js has a constant DEFAULT_MAX_LINES (call it N) for the number
-	 * of lines shown in the un-expanded example code viewer. This pre needs to have
-	 * a max-height equal to line-height * N. The line-height is currently 1.5em,
-	 * and we include additional 10px for padding. */
-	 max-height: calc(1.5em * 5 + 10px);
-}
-
-.scraped-example:not(.expanded) .code-wrapper pre {
-	overflow-y: hidden;
-	padding-bottom: 0;
-	/* See above comment, should be the same max-height. */
-	max-height: calc(1.5em * 5 + 10px);
-}
-
-.more-scraped-examples .scraped-example:not(.expanded) .code-wrapper,
-.more-scraped-examples .scraped-example:not(.expanded) .code-wrapper pre {
-	/* See above comment, except this height is based on HIDDEN_MAX_LINES. */
-	max-height: calc(1.5em * 10 + 10px);
-}
-
-.scraped-example .code-wrapper .next,
-.scraped-example .code-wrapper .prev,
-.scraped-example .code-wrapper .expand {
-	color: var(--main-color);
-	position: absolute;
-	top: 0.25em;
-	z-index: 1;
-	padding: 0;
-	background: none;
-	border: none;
-	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
-	-webkit-appearance: none;
-	opacity: 1;
-}
-.scraped-example .code-wrapper .prev {
-	right: 2.25em;
-}
-.scraped-example .code-wrapper .next {
-	right: 1.25em;
-}
-.scraped-example .code-wrapper .expand {
-	right: 0.25em;
-}
-
-.scraped-example:not(.expanded) .code-wrapper::before,
-.scraped-example:not(.expanded) .code-wrapper::after {
+.scraped-example:not(.expanded) .example-wrap::before,
+.scraped-example:not(.expanded) .example-wrap::after {
 	content: " ";
 	width: 100%;
 	height: 5px;
 	position: absolute;
 	z-index: 1;
 }
-.scraped-example:not(.expanded) .code-wrapper::before {
+.scraped-example:not(.expanded) .example-wrap::before {
 	top: 0;
 	background: linear-gradient(to bottom,
 		var(--scrape-example-code-wrapper-background-start),
 		var(--scrape-example-code-wrapper-background-end));
 }
-.scraped-example:not(.expanded) .code-wrapper::after {
+.scraped-example:not(.expanded) .example-wrap::after {
 	bottom: 0;
 	background: linear-gradient(to top,
 		var(--scrape-example-code-wrapper-background-start),
 		var(--scrape-example-code-wrapper-background-end));
 }
 
-.scraped-example .code-wrapper .example-wrap {
+.scraped-example:not(.expanded) {
 	width: 100%;
 	overflow-y: hidden;
 	margin-bottom: 0;
 }
 
-.scraped-example:not(.expanded) .code-wrapper .example-wrap {
+.scraped-example:not(.expanded) {
 	overflow-x: hidden;
 }
 
-.scraped-example .example-wrap .rust span.highlight {
+.scraped-example .rust span.highlight {
 	background: var(--scrape-example-code-line-highlight);
 }
-.scraped-example .example-wrap .rust span.highlight.focus {
+.scraped-example .rust span.highlight.focus {
 	background: var(--scrape-example-code-line-highlight-focus);
 }
 
@@ -2507,6 +2765,10 @@ by default.
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
 	--copy-path-img-hover-filter: invert(35%);
+	--code-example-button-color: #7f7f7f;
+	--code-example-button-hover-color: #595959;
+	--settings-menu-filter: invert(50%);
+	--settings-menu-hover-filter: invert(35%);
 	--codeblock-error-hover-color: rgb(255, 0, 0);
 	--codeblock-error-color: rgba(255, 0, 0, .5);
 	--codeblock-ignore-hover-color: rgb(255, 142, 0);
@@ -2533,7 +2795,6 @@ by default.
 	--search-tab-button-not-selected-background: #e6e6e6;
 	--search-tab-button-selected-border-top-color: #0089ff;
 	--search-tab-button-selected-background: #fff;
-	--settings-menu-filter: none;
 	--stab-background-color: #fff5d6;
 	--stab-code-color: #000;
 	--code-highlight-kw-color: #8959a8;
@@ -2552,10 +2813,6 @@ by default.
 	--code-highlight-doc-comment-color: #4d4d4c;
 	--src-line-numbers-span-color: #c67e2d;
 	--src-line-number-highlighted-background-color: #fdffd3;
-	--test-arrow-color: #f5f5f5;
-	--test-arrow-background-color: rgba(78, 139, 202, 0.2);
-	--test-arrow-hover-color: #f5f5f5;
-	--test-arrow-hover-background-color: rgb(78, 139, 202);
 	--target-background-color: #fdffd3;
 	--target-border-color: #ad7c37;
 	--kbd-color: #000;
@@ -2613,6 +2870,8 @@ by default.
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
 	--copy-path-img-hover-filter: invert(65%);
+	--code-example-button-color: #7f7f7f;
+	--code-example-button-hover-color: #a5a5a5;
 	--codeblock-error-hover-color: rgb(255, 0, 0);
 	--codeblock-error-color: rgba(255, 0, 0, .5);
 	--codeblock-ignore-hover-color: rgb(255, 142, 0);
@@ -2639,7 +2898,8 @@ by default.
 	--search-tab-button-not-selected-background: #252525;
 	--search-tab-button-selected-border-top-color: #0089ff;
 	--search-tab-button-selected-background: #353535;
-	--settings-menu-filter: none;
+	--settings-menu-filter: invert(50%);
+	--settings-menu-hover-filter: invert(65%);
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 	--code-highlight-kw-color: #ab8ac1;
@@ -2658,10 +2918,6 @@ by default.
 	--code-highlight-doc-comment-color: #8ca375;
 	--src-line-numbers-span-color: #3b91e2;
 	--src-line-number-highlighted-background-color: #0a042f;
-	--test-arrow-color: #dedede;
-	--test-arrow-background-color: rgba(78, 139, 202, 0.2);
-	--test-arrow-hover-color: #dedede;
-	--test-arrow-hover-background-color: #4e8bca;
 	--target-background-color: #494a3d;
 	--target-border-color: #bb7410;
 	--kbd-color: #000;
@@ -2726,6 +2982,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--copy-path-button-color: #fff;
 	--copy-path-img-filter: invert(70%);
 	--copy-path-img-hover-filter: invert(100%);
+	--code-example-button-color: #b2b2b2;
+	--code-example-button-hover-color: #fff;
 	--codeblock-error-hover-color: rgb(255, 0, 0);
 	--codeblock-error-color: rgba(255, 0, 0, .5);
 	--codeblock-ignore-hover-color: rgb(255, 142, 0);
@@ -2752,7 +3010,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--search-tab-button-not-selected-background: transparent !important;
 	--search-tab-button-selected-border-top-color: none;
 	--search-tab-button-selected-background: #141920 !important;
-	--settings-menu-filter: invert(100%);
+	--settings-menu-filter: invert(70%);
+	--settings-menu-hover-filter: invert(100%);
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 	--code-highlight-kw-color: #ff7733;
@@ -2771,10 +3030,6 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--code-highlight-doc-comment-color: #a1ac88;
 	--src-line-numbers-span-color: #5c6773;
 	--src-line-number-highlighted-background-color: rgba(255, 236, 164, 0.06);
-	--test-arrow-color: #788797;
-	--test-arrow-background-color: rgba(57, 175, 215, 0.09);
-	--test-arrow-hover-color: #c5c5c5;
-	--test-arrow-hover-background-color: rgba(57, 175, 215, 0.368);
 	--target-background-color: rgba(255, 236, 164, 0.06);
 	--target-border-color: rgba(255, 180, 76, 0.85);
 	--kbd-color: #c5c5c5;

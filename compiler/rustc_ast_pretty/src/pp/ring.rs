@@ -11,54 +11,54 @@ use std::ops::{Index, IndexMut};
 /// Holding a RingBuffer whose view is elements left..right gives the ability to
 /// use Index and IndexMut to access elements i in the infinitely long queue for
 /// which left <= i < right.
-pub struct RingBuffer<T> {
+pub(super) struct RingBuffer<T> {
     data: VecDeque<T>,
     // Abstract index of data[0] in the infinitely sized queue.
     offset: usize,
 }
 
 impl<T> RingBuffer<T> {
-    pub fn new() -> Self {
+    pub(super) fn new() -> Self {
         RingBuffer { data: VecDeque::new(), offset: 0 }
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub(super) fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
 
-    pub fn push(&mut self, value: T) -> usize {
+    pub(super) fn push(&mut self, value: T) -> usize {
         let index = self.offset + self.data.len();
         self.data.push_back(value);
         index
     }
 
-    pub fn clear(&mut self) {
+    pub(super) fn clear(&mut self) {
         self.data.clear();
     }
 
-    pub fn index_of_first(&self) -> usize {
+    pub(super) fn index_of_first(&self) -> usize {
         self.offset
     }
 
-    pub fn first(&self) -> Option<&T> {
+    pub(super) fn first(&self) -> Option<&T> {
         self.data.front()
     }
 
-    pub fn first_mut(&mut self) -> Option<&mut T> {
+    pub(super) fn first_mut(&mut self) -> Option<&mut T> {
         self.data.front_mut()
     }
 
-    pub fn pop_first(&mut self) -> Option<T> {
+    pub(super) fn pop_first(&mut self) -> Option<T> {
         let first = self.data.pop_front()?;
         self.offset += 1;
         Some(first)
     }
 
-    pub fn last(&self) -> Option<&T> {
+    pub(super) fn last(&self) -> Option<&T> {
         self.data.back()
     }
 
-    pub fn last_mut(&mut self) -> Option<&mut T> {
+    pub(super) fn last_mut(&mut self) -> Option<&mut T> {
         self.data.back_mut()
     }
 }

@@ -64,10 +64,10 @@
   
       bb5: {
 -         StorageLive(_12);
-          _12 = ((_7 as Some).0: i32);
+          _12 = copy ((_7 as Some).0: i32);
 -         StorageLive(_13);
-          _13 = _12;
-          _1 = Add(_1, move _13);
+          _13 = copy _12;
+          _1 = Add(copy _1, move _13);
 -         StorageDead(_13);
           _6 = const ();
 -         StorageDead(_12);

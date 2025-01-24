@@ -4,19 +4,18 @@
 //! but are not declared in one single location (unlike lang features), which means we need to
 //! collect them instead.
 
-use rustc_ast::Attribute;
-use rustc_attr::VERSION_PLACEHOLDER;
+use rustc_attr_parsing::VERSION_PLACEHOLDER;
+use rustc_hir::Attribute;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
-use rustc_span::symbol::Symbol;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, Symbol, sym};
 
 use crate::errors::{FeaturePreviouslyDeclared, FeatureStableTwice};
 
-pub struct LibFeatureCollector<'tcx> {
+struct LibFeatureCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
     lib_features: LibFeatures,
 }
@@ -144,7 +143,7 @@ impl<'tcx> Visitor<'tcx> for LibFeatureCollector<'tcx> {
 fn lib_features(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> LibFeatures {
     // If `staged_api` is not enabled then we aren't allowed to define lib
     // features; there is no point collecting them.
-    if !tcx.features().staged_api {
+    if !tcx.features().staged_api() {
         return LibFeatures::default();
     }
 
@@ -153,6 +152,6 @@ fn lib_features(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> LibFeatures {
     collector.lib_features
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.lib_features = lib_features;
 }

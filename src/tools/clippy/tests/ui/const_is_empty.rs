@@ -171,3 +171,17 @@ fn constant_from_external_crate() {
     let _ = std::env::consts::EXE_EXTENSION.is_empty();
     // Do not lint, `exe_ext` comes from the `std` crate
 }
+
+fn issue_13106() {
+    const {
+        assert!(!NON_EMPTY_STR.is_empty());
+    }
+
+    const {
+        assert!(EMPTY_STR.is_empty());
+    }
+
+    const {
+        EMPTY_STR.is_empty();
+    }
+}

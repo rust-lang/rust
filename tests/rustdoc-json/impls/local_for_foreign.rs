@@ -3,7 +3,7 @@ extern crate foreign_struct;
 
 /// ForeignStruct id hack
 pub use foreign_struct::ForeignStruct as _;
-//@ set ForeignStruct = "$.index[*][?(@.docs=='ForeignStruct id hack')].inner.import.id"
+//@ set ForeignStruct = "$.index[*][?(@.docs=='ForeignStruct id hack')].inner.use.id"
 
 pub trait LocalTrait {}
 //@ set LocalTrait = "$.index[*][?(@.name=='LocalTrait')].id"

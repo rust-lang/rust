@@ -12,7 +12,7 @@ fn f(_1: usize) -> usize {
 
     bb0: {
         nop;
-        _3 = _1;
+        _3 = copy _1;
         _1 = const 5_usize;
         nop;
         nop;

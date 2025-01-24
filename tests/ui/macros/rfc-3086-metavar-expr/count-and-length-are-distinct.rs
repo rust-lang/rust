@@ -6,9 +6,9 @@ fn main() {
     macro_rules! one_nested_count_and_len {
         ( $( [ $( $l:literal ),* ] ),* ) => {
             [
-                // outer-most repetition
+                // outermost repetition
                 $(
-                    // inner-most repetition
+                    // innermost repetition
                     $(
                         ${ignore($l)} ${index()}, ${len()},
                     )*
@@ -23,34 +23,34 @@ fn main() {
         [
             // # ["foo"]
 
-            // ## inner-most repetition (first iteration)
+            // ## innermost repetition (first iteration)
             //
-            // `index` is 0 because this is the first inner-most iteration.
-            // `len` is 1 because there is only one inner-most repetition, "foo".
+            // `index` is 0 because this is the first innermost iteration.
+            // `len` is 1 because there is only one innermost repetition, "foo".
             0, 1,
-            // ## outer-most repetition (first iteration)
+            // ## outermost repetition (first iteration)
             //
             // `count` is 1 because of "foo", i,e, `$l` has only one repetition,
-            // `index` is 0 because this is the first outer-most iteration.
-            // `len` is 2 because there are 2 outer-most repetitions, ["foo"] and ["bar", "baz"]
+            // `index` is 0 because this is the first outermost iteration.
+            // `len` is 2 because there are 2 outermost repetitions, ["foo"] and ["bar", "baz"]
             1, 0, 2,
             // # ["bar", "baz"]
 
-            // ## inner-most repetition (first iteration)
+            // ## innermost repetition (first iteration)
             //
-            // `index` is 0 because this is the first inner-most iteration
+            // `index` is 0 because this is the first innermost iteration
             // `len` is 2 because there are repetitions, "bar" and "baz"
             0, 2,
-            // ## inner-most repetition (second iteration)
+            // ## innermost repetition (second iteration)
             //
-            // `index` is 1 because this is the second inner-most iteration
+            // `index` is 1 because this is the second innermost iteration
             // `len` is 2 because there are repetitions, "bar" and "baz"
             1, 2,
-            // ## outer-most repetition (second iteration)
+            // ## outermost repetition (second iteration)
             //
             // `count` is 2 because of "bar" and "baz", i,e, `$l` has two repetitions,
-            // `index` is 1 because this is the second outer-most iteration
-            // `len` is 2 because there are 2 outer-most repetitions, ["foo"] and ["bar", "baz"]
+            // `index` is 1 because this is the second outermost iteration
+            // `len` is 2 because there are 2 outermost repetitions, ["foo"] and ["bar", "baz"]
             2, 1, 2,
             // # last count
 
@@ -61,7 +61,7 @@ fn main() {
 
     // Based on the above explanation, the following macros should be straightforward
 
-    // Grouped from the outer-most to the inner-most
+    // Grouped from the outermost to the innermost
     macro_rules! three_nested_count {
         ( $( { $( [ $( ( $( $i:ident )* ) )* ] )* } )* ) => {
             &[
@@ -156,7 +156,7 @@ fn main() {
         ][..]
     );
 
-    // Grouped from the outer-most to the inner-most
+    // Grouped from the outermost to the innermost
     macro_rules! three_nested_len {
         ( $( { $( [ $( ( $( $i:ident )* ) )* ] )* } )* ) => {
             &[

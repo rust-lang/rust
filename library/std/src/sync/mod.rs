@@ -9,6 +9,9 @@
 //! Consider the following code, operating on some global static variables:
 //!
 //! ```rust
+//! // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+//! #![allow(static_mut_refs)]
+//!
 //! static mut A: u32 = 0;
 //! static mut B: u32 = 0;
 //! static mut C: u32 = 0;
@@ -130,6 +133,11 @@
 //!   inter-thread synchronisation mechanism, at the cost of some
 //!   extra memory.
 //!
+//! - [`mpmc`]: Multi-producer, multi-consumer queues, used for
+//!   message-based communication. Can provide a lightweight
+//!   inter-thread synchronisation mechanism, at the cost of some
+//!   extra memory.
+//!
 //! - [`Mutex`]: Mutual Exclusion mechanism, which ensures that at
 //!   most one thread at a time is able to access some data.
 //!
@@ -150,6 +158,7 @@
 //! [`Arc`]: crate::sync::Arc
 //! [`Barrier`]: crate::sync::Barrier
 //! [`Condvar`]: crate::sync::Condvar
+//! [`mpmc`]: crate::sync::mpmc
 //! [`mpsc`]: crate::sync::mpsc
 //! [`Mutex`]: crate::sync::Mutex
 //! [`Once`]: crate::sync::Once
@@ -158,47 +167,66 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::sync::atomic;
+// No formatting: this file is just re-exports, and their order is worth preserving.
+#![cfg_attr(rustfmt, rustfmt::skip)]
+
+// These come from `core` & `alloc` and only in one flavor: no poisoning.
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
 pub use core::sync::Exclusive;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::sync::atomic;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::sync::{Arc, Weak};
 
+// FIXME(sync_nonpoison,sync_poison_mod): remove all `#[doc(inline)]` once the modules are stabilized.
+
+// These exist only in one flavor: no poisoning.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::barrier::{Barrier, BarrierWaitResult};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::condvar::{Condvar, WaitTimeoutResult};
 #[stable(feature = "lazy_cell", since = "1.80.0")]
 pub use self::lazy_lock::LazyLock;
-#[unstable(feature = "mapped_lock_guards", issue = "117108")]
-pub use self::mutex::MappedMutexGuard;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::mutex::{Mutex, MutexGuard};
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-pub use self::once::{Once, OnceState, ONCE_INIT};
 #[stable(feature = "once_cell", since = "1.70.0")]
 pub use self::once_lock::OnceLock;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::poison::{LockResult, PoisonError, TryLockError, TryLockResult};
 #[unstable(feature = "reentrant_lock", issue = "121440")]
 pub use self::reentrant_lock::{ReentrantLock, ReentrantLockGuard};
-#[unstable(feature = "mapped_lock_guards", issue = "117108")]
-pub use self::rwlock::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
+// These make sense and exist only with poisoning.
+#[stable(feature = "rust1", since = "1.0.0")]
+#[doc(inline)]
+pub use self::poison::{LockResult, PoisonError};
+
+// These (should) exist in both flavors: with and without poisoning.
+// FIXME(sync_nonpoison): implement nonpoison versions:
+//  * Mutex (nonpoison_mutex)
+//  * Condvar (nonpoison_condvar)
+//  * Once (nonpoison_once)
+//  * RwLock (nonpoison_rwlock)
+// The historical default is the version with poisoning.
+#[stable(feature = "rust1", since = "1.0.0")]
+#[doc(inline)]
+pub use self::poison::{
+    Mutex, MutexGuard, TryLockError, TryLockResult,
+    Condvar, WaitTimeoutResult,
+    Once, OnceState,
+    RwLock, RwLockReadGuard, RwLockWriteGuard,
+};
+#[stable(feature = "rust1", since = "1.0.0")]
+#[doc(inline)]
+#[expect(deprecated)]
+pub use self::poison::ONCE_INIT;
+#[unstable(feature = "mapped_lock_guards", issue = "117108")]
+#[doc(inline)]
+pub use self::poison::{MappedMutexGuard, MappedRwLockReadGuard, MappedRwLockWriteGuard};
+
+#[unstable(feature = "mpmc_channel", issue = "126840")]
+pub mod mpmc;
 pub mod mpsc;
 
+#[unstable(feature = "sync_poison_mod", issue = "134646")]
+pub mod poison;
+
 mod barrier;
-mod condvar;
 mod lazy_lock;
-mod mpmc;
-mod mutex;
-pub(crate) mod once;
 mod once_lock;
-mod poison;
 mod reentrant_lock;
-mod rwlock;

@@ -5,7 +5,7 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, make, HasGenericArgs},
-    match_ast, ted, AstNode, SyntaxNode,
+    match_ast, ted, AstNode, Edition, SyntaxNode,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -29,32 +29,31 @@ pub(crate) fn replace_qualified_name_with_use(
     acc: &mut Assists,
     ctx: &AssistContext<'_>,
 ) -> Option<()> {
-    let path: ast::Path = ctx.find_node_at_offset()?;
+    let mut original_path: ast::Path = ctx.find_node_at_offset()?;
     // We don't want to mess with use statements
-    if path.syntax().ancestors().find_map(ast::UseTree::cast).is_some() {
+    if original_path.syntax().ancestors().find_map(ast::UseTree::cast).is_some() {
         cov_mark::hit!(not_applicable_in_use);
         return None;
     }
 
-    if path.qualifier().is_none() {
-        cov_mark::hit!(dont_import_trivial_paths);
-        return None;
+    if original_path.qualifier().is_none() {
+        original_path = original_path.parent_path()?;
     }
 
     // only offer replacement for non assoc items
-    match ctx.sema.resolve_path(&path)? {
+    match ctx.sema.resolve_path(&original_path)? {
         hir::PathResolution::Def(def) if def.as_assoc_item(ctx.sema.db).is_none() => (),
         _ => return None,
     }
     // then search for an import for the first path segment of what we want to replace
     // that way it is less likely that we import the item from a different location due re-exports
-    let module = match ctx.sema.resolve_path(&path.first_qualifier_or_self())? {
+    let module = match ctx.sema.resolve_path(&original_path.first_qualifier_or_self())? {
         hir::PathResolution::Def(module @ hir::ModuleDef::Module(_)) => module,
         _ => return None,
     };
 
     let starts_with_name_ref = !matches!(
-        path.first_segment().and_then(|it| it.kind()),
+        original_path.first_segment().and_then(|it| it.kind()),
         Some(
             ast::PathSegmentKind::CrateKw
                 | ast::PathSegmentKind::SuperKw
@@ -63,7 +62,7 @@ pub(crate) fn replace_qualified_name_with_use(
     );
     let path_to_qualifier = starts_with_name_ref
         .then(|| {
-            ctx.sema.scope(path.syntax())?.module().find_use_path(
+            ctx.sema.scope(original_path.syntax())?.module().find_use_path(
                 ctx.sema.db,
                 module,
                 ctx.config.insert_use.prefix_kind,
@@ -72,8 +71,8 @@ pub(crate) fn replace_qualified_name_with_use(
         })
         .flatten();
 
-    let scope = ImportScope::find_insert_use_container(path.syntax(), &ctx.sema)?;
-    let target = path.syntax().text_range();
+    let scope = ImportScope::find_insert_use_container(original_path.syntax(), &ctx.sema)?;
+    let target = original_path.syntax().text_range();
     acc.add(
         AssistId("replace_qualified_name_with_use", AssistKind::RefactorRewrite),
         "Replace qualified path with use",
@@ -86,13 +85,19 @@ pub(crate) fn replace_qualified_name_with_use(
                 ImportScope::Module(it) => ImportScope::Module(builder.make_mut(it)),
                 ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
             };
-            shorten_paths(scope.as_syntax_node(), &path);
-            let path = drop_generic_args(&path);
+            shorten_paths(scope.as_syntax_node(), &original_path);
+            let path = drop_generic_args(&original_path);
+            let edition = ctx
+                .sema
+                .scope(original_path.syntax())
+                .map(|semantics_scope| semantics_scope.krate().edition(ctx.db()))
+                .unwrap_or(Edition::CURRENT);
             // stick the found import in front of the to be replaced path
-            let path = match path_to_qualifier.and_then(|it| mod_path_to_ast(&it).qualifier()) {
-                Some(qualifier) => make::path_concat(qualifier, path),
-                None => path,
-            };
+            let path =
+                match path_to_qualifier.and_then(|it| mod_path_to_ast(&it, edition).qualifier()) {
+                    Some(qualifier) => make::path_concat(qualifier, path),
+                    None => path,
+                };
             insert_use(&scope, path, &ctx.config.insert_use);
         },
     )
@@ -154,7 +159,7 @@ fn path_eq_no_generics(lhs: ast::Path, rhs: ast::Path) -> bool {
                     && lhs
                         .name_ref()
                         .zip(rhs.name_ref())
-                        .map_or(false, |(lhs, rhs)| lhs.text() == rhs.text()) => {}
+                        .is_some_and(|(lhs, rhs)| lhs.text() == rhs.text()) => {}
             _ => return false,
         }
 
@@ -231,12 +236,6 @@ fs::Path
     }
 
     #[test]
-    fn dont_import_trivial_paths() {
-        cov_mark::check!(dont_import_trivial_paths);
-        check_assist_not_applicable(replace_qualified_name_with_use, r"impl foo$0 for () {}");
-    }
-
-    #[test]
     fn test_replace_not_applicable_in_use() {
         cov_mark::check!(not_applicable_in_use);
         check_assist_not_applicable(replace_qualified_name_with_use, r"use std::fmt$0;");
@@ -260,6 +259,29 @@ mod std { pub mod fmt { pub trait Debug {} } }
 fn main() {
     Debug;
     let x: Debug = Debug;
+}
+    ",
+        );
+    }
+
+    #[test]
+    fn assist_runs_on_first_segment() {
+        check_assist(
+            replace_qualified_name_with_use,
+            r"
+mod std { pub mod fmt { pub trait Debug {} } }
+fn main() {
+    $0std::fmt::Debug;
+    let x: std::fmt::Debug = std::fmt::Debug;
+}
+    ",
+            r"
+use std::fmt;
+
+mod std { pub mod fmt { pub trait Debug {} } }
+fn main() {
+    fmt::Debug;
+    let x: fmt::Debug = fmt::Debug;
 }
     ",
         );

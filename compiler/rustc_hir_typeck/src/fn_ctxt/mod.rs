@@ -10,16 +10,16 @@ use std::ops::Deref;
 
 use hir::def_id::CRATE_DEF_ID;
 use rustc_errors::DiagCtxtHandle;
-use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{self as hir, HirId, ItemLocalMap};
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
 use rustc_infer::infer;
+use rustc_infer::traits::Obligation;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
-use rustc_span::symbol::Ident;
-use rustc_span::{self, sym, Span, DUMMY_SP};
-use rustc_trait_selection::error_reporting::infer::sub_relations::SubRelations;
+use rustc_span::{self, DUMMY_SP, Ident, Span, sym};
 use rustc_trait_selection::error_reporting::TypeErrCtxt;
+use rustc_trait_selection::error_reporting::infer::sub_relations::SubRelations;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
 
 use crate::coercion::DynamicCoerceMany;
@@ -114,10 +114,16 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
 
     pub(super) diverging_fallback_behavior: DivergingFallbackBehavior,
     pub(super) diverging_block_behavior: DivergingBlockBehavior,
+
+    /// Clauses that we lowered as part of the `impl_trait_in_bindings` feature.
+    ///
+    /// These are stored here so we may collect them when canonicalizing user
+    /// type ascriptions later.
+    pub(super) trait_ascriptions: RefCell<ItemLocalMap<Vec<ty::Clause<'tcx>>>>,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn new(
+    pub(crate) fn new(
         root_ctxt: &'a TypeckRootCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         body_id: LocalDefId,
@@ -141,6 +147,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fallback_has_occurred: Cell::new(false),
             diverging_fallback_behavior,
             diverging_block_behavior,
+            trait_ascriptions: Default::default(),
         }
     }
 
@@ -148,15 +155,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.root_ctxt.infcx.dcx()
     }
 
-    pub fn cause(&self, span: Span, code: ObligationCauseCode<'tcx>) -> ObligationCause<'tcx> {
+    pub(crate) fn cause(
+        &self,
+        span: Span,
+        code: ObligationCauseCode<'tcx>,
+    ) -> ObligationCause<'tcx> {
         ObligationCause::new(span, self.body_id, code)
     }
 
-    pub fn misc(&self, span: Span) -> ObligationCause<'tcx> {
+    pub(crate) fn misc(&self, span: Span) -> ObligationCause<'tcx> {
         self.cause(span, ObligationCauseCode::Misc)
     }
 
-    pub fn sess(&self) -> &Session {
+    pub(crate) fn sess(&self) -> &Session {
         self.tcx.sess
     }
 
@@ -165,7 +176,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Use [`InferCtxtErrorExt::err_ctxt`] to start one without a `TypeckResults`.
     ///
     /// [`InferCtxtErrorExt::err_ctxt`]: rustc_trait_selection::error_reporting::InferCtxtErrorExt::err_ctxt
-    pub fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
+    pub(crate) fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
         let mut sub_relations = SubRelations::default();
         sub_relations.add_constraints(
             self,
@@ -243,14 +254,32 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
     fn ct_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
         // FIXME ideally this shouldn't use unwrap
         match param {
-            Some(
-                param @ ty::GenericParamDef {
-                    kind: ty::GenericParamDefKind::Const { is_host_effect: true, .. },
-                    ..
-                },
-            ) => self.var_for_effect(param).as_const().unwrap(),
             Some(param) => self.var_for_def(span, param).as_const().unwrap(),
             None => self.next_const_var(span),
+        }
+    }
+
+    fn register_trait_ascription_bounds(
+        &self,
+        bounds: Vec<(ty::Clause<'tcx>, Span)>,
+        hir_id: HirId,
+        _span: Span,
+    ) {
+        for (clause, span) in bounds {
+            if clause.has_escaping_bound_vars() {
+                self.dcx().span_delayed_bug(span, "clause should have no escaping bound vars");
+                continue;
+            }
+
+            self.trait_ascriptions.borrow_mut().entry(hir_id.local_id).or_default().push(clause);
+
+            let clause = self.normalize(span, clause);
+            self.register_predicate(Obligation::new(
+                self.tcx,
+                self.misc(span),
+                self.param_env,
+                clause,
+            ));
         }
     }
 
@@ -259,27 +288,24 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         _: Span,
         def_id: LocalDefId,
         _: Ident,
-    ) -> ty::GenericPredicates<'tcx> {
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         let tcx = self.tcx;
         let item_def_id = tcx.hir().ty_param_owner(def_id);
         let generics = tcx.generics_of(item_def_id);
         let index = generics.param_def_id_to_index[&def_id.to_def_id()];
         // HACK(eddyb) should get the original `Span`.
         let span = tcx.def_span(def_id);
-        ty::GenericPredicates {
-            parent: None,
-            predicates: tcx.arena.alloc_from_iter(
-                self.param_env.caller_bounds().iter().filter_map(|predicate| {
-                    match predicate.kind().skip_binder() {
-                        ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
-                            Some((predicate, span))
-                        }
-                        _ => None,
+
+        ty::EarlyBinder::bind(tcx.arena.alloc_from_iter(
+            self.param_env.caller_bounds().iter().filter_map(|predicate| {
+                match predicate.kind().skip_binder() {
+                    ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
+                        Some((predicate, span))
                     }
-                }),
-            ),
-            effects_min_tys: ty::List::empty(),
-        }
+                    _ => None,
+                }
+            }),
+        ))
     }
 
     fn lower_assoc_ty(
@@ -312,7 +338,11 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             ty::Alias(ty::Projection | ty::Inherent | ty::Weak, _)
                 if !ty.has_escaping_bound_vars() =>
             {
-                self.normalize(span, ty).ty_adt_def()
+                if self.next_trait_solver() {
+                    self.try_structurally_resolve_type(span, ty).ty_adt_def()
+                } else {
+                    self.normalize(span, ty).ty_adt_def()
+                }
             }
             _ => None,
         }
@@ -365,7 +395,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
 /// This is a bridge between the interface of HIR ty lowering, which outputs a raw
 /// `Ty`, and the API in this module, which expect `Ty` to be fully normalized.
 #[derive(Clone, Copy, Debug)]
-pub struct LoweredTy<'tcx> {
+pub(crate) struct LoweredTy<'tcx> {
     /// The unnormalized type provided by the user.
     pub raw: Ty<'tcx>,
 
@@ -374,7 +404,7 @@ pub struct LoweredTy<'tcx> {
 }
 
 impl<'tcx> LoweredTy<'tcx> {
-    pub fn from_raw(fcx: &FnCtxt<'_, 'tcx>, span: Span, raw: Ty<'tcx>) -> LoweredTy<'tcx> {
+    fn from_raw(fcx: &FnCtxt<'_, 'tcx>, span: Span, raw: Ty<'tcx>) -> LoweredTy<'tcx> {
         // FIXME(-Znext-solver): We're still figuring out how to best handle
         // normalization and this doesn't feel too great. We should look at this
         // code again before stabilizing it.
@@ -403,7 +433,7 @@ fn default_fallback(tcx: TyCtxt<'_>) -> DivergingFallbackBehavior {
     }
 
     // `feature(never_type_fallback)`: fallback to `!` or `()` trying to not break stuff
-    if tcx.features().never_type_fallback {
+    if tcx.features().never_type_fallback() {
         return DivergingFallbackBehavior::ContextDependent;
     }
 

@@ -1,4 +1,4 @@
-use crate::sys::pipe::{anon_pipe, Pipes};
+use crate::sys::pipe::{Pipes, anon_pipe};
 use crate::{thread, time};
 
 /// Test the synchronous fallback for overlapped I/O.

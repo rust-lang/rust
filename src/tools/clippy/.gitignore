@@ -34,6 +34,7 @@ out
 
 # gh pages docs
 util/gh-pages/lints.json
+util/gh-pages/index.html
 
 # rustfmt backups
 *.rs.bk

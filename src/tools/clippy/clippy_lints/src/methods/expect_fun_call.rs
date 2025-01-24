@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::macros::{format_args_inputs_span, root_macro_call_first_node, FormatArgsStorage};
+use clippy_utils::macros::{FormatArgsStorage, format_args_inputs_span, root_macro_call_first_node};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::symbol::sym;
 use std::borrow::Cow;
 
 use super::EXPECT_FUN_CALL;
@@ -83,7 +83,7 @@ pub(super) fn check<'tcx>(
             hir::ExprKind::MethodCall(..) => {
                 cx.typeck_results()
                     .type_dependent_def_id(arg.hir_id)
-                    .map_or(false, |method_id| {
+                    .is_some_and(|method_id| {
                         matches!(
                             cx.tcx.fn_sig(method_id).instantiate_identity().output().skip_binder().kind(),
                             ty::Ref(re, ..) if re.is_static()
@@ -143,7 +143,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 EXPECT_FUN_CALL,
                 span_replace_word,
-                format!("use of `{name}` followed by a function call"),
+                format!("function call inside of `{name}`"),
                 "try",
                 format!("unwrap_or_else({closure_args} panic!({sugg}))"),
                 applicability,
@@ -161,7 +161,7 @@ pub(super) fn check<'tcx>(
         cx,
         EXPECT_FUN_CALL,
         span_replace_word,
-        format!("use of `{name}` followed by a function call"),
+        format!("function call inside of `{name}`"),
         "try",
         format!("unwrap_or_else({closure_args} {{ panic!(\"{{}}\", {arg_root_snippet}) }})"),
         applicability,

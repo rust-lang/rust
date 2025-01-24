@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'unstable_undeclared'
+error[E0658]: use of unstable library feature `unstable_undeclared`
   --> $DIR/explore-issue-38412.rs:19:63
    |
 LL |     let Record { a_stable_pub: _, a_unstable_declared_pub: _, a_unstable_undeclared_pub: _, .. } =
@@ -8,7 +8,7 @@ LL |     let Record { a_stable_pub: _, a_unstable_declared_pub: _, a_unstable_un
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_undeclared'
+error[E0658]: use of unstable library feature `unstable_undeclared`
   --> $DIR/explore-issue-38412.rs:28:5
    |
 LL |     r.a_unstable_undeclared_pub;
@@ -36,7 +36,7 @@ error[E0616]: field `d_priv` of struct `Record` is private
 LL |     r.d_priv;
    |       ^^^^^^ private field
 
-error[E0658]: use of unstable library feature 'unstable_undeclared'
+error[E0658]: use of unstable library feature `unstable_undeclared`
   --> $DIR/explore-issue-38412.rs:35:5
    |
 LL |     t.2;
@@ -64,7 +64,7 @@ error[E0616]: field `5` of struct `pub_and_stability::Tuple` is private
 LL |     t.5;
    |       ^ private field
 
-error[E0658]: use of unstable library feature 'unstable_undeclared'
+error[E0658]: use of unstable library feature `unstable_undeclared`
   --> $DIR/explore-issue-38412.rs:42:7
    |
 LL |     r.unstable_undeclared_trait_method();
@@ -74,7 +74,7 @@ LL |     r.unstable_undeclared_trait_method();
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_undeclared'
+error[E0658]: use of unstable library feature `unstable_undeclared`
   --> $DIR/explore-issue-38412.rs:46:7
    |
 LL |     r.unstable_undeclared();
@@ -117,7 +117,7 @@ LL |     r.private();
 LL |         fn private(&self) -> i32 { self.d_priv }
    |         ------------------------ private method defined here
 
-error[E0658]: use of unstable library feature 'unstable_undeclared'
+error[E0658]: use of unstable library feature `unstable_undeclared`
   --> $DIR/explore-issue-38412.rs:55:7
    |
 LL |     t.unstable_undeclared_trait_method();
@@ -127,7 +127,7 @@ LL |     t.unstable_undeclared_trait_method();
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_undeclared'
+error[E0658]: use of unstable library feature `unstable_undeclared`
   --> $DIR/explore-issue-38412.rs:59:7
    |
 LL |     t.unstable_undeclared();

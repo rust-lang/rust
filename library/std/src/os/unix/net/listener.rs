@@ -1,4 +1,4 @@
-use super::{sockaddr_un, SocketAddr, UnixStream};
+use super::{SocketAddr, UnixStream, sockaddr_un};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
 use crate::sys::cvt;
@@ -103,11 +103,7 @@ impl UnixListener {
             )))]
             const backlog: libc::c_int = libc::SOMAXCONN;
 
-            cvt(libc::bind(
-                inner.as_inner().as_raw_fd(),
-                core::ptr::addr_of!(addr) as *const _,
-                len as _,
-            ))?;
+            cvt(libc::bind(inner.as_inner().as_raw_fd(), (&raw const addr) as *const _, len as _))?;
             cvt(libc::listen(inner.as_inner().as_raw_fd(), backlog))?;
 
             Ok(UnixListener(inner))
@@ -147,7 +143,7 @@ impl UnixListener {
             const backlog: core::ffi::c_int = 128;
             cvt(libc::bind(
                 inner.as_raw_fd(),
-                core::ptr::addr_of!(socket_addr.addr) as *const _,
+                (&raw const socket_addr.addr) as *const _,
                 socket_addr.len as _,
             ))?;
             cvt(libc::listen(inner.as_raw_fd(), backlog))?;
@@ -182,7 +178,7 @@ impl UnixListener {
     pub fn accept(&self) -> io::Result<(UnixStream, SocketAddr)> {
         let mut storage: libc::sockaddr_un = unsafe { mem::zeroed() };
         let mut len = mem::size_of_val(&storage) as libc::socklen_t;
-        let sock = self.0.accept(core::ptr::addr_of_mut!(storage) as *mut _, &mut len)?;
+        let sock = self.0.accept((&raw mut storage) as *mut _, &mut len)?;
         let addr = SocketAddr::from_parts(storage, len)?;
         Ok((UnixStream(sock), addr))
     }

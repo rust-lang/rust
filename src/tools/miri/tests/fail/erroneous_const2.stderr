@@ -1,17 +1,17 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/erroneous_const2.rs:LL:CC
+  --> tests/fail/erroneous_const2.rs:LL:CC
    |
 LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
    |                   ^^^^^ attempt to compute `5_u32 - 6_u32`, which would overflow
 
 note: erroneous constant encountered
-  --> $DIR/erroneous_const2.rs:LL:CC
+  --> tests/fail/erroneous_const2.rs:LL:CC
    |
 LL |     println!("{}", FOO);
    |                    ^^^
 
 note: erroneous constant encountered
-  --> $DIR/erroneous_const2.rs:LL:CC
+  --> tests/fail/erroneous_const2.rs:LL:CC
    |
 LL |     println!("{}", FOO);
    |                    ^^^
@@ -19,7 +19,7 @@ LL |     println!("{}", FOO);
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 note: erroneous constant encountered
-  --> $DIR/erroneous_const2.rs:LL:CC
+  --> tests/fail/erroneous_const2.rs:LL:CC
    |
 LL |     println!("{}", FOO);
    |                    ^^^

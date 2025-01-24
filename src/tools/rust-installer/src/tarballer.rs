@@ -2,7 +2,7 @@ use std::fs::{read_link, symlink_metadata};
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use tar::{Builder, Header, HeaderMode};
 use walkdir::WalkDir;
 

@@ -3,7 +3,7 @@ use derive_builder::Builder;
 
 #[derive(Builder)]
 pub struct Environment {
-    host_triple: String,
+    host_tuple: String,
     python_binary: String,
     /// The rustc checkout, where the compiler source is located.
     checkout_dir: Utf8PathBuf,
@@ -28,8 +28,8 @@ pub struct Environment {
 }
 
 impl Environment {
-    pub fn host_triple(&self) -> &str {
-        &self.host_triple
+    pub fn host_tuple(&self) -> &str {
+        &self.host_tuple
     }
 
     pub fn python_binary(&self) -> &str {
@@ -45,7 +45,7 @@ impl Environment {
     }
 
     pub fn build_artifacts(&self) -> Utf8PathBuf {
-        self.build_root().join("build").join(&self.host_triple)
+        self.build_root().join("build").join(&self.host_tuple)
     }
 
     pub fn artifact_dir(&self) -> Utf8PathBuf {

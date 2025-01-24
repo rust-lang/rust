@@ -10,8 +10,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `u16`
   --> $DIR/numbers.rs:65:40
@@ -25,8 +25,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `i32`
   --> $DIR/numbers.rs:66:40
@@ -40,8 +40,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `f32`
   --> $DIR/numbers.rs:67:40
@@ -55,8 +55,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `u32`
   --> $DIR/numbers.rs:68:40
@@ -70,8 +70,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `u64`
   --> $DIR/numbers.rs:69:40
@@ -85,8 +85,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `i64`
   --> $DIR/numbers.rs:70:40
@@ -100,8 +100,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `f64`
   --> $DIR/numbers.rs:71:40
@@ -115,8 +115,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `u128`
   --> $DIR/numbers.rs:72:39
@@ -130,8 +130,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `i128`
   --> $DIR/numbers.rs:73:39
@@ -145,8 +145,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `i16`
   --> $DIR/numbers.rs:75:40
@@ -160,8 +160,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `u16`
   --> $DIR/numbers.rs:76:40
@@ -175,8 +175,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `i32`
   --> $DIR/numbers.rs:77:40
@@ -190,8 +190,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `f32`
   --> $DIR/numbers.rs:78:40
@@ -205,8 +205,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `u32`
   --> $DIR/numbers.rs:79:40
@@ -220,8 +220,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `u64`
   --> $DIR/numbers.rs:80:40
@@ -235,8 +235,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `i64`
   --> $DIR/numbers.rs:81:40
@@ -250,8 +250,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `f64`
   --> $DIR/numbers.rs:82:40
@@ -265,8 +265,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `u128`
   --> $DIR/numbers.rs:83:39
@@ -280,8 +280,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `i128`
   --> $DIR/numbers.rs:84:39
@@ -295,8 +295,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i16` cannot be safely transmuted into `i32`
   --> $DIR/numbers.rs:86:40
@@ -310,8 +310,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i16` cannot be safely transmuted into `f32`
   --> $DIR/numbers.rs:87:40
@@ -325,8 +325,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i16` cannot be safely transmuted into `u32`
   --> $DIR/numbers.rs:88:40
@@ -340,8 +340,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i16` cannot be safely transmuted into `u64`
   --> $DIR/numbers.rs:89:40
@@ -355,8 +355,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i16` cannot be safely transmuted into `i64`
   --> $DIR/numbers.rs:90:40
@@ -370,8 +370,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i16` cannot be safely transmuted into `f64`
   --> $DIR/numbers.rs:91:40
@@ -385,8 +385,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i16` cannot be safely transmuted into `u128`
   --> $DIR/numbers.rs:92:39
@@ -400,8 +400,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i16` cannot be safely transmuted into `i128`
   --> $DIR/numbers.rs:93:39
@@ -415,8 +415,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u16` cannot be safely transmuted into `i32`
   --> $DIR/numbers.rs:95:40
@@ -430,8 +430,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u16` cannot be safely transmuted into `f32`
   --> $DIR/numbers.rs:96:40
@@ -445,8 +445,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u16` cannot be safely transmuted into `u32`
   --> $DIR/numbers.rs:97:40
@@ -460,8 +460,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u16` cannot be safely transmuted into `u64`
   --> $DIR/numbers.rs:98:40
@@ -475,8 +475,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u16` cannot be safely transmuted into `i64`
   --> $DIR/numbers.rs:99:40
@@ -490,8 +490,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u16` cannot be safely transmuted into `f64`
   --> $DIR/numbers.rs:100:40
@@ -505,8 +505,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u16` cannot be safely transmuted into `u128`
   --> $DIR/numbers.rs:101:39
@@ -520,8 +520,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u16` cannot be safely transmuted into `i128`
   --> $DIR/numbers.rs:102:39
@@ -535,8 +535,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i32` cannot be safely transmuted into `u64`
   --> $DIR/numbers.rs:104:40
@@ -550,8 +550,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i32` cannot be safely transmuted into `i64`
   --> $DIR/numbers.rs:105:40
@@ -565,8 +565,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i32` cannot be safely transmuted into `f64`
   --> $DIR/numbers.rs:106:40
@@ -580,8 +580,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i32` cannot be safely transmuted into `u128`
   --> $DIR/numbers.rs:107:39
@@ -595,8 +595,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i32` cannot be safely transmuted into `i128`
   --> $DIR/numbers.rs:108:39
@@ -610,8 +610,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `f32` cannot be safely transmuted into `u64`
   --> $DIR/numbers.rs:110:40
@@ -625,8 +625,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `f32` cannot be safely transmuted into `i64`
   --> $DIR/numbers.rs:111:40
@@ -640,8 +640,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `f32` cannot be safely transmuted into `f64`
   --> $DIR/numbers.rs:112:40
@@ -655,8 +655,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `f32` cannot be safely transmuted into `u128`
   --> $DIR/numbers.rs:113:39
@@ -670,8 +670,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `f32` cannot be safely transmuted into `i128`
   --> $DIR/numbers.rs:114:39
@@ -685,8 +685,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u32` cannot be safely transmuted into `u64`
   --> $DIR/numbers.rs:116:40
@@ -700,8 +700,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u32` cannot be safely transmuted into `i64`
   --> $DIR/numbers.rs:117:40
@@ -715,8 +715,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u32` cannot be safely transmuted into `f64`
   --> $DIR/numbers.rs:118:40
@@ -730,8 +730,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u32` cannot be safely transmuted into `u128`
   --> $DIR/numbers.rs:119:39
@@ -745,8 +745,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u32` cannot be safely transmuted into `i128`
   --> $DIR/numbers.rs:120:39
@@ -760,8 +760,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u64` cannot be safely transmuted into `u128`
   --> $DIR/numbers.rs:122:39
@@ -775,8 +775,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u64` cannot be safely transmuted into `i128`
   --> $DIR/numbers.rs:123:39
@@ -790,8 +790,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i64` cannot be safely transmuted into `u128`
   --> $DIR/numbers.rs:125:39
@@ -805,8 +805,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i64` cannot be safely transmuted into `i128`
   --> $DIR/numbers.rs:126:39
@@ -820,8 +820,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `f64` cannot be safely transmuted into `u128`
   --> $DIR/numbers.rs:128:39
@@ -835,8 +835,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `f64` cannot be safely transmuted into `i128`
   --> $DIR/numbers.rs:129:39
@@ -850,8 +850,8 @@ note: required by a bound in `is_transmutable`
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: TransmuteFrom<Src>
+   |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error: aborting due to 57 previous errors
 

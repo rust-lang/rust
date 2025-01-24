@@ -1,6 +1,6 @@
-use crate::spec::{cvs, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions, cvs};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "mipsel-sony-psx".into(),
         metadata: crate::spec::TargetMetadata {
@@ -14,8 +14,11 @@ pub fn target() -> Target {
         arch: "mips".into(),
 
         options: TargetOptions {
-            os: "none".into(),
-            env: "psx".into(),
+            // The Playstation 1 is mostly bare-metal, but the BIOS does provide some a slight bit
+            // of functionality post load, so we still declare it as `cfg!(target_os = "psx")`.
+            //
+            // See <https://github.com/rust-lang/rust/pull/131168> for details.
+            os: "psx".into(),
             vendor: "sony".into(),
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             cpu: "mips1".into(),

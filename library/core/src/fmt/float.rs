@@ -13,7 +13,7 @@ macro_rules! impl_general_format {
     ($($t:ident)*) => {
         $(impl GeneralFormat for $t {
             fn already_rounded_value_should_use_exponential(&self) -> bool {
-                let abs = $t::abs_private(*self);
+                let abs = $t::abs(*self);
                 (abs != 0.0 && abs < 1e-4) || abs >= 1e+16
             }
         })*
@@ -86,7 +86,7 @@ where
         true => flt2dec::Sign::MinusPlus,
     };
 
-    if let Some(precision) = fmt.precision {
+    if let Some(precision) = fmt.options.precision {
         float_to_decimal_common_exact(fmt, num, sign, precision)
     } else {
         let min_precision = 0;
@@ -162,7 +162,7 @@ where
         true => flt2dec::Sign::MinusPlus,
     };
 
-    if let Some(precision) = fmt.precision {
+    if let Some(precision) = fmt.options.precision {
         // 1 integral digit + `precision` fractional digits = `precision + 1` total digits
         float_to_exponential_common_exact(fmt, num, sign, precision + 1, upper)
     } else {
@@ -180,7 +180,7 @@ where
         true => flt2dec::Sign::MinusPlus,
     };
 
-    if let Some(precision) = fmt.precision {
+    if let Some(precision) = fmt.options.precision {
         // this behavior of {:.PREC?} predates exponential formatting for {:?}
         float_to_decimal_common_exact(fmt, num, sign, precision)
     } else {
@@ -196,39 +196,40 @@ where
 }
 
 macro_rules! floating {
-    ($ty:ident) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl Debug for $ty {
-            fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-                float_to_general_debug(fmt, self)
+    ($($ty:ident)*) => {
+        $(
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl Debug for $ty {
+                fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+                    float_to_general_debug(fmt, self)
+                }
             }
-        }
 
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl Display for $ty {
-            fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-                float_to_decimal_display(fmt, self)
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl Display for $ty {
+                fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+                    float_to_decimal_display(fmt, self)
+                }
             }
-        }
 
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl LowerExp for $ty {
-            fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-                float_to_exponential_common(fmt, self, false)
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl LowerExp for $ty {
+                fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+                    float_to_exponential_common(fmt, self, false)
+                }
             }
-        }
 
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl UpperExp for $ty {
-            fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-                float_to_exponential_common(fmt, self, true)
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl UpperExp for $ty {
+                fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+                    float_to_exponential_common(fmt, self, true)
+                }
             }
-        }
+        )*
     };
 }
 
-floating! { f32 }
-floating! { f64 }
+floating! { f32 f64 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for f16 {

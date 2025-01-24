@@ -127,7 +127,7 @@ pub(super) fn check<'tcx>(
                         .collect::<Vec<_>>()
                         .join(" and ");
 
-                    format!("methods with the following characteristics: ({})", &s)
+                    format!("methods with the following characteristics: ({s})")
                 } else {
                     format!("methods called {}", &conventions[0])
                 }

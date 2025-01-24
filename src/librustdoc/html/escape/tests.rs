@@ -24,6 +24,10 @@ fn escape_body_text_with_wbr() {
     assert_eq!(&E("first:second").to_string(), "first:<wbr>second");
     assert_eq!(&E("first::second").to_string(), "first::<wbr>second");
     assert_eq!(&E("MY_CONSTANT").to_string(), "MY_<wbr>CONSTANT");
+    assert_eq!(
+        &E("_SIDD_MASKED_NEGATIVE_POLARITY").to_string(),
+        "_SIDD_<wbr>MASKED_<wbr>NEGATIVE_<wbr>POLARITY"
+    );
     // a string won't get wrapped if it's less than 8 bytes
     assert_eq!(&E("HashSet").to_string(), "HashSet");
     // an individual word won't get wrapped if it's less than 4 bytes

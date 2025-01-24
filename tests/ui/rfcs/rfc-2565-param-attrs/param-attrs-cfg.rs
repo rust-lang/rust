@@ -1,7 +1,6 @@
 //@ compile-flags: --cfg something --check-cfg=cfg(nothing,something)
 //@ edition:2018
 
-#![feature(async_closure)]
 #![deny(unused_variables)]
 
 extern "C" {

@@ -25,10 +25,10 @@
 use hir::def_id::LocalDefIdSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
+use rustc_hir::Node;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::Node;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::middle::privacy::{self, Level};
@@ -141,7 +141,7 @@ impl<'tcx> ReachableContext<'tcx> {
 
         match self.tcx.hir_node_by_def_id(def_id) {
             Node::Item(item) => match item.kind {
-                hir::ItemKind::Fn(..) => recursively_reachable(self.tcx, def_id.into()),
+                hir::ItemKind::Fn { .. } => recursively_reachable(self.tcx, def_id.into()),
                 _ => false,
             },
             Node::TraitItem(trait_method) => match trait_method.kind {
@@ -200,7 +200,7 @@ impl<'tcx> ReachableContext<'tcx> {
         match *node {
             Node::Item(item) => {
                 match item.kind {
-                    hir::ItemKind::Fn(.., body) => {
+                    hir::ItemKind::Fn { body, .. } => {
                         if recursively_reachable(self.tcx, item.owner_id.into()) {
                             self.visit_nested_body(body);
                         }
@@ -236,7 +236,6 @@ impl<'tcx> ReachableContext<'tcx> {
                     // worklist, as determined by the privacy pass
                     hir::ItemKind::ExternCrate(_)
                     | hir::ItemKind::Use(..)
-                    | hir::ItemKind::OpaqueTy(..)
                     | hir::ItemKind::TyAlias(..)
                     | hir::ItemKind::Macro(..)
                     | hir::ItemKind::Mod(..)
@@ -287,7 +286,8 @@ impl<'tcx> ReachableContext<'tcx> {
             | Node::Field(_)
             | Node::Ty(_)
             | Node::Crate(_)
-            | Node::Synthetic => {}
+            | Node::Synthetic
+            | Node::OpaqueTy(..) => {}
             _ => {
                 bug!(
                     "found unexpected node kind in worklist: {} ({:?})",
@@ -318,11 +318,11 @@ impl<'tcx> ReachableContext<'tcx> {
                     ));
                     self.visit(instance.args);
                 }
-                GlobalAlloc::VTable(ty, trait_ref) => {
+                GlobalAlloc::VTable(ty, dyn_ty) => {
                     self.visit(ty);
                     // Manually visit to actually see the trait's `DefId`. Type visitors won't see it
-                    if let Some(trait_ref) = trait_ref {
-                        let ExistentialTraitRef { def_id, args } = trait_ref.skip_binder();
+                    if let Some(trait_ref) = dyn_ty.principal() {
+                        let ExistentialTraitRef { def_id, args, .. } = trait_ref.skip_binder();
                         self.visit_def_id(def_id, "", &"");
                         self.visit(args);
                     }
@@ -500,6 +500,6 @@ fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> LocalDefIdSet {
     reachable_context.reachable_symbols
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { reachable_set, ..*providers };
 }

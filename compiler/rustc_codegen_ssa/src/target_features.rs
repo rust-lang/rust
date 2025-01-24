@@ -1,24 +1,25 @@
-use rustc_ast::ast;
-use rustc_attr::InstructionSetAttr;
+use rustc_attr_parsing::InstructionSetAttr;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::Applicability;
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
-use rustc_middle::bug;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_middle::middle::codegen_fn_attrs::TargetFeature;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol, sym};
+use rustc_target::target_features;
 
 use crate::errors;
 
-pub fn from_target_feature(
+/// Compute the enabled target features from the `#[target_feature]` function attribute.
+/// Enabled target features are added to `target_features`.
+pub(crate) fn from_target_feature_attr(
     tcx: TyCtxt<'_>,
-    attr: &ast::Attribute,
-    supported_target_features: &UnordMap<String, Option<Symbol>>,
+    attr: &hir::Attribute,
+    rust_target_features: &UnordMap<String, target_features::Stability>,
     target_features: &mut Vec<TargetFeature>,
 ) {
     let Some(list) = attr.meta_item_list() else { return };
@@ -31,7 +32,7 @@ pub fn from_target_feature(
             .emit();
     };
     let rust_features = tcx.features();
-    let mut added_target_features = Vec::new();
+    let abi_feature_constraints = tcx.sess.target.abi_required_features();
     for item in list {
         // Only `enable = ...` is accepted in the meta-item list.
         if !item.has_name(sym::enable) {
@@ -46,80 +47,58 @@ pub fn from_target_feature(
         };
 
         // We allow comma separation to enable multiple features.
-        added_target_features.extend(value.as_str().split(',').filter_map(|feature| {
-            let Some(feature_gate) = supported_target_features.get(feature) else {
+        for feature in value.as_str().split(',') {
+            let Some(stability) = rust_target_features.get(feature) else {
                 let msg = format!("the feature named `{feature}` is not valid for this target");
                 let mut err = tcx.dcx().struct_span_err(item.span(), msg);
                 err.span_label(item.span(), format!("`{feature}` is not valid for this target"));
                 if let Some(stripped) = feature.strip_prefix('+') {
-                    let valid = supported_target_features.contains_key(stripped);
+                    let valid = rust_target_features.contains_key(stripped);
                     if valid {
                         err.help("consider removing the leading `+` in the feature name");
                     }
                 }
                 err.emit();
-                return None;
+                continue;
             };
 
-            // Only allow features whose feature gates have been enabled.
-            let allowed = match feature_gate.as_ref().copied() {
-                Some(sym::arm_target_feature) => rust_features.arm_target_feature,
-                Some(sym::hexagon_target_feature) => rust_features.hexagon_target_feature,
-                Some(sym::powerpc_target_feature) => rust_features.powerpc_target_feature,
-                Some(sym::mips_target_feature) => rust_features.mips_target_feature,
-                Some(sym::riscv_target_feature) => rust_features.riscv_target_feature,
-                Some(sym::avx512_target_feature) => rust_features.avx512_target_feature,
-                Some(sym::sse4a_target_feature) => rust_features.sse4a_target_feature,
-                Some(sym::tbm_target_feature) => rust_features.tbm_target_feature,
-                Some(sym::wasm_target_feature) => rust_features.wasm_target_feature,
-                Some(sym::rtm_target_feature) => rust_features.rtm_target_feature,
-                Some(sym::ermsb_target_feature) => rust_features.ermsb_target_feature,
-                Some(sym::bpf_target_feature) => rust_features.bpf_target_feature,
-                Some(sym::aarch64_ver_target_feature) => rust_features.aarch64_ver_target_feature,
-                Some(sym::csky_target_feature) => rust_features.csky_target_feature,
-                Some(sym::loongarch_target_feature) => rust_features.loongarch_target_feature,
-                Some(sym::lahfsahf_target_feature) => rust_features.lahfsahf_target_feature,
-                Some(sym::prfchw_target_feature) => rust_features.prfchw_target_feature,
-                Some(sym::sha512_sm_x86) => rust_features.sha512_sm_x86,
-                Some(sym::x86_amx_intrinsics) => rust_features.x86_amx_intrinsics,
-                Some(sym::xop_target_feature) => rust_features.xop_target_feature,
-                Some(sym::s390x_target_feature) => rust_features.s390x_target_feature,
-                Some(name) => bug!("unknown target feature gate {}", name),
-                None => true,
-            };
-            if !allowed {
+            // Only allow target features whose feature gates have been enabled
+            // and which are permitted to be toggled.
+            if let Err(reason) = stability.toggle_allowed() {
+                tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
+                    span: item.span(),
+                    feature,
+                    reason,
+                });
+            } else if let Some(nightly_feature) = stability.requires_nightly()
+                && !rust_features.enabled(nightly_feature)
+            {
                 feature_err(
                     &tcx.sess,
-                    feature_gate.unwrap(),
+                    nightly_feature,
                     item.span(),
                     format!("the target feature `{feature}` is currently unstable"),
                 )
                 .emit();
+            } else {
+                // Add this and the implied features.
+                let feature_sym = Symbol::intern(feature);
+                for &name in tcx.implied_target_features(feature_sym) {
+                    // But ensure the ABI does not forbid enabling this.
+                    // Here we do assume that LLVM doesn't add even more implied features
+                    // we don't know about, at least no features that would have ABI effects!
+                    if abi_feature_constraints.incompatible.contains(&name.as_str()) {
+                        tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
+                            span: item.span(),
+                            feature: name.as_str(),
+                            reason: "this feature is incompatible with the target ABI",
+                        });
+                    }
+                    target_features.push(TargetFeature { name, implied: name != feature_sym })
+                }
             }
-            Some(Symbol::intern(feature))
-        }));
+        }
     }
-
-    // Add explicit features
-    target_features.extend(
-        added_target_features.iter().copied().map(|name| TargetFeature { name, implied: false }),
-    );
-
-    // Add implied features
-    let mut implied_target_features = UnordSet::new();
-    for feature in added_target_features.iter() {
-        implied_target_features.extend(tcx.implied_target_features(*feature).clone());
-    }
-    for feature in added_target_features.iter() {
-        implied_target_features.remove(feature);
-    }
-    target_features.extend(
-        implied_target_features
-            .into_sorted_stable_ord()
-            .iter()
-            .copied()
-            .map(|name| TargetFeature { name, implied: true }),
-    )
 }
 
 /// Computes the set of target features used in a function for the purposes of
@@ -146,7 +125,7 @@ fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
 
 /// Checks the function annotated with `#[target_feature]` is not a safe
 /// trait method implementation, reporting an error if it is.
-pub fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span: Span) {
+pub(crate) fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span: Span) {
     if let DefKind::AssocFn = tcx.def_kind(id) {
         let parent_id = tcx.local_parent(id);
         if let DefKind::Trait | DefKind::Impl { of_trait: true } = tcx.def_kind(parent_id) {
@@ -160,26 +139,30 @@ pub fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_s
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
-        supported_target_features: |tcx, cnum| {
+        rust_target_features: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             if tcx.sess.opts.actually_rustdoc {
                 // rustdoc needs to be able to document functions that use all the features, so
                 // whitelist them all
-                rustc_target::target_features::all_known_features()
-                    .map(|(a, b)| (a.to_string(), b.as_feature_name()))
+                rustc_target::target_features::all_rust_features()
+                    .map(|(a, b)| (a.to_string(), b))
                     .collect()
             } else {
                 tcx.sess
                     .target
-                    .supported_target_features()
+                    .rust_target_features()
                     .iter()
-                    .map(|&(a, b, _)| (a.to_string(), b.as_feature_name()))
+                    .map(|(a, b, _)| (a.to_string(), *b))
                     .collect()
             }
         },
-        implied_target_features: |tcx, feature| {
+        implied_target_features: |tcx, feature: Symbol| {
+            let feature = feature.as_str();
             UnordSet::from(tcx.sess.target.implied_target_features(std::iter::once(feature)))
                 .into_sorted_stable_ord()
+                .into_iter()
+                .map(|s| Symbol::intern(s))
+                .collect()
         },
         asm_target_features,
         ..*providers

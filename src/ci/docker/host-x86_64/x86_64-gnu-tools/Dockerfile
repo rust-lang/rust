@@ -85,8 +85,12 @@ ENV RUST_CONFIGURE_ARGS \
 
 ENV HOST_TARGET x86_64-unknown-linux-gnu
 
-COPY host-x86_64/dist-x86_64-linux/shared.sh /scripts/
-COPY host-x86_64/dist-x86_64-linux/build-gccjit.sh /scripts/
+# FIXME(#133381): currently rustc alt builds do *not* have rustc debug
+# assertions enabled! Therefore, we cannot force download CI rustc.
+#ENV FORCE_CI_RUSTC 1
+
+COPY scripts/shared.sh /scripts/
+COPY scripts/build-gccjit.sh /scripts/
 
 RUN /scripts/build-gccjit.sh /scripts
 
@@ -100,4 +104,4 @@ RUN /scripts/build-gccjit.sh /scripts
 # the local version of the package is different than the one used by the CI.
 ENV SCRIPT /tmp/checktools.sh ../x.py && \
   npm install browser-ui-test@$(head -n 1 /tmp/browser-ui-test.version) --unsafe-perm=true && \
-  python3 ../x.py test tests/rustdoc-gui --stage 2 --test-args "'--no-sandbox --jobs 1'"
+  python3 ../x.py test tests/rustdoc-gui --stage 2 --test-args "'--jobs 1'"

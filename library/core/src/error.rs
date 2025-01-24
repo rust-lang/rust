@@ -1,11 +1,8 @@
 #![doc = include_str!("error.md")]
 #![stable(feature = "error_in_core", since = "1.81.0")]
 
-#[cfg(test)]
-mod tests;
-
 use crate::any::TypeId;
-use crate::fmt::{Debug, Display, Formatter, Result};
+use crate::fmt::{self, Debug, Display, Formatter};
 
 /// `Error` is a trait representing the basic expectations for error values,
 /// i.e., values of type `E` in [`Result<T, E>`].
@@ -338,16 +335,17 @@ impl dyn Error {
     #[unstable(feature = "error_iter", issue = "58520")]
     #[inline]
     pub fn sources(&self) -> Source<'_> {
-        // You may think this method would be better in the Error trait, and you'd be right.
-        // Unfortunately that doesn't work, not because of the object safety rules but because we
-        // save a reference to self in Sources below as a trait object. If this method was
-        // declared in Error, then self would have the type &T where T is some concrete type which
-        // implements Error. We would need to coerce self to have type &dyn Error, but that requires
-        // that Self has a known size (i.e., Self: Sized). We can't put that bound on Error
-        // since that would forbid Error trait objects, and we can't put that bound on the method
-        // because that means the method can't be called on trait objects (we'd also need the
-        // 'static bound, but that isn't allowed because methods with bounds on Self other than
-        // Sized are not object-safe). Requiring an Unsize bound is not backwards compatible.
+        // You may think this method would be better in the `Error` trait, and you'd be right.
+        // Unfortunately that doesn't work, not because of the dyn-incompatibility rules but
+        // because we save a reference to `self` in `Source`s below as a trait object.
+        // If this method was declared in `Error`, then `self` would have the type `&T` where
+        // `T` is some concrete type which implements `Error`. We would need to coerce `self`
+        // to have type `&dyn Error`, but that requires that `Self` has a known size
+        // (i.e., `Self: Sized`). We can't put that bound on `Error` since that would forbid
+        // `Error` trait objects, and we can't put that bound on the method because that means
+        // the method can't be called on trait objects (we'd also need the `'static` bound,
+        // but that isn't allowed because methods with bounds on `Self` other than `Sized` are
+        // dyn-incompatible). Requiring an `Unsize` bound is not backwards compatible.
 
         Source { current: Some(self) }
     }
@@ -859,7 +857,7 @@ impl<'a> Request<'a> {
 
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
 impl<'a> Debug for Request<'a> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("Request").finish_non_exhaustive()
     }
 }
@@ -1078,4 +1076,4 @@ impl Error for crate::time::TryFromFloatSecsError {}
 impl Error for crate::ffi::FromBytesUntilNulError {}
 
 #[unstable(feature = "get_many_mut", issue = "104642")]
-impl<const N: usize> Error for crate::slice::GetManyMutError<N> {}
+impl Error for crate::slice::GetManyMutError {}

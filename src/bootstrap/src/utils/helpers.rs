@@ -10,13 +10,14 @@ use std::sync::OnceLock;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use std::{env, fs, io, str};
 
-use build_helper::git::{get_git_merge_base, output_result, GitConfig};
 use build_helper::util::fail;
+use object::read::archive::ArchiveFile;
 
+use crate::LldMode;
 use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
+use crate::utils::exec::{BootstrapCommand, command};
 pub use crate::utils::shared_helpers::{dylib_path, dylib_path_var};
-use crate::LldMode;
 
 #[cfg(test)]
 mod tests;
@@ -45,17 +46,42 @@ macro_rules! t {
         }
     };
 }
+
 pub use t;
-
-use crate::utils::exec::{command, BootstrapCommand};
-
 pub fn exe(name: &str, target: TargetSelection) -> String {
     crate::utils::shared_helpers::exe(name, &target.triple)
 }
 
 /// Returns `true` if the file name given looks like a dynamic library.
-pub fn is_dylib(name: &str) -> bool {
-    name.ends_with(".dylib") || name.ends_with(".so") || name.ends_with(".dll")
+pub fn is_dylib(path: &Path) -> bool {
+    path.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| {
+        ext == "dylib" || ext == "so" || ext == "dll" || (ext == "a" && is_aix_shared_archive(path))
+    })
+}
+
+/// Return the path to the containing submodule if available.
+pub fn submodule_path_of(builder: &Builder<'_>, path: &str) -> Option<String> {
+    let submodule_paths = build_helper::util::parse_gitmodules(&builder.src);
+    submodule_paths.iter().find_map(|submodule_path| {
+        if path.starts_with(submodule_path) { Some(submodule_path.to_string()) } else { None }
+    })
+}
+
+fn is_aix_shared_archive(path: &Path) -> bool {
+    let file = match fs::File::open(path) {
+        Ok(file) => file,
+        Err(_) => return false,
+    };
+    let reader = object::ReadCache::new(file);
+    let archive = match ArchiveFile::parse(&reader) {
+        Ok(result) => result,
+        Err(_) => return false,
+    };
+
+    archive
+        .members()
+        .filter_map(Result::ok)
+        .any(|entry| String::from_utf8_lossy(entry.name()).contains(".so"))
 }
 
 /// Returns `true` if the file name given looks like a debug info file
@@ -80,31 +106,6 @@ pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut BootstrapCommand) {
     cmd.env(dylib_path_var(), t!(env::join_paths(list)));
 }
 
-/// Adds a list of lookup paths to `cmd`'s link library lookup path.
-pub fn add_link_lib_path(path: Vec<PathBuf>, cmd: &mut BootstrapCommand) {
-    let mut list = link_lib_path();
-    for path in path {
-        list.insert(0, path);
-    }
-    cmd.env(link_lib_path_var(), t!(env::join_paths(list)));
-}
-
-/// Returns the environment variable which the link library lookup path
-/// resides in for this platform.
-fn link_lib_path_var() -> &'static str {
-    if cfg!(target_env = "msvc") { "LIB" } else { "LIBRARY_PATH" }
-}
-
-/// Parses the `link_lib_path_var()` environment variable, returning a list of
-/// paths that are members of this lookup path.
-fn link_lib_path() -> Vec<PathBuf> {
-    let var = match env::var_os(link_lib_path_var()) {
-        Some(v) => v,
-        None => return vec![],
-    };
-    env::split_paths(&var).collect()
-}
-
 pub struct TimeIt(bool, Instant);
 
 /// Returns an RAII structure that prints out how long it took to drop.
@@ -119,14 +120,6 @@ impl Drop for TimeIt {
             println!("\tfinished in {}.{:03} seconds", time.as_secs(), time.subsec_millis());
         }
     }
-}
-
-/// Used for download caching
-pub(crate) fn program_out_of_date(stamp: &Path, key: &str) -> bool {
-    if !stamp.exists() {
-        return true;
-    }
-    t!(fs::read_to_string(stamp)) != key
 }
 
 /// Symlinks two directories, using junctions on Windows and normal symlinks on
@@ -146,7 +139,7 @@ pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<
 
     #[cfg(windows)]
     fn symlink_dir_inner(target: &Path, junction: &Path) -> io::Result<()> {
-        junction::create(&target, &junction)
+        junction::create(target, junction)
     }
 }
 
@@ -154,10 +147,7 @@ pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<
 /// copy and remove the file otherwise
 pub fn move_file<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> {
     match fs::rename(&from, &to) {
-        // FIXME: Once `ErrorKind::CrossesDevices` is stabilized use
-        // if e.kind() == io::ErrorKind::CrossesDevices {
-        #[cfg(unix)]
-        Err(e) if e.raw_os_error() == Some(libc::EXDEV) => {
+        Err(e) if e.kind() == io::ErrorKind::CrossesDevices => {
             std::fs::copy(&from, &to)?;
             std::fs::remove_file(&from)
         }
@@ -289,6 +279,33 @@ pub fn output(cmd: &mut Command) -> String {
     String::from_utf8(output.stdout).unwrap()
 }
 
+/// Spawn a process and return a closure that will wait for the process
+/// to finish and then return its output. This allows the spawned process
+/// to do work without immediately blocking bootstrap.
+#[track_caller]
+pub fn start_process(cmd: &mut Command) -> impl FnOnce() -> String {
+    let child = match cmd.stderr(Stdio::inherit()).stdout(Stdio::piped()).spawn() {
+        Ok(child) => child,
+        Err(e) => fail(&format!("failed to execute command: {cmd:?}\nERROR: {e}")),
+    };
+
+    let command = format!("{:?}", cmd);
+
+    move || {
+        let output = child.wait_with_output().unwrap();
+
+        if !output.status.success() {
+            panic!(
+                "command did not execute successfully: {}\n\
+                 expected success, got: {}",
+                command, output.status
+            );
+        }
+
+        String::from_utf8(output.stdout).unwrap()
+    }
+}
+
 /// Returns the last-modified time for `path`, or zero if it doesn't exist.
 pub fn mtime(path: &Path) -> SystemTime {
     fs::metadata(path).and_then(|f| f.modified()).unwrap_or(UNIX_EPOCH)
@@ -386,7 +403,7 @@ fn lld_flag_no_threads(builder: &Builder<'_>, lld_mode: LldMode, is_windows: boo
 }
 
 pub fn dir_is_empty(dir: &Path) -> bool {
-    t!(std::fs::read_dir(dir)).next().is_none()
+    t!(std::fs::read_dir(dir), dir).next().is_none()
 }
 
 /// Extract the beta revision from the full version string.
@@ -429,7 +446,20 @@ pub fn linker_flags(
 ) -> Vec<String> {
     let mut args = vec![];
     if !builder.is_lld_direct_linker(target) && builder.config.lld_mode.is_used() {
-        args.push(String::from("-Clink-arg=-fuse-ld=lld"));
+        match builder.config.lld_mode {
+            LldMode::External => {
+                args.push("-Clinker-flavor=gnu-lld-cc".to_string());
+                // FIXME(kobzol): remove this flag once MCP510 gets stabilized
+                args.push("-Zunstable-options".to_string());
+            }
+            LldMode::SelfContained => {
+                args.push("-Clinker-flavor=gnu-lld-cc".to_string());
+                args.push("-Clink-self-contained=+linker".to_string());
+                // FIXME(kobzol): remove this flag once MCP510 gets stabilized
+                args.push("-Zunstable-options".to_string());
+            }
+            LldMode::Unused => unreachable!(),
+        };
 
         if matches!(lld_threads, LldThreads::No) {
             args.push(format!(
@@ -523,24 +553,14 @@ pub fn git(source_dir: Option<&Path>) -> BootstrapCommand {
     git
 }
 
-/// Returns the closest commit available from upstream for the given `author` and `target_paths`.
-///
-/// If it fails to find the commit from upstream using `git merge-base`, fallbacks to HEAD.
-pub fn get_closest_merge_base_commit(
-    source_dir: Option<&Path>,
-    config: &GitConfig<'_>,
-    author: &str,
-    target_paths: &[PathBuf],
-) -> Result<String, String> {
-    let mut git = git(source_dir);
-
-    let merge_base = get_git_merge_base(config, source_dir).unwrap_or_else(|_| "HEAD".into());
-
-    git.args(["rev-list", &format!("--author={author}"), "-n1", "--first-parent", &merge_base]);
-
-    if !target_paths.is_empty() {
-        git.arg("--").args(target_paths);
-    }
-
-    Ok(output_result(git.as_command_mut())?.trim().to_owned())
+/// Sets the file times for a given file at `path`.
+pub fn set_file_times<P: AsRef<Path>>(path: P, times: fs::FileTimes) -> io::Result<()> {
+    // Windows requires file to be writable to modify file times. But on Linux CI the file does not
+    // need to be writable to modify file times and might be read-only.
+    let f = if cfg!(windows) {
+        fs::File::options().write(true).open(path)?
+    } else {
+        fs::File::open(path)?
+    };
+    f.set_times(times)
 }

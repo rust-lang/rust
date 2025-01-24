@@ -1,4 +1,4 @@
-//@ only-target-linux: we need a specific extern supported on this target
+//@only-target: linux # we need a specific extern supported on this target
 //@normalize-stderr-test: "[48] bytes" -> "N bytes"
 
 extern "C" {

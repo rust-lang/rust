@@ -1,17 +1,17 @@
 // Utility Functions.
 
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
+use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Ty};
 use tracing::trace;
 
-use super::namespace::item_namespace;
 use super::CodegenUnitDebugContext;
+use super::namespace::item_namespace;
 use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::{DIArray, DIBuilder, DIDescriptor, DIScope};
 
-pub fn is_node_local_to_unit(cx: &CodegenCx<'_, '_>, def_id: DefId) -> bool {
+pub(crate) fn is_node_local_to_unit(cx: &CodegenCx<'_, '_>, def_id: DefId) -> bool {
     // The is_local_to_unit flag indicates whether a function is local to the
     // current compilation unit (i.e., if it is *static* in the C-sense). The
     // *reachable* set should provide a good approximation of this, as it
@@ -24,7 +24,7 @@ pub fn is_node_local_to_unit(cx: &CodegenCx<'_, '_>, def_id: DefId) -> bool {
 }
 
 #[allow(non_snake_case)]
-pub fn create_DIArray<'ll>(
+pub(crate) fn create_DIArray<'ll>(
     builder: &DIBuilder<'ll>,
     arr: &[Option<&'ll DIDescriptor>],
 ) -> &'ll DIArray {
@@ -32,7 +32,7 @@ pub fn create_DIArray<'ll>(
 }
 
 #[inline]
-pub fn debug_context<'a, 'll, 'tcx>(
+pub(crate) fn debug_context<'a, 'll, 'tcx>(
     cx: &'a CodegenCx<'ll, 'tcx>,
 ) -> &'a CodegenUnitDebugContext<'ll, 'tcx> {
     cx.dbg_cx.as_ref().unwrap()
@@ -40,32 +40,32 @@ pub fn debug_context<'a, 'll, 'tcx>(
 
 #[inline]
 #[allow(non_snake_case)]
-pub fn DIB<'a, 'll>(cx: &'a CodegenCx<'ll, '_>) -> &'a DIBuilder<'ll> {
+pub(crate) fn DIB<'a, 'll>(cx: &'a CodegenCx<'ll, '_>) -> &'a DIBuilder<'ll> {
     cx.dbg_cx.as_ref().unwrap().builder
 }
 
-pub fn get_namespace_for_item<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
+pub(crate) fn get_namespace_for_item<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
     item_namespace(cx, cx.tcx.parent(def_id))
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum FatPtrKind {
+pub(crate) enum WidePtrKind {
     Slice,
     Dyn,
 }
 
 /// Determines if `pointee_ty` is slice-like or trait-object-like, i.e.
-/// if the second field of the fat pointer is a length or a vtable-pointer.
-/// If `pointee_ty` does not require a fat pointer (because it is Sized) then
+/// if the second field of the wide pointer is a length or a vtable-pointer.
+/// If `pointee_ty` does not require a wide pointer (because it is Sized) then
 /// the function returns `None`.
-pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
+pub(crate) fn wide_pointer_kind<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     pointee_ty: Ty<'tcx>,
-) -> Option<FatPtrKind> {
-    let pointee_tail_ty = cx.tcx.struct_tail_erasing_lifetimes(pointee_ty, cx.param_env());
+) -> Option<WidePtrKind> {
+    let pointee_tail_ty = cx.tcx.struct_tail_for_codegen(pointee_ty, cx.typing_env());
     let layout = cx.layout_of(pointee_tail_ty);
     trace!(
-        "fat_pointer_kind: {:?} has layout {:?} (is_unsized? {})",
+        "wide_pointer_kind: {:?} has layout {:?} (is_unsized? {})",
         pointee_tail_ty,
         layout,
         layout.is_unsized()
@@ -76,8 +76,8 @@ pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
     }
 
     match *pointee_tail_ty.kind() {
-        ty::Str | ty::Slice(_) => Some(FatPtrKind::Slice),
-        ty::Dynamic(..) => Some(FatPtrKind::Dyn),
+        ty::Str | ty::Slice(_) => Some(WidePtrKind::Slice),
+        ty::Dynamic(..) => Some(WidePtrKind::Dyn),
         ty::Foreign(_) => {
             // Assert that pointers to foreign types really are thin:
             assert_eq!(
@@ -90,7 +90,7 @@ pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
             // For all other pointee types we should already have returned None
             // at the beginning of the function.
             panic!(
-                "fat_pointer_kind() - Encountered unexpected `pointee_tail_ty`: {pointee_tail_ty:?}"
+                "wide_pointer_kind() - Encountered unexpected `pointee_tail_ty`: {pointee_tail_ty:?}"
             )
         }
     }

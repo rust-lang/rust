@@ -4,9 +4,8 @@ use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::{GenericArg, MetaItem};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::Span;
-use thin_vec::{thin_vec, ThinVec};
+use rustc_span::{Span, Symbol, sym};
+use thin_vec::{ThinVec, thin_vec};
 
 macro path_local($x:ident) {
     generic::ty::Path::new_local(sym::$x)
@@ -22,12 +21,12 @@ macro path_std($($x:tt)*) {
 
 pub(crate) mod bounds;
 pub(crate) mod clone;
+pub(crate) mod coerce_pointee;
 pub(crate) mod debug;
 pub(crate) mod decodable;
 pub(crate) mod default;
 pub(crate) mod encodable;
 pub(crate) mod hash;
-pub(crate) mod smart_ptr;
 
 #[path = "cmp/eq.rs"]
 pub(crate) mod eq;
@@ -124,8 +123,6 @@ fn assert_ty_bounds(
     span: Span,
     assert_path: &[Symbol],
 ) {
-    // Deny anonymous structs or unions to avoid weird errors.
-    assert!(!ty.kind.is_anon_adt(), "Anonymous structs or unions cannot be type parameters");
     // Generate statement `let _: assert_path<ty>;`.
     let span = cx.with_def_site_ctxt(span);
     let assert_path = cx.path_all(span, true, cx.std_path(assert_path), vec![GenericArg::Type(ty)]);

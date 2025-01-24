@@ -1,6 +1,6 @@
-//! This module contains tests for macro expansion. Effectively, it covers `tt`,
-//! `mbe`, `proc_macro_api` and `hir_expand` crates. This might seem like a
-//! wrong architecture at the first glance, but is intentional.
+//! This module contains integration tests for macro expansion with name resolution. Effectively, it
+//! covers `tt`, `mbe`, `proc_macro_api` and `hir_expand` crates. This might seem like a  wrong
+//! architecture at the first glance, but is intentional.
 //!
 //! Physically, macro expansion process is intertwined with name resolution. You
 //! can not expand *just* the syntax. So, to be able to write integration tests
@@ -22,10 +22,11 @@ use hir_expand::{
     db::ExpandDatabase,
     proc_macro::{ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind},
     span_map::SpanMapRef,
-    InFile, MacroFileId, MacroFileIdExt,
+    InFile, MacroCallKind, MacroFileId, MacroFileIdExt,
 };
 use intern::Symbol;
-use span::Span;
+use itertools::Itertools;
+use span::{Edition, Span};
 use stdx::{format_to, format_to_acc};
 use syntax::{
     ast::{self, edit::IndentLevel},
@@ -41,12 +42,42 @@ use crate::{
     resolver::HasResolver,
     src::HasSource,
     test_db::TestDB,
-    tt::Subtree,
+    tt::TopSubtree,
     AdtId, AsMacroCall, Lookup, ModuleDefId,
 };
 
 #[track_caller]
-fn check(ra_fixture: &str, mut expect: Expect) {
+fn check_errors(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
+    let db = TestDB::with_files(ra_fixture);
+    let krate = db.fetch_test_crate();
+    let def_map = db.crate_def_map(krate);
+    let errors = def_map
+        .modules()
+        .flat_map(|module| module.1.scope.all_macro_calls())
+        .filter_map(|macro_call| {
+            let errors = db.parse_macro_expansion_error(macro_call)?;
+            let errors = errors.err.as_ref()?.render_to_string(&db);
+            let macro_loc = db.lookup_intern_macro_call(macro_call);
+            let ast_id = match macro_loc.kind {
+                MacroCallKind::FnLike { ast_id, .. } => ast_id.map(|it| it.erase()),
+                MacroCallKind::Derive { ast_id, .. } => ast_id.map(|it| it.erase()),
+                MacroCallKind::Attr { ast_id, .. } => ast_id.map(|it| it.erase()),
+            };
+            let ast = db
+                .parse(ast_id.file_id.file_id().expect("macros inside macros are not supported"))
+                .syntax_node();
+            let ast_id_map = db.ast_id_map(ast_id.file_id);
+            let node = ast_id_map.get_erased(ast_id.value).to_node(&ast);
+            Some((node.text_range(), errors))
+        })
+        .sorted_unstable_by_key(|(range, _)| range.start())
+        .format_with("\n", |(range, err), format| format(&format_args!("{range:?}: {err}")))
+        .to_string();
+    expect.assert_eq(&errors);
+}
+
+#[track_caller]
+fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, mut expect: Expect) {
     let extra_proc_macros = vec![(
         r#"
 #[proc_macro_attribute]
@@ -63,7 +94,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         },
     )];
     let db = TestDB::with_files_extra_proc_macros(ra_fixture, extra_proc_macros);
-    let krate = db.crate_graph().iter().next().unwrap();
+    let krate = db.fetch_test_crate();
     let def_map = db.crate_def_map(krate);
     let local_id = DefMap::ROOT;
     let module = def_map.module_id(local_id);
@@ -122,7 +153,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
 
         let mut expn_text = String::new();
         if let Some(err) = exp.err {
-            format_to!(expn_text, "/* error: {} */", err.render_to_string(&db).0);
+            format_to!(expn_text, "/* error: {} */", err.render_to_string(&db).message);
         }
         let (parse, token_map) = exp.value;
         if expect_errors {
@@ -246,7 +277,9 @@ fn pretty_print_macro_expansion(
     let mut res = String::new();
     let mut prev_kind = EOF;
     let mut indent_level = 0;
-    for token in iter::successors(expn.first_token(), |t| t.next_token()) {
+    for token in iter::successors(expn.first_token(), |t| t.next_token())
+        .take_while(|token| token.text_range().start() < expn.text_range().end())
+    {
         let curr_kind = token.kind();
         let space = match (prev_kind, curr_kind) {
             _ if prev_kind.is_trivia() || curr_kind.is_trivia() => "",
@@ -257,21 +290,25 @@ fn pretty_print_macro_expansion(
             (T![;] | T!['{'] | T!['}'], _) => "\n",
             (_, T!['}']) => "\n",
             (IDENT | LIFETIME_IDENT, IDENT | LIFETIME_IDENT) => " ",
-            _ if prev_kind.is_keyword() && curr_kind.is_keyword() => " ",
-            (IDENT, _) if curr_kind.is_keyword() => " ",
-            (_, IDENT) if prev_kind.is_keyword() => " ",
+            _ if prev_kind.is_keyword(Edition::CURRENT)
+                && curr_kind.is_keyword(Edition::CURRENT) =>
+            {
+                " "
+            }
+            (IDENT, _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
+            (_, IDENT) if prev_kind.is_keyword(Edition::CURRENT) => " ",
             (T![>], IDENT) => " ",
-            (T![>], _) if curr_kind.is_keyword() => " ",
+            (T![>], _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
             (T![->], _) | (_, T![->]) => " ",
             (T![&&], _) | (_, T![&&]) => " ",
             (T![,], _) => " ",
             (T![:], IDENT | T!['(']) => " ",
-            (T![:], _) if curr_kind.is_keyword() => " ",
+            (T![:], _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
             (T![fn], T!['(']) => "",
-            (T![']'], _) if curr_kind.is_keyword() => " ",
+            (T![']'], _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
             (T![']'], T![#]) => "\n",
             (T![Self], T![::]) => "",
-            _ if prev_kind.is_keyword() => " ",
+            _ if prev_kind.is_keyword(Edition::CURRENT) => " ",
             _ => "",
         };
 
@@ -310,16 +347,18 @@ struct IdentityWhenValidProcMacroExpander;
 impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
     fn expand(
         &self,
-        subtree: &Subtree,
-        _: Option<&Subtree>,
+        subtree: &TopSubtree,
+        _: Option<&TopSubtree>,
         _: &base_db::Env,
         _: Span,
         _: Span,
         _: Span,
-    ) -> Result<Subtree, ProcMacroExpansionError> {
-        let (parse, _) = ::mbe::token_tree_to_syntax_node(
+        _: Option<String>,
+    ) -> Result<TopSubtree, ProcMacroExpansionError> {
+        let (parse, _) = syntax_bridge::token_tree_to_syntax_node(
             subtree,
-            ::mbe::TopEntryPoint::MacroItems,
+            syntax_bridge::TopEntryPoint::MacroItems,
+            &mut |_| span::Edition::CURRENT,
             span::Edition::CURRENT,
         );
         if parse.errors().is_empty() {

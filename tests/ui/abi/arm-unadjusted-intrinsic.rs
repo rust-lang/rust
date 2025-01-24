@@ -25,16 +25,13 @@ impl Copy for i8 {}
 impl<T: ?Sized> Copy for *const T {}
 impl<T: ?Sized> Copy for *mut T {}
 
+// I hate no_core tests!
+impl<T: Copy, const N: usize> Copy for [T; N] {}
 
 // Regression test for https://github.com/rust-lang/rust/issues/118124.
 
 #[repr(simd)]
-pub struct int8x16_t(
-    pub(crate) i8, pub(crate) i8, pub(crate) i8, pub(crate) i8,
-    pub(crate) i8, pub(crate) i8, pub(crate) i8, pub(crate) i8,
-    pub(crate) i8, pub(crate) i8, pub(crate) i8, pub(crate) i8,
-    pub(crate) i8, pub(crate) i8, pub(crate) i8, pub(crate) i8,
-);
+pub struct int8x16_t(pub(crate) [i8; 16]);
 impl Copy for int8x16_t {}
 
 #[repr(C)]

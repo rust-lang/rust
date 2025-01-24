@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::{iter, mem};
 
 use rustc_ast::token::{Delimiter, Token, TokenKind};
@@ -6,14 +7,29 @@ use rustc_ast::tokenstream::{
     Spacing, ToAttrTokenStream,
 };
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, HasTokens};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::PResult;
 use rustc_session::parse::ParseSess;
-use rustc_span::{sym, Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span, sym};
 
 use super::{
     Capturing, FlatToken, ForceCollect, NodeRange, NodeReplacement, Parser, ParserRange,
-    TokenCursor,
+    TokenCursor, Trailing,
 };
+
+// When collecting tokens, this fully captures the start point. Usually its
+// just after outer attributes, but occasionally it's before.
+#[derive(Clone, Debug)]
+pub(super) struct CollectPos {
+    start_token: (Token, Spacing),
+    cursor_snapshot: TokenCursor,
+    start_pos: u32,
+}
+
+pub(super) enum UsePreAttrPos {
+    No,
+    Yes,
+}
 
 /// A wrapper type to ensure that the parser handles outer attributes correctly.
 /// When we parse outer attributes, we need to ensure that we capture tokens
@@ -22,30 +38,32 @@ use super::{
 ///
 /// This wrapper prevents direct access to the underlying `ast::AttrVec`.
 /// Parsing code can only get access to the underlying attributes
-/// by passing an `AttrWrapper` to `collect_tokens_trailing_token`.
+/// by passing an `AttrWrapper` to `collect_tokens`.
 /// This makes it difficult to accidentally construct an AST node
 /// (which stores an `ast::AttrVec`) without first collecting tokens.
 ///
 /// This struct has its own module, to ensure that the parser code
 /// cannot directly access the `attrs` field.
 #[derive(Debug, Clone)]
-pub struct AttrWrapper {
+pub(super) struct AttrWrapper {
     attrs: AttrVec,
     // The start of the outer attributes in the parser's token stream.
     // This lets us create a `NodeReplacement` for the entire attribute
-    // target, including outer attributes.
-    start_pos: u32,
+    // target, including outer attributes. `None` if there are no outer
+    // attributes.
+    start_pos: Option<u32>,
 }
 
 impl AttrWrapper {
     pub(super) fn new(attrs: AttrVec, start_pos: u32) -> AttrWrapper {
-        AttrWrapper { attrs, start_pos }
-    }
-    pub fn empty() -> AttrWrapper {
-        AttrWrapper { attrs: AttrVec::new(), start_pos: u32::MAX }
+        AttrWrapper { attrs, start_pos: Some(start_pos) }
     }
 
-    pub(crate) fn take_for_recovery(self, psess: &ParseSess) -> AttrVec {
+    pub(super) fn empty() -> AttrWrapper {
+        AttrWrapper { attrs: AttrVec::new(), start_pos: None }
+    }
+
+    pub(super) fn take_for_recovery(self, psess: &ParseSess) -> AttrVec {
         psess.dcx().span_delayed_bug(
             self.attrs.get(0).map(|attr| attr.span).unwrap_or(DUMMY_SP),
             "AttrVec is taken for recovery but no error is produced",
@@ -56,12 +74,12 @@ impl AttrWrapper {
 
     /// Prepend `self.attrs` to `attrs`.
     // FIXME: require passing an NT to prevent misuse of this method
-    pub(crate) fn prepend_to_nt_inner(mut self, attrs: &mut AttrVec) {
+    pub(super) fn prepend_to_nt_inner(mut self, attrs: &mut AttrVec) {
         mem::swap(attrs, &mut self.attrs);
         attrs.extend(self.attrs);
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub(super) fn is_empty(&self) -> bool {
         self.attrs.is_empty()
     }
 }
@@ -77,7 +95,7 @@ fn has_cfg_or_cfg_attr(attrs: &[Attribute]) -> bool {
 }
 
 // From a value of this type we can reconstruct the `TokenStream` seen by the
-// `f` callback passed to a call to `Parser::collect_tokens_trailing_token`, by
+// `f` callback passed to a call to `Parser::collect_tokens`, by
 // replaying the getting of the tokens. This saves us producing a `TokenStream`
 // if it is never needed, e.g. a captured `macro_rules!` argument that is never
 // passed to a proc macro. In practice, token stream creation happens rarely
@@ -90,7 +108,7 @@ struct LazyAttrTokenStreamImpl {
     start_token: (Token, Spacing),
     cursor_snapshot: TokenCursor,
     num_calls: u32,
-    break_last_token: bool,
+    break_last_token: u32,
     node_replacements: Box<[NodeReplacement]>,
 }
 
@@ -166,15 +184,29 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
 }
 
 impl<'a> Parser<'a> {
+    pub(super) fn collect_pos(&self) -> CollectPos {
+        CollectPos {
+            start_token: (self.token.clone(), self.token_spacing),
+            cursor_snapshot: self.token_cursor.clone(),
+            start_pos: self.num_bump_calls,
+        }
+    }
+
     /// Parses code with `f`. If appropriate, it records the tokens (in
     /// `LazyAttrTokenStream` form) that were parsed in the result, accessible
-    /// via the `HasTokens` trait. The second (bool) part of the callback's
+    /// via the `HasTokens` trait. The `Trailing` part of the callback's
     /// result indicates if an extra token should be captured, e.g. a comma or
-    /// semicolon.
+    /// semicolon. The `UsePreAttrPos` part of the callback's result indicates
+    /// if we should use `pre_attr_pos` as the collection start position (only
+    /// required in a few cases).
     ///
     /// The `attrs` passed in are in `AttrWrapper` form, which is opaque. The
     /// `AttrVec` within is passed to `f`. See the comment on `AttrWrapper` for
     /// details.
+    ///
+    /// `pre_attr_pos` is the position before the outer attributes (or the node
+    /// itself, if no outer attributes are present). It is only needed if `f`
+    /// can return `UsePreAttrPos::Yes`.
     ///
     /// Note: If your callback consumes an opening delimiter (including the
     /// case where `self.token` is an opening delimiter on entry to this
@@ -197,12 +229,15 @@ impl<'a> Parser<'a> {
     ///     }                               //  32..33
     /// }                                   //  33..34
     /// ```
-    pub fn collect_tokens_trailing_token<R: HasAttrs + HasTokens>(
+    pub(super) fn collect_tokens<R: HasAttrs + HasTokens>(
         &mut self,
+        pre_attr_pos: Option<CollectPos>,
         attrs: AttrWrapper,
         force_collect: ForceCollect,
-        f: impl FnOnce(&mut Self, ast::AttrVec) -> PResult<'a, (R, bool)>,
+        f: impl FnOnce(&mut Self, AttrVec) -> PResult<'a, (R, Trailing, UsePreAttrPos)>,
     ) -> PResult<'a, R> {
+        let possible_capture_mode = self.capture_cfg;
+
         // We must collect if anything could observe the collected tokens, i.e.
         // if any of the following conditions hold.
         // - We are force collecting tokens (because force collection requires
@@ -213,44 +248,71 @@ impl<'a> Parser<'a> {
             // - Our target supports custom inner attributes (custom
             //   inner attribute invocation might require token capturing).
             || R::SUPPORTS_CUSTOM_INNER_ATTRS
-            // - We are in `capture_cfg` mode (which requires tokens if
+            // - We are in "possible capture mode" (which requires tokens if
             //   the parsed node has `#[cfg]` or `#[cfg_attr]` attributes).
-            || self.capture_cfg;
+            || possible_capture_mode;
         if !needs_collection {
             return Ok(f(self, attrs.attrs)?.0);
         }
 
-        let start_token = (self.token.clone(), self.token_spacing);
-        let cursor_snapshot = self.token_cursor.clone();
-        let start_pos = self.num_bump_calls;
+        let mut collect_pos = self.collect_pos();
         let has_outer_attrs = !attrs.attrs.is_empty();
         let parser_replacements_start = self.capture_state.parser_replacements.len();
 
         // We set and restore `Capturing::Yes` on either side of the call to
-        // `f`, so we can distinguish the outermost call to
-        // `collect_tokens_trailing_token` (e.g. parsing `m` in the example
-        // above) from any inner (indirectly recursive) calls (e.g. parsing `g`
-        // in the example above). This distinction is used below and in
-        // `Parser::parse_inner_attributes`.
-        let (mut ret, capture_trailing) = {
+        // `f`, so we can distinguish the outermost call to `collect_tokens`
+        // (e.g. parsing `m` in the example above) from any inner (indirectly
+        // recursive) calls (e.g. parsing `g` in the example above). This
+        // distinction is used below and in `Parser::parse_inner_attributes`.
+        let (mut ret, capture_trailing, use_pre_attr_pos) = {
             let prev_capturing = mem::replace(&mut self.capture_state.capturing, Capturing::Yes);
-            let ret_and_trailing = f(self, attrs.attrs);
+            let res = f(self, attrs.attrs);
             self.capture_state.capturing = prev_capturing;
-            ret_and_trailing?
+            res?
         };
 
-        // When we're not in `capture_cfg` mode, then skip collecting and
-        // return early if either of the following conditions hold.
         // - `None`: Our target doesn't support tokens at all (e.g. `NtIdent`).
+        // - `Some(None)`: Our target supports tokens and has none.
         // - `Some(Some(_))`: Our target already has tokens set (e.g. we've
-        //   parsed something like `#[my_attr] $item`). The actual parsing code
-        //   takes care of prepending any attributes to the nonterminal, so we
-        //   don't need to modify the already captured tokens.
+        //   parsed something like `#[my_attr] $item`).
+        let ret_can_hold_tokens = matches!(ret.tokens_mut(), Some(None));
+
+        // Ignore any attributes we've previously processed. This happens when
+        // an inner call to `collect_tokens` returns an AST node and then an
+        // outer call ends up with the same AST node without any additional
+        // wrapping layer.
+        let mut seen_indices = FxHashSet::default();
+        for (i, attr) in ret.attrs().iter().enumerate() {
+            let is_unseen = self.capture_state.seen_attrs.insert(attr.id);
+            if !is_unseen {
+                seen_indices.insert(i);
+            }
+        }
+        let ret_attrs: Cow<'_, [Attribute]> =
+            if seen_indices.is_empty() {
+                Cow::Borrowed(ret.attrs())
+            } else {
+                let ret_attrs =
+                    ret.attrs()
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(i, attr)| {
+                            if seen_indices.contains(&i) { None } else { Some(attr.clone()) }
+                        })
+                        .collect();
+                Cow::Owned(ret_attrs)
+            };
+
+        // When we're not in "definite capture mode", then skip collecting and
+        // return early if `ret` doesn't support tokens or already has some.
         //
         // Note that this check is independent of `force_collect`. There's no
         // need to collect tokens when we don't support tokens or already have
         // tokens.
-        if !self.capture_cfg && matches!(ret.tokens_mut(), None | Some(Some(_))) {
+        let definite_capture_mode = self.capture_cfg
+            && matches!(self.capture_state.capturing, Capturing::Yes)
+            && has_cfg_or_cfg_attr(&ret_attrs);
+        if !definite_capture_mode && !ret_can_hold_tokens {
             return Ok(ret);
         }
 
@@ -269,38 +331,49 @@ impl<'a> Parser<'a> {
             //   outer and inner attributes. So this check is more precise than
             //   the earlier `needs_tokens` check, and we don't need to
             //   check `R::SUPPORTS_CUSTOM_INNER_ATTRS`.)
-            || needs_tokens(ret.attrs())
-            // - We are in `capture_cfg` mode and there are `#[cfg]` or
-            //   `#[cfg_attr]` attributes. (During normal non-`capture_cfg`
-            //   parsing, we don't need any special capturing for those
-            //   attributes, because they're builtin.)
-            || (self.capture_cfg && has_cfg_or_cfg_attr(ret.attrs()));
+            || needs_tokens(&ret_attrs)
+            // - We are in "definite capture mode", which requires that there
+            //   are `#[cfg]` or `#[cfg_attr]` attributes. (During normal
+            //   non-`capture_cfg` parsing, we don't need any special capturing
+            //   for those attributes, because they're builtin.)
+            || definite_capture_mode;
         if !needs_collection {
             return Ok(ret);
+        }
+
+        // Replace the post-attribute collection start position with the
+        // pre-attribute position supplied, if `f` indicated it is necessary.
+        // (The caller is responsible for providing a non-`None` `pre_attr_pos`
+        // if this is a possibility.)
+        if matches!(use_pre_attr_pos, UsePreAttrPos::Yes) {
+            collect_pos = pre_attr_pos.unwrap();
         }
 
         let parser_replacements_end = self.capture_state.parser_replacements.len();
 
         assert!(
-            !(self.break_last_token && capture_trailing),
-            "Cannot set break_last_token and have trailing token"
+            !(self.break_last_token > 0 && matches!(capture_trailing, Trailing::Yes)),
+            "Cannot have break_last_token > 0 and have trailing token"
         );
+        assert!(self.break_last_token <= 2, "cannot break token more than twice");
 
         let end_pos = self.num_bump_calls
             + capture_trailing as u32
-            // If we 'broke' the last token (e.g. breaking a '>>' token to two '>' tokens), then
-            // extend the range of captured tokens to include it, since the parser was not actually
-            // bumped past it. When the `LazyAttrTokenStream` gets converted into an
-            // `AttrTokenStream`, we will create the proper token.
-            + self.break_last_token as u32;
+            // If we "broke" the last token (e.g. breaking a `>>` token once into `>` + `>`, or
+            // breaking a `>>=` token twice into `>` + `>` + `=`), then extend the range of
+            // captured tokens to include it, because the parser was not actually bumped past it.
+            // (Even if we broke twice, it was still just one token originally, hence the `1`.)
+            // When the `LazyAttrTokenStream` gets converted into an `AttrTokenStream`, we will
+            // rebreak that final token once or twice.
+            + if self.break_last_token == 0 { 0 } else { 1 };
 
-        let num_calls = end_pos - start_pos;
+        let num_calls = end_pos - collect_pos.start_pos;
 
         // Take the captured `ParserRange`s for any inner attributes that we parsed in
         // `Parser::parse_inner_attributes`, and pair them in a `ParserReplacement` with `None`,
         // which means the relevant tokens will be removed. (More details below.)
         let mut inner_attr_parser_replacements = Vec::new();
-        for attr in ret.attrs() {
+        for attr in ret_attrs.iter() {
             if attr.style == ast::AttrStyle::Inner {
                 if let Some(inner_attr_parser_range) =
                     self.capture_state.inner_attr_parser_ranges.remove(&attr.id)
@@ -327,8 +400,10 @@ impl<'a> Parser<'a> {
                 [parser_replacements_start..parser_replacements_end]
                 .iter()
                 .cloned()
-                .chain(inner_attr_parser_replacements.iter().cloned())
-                .map(|(parser_range, data)| (NodeRange::new(parser_range, start_pos), data))
+                .chain(inner_attr_parser_replacements)
+                .map(|(parser_range, data)| {
+                    (NodeRange::new(parser_range, collect_pos.start_pos), data)
+                })
                 .collect()
         };
 
@@ -355,27 +430,19 @@ impl<'a> Parser<'a> {
         //     - `tokens`: lazy tokens for `g` (with its inner attr deleted).
 
         let tokens = LazyAttrTokenStream::new(LazyAttrTokenStreamImpl {
-            start_token,
+            start_token: collect_pos.start_token,
+            cursor_snapshot: collect_pos.cursor_snapshot,
             num_calls,
-            cursor_snapshot,
             break_last_token: self.break_last_token,
             node_replacements,
         });
+        let mut tokens_used = false;
 
-        // If we support tokens and don't already have them, store the newly captured tokens.
-        if let Some(target_tokens @ None) = ret.tokens_mut() {
-            *target_tokens = Some(tokens.clone());
-        }
-
-        // If `capture_cfg` is set and we're inside a recursive call to
-        // `collect_tokens_trailing_token`, then we need to register a replace range
-        // if we have `#[cfg]` or `#[cfg_attr]`. This allows us to run eager cfg-expansion
-        // on the captured token stream.
-        if self.capture_cfg
-            && matches!(self.capture_state.capturing, Capturing::Yes)
-            && has_cfg_or_cfg_attr(ret.attrs())
-        {
-            assert!(!self.break_last_token, "Should not have unglued last token with cfg attr");
+        // If in "definite capture mode" we need to register a replace range
+        // for the `#[cfg]` and/or `#[cfg_attr]` attrs. This allows us to run
+        // eager cfg-expansion on the captured token stream.
+        if definite_capture_mode {
+            assert!(self.break_last_token == 0, "Should not have unglued last token with cfg attr");
 
             // What is the status here when parsing the example code at the top of this method?
             //
@@ -389,8 +456,11 @@ impl<'a> Parser<'a> {
             // Set things up so that the entire AST node that we just parsed, including attributes,
             // will be replaced with `target` in the lazy token stream. This will allow us to
             // cfg-expand this AST node.
-            let start_pos = if has_outer_attrs { attrs.start_pos } else { start_pos };
-            let target = AttrsTarget { attrs: ret.attrs().iter().cloned().collect(), tokens };
+            let start_pos =
+                if has_outer_attrs { attrs.start_pos.unwrap() } else { collect_pos.start_pos };
+            let target =
+                AttrsTarget { attrs: ret_attrs.iter().cloned().collect(), tokens: tokens.clone() };
+            tokens_used = true;
             self.capture_state
                 .parser_replacements
                 .push((ParserRange(start_pos..end_pos), Some(target)));
@@ -399,7 +469,16 @@ impl<'a> Parser<'a> {
             // the outermost call to this method.
             self.capture_state.parser_replacements.clear();
             self.capture_state.inner_attr_parser_ranges.clear();
+            self.capture_state.seen_attrs.clear();
         }
+
+        // If we support tokens and don't already have them, store the newly captured tokens.
+        if let Some(target_tokens @ None) = ret.tokens_mut() {
+            tokens_used = true;
+            *target_tokens = Some(tokens);
+        }
+
+        assert!(tokens_used); // check we didn't create `tokens` unnecessarily
         Ok(ret)
     }
 }
@@ -409,7 +488,7 @@ impl<'a> Parser<'a> {
 /// close delims.
 fn make_attr_token_stream(
     iter: impl Iterator<Item = FlatToken>,
-    break_last_token: bool,
+    break_last_token: u32,
 ) -> AttrTokenStream {
     #[derive(Debug)]
     struct FrameData {
@@ -423,16 +502,16 @@ fn make_attr_token_stream(
     for flat_token in iter {
         match flat_token {
             FlatToken::Token((Token { kind: TokenKind::OpenDelim(delim), span }, spacing)) => {
-                stack_rest.push(mem::replace(
-                    &mut stack_top,
-                    FrameData { open_delim_sp: Some((delim, span, spacing)), inner: vec![] },
-                ));
+                stack_rest.push(mem::replace(&mut stack_top, FrameData {
+                    open_delim_sp: Some((delim, span, spacing)),
+                    inner: vec![],
+                }));
             }
             FlatToken::Token((Token { kind: TokenKind::CloseDelim(delim), span }, spacing)) => {
                 let frame_data = mem::replace(&mut stack_top, stack_rest.pop().unwrap());
                 let (open_delim, open_sp, open_spacing) = frame_data.open_delim_sp.unwrap();
-                assert_eq!(
-                    open_delim, delim,
+                assert!(
+                    open_delim.eq_ignoring_invisible_origin(&delim),
                     "Mismatched open/close delims: open={open_delim:?} close={span:?}"
                 );
                 let dspan = DelimSpan::from_pair(open_sp, span);
@@ -451,18 +530,17 @@ fn make_attr_token_stream(
         }
     }
 
-    if break_last_token {
+    if break_last_token > 0 {
         let last_token = stack_top.inner.pop().unwrap();
         if let AttrTokenTree::Token(last_token, spacing) = last_token {
-            let unglued_first = last_token.kind.break_two_token_op().unwrap().0;
+            let (unglued, _) = last_token.kind.break_two_token_op(break_last_token).unwrap();
 
-            // An 'unglued' token is always two ASCII characters
+            // Tokens are always ASCII chars, so we can use byte arithmetic here.
             let mut first_span = last_token.span.shrink_to_lo();
-            first_span = first_span.with_hi(first_span.lo() + rustc_span::BytePos(1));
+            first_span =
+                first_span.with_hi(first_span.lo() + rustc_span::BytePos(break_last_token));
 
-            stack_top
-                .inner
-                .push(AttrTokenTree::Token(Token::new(unglued_first, first_span), spacing));
+            stack_top.inner.push(AttrTokenTree::Token(Token::new(unglued, first_span), spacing));
         } else {
             panic!("Unexpected last token {last_token:?}")
         }
@@ -471,9 +549,11 @@ fn make_attr_token_stream(
 }
 
 /// Tokens are needed if:
-/// - any non-single-segment attributes (other than doc comments) are present; or
-/// - any `cfg_attr` attributes are present;
-/// - any single-segment, non-builtin attributes are present.
+/// - any non-single-segment attributes (other than doc comments) are present,
+///   e.g. `rustfmt::skip`; or
+/// - any `cfg_attr` attributes are present; or
+/// - any single-segment, non-builtin attributes are present, e.g. `derive`,
+///   `test`, `global_allocator`.
 fn needs_tokens(attrs: &[ast::Attribute]) -> bool {
     attrs.iter().any(|attr| match attr.ident() {
         None => !attr.is_doc_comment(),
@@ -490,7 +570,6 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(AttrWrapper, 16);
     static_assert_size!(LazyAttrTokenStreamImpl, 96);
     // tidy-alphabetical-end
 }

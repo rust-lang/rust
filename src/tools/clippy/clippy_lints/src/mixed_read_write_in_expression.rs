@@ -1,6 +1,7 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
+use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::{get_parent_expr, path_to_local, path_to_local_id};
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, LetStmt, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -115,7 +116,7 @@ struct DivergenceVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
 }
 
-impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
+impl<'tcx> DivergenceVisitor<'_, 'tcx> {
     fn maybe_walk_expr(&mut self, e: &'tcx Expr<'_>) {
         match e.kind {
             ExprKind::Closure(..) | ExprKind::If(..) | ExprKind::Loop(..) => {},
@@ -134,6 +135,11 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
     }
 
     fn report_diverging_sub_expr(&mut self, e: &Expr<'_>) {
+        if let Some(macro_call) = root_macro_call_first_node(self.cx, e) {
+            if self.cx.tcx.item_name(macro_call.def_id).as_str() == "todo" {
+                return;
+            }
+        }
         span_lint(self.cx, DIVERGING_SUB_EXPRESSION, e.span, "sub-expression diverges");
     }
 }
@@ -142,7 +148,7 @@ fn stmt_might_diverge(stmt: &Stmt<'_>) -> bool {
     !matches!(stmt.kind, StmtKind::Item(..))
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for DivergenceVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         match e.kind {
             // fix #10776
@@ -166,7 +172,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
             ExprKind::Call(func, _) => {
                 let typ = self.cx.typeck_results().expr_ty(func);
                 match typ.kind() {
-                    ty::FnDef(..) | ty::FnPtr(_) => {
+                    ty::FnDef(..) | ty::FnPtr(..) => {
                         let sig = typ.fn_sig(self.cx.tcx);
                         if self.cx.tcx.instantiate_bound_regions_with_erased(sig).output().kind() == &ty::Never {
                             self.report_diverging_sub_expr(e);
@@ -315,7 +321,7 @@ struct ReadVisitor<'a, 'tcx> {
     last_expr: &'tcx Expr<'tcx>,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ReadVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if expr.hir_id == self.last_expr.hir_id {
             return;
@@ -324,13 +330,17 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
         if path_to_local_id(expr, self.var) {
             // Check that this is a read, not a write.
             if !is_in_assignment_position(self.cx, expr) {
-                span_lint_and_note(
+                span_lint_and_then(
                     self.cx,
                     MIXED_READ_WRITE_IN_EXPRESSION,
                     expr.span,
                     format!("unsequenced read of `{}`", self.cx.tcx.hir().name(self.var)),
-                    Some(self.write_expr.span),
-                    "whether read occurs before this write depends on evaluation order",
+                    |diag| {
+                        diag.span_note(
+                            self.write_expr.span,
+                            "whether read occurs before this write depends on evaluation order",
+                        );
+                    },
                 );
             }
         }

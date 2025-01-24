@@ -4,10 +4,11 @@ mod analysis;
 #[cfg(test)]
 mod tests;
 
-use std::iter;
+use std::{iter, ops::ControlFlow};
 
 use hir::{
-    HasAttrs, Local, Name, PathResolution, ScopeDef, Semantics, SemanticsScope, Type, TypeInfo,
+    HasAttrs, Local, ModPath, ModuleDef, ModuleSource, Name, PathResolution, ScopeDef, Semantics,
+    SemanticsScope, Symbol, Type, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase, famous_defs::FamousDefs, helpers::is_editable_crate, FilePosition,
@@ -15,18 +16,18 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, AttrKind, NameOrNameRef},
-    AstNode, SmolStr,
+    match_ast, AstNode, Edition, SmolStr,
     SyntaxKind::{self, *},
     SyntaxToken, TextRange, TextSize, T,
 };
-use text_edit::Indel;
 
 use crate::{
+    config::AutoImportExclusionType,
     context::analysis::{expand_and_analyze, AnalysisResult},
     CompletionConfig,
 };
 
-const COMPLETION_MARKER: &str = "intellijRulezz";
+const COMPLETION_MARKER: &str = "raCompletionMarker";
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum PatternRefutability {
@@ -47,12 +48,16 @@ pub(crate) struct QualifierCtx {
     // TODO: Add try_tok and default_tok
     pub(crate) async_tok: Option<SyntaxToken>,
     pub(crate) unsafe_tok: Option<SyntaxToken>,
+    pub(crate) safe_tok: Option<SyntaxToken>,
     pub(crate) vis_node: Option<ast::Visibility>,
 }
 
 impl QualifierCtx {
     pub(crate) fn none(&self) -> bool {
-        self.async_tok.is_none() && self.unsafe_tok.is_none() && self.vis_node.is_none()
+        self.async_tok.is_none()
+            && self.unsafe_tok.is_none()
+            && self.safe_tok.is_none()
+            && self.vis_node.is_none()
     }
 }
 
@@ -129,6 +134,7 @@ pub(crate) type ExistingDerives = FxHashSet<hir::Macro>;
 pub(crate) struct AttrCtx {
     pub(crate) kind: AttrKind,
     pub(crate) annotated_item_kind: Option<SyntaxKind>,
+    pub(crate) derive_helpers: Vec<(Symbol, Symbol)>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -140,6 +146,7 @@ pub(crate) struct PathExprCtx {
     pub(crate) in_condition: bool,
     pub(crate) incomplete_let: bool,
     pub(crate) ref_expr_parent: Option<ast::RefExpr>,
+    pub(crate) after_amp: bool,
     /// The surrounding RecordExpression we are completing a functional update
     pub(crate) is_func_update: Option<ast::RecordExpr>,
     pub(crate) self_param: Option<hir::SelfParam>,
@@ -228,7 +235,7 @@ pub(crate) enum ItemListKind {
     Impl,
     TraitImpl(Option<ast::Impl>),
     Trait,
-    ExternBlock,
+    ExternBlock { is_unsafe: bool },
 }
 
 #[derive(Debug)]
@@ -264,6 +271,7 @@ pub(crate) struct PatternContext {
     pub(crate) refutability: PatternRefutability,
     pub(crate) param_ctx: Option<ParamContext>,
     pub(crate) has_type_ascription: bool,
+    pub(crate) should_suggest_name: bool,
     pub(crate) parent_pat: Option<ast::Pat>,
     pub(crate) ref_token: Option<SyntaxToken>,
     pub(crate) mut_token: Option<SyntaxToken>,
@@ -284,15 +292,14 @@ pub(crate) struct ParamContext {
 /// The state of the lifetime we are completing.
 #[derive(Debug)]
 pub(crate) struct LifetimeContext {
-    pub(crate) lifetime: Option<ast::Lifetime>,
     pub(crate) kind: LifetimeKind,
 }
 
 /// The kind of lifetime we are completing.
 #[derive(Debug)]
 pub(crate) enum LifetimeKind {
-    LifetimeParam { is_decl: bool, param: ast::LifetimeParam },
-    Lifetime,
+    LifetimeParam,
+    Lifetime { in_lifetime_param_bound: bool, def: Option<hir::GenericDef> },
     LabelRef,
     LabelDef,
 }
@@ -384,7 +391,7 @@ pub(crate) struct DotAccess {
     pub(crate) ctx: DotAccessExprCtx,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) enum DotAccessKind {
     Field {
         /// True if the receiver is an integer and there is no ident in the original file after it yet
@@ -396,7 +403,7 @@ pub(crate) enum DotAccessKind {
     },
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct DotAccessExprCtx {
     pub(crate) in_block_expr: bool,
     pub(crate) in_breakable: BreakableKind,
@@ -424,7 +431,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(crate) sema: Semantics<'a, RootDatabase>,
     pub(crate) scope: SemanticsScope<'a>,
     pub(crate) db: &'a RootDatabase,
-    pub(crate) config: &'a CompletionConfig,
+    pub(crate) config: &'a CompletionConfig<'a>,
     pub(crate) position: FilePosition,
 
     /// The token before the cursor, in the original file.
@@ -437,6 +444,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(crate) module: hir::Module,
     /// Whether nightly toolchain is used. Cached since this is looked up a lot.
     is_nightly: bool,
+    pub(crate) edition: Edition,
 
     /// The expected name of what we are completing.
     /// This is usually the parameter name of the function argument we are completing.
@@ -455,6 +463,27 @@ pub(crate) struct CompletionContext<'a> {
     ///
     /// Here depth will be 2
     pub(crate) depth_from_crate_root: usize,
+
+    /// Traits whose methods will be excluded from flyimport. Flyimport should not suggest
+    /// importing those traits.
+    ///
+    /// Note the trait *themselves* are not excluded, only their methods are.
+    pub(crate) exclude_flyimport: FxHashMap<ModuleDef, AutoImportExclusionType>,
+    /// Traits whose methods should always be excluded, even when in scope (compare `exclude_flyimport_traits`).
+    /// They will *not* be excluded, however, if they are available as a generic bound.
+    ///
+    /// Note the trait *themselves* are not excluded, only their methods are.
+    pub(crate) exclude_traits: FxHashSet<hir::Trait>,
+
+    /// Whether and how to complete semicolon for unit-returning functions.
+    pub(crate) complete_semicolon: CompleteSemicolon,
+}
+
+#[derive(Debug)]
+pub(crate) enum CompleteSemicolon {
+    DoNotComplete,
+    CompleteSemi,
+    CompleteComma,
 }
 
 impl CompletionContext<'_> {
@@ -467,8 +496,9 @@ impl CompletionContext<'_> {
                 cov_mark::hit!(completes_if_lifetime_without_idents);
                 TextRange::at(self.original_token.text_range().start(), TextSize::from(1))
             }
-            IDENT | LIFETIME_IDENT | UNDERSCORE | INT_NUMBER => self.original_token.text_range(),
-            _ if kind.is_keyword() => self.original_token.text_range(),
+            LIFETIME_IDENT | UNDERSCORE | INT_NUMBER => self.original_token.text_range(),
+            // We want to consider all keywords in all editions.
+            _ if kind.is_any_identifier() => self.original_token.text_range(),
             _ => TextRange::empty(self.position.offset),
         }
     }
@@ -653,7 +683,7 @@ impl<'a> CompletionContext<'a> {
     pub(crate) fn new(
         db: &'a RootDatabase,
         position @ FilePosition { file_id, offset }: FilePosition,
-        config: &'a CompletionConfig,
+        config: &'a CompletionConfig<'a>,
     ) -> Option<(CompletionContext<'a>, CompletionAnalysis)> {
         let _p = tracing::info_span!("CompletionContext::new").entered();
         let sema = Semantics::new(db);
@@ -666,8 +696,7 @@ impl<'a> CompletionContext<'a> {
         // actual completion.
         let file_with_fake_ident = {
             let parse = db.parse(file_id);
-            let edit = Indel::insert(offset, COMPLETION_MARKER.to_owned());
-            parse.reparse(&edit, file_id.edition()).tree()
+            parse.reparse(TextRange::empty(offset), COMPLETION_MARKER, file_id.edition()).tree()
         };
 
         // always pick the token to the immediate left of the cursor, as that is what we are actually
@@ -702,7 +731,7 @@ impl<'a> CompletionContext<'a> {
             expected: (expected_type, expected_name),
             qualifier_ctx,
             token,
-            offset,
+            original_offset,
         } = expand_and_analyze(
             &sema,
             original_file.syntax().clone(),
@@ -712,10 +741,11 @@ impl<'a> CompletionContext<'a> {
         )?;
 
         // adjust for macro input, this still fails if there is no token written yet
-        let scope = sema.scope_at_offset(&token.parent()?, offset)?;
+        let scope = sema.scope_at_offset(&token.parent()?, original_offset)?;
 
         let krate = scope.krate();
         let module = scope.module();
+        let edition = krate.edition(db);
 
         let toolchain = db.toolchain_channel(krate.into());
         // `toolchain == None` means we're in some detached files. Since we have no information on
@@ -725,11 +755,99 @@ impl<'a> CompletionContext<'a> {
         let mut locals = FxHashMap::default();
         scope.process_all_names(&mut |name, scope| {
             if let ScopeDef::Local(local) = scope {
+                // synthetic names currently leak out as we lack synthetic hygiene, so filter them
+                // out here
+                if name.as_str().starts_with('<') {
+                    return;
+                }
                 locals.insert(name, local);
             }
         });
 
-        let depth_from_crate_root = iter::successors(module.parent(db), |m| m.parent(db)).count();
+        let depth_from_crate_root = iter::successors(Some(module), |m| m.parent(db))
+            // `BlockExpr` modules do not count towards module depth
+            .filter(|m| !matches!(m.definition_source(db).value, ModuleSource::BlockExpr(_)))
+            .count()
+            // exclude `m` itself
+            .saturating_sub(1);
+
+        let exclude_traits: FxHashSet<_> = config
+            .exclude_traits
+            .iter()
+            .filter_map(|path| {
+                scope
+                    .resolve_mod_path(&ModPath::from_segments(
+                        hir::PathKind::Plain,
+                        path.split("::").map(Symbol::intern).map(Name::new_symbol_root),
+                    ))
+                    .find_map(|it| match it {
+                        hir::ItemInNs::Types(ModuleDef::Trait(t)) => Some(t),
+                        _ => None,
+                    })
+            })
+            .collect();
+
+        let mut exclude_flyimport: FxHashMap<_, _> = config
+            .exclude_flyimport
+            .iter()
+            .flat_map(|(path, kind)| {
+                scope
+                    .resolve_mod_path(&ModPath::from_segments(
+                        hir::PathKind::Plain,
+                        path.split("::").map(Symbol::intern).map(Name::new_symbol_root),
+                    ))
+                    .map(|it| (it.into_module_def(), *kind))
+            })
+            .collect();
+        exclude_flyimport
+            .extend(exclude_traits.iter().map(|&t| (t.into(), AutoImportExclusionType::Always)));
+
+        let complete_semicolon = if config.add_semicolon_to_unit {
+            let inside_closure_ret = token.parent_ancestors().try_for_each(|ancestor| {
+                match_ast! {
+                    match ancestor {
+                        ast::BlockExpr(_) => ControlFlow::Break(false),
+                        ast::ClosureExpr(_) => ControlFlow::Break(true),
+                        _ => ControlFlow::Continue(())
+                    }
+                }
+            });
+
+            if inside_closure_ret == ControlFlow::Break(true) {
+                CompleteSemicolon::DoNotComplete
+            } else {
+                let next_non_trivia_token =
+                    std::iter::successors(token.next_token(), |it| it.next_token())
+                        .find(|it| !it.kind().is_trivia());
+                let in_match_arm = token.parent_ancestors().try_for_each(|ancestor| {
+                    if ast::MatchArm::can_cast(ancestor.kind()) {
+                        ControlFlow::Break(true)
+                    } else if matches!(
+                        ancestor.kind(),
+                        SyntaxKind::EXPR_STMT | SyntaxKind::BLOCK_EXPR
+                    ) {
+                        ControlFlow::Break(false)
+                    } else {
+                        ControlFlow::Continue(())
+                    }
+                });
+                // FIXME: This will assume expr macros are not inside match, we need to somehow go to the "parent" of the root node.
+                let in_match_arm = match in_match_arm {
+                    ControlFlow::Continue(()) => false,
+                    ControlFlow::Break(it) => it,
+                };
+                let complete_token = if in_match_arm { T![,] } else { T![;] };
+                if next_non_trivia_token.map(|it| it.kind()) == Some(complete_token) {
+                    CompleteSemicolon::DoNotComplete
+                } else if in_match_arm {
+                    CompleteSemicolon::CompleteComma
+                } else {
+                    CompleteSemicolon::CompleteSemi
+                }
+            }
+        } else {
+            CompleteSemicolon::DoNotComplete
+        };
 
         let ctx = CompletionContext {
             sema,
@@ -742,11 +860,15 @@ impl<'a> CompletionContext<'a> {
             krate,
             module,
             is_nightly,
+            edition,
             expected_name,
             expected_type,
             qualifier_ctx,
             locals,
             depth_from_crate_root,
+            exclude_flyimport,
+            exclude_traits,
+            complete_semicolon,
         };
         Some((ctx, analysis))
     }

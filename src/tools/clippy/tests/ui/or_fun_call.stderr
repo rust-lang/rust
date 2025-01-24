@@ -1,4 +1,4 @@
-error: use of `unwrap_or` followed by a function call
+error: function call inside of `unwrap_or`
   --> tests/ui/or_fun_call.rs:52:22
    |
 LL |     with_constructor.unwrap_or(make());
@@ -16,19 +16,19 @@ LL |     with_new.unwrap_or(Vec::new());
    = note: `-D clippy::unwrap-or-default` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unwrap_or_default)]`
 
-error: use of `unwrap_or` followed by a function call
+error: function call inside of `unwrap_or`
   --> tests/ui/or_fun_call.rs:58:21
    |
 LL |     with_const_args.unwrap_or(Vec::with_capacity(12));
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| Vec::with_capacity(12))`
 
-error: use of `unwrap_or` followed by a function call
+error: function call inside of `unwrap_or`
   --> tests/ui/or_fun_call.rs:61:14
    |
 LL |     with_err.unwrap_or(make());
    |              ^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|_| make())`
 
-error: use of `unwrap_or` followed by a function call
+error: function call inside of `unwrap_or`
   --> tests/ui/or_fun_call.rs:64:19
    |
 LL |     with_err_args.unwrap_or(Vec::with_capacity(12));
@@ -46,7 +46,7 @@ error: use of `unwrap_or` to construct default value
 LL |     with_default_type.unwrap_or(u64::default());
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
-error: use of `unwrap_or` followed by a function call
+error: function call inside of `unwrap_or`
   --> tests/ui/or_fun_call.rs:73:18
    |
 LL |     self_default.unwrap_or(<FakeDefault>::default());
@@ -64,7 +64,7 @@ error: use of `unwrap_or` to construct default value
 LL |     with_vec.unwrap_or(vec![]);
    |              ^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
-error: use of `unwrap_or` followed by a function call
+error: function call inside of `unwrap_or`
   --> tests/ui/or_fun_call.rs:82:21
    |
 LL |     without_default.unwrap_or(Foo::new());
@@ -100,55 +100,55 @@ error: use of `unwrap_or` to construct default value
 LL |     let _ = stringy.unwrap_or(String::new());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
-error: use of `ok_or` followed by a function call
+error: function call inside of `ok_or`
   --> tests/ui/or_fun_call.rs:101:17
    |
 LL |     let _ = opt.ok_or(format!("{} world.", hello));
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ok_or_else(|| format!("{} world.", hello))`
 
-error: use of `unwrap_or` followed by a function call
+error: function call inside of `unwrap_or`
   --> tests/ui/or_fun_call.rs:105:21
    |
 LL |     let _ = Some(1).unwrap_or(map[&1]);
    |                     ^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| map[&1])`
 
-error: use of `unwrap_or` followed by a function call
+error: function call inside of `unwrap_or`
   --> tests/ui/or_fun_call.rs:107:21
    |
 LL |     let _ = Some(1).unwrap_or(map[&1]);
    |                     ^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| map[&1])`
 
-error: use of `or` followed by a function call
+error: function call inside of `or`
   --> tests/ui/or_fun_call.rs:131:35
    |
 LL |     let _ = Some("a".to_string()).or(Some("b".to_string()));
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `or_else(|| Some("b".to_string()))`
 
-error: use of `unwrap_or` followed by a function call
+error: function call inside of `unwrap_or`
   --> tests/ui/or_fun_call.rs:170:14
    |
 LL |         None.unwrap_or(ptr_to_ref(s));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| ptr_to_ref(s))`
 
-error: use of `unwrap_or` followed by a function call
+error: function call inside of `unwrap_or`
   --> tests/ui/or_fun_call.rs:176:14
    |
 LL |         None.unwrap_or(unsafe { ptr_to_ref(s) });
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| unsafe { ptr_to_ref(s) })`
 
-error: use of `unwrap_or` followed by a function call
+error: function call inside of `unwrap_or`
   --> tests/ui/or_fun_call.rs:178:14
    |
 LL |         None.unwrap_or( unsafe { ptr_to_ref(s) }    );
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| unsafe { ptr_to_ref(s) })`
 
-error: use of `map_or` followed by a function call
+error: function call inside of `map_or`
   --> tests/ui/or_fun_call.rs:253:25
    |
 LL |         let _ = Some(4).map_or(g(), |v| v);
    |                         ^^^^^^^^^^^^^^^^^^ help: try: `map_or_else(g, |v| v)`
 
-error: use of `map_or` followed by a function call
+error: function call inside of `map_or`
   --> tests/ui/or_fun_call.rs:254:25
    |
 LL |         let _ = Some(4).map_or(g(), f);
@@ -196,19 +196,19 @@ error: use of `unwrap_or_else` to construct default value
 LL |         let _ = stringy.unwrap_or_else(String::new);
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
-error: use of `unwrap_or` followed by a function call
+error: function call inside of `unwrap_or`
   --> tests/ui/or_fun_call.rs:345:17
    |
 LL |     let _ = opt.unwrap_or({ f() }); // suggest `.unwrap_or_else(f)`
    |                 ^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(f)`
 
-error: use of `unwrap_or` followed by a function call
+error: function call inside of `unwrap_or`
   --> tests/ui/or_fun_call.rs:348:17
    |
 LL |     let _ = opt.unwrap_or(f() + 1); // suggest `.unwrap_or_else(|| f() + 1)`
    |                 ^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| f() + 1)`
 
-error: use of `unwrap_or` followed by a function call
+error: function call inside of `unwrap_or`
   --> tests/ui/or_fun_call.rs:351:17
    |
 LL |       let _ = opt.unwrap_or({
@@ -226,7 +226,7 @@ LL +         x + 1
 LL ~     });
    |
 
-error: use of `map_or` followed by a function call
+error: function call inside of `map_or`
   --> tests/ui/or_fun_call.rs:356:17
    |
 LL |     let _ = opt.map_or(f() + 1, |v| v); // suggest `.map_or_else(|| f() + 1, |v| v)`
@@ -238,7 +238,7 @@ error: use of `unwrap_or` to construct default value
 LL |     let _ = opt.unwrap_or({ i32::default() });
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
-error: use of `unwrap_or` followed by a function call
+error: function call inside of `unwrap_or`
   --> tests/ui/or_fun_call.rs:365:21
    |
 LL |     let _ = opt_foo.unwrap_or(Foo { val: String::default() });

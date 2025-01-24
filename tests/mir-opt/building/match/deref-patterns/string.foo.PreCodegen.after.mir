@@ -26,7 +26,7 @@ fn foo(_1: Option<String>) -> i32 {
     }
 
     bb2: {
-        _6 = <str as PartialEq>::eq(_5, const "a") -> [return: bb3, unwind unreachable];
+        _6 = <str as PartialEq>::eq(copy _5, const "a") -> [return: bb3, unwind unreachable];
     }
 
     bb3: {
@@ -52,7 +52,7 @@ fn foo(_1: Option<String>) -> i32 {
     }
 
     bb7: {
-        switchInt(_2) -> [0: bb9, otherwise: bb8];
+        switchInt(copy _2) -> [0: bb9, otherwise: bb8];
     }
 
     bb8: {

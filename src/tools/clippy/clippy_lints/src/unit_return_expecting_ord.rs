@@ -5,7 +5,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::{ClauseKind, GenericPredicates, ProjectionPredicate, TraitPredicate};
 use rustc_session::declare_lint_pass;
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{BytePos, Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does

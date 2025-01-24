@@ -1,5 +1,5 @@
 error[E0283]: type annotations needed
-  --> $DIR/ambig-hr-projection-issue-93340.rs:16:5
+  --> $DIR/ambig-hr-projection-issue-93340.rs:17:5
    |
 LL |     cmp_eq
    |     ^^^^^^ cannot infer type of the type parameter `A` declared on the function `cmp_eq`
@@ -15,6 +15,16 @@ help: consider specifying the generic arguments
 LL |     cmp_eq::<A, B, O>
    |           +++++++++++
 
-error: aborting due to 1 previous error
+error[E0277]: expected a `Fn(<A as Scalar>::RefType<'_>, <B as Scalar>::RefType<'_>)` closure, found `for<'a, 'b> fn(<O as Scalar>::RefType<'a>, <_ as Scalar>::RefType<'b>) -> O {cmp_eq::<O, _, O>}`
+  --> $DIR/ambig-hr-projection-issue-93340.rs:14:1
+   |
+LL | / fn build_expression<A: Scalar, B: Scalar, O: Scalar>(
+LL | | ) -> impl Fn(A::RefType<'_>, B::RefType<'_>) -> O {
+   | |_________________________________________________^ expected an `Fn(<A as Scalar>::RefType<'_>, <B as Scalar>::RefType<'_>)` closure, found `for<'a, 'b> fn(<O as Scalar>::RefType<'a>, <_ as Scalar>::RefType<'b>) -> O {cmp_eq::<O, _, O>}`
+   |
+   = help: the trait `for<'a, 'b> Fn(<A as Scalar>::RefType<'a>, <B as Scalar>::RefType<'b>)` is not implemented for fn item `for<'a, 'b> fn(<O as Scalar>::RefType<'a>, <_ as Scalar>::RefType<'b>) -> O {cmp_eq::<O, _, O>}`
 
-For more information about this error, try `rustc --explain E0283`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0283.
+For more information about an error, try `rustc --explain E0277`.

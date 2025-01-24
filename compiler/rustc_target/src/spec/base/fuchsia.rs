@@ -1,29 +1,26 @@
 use crate::spec::{
-    crt_objects, cvs, Cc, FramePointer, LinkOutputKind, LinkerFlavor, Lld, TargetOptions,
+    Cc, FramePointer, LinkOutputKind, LinkerFlavor, Lld, TargetOptions, crt_objects, cvs,
 };
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     // This mirrors the linker options provided by clang. We presume lld for
     // now. When using clang as the linker it will supply these options for us,
     // so we only list them for ld/lld.
     //
     // https://github.com/llvm/llvm-project/blob/db9322b2066c55254e7691efeab863f43bfcc084/clang/lib/Driver/ToolChains/Fuchsia.cpp#L31
-    let pre_link_args = TargetOptions::link_args(
-        LinkerFlavor::Gnu(Cc::No, Lld::No),
-        &[
-            "--build-id",
-            "--hash-style=gnu",
-            "-z",
-            "max-page-size=4096",
-            "-z",
-            "now",
-            "-z",
-            "rodynamic",
-            "-z",
-            "separate-loadable-segments",
-            "--pack-dyn-relocs=relr",
-        ],
-    );
+    let pre_link_args = TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &[
+        "--build-id",
+        "--hash-style=gnu",
+        "-z",
+        "max-page-size=4096",
+        "-z",
+        "now",
+        "-z",
+        "rodynamic",
+        "-z",
+        "separate-loadable-segments",
+        "--pack-dyn-relocs=relr",
+    ]);
 
     TargetOptions {
         os: "fuchsia".into(),

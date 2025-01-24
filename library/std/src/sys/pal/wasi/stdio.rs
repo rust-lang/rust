@@ -1,4 +1,4 @@
-#![deny(unsafe_op_in_unsafe_fn)]
+#![forbid(unsafe_op_in_unsafe_fn)]
 
 use super::fd::WasiFd;
 use crate::io::{self, IoSlice, IoSliceMut};

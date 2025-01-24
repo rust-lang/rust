@@ -3,7 +3,7 @@ use rustc_hir::{Expr, ExprKind};
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use crate::context::LintContext;
 use crate::lints::{
@@ -94,9 +94,9 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
 
         let args = cx
             .tcx
-            .normalize_erasing_regions(cx.param_env, cx.typeck_results().node_args(expr.hir_id));
+            .normalize_erasing_regions(cx.typing_env(), cx.typeck_results().node_args(expr.hir_id));
         // Resolve the trait method instance.
-        let Ok(Some(i)) = ty::Instance::try_resolve(cx.tcx, cx.param_env, did, args) else {
+        let Ok(Some(i)) = ty::Instance::try_resolve(cx.tcx, cx.typing_env(), did, args) else {
             return;
         };
         // (Re)check that it implements the noop diagnostic.
@@ -128,17 +128,13 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                 ty::Adt(def, _) => Some(cx.tcx.def_span(def.did()).shrink_to_lo()),
                 _ => None,
             };
-            cx.emit_span_lint(
-                NOOP_METHOD_CALL,
-                span,
-                NoopMethodCallDiag {
-                    method: call.ident.name,
-                    orig_ty,
-                    trait_,
-                    label: span,
-                    suggest_derive,
-                },
-            );
+            cx.emit_span_lint(NOOP_METHOD_CALL, span, NoopMethodCallDiag {
+                method: call.ident.name,
+                orig_ty,
+                trait_,
+                label: span,
+                suggest_derive,
+            });
         } else {
             match name {
                 // If `type_of(x) == T` and `x.borrow()` is used to get `&T`,

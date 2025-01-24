@@ -9,6 +9,11 @@ fn mut_mutex_lock() {
 
     let mut value = value_mutex.get_mut().unwrap();
     *value += 1;
+
+    let mut value_mutex = Mutex::new(42_u8);
+    let mut_ref_mut_ref_mutex = &mut &mut value_mutex;
+    let mut value = mut_ref_mut_ref_mutex.get_mut().unwrap();
+    *value += 1;
 }
 
 fn no_owned_mutex_lock() {
@@ -21,6 +26,13 @@ fn issue9415() {
     let mut arc_mutex = Arc::new(Mutex::new(42_u8));
     let arc_mutex: &mut Arc<Mutex<u8>> = &mut arc_mutex;
     let mut guard = arc_mutex.lock().unwrap();
+    *guard += 1;
+}
+
+fn mut_ref_ref_mutex_lock() {
+    let mutex = Mutex::new(42_u8);
+    let mut_ref_ref_mutex = &mut &mutex;
+    let mut guard = mut_ref_ref_mutex.lock().unwrap();
     *guard += 1;
 }
 

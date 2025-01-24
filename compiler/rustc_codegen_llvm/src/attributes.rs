@@ -1,29 +1,28 @@
 //! Set and unset common attributes on LLVM values.
 
-pub use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_attr_parsing::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, PatchableFunctionEntry};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{BranchProtection, FunctionReturn, OptLevel, PAuthKey, PacRet};
-use rustc_span::symbol::sym;
 use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtector};
 use smallvec::SmallVec;
 
 use crate::context::CodegenCx;
-use crate::errors::{MissingFeatures, SanitizerMemtagRequiresMte, TargetFeatureDisableOrEnable};
+use crate::errors::SanitizerMemtagRequiresMte;
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects};
 use crate::value::Value;
 use crate::{attributes, llvm_util};
 
-pub fn apply_to_llfn(llfn: &Value, idx: AttributePlace, attrs: &[&Attribute]) {
+pub(crate) fn apply_to_llfn(llfn: &Value, idx: AttributePlace, attrs: &[&Attribute]) {
     if !attrs.is_empty() {
         llvm::AddFunctionAttributes(llfn, idx, attrs);
     }
 }
 
-pub fn apply_to_callsite(callsite: &Value, idx: AttributePlace, attrs: &[&Attribute]) {
+pub(crate) fn apply_to_callsite(callsite: &Value, idx: AttributePlace, attrs: &[&Attribute]) {
     if !attrs.is_empty() {
         llvm::AddCallSiteAttributes(callsite, idx, attrs);
     }
@@ -38,7 +37,9 @@ fn inline_attr<'ll>(cx: &CodegenCx<'ll, '_>, inline: InlineAttr) -> Option<&'ll 
     }
     match inline {
         InlineAttr::Hint => Some(AttributeKind::InlineHint.create_attr(cx.llcx)),
-        InlineAttr::Always => Some(AttributeKind::AlwaysInline.create_attr(cx.llcx)),
+        InlineAttr::Always | InlineAttr::Force { .. } => {
+            Some(AttributeKind::AlwaysInline.create_attr(cx.llcx))
+        }
         InlineAttr::Never => {
             if cx.sess().target.arch != "amdgpu" {
                 Some(AttributeKind::NoInline.create_attr(cx.llcx))
@@ -80,7 +81,7 @@ fn patchable_function_entry_attrs<'ll>(
 
 /// Get LLVM sanitize attributes.
 #[inline]
-pub fn sanitize_attrs<'ll>(
+pub(crate) fn sanitize_attrs<'ll>(
     cx: &CodegenCx<'ll, '_>,
     no_sanitize: SanitizerSet,
 ) -> SmallVec<[&'ll Attribute; 4]> {
@@ -120,7 +121,7 @@ pub fn sanitize_attrs<'ll>(
 
 /// Tell LLVM to emit or not emit the information necessary to unwind the stack for the function.
 #[inline]
-pub fn uwtable_attr(llcx: &llvm::Context, use_sync_unwind: Option<bool>) -> &Attribute {
+pub(crate) fn uwtable_attr(llcx: &llvm::Context, use_sync_unwind: Option<bool>) -> &Attribute {
     // NOTE: We should determine if we even need async unwind tables, as they
     // take have more overhead and if we can use sync unwind tables we
     // probably should.
@@ -128,7 +129,7 @@ pub fn uwtable_attr(llcx: &llvm::Context, use_sync_unwind: Option<bool>) -> &Att
     llvm::CreateUWTableAttr(llcx, async_unwind)
 }
 
-pub fn frame_pointer_type_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
+pub(crate) fn frame_pointer_type_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
     let mut fp = cx.sess().target.frame_pointer;
     let opts = &cx.sess().opts;
     // "mcount" function relies on stack pointer.
@@ -233,11 +234,6 @@ fn probestack_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
         return None;
     }
 
-    // probestack doesn't play nice either with gcov profiling.
-    if cx.sess().opts.unstable_opts.profile {
-        return None;
-    }
-
     let attr_value = match cx.sess().target.stack_probes {
         StackProbeType::None => return None,
         // Request LLVM to generate the probes inline. If the given LLVM version does not support
@@ -280,19 +276,19 @@ fn backchain_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
     if found_positive { Some(llvm::CreateAttrString(cx.llcx, "backchain")) } else { None }
 }
 
-pub fn target_cpu_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll Attribute {
+pub(crate) fn target_cpu_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll Attribute {
     let target_cpu = llvm_util::target_cpu(cx.tcx.sess);
     llvm::CreateAttrStringValue(cx.llcx, "target-cpu", target_cpu)
 }
 
-pub fn tune_cpu_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
+pub(crate) fn tune_cpu_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
     llvm_util::tune_cpu(cx.tcx.sess)
         .map(|tune_cpu| llvm::CreateAttrStringValue(cx.llcx, "tune-cpu", tune_cpu))
 }
 
 /// Get the `NonLazyBind` LLVM attribute,
 /// if the codegen options allow skipping the PLT.
-pub fn non_lazy_bind_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
+pub(crate) fn non_lazy_bind_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
     // Don't generate calls through PLT if it's not necessary
     if !cx.sess().needs_plt() {
         Some(AttributeKind::NonLazyBind.create_attr(cx.llcx))
@@ -327,7 +323,7 @@ fn create_alloc_family_attr(llcx: &llvm::Context) -> &llvm::Attribute {
 /// Helper for `FnAbi::apply_attrs_llfn`:
 /// Composite function which sets LLVM attributes for function depending on its AST (`#[attribute]`)
 /// attributes.
-pub fn llfn_attrs_from_instance<'ll, 'tcx>(
+pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     llfn: &'ll Value,
     instance: ty::Instance<'tcx>,
@@ -401,36 +397,37 @@ pub fn llfn_attrs_from_instance<'ll, 'tcx>(
         to_add.push(MemoryEffects::None.create_attr(cx.llcx));
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
-        to_add.push(AttributeKind::Naked.create_attr(cx.llcx));
-        // HACK(jubilee): "indirect branch tracking" works by attaching prologues to functions.
-        // And it is a module-level attribute, so the alternative is pulling naked functions into new LLVM modules.
-        // Otherwise LLVM's "naked" functions come with endbr prefixes per https://github.com/rust-lang/rust/issues/98768
-        to_add.push(AttributeKind::NoCfCheck.create_attr(cx.llcx));
-        if llvm_util::get_version() < (19, 0, 0) {
-            // Prior to LLVM 19, branch-target-enforcement was disabled by setting the attribute to
-            // the string "false". Now it is disabled by absence of the attribute.
-            to_add.push(llvm::CreateAttrStringValue(cx.llcx, "branch-target-enforcement", "false"));
-        }
-    } else if llvm_util::get_version() >= (19, 0, 0) {
-        // For non-naked functions, set branch protection attributes on aarch64.
-        if let Some(BranchProtection { bti, pac_ret }) =
-            cx.sess().opts.unstable_opts.branch_protection
-        {
-            assert!(cx.sess().target.arch == "aarch64");
-            if bti {
-                to_add.push(llvm::CreateAttrString(cx.llcx, "branch-target-enforcement"));
-            }
-            if let Some(PacRet { leaf, key }) = pac_ret {
-                to_add.push(llvm::CreateAttrStringValue(
-                    cx.llcx,
-                    "sign-return-address",
-                    if leaf { "all" } else { "non-leaf" },
-                ));
-                to_add.push(llvm::CreateAttrStringValue(
-                    cx.llcx,
-                    "sign-return-address-key",
-                    if key == PAuthKey::A { "a_key" } else { "b_key" },
-                ));
+        // do nothing; a naked function is converted into an extern function
+        // and a global assembly block. LLVM's support for naked functions is
+        // not used.
+    } else {
+        // Do not set sanitizer attributes for naked functions.
+        to_add.extend(sanitize_attrs(cx, codegen_fn_attrs.no_sanitize));
+
+        if llvm_util::get_version() >= (19, 0, 0) {
+            // For non-naked functions, set branch protection attributes on aarch64.
+            if let Some(BranchProtection { bti, pac_ret }) =
+                cx.sess().opts.unstable_opts.branch_protection
+            {
+                assert!(cx.sess().target.arch == "aarch64");
+                if bti {
+                    to_add.push(llvm::CreateAttrString(cx.llcx, "branch-target-enforcement"));
+                }
+                if let Some(PacRet { leaf, pc, key }) = pac_ret {
+                    if pc {
+                        to_add.push(llvm::CreateAttrString(cx.llcx, "branch-protection-pauth-lr"));
+                    }
+                    to_add.push(llvm::CreateAttrStringValue(
+                        cx.llcx,
+                        "sign-return-address",
+                        if leaf { "all" } else { "non-leaf" },
+                    ));
+                    to_add.push(llvm::CreateAttrStringValue(
+                        cx.llcx,
+                        "sign-return-address-key",
+                        if key == PAuthKey::A { "a_key" } else { "b_key" },
+                    ));
+                }
             }
         }
     }
@@ -449,7 +446,8 @@ pub fn llfn_attrs_from_instance<'ll, 'tcx>(
             flags |= AllocKindFlags::Zeroed;
         }
         to_add.push(llvm::CreateAllocKindAttr(cx.llcx, flags));
-        // apply to return place instead of function (unlike all other attributes applied in this function)
+        // apply to return place instead of function (unlike all other attributes applied in this
+        // function)
         let no_alias = AttributeKind::NoAlias.create_attr(cx.llcx);
         attributes::apply_to_llfn(llfn, AttributePlace::ReturnValue, &[no_alias]);
     }
@@ -476,16 +474,16 @@ pub fn llfn_attrs_from_instance<'ll, 'tcx>(
         let allocated_pointer = AttributeKind::AllocatedPointer.create_attr(cx.llcx);
         attributes::apply_to_llfn(llfn, AttributePlace::Argument(0), &[allocated_pointer]);
     }
-    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY) {
-        to_add.push(llvm::CreateAttrString(cx.llcx, "cmse_nonsecure_entry"));
-    }
-    if let Some(align) = codegen_fn_attrs.alignment {
+    // function alignment can be set globally with the `-Zmin-function-alignment=<n>` flag;
+    // the alignment from a `#[repr(align(<n>))]` is used if it specifies a higher alignment.
+    if let Some(align) =
+        Ord::max(cx.tcx.sess.opts.unstable_opts.min_function_alignment, codegen_fn_attrs.alignment)
+    {
         llvm::set_alignment(llfn, align);
     }
     if let Some(backchain) = backchain_attr(cx) {
         to_add.push(backchain);
     }
-    to_add.extend(sanitize_attrs(cx, codegen_fn_attrs.no_sanitize));
     to_add.extend(patchable_function_entry_attrs(cx, codegen_fn_attrs.patchable_function_entry));
 
     // Always annotate functions with the target-cpu they are compiled for.
@@ -499,35 +497,22 @@ pub fn llfn_attrs_from_instance<'ll, 'tcx>(
     let function_features =
         codegen_fn_attrs.target_features.iter().map(|f| f.name.as_str()).collect::<Vec<&str>>();
 
-    if let Some(f) = llvm_util::check_tied_features(
-        cx.tcx.sess,
-        &function_features.iter().map(|f| (*f, true)).collect(),
-    ) {
-        let span = cx
-            .tcx
-            .get_attrs(instance.def_id(), sym::target_feature)
-            .next()
-            .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
-        cx.tcx
-            .dcx()
-            .create_err(TargetFeatureDisableOrEnable {
-                features: f,
-                span: Some(span),
-                missing_features: Some(MissingFeatures),
-            })
-            .emit();
-        return;
-    }
-
     let function_features = function_features
         .iter()
-        .flat_map(|feat| {
-            llvm_util::to_llvm_features(cx.tcx.sess, feat).into_iter().map(|f| format!("+{f}"))
-        })
+        // Convert to LLVMFeatures and filter out unavailable ones
+        .flat_map(|feat| llvm_util::to_llvm_features(cx.tcx.sess, feat))
+        // Convert LLVMFeatures & dependencies to +<feats>s
+        .flat_map(|feat| feat.into_iter().map(|f| format!("+{f}")))
         .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match x {
             InstructionSetAttr::ArmA32 => "-thumb-mode".to_string(),
             InstructionSetAttr::ArmT32 => "+thumb-mode".to_string(),
         }))
+        // HACK: LLVM versions 19+ do not have the FPMR feature and treat it as always enabled
+        // It only exists as a feature in LLVM 18, cannot be passed down for any other version
+        .chain(match &*cx.tcx.sess.target.arch {
+            "aarch64" if llvm_util::get_version().0 == 18 => vec!["+fpmr".to_string()],
+            _ => vec![],
+        })
         .collect::<Vec<String>>();
 
     if cx.tcx.sess.target.is_like_wasm {

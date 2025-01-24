@@ -2,9 +2,9 @@
 //! ranges and data are discrete and non-splittable -- they represent distinct "objects". An
 //! allocation in the map will always have the same range until explicitly removed
 
-use rustc_target::abi::Size;
 use std::ops::{Index, IndexMut, Range};
 
+use rustc_abi::Size;
 use rustc_const_eval::interpret::AllocRange;
 
 #[derive(Clone, Debug)]

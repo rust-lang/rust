@@ -4,20 +4,19 @@ use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, Instance};
 
-use super::utils::{debug_context, DIB};
-use crate::common::CodegenCx;
+use super::utils::{DIB, debug_context};
+use crate::common::{AsCCharPtr, CodegenCx};
 use crate::llvm;
 use crate::llvm::debuginfo::DIScope;
 
-pub fn mangled_name_of_instance<'a, 'tcx>(
+pub(crate) fn mangled_name_of_instance<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     instance: Instance<'tcx>,
 ) -> ty::SymbolName<'tcx> {
-    let tcx = cx.tcx;
-    tcx.symbol_name(instance)
+    cx.tcx.symbol_name(instance)
 }
 
-pub fn item_namespace<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
+pub(crate) fn item_namespace<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
     if let Some(&scope) = debug_context(cx).namespace_map.borrow().get(&def_id) {
         return scope;
     }
@@ -37,7 +36,7 @@ pub fn item_namespace<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DISco
         llvm::LLVMRustDIBuilderCreateNameSpace(
             DIB(cx),
             parent_scope,
-            namespace_name_string.as_ptr().cast(),
+            namespace_name_string.as_c_char_ptr(),
             namespace_name_string.len(),
             false, // ExportSymbols (only relevant for C++ anonymous namespaces)
         )

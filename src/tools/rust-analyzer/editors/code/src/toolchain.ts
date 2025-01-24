@@ -29,7 +29,7 @@ export class Cargo {
     static artifactSpec(cargoArgs: string[], executableArgs?: string[]): ArtifactSpec {
         cargoArgs = [...cargoArgs, "--message-format=json"];
         // arguments for a runnable from the quick pick should be updated.
-        // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_code_lens
+        // see crates\rust-analyzer\src\handlers\request.rs, handle_code_lens
         switch (cargoArgs[0]) {
             case "run":
                 cargoArgs[0] = "build";

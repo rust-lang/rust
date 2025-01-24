@@ -13,10 +13,10 @@ fn monomorphic_not_inline(_1: i32) -> () {
     bb0: {
         StorageLive(_2);
         StorageLive(_3);
-        _3 = _1;
+        _3 = copy _1;
         StorageLive(_4);
         StorageLive(_5);
-        _4 = other_thing(_3) -> [return: bb2, unwind unreachable];
+        _4 = other_thing(copy _3) -> [return: bb2, unwind unreachable];
     }
 
     bb1: {

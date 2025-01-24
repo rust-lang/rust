@@ -1,0 +1,8 @@
+error: malformed `cfi_encoding` attribute input
+  --> $DIR/invalid-attr-encoding.rs:10:1
+   |
+LL | #[cfi_encoding]
+   | ^^^^^^^^^^^^^^^ help: must be of the form: `#[cfi_encoding = "encoding"]`
+
+error: aborting due to 1 previous error
+

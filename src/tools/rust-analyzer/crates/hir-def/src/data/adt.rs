@@ -6,21 +6,23 @@ use cfg::CfgOptions;
 use either::Either;
 
 use hir_expand::name::Name;
-use intern::{sym, Interned};
+use intern::sym;
 use la_arena::Arena;
 use rustc_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
 use triomphe::Arc;
+use tt::iter::TtElement;
 
 use crate::{
     builtin_type::{BuiltinInt, BuiltinUint},
     db::DefDatabase,
+    hir::Expr,
     item_tree::{
         AttrOwner, Field, FieldParent, FieldsShape, ItemTree, ModItem, RawVisibilityId, TreeId,
     },
     lang_item::LangItem,
     nameres::diagnostics::{DefDiagnostic, DefDiagnostics},
-    tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree},
-    type_ref::TypeRef,
+    tt::{Delimiter, DelimiterKind, Leaf, TopSubtree},
+    type_ref::{TypeRefId, TypesMap},
     visibility::RawVisibility,
     EnumId, EnumVariantId, LocalFieldId, LocalModuleId, Lookup, StructId, UnionId, VariantId,
 };
@@ -72,8 +74,8 @@ pub struct EnumVariantData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VariantData {
-    Record(Arena<FieldData>),
-    Tuple(Arena<FieldData>),
+    Record { fields: Arena<FieldData>, types_map: Arc<TypesMap> },
+    Tuple { fields: Arena<FieldData>, types_map: Arc<TypesMap> },
     Unit,
 }
 
@@ -81,7 +83,7 @@ pub enum VariantData {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldData {
     pub name: Name,
-    pub type_ref: Interned<TypeRef>,
+    pub type_ref: TypeRefId,
     pub visibility: RawVisibility,
 }
 
@@ -94,8 +96,8 @@ fn repr_from_value(
     item_tree.attrs(db, krate, of).by_key(&sym::repr).tt_values().find_map(parse_repr_tt)
 }
 
-fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
-    match tt.delimiter {
+fn parse_repr_tt(tt: &TopSubtree) -> Option<ReprOptions> {
+    match tt.top_subtree().delimiter {
         Delimiter { kind: DelimiterKind::Parenthesis, .. } => {}
         _ => return None,
     }
@@ -105,14 +107,14 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
     let mut max_align: Option<Align> = None;
     let mut min_pack: Option<Align> = None;
 
-    let mut tts = tt.token_trees.iter().peekable();
+    let mut tts = tt.iter();
     while let Some(tt) = tts.next() {
-        if let TokenTree::Leaf(Leaf::Ident(ident)) = tt {
+        if let TtElement::Leaf(Leaf::Ident(ident)) = tt {
             flags.insert(match &ident.sym {
                 s if *s == sym::packed => {
-                    let pack = if let Some(TokenTree::Subtree(tt)) = tts.peek() {
+                    let pack = if let Some(TtElement::Subtree(_, mut tt_iter)) = tts.peek() {
                         tts.next();
-                        if let Some(TokenTree::Leaf(Leaf::Literal(lit))) = tt.token_trees.first() {
+                        if let Some(TtElement::Leaf(Leaf::Literal(lit))) = tt_iter.next() {
                             lit.symbol.as_str().parse().unwrap_or_default()
                         } else {
                             0
@@ -126,9 +128,9 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
                     ReprFlags::empty()
                 }
                 s if *s == sym::align => {
-                    if let Some(TokenTree::Subtree(tt)) = tts.peek() {
+                    if let Some(TtElement::Subtree(_, mut tt_iter)) = tts.peek() {
                         tts.next();
-                        if let Some(TokenTree::Leaf(Leaf::Literal(lit))) = tt.token_trees.first() {
+                        if let Some(TtElement::Leaf(Leaf::Literal(lit))) = tt_iter.next() {
                             if let Ok(align) = lit.symbol.as_str().parse() {
                                 let align = Align::from_bytes(align).ok();
                                 max_align = max_align.max(align);
@@ -207,7 +209,7 @@ impl StructData {
         }
 
         let strukt = &item_tree[loc.id.value];
-        let (data, diagnostics) = lower_fields(
+        let (fields, diagnostics) = lower_fields(
             db,
             krate,
             loc.container.local_id,
@@ -218,12 +220,13 @@ impl StructData {
             &strukt.fields,
             None,
         );
+        let types_map = strukt.types_map.clone();
         (
             Arc::new(StructData {
                 name: strukt.name.clone(),
                 variant_data: Arc::new(match strukt.shape {
-                    FieldsShape::Record => VariantData::Record(data),
-                    FieldsShape::Tuple => VariantData::Tuple(data),
+                    FieldsShape::Record => VariantData::Record { fields, types_map },
+                    FieldsShape::Tuple => VariantData::Tuple { fields, types_map },
                     FieldsShape::Unit => VariantData::Unit,
                 }),
                 repr,
@@ -257,7 +260,7 @@ impl StructData {
         }
 
         let union = &item_tree[loc.id.value];
-        let (data, diagnostics) = lower_fields(
+        let (fields, diagnostics) = lower_fields(
             db,
             krate,
             loc.container.local_id,
@@ -268,10 +271,11 @@ impl StructData {
             &union.fields,
             None,
         );
+        let types_map = union.types_map.clone();
         (
             Arc::new(StructData {
                 name: union.name.clone(),
-                variant_data: Arc::new(VariantData::Record(data)),
+                variant_data: Arc::new(VariantData::Record { fields, types_map }),
                 repr,
                 visibility: item_tree[union.visibility].clone(),
                 flags,
@@ -317,6 +321,27 @@ impl EnumData {
             _ => IntegerType::Pointer(true),
         }
     }
+
+    // [Adopted from rustc](https://github.com/rust-lang/rust/blob/bd53aa3bf7a24a70d763182303bd75e5fc51a9af/compiler/rustc_middle/src/ty/adt.rs#L446-L448)
+    pub fn is_payload_free(&self, db: &dyn DefDatabase) -> bool {
+        self.variants.iter().all(|(v, _)| {
+            // The condition check order is slightly modified from rustc
+            // to improve performance by early returning with relatively fast checks
+            let variant = &db.enum_variant_data(*v).variant_data;
+            if !variant.fields().is_empty() {
+                return false;
+            }
+            // The outer if condition is whether this variant has const ctor or not
+            if !matches!(variant.kind(), StructKind::Unit) {
+                let body = db.body((*v).into());
+                // A variant with explicit discriminant
+                if body.exprs[body.body_expr] != Expr::Missing {
+                    return false;
+                }
+            }
+            true
+        })
+    }
 }
 
 impl EnumVariantData {
@@ -338,7 +363,7 @@ impl EnumVariantData {
         let item_tree = loc.id.item_tree(db);
         let variant = &item_tree[loc.id.value];
 
-        let (data, diagnostics) = lower_fields(
+        let (fields, diagnostics) = lower_fields(
             db,
             krate,
             container.local_id,
@@ -349,13 +374,14 @@ impl EnumVariantData {
             &variant.fields,
             Some(item_tree[loc.parent.lookup(db).id.value].visibility),
         );
+        let types_map = variant.types_map.clone();
 
         (
             Arc::new(EnumVariantData {
                 name: variant.name.clone(),
                 variant_data: Arc::new(match variant.shape {
-                    FieldsShape::Record => VariantData::Record(data),
-                    FieldsShape::Tuple => VariantData::Tuple(data),
+                    FieldsShape::Record => VariantData::Record { fields, types_map },
+                    FieldsShape::Tuple => VariantData::Tuple { fields, types_map },
                     FieldsShape::Unit => VariantData::Unit,
                 }),
             }),
@@ -368,8 +394,17 @@ impl VariantData {
     pub fn fields(&self) -> &Arena<FieldData> {
         const EMPTY: &Arena<FieldData> = &Arena::new();
         match &self {
-            VariantData::Record(fields) | VariantData::Tuple(fields) => fields,
+            VariantData::Record { fields, .. } | VariantData::Tuple { fields, .. } => fields,
             _ => EMPTY,
+        }
+    }
+
+    pub fn types_map(&self) -> &TypesMap {
+        match &self {
+            VariantData::Record { types_map, .. } | VariantData::Tuple { types_map, .. } => {
+                types_map
+            }
+            VariantData::Unit => TypesMap::EMPTY,
         }
     }
 
@@ -380,8 +415,8 @@ impl VariantData {
 
     pub fn kind(&self) -> StructKind {
         match self {
-            VariantData::Record(_) => StructKind::Record,
-            VariantData::Tuple(_) => StructKind::Tuple,
+            VariantData::Record { .. } => StructKind::Record,
+            VariantData::Tuple { .. } => StructKind::Tuple,
             VariantData::Unit => StructKind::Unit,
         }
     }
@@ -441,7 +476,7 @@ fn lower_field(
 ) -> FieldData {
     FieldData {
         name: field.name.clone(),
-        type_ref: field.type_ref.clone(),
+        type_ref: field.type_ref,
         visibility: item_tree[override_visibility.unwrap_or(field.visibility)].clone(),
     }
 }

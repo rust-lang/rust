@@ -60,39 +60,25 @@ impl<'tcx> LateLintPass<'tcx> for MapUnitFn {
                         let fn_ty = cx.tcx.fn_sig(id).skip_binder();
                         let ret_ty = fn_ty.output().skip_binder();
                         if is_unit_type(ret_ty) {
-                            cx.emit_span_lint(
-                                MAP_UNIT_FN,
-                                span,
-                                MappingToUnit {
-                                    function_label: cx
-                                        .tcx
-                                        .span_of_impl(*id)
-                                        .unwrap_or(default_span),
-                                    argument_label: args[0].span,
-                                    map_label: arg_ty.default_span(cx.tcx),
-                                    suggestion: path.ident.span,
-                                    replace: "for_each".to_string(),
-                                },
-                            )
+                            cx.emit_span_lint(MAP_UNIT_FN, span, MappingToUnit {
+                                function_label: cx.tcx.span_of_impl(*id).unwrap_or(default_span),
+                                argument_label: args[0].span,
+                                map_label: arg_ty.default_span(cx.tcx),
+                                suggestion: path.ident.span,
+                                replace: "for_each".to_string(),
+                            })
                         }
                     } else if let ty::Closure(id, subs) = arg_ty.kind() {
                         let cl_ty = subs.as_closure().sig();
                         let ret_ty = cl_ty.output().skip_binder();
                         if is_unit_type(ret_ty) {
-                            cx.emit_span_lint(
-                                MAP_UNIT_FN,
-                                span,
-                                MappingToUnit {
-                                    function_label: cx
-                                        .tcx
-                                        .span_of_impl(*id)
-                                        .unwrap_or(default_span),
-                                    argument_label: args[0].span,
-                                    map_label: arg_ty.default_span(cx.tcx),
-                                    suggestion: path.ident.span,
-                                    replace: "for_each".to_string(),
-                                },
-                            )
+                            cx.emit_span_lint(MAP_UNIT_FN, span, MappingToUnit {
+                                function_label: cx.tcx.span_of_impl(*id).unwrap_or(default_span),
+                                argument_label: args[0].span,
+                                map_label: arg_ty.default_span(cx.tcx),
+                                suggestion: path.ident.span,
+                                replace: "for_each".to_string(),
+                            })
                         }
                     }
                 }

@@ -2,14 +2,14 @@ use super::NEEDLESS_COLLECT;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{is_type_diagnostic_item, make_normalized_projection, make_projection};
+use clippy_utils::ty::{get_type_diagnostic_name, make_normalized_projection, make_projection};
 use clippy_utils::{
-    can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, is_trait_method, path_to_local, path_to_local_id,
-    CaptureKind,
+    CaptureKind, can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, is_trait_method, path_to_local,
+    path_to_local_id,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_block, walk_expr};
 use rustc_hir::{
     BindingMode, Block, Expr, ExprKind, HirId, HirIdSet, LetStmt, Mutability, Node, PatKind, Stmt, StmtKind,
 };
@@ -17,7 +17,7 @@ use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, AssocKind, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, Ty};
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
 
@@ -88,9 +88,10 @@ pub(super) fn check<'tcx>(
         Node::LetStmt(l) => {
             if let PatKind::Binding(BindingMode::NONE | BindingMode::MUT, id, _, None) = l.pat.kind
                 && let ty = cx.typeck_results().expr_ty(collect_expr)
-                && [sym::Vec, sym::VecDeque, sym::BinaryHeap, sym::LinkedList]
-                    .into_iter()
-                    .any(|item| is_type_diagnostic_item(cx, ty, item))
+                && matches!(
+                    get_type_diagnostic_name(cx, ty),
+                    Some(sym::Vec | sym::VecDeque | sym::BinaryHeap | sym::LinkedList)
+                )
                 && let iter_ty = cx.typeck_results().expr_ty(iter_expr)
                 && let Some(block) = get_enclosing_block(cx, l.hir_id)
                 && let Some(iter_calls) = detect_iter_and_into_iters(block, id, cx, get_captured_ids(cx, iter_ty))
@@ -192,7 +193,7 @@ fn check_collect_into_intoiterator<'tcx>(
 
 /// Checks if the given method call matches the expected signature of `([&[mut]] self) -> bool`
 fn is_is_empty_sig(cx: &LateContext<'_>, call_id: HirId) -> bool {
-    cx.typeck_results().type_dependent_def_id(call_id).map_or(false, |id| {
+    cx.typeck_results().type_dependent_def_id(call_id).is_some_and(|id| {
         let sig = cx.tcx.fn_sig(id).instantiate_identity().skip_binder();
         sig.inputs().len() == 1 && sig.output().is_bool()
     })
@@ -202,10 +203,11 @@ fn is_is_empty_sig(cx: &LateContext<'_>, call_id: HirId) -> bool {
 fn iterates_same_ty<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>, collect_ty: Ty<'tcx>) -> bool {
     if let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator)
         && let Some(into_iter_trait) = cx.tcx.get_diagnostic_item(sym::IntoIterator)
-        && let Some(iter_item_ty) = make_normalized_projection(cx.tcx, cx.param_env, iter_trait, sym::Item, [iter_ty])
+        && let Some(iter_item_ty) =
+            make_normalized_projection(cx.tcx, cx.typing_env(), iter_trait, sym::Item, [iter_ty])
         && let Some(into_iter_item_proj) = make_projection(cx.tcx, into_iter_trait, sym::Item, [collect_ty])
         && let Ok(into_iter_item_ty) = cx.tcx.try_normalize_erasing_regions(
-            cx.param_env,
+            cx.typing_env(),
             Ty::new_projection_from_args(cx.tcx, into_iter_item_proj.def_id, into_iter_item_proj.args),
         )
     {
@@ -236,7 +238,7 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
         )
         && let args = cx.tcx.mk_args(&[GenericArg::from(typeck.expr_ty_adjusted(iter_expr))])
         && let proj_ty = Ty::new_projection_from_args(cx.tcx, iter_item.def_id, args)
-        && let Ok(item_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, proj_ty)
+        && let Ok(item_ty) = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), proj_ty)
     {
         item_ty == EarlyBinder::bind(search_ty).instantiate(cx.tcx, cx.typeck_results().node_args(call_id))
     } else {
@@ -320,7 +322,10 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         // Check function calls on our collection
         if let ExprKind::MethodCall(method_name, recv, args, _) = &expr.kind {
-            if method_name.ident.name == sym!(collect) && is_trait_method(self.cx, expr, sym::Iterator) {
+            if args.is_empty()
+                && method_name.ident.name.as_str() == "collect"
+                && is_trait_method(self.cx, expr, sym::Iterator)
+            {
                 self.current_mutably_captured_ids = get_captured_ids(self.cx, self.cx.typeck_results().expr_ty(recv));
                 self.visit_expr(recv);
                 return;
@@ -440,7 +445,7 @@ struct UsedCountVisitor<'a, 'tcx> {
     count: usize,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for UsedCountVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for UsedCountVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
@@ -465,14 +470,14 @@ fn detect_iter_and_into_iters<'tcx: 'a, 'a>(
     captured_ids: HirIdSet,
 ) -> Option<Vec<IterFunction>> {
     let mut visitor = IterFunctionVisitor {
-        uses: Vec::new(),
-        target: id,
-        seen_other: false,
-        cx,
-        current_mutably_captured_ids: HirIdSet::default(),
         illegal_mutable_capture_ids: captured_ids,
+        current_mutably_captured_ids: HirIdSet::default(),
+        cx,
+        uses: Vec::new(),
         hir_id_uses_map: FxHashMap::default(),
         current_statement_hir_id: None,
+        seen_other: false,
+        target: id,
     };
     visitor.visit_block(block);
     if visitor.seen_other {

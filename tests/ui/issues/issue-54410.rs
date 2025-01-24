@@ -5,5 +5,4 @@ extern "C" {
 
 fn main() {
     println!("{:p}", unsafe { &symbol });
-    //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
 }

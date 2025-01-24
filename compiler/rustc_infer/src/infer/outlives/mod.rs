@@ -1,10 +1,12 @@
 //! Various code related to computing outlives relations.
 
+use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::traits::query::{NoSolution, OutlivesBound};
 use rustc_middle::ty;
+use tracing::instrument;
 
 use self::env::OutlivesEnvironment;
-use super::region_constraints::RegionConstraintData;
+use super::region_constraints::{RegionConstraintData, UndoLog};
 use super::{InferCtxt, RegionResolutionError, SubregionOrigin};
 use crate::infer::free_regions::RegionRelations;
 use crate::infer::lexical_region_resolve;
@@ -13,7 +15,7 @@ pub mod env;
 pub mod for_liveness;
 pub mod obligations;
 pub mod test_type_match;
-pub mod verify;
+pub(crate) mod verify;
 
 #[instrument(level = "debug", skip(param_env), ret)]
 pub fn explicit_outlives_bounds<'tcx>(
@@ -22,19 +24,9 @@ pub fn explicit_outlives_bounds<'tcx>(
     param_env
         .caller_bounds()
         .into_iter()
-        .map(ty::Clause::kind)
+        .filter_map(ty::Clause::as_region_outlives_clause)
         .filter_map(ty::Binder::no_bound_vars)
-        .filter_map(move |kind| match kind {
-            ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(r_a, r_b)) => {
-                Some(OutlivesBound::RegionSubRegion(r_b, r_a))
-            }
-            ty::ClauseKind::Trait(_)
-            | ty::ClauseKind::TypeOutlives(_)
-            | ty::ClauseKind::Projection(_)
-            | ty::ClauseKind::ConstArgHasType(_, _)
-            | ty::ClauseKind::WellFormed(_)
-            | ty::ClauseKind::ConstEvaluatable(_) => None,
-        })
+        .map(|ty::OutlivesPredicate(r_a, r_b)| OutlivesBound::RegionSubRegion(r_b, r_a))
 }
 
 impl<'tcx> InferCtxt<'tcx> {
@@ -62,7 +54,7 @@ impl<'tcx> InferCtxt<'tcx> {
             }
         };
 
-        let (var_infos, data) = {
+        let storage = {
             let mut inner = self.inner.borrow_mut();
             let inner = &mut *inner;
             assert!(
@@ -70,18 +62,14 @@ impl<'tcx> InferCtxt<'tcx> {
                 "region_obligations not empty: {:#?}",
                 inner.region_obligations
             );
-            inner
-                .region_constraint_storage
-                .take()
-                .expect("regions already resolved")
-                .with_log(&mut inner.undo_log)
-                .into_infos_and_data()
+            assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&inner.undo_log));
+            inner.region_constraint_storage.take().expect("regions already resolved")
         };
 
         let region_rels = &RegionRelations::new(self.tcx, outlives_env.free_region_map());
 
         let (lexical_region_resolutions, errors) =
-            lexical_region_resolve::resolve(region_rels, var_infos, data);
+            lexical_region_resolve::resolve(region_rels, storage.var_infos, storage.data);
 
         let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
         assert!(old_value.is_none());

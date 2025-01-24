@@ -8,19 +8,18 @@ use std::iter;
 use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
+use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_data_structures::captures::Captures;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
-use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable, TypeFoldable};
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
-use rustc_target::spec::abi;
-use rustc_type_ir::visit::TypeVisitableExt;
+use rustc_hir::def_id::DefId;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, extension};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_type_ir::TyKind::*;
+use rustc_type_ir::visit::TypeVisitableExt;
 use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind};
+use tracing::instrument;
 use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
 
 use super::GenericParamDefKind;
@@ -28,7 +27,7 @@ use crate::infer::canonical::Canonical;
 use crate::ty::InferTy::*;
 use crate::ty::{
     self, AdtDef, BoundRegionKind, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv,
-    Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
 };
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
@@ -39,6 +38,7 @@ pub type AliasTy<'tcx> = ir::AliasTy<TyCtxt<'tcx>>;
 pub type FnSig<'tcx> = ir::FnSig<TyCtxt<'tcx>>;
 pub type Binder<'tcx, T> = ir::Binder<TyCtxt<'tcx>, T>;
 pub type EarlyBinder<'tcx, T> = ir::EarlyBinder<TyCtxt<'tcx>, T>;
+pub type TypingMode<'tcx> = ir::TypingMode<TyCtxt<'tcx>>;
 
 pub trait Article {
     fn article(&self) -> &'static str;
@@ -401,7 +401,7 @@ impl<'tcx> Ty<'tcx> {
     /// The more specific methods will often optimize their creation.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
-    pub fn new(tcx: TyCtxt<'tcx>, st: TyKind<'tcx>) -> Ty<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, st: TyKind<'tcx>) -> Ty<'tcx> {
         tcx.mk_ty_from_kind(st)
     }
 
@@ -500,6 +500,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    #[instrument(level = "debug", skip(tcx))]
     pub fn new_opaque(tcx: TyCtxt<'tcx>, def_id: DefId, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
         Ty::new_alias(tcx, ty::Opaque, AliasTy::new_from_args(tcx, def_id, args))
     }
@@ -584,6 +585,16 @@ impl<'tcx> Ty<'tcx> {
         Ty::new_ref(tcx, r, ty, hir::Mutability::Not)
     }
 
+    pub fn new_pinned_ref(
+        tcx: TyCtxt<'tcx>,
+        r: Region<'tcx>,
+        ty: Ty<'tcx>,
+        mutbl: ty::Mutability,
+    ) -> Ty<'tcx> {
+        let pin = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, None));
+        Ty::new_adt(tcx, pin, tcx.mk_args(&[Ty::new_ref(tcx, r, ty, mutbl).into()]))
+    }
+
     #[inline]
     pub fn new_ptr(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, mutbl: ty::Mutability) -> Ty<'tcx> {
         Ty::new(tcx, ty::RawPtr(ty, mutbl))
@@ -602,6 +613,41 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_adt(tcx: TyCtxt<'tcx>, def: AdtDef<'tcx>, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
         tcx.debug_assert_args_compatible(def.did(), args);
+        if cfg!(debug_assertions) {
+            match tcx.def_kind(def.did()) {
+                DefKind::Struct | DefKind::Union | DefKind::Enum => {}
+                DefKind::Mod
+                | DefKind::Variant
+                | DefKind::Trait
+                | DefKind::TyAlias
+                | DefKind::ForeignTy
+                | DefKind::TraitAlias
+                | DefKind::AssocTy
+                | DefKind::TyParam
+                | DefKind::Fn
+                | DefKind::Const
+                | DefKind::ConstParam
+                | DefKind::Static { .. }
+                | DefKind::Ctor(..)
+                | DefKind::AssocFn
+                | DefKind::AssocConst
+                | DefKind::Macro(..)
+                | DefKind::ExternCrate
+                | DefKind::Use
+                | DefKind::ForeignMod
+                | DefKind::AnonConst
+                | DefKind::InlineConst
+                | DefKind::OpaqueTy
+                | DefKind::Field
+                | DefKind::LifetimeParam
+                | DefKind::GlobalAsm
+                | DefKind::Impl { .. }
+                | DefKind::Closure
+                | DefKind::SyntheticCoroutineBody => {
+                    bug!("not an adt: {def:?} ({:?})", tcx.def_kind(def.did()))
+                }
+            }
+        }
         Ty::new(tcx, Adt(def, args))
     }
 
@@ -658,7 +704,13 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_fn_ptr(tcx: TyCtxt<'tcx>, fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
-        Ty::new(tcx, FnPtr(fty))
+        let (sig_tys, hdr) = fty.split();
+        Ty::new(tcx, FnPtr(sig_tys, hdr))
+    }
+
+    #[inline]
+    pub fn new_unsafe_binder(tcx: TyCtxt<'tcx>, b: Binder<'tcx, Ty<'tcx>>) -> Ty<'tcx> {
+        Ty::new(tcx, UnsafeBinder(b.into()))
     }
 
     #[inline]
@@ -737,7 +789,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_diverging_default(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        if tcx.features().never_type_fallback { tcx.types.never } else { tcx.types.unit }
+        if tcx.features().never_type_fallback() { tcx.types.never } else { tcx.types.unit }
     }
 
     // lang and diagnostic tys
@@ -755,7 +807,7 @@ impl<'tcx> Ty<'tcx> {
                 }
             }
         });
-        Ty::new(tcx, Adt(adt_def, args))
+        Ty::new_adt(tcx, adt_def, args)
     }
 
     #[inline]
@@ -950,6 +1002,10 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_pat(interner, ty, pat)
     }
 
+    fn new_unsafe_binder(interner: TyCtxt<'tcx>, ty: ty::Binder<'tcx, Ty<'tcx>>) -> Self {
+        Ty::new_unsafe_binder(interner, ty)
+    }
+
     fn new_unit(interner: TyCtxt<'tcx>) -> Self {
         interner.types.unit
     }
@@ -965,10 +1021,18 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
     fn async_destructor_ty(self, interner: TyCtxt<'tcx>) -> Ty<'tcx> {
         self.async_destructor_ty(interner)
     }
+
+    fn has_unsafe_fields(self) -> bool {
+        Ty::has_unsafe_fields(self)
+    }
 }
 
 /// Type utilities
 impl<'tcx> Ty<'tcx> {
+    // It would be nicer if this returned the value instead of a reference,
+    // like how `Predicate::kind` and `Region::kind` do. (It would result in
+    // many fewer subsequent dereferences.) But that gives a small but
+    // noticeable performance hit. See #126069 for details.
     #[inline(always)]
     pub fn kind(self) -> &'tcx TyKind<'tcx> {
         self.0.0
@@ -988,6 +1052,18 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Check if type is an `usize`.
+    #[inline]
+    pub fn is_usize(self) -> bool {
+        matches!(self.kind(), Uint(UintTy::Usize))
+    }
+
+    /// Check if type is an `usize` or an integral type variable.
+    #[inline]
+    pub fn is_usize_like(self) -> bool {
+        matches!(self.kind(), Uint(UintTy::Usize) | Infer(IntVar(_)))
+    }
+
     #[inline]
     pub fn is_never(self) -> bool {
         matches!(self.kind(), Never)
@@ -995,7 +1071,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_primitive(self) -> bool {
-        self.kind().is_primitive()
+        matches!(self.kind(), Bool | Char | Int(_) | Uint(_) | Float(_))
     }
 
     #[inline]
@@ -1086,29 +1162,26 @@ impl<'tcx> Ty<'tcx> {
     }
 
     pub fn simd_size_and_type(self, tcx: TyCtxt<'tcx>) -> (u64, Ty<'tcx>) {
-        match self.kind() {
-            Adt(def, args) => {
-                assert!(def.repr().simd(), "`simd_size_and_type` called on non-SIMD type");
-                let variant = def.non_enum_variant();
-                let f0_ty = variant.fields[FieldIdx::ZERO].ty(tcx, args);
-
-                match f0_ty.kind() {
-                    // If the first field is an array, we assume it is the only field and its
-                    // elements are the SIMD components.
-                    Array(f0_elem_ty, f0_len) => {
-                        // FIXME(repr_simd): https://github.com/rust-lang/rust/pull/78863#discussion_r522784112
-                        // The way we evaluate the `N` in `[T; N]` here only works since we use
-                        // `simd_size_and_type` post-monomorphization. It will probably start to ICE
-                        // if we use it in generic code. See the `simd-array-trait` ui test.
-                        (f0_len.eval_target_usize(tcx, ParamEnv::empty()), *f0_elem_ty)
-                    }
-                    // Otherwise, the fields of this Adt are the SIMD components (and we assume they
-                    // all have the same type).
-                    _ => (variant.fields.len() as u64, f0_ty),
-                }
-            }
-            _ => bug!("`simd_size_and_type` called on invalid type"),
-        }
+        let Adt(def, args) = self.kind() else {
+            bug!("`simd_size_and_type` called on invalid type")
+        };
+        assert!(def.repr().simd(), "`simd_size_and_type` called on non-SIMD type");
+        let variant = def.non_enum_variant();
+        assert_eq!(variant.fields.len(), 1);
+        let field_ty = variant.fields[FieldIdx::ZERO].ty(tcx, args);
+        let Array(f0_elem_ty, f0_len) = field_ty.kind() else {
+            bug!("Simd type has non-array field type {field_ty:?}")
+        };
+        // FIXME(repr_simd): https://github.com/rust-lang/rust/pull/78863#discussion_r522784112
+        // The way we evaluate the `N` in `[T; N]` here only works since we use
+        // `simd_size_and_type` post-monomorphization. It will probably start to ICE
+        // if we use it in generic code. See the `simd-array-trait` ui test.
+        (
+            f0_len
+                .try_to_target_usize(tcx)
+                .expect("expected SIMD field to have definite array size"),
+            *f0_elem_ty,
+        )
     }
 
     #[inline]
@@ -1131,6 +1204,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Tests if this is any kind of primitive pointer type (reference, raw pointer, fn pointer).
+    /// `Box` is *not* considered a pointer here!
     #[inline]
     pub fn is_any_ptr(self) -> bool {
         self.is_ref() || self.is_unsafe_ptr() || self.is_fn_ptr()
@@ -1144,7 +1218,10 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Tests whether this is a Box using the global allocator.
+    /// Tests whether this is a Box definitely using the global allocator.
+    ///
+    /// If the allocator is still generic, the answer is `false`, but it may
+    /// later turn out that it does use the global allocator.
     #[inline]
     pub fn is_box_global(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind() {
@@ -1162,12 +1239,17 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Panics if called on any type other than `Box<T>`.
-    pub fn boxed_ty(self) -> Ty<'tcx> {
+    pub fn boxed_ty(self) -> Option<Ty<'tcx>> {
         match self.kind() {
-            Adt(def, args) if def.is_box() => args.type_at(0),
-            _ => bug!("`boxed_ty` is called on non-box type {:?}", self),
+            Adt(def, args) if def.is_box() => Some(args.type_at(0)),
+            _ => None,
         }
+    }
+
+    /// Panics if called on any type other than `Box<T>`.
+    pub fn expect_boxed_ty(self) -> Ty<'tcx> {
+        self.boxed_ty()
+            .unwrap_or_else(|| bug!("`expect_boxed_ty` is called on non-box type {:?}", self))
     }
 
     /// A scalar type is one that denotes an atomic datum, with no sub-components.
@@ -1182,7 +1264,7 @@ impl<'tcx> Ty<'tcx> {
                 | Float(_)
                 | Uint(_)
                 | FnDef(..)
-                | FnPtr(_)
+                | FnPtr(..)
                 | RawPtr(_, _)
                 | Infer(IntVar(_) | FloatVar(_))
         )
@@ -1315,7 +1397,7 @@ impl<'tcx> Ty<'tcx> {
     /// Some types -- notably unsafe ptrs -- can only be dereferenced explicitly.
     pub fn builtin_deref(self, explicit: bool) -> Option<Ty<'tcx>> {
         match *self.kind() {
-            Adt(def, _) if def.is_box() => Some(self.boxed_ty()),
+            _ if let Some(boxed) = self.boxed_ty() => Some(boxed),
             Ref(_, ty, _) => Some(ty),
             RawPtr(ty, _) if explicit => Some(ty),
             _ => None,
@@ -1330,17 +1412,18 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    #[tracing::instrument(level = "trace", skip(tcx))]
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
             FnDef(def_id, args) => tcx.fn_sig(*def_id).instantiate(tcx, args),
-            FnPtr(f) => *f,
+            FnPtr(sig_tys, hdr) => sig_tys.with(*hdr),
             Error(_) => {
                 // ignore errors (#54954)
                 Binder::dummy(ty::FnSig {
                     inputs_and_output: ty::List::empty(),
                     c_variadic: false,
                     safety: hir::Safety::Safe,
-                    abi: abi::Abi::Rust,
+                    abi: ExternAbi::Rust,
                 })
             }
             Closure(..) => bug!(
@@ -1352,12 +1435,12 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_fn(self) -> bool {
-        matches!(self.kind(), FnDef(..) | FnPtr(_))
+        matches!(self.kind(), FnDef(..) | FnPtr(..))
     }
 
     #[inline]
     pub fn is_fn_ptr(self) -> bool {
-        matches!(self.kind(), FnPtr(_))
+        matches!(self.kind(), FnPtr(..))
     }
 
     #[inline]
@@ -1453,6 +1536,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
+            | ty::UnsafeBinder(_)
             | ty::Error(_)
             | ty::Infer(IntVar(_) | FloatVar(_)) => tcx.types.u8,
 
@@ -1583,14 +1667,14 @@ impl<'tcx> Ty<'tcx> {
             .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
     }
 
-    /// Returns the type of metadata for (potentially fat) pointers to this type,
+    /// Returns the type of metadata for (potentially wide) pointers to this type,
     /// or the struct tail if the metadata type cannot be determined.
     pub fn ptr_metadata_ty_or_tail(
         self,
         tcx: TyCtxt<'tcx>,
         normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
     ) -> Result<Ty<'tcx>, Ty<'tcx>> {
-        let tail = tcx.struct_tail_with_normalize(self, normalize, || {});
+        let tail = tcx.struct_tail_raw(self, normalize, || {});
         match tail.kind() {
             // Sized types
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -1599,7 +1683,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Bool
             | ty::Float(_)
             | ty::FnDef(..)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::RawPtr(..)
             | ty::Char
             | ty::Ref(..)
@@ -1614,10 +1698,10 @@ impl<'tcx> Ty<'tcx> {
             | ty::Foreign(..)
             // `dyn*` has metadata = ().
             | ty::Dynamic(_, _, ty::DynStar)
-            // If returned by `struct_tail_with_normalize` this is a unit struct
+            // If returned by `struct_tail_raw` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
             | ty::Adt(..)
-            // If returned by `struct_tail_with_normalize` this is the empty tuple,
+            // If returned by `struct_tail_raw` this is the empty tuple,
             // a.k.a. unit type, which is Sized
             | ty::Tuple(..) => Ok(tcx.types.unit),
 
@@ -1632,6 +1716,8 @@ impl<'tcx> Ty<'tcx> {
             // metadata of `tail`.
             ty::Param(_) | ty::Alias(..) => Err(tail),
 
+            | ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
+
             ty::Infer(ty::TyVar(_))
             | ty::Pat(..)
             | ty::Bound(..)
@@ -1642,7 +1728,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Returns the type of metadata for (potentially fat) pointers to this type.
+    /// Returns the type of metadata for (potentially wide) pointers to this type.
     /// Causes an ICE if the metadata type cannot be determined.
     pub fn ptr_metadata_ty(
         self,
@@ -1791,7 +1877,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Bool
             | ty::Float(_)
             | ty::FnDef(..)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
+            | ty::UnsafeBinder(_)
             | ty::RawPtr(..)
             | ty::Char
             | ty::Ref(..)
@@ -1807,11 +1894,11 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => false,
 
-            ty::Tuple(tys) => tys.last().map_or(true, |ty| ty.is_trivially_sized(tcx)),
+            ty::Tuple(tys) => tys.last().is_none_or(|ty| ty.is_trivially_sized(tcx)),
 
             ty::Adt(def, args) => def
                 .sized_constraint(tcx)
-                .map_or(true, |ty| ty.instantiate(tcx, args).is_trivially_sized(tcx)),
+                .is_none_or(|ty| ty.instantiate(tcx, args).is_trivially_sized(tcx)),
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) | ty::Bound(..) => false,
 
@@ -1871,6 +1958,8 @@ impl<'tcx> Ty<'tcx> {
             // Might be, but not "trivial" so just giving the safe answer.
             ty::Adt(..) | ty::Closure(..) | ty::CoroutineClosure(..) => false,
 
+            ty::UnsafeBinder(_) => false,
+
             // Needs normalization or revealing to determine, so no is the safe answer.
             ty::Alias(..) => false,
 
@@ -1909,20 +1998,21 @@ impl<'tcx> Ty<'tcx> {
                 ty::UintTy::U64 => Some(sym::u64),
                 ty::UintTy::U128 => Some(sym::u128),
             },
+            ty::Str => Some(sym::str),
             _ => None,
         }
     }
 
     pub fn is_c_void(self, tcx: TyCtxt<'_>) -> bool {
         match self.kind() {
-            ty::Adt(adt, _) => tcx.lang_items().get(LangItem::CVoid) == Some(adt.did()),
+            ty::Adt(adt, _) => tcx.is_lang_item(adt.did(), LangItem::CVoid),
             _ => false,
         }
     }
 
     /// Returns `true` when the outermost type cannot be further normalized,
     /// resolved, or instantiated. This includes all primitive types, but also
-    /// things like ADTs and trait objects, sice even if their arguments or
+    /// things like ADTs and trait objects, since even if their arguments or
     /// nested types may be further simplified, the outermost [`TyKind`] or
     /// type constructor remains the same.
     pub fn is_known_rigid(self) -> bool {
@@ -1941,23 +2031,27 @@ impl<'tcx> Ty<'tcx> {
             | RawPtr(_, _)
             | Ref(_, _, _)
             | FnDef(_, _)
-            | FnPtr(_)
+            | FnPtr(..)
             | Dynamic(_, _, _)
             | Closure(_, _)
             | CoroutineClosure(_, _)
             | Coroutine(_, _)
             | CoroutineWitness(..)
             | Never
-            | Tuple(_) => true,
+            | Tuple(_)
+            | UnsafeBinder(_) => true,
             Error(_) | Infer(_) | Alias(_, _) | Param(_) | Bound(_, _) | Placeholder(_) => false,
         }
     }
 }
 
 impl<'tcx> rustc_type_ir::inherent::Tys<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
-    fn split_inputs_and_output(self) -> (&'tcx [Ty<'tcx>], Ty<'tcx>) {
-        let (output, inputs) = self.split_last().unwrap();
-        (inputs, *output)
+    fn inputs(self) -> &'tcx [Ty<'tcx>] {
+        self.split_last().unwrap().1
+    }
+
+    fn output(self) -> Ty<'tcx> {
+        *self.split_last().unwrap().0
     }
 }
 
@@ -1969,6 +2063,6 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(ty::RegionKind<'_>, 24);
-    static_assert_size!(ty::TyKind<'_>, 32);
+    static_assert_size!(ty::TyKind<'_>, 24);
     // tidy-alphabetical-end
 }

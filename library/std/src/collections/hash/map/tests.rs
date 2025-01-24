@@ -5,7 +5,7 @@ use super::Entry::{Occupied, Vacant};
 use super::HashMap;
 use crate::assert_matches::assert_matches;
 use crate::cell::RefCell;
-use crate::hash::RandomState;
+use crate::hash::{BuildHasher, BuildHasherDefault, DefaultHasher, RandomState};
 use crate::test_helpers::test_rng;
 
 // https://github.com/rust-lang/rust/issues/62301
@@ -274,7 +274,7 @@ fn test_lots_of_insertions() {
     for _ in 0..loops {
         assert!(m.is_empty());
 
-        let count = if cfg!(miri) { 101 } else { 1001 };
+        let count = if cfg!(miri) { 66 } else { 1001 };
 
         for i in 1..count {
             assert!(m.insert(i, i).is_none());
@@ -947,7 +947,7 @@ fn test_raw_entry() {
 
 mod test_extract_if {
     use super::*;
-    use crate::panic::{catch_unwind, AssertUnwindSafe};
+    use crate::panic::{AssertUnwindSafe, catch_unwind};
     use crate::sync::atomic::{AtomicUsize, Ordering};
 
     trait EqSorted: Iterator {
@@ -1018,6 +1018,7 @@ mod test_extract_if {
     }
 
     #[test]
+    #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
     fn drop_panic_leak() {
         static PREDS: AtomicUsize = AtomicUsize::new(0);
         static DROPS: AtomicUsize = AtomicUsize::new(0);
@@ -1047,6 +1048,7 @@ mod test_extract_if {
     }
 
     #[test]
+    #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
     fn pred_panic_leak() {
         static PREDS: AtomicUsize = AtomicUsize::new(0);
         static DROPS: AtomicUsize = AtomicUsize::new(0);
@@ -1076,6 +1078,7 @@ mod test_extract_if {
 
     // Same as above, but attempt to use the iterator again after the panic in the predicate
     #[test]
+    #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
     fn pred_panic_reuse() {
         static PREDS: AtomicUsize = AtomicUsize::new(0);
         static DROPS: AtomicUsize = AtomicUsize::new(0);
@@ -1095,7 +1098,7 @@ mod test_extract_if {
                 _ => panic!(),
             });
             catch_unwind(AssertUnwindSafe(|| while it.next().is_some() {})).unwrap_err();
-            // Iterator behaviour after a panic is explicitly unspecified,
+            // Iterator behavior after a panic is explicitly unspecified,
             // so this is just the current implementation:
             let result = catch_unwind(AssertUnwindSafe(|| it.next()));
             assert!(result.is_err());
@@ -1121,6 +1124,26 @@ fn from_array() {
 
 #[test]
 fn const_with_hasher() {
-    const X: HashMap<(), (), ()> = HashMap::with_hasher(());
-    assert_eq!(X.len(), 0);
+    const X: HashMap<(), (), BuildHasherDefault<DefaultHasher>> =
+        HashMap::with_hasher(BuildHasherDefault::new());
+    let mut x = X;
+    assert_eq!(x.len(), 0);
+    x.insert((), ());
+    assert_eq!(x.len(), 1);
+
+    // It *is* possible to do this without using the `BuildHasherDefault` type.
+    struct MyBuildDefaultHasher;
+    impl BuildHasher for MyBuildDefaultHasher {
+        type Hasher = DefaultHasher;
+
+        fn build_hasher(&self) -> Self::Hasher {
+            DefaultHasher::new()
+        }
+    }
+
+    const Y: HashMap<(), (), MyBuildDefaultHasher> = HashMap::with_hasher(MyBuildDefaultHasher);
+    let mut y = Y;
+    assert_eq!(y.len(), 0);
+    y.insert((), ());
+    assert_eq!(y.len(), 1);
 }

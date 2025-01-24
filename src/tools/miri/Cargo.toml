@@ -20,25 +20,22 @@ doctest = false # and no doc tests
 [dependencies]
 getrandom = { version = "0.2", features = ["std"] }
 rand = "0.8"
-smallvec = "1.7"
+smallvec = { version = "1.7", features = ["drain_filter"] }
 aes = { version = "0.8.3", features = ["hazmat"] }
 measureme = "11"
-ctrlc = "3.2.5"
 chrono = { version = "0.4.38", default-features = false }
-chrono-tz = "0.9"
+chrono-tz = "0.10"
 directories = "5"
 
 # Copied from `compiler/rustc/Cargo.toml`.
 # But only for some targets, it fails for others. Rustc configures this in its CI, but we can't
 # easily use that since we support of-tree builds.
-[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies.jemalloc-sys]
-version = "0.5.0"
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies.tikv-jemalloc-sys]
+version = "0.6.0"
 features = ['unprefixed_malloc_on_supported_platforms']
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
-
-[target.'cfg(target_os = "linux")'.dependencies]
 libffi = "3.2.0"
 libloading = "0.8"
 
@@ -51,7 +48,7 @@ windows-sys = { version = "0.52", features = [
 
 [dev-dependencies]
 colored = "2"
-ui_test = "0.21.1"
+ui_test = "0.26.5"
 rustc_version = "0.4"
 regex = "1.5.5"
 tempfile = "3"

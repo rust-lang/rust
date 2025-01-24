@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 
 use self::Constructor::*;
 use crate::constructor::{Constructor, Slice, SliceKind};

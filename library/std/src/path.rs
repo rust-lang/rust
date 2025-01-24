@@ -70,17 +70,19 @@
 #[cfg(test)]
 mod tests;
 
+use core::clone::CloneToUninit;
+
 use crate::borrow::{Borrow, Cow};
 use crate::collections::TryReserveError;
 use crate::error::Error;
-use crate::ffi::{os_str, OsStr, OsString};
+use crate::ffi::{OsStr, OsString, os_str};
 use crate::hash::{Hash, Hasher};
 use crate::iter::FusedIterator;
 use crate::ops::{self, Deref};
 use crate::rc::Rc;
 use crate::str::FromStr;
 use crate::sync::Arc;
-use crate::sys::path::{is_sep_byte, is_verbatim_sep, parse_prefix, MAIN_SEP_STR};
+use crate::sys::path::{MAIN_SEP_STR, is_sep_byte, is_verbatim_sep, parse_prefix};
 use crate::{cmp, fmt, fs, io, sys};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,6 +263,7 @@ pub fn is_separator(c: char) -> bool {
 ///
 /// For example, `/` on Unix and `\` on Windows.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "path_main_separator")]
 pub const MAIN_SEPARATOR: char = crate::sys::path::MAIN_SEP;
 
 /// The primary separator of path components for the current platform.
@@ -295,7 +298,7 @@ where
 }
 
 // Detect scheme on Redox
-fn has_redox_scheme(s: &[u8]) -> bool {
+pub(crate) fn has_redox_scheme(s: &[u8]) -> bool {
     cfg!(target_os = "redox") && s.contains(&b':')
 }
 
@@ -1151,6 +1154,23 @@ impl FusedIterator for Ancestors<'_> {}
 /// ```
 ///
 /// Which method works best depends on what kind of situation you're in.
+///
+/// Note that `PathBuf` does not always sanitize arguments, for example
+/// [`push`] allows paths built from strings which include separators:
+///
+/// ```
+/// use std::path::PathBuf;
+///
+/// let mut path = PathBuf::new();
+///
+/// path.push(r"C:\");
+/// path.push("windows");
+/// path.push(r"..\otherdir");
+/// path.push("system32");
+/// ```
+///
+/// The behavior of `PathBuf` may be changed to a panic on such inputs
+/// in the future. [`Extend::extend`] should be used to add multi-part paths.
 #[cfg_attr(not(test), rustc_diagnostic_item = "PathBuf")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PathBuf {
@@ -1209,6 +1229,7 @@ impl PathBuf {
     /// let p = PathBuf::from("/test");
     /// assert_eq!(Path::new("/test"), p.as_path());
     /// ```
+    #[cfg_attr(not(test), rustc_diagnostic_item = "pathbuf_as_path")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
@@ -1389,6 +1410,9 @@ impl PathBuf {
     /// `file_name`. The new path will be a sibling of the original path.
     /// (That is, it will have the same parent.)
     ///
+    /// The argument is not sanitized, so can include separators. This
+    /// behavior may be changed to a panic in the future.
+    ///
     /// [`self.file_name`]: Path::file_name
     /// [`pop`]: PathBuf::pop
     ///
@@ -1409,6 +1433,12 @@ impl PathBuf {
     ///
     /// buf.set_file_name("baz");
     /// assert!(buf == PathBuf::from("/baz"));
+    ///
+    /// buf.set_file_name("../b/c.txt");
+    /// assert!(buf == PathBuf::from("/../b/c.txt"));
+    ///
+    /// buf.set_file_name("baz");
+    /// assert!(buf == PathBuf::from("/../b/baz"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_file_name<S: AsRef<OsStr>>(&mut self, file_name: S) {
@@ -1734,6 +1764,16 @@ impl From<&Path> for Box<Path> {
     }
 }
 
+#[stable(feature = "box_from_mut_slice", since = "1.84.0")]
+impl From<&mut Path> for Box<Path> {
+    /// Creates a boxed [`Path`] from a reference.
+    ///
+    /// This will allocate and clone `path` to it.
+    fn from(path: &mut Path) -> Box<Path> {
+        Self::from(&*path)
+    }
+}
+
 #[stable(feature = "box_from_cow", since = "1.45.0")]
 impl From<Cow<'_, Path>> for Box<Path> {
     /// Creates a boxed [`Path`] from a clone-on-write pointer.
@@ -1962,6 +2002,15 @@ impl From<&Path> for Arc<Path> {
     }
 }
 
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
+impl From<&mut Path> for Arc<Path> {
+    /// Converts a [`Path`] into an [`Arc`] by copying the [`Path`] data into a new [`Arc`] buffer.
+    #[inline]
+    fn from(s: &mut Path) -> Arc<Path> {
+        Arc::from(&*s)
+    }
+}
+
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<PathBuf> for Rc<Path> {
     /// Converts a [`PathBuf`] into an <code>[Rc]<[Path]></code> by moving the [`PathBuf`] data into
@@ -1980,6 +2029,15 @@ impl From<&Path> for Rc<Path> {
     fn from(s: &Path) -> Rc<Path> {
         let rc: Rc<OsStr> = Rc::from(s.as_os_str());
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Path) }
+    }
+}
+
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
+impl From<&mut Path> for Rc<Path> {
+    /// Converts a [`Path`] into an [`Rc`] by copying the [`Path`] data into a new [`Rc`] buffer.
+    #[inline]
+    fn from(s: &mut Path) -> Rc<Path> {
+        Rc::from(&*s)
     }
 }
 
@@ -2072,7 +2130,7 @@ impl AsRef<OsStr> for PathBuf {
 /// ```
 #[cfg_attr(not(test), rustc_diagnostic_item = "Path")]
 #[stable(feature = "rust1", since = "1.0.0")]
-// `Path::new` current implementation relies
+// `Path::new` and `impl CloneToUninit for Path` current implementation relies
 // on `Path` being layout-compatible with `OsStr`.
 // However, `Path` layout is considered an implementation detail and must not be relied upon.
 #[repr(transparent)]
@@ -2097,7 +2155,7 @@ impl Path {
         unsafe { Path::new(OsStr::from_encoded_bytes_unchecked(s)) }
     }
     // The following (private!) function reveals the byte encoding used for OsStr.
-    fn as_u8_slice(&self) -> &[u8] {
+    pub(crate) fn as_u8_slice(&self) -> &[u8] {
         self.inner.as_encoded_bytes()
     }
 
@@ -2198,7 +2256,7 @@ impl Path {
 
     /// Converts a `Path` to a [`Cow<str>`].
     ///
-    /// Any non-Unicode sequences are replaced with
+    /// Any non-UTF-8 sequences are replaced with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD].
     ///
     /// [U+FFFD]: super::char::REPLACEMENT_CHARACTER
@@ -2238,6 +2296,7 @@ impl Path {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "path_to_pathbuf")]
     pub fn to_path_buf(&self) -> PathBuf {
         PathBuf::from(self.inner.to_os_string())
     }
@@ -2264,12 +2323,7 @@ impl Path {
     #[must_use]
     #[allow(deprecated)]
     pub fn is_absolute(&self) -> bool {
-        if cfg!(target_os = "redox") {
-            // FIXME: Allow Redox prefixes
-            self.has_root() || has_redox_scheme(self.as_u8_slice())
-        } else {
-            self.has_root() && (cfg!(any(unix, target_os = "wasi")) || self.prefix().is_some())
-        }
+        sys::path::is_absolute(self)
     }
 
     /// Returns `true` if the `Path` is relative, i.e., not absolute.
@@ -2292,7 +2346,7 @@ impl Path {
         !self.is_absolute()
     }
 
-    fn prefix(&self) -> Option<Prefix<'_>> {
+    pub(crate) fn prefix(&self) -> Option<Prefix<'_>> {
         self.components().prefix
     }
 
@@ -2447,6 +2501,7 @@ impl Path {
     /// assert_eq!(path.strip_prefix("/test/haha/foo.txt/"), Ok(Path::new("")));
     ///
     /// assert!(path.strip_prefix("test").is_err());
+    /// assert!(path.strip_prefix("/te").is_err());
     /// assert!(path.strip_prefix("/haha").is_err());
     ///
     /// let prefix = PathBuf::from("/test/");
@@ -3109,6 +3164,16 @@ impl Path {
     }
 }
 
+#[unstable(feature = "clone_to_uninit", issue = "126799")]
+unsafe impl CloneToUninit for Path {
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    unsafe fn clone_to_uninit(&self, dst: *mut u8) {
+        // SAFETY: Path is just a transparent wrapper around OsStr
+        unsafe { self.inner.clone_to_uninit(dst) }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for Path {
     #[inline]
@@ -3513,7 +3578,7 @@ impl Error for StripPrefixError {
 pub fn absolute<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     let path = path.as_ref();
     if path.as_os_str().is_empty() {
-        Err(io::const_io_error!(io::ErrorKind::InvalidInput, "cannot make an empty path absolute",))
+        Err(io::const_error!(io::ErrorKind::InvalidInput, "cannot make an empty path absolute",))
     } else {
         sys::path::absolute(path)
     }

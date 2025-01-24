@@ -11,20 +11,17 @@ const EXPECTED = [
         'query': 'Inside<T> -> Out3<T>',
         'others': [
             { 'path': 'generics_unbox', 'name': 'beta' },
-            { 'path': 'generics_unbox', 'name': 'gamma' },
         ],
     },
     {
         'query': 'Inside<T> -> Out4<T>',
         'others': [
-            { 'path': 'generics_unbox', 'name': 'beta' },
             { 'path': 'generics_unbox', 'name': 'gamma' },
         ],
     },
     {
         'query': 'Inside<T> -> Out3<U, T>',
         'others': [
-            { 'path': 'generics_unbox', 'name': 'beta' },
             { 'path': 'generics_unbox', 'name': 'gamma' },
         ],
     },
@@ -32,7 +29,6 @@ const EXPECTED = [
         'query': 'Inside<T> -> Out4<U, T>',
         'others': [
             { 'path': 'generics_unbox', 'name': 'beta' },
-            { 'path': 'generics_unbox', 'name': 'gamma' },
         ],
     },
 ];

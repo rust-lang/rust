@@ -1,9 +1,9 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::mir::{enclosing_mir, PossibleBorrowerMap};
+use clippy_utils::mir::{PossibleBorrowerMap, enclosing_mir};
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{is_diag_trait_item, last_path_segment, local_is_initialized, path_to_local};
+use clippy_utils::{is_diag_trait_item, is_in_test, last_path_segment, local_is_initialized, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -96,17 +96,17 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
                 },
                 _ => return,
             }
-            && let Ok(Some(resolved_fn)) = Instance::try_resolve(cx.tcx, cx.param_env, fn_id, fn_gen_args)
+            && let Ok(Some(resolved_fn)) = Instance::try_resolve(cx.tcx, cx.typing_env(), fn_id, fn_gen_args)
             // TODO: This check currently bails if the local variable has no initializer.
             // That is overly conservative - the lint should fire even if there was no initializer,
             // but the variable has been initialized before `lhs` was evaluated.
-            && path_to_local(lhs).map_or(true, |lhs| local_is_initialized(cx, lhs))
+            && path_to_local(lhs).is_none_or(|lhs| local_is_initialized(cx, lhs))
             && let Some(resolved_impl) = cx.tcx.impl_of_method(resolved_fn.def_id())
             // Derived forms don't implement `clone_from`/`clone_into`.
             // See https://github.com/rust-lang/rust/pull/98445#issuecomment-1190681305
             && !cx.tcx.is_builtin_derived(resolved_impl)
             // Don't suggest calling a function we're implementing.
-            && resolved_impl.as_local().map_or(true, |block_id| {
+            && resolved_impl.as_local().is_none_or(|block_id| {
                 cx.tcx.hir().parent_owner_iter(e.hir_id).all(|(id, _)| id.def_id != block_id)
             })
             && let resolved_assoc_items = cx.tcx.associated_items(resolved_impl)
@@ -118,6 +118,7 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
                 }
             )
             && !clone_source_borrows_from_dest(cx, lhs, rhs.span)
+            && !is_in_test(cx.tcx, e.hir_id)
         {
             span_lint_and_then(
                 cx,
@@ -227,9 +228,22 @@ fn build_sugg<'tcx>(
             match call_kind {
                 CallKind::Method => {
                     let receiver_sugg = if let ExprKind::Unary(hir::UnOp::Deref, ref_expr) = lhs.kind {
-                        // `*lhs = self_expr.clone();` -> `lhs.clone_from(self_expr)`
-                        Sugg::hir_with_applicability(cx, ref_expr, "_", app)
+                        // If `ref_expr` is a reference, we can remove the dereference operator (`*`) to make
+                        // the generated code a bit simpler. In other cases, we don't do this special case, to avoid
+                        // having to deal with Deref (https://github.com/rust-lang/rust-clippy/issues/12437).
+
+                        let ty = cx.typeck_results().expr_ty(ref_expr);
+                        if ty.is_ref() {
+                            // Apply special case, remove `*`
+                            // `*lhs = self_expr.clone();` -> `lhs.clone_from(self_expr)`
+                            Sugg::hir_with_applicability(cx, ref_expr, "_", app)
+                        } else {
+                            // Keep the original lhs
+                            // `*lhs = self_expr.clone();` -> `(*lhs).clone_from(self_expr)`
+                            Sugg::hir_with_applicability(cx, lhs, "_", app)
+                        }
                     } else {
+                        // Keep the original lhs
                         // `lhs = self_expr.clone();` -> `lhs.clone_from(self_expr)`
                         Sugg::hir_with_applicability(cx, lhs, "_", app)
                     }
@@ -249,8 +263,16 @@ fn build_sugg<'tcx>(
                 },
                 CallKind::Ufcs => {
                     let self_sugg = if let ExprKind::Unary(hir::UnOp::Deref, ref_expr) = lhs.kind {
-                        // `*lhs = Clone::clone(self_expr);` -> `Clone::clone_from(lhs, self_expr)`
-                        Sugg::hir_with_applicability(cx, ref_expr, "_", app)
+                        // See special case of removing `*` in method handling above
+                        let ty = cx.typeck_results().expr_ty(ref_expr);
+                        if ty.is_ref() {
+                            // `*lhs = Clone::clone(self_expr);` -> `Clone::clone_from(lhs, self_expr)`
+                            Sugg::hir_with_applicability(cx, ref_expr, "_", app)
+                        } else {
+                            // `*lhs = Clone::clone(self_expr);` -> `Clone::clone_from(&mut *lhs, self_expr)`
+                            // mut_addr_deref is used to avoid unnecessary parentheses around `*lhs`
+                            Sugg::hir_with_applicability(cx, ref_expr, "_", app).mut_addr_deref()
+                        }
                     } else {
                         // `lhs = Clone::clone(self_expr);` -> `Clone::clone_from(&mut lhs, self_expr)`
                         Sugg::hir_with_applicability(cx, lhs, "_", app).mut_addr()

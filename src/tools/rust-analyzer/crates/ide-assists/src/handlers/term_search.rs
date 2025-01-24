@@ -48,15 +48,17 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
 
     let mut formatter = |_: &hir::Type| String::from("todo!()");
 
+    let edition = scope.krate().edition(ctx.db());
     let paths = paths
         .into_iter()
         .filter_map(|path| {
-            path.gen_source_code(&scope, &mut formatter, ctx.config.import_path_config()).ok()
+            path.gen_source_code(&scope, &mut formatter, ctx.config.import_path_config(), edition)
+                .ok()
         })
         .unique();
 
     let macro_name = macro_call.name(ctx.sema.db);
-    let macro_name = macro_name.display(ctx.sema.db);
+    let macro_name = macro_name.display(ctx.sema.db, edition);
 
     for code in paths {
         acc.add_group(

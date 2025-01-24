@@ -5,10 +5,10 @@ use std::iter::Peekable;
 
 use rustc_span::BytePos;
 
-use crate::comment::{find_comment_end, rewrite_comment, FindUncommented};
+use crate::comment::{FindUncommented, find_comment_end, rewrite_comment};
 use crate::config::lists::*;
 use crate::config::{Config, IndentStyle};
-use crate::rewrite::RewriteContext;
+use crate::rewrite::{RewriteContext, RewriteError, RewriteResult};
 use crate::shape::{Indent, Shape};
 use crate::utils::{
     count_newlines, first_line_width, last_line_width, mk_sp, starts_with_newline,
@@ -125,18 +125,18 @@ pub(crate) struct ListItem {
     pub(crate) pre_comment_style: ListItemCommentStyle,
     // Item should include attributes and doc comments. None indicates a failed
     // rewrite.
-    pub(crate) item: Option<String>,
+    pub(crate) item: RewriteResult,
     pub(crate) post_comment: Option<String>,
     // Whether there is extra whitespace before this item.
     pub(crate) new_lines: bool,
 }
 
 impl ListItem {
-    pub(crate) fn empty() -> ListItem {
+    pub(crate) fn from_item(item: RewriteResult) -> ListItem {
         ListItem {
             pre_comment: None,
             pre_comment_style: ListItemCommentStyle::None,
-            item: None,
+            item: item,
             post_comment: None,
             new_lines: false,
         }
@@ -185,7 +185,7 @@ impl ListItem {
         ListItem {
             pre_comment: None,
             pre_comment_style: ListItemCommentStyle::None,
-            item: Some(s.into()),
+            item: Ok(s.into()),
             post_comment: None,
             new_lines: false,
         }
@@ -197,7 +197,11 @@ impl ListItem {
             !matches!(*s, Some(ref s) if !s.is_empty())
         }
 
-        !(empty(&self.pre_comment) && empty(&self.item) && empty(&self.post_comment))
+        fn empty_result(s: &RewriteResult) -> bool {
+            !matches!(*s, Ok(ref s) if !s.is_empty())
+        }
+
+        !(empty(&self.pre_comment) && empty_result(&self.item) && empty(&self.post_comment))
     }
 }
 
@@ -257,7 +261,7 @@ where
 }
 
 // Format a list of commented items into a string.
-pub(crate) fn write_list<I, T>(items: I, formatting: &ListFormatting<'_>) -> Option<String>
+pub(crate) fn write_list<I, T>(items: I, formatting: &ListFormatting<'_>) -> RewriteResult
 where
     I: IntoIterator<Item = T> + Clone,
     T: AsRef<ListItem>,
@@ -281,7 +285,7 @@ where
     let indent_str = &formatting.shape.indent.to_string(formatting.config);
     while let Some((i, item)) = iter.next() {
         let item = item.as_ref();
-        let inner_item = item.item.as_ref()?;
+        let inner_item = item.item.as_ref().or_else(|err| Err(err.clone()))?;
         let first = i == 0;
         let last = iter.peek().is_none();
         let mut separate = match sep_place {
@@ -516,7 +520,7 @@ where
         prev_item_is_nested_import = inner_item.contains("::");
     }
 
-    Some(result)
+    Ok(result)
 }
 
 fn max_width_of_item_with_post_comment<I, T>(
@@ -741,7 +745,7 @@ where
     I: Iterator<Item = T>,
     F1: Fn(&T) -> BytePos,
     F2: Fn(&T) -> BytePos,
-    F3: Fn(&T) -> Option<String>,
+    F3: Fn(&T) -> RewriteResult,
 {
     type Item = ListItem;
 
@@ -775,8 +779,9 @@ where
             ListItem {
                 pre_comment,
                 pre_comment_style,
+                // leave_last is set to true only for rewrite_items
                 item: if self.inner.peek().is_none() && self.leave_last {
-                    None
+                    Err(RewriteError::SkipFormatting)
                 } else {
                     (self.get_item_string)(&item)
                 },
@@ -805,7 +810,7 @@ where
     I: Iterator<Item = T>,
     F1: Fn(&T) -> BytePos,
     F2: Fn(&T) -> BytePos,
-    F3: Fn(&T) -> Option<String>,
+    F3: Fn(&T) -> RewriteResult,
 {
     ListItems {
         snippet_provider,

@@ -1,18 +1,17 @@
 //! This module contains `HashStable` implementations for various data types
-//! from `rustc_ast` in no particular order.
+//! from various crates in no particular order.
 
-use std::assert_matches::assert_matches;
-
-use rustc_ast as ast;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir as hir;
 use rustc_span::SourceFile;
 use smallvec::SmallVec;
 
 use crate::ich::StableHashingContext;
 
 impl<'ctx> rustc_target::HashStableContext for StableHashingContext<'ctx> {}
+impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {}
 
-impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
+impl<'a> HashStable<StableHashingContext<'a>> for [hir::Attribute] {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         if self.is_empty() {
             self.len().hash_stable(hcx, hasher);
@@ -20,7 +19,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
         }
 
         // Some attributes are always ignored during hashing.
-        let filtered: SmallVec<[&ast::Attribute; 8]> = self
+        let filtered: SmallVec<[&hir::Attribute; 8]> = self
             .iter()
             .filter(|attr| {
                 !attr.is_doc_comment()
@@ -35,29 +34,22 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
     }
 }
 
-impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {
-    fn hash_attr(&mut self, attr: &ast::Attribute, hasher: &mut StableHasher) {
+impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
+    fn hash_attr(&mut self, attr: &hir::Attribute, hasher: &mut StableHasher) {
         // Make sure that these have been filtered out.
         debug_assert!(!attr.ident().is_some_and(|ident| self.is_ignored_attr(ident.name)));
         debug_assert!(!attr.is_doc_comment());
 
-        let ast::Attribute { kind, id: _, style, span } = attr;
-        if let ast::AttrKind::Normal(normal) = kind {
-            normal.item.hash_stable(self, hasher);
+        let hir::Attribute { kind, id: _, style, span } = attr;
+        if let hir::AttrKind::Normal(item) = kind {
+            item.hash_stable(self, hasher);
             style.hash_stable(self, hasher);
             span.hash_stable(self, hasher);
-            assert_matches!(
-                normal.tokens.as_ref(),
-                None,
-                "Tokens should have been removed during lowering!"
-            );
         } else {
             unreachable!();
         }
     }
 }
-
-impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {}
 
 impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
@@ -68,6 +60,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
             // Do not hash the source as it is not encoded
             src: _,
             ref src_hash,
+            // Already includes src_hash, this is redundant
+            checksum_hash: _,
             external_src: _,
             start_pos: _,
             source_len: _,
@@ -109,13 +103,25 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for rustc_feature::Features {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
         // Unfortunately we cannot exhaustively list fields here, since the
-        // struct is macro generated.
-        self.declared_lang_features.hash_stable(hcx, hasher);
-        self.declared_lib_features.hash_stable(hcx, hasher);
+        // struct has private fields (to ensure its invariant is maintained)
+        self.enabled_lang_features().hash_stable(hcx, hasher);
+        self.enabled_lib_features().hash_stable(hcx, hasher);
+    }
+}
 
-        self.all_features()[..].hash_stable(hcx, hasher);
-        for feature in rustc_feature::UNSTABLE_FEATURES.iter() {
-            feature.feature.name.hash_stable(hcx, hasher);
-        }
+impl<'tcx> HashStable<StableHashingContext<'tcx>> for rustc_feature::EnabledLangFeature {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
+        let rustc_feature::EnabledLangFeature { gate_name, attr_sp, stable_since } = self;
+        gate_name.hash_stable(hcx, hasher);
+        attr_sp.hash_stable(hcx, hasher);
+        stable_since.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'tcx> HashStable<StableHashingContext<'tcx>> for rustc_feature::EnabledLibFeature {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
+        let rustc_feature::EnabledLibFeature { gate_name, attr_sp } = self;
+        gate_name.hash_stable(hcx, hasher);
+        attr_sp.hash_stable(hcx, hasher);
     }
 }

@@ -8,7 +8,7 @@ use crate::compiler_interface::with;
 use crate::mir::FieldIdx;
 use crate::target::{MachineInfo, MachineSize as Size};
 use crate::ty::{Align, IndexedVal, Ty, VariantIdx};
-use crate::{error, Error, Opaque};
+use crate::{Error, Opaque, error};
 
 /// A function ABI definition.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -70,7 +70,7 @@ pub struct TyAndLayout {
 /// The layout of a type in memory.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct LayoutShape {
-    /// The fields location withing the layout
+    /// The fields location within the layout
     pub fields: FieldsShape,
 
     /// Encodes information about multi-variant layouts.
@@ -180,6 +180,9 @@ impl FieldsShape {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum VariantsShape {
+    /// A type with no valid variants. Must be uninhabited.
+    Empty,
+
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
     Single { index: VariantIdx },
 
@@ -433,10 +436,13 @@ pub enum CallConvention {
     // Target-specific calling conventions.
     ArmAapcs,
     CCmseNonSecureCall,
+    CCmseNonSecureEntry,
 
     Msp430Intr,
 
     PtxKernel,
+
+    GpuKernel,
 
     X86Fastcall,
     X86Intr,

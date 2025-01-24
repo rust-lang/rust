@@ -2,11 +2,11 @@ use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::ErrorGuaranteed;
 use tracing::instrument;
 
+use crate::MatchArm;
 use crate::constructor::Constructor;
 use crate::errors::{NonExhaustiveOmittedPattern, NonExhaustiveOmittedPatternLintOnArm, Uncovered};
 use crate::pat_column::PatternColumn;
 use crate::rustc::{RevealedTy, RustcPatCtxt, WitnessPat};
-use crate::MatchArm;
 
 /// Traverse the patterns to collect any variants of a non_exhaustive enum that fail to be mentioned
 /// in a given column.

@@ -1,5 +1,8 @@
 //@ run-pass
 
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 use std::mem;
 
 static mut DROP_COUNT: usize = 0;

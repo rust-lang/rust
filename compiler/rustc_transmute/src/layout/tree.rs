@@ -171,13 +171,15 @@ where
 
 #[cfg(feature = "rustc")]
 pub(crate) mod rustc {
-    use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError, LayoutOf};
+    use rustc_abi::{
+        FieldIdx, FieldsShape, Layout, Size, TagEncoding, TyAndLayout, VariantIdx, Variants,
+    };
+    use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError};
     use rustc_middle::ty::{self, AdtDef, AdtKind, List, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
     use rustc_span::ErrorGuaranteed;
-    use rustc_target::abi::{FieldsShape, Size, TyAndLayout, Variants};
 
     use super::Tree;
-    use crate::layout::rustc::{Def, Ref};
+    use crate::layout::rustc::{Def, Ref, layout_of};
 
     #[derive(Debug, Copy, Clone)]
     pub(crate) enum Err {
@@ -193,29 +195,28 @@ pub(crate) mod rustc {
     impl<'tcx> From<&LayoutError<'tcx>> for Err {
         fn from(err: &LayoutError<'tcx>) -> Self {
             match err {
-                LayoutError::Unknown(..) | LayoutError::ReferencesError(..) => Self::UnknownLayout,
+                LayoutError::Unknown(..)
+                | LayoutError::ReferencesError(..)
+                | LayoutError::NormalizationFailure(..) => Self::UnknownLayout,
                 LayoutError::SizeOverflow(..) => Self::SizeOverflow,
                 LayoutError::Cycle(err) => Self::TypeError(*err),
-                err => unimplemented!("{:?}", err),
             }
         }
     }
 
     impl<'tcx> Tree<Def<'tcx>, Ref<'tcx>> {
-        pub fn from_ty(
-            ty_and_layout: TyAndLayout<'tcx, Ty<'tcx>>,
-            cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
-        ) -> Result<Self, Err> {
-            use rustc_target::abi::HasDataLayout;
+        pub(crate) fn from_ty(ty: Ty<'tcx>, cx: LayoutCx<'tcx>) -> Result<Self, Err> {
+            use rustc_abi::HasDataLayout;
+            let layout = layout_of(cx, ty)?;
 
-            if let Err(e) = ty_and_layout.ty.error_reported() {
+            if let Err(e) = ty.error_reported() {
                 return Err(Err::TypeError(e));
             }
 
-            let target = cx.tcx.data_layout();
+            let target = cx.data_layout();
             let pointer_size = target.pointer_size;
 
-            match ty_and_layout.ty.kind() {
+            match ty.kind() {
                 ty::Bool => Ok(Self::bool()),
 
                 ty::Float(nty) => {
@@ -233,32 +234,30 @@ pub(crate) mod rustc {
                     Ok(Self::number(width as _))
                 }
 
-                ty::Tuple(members) => Self::from_tuple(ty_and_layout, members, cx),
+                ty::Tuple(members) => Self::from_tuple((ty, layout), members, cx),
 
                 ty::Array(inner_ty, len) => {
-                    let FieldsShape::Array { stride, count } = &ty_and_layout.fields else {
+                    let FieldsShape::Array { stride, count } = &layout.fields else {
                         return Err(Err::NotYetSupported);
                     };
-                    let inner_ty_and_layout = cx.layout_of(*inner_ty)?;
-                    assert_eq!(*stride, inner_ty_and_layout.size);
-                    let elt = Tree::from_ty(inner_ty_and_layout, cx)?;
+                    let inner_layout = layout_of(cx, *inner_ty)?;
+                    assert_eq!(*stride, inner_layout.size);
+                    let elt = Tree::from_ty(*inner_ty, cx)?;
                     Ok(std::iter::repeat(elt)
                         .take(*count as usize)
                         .fold(Tree::unit(), |tree, elt| tree.then(elt)))
                 }
 
-                ty::Adt(adt_def, _args_ref) if !ty_and_layout.ty.is_box() => {
-                    match adt_def.adt_kind() {
-                        AdtKind::Struct => Self::from_struct(ty_and_layout, *adt_def, cx),
-                        AdtKind::Enum => Self::from_enum(ty_and_layout, *adt_def, cx),
-                        AdtKind::Union => Self::from_union(ty_and_layout, *adt_def, cx),
-                    }
-                }
+                ty::Adt(adt_def, _args_ref) if !ty.is_box() => match adt_def.adt_kind() {
+                    AdtKind::Struct => Self::from_struct((ty, layout), *adt_def, cx),
+                    AdtKind::Enum => Self::from_enum((ty, layout), *adt_def, cx),
+                    AdtKind::Union => Self::from_union((ty, layout), *adt_def, cx),
+                },
 
                 ty::Ref(lifetime, ty, mutability) => {
-                    let ty_and_layout = cx.layout_of(*ty)?;
-                    let align = ty_and_layout.align.abi.bytes_usize();
-                    let size = ty_and_layout.size.bytes_usize();
+                    let layout = layout_of(cx, *ty)?;
+                    let align = layout.align.abi.bytes_usize();
+                    let size = layout.size.bytes_usize();
                     Ok(Tree::Ref(Ref {
                         lifetime: *lifetime,
                         ty: *ty,
@@ -274,21 +273,20 @@ pub(crate) mod rustc {
 
         /// Constructs a `Tree` from a tuple.
         fn from_tuple(
-            ty_and_layout: TyAndLayout<'tcx, Ty<'tcx>>,
+            (ty, layout): (Ty<'tcx>, Layout<'tcx>),
             members: &'tcx List<Ty<'tcx>>,
-            cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+            cx: LayoutCx<'tcx>,
         ) -> Result<Self, Err> {
-            match &ty_and_layout.fields {
+            match &layout.fields {
                 FieldsShape::Primitive => {
                     assert_eq!(members.len(), 1);
                     let inner_ty = members[0];
-                    let inner_ty_and_layout = cx.layout_of(inner_ty)?;
-                    assert_eq!(ty_and_layout.layout, inner_ty_and_layout.layout);
-                    Self::from_ty(inner_ty_and_layout, cx)
+                    let inner_layout = layout_of(cx, inner_ty)?;
+                    Self::from_ty(inner_ty, cx)
                 }
                 FieldsShape::Arbitrary { offsets, .. } => {
                     assert_eq!(offsets.len(), members.len());
-                    Self::from_variant(Def::Primitive, None, ty_and_layout, ty_and_layout.size, cx)
+                    Self::from_variant(Def::Primitive, None, (ty, layout), layout.size, cx)
                 }
                 FieldsShape::Array { .. } | FieldsShape::Union(_) => Err(Err::NotYetSupported),
             }
@@ -300,13 +298,13 @@ pub(crate) mod rustc {
         ///
         /// Panics if `def` is not a struct definition.
         fn from_struct(
-            ty_and_layout: TyAndLayout<'tcx, Ty<'tcx>>,
+            (ty, layout): (Ty<'tcx>, Layout<'tcx>),
             def: AdtDef<'tcx>,
-            cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+            cx: LayoutCx<'tcx>,
         ) -> Result<Self, Err> {
             assert!(def.is_struct());
             let def = Def::Adt(def);
-            Self::from_variant(def, None, ty_and_layout, ty_and_layout.size, cx)
+            Self::from_variant(def, None, (ty, layout), layout.size, cx)
         }
 
         /// Constructs a `Tree` from an enum.
@@ -315,43 +313,38 @@ pub(crate) mod rustc {
         ///
         /// Panics if `def` is not an enum definition.
         fn from_enum(
-            ty_and_layout: TyAndLayout<'tcx, Ty<'tcx>>,
+            (ty, layout): (Ty<'tcx>, Layout<'tcx>),
             def: AdtDef<'tcx>,
-            cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+            cx: LayoutCx<'tcx>,
         ) -> Result<Self, Err> {
             assert!(def.is_enum());
-            let layout = ty_and_layout.layout;
 
-            // Computes the variant of a given index.
-            let layout_of_variant = |index| {
-                let tag = cx.tcx.tag_for_variant((ty_and_layout.ty, index));
-                let variant_def = Def::Variant(def.variant(index));
-                let variant_ty_and_layout = ty_and_layout.for_variant(&cx, index);
-                Self::from_variant(variant_def, tag, variant_ty_and_layout, layout.size, cx)
-            };
+            // Computes the layout of a variant.
+            let layout_of_variant =
+                |index, encoding: Option<TagEncoding<VariantIdx>>| -> Result<Self, Err> {
+                    let variant_layout = ty_variant(cx, (ty, layout), index);
+                    if variant_layout.is_uninhabited() {
+                        return Ok(Self::uninhabited());
+                    }
+                    let tag = cx.tcx().tag_for_variant((cx.tcx().erase_regions(ty), index));
+                    let variant_def = Def::Variant(def.variant(index));
+                    Self::from_variant(
+                        variant_def,
+                        tag.map(|tag| (tag, index, encoding.unwrap())),
+                        (ty, variant_layout),
+                        layout.size,
+                        cx,
+                    )
+                };
 
-            // We consider three kinds of enums, each demanding a different
-            // treatment of their layout computation:
-            // 1. enums that are uninhabited ZSTs
-            // 2. enums that delegate their layout to a variant
-            // 3. enums with multiple variants
             match layout.variants() {
-                Variants::Single { .. }
-                    if layout.abi.is_uninhabited() && layout.size == Size::ZERO =>
-                {
-                    // The layout representation of uninhabited, ZST enums is
-                    // defined to be like that of the `!` type, as opposed of a
-                    // typical enum. Consequently, they cannot be descended into
-                    // as if they typical enums. We therefore special-case this
-                    // scenario and simply return an uninhabited `Tree`.
-                    Ok(Self::uninhabited())
-                }
+                Variants::Empty => Ok(Self::uninhabited()),
                 Variants::Single { index } => {
                     // `Variants::Single` on enums with variants denotes that
                     // the enum delegates its layout to the variant at `index`.
-                    layout_of_variant(*index)
+                    layout_of_variant(*index, None)
                 }
-                Variants::Multiple { tag_field, .. } => {
+                Variants::Multiple { tag, tag_encoding, tag_field, .. } => {
                     // `Variants::Multiple` denotes an enum with multiple
                     // variants. The layout of such an enum is the disjunction
                     // of the layouts of its tagged variants.
@@ -363,12 +356,12 @@ pub(crate) mod rustc {
                     let variants = def.discriminants(cx.tcx()).try_fold(
                         Self::uninhabited(),
                         |variants, (idx, ref discriminant)| {
-                            let variant = layout_of_variant(idx)?;
+                            let variant = layout_of_variant(idx, Some(tag_encoding.clone()))?;
                             Result::<Self, Err>::Ok(variants.or(variant))
                         },
                     )?;
 
-                    return Ok(Self::def(Def::Adt(def)).then(variants));
+                    Ok(Self::def(Def::Adt(def)).then(variants))
                 }
             }
         }
@@ -384,45 +377,54 @@ pub(crate) mod rustc {
         /// `0`.
         fn from_variant(
             def: Def<'tcx>,
-            tag: Option<ScalarInt>,
-            ty_and_layout: TyAndLayout<'tcx, Ty<'tcx>>,
+            tag: Option<(ScalarInt, VariantIdx, TagEncoding<VariantIdx>)>,
+            (ty, layout): (Ty<'tcx>, Layout<'tcx>),
             total_size: Size,
-            cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+            cx: LayoutCx<'tcx>,
         ) -> Result<Self, Err> {
             // This constructor does not support non-`FieldsShape::Arbitrary`
             // layouts.
-            let FieldsShape::Arbitrary { offsets, memory_index } = ty_and_layout.layout.fields()
-            else {
+            let FieldsShape::Arbitrary { offsets, memory_index } = layout.fields() else {
                 return Err(Err::NotYetSupported);
             };
 
             // When this function is invoked with enum variants,
             // `ty_and_layout.size` does not encompass the entire size of the
             // enum. We rely on `total_size` for this.
-            assert!(ty_and_layout.size <= total_size);
+            assert!(layout.size <= total_size);
 
             let mut size = Size::ZERO;
             let mut struct_tree = Self::def(def);
 
             // If a `tag` is provided, place it at the start of the layout.
-            if let Some(tag) = tag {
-                size += tag.size();
-                struct_tree = struct_tree.then(Self::from_tag(tag, cx.tcx));
+            if let Some((tag, index, encoding)) = &tag {
+                match encoding {
+                    TagEncoding::Direct => {
+                        size += tag.size();
+                    }
+                    TagEncoding::Niche { niche_variants, .. } => {
+                        if !niche_variants.contains(index) {
+                            size += tag.size();
+                        }
+                    }
+                }
+                struct_tree = struct_tree.then(Self::from_tag(*tag, cx.tcx()));
             }
 
             // Append the fields, in memory order, to the layout.
             let inverse_memory_index = memory_index.invert_bijective_mapping();
-            for (memory_idx, field_idx) in inverse_memory_index.iter_enumerated() {
+            for (memory_idx, &field_idx) in inverse_memory_index.iter_enumerated() {
                 // Add interfield padding.
-                let padding_needed = offsets[*field_idx] - size;
+                let padding_needed = offsets[field_idx] - size;
                 let padding = Self::padding(padding_needed.bytes_usize());
 
-                let field_ty_and_layout = ty_and_layout.field(&cx, field_idx.as_usize());
-                let field_tree = Self::from_ty(field_ty_and_layout, cx)?;
+                let field_ty = ty_field(cx, (ty, layout), field_idx);
+                let field_layout = layout_of(cx, field_ty)?;
+                let field_tree = Self::from_ty(field_ty, cx)?;
 
                 struct_tree = struct_tree.then(padding).then(field_tree);
 
-                size += padding_needed + field_ty_and_layout.size;
+                size += padding_needed + field_layout.size;
             }
 
             // Add trailing padding.
@@ -434,7 +436,7 @@ pub(crate) mod rustc {
 
         /// Constructs a `Tree` representing the value of a enum tag.
         fn from_tag(tag: ScalarInt, tcx: TyCtxt<'tcx>) -> Self {
-            use rustc_target::abi::Endian;
+            use rustc_abi::Endian;
             let size = tag.size();
             let bits = tag.to_bits(size);
             let bytes: [u8; 16];
@@ -457,28 +459,27 @@ pub(crate) mod rustc {
         ///
         /// Panics if `def` is not a union definition.
         fn from_union(
-            ty_and_layout: TyAndLayout<'tcx, Ty<'tcx>>,
+            (ty, layout): (Ty<'tcx>, Layout<'tcx>),
             def: AdtDef<'tcx>,
-            cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+            cx: LayoutCx<'tcx>,
         ) -> Result<Self, Err> {
             assert!(def.is_union());
 
-            let union_layout = ty_and_layout.layout;
-
             // This constructor does not support non-`FieldsShape::Union`
             // layouts. Fields of this shape are all placed at offset 0.
-            let FieldsShape::Union(fields) = union_layout.fields() else {
+            let FieldsShape::Union(fields) = layout.fields() else {
                 return Err(Err::NotYetSupported);
             };
 
             let fields = &def.non_enum_variant().fields;
             let fields = fields.iter_enumerated().try_fold(
                 Self::uninhabited(),
-                |fields, (idx, ref field_def)| {
+                |fields, (idx, field_def)| {
                     let field_def = Def::Field(field_def);
-                    let field_ty_and_layout = ty_and_layout.field(&cx, idx.as_usize());
-                    let field = Self::from_ty(field_ty_and_layout, cx)?;
-                    let trailing_padding_needed = union_layout.size - field_ty_and_layout.size;
+                    let field_ty = ty_field(cx, (ty, layout), idx);
+                    let field_layout = layout_of(cx, field_ty)?;
+                    let field = Self::from_ty(field_ty, cx)?;
+                    let trailing_padding_needed = layout.size - field_layout.size;
                     let trailing_padding = Self::padding(trailing_padding_needed.bytes_usize());
                     let field_and_padding = field.then(trailing_padding);
                     Result::<Self, Err>::Ok(fields.or(field_and_padding))
@@ -487,5 +488,46 @@ pub(crate) mod rustc {
 
             Ok(Self::def(Def::Adt(def)).then(fields))
         }
+    }
+
+    fn ty_field<'tcx>(
+        cx: LayoutCx<'tcx>,
+        (ty, layout): (Ty<'tcx>, Layout<'tcx>),
+        i: FieldIdx,
+    ) -> Ty<'tcx> {
+        // We cannot use `ty_and_layout_field` to retrieve the field type, since
+        // `ty_and_layout_field` erases regions in the returned type. We must
+        // not erase regions here, since we may need to ultimately emit outlives
+        // obligations as a consequence of the transmutability analysis.
+        match ty.kind() {
+            ty::Adt(def, args) => {
+                match layout.variants {
+                    Variants::Single { index } => {
+                        let field = &def.variant(index).fields[i];
+                        field.ty(cx.tcx(), args)
+                    }
+                    Variants::Empty => panic!("there is no field in Variants::Empty types"),
+                    // Discriminant field for enums (where applicable).
+                    Variants::Multiple { tag, .. } => {
+                        assert_eq!(i.as_usize(), 0);
+                        ty::layout::PrimitiveExt::to_ty(&tag.primitive(), cx.tcx())
+                    }
+                }
+            }
+            ty::Tuple(fields) => fields[i.as_usize()],
+            kind @ _ => unimplemented!(
+                "only a subset of `Ty::ty_and_layout_field`'s functionality is implemented. implementation needed for {:?}",
+                kind
+            ),
+        }
+    }
+
+    fn ty_variant<'tcx>(
+        cx: LayoutCx<'tcx>,
+        (ty, layout): (Ty<'tcx>, Layout<'tcx>),
+        i: VariantIdx,
+    ) -> Layout<'tcx> {
+        let ty = cx.tcx().erase_regions(ty);
+        TyAndLayout { ty, layout }.for_variant(&cx, i).layout
     }
 }

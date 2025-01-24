@@ -1,6 +1,6 @@
-use crate::spec::{add_link_args, base, Cc, LinkArgs, LinkerFlavor, Lld, TargetOptions};
+use crate::spec::{Cc, LinkArgs, LinkerFlavor, Lld, TargetOptions, add_link_args, base};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     let base = base::windows_gnu::opts();
 
     // FIXME: This should be updated for the exception machinery changes from #67502

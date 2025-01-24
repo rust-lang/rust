@@ -1,4 +1,4 @@
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{FloatAbi, Target, TargetOptions, base};
 
 // This target is for glibc Linux on ARMv7 with thumb mode enabled
 // (for consistency with Android and Debian-based distributions)
@@ -6,7 +6,7 @@ use crate::spec::{base, Target, TargetOptions};
 // registers enabled as well. See section A2.6.2 on page A2-56 in
 // https://web.archive.org/web/20210307234416/https://static.docs.arm.com/ddi0406/cd/DDI0406C_d_armv7ar_arm.pdf
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv7-unknown-linux-gnueabihf".into(),
         metadata: crate::spec::TargetMetadata {
@@ -22,6 +22,7 @@ pub fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabihf".into(),
+            llvm_floatabi: Some(FloatAbi::Hard),
             // Info about features at https://wiki.debian.org/ArmHardFloatPort
             features: "+v7,+thumb-mode,+thumb2,+vfp3,+neon".into(),
             max_atomic_width: Some(64),

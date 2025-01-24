@@ -1,9 +1,10 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
+use rustc_type_ir::data_structures::DelayedMap;
 pub use rustc_type_ir::fold::{
-    shift_region, shift_vars, FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable, fold_regions, shift_region,
+    shift_vars,
 };
-use tracing::{debug, instrument};
 
 use crate::ty::{self, Binder, BoundTy, Ty, TyCtxt, TypeVisitableExt};
 
@@ -50,93 +51,22 @@ where
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Region folder
-
-impl<'tcx> TyCtxt<'tcx> {
-    /// Folds the escaping and free regions in `value` using `f`.
-    pub fn fold_regions<T>(
-        self,
-        value: T,
-        mut f: impl FnMut(ty::Region<'tcx>, ty::DebruijnIndex) -> ty::Region<'tcx>,
-    ) -> T
-    where
-        T: TypeFoldable<TyCtxt<'tcx>>,
-    {
-        value.fold_with(&mut RegionFolder::new(self, &mut f))
-    }
-}
-
-/// Folds over the substructure of a type, visiting its component
-/// types and all regions that occur *free* within it.
-///
-/// That is, function pointer types and trait object can introduce
-/// new bound regions which are not visited by this visitors as
-/// they are not free; only regions that occur free will be
-/// visited by `fld_r`.
-pub struct RegionFolder<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
-
-    /// Stores the index of a binder *just outside* the stuff we have
-    /// visited. So this begins as INNERMOST; when we pass through a
-    /// binder, it is incremented (via `shift_in`).
-    current_index: ty::DebruijnIndex,
-
-    /// Callback invokes for each free region. The `DebruijnIndex`
-    /// points to the binder *just outside* the ones we have passed
-    /// through.
-    fold_region_fn:
-        &'a mut (dyn FnMut(ty::Region<'tcx>, ty::DebruijnIndex) -> ty::Region<'tcx> + 'a),
-}
-
-impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
-    #[inline]
-    pub fn new(
-        tcx: TyCtxt<'tcx>,
-        fold_region_fn: &'a mut dyn FnMut(ty::Region<'tcx>, ty::DebruijnIndex) -> ty::Region<'tcx>,
-    ) -> RegionFolder<'a, 'tcx> {
-        RegionFolder { tcx, current_index: ty::INNERMOST, fold_region_fn }
-    }
-}
-
-impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
-    fn cx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn fold_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
-        &mut self,
-        t: ty::Binder<'tcx, T>,
-    ) -> ty::Binder<'tcx, T> {
-        self.current_index.shift_in(1);
-        let t = t.super_fold_with(self);
-        self.current_index.shift_out(1);
-        t
-    }
-
-    #[instrument(skip(self), level = "debug", ret)]
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
-            ty::ReBound(debruijn, _) if debruijn < self.current_index => {
-                debug!(?self.current_index, "skipped bound region");
-                r
-            }
-            _ => {
-                debug!(?self.current_index, "folding free region");
-                (self.fold_region_fn)(r, self.current_index)
-            }
-        }
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////
 // Bound vars replacer
 
+/// A delegate used when instantiating bound vars.
+///
+/// Any implementation must make sure that each bound variable always
+/// gets mapped to the same result. `BoundVarReplacer` caches by using
+/// a `DelayedMap` which does not cache the first few types it encounters.
 pub trait BoundVarReplacerDelegate<'tcx> {
     fn replace_region(&mut self, br: ty::BoundRegion) -> ty::Region<'tcx>;
     fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx>;
     fn replace_const(&mut self, bv: ty::BoundVar) -> ty::Const<'tcx>;
 }
 
+/// A simple delegate taking 3 mutable functions. The used functions must
+/// always return the same result for each bound variable, no matter how
+/// frequently they are called.
 pub struct FnMutDelegate<'a, 'tcx> {
     pub regions: &'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
     pub types: &'a mut (dyn FnMut(ty::BoundTy) -> Ty<'tcx> + 'a),
@@ -164,11 +94,15 @@ struct BoundVarReplacer<'tcx, D> {
     current_index: ty::DebruijnIndex,
 
     delegate: D,
+
+    /// This cache only tracks the `DebruijnIndex` and assumes that it does not matter
+    /// for the delegate how often its methods get used.
+    cache: DelayedMap<(ty::DebruijnIndex, Ty<'tcx>), Ty<'tcx>>,
 }
 
 impl<'tcx, D: BoundVarReplacerDelegate<'tcx>> BoundVarReplacer<'tcx, D> {
     fn new(tcx: TyCtxt<'tcx>, delegate: D) -> Self {
-        BoundVarReplacer { tcx, current_index: ty::INNERMOST, delegate }
+        BoundVarReplacer { tcx, current_index: ty::INNERMOST, delegate, cache: Default::default() }
     }
 }
 
@@ -197,8 +131,17 @@ where
                 debug_assert!(!ty.has_vars_bound_above(ty::INNERMOST));
                 ty::fold::shift_vars(self.tcx, ty, self.current_index.as_u32())
             }
-            _ if t.has_vars_bound_at_or_above(self.current_index) => t.super_fold_with(self),
-            _ => t,
+            _ => {
+                if !t.has_vars_bound_at_or_above(self.current_index) {
+                    t
+                } else if let Some(&t) = self.cache.get(&(self.current_index, t)) {
+                    t
+                } else {
+                    let res = t.super_fold_with(self);
+                    assert!(self.cache.insert((self.current_index, t), res));
+                    res
+                }
+            }
         }
     }
 
@@ -327,7 +270,8 @@ impl<'tcx> TyCtxt<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.instantiate_bound_regions_uncached(value, |br| {
-            ty::Region::new_late_param(self, all_outlive_scope, br.kind)
+            let kind = ty::LateParamRegionKind::from_bound(br.var, br.kind);
+            ty::Region::new_late_param(self, all_outlive_scope, kind)
         })
     }
 
@@ -336,26 +280,21 @@ impl<'tcx> TyCtxt<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let shift_bv = |bv: ty::BoundVar| ty::BoundVar::from_usize(bv.as_usize() + bound_vars);
-        self.replace_escaping_bound_vars_uncached(
-            value,
-            FnMutDelegate {
-                regions: &mut |r: ty::BoundRegion| {
-                    ty::Region::new_bound(
-                        self,
-                        ty::INNERMOST,
-                        ty::BoundRegion { var: shift_bv(r.var), kind: r.kind },
-                    )
-                },
-                types: &mut |t: ty::BoundTy| {
-                    Ty::new_bound(
-                        self,
-                        ty::INNERMOST,
-                        ty::BoundTy { var: shift_bv(t.var), kind: t.kind },
-                    )
-                },
-                consts: &mut |c| ty::Const::new_bound(self, ty::INNERMOST, shift_bv(c)),
+        self.replace_escaping_bound_vars_uncached(value, FnMutDelegate {
+            regions: &mut |r: ty::BoundRegion| {
+                ty::Region::new_bound(self, ty::INNERMOST, ty::BoundRegion {
+                    var: shift_bv(r.var),
+                    kind: r.kind,
+                })
             },
-        )
+            types: &mut |t: ty::BoundTy| {
+                Ty::new_bound(self, ty::INNERMOST, ty::BoundTy {
+                    var: shift_bv(t.var),
+                    kind: t.kind,
+                })
+            },
+            consts: &mut |c| ty::Const::new_bound(self, ty::INNERMOST, shift_bv(c)),
+        })
     }
 
     /// Replaces any late-bound regions bound in `value` with `'erased`. Useful in codegen but also
@@ -382,7 +321,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let index = entry.index();
                 let var = ty::BoundVar::from_usize(index);
                 let kind = entry
-                    .or_insert_with(|| ty::BoundVariableKind::Region(ty::BrAnon))
+                    .or_insert_with(|| ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon))
                     .expect_region();
                 let br = ty::BoundRegion { var, kind };
                 ty::Region::new_bound(self.tcx, ty::INNERMOST, br)

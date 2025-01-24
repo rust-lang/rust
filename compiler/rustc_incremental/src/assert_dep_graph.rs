@@ -35,27 +35,26 @@
 
 use std::env;
 use std::fs::{self, File};
-use std::io::{BufWriter, Write};
+use std::io::Write;
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::graph::implementation::{Direction, NodeIndex, INCOMING, OUTGOING};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
+use rustc_data_structures::graph::implementation::{Direction, INCOMING, NodeIndex, OUTGOING};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::dep_graph::{
-    dep_kinds, DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, EdgeFilter,
+    DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, EdgeFilter, dep_kinds,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
-use {rustc_ast as ast, rustc_graphviz as dot, rustc_hir as hir};
+use {rustc_graphviz as dot, rustc_hir as hir};
 
 use crate::errors;
 
 #[allow(missing_docs)]
-pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
+pub(crate) fn assert_dep_graph(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.unstable_opts.dump_dep_graph {
             tcx.dep_graph.with_query(dump_graph);
@@ -68,7 +67,7 @@ pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
         // if the `rustc_attrs` feature is not enabled, then the
         // attributes we are interested in cannot be present anyway, so
         // skip the walk.
-        if !tcx.features().rustc_attrs {
+        if !tcx.features().rustc_attrs() {
             return;
         }
 
@@ -106,7 +105,7 @@ struct IfThisChanged<'tcx> {
 }
 
 impl<'tcx> IfThisChanged<'tcx> {
-    fn argument(&self, attr: &ast::Attribute) -> Option<Symbol> {
+    fn argument(&self, attr: &hir::Attribute) -> Option<Symbol> {
         let mut value = None;
         for list_item in attr.meta_item_list().unwrap_or_default() {
             match list_item.ident() {
@@ -245,7 +244,7 @@ fn dump_graph(query: &DepGraphQuery) {
     {
         // dump a .txt file with just the edges:
         let txt_path = format!("{path}.txt");
-        let mut file = BufWriter::new(File::create(&txt_path).unwrap());
+        let mut file = File::create_buffered(&txt_path).unwrap();
         for (source, target) in &edges {
             write!(file, "{source:?} -> {target:?}\n").unwrap();
         }
@@ -261,7 +260,7 @@ fn dump_graph(query: &DepGraphQuery) {
 }
 
 #[allow(missing_docs)]
-pub struct GraphvizDepGraph(FxIndexSet<DepKind>, Vec<(DepKind, DepKind)>);
+struct GraphvizDepGraph(FxIndexSet<DepKind>, Vec<(DepKind, DepKind)>);
 
 impl<'a> dot::GraphWalk<'a> for GraphvizDepGraph {
     type Node = DepKind;

@@ -1,7 +1,7 @@
 use crate::abi::Endian;
-use crate::spec::{base, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::openbsd::opts();
     base.cpu = "ppc64".into();
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
@@ -17,7 +17,7 @@ pub fn target() -> Target {
             std: Some(true),
         },
         pointer_width: 64,
-        data_layout: "E-m:e-Fn32-i64:64-n32:64".into(),
+        data_layout: "E-m:e-Fn32-i64:64-i128:128-n32:64".into(),
         arch: "powerpc64".into(),
         options: TargetOptions { endian: Endian::Big, mcount: "_mcount".into(), ..base },
     }

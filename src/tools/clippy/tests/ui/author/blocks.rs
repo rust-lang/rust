@@ -2,7 +2,6 @@
 
 #![allow(redundant_semicolons, clippy::no_effect)]
 #![feature(stmt_expr_attributes)]
-#![feature(async_closure)]
 
 #[rustfmt::skip]
 fn main() {

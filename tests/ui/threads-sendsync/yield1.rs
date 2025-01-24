@@ -13,4 +13,6 @@ pub fn main() {
     result.join();
 }
 
-fn child() { println!("2"); }
+fn child() {
+    println!("2");
+}

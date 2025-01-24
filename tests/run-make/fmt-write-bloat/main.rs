@@ -1,11 +1,11 @@
 #![feature(lang_items)]
-#![feature(start)]
+#![no_main]
 #![no_std]
 
 use core::fmt;
 use core::fmt::Write;
 
-#[link(name = "c")]
+#[cfg_attr(not(windows), link(name = "c"))]
 extern "C" {}
 
 struct Dummy;
@@ -17,8 +17,8 @@ impl fmt::Write for Dummy {
     }
 }
 
-#[start]
-fn main(_: isize, _: *const *const u8) -> isize {
+#[no_mangle]
+extern "C" fn main(_argc: core::ffi::c_int, _argv: *const *const u8) -> core::ffi::c_int {
     let _ = writeln!(Dummy, "Hello World");
     0
 }

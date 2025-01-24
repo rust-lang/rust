@@ -22,7 +22,7 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
     }
 
     bb1: {
-        _0 = ((_1 as Some).0: T);
+        _0 = copy ((_1 as Some).0: T);
         StorageDead(_2);
         return;
     }

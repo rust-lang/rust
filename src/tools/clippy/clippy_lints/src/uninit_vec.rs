@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::higher::{get_vec_init_kind, VecInitKind};
+use clippy_utils::higher::{VecInitKind, get_vec_init_kind};
 use clippy_utils::ty::{is_type_diagnostic_item, is_uninit_value_valid_for_ty};
-use clippy_utils::{is_integer_literal, is_lint_allowed, path_to_local_id, peel_hir_expr_while, SpanlessEq};
+use clippy_utils::{SpanlessEq, is_integer_literal, is_lint_allowed, path_to_local_id, peel_hir_expr_while};
 use rustc_hir::{Block, Expr, ExprKind, HirId, PatKind, PathSegment, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 // TODO: add `ReadBuf` (RFC 2930) in "How to fix" once it is available in std
 declare_clippy_lint! {

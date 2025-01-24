@@ -103,7 +103,8 @@
 //! the time.
 
 use core::marker::PhantomData;
-use core::ptr::{self, NonNull};
+use core::num::NonZeroUsize;
+use core::ptr::NonNull;
 
 use super::{Custom, ErrorData, ErrorKind, RawOsError, SimpleMessage};
 
@@ -124,6 +125,7 @@ const TAG_SIMPLE: usize = 0b11;
 /// is_unwind_safe::<std::io::Error>();
 /// ```
 #[repr(transparent)]
+#[rustc_insignificant_dtor]
 pub(super) struct Repr(NonNull<()>, PhantomData<ErrorData<Box<Custom>>>);
 
 // All the types `Repr` stores internally are Send + Sync, and so is it.
@@ -175,7 +177,7 @@ impl Repr {
         let utagged = ((code as usize) << 32) | TAG_OS;
         // Safety: `TAG_OS` is not zero, so the result of the `|` is not 0.
         let res = Self(
-            unsafe { NonNull::new_unchecked(ptr::without_provenance_mut(utagged)) },
+            NonNull::without_provenance(unsafe { NonZeroUsize::new_unchecked(utagged) }),
             PhantomData,
         );
         // quickly smoke-check we encoded the right thing (This generally will
@@ -192,7 +194,7 @@ impl Repr {
         let utagged = ((kind as usize) << 32) | TAG_SIMPLE;
         // Safety: `TAG_SIMPLE` is not zero, so the result of the `|` is not 0.
         let res = Self(
-            unsafe { NonNull::new_unchecked(ptr::without_provenance_mut(utagged)) },
+            NonNull::without_provenance(unsafe { NonZeroUsize::new_unchecked(utagged) }),
             PhantomData,
         );
         // quickly smoke-check we encoded the right thing (This generally will
@@ -334,7 +336,7 @@ fn kind_from_prim(ek: u32) -> Option<ErrorKind> {
         WriteZero,
         StorageFull,
         NotSeekable,
-        FilesystemQuotaExceeded,
+        QuotaExceeded,
         FileTooLarge,
         ResourceBusy,
         ExecutableFileBusy,
@@ -348,6 +350,7 @@ fn kind_from_prim(ek: u32) -> Option<ErrorKind> {
         UnexpectedEof,
         Unsupported,
         OutOfMemory,
+        InProgress,
         Uncategorized,
     })
 }

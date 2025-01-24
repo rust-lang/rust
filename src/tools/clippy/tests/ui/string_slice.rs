@@ -1,5 +1,7 @@
-#[warn(clippy::string_slice)]
-#[allow(clippy::no_effect)]
+#![warn(clippy::string_slice)]
+#![allow(clippy::no_effect)]
+
+use std::borrow::Cow;
 
 fn main() {
     &"Ölkanne"[1..];
@@ -10,5 +12,8 @@ fn main() {
     //~^ ERROR: indexing into a string may panic if the index is within a UTF-8 character
     let s = String::from(m);
     &s[0..2];
+    //~^ ERROR: indexing into a string may panic if the index is within a UTF-8 character
+    let a = Cow::Borrowed("foo");
+    &a[0..3];
     //~^ ERROR: indexing into a string may panic if the index is within a UTF-8 character
 }

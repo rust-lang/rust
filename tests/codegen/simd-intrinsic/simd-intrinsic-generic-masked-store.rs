@@ -7,11 +7,11 @@
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct Vec2<T>(pub T, pub T);
+pub struct Vec2<T>(pub [T; 2]);
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct Vec4<T>(pub T, pub T, pub T, pub T);
+pub struct Vec4<T>(pub [T; 4]);
 
 extern "rust-intrinsic" {
     fn simd_masked_store<M, P, T>(mask: M, pointer: P, values: T) -> ();

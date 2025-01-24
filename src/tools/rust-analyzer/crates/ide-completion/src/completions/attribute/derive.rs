@@ -62,7 +62,7 @@ pub(crate) fn complete_derive_path(
                     _ => return acc.add_macro(ctx, path_ctx, mac, name),
                 };
 
-                let name_ = name.display_no_db().to_smolstr();
+                let name_ = name.display_no_db(ctx.edition).to_smolstr();
                 let find = DEFAULT_DERIVE_DEPENDENCIES
                     .iter()
                     .find(|derive_completion| derive_completion.label == name_);
@@ -72,10 +72,9 @@ pub(crate) fn complete_derive_path(
                         let mut components = vec![derive_completion.label];
                         components.extend(derive_completion.dependencies.iter().filter(
                             |&&dependency| {
-                                !existing_derives
-                                    .iter()
-                                    .map(|it| it.name(ctx.db))
-                                    .any(|it| it.display_no_db().to_smolstr() == dependency)
+                                !existing_derives.iter().map(|it| it.name(ctx.db)).any(|it| {
+                                    it.display_no_db(ctx.edition).to_smolstr() == dependency
+                                })
                             },
                         ));
                         let lookup = components.join(", ");
@@ -85,6 +84,7 @@ pub(crate) fn complete_derive_path(
                             SymbolKind::Derive,
                             ctx.source_range(),
                             SmolStr::from_iter(label),
+                            ctx.edition,
                         );
                         if let Some(docs) = mac.docs(ctx.db) {
                             item.documentation(docs);

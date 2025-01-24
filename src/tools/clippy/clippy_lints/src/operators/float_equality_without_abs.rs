@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{match_def_path, paths, sugg};
+use clippy_utils::sugg;
 use rustc_ast::util::parser::AssocOp;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -7,6 +7,7 @@ use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::source_map::Spanned;
+use rustc_span::sym;
 
 use super::FLOAT_EQUALITY_WITHOUT_ABS;
 
@@ -36,7 +37,7 @@ pub(crate) fn check<'tcx>(
         // right hand side matches either f32::EPSILON or f64::EPSILON
         && let ExprKind::Path(ref epsilon_path) = rhs.kind
         && let Res::Def(DefKind::AssocConst, def_id) = cx.qpath_res(epsilon_path, rhs.hir_id)
-        && (match_def_path(cx, def_id, &paths::F32_EPSILON) || match_def_path(cx, def_id, &paths::F64_EPSILON))
+        && ([sym::f32_epsilon, sym::f64_epsilon].into_iter().any(|sym| cx.tcx.is_diagnostic_item(sym, def_id)))
 
         // values of the subtractions on the left hand side are of the type float
         && let t_val_l = cx.typeck_results().expr_ty(val_l)

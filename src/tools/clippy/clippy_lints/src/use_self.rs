@@ -1,13 +1,13 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_from_proc_macro;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::same_type_and_consts;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{walk_inf, walk_ty, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_inf, walk_ty};
 use rustc_hir::{
     self as hir, Expr, ExprKind, FnRetTy, FnSig, GenericArgsParentheses, GenericParam, GenericParamKind, HirId, Impl,
     ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath, Ty, TyKind,
@@ -85,10 +85,6 @@ const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
 impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &Item<'tcx>) {
-        if matches!(item.kind, ItemKind::OpaqueTy(_)) {
-            // skip over `ItemKind::OpaqueTy` in order to lint `foo() -> impl <..>`
-            return;
-        }
         // We push the self types of `impl`s on a stack here. Only the top type on the stack is
         // relevant for linting, since this is the self type of the `impl` we're currently in. To
         // avoid linting on nested items, we push `StackItem::NoCheck` on the stack to signal, that
@@ -98,7 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             && let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args
             && parameters
                 .as_ref()
-                .map_or(true, |params| params.parenthesized == GenericArgsParentheses::No)
+                .is_none_or(|params| params.parenthesized == GenericArgsParentheses::No)
             && !item.span.from_expansion()
             && !is_from_proc_macro(cx, item)
         // expensive, should be last check
@@ -130,10 +126,8 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         self.stack.push(stack_item);
     }
 
-    fn check_item_post(&mut self, _: &LateContext<'_>, item: &Item<'_>) {
-        if !matches!(item.kind, ItemKind::OpaqueTy(_)) {
-            self.stack.pop();
-        }
+    fn check_item_post(&mut self, _: &LateContext<'_>, _: &Item<'_>) {
+        self.stack.pop();
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
@@ -229,7 +223,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             && let impl_ty = cx.tcx.type_of(impl_id).instantiate_identity()
             && same_type_and_consts(ty, impl_ty)
             // Ensure the type we encounter and the one from the impl have the same lifetime parameters. It may be that
-            // the lifetime parameters of `ty` are ellided (`impl<'a> Foo<'a> { fn new() -> Self { Foo{..} } }`, in
+            // the lifetime parameters of `ty` are elided (`impl<'a> Foo<'a> { fn new() -> Self { Foo{..} } }`, in
             // which case we must still trigger the lint.
             && (has_no_lifetime(ty) || same_lifetimes(ty, impl_ty))
         {
@@ -280,7 +274,7 @@ struct SkipTyCollector {
     types_to_skip: Vec<HirId>,
 }
 
-impl<'tcx> Visitor<'tcx> for SkipTyCollector {
+impl Visitor<'_> for SkipTyCollector {
     fn visit_infer(&mut self, inf: &hir::InferArg) {
         self.types_to_skip.push(inf.hir_id);
 

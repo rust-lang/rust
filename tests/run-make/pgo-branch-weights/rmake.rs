@@ -7,7 +7,7 @@
 // If the test passes, the expected function call count was added to the use-phase LLVM-IR.
 // See https://github.com/rust-lang/rust/pull/66631
 
-//@ needs-profiler-support
+//@ needs-profiler-runtime
 //@ ignore-cross-compile
 
 use std::path::Path;
@@ -35,5 +35,8 @@ fn main() {
         .codegen_units(1)
         .emit("llvm-ir")
         .run();
-    llvm_filecheck().patterns("filecheck-patterns.txt").stdin(rfs::read("interesting.ll")).run();
+    llvm_filecheck()
+        .patterns("filecheck-patterns.txt")
+        .stdin_buf(rfs::read("interesting.ll"))
+        .run();
 }

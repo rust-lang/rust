@@ -1,5 +1,5 @@
 //@ check-pass
-//@ aux-build:call-deprecated.rs
+//@ proc-macro: call-deprecated.rs
 
 extern crate call_deprecated;
 

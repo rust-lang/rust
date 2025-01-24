@@ -4,8 +4,8 @@ use std::io::ErrorKind;
 
 use rustc_data_structures::fx::FxHashMap;
 
+use self::helpers::windows_check_buffer_size;
 use crate::*;
-use helpers::windows_check_buffer_size;
 
 #[derive(Default)]
 pub struct WindowsEnvVars {
@@ -24,12 +24,12 @@ impl WindowsEnvVars {
         _ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>,
         env_vars: FxHashMap<OsString, OsString>,
     ) -> InterpResult<'tcx, Self> {
-        Ok(Self { map: env_vars })
+        interp_ok(Self { map: env_vars })
     }
 
     /// Implementation detail for [`InterpCx::get_env_var`].
     pub(crate) fn get<'tcx>(&self, name: &OsStr) -> InterpResult<'tcx, Option<OsString>> {
-        Ok(self.map.get(name).cloned())
+        interp_ok(self.map.get(name).cloned())
     }
 }
 
@@ -52,7 +52,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let buf_size = this.read_scalar(size_op)?.to_u32()?; // in characters
 
         let name = this.read_os_str_from_wide_str(name_ptr)?;
-        Ok(match this.machine.env_vars.windows().map.get(&name).cloned() {
+        interp_ok(match this.machine.env_vars.windows().map.get(&name).cloned() {
             Some(val) => {
                 Scalar::from_u32(windows_check_buffer_size(this.write_os_str_to_wide_str(
                     &val,
@@ -89,7 +89,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let envblock_ptr =
             this.alloc_os_str_as_wide_str(&env_vars, MiriMemoryKind::Runtime.into())?;
         // If the function succeeds, the return value is a pointer to the environment block of the current process.
-        Ok(envblock_ptr)
+        interp_ok(envblock_ptr)
     }
 
     #[allow(non_snake_case)]
@@ -100,7 +100,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let env_block_ptr = this.read_pointer(env_block_op)?;
         this.deallocate_ptr(env_block_ptr, None, MiriMemoryKind::Runtime.into())?;
         // If the function succeeds, the return value is nonzero.
-        Ok(Scalar::from_i32(1))
+        interp_ok(Scalar::from_i32(1))
     }
 
     #[allow(non_snake_case)]
@@ -128,11 +128,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else if this.ptr_is_null(value_ptr)? {
             // Delete environment variable `{name}` if it exists.
             this.machine.env_vars.windows_mut().map.remove(&name);
-            Ok(this.eval_windows("c", "TRUE"))
+            interp_ok(this.eval_windows("c", "TRUE"))
         } else {
             let value = this.read_os_str_from_wide_str(value_ptr)?;
             this.machine.env_vars.windows_mut().map.insert(name, value);
-            Ok(this.eval_windows("c", "TRUE"))
+            interp_ok(this.eval_windows("c", "TRUE"))
         }
     }
 
@@ -150,8 +150,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`GetCurrentDirectoryW`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
-            return Ok(Scalar::from_u32(0));
+            this.set_last_error(ErrorKind::PermissionDenied)?;
+            return interp_ok(Scalar::from_u32(0));
         }
 
         // If we cannot get the current directory, we return 0
@@ -159,13 +159,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(cwd) => {
                 // This can in fact return 0. It is up to the caller to set last_error to 0
                 // beforehand and check it afterwards to exclude that case.
-                return Ok(Scalar::from_u32(windows_check_buffer_size(
+                return interp_ok(Scalar::from_u32(windows_check_buffer_size(
                     this.write_path_to_wide_str(&cwd, buf, size)?,
                 )));
             }
-            Err(e) => this.set_last_error_from_io_error(e)?,
+            Err(e) => this.set_last_error(e)?,
         }
-        Ok(Scalar::from_u32(0))
+        interp_ok(Scalar::from_u32(0))
     }
 
     #[allow(non_snake_case)]
@@ -182,16 +182,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`SetCurrentDirectoryW`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
+            this.set_last_error(ErrorKind::PermissionDenied)?;
 
-            return Ok(this.eval_windows("c", "FALSE"));
+            return interp_ok(this.eval_windows("c", "FALSE"));
         }
 
         match env::set_current_dir(path) {
-            Ok(()) => Ok(this.eval_windows("c", "TRUE")),
+            Ok(()) => interp_ok(this.eval_windows("c", "TRUE")),
             Err(e) => {
-                this.set_last_error_from_io_error(e)?;
-                Ok(this.eval_windows("c", "FALSE"))
+                this.set_last_error(e)?;
+                interp_ok(this.eval_windows("c", "FALSE"))
             }
         }
     }
@@ -201,7 +201,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetCurrentProcessId");
 
-        Ok(Scalar::from_u32(this.get_pid()))
+        interp_ok(Scalar::from_u32(this.get_pid()))
     }
 
     #[allow(non_snake_case)]
@@ -227,7 +227,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         // See <https://learn.microsoft.com/en-us/windows/win32/api/userenv/nf-userenv-getuserprofiledirectoryw> for docs.
-        Ok(match directories::UserDirs::new() {
+        interp_ok(match directories::UserDirs::new() {
             Some(dirs) => {
                 let home = dirs.home_dir();
                 let size_avail = if this.ptr_is_null(size.ptr())? {

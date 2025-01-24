@@ -1,35 +1,41 @@
+#![allow(clippy::lint_without_lint_pass)]
+
 mod lazy_continuation;
+mod too_long_first_doc_paragraph;
+
 use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::Visitable;
-use clippy_utils::{in_constant, is_entrypoint_fn, is_trait_impl_item, method_chain_args};
+use clippy_utils::{is_entrypoint_fn, is_trait_impl_item, method_chain_args};
 use pulldown_cmark::Event::{
     Code, DisplayMath, End, FootnoteReference, HardBreak, Html, InlineHtml, InlineMath, Rule, SoftBreak, Start,
     TaskListMarker, Text,
 };
 use pulldown_cmark::Tag::{BlockQuote, CodeBlock, FootnoteDefinition, Heading, Item, Link, Paragraph};
 use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options, TagEnd};
-use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::Applicability;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{AnonConst, Expr, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
+use rustc_hir::{AnonConst, Attribute, Expr, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_resolve::rustdoc::{
-    add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range, span_of_fragments,
-    DocFragment,
+    DocFragment, add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range,
+    span_of_fragments,
 };
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use std::ops::Range;
 use url::Url;
 
+mod empty_line_after;
+mod include_in_doc_without_cfg;
 mod link_with_quotes;
 mod markdown;
 mod missing_headers;
@@ -309,7 +315,7 @@ declare_clippy_lint! {
     /// ### Known problems
     /// Inner doc comments can only appear before items, so there are certain cases where the suggestion
     /// made by this lint is not valid code. For example:
-    /// ```rs
+    /// ```rust
     /// fn foo() {}
     /// ///!
     /// fn bar() {}
@@ -422,15 +428,177 @@ declare_clippy_lint! {
     "require every line of a paragraph to be indented and marked"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks if the first paragraph in the documentation of items listed in the module page is too long.
+    ///
+    /// ### Why is this bad?
+    /// Documentation will show the first paragraph of the docstring in the summary page of a
+    /// module. Having a nice, short summary in the first paragraph is part of writing good docs.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// /// A very short summary.
+    /// /// A much longer explanation that goes into a lot more detail about
+    /// /// how the thing works, possibly with doclinks and so one,
+    /// /// and probably spanning a many rows.
+    /// struct Foo {}
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// /// A very short summary.
+    /// ///
+    /// /// A much longer explanation that goes into a lot more detail about
+    /// /// how the thing works, possibly with doclinks and so one,
+    /// /// and probably spanning a many rows.
+    /// struct Foo {}
+    /// ```
+    #[clippy::version = "1.82.0"]
+    pub TOO_LONG_FIRST_DOC_PARAGRAPH,
+    nursery,
+    "ensure the first documentation paragraph is short"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for empty lines after outer attributes
+    ///
+    /// ### Why is this bad?
+    /// The attribute may have meant to be an inner attribute (`#![attr]`). If
+    /// it was meant to be an outer attribute (`#[attr]`) then the empty line
+    /// should be removed
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #[allow(dead_code)]
+    ///
+    /// fn not_quite_good_code() {}
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// // Good (as inner attribute)
+    /// #![allow(dead_code)]
+    ///
+    /// fn this_is_fine() {}
+    ///
+    /// // or
+    ///
+    /// // Good (as outer attribute)
+    /// #[allow(dead_code)]
+    /// fn this_is_fine_too() {}
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub EMPTY_LINE_AFTER_OUTER_ATTR,
+    suspicious,
+    "empty line after outer attribute"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for empty lines after doc comments.
+    ///
+    /// ### Why is this bad?
+    /// The doc comment may have meant to be an inner doc comment, regular
+    /// comment or applied to some old code that is now commented out. If it was
+    /// intended to be a doc comment, then the empty line should be removed.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// /// Some doc comment with a blank line after it.
+    ///
+    /// fn f() {}
+    ///
+    /// /// Docs for `old_code`
+    /// // fn old_code() {}
+    ///
+    /// fn new_code() {}
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// //! Convert it to an inner doc comment
+    ///
+    /// // Or a regular comment
+    ///
+    /// /// Or remove the empty line
+    /// fn f() {}
+    ///
+    /// // /// Docs for `old_code`
+    /// // fn old_code() {}
+    ///
+    /// fn new_code() {}
+    /// ```
+    #[clippy::version = "1.70.0"]
+    pub EMPTY_LINE_AFTER_DOC_COMMENTS,
+    suspicious,
+    "empty line after doc comments"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks if included files in doc comments are included only for `cfg(doc)`.
+    ///
+    /// ### Why restrict this?
+    /// These files are not useful for compilation but will still be included.
+    /// Also, if any of these non-source code file is updated, it will trigger a
+    /// recompilation.
+    ///
+    /// ### Known problems
+    ///
+    /// Excluding this will currently result in the file being left out if
+    /// the item's docs are inlined from another crate. This may be fixed in a
+    /// future version of rustdoc.
+    ///
+    /// ### Example
+    /// ```ignore
+    /// #![doc = include_str!("some_file.md")]
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// #![cfg_attr(doc, doc = include_str!("some_file.md"))]
+    /// ```
+    #[clippy::version = "1.84.0"]
+    pub DOC_INCLUDE_WITHOUT_CFG,
+    restriction,
+    "check if files included in documentation are behind `cfg(doc)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Warns if a link reference definition appears at the start of a
+    /// list item or quote.
+    ///
+    /// ### Why is this bad?
+    /// This is probably intended as an intra-doc link. If it is really
+    /// supposed to be a reference definition, it can be written outside
+    /// of the list item or quote.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// //! - [link]: description
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// //! - [link][]: description (for intra-doc link)
+    /// //!
+    /// //! [link]: destination (for link reference definition)
+    /// ```
+    #[clippy::version = "1.84.0"]
+    pub DOC_NESTED_REFDEFS,
+    suspicious,
+    "link reference defined in list item or quote"
+}
+
 pub struct Documentation {
-    valid_idents: &'static FxHashSet<String>,
+    valid_idents: FxHashSet<String>,
     check_private_items: bool,
 }
 
 impl Documentation {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            valid_idents: &conf.doc_valid_idents,
+            valid_idents: conf.doc_valid_idents.iter().cloned().collect(),
             check_private_items: conf.check_private_items,
         }
     }
@@ -439,6 +607,7 @@ impl Documentation {
 impl_lint_pass!(Documentation => [
     DOC_LINK_WITH_QUOTES,
     DOC_MARKDOWN,
+    DOC_NESTED_REFDEFS,
     MISSING_SAFETY_DOC,
     MISSING_ERRORS_DOC,
     MISSING_PANICS_DOC,
@@ -448,48 +617,63 @@ impl_lint_pass!(Documentation => [
     SUSPICIOUS_DOC_COMMENTS,
     EMPTY_DOCS,
     DOC_LAZY_CONTINUATION,
+    EMPTY_LINE_AFTER_OUTER_ATTR,
+    EMPTY_LINE_AFTER_DOC_COMMENTS,
+    TOO_LONG_FIRST_DOC_PARAGRAPH,
+    DOC_INCLUDE_WITHOUT_CFG,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Documentation {
     fn check_attributes(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
-        let Some(headers) = check_attrs(cx, self.valid_idents, attrs) else {
+        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else {
             return;
         };
 
         match cx.tcx.hir_node(cx.last_node_with_lint_attrs) {
-            Node::Item(item) => match item.kind {
-                ItemKind::Fn(sig, _, body_id) => {
-                    if !(is_entrypoint_fn(cx, item.owner_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
-                        let body = cx.tcx.hir().body(body_id);
+            Node::Item(item) => {
+                too_long_first_doc_paragraph::check(
+                    cx,
+                    item,
+                    attrs,
+                    headers.first_paragraph_len,
+                    self.check_private_items,
+                );
+                match item.kind {
+                    ItemKind::Fn { sig, body: body_id, .. } => {
+                        if !(is_entrypoint_fn(cx, item.owner_id.to_def_id())
+                            || in_external_macro(cx.tcx.sess, item.span))
+                        {
+                            let body = cx.tcx.hir().body(body_id);
 
-                        let panic_info = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(item.owner_id), body.value);
-                        missing_headers::check(
+                            let panic_info = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(item.owner_id), body.value);
+                            missing_headers::check(
+                                cx,
+                                item.owner_id,
+                                sig,
+                                headers,
+                                Some(body_id),
+                                panic_info,
+                                self.check_private_items,
+                            );
+                        }
+                    },
+                    ItemKind::Trait(_, unsafety, ..) => match (headers.safety, unsafety) {
+                        (false, Safety::Unsafe) => span_lint(
                             cx,
-                            item.owner_id,
-                            sig,
-                            headers,
-                            Some(body_id),
-                            panic_info,
-                            self.check_private_items,
-                        );
-                    }
-                },
-                ItemKind::Trait(_, unsafety, ..) => match (headers.safety, unsafety) {
-                    (false, Safety::Unsafe) => span_lint(
-                        cx,
-                        MISSING_SAFETY_DOC,
-                        cx.tcx.def_span(item.owner_id),
-                        "docs for unsafe trait missing `# Safety` section",
-                    ),
-                    (true, Safety::Safe) => span_lint(
-                        cx,
-                        UNNECESSARY_SAFETY_DOC,
-                        cx.tcx.def_span(item.owner_id),
-                        "docs for safe trait have unnecessary `# Safety` section",
-                    ),
+                            MISSING_SAFETY_DOC,
+                            cx.tcx.def_span(item.owner_id),
+                            "docs for unsafe trait missing `# Safety` section",
+                        ),
+                        (true, Safety::Safe) => span_lint(
+                            cx,
+                            UNNECESSARY_SAFETY_DOC,
+                            cx.tcx.def_span(item.owner_id),
+                            "docs for safe trait have unnecessary `# Safety` section",
+                        ),
+                        _ => (),
+                    },
                     _ => (),
-                },
-                _ => (),
+                }
             },
             Node::TraitItem(trait_item) => {
                 if let TraitItemKind::Fn(sig, ..) = trait_item.kind
@@ -547,6 +731,7 @@ struct DocHeaders {
     safety: bool,
     errors: bool,
     panics: bool,
+    first_paragraph_len: usize,
 }
 
 /// Does some pre-processing on raw, desugared `#[doc]` attributes such as parsing them and
@@ -565,11 +750,10 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         Some(("fake".into(), "fake".into()))
     }
 
-    if is_doc_hidden(attrs) {
+    include_in_doc_without_cfg::check(cx, attrs);
+    if suspicious_doc_comments::check(cx, attrs) || empty_line_after::check(cx, attrs) || is_doc_hidden(attrs) {
         return None;
     }
-
-    suspicious_doc_comments::check(cx, attrs);
 
     let (fragments, _) = attrs_to_doc_fragments(
         attrs.iter().filter_map(|attr| {
@@ -613,8 +797,8 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         parser.into_offset_iter(),
         &doc,
         Fragments {
-            fragments: &fragments,
             doc: &doc,
+            fragments: &fragments,
         },
     ))
 }
@@ -653,6 +837,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     let mut paragraph_range = 0..0;
     let mut code_level = 0;
     let mut blockquote_level = 0;
+    let mut is_first_paragraph = true;
 
     let mut containers = Vec::new();
 
@@ -674,6 +859,31 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             Start(BlockQuote(_)) => {
                 blockquote_level += 1;
                 containers.push(Container::Blockquote);
+                if let Some((next_event, next_range)) = events.peek() {
+                    let next_start = match next_event {
+                        End(TagEnd::BlockQuote) => next_range.end,
+                        _ => next_range.start,
+                    };
+                    if let Some(refdefrange) = looks_like_refdef(doc, range.start..next_start) &&
+                        let Some(refdefspan) = fragments.span(cx, refdefrange.clone())
+                    {
+                        span_lint_and_then(
+                            cx,
+                            DOC_NESTED_REFDEFS,
+                            refdefspan,
+                            "link reference defined in quote",
+                            |diag| {
+                                diag.span_suggestion_short(
+                                    refdefspan.shrink_to_hi(),
+                                    "for an intra-doc link, add `[]` between the label and the colon",
+                                    "[]",
+                                    Applicability::MaybeIncorrect,
+                                );
+                                diag.help("link definitions are not shown in rendered documentation");
+                            }
+                        );
+                    }
+                }
             },
             End(TagEnd::BlockQuote) => {
                 blockquote_level -= 1;
@@ -712,14 +922,49 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     in_heading = true;
                 }
                 if let Start(Item) = event {
-                    if let Some((_next_event, next_range)) = events.peek() {
-                        containers.push(Container::List(next_range.start - range.start));
+                    let indent = if let Some((next_event, next_range)) = events.peek() {
+                        let next_start = match next_event {
+                            End(TagEnd::Item) => next_range.end,
+                            _ => next_range.start,
+                        };
+                        if let Some(refdefrange) = looks_like_refdef(doc, range.start..next_start) &&
+                            let Some(refdefspan) = fragments.span(cx, refdefrange.clone())
+                        {
+                            span_lint_and_then(
+                                cx,
+                                DOC_NESTED_REFDEFS,
+                                refdefspan,
+                                "link reference defined in list item",
+                                |diag| {
+                                    diag.span_suggestion_short(
+                                        refdefspan.shrink_to_hi(),
+                                        "for an intra-doc link, add `[]` between the label and the colon",
+                                        "[]",
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                    diag.help("link definitions are not shown in rendered documentation");
+                                }
+                            );
+                            refdefrange.start - range.start
+                        } else {
+                            let mut start = next_range.start;
+                            if start > 0 && doc.as_bytes().get(start - 1) == Some(&b'\\') {
+                                // backslashes aren't in the event stream...
+                                start -= 1;
+                            }
+                            start - range.start
+                        }
                     } else {
-                        containers.push(Container::List(0));
-                    }
+                        0
+                    };
+                    containers.push(Container::List(indent));
                 }
                 ticks_unbalanced = false;
                 paragraph_range = range;
+                if is_first_paragraph {
+                    headers.first_paragraph_len = doc[paragraph_range.clone()].chars().count();
+                    is_first_paragraph = false;
+                }
             },
             End(TagEnd::Heading(_) | TagEnd::Paragraph | TagEnd::Item) => {
                 if let End(TagEnd::Heading(_)) = event {
@@ -764,11 +1009,10 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         range.end..next_range.start,
                         Span::new(span.hi(), next_span.lo(), span.ctxt(), span.parent()),
                         &containers[..],
-                        span,
                     );
                 }
             },
-            FootnoteReference(text) | Text(text) => {
+            Text(text) => {
                 paragraph_range.end = range.end;
                 let range_ = range.clone();
                 ticks_unbalanced |= text.contains('`')
@@ -790,6 +1034,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 }
                 let trimmed_text = text.trim();
                 headers.safety |= in_heading && trimmed_text == "Safety";
+                headers.safety |= in_heading && trimmed_text == "SAFETY";
                 headers.safety |= in_heading && trimmed_text == "Implementation safety";
                 headers.safety |= in_heading && trimmed_text == "Implementation Safety";
                 headers.errors |= in_heading && trimmed_text == "Errors";
@@ -812,7 +1057,8 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     }
                     text_to_check.push((text, range, code_level));
                 }
-            },
+            }
+            FootnoteReference(_) => {}
         }
     }
     headers
@@ -842,7 +1088,7 @@ impl<'a, 'tcx> FindPanicUnwrap<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
@@ -857,7 +1103,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
                     "assert" | "assert_eq" | "assert_ne"
                 )
             {
-                self.is_const = in_constant(self.cx, expr.hir_id);
+                self.is_const = self.cx.tcx.hir().is_inside_const_context(expr.hir_id);
                 self.panic_span = Some(macro_call.span);
             }
         }
@@ -882,4 +1128,26 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
     fn nested_visit_map(&mut self) -> Self::Map {
         self.cx.tcx.hir()
     }
+}
+
+#[expect(clippy::range_plus_one)] // inclusive ranges aren't the same type
+fn looks_like_refdef(doc: &str, range: Range<usize>) -> Option<Range<usize>> {
+    let offset = range.start;
+    let mut iterator = doc.as_bytes()[range].iter().copied().enumerate();
+    let mut start = None;
+    while let Some((i, byte)) = iterator.next() {
+        match byte {
+            b'\\' => {
+                iterator.next();
+            },
+            b'[' => {
+                start = Some(i + offset);
+            },
+            b']' if let Some(start) = start => {
+                return Some(start..i + offset + 1);
+            },
+            _ => {},
+        }
+    }
+    None
 }

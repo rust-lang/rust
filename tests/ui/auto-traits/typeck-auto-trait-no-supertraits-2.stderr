@@ -30,7 +30,7 @@ LL | fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
    |         ^                            - you could clone this value
    |         |
    |         consider constraining this type parameter with `Clone`
-help: consider further restricting this bound
+help: consider further restricting type parameter `T` with trait `Copy`
    |
 LL | fn copy<T: Magic + Copy>(x: T) -> (T, T) { (x, x) }
    |                  ++++++

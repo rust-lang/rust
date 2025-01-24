@@ -1,5 +1,3 @@
-//@ min-lldb-version: 310
-
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
@@ -21,8 +19,7 @@
 // gdb-command:print *t0
 // gdb-check:$5 = 5
 // gdb-command:print *t1
-// gdbg-check:$6 = {a = 6, b = 7.5}
-// gdbr-check:$6 = generic_function::Struct {a: 6, b: 7.5}
+// gdb-check:$6 = generic_function::Struct {a: 6, b: 7.5}
 // gdb-command:continue
 
 // === LLDB TESTS ==================================================================================
@@ -30,27 +27,21 @@
 // lldb-command:run
 
 // lldb-command:v *t0
-// lldbg-check:[...] 1
-// lldbr-check:(i32) *t0 = 1
+// lldb-check:[...] 1
 // lldb-command:v *t1
-// lldbg-check:[...] 2.5
-// lldbr-check:(f64) *t1 = 2.5
+// lldb-check:[...] 2.5
 // lldb-command:continue
 
 // lldb-command:v *t0
-// lldbg-check:[...] 3.5
-// lldbr-check:(f64) *t0 = 3.5
+// lldb-check:[...] 3.5
 // lldb-command:v *t1
-// lldbg-check:[...] 4
-// lldbr-check:(u16) *t1 = 4
+// lldb-check:[...] 4
 // lldb-command:continue
 
 // lldb-command:v *t0
-// lldbg-check:[...] 5
-// lldbr-check:(i32) *t0 = 5
+// lldb-check:[...] 5
 // lldb-command:v *t1
-// lldbg-check:[...] { a = 6 b = 7.5 }
-// lldbr-check:(generic_function::Struct) *t1 = { a = 6 b = 7.5 }
+// lldb-check:[...] { a = 6 b = 7.5 }
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

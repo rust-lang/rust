@@ -14,7 +14,7 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: EditionedFileId,
+    file_id: EditionedFileId,
     expr: &ast::Expr,
 ) -> Option<()> {
     if !config.chaining_hints {
@@ -58,7 +58,7 @@ pub(super) fn hints(
                     }
                 }
             }
-            let label = label_of_ty(famous_defs, config, &ty)?;
+            let label = label_of_ty(famous_defs, config, &ty, file_id.edition())?;
             acc.push(InlayHint {
                 range: expr.syntax().text_range(),
                 kind: InlayKind::Chaining,
@@ -67,6 +67,7 @@ pub(super) fn hints(
                 position: InlayHintPosition::After,
                 pad_left: true,
                 pad_right: false,
+                resolve_parent: Some(expr.syntax().text_range()),
             });
         }
     }
@@ -76,32 +77,23 @@ pub(super) fn hints(
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use text_edit::{TextRange, TextSize};
+    use ide_db::text_edit::{TextRange, TextSize};
 
     use crate::{
         fixture,
-        inlay_hints::tests::{check_with_config, DISABLED_CONFIG, TEST_CONFIG},
+        inlay_hints::tests::{check_expect, check_with_config, DISABLED_CONFIG, TEST_CONFIG},
         InlayHintsConfig,
     };
 
     #[track_caller]
-    fn check_chains(ra_fixture: &str) {
+    fn check_chains(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG }, ra_fixture);
-    }
-
-    #[track_caller]
-    pub(super) fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
-        let (analysis, file_id) = fixture::file(ra_fixture);
-        let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
-        let filtered =
-            inlay_hints.into_iter().map(|hint| (hint.range, hint.label)).collect::<Vec<_>>();
-        expect.assert_debug_eq(&filtered)
     }
 
     #[track_caller]
     pub(super) fn check_expect_clear_loc(
         config: InlayHintsConfig,
-        ra_fixture: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
         expect: Expect,
     ) {
         let (analysis, file_id) = fixture::file(ra_fixture);
@@ -139,7 +131,6 @@ fn main() {
                     (
                         147..172,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "B",
                                 linked_location: Some(
@@ -152,13 +143,11 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                     (
                         147..154,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "A",
                                 linked_location: Some(
@@ -171,7 +160,6 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                 ]
@@ -222,7 +210,6 @@ fn main() {
                     (
                         143..190,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "C",
                                 linked_location: Some(
@@ -235,13 +222,11 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                     (
                         143..179,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "B",
                                 linked_location: Some(
@@ -254,7 +239,6 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                 ]
@@ -289,7 +273,6 @@ fn main() {
                     (
                         143..190,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "C",
                                 linked_location: Some(
@@ -302,13 +285,11 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                     (
                         143..179,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "B",
                                 linked_location: Some(
@@ -321,7 +302,6 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                 ]
@@ -357,7 +337,6 @@ fn main() {
                     (
                         246..283,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "B",
                                 linked_location: Some(
@@ -389,7 +368,6 @@ fn main() {
                     (
                         246..265,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "A",
                                 linked_location: Some(
@@ -562,7 +540,6 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                 ]
@@ -597,7 +574,6 @@ fn main() {
                     (
                         124..130,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "Struct",
                                 linked_location: Some(
@@ -610,13 +586,11 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                     (
                         145..185,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "Struct",
                                 linked_location: Some(
@@ -629,13 +603,11 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                     (
                         145..168,
                         [
-                            "",
                             InlayHintLabelPart {
                                 text: "Struct",
                                 linked_location: Some(
@@ -648,7 +620,6 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "",
                         ],
                     ),
                     (

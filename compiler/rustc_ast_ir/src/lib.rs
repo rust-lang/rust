@@ -2,6 +2,7 @@
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 #![cfg_attr(feature = "nightly", feature(never_type))]
 #![cfg_attr(feature = "nightly", feature(rustc_attrs))]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 #[cfg(feature = "nightly")]
@@ -77,4 +78,11 @@ impl Mutability {
     pub fn is_not(self) -> bool {
         matches!(self, Self::Not)
     }
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
+pub enum Pinnedness {
+    Not,
+    Pinned,
 }

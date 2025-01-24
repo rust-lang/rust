@@ -188,6 +188,11 @@ impl<I: Idx, T> IndexVec<I, T> {
         let min_new_len = elem.index() + 1;
         self.raw.resize_with(min_new_len, fill_value);
     }
+
+    #[inline]
+    pub fn append(&mut self, other: &mut Self) {
+        self.raw.append(&mut other.raw);
+    }
 }
 
 /// `IndexVec` is often used as a map, so it provides some map-like APIs.

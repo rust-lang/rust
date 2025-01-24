@@ -26,7 +26,7 @@
 //! This apparently translates to any callbacks in the ".CRT$XLB" section
 //! being run on certain events.
 //!
-//! So after all that, we use the compiler's #[link_section] feature to place
+//! So after all that, we use the compiler's `#[link_section]` feature to place
 //! a callback pointer into the magic section so it ends up being called.
 //!
 //! # What's up with this callback?
@@ -80,13 +80,13 @@ pub static CALLBACK: unsafe extern "system" fn(*mut c_void, u32, *mut c_void) = 
 
 unsafe extern "system" fn tls_callback(_h: *mut c_void, dw_reason: u32, _pv: *mut c_void) {
     if dw_reason == c::DLL_THREAD_DETACH || dw_reason == c::DLL_PROCESS_DETACH {
-        #[cfg(target_thread_local)]
         unsafe {
+            #[cfg(target_thread_local)]
             super::super::destructors::run();
-        }
-        #[cfg(not(target_thread_local))]
-        unsafe {
+            #[cfg(not(target_thread_local))]
             super::super::key::run_dtors();
+
+            crate::rt::thread_cleanup();
         }
     }
 }

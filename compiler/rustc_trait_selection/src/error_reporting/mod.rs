@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use rustc_errors::DiagCtxtHandle;
 use rustc_infer::infer::InferCtxt;
-use rustc_infer::traits::PredicateObligation;
+use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty};
@@ -28,8 +28,7 @@ pub struct TypeErrCtxt<'a, 'tcx> {
 
     pub normalize_fn_sig: Box<dyn Fn(ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx> + 'a>,
 
-    pub autoderef_steps:
-        Box<dyn Fn(Ty<'tcx>) -> Vec<(Ty<'tcx>, Vec<PredicateObligation<'tcx>>)> + 'a>,
+    pub autoderef_steps: Box<dyn Fn(Ty<'tcx>) -> Vec<(Ty<'tcx>, PredicateObligations<'tcx>)> + 'a>,
 }
 
 #[extension(pub trait InferCtxtErrorExt<'tcx>)]
@@ -45,7 +44,7 @@ impl<'tcx> InferCtxt<'tcx> {
             normalize_fn_sig: Box::new(|fn_sig| fn_sig),
             autoderef_steps: Box::new(|ty| {
                 debug_assert!(false, "shouldn't be using autoderef_steps outside of typeck");
-                vec![(ty, vec![])]
+                vec![(ty, PredicateObligations::new())]
             }),
         }
     }

@@ -1,13 +1,10 @@
-// Disabling on android for the time being
-// See https://github.com/rust-lang/rust/issues/73535#event-3477699747
-#![cfg(not(target_os = "android"))]
 // Disabling in Miri as these would take too long.
 #![cfg(not(miri))]
 #![feature(btree_extract_if)]
 #![feature(iter_next_chunk)]
 #![feature(repr_simd)]
 #![feature(slice_partition_dedup)]
-#![feature(strict_provenance)]
+#![feature(strict_provenance_lints)]
 #![feature(test)]
 #![deny(fuzzy_provenance_casts)]
 

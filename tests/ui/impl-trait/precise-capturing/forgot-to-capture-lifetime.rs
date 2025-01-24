@@ -1,5 +1,3 @@
-#![feature(precise_capturing)]
-
 fn lifetime_in_bounds<'a>(x: &'a ()) -> impl Into<&'a ()> + use<> { x }
 //~^ ERROR `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
 

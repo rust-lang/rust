@@ -1,7 +1,8 @@
 [package]
 name = "span"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "File and span related types for rust-analyzer."
 
 rust-version.workspace = true
 edition.workspace = true
@@ -11,7 +12,7 @@ authors.workspace = true
 
 [dependencies]
 la-arena.workspace = true
-salsa.workspace = true
+ra-salsa = { workspace = true, optional = true }
 rustc-hash.workspace = true
 hashbrown.workspace = true
 text-size.workspace = true
@@ -20,6 +21,9 @@ text-size.workspace = true
 vfs.workspace = true
 syntax.workspace = true
 stdx.workspace = true
+
+[features]
+default = ["ra-salsa"]
 
 [lints]
 workspace = true

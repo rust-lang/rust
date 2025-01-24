@@ -1,8 +1,5 @@
 //@ check-pass
 
-#![feature(const_swap)]
-#![feature(const_mut_refs)]
-
 #[repr(C)]
 struct Demo(u64, bool, u64, u32, u64, u64, u64);
 

@@ -1,4 +1,4 @@
-#![debugger_visualizer(gdb_script_file = "foo.py")]
+#![debugger_visualizer(gdb_script_file = "my_gdb_script.py")]
 
 fn main() {
     const _UNUSED: u32 = {

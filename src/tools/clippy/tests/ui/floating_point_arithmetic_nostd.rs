@@ -1,10 +1,10 @@
-#![feature(lang_items, start)]
+#![crate_type = "lib"]
 #![warn(clippy::imprecise_flops)]
 #![warn(clippy::suboptimal_flops)]
 #![no_std]
 
 // The following should not lint, as the suggested methods `{f16,f32,f64,f128}.mul_add()`
-// and ``{f16,f32,f64,f128}::abs()` are not available in no_std
+// and `{f16,f32,f64,f128}::abs()` are not available in no_std
 
 pub fn mul_add() {
     let a: f64 = 1234.567;
@@ -17,15 +17,6 @@ fn fake_abs1(num: f64) -> f64 {
     if num >= 0.0 { num } else { -num }
 }
 
-#[start]
-fn main(_argc: isize, _argv: *const *const u8) -> isize {
+pub fn main(_argc: isize, _argv: *const *const u8) -> isize {
     0
 }
-
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
-
-#[lang = "eh_personality"]
-extern "C" fn eh_personality() {}

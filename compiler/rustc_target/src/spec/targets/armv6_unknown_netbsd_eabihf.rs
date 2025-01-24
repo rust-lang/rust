@@ -1,6 +1,6 @@
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{FloatAbi, Target, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv6-unknown-netbsdelf-eabihf".into(),
         metadata: crate::spec::TargetMetadata {
@@ -14,6 +14,7 @@ pub fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabihf".into(),
+            llvm_floatabi: Some(FloatAbi::Hard),
             features: "+v6,+vfp2,-d32".into(),
             max_atomic_width: Some(64),
             mcount: "__mcount".into(),

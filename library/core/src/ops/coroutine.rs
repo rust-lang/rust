@@ -69,6 +69,7 @@ pub enum CoroutineState<Y, R> {
 #[lang = "coroutine"]
 #[unstable(feature = "coroutine_trait", issue = "43122")]
 #[fundamental]
+#[must_use = "coroutines are lazy and do nothing unless resumed"]
 pub trait Coroutine<R = ()> {
     /// The type of value this coroutine yields.
     ///

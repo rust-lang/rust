@@ -1,4 +1,4 @@
-use std::ffi::{c_char, CStr};
+use std::ffi::{CStr, c_char};
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::ptr::NonNull;
@@ -25,12 +25,12 @@ impl OwnedTargetMachine {
         model: llvm::CodeModel,
         reloc: llvm::RelocModel,
         level: llvm::CodeGenOptLevel,
-        use_soft_fp: bool,
+        float_abi: llvm::FloatAbi,
         function_sections: bool,
         data_sections: bool,
         unique_section_names: bool,
         trap_unreachable: bool,
-        singletree: bool,
+        singlethread: bool,
         verbose_asm: bool,
         emit_stack_size_section: bool,
         relax_elf_relocations: bool,
@@ -57,12 +57,12 @@ impl OwnedTargetMachine {
                 model,
                 reloc,
                 level,
-                use_soft_fp,
+                float_abi,
                 function_sections,
                 data_sections,
                 unique_section_names,
                 trap_unreachable,
-                singletree,
+                singlethread,
                 verbose_asm,
                 emit_stack_size_section,
                 relax_elf_relocations,
@@ -86,15 +86,17 @@ impl Deref for OwnedTargetMachine {
     type Target = llvm::TargetMachine;
 
     fn deref(&self) -> &Self::Target {
-        // SAFETY: constructing ensures we have a valid pointer created by llvm::LLVMRustCreateTargetMachine
+        // SAFETY: constructing ensures we have a valid pointer created by
+        // llvm::LLVMRustCreateTargetMachine.
         unsafe { self.tm_unique.as_ref() }
     }
 }
 
 impl Drop for OwnedTargetMachine {
     fn drop(&mut self) {
-        // SAFETY: constructing ensures we have a valid pointer created by llvm::LLVMRustCreateTargetMachine
-        // OwnedTargetMachine is not copyable so there is no double free or use after free
+        // SAFETY: constructing ensures we have a valid pointer created by
+        // llvm::LLVMRustCreateTargetMachine OwnedTargetMachine is not copyable so there is no
+        // double free or use after free.
         unsafe {
             llvm::LLVMRustDisposeTargetMachine(self.tm_unique.as_mut());
         }

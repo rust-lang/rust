@@ -14,7 +14,7 @@ pub fn f(mut a: usize) -> usize {
     // CHECK-LABEL: fn f(
     // CHECK: debug a => [[a:_.*]];
     // CHECK: debug b => [[b:_.*]];
-    // CHECK: [[b]] = [[a]];
+    // CHECK: [[b]] = copy [[a]];
     // CHECK: [[a]] = const 5_usize;
     // CHECK: [[a]] = move [[b]];
     // CHECK: id::<usize>(move [[a]])

@@ -47,7 +47,7 @@ https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frust-analyzer
   Each triaged issue should have one of these labels.
 * [fun](https://github.com/rust-lang/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3Afun)
   is for cool, but probably hard stuff.
-* [Design](https://github.com/rust-lang/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%Design)
+* [C-Architecture](https://github.com/rust-lang/rust-analyzer/issues?q=is%3Aissue%20state%3Aopen%20label%3AC-Architecture)
   is for moderate/large scale architecture discussion.
   Also a kind of fun.
   These issues should generally include a link to a Zulip discussion thread.
@@ -154,19 +154,21 @@ There are also several VS Code commands which might be of interest:
 
 * `rust-analyzer: Status` shows some memory-usage statistics.
 
-* `rust-analyzer: Syntax Tree` shows syntax tree of the current file/selection.
-
 * `rust-analyzer: View Hir` shows the HIR expressions within the function containing the cursor.
 
-  You can hover over syntax nodes in the opened text file to see the appropriate
-  rust code that it refers to and the rust editor will also highlight the proper
-  text range.
+* If `rust-analyzer.showSyntaxTree` is enabled in settings, `Rust Syntax Tree: Focus on Rust Syntax Tree View` shows the syntax tree of the current file.
+
+  You can click on nodes in the rust editor to go to the corresponding syntax node.
+
+  You can click on `Reveal Syntax Element` next to a syntax node to go to the corresponding rust code and highlight the proper text range.
 
   If you trigger Go to Definition in the inspected Rust source file,
-  the syntax tree read-only editor should scroll to and select the
+  the syntax tree view should scroll to and select the
   appropriate syntax node token.
 
-  ![demo](https://user-images.githubusercontent.com/36276403/78225773-6636a480-74d3-11ea-9d9f-1c9d42da03b0.png)
+  You can click on `Copy` next to a syntax node to copy a text representation of the node.
+
+  ![demo](https://github.com/user-attachments/assets/2d20ae87-0abf-495f-bee8-54aa2494a00d)
 
 ## Profiling
 
@@ -178,7 +180,15 @@ RA_PROFILE=foo|bar|baz   // enabled only selected entries
 RA_PROFILE=*@3>10        // dump everything, up to depth 3, if it takes more than 10 ms
 ```
 
-In particular, I have `export RA_PROFILE='*>10'` in my shell profile.
+Some rust-analyzer contributors have `export RA_PROFILE='*>10'` in my shell profile.
+
+For machine-readable JSON output, we have the `RA_PROFILE_JSON` env variable. We support
+filtering only by span name:
+
+```
+RA_PROFILE=* // dump everything
+RA_PROFILE_JSON="vfs_load|parallel_prime_caches|discover_command" // dump selected spans
+```
 
 We also have a "counting" profiler which counts number of instances of popular structs.
 It is enabled by `RA_COUNT=1`.

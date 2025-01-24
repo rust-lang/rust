@@ -159,7 +159,7 @@ impl FileEncoder {
         // We produce a post-mono error if N > BUF_SIZE.
         let buf = unsafe { self.buffer_empty().first_chunk_mut::<N>().unwrap_unchecked() };
         let written = visitor(buf);
-        // We have to ensure that an errant visitor cannot cause self.buffered to exeed BUF_SIZE.
+        // We have to ensure that an errant visitor cannot cause self.buffered to exceed BUF_SIZE.
         if written > N {
             Self::panic_invalid_write::<N>(written);
         }
@@ -437,10 +437,10 @@ impl IntEncodedWithFixedSize {
 impl Encodable<FileEncoder> for IntEncodedWithFixedSize {
     #[inline]
     fn encode(&self, e: &mut FileEncoder) {
-        let _start_pos = e.position();
+        let start_pos = e.position();
         e.write_array(self.0.to_le_bytes());
-        let _end_pos = e.position();
-        debug_assert_eq!((_end_pos - _start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
+        let end_pos = e.position();
+        debug_assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
     }
 }
 

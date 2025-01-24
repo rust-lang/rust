@@ -1,47 +1,47 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-compare-bytes-ub.rs:10:9
+  --> $DIR/const-compare-bytes-ub.rs:9:9
    |
 LL |         compare_bytes(0 as *const u8, 2 as *const u8, 1)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 1 byte of memory, but got a null pointer
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-compare-bytes-ub.rs:14:9
+  --> $DIR/const-compare-bytes-ub.rs:13:9
    |
 LL |         compare_bytes(1 as *const u8, 0 as *const u8, 1)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 1 byte of memory, but got 0x1[noalloc] which is a dangling pointer (it has no provenance)
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-compare-bytes-ub.rs:18:9
+  --> $DIR/const-compare-bytes-ub.rs:17:9
    |
 LL |         compare_bytes(1 as *const u8, 2 as *const u8, 1)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 1 byte of memory, but got 0x1[noalloc] which is a dangling pointer (it has no provenance)
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-compare-bytes-ub.rs:22:9
+  --> $DIR/const-compare-bytes-ub.rs:21:9
    |
 LL |         compare_bytes([1, 2, 3].as_ptr(), [1, 2, 3, 4].as_ptr(), 4)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 4 bytes of memory, but got ALLOC0 which is only 3 bytes from the end of the allocation
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-compare-bytes-ub.rs:26:9
+  --> $DIR/const-compare-bytes-ub.rs:25:9
    |
 LL |         compare_bytes([1, 2, 3, 4].as_ptr(), [1, 2, 3].as_ptr(), 4)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 4 bytes of memory, but got ALLOC1 which is only 3 bytes from the end of the allocation
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-compare-bytes-ub.rs:30:9
+  --> $DIR/const-compare-bytes-ub.rs:29:9
    |
 LL |         compare_bytes(MaybeUninit::uninit().as_ptr(), [1].as_ptr(), 1)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ reading memory at ALLOC2[0x0..0x1], but memory is uninitialized at [0x0..0x1], and this operation requires initialized memory
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-compare-bytes-ub.rs:34:9
+  --> $DIR/const-compare-bytes-ub.rs:33:9
    |
 LL |         compare_bytes([1].as_ptr(), MaybeUninit::uninit().as_ptr(), 1)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ reading memory at ALLOC3[0x0..0x1], but memory is uninitialized at [0x0..0x1], and this operation requires initialized memory
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-compare-bytes-ub.rs:38:9
+  --> $DIR/const-compare-bytes-ub.rs:37:9
    |
 LL |         compare_bytes([&1].as_ptr().cast(), [&2].as_ptr().cast(), std::mem::size_of::<usize>())
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer

@@ -18,7 +18,7 @@
 //! functions that convert various types to `char`.
 
 #![allow(non_snake_case)]
-#![stable(feature = "core_char", since = "1.2.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 mod convert;
 mod decode;
@@ -122,7 +122,7 @@ pub const fn from_u32(i: u32) -> Option<char> {
     self::convert::from_u32(i)
 }
 
-/// Converts a `u32` to a `char`, ignoring validity. Use [`char::from_u32_unchecked`].
+/// Converts a `u32` to a `char`, ignoring validity. Use [`char::from_u32_unchecked`]
 /// instead.
 #[stable(feature = "char_from_unchecked", since = "1.5.0")]
 #[rustc_const_stable(feature = "const_char_from_u32_unchecked", since = "1.81.0")]

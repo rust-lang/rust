@@ -8,12 +8,11 @@ use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
-use rustc_span::symbol::kw;
-use rustc_span::{hygiene, sym, InnerSpan, Span, Symbol};
+use rustc_span::{InnerSpan, Span, Symbol, hygiene, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use crate::lints::{NonFmtPanicBraces, NonFmtPanicUnused};
-use crate::{fluent_generated as fluent, LateContext, LateLintPass, LintContext};
+use crate::{LateContext, LateLintPass, LintContext, fluent_generated as fluent};
 
 declare_lint! {
     /// The `non_fmt_panics` lint detects `panic!(..)` invocations where the first
@@ -157,15 +156,17 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 Some(ty_def) if cx.tcx.is_lang_item(ty_def.did(), LangItem::String),
             );
 
-            let infcx = cx.tcx.infer_ctxt().build();
+            let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(cx.typing_env());
             let suggest_display = is_str
-                || cx.tcx.get_diagnostic_item(sym::Display).is_some_and(|t| {
-                    infcx.type_implements_trait(t, [ty], cx.param_env).may_apply()
-                });
+                || cx
+                    .tcx
+                    .get_diagnostic_item(sym::Display)
+                    .is_some_and(|t| infcx.type_implements_trait(t, [ty], param_env).may_apply());
             let suggest_debug = !suggest_display
-                && cx.tcx.get_diagnostic_item(sym::Debug).is_some_and(|t| {
-                    infcx.type_implements_trait(t, [ty], cx.param_env).may_apply()
-                });
+                && cx
+                    .tcx
+                    .get_diagnostic_item(sym::Debug)
+                    .is_some_and(|t| infcx.type_implements_trait(t, [ty], param_env).may_apply());
 
             let suggest_panic_any = !is_str && panic == sym::std_panic_macro;
 
@@ -255,14 +256,10 @@ fn check_panic_str<'tcx>(
                 .map(|span| fmt_span.from_inner(InnerSpan::new(span.start, span.end)))
                 .collect(),
         };
-        cx.emit_span_lint(
-            NON_FMT_PANICS,
-            arg_spans,
-            NonFmtPanicUnused {
-                count: n_arguments,
-                suggestion: is_arg_inside_call(arg.span, span).then_some(arg.span),
-            },
-        );
+        cx.emit_span_lint(NON_FMT_PANICS, arg_spans, NonFmtPanicUnused {
+            count: n_arguments,
+            suggestion: is_arg_inside_call(arg.span, span).then_some(arg.span),
+        });
     } else {
         let brace_spans: Option<Vec<_>> =
             snippet.filter(|s| s.starts_with('"') || s.starts_with("r#")).map(|s| {

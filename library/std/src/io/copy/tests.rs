@@ -122,8 +122,8 @@ mod io_benches {
     use test::Bencher;
 
     use crate::fs::{File, OpenOptions};
-    use crate::io::prelude::*;
     use crate::io::BufReader;
+    use crate::io::prelude::*;
 
     #[bench]
     fn bench_copy_buf_reader(b: &mut Bencher) {

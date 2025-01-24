@@ -1,5 +1,3 @@
-#![feature(const_extern_fn)]
-
 const extern "C" fn foo() {
     panic!() //~ ERROR evaluation of constant value failed
 }

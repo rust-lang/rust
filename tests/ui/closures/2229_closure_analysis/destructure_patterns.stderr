@@ -86,7 +86,7 @@ LL | |         println!("{}, {}", x, moved_id);
 LL | |     };
    | |_____^
    |
-note: Capturing p[(0, 0)] -> MutBorrow
+note: Capturing p[(0, 0)] -> Mutable
   --> $DIR/destructure_patterns.rs:46:58
    |
 LL |         let Point { x: ref mut x, y: _, id: moved_id } = p;
@@ -109,7 +109,7 @@ LL | |         println!("{}, {}", x, moved_id);
 LL | |     };
    | |_____^
    |
-note: Min Capture p[(0, 0)] -> MutBorrow
+note: Min Capture p[(0, 0)] -> Mutable
   --> $DIR/destructure_patterns.rs:46:58
    |
 LL |         let Point { x: ref mut x, y: _, id: moved_id } = p;
@@ -132,12 +132,12 @@ LL | |         println!("{}, {} {}", x, ref_str, moved_s);
 LL | |     };
    | |_____^
    |
-note: Capturing t[(0, 0)] -> MutBorrow
+note: Capturing t[(0, 0)] -> Mutable
   --> $DIR/destructure_patterns.rs:67:54
    |
 LL |         let (ref mut x, ref ref_str, (moved_s, _)) = t;
    |                                                      ^
-note: Capturing t[(1, 0)] -> ImmBorrow
+note: Capturing t[(1, 0)] -> Immutable
   --> $DIR/destructure_patterns.rs:67:54
    |
 LL |         let (ref mut x, ref ref_str, (moved_s, _)) = t;
@@ -160,12 +160,12 @@ LL | |         println!("{}, {} {}", x, ref_str, moved_s);
 LL | |     };
    | |_____^
    |
-note: Min Capture t[(0, 0)] -> MutBorrow
+note: Min Capture t[(0, 0)] -> Mutable
   --> $DIR/destructure_patterns.rs:67:54
    |
 LL |         let (ref mut x, ref ref_str, (moved_s, _)) = t;
    |                                                      ^
-note: Min Capture t[(1, 0)] -> ImmBorrow
+note: Min Capture t[(1, 0)] -> Immutable
   --> $DIR/destructure_patterns.rs:67:54
    |
 LL |         let (ref mut x, ref ref_str, (moved_s, _)) = t;

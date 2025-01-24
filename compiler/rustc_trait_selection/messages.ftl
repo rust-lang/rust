@@ -251,7 +251,9 @@ trait_selection_no_value_in_rustc_on_unimplemented = this attribute must have a 
 
 trait_selection_nothing = {""}
 
-trait_selection_oc_cant_coerce = cannot coerce intrinsics to function pointers
+trait_selection_oc_cant_coerce_force_inline =
+    cannot coerce functions which must be inlined to function pointers
+trait_selection_oc_cant_coerce_intrinsic = cannot coerce intrinsics to function pointers
 trait_selection_oc_closure_selfref = closure/coroutine type that references itself
 trait_selection_oc_const_compat = const not compatible with trait
 trait_selection_oc_fn_lang_correct_type = {$lang_item_name ->
@@ -259,7 +261,6 @@ trait_selection_oc_fn_lang_correct_type = {$lang_item_name ->
         *[lang_item_name] lang item `{$lang_item_name}`
     } function has wrong type
 trait_selection_oc_fn_main_correct_type = `main` function has wrong type
-trait_selection_oc_fn_start_correct_type = `#[start]` function has wrong type
 trait_selection_oc_generic = mismatched types
 
 trait_selection_oc_if_else_different = `if` and `else` have incompatible types
@@ -281,6 +282,8 @@ trait_selection_precise_capturing_existing = add `{$new_lifetime}` to the `use<.
 trait_selection_precise_capturing_new = add a `use<...>` bound to explicitly capture `{$new_lifetime}`
 
 trait_selection_precise_capturing_new_but_apit = add a `use<...>` bound to explicitly capture `{$new_lifetime}` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate
+
+trait_selection_precise_capturing_overcaptures = use the precise capturing `use<...>` syntax to make the captures explicit
 
 trait_selection_prlf_defined_with_sub = the lifetime `{$sub_symbol}` defined here...
 trait_selection_prlf_defined_without_sub = the lifetime defined here...
@@ -392,7 +395,6 @@ trait_selection_subtype = ...so that the {$requirement ->
     [if_else_different] `if` and `else` have incompatible types
     [no_else] `if` missing an `else` returns `()`
     [fn_main_correct_type] `main` function has the correct type
-    [fn_start_correct_type] `#[start]` function has the correct type
     [fn_lang_correct_type] lang item function has the correct type
     [intrinsic_correct_type] intrinsic has the correct type
     [method_correct_type] method receiver has the correct type
@@ -406,7 +408,6 @@ trait_selection_subtype_2 = ...so that {$requirement ->
     [if_else_different] `if` and `else` have incompatible types
     [no_else] `if` missing an `else` returns `()`
     [fn_main_correct_type] `main` function has the correct type
-    [fn_start_correct_type] `#[start]` function has the correct type
     [fn_lang_correct_type] lang item function has the correct type
     [intrinsic_correct_type] intrinsic has the correct type
     [method_correct_type] method receiver has the correct type
@@ -446,6 +447,8 @@ trait_selection_type_annotations_needed = {$source_kind ->
 }
     .label = type must be known at this point
 
+trait_selection_type_annotations_needed_error_time = this is an inference error on crate `time` caused by an API change in Rust 1.80.0; update `time` to version `>=0.3.35` by calling `cargo update`
+
 trait_selection_types_declared_different = these two types are declared with different lifetimes...
 
 trait_selection_unable_to_construct_constant_value = unable to construct a constant value for the unevaluated constant {$unevaluated}
@@ -453,7 +456,9 @@ trait_selection_unable_to_construct_constant_value = unable to construct a const
 trait_selection_unknown_format_parameter_for_on_unimplemented_attr = there is no parameter `{$argument_name}` on trait `{$trait_name}`
     .help = expect either a generic argument name or {"`{Self}`"} as format argument
 
-trait_selection_warn_removing_apit_params = you could use a `use<...>` bound to explicitly capture `{$new_lifetime}`, but argument-position `impl Trait`s are not nameable
+trait_selection_warn_removing_apit_params_for_overcapture = you could use a `use<...>` bound to explicitly specify captures, but argument-position `impl Trait`s are not nameable
+
+trait_selection_warn_removing_apit_params_for_undercapture = you could use a `use<...>` bound to explicitly capture `{$new_lifetime}`, but argument-position `impl Trait`s are not nameable
 
 trait_selection_where_copy_predicates = copy the `where` clause predicates from the trait
 

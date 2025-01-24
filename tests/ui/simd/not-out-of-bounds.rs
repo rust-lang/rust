@@ -30,6 +30,9 @@ struct u8x64([u8; 64]);
 
 use std::intrinsics::simd::*;
 
+#[repr(simd)]
+struct SimdShuffleIdx<const LEN: usize>([u32; LEN]);
+
 // Test vectors by lane size. Since LLVM does not distinguish between a shuffle
 // over two f32s and a shuffle over two u64s, or any other such combination,
 // it is not necessary to test every possible vector, only lane counts.
@@ -37,26 +40,26 @@ macro_rules! test_shuffle_lanes {
     ($n:literal, $x:ident, $y:ident) => {
         unsafe {
                 let shuffle: $x = {
-                    const ARR: [u32; $n] = {
+                    const IDX: SimdShuffleIdx<$n> = SimdShuffleIdx({
                         let mut arr = [0; $n];
                         arr[0] = $n * 2;
                         arr
-                    };
+                    });
                     let mut n: u8 = $n;
                     let vals = [0; $n].map(|_| { n = n - 1; n });
                     let vec1 = $x(vals);
                     let vec2 = $x(vals);
-                    $y(vec1, vec2, ARR)
+                    $y(vec1, vec2, IDX)
                 };
         }
     }
 }
-//~^^^^^ ERROR: invalid monomorphization of `simd_shuffle` intrinsic
-//~| ERROR: invalid monomorphization of `simd_shuffle` intrinsic
-//~| ERROR: invalid monomorphization of `simd_shuffle` intrinsic
-//~| ERROR: invalid monomorphization of `simd_shuffle` intrinsic
-//~| ERROR: invalid monomorphization of `simd_shuffle` intrinsic
-//~| ERROR: invalid monomorphization of `simd_shuffle` intrinsic
+//~^^^^^ ERROR: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
+//~| ERROR: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
+//~| ERROR: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
+//~| ERROR: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
+//~| ERROR: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
+//~| ERROR: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
 // Because the test is mostly embedded in a macro, all the errors have the same origin point.
 // And unfortunately, standard comments, as in the UI test harness, disappear in macros!
 
@@ -69,15 +72,15 @@ fn main() {
     test_shuffle_lanes!(64, u8x64, simd_shuffle);
 
     let v = u8x2([0, 0]);
-    const I: [u32; 2] = [4, 4];
+    const I: SimdShuffleIdx<2> = SimdShuffleIdx([4, 4]);
     unsafe {
         let _: u8x2 = simd_shuffle(v, v, I);
-        //~^ ERROR invalid monomorphization of `simd_shuffle` intrinsic
+        //~^ ERROR invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
     }
 
     // also check insert/extract
     unsafe {
-        simd_insert(v, 2, 0); //~ ERROR invalid monomorphization of `simd_insert` intrinsic
-        let _val: u8 = simd_extract(v, 2); //~ ERROR invalid monomorphization of `simd_extract` intrinsic
+        simd_insert(v, 2, 0u8); //~ ERROR invalid monomorphization of `simd_insert` intrinsic: SIMD index #1 is out of bounds
+        let _val: u8 = simd_extract(v, 2); //~ ERROR invalid monomorphization of `simd_extract` intrinsic: SIMD index #1 is out of bounds
     }
 }

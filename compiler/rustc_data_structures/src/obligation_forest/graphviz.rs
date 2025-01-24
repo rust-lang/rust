@@ -1,6 +1,5 @@
 use std::env::var_os;
 use std::fs::File;
-use std::io::BufWriter;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -33,7 +32,7 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         let file_path = dir.as_ref().join(format!("{counter:010}_{description}.gv"));
 
-        let mut gv_file = BufWriter::new(File::create(file_path).unwrap());
+        let mut gv_file = File::create_buffered(file_path).unwrap();
 
         dot::render(&self, &mut gv_file).unwrap();
     }

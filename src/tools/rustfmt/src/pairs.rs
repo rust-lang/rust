@@ -1,9 +1,11 @@
 use rustc_ast::ast;
+use rustc_span::Span;
 
-use crate::config::lists::*;
 use crate::config::IndentStyle;
-use crate::rewrite::{Rewrite, RewriteContext};
+use crate::config::lists::*;
+use crate::rewrite::{Rewrite, RewriteContext, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
+use crate::spanned::Spanned;
 use crate::utils::{
     first_line_width, is_single_line, last_line_width, trimmed_last_line_width, wrap_str,
 };
@@ -40,16 +42,19 @@ pub(crate) fn rewrite_all_pairs(
     expr: &ast::Expr,
     shape: Shape,
     context: &RewriteContext<'_>,
-) -> Option<String> {
-    expr.flatten(context, shape).and_then(|list| {
-        if list.let_chain_count() > 0 && !list.can_rewrite_let_chain_single_line() {
-            rewrite_pairs_multiline(&list, shape, context)
-        } else {
-            // First we try formatting on one line.
-            rewrite_pairs_one_line(&list, shape, context)
-                .or_else(|| rewrite_pairs_multiline(&list, shape, context))
-        }
-    })
+) -> RewriteResult {
+    expr.flatten(context, shape)
+        .unknown_error()
+        .and_then(|list| {
+            if list.let_chain_count() > 0 && !list.can_rewrite_let_chain_single_line() {
+                rewrite_pairs_multiline(&list, shape, context)
+            } else {
+                // First we try formatting on one line.
+                rewrite_pairs_one_line(&list, shape, context)
+                    .unknown_error()
+                    .or_else(|_| rewrite_pairs_multiline(&list, shape, context))
+            }
+        })
 }
 
 // This may return a multi-line result since we allow the last expression to go
@@ -65,7 +70,7 @@ fn rewrite_pairs_one_line<T: Rewrite>(
     let base_shape = shape.block();
 
     for ((_, rewrite), s) in list.list.iter().zip(list.separators.iter()) {
-        if let Some(rewrite) = rewrite {
+        if let Ok(rewrite) = rewrite {
             if !is_single_line(rewrite) || result.len() > shape.width {
                 return None;
             }
@@ -104,19 +109,20 @@ fn rewrite_pairs_multiline<T: Rewrite>(
     list: &PairList<'_, '_, T>,
     shape: Shape,
     context: &RewriteContext<'_>,
-) -> Option<String> {
+) -> RewriteResult {
     let rhs_offset = shape.rhs_overhead(context.config);
     let nested_shape = (match context.config.indent_style() {
         IndentStyle::Visual => shape.visual_indent(0),
         IndentStyle::Block => shape.block_indent(context.config.tab_spaces()),
     })
     .with_max_width(context.config)
-    .sub_width(rhs_offset)?;
+    .sub_width(rhs_offset)
+    .max_width_error(shape.width, list.span)?;
 
     let indent_str = nested_shape.indent.to_string_with_newline(context.config);
     let mut result = String::new();
 
-    result.push_str(list.list[0].1.as_ref()?);
+    result.push_str(list.list[0].1.as_ref().map_err(|err| err.clone())?);
 
     for ((e, default_rw), s) in list.list[1..].iter().zip(list.separators.iter()) {
         // The following test checks if we should keep two subexprs on the same
@@ -132,7 +138,7 @@ fn rewrite_pairs_multiline<T: Rewrite>(
             if let Some(line_shape) =
                 shape.offset_left(s.len() + 2 + trimmed_last_line_width(&result))
             {
-                if let Some(rewrite) = e.rewrite(context, line_shape) {
+                if let Ok(rewrite) = e.rewrite_result(context, line_shape) {
                     result.push(' ');
                     result.push_str(s);
                     result.push(' ');
@@ -155,9 +161,9 @@ fn rewrite_pairs_multiline<T: Rewrite>(
             }
         }
 
-        result.push_str(default_rw.as_ref()?);
+        result.push_str(default_rw.as_ref().map_err(|err| err.clone())?);
     }
-    Some(result)
+    Ok(result)
 }
 
 // Rewrites a single pair.
@@ -168,10 +174,10 @@ pub(crate) fn rewrite_pair<LHS, RHS>(
     context: &RewriteContext<'_>,
     shape: Shape,
     separator_place: SeparatorPlace,
-) -> Option<String>
+) -> RewriteResult
 where
-    LHS: Rewrite,
-    RHS: Rewrite,
+    LHS: Rewrite + Spanned,
+    RHS: Rewrite + Spanned,
 {
     let tab_spaces = context.config.tab_spaces();
     let lhs_overhead = match separator_place {
@@ -183,15 +189,17 @@ where
         ..shape
     };
     let lhs_result = lhs
-        .rewrite(context, lhs_shape)
+        .rewrite_result(context, lhs_shape)
         .map(|lhs_str| format!("{}{}", pp.prefix, lhs_str))?;
 
     // Try to put both lhs and rhs on the same line.
     let rhs_orig_result = shape
         .offset_left(last_line_width(&lhs_result) + pp.infix.len())
         .and_then(|s| s.sub_width(pp.suffix.len()))
-        .and_then(|rhs_shape| rhs.rewrite(context, rhs_shape));
-    if let Some(ref rhs_result) = rhs_orig_result {
+        .max_width_error(shape.width, rhs.span())
+        .and_then(|rhs_shape| rhs.rewrite_result(context, rhs_shape));
+
+    if let Ok(ref rhs_result) = rhs_orig_result {
         // If the length of the lhs is equal to or shorter than the tab width or
         // the rhs looks like block expression, we put the rhs on the same
         // line with the lhs even if the rhs is multi-lined.
@@ -207,7 +215,7 @@ where
                 + first_line_width(rhs_result)
                 + pp.suffix.len();
             if one_line_width <= shape.width {
-                return Some(format!(
+                return Ok(format!(
                     "{}{}{}{}",
                     lhs_result, pp.infix, rhs_result, pp.suffix
                 ));
@@ -219,13 +227,15 @@ where
     // Re-evaluate the rhs because we have more space now:
     let mut rhs_shape = match context.config.indent_style() {
         IndentStyle::Visual => shape
-            .sub_width(pp.suffix.len() + pp.prefix.len())?
+            .sub_width(pp.suffix.len() + pp.prefix.len())
+            .max_width_error(shape.width, rhs.span())?
             .visual_indent(pp.prefix.len()),
         IndentStyle::Block => {
             // Try to calculate the initial constraint on the right hand side.
             let rhs_overhead = shape.rhs_overhead(context.config);
             Shape::indented(shape.indent.block_indent(context.config), context.config)
-                .sub_width(rhs_overhead)?
+                .sub_width(rhs_overhead)
+                .max_width_error(shape.width, rhs.span())?
         }
     };
     let infix = match separator_place {
@@ -233,15 +243,17 @@ where
         SeparatorPlace::Front => pp.infix.trim_start(),
     };
     if separator_place == SeparatorPlace::Front {
-        rhs_shape = rhs_shape.offset_left(infix.len())?;
+        rhs_shape = rhs_shape
+            .offset_left(infix.len())
+            .max_width_error(rhs_shape.width, rhs.span())?;
     }
-    let rhs_result = rhs.rewrite(context, rhs_shape)?;
+    let rhs_result = rhs.rewrite_result(context, rhs_shape)?;
     let indent_str = rhs_shape.indent.to_string_with_newline(context.config);
     let infix_with_sep = match separator_place {
         SeparatorPlace::Back => format!("{infix}{indent_str}"),
         SeparatorPlace::Front => format!("{indent_str}{infix}"),
     };
-    Some(format!(
+    Ok(format!(
         "{}{}{}{}",
         lhs_result, infix_with_sep, rhs_result, pp.suffix
     ))
@@ -255,8 +267,9 @@ trait FlattenPair: Rewrite + Sized {
 }
 
 struct PairList<'a, 'b, T: Rewrite> {
-    list: Vec<(&'b T, Option<String>)>,
+    list: Vec<(&'b T, RewriteResult)>,
     separators: Vec<&'a str>,
+    span: Span,
 }
 
 fn is_ident(expr: &ast::Expr) -> bool {
@@ -303,7 +316,7 @@ impl FlattenPair for ast::Expr {
 
         let default_rewrite = |node: &ast::Expr, sep: usize, is_first: bool| {
             if is_first {
-                return node.rewrite(context, shape);
+                return node.rewrite_result(context, shape);
             }
             let nested_overhead = sep + 1;
             let rhs_offset = shape.rhs_overhead(context.config);
@@ -312,12 +325,17 @@ impl FlattenPair for ast::Expr {
                 IndentStyle::Block => shape.block_indent(context.config.tab_spaces()),
             })
             .with_max_width(context.config)
-            .sub_width(rhs_offset)?;
+            .sub_width(rhs_offset)
+            .max_width_error(shape.width, node.span)?;
             let default_shape = match context.config.binop_separator() {
-                SeparatorPlace::Back => nested_shape.sub_width(nested_overhead)?,
-                SeparatorPlace::Front => nested_shape.offset_left(nested_overhead)?,
+                SeparatorPlace::Back => nested_shape
+                    .sub_width(nested_overhead)
+                    .max_width_error(nested_shape.width, node.span)?,
+                SeparatorPlace::Front => nested_shape
+                    .offset_left(nested_overhead)
+                    .max_width_error(nested_shape.width, node.span)?,
             };
-            node.rewrite(context, default_shape)
+            node.rewrite_result(context, default_shape)
         };
 
         // Turn a tree of binop expressions into a list using a depth-first,
@@ -326,6 +344,7 @@ impl FlattenPair for ast::Expr {
         let mut list = vec![];
         let mut separators = vec![];
         let mut node = self;
+        let span = self.span();
         loop {
             match node.kind {
                 ast::ExprKind::Binary(op, ref lhs, _) if op.node == top_op => {
@@ -352,7 +371,11 @@ impl FlattenPair for ast::Expr {
         }
 
         assert_eq!(list.len() - 1, separators.len());
-        Some(PairList { list, separators })
+        Some(PairList {
+            list,
+            separators,
+            span,
+        })
     }
 }
 

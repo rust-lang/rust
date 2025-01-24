@@ -1,6 +1,6 @@
-use super::{unnecessary_clippy_cfg, Attribute, DEPRECATED_CFG_ATTR, DEPRECATED_CLIPPY_CFG_ATTR};
-use clippy_config::msrvs::{self, Msrv};
+use super::{Attribute, DEPRECATED_CFG_ATTR, DEPRECATED_CLIPPY_CFG_ATTR, unnecessary_clippy_cfg};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use rustc_ast::AttrStyle;
 use rustc_errors::Applicability;
 use rustc_lint::EarlyContext;

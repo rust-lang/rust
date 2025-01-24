@@ -1,17 +1,17 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item, should_call_clone_as_function};
-use clippy_utils::{is_diag_trait_item, match_def_path, paths, peel_blocks};
+use clippy_utils::{is_diag_trait_item, peel_blocks};
 use rustc_errors::Applicability;
-use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, LangItem};
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use super::MAP_CLONE;
 
@@ -70,7 +70,7 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
                                 if ident_eq(name, obj) && method.ident.name == sym::clone
                                 && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id)
                                 && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
-                                && cx.tcx.lang_items().clone_trait().map_or(false, |id| id == trait_id)
+                                && cx.tcx.lang_items().clone_trait() == Some(trait_id)
                                 // no autoderefs
                                 && !cx.typeck_results().expr_adjustments(obj).iter()
                                     .any(|a| matches!(a.kind, Adjust::Deref(Some(..))))
@@ -86,9 +86,8 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
                                     }
                                 }
                             },
-                            hir::ExprKind::Call(call, args) => {
+                            hir::ExprKind::Call(call, [arg]) => {
                                 if let hir::ExprKind::Path(qpath) = call.kind
-                                    && let [arg] = args
                                     && ident_eq(name, arg)
                                 {
                                     handle_path(cx, call, &qpath, e, recv);
@@ -114,7 +113,7 @@ fn handle_path(
     recv: &hir::Expr<'_>,
 ) {
     if let Some(path_def_id) = cx.qpath_res(qpath, arg.hir_id).opt_def_id()
-        && match_def_path(cx, path_def_id, &paths::CLONE_TRAIT_METHOD)
+        && cx.tcx.lang_items().get(LangItem::CloneFn) == Some(path_def_id)
     {
         // The `copied` and `cloned` methods are only available on `&T` and `&mut T` in `Option`
         // and `Result`.

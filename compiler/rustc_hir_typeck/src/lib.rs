@@ -3,16 +3,13 @@
 #![allow(rustc::untranslatable_diagnostic)]
 #![feature(array_windows)]
 #![feature(box_patterns)]
-#![feature(control_flow_enum)]
 #![feature(if_let_guard)]
-#![feature(is_none_or)]
+#![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(try_blocks)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
-
-#[macro_use]
-extern crate tracing;
 
 mod _match;
 mod autoderef;
@@ -46,7 +43,7 @@ pub use coercion::can_coerce;
 use fn_ctxt::FnCtxt;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
-use rustc_errors::{struct_span_code_err, Applicability, ErrorGuaranteed};
+use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
@@ -58,8 +55,9 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config;
-use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
+use rustc_span::def_id::LocalDefId;
+use tracing::{debug, instrument};
 use typeck_root_ctxt::TypeckRootCtxt;
 
 use crate::check::check_fn;
@@ -88,19 +86,8 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDef
     &tcx.typeck(def_id).used_trait_imports
 }
 
-fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tcx> {
-    let fallback = move || tcx.type_of(def_id.to_def_id()).instantiate_identity();
-    typeck_with_fallback(tcx, def_id, fallback, None)
-}
-
-/// Used only to get `TypeckResults` for type inference during error recovery.
-/// Currently only used for type inference of `static`s and `const`s to avoid type cycle errors.
-fn diagnostic_only_typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tcx> {
-    let fallback = move || {
-        let span = tcx.hir().span(tcx.local_def_id_to_hir_id(def_id));
-        Ty::new_error_with_message(tcx, span, "diagnostic only typeck table used")
-    };
-    typeck_with_fallback(tcx, def_id, fallback, None)
+fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
+    typeck_with_inspect(tcx, def_id, None)
 }
 
 /// Same as `typeck` but `inspect` is invoked on evaluation of each root obligation.
@@ -112,15 +99,13 @@ pub fn inspect_typeck<'tcx>(
     def_id: LocalDefId,
     inspect: ObligationInspector<'tcx>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
-    let fallback = move || tcx.type_of(def_id.to_def_id()).instantiate_identity();
-    typeck_with_fallback(tcx, def_id, fallback, Some(inspect))
+    typeck_with_inspect(tcx, def_id, Some(inspect))
 }
 
-#[instrument(level = "debug", skip(tcx, fallback, inspector), ret)]
-fn typeck_with_fallback<'tcx>(
+#[instrument(level = "debug", skip(tcx, inspector), ret)]
+fn typeck_with_inspect<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-    fallback: impl Fn() -> Ty<'tcx> + 'tcx,
     inspector: Option<ObligationInspector<'tcx>>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
     // Closures' typeck results come from their outermost function,
@@ -149,22 +134,52 @@ fn typeck_with_fallback<'tcx>(
     let mut fcx = FnCtxt::new(&root_ctxt, param_env, def_id);
 
     if let Some(hir::FnSig { header, decl, .. }) = node.fn_sig() {
-        let fn_sig = if decl.output.get_infer_ret_ty().is_some() {
-            fcx.lowerer().lower_fn_ty(id, header.safety, header.abi, decl, None, None)
+        let fn_sig = if decl.output.is_suggestable_infer_ty().is_some() {
+            // In the case that we're recovering `fn() -> W<_>` or some other return
+            // type that has an infer in it, lower the type directly so that it'll
+            // be correctly filled with infer. We'll use this inference to provide
+            // a suggestion later on.
+            fcx.lowerer().lower_fn_ty(id, header.safety(), header.abi, decl, None, None)
         } else {
             tcx.fn_sig(def_id).instantiate_identity()
         };
 
-        check_abi(tcx, id, span, fn_sig.abi());
+        check_abi(tcx, span, fn_sig.abi());
 
         // Compute the function signature from point of view of inside the fn.
-        let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
-        let fn_sig = fcx.normalize(body.value.span, fn_sig);
+        let mut fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
 
-        check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params);
+        // Normalize the input and output types one at a time, using a different
+        // `WellFormedLoc` for each. We cannot call `normalize_associated_types`
+        // on the entire `FnSig`, since this would use the same `WellFormedLoc`
+        // for each type, preventing the HIR wf check from generating
+        // a nice error message.
+        let arg_span =
+            |idx| decl.inputs.get(idx).map_or(decl.output.span(), |arg: &hir::Ty<'_>| arg.span);
+
+        fn_sig.inputs_and_output = tcx.mk_type_list_from_iter(
+            fn_sig
+                .inputs_and_output
+                .iter()
+                .enumerate()
+                .map(|(idx, ty)| fcx.normalize(arg_span(idx), ty)),
+        );
+
+        check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params());
     } else {
-        let expected_type = infer_type_if_missing(&fcx, node);
-        let expected_type = expected_type.unwrap_or_else(fallback);
+        let expected_type = if let Some(infer_ty) = infer_type_if_missing(&fcx, node) {
+            infer_ty
+        } else if let Some(ty) = node.ty()
+            && ty.is_suggestable_infer_ty()
+        {
+            // In the case that we're recovering `const X: [T; _]` or some other
+            // type that has an infer in it, lower the type directly so that it'll
+            // be correctly filled with infer. We'll use this inference to provide
+            // a suggestion later on.
+            fcx.lowerer().lower_ty(ty)
+        } else {
+            tcx.type_of(def_id).instantiate_identity()
+        };
 
         let expected_type = fcx.normalize(body.value.span, expected_type);
 
@@ -239,7 +254,7 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
     let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer, span, .. }) = node.ty() {
         if let Some(item) = tcx.opt_associated_item(def_id.into())
             && let ty::AssocKind::Const = item.kind
-            && let ty::ImplContainer = item.container
+            && let ty::AssocItemContainer::Impl = item.container
             && let Some(trait_item_def_id) = item.trait_item_def_id
         {
             let impl_def_id = item.container_id(tcx);
@@ -363,7 +378,7 @@ fn report_unexpected_variant_res(
         .with_code(err_code);
     match res {
         Res::Def(DefKind::Fn | DefKind::AssocFn, _) if err_code == E0164 => {
-            let patterns_url = "https://doc.rust-lang.org/book/ch18-00-patterns.html";
+            let patterns_url = "https://doc.rust-lang.org/book/ch19-00-patterns.html";
             err.with_span_label(span, "`fn` calls are not allowed in patterns")
                 .with_help(format!("for more information, visit {patterns_url}"))
         }
@@ -419,7 +434,37 @@ fn report_unexpected_variant_res(
                 }
             }
 
-            err.multipart_suggestion_verbose(descr, suggestion, Applicability::MaybeIncorrect);
+            err.multipart_suggestion_verbose(descr, suggestion, Applicability::HasPlaceholders);
+            err
+        }
+        Res::Def(DefKind::Variant, _) if expr.is_none() => {
+            err.span_label(span, format!("not a {expected}"));
+
+            let fields = &tcx.expect_variant_res(res).fields.raw;
+            let span = qpath.span().shrink_to_hi().to(span.shrink_to_hi());
+            let (msg, sugg) = if fields.is_empty() {
+                ("use the struct variant pattern syntax".to_string(), " {}".to_string())
+            } else {
+                let msg = format!(
+                    "the struct variant's field{s} {are} being ignored",
+                    s = pluralize!(fields.len()),
+                    are = pluralize!("is", fields.len())
+                );
+                let fields = fields
+                    .iter()
+                    .map(|field| format!("{}: _", field.name.to_ident_string()))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let sugg = format!(" {{ {} }}", fields);
+                (msg, sugg)
+            };
+
+            err.span_suggestion_verbose(
+                qpath.span().shrink_to_hi().to(span.shrink_to_hi()),
+                msg,
+                sugg,
+                Applicability::HasPlaceholders,
+            );
             err
         }
         _ => err.with_span_label(span, format!("not a {expected}")),
@@ -463,7 +508,7 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
         "we would appreciate a joke overview: \
          https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675",
     );
-    diag.note(format!("rustc {} running on {}", tcx.sess.cfg_version, config::host_triple(),));
+    diag.note(format!("rustc {} running on {}", tcx.sess.cfg_version, config::host_tuple(),));
     if let Some((flags, excluded_cargo_defaults)) = rustc_session::utils::extra_compiler_flags() {
         diag.note(format!("compiler flags: {}", flags.join(" ")));
         if excluded_cargo_defaults {
@@ -475,5 +520,5 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
 
 pub fn provide(providers: &mut Providers) {
     method::provide(providers);
-    *providers = Providers { typeck, diagnostic_only_typeck, used_trait_imports, ..*providers };
+    *providers = Providers { typeck, used_trait_imports, ..*providers };
 }

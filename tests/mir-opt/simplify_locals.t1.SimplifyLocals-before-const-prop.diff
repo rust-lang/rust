@@ -10,7 +10,7 @@
 -         StorageLive(_1);
 -         StorageLive(_2);
 -         _2 = &/*tls*/ mut X;
--         _1 = (*_2);
+-         _1 = copy (*_2);
 -         StorageDead(_2);
 -         StorageDead(_1);
           _0 = const ();

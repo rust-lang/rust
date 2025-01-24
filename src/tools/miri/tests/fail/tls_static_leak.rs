@@ -1,4 +1,3 @@
-//@error-in-other-file: memory leaked
 //@normalize-stderr-test: ".*│.*" -> "$$stripped$$"
 
 #![feature(thread_local)]
@@ -12,7 +11,7 @@ pub fn main() {
     static TLS: Cell<Option<&'static i32>> = Cell::new(None);
 
     std::thread::spawn(|| {
-        TLS.set(Some(Box::leak(Box::new(123))));
+        TLS.set(Some(Box::leak(Box::new(123)))); //~ERROR: memory leaked
     })
     .join()
     .unwrap();

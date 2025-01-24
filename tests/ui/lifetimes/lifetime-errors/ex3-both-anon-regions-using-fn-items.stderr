@@ -19,6 +19,9 @@ LL | fn foo(x:fn(&u8, &u8), y: Vec<&u8>, z: &u8) {
 LL |   y.push(z);
    |   ^^^^^^^^^ argument requires that `'1` must outlive `'2`
    |
+   = note: requirement occurs because of a mutable reference to `Vec<&u8>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 help: consider introducing a named lifetime parameter
    |
 LL | fn foo<'a>(x:fn(&u8, &u8), y: Vec<&'a u8>, z: &'a u8) {

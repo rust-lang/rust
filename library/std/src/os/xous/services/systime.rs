@@ -1,6 +1,6 @@
 use core::sync::atomic::{AtomicU32, Ordering};
 
-use crate::os::xous::ffi::{connect, Connection};
+use crate::os::xous::ffi::{Connection, connect};
 
 pub(crate) enum SystimeScalar {
     GetUtcTimeMs,

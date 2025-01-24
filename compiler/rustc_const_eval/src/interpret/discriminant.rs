@@ -1,13 +1,14 @@
 //! Functions for reading and writing discriminants of multi-variant layouts (enums and coroutines).
 
-use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt};
+use rustc_abi::{self as abi, TagEncoding, VariantIdx, Variants};
+use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::{self, CoroutineArgsExt, ScalarInt, Ty};
 use rustc_middle::{mir, span_bug};
-use rustc_target::abi::{self, TagEncoding, VariantIdx, Variants};
 use tracing::{instrument, trace};
 
 use super::{
-    err_ub, throw_ub, ImmTy, InterpCx, InterpResult, Machine, Readable, Scalar, Writeable,
+    ImmTy, InterpCx, InterpResult, Machine, Projectable, Scalar, Writeable, err_ub, interp_ok,
+    throw_ub,
 };
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
@@ -20,17 +21,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         variant_index: VariantIdx,
         dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        // Layout computation excludes uninhabited variants from consideration
-        // therefore there's no way to represent those variants in the given layout.
-        // Essentially, uninhabited variants do not have a tag that corresponds to their
-        // discriminant, so we cannot do anything here.
-        // When evaluating we will always error before even getting here, but ConstProp 'executes'
-        // dead code, so we cannot ICE here.
-        if dest.layout().for_variant(self, variant_index).abi.is_uninhabited() {
-            throw_ub!(UninhabitedEnumVariantWritten(variant_index))
-        }
-
-        match self.tag_for_variant(dest.layout().ty, variant_index)? {
+        match self.tag_for_variant(dest.layout(), variant_index)? {
             Some((tag, tag_field)) => {
                 // No need to validate that the discriminant here because the
                 // `TyAndLayout::for_variant()` call earlier already checks the
@@ -48,19 +39,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 if actual_variant != variant_index {
                     throw_ub!(InvalidNichedEnumVariantWritten { enum_ty: dest.layout().ty });
                 }
-                Ok(())
+                interp_ok(())
             }
         }
     }
 
-    /// Read discriminant, return the runtime value as well as the variant index.
+    /// Read discriminant, return the variant index.
     /// Can also legally be called on non-enums (e.g. through the discriminant_value intrinsic)!
     ///
     /// Will never return an uninhabited variant.
     #[instrument(skip(self), level = "trace")]
     pub fn read_discriminant(
         &self,
-        op: &impl Readable<'tcx, M::Provenance>,
+        op: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, VariantIdx> {
         let ty = op.layout().ty;
         trace!("read_discriminant_value {:#?}", op.layout());
@@ -74,22 +65,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // We use "tag" to refer to how the discriminant is encoded in memory, which can be either
         // straight-forward (`TagEncoding::Direct`) or with a niche (`TagEncoding::Niche`).
         let (tag_scalar_layout, tag_encoding, tag_field) = match op.layout().variants {
+            Variants::Empty => {
+                throw_ub!(UninhabitedEnumVariantRead(None));
+            }
             Variants::Single { index } => {
-                // Do some extra checks on enums.
-                if ty.is_enum() {
-                    // Hilariously, `Single` is used even for 0-variant enums.
-                    // (See https://github.com/rust-lang/rust/issues/89765).
-                    if matches!(ty.kind(), ty::Adt(def, ..) if def.variants().is_empty()) {
-                        throw_ub!(UninhabitedEnumVariantRead(index))
-                    }
+                if op.layout().is_uninhabited() {
                     // For consistency with `write_discriminant`, and to make sure that
                     // `project_downcast` cannot fail due to strange layouts, we declare immediate UB
-                    // for uninhabited variants.
-                    if op.layout().for_variant(self, index).abi.is_uninhabited() {
-                        throw_ub!(UninhabitedEnumVariantRead(index))
-                    }
+                    // for uninhabited enums.
+                    throw_ub!(UninhabitedEnumVariantRead(Some(index)));
                 }
-                return Ok(index);
+                // Since the type is inhabited, there must be an index.
+                return interp_ok(index);
             }
             Variants::Multiple { tag, ref tag_encoding, tag_field, .. } => {
                 (tag, tag_encoding, tag_field)
@@ -111,7 +98,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Read tag and sanity-check `tag_layout`.
         let tag_val = self.read_immediate(&self.project_field(op, tag_field)?)?;
         assert_eq!(tag_layout.size, tag_val.layout.size);
-        assert_eq!(tag_layout.abi.is_signed(), tag_val.layout.abi.is_signed());
+        assert_eq!(tag_layout.backend_repr.is_signed(), tag_val.layout.backend_repr.is_signed());
         trace!("tag value: {}", tag_val);
 
         // Figure out which discriminant and variant this corresponds to.
@@ -187,6 +174,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             let variants =
                                 ty.ty_adt_def().expect("tagged layout for non adt").variants();
                             assert!(variant_index < variants.next_index());
+                            if variant_index == untagged_variant {
+                                // The untagged variant can be in the niche range, but even then it
+                                // is not a valid encoding.
+                                throw_ub!(InvalidTag(Scalar::from_uint(tag_bits, tag_layout.size)))
+                            }
                             variant_index
                         } else {
                             untagged_variant
@@ -202,12 +194,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Reading the discriminant of an uninhabited variant is UB. This is the basis for the
         // `uninhabited_enum_branching` MIR pass. It also ensures consistency with
         // `write_discriminant`.
-        if op.layout().for_variant(self, index).abi.is_uninhabited() {
-            throw_ub!(UninhabitedEnumVariantRead(index))
+        if op.layout().for_variant(self, index).is_uninhabited() {
+            throw_ub!(UninhabitedEnumVariantRead(Some(index)))
         }
-        Ok(index)
+        interp_ok(index)
     }
 
+    /// Read discriminant, return the user-visible discriminant.
+    /// Can also legally be called on non-enums (e.g. through the discriminant_value intrinsic)!
     pub fn discriminant_for_variant(
         &self,
         ty: Ty<'tcx>,
@@ -226,7 +220,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 Scalar::from_uint(variant.as_u32(), discr_layout.size)
             }
         };
-        Ok(ImmTy::from_scalar(discr_value, discr_layout))
+        interp_ok(ImmTy::from_scalar(discr_value, discr_layout))
     }
 
     /// Computes how to write the tag of a given variant of enum `ty`:
@@ -235,10 +229,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ///   given field index.
     pub(crate) fn tag_for_variant(
         &self,
-        ty: Ty<'tcx>,
+        layout: TyAndLayout<'tcx>,
         variant_index: VariantIdx,
     ) -> InterpResult<'tcx, Option<(ScalarInt, usize)>> {
-        match self.layout_of(ty)?.variants {
+        // Layout computation excludes uninhabited variants from consideration.
+        // Therefore, there's no way to represent those variants in the given layout.
+        // Essentially, uninhabited variants do not have a tag that corresponds to their
+        // discriminant, so we have to bail out here.
+        if layout.for_variant(self, variant_index).is_uninhabited() {
+            throw_ub!(UninhabitedEnumVariantWritten(variant_index))
+        }
+
+        match layout.variants {
+            abi::Variants::Empty => unreachable!("we already handled uninhabited types"),
             abi::Variants::Single { .. } => {
                 // The tag of a `Single` enum is like the tag of the niched
                 // variant: there's no tag as the discriminant is encoded
@@ -247,7 +250,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // discriminant is encoded implicitly, so any attempt to write
                 // the wrong discriminant for a `Single` enum will reliably
                 // result in UB.
-                Ok(None)
+                interp_ok(None)
             }
 
             abi::Variants::Multiple {
@@ -259,13 +262,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // raw discriminants for enums are isize or bigger during
                 // their computation, but the in-memory tag is the smallest possible
                 // representation
-                let discr = self.discriminant_for_variant(ty, variant_index)?;
+                let discr = self.discriminant_for_variant(layout.ty, variant_index)?;
                 let discr_size = discr.layout.size;
                 let discr_val = discr.to_scalar().to_bits(discr_size)?;
                 let tag_size = tag_layout.size(self);
                 let tag_val = tag_size.truncate(discr_val);
                 let tag = ScalarInt::try_from_uint(tag_val, tag_size).unwrap();
-                Ok(Some((tag, tag_field)))
+                interp_ok(Some((tag, tag_field)))
             }
 
             abi::Variants::Multiple {
@@ -274,7 +277,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             } if untagged_variant == variant_index => {
                 // The untagged variant is implicitly encoded simply by having a
                 // value that is outside the niche variants.
-                Ok(None)
+                interp_ok(None)
             }
 
             abi::Variants::Multiple {
@@ -285,11 +288,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ..
             } => {
                 assert!(variant_index != untagged_variant);
+                // We checked that this variant is inhabited, so it must be in the niche range.
+                assert!(
+                    niche_variants.contains(&variant_index),
+                    "invalid variant index for this enum"
+                );
                 let variants_start = niche_variants.start().as_u32();
-                let variant_index_relative = variant_index
-                    .as_u32()
-                    .checked_sub(variants_start)
-                    .expect("overflow computing relative variant idx");
+                let variant_index_relative = variant_index.as_u32().strict_sub(variants_start);
                 // We need to use machine arithmetic when taking into account `niche_start`:
                 // tag_val = variant_index_relative + niche_start_val
                 let tag_layout = self.layout_of(tag_layout.primitive().to_int_ty(*self.tcx))?;
@@ -299,7 +304,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let tag = self
                     .binary_op(mir::BinOp::Add, &variant_index_relative_val, &niche_start_val)?
                     .to_scalar_int()?;
-                Ok(Some((tag, tag_field)))
+                interp_ok(Some((tag, tag_field)))
             }
         }
     }

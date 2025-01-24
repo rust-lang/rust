@@ -6,6 +6,7 @@ Number of expressions: 0
 Number of file 0 mappings: 2
 - Code(Counter(0)) at (prev + 36, 1) to (start + 2, 31)
 - Code(Zero) at (prev + 3, 1) to (start + 0, 2)
+Highest counter ID seen: c0
 
 Function name: bad_counter_ids::eq_bad_message
 Raw bytes (21): 0x[01, 01, 01, 01, 00, 03, 01, 29, 01, 02, 0f, 02, 02, 20, 00, 2b, 00, 01, 01, 00, 02]
@@ -18,6 +19,7 @@ Number of file 0 mappings: 3
 - Code(Expression(0, Sub)) at (prev + 2, 32) to (start + 0, 43)
     = (c0 - Zero)
 - Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
 
 Function name: bad_counter_ids::eq_good
 Raw bytes (14): 0x[01, 01, 00, 02, 01, 10, 01, 02, 1f, 05, 03, 01, 00, 02]
@@ -27,6 +29,7 @@ Number of expressions: 0
 Number of file 0 mappings: 2
 - Code(Counter(0)) at (prev + 16, 1) to (start + 2, 31)
 - Code(Counter(1)) at (prev + 3, 1) to (start + 0, 2)
+Highest counter ID seen: c1
 
 Function name: bad_counter_ids::eq_good_message
 Raw bytes (19): 0x[01, 01, 00, 03, 01, 15, 01, 02, 0f, 00, 02, 20, 00, 2b, 05, 01, 01, 00, 02]
@@ -37,6 +40,7 @@ Number of file 0 mappings: 3
 - Code(Counter(0)) at (prev + 21, 1) to (start + 2, 15)
 - Code(Zero) at (prev + 2, 32) to (start + 0, 43)
 - Code(Counter(1)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
 
 Function name: bad_counter_ids::ne_bad
 Raw bytes (14): 0x[01, 01, 00, 02, 01, 2e, 01, 02, 1f, 00, 03, 01, 00, 02]
@@ -46,6 +50,7 @@ Number of expressions: 0
 Number of file 0 mappings: 2
 - Code(Counter(0)) at (prev + 46, 1) to (start + 2, 31)
 - Code(Zero) at (prev + 3, 1) to (start + 0, 2)
+Highest counter ID seen: c0
 
 Function name: bad_counter_ids::ne_bad_message
 Raw bytes (19): 0x[01, 01, 00, 03, 01, 33, 01, 02, 0f, 05, 02, 20, 00, 2b, 00, 01, 01, 00, 02]
@@ -56,6 +61,7 @@ Number of file 0 mappings: 3
 - Code(Counter(0)) at (prev + 51, 1) to (start + 2, 15)
 - Code(Counter(1)) at (prev + 2, 32) to (start + 0, 43)
 - Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
 
 Function name: bad_counter_ids::ne_good
 Raw bytes (16): 0x[01, 01, 01, 01, 00, 02, 01, 1a, 01, 02, 1f, 02, 03, 01, 00, 02]
@@ -67,6 +73,7 @@ Number of file 0 mappings: 2
 - Code(Counter(0)) at (prev + 26, 1) to (start + 2, 31)
 - Code(Expression(0, Sub)) at (prev + 3, 1) to (start + 0, 2)
     = (c0 - Zero)
+Highest counter ID seen: c0
 
 Function name: bad_counter_ids::ne_good_message
 Raw bytes (21): 0x[01, 01, 01, 01, 00, 03, 01, 1f, 01, 02, 0f, 00, 02, 20, 00, 2b, 02, 01, 01, 00, 02]
@@ -79,4 +86,5 @@ Number of file 0 mappings: 3
 - Code(Zero) at (prev + 2, 32) to (start + 0, 43)
 - Code(Expression(0, Sub)) at (prev + 1, 1) to (start + 0, 2)
     = (c0 - Zero)
+Highest counter ID seen: c0
 

@@ -1,4 +1,4 @@
-//@ignore-target-windows: File handling is not implemented yet
+//@ignore-target: windows # File handling is not implemented yet
 //@compile-flags: -Zmiri-isolation-error=warn-nobacktrace
 //@normalize-stderr-test: "(stat(x)?)" -> "$$STAT"
 

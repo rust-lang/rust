@@ -1,8 +1,8 @@
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:3:1
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:3:9
    |
 LL | #![deny(non_exhaustive_omitted_patterns)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the `non_exhaustive_omitted_patterns` lint is unstable
    = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
@@ -11,10 +11,10 @@ LL | #![deny(non_exhaustive_omitted_patterns)]
    = note: `#[warn(unknown_lints)]` on by default
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:5:1
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:5:10
    |
 LL | #![allow(non_exhaustive_omitted_patterns)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the `non_exhaustive_omitted_patterns` lint is unstable
    = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
@@ -22,10 +22,10 @@ LL | #![allow(non_exhaustive_omitted_patterns)]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:15:5
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:15:13
    |
 LL |     #[allow(non_exhaustive_omitted_patterns)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the `non_exhaustive_omitted_patterns` lint is unstable
    = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
@@ -33,10 +33,10 @@ LL |     #[allow(non_exhaustive_omitted_patterns)]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:15:5
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:15:13
    |
 LL |     #[allow(non_exhaustive_omitted_patterns)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the `non_exhaustive_omitted_patterns` lint is unstable
    = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
@@ -45,10 +45,10 @@ LL |     #[allow(non_exhaustive_omitted_patterns)]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:24:5
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:24:12
    |
 LL |     #[warn(non_exhaustive_omitted_patterns)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the `non_exhaustive_omitted_patterns` lint is unstable
    = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
@@ -56,10 +56,10 @@ LL |     #[warn(non_exhaustive_omitted_patterns)]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:24:5
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:24:12
    |
 LL |     #[warn(non_exhaustive_omitted_patterns)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the `non_exhaustive_omitted_patterns` lint is unstable
    = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information

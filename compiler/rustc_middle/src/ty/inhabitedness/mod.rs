@@ -81,10 +81,6 @@ impl<'tcx> VariantDef {
         adt: ty::AdtDef<'_>,
     ) -> InhabitedPredicate<'tcx> {
         debug_assert!(!adt.is_union());
-        if self.is_field_list_non_exhaustive() && !self.def_id.is_local() {
-            // Non-exhaustive variants from other crates are always considered inhabited.
-            return InhabitedPredicate::True;
-        }
         InhabitedPredicate::all(
             tcx,
             self.fields.iter().map(|field| {
@@ -185,18 +181,18 @@ impl<'tcx> Ty<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         module: DefId,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
     ) -> bool {
-        self.inhabited_predicate(tcx).apply(tcx, param_env, module)
+        self.inhabited_predicate(tcx).apply(tcx, typing_env, module)
     }
 
     /// Returns true if the type is uninhabited without regard to visibility
     pub fn is_privately_uninhabited(
         self,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
     ) -> bool {
-        !self.inhabited_predicate(tcx).apply_ignore_module(tcx, param_env)
+        !self.inhabited_predicate(tcx).apply_ignore_module(tcx, typing_env)
     }
 }
 

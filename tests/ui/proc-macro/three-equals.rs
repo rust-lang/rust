@@ -1,4 +1,4 @@
-//@ aux-build:three-equals.rs
+//@ proc-macro: three-equals.rs
 
 extern crate three_equals;
 

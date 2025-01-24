@@ -1,5 +1,5 @@
-use crate::common::{Config, Debugger, Sanitizer};
-use crate::header::IgnoreDecision;
+use crate::common::{Config, KNOWN_TARGET_HAS_ATOMIC_WIDTHS, Sanitizer};
+use crate::header::{IgnoreDecision, llvm_has_libzstd};
 
 pub(super) fn handle_needs(
     cache: &CachedNeedsConditions,
@@ -80,6 +80,11 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored on targets without SafeStack support",
         },
         Need {
+            name: "needs-enzyme",
+            condition: config.has_enzyme,
+            ignore_reason: "ignored when LLVM Enzyme is disabled",
+        },
+        Need {
             name: "needs-run-enabled",
             condition: config.run_enabled(),
             ignore_reason: "ignored when running the resulting test binaries is disabled",
@@ -95,9 +100,9 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored on targets without unwinding support",
         },
         Need {
-            name: "needs-profiler-support",
-            condition: cache.profiler_support,
-            ignore_reason: "ignored when profiler support is disabled",
+            name: "needs-profiler-runtime",
+            condition: config.profiler_runtime,
+            ignore_reason: "ignored when the profiler runtime is not available",
         },
         Need {
             name: "needs-force-clang-based-tests",
@@ -113,11 +118,6 @@ pub(super) fn handle_needs(
             name: "needs-rust-lld",
             condition: cache.rust_lld,
             ignore_reason: "ignored on targets without Rust's LLD",
-        },
-        Need {
-            name: "needs-rust-lldb",
-            condition: config.debugger != Some(Debugger::Lldb) || config.lldb_native_rust,
-            ignore_reason: "ignored on targets without Rust's LLDB",
         },
         Need {
             name: "needs-dlltool",
@@ -140,6 +140,11 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored on targets without PIC relocation model",
         },
         Need {
+            name: "needs-deterministic-layouts",
+            condition: !config.rust_randomized_layout,
+            ignore_reason: "ignored when randomizing layouts",
+        },
+        Need {
             name: "needs-wasmtime",
             condition: config.runner.as_ref().is_some_and(|r| r.contains("wasmtime")),
             ignore_reason: "ignored when wasmtime runner is not available",
@@ -149,12 +154,70 @@ pub(super) fn handle_needs(
             condition: cache.symlinks,
             ignore_reason: "ignored if symlinks are unavailable",
         },
+        Need {
+            name: "needs-llvm-zstd",
+            condition: cache.llvm_zstd,
+            ignore_reason: "ignored if LLVM wasn't build with zstd for ELF section compression",
+        },
+        Need {
+            name: "needs-rustc-debug-assertions",
+            condition: config.with_rustc_debug_assertions,
+            ignore_reason: "ignored if rustc wasn't built with debug assertions",
+        },
+        Need {
+            name: "needs-std-debug-assertions",
+            condition: config.with_std_debug_assertions,
+            ignore_reason: "ignored if std wasn't built with debug assertions",
+        },
     ];
 
-    let (name, comment) = match ln.split_once([':', ' ']) {
-        Some((name, comment)) => (name, Some(comment)),
+    let (name, rest) = match ln.split_once([':', ' ']) {
+        Some((name, rest)) => (name, Some(rest)),
         None => (ln, None),
     };
+
+    // FIXME(jieyouxu): tighten up this parsing to reject using both `:` and ` ` as means to
+    // delineate value.
+    if name == "needs-target-has-atomic" {
+        let Some(rest) = rest else {
+            return IgnoreDecision::Error {
+                message: "expected `needs-target-has-atomic` to have a comma-separated list of atomic widths".to_string(),
+            };
+        };
+
+        // Expect directive value to be a list of comma-separated atomic widths.
+        let specified_widths = rest
+            .split(',')
+            .map(|width| width.trim())
+            .map(ToString::to_string)
+            .collect::<Vec<String>>();
+
+        for width in &specified_widths {
+            if !KNOWN_TARGET_HAS_ATOMIC_WIDTHS.contains(&width.as_str()) {
+                return IgnoreDecision::Error {
+                    message: format!(
+                        "unknown width specified in `needs-target-has-atomic`: `{width}` is not a \
+                        known `target_has_atomic_width`, known values are `{:?}`",
+                        KNOWN_TARGET_HAS_ATOMIC_WIDTHS
+                    ),
+                };
+            }
+        }
+
+        let satisfies_all_specified_widths = specified_widths
+            .iter()
+            .all(|specified| config.target_cfg().target_has_atomic.contains(specified));
+        if satisfies_all_specified_widths {
+            return IgnoreDecision::Continue;
+        } else {
+            return IgnoreDecision::Ignore {
+                reason: format!(
+                    "skipping test as target does not support all of the required `target_has_atomic` widths `{:?}`",
+                    specified_widths
+                ),
+            };
+        }
+    }
 
     if !name.starts_with("needs-") {
         return IgnoreDecision::Continue;
@@ -173,8 +236,8 @@ pub(super) fn handle_needs(
                 break;
             } else {
                 return IgnoreDecision::Ignore {
-                    reason: if let Some(comment) = comment {
-                        format!("{} ({comment})", need.ignore_reason)
+                    reason: if let Some(comment) = rest {
+                        format!("{} ({})", need.ignore_reason, comment.trim())
                     } else {
                         need.ignore_reason.into()
                     },
@@ -210,11 +273,12 @@ pub(super) struct CachedNeedsConditions {
     sanitizer_memtag: bool,
     sanitizer_shadow_call_stack: bool,
     sanitizer_safestack: bool,
-    profiler_support: bool,
     xray: bool,
     rust_lld: bool,
     dlltool: bool,
     symlinks: bool,
+    /// Whether LLVM built with zstd, for the `needs-llvm-zstd` directive.
+    llvm_zstd: bool,
 }
 
 impl CachedNeedsConditions {
@@ -235,7 +299,6 @@ impl CachedNeedsConditions {
             sanitizer_memtag: sanitizers.contains(&Sanitizer::Memtag),
             sanitizer_shadow_call_stack: sanitizers.contains(&Sanitizer::ShadowCallStack),
             sanitizer_safestack: sanitizers.contains(&Sanitizer::Safestack),
-            profiler_support: config.profiler_support,
             xray: config.target_cfg().xray,
 
             // For tests using the `needs-rust-lld` directive (e.g. for `-Clink-self-contained=+linker`),
@@ -258,6 +321,7 @@ impl CachedNeedsConditions {
                 .join(if config.host.contains("windows") { "rust-lld.exe" } else { "rust-lld" })
                 .exists(),
 
+            llvm_zstd: llvm_has_libzstd(&config),
             dlltool: find_dlltool(&config),
             symlinks: has_symlinks(),
         }

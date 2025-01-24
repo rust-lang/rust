@@ -39,8 +39,8 @@ fn main() -> () {
         StorageLive(_6);
         _6 = const 0_usize;
         _7 = Len(_2);
-        _8 = Lt(_6, _7);
-        assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> [success: bb3, unwind: bb5];
+        _8 = Lt(copy _6, copy _7);
+        assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, copy _6) -> [success: bb3, unwind: bb5];
     }
 
     bb2: {
@@ -49,7 +49,7 @@ fn main() -> () {
     }
 
     bb3: {
-        _5 = (_2[_6].0: u64);
+        _5 = copy (_2[_6].0: u64);
         PlaceMention(_5);
         StorageDead(_6);
         StorageDead(_5);

@@ -40,19 +40,8 @@ impl_is_zero!(char, |x| x == '\0');
 impl_is_zero!(f32, |x: f32| x.to_bits() == 0);
 impl_is_zero!(f64, |x: f64| x.to_bits() == 0);
 
-unsafe impl<T> IsZero for *const T {
-    #[inline]
-    fn is_zero(&self) -> bool {
-        (*self).is_null()
-    }
-}
-
-unsafe impl<T> IsZero for *mut T {
-    #[inline]
-    fn is_zero(&self) -> bool {
-        (*self).is_null()
-    }
-}
+// `IsZero` cannot be soundly implemented for pointers because of provenance
+// (see #135338).
 
 unsafe impl<T: IsZero, const N: usize> IsZero for [T; N] {
     #[inline]
@@ -172,7 +161,7 @@ macro_rules! impl_is_zero_option_of_bool {
             fn is_zero(&self) -> bool {
                 // SAFETY: This is *not* a stable layout guarantee, but
                 // inside `core` we're allowed to rely on the current rustc
-                // behaviour that options of bools will be one byte with
+                // behavior that options of bools will be one byte with
                 // no padding, so long as they're nested less than 254 deep.
                 let raw: u8 = unsafe { core::mem::transmute(*self) };
                 raw == 0

@@ -11,6 +11,7 @@ edition = "2021"
 # all dependencies (and their transitive ones) listed here can be used in `tests/`.
 libc = "0.2"
 num_cpus = "1.10.1"
+cfg-if = "1"
 
 getrandom_01 = { package = "getrandom", version = "0.1" }
 getrandom_02 = { package = "getrandom", version = "0.2", features = ["js"] }
@@ -20,7 +21,7 @@ tempfile = "3"
 page_size = "0.6"
 # Avoid pulling in all of tokio's dependencies.
 # However, without `net` and `signal`, tokio uses fewer relevant system APIs.
-tokio = { version = "1.24", features = ["macros", "rt-multi-thread", "time", "net", "fs", "sync", "signal"] }
+tokio = { version = "1.24", features = ["macros", "rt-multi-thread", "time", "net", "fs", "sync", "signal", "io-util"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.52", features = [ "Win32_Foundation", "Win32_System_Threading" ] }

@@ -2,6 +2,8 @@
 //!
 //! This module uses a bit of static metadata to provide completions for builtin-in attributes and lints.
 
+use std::sync::LazyLock;
+
 use ide_db::{
     generated::lints::{
         Lint, CLIPPY_LINTS, CLIPPY_LINT_GROUPS, DEFAULT_LINTS, FEATURES, RUSTDOC_LINTS,
@@ -10,10 +12,9 @@ use ide_db::{
     FxHashMap, SymbolKind,
 };
 use itertools::Itertools;
-use once_cell::sync::Lazy;
 use syntax::{
     ast::{self, AttrKind},
-    AstNode, SyntaxKind, T,
+    AstNode, Edition, SyntaxKind, T,
 };
 
 use crate::{
@@ -48,11 +49,15 @@ pub(crate) fn complete_known_attribute_input(
 
     match path.text().as_str() {
         "repr" => repr::complete_repr(acc, ctx, tt),
-        "feature" => {
-            lint::complete_lint(acc, ctx, colon_prefix, &parse_tt_as_comma_sep_paths(tt)?, FEATURES)
-        }
-        "allow" | "warn" | "deny" | "forbid" => {
-            let existing_lints = parse_tt_as_comma_sep_paths(tt)?;
+        "feature" => lint::complete_lint(
+            acc,
+            ctx,
+            colon_prefix,
+            &parse_tt_as_comma_sep_paths(tt, ctx.edition)?,
+            FEATURES,
+        ),
+        "allow" | "expect" | "deny" | "forbid" | "warn" => {
+            let existing_lints = parse_tt_as_comma_sep_paths(tt, ctx.edition)?;
 
             let lints: Vec<Lint> = CLIPPY_LINT_GROUPS
                 .iter()
@@ -66,9 +71,12 @@ pub(crate) fn complete_known_attribute_input(
             lint::complete_lint(acc, ctx, colon_prefix, &existing_lints, &lints);
         }
         "cfg" => cfg::complete_cfg(acc, ctx),
-        "macro_use" => {
-            macro_use::complete_macro_use(acc, ctx, extern_crate, &parse_tt_as_comma_sep_paths(tt)?)
-        }
+        "macro_use" => macro_use::complete_macro_use(
+            acc,
+            ctx,
+            extern_crate,
+            &parse_tt_as_comma_sep_paths(tt, ctx.edition)?,
+        ),
         _ => (),
     }
     Some(())
@@ -78,9 +86,20 @@ pub(crate) fn complete_attribute_path(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
-    &AttrCtx { kind, annotated_item_kind }: &AttrCtx,
+    &AttrCtx { kind, annotated_item_kind, ref derive_helpers }: &AttrCtx,
 ) {
     let is_inner = kind == AttrKind::Inner;
+
+    for (derive_helper, derive_name) in derive_helpers {
+        let mut item = CompletionItem::new(
+            SymbolKind::Attribute,
+            ctx.source_range(),
+            derive_helper.as_str(),
+            ctx.edition,
+        );
+        item.detail(format!("derive helper of `{derive_name}`"));
+        item.add_to(acc, ctx.db);
+    }
 
     match qualified {
         Qualified::With {
@@ -130,8 +149,12 @@ pub(crate) fn complete_attribute_path(
     });
 
     let add_completion = |attr_completion: &AttrCompletion| {
-        let mut item =
-            CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), attr_completion.label);
+        let mut item = CompletionItem::new(
+            SymbolKind::Attribute,
+            ctx.source_range(),
+            attr_completion.label,
+            ctx.edition,
+        );
 
         if let Some(lookup) = attr_completion.lookup {
             item.lookup_by(lookup);
@@ -210,12 +233,12 @@ macro_rules! attrs {
     [@ {} {$($tt:tt)*}] => { &[$($tt)*] as _ };
     // starting matcher
     [$($tt:tt),*] => {
-        attrs!(@ { $($tt)* } { "allow", "cfg", "cfg_attr", "deny", "forbid", "warn" })
+        attrs!(@ { $($tt)* } { "allow", "cfg", "cfg_attr", "deny", "expect", "forbid", "warn" })
     };
 }
 
 #[rustfmt::skip]
-static KIND_TO_ATTRIBUTES: Lazy<FxHashMap<SyntaxKind, &[&str]>> = Lazy::new(|| {
+static KIND_TO_ATTRIBUTES: LazyLock<FxHashMap<SyntaxKind, &[&str]>> = LazyLock::new(|| {
     use SyntaxKind::*;
     [
         (
@@ -291,6 +314,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr(r#"doc = "…""#, Some("doc"), Some(r#"doc = "${0:docs}""#)),
     attr(r#"doc(alias = "…")"#, Some("docalias"), Some(r#"doc(alias = "${0:docs}")"#)),
     attr(r#"doc(hidden)"#, Some("dochidden"), Some(r#"doc(hidden)"#)),
+    attr("expect(…)", Some("expect"), Some("expect(${0:lint})")),
     attr(
         r#"export_name = "…""#,
         Some("export_name"),
@@ -361,7 +385,9 @@ fn parse_comma_sep_expr(input: ast::TokenTree) -> Option<Vec<ast::Expr>> {
         input_expressions
             .into_iter()
             .filter_map(|(is_sep, group)| (!is_sep).then_some(group))
-            .filter_map(|mut tokens| syntax::hacks::parse_expr_from_str(&tokens.join("")))
+            .filter_map(|mut tokens| {
+                syntax::hacks::parse_expr_from_str(&tokens.join(""), Edition::CURRENT)
+            })
             .collect::<Vec<ast::Expr>>(),
     )
 }

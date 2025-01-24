@@ -1,6 +1,6 @@
 macro_rules! unimpl {
     () => {
-        return Err(io::const_io_error!(
+        return Err(io::const_error!(
             io::ErrorKind::Unsupported,
             "No networking available on L4Re.",
         ));
@@ -51,6 +51,10 @@ pub mod net {
         }
 
         pub fn read(&self, _: &mut [u8]) -> io::Result<usize> {
+            unimpl!();
+        }
+
+        pub fn read_buf(&self, _: BorrowedCursor<'_>) -> io::Result<()> {
             unimpl!();
         }
 

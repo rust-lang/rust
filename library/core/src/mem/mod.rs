@@ -5,6 +5,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::alloc::Layout;
 use crate::marker::DiscriminantKind;
 use crate::{clone, cmp, fmt, hash, intrinsics, ptr};
 
@@ -18,7 +19,7 @@ pub use maybe_uninit::MaybeUninit;
 
 mod transmutability;
 #[unstable(feature = "transmutability", issue = "99571")]
-pub use transmutability::{Assume, BikeshedIntrinsicFrom};
+pub use transmutability::{Assume, TransmuteFrom};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
@@ -332,7 +333,7 @@ pub const fn size_of<T>() -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
+#[rustc_const_stable(feature = "const_size_of_val", since = "1.85.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mem_size_of_val")]
 pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
     // SAFETY: `val` is a reference, so it's a valid raw pointer
@@ -389,7 +390,6 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 #[inline]
 #[must_use]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
-#[rustc_const_unstable(feature = "const_size_of_val_raw", issue = "46571")]
 pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     // SAFETY: the caller must provide a valid raw pointer
     unsafe { intrinsics::size_of_val(val) }
@@ -484,7 +484,7 @@ pub const fn align_of<T>() -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
+#[rustc_const_stable(feature = "const_align_of_val", since = "1.85.0")]
 #[allow(deprecated)]
 pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
     // SAFETY: val is a reference, so it's a valid raw pointer
@@ -533,7 +533,6 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 #[inline]
 #[must_use]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
-#[rustc_const_unstable(feature = "const_align_of_val_raw", issue = "46571")]
 pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     // SAFETY: the caller must provide a valid raw pointer
     unsafe { intrinsics::min_align_of_val(val) }
@@ -611,7 +610,7 @@ pub const fn needs_drop<T: ?Sized>() -> bool {
 ///
 /// There is no guarantee that an all-zero byte-pattern represents a valid value
 /// of some type `T`. For example, the all-zero byte-pattern is not a valid value
-/// for reference types (`&T`, `&mut T`) and functions pointers. Using `zeroed`
+/// for reference types (`&T`, `&mut T`) and function pointers. Using `zeroed`
 /// on such types causes immediate [undefined behavior][ub] because [the Rust
 /// compiler assumes][inv] that there always is a valid value in a variable it
 /// considers initialized.
@@ -726,12 +725,12 @@ pub unsafe fn uninitialized<T>() -> T {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+#[rustc_const_stable(feature = "const_swap", since = "1.85.0")]
 #[rustc_diagnostic_item = "mem_swap"]
 pub const fn swap<T>(x: &mut T, y: &mut T) {
     // SAFETY: `&mut` guarantees these are typed readable and writable
     // as well as non-overlapping.
-    unsafe { intrinsics::typed_swap(x, y) }
+    unsafe { intrinsics::typed_swap_nonoverlapping(x, y) }
 }
 
 /// Replaces `dest` with the default value of `T`, returning the previous `dest` value.
@@ -856,7 +855,7 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "if you don't need the old value, you can just assign the new value directly"]
-#[rustc_const_unstable(feature = "const_replace", issue = "83164")]
+#[rustc_const_stable(feature = "const_replace", since = "1.83.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mem_replace")]
 pub const fn replace<T>(dest: &mut T, src: T) -> T {
     // It may be tempting to use `swap` to avoid `unsafe` here. Don't!
@@ -1238,6 +1237,21 @@ pub trait SizedTypeProperties: Sized {
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
     const IS_ZST: bool = size_of::<Self>() == 0;
+
+    #[doc(hidden)]
+    #[unstable(feature = "sized_type_properties", issue = "none")]
+    const LAYOUT: Layout = Layout::new::<Self>();
+
+    /// The largest safe length for a `[Self]`.
+    ///
+    /// Anything larger than this would make `size_of_val` overflow `isize::MAX`,
+    /// which is never allowed for a single object.
+    #[doc(hidden)]
+    #[unstable(feature = "sized_type_properties", issue = "none")]
+    const MAX_SLICE_LEN: usize = match size_of::<Self>() {
+        0 => usize::MAX,
+        n => (isize::MAX as usize) / n,
+    };
 }
 #[doc(hidden)]
 #[unstable(feature = "sized_type_properties", issue = "none")]
@@ -1249,11 +1263,9 @@ impl<T> SizedTypeProperties for T {}
 ///
 /// Nested field accesses may be used, but not array indexes.
 ///
-/// Enum variants may be traversed as if they were fields. Variants themselves do
-/// not have an offset.
-///
-/// However, on stable only a single field name is supported, which blocks the use of
-/// enum support.
+/// If the nightly-only feature `offset_of_enum` is enabled,
+/// variants may be traversed as if they were fields.
+/// Variants themselves do not have an offset.
 ///
 /// Visibility is respected - all types and fields must be visible to the call site:
 ///
@@ -1321,7 +1333,6 @@ impl<T> SizedTypeProperties for T {}
 /// # Examples
 ///
 /// ```
-/// # #![cfg_attr(bootstrap, feature(offset_of_nested))]
 /// #![feature(offset_of_enum)]
 ///
 /// use std::mem;

@@ -1,7 +1,8 @@
 [package]
 name = "ide"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "IDE-centric APIs for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
@@ -38,7 +39,6 @@ profile.workspace = true
 stdx.workspace = true
 syntax.workspace = true
 span.workspace = true
-text-edit.workspace = true
 # ide should depend only on the top-level `hir` package. if you need
 # something from some `hir-xxx` subpackage, reexport the API via `hir`.
 hir.workspace = true

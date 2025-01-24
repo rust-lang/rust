@@ -46,11 +46,11 @@ ENV RUN_CHECK_WITH_PARALLEL_QUERIES 1
 # Check library crates on all tier 1 targets.
 # We disable optimized compiler built-ins because that requires a C toolchain for the target.
 # We also skip the x86_64-unknown-linux-gnu target as it is well-tested by other jobs.
-ENV SCRIPT python3 ../x.py check --stage 0 --set build.optimized-compiler-builtins=false core alloc std --target=aarch64-unknown-linux-gnu,i686-pc-windows-msvc,i686-unknown-linux-gnu,x86_64-apple-darwin,x86_64-pc-windows-gnu,x86_64-pc-windows-msvc && \
+ENV SCRIPT \
+           python3 ../x.py check --stage 0 --set build.optimized-compiler-builtins=false core alloc std --target=aarch64-unknown-linux-gnu,i686-pc-windows-msvc,i686-unknown-linux-gnu,x86_64-apple-darwin,x86_64-pc-windows-gnu,x86_64-pc-windows-msvc && \
            /scripts/check-default-config-profiles.sh && \
            python3 ../x.py check --target=i686-pc-windows-gnu --host=i686-pc-windows-gnu && \
-           python3 ../x.py clippy bootstrap -Dwarnings && \
-           python3 ../x.py clippy compiler library -Aclippy::all -Dclippy::correctness && \
+           python3 ../x.py clippy ci && \
            python3 ../x.py build --stage 0 src/tools/build-manifest && \
            python3 ../x.py test --stage 0 src/tools/compiletest && \
            python3 ../x.py test --stage 0 core alloc std test proc_macro && \
@@ -63,6 +63,7 @@ ENV SCRIPT python3 ../x.py check --stage 0 --set build.optimized-compiler-builti
            /scripts/validate-toolstate.sh && \
            /scripts/validate-error-codes.sh && \
            reuse --include-submodules lint && \
+           python3 ../x.py test collect-license-metadata && \
            # Runs checks to ensure that there are no issues in our JS code.
            es-check es2019 ../src/librustdoc/html/static/js/*.js && \
            eslint -c ../src/librustdoc/html/static/.eslintrc.js ../src/librustdoc/html/static/js/*.js && \

@@ -12,8 +12,8 @@ fn bar(_1: Bar) -> usize {
         StorageLive(_2);
         _2 = move _1;
         _3 = discriminant(_2);
-        _4 = _3 as u8 (IntToInt);
-        _5 = Le(_4, const 1_u8);
+        _4 = copy _3 as u8 (IntToInt);
+        _5 = Le(copy _4, const 1_u8);
         assume(move _5);
         _0 = move _3 as usize (IntToInt);
         StorageDead(_2);

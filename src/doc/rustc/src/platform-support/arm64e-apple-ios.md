@@ -2,7 +2,7 @@
 
 **Tier: 3**
 
-ARM64e iOS (12.0+)
+ARM64e iOS (14.0+)
 
 ## Target maintainers
 
@@ -18,7 +18,7 @@ You can build Rust with support for the targets by adding it to the `target` lis
 
 ```toml
 [build]
-target = [ "arm64e-apple-ios" ]
+target = ["arm64e-apple-ios"]
 ```
 
 ## Building Rust programs

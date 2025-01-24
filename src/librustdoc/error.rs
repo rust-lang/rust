@@ -39,7 +39,7 @@ macro_rules! try_none {
         match $e {
             Some(e) => e,
             None => {
-                return Err(<crate::error::Error as crate::docfs::PathError>::new(
+                return Err(<$crate::error::Error as $crate::docfs::PathError>::new(
                     io::Error::new(io::ErrorKind::Other, "not found"),
                     $file,
                 ));

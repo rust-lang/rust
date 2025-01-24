@@ -24,7 +24,7 @@ pub(crate) mod vis;
 
 use std::iter;
 
-use hir::{sym, HasAttrs, ImportPathConfig, Name, ScopeDef, Variant};
+use hir::{sym, HasAttrs, Name, ScopeDef, Variant};
 use ide_db::{imports::import_assets::LocatedImport, RootDatabase, SymbolKind};
 use syntax::{ast, SmolStr, ToSmolStr};
 
@@ -85,6 +85,7 @@ impl Completions {
             CompletionItemKind::Keyword,
             ctx.source_range(),
             SmolStr::new_static(keyword),
+            ctx.edition,
         );
         item.add_to(self, ctx.db);
     }
@@ -124,7 +125,8 @@ impl Completions {
         kw: &str,
         snippet: &str,
     ) {
-        let mut item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw);
+        let mut item =
+            CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw, ctx.edition);
 
         match ctx.config.snippet_cap {
             Some(cap) => {
@@ -149,7 +151,8 @@ impl Completions {
         kw: &str,
         snippet: &str,
     ) {
-        let mut item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw);
+        let mut item =
+            CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw, ctx.edition);
 
         match ctx.config.snippet_cap {
             Some(cap) => item.insert_snippet(cap, snippet),
@@ -326,7 +329,7 @@ impl Completions {
         ctx: &CompletionContext<'_>,
         dot_access: &DotAccess,
         func: hir::Function,
-        receiver: Option<hir::Name>,
+        receiver: Option<SmolStr>,
         local_name: Option<hir::Name>,
     ) {
         if !ctx.check_stability(Some(&func.attrs(ctx.db))) {
@@ -472,7 +475,7 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext<'_>,
         dot_access: &DotAccess,
-        receiver: Option<hir::Name>,
+        receiver: Option<SmolStr>,
         field: hir::Field,
         ty: &hir::Type,
     ) {
@@ -530,7 +533,7 @@ impl Completions {
     pub(crate) fn add_tuple_field(
         &mut self,
         ctx: &CompletionContext<'_>,
-        receiver: Option<hir::Name>,
+        receiver: Option<SmolStr>,
         field: usize,
         ty: &hir::Type,
     ) {
@@ -544,7 +547,8 @@ impl Completions {
         CompletionItem::new(
             SymbolKind::LifetimeParam,
             ctx.source_range(),
-            name.display_no_db().to_smolstr(),
+            name.display_no_db(ctx.edition).to_smolstr(),
+            ctx.edition,
         )
         .add_to(self, ctx.db)
     }
@@ -553,7 +557,8 @@ impl Completions {
         CompletionItem::new(
             SymbolKind::Label,
             ctx.source_range(),
-            name.display_no_db().to_smolstr(),
+            name.display_no_db(ctx.edition).to_smolstr(),
+            ctx.edition,
         )
         .add_to(self, ctx.db)
     }
@@ -612,6 +617,16 @@ impl Completions {
         }
         self.add_opt(render_struct_pat(RenderContext::new(ctx), pattern_ctx, strukt, local_name));
     }
+
+    pub(crate) fn suggest_name(&mut self, ctx: &CompletionContext<'_>, name: &str) {
+        let item = CompletionItem::new(
+            CompletionItemKind::Binding,
+            ctx.source_range(),
+            SmolStr::from(name),
+            ctx.edition,
+        );
+        item.add_to(self, ctx.db);
+    }
 }
 
 /// Calls the callback for each variant of the provided enum with the path to the variant.
@@ -645,11 +660,7 @@ fn enum_variants_with_paths(
         if let Some(path) = ctx.module.find_path(
             ctx.db,
             hir::ModuleDef::from(variant),
-            ImportPathConfig {
-                prefer_no_std: ctx.config.prefer_no_std,
-                prefer_prelude: ctx.config.prefer_prelude,
-                prefer_absolute: ctx.config.prefer_absolute,
-            },
+            ctx.config.import_path_config(),
         ) {
             // Variants with trivial paths are already added by the existing completion logic,
             // so we should avoid adding these twice

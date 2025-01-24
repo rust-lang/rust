@@ -14,28 +14,26 @@ print-type-size         field `.value`: 3077 bytes
 print-type-size type: `{async fn body of calls_fut<{async fn body of big_fut()}>()}`: 3077 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 1025 bytes
-print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size         upvar `.fut`: 1025 bytes
 print-type-size     variant `Suspend0`: 2052 bytes
-print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
-print-type-size         padding: 1 bytes
-print-type-size         local `.fut`: 1025 bytes, alignment: 1 bytes
+print-type-size         upvar `.fut`: 1025 bytes
+print-type-size         local `.fut`: 1025 bytes
 print-type-size         local `..coroutine_field4`: 1 bytes, type: bool
 print-type-size         local `.__awaitee`: 1 bytes, type: {async fn body of wait()}
 print-type-size     variant `Suspend1`: 3076 bytes
-print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
-print-type-size         padding: 1026 bytes
+print-type-size         upvar `.fut`: 1025 bytes
+print-type-size         padding: 1025 bytes
 print-type-size         local `..coroutine_field4`: 1 bytes, alignment: 1 bytes, type: bool
 print-type-size         local `.__awaitee`: 1025 bytes, type: {async fn body of big_fut()}
 print-type-size     variant `Suspend2`: 2052 bytes
-print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
-print-type-size         padding: 1 bytes
-print-type-size         local `.fut`: 1025 bytes, alignment: 1 bytes
+print-type-size         upvar `.fut`: 1025 bytes
+print-type-size         local `.fut`: 1025 bytes
 print-type-size         local `..coroutine_field4`: 1 bytes, type: bool
 print-type-size         local `.__awaitee`: 1 bytes, type: {async fn body of wait()}
 print-type-size     variant `Returned`: 1025 bytes
-print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size         upvar `.fut`: 1025 bytes
 print-type-size     variant `Panicked`: 1025 bytes
-print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size         upvar `.fut`: 1025 bytes
 print-type-size type: `std::mem::ManuallyDrop<{async fn body of big_fut()}>`: 1025 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 1025 bytes
 print-type-size type: `std::mem::MaybeUninit<{async fn body of big_fut()}>`: 1025 bytes, alignment: 1 bytes

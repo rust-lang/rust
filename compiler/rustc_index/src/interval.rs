@@ -17,8 +17,8 @@ mod tests;
 /// first value of the following element.
 #[derive(Debug, Clone)]
 pub struct IntervalSet<I> {
-    // Start, end
-    map: SmallVec<[(u32, u32); 4]>,
+    // Start, end (both inclusive)
+    map: SmallVec<[(u32, u32); 2]>,
     domain: usize,
     _data: PhantomData<I>,
 }
@@ -258,7 +258,7 @@ impl<I: Idx> IntervalSet<I> {
             }
             current = Some(*end);
         }
-        current.map_or(true, |x| x < self.domain as u32)
+        current.is_none_or(|x| x < self.domain as u32)
     }
 }
 

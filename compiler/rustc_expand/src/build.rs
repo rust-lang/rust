@@ -1,12 +1,11 @@
 use rustc_ast::ptr::P;
 use rustc_ast::util::literal;
 use rustc_ast::{
-    self as ast, attr, token, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind, UnOp,
+    self as ast, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind, UnOp, attr, token,
 };
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
-use thin_vec::{thin_vec, ThinVec};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use thin_vec::{ThinVec, thin_vec};
 
 use crate::base::ExtCtxt;
 
@@ -143,18 +142,10 @@ impl<'a> ExtCtxt<'a> {
         ast::TraitRef { path, ref_id: ast::DUMMY_NODE_ID }
     }
 
-    pub fn poly_trait_ref(&self, span: Span, path: ast::Path) -> ast::PolyTraitRef {
+    pub fn poly_trait_ref(&self, span: Span, path: ast::Path, is_const: bool) -> ast::PolyTraitRef {
         ast::PolyTraitRef {
             bound_generic_params: ThinVec::new(),
-            trait_ref: self.trait_ref(path),
-            span,
-        }
-    }
-
-    pub fn trait_bound(&self, path: ast::Path, is_const: bool) -> ast::GenericBound {
-        ast::GenericBound::Trait(
-            self.poly_trait_ref(path.span, path),
-            ast::TraitBoundModifiers {
+            modifiers: ast::TraitBoundModifiers {
                 polarity: ast::BoundPolarity::Positive,
                 constness: if is_const {
                     ast::BoundConstness::Maybe(DUMMY_SP)
@@ -163,7 +154,13 @@ impl<'a> ExtCtxt<'a> {
                 },
                 asyncness: ast::BoundAsyncness::Normal,
             },
-        )
+            trait_ref: self.trait_ref(path),
+            span,
+        }
+    }
+
+    pub fn trait_bound(&self, path: ast::Path, is_const: bool) -> ast::GenericBound {
+        ast::GenericBound::Trait(self.poly_trait_ref(path.span, path, is_const))
     }
 
     pub fn lifetime(&self, span: Span, ident: Ident) -> ast::Lifetime {
@@ -223,6 +220,10 @@ impl<'a> ExtCtxt<'a> {
         self.stmt_local(local, span)
     }
 
+    pub fn stmt_semi(&self, expr: P<ast::Expr>) -> ast::Stmt {
+        ast::Stmt { id: ast::DUMMY_NODE_ID, span: expr.span, kind: ast::StmtKind::Semi(expr) }
+    }
+
     pub fn stmt_local(&self, local: P<ast::Local>, span: Span) -> ast::Stmt {
         ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Let(local), span }
     }
@@ -232,14 +233,11 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block> {
-        self.block(
-            expr.span,
-            thin_vec![ast::Stmt {
-                id: ast::DUMMY_NODE_ID,
-                span: expr.span,
-                kind: ast::StmtKind::Expr(expr),
-            }],
-        )
+        self.block(expr.span, thin_vec![ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            span: expr.span,
+            kind: ast::StmtKind::Expr(expr),
+        }])
     }
     pub fn block(&self, span: Span, stmts: ThinVec<ast::Stmt>) -> P<ast::Block> {
         P(ast::Block {
@@ -293,6 +291,25 @@ impl<'a> ExtCtxt<'a> {
         self.expr(sp, ast::ExprKind::Paren(e))
     }
 
+    pub fn expr_method_call(
+        &self,
+        span: Span,
+        expr: P<ast::Expr>,
+        ident: Ident,
+        args: ThinVec<P<ast::Expr>>,
+    ) -> P<ast::Expr> {
+        let seg = ast::PathSegment::from_ident(ident);
+        self.expr(
+            span,
+            ast::ExprKind::MethodCall(Box::new(ast::MethodCall {
+                seg,
+                receiver: expr,
+                args,
+                span,
+            })),
+        )
+    }
+
     pub fn expr_call(
         &self,
         span: Span,
@@ -300,6 +317,12 @@ impl<'a> ExtCtxt<'a> {
         args: ThinVec<P<ast::Expr>>,
     ) -> P<ast::Expr> {
         self.expr(span, ast::ExprKind::Call(expr, args))
+    }
+    pub fn expr_loop(&self, sp: Span, block: P<ast::Block>) -> P<ast::Expr> {
+        self.expr(sp, ast::ExprKind::Loop(block, None, sp))
+    }
+    pub fn expr_asm(&self, sp: Span, expr: P<ast::InlineAsm>) -> P<ast::Expr> {
+        self.expr(sp, ast::ExprKind::InlineAsm(expr))
     }
     pub fn expr_call_ident(
         &self,
@@ -463,7 +486,7 @@ impl<'a> ExtCtxt<'a> {
         self.pat(span, PatKind::Wild)
     }
     pub fn pat_lit(&self, span: Span, expr: P<ast::Expr>) -> P<ast::Pat> {
-        self.pat(span, PatKind::Lit(expr))
+        self.pat(span, PatKind::Expr(expr))
     }
     pub fn pat_ident(&self, span: Span, ident: Ident) -> P<ast::Pat> {
         self.pat_ident_binding_mode(span, ident, ast::BindingMode::NONE)

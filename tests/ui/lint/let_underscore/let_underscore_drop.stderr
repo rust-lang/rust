@@ -1,4 +1,4 @@
-warning: non-binding let on a type that implements `Drop`
+warning: non-binding let on a type that has a destructor
   --> $DIR/let_underscore_drop.rs:13:5
    |
 LL |     let _ = NontrivialDrop;

@@ -80,7 +80,7 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
     fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, diag_expr_id: HirId, bk: ty::BorrowKind) {
-        if bk == ty::BorrowKind::MutBorrow {
+        if bk == ty::BorrowKind::Mutable {
             if let PlaceBase::Local(id) = cmt.place.base {
                 if Some(id) == self.hir_id_low && !BreakAfterExprVisitor::is_found(self.cx, diag_expr_id) {
                     self.span_low = Some(self.cx.tcx.hir().span(diag_expr_id));
@@ -126,7 +126,7 @@ impl BreakAfterExprVisitor {
             break_after_expr: false,
         };
 
-        get_enclosing_block(cx, hir_id).map_or(false, |block| {
+        get_enclosing_block(cx, hir_id).is_some_and(|block| {
             visitor.visit_block(block);
             visitor.break_after_expr
         })

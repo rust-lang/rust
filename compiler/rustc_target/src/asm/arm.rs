@@ -1,7 +1,7 @@
 use std::fmt;
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_span::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 
 use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
 use crate::spec::{RelocModel, Target};

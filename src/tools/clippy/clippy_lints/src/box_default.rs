@@ -4,7 +4,7 @@ use clippy_utils::ty::expr_sig;
 use clippy_utils::{is_default_equivalent, path_def_id};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::intravisit::{walk_ty, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_ty};
 use rustc_hir::{Block, Expr, ExprKind, LetStmt, Node, QPath, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -45,9 +45,9 @@ impl LateLintPass<'_> for BoxDefault {
             // And that method is `new`
             && seg.ident.name == sym::new
             // And the call is that of a `Box` method
-            && path_def_id(cx, ty).map_or(false, |id| Some(id) == cx.tcx.lang_items().owned_box())
+            && path_def_id(cx, ty).is_some_and(|id| Some(id) == cx.tcx.lang_items().owned_box())
             // And the single argument to the call is another function call
-            // This is the `T::default()` of `Box::new(T::default())`
+            // This is the `T::default()` (or default equivalent) of `Box::new(T::default())`
             && let ExprKind::Call(arg_path, _) = arg.kind
             // And we are not in a foreign crate's macro
             && !in_external_macro(cx.sess(), expr.span)
@@ -83,15 +83,15 @@ fn is_plain_default(cx: &LateContext<'_>, arg_path: &Expr<'_>) -> bool {
 }
 
 fn is_local_vec_expn(cx: &LateContext<'_>, expr: &Expr<'_>, ref_expr: &Expr<'_>) -> bool {
-    macro_backtrace(expr.span).next().map_or(false, |call| {
-        cx.tcx.is_diagnostic_item(sym::vec_macro, call.def_id) && call.span.eq_ctxt(ref_expr.span)
-    })
+    macro_backtrace(expr.span)
+        .next()
+        .is_some_and(|call| cx.tcx.is_diagnostic_item(sym::vec_macro, call.def_id) && call.span.eq_ctxt(ref_expr.span))
 }
 
 #[derive(Default)]
 struct InferVisitor(bool);
 
-impl<'tcx> Visitor<'tcx> for InferVisitor {
+impl Visitor<'_> for InferVisitor {
     fn visit_ty(&mut self, t: &Ty<'_>) {
         self.0 |= matches!(t.kind, TyKind::Infer | TyKind::OpaqueDef(..) | TyKind::TraitObject(..));
         if !self.0 {

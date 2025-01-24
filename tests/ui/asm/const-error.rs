@@ -1,15 +1,17 @@
 //@ only-x86_64
 //@ needs-asm-support
+//@ check-pass
 
-#![feature(asm_const)]
-
-// Test to make sure that we emit const errors eagerly for inline asm
+// Test to make sure that we emit const errors late for inline asm,
+// which is consistent with inline const blocks.
 
 use std::arch::asm;
 
 fn test<T>() {
-    unsafe { asm!("/* {} */", const 1 / 0); }
-    //~^ ERROR evaluation of
+    unsafe {
+        // No error here, as this does not get monomorphized.
+        asm!("/* {} */", const 1 / 0);
+    }
 }
 
 fn main() {}

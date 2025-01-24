@@ -1,4 +1,5 @@
 use std::fmt;
+use std::ops::Deref;
 
 use derive_where::derive_where;
 use rustc_ast_ir::Mutability;
@@ -10,9 +11,10 @@ use rustc_data_structures::unify::{NoError, UnifyKey, UnifyValue};
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
-pub use self::closure::*;
 use self::TyKind::*;
+pub use self::closure::*;
 use crate::inherent::*;
+use crate::visit::TypeVisitable;
 use crate::{self as ty, DebruijnIndex, Interner};
 
 mod closure;
@@ -41,7 +43,7 @@ pub enum AliasTyKind {
     /// An associated type in an inherent `impl`
     Inherent,
     /// An opaque type (usually from `impl Trait` in type aliases or function return types)
-    /// Can only be normalized away in RevealAll mode
+    /// Can only be normalized away in PostAnalysis mode or its defining scope.
     Opaque,
     /// A type alias that actually checks its trait bounds.
     /// Currently only used if the type alias references opaque types.
@@ -143,7 +145,19 @@ pub enum TyKind<I: Interner> {
     /// fn foo() -> i32 { 1 }
     /// let bar: fn() -> i32 = foo;
     /// ```
-    FnPtr(ty::Binder<I, FnSig<I>>),
+    ///
+    /// These two fields are equivalent to a `ty::Binder<I, FnSig<I>>`. But by
+    /// splitting that into two pieces, we get a more compact data layout that
+    /// reduces the size of `TyKind` by 8 bytes. It is a very hot type, so it's
+    /// worth the mild inconvenience.
+    FnPtr(ty::Binder<I, FnSigTys<I>>, FnHeader<I>),
+
+    /// An unsafe binder type.
+    ///
+    /// A higher-ranked type used to represent a type which has had some of its
+    /// lifetimes erased. This can be used to represent types in positions where
+    /// a lifetime is literally inexpressible, such as self-referential types.
+    UnsafeBinder(UnsafeBinderInner<I>),
 
     /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
     Dynamic(I::BoundExistentialPredicates, I::Region, DynKind),
@@ -249,13 +263,6 @@ pub enum TyKind<I: Interner> {
     Error(I::ErrorGuaranteed),
 }
 
-impl<I: Interner> TyKind<I> {
-    #[inline]
-    pub fn is_primitive(&self) -> bool {
-        matches!(self, Bool | Char | Int(_) | Uint(_) | Float(_))
-    }
-}
-
 // This is manually implemented because a derive would require `I: Debug`
 impl<I: Interner> fmt::Debug for TyKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -288,7 +295,9 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             RawPtr(ty, mutbl) => write!(f, "*{} {:?}", mutbl.ptr_str(), ty),
             Ref(r, t, m) => write!(f, "&{:?} {}{:?}", r, m.prefix_str(), t),
             FnDef(d, s) => f.debug_tuple("FnDef").field(d).field(&s).finish(),
-            FnPtr(s) => write!(f, "{s:?}"),
+            FnPtr(sig_tys, hdr) => write!(f, "{:?}", sig_tys.with(*hdr)),
+            // FIXME(unsafe_binder): print this like `unsafe<'a> T<'a>`.
+            UnsafeBinder(binder) => write!(f, "{:?}", binder),
             Dynamic(p, r, repr) => match repr {
                 DynKind::Dyn => write!(f, "dyn {p:?} + {r:?}"),
                 DynKind::DynStar => write!(f, "dyn* {p:?} + {r:?}"),
@@ -863,21 +872,21 @@ pub struct TypeAndMut<I: Interner> {
 pub struct FnSig<I: Interner> {
     pub inputs_and_output: I::Tys,
     pub c_variadic: bool,
+    #[type_visitable(ignore)]
+    #[type_foldable(identity)]
     pub safety: I::Safety,
+    #[type_visitable(ignore)]
+    #[type_foldable(identity)]
     pub abi: I::Abi,
 }
 
 impl<I: Interner> FnSig<I> {
-    pub fn split_inputs_and_output(self) -> (I::FnInputTys, I::Ty) {
-        self.inputs_and_output.split_inputs_and_output()
-    }
-
     pub fn inputs(self) -> I::FnInputTys {
-        self.split_inputs_and_output().0
+        self.inputs_and_output.inputs()
     }
 
     pub fn output(self) -> I::Ty {
-        self.split_inputs_and_output().1
+        self.inputs_and_output.output()
     }
 
     pub fn is_fn_trait_compatible(self) -> bool {
@@ -922,6 +931,13 @@ impl<I: Interner> ty::Binder<I, FnSig<I>> {
     pub fn is_fn_trait_compatible(&self) -> bool {
         self.skip_binder().is_fn_trait_compatible()
     }
+
+    // Used to split a single value into the two fields in `TyKind::FnPtr`.
+    pub fn split(self) -> (ty::Binder<I, FnSigTys<I>>, FnHeader<I>) {
+        let hdr =
+            FnHeader { c_variadic: self.c_variadic(), safety: self.safety(), abi: self.abi() };
+        (self.map_bound(|sig| FnSigTys { inputs_and_output: sig.inputs_and_output }), hdr)
+    }
 }
 
 impl<I: Interner> fmt::Debug for FnSig<I> {
@@ -935,7 +951,7 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
         }
 
         write!(f, "fn(")?;
-        let (inputs, output) = sig.split_inputs_and_output();
+        let inputs = sig.inputs();
         for (i, ty) in inputs.iter().enumerate() {
             if i > 0 {
                 write!(f, ", ")?;
@@ -951,9 +967,129 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
         }
         write!(f, ")")?;
 
+        let output = sig.output();
         match output.kind() {
             Tuple(list) if list.is_empty() => Ok(()),
             _ => write!(f, " -> {:?}", sig.output()),
         }
     }
+}
+
+// FIXME: this is a distinct type because we need to define `Encode`/`Decode`
+// impls in this crate for `Binder<I, I::Ty>`.
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+pub struct UnsafeBinderInner<I: Interner>(ty::Binder<I, I::Ty>);
+
+impl<I: Interner> From<ty::Binder<I, I::Ty>> for UnsafeBinderInner<I> {
+    fn from(value: ty::Binder<I, I::Ty>) -> Self {
+        UnsafeBinderInner(value)
+    }
+}
+
+impl<I: Interner> From<UnsafeBinderInner<I>> for ty::Binder<I, I::Ty> {
+    fn from(value: UnsafeBinderInner<I>) -> Self {
+        value.0
+    }
+}
+
+impl<I: Interner> fmt::Debug for UnsafeBinderInner<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl<I: Interner> Deref for UnsafeBinderInner<I> {
+    type Target = ty::Binder<I, I::Ty>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl<I: Interner, E: crate::TyEncoder<I = I>> rustc_serialize::Encodable<E> for UnsafeBinderInner<I>
+where
+    I::Ty: rustc_serialize::Encodable<E>,
+    I::BoundVarKinds: rustc_serialize::Encodable<E>,
+{
+    fn encode(&self, e: &mut E) {
+        self.bound_vars().encode(e);
+        self.as_ref().skip_binder().encode(e);
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl<I: Interner, D: crate::TyDecoder<I = I>> rustc_serialize::Decodable<D> for UnsafeBinderInner<I>
+where
+    I::Ty: TypeVisitable<I> + rustc_serialize::Decodable<D>,
+    I::BoundVarKinds: rustc_serialize::Decodable<D>,
+{
+    fn decode(decoder: &mut D) -> Self {
+        let bound_vars = rustc_serialize::Decodable::decode(decoder);
+        UnsafeBinderInner(ty::Binder::bind_with_vars(
+            rustc_serialize::Decodable::decode(decoder),
+            bound_vars,
+        ))
+    }
+}
+
+// This is just a `FnSig` without the `FnHeader` fields.
+#[derive_where(Clone, Copy, Debug, PartialEq, Eq, Hash; I: Interner)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+pub struct FnSigTys<I: Interner> {
+    pub inputs_and_output: I::Tys,
+}
+
+impl<I: Interner> FnSigTys<I> {
+    pub fn inputs(self) -> I::FnInputTys {
+        self.inputs_and_output.inputs()
+    }
+
+    pub fn output(self) -> I::Ty {
+        self.inputs_and_output.output()
+    }
+}
+
+impl<I: Interner> ty::Binder<I, FnSigTys<I>> {
+    // Used to combine the two fields in `TyKind::FnPtr` into a single value.
+    pub fn with(self, hdr: FnHeader<I>) -> ty::Binder<I, FnSig<I>> {
+        self.map_bound(|sig_tys| FnSig {
+            inputs_and_output: sig_tys.inputs_and_output,
+            c_variadic: hdr.c_variadic,
+            safety: hdr.safety,
+            abi: hdr.abi,
+        })
+    }
+
+    #[inline]
+    pub fn inputs(self) -> ty::Binder<I, I::FnInputTys> {
+        self.map_bound(|sig_tys| sig_tys.inputs())
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn input(self, index: usize) -> ty::Binder<I, I::Ty> {
+        self.map_bound(|sig_tys| sig_tys.inputs().get(index).unwrap())
+    }
+
+    pub fn inputs_and_output(self) -> ty::Binder<I, I::Tys> {
+        self.map_bound(|sig_tys| sig_tys.inputs_and_output)
+    }
+
+    #[inline]
+    pub fn output(self) -> ty::Binder<I, I::Ty> {
+        self.map_bound(|sig_tys| sig_tys.output())
+    }
+}
+
+#[derive_where(Clone, Copy, Debug, PartialEq, Eq, Hash; I: Interner)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+pub struct FnHeader<I: Interner> {
+    pub c_variadic: bool,
+    pub safety: I::Safety,
+    pub abi: I::Abi,
 }

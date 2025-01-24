@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_hir::{Pat, PatKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
@@ -15,13 +15,15 @@ pub(crate) fn check(cx: &LateContext<'_>, pat: &Pat<'_>) {
         && fields.len() == def.non_enum_variant().fields.len()
         && !def.non_enum_variant().is_field_list_non_exhaustive()
     {
-        span_lint_and_help(
+        #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+        span_lint_and_then(
             cx,
             REST_PAT_IN_FULLY_BOUND_STRUCTS,
             pat.span,
             "unnecessary use of `..` pattern in struct binding. All fields were already bound",
-            None,
-            "consider removing `..` from this binding",
+            |diag| {
+                diag.help("consider removing `..` from this binding");
+            },
         );
     }
 }

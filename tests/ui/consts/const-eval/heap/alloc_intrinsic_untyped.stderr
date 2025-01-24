@@ -1,31 +1,8 @@
 error: encountered mutable pointer in final value of constant
-  --> $DIR/alloc_intrinsic_untyped.rs:7:1
+  --> $DIR/alloc_intrinsic_untyped.rs:8:1
    |
 LL | const BAR: *mut i32 = unsafe { intrinsics::const_allocate(4, 4) as *mut i32 };
    | ^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
-note: the lint level is defined here
-  --> $DIR/alloc_intrinsic_untyped.rs:4:9
-   |
-LL | #![deny(const_eval_mutable_ptr_in_final_value)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
-
-Future incompatibility report: Future breakage diagnostic:
-error: encountered mutable pointer in final value of constant
-  --> $DIR/alloc_intrinsic_untyped.rs:7:1
-   |
-LL | const BAR: *mut i32 = unsafe { intrinsics::const_allocate(4, 4) as *mut i32 };
-   | ^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #122153 <https://github.com/rust-lang/rust/issues/122153>
-note: the lint level is defined here
-  --> $DIR/alloc_intrinsic_untyped.rs:4:9
-   |
-LL | #![deny(const_eval_mutable_ptr_in_final_value)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

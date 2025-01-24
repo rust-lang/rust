@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant, constant_full_int, mir_to_const, FullInt};
+use clippy_utils::consts::{ConstEvalCtxt, FullInt, mir_to_const};
 use clippy_utils::diagnostics::span_lint_and_note;
 use core::cmp::Ordering;
 use rustc_hir::{Arm, Expr, PatKind, RangeEnd};
@@ -33,22 +33,20 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
         .filter_map(|arm| {
             if let Arm { pat, guard: None, .. } = *arm {
                 if let PatKind::Range(ref lhs, ref rhs, range_end) = pat.kind {
-                    let lhs_const = match lhs {
-                        Some(lhs) => constant(cx, cx.typeck_results(), lhs)?,
-                        None => {
-                            let min_val_const = ty.numeric_min_val(cx.tcx)?;
-                            mir_to_const(cx, mir::Const::from_ty_const(min_val_const, ty, cx.tcx))?
-                        },
+                    let lhs_const = if let Some(lhs) = lhs {
+                        ConstEvalCtxt::new(cx).eval_pat_expr(lhs)?
+                    } else {
+                        let min_val_const = ty.numeric_min_val(cx.tcx)?;
+                        mir_to_const(cx.tcx, mir::Const::from_ty_const(min_val_const, ty, cx.tcx))?
                     };
-                    let rhs_const = match rhs {
-                        Some(rhs) => constant(cx, cx.typeck_results(), rhs)?,
-                        None => {
-                            let max_val_const = ty.numeric_max_val(cx.tcx)?;
-                            mir_to_const(cx, mir::Const::from_ty_const(max_val_const, ty, cx.tcx))?
-                        },
+                    let rhs_const = if let Some(rhs) = rhs {
+                        ConstEvalCtxt::new(cx).eval_pat_expr(rhs)?
+                    } else {
+                        let max_val_const = ty.numeric_max_val(cx.tcx)?;
+                        mir_to_const(cx.tcx, mir::Const::from_ty_const(max_val_const, ty, cx.tcx))?
                     };
-                    let lhs_val = lhs_const.int_value(cx, ty)?;
-                    let rhs_val = rhs_const.int_value(cx, ty)?;
+                    let lhs_val = lhs_const.int_value(cx.tcx, ty)?;
+                    let rhs_val = rhs_const.int_value(cx.tcx, ty)?;
                     let rhs_bound = match range_end {
                         RangeEnd::Included => EndBound::Included(rhs_val),
                         RangeEnd::Excluded => EndBound::Excluded(rhs_val),
@@ -59,8 +57,10 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
                     });
                 }
 
-                if let PatKind::Lit(value) = pat.kind {
-                    let value = constant_full_int(cx, cx.typeck_results(), value)?;
+                if let PatKind::Expr(value) = pat.kind {
+                    let value = ConstEvalCtxt::new(cx)
+                        .eval_pat_expr(value)?
+                        .int_value(cx.tcx, cx.typeck_results().node_type(pat.hir_id))?;
                     return Some(SpannedRange {
                         span: pat.span,
                         node: (value, EndBound::Included(value)),
@@ -98,13 +98,13 @@ where
     #[derive(Copy, Clone, Debug, Eq, PartialEq)]
     struct RangeBound<'a, T>(T, BoundKind, &'a SpannedRange<T>);
 
-    impl<'a, T: Copy + Ord> PartialOrd for RangeBound<'a, T> {
+    impl<T: Copy + Ord> PartialOrd for RangeBound<'_, T> {
         fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
             Some(self.cmp(other))
         }
     }
 
-    impl<'a, T: Copy + Ord> Ord for RangeBound<'a, T> {
+    impl<T: Copy + Ord> Ord for RangeBound<'_, T> {
         fn cmp(&self, RangeBound(other_value, other_kind, _): &Self) -> Ordering {
             let RangeBound(self_value, self_kind, _) = *self;
             (self_value, self_kind).cmp(&(*other_value, *other_kind))

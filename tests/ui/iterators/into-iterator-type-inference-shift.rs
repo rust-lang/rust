@@ -8,7 +8,6 @@
 // propagation yet, and so we just saw a type variable, yielding an
 // error.
 
-//@ pretty-expanded FIXME #23616
 
 trait IntoIterator {
     type Iter: Iterator;

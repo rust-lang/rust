@@ -1,5 +1,5 @@
 warning: method `do_something` is never used
-  --> $DIR/issue-15858.rs:5:8
+  --> $DIR/issue-15858.rs:7:8
    |
 LL | trait Bar {
    |       --- method in this trait

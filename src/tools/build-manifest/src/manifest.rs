@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 
 use serde::{Serialize, Serializer};
 
-use crate::versions::PkgType;
 use crate::Builder;
+use crate::versions::PkgType;
 
 #[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]

@@ -1,6 +1,6 @@
-use crate::spec::{base, Cc, LinkerFlavor, SanitizerSet, StackProbeType, Target};
+use crate::spec::{Cc, LinkerFlavor, SanitizerSet, StackProbeType, Target, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::solaris::opts();
     base.add_pre_link_args(LinkerFlavor::Unix(Cc::Yes), &["-m64"]);
     base.cpu = "x86-64".into();
@@ -13,7 +13,7 @@ pub fn target() -> Target {
     Target {
         llvm_target: "x86_64-pc-solaris".into(),
         metadata: crate::spec::TargetMetadata {
-            description: Some("64-bit Solaris 11, illumos".into()),
+            description: Some("64-bit Solaris 11.4".into()),
             tier: Some(2),
             host_tools: Some(false),
             std: Some(true),

@@ -14,17 +14,17 @@ use std::hash::{Hash, Hasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
+use rustc_hir::def_id::DefId;
 use rustc_macros::{
     Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
 };
-use rustc_span::def_id::{LocalDefId, CRATE_DEF_ID};
-use rustc_span::symbol::Symbol;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 // FIXME: Remove this import and import via `solve::`
-pub use rustc_type_ir::solve::{BuiltinImplSource, Reveal};
-use smallvec::{smallvec, SmallVec};
+pub use rustc_type_ir::solve::BuiltinImplSource;
+use smallvec::{SmallVec, smallvec};
+use thin_vec::ThinVec;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
 use crate::mir::ConstraintCategory;
@@ -91,16 +91,6 @@ impl<'tcx> ObligationCause<'tcx> {
         ObligationCause { span, body_id: CRATE_DEF_ID, code: Default::default() }
     }
 
-    pub fn span(&self) -> Span {
-        match *self.code() {
-            ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
-                arm_span,
-                ..
-            }) => arm_span,
-            _ => self.span,
-        }
-    }
-
     #[inline]
     pub fn code(&self) -> &ObligationCauseCode<'tcx> {
         &self.code
@@ -132,6 +122,15 @@ impl<'tcx> ObligationCause<'tcx> {
         // chain. Ideally, we should have a way to configure this either
         // by using -Z verbose-internals or just a CLI argument.
         self.code = variant(DerivedCause { parent_trait_pred, parent_code: self.code }).into();
+        self
+    }
+
+    pub fn derived_host_cause(
+        mut self,
+        parent_host_pred: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+        variant: impl FnOnce(DerivedHostCause<'tcx>) -> ObligationCauseCode<'tcx>,
+    ) -> ObligationCause<'tcx> {
+        self.code = variant(DerivedHostCause { parent_host_pred, parent_code: self.code }).into();
         self
     }
 
@@ -202,11 +201,20 @@ pub enum ObligationCauseCode<'tcx> {
     /// The span corresponds to the clause.
     WhereClause(DefId, Span),
 
+    /// Represents a bound for an opaque we are checking the well-formedness of.
+    /// The def-id corresponds to a specific definition site that we found the
+    /// hidden type from, if any.
+    OpaqueTypeBound(Span, Option<LocalDefId>),
+
     /// Like `WhereClause`, but also identifies the expression
     /// which requires the `where` clause to be proven, and also
     /// identifies the index of the predicate in the `predicates_of`
     /// list of the item.
     WhereClauseInExpr(DefId, Span, HirId, usize),
+
+    /// Like `WhereClauseinExpr`, but indexes into the `const_conditions`
+    /// rather than the `predicates_of`.
+    HostEffectInExpr(DefId, Span, HirId, usize),
 
     /// A type like `&'a T` is WF only if `T: 'a`.
     ReferenceOutlivesReferent(Ty<'tcx>),
@@ -248,11 +256,11 @@ pub enum ObligationCauseCode<'tcx> {
         /// If element is a `const fn` or const ctor we display a help message suggesting
         /// to move it to a new `const` item while saying that `T` doesn't implement `Copy`.
         is_constable: IsConstable,
-        elt_type: Ty<'tcx>,
+
+        /// Span of the repeat element.
+        ///
+        /// This is used to suggest wrapping it in a `const { ... }` block.
         elt_span: Span,
-        /// Span of the statement/item in which the repeat expression occurs. We can use this to
-        /// place a `const` declaration before it
-        elt_stmt_span: Span,
     },
 
     /// Types of fields (other than the last, except for packed structs) in a struct must be sized.
@@ -278,6 +286,14 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Derived obligation for WF goals.
     WellFormedDerived(DerivedCause<'tcx>),
+
+    /// Derived obligation (i.e. `where` clause) on an user-provided impl
+    /// or a trait alias.
+    ImplDerivedHost(Box<ImplDerivedHostCause<'tcx>>),
+
+    /// Derived obligation (i.e. `where` clause) on an user-provided impl
+    /// or a trait alias.
+    BuiltinDerivedHost(DerivedHostCause<'tcx>),
 
     /// Derived obligation refined to point at a specific argument in
     /// a call or method expression.
@@ -316,8 +332,8 @@ pub enum ObligationCauseCode<'tcx> {
         span: Option<Span>,
         /// The root expected type induced by a scrutinee or type expression.
         root_ty: Ty<'tcx>,
-        /// Whether the `Span` came from an expression or a type expression.
-        origin_expr: bool,
+        /// Information about the `Span`, if it came from an expression, otherwise `None`.
+        origin_expr: Option<PatternOriginExpr>,
     },
 
     /// Computing common supertype in an if expression
@@ -328,9 +344,6 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// `main` has wrong type
     MainFunctionType,
-
-    /// `start` has wrong type
-    StartFunctionType,
 
     /// language function has wrong type
     LangFunctionType(Symbol),
@@ -353,7 +366,7 @@ pub enum ObligationCauseCode<'tcx> {
     ReturnValue(HirId),
 
     /// Opaque return type of this function
-    OpaqueReturnType(Option<(Ty<'tcx>, Span)>),
+    OpaqueReturnType(Option<(Ty<'tcx>, HirId)>),
 
     /// Block implicit return
     BlockTailExpression(HirId, hir::MatchSource),
@@ -438,28 +451,30 @@ pub enum WellFormedLoc {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
-#[derive(TypeVisitable, TypeFoldable)]
-pub struct ImplDerivedCause<'tcx> {
-    pub derived: DerivedCause<'tcx>,
-    /// The `DefId` of the `impl` that gave rise to the `derived` obligation.
-    /// If the `derived` obligation arose from a trait alias, which conceptually has a synthetic impl,
-    /// then this will be the `DefId` of that trait alias. Care should therefore be taken to handle
-    /// that exceptional case where appropriate.
-    pub impl_or_alias_def_id: DefId,
-    /// The index of the derived predicate in the parent impl's predicates.
-    pub impl_def_predicate_index: Option<usize>,
-    pub span: Span,
-}
-
 impl<'tcx> ObligationCauseCode<'tcx> {
     /// Returns the base obligation, ignoring derived obligations.
     pub fn peel_derives(&self) -> &Self {
         let mut base_cause = self;
-        while let Some((parent_code, _)) = base_cause.parent() {
+        while let Some(parent_code) = base_cause.parent() {
             base_cause = parent_code;
         }
         base_cause
+    }
+
+    pub fn parent(&self) -> Option<&Self> {
+        match self {
+            ObligationCauseCode::FunctionArg { parent_code, .. } => Some(parent_code),
+            ObligationCauseCode::BuiltinDerived(derived)
+            | ObligationCauseCode::WellFormedDerived(derived)
+            | ObligationCauseCode::ImplDerived(box ImplDerivedCause { derived, .. }) => {
+                Some(&derived.parent_code)
+            }
+            ObligationCauseCode::BuiltinDerivedHost(derived)
+            | ObligationCauseCode::ImplDerivedHost(box ImplDerivedHostCause { derived, .. }) => {
+                Some(&derived.parent_code)
+            }
+            _ => None,
+        }
     }
 
     /// Returns the base obligation and the base trait predicate, if any, ignoring
@@ -467,7 +482,7 @@ impl<'tcx> ObligationCauseCode<'tcx> {
     pub fn peel_derives_with_predicate(&self) -> (&Self, Option<ty::PolyTraitPredicate<'tcx>>) {
         let mut base_cause = self;
         let mut base_trait_pred = None;
-        while let Some((parent_code, parent_pred)) = base_cause.parent() {
+        while let Some((parent_code, parent_pred)) = base_cause.parent_with_predicate() {
             base_cause = parent_code;
             if let Some(parent_pred) = parent_pred {
                 base_trait_pred = Some(parent_pred);
@@ -477,7 +492,7 @@ impl<'tcx> ObligationCauseCode<'tcx> {
         (base_cause, base_trait_pred)
     }
 
-    pub fn parent(&self) -> Option<(&Self, Option<ty::PolyTraitPredicate<'tcx>>)> {
+    pub fn parent_with_predicate(&self) -> Option<(&Self, Option<ty::PolyTraitPredicate<'tcx>>)> {
         match self {
             ObligationCauseCode::FunctionArg { parent_code, .. } => Some((parent_code, None)),
             ObligationCauseCode::BuiltinDerived(derived)
@@ -516,11 +531,37 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub prior_arm_block_id: Option<HirId>,
     pub prior_arm_ty: Ty<'tcx>,
     pub prior_arm_span: Span,
+    /// Span of the scrutinee of the match (the matched value).
     pub scrut_span: Span,
+    /// Source of the match, i.e. `match` or a desugaring.
     pub source: hir::MatchSource,
+    /// Span of the *whole* match expr.
+    pub expr_span: Span,
+    /// Spans of the previous arms except for those that diverge (i.e. evaluate to `!`).
+    ///
+    /// These are used for pointing out errors that may affect several arms.
     pub prior_non_diverging_arms: Vec<Span>,
-    // Is the expectation of this match expression an RPIT?
+    /// Is the expectation of this match expression an RPIT?
     pub tail_defines_return_position_impl_trait: Option<LocalDefId>,
+}
+
+/// Information about the origin expression of a pattern, relevant to diagnostics.
+/// Fields here refer to the scrutinee of a pattern.
+/// If the scrutinee isn't given in the diagnostic, then this won't exist.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(TypeFoldable, TypeVisitable, HashStable, TyEncodable, TyDecodable)]
+pub struct PatternOriginExpr {
+    /// A span representing the scrutinee expression, with all leading references
+    /// peeled from the expression.
+    /// Only references in the expression are peeled - if the expression refers to a variable
+    /// whose type is a reference, then that reference is kept because it wasn't created
+    /// in the expression.
+    pub peeled_span: Span,
+    /// The number of references that were peeled to produce `peeled_span`.
+    pub peeled_count: usize,
+    /// Does the peeled expression need to be wrapped in parentheses for
+    /// a prefix suggestion (i.e., dereference) to be valid.
+    pub peeled_prefix_suggestion_parentheses: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -548,7 +589,43 @@ pub struct DerivedCause<'tcx> {
     pub parent_code: InternedObligationCauseCode<'tcx>,
 }
 
-#[derive(Clone, Debug, TypeVisitable)]
+#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(TypeVisitable, TypeFoldable)]
+pub struct ImplDerivedCause<'tcx> {
+    pub derived: DerivedCause<'tcx>,
+    /// The `DefId` of the `impl` that gave rise to the `derived` obligation.
+    /// If the `derived` obligation arose from a trait alias, which conceptually has a synthetic impl,
+    /// then this will be the `DefId` of that trait alias. Care should therefore be taken to handle
+    /// that exceptional case where appropriate.
+    pub impl_or_alias_def_id: DefId,
+    /// The index of the derived predicate in the parent impl's predicates.
+    pub impl_def_predicate_index: Option<usize>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(TypeVisitable, TypeFoldable)]
+pub struct DerivedHostCause<'tcx> {
+    /// The trait predicate of the parent obligation that led to the
+    /// current obligation. Note that only trait obligations lead to
+    /// derived obligations, so we just store the trait predicate here
+    /// directly.
+    pub parent_host_pred: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+
+    /// The parent trait had this cause.
+    pub parent_code: InternedObligationCauseCode<'tcx>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(TypeVisitable, TypeFoldable)]
+pub struct ImplDerivedHostCause<'tcx> {
+    pub derived: DerivedHostCause<'tcx>,
+    /// The `DefId` of the `impl` that gave rise to the `derived` obligation.
+    pub impl_def_id: DefId,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, TypeVisitable)]
 pub enum SelectionError<'tcx> {
     /// The trait is not implemented.
     Unimplemented,
@@ -556,8 +633,8 @@ pub enum SelectionError<'tcx> {
     /// (which for closures includes the "input" type params) and they
     /// didn't resolve. See `confirm_poly_trait_refs` for more.
     SignatureMismatch(Box<SignatureMismatchData<'tcx>>),
-    /// The trait pointed by `DefId` is not object safe.
-    TraitNotObjectSafe(DefId),
+    /// The trait pointed by `DefId` is dyn-incompatible.
+    TraitDynIncompatible(DefId),
     /// A given constant couldn't be evaluated.
     NotConstEvaluatable(NotConstEvaluatable),
     /// Exceeded the recursion depth during type projection.
@@ -570,7 +647,7 @@ pub enum SelectionError<'tcx> {
     ConstArgHasWrongType { ct: ty::Const<'tcx>, ct_ty: Ty<'tcx>, expected_ty: Ty<'tcx> },
 }
 
-#[derive(Clone, Debug, TypeVisitable)]
+#[derive(Clone, Debug, PartialEq, Eq, TypeVisitable)]
 pub struct SignatureMismatchData<'tcx> {
     pub found_trait_ref: ty::TraitRef<'tcx>,
     pub expected_trait_ref: ty::TraitRef<'tcx>,
@@ -625,14 +702,14 @@ pub enum ImplSource<'tcx, N> {
     /// for some type parameter. The `Vec<N>` represents the
     /// obligations incurred from normalizing the where-clause (if
     /// any).
-    Param(Vec<N>),
+    Param(ThinVec<N>),
 
     /// Successful resolution for a builtin impl.
-    Builtin(BuiltinImplSource, Vec<N>),
+    Builtin(BuiltinImplSource, ThinVec<N>),
 }
 
 impl<'tcx, N> ImplSource<'tcx, N> {
-    pub fn nested_obligations(self) -> Vec<N> {
+    pub fn nested_obligations(self) -> ThinVec<N> {
         match self {
             ImplSource::UserDefined(i) => i.nested,
             ImplSource::Param(n) | ImplSource::Builtin(_, n) => n,
@@ -686,11 +763,11 @@ impl<'tcx, N> ImplSource<'tcx, N> {
 pub struct ImplSourceUserDefinedData<'tcx, N> {
     pub impl_def_id: DefId,
     pub args: GenericArgsRef<'tcx>,
-    pub nested: Vec<N>,
+    pub nested: ThinVec<N>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, PartialOrd, Ord)]
-pub enum ObjectSafetyViolation {
+pub enum DynCompatibilityViolation {
     /// `Self: Sized` declared on the trait.
     SizedSelf(SmallVec<[Span; 1]>),
 
@@ -711,11 +788,11 @@ pub enum ObjectSafetyViolation {
     GAT(Symbol, Span),
 }
 
-impl ObjectSafetyViolation {
+impl DynCompatibilityViolation {
     pub fn error_msg(&self) -> Cow<'static, str> {
         match self {
-            ObjectSafetyViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
-            ObjectSafetyViolation::SupertraitSelf(ref spans) => {
+            DynCompatibilityViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
+            DynCompatibilityViolation::SupertraitSelf(ref spans) => {
                 if spans.iter().any(|sp| *sp != DUMMY_SP) {
                     "it uses `Self` as a type parameter".into()
                 } else {
@@ -723,81 +800,87 @@ impl ObjectSafetyViolation {
                         .into()
                 }
             }
-            ObjectSafetyViolation::SupertraitNonLifetimeBinder(_) => {
+            DynCompatibilityViolation::SupertraitNonLifetimeBinder(_) => {
                 "where clause cannot reference non-lifetime `for<...>` variables".into()
             }
-            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod(_), _) => {
+            DynCompatibilityViolation::Method(name, MethodViolationCode::StaticMethod(_), _) => {
                 format!("associated function `{name}` has no `self` parameter").into()
             }
-            ObjectSafetyViolation::Method(
+            DynCompatibilityViolation::Method(
                 name,
                 MethodViolationCode::ReferencesSelfInput(_),
                 DUMMY_SP,
             ) => format!("method `{name}` references the `Self` type in its parameters").into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelfInput(_), _) => {
-                format!("method `{name}` references the `Self` type in this parameter").into()
-            }
-            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelfOutput, _) => {
-                format!("method `{name}` references the `Self` type in its return type").into()
-            }
-            ObjectSafetyViolation::Method(
+            DynCompatibilityViolation::Method(
+                name,
+                MethodViolationCode::ReferencesSelfInput(_),
+                _,
+            ) => format!("method `{name}` references the `Self` type in this parameter").into(),
+            DynCompatibilityViolation::Method(
+                name,
+                MethodViolationCode::ReferencesSelfOutput,
+                _,
+            ) => format!("method `{name}` references the `Self` type in its return type").into(),
+            DynCompatibilityViolation::Method(
                 name,
                 MethodViolationCode::ReferencesImplTraitInTrait(_),
                 _,
             ) => {
                 format!("method `{name}` references an `impl Trait` type in its return type").into()
             }
-            ObjectSafetyViolation::Method(name, MethodViolationCode::AsyncFn, _) => {
+            DynCompatibilityViolation::Method(name, MethodViolationCode::AsyncFn, _) => {
                 format!("method `{name}` is `async`").into()
             }
-            ObjectSafetyViolation::Method(
+            DynCompatibilityViolation::Method(
                 name,
                 MethodViolationCode::WhereClauseReferencesSelf,
                 _,
             ) => format!("method `{name}` references the `Self` type in its `where` clause").into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::Generic, _) => {
+            DynCompatibilityViolation::Method(name, MethodViolationCode::Generic, _) => {
                 format!("method `{name}` has generic type parameters").into()
             }
-            ObjectSafetyViolation::Method(
+            DynCompatibilityViolation::Method(
                 name,
                 MethodViolationCode::UndispatchableReceiver(_),
                 _,
             ) => format!("method `{name}`'s `self` parameter cannot be dispatched on").into(),
-            ObjectSafetyViolation::AssocConst(name, DUMMY_SP) => {
+            DynCompatibilityViolation::AssocConst(name, DUMMY_SP) => {
                 format!("it contains associated `const` `{name}`").into()
             }
-            ObjectSafetyViolation::AssocConst(..) => "it contains this associated `const`".into(),
-            ObjectSafetyViolation::GAT(name, _) => {
+            DynCompatibilityViolation::AssocConst(..) => {
+                "it contains this associated `const`".into()
+            }
+            DynCompatibilityViolation::GAT(name, _) => {
                 format!("it contains the generic associated type `{name}`").into()
             }
         }
     }
 
-    pub fn solution(&self) -> ObjectSafetyViolationSolution {
+    pub fn solution(&self) -> DynCompatibilityViolationSolution {
         match self {
-            ObjectSafetyViolation::SizedSelf(_)
-            | ObjectSafetyViolation::SupertraitSelf(_)
-            | ObjectSafetyViolation::SupertraitNonLifetimeBinder(..) => {
-                ObjectSafetyViolationSolution::None
+            DynCompatibilityViolation::SizedSelf(_)
+            | DynCompatibilityViolation::SupertraitSelf(_)
+            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(..) => {
+                DynCompatibilityViolationSolution::None
             }
-            ObjectSafetyViolation::Method(
+            DynCompatibilityViolation::Method(
                 name,
                 MethodViolationCode::StaticMethod(Some((add_self_sugg, make_sized_sugg))),
                 _,
-            ) => ObjectSafetyViolationSolution::AddSelfOrMakeSized {
+            ) => DynCompatibilityViolationSolution::AddSelfOrMakeSized {
                 name: *name,
                 add_self_sugg: add_self_sugg.clone(),
                 make_sized_sugg: make_sized_sugg.clone(),
             },
-            ObjectSafetyViolation::Method(
+            DynCompatibilityViolation::Method(
                 name,
                 MethodViolationCode::UndispatchableReceiver(Some(span)),
                 _,
-            ) => ObjectSafetyViolationSolution::ChangeToRefSelf(*name, *span),
-            ObjectSafetyViolation::AssocConst(name, _)
-            | ObjectSafetyViolation::GAT(name, _)
-            | ObjectSafetyViolation::Method(name, ..) => {
-                ObjectSafetyViolationSolution::MoveToAnotherTrait(*name)
+            ) => DynCompatibilityViolationSolution::ChangeToRefSelf(*name, *span),
+            DynCompatibilityViolation::AssocConst(name, _)
+            | DynCompatibilityViolation::GAT(name, _)
+            | DynCompatibilityViolation::Method(name, ..) => {
+                DynCompatibilityViolationSolution::MoveToAnotherTrait(*name)
             }
         }
     }
@@ -806,12 +889,12 @@ impl ObjectSafetyViolation {
         // When `span` comes from a separate crate, it'll be `DUMMY_SP`. Treat it as `None` so
         // diagnostics use a `note` instead of a `span_label`.
         match self {
-            ObjectSafetyViolation::SupertraitSelf(spans)
-            | ObjectSafetyViolation::SizedSelf(spans)
-            | ObjectSafetyViolation::SupertraitNonLifetimeBinder(spans) => spans.clone(),
-            ObjectSafetyViolation::AssocConst(_, span)
-            | ObjectSafetyViolation::GAT(_, span)
-            | ObjectSafetyViolation::Method(_, _, span)
+            DynCompatibilityViolation::SupertraitSelf(spans)
+            | DynCompatibilityViolation::SizedSelf(spans)
+            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(spans) => spans.clone(),
+            DynCompatibilityViolation::AssocConst(_, span)
+            | DynCompatibilityViolation::GAT(_, span)
+            | DynCompatibilityViolation::Method(_, _, span)
                 if *span != DUMMY_SP =>
             {
                 smallvec![*span]
@@ -822,7 +905,7 @@ impl ObjectSafetyViolation {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum ObjectSafetyViolationSolution {
+pub enum DynCompatibilityViolationSolution {
     None,
     AddSelfOrMakeSized {
         name: Symbol,
@@ -833,11 +916,11 @@ pub enum ObjectSafetyViolationSolution {
     MoveToAnotherTrait(Symbol),
 }
 
-impl ObjectSafetyViolationSolution {
+impl DynCompatibilityViolationSolution {
     pub fn add_to<G: EmissionGuarantee>(self, err: &mut Diag<'_, G>) {
         match self {
-            ObjectSafetyViolationSolution::None => {}
-            ObjectSafetyViolationSolution::AddSelfOrMakeSized {
+            DynCompatibilityViolationSolution::None => {}
+            DynCompatibilityViolationSolution::AddSelfOrMakeSized {
                 name,
                 add_self_sugg,
                 make_sized_sugg,
@@ -860,7 +943,7 @@ impl ObjectSafetyViolationSolution {
                     Applicability::MaybeIncorrect,
                 );
             }
-            ObjectSafetyViolationSolution::ChangeToRefSelf(name, span) => {
+            DynCompatibilityViolationSolution::ChangeToRefSelf(name, span) => {
                 err.span_suggestion(
                     span,
                     format!("consider changing method `{name}`'s `self` parameter to be `&self`"),
@@ -868,14 +951,14 @@ impl ObjectSafetyViolationSolution {
                     Applicability::MachineApplicable,
                 );
             }
-            ObjectSafetyViolationSolution::MoveToAnotherTrait(name) => {
+            DynCompatibilityViolationSolution::MoveToAnotherTrait(name) => {
                 err.help(format!("consider moving `{name}` to another trait"));
             }
         }
     }
 }
 
-/// Reasons a method might not be object-safe.
+/// Reasons a method might not be dyn-compatible.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, PartialOrd, Ord)]
 pub enum MethodViolationCode {
     /// e.g., `fn foo()`

@@ -9,7 +9,7 @@
 
 use std::mem;
 
-use base_db::salsa::Cycle;
+use base_db::ra_salsa::Cycle;
 use chalk_ir::{
     fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable},
     ConstData, DebruijnIndex,
@@ -82,8 +82,8 @@ impl FallibleTypeFolder<Interner> for Filler<'_> {
                         };
                         filler.try_fold_ty(infer.type_of_rpit[idx].clone(), outer_binder)
                     }
-                    crate::ImplTraitId::AssociatedTypeImplTrait(..) => {
-                        not_supported!("associated type impl trait");
+                    crate::ImplTraitId::TypeAliasImplTrait(..) => {
+                        not_supported!("type alias impl trait");
                     }
                     crate::ImplTraitId::AsyncBlockTypeImplTrait(_, _) => {
                         not_supported!("async block impl trait");
@@ -258,6 +258,10 @@ impl Filler<'_> {
                         | Rvalue::UnaryOp(_, _)
                         | Rvalue::Discriminant(_)
                         | Rvalue::CopyForDeref(_) => (),
+                        Rvalue::ThreadLocalRef(n)
+                        | Rvalue::AddressOf(n)
+                        | Rvalue::BinaryOp(n)
+                        | Rvalue::NullaryOp(n) => match *n {},
                     },
                     StatementKind::Deinit(_)
                     | StatementKind::FakeRead(_)

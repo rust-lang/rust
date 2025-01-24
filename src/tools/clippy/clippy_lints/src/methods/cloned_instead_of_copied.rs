@@ -1,12 +1,12 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_trait_method;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::{get_iterator_item_ty, is_copy};
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use super::CLONED_INSTEAD_OF_COPIED;
 

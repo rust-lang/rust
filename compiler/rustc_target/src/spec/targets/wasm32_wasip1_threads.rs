@@ -7,27 +7,25 @@
 //!
 //! Historically this target was known as `wasm32-wasi-preview1-threads`.
 
-use crate::spec::{base, crt_objects, Cc, LinkSelfContainedDefault, LinkerFlavor, Target};
+use crate::spec::{Cc, LinkSelfContainedDefault, LinkerFlavor, Target, base, crt_objects};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
 
     options.os = "wasi".into();
     options.env = "p1".into();
 
-    options.add_pre_link_args(
-        LinkerFlavor::WasmLld(Cc::No),
-        &["--import-memory", "--export-memory", "--shared-memory"],
-    );
-    options.add_pre_link_args(
-        LinkerFlavor::WasmLld(Cc::Yes),
-        &[
-            "--target=wasm32-wasip1-threads",
-            "-Wl,--import-memory",
-            "-Wl,--export-memory,",
-            "-Wl,--shared-memory",
-        ],
-    );
+    options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::No), &[
+        "--import-memory",
+        "--export-memory",
+        "--shared-memory",
+    ]);
+    options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::Yes), &[
+        "--target=wasm32-wasip1-threads",
+        "-Wl,--import-memory",
+        "-Wl,--export-memory,",
+        "-Wl,--shared-memory",
+    ]);
 
     options.pre_link_objects_self_contained = crt_objects::pre_wasi_self_contained();
     options.post_link_objects_self_contained = crt_objects::post_wasi_self_contained();
@@ -68,7 +66,7 @@ pub fn target() -> Target {
             std: Some(true),
         },
         pointer_width: 32,
-        data_layout: "e-m:e-p:32:32-p10:8:8-p20:8:8-i64:64-n32:64-S128-ni:1:10:20".into(),
+        data_layout: "e-m:e-p:32:32-p10:8:8-p20:8:8-i64:64-i128:128-n32:64-S128-ni:1:10:20".into(),
         arch: "wasm32".into(),
         options,
     }

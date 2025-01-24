@@ -1,5 +1,5 @@
 error: Undefined Behavior: memory access failed: expected a pointer to 1 byte of memory, but got ALLOC which is at or beyond the end of the allocation of size 0 bytes
-  --> $DIR/zst_local_oob.rs:LL:CC
+  --> tests/fail/zst_local_oob.rs:LL:CC
    |
 LL |     let _val = unsafe { *x };
    |                         ^^ memory access failed: expected a pointer to 1 byte of memory, but got ALLOC which is at or beyond the end of the allocation of size 0 bytes
@@ -7,7 +7,7 @@ LL |     let _val = unsafe { *x };
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/zst_local_oob.rs:LL:CC
+   = note: inside `main` at tests/fail/zst_local_oob.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

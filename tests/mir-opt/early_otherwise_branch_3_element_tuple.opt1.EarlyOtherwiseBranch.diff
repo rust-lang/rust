@@ -27,11 +27,11 @@
       bb0: {
           StorageLive(_4);
           StorageLive(_5);
-          _5 = _1;
+          _5 = copy _1;
           StorageLive(_6);
-          _6 = _2;
+          _6 = copy _2;
           StorageLive(_7);
-          _7 = _3;
+          _7 = copy _3;
           _4 = (move _5, move _6, move _7);
           StorageDead(_7);
           StorageDead(_6);
@@ -72,11 +72,11 @@
   
       bb7: {
           StorageLive(_13);
-          _13 = (((_4.0: std::option::Option<u32>) as Some).0: u32);
+          _13 = copy (((_4.0: std::option::Option<u32>) as Some).0: u32);
           StorageLive(_14);
-          _14 = (((_4.1: std::option::Option<u32>) as Some).0: u32);
+          _14 = copy (((_4.1: std::option::Option<u32>) as Some).0: u32);
           StorageLive(_15);
-          _15 = (((_4.2: std::option::Option<u32>) as Some).0: u32);
+          _15 = copy (((_4.2: std::option::Option<u32>) as Some).0: u32);
           _0 = const 0_u32;
           StorageDead(_15);
           StorageDead(_14);

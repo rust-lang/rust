@@ -10,7 +10,6 @@
 #![allow(internal_features)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
-#![cfg_attr(not(parallel_compiler), feature(cell_leak))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
@@ -18,10 +17,13 @@
 #![feature(array_windows)]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
+#![feature(assert_matches)]
 #![feature(auto_traits)]
 #![feature(cfg_match)]
 #![feature(core_intrinsics)]
+#![feature(dropck_eyepatch)]
 #![feature(extend_one)]
+#![feature(file_buffered)]
 #![feature(hash_raw_entry)]
 #![feature(macro_metavar_expr)]
 #![feature(map_try_insert)]
@@ -31,7 +33,6 @@
 #![feature(ptr_alignment_type)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
-#![feature(strict_provenance)]
 #![feature(test)]
 #![feature(thread_id_value)]
 #![feature(type_alias_impl_trait)]
@@ -74,9 +75,11 @@ pub mod svh;
 pub mod sync;
 pub mod tagged_ptr;
 pub mod temp_dir;
+pub mod thinvec;
 pub mod transitive_relation;
 pub mod unhash;
 pub mod unord;
+pub mod vec_cache;
 pub mod work_queue;
 
 mod atomic_ref;

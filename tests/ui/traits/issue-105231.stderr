@@ -1,5 +1,5 @@
 error[E0072]: recursive types `A` and `B` have infinite size
-  --> $DIR/issue-105231.rs:2:1
+  --> $DIR/issue-105231.rs:1:1
    |
 LL | struct A<T>(B<T>);
    | ^^^^^^^^^^^ ---- recursive without indirection
@@ -16,7 +16,7 @@ LL ~ struct B<T>(Box<A<A<T>>>);
    |
 
 error: type parameter `T` is only used recursively
-  --> $DIR/issue-105231.rs:2:15
+  --> $DIR/issue-105231.rs:1:15
    |
 LL | struct A<T>(B<T>);
    |          -    ^
@@ -27,7 +27,7 @@ LL | struct A<T>(B<T>);
    = note: all type parameters must be used in a non-recursive way in order to constrain their variance
 
 error: type parameter `T` is only used recursively
-  --> $DIR/issue-105231.rs:5:17
+  --> $DIR/issue-105231.rs:4:17
    |
 LL | struct B<T>(A<A<T>>);
    |          -      ^
@@ -37,16 +37,18 @@ LL | struct B<T>(A<A<T>>);
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
    = note: all type parameters must be used in a non-recursive way in order to constrain their variance
 
-error[E0275]: overflow evaluating the requirement `A<A<A<A<A<A<A<...>>>>>>>: Send`
+error[E0119]: conflicting implementations of trait `Foo` for type `B<u8>`
+  --> $DIR/issue-105231.rs:8:1
    |
+LL | impl<T> Foo for T where T: Send {}
+   | ------------------------------- first implementation here
+LL | impl Foo for B<u8> {}
+   | ^^^^^^^^^^^^^^^^^^ conflicting implementation for `B<u8>`
+   |
+   = note: overflow evaluating the requirement `B<u8>: Send`
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_105231`)
-note: required because it appears within the type `B<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<A<u8>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>`
-  --> $DIR/issue-105231.rs:5:8
-   |
-LL | struct B<T>(A<A<T>>);
-   |        ^
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0072, E0275.
+Some errors have detailed explanations: E0072, E0119.
 For more information about an error, try `rustc --explain E0072`.

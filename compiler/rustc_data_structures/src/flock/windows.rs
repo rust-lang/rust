@@ -6,8 +6,8 @@ use std::path::Path;
 use tracing::debug;
 use windows::Win32::Foundation::{ERROR_INVALID_FUNCTION, HANDLE};
 use windows::Win32::Storage::FileSystem::{
-    LockFileEx, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, LOCKFILE_EXCLUSIVE_LOCK,
-    LOCKFILE_FAIL_IMMEDIATELY, LOCK_FILE_FLAGS,
+    FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, LOCK_FILE_FLAGS, LOCKFILE_EXCLUSIVE_LOCK,
+    LOCKFILE_FAIL_IMMEDIATELY, LockFileEx,
 };
 use windows::Win32::System::IO::OVERLAPPED;
 
@@ -60,9 +60,9 @@ impl Lock {
 
         unsafe {
             LockFileEx(
-                HANDLE(file.as_raw_handle() as isize),
+                HANDLE(file.as_raw_handle()),
                 flags,
-                0,
+                None,
                 u32::MAX,
                 u32::MAX,
                 &mut overlapped,

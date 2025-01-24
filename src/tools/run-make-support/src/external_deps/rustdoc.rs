@@ -45,8 +45,7 @@ impl Rustdoc {
     #[track_caller]
     pub fn new() -> Self {
         let mut cmd = setup_common();
-        let target_rpath_dir = env_var_os("TARGET_RPATH_DIR");
-        cmd.arg(format!("-L{}", target_rpath_dir.to_string_lossy()));
+        cmd.arg("-L").arg(env_var_os("TARGET_RPATH_DIR"));
         Self { cmd }
     }
 
@@ -71,14 +70,8 @@ impl Rustdoc {
         self
     }
 
-    /// Specify path to the output folder.
-    pub fn output<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
-        self.cmd.arg("-o");
-        self.cmd.arg(path.as_ref());
-        self
-    }
-
     /// Specify output directory.
+    #[doc(alias = "output")]
     pub fn out_dir<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg("--out-dir").arg(path.as_ref());
         self
@@ -91,9 +84,9 @@ impl Rustdoc {
         self
     }
 
-    /// Specify a stdin input
-    pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
-        self.cmd.stdin(input);
+    /// Specify a stdin input buffer.
+    pub fn stdin_buf<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
+        self.cmd.stdin_buf(input);
         self
     }
 

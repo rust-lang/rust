@@ -4,10 +4,8 @@
 
 use std::fmt::Debug;
 use std::mem::ManuallyDrop;
-use std::ops::{
-    Coroutine,
-    CoroutineState::{self, *},
-};
+use std::ops::Coroutine;
+use std::ops::CoroutineState::{self, *};
 use std::pin::Pin;
 use std::ptr;
 use std::sync::atomic::{AtomicUsize, Ordering};

@@ -33,12 +33,12 @@
       bb0: {
           StorageLive(_3);
 -         _3 = &(*_1);
-+         _3 = _1;
++         _3 = copy _1;
           StorageLive(_4);
           _4 = &(*_2);
           StorageLive(_5);
 -         _5 = &mut (*_2);
-+         _5 = _2;
++         _5 = copy _2;
           StorageLive(_6);
           _6 = &raw const (*_1);
           StorageLive(_7);

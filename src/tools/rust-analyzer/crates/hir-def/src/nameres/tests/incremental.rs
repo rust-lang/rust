@@ -1,15 +1,11 @@
-use base_db::{SourceDatabase, SourceDatabaseExt2 as _};
+use base_db::SourceDatabaseFileInputExt as _;
 use test_fixture::WithFixture;
 
 use crate::{db::DefDatabase, nameres::tests::TestDB, AdtId, ModuleDefId};
 
 fn check_def_map_is_not_recomputed(ra_fixture_initial: &str, ra_fixture_change: &str) {
     let (mut db, pos) = TestDB::with_position(ra_fixture_initial);
-    let krate = {
-        let crate_graph = db.crate_graph();
-        // Some of these tests use minicore/proc-macros which will be injected as the first crate
-        crate_graph.iter().last().unwrap()
-    };
+    let krate = db.fetch_test_crate();
     {
         let events = db.log_executed(|| {
             db.crate_def_map(krate);
@@ -120,28 +116,31 @@ fn f() { foo }
     );
 }
 
-#[test]
-fn typing_inside_an_attribute_arg_should_not_invalidate_def_map() {
-    check_def_map_is_not_recomputed(
-        r"
-//- proc_macros: identity
-//- /lib.rs
-mod foo;
+// Would be nice if this was the case, but as attribute inputs are stored in the item tree, this is
+// not currently the case.
+// #[test]
+// fn typing_inside_an_attribute_arg_should_not_invalidate_def_map() {
+//     check_def_map_is_not_recomputed(
+//         r"
+// //- proc_macros: identity
+// //- /lib.rs
+// mod foo;
 
-//- /foo/mod.rs
-pub mod bar;
+// //- /foo/mod.rs
+// pub mod bar;
 
-//- /foo/bar.rs
-$0
-#[proc_macros::identity]
-fn f() {}
-",
-        r"
-#[proc_macros::identity(foo)]
-fn f() {}
-",
-    );
-}
+// //- /foo/bar.rs
+// $0
+// #[proc_macros::identity]
+// fn f() {}
+// ",
+//         r"
+// #[proc_macros::identity(foo)]
+// fn f() {}
+// ",
+//     );
+// }
+
 #[test]
 fn typing_inside_macro_heavy_file_should_not_invalidate_def_map() {
     check_def_map_is_not_recomputed(
@@ -198,31 +197,33 @@ pub struct S {}
     );
 }
 
-#[test]
-fn typing_inside_a_derive_should_not_invalidate_def_map() {
-    check_def_map_is_not_recomputed(
-        r"
-//- proc_macros: derive_identity
-//- minicore:derive
-//- /lib.rs
-mod foo;
+// Would be nice if this was the case, but as attribute inputs are stored in the item tree, this is
+// not currently the case.
+// #[test]
+// fn typing_inside_a_derive_should_not_invalidate_def_map() {
+//     check_def_map_is_not_recomputed(
+//         r"
+// //- proc_macros: derive_identity
+// //- minicore:derive
+// //- /lib.rs
+// mod foo;
 
-//- /foo/mod.rs
-pub mod bar;
+// //- /foo/mod.rs
+// pub mod bar;
 
-//- /foo/bar.rs
-$0
-#[derive(proc_macros::DeriveIdentity)]
-#[allow()]
-struct S;
-",
-        r"
-#[derive(proc_macros::DeriveIdentity)]
-#[allow(dead_code)]
-struct S;
-",
-    );
-}
+// //- /foo/bar.rs
+// $0
+// #[derive(proc_macros::DeriveIdentity)]
+// #[allow()]
+// struct S;
+// ",
+//         r"
+// #[derive(proc_macros::DeriveIdentity)]
+// #[allow(dead_code)]
+// struct S;
+// ",
+//     );
+// }
 
 #[test]
 fn typing_inside_a_function_should_not_invalidate_item_expansions() {
@@ -253,7 +254,8 @@ m!(Z);
             let (_, module_data) = crate_def_map.modules.iter().last().unwrap();
             assert_eq!(module_data.scope.resolutions().count(), 4);
         });
-        let n_recalculated_item_trees = events.iter().filter(|it| it.contains("item_tree")).count();
+        let n_recalculated_item_trees =
+            events.iter().filter(|it| it.contains("item_tree(")).count();
         assert_eq!(n_recalculated_item_trees, 6);
         let n_reparsed_macros =
             events.iter().filter(|it| it.contains("parse_macro_expansion(")).count();
@@ -308,7 +310,7 @@ pub type Ty = ();
         let events = db.log_executed(|| {
             db.file_item_tree(pos.file_id.into());
         });
-        let n_calculated_item_trees = events.iter().filter(|it| it.contains("item_tree")).count();
+        let n_calculated_item_trees = events.iter().filter(|it| it.contains("item_tree(")).count();
         assert_eq!(n_calculated_item_trees, 1);
         let n_parsed_files = events.iter().filter(|it| it.contains("parse(")).count();
         assert_eq!(n_parsed_files, 1);
@@ -329,7 +331,7 @@ pub type Ty = ();
             }
 
             for (_, res) in module_data.scope.resolutions() {
-                match res.values.map(|(a, _, _)| a).or(res.types.map(|(a, _, _)| a)).unwrap() {
+                match res.values.map(|it| it.def).or(res.types.map(|it| it.def)).unwrap() {
                     ModuleDefId::FunctionId(f) => _ = db.function_data(f),
                     ModuleDefId::AdtId(adt) => match adt {
                         AdtId::StructId(it) => _ = db.struct_data(it),

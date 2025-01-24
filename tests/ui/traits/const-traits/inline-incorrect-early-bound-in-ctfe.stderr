@@ -1,0 +1,21 @@
+error[E0049]: method `foo` has 1 type parameter but its trait declaration has 0 type parameters
+  --> $DIR/inline-incorrect-early-bound-in-ctfe.rs:19:12
+   |
+LL |     fn foo(self);
+   |           - expected 0 type parameters
+...
+LL |     fn foo<T>(self) {
+   |            ^ found 1 type parameter
+
+error[E0015]: cannot call non-const method `<() as Trait>::foo` in constant functions
+  --> $DIR/inline-incorrect-early-bound-in-ctfe.rs:26:8
+   |
+LL |     ().foo();
+   |        ^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0015, E0049.
+For more information about an error, try `rustc --explain E0015`.

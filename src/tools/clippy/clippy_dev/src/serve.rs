@@ -1,9 +1,13 @@
-use std::ffi::OsStr;
-use std::num::ParseIntError;
 use std::path::Path;
 use std::process::Command;
 use std::time::{Duration, SystemTime};
 use std::{env, thread};
+
+#[cfg(windows)]
+const PYTHON: &str = "python";
+
+#[cfg(not(windows))]
+const PYTHON: &str = "python3";
 
 /// # Panics
 ///
@@ -15,7 +19,15 @@ pub fn run(port: u16, lint: Option<String>) -> ! {
     });
 
     loop {
-        if mtime("util/gh-pages/lints.json") < mtime("clippy_lints/src") {
+        let index_time = mtime("util/gh-pages/index.html");
+        let times = [
+            "clippy_lints/src",
+            "util/gh-pages/index_template.html",
+            "tests/compile-test.rs",
+        ]
+        .map(mtime);
+
+        if times.iter().any(|&time| index_time < time) {
             Command::new(env::var("CARGO").unwrap_or("cargo".into()))
                 .arg("collect-metadata")
                 .spawn()
@@ -25,7 +37,7 @@ pub fn run(port: u16, lint: Option<String>) -> ! {
         }
         if let Some(url) = url.take() {
             thread::spawn(move || {
-                Command::new("python3")
+                let mut child = Command::new(PYTHON)
                     .arg("-m")
                     .arg("http.server")
                     .arg(port.to_string())
@@ -36,6 +48,7 @@ pub fn run(port: u16, lint: Option<String>) -> ! {
                 thread::sleep(Duration::from_millis(500));
                 // Launch browser after first export.py has completed and http.server is up
                 let _result = opener::open(url);
+                child.wait().unwrap();
             });
         }
         thread::sleep(Duration::from_millis(1000));
@@ -57,9 +70,4 @@ fn mtime(path: impl AsRef<Path>) -> SystemTime {
             .and_then(|metadata| metadata.modified())
             .unwrap_or(SystemTime::UNIX_EPOCH)
     }
-}
-
-#[allow(clippy::missing_errors_doc)]
-pub fn validate_port(arg: &OsStr) -> Result<(), ParseIntError> {
-    arg.to_string_lossy().parse::<u16>().map(|_| ())
 }

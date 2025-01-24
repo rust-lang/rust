@@ -6,9 +6,10 @@ use std::cell::{Ref, RefCell};
 use std::ops::Deref;
 use std::slice::from_ref;
 
+use hir::Expr;
 use hir::def::DefKind;
 use hir::pat_util::EnumerateAndAdjustIterator as _;
-use hir::Expr;
+use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, Res};
@@ -20,13 +21,12 @@ use rustc_middle::hir::place::ProjectionKind;
 pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{
-    self, adjustment, AdtKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _,
+    self, AdtKind, BorrowKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, adjustment,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{ErrorGuaranteed, Span};
-use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_trait_selection::infer::InferCtxtExt;
-use ty::BorrowKind::ImmBorrow;
+use tracing::{debug, trace};
 
 use crate::fn_ctxt::FnCtxt;
 
@@ -62,7 +62,7 @@ pub trait Delegate<'tcx> {
     fn copy(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         // In most cases, copying data from `x` is equivalent to doing `*&x`, so by default
         // we treat a copy of `x` as a borrow of `x`.
-        self.borrow(place_with_id, diag_expr_id, ty::BorrowKind::ImmBorrow)
+        self.borrow(place_with_id, diag_expr_id, ty::BorrowKind::Immutable)
     }
 
     /// The path at `assignee_place` is being assigned to.
@@ -150,7 +150,8 @@ pub trait TypeInformationCtxt<'tcx> {
 }
 
 impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
-    type TypeckResults<'a> = Ref<'a, ty::TypeckResults<'tcx>>
+    type TypeckResults<'a>
+        = Ref<'a, ty::TypeckResults<'tcx>>
     where
         Self: 'a;
 
@@ -194,7 +195,8 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
 }
 
 impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
-    type TypeckResults<'a> = &'tcx ty::TypeckResults<'tcx>
+    type TypeckResults<'a>
+        = &'tcx ty::TypeckResults<'tcx>
     where
         Self: 'a;
 
@@ -226,7 +228,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
     }
 
     fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_copy_modulo_regions(self.0.tcx, self.0.param_env)
+        self.0.type_is_copy_modulo_regions(ty)
     }
 
     fn body_owner_def_id(&self) -> LocalDefId {
@@ -339,6 +341,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.walk_expr(subexpr)?;
             }
 
+            hir::ExprKind::UnsafeBinderCast(_, subexpr, _) => {
+                self.walk_expr(subexpr)?;
+            }
+
             hir::ExprKind::Unary(hir::UnOp::Deref, base) => {
                 // *base
                 self.walk_expr(base)?;
@@ -384,7 +390,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             }
 
             hir::ExprKind::Let(hir::LetExpr { pat, init, .. }) => {
-                self.walk_local(init, pat, None, || self.borrow_expr(init, ty::ImmBorrow))?;
+                self.walk_local(init, pat, None, || self.borrow_expr(init, BorrowKind::Immutable))?;
             }
 
             hir::ExprKind::Match(discr, arms, _) => {
@@ -589,7 +595,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         let place_ty = place.place.ty();
                         needs_to_be_read |= self.is_multivariant_adt(place_ty, pat.span);
                     }
-                    PatKind::Lit(_) | PatKind::Range(..) => {
+                    PatKind::Expr(_) | PatKind::Range(..) => {
                         // If the PatKind is a Lit or a Range then we want
                         // to borrow discr.
                         needs_to_be_read = true;
@@ -609,6 +615,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     | PatKind::Box(_)
                     | PatKind::Deref(_)
                     | PatKind::Ref(..)
+                    | PatKind::Guard(..)
                     | PatKind::Wild
                     | PatKind::Err(_) => {
                         // If the PatKind is Or, Box, or Ref, the decision is made later
@@ -623,7 +630,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
 
         if needs_to_be_read {
-            self.borrow_expr(discr, ty::ImmBorrow)?;
+            self.borrow_expr(discr, BorrowKind::Immutable)?;
         } else {
             let closure_def_id = match discr_place.place.base {
                 PlaceBase::Upvar(upvar_id) => Some(upvar_id.closure_expr_id),
@@ -684,7 +691,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     fn walk_struct_expr<'hir>(
         &self,
         fields: &[hir::ExprField<'_>],
-        opt_with: &Option<&'hir hir::Expr<'_>>,
+        opt_with: &hir::StructTailExpr<'hir>,
     ) -> Result<(), Cx::Error> {
         // Consume the expressions supplying values for each field.
         for field in fields {
@@ -700,8 +707,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
 
         let with_expr = match *opt_with {
-            Some(w) => &*w,
-            None => {
+            hir::StructTailExpr::Base(w) => &*w,
+            hir::StructTailExpr::DefaultFields(_) | hir::StructTailExpr::None => {
                 return Ok(());
             }
         };
@@ -756,9 +763,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         for adjustment in adjustments {
             debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
             match adjustment.kind {
-                adjustment::Adjust::NeverToAny
-                | adjustment::Adjust::Pointer(_)
-                | adjustment::Adjust::DynStar => {
+                adjustment::Adjust::NeverToAny | adjustment::Adjust::Pointer(_) => {
                     // Creating a closure/fn-pointer or unsizing consumes
                     // the input and stores it into the resulting rvalue.
                     self.consume_or_copy(&place_with_id, place_with_id.hir_id);
@@ -779,6 +784,16 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 adjustment::Adjust::Borrow(ref autoref) => {
                     self.walk_autoref(expr, &place_with_id, autoref);
                 }
+
+                adjustment::Adjust::ReborrowPin(mutbl) => {
+                    // Reborrowing a Pin is like a combinations of a deref and a borrow, so we do
+                    // both.
+                    let bk = match mutbl {
+                        ty::Mutability::Not => ty::BorrowKind::Immutable,
+                        ty::Mutability::Mut => ty::BorrowKind::Mutable,
+                    };
+                    self.delegate.borrow_mut().borrow(&place_with_id, place_with_id.hir_id, bk);
+                }
             }
             place_with_id = self.cat_expr_adjusted(expr, place_with_id, adjustment)?;
         }
@@ -793,7 +808,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         &self,
         expr: &hir::Expr<'_>,
         base_place: &PlaceWithHirId<'tcx>,
-        autoref: &adjustment::AutoBorrow<'tcx>,
+        autoref: &adjustment::AutoBorrow,
     ) {
         debug!(
             "walk_autoref(expr.hir_id={} base_place={:?} autoref={:?})",
@@ -801,7 +816,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         );
 
         match *autoref {
-            adjustment::AutoBorrow::Ref(_, m) => {
+            adjustment::AutoBorrow::Ref(m) => {
                 self.delegate.borrow_mut().borrow(
                     base_place,
                     base_place.hir_id,
@@ -898,7 +913,11 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     // binding when lowering pattern guards to ensure that the guard does not
                     // modify the scrutinee.
                     if has_guard {
-                        self.delegate.borrow_mut().borrow(place, discr_place.hir_id, ImmBorrow);
+                        self.delegate.borrow_mut().borrow(
+                            place,
+                            discr_place.hir_id,
+                            BorrowKind::Immutable,
+                        );
                     }
 
                     // It is also a borrow or copy/move of the value being matched.
@@ -1272,7 +1291,12 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             adjustment::Adjust::Deref(overloaded) => {
                 // Equivalent to *expr or something similar.
                 let base = if let Some(deref) = overloaded {
-                    let ref_ty = Ty::new_ref(self.cx.tcx(), deref.region, target, deref.mutbl);
+                    let ref_ty = Ty::new_ref(
+                        self.cx.tcx(),
+                        self.cx.tcx().lifetimes.re_erased,
+                        target,
+                        deref.mutbl,
+                    );
                     self.cat_rvalue(expr.hir_id, ref_ty)
                 } else {
                     previous()?
@@ -1283,7 +1307,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             adjustment::Adjust::NeverToAny
             | adjustment::Adjust::Pointer(_)
             | adjustment::Adjust::Borrow(_)
-            | adjustment::Adjust::DynStar => {
+            | adjustment::Adjust::ReborrowPin(..) => {
                 // Result is an rvalue.
                 Ok(self.cat_rvalue(expr.hir_id, target))
             }
@@ -1341,7 +1365,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.cat_res(expr.hir_id, expr.span, expr_ty, res)
             }
 
+            // both type ascription and unsafe binder casts don't affect
+            // the place-ness of the subexpression.
             hir::ExprKind::Type(e, _) => self.cat_expr(e),
+            hir::ExprKind::UnsafeBinderCast(_, e, _) => self.cat_expr(e),
 
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Call(..)
@@ -1711,7 +1738,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 }
             }
 
-            PatKind::Binding(.., Some(subpat)) => {
+            PatKind::Binding(.., Some(subpat)) | PatKind::Guard(subpat, _) => {
                 self.cat_pattern(place_with_id, subpat, op)?;
             }
 
@@ -1776,7 +1803,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
             PatKind::Path(_)
             | PatKind::Binding(.., None)
-            | PatKind::Lit(..)
+            | PatKind::Expr(..)
             | PatKind::Range(..)
             | PatKind::Never
             | PatKind::Wild

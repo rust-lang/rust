@@ -19,7 +19,7 @@ LL |         let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode a
    = note: inside `std::fs::OpenOptions::open::<&std::path::Path>` at RUSTLIB/std/src/fs.rs:LL:CC
    = note: inside `std::fs::File::open::<&str>` at RUSTLIB/std/src/fs.rs:LL:CC
 note: inside `main`
-  --> $DIR/isolated_file.rs:LL:CC
+  --> tests/fail/shims/fs/isolated_file.rs:LL:CC
    |
 LL |     let _file = std::fs::File::open("file.txt").unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,3 +1,6 @@
+//@revisions: edition2018 edition2021
+//@[edition2018] edition:2018
+//@[edition2021] edition:2021
 #![warn(clippy::manual_c_str_literals)]
 #![allow(clippy::no_effect)]
 

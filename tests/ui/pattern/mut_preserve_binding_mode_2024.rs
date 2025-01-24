@@ -1,6 +1,5 @@
 //@ run-pass
 //@ edition: 2024
-//@ compile-flags: -Zunstable-options
 #![feature(mut_ref, ref_pat_eat_one_layer_2024)]
 #![allow(incomplete_features, unused)]
 

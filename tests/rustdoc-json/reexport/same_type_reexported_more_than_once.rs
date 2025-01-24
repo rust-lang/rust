@@ -10,11 +10,11 @@ mod inner {
 }
 
 //@ set export_id = "$.index[*][?(@.docs=='First re-export')].id"
-//@ is "$.index[*].inner[?(@.import.name=='Trait')].import.id" $trait_id
+//@ is "$.index[*].inner[?(@.use.name=='Trait')].use.id" $trait_id
 /// First re-export
 pub use inner::Trait;
 //@ set reexport_id = "$.index[*][?(@.docs=='Second re-export')].id"
-//@ is "$.index[*].inner[?(@.import.name=='Reexport')].import.id" $trait_id
+//@ is "$.index[*].inner[?(@.use.name=='Reexport')].use.id" $trait_id
 /// Second re-export
 pub use inner::Trait as Reexport;
 

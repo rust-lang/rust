@@ -1,6 +1,6 @@
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{FloatAbi, Target, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv7-unknown-freebsd-gnueabihf".into(),
         metadata: crate::spec::TargetMetadata {
@@ -14,7 +14,7 @@ pub fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabihf".into(),
-            env: "gnu".into(),
+            llvm_floatabi: Some(FloatAbi::Hard),
             features: "+v7,+vfp3,-d32,+thumb2,-neon".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}__gnu_mcount_nc".into(),

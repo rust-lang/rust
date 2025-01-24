@@ -1,7 +1,7 @@
 use rustc_ast::token::Delimiter;
 use rustc_errors::Diag;
-use rustc_span::source_map::SourceMap;
 use rustc_span::Span;
+use rustc_span::source_map::SourceMap;
 
 use super::UnmatchedDelim;
 
@@ -85,7 +85,7 @@ pub(super) fn report_suspicious_mismatch_block(
         }
     }
 
-    // Find the inner-most span candidate for final report
+    // Find the innermost span candidate for final report
     let candidate_span =
         matched_spans.into_iter().rev().find(|&(_, same_ident)| !same_ident).map(|(span, _)| span);
 

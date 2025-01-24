@@ -1,6 +1,6 @@
 //@ ignore-cross-compile
 
-use run_make_support::{cwd, run, rustc};
+use run_make_support::{run, rustc};
 
 // Attempt to build this dependency tree:
 //

@@ -1,9 +1,0 @@
-error[E0080]: evaluation of constant value failed
-  --> $DIR/E0396-fixed.rs:5:28
-   |
-LL | const VALUE: u8 = unsafe { *REG_ADDR };
-   |                            ^^^^^^^^^ memory access failed: expected a pointer to 1 byte of memory, but got 0x5f3759df[noalloc] which is a dangling pointer (it has no provenance)
-
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0080`.

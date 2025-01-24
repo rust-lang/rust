@@ -18,7 +18,7 @@
           StorageLive(_2);
           StorageLive(_3);
           _3 = (const 0_i32, const 1_u8, const 2_i32);
--         _2 = (_3.1: u8);
+-         _2 = copy (_3.1: u8);
 -         _1 = Add(move _2, const 0_u8);
 +         _2 = const 1_u8;
 +         _1 = const 1_u8;
@@ -26,7 +26,7 @@
           StorageDead(_3);
           StorageLive(_4);
           StorageLive(_5);
--         _5 = _1;
+-         _5 = copy _1;
 -         _4 = foo(move _5) -> [return: bb1, unwind continue];
 +         _5 = const 1_u8;
 +         _4 = foo(const 1_u8) -> [return: bb1, unwind continue];

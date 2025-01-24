@@ -1,15 +1,15 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir;
-use rustc_hir::{intravisit, AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node, Pat, PatKind};
+use rustc_hir::{AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node, Pat, PatKind, intravisit};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
+use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
-use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 pub struct BoxedLocal {
@@ -50,7 +50,7 @@ declare_clippy_lint! {
 }
 
 fn is_non_trait_box(ty: Ty<'_>) -> bool {
-    ty.is_box() && !ty.boxed_ty().is_trait()
+    ty.boxed_ty().is_some_and(|boxed| !boxed.is_trait())
 }
 
 struct EscapeDelegate<'a, 'tcx> {
@@ -141,7 +141,7 @@ fn is_argument(tcx: TyCtxt<'_>, id: HirId) -> bool {
     matches!(tcx.parent_hir_node(id), Node::Param(_))
 }
 
-impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
+impl<'tcx> Delegate<'tcx> for EscapeDelegate<'_, 'tcx> {
     fn consume(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
         if cmt.place.projections.is_empty() {
             if let PlaceBase::Local(lid) = cmt.place.base {
@@ -188,11 +188,11 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
-impl<'a, 'tcx> EscapeDelegate<'a, 'tcx> {
+impl<'tcx> EscapeDelegate<'_, 'tcx> {
     fn is_large_box(&self, ty: Ty<'tcx>) -> bool {
         // Large types need to be boxed to avoid stack overflows.
-        if ty.is_box() {
-            self.cx.layout_of(ty.boxed_ty()).map_or(0, |l| l.size.bytes()) > self.too_large_for_stack
+        if let Some(boxed_ty) = ty.boxed_ty() {
+            self.cx.layout_of(boxed_ty).map_or(0, |l| l.size.bytes()) > self.too_large_for_stack
         } else {
             false
         }

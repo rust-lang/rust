@@ -14,6 +14,14 @@ LL |         #[expect(invalid_nan_comparisons)]
    |                  ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this lint expectation is unfulfilled
+  --> tests/ui/expect_tool_lint_rfc_2383.rs:36:18
+   |
+LL |         #[expect(invalid_nan_comparisons)]
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: this lint expectation is unfulfilled
   --> tests/ui/expect_tool_lint_rfc_2383.rs:107:14
    |
 LL |     #[expect(clippy::almost_swapped)]
@@ -37,5 +45,5 @@ error: this lint expectation is unfulfilled
 LL |     #[expect(clippy::overly_complex_bool_expr)]
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 

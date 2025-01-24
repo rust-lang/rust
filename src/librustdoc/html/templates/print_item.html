@@ -1,26 +1,33 @@
-<div class="main-heading"> {# #}
+<div class="main-heading">
+    {% if !path_components.is_empty() %}
+    <span class="rustdoc-breadcrumbs">
+        {% for (i, component) in path_components.iter().enumerate() %}
+            {% if i != 0 %}
+                ::<wbr>
+            {% endif %}
+            <a href="{{component.path|safe}}index.html">{{component.name}}</a>
+        {% endfor %}
+    </span>
+    {% endif %}
     <h1>
         {{typ}}
-        {# The breadcrumbs of the item path, like std::string #}
-        {% for component in path_components %}
-            <a href="{{component.path|safe}}index.html">{{component.name}}</a>::<wbr>
-        {% endfor %}
-        <a class="{{item_type}}" href="#">{{name}}</a> {# #}
+        <span{% if item_type != "mod" +%} class="{{item_type}}"{% endif %}>
+        {{name}}
+        </span> {# #}
         <button id="copy-path" title="Copy item path to clipboard"> {# #}
             Copy item path {# #}
         </button> {# #}
     </h1> {# #}
-    <span class="out-of-band">
+    <rustdoc-toolbar></rustdoc-toolbar> {# #}
+    <span class="sub-heading">
         {% if !stability_since_raw.is_empty() %}
-        {{ stability_since_raw|safe +}} · {#+ #}
+        {{ stability_since_raw|safe +}}
         {% endif %}
         {% match src_href %}
             {% when Some with (href) %}
-                <a class="src" href="{{href|safe}}">source</a> · {#+ #}
+                {% if !stability_since_raw.is_empty() +%} · {%+ endif %}
+                <a class="src" href="{{href|safe}}">Source</a> {#+ #}
             {% else %}
         {% endmatch %}
-        <button id="toggle-all-docs" title="collapse all docs"> {# #}
-            [<span>&#x2212;</span>] {# #}
-        </button> {# #}
     </span> {# #}
 </div> {# #}

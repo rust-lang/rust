@@ -16,9 +16,9 @@ mod tests;
 mod spin_mutex;
 mod unsafe_list;
 
-use fortanix_sgx_abi::{Tcs, EV_UNPARK, WAIT_INDEFINITE};
+use fortanix_sgx_abi::{EV_UNPARK, Tcs, WAIT_INDEFINITE};
 
-pub use self::spin_mutex::{try_lock_or_false, SpinMutex, SpinMutexGuard};
+pub use self::spin_mutex::{SpinMutex, SpinMutexGuard, try_lock_or_false};
 use self::unsafe_list::{UnsafeList, UnsafeListEntry};
 use super::abi::{thread, usercalls};
 use crate::num::NonZero;

@@ -9,6 +9,7 @@ use chalk_ir::{
 use chalk_solve::infer::ParameterEnaVariableExt;
 use either::Either;
 use ena::unify::UnifyKey;
+use hir_def::{lang_item::LangItem, AdtId};
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::FxHashMap;
@@ -17,12 +18,12 @@ use triomphe::Arc;
 
 use super::{InferOk, InferResult, InferenceContext, TypeError};
 use crate::{
-    consteval::unknown_const, db::HirDatabase, error_lifetime, fold_generic_args,
-    fold_tys_and_consts, to_chalk_trait_id, traits::FnTrait, AliasEq, AliasTy, BoundVar, Canonical,
-    Const, ConstValue, DebruijnIndex, DomainGoal, GenericArg, GenericArgData, Goal, GoalData,
-    Guidance, InEnvironment, InferenceVar, Interner, Lifetime, OpaqueTyId, ParamKind, ProjectionTy,
-    ProjectionTyExt, Scalar, Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
-    TyKind, VariableKind, WhereClause,
+    consteval::unknown_const, db::HirDatabase, fold_generic_args, fold_tys_and_consts,
+    to_chalk_trait_id, traits::FnTrait, AliasEq, AliasTy, BoundVar, Canonical, Const, ConstValue,
+    DebruijnIndex, DomainGoal, GenericArg, GenericArgData, Goal, GoalData, Guidance, InEnvironment,
+    InferenceVar, Interner, Lifetime, OpaqueTyId, ParamKind, ProjectionTy, ProjectionTyExt, Scalar,
+    Solution, Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind, VariableKind,
+    WhereClause,
 };
 
 impl InferenceContext<'_> {
@@ -105,7 +106,7 @@ impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
                 VariableKind::Ty(TyVariableKind::Float) => ctx.new_float_var().cast(Interner),
                 // Chalk can sometimes return new lifetime variables. We just replace them by errors
                 // for now.
-                VariableKind::Lifetime => error_lifetime().cast(Interner),
+                VariableKind::Lifetime => ctx.new_lifetime_var().cast(Interner),
                 VariableKind::Const(ty) => ctx.new_const_var(ty.clone()).cast(Interner),
             }),
         );
@@ -224,7 +225,7 @@ type ChalkInferenceTable = chalk_solve::infer::InferenceTable<Interner>;
 pub(crate) struct InferenceTable<'a> {
     pub(crate) db: &'a dyn HirDatabase,
     pub(crate) trait_env: Arc<TraitEnvironment>,
-    pub(crate) atpit_coercion_table: Option<FxHashMap<OpaqueTyId, Ty>>,
+    pub(crate) tait_coercion_table: Option<FxHashMap<OpaqueTyId, Ty>>,
     var_unification_table: ChalkInferenceTable,
     type_variable_table: SmallVec<[TypeVariableFlags; 16]>,
     pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
@@ -244,7 +245,7 @@ impl<'a> InferenceTable<'a> {
         InferenceTable {
             db,
             trait_env,
-            atpit_coercion_table: None,
+            tait_coercion_table: None,
             var_unification_table: ChalkInferenceTable::new(),
             type_variable_table: SmallVec::new(),
             pending_obligations: Vec::new(),
@@ -265,21 +266,23 @@ impl<'a> InferenceTable<'a> {
             }
             let v = InferenceVar::from(i as u32);
             let root = self.var_unification_table.inference_var_root(v);
-            if let Some(data) = self.type_variable_table.get_mut(root.index() as usize) {
-                *data |= TypeVariableFlags::DIVERGING;
-            }
+            self.modify_type_variable_flag(root, |f| {
+                *f |= TypeVariableFlags::DIVERGING;
+            });
         }
     }
 
     pub(super) fn set_diverging(&mut self, iv: InferenceVar, diverging: bool) {
-        self.type_variable_table[iv.index() as usize].set(TypeVariableFlags::DIVERGING, diverging);
+        self.modify_type_variable_flag(iv, |f| {
+            f.set(TypeVariableFlags::DIVERGING, diverging);
+        });
     }
 
     fn fallback_value(&self, iv: InferenceVar, kind: TyVariableKind) -> Ty {
         let is_diverging = self
             .type_variable_table
             .get(iv.index() as usize)
-            .map_or(false, |data| data.contains(TypeVariableFlags::DIVERGING));
+            .is_some_and(|data| data.contains(TypeVariableFlags::DIVERGING));
         if is_diverging {
             return TyKind::Never.intern(Interner);
         }
@@ -369,6 +372,18 @@ impl<'a> InferenceTable<'a> {
         var
     }
 
+    fn modify_type_variable_flag<F>(&mut self, var: InferenceVar, cb: F)
+    where
+        F: FnOnce(&mut TypeVariableFlags),
+    {
+        let idx = var.index() as usize;
+        if self.type_variable_table.len() <= idx {
+            self.extend_type_variable_table(idx);
+        }
+        if let Some(f) = self.type_variable_table.get_mut(idx) {
+            cb(f);
+        }
+    }
     fn extend_type_variable_table(&mut self, to_index: usize) {
         let count = to_index - self.type_variable_table.len() + 1;
         self.type_variable_table.extend(iter::repeat(TypeVariableFlags::default()).take(count));
@@ -651,7 +666,7 @@ impl<'a> InferenceTable<'a> {
             highest_known_var: InferenceVar,
         }
         impl TypeFolder<Interner> for VarFudger<'_, '_> {
-            fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
+            fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner> {
                 self
             }
 
@@ -779,69 +794,75 @@ impl<'a> InferenceTable<'a> {
         ty: &Ty,
         num_args: usize,
     ) -> Option<(FnTrait, Vec<Ty>, Ty)> {
-        let krate = self.trait_env.krate;
-        let fn_once_trait = FnTrait::FnOnce.get_id(self.db, krate)?;
-        let trait_data = self.db.trait_data(fn_once_trait);
-        let output_assoc_type =
-            trait_data.associated_type_by_name(&Name::new_symbol_root(sym::Output.clone()))?;
+        for (fn_trait_name, output_assoc_name, subtraits) in [
+            (FnTrait::FnOnce, sym::Output.clone(), &[FnTrait::Fn, FnTrait::FnMut][..]),
+            (FnTrait::AsyncFnMut, sym::CallRefFuture.clone(), &[FnTrait::AsyncFn]),
+            (FnTrait::AsyncFnOnce, sym::CallOnceFuture.clone(), &[]),
+        ] {
+            let krate = self.trait_env.krate;
+            let fn_trait = fn_trait_name.get_id(self.db, krate)?;
+            let trait_data = self.db.trait_data(fn_trait);
+            let output_assoc_type =
+                trait_data.associated_type_by_name(&Name::new_symbol_root(output_assoc_name))?;
 
-        let mut arg_tys = Vec::with_capacity(num_args);
-        let arg_ty = TyBuilder::tuple(num_args)
-            .fill(|it| {
-                let arg = match it {
-                    ParamKind::Type => self.new_type_var(),
-                    ParamKind::Lifetime => unreachable!("Tuple with lifetime parameter"),
-                    ParamKind::Const(_) => unreachable!("Tuple with const parameter"),
-                };
-                arg_tys.push(arg.clone());
-                arg.cast(Interner)
-            })
-            .build();
+            let mut arg_tys = Vec::with_capacity(num_args);
+            let arg_ty = TyBuilder::tuple(num_args)
+                .fill(|it| {
+                    let arg = match it {
+                        ParamKind::Type => self.new_type_var(),
+                        ParamKind::Lifetime => unreachable!("Tuple with lifetime parameter"),
+                        ParamKind::Const(_) => unreachable!("Tuple with const parameter"),
+                    };
+                    arg_tys.push(arg.clone());
+                    arg.cast(Interner)
+                })
+                .build();
 
-        let b = TyBuilder::trait_ref(self.db, fn_once_trait);
-        if b.remaining() != 2 {
-            return None;
-        }
-        let mut trait_ref = b.push(ty.clone()).push(arg_ty).build();
+            let b = TyBuilder::trait_ref(self.db, fn_trait);
+            if b.remaining() != 2 {
+                return None;
+            }
+            let mut trait_ref = b.push(ty.clone()).push(arg_ty).build();
 
-        let projection = {
-            TyBuilder::assoc_type_projection(
+            let projection = TyBuilder::assoc_type_projection(
                 self.db,
                 output_assoc_type,
                 Some(trait_ref.substitution.clone()),
             )
-            .build()
-        };
+            .fill_with_unknown()
+            .build();
 
-        let trait_env = self.trait_env.env.clone();
-        let obligation = InEnvironment {
-            goal: trait_ref.clone().cast(Interner),
-            environment: trait_env.clone(),
-        };
-        let canonical = self.canonicalize(obligation.clone());
-        if self.db.trait_solve(krate, self.trait_env.block, canonical.cast(Interner)).is_some() {
-            self.register_obligation(obligation.goal);
-            let return_ty = self.normalize_projection_ty(projection);
-            for fn_x in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
-                let fn_x_trait = fn_x.get_id(self.db, krate)?;
-                trait_ref.trait_id = to_chalk_trait_id(fn_x_trait);
-                let obligation: chalk_ir::InEnvironment<chalk_ir::Goal<Interner>> = InEnvironment {
-                    goal: trait_ref.clone().cast(Interner),
-                    environment: trait_env.clone(),
-                };
-                let canonical = self.canonicalize(obligation.clone());
-                if self
-                    .db
-                    .trait_solve(krate, self.trait_env.block, canonical.cast(Interner))
-                    .is_some()
-                {
-                    return Some((fn_x, arg_tys, return_ty));
+            let trait_env = self.trait_env.env.clone();
+            let obligation = InEnvironment {
+                goal: trait_ref.clone().cast(Interner),
+                environment: trait_env.clone(),
+            };
+            let canonical = self.canonicalize(obligation.clone());
+            if self.db.trait_solve(krate, self.trait_env.block, canonical.cast(Interner)).is_some()
+            {
+                self.register_obligation(obligation.goal);
+                let return_ty = self.normalize_projection_ty(projection);
+                for &fn_x in subtraits {
+                    let fn_x_trait = fn_x.get_id(self.db, krate)?;
+                    trait_ref.trait_id = to_chalk_trait_id(fn_x_trait);
+                    let obligation: chalk_ir::InEnvironment<chalk_ir::Goal<Interner>> =
+                        InEnvironment {
+                            goal: trait_ref.clone().cast(Interner),
+                            environment: trait_env.clone(),
+                        };
+                    let canonical = self.canonicalize(obligation.clone());
+                    if self
+                        .db
+                        .trait_solve(krate, self.trait_env.block, canonical.cast(Interner))
+                        .is_some()
+                    {
+                        return Some((fn_x, arg_tys, return_ty));
+                    }
                 }
+                return Some((fn_trait_name, arg_tys, return_ty));
             }
-            unreachable!("It should at least implement FnOnce at this point");
-        } else {
-            None
         }
+        None
     }
 
     pub(super) fn insert_type_vars<T>(&mut self, ty: T) -> T
@@ -898,6 +919,63 @@ impl<'a> InferenceTable<'a> {
             _ => c,
         }
     }
+
+    /// Check if given type is `Sized` or not
+    pub(crate) fn is_sized(&mut self, ty: &Ty) -> bool {
+        let mut ty = ty.clone();
+        {
+            let mut structs = SmallVec::<[_; 8]>::new();
+            // Must use a loop here and not recursion because otherwise users will conduct completely
+            // artificial examples of structs that have themselves as the tail field and complain r-a crashes.
+            while let Some((AdtId::StructId(id), subst)) = ty.as_adt() {
+                let struct_data = self.db.struct_data(id);
+                if let Some((last_field, _)) = struct_data.variant_data.fields().iter().next_back()
+                {
+                    let last_field_ty = self.db.field_types(id.into())[last_field]
+                        .clone()
+                        .substitute(Interner, subst);
+                    if structs.contains(&ty) {
+                        // A struct recursively contains itself as a tail field somewhere.
+                        return true; // Don't overload the users with too many errors.
+                    }
+                    structs.push(ty);
+                    // Structs can have DST as its last field and such cases are not handled
+                    // as unsized by the chalk, so we do this manually.
+                    ty = last_field_ty;
+                } else {
+                    break;
+                };
+            }
+        }
+
+        // Early return for some obvious types
+        if matches!(
+            ty.kind(Interner),
+            TyKind::Scalar(..)
+                | TyKind::Ref(..)
+                | TyKind::Raw(..)
+                | TyKind::Never
+                | TyKind::FnDef(..)
+                | TyKind::Array(..)
+                | TyKind::Function(_)
+        ) {
+            return true;
+        }
+
+        let Some(sized) = self
+            .db
+            .lang_item(self.trait_env.krate, LangItem::Sized)
+            .and_then(|sized| sized.as_trait())
+        else {
+            return false;
+        };
+        let sized_pred = WhereClause::Implemented(TraitRef {
+            trait_id: to_chalk_trait_id(sized),
+            substitution: Substitution::from1(Interner, ty.clone()),
+        });
+        let goal = GoalData::DomainGoal(chalk_ir::DomainGoal::Holds(sized_pred)).intern(Interner);
+        matches!(self.try_obligation(goal), Some(Solution::Unique(_)))
+    }
 }
 
 impl fmt::Debug for InferenceTable<'_> {
@@ -932,7 +1010,7 @@ mod resolve {
     where
         F: Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
     {
-        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
+        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner> {
             self
         }
 

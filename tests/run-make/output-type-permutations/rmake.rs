@@ -113,7 +113,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "asm-emit".to_string(),
         },
         || {
@@ -123,7 +123,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "asm-emit2".to_string(),
         },
         || {
@@ -133,7 +133,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "asm-emit3".to_string(),
         },
         || {
@@ -144,7 +144,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "llvm-ir-emit".to_string(),
         },
         || {
@@ -154,7 +154,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "llvm-ir-emit2".to_string(),
         },
         || {
@@ -164,7 +164,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "llvm-ir-emit3".to_string(),
         },
         || {
@@ -175,7 +175,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "llvm-bc-emit".to_string(),
         },
         || {
@@ -185,7 +185,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "llvm-bc-emit2".to_string(),
         },
         || {
@@ -195,7 +195,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "llvm-bc-emit3".to_string(),
         },
         || {
@@ -206,7 +206,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "obj-emit".to_string(),
         },
         || {
@@ -216,7 +216,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "obj-emit2".to_string(),
         },
         || {
@@ -226,7 +226,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "obj-emit3".to_string(),
         },
         || {
@@ -268,7 +268,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "rlib".to_string(),
         },
         || {
@@ -278,7 +278,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "rlib2".to_string(),
         },
         || {
@@ -288,7 +288,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "rlib3".to_string(),
         },
         || {
@@ -375,7 +375,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "staticlib".to_string(),
         },
         || {
@@ -385,7 +385,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "staticlib2".to_string(),
         },
         || {
@@ -395,7 +395,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["foo"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "staticlib3".to_string(),
         },
         || {
@@ -449,7 +449,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["ir", rust_lib_name("bar")],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "rlib-ir".to_string(),
         },
         || {
@@ -466,7 +466,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["ir", "asm", "bc", "obj", "link"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "staticlib-all".to_string(),
         },
         || {
@@ -484,7 +484,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["ir", "asm", "bc", "obj", "link"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "staticlib-all2".to_string(),
         },
         || {
@@ -523,7 +523,7 @@ fn main() {
     assert_expected_output_files(
         Expectations {
             expected_files: s!["bar.bc", rust_lib_name("bar"), "foo.bc"],
-            allowed_files: s![],
+            allowed_files: vec![],
             test_dir: "rlib-emits".to_string(),
         },
         || {

@@ -4,7 +4,7 @@
 #![feature(naked_functions)]
 #![naked] //~ ERROR should be applied to a function definition
 
-use std::arch::asm;
+use std::arch::naked_asm;
 
 extern "C" {
     #[naked] //~ ERROR should be applied to a function definition
@@ -26,27 +26,28 @@ trait Invoke {
 impl Invoke for S {
     #[naked]
     extern "C" fn invoke(&self) {
-        unsafe { asm!("", options(noreturn)) }
+        unsafe { naked_asm!("") }
     }
 }
 
 #[naked]
 extern "C" fn ok() {
-    unsafe { asm!("", options(noreturn)) }
+    unsafe { naked_asm!("") }
 }
 
 impl S {
     #[naked]
     extern "C" fn g() {
-        unsafe { asm!("", options(noreturn)) }
+        unsafe { naked_asm!("") }
     }
 
     #[naked]
     extern "C" fn h(&self) {
-        unsafe { asm!("", options(noreturn)) }
+        unsafe { naked_asm!("") }
     }
 }
 
 fn main() {
-    #[naked] || {}; //~ ERROR should be applied to a function definition
+    #[naked] //~ ERROR should be applied to a function definition
+    || {};
 }

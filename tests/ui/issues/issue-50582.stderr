@@ -1,13 +1,3 @@
-error[E0658]: `for` is not allowed in a `const`
-  --> $DIR/issue-50582.rs:2:20
-   |
-LL |     Vec::<[(); 1 + for x in 0..1 {}]>::new();
-   |                    ^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #87575 <https://github.com/rust-lang/rust/issues/87575> for more information
-   = help: add `#![feature(const_for)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0277]: cannot add `()` to `{integer}`
   --> $DIR/issue-50582.rs:2:18
    |
@@ -16,17 +6,16 @@ LL |     Vec::<[(); 1 + for x in 0..1 {}]>::new();
    |
    = help: the trait `Add<()>` is not implemented for `{integer}`
    = help: the following other types implement trait `Add<Rhs>`:
-             `&'a f128` implements `Add<f128>`
-             `&'a f16` implements `Add<f16>`
-             `&'a f32` implements `Add<f32>`
-             `&'a f64` implements `Add<f64>`
-             `&'a i128` implements `Add<i128>`
-             `&'a i16` implements `Add<i16>`
-             `&'a i32` implements `Add<i32>`
-             `&'a i64` implements `Add<i64>`
+             `&f128` implements `Add<f128>`
+             `&f128` implements `Add`
+             `&f16` implements `Add<f16>`
+             `&f16` implements `Add`
+             `&f32` implements `Add<f32>`
+             `&f32` implements `Add`
+             `&f64` implements `Add<f64>`
+             `&f64` implements `Add`
            and 56 others
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
-Some errors have detailed explanations: E0277, E0658.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0277`.

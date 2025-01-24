@@ -1,6 +1,6 @@
 use super::TRANSMUTE_PTR_TO_PTR;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(
                 |diag| {
                     if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
                         if from_mutbl == to_mutbl
-                            && to_pointee_ty.is_sized(cx.tcx, cx.param_env)
+                            && to_pointee_ty.is_sized(cx.tcx, cx.typing_env())
                             && msrv.meets(msrvs::POINTER_CAST)
                         {
                             diag.span_suggestion_verbose(

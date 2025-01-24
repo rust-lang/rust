@@ -26,7 +26,7 @@ use std::path::{Path, PathBuf};
 use std::{env, iter};
 
 use crate::core::config::TargetSelection;
-use crate::utils::exec::{command, BootstrapCommand};
+use crate::utils::exec::{BootstrapCommand, command};
 use crate::{Build, CLang, GitRepo};
 
 // The `cc` crate doesn't provide a way to obtain a path to the detected archiver,
@@ -44,6 +44,16 @@ fn cc2ar(cc: &Path, target: TargetSelection) -> Option<PathBuf> {
         Some(PathBuf::from("ar"))
     } else if target.contains("vxworks") {
         Some(PathBuf::from("wr-ar"))
+    } else if target.contains("-nto-") {
+        if target.starts_with("i586") {
+            Some(PathBuf::from("ntox86-ar"))
+        } else if target.starts_with("aarch64") {
+            Some(PathBuf::from("ntoaarch64-ar"))
+        } else if target.starts_with("x86_64") {
+            Some(PathBuf::from("ntox86_64-ar"))
+        } else {
+            panic!("Unknown architecture, cannot determine archiver for Neutrino QNX");
+        }
     } else if target.contains("android") || target.contains("-wasi") {
         Some(cc.parent().unwrap().join(PathBuf::from("llvm-ar")))
     } else {
@@ -87,15 +97,28 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
 }
 
 pub fn find(build: &Build) {
-    // For all targets we're going to need a C compiler for building some shims
-    // and such as well as for being a linker for Rust code.
-    let targets = build
-        .targets
-        .iter()
-        .chain(&build.hosts)
-        .cloned()
-        .chain(iter::once(build.build))
-        .collect::<HashSet<_>>();
+    let targets: HashSet<_> = match build.config.cmd {
+        // We don't need to check cross targets for these commands.
+        crate::Subcommand::Clean { .. }
+        | crate::Subcommand::Suggest { .. }
+        | crate::Subcommand::Format { .. }
+        | crate::Subcommand::Setup { .. } => {
+            build.hosts.iter().cloned().chain(iter::once(build.build)).collect()
+        }
+
+        _ => {
+            // For all targets we're going to need a C compiler for building some shims
+            // and such as well as for being a linker for Rust code.
+            build
+                .targets
+                .iter()
+                .chain(&build.hosts)
+                .cloned()
+                .chain(iter::once(build.build))
+                .collect()
+        }
+    };
+
     for target in targets.into_iter() {
         find_target(build, target);
     }

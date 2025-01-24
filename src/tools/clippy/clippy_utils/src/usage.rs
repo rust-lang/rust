@@ -1,4 +1,4 @@
-use crate::visitors::{for_each_expr, for_each_expr_without_closures, Descend, Visitable};
+use crate::visitors::{Descend, Visitable, for_each_expr, for_each_expr_without_closures};
 use crate::{self as utils, get_enclosing_loop_or_multi_call_closure};
 use core::ops::ControlFlow;
 use hir::def::Res;
@@ -27,7 +27,7 @@ pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> 
 }
 
 pub fn is_potentially_mutated<'tcx>(variable: HirId, expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> bool {
-    mutated_variables(expr, cx).map_or(true, |mutated| mutated.contains(&variable))
+    mutated_variables(expr, cx).is_none_or(|mutated| mutated.contains(&variable))
 }
 
 pub fn is_potentially_local_place(local_id: HirId, place: &Place<'_>) -> bool {
@@ -46,8 +46,8 @@ struct MutVarsDelegate {
     skip: bool,
 }
 
-impl<'tcx> MutVarsDelegate {
-    fn update(&mut self, cat: &PlaceWithHirId<'tcx>) {
+impl MutVarsDelegate {
+    fn update(&mut self, cat: &PlaceWithHirId<'_>) {
         match cat.place.base {
             PlaceBase::Local(id) => {
                 self.used_mutably.insert(id);
@@ -67,7 +67,7 @@ impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
     fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, bk: ty::BorrowKind) {
-        if bk == ty::BorrowKind::MutBorrow {
+        if bk == ty::BorrowKind::Mutable {
             self.update(cmt);
         }
     }
@@ -109,34 +109,28 @@ impl<'tcx> Visitor<'tcx> for ParamBindingIdCollector {
 pub struct BindingUsageFinder<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     binding_ids: Vec<HirId>,
-    usage_found: bool,
 }
 impl<'a, 'tcx> BindingUsageFinder<'a, 'tcx> {
     pub fn are_params_used(cx: &'a LateContext<'tcx>, body: &'tcx hir::Body<'tcx>) -> bool {
         let mut finder = BindingUsageFinder {
             cx,
             binding_ids: ParamBindingIdCollector::collect_binding_hir_ids(body),
-            usage_found: false,
         };
-        finder.visit_body(body);
-        finder.usage_found
+        finder.visit_body(body).is_break()
     }
 }
-impl<'a, 'tcx> Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for BindingUsageFinder<'_, 'tcx> {
+    type Result = ControlFlow<()>;
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        if !self.usage_found {
-            intravisit::walk_expr(self, expr);
-        }
-    }
-
-    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: HirId) -> Self::Result {
         if let Res::Local(id) = path.res {
             if self.binding_ids.contains(&id) {
-                self.usage_found = true;
+                return ControlFlow::Break(());
             }
         }
+
+        ControlFlow::Continue(())
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {

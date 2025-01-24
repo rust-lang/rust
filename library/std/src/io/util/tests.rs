@@ -1,5 +1,5 @@
 use crate::io::prelude::*;
-use crate::io::{empty, repeat, sink, BorrowedBuf, Empty, Repeat, SeekFrom, Sink};
+use crate::io::{BorrowedBuf, Empty, Repeat, SeekFrom, Sink, empty, repeat, sink};
 use crate::mem::MaybeUninit;
 
 #[test]

@@ -2,31 +2,24 @@ use crate::f64::consts;
 use crate::num::{FpCategory as Fp, *};
 
 /// Smallest number
-#[allow(dead_code)] // unused on x86
 const TINY_BITS: u64 = 0x1;
 
 /// Next smallest number
-#[allow(dead_code)] // unused on x86
 const TINY_UP_BITS: u64 = 0x2;
 
 /// Exponent = 0b11...10, Sifnificand 0b1111..10. Min val > 0
-#[allow(dead_code)] // unused on x86
 const MAX_DOWN_BITS: u64 = 0x7fef_ffff_ffff_fffe;
 
 /// Zeroed exponent, full significant
-#[allow(dead_code)] // unused on x86
 const LARGEST_SUBNORMAL_BITS: u64 = 0x000f_ffff_ffff_ffff;
 
 /// Exponent = 0b1, zeroed significand
-#[allow(dead_code)] // unused on x86
 const SMALLEST_NORMAL_BITS: u64 = 0x0010_0000_0000_0000;
 
 /// First pattern over the mantissa
-#[allow(dead_code)] // unused on x86
 const NAN_MASK1: u64 = 0x000a_aaaa_aaaa_aaaa;
 
 /// Second pattern over the mantissa
-#[allow(dead_code)] // unused on x86
 const NAN_MASK2: u64 = 0x0005_5555_5555_5555;
 
 #[allow(unused_macros)]
@@ -343,9 +336,6 @@ fn test_is_sign_negative() {
     assert!((-f64::NAN).is_sign_negative());
 }
 
-// Ignore test on x87 floating point, these platforms do not guarantee NaN
-// payloads are preserved and flush denormals to zero, failing the tests.
-#[cfg(not(target_arch = "x86"))]
 #[test]
 fn test_next_up() {
     let tiny = f64::from_bits(TINY_BITS);
@@ -375,9 +365,6 @@ fn test_next_up() {
     assert_f64_biteq!(nan2.next_up(), nan2);
 }
 
-// Ignore test on x87 floating point, these platforms do not guarantee NaN
-// payloads are preserved and flush denormals to zero, failing the tests.
-#[cfg(not(target_arch = "x86"))]
 #[test]
 fn test_next_down() {
     let tiny = f64::from_bits(TINY_BITS);

@@ -5,8 +5,8 @@ use rustc_hir::{HirId, Impl, ItemKind, Node, Path, QPath, TraitRef, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::AssocKind;
 use rustc_session::declare_lint_pass;
-use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+use rustc_span::symbol::Symbol;
 use std::collections::{BTreeMap, BTreeSet};
 
 declare_clippy_lint! {
@@ -62,13 +62,10 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                 && let TyKind::Path(QPath::Resolved(_, Path { res, .. })) = self_ty.kind
             {
                 if !map.contains_key(res) {
-                    map.insert(
-                        *res,
-                        ExistingName {
-                            impl_methods: BTreeMap::new(),
-                            trait_methods: BTreeMap::new(),
-                        },
-                    );
+                    map.insert(*res, ExistingName {
+                        impl_methods: BTreeMap::new(),
+                        trait_methods: BTreeMap::new(),
+                    });
                 }
                 let existing_name = map.get_mut(res).unwrap();
 

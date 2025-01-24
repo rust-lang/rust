@@ -125,5 +125,27 @@ LL |             vec.set_len(10);
    |
    = help: initialize the buffer or wrap the content in `MaybeUninit`
 
-error: aborting due to 12 previous errors
+error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
+  --> tests/ui/uninit_vec.rs:166:9
+   |
+LL |         let mut vec: Vec<Recursive<T>> = Vec::with_capacity(1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |             vec.set_len(1);
+   |             ^^^^^^^^^^^^^^
+   |
+   = help: initialize the buffer or wrap the content in `MaybeUninit`
+
+error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
+  --> tests/ui/uninit_vec.rs:179:9
+   |
+LL |         let mut vec: Vec<Enum<T>> = Vec::with_capacity(1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |             vec.set_len(1);
+   |             ^^^^^^^^^^^^^^
+   |
+   = help: initialize the buffer or wrap the content in `MaybeUninit`
+
+error: aborting due to 14 previous errors
 

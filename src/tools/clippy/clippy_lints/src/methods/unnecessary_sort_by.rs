@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_trait_method;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
+use clippy_utils::{is_trait_method, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind, Mutability, Param, Pat, PatKind, Path, PathSegment, QPath};
 use rustc_lint::LateContext;
@@ -166,9 +166,10 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Exp
             },
         )) = &left_expr.kind
             && left_name == left_ident
-            && cx.tcx.get_diagnostic_item(sym::Ord).map_or(false, |id| {
-                implements_trait(cx, cx.typeck_results().expr_ty(left_expr), id, &[])
-            })
+            && cx
+                .tcx
+                .get_diagnostic_item(sym::Ord)
+                .is_some_and(|id| implements_trait(cx, cx.typeck_results().expr_ty(left_expr), id, &[]))
         {
             return Some(LintTrigger::Sort(SortDetection { vec_name }));
         }
@@ -210,8 +211,10 @@ pub(super) fn check<'tcx>(
                 trigger.vec_name,
                 if is_unstable { "_unstable" } else { "" },
                 trigger.closure_arg,
-                if trigger.reverse {
-                    format!("std::cmp::Reverse({})", trigger.closure_body)
+                if let Some(std_or_core) = std_or_core(cx)
+                    && trigger.reverse
+                {
+                    format!("{}::cmp::Reverse({})", std_or_core, trigger.closure_body)
                 } else {
                     trigger.closure_body.to_string()
                 },

@@ -1,5 +1,5 @@
 error: expected identifier, found keyword `unsafe`
-  --> $DIR/derive-unsafe-attributes.rs:3:10
+  --> $DIR/derive-unsafe-attributes.rs:1:10
    |
 LL | #[derive(unsafe(Debug))]
    |          ^^^^^^ expected identifier, found keyword
@@ -10,13 +10,13 @@ LL | #[derive(r#unsafe(Debug))]
    |          ++
 
 error: traits in `#[derive(...)]` don't accept arguments
-  --> $DIR/derive-unsafe-attributes.rs:3:16
+  --> $DIR/derive-unsafe-attributes.rs:1:16
    |
 LL | #[derive(unsafe(Debug))]
    |                ^^^^^^^ help: remove the arguments
 
 error: `derive` is not an unsafe attribute
-  --> $DIR/derive-unsafe-attributes.rs:12:3
+  --> $DIR/derive-unsafe-attributes.rs:10:3
    |
 LL | #[unsafe(derive(Debug))]
    |   ^^^^^^ this is not an unsafe attribute
@@ -24,7 +24,7 @@ LL | #[unsafe(derive(Debug))]
    = note: extraneous unsafe is not allowed in attributes
 
 error: expected identifier, found keyword `unsafe`
-  --> $DIR/derive-unsafe-attributes.rs:3:10
+  --> $DIR/derive-unsafe-attributes.rs:1:10
    |
 LL | #[derive(unsafe(Debug))]
    |          ^^^^^^ expected identifier, found keyword
@@ -36,7 +36,7 @@ LL | #[derive(r#unsafe(Debug))]
    |          ++
 
 error: expected identifier, found keyword `unsafe`
-  --> $DIR/derive-unsafe-attributes.rs:3:10
+  --> $DIR/derive-unsafe-attributes.rs:1:10
    |
 LL | #[derive(unsafe(Debug))]
    |          ^^^^^^ expected identifier, found keyword
@@ -48,13 +48,13 @@ LL | #[derive(r#unsafe(Debug))]
    |          ++
 
 error: cannot find derive macro `r#unsafe` in this scope
-  --> $DIR/derive-unsafe-attributes.rs:3:10
+  --> $DIR/derive-unsafe-attributes.rs:1:10
    |
 LL | #[derive(unsafe(Debug))]
    |          ^^^^^^
 
 error: cannot find derive macro `r#unsafe` in this scope
-  --> $DIR/derive-unsafe-attributes.rs:3:10
+  --> $DIR/derive-unsafe-attributes.rs:1:10
    |
 LL | #[derive(unsafe(Debug))]
    |          ^^^^^^

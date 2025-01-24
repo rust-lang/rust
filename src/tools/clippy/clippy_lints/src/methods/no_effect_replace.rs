@@ -1,6 +1,6 @@
+use clippy_utils::SpanlessEq;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::is_type_lang_item;
-use clippy_utils::SpanlessEq;
 use rustc_ast::LitKind;
 use rustc_hir::{ExprKind, LangItem};
 use rustc_lint::LateContext;

@@ -34,19 +34,20 @@ pub fn get_missing_assoc_items(
     // may share the same name as a function or constant.
     let mut impl_fns_consts = FxHashSet::default();
     let mut impl_type = FxHashSet::default();
+    let edition = imp.module(sema.db).krate().edition(sema.db);
 
     for item in imp.items(sema.db) {
         match item {
             hir::AssocItem::Function(it) => {
-                impl_fns_consts.insert(it.name(sema.db).display(sema.db).to_string());
+                impl_fns_consts.insert(it.name(sema.db).display(sema.db, edition).to_string());
             }
             hir::AssocItem::Const(it) => {
                 if let Some(name) = it.name(sema.db) {
-                    impl_fns_consts.insert(name.display(sema.db).to_string());
+                    impl_fns_consts.insert(name.display(sema.db, edition).to_string());
                 }
             }
             hir::AssocItem::TypeAlias(it) => {
-                impl_type.insert(it.name(sema.db).display(sema.db).to_string());
+                impl_type.insert(it.name(sema.db).display(sema.db, edition).to_string());
             }
         }
     }
@@ -56,15 +57,14 @@ pub fn get_missing_assoc_items(
             .items(sema.db)
             .into_iter()
             .filter(|i| match i {
-                hir::AssocItem::Function(f) => {
-                    !impl_fns_consts.contains(&f.name(sema.db).display(sema.db).to_string())
-                }
+                hir::AssocItem::Function(f) => !impl_fns_consts
+                    .contains(&f.name(sema.db).display(sema.db, edition).to_string()),
                 hir::AssocItem::TypeAlias(t) => {
-                    !impl_type.contains(&t.name(sema.db).display(sema.db).to_string())
+                    !impl_type.contains(&t.name(sema.db).display(sema.db, edition).to_string())
                 }
                 hir::AssocItem::Const(c) => c
                     .name(sema.db)
-                    .map(|n| !impl_fns_consts.contains(&n.display(sema.db).to_string()))
+                    .map(|n| !impl_fns_consts.contains(&n.display(sema.db, edition).to_string()))
                     .unwrap_or_default(),
             })
             .collect()
@@ -116,13 +116,16 @@ mod tests {
     use expect_test::{expect, Expect};
     use hir::FilePosition;
     use hir::Semantics;
+    use span::Edition;
     use syntax::ast::{self, AstNode};
     use test_fixture::ChangeFixture;
 
     use crate::RootDatabase;
 
     /// Creates analysis from a multi-file fixture, returns positions marked with $0.
-    pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
+    pub(crate) fn position(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    ) -> (RootDatabase, FilePosition) {
         let change_fixture = ChangeFixture::parse(ra_fixture);
         let mut database = RootDatabase::default();
         database.apply_change(change_fixture.change);
@@ -132,7 +135,7 @@ mod tests {
         (database, FilePosition { file_id, offset })
     }
 
-    fn check_trait(ra_fixture: &str, expect: Expect) {
+    fn check_trait(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (db, position) = position(ra_fixture);
         let sema = Semantics::new(&db);
         let file = sema.parse(position.file_id);
@@ -140,13 +143,13 @@ mod tests {
             sema.find_node_at_offset_with_descend(file.syntax(), position.offset).unwrap();
         let trait_ = crate::traits::resolve_target_trait(&sema, &impl_block);
         let actual = match trait_ {
-            Some(trait_) => trait_.name(&db).display(&db).to_string(),
+            Some(trait_) => trait_.name(&db).display(&db, Edition::CURRENT).to_string(),
             None => String::new(),
         };
         expect.assert_eq(&actual);
     }
 
-    fn check_missing_assoc(ra_fixture: &str, expect: Expect) {
+    fn check_missing_assoc(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (db, position) = position(ra_fixture);
         let sema = Semantics::new(&db);
         let file = sema.parse(position.file_id);
@@ -155,7 +158,7 @@ mod tests {
         let items = crate::traits::get_missing_assoc_items(&sema, &impl_block);
         let actual = items
             .into_iter()
-            .map(|item| item.name(&db).unwrap().display(&db).to_string())
+            .map(|item| item.name(&db).unwrap().display(&db, Edition::CURRENT).to_string())
             .collect::<Vec<_>>()
             .join("\n");
         expect.assert_eq(&actual);

@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `&_: main::Ref` is not satisfied
+  --> $DIR/trait-selection-sanity.rs:28:19
+   |
+LL |     let (&_, b) = generic();
+   |                   ^^^^^^^^^ the trait `main::Ref` is not implemented for `&_`
+   |
+   = help: the trait `main::Ref` is implemented for `&'static mut [(); 0]`
+note: required by a bound in `generic`
+  --> $DIR/trait-selection-sanity.rs:7:19
+   |
+LL |     fn generic<R: Ref>() -> (R, bool) {
+   |                   ^^^ required by this bound in `generic`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

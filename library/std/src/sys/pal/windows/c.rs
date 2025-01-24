@@ -5,10 +5,8 @@
 #![unstable(issue = "none", feature = "windows_c")]
 #![allow(clippy::style)]
 
-use core::ffi::{c_uint, c_ulong, c_ushort, c_void, CStr};
+use core::ffi::{CStr, c_uint, c_ulong, c_ushort, c_void};
 use core::{mem, ptr};
-
-pub(super) mod windows_targets;
 
 mod windows_sys;
 pub use windows_sys::*;
@@ -111,19 +109,15 @@ if #[cfg(not(target_vendor = "uwp"))] {
 }
 
 // Use raw-dylib to import ProcessPrng as we can't rely on there being an import library.
-cfg_if::cfg_if! {
-if #[cfg(not(target_vendor = "win7"))] {
-    #[cfg(target_arch = "x86")]
-    #[link(name = "bcryptprimitives", kind = "raw-dylib", import_name_type = "undecorated")]
-    extern "system" {
-        pub fn ProcessPrng(pbdata: *mut u8, cbdata: usize) -> BOOL;
-    }
-    #[cfg(not(target_arch = "x86"))]
-    #[link(name = "bcryptprimitives", kind = "raw-dylib")]
-    extern "system" {
-        pub fn ProcessPrng(pbdata: *mut u8, cbdata: usize) -> BOOL;
-    }
-}}
+#[cfg(not(target_vendor = "win7"))]
+#[cfg_attr(
+    target_arch = "x86",
+    link(name = "bcryptprimitives", kind = "raw-dylib", import_name_type = "undecorated")
+)]
+#[cfg_attr(not(target_arch = "x86"), link(name = "bcryptprimitives", kind = "raw-dylib"))]
+extern "system" {
+    pub fn ProcessPrng(pbdata: *mut u8, cbdata: usize) -> BOOL;
+}
 
 // Functions that aren't available on every version of Windows that we support,
 // but we still use them and just provide some form of a fallback implementation.
@@ -181,9 +175,9 @@ extern "system" {
     pub fn WakeByAddressAll(address: *const c_void);
 }
 
+// These are loaded by `load_synch_functions`.
 #[cfg(target_vendor = "win7")]
 compat_fn_optional! {
-    crate::sys::compat::load_synch_functions();
     pub fn WaitOnAddress(
         address: *const c_void,
         compareaddress: *const c_void,

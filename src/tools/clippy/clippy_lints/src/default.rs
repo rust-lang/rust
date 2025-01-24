@@ -5,13 +5,13 @@ use clippy_utils::{contains_name, get_parent_expr, in_automatically_derived, is_
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind};
+use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind, StructTailExpr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -83,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
         if !expr.span.from_expansion()
             // Avoid cases already linted by `field_reassign_with_default`
             && !self.reassigned_linted.contains(&expr.span)
-            && let ExprKind::Call(path, ..) = expr.kind
+            && let ExprKind::Call(path, []) = expr.kind
             && !in_automatically_derived(cx.tcx, expr.hir_id)
             && let ExprKind::Path(ref qpath) = path.kind
             && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
@@ -221,7 +221,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                         .map(ToString::to_string)
                         .collect::<Vec<_>>()
                         .join(", ");
-                    format!("{adt_def_ty_name}::<{}>", &tys_str)
+                    format!("{adt_def_ty_name}::<{tys_str}>")
                 } else {
                     binding_type.to_string()
                 };
@@ -253,7 +253,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
 
 /// Checks if the given expression is the `default` method belonging to the `Default` trait.
 fn is_expr_default<'tcx>(expr: &'tcx Expr<'tcx>, cx: &LateContext<'tcx>) -> bool {
-    if let ExprKind::Call(fn_expr, _) = &expr.kind
+    if let ExprKind::Call(fn_expr, []) = &expr.kind
         && let ExprKind::Path(qpath) = &fn_expr.kind
         && let Res::Def(_, def_id) = cx.qpath_res(qpath, fn_expr.hir_id)
     {
@@ -285,7 +285,7 @@ fn field_reassigned_by_stmt<'tcx>(this: &Stmt<'tcx>, binding_name: Symbol) -> Op
 /// Returns whether `expr` is the update syntax base: `Foo { a: 1, .. base }`
 fn is_update_syntax_base<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr)
-        && let ExprKind::Struct(_, _, Some(base)) = parent.kind
+        && let ExprKind::Struct(_, _, StructTailExpr::Base(base)) = parent.kind
     {
         base.hir_id == expr.hir_id
     } else {

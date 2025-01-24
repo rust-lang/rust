@@ -10,8 +10,8 @@
 use crate::cell::UnsafeCell;
 use crate::pin::Pin;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
-use crate::sync::atomic::{fence, AtomicI8};
-use crate::sys::thread_parking::{current, park, park_timeout, unpark, ThreadId};
+use crate::sync::atomic::{AtomicI8, fence};
+use crate::sys::thread_parking::{ThreadId, current, park, park_timeout, unpark};
 use crate::time::Duration;
 
 pub struct Parker {

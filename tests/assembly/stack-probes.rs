@@ -6,7 +6,6 @@
 //@[i686] needs-llvm-components: x86
 //@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
 //@[aarch64] needs-llvm-components: aarch64
-//@[aarch64] min-llvm-version: 18
 
 #![feature(no_core, lang_items)]
 #![crate_type = "lib"]

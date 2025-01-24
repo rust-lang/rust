@@ -6,7 +6,7 @@
 /// ```
 #[macro_export]
 #[rustc_builtin_macro(pattern_type)]
-#[unstable(feature = "core_pattern_type", issue = "123646")]
+#[unstable(feature = "pattern_type_macro", issue = "123646")]
 macro_rules! pattern_type {
     ($($arg:tt)*) => {
         /* compiler built-in */

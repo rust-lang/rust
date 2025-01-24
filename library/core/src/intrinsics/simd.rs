@@ -232,7 +232,7 @@ extern "rust-intrinsic" {
     ///
     /// `T` must be a vector.
     ///
-    /// `U` must be a **const** array of `i32`s. This means it must either refer to a named
+    /// `U` must be a **const** vector of `u32`s. This means it must either refer to a named
     /// const or be given as an inline const expression (`const { ... }`).
     ///
     /// `V` must be a vector with the same element type as `T` and the same length as `U`.
@@ -611,6 +611,20 @@ extern "rust-intrinsic" {
     /// `T` must be a vector of floats.
     #[rustc_nounwind]
     pub fn simd_fma<T>(x: T, y: T, z: T) -> T;
+
+    /// Computes `(x*y) + z` for each element, non-deterministically executing either
+    /// a fused multiply-add or two operations with rounding of the intermediate result.
+    ///
+    /// The operation is fused if the code generator determines that target instruction
+    /// set has support for a fused operation, and that the fused operation is more efficient
+    /// than the equivalent, separate pair of mul and add instructions. It is unspecified
+    /// whether or not a fused operation is selected, and that may depend on optimization
+    /// level and context, for example. It may even be the case that some SIMD lanes get fused
+    /// and others do not.
+    ///
+    /// `T` must be a vector of floats.
+    #[rustc_nounwind]
+    pub fn simd_relaxed_fma<T>(x: T, y: T, z: T) -> T;
 
     // Computes the sine of each element.
     ///

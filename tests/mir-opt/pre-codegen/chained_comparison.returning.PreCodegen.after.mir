@@ -23,9 +23,9 @@ fn returning(_1: &Blueprint, _2: &Blueprint) -> bool {
     bb0: {
         StorageLive(_5);
         StorageLive(_3);
-        _3 = ((*_1).0: u32);
+        _3 = copy ((*_1).0: u32);
         StorageLive(_4);
-        _4 = ((*_2).0: u32);
+        _4 = copy ((*_2).0: u32);
         _5 = Ne(move _3, move _4);
         switchInt(move _5) -> [0: bb1, otherwise: bb10];
     }
@@ -36,9 +36,9 @@ fn returning(_1: &Blueprint, _2: &Blueprint) -> bool {
         StorageDead(_5);
         StorageLive(_8);
         StorageLive(_6);
-        _6 = ((*_1).1: u32);
+        _6 = copy ((*_1).1: u32);
         StorageLive(_7);
-        _7 = ((*_2).1: u32);
+        _7 = copy ((*_2).1: u32);
         _8 = Ne(move _6, move _7);
         switchInt(move _8) -> [0: bb2, otherwise: bb9];
     }
@@ -49,9 +49,9 @@ fn returning(_1: &Blueprint, _2: &Blueprint) -> bool {
         StorageDead(_8);
         StorageLive(_11);
         StorageLive(_9);
-        _9 = ((*_1).2: u32);
+        _9 = copy ((*_1).2: u32);
         StorageLive(_10);
-        _10 = ((*_2).2: u32);
+        _10 = copy ((*_2).2: u32);
         _11 = Ne(move _9, move _10);
         switchInt(move _11) -> [0: bb3, otherwise: bb8];
     }
@@ -62,9 +62,9 @@ fn returning(_1: &Blueprint, _2: &Blueprint) -> bool {
         StorageDead(_11);
         StorageLive(_14);
         StorageLive(_12);
-        _12 = ((*_1).3: u32);
+        _12 = copy ((*_1).3: u32);
         StorageLive(_13);
-        _13 = ((*_2).3: u32);
+        _13 = copy ((*_2).3: u32);
         _14 = Ne(move _12, move _13);
         switchInt(move _14) -> [0: bb4, otherwise: bb7];
     }
@@ -75,9 +75,9 @@ fn returning(_1: &Blueprint, _2: &Blueprint) -> bool {
         StorageDead(_14);
         StorageLive(_17);
         StorageLive(_15);
-        _15 = ((*_1).4: u32);
+        _15 = copy ((*_1).4: u32);
         StorageLive(_16);
-        _16 = ((*_2).4: u32);
+        _16 = copy ((*_2).4: u32);
         _17 = Ne(move _15, move _16);
         switchInt(move _17) -> [0: bb5, otherwise: bb6];
     }

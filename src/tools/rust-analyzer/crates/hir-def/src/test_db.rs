@@ -3,7 +3,7 @@
 use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
-    salsa::{self, Durability},
+    ra_salsa::{self, Durability},
     AnchoredPath, CrateId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
 };
 use hir_expand::{db::ExpandDatabase, files::FilePosition, InFile};
@@ -18,16 +18,16 @@ use crate::{
     LocalModuleId, Lookup, ModuleDefId, ModuleId,
 };
 
-#[salsa::database(
-    base_db::SourceDatabaseExtStorage,
+#[ra_salsa::database(
+    base_db::SourceRootDatabaseStorage,
     base_db::SourceDatabaseStorage,
     hir_expand::db::ExpandDatabaseStorage,
     crate::db::InternDatabaseStorage,
     crate::db::DefDatabaseStorage
 )]
 pub(crate) struct TestDB {
-    storage: salsa::Storage<TestDB>,
-    events: Mutex<Option<Vec<salsa::Event>>>,
+    storage: ra_salsa::Storage<TestDB>,
+    events: Mutex<Option<Vec<ra_salsa::Event>>>,
 }
 
 impl Default for TestDB {
@@ -51,8 +51,8 @@ impl Upcast<dyn DefDatabase> for TestDB {
     }
 }
 
-impl salsa::Database for TestDB {
-    fn salsa_event(&self, event: salsa::Event) {
+impl ra_salsa::Database for TestDB {
+    fn salsa_event(&self, event: ra_salsa::Event) {
         let mut events = self.events.lock().unwrap();
         if let Some(events) = &mut *events {
             events.push(event);
@@ -69,9 +69,6 @@ impl fmt::Debug for TestDB {
 impl panic::RefUnwindSafe for TestDB {}
 
 impl FileLoader for TestDB {
-    fn file_text(&self, file_id: FileId) -> Arc<str> {
-        FileLoaderDelegate(self).file_text(file_id)
-    }
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
         FileLoaderDelegate(self).resolve_path(path)
     }
@@ -81,6 +78,19 @@ impl FileLoader for TestDB {
 }
 
 impl TestDB {
+    pub(crate) fn fetch_test_crate(&self) -> CrateId {
+        let crate_graph = self.crate_graph();
+        let it = crate_graph
+            .iter()
+            .find(|&idx| {
+                crate_graph[idx].display_name.as_ref().map(|it| it.canonical_name().as_str())
+                    == Some("ra_test_fixture")
+            })
+            .or_else(|| crate_graph.iter().next())
+            .unwrap();
+        it
+    }
+
     pub(crate) fn module_for_file(&self, file_id: FileId) -> ModuleId {
         for &krate in self.relevant_crates(file_id).iter() {
             let crate_def_map = self.crate_def_map(krate);
@@ -201,7 +211,10 @@ impl TestDB {
             .filter_map(|node| {
                 let block = ast::BlockExpr::cast(node)?;
                 let expr = ast::Expr::from(block);
-                let expr_id = source_map.node_expr(InFile::new(position.file_id.into(), &expr))?;
+                let expr_id = source_map
+                    .node_expr(InFile::new(position.file_id.into(), &expr))?
+                    .as_expr()
+                    .unwrap();
                 let scope = scopes.scope_for(expr_id).unwrap();
                 Some(scope)
             });
@@ -218,7 +231,7 @@ impl TestDB {
         None
     }
 
-    pub(crate) fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event> {
+    pub(crate) fn log(&self, f: impl FnOnce()) -> Vec<ra_salsa::Event> {
         *self.events.lock().unwrap() = Some(Vec::new());
         f();
         self.events.lock().unwrap().take().unwrap()
@@ -231,7 +244,7 @@ impl TestDB {
             .filter_map(|e| match e.kind {
                 // This is pretty horrible, but `Debug` is the only way to inspect
                 // QueryDescriptor at the moment.
-                salsa::EventKind::WillExecute { database_key } => {
+                ra_salsa::EventKind::WillExecute { database_key } => {
                     Some(format!("{:?}", database_key.debug(self)))
                 }
                 _ => None,

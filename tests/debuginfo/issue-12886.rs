@@ -1,4 +1,3 @@
-//@ ignore-windows failing on 64-bit bots FIXME #17638
 //@ ignore-lldb
 //@ ignore-aarch64
 
@@ -6,7 +5,7 @@
 
 // gdb-command:run
 // gdb-command:next
-// gdb-check:[...]24[...]let s = Some(5).unwrap(); // #break
+// gdb-check:[...]23[...]let s = Some(5).unwrap(); // #break
 // gdb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

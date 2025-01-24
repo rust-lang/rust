@@ -92,6 +92,7 @@ mod ref_recursion_once_removed {
             reffy: &'a Reffy2<'a>,
         }
 
+        #[repr(C)]
         struct Reffy2<'a> {
             reffy: &'a Reffy1<'a>,
         }
@@ -107,6 +108,7 @@ mod ref_recursion_once_removed {
             reffy: &'a Reffy2<'a>,
         }
 
+        #[repr(C)]
         struct Reffy2<'a> {
             reffy: &'a Reffy1<'a>,
         }

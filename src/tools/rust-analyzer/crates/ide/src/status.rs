@@ -6,7 +6,7 @@ use hir::{
 };
 use ide_db::{
     base_db::{
-        salsa::{
+        ra_salsa::{
             debug::{DebugQueryTable, TableEntry},
             Query, QueryTable,
         },

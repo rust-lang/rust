@@ -1,5 +1,5 @@
 error: Undefined Behavior: scalar size mismatch: expected 4 bytes but got 1 bytes instead
-  --> $DIR/shim_arg_size.rs:LL:CC
+  --> tests/fail/shims/shim_arg_size.rs:LL:CC
    |
 LL |         memchr(std::ptr::null(), 0, 0);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ scalar size mismatch: expected 4 bytes but got 1 bytes instead
@@ -7,7 +7,7 @@ LL |         memchr(std::ptr::null(), 0, 0);
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/shim_arg_size.rs:LL:CC
+   = note: inside `main` at tests/fail/shims/shim_arg_size.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

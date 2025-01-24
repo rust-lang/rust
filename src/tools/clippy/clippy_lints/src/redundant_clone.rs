@@ -1,17 +1,17 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
-use clippy_utils::mir::{visit_local_usage, LocalUsage, PossibleBorrowerMap};
-use clippy_utils::source::snippet_opt;
+use clippy_utils::fn_has_unsatisfiable_preds;
+use clippy_utils::mir::{LocalUsage, PossibleBorrowerMap, visit_local_usage};
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::{has_drop, is_copy, is_type_diagnostic_item, is_type_lang_item, walk_ptrs_ty_depth};
-use clippy_utils::{fn_has_unsatisfiable_preds, match_def_path, paths};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{def_id, Body, FnDecl, LangItem};
+use rustc_hir::{Body, FnDecl, LangItem, def_id};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{BytePos, Span, sym};
 
 macro_rules! unwrap_or_continue {
     ($x:expr) => {
@@ -96,14 +96,14 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             let (fn_def_id, arg, arg_ty, clone_ret) =
                 unwrap_or_continue!(is_call_with_ref_arg(cx, mir, &terminator.kind));
 
-            let from_borrow = match_def_path(cx, fn_def_id, &paths::CLONE_TRAIT_METHOD)
+            let from_borrow = cx.tcx.lang_items().get(LangItem::CloneFn) == Some(fn_def_id)
                 || cx.tcx.is_diagnostic_item(sym::to_owned_method, fn_def_id)
                 || (cx.tcx.is_diagnostic_item(sym::to_string_method, fn_def_id)
                     && is_type_lang_item(cx, arg_ty, LangItem::String));
 
             let from_deref = !from_borrow
-                && (match_def_path(cx, fn_def_id, &paths::PATH_TO_PATH_BUF)
-                    || match_def_path(cx, fn_def_id, &paths::OS_STR_TO_OS_STRING));
+                && (cx.tcx.is_diagnostic_item(sym::path_to_pathbuf, fn_def_id)
+                    || cx.tcx.is_diagnostic_item(sym::os_str_to_os_string, fn_def_id));
 
             if !from_borrow && !from_deref {
                 continue;
@@ -208,7 +208,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 .assert_crate_local()
                 .lint_root;
 
-            if let Some(snip) = snippet_opt(cx, span)
+            if let Some(snip) = span.get_source_text(cx)
                 && let Some(dot) = snip.rfind('.')
             {
                 let sugg_span = span.with_lo(span.lo() + BytePos(u32::try_from(dot).unwrap()));
@@ -349,14 +349,10 @@ fn visit_clone_usage(cloned: mir::Local, clone: mir::Local, mir: &mir::Body<'_>,
             local_use_locs: _,
             local_consume_or_mutate_locs: clone_consume_or_mutate_locs,
         },
-    )) = visit_local_usage(
-        &[cloned, clone],
-        mir,
-        mir::Location {
-            block: bb,
-            statement_index: mir.basic_blocks[bb].statements.len(),
-        },
-    )
+    )) = visit_local_usage(&[cloned, clone], mir, mir::Location {
+        block: bb,
+        statement_index: mir.basic_blocks[bb].statements.len(),
+    })
     .map(|mut vec| (vec.remove(0), vec.remove(0)))
     {
         CloneUsage {

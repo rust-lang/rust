@@ -1,16 +1,21 @@
-//@ check-pass
 //@ compile-flags: --passes unknown-pass
 //@ error-pattern: the `passes` flag no longer functions
 
 #![doc(no_default_passes)]
-//~^ WARNING attribute is deprecated
+//~^ ERROR unknown `doc` attribute `no_default_passes`
+//~| NOTE no longer functions
 //~| NOTE see issue #44136
-//~| HELP no longer functions; you may want to use `#![doc(document_private_items)]`
+//~| HELP you may want to use `doc(document_private_items)`
+//~| NOTE `doc(no_default_passes)` is now a no-op
+//~| NOTE `#[deny(invalid_doc_attributes)]` on by default
 #![doc(passes = "collapse-docs unindent-comments")]
-//~^ WARNING attribute is deprecated
+//~^ ERROR unknown `doc` attribute `passes`
+//~| NOTE no longer functions
 //~| NOTE see issue #44136
-//~| HELP no longer functions; you may want to use `#![doc(document_private_items)]`
+//~| HELP you may want to use `doc(document_private_items)`
+//~| NOTE `doc(passes)` is now a no-op
 #![doc(plugins = "xxx")]
-//~^ WARNING attribute is deprecated
+//~^ ERROR unknown `doc` attribute `plugins`
 //~| NOTE see issue #44136
-//~| WARNING no longer functions; see CVE
+//~| NOTE no longer functions
+//~| NOTE `doc(plugins)` is now a no-op

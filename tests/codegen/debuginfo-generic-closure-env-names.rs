@@ -1,14 +1,17 @@
-// This test checks that we get proper type names for closure environments and
-// async-fn environments in debuginfo, especially making sure that generic arguments
-// of the enclosing functions don't get lost.
-//
-// Unfortunately, the order that debuginfo gets emitted into LLVM IR becomes a bit hard
-// to predict once async fns are involved, so DAG allows any order.
-//
-// Note that the test does not check async-fns when targeting MSVC because debuginfo for
-// those does not follow the enum-fallback encoding yet and thus is incomplete.
-
 // ignore-tidy-linelength
+//! This test checks that we get proper type names for closure environments and
+//! async-fn environments in debuginfo, especially making sure that generic arguments
+//! of the enclosing functions don't get lost.
+//!
+//! Unfortunately, the order that debuginfo gets emitted into LLVM IR becomes a bit hard
+//! to predict once async fns are involved, so DAG allows any order.
+//!
+//! Note that the test does not check async-fns when targeting MSVC because debuginfo for
+//! those does not follow the enum-fallback encoding yet and thus is incomplete.
+
+//@ revisions: MSVC NONMSVC
+//@[MSVC] only-msvc
+//@[NONMSVC] ignore-msvc
 
 // Use the v0 symbol mangling scheme to codegen order independent of rustc version.
 // Unnamed items like shims are generated in lexicographical order of their symbol name and in the

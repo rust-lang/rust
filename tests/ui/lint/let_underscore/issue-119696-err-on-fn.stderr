@@ -1,4 +1,4 @@
-error: non-binding let on a type that implements `Drop`
+error: non-binding let on a type that has a destructor
   --> $DIR/issue-119696-err-on-fn.rs:5:5
    |
 LL |     let _ = foo();

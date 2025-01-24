@@ -1,5 +1,4 @@
 #![feature(ptr_mask)]
-#![feature(strict_provenance)]
 
 fn main() {
     let v: u32 = 0xABCDABCD;

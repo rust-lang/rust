@@ -370,7 +370,12 @@ impl Stdin {
     /// Locks this handle and reads a line of input, appending it to the specified buffer.
     ///
     /// For detailed semantics of this method, see the documentation on
-    /// [`BufRead::read_line`].
+    /// [`BufRead::read_line`]. In particular:
+    /// * Previous content of the buffer will be preserved. To avoid appending
+    ///   to the buffer, you need to [`clear`] it first.
+    /// * The trailing newline character, if any, is included in the buffer.
+    ///
+    /// [`clear`]: String::clear
     ///
     /// # Examples
     ///
@@ -394,6 +399,7 @@ impl Stdin {
     ///   in which case it will wait for the Enter key to be pressed before
     ///   continuing
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("get_line")]
     pub fn read_line(&self, buf: &mut String) -> io::Result<usize> {
         self.lock().read_line(buf)
     }
@@ -1194,6 +1200,7 @@ pub trait IsTerminal: crate::sealed::Sealed {
     ///
     /// [changes]: io#platform-specific-behavior
     /// [`Stdin`]: crate::io::Stdin
+    #[doc(alias = "isatty")]
     #[stable(feature = "is_terminal", since = "1.70.0")]
     fn is_terminal(&self) -> bool;
 }

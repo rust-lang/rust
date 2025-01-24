@@ -1,5 +1,5 @@
 error[E0015]: cannot call non-const operator in constant functions
-  --> $DIR/issue-90870.rs:9:5
+  --> $DIR/issue-90870.rs:6:5
    |
 LL |     a == b
    |     ^^^^^^
@@ -9,13 +9,9 @@ help: consider dereferencing here
    |
 LL |     *a == *b
    |     +     +
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   |
-LL + #![feature(const_trait_impl)]
-   |
 
 error[E0015]: cannot call non-const operator in constant functions
-  --> $DIR/issue-90870.rs:15:5
+  --> $DIR/issue-90870.rs:12:5
    |
 LL |     a == b
    |     ^^^^^^
@@ -25,13 +21,9 @@ help: consider dereferencing here
    |
 LL |     ****a == ****b
    |     ++++     ++++
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   |
-LL + #![feature(const_trait_impl)]
-   |
 
 error[E0015]: cannot call non-const operator in constant functions
-  --> $DIR/issue-90870.rs:22:12
+  --> $DIR/issue-90870.rs:19:12
    |
 LL |         if l == r {
    |            ^^^^^^
@@ -41,10 +33,6 @@ help: consider dereferencing here
    |
 LL |         if *l == *r {
    |            +     +
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   |
-LL + #![feature(const_trait_impl)]
-   |
 
 error: aborting due to 3 previous errors
 

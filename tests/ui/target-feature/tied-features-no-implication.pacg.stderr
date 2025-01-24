@@ -1,0 +1,14 @@
+error[E0428]: the name `foo` is defined multiple times
+  --> $DIR/tied-features-no-implication.rs:28:1
+   |
+LL | fn foo() {}
+   | -------- previous definition of the value `foo` here
+...
+LL | pub unsafe fn foo() {
+   | ^^^^^^^^^^^^^^^^^^^ `foo` redefined here
+   |
+   = note: `foo` must be defined only once in the value namespace of this module
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0428`.

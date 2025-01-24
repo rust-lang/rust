@@ -2,7 +2,7 @@ use super::LINT_GROUPS_PRIORITY;
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_lint::{unerased_lint_store, LateContext};
+use rustc_lint::{LateContext, unerased_lint_store};
 use rustc_span::{BytePos, Pos, SourceFile, Span, SyntaxContext};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

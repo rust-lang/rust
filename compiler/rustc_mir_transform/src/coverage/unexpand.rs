@@ -1,4 +1,4 @@
-use rustc_span::{ExpnKind, MacroKind, Span, Symbol};
+use rustc_span::{ExpnKind, Span};
 
 /// Walks through the expansion ancestors of `original_span` to find a span that
 /// is contained in `body_span` and has the same [syntax context] as `body_span`.
@@ -13,20 +13,15 @@ pub(crate) fn unexpand_into_body_span(original_span: Span, body_span: Span) -> O
 ///
 /// If the returned span represents a bang-macro invocation (e.g. `foo!(..)`),
 /// the returned symbol will be the name of that macro (e.g. `foo`).
-pub(crate) fn unexpand_into_body_span_with_visible_macro(
+pub(crate) fn unexpand_into_body_span_with_expn_kind(
     original_span: Span,
     body_span: Span,
-) -> Option<(Span, Option<Symbol>)> {
+) -> Option<(Span, Option<ExpnKind>)> {
     let (span, prev) = unexpand_into_body_span_with_prev(original_span, body_span)?;
 
-    let visible_macro = prev
-        .map(|prev| match prev.ctxt().outer_expn_data().kind {
-            ExpnKind::Macro(MacroKind::Bang, name) => Some(name),
-            _ => None,
-        })
-        .flatten();
+    let expn_kind = prev.map(|prev| prev.ctxt().outer_expn_data().kind);
 
-    Some((span, visible_macro))
+    Some((span, expn_kind))
 }
 
 /// Walks through the expansion ancestors of `original_span` to find a span that

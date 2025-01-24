@@ -11,8 +11,8 @@ use clippy_utils::{
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{self, Symbol, sym};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use super::{OR_FUN_CALL, UNWRAP_OR_DEFAULT};
@@ -59,9 +59,7 @@ pub(super) fn check<'tcx>(
                 let output_ty = cx.tcx.fn_sig(def_id).instantiate(cx.tcx, args).skip_binder().output();
                 cx.tcx
                     .get_diagnostic_item(sym::Default)
-                    .map_or(false, |default_trait_id| {
-                        implements_trait(cx, output_ty, default_trait_id, &[])
-                    })
+                    .is_some_and(|default_trait_id| implements_trait(cx, output_ty, default_trait_id, &[]))
             } else {
                 false
             }
@@ -77,8 +75,7 @@ pub(super) fn check<'tcx>(
         let Some(suggested_method_def_id) = receiver_ty.ty_adt_def().and_then(|adt_def| {
             cx.tcx
                 .inherent_impls(adt_def.did())
-                .into_iter()
-                .flatten()
+                .iter()
                 .flat_map(|impl_id| cx.tcx.associated_items(impl_id).filter_by_name_unhygienic(sugg))
                 .find_map(|assoc| {
                     if assoc.fn_has_self_parameter
@@ -184,7 +181,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 OR_FUN_CALL,
                 span_replace_word,
-                format!("use of `{name}` followed by a function call"),
+                format!("function call inside of `{name}`"),
                 "try",
                 format!("{name}_{suffix}({sugg})"),
                 app,
@@ -260,7 +257,7 @@ fn closure_body_returns_empty_to_string(cx: &LateContext<'_>, e: &hir::Expr<'_>)
 
         if body.params.is_empty()
             && let hir::Expr { kind, .. } = &body.value
-            && let hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, self_arg, _, _) = kind
+            && let hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, self_arg, [], _) = kind
             && ident.name == sym::to_string
             && let hir::Expr { kind, .. } = self_arg
             && let hir::ExprKind::Lit(lit) = kind

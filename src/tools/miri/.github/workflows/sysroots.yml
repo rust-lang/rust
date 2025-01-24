@@ -13,7 +13,7 @@ jobs:
     name: Build the sysroots
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build the sysroots
         run: |
           cargo install -f rustup-toolchain-install-master

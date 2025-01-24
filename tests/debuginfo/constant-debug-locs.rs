@@ -1,5 +1,3 @@
-//@ min-lldb-version: 310
-
 //@ compile-flags:-g
 
 #![allow(dead_code, unused_variables)]

@@ -10,7 +10,7 @@
 
 const WORD_SIZE: usize = core::mem::size_of::<u32>();
 
-pub mod alloc;
+pub mod abi;
 #[path = "../zkvm/args.rs"]
 pub mod args;
 pub mod env;
@@ -26,13 +26,10 @@ pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
 pub mod stdio;
-#[path = "../unsupported/time.rs"]
-pub mod time;
-
 #[path = "../unsupported/thread.rs"]
 pub mod thread;
-
-mod abi;
+#[path = "../unsupported/time.rs"]
+pub mod time;
 
 use crate::io as std_io;
 
@@ -62,12 +59,4 @@ pub fn decode_error_kind(_code: i32) -> crate::io::ErrorKind {
 
 pub fn abort_internal() -> ! {
     core::intrinsics::abort();
-}
-
-pub fn hashmap_random_keys() -> (u64, u64) {
-    let mut buf = [0u32; 4];
-    unsafe {
-        abi::sys_rand(buf.as_mut_ptr(), 4);
-    };
-    ((buf[0] as u64) << 32 + buf[1] as u64, (buf[2] as u64) << 32 + buf[3] as u64)
 }

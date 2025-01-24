@@ -19,9 +19,9 @@
 //!
 //! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
 use base_db::CrateId;
-use mbe::DocCommentDesugarMode;
 use span::SyntaxContextId;
 use syntax::{ted, Parse, SyntaxElement, SyntaxNode, TextSize, WalkEvent};
+use syntax_bridge::DocCommentDesugarMode;
 use triomphe::Arc;
 
 use crate::{
@@ -82,14 +82,14 @@ pub fn expand_eager_macro_input(
         return ExpandResult { value: None, err };
     };
 
-    let mut subtree = mbe::syntax_node_to_token_tree(
+    let mut subtree = syntax_bridge::syntax_node_to_token_tree(
         &expanded_eager_input,
         arg_map,
         span,
         DocCommentDesugarMode::Mbe,
     );
 
-    subtree.delimiter.kind = crate::tt::DelimiterKind::Invisible;
+    subtree.top_subtree_delimiter_mut().kind = crate::tt::DelimiterKind::Invisible;
 
     let loc = MacroCallLoc {
         def,
@@ -176,9 +176,10 @@ fn eager_macro_recur(
             Some(path) => match macro_resolver(&path) {
                 Some(def) => def,
                 None => {
+                    let edition = db.crate_graph()[krate].edition;
                     error = Some(ExpandError::other(
                         span_map.span_at(call.syntax().text_range().start()),
-                        format!("unresolved macro {}", path.display(db)),
+                        format!("unresolved macro {}", path.display(db, edition)),
                     ));
                     offset += call.syntax().text_range().len();
                     continue;

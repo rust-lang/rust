@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -91,12 +91,12 @@ fn expr_as_ptr_offset_call<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
 ) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>, Method)> {
-    if let ExprKind::MethodCall(path_segment, arg_0, [arg_1, ..], _) = &expr.kind {
+    if let ExprKind::MethodCall(path_segment, arg_0, [arg_1], _) = &expr.kind {
         if is_expr_ty_raw_ptr(cx, arg_0) {
             if path_segment.ident.name == sym::offset {
                 return Some((arg_0, arg_1, Method::Offset));
             }
-            if path_segment.ident.name == sym!(wrapping_offset) {
+            if path_segment.ident.name.as_str() == "wrapping_offset" {
                 return Some((arg_0, arg_1, Method::WrappingOffset));
             }
         }
@@ -120,8 +120,8 @@ fn build_suggestion(
     receiver_expr: &Expr<'_>,
     cast_lhs_expr: &Expr<'_>,
 ) -> Option<String> {
-    let receiver = snippet_opt(cx, receiver_expr.span)?;
-    let cast_lhs = snippet_opt(cx, cast_lhs_expr.span)?;
+    let receiver = receiver_expr.span.get_source_text(cx)?;
+    let cast_lhs = cast_lhs_expr.span.get_source_text(cx)?;
     Some(format!("{receiver}.{}({cast_lhs})", method.suggestion()))
 }
 

@@ -1,5 +1,5 @@
 use crate::intrinsics;
-use crate::iter::{from_fn, TrustedLen, TrustedRandomAccess};
+use crate::iter::{TrustedLen, TrustedRandomAccess, from_fn};
 use crate::num::NonZero;
 use crate::ops::{Range, Try};
 

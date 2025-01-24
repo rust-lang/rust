@@ -2,7 +2,7 @@ use std::ops::{Bound, Range};
 
 use ast::token::IdentIsRaw;
 use pm::bridge::{
-    server, DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree,
+    DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree, server,
 };
 use pm::{Delimiter, Level};
 use rustc_ast as ast;
@@ -15,12 +15,11 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diag, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parser::Parser;
-use rustc_parse::{new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
+use rustc_parse::{exp, new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
-use rustc_span::symbol::{self, sym, Symbol};
-use rustc_span::{BytePos, FileName, Pos, SourceFile, Span};
-use smallvec::{smallvec, SmallVec};
+use rustc_span::{BytePos, FileName, Pos, SourceFile, Span, Symbol, sym};
+use smallvec::{SmallVec, smallvec};
 
 use crate::base::ExtCtxt;
 
@@ -38,7 +37,7 @@ impl FromInternal<token::Delimiter> for Delimiter {
             token::Delimiter::Parenthesis => Delimiter::Parenthesis,
             token::Delimiter::Brace => Delimiter::Brace,
             token::Delimiter::Bracket => Delimiter::Bracket,
-            token::Delimiter::Invisible => Delimiter::None,
+            token::Delimiter::Invisible(_) => Delimiter::None,
         }
     }
 }
@@ -49,7 +48,7 @@ impl ToInternal<token::Delimiter> for Delimiter {
             Delimiter::Parenthesis => token::Delimiter::Parenthesis,
             Delimiter::Brace => token::Delimiter::Brace,
             Delimiter::Bracket => token::Delimiter::Bracket,
-            Delimiter::None => token::Delimiter::Invisible,
+            Delimiter::None => token::Delimiter::Invisible(token::InvisibleOrigin::ProcMacro),
         }
     }
 }
@@ -112,9 +111,9 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
         // Estimate the capacity as `stream.len()` rounded up to the next power
         // of two to limit the number of required reallocations.
         let mut trees = Vec::with_capacity(stream.len().next_power_of_two());
-        let mut cursor = stream.trees();
+        let mut iter = stream.iter();
 
-        while let Some(tree) = cursor.next() {
+        while let Some(tree) = iter.next() {
             let (Token { kind, span }, joint) = match tree.clone() {
                 tokenstream::TokenTree::Delimited(span, _, delim, tts) => {
                     let delimiter = pm::Delimiter::from_internal(delim);
@@ -229,15 +228,16 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     span: ident.span,
                 })),
 
-                Lifetime(name) => {
-                    let ident = symbol::Ident::new(name, span).without_first_quote();
+                Lifetime(name, is_raw) => {
+                    let ident = rustc_span::Ident::new(name, span).without_first_quote();
                     trees.extend([
                         TokenTree::Punct(Punct { ch: b'\'', joint: true, span }),
-                        TokenTree::Ident(Ident { sym: ident.name, is_raw: false, span }),
+                        TokenTree::Ident(Ident { sym: ident.name, is_raw: is_raw.into(), span }),
                     ]);
                 }
-                NtLifetime(ident) => {
-                    let stream = TokenStream::token_alone(token::Lifetime(ident.name), ident.span);
+                NtLifetime(ident, is_raw) => {
+                    let stream =
+                        TokenStream::token_alone(token::Lifetime(ident.name, is_raw), ident.span);
                     trees.push(TokenTree::Group(Group {
                         delimiter: pm::Delimiter::None,
                         stream: Some(stream),
@@ -414,7 +414,7 @@ impl ToInternal<rustc_errors::Level> for Level {
     }
 }
 
-pub struct FreeFunctions;
+pub(crate) struct FreeFunctions;
 
 pub(crate) struct Rustc<'a, 'b> {
     ecx: &'a mut ExtCtxt<'b>,
@@ -426,7 +426,7 @@ pub(crate) struct Rustc<'a, 'b> {
 }
 
 impl<'a, 'b> Rustc<'a, 'b> {
-    pub fn new(ecx: &'a mut ExtCtxt<'b>) -> Self {
+    pub(crate) fn new(ecx: &'a mut ExtCtxt<'b>) -> Self {
         let expn_data = ecx.current_expansion.id.expn_data();
         Rustc {
             def_site: ecx.with_def_site_ctxt(expn_data.def_site),
@@ -473,7 +473,7 @@ impl server::FreeFunctions for Rustc<'_, '_> {
             unwrap_or_emit_fatal(new_parser_from_source_str(self.psess(), name, s.to_owned()));
 
         let first_span = parser.token.span.data();
-        let minus_present = parser.eat(&token::BinOp(token::Minus));
+        let minus_present = parser.eat(exp!(Minus));
 
         let lit_span = parser.token.span.data();
         let token::Literal(mut lit) = parser.token.kind else {
@@ -626,8 +626,7 @@ impl server::TokenStream for Rustc<'_, '_> {
         base: Option<Self::TokenStream>,
         trees: Vec<TokenTree<Self::TokenStream, Self::Span, Self::Symbol>>,
     ) -> Self::TokenStream {
-        let mut stream =
-            if let Some(base) = base { base } else { tokenstream::TokenStream::default() };
+        let mut stream = base.unwrap_or_default();
         for tree in trees {
             for tt in (tree, &mut *self).to_internal() {
                 stream.push_tree(tt);
@@ -641,8 +640,7 @@ impl server::TokenStream for Rustc<'_, '_> {
         base: Option<Self::TokenStream>,
         streams: Vec<Self::TokenStream>,
     ) -> Self::TokenStream {
-        let mut stream =
-            if let Some(base) = base { base } else { tokenstream::TokenStream::default() };
+        let mut stream = base.unwrap_or_default();
         for s in streams {
             stream.push_stream(s);
         }

@@ -17,8 +17,7 @@ extern crate rustc_span;
 
 use std::path::{Path, PathBuf};
 
-use rustc_interface::Linker;
-use rustc_interface::interface;
+use rustc_interface::{Linker, interface};
 use rustc_session::config::{Input, Options, OutFileName, OutputType, OutputTypes};
 use rustc_span::FileName;
 
@@ -65,7 +64,7 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf, linker: Option<&Path
         output_dir: None,
         ice_file: None,
         file_loader: None,
-        locale_resources: &[],
+        locale_resources: Vec::new(),
         lint_caps: Default::default(),
         psess_created: None,
         hash_untracked_state: None,
@@ -73,17 +72,16 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf, linker: Option<&Path
         override_queries: None,
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
-        using_internal_features: std::sync::Arc::default(),
+        using_internal_features: &rustc_driver::USING_INTERNAL_FEATURES,
         expanded_args: Default::default(),
     };
 
     interface::run_compiler(config, |compiler| {
-        let linker = compiler.enter(|queries| {
-            queries.global_ctxt()?.enter(|tcx| {
-                tcx.analysis(())?;
-                Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend)
-            })
+        let krate = rustc_interface::passes::parse(&compiler.sess);
+        let linker = rustc_interface::create_and_enter_global_ctxt(&compiler, krate, |tcx| {
+            let _ = tcx.analysis(());
+            Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend)
         });
-        linker.unwrap().link(&compiler.sess, &*compiler.codegen_backend).unwrap();
+        linker.link(&compiler.sess, &*compiler.codegen_backend);
     });
 }

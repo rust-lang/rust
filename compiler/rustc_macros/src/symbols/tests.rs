@@ -94,8 +94,8 @@ fn check_symbol_order() {
             aardvark,
         }
     };
-    test_symbols_macro(
-        input,
-        &["Symbol `aardvark` must precede `zebra`", "location of previous symbol `zebra`"],
-    );
+    test_symbols_macro(input, &[
+        "Symbol `aardvark` must precede `zebra`",
+        "location of previous symbol `zebra`",
+    ]);
 }

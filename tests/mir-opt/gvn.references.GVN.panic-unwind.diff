@@ -120,11 +120,11 @@
           StorageLive(_21);
 -         _21 = move _18;
 -         _20 = S::<&mut impl Sized>(move _21);
-+         _21 = _18;
-+         _20 = S::<&mut impl Sized>(_18);
++         _21 = copy _18;
++         _20 = S::<&mut impl Sized>(copy _18);
           StorageDead(_21);
 -         _19 = move (_20.0: &mut impl Sized);
-+         _19 = _18;
++         _19 = copy _18;
           StorageDead(_20);
           StorageLive(_22);
           StorageLive(_23);

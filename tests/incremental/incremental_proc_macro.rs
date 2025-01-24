@@ -1,4 +1,4 @@
-//@ aux-build:incremental_proc_macro_aux.rs
+//@ proc-macro: incremental_proc_macro_aux.rs
 //@ revisions: cfail1 cfail2
 //@ build-pass (FIXME(62277): could be check-pass?)
 

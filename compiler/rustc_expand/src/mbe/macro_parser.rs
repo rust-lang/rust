@@ -75,16 +75,14 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::fmt::Display;
 use std::rc::Rc;
 
+pub(crate) use NamedMatch::*;
+pub(crate) use ParseResult::*;
 use rustc_ast::token::{self, DocComment, NonterminalKind, Token};
-use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_lint_defs::pluralize;
-use rustc_parse::parser::{ParseNtResult, Parser};
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
-use rustc_span::Span;
-pub(crate) use NamedMatch::*;
-pub(crate) use ParseResult::*;
+use rustc_parse::parser::{ParseNtResult, Parser, token_descr};
+use rustc_span::{Ident, MacroRulesNormalizedIdent, Span};
 
 use crate::mbe::macro_rules::Tracker;
 use crate::mbe::{KleeneOp, TokenTree};
@@ -150,7 +148,7 @@ impl Display for MatcherLoc {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             MatcherLoc::Token { token } | MatcherLoc::SequenceSep { separator: token } => {
-                write!(f, "`{}`", pprust::token_to_string(token))
+                write!(f, "{}", token_descr(token))
             }
             MatcherLoc::MetaVarDecl { bind, kind, .. } => {
                 write!(f, "meta-variable `${bind}")?;
@@ -398,8 +396,10 @@ pub(crate) enum NamedMatch {
 fn token_name_eq(t1: &Token, t2: &Token) -> bool {
     if let (Some((ident1, is_raw1)), Some((ident2, is_raw2))) = (t1.ident(), t2.ident()) {
         ident1.name == ident2.name && is_raw1 == is_raw2
-    } else if let (Some(ident1), Some(ident2)) = (t1.lifetime(), t2.lifetime()) {
-        ident1.name == ident2.name
+    } else if let (Some((ident1, is_raw1)), Some((ident2, is_raw2))) =
+        (t1.lifetime(), t2.lifetime())
+    {
+        ident1.name == ident2.name && is_raw1 == is_raw2
     } else {
         t1.kind == t2.kind
     }
@@ -407,7 +407,7 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 
 // Note: the vectors could be created and dropped within `parse_tt`, but to avoid excess
 // allocations we have a single vector for each kind that is cleared and reused repeatedly.
-pub struct TtParser {
+pub(crate) struct TtParser {
     macro_name: Ident,
 
     /// The set of current mps to be processed. This should be empty by the end of a successful
@@ -620,7 +620,7 @@ impl TtParser {
         // possible next positions into `next_mps`. After some post-processing, the contents of
         // `next_mps` replenish `cur_mps` and we start over again.
         self.cur_mps.clear();
-        self.cur_mps.push(MatcherPos { idx: 0, matches: self.empty_matches.clone() });
+        self.cur_mps.push(MatcherPos { idx: 0, matches: Rc::clone(&self.empty_matches) });
 
         loop {
             self.next_mps.clear();

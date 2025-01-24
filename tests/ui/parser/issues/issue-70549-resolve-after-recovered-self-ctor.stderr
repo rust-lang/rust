@@ -8,10 +8,12 @@ error: expected one of `:`, `@`, or `|`, found keyword `Self`
   --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:4:17
    |
 LL |     fn foo(&mur Self) {}
-   |            -----^^^^
-   |            |    |
-   |            |    expected one of `:`, `@`, or `|`
-   |            help: declare the type after the parameter binding: `<identifier>: <type>`
+   |                 ^^^^ expected one of `:`, `@`, or `|`
+   |
+help: there is a keyword `mut` with a similar name
+   |
+LL |     fn foo(&mut Self) {}
+   |             ~~~
 
 error: unexpected lifetime `'static` in pattern
   --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:8:13
@@ -35,16 +37,23 @@ error: expected one of `:`, `@`, or `|`, found keyword `Self`
   --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:8:25
    |
 LL |     fn bar(&'static mur Self) {}
-   |            -------------^^^^
-   |            |            |
-   |            |            expected one of `:`, `@`, or `|`
-   |            help: declare the type after the parameter binding: `<identifier>: <type>`
+   |                         ^^^^ expected one of `:`, `@`, or `|`
+   |
+help: there is a keyword `mut` with a similar name
+   |
+LL |     fn bar(&'static mut Self) {}
+   |                     ~~~
 
 error: expected one of `:`, `@`, or `|`, found keyword `Self`
   --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:14:17
    |
 LL |     fn baz(&mur Self @ _) {}
    |                 ^^^^ expected one of `:`, `@`, or `|`
+   |
+help: there is a keyword `mut` with a similar name
+   |
+LL |     fn baz(&mut Self @ _) {}
+   |             ~~~
 
 error[E0533]: expected unit struct, found self constructor `Self`
   --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:4:17

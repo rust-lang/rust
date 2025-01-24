@@ -1,4 +1,4 @@
-use rustc_attr::InlineAttr;
+use rustc_attr_parsing::InlineAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::visit::Visitor;
@@ -10,7 +10,7 @@ use rustc_span::sym;
 
 use crate::{inline, pass_manager as pm};
 
-pub fn provide(providers: &mut Providers) {
+pub(super) fn provide(providers: &mut Providers) {
     providers.cross_crate_inlinable = cross_crate_inlinable;
 }
 
@@ -24,7 +24,7 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 
     // This just reproduces the logic from Instance::requires_inline.
     match tcx.def_kind(def_id) {
-        DefKind::Ctor(..) | DefKind::Closure => return true,
+        DefKind::Ctor(..) | DefKind::Closure | DefKind::SyntheticCoroutineBody => return true,
         DefKind::Fn | DefKind::AssocFn => {}
         _ => return false,
     }
@@ -46,8 +46,18 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     // #[inline(never)] to force code generation.
     match codegen_fn_attrs.inline {
         InlineAttr::Never => return false,
-        InlineAttr::Hint | InlineAttr::Always => return true,
+        InlineAttr::Hint | InlineAttr::Always | InlineAttr::Force { .. } => return true,
         _ => {}
+    }
+
+    let sig = tcx.fn_sig(def_id).instantiate_identity();
+    for ty in sig.inputs().skip_binder().iter().chain(std::iter::once(&sig.output().skip_binder()))
+    {
+        // FIXME(f16_f128): in order to avoid crashes building `core`, always inline to skip
+        // codegen if the function is not used.
+        if ty == &tcx.types.f16 || ty == &tcx.types.f128 {
+            return true;
+        }
     }
 
     // Don't do any inference when incremental compilation is enabled; the additional inlining that
@@ -59,8 +69,9 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     // Don't do any inference if codegen optimizations are disabled and also MIR inlining is not
     // enabled. This ensures that we do inference even if someone only passes -Zinline-mir,
     // which is less confusing than having to also enable -Copt-level=1.
-    if matches!(tcx.sess.opts.optimize, OptLevel::No) && !pm::should_run_pass(tcx, &inline::Inline)
-    {
+    let inliner_will_run = pm::should_run_pass(tcx, &inline::Inline)
+        || inline::ForceInline::should_run_pass_for_callee(tcx, def_id.to_def_id());
+    if matches!(tcx.sess.opts.optimize, OptLevel::No) && !inliner_will_run {
         return false;
     }
 

@@ -23,16 +23,16 @@
 use std::hash::Hash;
 use std::iter;
 
+use rustc_abi::Align;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_lint_defs::builtin::EXPLICIT_BUILTIN_CFGS_IN_FLAGS;
 use rustc_lint_defs::BuiltinLintDiag;
-use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::Align;
-use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, Target, TargetTriple, TARGETS};
+use rustc_lint_defs::builtin::EXPLICIT_BUILTIN_CFGS_IN_FLAGS;
+use rustc_span::{Symbol, sym};
+use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, TARGETS, Target, TargetTuple};
 
-use crate::config::CrateType;
 use crate::Session;
+use crate::config::{CrateType, FmtDebug};
 
 /// The parsed `--cfg` options that define the compilation environment of the
 /// crate, used to drive conditional compilation.
@@ -142,6 +142,8 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             | (sym::target_has_atomic_equal_alignment, Some(_))
             | (sym::target_has_atomic_load_store, Some(_))
             | (sym::target_thread_local, None) => disallow(cfg, "--target"),
+            (sym::fmt_debug, None | Some(_)) => disallow(cfg, "-Z fmt-debug"),
+            (sym::emscripten_wasm_eh, None | Some(_)) => disallow(cfg, "-Z emscripten_wasm_eh"),
             _ => {}
         }
     }
@@ -177,6 +179,20 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
 
     if sess.opts.debug_assertions {
         ins_none!(sym::debug_assertions);
+    }
+
+    if sess.is_nightly_build() {
+        match sess.opts.unstable_opts.fmt_debug {
+            FmtDebug::Full => {
+                ins_sym!(sym::fmt_debug, sym::full);
+            }
+            FmtDebug::Shallow => {
+                ins_sym!(sym::fmt_debug, sym::shallow);
+            }
+            FmtDebug::None => {
+                ins_sym!(sym::fmt_debug, sym::none);
+            }
+        }
     }
 
     if sess.overflow_checks() {
@@ -280,6 +296,10 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         ins_none!(sym::ub_checks);
     }
 
+    // Nightly-only implementation detail for the `panic_unwind` and `unwind` crates.
+    if sess.is_nightly_build() && sess.opts.unstable_opts.emscripten_wasm_eh {
+        ins_none!(sym::emscripten_wasm_eh);
+    }
     ret
 }
 
@@ -317,6 +337,11 @@ impl CheckCfg {
         // Note that symbols inserted conditionally in `default_configuration`
         // are inserted unconditionally here.
         //
+        // One exception is the `test` cfg which is consider to be a "user-space"
+        // cfg, despite being also set by in `default_configuration` above.
+        // It allows the build system to "deny" using the config by not marking it
+        // as expected (e.g. `lib.test = false` for Cargo).
+        //
         // When adding a new config here you should also update
         // `tests/ui/check-cfg/well-known-values.rs` (in order to test the
         // expected values of the new config) and bless the all directory.
@@ -325,6 +350,8 @@ impl CheckCfg {
         // in the unstable book as well!
 
         ins!(sym::debug_assertions, no_values);
+
+        ins!(sym::fmt_debug, empty_values).extend(FmtDebug::all());
 
         // These four are never set by rustc, but we set them anyway; they
         // should not trigger the lint because `cargo clippy`, `cargo doc`,
@@ -353,8 +380,9 @@ impl CheckCfg {
         ins!(sym::sanitizer_cfi_normalize_integers, no_values);
 
         ins!(sym::target_feature, empty_values).extend(
-            rustc_target::target_features::all_known_features()
-                .map(|(f, _sb)| f)
+            rustc_target::target_features::all_rust_features()
+                .filter(|(_, s)| s.in_cfg())
+                .map(|(f, _s)| f)
                 .chain(rustc_target::target_features::RUSTC_SPECIFIC_FEATURES.iter().cloned())
                 .map(Symbol::intern),
         );
@@ -385,22 +413,22 @@ impl CheckCfg {
                 // Get all values map at once otherwise it would be costly.
                 // (8 values * 220 targets ~= 1760 times, at the time of writing this comment).
                 let [
-                    values_target_abi,
-                    values_target_arch,
-                    values_target_endian,
-                    values_target_env,
-                    values_target_family,
-                    values_target_os,
-                    values_target_pointer_width,
-                    values_target_vendor,
-                ] = self
-                    .expecteds
-                    .get_many_mut(VALUES)
-                    .expect("unable to get all the check-cfg values buckets");
+                    Some(values_target_abi),
+                    Some(values_target_arch),
+                    Some(values_target_endian),
+                    Some(values_target_env),
+                    Some(values_target_family),
+                    Some(values_target_os),
+                    Some(values_target_pointer_width),
+                    Some(values_target_vendor),
+                ] = self.expecteds.get_many_mut(VALUES)
+                else {
+                    panic!("unable to get all the check-cfg values buckets");
+                };
 
                 for target in TARGETS
                     .iter()
-                    .map(|target| Target::expect_builtin(&TargetTriple::from_triple(target)))
+                    .map(|target| Target::expect_builtin(&TargetTuple::from_tuple(target)))
                     .chain(iter::once(current_target.clone()))
                 {
                     values_target_abi.insert(Symbol::intern(&target.options.abi));
@@ -434,8 +462,6 @@ impl CheckCfg {
         }
 
         ins!(sym::target_thread_local, no_values);
-
-        ins!(sym::test, no_values);
 
         ins!(sym::ub_checks, no_values);
 

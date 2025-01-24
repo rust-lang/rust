@@ -26,7 +26,7 @@ mod tests {
     use test_utils::skip_slow_tests;
 
     #[track_caller]
-    fn check_diagnostics_no_bails(ra_fixture: &str) {
+    fn check_diagnostics_no_bails(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         cov_mark::check_count!(validate_match_bailed_out, 0);
         crate::tests::check_diagnostics(ra_fixture)
     }
@@ -1032,6 +1032,44 @@ fn f() {
         check_diagnostics_no_bails(&code);
     }
 
+    #[test]
+    fn min_exhaustive() {
+        check_diagnostics(
+            r#"
+//- minicore: result
+fn test(x: Result<i32, !>) {
+    match x {
+        Ok(_y) => {}
+    }
+}
+"#,
+        );
+        check_diagnostics(
+            r#"
+//- minicore: result
+fn test(ptr: *const Result<i32, !>) {
+    unsafe {
+        match *ptr {
+            //^^^^ error: missing match arm: `Err(!)` not covered
+            Ok(_x) => {}
+        }
+    }
+}
+"#,
+        );
+        check_diagnostics(
+            r#"
+//- minicore: result
+fn test(x: Result<i32, &'static !>) {
+    match x {
+        //^ error: missing match arm: `Err(_)` not covered
+        Ok(_y) => {}
+    }
+}
+"#,
+        );
+    }
+
     mod rust_unstable {
         use super::*;
 
@@ -1074,6 +1112,25 @@ fn test(x: Option<lib::PrivatelyUninhabited>) {
 }",
             );
         }
+    }
+
+    #[test]
+    fn non_exhaustive_may_be_empty() {
+        check_diagnostics_no_bails(
+            r"
+//- /main.rs crate:main deps:dep
+// In a different crate
+fn empty_match_on_empty_struct<T>(x: dep::UninhabitedStruct) -> T {
+    match x {}
+}
+//- /dep.rs crate:dep
+#[non_exhaustive]
+pub struct UninhabitedStruct {
+    pub never: !,
+    // other fields
+}
+",
+        );
     }
 
     mod false_negatives {

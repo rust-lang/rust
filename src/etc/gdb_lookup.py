@@ -6,8 +6,11 @@ from gdb_providers import *
 from rust_types import *
 
 
-_gdb_version_matched = re.search('([0-9]+)\\.([0-9]+)', gdb.VERSION)
-gdb_version = [int(num) for num in _gdb_version_matched.groups()] if _gdb_version_matched else []
+_gdb_version_matched = re.search("([0-9]+)\\.([0-9]+)", gdb.VERSION)
+gdb_version = (
+    [int(num) for num in _gdb_version_matched.groups()] if _gdb_version_matched else []
+)
+
 
 def register_printers(objfile):
     objfile.pretty_printers.append(printer)

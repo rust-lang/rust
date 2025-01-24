@@ -1,10 +1,10 @@
 use crate::abi::Endian;
-use crate::spec::{crt_objects, cvs, Cc, CodeModel, LinkOutputKind, LinkerFlavor, TargetOptions};
+use crate::spec::{Cc, CodeModel, LinkOutputKind, LinkerFlavor, TargetOptions, crt_objects, cvs};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
         abi: "vec-extabi".into(),
-        code_model: Some(CodeModel::Small),
+        code_model: Some(CodeModel::Large),
         cpu: "pwr7".into(),
         os: "aix".into(),
         vendor: "ibm".into(),

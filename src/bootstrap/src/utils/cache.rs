@@ -39,17 +39,17 @@ impl PartialEq<str> for Interned<String> {
         *self == other
     }
 }
-impl<'a> PartialEq<&'a str> for Interned<String> {
+impl PartialEq<&str> for Interned<String> {
     fn eq(&self, other: &&str) -> bool {
         **self == **other
     }
 }
-impl<'a, T> PartialEq<&'a Interned<T>> for Interned<T> {
+impl<T> PartialEq<&Interned<T>> for Interned<T> {
     fn eq(&self, other: &&Self) -> bool {
         self.0 == other.0
     }
 }
-impl<'a, T> PartialEq<Interned<T>> for &'a Interned<T> {
+impl<T> PartialEq<Interned<T>> for &Interned<T> {
     fn eq(&self, other: &Interned<T>) -> bool {
         self.0 == other.0
     }

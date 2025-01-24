@@ -7,18 +7,19 @@
 // CHECK-LABEL: @if_bool
 #[no_mangle]
 pub fn if_bool() {
-    // CHECK: br label %{{.+}}
+    // CHECK-NOT: br i1
+    // CHECK-NOT: switch
     _ = if true { 0 } else { 1 };
 
-    // CHECK: br label %{{.+}}
     _ = if false { 0 } else { 1 };
 }
 
 // CHECK-LABEL: @if_constant_int_eq
 #[no_mangle]
 pub fn if_constant_int_eq() {
+    // CHECK-NOT: br i1
+    // CHECK-NOT: switch
     let val = 0;
-    // CHECK: br label %{{.+}}
     _ = if val == 0 { 0 } else { 1 };
 
     // CHECK: br label %{{.+}}
@@ -28,23 +29,20 @@ pub fn if_constant_int_eq() {
 // CHECK-LABEL: @if_constant_match
 #[no_mangle]
 pub fn if_constant_match() {
-    // CHECK: br label %{{.+}}
+    // CHECK-NOT: br i1
+    // CHECK-NOT: switch
     _ = match 1 {
         1 => 2,
         2 => 3,
         _ => 4,
     };
 
-    // CHECK: br label %{{.+}}
     _ = match 1 {
         2 => 3,
         _ => 4,
     };
 
-    // CHECK: br label %[[MINUS1:.+]]
     _ = match -1 {
-        // CHECK: [[MINUS1]]:
-        // CHECK: store i32 1
         -1 => 1,
         _ => 0,
     }

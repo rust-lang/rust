@@ -1,3 +1,14 @@
+error: elided lifetime has a name
+  --> tests/ui/needless_lifetimes.rs:266:52
+   |
+LL | fn named_input_elided_output<'a>(_arg: &'a str) -> &str {
+   |                              --                    ^ this elided lifetime gets resolved as `'a`
+   |                              |
+   |                              lifetime `'a` declared here
+   |
+   = note: `-D elided-named-lifetimes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(elided_named_lifetimes)]`
+
 error: the following explicit lifetimes could be elided: 'a, 'b
   --> tests/ui/needless_lifetimes.rs:17:23
    |
@@ -325,6 +336,18 @@ LL +         fn needless_lt(_x: &u8) {}
    |
 
 error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:332:10
+   |
+LL |     impl<'a> Foo for Baz<'a> {}
+   |          ^^              ^^
+   |
+help: elide the lifetimes
+   |
+LL -     impl<'a> Foo for Baz<'a> {}
+LL +     impl Foo for Baz<'_> {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a
   --> tests/ui/needless_lifetimes.rs:334:16
    |
 LL |         fn baz<'a>(&'a self) -> impl Foo + 'a {
@@ -361,15 +384,15 @@ LL +     fn generics_elidable<T: Fn(&i32) -> &i32>(i: &i32, f: T) -> &i32 {
    |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> tests/ui/needless_lifetimes.rs:387:32
+  --> tests/ui/needless_lifetimes.rs:387:30
    |
-LL |     fn where_clause_elidadable<'a, T>(i: &'a i32, f: T) -> &'a i32
-   |                                ^^         ^^                ^^
+LL |     fn where_clause_elidable<'a, T>(i: &'a i32, f: T) -> &'a i32
+   |                              ^^         ^^                ^^
    |
 help: elide the lifetimes
    |
-LL -     fn where_clause_elidadable<'a, T>(i: &'a i32, f: T) -> &'a i32
-LL +     fn where_clause_elidadable<T>(i: &i32, f: T) -> &i32
+LL -     fn where_clause_elidable<'a, T>(i: &'a i32, f: T) -> &'a i32
+LL +     fn where_clause_elidable<T>(i: &i32, f: T) -> &i32
    |
 
 error: the following explicit lifetimes could be elided: 'a
@@ -553,5 +576,5 @@ LL -         fn one_input<'a>(x: &'a u8) -> &'a u8 {
 LL +         fn one_input(x: &u8) -> &u8 {
    |
 
-error: aborting due to 46 previous errors
+error: aborting due to 48 previous errors
 

@@ -1,5 +1,5 @@
 error: Undefined Behavior: attempting a write access using <TAG> at ALLOC[0x0], but that tag only grants SharedReadOnly permission for this location
-  --> $DIR/shr_frozen_violation1.rs:LL:CC
+  --> tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
    |
 LL |         *(x as *const i32 as *mut i32) = 7;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -10,19 +10,19 @@ LL |         *(x as *const i32 as *mut i32) = 7;
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
 help: <TAG> was created by a SharedReadOnly retag at offsets [0x0..0x4]
-  --> $DIR/shr_frozen_violation1.rs:LL:CC
+  --> tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
    |
 LL |         *(x as *const i32 as *mut i32) = 7;
    |           ^
    = note: BACKTRACE (of the first span):
-   = note: inside `unknown_code` at $DIR/shr_frozen_violation1.rs:LL:CC
+   = note: inside `unknown_code` at tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
 note: inside `foo`
-  --> $DIR/shr_frozen_violation1.rs:LL:CC
+  --> tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
    |
 LL |     unknown_code(&*x);
    |     ^^^^^^^^^^^^^^^^^
 note: inside `main`
-  --> $DIR/shr_frozen_violation1.rs:LL:CC
+  --> tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
    |
 LL |     println!("{}", foo(&mut 0));
    |                    ^^^^^^^^^^^

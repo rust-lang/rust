@@ -2,11 +2,10 @@ use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::Delimiter;
 use rustc_ast::visit::AssocCtxt;
-use rustc_ast::{self as ast};
+use rustc_ast::{self as ast, Safety};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_span::symbol::Ident;
-use rustc_span::DUMMY_SP;
-use smallvec::{smallvec, SmallVec};
+use rustc_span::{DUMMY_SP, Ident};
+use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 
 use crate::expand::{AstFragment, AstFragmentKind};
@@ -173,6 +172,8 @@ pub(crate) fn placeholder(
             ty: ty(),
             vis,
             is_placeholder: true,
+            safety: Safety::Default,
+            default: None,
         }]),
         AstFragmentKind::Variants => AstFragment::Variants(smallvec![ast::Variant {
             attrs: Default::default(),
@@ -191,12 +192,12 @@ pub(crate) fn placeholder(
 }
 
 #[derive(Default)]
-pub struct PlaceholderExpander {
+pub(crate) struct PlaceholderExpander {
     expanded_fragments: FxHashMap<ast::NodeId, AstFragment>,
 }
 
 impl PlaceholderExpander {
-    pub fn add(&mut self, id: ast::NodeId, mut fragment: AstFragment) {
+    pub(crate) fn add(&mut self, id: ast::NodeId, mut fragment: AstFragment) {
         fragment.mut_visit_with(self);
         self.expanded_fragments.insert(id, fragment);
     }
@@ -286,7 +287,7 @@ impl MutVisitor for PlaceholderExpander {
                     AssocCtxt::Impl => it.make_impl_items(),
                 }
             }
-            _ => walk_flat_map_item(self, item),
+            _ => walk_flat_map_assoc_item(self, item, ctxt),
         }
     }
 
@@ -296,7 +297,7 @@ impl MutVisitor for PlaceholderExpander {
     ) -> SmallVec<[P<ast::ForeignItem>; 1]> {
         match item.kind {
             ast::ForeignItemKind::MacCall(_) => self.remove(item.id).make_foreign_items(),
-            _ => walk_flat_map_item(self, item),
+            _ => walk_flat_map_foreign_item(self, item),
         }
     }
 

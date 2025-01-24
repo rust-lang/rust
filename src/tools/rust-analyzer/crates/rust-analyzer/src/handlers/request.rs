@@ -1,20 +1,17 @@
 //! This module is responsible for implementing handlers for Language Server
 //! Protocol. This module specifically handles requests.
 
-use std::{
-    fs,
-    io::Write as _,
-    process::{self, Stdio},
-};
+use std::{fs, io::Write as _, ops::Not, process::Stdio};
 
 use anyhow::Context;
 
+use base64::{prelude::BASE64_STANDARD, Engine};
 use ide::{
-    AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, FilePosition, FileRange,
-    HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, ReferenceCategory,
-    Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
+    AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, CompletionFieldsToResolve,
+    FilePosition, FileRange, HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query,
+    RangeInfo, ReferenceCategory, Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
 };
-use ide_db::SymbolKind;
+use ide_db::{FxHashMap, SymbolKind};
 use itertools::Itertools;
 use lsp_server::ErrorCode;
 use lsp_types::{
@@ -30,18 +27,22 @@ use paths::Utf8PathBuf;
 use project_model::{CargoWorkspace, ManifestPath, ProjectWorkspaceKind, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
-use syntax::{algo, ast, AstNode, TextRange, TextSize};
+use syntax::{TextRange, TextSize};
 use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, FileId, VfsPath};
 
 use crate::{
+    completion_item_hash,
     config::{Config, RustfmtConfig, WorkspaceSymbolConfig},
-    diff::diff,
+    diagnostics::convert_diagnostic,
     global_state::{FetchWorkspaceRequest, GlobalState, GlobalStateSnapshot},
     hack_recover_crate_name,
     line_index::LineEndings,
     lsp::{
-        ext::InternalTestingFetchConfigParams,
+        ext::{
+            InternalTestingFetchConfigOption, InternalTestingFetchConfigParams,
+            InternalTestingFetchConfigResponse,
+        },
         from_proto, to_proto,
         utils::{all_edits_are_disjoint, invalid_params_error},
         LspError,
@@ -51,6 +52,7 @@ use crate::{
         FetchDependencyListResult, PositionOrRange, ViewCrateGraphParams, WorkspaceSymbolParams,
     },
     target_spec::{CargoTargetSpec, TargetSpec},
+    test_runner::{CargoTestHandle, TestTarget},
 };
 
 pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
@@ -116,7 +118,7 @@ pub(crate) fn handle_analyzer_status(
     format_to!(buf, "{}", crate::version());
 
     buf.push_str("\nConfiguration: \n");
-    format_to!(buf, "{:?}", snap.config);
+    format_to!(buf, "{:#?}", snap.config);
 
     Ok(buf)
 }
@@ -134,15 +136,13 @@ pub(crate) fn handle_memory_usage(state: &mut GlobalState, _: ()) -> anyhow::Res
     Ok(out)
 }
 
-pub(crate) fn handle_syntax_tree(
+pub(crate) fn handle_view_syntax_tree(
     snap: GlobalStateSnapshot,
-    params: lsp_ext::SyntaxTreeParams,
+    params: lsp_ext::ViewSyntaxTreeParams,
 ) -> anyhow::Result<String> {
-    let _p = tracing::info_span!("handle_syntax_tree").entered();
+    let _p = tracing::info_span!("handle_view_syntax_tree").entered();
     let id = from_proto::file_id(&snap, &params.text_document.uri)?;
-    let line_index = snap.file_line_index(id)?;
-    let text_range = params.range.and_then(|r| from_proto::text_range(&line_index, r).ok());
-    let res = snap.analysis.syntax_tree(id, text_range)?;
+    let res = snap.analysis.view_syntax_tree(id)?;
     Ok(res)
 }
 
@@ -246,17 +246,17 @@ pub(crate) fn handle_run_test(
         if let ProjectWorkspaceKind::Cargo { cargo, .. } = &ws.kind {
             let test_target = if let Some(namespace_root) = namespace_root {
                 if let Some(package_name) = find_package_name(namespace_root, cargo) {
-                    flycheck::TestTarget::Package(package_name)
+                    TestTarget::Package(package_name)
                 } else {
-                    flycheck::TestTarget::Workspace
+                    TestTarget::Workspace
                 }
             } else {
-                flycheck::TestTarget::Workspace
+                TestTarget::Workspace
             };
 
-            let handle = flycheck::CargoTestHandle::new(
+            let handle = CargoTestHandle::new(
                 test_path,
-                state.config.cargo_test_options(),
+                state.config.cargo_test_options(None),
                 cargo.workspace_root(),
                 test_target,
                 state.test_run_sender.clone(),
@@ -434,29 +434,24 @@ pub(crate) fn handle_on_type_formatting(
     params: lsp_types::DocumentOnTypeFormattingParams,
 ) -> anyhow::Result<Option<Vec<lsp_ext::SnippetTextEdit>>> {
     let _p = tracing::info_span!("handle_on_type_formatting").entered();
+    let char_typed = params.ch.chars().next().unwrap_or('\0');
+    if !snap.config.typing_trigger_chars().contains(char_typed) {
+        return Ok(None);
+    }
+
     let mut position = from_proto::file_position(&snap, params.text_document_position)?;
     let line_index = snap.file_line_index(position.file_id)?;
 
     // in `ide`, the `on_type` invariant is that
     // `text.char_at(position) == typed_char`.
     position.offset -= TextSize::of('.');
-    let char_typed = params.ch.chars().next().unwrap_or('\0');
 
     let text = snap.analysis.file_text(position.file_id)?;
     if stdx::never!(!text[usize::from(position.offset)..].starts_with(char_typed)) {
         return Ok(None);
     }
 
-    // We have an assist that inserts ` ` after typing `->` in `fn foo() ->{`,
-    // but it requires precise cursor positioning to work, and one can't
-    // position the cursor with on_type formatting. So, let's just toggle this
-    // feature off here, hoping that we'll enable it one day, 😿.
-    if char_typed == '>' {
-        return Ok(None);
-    }
-
-    let edit =
-        snap.analysis.on_char_typed(position, char_typed, snap.config.typing_autoclose_angle())?;
+    let edit = snap.analysis.on_char_typed(position, char_typed)?;
     let edit = match edit {
         Some(it) => it,
         None => return Ok(None),
@@ -468,6 +463,82 @@ pub(crate) fn handle_on_type_formatting(
 
     let change = to_proto::snippet_text_edit_vec(&line_index, edit.is_snippet, text_edit);
     Ok(Some(change))
+}
+
+pub(crate) fn handle_document_diagnostics(
+    snap: GlobalStateSnapshot,
+    params: lsp_types::DocumentDiagnosticParams,
+) -> anyhow::Result<lsp_types::DocumentDiagnosticReportResult> {
+    let empty = || {
+        lsp_types::DocumentDiagnosticReportResult::Report(
+            lsp_types::DocumentDiagnosticReport::Full(
+                lsp_types::RelatedFullDocumentDiagnosticReport {
+                    related_documents: None,
+                    full_document_diagnostic_report: lsp_types::FullDocumentDiagnosticReport {
+                        result_id: Some("rust-analyzer".to_owned()),
+                        items: vec![],
+                    },
+                },
+            ),
+        )
+    };
+
+    let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+    let source_root = snap.analysis.source_root_id(file_id)?;
+    if !snap.analysis.is_local_source_root(source_root)? {
+        return Ok(empty());
+    }
+    let config = snap.config.diagnostics(Some(source_root));
+    if !config.enabled {
+        return Ok(empty());
+    }
+    let line_index = snap.file_line_index(file_id)?;
+    let supports_related = snap.config.text_document_diagnostic_related_document_support();
+
+    let mut related_documents = FxHashMap::default();
+    let diagnostics = snap
+        .analysis
+        .full_diagnostics(&config, AssistResolveStrategy::None, file_id)?
+        .into_iter()
+        .filter_map(|d| {
+            let file = d.range.file_id;
+            if file == file_id {
+                let diagnostic = convert_diagnostic(&line_index, d);
+                return Some(diagnostic);
+            }
+            if supports_related {
+                let (diagnostics, line_index) = related_documents
+                    .entry(file)
+                    .or_insert_with(|| (Vec::new(), snap.file_line_index(file).ok()));
+                let diagnostic = convert_diagnostic(line_index.as_mut()?, d);
+                diagnostics.push(diagnostic);
+            }
+            None
+        });
+    Ok(lsp_types::DocumentDiagnosticReportResult::Report(
+        lsp_types::DocumentDiagnosticReport::Full(lsp_types::RelatedFullDocumentDiagnosticReport {
+            full_document_diagnostic_report: lsp_types::FullDocumentDiagnosticReport {
+                result_id: Some("rust-analyzer".to_owned()),
+                items: diagnostics.collect(),
+            },
+            related_documents: related_documents.is_empty().not().then(|| {
+                related_documents
+                    .into_iter()
+                    .map(|(id, (items, _))| {
+                        (
+                            to_proto::url(&snap, id),
+                            lsp_types::DocumentDiagnosticReportKind::Full(
+                                lsp_types::FullDocumentDiagnosticReport {
+                                    result_id: Some("rust-analyzer".to_owned()),
+                                    items,
+                                },
+                            ),
+                        )
+                    })
+                    .collect()
+            }),
+        }),
+    ))
 }
 
 pub(crate) fn handle_document_symbol(
@@ -536,18 +607,11 @@ pub(crate) fn handle_document_symbol(
         url: &Url,
         res: &mut Vec<SymbolInformation>,
     ) {
-        let mut tags = Vec::new();
-
-        #[allow(deprecated)]
-        if let Some(true) = symbol.deprecated {
-            tags.push(SymbolTag::DEPRECATED)
-        }
-
         #[allow(deprecated)]
         res.push(SymbolInformation {
             name: symbol.name.clone(),
             kind: symbol.kind,
-            tags: Some(tags),
+            tags: symbol.tags.clone(),
             deprecated: symbol.deprecated,
             location: Location::new(url.clone(), symbol.range),
             container_name,
@@ -565,7 +629,7 @@ pub(crate) fn handle_workspace_symbol(
 ) -> anyhow::Result<Option<lsp_types::WorkspaceSymbolResponse>> {
     let _p = tracing::info_span!("handle_workspace_symbol").entered();
 
-    let config = snap.config.workspace_symbol();
+    let config = snap.config.workspace_symbol(None);
     let (all_symbols, libs) = decide_search_scope_and_kind(&params, &config);
 
     let query = {
@@ -781,9 +845,12 @@ pub(crate) fn handle_parent_module(
     if let Ok(file_path) = &params.text_document.uri.to_file_path() {
         if file_path.file_name().unwrap_or_default() == "Cargo.toml" {
             // search workspaces for parent packages or fallback to workspace root
-            let abs_path_buf = match AbsPathBuf::try_from(file_path.to_path_buf()).ok() {
-                Some(abs_path_buf) => abs_path_buf,
-                None => return Ok(None),
+            let abs_path_buf = match Utf8PathBuf::from_path_buf(file_path.to_path_buf())
+                .ok()
+                .map(AbsPathBuf::try_from)
+            {
+                Some(Ok(abs_path_buf)) => abs_path_buf,
+                _ => return Ok(None),
             };
 
             let manifest_path = match ManifestPath::try_from(abs_path_buf).ok() {
@@ -796,7 +863,7 @@ pub(crate) fn handle_parent_module(
                 .iter()
                 .filter_map(|ws| match &ws.kind {
                     ProjectWorkspaceKind::Cargo { cargo, .. }
-                    | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. } => {
+                    | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _, _)), .. } => {
                         cargo.parent_manifests(&manifest_path)
                     }
                     _ => None,
@@ -849,49 +916,43 @@ pub(crate) fn handle_runnables(
 ) -> anyhow::Result<Vec<lsp_ext::Runnable>> {
     let _p = tracing::info_span!("handle_runnables").entered();
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+    let source_root = snap.analysis.source_root_id(file_id).ok();
     let line_index = snap.file_line_index(file_id)?;
     let offset = params.position.and_then(|it| from_proto::offset(&line_index, it).ok());
     let target_spec = TargetSpec::for_file(&snap, file_id)?;
 
-    let expect_test = match offset {
-        Some(offset) => {
-            let source_file = snap.analysis.parse(file_id)?;
-            algo::find_node_at_offset::<ast::MacroCall>(source_file.syntax(), offset)
-                .and_then(|it| it.path()?.segment()?.name_ref())
-                .map_or(false, |it| it.text() == "expect" || it.text() == "expect_file")
-        }
-        None => false,
-    };
-
     let mut res = Vec::new();
     for runnable in snap.analysis.runnables(file_id)? {
-        if should_skip_for_offset(&runnable, offset) {
+        if should_skip_for_offset(&runnable, offset)
+            || should_skip_target(&runnable, target_spec.as_ref())
+        {
             continue;
         }
-        if should_skip_target(&runnable, target_spec.as_ref()) {
-            continue;
-        }
+
+        let update_test = runnable.update_test;
         if let Some(mut runnable) = to_proto::runnable(&snap, runnable)? {
-            if expect_test {
-                if let lsp_ext::RunnableArgs::Cargo(r) = &mut runnable.args {
-                    runnable.label = format!("{} + expect", runnable.label);
-                    r.environment.insert("UPDATE_EXPECT".to_owned(), "1".to_owned());
-                    if let Some(TargetSpec::Cargo(CargoTargetSpec {
-                        sysroot_root: Some(sysroot_root),
-                        ..
-                    })) = &target_spec
-                    {
-                        r.environment
-                            .insert("RUSTC_TOOLCHAIN".to_owned(), sysroot_root.to_string());
-                    }
-                }
+            if let Some(runnable) =
+                to_proto::make_update_runnable(&runnable, &update_test.label(), &update_test.env())
+            {
+                res.push(runnable);
             }
+
+            if let lsp_ext::RunnableArgs::Cargo(r) = &mut runnable.args {
+                if let Some(TargetSpec::Cargo(CargoTargetSpec {
+                    sysroot_root: Some(sysroot_root),
+                    ..
+                })) = &target_spec
+                {
+                    r.environment.insert("RUSTC_TOOLCHAIN".to_owned(), sysroot_root.to_string());
+                }
+            };
+
             res.push(runnable);
         }
     }
 
     // Add `cargo check` and `cargo test` for all targets of the whole package
-    let config = snap.config.runnables();
+    let config = snap.config.runnables(source_root);
     match target_spec {
         Some(TargetSpec::Cargo(spec)) => {
             let is_crate_no_std = snap.analysis.is_crate_no_std(spec.crate_id)?;
@@ -1012,9 +1073,11 @@ pub(crate) fn handle_completion(
 
     let items = to_proto::completion_items(
         &snap.config,
+        &completion_config.fields_to_resolve,
         &line_index,
         snap.file_version(position.file_id),
         text_document_position,
+        completion_trigger_character,
         items,
     );
 
@@ -1047,36 +1110,77 @@ pub(crate) fn handle_completion_resolve(
     };
     let source_root = snap.analysis.source_root_id(file_id)?;
 
-    let additional_edits = snap
-        .analysis
-        .resolve_completion_edits(
-            &snap.config.completion(Some(source_root)),
-            FilePosition { file_id, offset },
-            resolve_data
-                .imports
-                .into_iter()
-                .map(|import| (import.full_import_path, import.imported_name)),
-        )?
-        .into_iter()
-        .flat_map(|edit| edit.into_iter().map(|indel| to_proto::text_edit(&line_index, indel)))
-        .collect::<Vec<_>>();
+    let mut forced_resolve_completions_config = snap.config.completion(Some(source_root));
+    forced_resolve_completions_config.fields_to_resolve = CompletionFieldsToResolve::empty();
 
-    if !all_edits_are_disjoint(&original_completion, &additional_edits) {
-        return Err(LspError::new(
-            ErrorCode::InternalError as i32,
-            "Import edit overlaps with the original completion edits, this is not LSP-compliant"
-                .into(),
-        )
-        .into());
+    let position = FilePosition { file_id, offset };
+    let Some(completions) = snap.analysis.completions(
+        &forced_resolve_completions_config,
+        position,
+        resolve_data.trigger_character,
+    )?
+    else {
+        return Ok(original_completion);
+    };
+    let Ok(resolve_data_hash) = BASE64_STANDARD.decode(resolve_data.hash) else {
+        return Ok(original_completion);
+    };
+
+    let Some(corresponding_completion) = completions.into_iter().find(|completion_item| {
+        // Avoid computing hashes for items that obviously do not match
+        // r-a might append a detail-based suffix to the label, so we cannot check for equality
+        original_completion.label.starts_with(completion_item.label.primary.as_str())
+            && resolve_data_hash == completion_item_hash(completion_item, resolve_data.for_ref)
+    }) else {
+        return Ok(original_completion);
+    };
+
+    let mut resolved_completions = to_proto::completion_items(
+        &snap.config,
+        &forced_resolve_completions_config.fields_to_resolve,
+        &line_index,
+        snap.file_version(position.file_id),
+        resolve_data.position,
+        resolve_data.trigger_character,
+        vec![corresponding_completion],
+    );
+    let Some(mut resolved_completion) = resolved_completions.pop() else {
+        return Ok(original_completion);
+    };
+
+    if !resolve_data.imports.is_empty() {
+        let additional_edits = snap
+            .analysis
+            .resolve_completion_edits(
+                &forced_resolve_completions_config,
+                position,
+                resolve_data
+                    .imports
+                    .into_iter()
+                    .map(|import| (import.full_import_path, import.imported_name)),
+            )?
+            .into_iter()
+            .flat_map(|edit| edit.into_iter().map(|indel| to_proto::text_edit(&line_index, indel)))
+            .collect::<Vec<_>>();
+
+        if !all_edits_are_disjoint(&resolved_completion, &additional_edits) {
+            return Err(LspError::new(
+                ErrorCode::InternalError as i32,
+                "Import edit overlaps with the original completion edits, this is not LSP-compliant"
+                    .into(),
+            )
+            .into());
+        }
+
+        if let Some(original_additional_edits) = resolved_completion.additional_text_edits.as_mut()
+        {
+            original_additional_edits.extend(additional_edits)
+        } else {
+            resolved_completion.additional_text_edits = Some(additional_edits);
+        }
     }
 
-    if let Some(original_additional_edits) = original_completion.additional_text_edits.as_mut() {
-        original_additional_edits.extend(additional_edits)
-    } else {
-        original_completion.additional_text_edits = Some(additional_edits);
-    }
-
-    Ok(original_completion)
+    Ok(resolved_completion)
 }
 
 pub(crate) fn handle_folding_range(
@@ -1322,7 +1426,13 @@ pub(crate) fn handle_code_action(
     }
 
     // Fixes from `cargo check`.
-    for fix in snap.check_fixes.values().filter_map(|it| it.get(&frange.file_id)).flatten() {
+    for fix in snap
+        .check_fixes
+        .values()
+        .flat_map(|it| it.values())
+        .filter_map(|it| it.get(&frange.file_id))
+        .flatten()
+    {
         // FIXME: this mapping is awkward and shouldn't exist. Refactor
         // `snap.check_fixes` to not convert to LSP prematurely.
         let intersect_fix_range = fix
@@ -1599,14 +1709,14 @@ pub(crate) fn handle_inlay_hints_resolve(
     anyhow::ensure!(snap.file_exists(file_id), "Invalid LSP resolve data");
 
     let line_index = snap.file_line_index(file_id)?;
-    let hint_position = from_proto::offset(&line_index, original_hint.position)?;
+    let range = from_proto::text_range(&line_index, resolve_data.resolve_range)?;
 
     let mut forced_resolve_inlay_hints_config = snap.config.inlay_hints();
     forced_resolve_inlay_hints_config.fields_to_resolve = InlayFieldsToResolve::empty();
     let resolve_hints = snap.analysis.inlay_hints_resolve(
         &forced_resolve_inlay_hints_config,
         file_id,
-        hint_position,
+        range,
         hash,
         |hint| {
             std::hash::BuildHasher::hash_one(
@@ -1665,7 +1775,8 @@ pub(crate) fn handle_call_hierarchy_incoming(
     let frange = from_proto::file_range(&snap, &doc, item.selection_range)?;
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
-    let call_items = match snap.analysis.incoming_calls(fpos)? {
+    let config = snap.config.call_hierarchy();
+    let call_items = match snap.analysis.incoming_calls(config, fpos)? {
         None => return Ok(None),
         Some(it) => it,
     };
@@ -1701,8 +1812,10 @@ pub(crate) fn handle_call_hierarchy_outgoing(
     let doc = TextDocumentIdentifier::new(item.uri);
     let frange = from_proto::file_range(&snap, &doc, item.selection_range)?;
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
+    let line_index = snap.file_line_index(fpos.file_id)?;
 
-    let call_items = match snap.analysis.outgoing_calls(fpos)? {
+    let config = snap.config.call_hierarchy();
+    let call_items = match snap.analysis.outgoing_calls(config, fpos)? {
         None => return Ok(None),
         Some(it) => it,
     };
@@ -1710,8 +1823,6 @@ pub(crate) fn handle_call_hierarchy_outgoing(
     let mut res = vec![];
 
     for call_item in call_items.into_iter() {
-        let file_id = call_item.target.file_id;
-        let line_index = snap.file_line_index(file_id)?;
         let item = to_proto::call_hierarchy_item(&snap, call_item.target)?;
         res.push(CallHierarchyOutgoingCall {
             to: item,
@@ -1836,7 +1947,7 @@ pub(crate) fn handle_open_docs(
 
     let ws_and_sysroot = snap.workspaces.iter().find_map(|ws| match &ws.kind {
         ProjectWorkspaceKind::Cargo { cargo, .. }
-        | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. } => {
+        | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _, _)), .. } => {
             Some((cargo, &ws.sysroot))
         }
         ProjectWorkspaceKind::Json { .. } => None,
@@ -2017,6 +2128,7 @@ fn runnable_action_links(
     }
 
     let title = runnable.title();
+    let update_test = runnable.update_test;
     let r = to_proto::runnable(snap, runnable).ok()??;
 
     let mut group = lsp_ext::CommandLinkGroup::default();
@@ -2028,7 +2140,15 @@ fn runnable_action_links(
 
     if hover_actions_config.debug && client_commands_config.debug_single {
         let dbg_command = to_proto::command::debug_single(&r);
-        group.commands.push(to_command_link(dbg_command, r.label));
+        group.commands.push(to_command_link(dbg_command, r.label.clone()));
+    }
+
+    if hover_actions_config.update_test && client_commands_config.run_single {
+        let label = update_test.label();
+        if let Some(r) = to_proto::make_update_runnable(&r, &label, &update_test.env()) {
+            let update_command = to_proto::command::run_single(&r, label.unwrap().as_str());
+            group.commands.push(to_command_link(update_command, r.label.clone()));
+        }
     }
 
     Some(group)
@@ -2110,13 +2230,34 @@ fn run_rustfmt(
     let edition = editions.iter().copied().max();
 
     let line_index = snap.file_line_index(file_id)?;
-    let sr = snap.analysis.source_root_id(file_id)?;
+    let source_root_id = snap.analysis.source_root_id(file_id).ok();
 
-    let mut command = match snap.config.rustfmt(Some(sr)) {
+    // try to chdir to the file so we can respect `rustfmt.toml`
+    // FIXME: use `rustfmt --config-path` once
+    // https://github.com/rust-lang/rustfmt/issues/4660 gets fixed
+    let current_dir = match text_document.uri.to_file_path() {
+        Ok(mut path) => {
+            // pop off file name
+            if path.pop() && path.is_dir() {
+                path
+            } else {
+                std::env::current_dir()?
+            }
+        }
+        Err(_) => {
+            tracing::error!(
+                text_document = ?text_document.uri,
+                "Unable to get path, rustfmt.toml might be ignored"
+            );
+            std::env::current_dir()?
+        }
+    };
+
+    let mut command = match snap.config.rustfmt(source_root_id) {
         RustfmtConfig::Rustfmt { extra_args, enable_range_formatting } => {
             // FIXME: Set RUSTUP_TOOLCHAIN
-            let mut cmd = process::Command::new(toolchain::Tool::Rustfmt.path());
-            cmd.envs(snap.config.extra_env());
+            let mut cmd = toolchain::command(toolchain::Tool::Rustfmt.path(), current_dir);
+            cmd.envs(snap.config.extra_env(source_root_id));
             cmd.args(extra_args);
 
             if let Some(edition) = edition {
@@ -2158,47 +2299,29 @@ fn run_rustfmt(
             let cmd = Utf8PathBuf::from(&command);
             let target_spec = TargetSpec::for_file(snap, file_id)?;
             let mut cmd = match target_spec {
-                Some(TargetSpec::Cargo(spec)) => {
-                    // approach: if the command name contains a path separator, join it with the workspace root.
+                Some(TargetSpec::Cargo(_)) => {
+                    // approach: if the command name contains a path separator, join it with the project root.
                     // however, if the path is absolute, joining will result in the absolute path being preserved.
                     // as a fallback, rely on $PATH-based discovery.
                     let cmd_path = if command.contains(std::path::MAIN_SEPARATOR)
                         || (cfg!(windows) && command.contains('/'))
                     {
-                        spec.workspace_root.join(cmd).into()
+                        snap.config.root_path().join(cmd).into()
                     } else {
                         cmd
                     };
-                    process::Command::new(cmd_path)
+                    toolchain::command(cmd_path, current_dir)
                 }
-                _ => process::Command::new(cmd),
+                _ => toolchain::command(cmd, current_dir),
             };
 
-            cmd.envs(snap.config.extra_env());
+            cmd.envs(snap.config.extra_env(source_root_id));
             cmd.args(args);
             cmd
         }
     };
 
     tracing::debug!(?command, "created format command");
-
-    // try to chdir to the file so we can respect `rustfmt.toml`
-    // FIXME: use `rustfmt --config-path` once
-    // https://github.com/rust-lang/rustfmt/issues/4660 gets fixed
-    match text_document.uri.to_file_path() {
-        Ok(mut path) => {
-            // pop off file name
-            if path.pop() && path.is_dir() {
-                command.current_dir(path);
-            }
-        }
-        Err(_) => {
-            tracing::error!(
-                text_document = ?text_document.uri,
-                "Unable to get path, rustfmt.toml might be ignored"
-            );
-        }
-    }
 
     let mut rustfmt = command
         .stdin(Stdio::piped())
@@ -2229,6 +2352,10 @@ fn run_rustfmt(
                     %captured_stderr,
                     "rustfmt exited with status 1"
                 );
+                Ok(None)
+            }
+            // rustfmt panicked at lexing/parsing the file
+            Some(101) if !rustfmt_not_installed && captured_stderr.starts_with("error[") => {
                 Ok(None)
             }
             _ => {
@@ -2288,7 +2415,7 @@ pub(crate) fn fetch_dependency_list(
 pub(crate) fn internal_testing_fetch_config(
     state: GlobalStateSnapshot,
     params: InternalTestingFetchConfigParams,
-) -> anyhow::Result<serde_json::Value> {
+) -> anyhow::Result<Option<InternalTestingFetchConfigResponse>> {
     let source_root = params
         .text_document
         .map(|it| {
@@ -2298,15 +2425,18 @@ pub(crate) fn internal_testing_fetch_config(
                 .map_err(anyhow::Error::from)
         })
         .transpose()?;
-    serde_json::to_value(match &*params.config {
-        "local" => state.config.assist(source_root).assist_emit_must_use,
-        "global" => matches!(
-            state.config.rustfmt(source_root),
-            RustfmtConfig::Rustfmt { enable_range_formatting: true, .. }
-        ),
-        _ => return Err(anyhow::anyhow!("Unknown test config key: {}", params.config)),
-    })
-    .map_err(Into::into)
+    Ok(Some(match params.config {
+        InternalTestingFetchConfigOption::AssistEmitMustUse => {
+            InternalTestingFetchConfigResponse::AssistEmitMustUse(
+                state.config.assist(source_root).assist_emit_must_use,
+            )
+        }
+        InternalTestingFetchConfigOption::CheckWorkspace => {
+            InternalTestingFetchConfigResponse::CheckWorkspace(
+                state.config.flycheck_workspace(source_root),
+            )
+        }
+    }))
 }
 
 /// Searches for the directory of a Rust crate given this crate's root file path.
@@ -2365,4 +2495,48 @@ fn resolve_resource_op(op: &ResourceOp) -> ResourceOperationKind {
         ResourceOp::Rename(_) => ResourceOperationKind::Rename,
         ResourceOp::Delete(_) => ResourceOperationKind::Delete,
     }
+}
+
+pub(crate) fn diff(left: &str, right: &str) -> TextEdit {
+    use dissimilar::Chunk;
+
+    let chunks = dissimilar::diff(left, right);
+
+    let mut builder = TextEdit::builder();
+    let mut pos = TextSize::default();
+
+    let mut chunks = chunks.into_iter().peekable();
+    while let Some(chunk) = chunks.next() {
+        if let (Chunk::Delete(deleted), Some(&Chunk::Insert(inserted))) = (chunk, chunks.peek()) {
+            chunks.next().unwrap();
+            let deleted_len = TextSize::of(deleted);
+            builder.replace(TextRange::at(pos, deleted_len), inserted.into());
+            pos += deleted_len;
+            continue;
+        }
+
+        match chunk {
+            Chunk::Equal(text) => {
+                pos += TextSize::of(text);
+            }
+            Chunk::Delete(deleted) => {
+                let deleted_len = TextSize::of(deleted);
+                builder.delete(TextRange::at(pos, deleted_len));
+                pos += deleted_len;
+            }
+            Chunk::Insert(inserted) => {
+                builder.insert(pos, inserted.into());
+            }
+        }
+    }
+    builder.finish()
+}
+
+#[test]
+fn diff_smoke_test() {
+    let mut original = String::from("fn foo(a:u32){\n}");
+    let result = "fn foo(a: u32) {}";
+    let edit = diff(&original, result);
+    edit.apply(&mut original);
+    assert_eq!(original, result);
 }

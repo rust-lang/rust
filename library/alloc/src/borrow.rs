@@ -225,7 +225,6 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// assert!(!bull.is_borrowed());
     /// ```
     #[unstable(feature = "cow_is_borrowed", issue = "65143")]
-    #[rustc_const_unstable(feature = "const_cow_is_borrowed", issue = "65143")]
     pub const fn is_borrowed(&self) -> bool {
         match *self {
             Borrowed(_) => true,
@@ -248,7 +247,6 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// assert!(!bull.is_owned());
     /// ```
     #[unstable(feature = "cow_is_borrowed", issue = "65143")]
-    #[rustc_const_unstable(feature = "const_cow_is_borrowed", issue = "65143")]
     pub const fn is_owned(&self) -> bool {
         !self.is_borrowed()
     }

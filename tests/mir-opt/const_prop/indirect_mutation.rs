@@ -1,6 +1,5 @@
 //@ test-mir-pass: GVN
 // Check that we do not propagate past an indirect mutation.
-#![feature(raw_ref_op)]
 
 // EMIT_MIR indirect_mutation.foo.GVN.diff
 fn foo() {
@@ -10,7 +9,7 @@ fn foo() {
     // CHECK: _1 = const (1_i32,);
     // CHECK: _2 = &mut (_1.0: i32);
     // CHECK: (*_2) = const 5_i32;
-    // CHECK: _4 = (_1.0: i32);
+    // CHECK: _4 = copy (_1.0: i32);
     // CHECK: _3 = Eq(move _4, const 5_i32);
 
     let mut u = (1,);
@@ -25,7 +24,7 @@ fn bar() {
     // CHECK: debug y => _4;
     // CHECK: _3 = &raw mut (_1.0: i32);
     // CHECK: (*_3) = const 5_i32;
-    // CHECK: _5 = (_1.0: i32);
+    // CHECK: _5 = copy (_1.0: i32);
     // CHECK: _4 = Eq(move _5, const 5_i32);
 
     let mut v = (1,);

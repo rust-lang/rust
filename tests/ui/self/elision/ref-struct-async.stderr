@@ -10,8 +10,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn ref_Struct<'a>(self: &'a Struct, f: &'a u32) -> &u32 {
-   |                        ++++        ++             ++
+LL |     async fn ref_Struct<'a>(self: &Struct, f: &'a u32) -> &'a u32 {
+   |                        ++++                    ++          ++
 
 error: lifetime may not live long enough
   --> $DIR/ref-struct-async.rs:18:9
@@ -25,8 +25,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn box_ref_Struct<'a>(self: Box<&'a Struct>, f: &'a u32) -> &u32 {
-   |                            ++++            ++              ++
+LL |     async fn box_ref_Struct<'a>(self: Box<&Struct>, f: &'a u32) -> &'a u32 {
+   |                            ++++                         ++          ++
 
 error: lifetime may not live long enough
   --> $DIR/ref-struct-async.rs:23:9
@@ -40,8 +40,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn pin_ref_Struct<'a>(self: Pin<&'a Struct>, f: &'a u32) -> &u32 {
-   |                            ++++            ++              ++
+LL |     async fn pin_ref_Struct<'a>(self: Pin<&Struct>, f: &'a u32) -> &'a u32 {
+   |                            ++++                         ++          ++
 
 error: lifetime may not live long enough
   --> $DIR/ref-struct-async.rs:28:9
@@ -55,8 +55,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn box_box_ref_Struct<'a>(self: Box<Box<&'a Struct>>, f: &'a u32) -> &u32 {
-   |                                ++++                ++               ++
+LL |     async fn box_box_ref_Struct<'a>(self: Box<Box<&Struct>>, f: &'a u32) -> &'a u32 {
+   |                                ++++                              ++          ++
 
 error: lifetime may not live long enough
   --> $DIR/ref-struct-async.rs:33:9
@@ -70,8 +70,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn box_pin_Struct<'a>(self: Box<Pin<&'a Struct>>, f: &'a u32) -> &u32 {
-   |                            ++++                ++               ++
+LL |     async fn box_pin_Struct<'a>(self: Box<Pin<&Struct>>, f: &'a u32) -> &'a u32 {
+   |                            ++++                              ++          ++
 
 error: aborting due to 5 previous errors
 

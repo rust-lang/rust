@@ -1,12 +1,12 @@
 error: unsupported operation: cannot write to stdin
-  --> $DIR/write_to_stdin.rs:LL:CC
+  --> tests/fail-dep/libc/fs/write_to_stdin.rs:LL:CC
    |
 LL |         libc::write(0, bytes.as_ptr() as *const libc::c_void, 5);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot write to stdin
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/write_to_stdin.rs:LL:CC
+   = note: inside `main` at tests/fail-dep/libc/fs/write_to_stdin.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

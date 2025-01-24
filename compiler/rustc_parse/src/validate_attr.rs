@@ -3,22 +3,19 @@
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
-    self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MetaItem, MetaItemKind,
-    NestedMetaItem, Safety,
+    self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, Safety,
 };
 use rustc_errors::{Applicability, FatalError, PResult};
-use rustc_feature::{
-    AttributeSafety, AttributeTemplate, BuiltinAttribute, Features, BUILTIN_ATTRIBUTE_MAP,
-};
+use rustc_feature::{AttributeSafety, AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
 use rustc_session::errors::report_lit_error;
-use rustc_session::lint::builtin::{ILL_FORMED_ATTRIBUTE_INPUT, UNSAFE_ATTR_OUTSIDE_UNSAFE};
 use rustc_session::lint::BuiltinLintDiag;
+use rustc_session::lint::builtin::{ILL_FORMED_ATTRIBUTE_INPUT, UNSAFE_ATTR_OUTSIDE_UNSAFE};
 use rustc_session::parse::ParseSess;
-use rustc_span::{sym, BytePos, Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 
 use crate::{errors, parse_in};
 
-pub fn check_attr(features: &Features, psess: &ParseSess, attr: &Attribute) {
+pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
     if attr.is_doc_comment() {
         return;
     }
@@ -28,7 +25,7 @@ pub fn check_attr(features: &Features, psess: &ParseSess, attr: &Attribute) {
 
     // All non-builtin attributes are considered safe
     let safety = attr_info.map(|x| x.safety).unwrap_or(AttributeSafety::Normal);
-    check_attribute_safety(features, psess, safety, attr);
+    check_attribute_safety(psess, safety, attr);
 
     // Check input tokens for built-in and key-value attributes.
     match attr_info {
@@ -36,16 +33,16 @@ pub fn check_attr(features: &Features, psess: &ParseSess, attr: &Attribute) {
         Some(BuiltinAttribute { name, template, .. }) if *name != sym::rustc_dummy => {
             match parse_meta(psess, attr) {
                 // Don't check safety again, we just did that
-                Ok(meta) => check_builtin_meta_item(
-                    features, psess, &meta, attr.style, *name, *template, false,
-                ),
+                Ok(meta) => {
+                    check_builtin_meta_item(psess, &meta, attr.style, *name, *template, false)
+                }
                 Err(err) => {
                     err.emit();
                 }
             }
         }
         _ => {
-            if let AttrArgs::Eq(..) = attr_item.args {
+            if let AttrArgs::Eq { .. } = attr_item.args {
                 // All key-value attributes are restricted to meta-item syntax.
                 match parse_meta(psess, attr) {
                     Ok(_) => {}
@@ -72,7 +69,7 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                     parse_in(psess, tokens.clone(), "meta list", |p| p.parse_meta_seq_top())?;
                 MetaItemKind::List(nmis)
             }
-            AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => {
+            AttrArgs::Eq { expr, .. } => {
                 if let ast::ExprKind::Lit(token_lit) = expr.kind {
                     let res = ast::MetaItemLit::from_token_lit(token_lit, expr.span);
                     let res = match res {
@@ -118,7 +115,6 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                     return Err(err);
                 }
             }
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => MetaItemKind::NameValue(lit.clone()),
         },
     })
 }
@@ -145,7 +141,7 @@ pub(super) fn check_cfg_attr_bad_delim(psess: &ParseSess, span: DelimSpan, delim
 
 /// Checks that the given meta-item is compatible with this `AttributeTemplate`.
 fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaItemKind) -> bool {
-    let is_one_allowed_subword = |items: &[NestedMetaItem]| match items {
+    let is_one_allowed_subword = |items: &[MetaItemInner]| match items {
         [item] => item.is_word() && template.one_of.iter().any(|&word| item.has_name(word)),
         _ => false,
     };
@@ -157,16 +153,7 @@ fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaIte
     }
 }
 
-pub fn check_attribute_safety(
-    features: &Features,
-    psess: &ParseSess,
-    safety: AttributeSafety,
-    attr: &Attribute,
-) {
-    if !features.unsafe_attributes {
-        return;
-    }
-
+pub fn check_attribute_safety(psess: &ParseSess, safety: AttributeSafety, attr: &Attribute) {
     let attr_item = attr.get_normal_item();
 
     if safety == AttributeSafety::Unsafe {
@@ -177,11 +164,7 @@ pub fn check_attribute_safety(
             // wrapping it in `unsafe(...)`. Otherwise, we suggest putting the
             // `unsafe(`, `)` right after and right before the opening and closing
             // square bracket respectively.
-            let diag_span = if attr_item.span().can_be_used_for_suggestions() {
-                attr_item.span()
-            } else {
-                attr.span.with_lo(attr.span.lo() + BytePos(2)).with_hi(attr.span.hi() - BytePos(1))
-            };
+            let diag_span = attr_item.span();
 
             if attr.span.at_least_rust_2024() {
                 psess.dcx().emit_err(errors::UnsafeAttrOutsideUnsafe {
@@ -203,33 +186,28 @@ pub fn check_attribute_safety(
                 );
             }
         }
-    } else {
-        if let Safety::Unsafe(unsafe_span) = attr_item.unsafety {
-            psess.dcx().emit_err(errors::InvalidAttrUnsafe {
-                span: unsafe_span,
-                name: attr_item.path.clone(),
-            });
-        }
+    } else if let Safety::Unsafe(unsafe_span) = attr_item.unsafety {
+        psess.dcx().emit_err(errors::InvalidAttrUnsafe {
+            span: unsafe_span,
+            name: attr_item.path.clone(),
+        });
     }
 }
 
 // Called by `check_builtin_meta_item` and code that manually denies
 // `unsafe(...)` in `cfg`
-pub fn deny_builtin_meta_unsafety(features: &Features, psess: &ParseSess, meta: &MetaItem) {
+pub fn deny_builtin_meta_unsafety(psess: &ParseSess, meta: &MetaItem) {
     // This only supports denying unsafety right now - making builtin attributes
     // support unsafety will requite us to thread the actual `Attribute` through
     // for the nice diagnostics.
-    if features.unsafe_attributes {
-        if let Safety::Unsafe(unsafe_span) = meta.unsafety {
-            psess
-                .dcx()
-                .emit_err(errors::InvalidAttrUnsafe { span: unsafe_span, name: meta.path.clone() });
-        }
+    if let Safety::Unsafe(unsafe_span) = meta.unsafety {
+        psess
+            .dcx()
+            .emit_err(errors::InvalidAttrUnsafe { span: unsafe_span, name: meta.path.clone() });
     }
 }
 
 pub fn check_builtin_meta_item(
-    features: &Features,
     psess: &ParseSess,
     meta: &MetaItem,
     style: ast::AttrStyle,
@@ -246,7 +224,7 @@ pub fn check_builtin_meta_item(
     }
 
     if deny_unsafety {
-        deny_builtin_meta_unsafety(features, psess, meta);
+        deny_builtin_meta_unsafety(psess, meta);
     }
 }
 

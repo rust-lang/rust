@@ -1,0 +1,15 @@
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-different-regions-id-trait.rs:24:27
+   |
+LL | fn m<'a>() {
+   |      -- lifetime `'a` defined here
+LL |     let unsend: *const dyn Cat<'a> = &();
+LL |     let _send = unsend as *const S<dyn Cat<'static>>;
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
+   |
+   = note: requirement occurs because of the type `S<dyn Cat<'_>>`, which makes the generic argument `dyn Cat<'_>` invariant
+   = note: the struct `S<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 1 previous error
+

@@ -2,11 +2,13 @@
 //@ incremental
 //@ compile-flags:-Zprint-mono-items=lazy
 //@ compile-flags:-Zinline-in-all-cgus
+// Need to disable optimizations to ensure consistent output across all CI runners.
+//@ compile-flags:-Copt-level=0
 
 // This test case makes sure, that references made through constants are
 // recorded properly in the InliningMap.
 
-#![feature(start)]
+#![crate_type = "lib"]
 
 mod mod1 {
     struct NeedsDrop;
@@ -51,8 +53,8 @@ mod mod1 {
         fn do_something_else(&self) {}
     }
 
-    //~ MONO_ITEM fn <mod1::NeedsDrop as mod1::Trait2>::do_something @@ vtable_through_const-mod1.volatile[Internal]
-    //~ MONO_ITEM fn <mod1::NeedsDrop as mod1::Trait2>::do_something_else @@ vtable_through_const-mod1.volatile[Internal]
+    //~ MONO_ITEM fn <mod1::NeedsDrop as mod1::Trait2>::do_something @@ vtable_through_const-mod1.volatile[External]
+    //~ MONO_ITEM fn <mod1::NeedsDrop as mod1::Trait2>::do_something_else @@ vtable_through_const-mod1.volatile[External]
     impl Trait2 for NeedsDrop {}
 
     pub trait Trait2Gen<T> {
@@ -76,9 +78,9 @@ mod mod1 {
 }
 
 //~ MONO_ITEM fn start
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
-    //~ MONO_ITEM fn <mod1::NeedsDrop as std::ops::Drop>::drop @@ vtable_through_const-fallback.cgu[Internal]
+#[no_mangle]
+pub fn start(_: isize, _: *const *const u8) -> isize {
+    //~ MONO_ITEM fn <mod1::NeedsDrop as std::ops::Drop>::drop @@ vtable_through_const-fallback.cgu[External]
     //~ MONO_ITEM fn std::ptr::drop_in_place::<mod1::NeedsDrop> - shim(Some(mod1::NeedsDrop)) @@ vtable_through_const-fallback.cgu[External]
 
     // Since Trait1::do_something() is instantiated via its default implementation,
@@ -95,8 +97,8 @@ fn start(_: isize, _: *const *const u8) -> isize {
     // Same as above
     //~ MONO_ITEM fn <mod1::NeedsDrop as mod1::Trait1Gen<u8>>::do_something @@ vtable_through_const-mod1.volatile[External]
     //~ MONO_ITEM fn <mod1::NeedsDrop as mod1::Trait1Gen<u8>>::do_something_else @@ vtable_through_const-mod1.volatile[External]
-    //~ MONO_ITEM fn <mod1::NeedsDrop as mod1::Trait2Gen<u8>>::do_something @@ vtable_through_const-mod1.volatile[Internal]
-    //~ MONO_ITEM fn <mod1::NeedsDrop as mod1::Trait2Gen<u8>>::do_something_else @@ vtable_through_const-mod1.volatile[Internal]
+    //~ MONO_ITEM fn <mod1::NeedsDrop as mod1::Trait2Gen<u8>>::do_something @@ vtable_through_const-mod1.volatile[External]
+    //~ MONO_ITEM fn <mod1::NeedsDrop as mod1::Trait2Gen<u8>>::do_something_else @@ vtable_through_const-mod1.volatile[External]
     mod1::TRAIT1_GEN_REF.do_something(0u8);
 
     //~ MONO_ITEM fn mod1::id::<char> @@ vtable_through_const-mod1.volatile[External]

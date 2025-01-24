@@ -1,7 +1,9 @@
-#include "llvm/Linker/Linker.h"
-#include "SuppressLLVMWarnings.h"
-
 #include "LLVMWrapper.h"
+
+#include "llvm/Bitcode/BitcodeReader.h"
+#include "llvm/IR/Module.h"
+#include "llvm/Linker/Linker.h"
+#include "llvm/Support/MemoryBuffer.h"
 
 using namespace llvm;
 

@@ -1,8 +1,8 @@
 use expect_test::expect_file;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_span::create_default_session_globals_then;
 
-use super::{write_code, DecorationInfo};
+use super::{DecorationInfo, write_code};
 use crate::html::format::Buffer;
 
 const STYLE: &str = r#"
@@ -73,12 +73,12 @@ fn test_decorations() {
 let y = 2;
 let z = 3;
 let a = 4;";
-        let mut decorations = FxHashMap::default();
+        let mut decorations = FxIndexMap::default();
         decorations.insert("example", vec![(0, 10), (11, 21)]);
         decorations.insert("example2", vec![(22, 32)]);
 
         let mut html = Buffer::new();
-        write_code(&mut html, src, None, Some(DecorationInfo(decorations)));
+        write_code(&mut html, src, None, Some(&DecorationInfo(decorations)));
         expect_file!["fixtures/decorations.html"].assert_eq(&html.into_inner());
     });
 }

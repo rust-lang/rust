@@ -2,7 +2,6 @@
 //@ [x86-avx512] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
 //@ [x86-avx512] compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bw,+avx512dq
 //@ [x86-avx512] needs-llvm-components: x86
-//@ [x86-avx512] min-llvm-version: 18.0
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -O -C panic=abort
 
@@ -39,6 +38,6 @@ pub unsafe extern "C" fn gather_f64x4(mask: m64x4, ptrs: pf64x4) -> f64x4 {
     // x86-avx512: vpsllq ymm0, ymm0, 63
     // x86-avx512-NEXT: vpmovq2m k1, ymm0
     // x86-avx512-NEXT: vpxor xmm0, xmm0, xmm0
-    // x86-avx512-NEXT: vgatherqpd ymm0 {k1}, ymmword ptr [1*ymm1]
+    // x86-avx512-NEXT: vgatherqpd ymm0 {k1}, {{(ymmword)|(qword)}} ptr [1*ymm1]
     simd_gather(f64x4([0_f64, 0_f64, 0_f64, 0_f64]), ptrs, mask)
 }

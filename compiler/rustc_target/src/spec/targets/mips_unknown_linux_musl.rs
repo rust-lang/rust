@@ -1,12 +1,11 @@
 use crate::abi::Endian;
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
     base.cpu = "mips32r2".into();
     base.features = "+mips32r2,+soft-float".into();
     base.max_atomic_width = Some(32);
-    base.crt_static_default = false;
     Target {
         llvm_target: "mips-unknown-linux-musl".into(),
         metadata: crate::spec::TargetMetadata {

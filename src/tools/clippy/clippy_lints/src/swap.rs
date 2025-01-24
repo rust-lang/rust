@@ -3,12 +3,12 @@ use clippy_utils::source::{snippet_indent, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 
-use clippy_utils::{can_mut_borrow_both, eq_expr_value, in_constant, std_or_core};
+use clippy_utils::{can_mut_borrow_both, eq_expr_value, is_in_const_context, std_or_core};
 use itertools::Itertools;
 
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_hir::intravisit::{Visitor, walk_expr};
 
-use crate::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -17,7 +17,7 @@ use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span, SyntaxContext};
+use rustc_span::{Span, SyntaxContext, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -170,7 +170,7 @@ fn generate_swap_warning<'tcx>(
 
 /// Implementation of the `MANUAL_SWAP` lint.
 fn check_manual_swap<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
-    if in_constant(cx, block.hir_id) {
+    if is_in_const_context(cx) {
         return;
     }
 
@@ -332,9 +332,9 @@ struct IndexBinding<'a, 'tcx> {
     applicability: &'a mut Applicability,
 }
 
-impl<'a, 'tcx> IndexBinding<'a, 'tcx> {
+impl<'tcx> IndexBinding<'_, 'tcx> {
     fn snippet_index_bindings(&mut self, exprs: &[&'tcx Expr<'tcx>]) -> String {
-        let mut bindings = FxHashSet::default();
+        let mut bindings = FxIndexSet::default();
         for expr in exprs {
             bindings.insert(self.snippet_index_binding(expr));
         }
@@ -384,15 +384,15 @@ impl<'a, 'tcx> IndexBinding<'a, 'tcx> {
 
     fn is_used_after_swap(&mut self, idx_ident: Ident) -> bool {
         let mut v = IndexBindingVisitor {
-            found_used: false,
-            suggest_span: self.suggest_span,
             idx: idx_ident,
+            suggest_span: self.suggest_span,
+            found_used: false,
         };
 
         for stmt in self.block.stmts {
             match stmt.kind {
                 StmtKind::Expr(expr) | StmtKind::Semi(expr) => v.visit_expr(expr),
-                StmtKind::Let(LetStmt { ref init, .. }) => {
+                StmtKind::Let(LetStmt { init, .. }) => {
                     if let Some(init) = init.as_ref() {
                         v.visit_expr(init);
                     }
@@ -412,9 +412,7 @@ impl<'a, 'tcx> IndexBinding<'a, 'tcx> {
                 }
                 Self::is_used_slice_indexed(lhs, idx_ident) || Self::is_used_slice_indexed(rhs, idx_ident)
             },
-            ExprKind::Path(QPath::Resolved(_, path)) => {
-                path.segments.first().map_or(false, |idx| idx.ident == idx_ident)
-            },
+            ExprKind::Path(QPath::Resolved(_, path)) => path.segments.first().is_some_and(|idx| idx.ident == idx_ident),
             _ => false,
         }
     }

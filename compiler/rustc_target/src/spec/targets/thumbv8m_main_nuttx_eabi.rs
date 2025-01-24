@@ -1,9 +1,9 @@
 // Targets the Cortex-M33 processor (Armv8-M Mainline architecture profile),
 // without the Floating Point extension.
 
-use crate::spec::{base, cvs, Target, TargetOptions};
+use crate::spec::{FloatAbi, Target, TargetOptions, base, cvs};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "thumbv8m.main-none-eabi".into(),
         metadata: crate::spec::TargetMetadata {
@@ -20,6 +20,7 @@ pub fn target() -> Target {
             families: cvs!["unix"],
             os: "nuttx".into(),
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             max_atomic_width: Some(32),
             ..base::thumb::opts()
         },

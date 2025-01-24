@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/reborrow-const-as-mut.rs:14:9
+   |
+LL |     foo(x);
+   |     --- ^ types differ in mutability
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Pin<&mut Foo>`
+              found struct `Pin<&Foo>`
+note: function defined here
+  --> $DIR/reborrow-const-as-mut.rs:10:4
+   |
+LL | fn foo(_: Pin<&mut Foo>) {
+   |    ^^^ ----------------
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -8,7 +8,7 @@
     clippy::uninlined_format_args
 )]
 
-use std::io::{stdout, Write};
+use std::io::{Write, stdout};
 use std::ops::Deref;
 use std::panic::Location;
 

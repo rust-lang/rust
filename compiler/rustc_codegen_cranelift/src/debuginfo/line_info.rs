@@ -3,15 +3,15 @@
 use std::ffi::OsStr;
 use std::path::{Component, Path};
 
-use cranelift_codegen::binemit::CodeOffset;
 use cranelift_codegen::MachSrcLoc;
+use cranelift_codegen::binemit::CodeOffset;
 use gimli::write::{AttributeValue, FileId, FileInfo, LineProgram, LineString, LineStringTable};
 use rustc_span::{
-    hygiene, FileName, Pos, SourceFile, SourceFileAndLine, SourceFileHash, SourceFileHashAlgorithm,
+    FileName, Pos, SourceFile, SourceFileAndLine, SourceFileHash, SourceFileHashAlgorithm, hygiene,
 };
 
-use crate::debuginfo::emit::address_for_func;
 use crate::debuginfo::FunctionDebugContext;
+use crate::debuginfo::emit::address_for_func;
 use crate::prelude::*;
 
 // OPTIMIZATION: It is cheaper to do this in one pass than using `.parent()` and `.file_name()`.
@@ -50,7 +50,12 @@ fn make_file_info(hash: SourceFileHash) -> Option<FileInfo> {
     if hash.kind == SourceFileHashAlgorithm::Md5 {
         let mut buf = [0u8; MD5_LEN];
         buf.copy_from_slice(hash.hash_bytes());
-        Some(FileInfo { timestamp: 0, size: 0, md5: buf })
+        Some(FileInfo {
+            timestamp: 0,
+            size: 0,
+            md5: buf,
+            source: None, // FIXME implement -Zembed-source
+        })
     } else {
         None
     }

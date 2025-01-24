@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::pp::{BeginToken, BreakToken, Breaks, IndentStyle, Printer, Token, SIZE_INFINITY};
+use crate::pp::{BeginToken, BreakToken, Breaks, IndentStyle, Printer, SIZE_INFINITY, Token};
 
 impl Printer {
     /// "raw box"
@@ -89,7 +89,7 @@ impl Printer {
 }
 
 impl Token {
-    pub fn is_hardbreak_tok(&self) -> bool {
+    pub(crate) fn is_hardbreak_tok(&self) -> bool {
         *self == Printer::hardbreak_tok_offset(0)
     }
 }

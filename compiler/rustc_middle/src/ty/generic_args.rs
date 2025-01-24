@@ -11,7 +11,7 @@ use rustc_ast_ir::walk_visitable_list;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
-use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable, extension};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_type_ir::WithCachedTypeInfo;
 use smallvec::SmallVec;
@@ -143,12 +143,10 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for GenericArg<'tcx> {
     }
 }
 
-#[cfg(parallel_compiler)]
 unsafe impl<'tcx> rustc_data_structures::sync::DynSend for GenericArg<'tcx> where
     &'tcx (Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>): rustc_data_structures::sync::DynSend
 {
 }
-#[cfg(parallel_compiler)]
 unsafe impl<'tcx> rustc_data_structures::sync::DynSync for GenericArg<'tcx> where
     &'tcx (Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>): rustc_data_structures::sync::DynSync
 {
@@ -501,12 +499,8 @@ impl<'tcx> GenericArgs<'tcx> {
     #[inline]
     pub fn non_erasable_generics(
         &'tcx self,
-        tcx: TyCtxt<'tcx>,
-        def_id: DefId,
     ) -> impl DoubleEndedIterator<Item = GenericArgKind<'tcx>> + 'tcx {
-        let generics = tcx.generics_of(def_id);
-        self.iter().enumerate().filter_map(|(i, k)| match k.unpack() {
-            _ if Some(i) == generics.host_effect_index => None,
+        self.iter().filter_map(|k| match k.unpack() {
             ty::GenericArgKind::Lifetime(_) => None,
             generic => Some(generic),
         })

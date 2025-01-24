@@ -1,8 +1,11 @@
 use arbitrary::{Arbitrary, Unstructured};
 use expect_test::{expect, Expect};
 use intern::Symbol;
-use mbe::{syntax_node_to_token_tree, DocCommentDesugarMode, DummyTestSpanMap, DUMMY};
 use syntax::{ast, AstNode, Edition};
+use syntax_bridge::{
+    dummy_test_span_utils::{DummyTestSpanMap, DUMMY},
+    syntax_node_to_token_tree, DocCommentDesugarMode,
+};
 
 use crate::{CfgAtom, CfgExpr, CfgOptions, DnfExpr};
 

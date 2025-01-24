@@ -3,14 +3,13 @@
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
 
-//@ pretty-expanded FIXME #23616
 //@ needs-threads
 
-use std::thread;
 use std::sync::mpsc::channel;
+use std::thread;
 
 struct test {
-  f: isize,
+    f: isize,
 }
 
 impl Drop for test {
@@ -18,15 +17,13 @@ impl Drop for test {
 }
 
 fn test(f: isize) -> test {
-    test {
-        f: f
-    }
+    test { f: f }
 }
 
 pub fn main() {
     let (tx, rx) = channel();
 
-    let t = thread::spawn(move|| {
+    let t = thread::spawn(move || {
         let (tx2, rx2) = channel();
         tx.send(tx2).unwrap();
 

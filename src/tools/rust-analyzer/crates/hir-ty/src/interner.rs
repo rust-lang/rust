@@ -8,7 +8,7 @@ use crate::{
     ProgramClauseData, ProgramClauses, ProjectionTy, QuantifiedWhereClause, QuantifiedWhereClauses,
     Substitution, Ty, TyData, TyKind, VariableKind, VariableKinds,
 };
-use base_db::salsa::InternId;
+use base_db::ra_salsa::InternId;
 use chalk_ir::{ProgramClauseImplication, SeparatorTraitRef, Variance};
 use hir_def::TypeAliasId;
 use intern::{impl_internable, Interned};
@@ -55,7 +55,7 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedConst = Interned<InternedWrapper<ConstData>>;
     type InternedConcreteConst = ConstScalar;
     type InternedGenericArg = GenericArgData;
-    // We could do the following, but that saves "only" 20mb on self while increasing inferecene
+    // We could do the following, but that saves "only" 20mb on self while increasing inference
     // time by ~2.5%
     // type InternedGoal = Interned<InternedWrapper<GoalData>>;
     type InternedGoal = Arc<GoalData>;

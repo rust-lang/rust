@@ -4,10 +4,7 @@
 // created for each source module (see `rustc_const_eval::monomorphize::partitioning`).
 // See https://github.com/rust-lang/rust/pull/16367
 
-use run_make_support::{
-    count_regex_matches_in_files_with_extension, cwd, has_extension, regex, rfs, rustc,
-    shallow_find_files,
-};
+use run_make_support::{count_regex_matches_in_files_with_extension, regex, rustc};
 
 fn main() {
     rustc().input("cci_lib.rs").run();

@@ -9,7 +9,7 @@ fn main() {
     // CHECK: [[x]] = foo()
     // CHECK: ([[x]].1: i32) = const 99_i32;
     // CHECK: ([[x]].0: i32) = const 42_i32;
-    // CHECK: [[y]] = ([[x]].1: i32);
+    // CHECK: [[y]] = copy ([[x]].1: i32);
     let mut x: (i32, i32) = foo();
     x.1 = 99;
     x.0 = 42;

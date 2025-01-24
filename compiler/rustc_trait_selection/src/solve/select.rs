@@ -117,6 +117,10 @@ fn candidate_should_be_dropped_in_favor_of<'tcx>(
             CandidateSource::BuiltinImpl(BuiltinImplSource::Object(a)),
             CandidateSource::BuiltinImpl(BuiltinImplSource::Object(b)),
         ) => a >= b,
+        (
+            CandidateSource::BuiltinImpl(BuiltinImplSource::TraitUpcasting(a)),
+            CandidateSource::BuiltinImpl(BuiltinImplSource::TraitUpcasting(b)),
+        ) => a >= b,
         // Prefer dyn candidates over non-dyn candidates. This is necessary to
         // handle the unsoundness between `impl<T: ?Sized> Any for T` and `dyn Any: Any`.
         (
@@ -177,7 +181,8 @@ fn to_selection<'tcx>(
         | ProbeKind::UpcastProjectionCompatibility
         | ProbeKind::OpaqueTypeStorageLookup { result: _ }
         | ProbeKind::Root { result: _ }
-        | ProbeKind::ShadowedEnvProbing => {
+        | ProbeKind::ShadowedEnvProbing
+        | ProbeKind::RigidAlias { result: _ } => {
             span_bug!(span, "didn't expect to assemble trait candidate from {:#?}", cand.kind())
         }
     })

@@ -2,23 +2,24 @@
 
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::emitter::Emitter;
-use rustc_errors::translation::{to_fluent_args, Translate};
+use rustc_errors::registry::Registry;
+use rustc_errors::translation::{Translate, to_fluent_args};
 use rustc_errors::{Applicability, DiagCtxt, DiagInner, LazyFallbackBundle};
 use rustc_parse::{source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
 use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, Transparency};
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{FileName, InnerSpan, DUMMY_SP};
+use rustc_span::{DUMMY_SP, FileName, InnerSpan};
 
 use crate::clean;
 use crate::core::DocContext;
 use crate::html::markdown::{self, RustCodeBlock};
 
-pub(crate) fn visit_item(cx: &DocContext<'_>, item: &clean::Item) {
-    if let Some(dox) = &item.opt_doc_value() {
+pub(crate) fn visit_item(cx: &DocContext<'_>, item: &clean::Item, dox: &str) {
+    if let Some(def_id) = item.item_id.as_local_def_id() {
         let sp = item.attr_span(cx.tcx);
-        let extra = crate::html::markdown::ExtraInfo::new(cx.tcx, item.item_id.expect_def_id(), sp);
+        let extra = crate::html::markdown::ExtraInfo::new(cx.tcx, def_id, sp);
         for code_block in markdown::rust_code_blocks(dox, &extra) {
             check_rust_syntax(cx, item, dox, code_block);
         }
@@ -145,17 +146,17 @@ struct BufferEmitter {
 }
 
 impl Translate for BufferEmitter {
-    fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
+    fn fluent_bundle(&self) -> Option<&rustc_errors::FluentBundle> {
         None
     }
 
     fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
-        &**self.fallback_bundle
+        &self.fallback_bundle
     }
 }
 
 impl Emitter for BufferEmitter {
-    fn emit_diagnostic(&mut self, diag: DiagInner) {
+    fn emit_diagnostic(&mut self, diag: DiagInner, _registry: &Registry) {
         let mut buffer = self.buffer.borrow_mut();
 
         let fluent_args = to_fluent_args(diag.args.iter());
@@ -169,7 +170,7 @@ impl Emitter for BufferEmitter {
         }
     }
 
-    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
+    fn source_map(&self) -> Option<&SourceMap> {
         None
     }
 }

@@ -40,7 +40,7 @@
 + 
 +     bb2: {
 +         StorageDead(_5);
-+         _1 = (_4, _6);
++         _1 = (copy _4, copy _6);
 +         drop(_2) -> [return: bb3, unwind unreachable];
 +     }
 + 

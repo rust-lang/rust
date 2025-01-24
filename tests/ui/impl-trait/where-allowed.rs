@@ -42,7 +42,7 @@ fn in_dyn_Fn_return_in_parameters(_: &dyn Fn() -> impl Debug) { panic!() }
 fn in_dyn_Fn_parameter_in_return() -> &'static dyn Fn(impl Debug) { panic!() }
 //~^ ERROR `impl Trait` is not allowed in the parameters of `Fn` trait bounds
 
-// Allowed
+// Allowed (but it's still ambiguous; nothing constrains the RPIT in this body).
 fn in_dyn_Fn_return_in_return() -> &'static dyn Fn() -> impl Debug { panic!() }
 //~^ ERROR: type annotations needed
 
@@ -79,7 +79,6 @@ fn in_impl_Trait_in_parameters(_: impl Iterator<Item = impl Iterator>) { panic!(
 // Allowed
 fn in_impl_Trait_in_return() -> impl IntoIterator<Item = impl IntoIterator> {
     vec![vec![0; 10], vec![12; 7], vec![8; 3]]
-    //~^ ERROR: no function or associated item named `into_vec` found for slice `[_]`
 }
 
 // Disallowed

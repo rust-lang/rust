@@ -1,10 +1,10 @@
 use hir::{Expr, Pat};
-use rustc_hir as hir;
+use rustc_hir::{self as hir, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty;
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::lints::{
@@ -96,11 +96,14 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
             end_span: pat.span.between(arg.span),
         };
 
-        cx.emit_span_lint(
-            FOR_LOOPS_OVER_FALLIBLES,
-            arg.span,
-            ForLoopsOverFalliblesDiag { article, ref_prefix, ty, sub, question_mark, suggestion },
-        );
+        cx.emit_span_lint(FOR_LOOPS_OVER_FALLIBLES, arg.span, ForLoopsOverFalliblesDiag {
+            article,
+            ref_prefix,
+            ty,
+            sub,
+            question_mark,
+            suggestion,
+        });
     }
 }
 
@@ -126,11 +129,14 @@ fn extract_iterator_next_call<'tcx>(
 ) -> Option<&'tcx Expr<'tcx>> {
     // This won't work for `Iterator::next(iter)`, is this an issue?
     if let hir::ExprKind::MethodCall(_, recv, _, _) = expr.kind
-        && cx.typeck_results().type_dependent_def_id(expr.hir_id) == cx.tcx.lang_items().next_fn()
+        && cx
+            .typeck_results()
+            .type_dependent_def_id(expr.hir_id)
+            .is_some_and(|def_id| cx.tcx.is_lang_item(def_id, LangItem::IteratorNext))
     {
         Some(recv)
     } else {
-        return None;
+        None
     }
 }
 
@@ -160,7 +166,7 @@ fn suggest_question_mark<'tcx>(
     }
 
     let ty = args.type_at(0);
-    let infcx = cx.tcx.infer_ctxt().build();
+    let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(cx.typing_env());
     let ocx = ObligationCtxt::new(&infcx);
 
     let body_def_id = cx.tcx.hir().body_owner_def_id(body_id);
@@ -169,7 +175,7 @@ fn suggest_question_mark<'tcx>(
 
     ocx.register_bound(
         cause,
-        cx.param_env,
+        param_env,
         // Erase any region vids from the type, which may not be resolved
         infcx.tcx.erase_regions(ty),
         into_iterator_did,

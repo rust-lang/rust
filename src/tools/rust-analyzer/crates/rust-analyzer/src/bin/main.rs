@@ -14,12 +14,12 @@ use std::{env, fs, path::PathBuf, process::ExitCode, sync::Arc};
 
 use anyhow::Context;
 use lsp_server::Connection;
+use paths::Utf8PathBuf;
 use rust_analyzer::{
     cli::flags,
     config::{Config, ConfigChange, ConfigErrors},
     from_json,
 };
-use semver::Version;
 use tracing_subscriber::fmt::writer::BoxMakeWriter;
 use vfs::AbsPathBuf;
 
@@ -44,14 +44,12 @@ fn actual_main() -> anyhow::Result<ExitCode> {
 
     #[cfg(debug_assertions)]
     if flags.wait_dbg || env::var("RA_WAIT_DBG").is_ok() {
-        #[allow(unused_mut)]
-        let mut d = 4;
-        while d == 4 {
-            d = 4;
-        }
+        wait_for_debugger();
     }
 
-    setup_logging(flags.log_file.clone())?;
+    if let Err(e) = setup_logging(flags.log_file.clone()) {
+        eprintln!("Failed to setup logging: {e:#}");
+    }
 
     let verbosity = flags.verbosity();
 
@@ -81,14 +79,39 @@ fn actual_main() -> anyhow::Result<ExitCode> {
         flags::RustAnalyzerCmd::Highlight(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::AnalysisStats(cmd) => cmd.run(verbosity)?,
         flags::RustAnalyzerCmd::Diagnostics(cmd) => cmd.run()?,
+        flags::RustAnalyzerCmd::UnresolvedReferences(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Ssr(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Search(cmd) => cmd.run()?,
-        flags::RustAnalyzerCmd::Lsif(cmd) => cmd.run()?,
+        flags::RustAnalyzerCmd::Lsif(cmd) => {
+            cmd.run(&mut std::io::stdout(), Some(project_model::RustLibSource::Discover))?
+        }
         flags::RustAnalyzerCmd::Scip(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::RunTests(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::RustcTests(cmd) => cmd.run()?,
     }
     Ok(ExitCode::SUCCESS)
+}
+
+#[cfg(debug_assertions)]
+fn wait_for_debugger() {
+    #[cfg(target_os = "windows")]
+    {
+        use windows_sys::Win32::System::Diagnostics::Debug::IsDebuggerPresent;
+        // SAFETY: WinAPI generated code that is defensively marked `unsafe` but
+        // in practice can not be used in an unsafe way.
+        while unsafe { IsDebuggerPresent() } == 0 {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        #[allow(unused_mut)]
+        let mut d = 4;
+        while d == 4 {
+            d = 4;
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+    }
 }
 
 fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
@@ -135,6 +158,7 @@ fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
         filter: env::var("RA_LOG").ok().unwrap_or_else(|| "error".to_owned()),
         chalk_filter: env::var("CHALK_DEBUG").ok(),
         profile_filter: env::var("RA_PROFILE").ok(),
+        json_profile_filter: std::env::var("RA_PROFILE_JSON").ok(),
     }
     .init()?;
 
@@ -189,6 +213,7 @@ fn run_server() -> anyhow::Result<()> {
     let root_path = match root_uri
         .and_then(|it| it.to_file_path().ok())
         .map(patch_path_prefix)
+        .and_then(|it| Utf8PathBuf::from_path_buf(it).ok())
         .and_then(|it| AbsPathBuf::try_from(it).ok())
     {
         Some(it) => it,
@@ -198,18 +223,12 @@ fn run_server() -> anyhow::Result<()> {
         }
     };
 
-    let mut visual_studio_code_version = None;
-    if let Some(client_info) = client_info {
+    if let Some(client_info) = &client_info {
         tracing::info!(
             "Client '{}' {}",
             client_info.name,
             client_info.version.as_deref().unwrap_or_default()
         );
-        visual_studio_code_version = client_info
-            .name
-            .starts_with("Visual Studio Code")
-            .then(|| client_info.version.as_deref().map(Version::parse).and_then(Result::ok))
-            .flatten();
     }
 
     let workspace_roots = workspace_folders
@@ -218,13 +237,13 @@ fn run_server() -> anyhow::Result<()> {
                 .into_iter()
                 .filter_map(|it| it.uri.to_file_path().ok())
                 .map(patch_path_prefix)
+                .filter_map(|it| Utf8PathBuf::from_path_buf(it).ok())
                 .filter_map(|it| AbsPathBuf::try_from(it).ok())
                 .collect::<Vec<_>>()
         })
         .filter(|workspaces| !workspaces.is_empty())
         .unwrap_or_else(|| vec![root_path.clone()]);
-    let mut config =
-        Config::new(root_path, capabilities, workspace_roots, visual_studio_code_version, None);
+    let mut config = Config::new(root_path, capabilities, workspace_roots, client_info);
     if let Some(json) = initialization_options {
         let mut change = ConfigChange::default();
         change.change_client_config(json);

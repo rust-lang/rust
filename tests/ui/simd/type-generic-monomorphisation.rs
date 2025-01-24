@@ -7,8 +7,8 @@
 
 struct X(Vec<i32>);
 #[repr(simd)]
-struct Simd2<T>(T, T);
+struct Simd2<T>([T; 2]);
 
 fn main() {
-    let _ = Simd2(X(vec![]), X(vec![]));
+    let _ = Simd2([X(vec![]), X(vec![])]);
 }

@@ -167,6 +167,10 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
                             for_operand(op, statement.span);
                         }
                     }
+                    Rvalue::ThreadLocalRef(n)
+                    | Rvalue::AddressOf(n)
+                    | Rvalue::BinaryOp(n)
+                    | Rvalue::NullaryOp(n) => match *n {},
                 },
                 StatementKind::FakeRead(_)
                 | StatementKind::Deinit(_)
@@ -253,6 +257,10 @@ fn partially_moved(db: &dyn HirDatabase, body: &MirBody) -> Vec<PartiallyMoved> 
                             for_operand(op, statement.span);
                         }
                     }
+                    Rvalue::ThreadLocalRef(n)
+                    | Rvalue::AddressOf(n)
+                    | Rvalue::BinaryOp(n)
+                    | Rvalue::NullaryOp(n) => match *n {},
                 },
                 StatementKind::FakeRead(_)
                 | StatementKind::Deinit(_)
@@ -386,82 +394,91 @@ fn ever_initialized_map(
     fn dfs(
         db: &dyn HirDatabase,
         body: &MirBody,
-        b: BasicBlockId,
         l: LocalId,
+        stack: &mut Vec<BasicBlockId>,
         result: &mut ArenaMap<BasicBlockId, ArenaMap<LocalId, bool>>,
     ) {
-        let mut is_ever_initialized = result[b][l]; // It must be filled, as we use it as mark for dfs
-        let block = &body.basic_blocks[b];
-        for statement in &block.statements {
-            match &statement.kind {
-                StatementKind::Assign(p, _) => {
-                    if p.projection.lookup(&body.projection_store).is_empty() && p.local == l {
+        while let Some(b) = stack.pop() {
+            let mut is_ever_initialized = result[b][l]; // It must be filled, as we use it as mark for dfs
+            let block = &body.basic_blocks[b];
+            for statement in &block.statements {
+                match &statement.kind {
+                    StatementKind::Assign(p, _) => {
+                        if p.projection.lookup(&body.projection_store).is_empty() && p.local == l {
+                            is_ever_initialized = true;
+                        }
+                    }
+                    StatementKind::StorageDead(p) => {
+                        if *p == l {
+                            is_ever_initialized = false;
+                        }
+                    }
+                    StatementKind::Deinit(_)
+                    | StatementKind::FakeRead(_)
+                    | StatementKind::Nop
+                    | StatementKind::StorageLive(_) => (),
+                }
+            }
+            let Some(terminator) = &block.terminator else {
+                never!(
+                    "Terminator should be none only in construction.\nThe body:\n{}",
+                    body.pretty_print(db)
+                );
+                return;
+            };
+            let mut process = |target, is_ever_initialized| {
+                if !result[target].contains_idx(l) || !result[target][l] && is_ever_initialized {
+                    result[target].insert(l, is_ever_initialized);
+                    stack.push(target);
+                }
+            };
+            match &terminator.kind {
+                TerminatorKind::Goto { target } => process(*target, is_ever_initialized),
+                TerminatorKind::SwitchInt { targets, .. } => {
+                    targets.all_targets().iter().for_each(|&it| process(it, is_ever_initialized));
+                }
+                TerminatorKind::UnwindResume
+                | TerminatorKind::Abort
+                | TerminatorKind::Return
+                | TerminatorKind::Unreachable => (),
+                TerminatorKind::Call { target, cleanup, destination, .. } => {
+                    if destination.projection.lookup(&body.projection_store).is_empty()
+                        && destination.local == l
+                    {
                         is_ever_initialized = true;
                     }
+                    target.iter().chain(cleanup).for_each(|&it| process(it, is_ever_initialized));
                 }
-                StatementKind::StorageDead(p) => {
-                    if *p == l {
-                        is_ever_initialized = false;
-                    }
+                TerminatorKind::Drop { target, unwind, place: _ } => {
+                    iter::once(target)
+                        .chain(unwind)
+                        .for_each(|&it| process(it, is_ever_initialized));
                 }
-                StatementKind::Deinit(_)
-                | StatementKind::FakeRead(_)
-                | StatementKind::Nop
-                | StatementKind::StorageLive(_) => (),
-            }
-        }
-        let Some(terminator) = &block.terminator else {
-            never!(
-                "Terminator should be none only in construction.\nThe body:\n{}",
-                body.pretty_print(db)
-            );
-            return;
-        };
-        let mut process = |target, is_ever_initialized| {
-            if !result[target].contains_idx(l) || !result[target][l] && is_ever_initialized {
-                result[target].insert(l, is_ever_initialized);
-                dfs(db, body, target, l, result);
-            }
-        };
-        match &terminator.kind {
-            TerminatorKind::Goto { target } => process(*target, is_ever_initialized),
-            TerminatorKind::SwitchInt { targets, .. } => {
-                targets.all_targets().iter().for_each(|&it| process(it, is_ever_initialized));
-            }
-            TerminatorKind::UnwindResume
-            | TerminatorKind::Abort
-            | TerminatorKind::Return
-            | TerminatorKind::Unreachable => (),
-            TerminatorKind::Call { target, cleanup, destination, .. } => {
-                if destination.projection.lookup(&body.projection_store).is_empty()
-                    && destination.local == l
-                {
-                    is_ever_initialized = true;
+                TerminatorKind::DropAndReplace { .. }
+                | TerminatorKind::Assert { .. }
+                | TerminatorKind::Yield { .. }
+                | TerminatorKind::CoroutineDrop
+                | TerminatorKind::FalseEdge { .. }
+                | TerminatorKind::FalseUnwind { .. } => {
+                    never!("We don't emit these MIR terminators yet");
                 }
-                target.iter().chain(cleanup).for_each(|&it| process(it, is_ever_initialized));
-            }
-            TerminatorKind::Drop { target, unwind, place: _ } => {
-                iter::once(target).chain(unwind).for_each(|&it| process(it, is_ever_initialized));
-            }
-            TerminatorKind::DropAndReplace { .. }
-            | TerminatorKind::Assert { .. }
-            | TerminatorKind::Yield { .. }
-            | TerminatorKind::CoroutineDrop
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. } => {
-                never!("We don't emit these MIR terminators yet");
             }
         }
     }
+    let mut stack = Vec::new();
     for &l in &body.param_locals {
         result[body.start_block].insert(l, true);
-        dfs(db, body, body.start_block, l, &mut result);
+        stack.clear();
+        stack.push(body.start_block);
+        dfs(db, body, l, &mut stack, &mut result);
     }
     for l in body.locals.iter().map(|it| it.0) {
         db.unwind_if_cancelled();
         if !result[body.start_block].contains_idx(l) {
             result[body.start_block].insert(l, false);
-            dfs(db, body, body.start_block, l, &mut result);
+            stack.clear();
+            stack.push(body.start_block);
+            dfs(db, body, l, &mut stack, &mut result);
         }
     }
     result
@@ -539,6 +556,10 @@ fn mutability_of_locals(
                             }
                         }
                         Rvalue::ShallowInitBox(_, _) | Rvalue::ShallowInitBoxWithAlloc(_) => (),
+                        Rvalue::ThreadLocalRef(n)
+                        | Rvalue::AddressOf(n)
+                        | Rvalue::BinaryOp(n)
+                        | Rvalue::NullaryOp(n) => match *n {},
                     }
                     if let Rvalue::Ref(
                         BorrowKind::Mut {

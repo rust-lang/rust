@@ -59,7 +59,7 @@ mod tests {
     use expect_test::expect;
     use ide_assists::{Assist, AssistResolveStrategy};
     use ide_db::{
-        base_db::salsa::Durability, symbol_index::SymbolsDatabase, FileRange, FxHashSet,
+        base_db::ra_salsa::Durability, symbol_index::SymbolsDatabase, FileRange, FxHashSet,
         RootDatabase,
     };
     use test_fixture::WithFixture;
@@ -67,7 +67,10 @@ mod tests {
 
     use super::ssr_assists;
 
-    fn get_assists(ra_fixture: &str, resolve: AssistResolveStrategy) -> Vec<Assist> {
+    fn get_assists(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        resolve: AssistResolveStrategy,
+    ) -> Vec<Assist> {
         let (mut db, file_id, range_or_offset) = RootDatabase::with_range_or_offset(ra_fixture);
         let mut local_roots = FxHashSet::default();
         local_roots.insert(test_fixture::WORKSPACE);

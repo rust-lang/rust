@@ -1,10 +1,9 @@
 //@ aux-build:edition-2021-macros.rs
 //@ aux-build:edition-2024-macros.rs
-//@ compile-flags: -Z validate-mir -Zunstable-options
+//@ compile-flags: -Z validate-mir
 //@ edition: 2024
 //@ run-pass
 
-#![feature(shorter_tail_lifetimes)]
 #![allow(unused_imports)]
 #![allow(dead_code)]
 #![allow(unused_variables)]

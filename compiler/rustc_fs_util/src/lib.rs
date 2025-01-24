@@ -1,5 +1,5 @@
 use std::ffi::CString;
-use std::path::{absolute, Path, PathBuf};
+use std::path::{Path, PathBuf, absolute};
 use std::{fs, io};
 
 // Unfortunately, on windows, it looks like msvcrt.dll is silently translating
@@ -76,10 +76,14 @@ pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<Li
     }
 }
 
-#[cfg(unix)]
+#[cfg(any(unix, all(target_os = "wasi", target_env = "p1")))]
 pub fn path_to_c_string(p: &Path) -> CString {
     use std::ffi::OsStr;
+    #[cfg(unix)]
     use std::os::unix::ffi::OsStrExt;
+    #[cfg(all(target_os = "wasi", target_env = "p1"))]
+    use std::os::wasi::ffi::OsStrExt;
+
     let p: &OsStr = p.as_ref();
     CString::new(p.as_bytes()).unwrap()
 }

@@ -4,9 +4,10 @@ use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_type_ir::fold::TypeFoldable;
+use tracing::debug;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct Parameter(pub u32);
+pub(crate) struct Parameter(pub u32);
 
 impl From<ty::ParamTy> for Parameter {
     fn from(param: ty::ParamTy) -> Self {
@@ -27,7 +28,7 @@ impl From<ty::ParamConst> for Parameter {
 }
 
 /// Returns the set of parameters constrained by the impl header.
-pub fn parameters_for_impl<'tcx>(
+pub(crate) fn parameters_for_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_self_ty: Ty<'tcx>,
     impl_trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -44,7 +45,7 @@ pub fn parameters_for_impl<'tcx>(
 /// uniquely determined by `value` (see RFC 447). If it is true, return the list
 /// of parameters whose values are needed in order to constrain `value` - these
 /// differ, with the latter being a superset, in the presence of projections.
-pub fn parameters_for<'tcx>(
+pub(crate) fn parameters_for<'tcx>(
     tcx: TyCtxt<'tcx>,
     value: impl TypeFoldable<TyCtxt<'tcx>>,
     include_nonconstraining: bool,
@@ -102,7 +103,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParameterCollector {
     }
 }
 
-pub fn identify_constrained_generic_params<'tcx>(
+pub(crate) fn identify_constrained_generic_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: ty::GenericPredicates<'tcx>,
     impl_trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -156,7 +157,7 @@ pub fn identify_constrained_generic_params<'tcx>(
 /// which is determined by 1, which requires `U`, that is determined
 /// by 0. I should probably pick a less tangled example, but I can't
 /// think of any.
-pub fn setup_constraining_predicates<'tcx>(
+pub(crate) fn setup_constraining_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: &mut [(ty::Clause<'tcx>, Span)],
     impl_trait_ref: Option<ty::TraitRef<'tcx>>,

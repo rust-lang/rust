@@ -1,7 +1,7 @@
 use core::assert_matches::assert_matches;
 use std::iter;
 use std::ops::Bound::{Excluded, Included, Unbounded};
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::SeqCst;
 
@@ -1216,7 +1216,7 @@ mod test_extract_if {
         {
             let mut it = map.extract_if(|dummy, _| dummy.query(true));
             catch_unwind(AssertUnwindSafe(|| while it.next().is_some() {})).unwrap_err();
-            // Iterator behaviour after a panic is explicitly unspecified,
+            // Iterator behavior after a panic is explicitly unspecified,
             // so this is just the current implementation:
             let result = catch_unwind(AssertUnwindSafe(|| it.next()));
             assert!(matches!(result, Ok(None)));
@@ -2268,6 +2268,54 @@ fn test_into_iter_drop_leak_height_0() {
     assert_eq!(c.dropped(), 1);
     assert_eq!(d.dropped(), 1);
     assert_eq!(e.dropped(), 1);
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_into_iter_drop_leak_kv_panic_in_key() {
+    let a_k = CrashTestDummy::new(0);
+    let a_v = CrashTestDummy::new(1);
+    let b_k = CrashTestDummy::new(2);
+    let b_v = CrashTestDummy::new(3);
+    let c_k = CrashTestDummy::new(4);
+    let c_v = CrashTestDummy::new(5);
+    let mut map = BTreeMap::new();
+    map.insert(a_k.spawn(Panic::Never), a_v.spawn(Panic::Never));
+    map.insert(b_k.spawn(Panic::InDrop), b_v.spawn(Panic::Never));
+    map.insert(c_k.spawn(Panic::Never), c_v.spawn(Panic::Never));
+
+    catch_unwind(move || drop(map.into_iter())).unwrap_err();
+
+    assert_eq!(a_k.dropped(), 1);
+    assert_eq!(a_v.dropped(), 1);
+    assert_eq!(b_k.dropped(), 1);
+    assert_eq!(b_v.dropped(), 1);
+    assert_eq!(c_k.dropped(), 1);
+    assert_eq!(c_v.dropped(), 1);
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_into_iter_drop_leak_kv_panic_in_val() {
+    let a_k = CrashTestDummy::new(0);
+    let a_v = CrashTestDummy::new(1);
+    let b_k = CrashTestDummy::new(2);
+    let b_v = CrashTestDummy::new(3);
+    let c_k = CrashTestDummy::new(4);
+    let c_v = CrashTestDummy::new(5);
+    let mut map = BTreeMap::new();
+    map.insert(a_k.spawn(Panic::Never), a_v.spawn(Panic::Never));
+    map.insert(b_k.spawn(Panic::Never), b_v.spawn(Panic::InDrop));
+    map.insert(c_k.spawn(Panic::Never), c_v.spawn(Panic::Never));
+
+    catch_unwind(move || drop(map.into_iter())).unwrap_err();
+
+    assert_eq!(a_k.dropped(), 1);
+    assert_eq!(a_v.dropped(), 1);
+    assert_eq!(b_k.dropped(), 1);
+    assert_eq!(b_v.dropped(), 1);
+    assert_eq!(c_k.dropped(), 1);
+    assert_eq!(c_v.dropped(), 1);
 }
 
 #[test]

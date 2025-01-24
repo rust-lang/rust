@@ -1,17 +1,3 @@
-//! Checks for if expressions that contain only an if expression.
-//!
-//! For example, the lint would catch:
-//!
-//! ```rust,ignore
-//! if x {
-//!     if y {
-//!         println!("Hello world");
-//!     }
-//! }
-//! ```
-//!
-//! This lint is **warn** by default
-
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_block, snippet_block_with_applicability};
 use clippy_utils::sugg::Sugg;

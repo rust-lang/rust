@@ -1,22 +1,22 @@
 trait Trait {
     fn exists(self) -> ();
 
-    fn not_object_safe() -> Self;
+    fn dyn_incompatible() -> Self;
 }
 
 impl Trait for () {
     fn exists(self) -> () {
     }
 
-    fn not_object_safe() -> Self {
+    fn dyn_incompatible() -> Self {
         ()
     }
 }
 
 fn main() {
-    // object-safe or not, this call is OK
+    // dyn-compatible or not, this call is OK
     Trait::exists(());
-    // no object safety error
+    // no dyn-compatibility error
     Trait::nonexistent(());
     //~^ ERROR no function or associated item named `nonexistent` found
     //~| WARN trait objects without an explicit `dyn` are deprecated

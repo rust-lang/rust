@@ -7,7 +7,7 @@ LL |     let r = &local;
    |             ^^^^^^ borrowed value does not live long enough
 ...
 LL |     require_box(Box::new(r));
-   |                 ----------- cast requires that `local` is borrowed for `'static`
+   |                 ----------- coercion requires that `local` is borrowed for `'static`
 ...
 LL | }
    | - `local` dropped here while still borrowed

@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant_simple, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -36,8 +36,9 @@ impl<'tcx> LateLintPass<'tcx> for ZeroDiv {
             // TODO - constant_simple does not fold many operations involving floats.
             // That's probably fine for this lint - it's pretty unlikely that someone would
             // do something like 0.0/(2.0 - 2.0), but it would be nice to warn on that case too.
-            && let Some(lhs_value) = constant_simple(cx, cx.typeck_results(), left)
-            && let Some(rhs_value) = constant_simple(cx, cx.typeck_results(), right)
+            && let ecx = ConstEvalCtxt::new(cx)
+            && let Some(lhs_value) = ecx.eval_simple(left)
+            && let Some(rhs_value) = ecx.eval_simple(right)
             // FIXME(f16_f128): add these types when eq is available on all platforms
             && (Constant::F32(0.0) == lhs_value || Constant::F64(0.0) == lhs_value)
             && (Constant::F32(0.0) == rhs_value || Constant::F64(0.0) == rhs_value)

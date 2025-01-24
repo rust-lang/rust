@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{in_constant, is_else_clause};
+use clippy_utils::{is_else_clause, is_in_const_context};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
@@ -52,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for BoolToIntWithIf {
             && let Some(else_lit) = as_int_bool_lit(else_)
             && then_lit != else_lit
             && !expr.span.from_expansion()
-            && !in_constant(cx, expr.hir_id)
+            && !is_in_const_context(cx)
         {
             let ty = cx.typeck_results().expr_ty(then);
             let mut applicability = Applicability::MachineApplicable;

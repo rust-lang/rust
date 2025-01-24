@@ -30,10 +30,10 @@ pub use rustc_type_ir as ir;
 pub use rustc_type_ir::{CanonicalTyVarKind, CanonicalVarKind};
 use smallvec::SmallVec;
 
-use crate::infer::MemberConstraint;
 use crate::mir::ConstraintCategory;
 use crate::ty::{self, GenericArg, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
 
+pub type CanonicalQueryInput<'tcx, V> = ir::CanonicalQueryInput<TyCtxt<'tcx>, V>;
 pub type Canonical<'tcx, V> = ir::Canonical<TyCtxt<'tcx>, V>;
 pub type CanonicalVarInfo<'tcx> = ir::CanonicalVarInfo<TyCtxt<'tcx>>;
 pub type CanonicalVarValues<'tcx> = ir::CanonicalVarValues<TyCtxt<'tcx>>;
@@ -90,14 +90,13 @@ pub struct QueryResponse<'tcx, R> {
 #[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct QueryRegionConstraints<'tcx> {
     pub outlives: Vec<QueryOutlivesConstraint<'tcx>>,
-    pub member_constraints: Vec<MemberConstraint<'tcx>>,
 }
 
 impl QueryRegionConstraints<'_> {
     /// Represents an empty (trivially true) set of region
     /// constraints.
     pub fn is_empty(&self) -> bool {
-        self.outlives.is_empty() && self.member_constraints.is_empty()
+        self.outlives.is_empty()
     }
 }
 
@@ -182,7 +181,6 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
                 max_universe: ty::UniverseIndex::ROOT,
                 variables: List::empty(),
                 value: key,
-                defining_opaque_types: ty::List::empty(),
             };
         }
 

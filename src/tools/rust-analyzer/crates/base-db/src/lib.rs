@@ -1,15 +1,16 @@
 //! base_db defines basic database traits. The concrete DB is defined by ide.
-
+// FIXME: Rename this crate, base db is non descriptive
 mod change;
 mod input;
 
 use std::panic;
 
-use salsa::Durability;
+use ra_salsa::Durability;
+use rustc_hash::FxHashMap;
 use span::EditionedFileId;
 use syntax::{ast, Parse, SourceFile, SyntaxError};
 use triomphe::Arc;
-use vfs::FileId;
+use vfs::{AbsPathBuf, FileId};
 
 pub use crate::{
     change::FileChange,
@@ -19,7 +20,7 @@ pub use crate::{
         TargetLayoutLoadResult,
     },
 };
-pub use salsa::{self, Cancelled};
+pub use ra_salsa::{self, Cancelled};
 pub use vfs::{file_set::FileSet, AnchoredPath, AnchoredPathBuf, VfsPath};
 
 pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
@@ -27,11 +28,11 @@ pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 #[macro_export]
 macro_rules! impl_intern_key {
     ($name:ident) => {
-        impl $crate::salsa::InternKey for $name {
-            fn from_intern_id(v: $crate::salsa::InternId) -> Self {
+        impl $crate::ra_salsa::InternKey for $name {
+            fn from_intern_id(v: $crate::ra_salsa::InternId) -> Self {
                 $name(v)
             }
-            fn as_intern_id(&self) -> $crate::salsa::InternId {
+            fn as_intern_id(&self) -> $crate::ra_salsa::InternId {
                 self.0
             }
         }
@@ -47,8 +48,6 @@ pub const DEFAULT_PARSE_LRU_CAP: u16 = 128;
 pub const DEFAULT_BORROWCK_LRU_CAP: u16 = 2024;
 
 pub trait FileLoader {
-    /// Text of the file.
-    fn file_text(&self, file_id: FileId) -> Arc<str>;
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId>;
     /// Crates whose root's source root is the same as the source root of `file_id`
     fn relevant_crates(&self, file_id: FileId) -> Arc<[CrateId]>;
@@ -56,32 +55,50 @@ pub trait FileLoader {
 
 /// Database which stores all significant input facts: source code and project
 /// model. Everything else in rust-analyzer is derived from these queries.
-#[salsa::query_group(SourceDatabaseStorage)]
+#[ra_salsa::query_group(SourceDatabaseStorage)]
 pub trait SourceDatabase: FileLoader + std::fmt::Debug {
+    #[ra_salsa::input]
+    fn compressed_file_text(&self, file_id: FileId) -> Arc<[u8]>;
+
+    /// Text of the file.
+    #[ra_salsa::lru]
+    fn file_text(&self, file_id: FileId) -> Arc<str>;
+
     /// Parses the file into the syntax tree.
-    #[salsa::lru]
+    #[ra_salsa::lru]
     fn parse(&self, file_id: EditionedFileId) -> Parse<ast::SourceFile>;
 
     /// Returns the set of errors obtained from parsing the file including validation errors.
     fn parse_errors(&self, file_id: EditionedFileId) -> Option<Arc<[SyntaxError]>>;
 
     /// The crate graph.
-    #[salsa::input]
+    #[ra_salsa::input]
     fn crate_graph(&self) -> Arc<CrateGraph>;
 
-    // FIXME: Consider removing this, making HirDatabase::target_data_layout an input query
-    #[salsa::input]
-    fn data_layout(&self, krate: CrateId) -> TargetLayoutLoadResult;
+    #[ra_salsa::input]
+    fn crate_workspace_data(&self) -> Arc<FxHashMap<CrateId, Arc<CrateWorkspaceData>>>;
 
-    #[salsa::input]
-    fn toolchain(&self, krate: CrateId) -> Option<Version>;
-
-    #[salsa::transparent]
+    #[ra_salsa::transparent]
     fn toolchain_channel(&self, krate: CrateId) -> Option<ReleaseChannel>;
 }
 
+/// Crate related data shared by the whole workspace.
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct CrateWorkspaceData {
+    /// The working directory to run proc-macros in. This is usually the workspace root of cargo workspaces.
+    pub proc_macro_cwd: Option<AbsPathBuf>,
+    // FIXME: Consider removing this, making HirDatabase::target_data_layout an input query
+    pub data_layout: TargetLayoutLoadResult,
+    /// Toolchain version used to compile the crate.
+    pub toolchain: Option<Version>,
+}
+
 fn toolchain_channel(db: &dyn SourceDatabase, krate: CrateId) -> Option<ReleaseChannel> {
-    db.toolchain(krate).as_ref().and_then(|v| ReleaseChannel::from_str(&v.pre))
+    db.crate_workspace_data()
+        .get(&krate)?
+        .toolchain
+        .as_ref()
+        .and_then(|v| ReleaseChannel::from_str(&v.pre))
 }
 
 fn parse(db: &dyn SourceDatabase, file_id: EditionedFileId) -> Parse<ast::SourceFile> {
@@ -99,29 +116,7 @@ fn parse_errors(db: &dyn SourceDatabase, file_id: EditionedFileId) -> Option<Arc
     }
 }
 
-/// We don't want to give HIR knowledge of source roots, hence we extract these
-/// methods into a separate DB.
-#[salsa::query_group(SourceDatabaseExtStorage)]
-pub trait SourceDatabaseExt: SourceDatabase {
-    #[salsa::input]
-    fn compressed_file_text(&self, file_id: FileId) -> Arc<[u8]>;
-
-    #[salsa::lru]
-    fn file_text(&self, file_id: FileId) -> Arc<str>;
-
-    /// Path to a file, relative to the root of its source root.
-    /// Source root of the file.
-    #[salsa::input]
-    fn file_source_root(&self, file_id: FileId) -> SourceRootId;
-    /// Contents of the source root.
-    #[salsa::input]
-    fn source_root(&self, id: SourceRootId) -> Arc<SourceRoot>;
-
-    /// Crates whose root fool is in `id`.
-    fn source_root_crates(&self, id: SourceRootId) -> Arc<[CrateId]>;
-}
-
-fn file_text(db: &dyn SourceDatabaseExt, file_id: FileId) -> Arc<str> {
+fn file_text(db: &dyn SourceDatabase, file_id: FileId) -> Arc<str> {
     let bytes = db.compressed_file_text(file_id);
     let bytes =
         lz4_flex::decompress_size_prepended(&bytes).expect("lz4 decompression should not fail");
@@ -129,7 +124,23 @@ fn file_text(db: &dyn SourceDatabaseExt, file_id: FileId) -> Arc<str> {
     Arc::from(text)
 }
 
-pub trait SourceDatabaseExt2 {
+/// We don't want to give HIR knowledge of source roots, hence we extract these
+/// methods into a separate DB.
+#[ra_salsa::query_group(SourceRootDatabaseStorage)]
+pub trait SourceRootDatabase: SourceDatabase {
+    /// Path to a file, relative to the root of its source root.
+    /// Source root of the file.
+    #[ra_salsa::input]
+    fn file_source_root(&self, file_id: FileId) -> SourceRootId;
+    /// Contents of the source root.
+    #[ra_salsa::input]
+    fn source_root(&self, id: SourceRootId) -> Arc<SourceRoot>;
+
+    /// Crates whose root file is in `id`.
+    fn source_root_crates(&self, id: SourceRootId) -> Arc<[CrateId]>;
+}
+
+pub trait SourceDatabaseFileInputExt {
     fn set_file_text(&mut self, file_id: FileId, text: &str) {
         self.set_file_text_with_durability(file_id, text, Durability::LOW);
     }
@@ -142,7 +153,7 @@ pub trait SourceDatabaseExt2 {
     );
 }
 
-impl<Db: ?Sized + SourceDatabaseExt> SourceDatabaseExt2 for Db {
+impl<Db: ?Sized + SourceRootDatabase> SourceDatabaseFileInputExt for Db {
     fn set_file_text_with_durability(
         &mut self,
         file_id: FileId,
@@ -159,7 +170,7 @@ impl<Db: ?Sized + SourceDatabaseExt> SourceDatabaseExt2 for Db {
     }
 }
 
-fn source_root_crates(db: &dyn SourceDatabaseExt, id: SourceRootId) -> Arc<[CrateId]> {
+fn source_root_crates(db: &dyn SourceRootDatabase, id: SourceRootId) -> Arc<[CrateId]> {
     let graph = db.crate_graph();
     let mut crates = graph
         .iter()
@@ -173,13 +184,12 @@ fn source_root_crates(db: &dyn SourceDatabaseExt, id: SourceRootId) -> Arc<[Crat
     crates.into_iter().collect()
 }
 
-/// Silly workaround for cyclic deps between the traits
+// FIXME: Would be nice to get rid of this somehow
+/// Silly workaround for cyclic deps due to the SourceRootDatabase and SourceDatabase split
+/// regarding FileLoader
 pub struct FileLoaderDelegate<T>(pub T);
 
-impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
-    fn file_text(&self, file_id: FileId) -> Arc<str> {
-        SourceDatabaseExt::file_text(self.0, file_id)
-    }
+impl<T: SourceRootDatabase> FileLoader for FileLoaderDelegate<&'_ T> {
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
         // FIXME: this *somehow* should be platform agnostic...
         let source_root = self.0.file_source_root(path.anchor);

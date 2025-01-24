@@ -1,4 +1,4 @@
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 const CHARS: [char; 9] = ['0', 'x', '2', '5', 'A', 'f', '7', '8', '9'];
 const RADIX: [u32; 5] = [2, 8, 10, 16, 32];

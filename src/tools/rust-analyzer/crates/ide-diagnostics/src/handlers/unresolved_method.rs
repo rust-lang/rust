@@ -1,4 +1,5 @@
 use hir::{db::ExpandDatabase, AssocItem, FileRange, HirDisplay, InFile};
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
     label::Label,
@@ -8,7 +9,6 @@ use syntax::{
     ast::{self, make, HasArgList},
     format_smolstr, AstNode, SmolStr, TextRange, ToSmolStr,
 };
-use text_edit::TextEdit;
 
 use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
@@ -30,8 +30,8 @@ pub(crate) fn unresolved_method(
         DiagnosticCode::RustcHardError("E0599"),
         format!(
             "no method `{}` on type `{}`{suffix}",
-            d.name.display(ctx.sema.db),
-            d.receiver.display(ctx.sema.db)
+            d.name.display(ctx.sema.db, ctx.edition),
+            d.receiver.display(ctx.sema.db, ctx.edition)
         ),
         adjusted_display_range(ctx, d.expr, &|expr| {
             Some(
@@ -154,9 +154,10 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
         };
 
         let mut receiver_type_adt_name =
-            receiver_type.as_adt()?.name(db).display_no_db().to_smolstr();
+            receiver_type.as_adt()?.name(db).display_no_db(ctx.edition).to_smolstr();
 
-        let generic_parameters: Vec<SmolStr> = receiver_type.generic_parameters(db).collect();
+        let generic_parameters: Vec<SmolStr> =
+            receiver_type.generic_parameters(db, ctx.edition).collect();
         // if receiver should be pass as first arg in the assoc func,
         // we could omit generic parameters cause compiler can deduce it automatically
         if !need_to_take_receiver_as_first_arg && !generic_parameters.is_empty() {
@@ -166,9 +167,9 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
         }
 
         let method_name = call.name_ref()?;
-        let assoc_func_call = format!("{receiver_type_adt_name}::{method_name}()");
+        let assoc_func_path = format!("{receiver_type_adt_name}::{method_name}");
 
-        let assoc_func_call = make::expr_path(make::path_from_text(&assoc_func_call));
+        let assoc_func_path = make::expr_path(make::path_from_text(&assoc_func_path));
 
         let args: Vec<_> = if need_to_take_receiver_as_first_arg {
             std::iter::once(receiver).chain(call.arg_list()?.args()).collect()
@@ -177,7 +178,7 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
         };
         let args = make::arg_list(args);
 
-        let assoc_func_call_expr_string = make::expr_call(assoc_func_call, args).to_string();
+        let assoc_func_call_expr_string = make::expr_call(assoc_func_path, args).to_string();
 
         let file_id = ctx.sema.original_range_opt(call.receiver()?.syntax())?.file_id;
 

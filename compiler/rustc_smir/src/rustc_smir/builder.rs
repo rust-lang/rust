@@ -12,13 +12,13 @@ use rustc_middle::ty::{self, TyCtxt};
 use crate::rustc_smir::{Stable, Tables};
 
 /// Builds a monomorphic body for a given instance.
-pub struct BodyBuilder<'tcx> {
+pub(crate) struct BodyBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     instance: ty::Instance<'tcx>,
 }
 
 impl<'tcx> BodyBuilder<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, instance: ty::Instance<'tcx>) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, instance: ty::Instance<'tcx>) -> Self {
         let instance = match instance.def {
             // To get the fallback body of an intrinsic, we need to convert it to an item.
             ty::InstanceKind::Intrinsic(def_id) => ty::Instance::new(def_id, instance.args),
@@ -30,7 +30,7 @@ impl<'tcx> BodyBuilder<'tcx> {
     /// Build a stable monomorphic body for a given instance based on the MIR body.
     ///
     /// All constants are also evaluated.
-    pub fn build(mut self, tables: &mut Tables<'tcx>) -> stable_mir::mir::Body {
+    pub(crate) fn build(mut self, tables: &mut Tables<'tcx>) -> stable_mir::mir::Body {
         let body = tables.tcx.instance_mir(self.instance.def).clone();
         let mono_body = if !self.instance.args.is_empty()
             // Without the `generic_const_exprs` feature gate, anon consts in signatures do not
@@ -40,7 +40,7 @@ impl<'tcx> BodyBuilder<'tcx> {
         {
             let mut mono_body = self.instance.instantiate_mir_and_normalize_erasing_regions(
                 tables.tcx,
-                ty::ParamEnv::reveal_all(),
+                ty::TypingEnv::fully_monomorphized(),
                 ty::EarlyBinder::bind(body),
             );
             self.visit_body(&mut mono_body);
@@ -60,7 +60,7 @@ impl<'tcx> MutVisitor<'tcx> for BodyBuilder<'tcx> {
         location: mir::Location,
     ) {
         let const_ = constant.const_;
-        let val = match const_.eval(self.tcx, ty::ParamEnv::reveal_all(), constant.span) {
+        let val = match const_.eval(self.tcx, ty::TypingEnv::fully_monomorphized(), constant.span) {
             Ok(v) => v,
             Err(mir::interpret::ErrorHandled::Reported(..)) => return,
             Err(mir::interpret::ErrorHandled::TooGeneric(..)) => {

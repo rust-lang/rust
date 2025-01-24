@@ -1,9 +1,8 @@
-//@ compile-flags: -Zunpretty=hir
+//@ compile-flags: -Zunpretty=thir-tree
 //@ check-pass
 
-#![feature(stmt_expr_attributes, rustc_attrs)]
+#![feature(liballoc_internals)]
 
 fn main() {
-    let _ = #[rustc_box]
-    Box::new(1);
+    let _ = std::boxed::box_new(1);
 }

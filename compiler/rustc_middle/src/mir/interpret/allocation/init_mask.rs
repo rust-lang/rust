@@ -4,9 +4,9 @@ mod tests;
 use std::ops::Range;
 use std::{hash, iter};
 
+use rustc_abi::Size;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_serialize::{Decodable, Encodable};
-use rustc_target::abi::Size;
 use rustc_type_ir::{TyDecoder, TyEncoder};
 
 use super::AllocRange;
@@ -243,7 +243,7 @@ impl hash::Hash for InitMaskMaterialized {
 }
 
 impl InitMaskMaterialized {
-    pub const BLOCK_SIZE: u64 = 64;
+    const BLOCK_SIZE: u64 = 64;
 
     fn new(size: Size, state: bool) -> Self {
         let mut m = InitMaskMaterialized { blocks: vec![] };

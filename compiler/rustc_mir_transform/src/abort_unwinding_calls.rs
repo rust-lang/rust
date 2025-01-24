@@ -1,8 +1,8 @@
+use rustc_abi::ExternAbi;
 use rustc_ast::InlineAsmOptions;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, layout, TyCtxt};
-use rustc_target::spec::abi::Abi;
+use rustc_middle::ty::{self, TyCtxt, layout};
 use rustc_target::spec::PanicStrategy;
 
 /// A pass that runs which is targeted at ensuring that codegen guarantees about
@@ -20,9 +20,9 @@ use rustc_target::spec::PanicStrategy;
 /// This forces all unwinds, in panic=abort mode happening in foreign code, to
 /// trigger a process abort.
 #[derive(PartialEq)]
-pub struct AbortUnwindingCalls;
+pub(super) struct AbortUnwindingCalls;
 
-impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
+impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
         let kind = tcx.def_kind(def_id);
@@ -38,9 +38,9 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
         let body_ty = tcx.type_of(def_id).skip_binder();
         let body_abi = match body_ty.kind() {
             ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
-            ty::Closure(..) => Abi::RustCall,
-            ty::CoroutineClosure(..) => Abi::RustCall,
-            ty::Coroutine(..) => Abi::Rust,
+            ty::Closure(..) => ExternAbi::RustCall,
+            ty::CoroutineClosure(..) => ExternAbi::RustCall,
+            ty::Coroutine(..) => ExternAbi::Rust,
             ty::Error(_) => return,
             _ => span_bug!(body.span, "unexpected body ty: {:?}", body_ty),
         };
@@ -50,21 +50,28 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
         // with a function call, and whose function we're calling may unwind.
         // This will filter to functions with `extern "C-unwind"` ABIs, for
         // example.
-        let mut calls_to_terminate = Vec::new();
-        let mut cleanups_to_remove = Vec::new();
-        for (id, block) in body.basic_blocks.iter_enumerated() {
+        for block in body.basic_blocks.as_mut() {
+            let Some(terminator) = &mut block.terminator else { continue };
+            let span = terminator.source_info.span;
+
+            // If we see an `UnwindResume` terminator inside a function that cannot unwind, we need
+            // to replace it with `UnwindTerminate`.
+            if let TerminatorKind::UnwindResume = &terminator.kind
+                && !body_can_unwind
+            {
+                terminator.kind = TerminatorKind::UnwindTerminate(UnwindTerminateReason::Abi);
+            }
+
             if block.is_cleanup {
                 continue;
             }
-            let Some(terminator) = &block.terminator else { continue };
-            let span = terminator.source_info.span;
 
             let call_can_unwind = match &terminator.kind {
                 TerminatorKind::Call { func, .. } => {
-                    let ty = func.ty(body, tcx);
+                    let ty = func.ty(&body.local_decls, tcx);
                     let sig = ty.fn_sig(tcx);
                     let fn_def_id = match ty.kind() {
-                        ty::FnPtr(_) => None,
+                        ty::FnPtr(..) => None,
                         &ty::FnDef(def_id, _) => Some(def_id),
                         _ => span_bug!(span, "invalid callee of type {:?}", ty),
                     };
@@ -72,10 +79,10 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
                 }
                 TerminatorKind::Drop { .. } => {
                     tcx.sess.opts.unstable_opts.panic_in_drop == PanicStrategy::Unwind
-                        && layout::fn_can_unwind(tcx, None, Abi::Rust)
+                        && layout::fn_can_unwind(tcx, None, ExternAbi::Rust)
                 }
                 TerminatorKind::Assert { .. } | TerminatorKind::FalseUnwind { .. } => {
-                    layout::fn_can_unwind(tcx, None, Abi::Rust)
+                    layout::fn_can_unwind(tcx, None, ExternAbi::Rust)
                 }
                 TerminatorKind::InlineAsm { options, .. } => {
                     options.contains(InlineAsmOptions::MAY_UNWIND)
@@ -86,31 +93,24 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
                 _ => continue,
             };
 
-            // If this function call can't unwind, then there's no need for it
-            // to have a landing pad. This means that we can remove any cleanup
-            // registered for it.
             if !call_can_unwind {
-                cleanups_to_remove.push(id);
-                continue;
+                // If this function call can't unwind, then there's no need for it
+                // to have a landing pad. This means that we can remove any cleanup
+                // registered for it (and turn it into `UnwindAction::Unreachable`).
+                let cleanup = block.terminator_mut().unwind_mut().unwrap();
+                *cleanup = UnwindAction::Unreachable;
+            } else if !body_can_unwind
+                && matches!(terminator.unwind(), Some(UnwindAction::Continue))
+            {
+                // Otherwise if this function can unwind, then if the outer function
+                // can also unwind there's nothing to do. If the outer function
+                // can't unwind, however, we need to ensure that any `UnwindAction::Continue`
+                // is replaced with terminate. For those with `UnwindAction::Cleanup`,
+                // cleanup will still happen, and terminate will happen afterwards handled by
+                // the `UnwindResume` -> `UnwindTerminate` terminator replacement.
+                let cleanup = block.terminator_mut().unwind_mut().unwrap();
+                *cleanup = UnwindAction::Terminate(UnwindTerminateReason::Abi);
             }
-
-            // Otherwise if this function can unwind, then if the outer function
-            // can also unwind there's nothing to do. If the outer function
-            // can't unwind, however, we need to change the landing pad for this
-            // function call to one that aborts.
-            if !body_can_unwind {
-                calls_to_terminate.push(id);
-            }
-        }
-
-        for id in calls_to_terminate {
-            let cleanup = body.basic_blocks_mut()[id].terminator_mut().unwind_mut().unwrap();
-            *cleanup = UnwindAction::Terminate(UnwindTerminateReason::Abi);
-        }
-
-        for id in cleanups_to_remove {
-            let cleanup = body.basic_blocks_mut()[id].terminator_mut().unwind_mut().unwrap();
-            *cleanup = UnwindAction::Unreachable;
         }
 
         // We may have invalidated some `cleanup` blocks so clean those up now.

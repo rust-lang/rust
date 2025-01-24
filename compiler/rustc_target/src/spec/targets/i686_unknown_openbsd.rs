@@ -1,6 +1,6 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, StackProbeType, Target};
+use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::openbsd::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);

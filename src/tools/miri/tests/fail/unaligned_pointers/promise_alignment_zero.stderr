@@ -1,12 +1,12 @@
 error: unsupported operation: `miri_promise_symbolic_alignment`: alignment must be a power of 2, got 0
-  --> $DIR/promise_alignment_zero.rs:LL:CC
+  --> tests/fail/unaligned_pointers/promise_alignment_zero.rs:LL:CC
    |
 LL |     unsafe { utils::miri_promise_symbolic_alignment(buffer.as_ptr().cast(), 0) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `miri_promise_symbolic_alignment`: alignment must be a power of 2, got 0
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/promise_alignment_zero.rs:LL:CC
+   = note: inside `main` at tests/fail/unaligned_pointers/promise_alignment_zero.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

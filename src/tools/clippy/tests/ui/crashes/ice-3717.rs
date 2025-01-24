@@ -1,7 +1,5 @@
 #![deny(clippy::implicit_hasher)]
 
-//@no-rustfix: need to change the suggestion to a multipart suggestion
-
 use std::collections::HashSet;
 
 fn main() {}

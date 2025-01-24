@@ -2,15 +2,14 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, IdentIsRaw};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::{
-    BinOpKind, BorrowKind, DelimArgs, Expr, ExprKind, ItemKind, MacCall, MethodCall, Mutability,
-    Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind, DUMMY_NODE_ID,
+    BinOpKind, BorrowKind, DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, ItemKind, MacCall, MethodCall,
+    Mutability, Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::ExtCtxt;
-use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::Span;
-use thin_vec::{thin_vec, ThinVec};
+use rustc_span::{Ident, Span, Symbol, sym};
+use thin_vec::{ThinVec, thin_vec};
 
 pub(super) struct Context<'cx, 'a> {
     // An optimization.
@@ -323,7 +322,8 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::While(_, _, _)
             | ExprKind::Yeet(_)
             | ExprKind::Become(_)
-            | ExprKind::Yield(_) => {}
+            | ExprKind::Yield(_)
+            | ExprKind::UnsafeBinderCast(..) => {}
         }
     }
 

@@ -1,4 +1,4 @@
-// Check that a self parameter type requires a DispatchFromDyn impl to be object safe
+// Check that a self parameter type requires a DispatchFromDyn impl to be dyn-compatible.
 
 #![feature(arbitrary_self_types, unsize, coerce_unsized)]
 
@@ -30,6 +30,6 @@ impl Trait for i32 {
 
 fn main() {
     Ptr(Box::new(4)) as Ptr<dyn Trait>;
-    //~^ ERROR the trait `Trait` cannot be made into an object
-    //~^^ ERROR the trait `Trait` cannot be made into an object
+    //~^ ERROR the trait `Trait` is not dyn compatible
+    //~^^ ERROR the trait `Trait` is not dyn compatible
 }

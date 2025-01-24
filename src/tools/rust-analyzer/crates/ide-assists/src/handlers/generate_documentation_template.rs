@@ -5,7 +5,7 @@ use stdx::{format_to, to_lower_snake_case};
 use syntax::{
     algo::skip_whitespace_token,
     ast::{self, edit::IndentLevel, HasDocComments, HasGenericArgs, HasName},
-    match_ast, AstNode, AstToken,
+    match_ast, AstNode, AstToken, Edition,
 };
 
 use crate::assist_context::{AssistContext, Assists};
@@ -88,7 +88,7 @@ pub(crate) fn generate_documentation_template(
 // /// # Examples
 // ///
 // /// ```
-// /// use test::add;
+// /// use ra_test_fixture::add;
 // ///
 // /// assert_eq!(add(a, b), );
 // /// ```
@@ -139,7 +139,8 @@ fn make_example_for_fn(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<St
 
     let mut example = String::new();
 
-    let use_path = build_path(ast_func, ctx)?;
+    let edition = ctx.sema.scope(ast_func.syntax())?.krate().edition(ctx.db());
+    let use_path = build_path(ast_func, ctx, edition)?;
     let is_unsafe = ast_func.unsafe_token().is_some();
     let param_list = ast_func.param_list()?;
     let ref_mut_params = ref_mut_params(&param_list);
@@ -472,13 +473,13 @@ fn string_vec_from(string_array: &[&str]) -> Vec<String> {
 }
 
 /// Helper function to build the path of the module in the which is the node
-fn build_path(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<String> {
+fn build_path(ast_func: &ast::Fn, ctx: &AssistContext<'_>, edition: Edition) -> Option<String> {
     let crate_name = crate_name(ast_func, ctx)?;
     let leaf = self_partial_type(ast_func)
         .or_else(|| ast_func.name().map(|n| n.to_string()))
         .unwrap_or_else(|| "*".into());
     let module_def: ModuleDef = ctx.sema.to_def(ast_func)?.module(ctx.db()).into();
-    match module_def.canonical_path(ctx.db()) {
+    match module_def.canonical_path(ctx.db(), edition) {
         Some(path) => Some(format!("{crate_name}::{path}::{leaf}")),
         None => Some(format!("{crate_name}::{leaf}")),
     }
@@ -595,7 +596,7 @@ pub fn noop_with_param(_a: i32) {}
 /// # Examples
 ///
 /// ```
-/// use test::noop_with_param;
+/// use ra_test_fixture::noop_with_param;
 ///
 /// noop_with_param(_a);
 /// ```
@@ -640,7 +641,7 @@ pub unsafe fn noop_unsafe() {}
 /// # Examples
 ///
 /// ```
-/// use test::noop_unsafe;
+/// use ra_test_fixture::noop_unsafe;
 ///
 /// unsafe { noop_unsafe() };
 /// ```
@@ -757,7 +758,7 @@ pub fn returns_a_value$0() -> i32 {
 /// # Examples
 ///
 /// ```
-/// use test::returns_a_value;
+/// use ra_test_fixture::returns_a_value;
 ///
 /// assert_eq!(returns_a_value(), );
 /// ```
@@ -806,7 +807,7 @@ pub fn modifies_a_value$0(a: &mut i32) {
 /// # Examples
 ///
 /// ```
-/// use test::modifies_a_value;
+/// use ra_test_fixture::modifies_a_value;
 ///
 /// let mut a = ;
 /// modifies_a_value(&mut a);
@@ -835,7 +836,7 @@ pub fn sum3$0(a: i32, b: i32, c: i32) -> i32 {
 /// # Examples
 ///
 /// ```
-/// use test::sum3;
+/// use ra_test_fixture::sum3;
 ///
 /// let result = sum3(a, b, c);
 /// assert_eq!(result, );
@@ -867,7 +868,7 @@ pub mod a {
         /// # Examples
         ///
         /// ```
-        /// use test::a::b::noop;
+        /// use ra_test_fixture::a::b::noop;
         ///
         /// noop();
         /// ```
@@ -897,7 +898,7 @@ impl MyStruct {
     /// # Examples
     ///
     /// ```
-    /// use test::MyStruct;
+    /// use ra_test_fixture::MyStruct;
     ///
     /// MyStruct::noop();
     /// ```
@@ -1168,7 +1169,7 @@ impl<T> MyGenericStruct<T> {
     /// # Examples
     ///
     /// ```
-    /// use test::MyGenericStruct;
+    /// use ra_test_fixture::MyGenericStruct;
     ///
     /// let my_generic_struct = ;
     /// my_generic_struct.consume();
@@ -1198,7 +1199,7 @@ impl<T> MyGenericStruct<T> {
     /// # Examples
     ///
     /// ```
-    /// use test::MyGenericStruct;
+    /// use ra_test_fixture::MyGenericStruct;
     ///
     /// let mut my_generic_struct = ;
     /// my_generic_struct.modify(new_value);

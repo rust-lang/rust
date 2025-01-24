@@ -1,7 +1,7 @@
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::os::xous::ffi::{blocking_scalar, scalar};
-use crate::os::xous::services::{ticktimer_server, TicktimerScalar};
+use crate::os::xous::services::{TicktimerScalar, ticktimer_server};
 use crate::sys::sync::Mutex;
 use crate::time::Duration;
 
@@ -20,7 +20,6 @@ unsafe impl Sync for Condvar {}
 
 impl Condvar {
     #[inline]
-    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     pub const fn new() -> Condvar {
         Condvar { counter: AtomicUsize::new(0), timed_out: AtomicUsize::new(0) }
     }

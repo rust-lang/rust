@@ -5,6 +5,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{RegionVid, TyCtxt, VarianceDiagInfo};
 use rustc_span::Span;
+use tracing::{debug, instrument};
 
 use crate::region_infer::{ConstraintSccs, RegionDefinition, RegionTracker};
 use crate::type_check::Locations;
@@ -209,7 +210,7 @@ impl<'tcx> fmt::Debug for OutlivesConstraint<'tcx> {
 
 rustc_index::newtype_index! {
     #[debug_format = "OutlivesConstraintIndex({})"]
-    pub struct OutlivesConstraintIndex {}
+    pub(crate) struct OutlivesConstraintIndex {}
 }
 
 rustc_index::newtype_index! {

@@ -38,11 +38,11 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         StorageLive(_6);
         StorageLive(_7);
         StorageLive(_8);
-        _8 = _1;
+        _8 = copy _1;
         StorageLive(_9);
-        _9 = _3;
-        _10 = Lt(_9, const 8_u8);
-        assert(move _10, "attempt to shift right by `{}`, which would overflow", _9) -> [success: bb1, unwind: bb7];
+        _9 = copy _3;
+        _10 = Lt(copy _9, const 8_u8);
+        assert(move _10, "attempt to shift right by `{}`, which would overflow", copy _9) -> [success: bb1, unwind: bb7];
     }
 
     bb1: {
@@ -51,11 +51,11 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         StorageDead(_8);
         StorageLive(_11);
         StorageLive(_12);
-        _12 = _1;
+        _12 = copy _1;
         StorageLive(_13);
-        _13 = _4;
-        _14 = Lt(_13, const 8_u32);
-        assert(move _14, "attempt to shift right by `{}`, which would overflow", _13) -> [success: bb2, unwind: bb7];
+        _13 = copy _4;
+        _14 = Lt(copy _13, const 8_u32);
+        assert(move _14, "attempt to shift right by `{}`, which would overflow", copy _13) -> [success: bb2, unwind: bb7];
     }
 
     bb2: {
@@ -64,11 +64,11 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         StorageDead(_12);
         StorageLive(_15);
         StorageLive(_16);
-        _16 = _1;
+        _16 = copy _1;
         StorageLive(_17);
-        _17 = _5;
-        _18 = Lt(_17, const 8_u128);
-        assert(move _18, "attempt to shift right by `{}`, which would overflow", _17) -> [success: bb3, unwind: bb7];
+        _17 = copy _5;
+        _18 = Lt(copy _17, const 8_u128);
+        assert(move _18, "attempt to shift right by `{}`, which would overflow", copy _17) -> [success: bb3, unwind: bb7];
     }
 
     bb3: {
@@ -82,11 +82,11 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         StorageLive(_19);
         StorageLive(_20);
         StorageLive(_21);
-        _21 = _2;
+        _21 = copy _2;
         StorageLive(_22);
-        _22 = _3;
-        _23 = Lt(_22, const 128_u8);
-        assert(move _23, "attempt to shift left by `{}`, which would overflow", _22) -> [success: bb4, unwind: bb7];
+        _22 = copy _3;
+        _23 = Lt(copy _22, const 128_u8);
+        assert(move _23, "attempt to shift left by `{}`, which would overflow", copy _22) -> [success: bb4, unwind: bb7];
     }
 
     bb4: {
@@ -95,11 +95,11 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         StorageDead(_21);
         StorageLive(_24);
         StorageLive(_25);
-        _25 = _2;
+        _25 = copy _2;
         StorageLive(_26);
-        _26 = _4;
-        _27 = Lt(_26, const 128_u32);
-        assert(move _27, "attempt to shift left by `{}`, which would overflow", _26) -> [success: bb5, unwind: bb7];
+        _26 = copy _4;
+        _27 = Lt(copy _26, const 128_u32);
+        assert(move _27, "attempt to shift left by `{}`, which would overflow", copy _26) -> [success: bb5, unwind: bb7];
     }
 
     bb5: {
@@ -108,11 +108,11 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         StorageDead(_25);
         StorageLive(_28);
         StorageLive(_29);
-        _29 = _2;
+        _29 = copy _2;
         StorageLive(_30);
-        _30 = _5;
-        _31 = Lt(_30, const 128_u128);
-        assert(move _31, "attempt to shift left by `{}`, which would overflow", _30) -> [success: bb6, unwind: bb7];
+        _30 = copy _5;
+        _31 = Lt(copy _30, const 128_u128);
+        assert(move _31, "attempt to shift left by `{}`, which would overflow", copy _30) -> [success: bb6, unwind: bb7];
     }
 
     bb6: {

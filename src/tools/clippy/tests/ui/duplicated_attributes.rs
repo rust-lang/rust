@@ -27,4 +27,8 @@ trait Abc {}
 #[proc_macro_attr::duplicated_attr()] // Should not warn!
 fn babar() {}
 
+#[allow(missing_docs, reason = "library for internal use only")]
+#[allow(exported_private_dependencies, reason = "library for internal use only")]
+fn duplicate_reason() {}
+
 fn main() {}

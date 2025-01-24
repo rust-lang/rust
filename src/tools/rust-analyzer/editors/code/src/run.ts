@@ -5,7 +5,7 @@ import * as tasks from "./tasks";
 
 import type { CtxInit } from "./ctx";
 import { makeDebugConfig } from "./debug";
-import type { Config, RunnableEnvCfg, RunnableEnvCfgItem } from "./config";
+import type { Config } from "./config";
 import type { LanguageClient } from "vscode-languageclient/node";
 import { unwrapUndefinable, type RustEditor } from "./util";
 
@@ -36,7 +36,7 @@ export async function selectRunnable(
 
     if (runnables.length === 0) {
         // it is the debug case, run always has at least 'cargo check ...'
-        // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_runnables
+        // see crates\rust-analyzer\src\handlers\request.rs, handle_runnables
         await vscode.window.showErrorMessage("There's no debug target!");
         quickPick.dispose();
         return;
@@ -65,9 +65,14 @@ export class RunnableQuickPick implements vscode.QuickPickItem {
     }
 }
 
-export function prepareBaseEnv(base?: Record<string, string>): Record<string, string> {
+export function prepareBaseEnv(
+    inheritEnv: boolean,
+    base?: Record<string, string>,
+): Record<string, string> {
     const env: Record<string, string> = { RUST_BACKTRACE: "short" };
-    Object.assign(env, process.env);
+    if (inheritEnv) {
+        Object.assign(env, process.env);
+    }
     if (base) {
         Object.assign(env, base);
     }
@@ -75,32 +80,14 @@ export function prepareBaseEnv(base?: Record<string, string>): Record<string, st
 }
 
 export function prepareEnv(
-    label: string,
-    runnableArgs: ra.CargoRunnableArgs,
-    runnableEnvCfg?: RunnableEnvCfg,
+    inheritEnv: boolean,
+    runnableEnv?: Record<string, string>,
+    runnableEnvCfg?: Record<string, string>,
 ): Record<string, string> {
-    const env = prepareBaseEnv(runnableArgs.environment);
-    const platform = process.platform;
-
-    const checkPlatform = (it: RunnableEnvCfgItem) => {
-        if (it.platform) {
-            const platforms = Array.isArray(it.platform) ? it.platform : [it.platform];
-            return platforms.indexOf(platform) >= 0;
-        }
-        return true;
-    };
+    const env = prepareBaseEnv(inheritEnv, runnableEnv);
 
     if (runnableEnvCfg) {
-        if (Array.isArray(runnableEnvCfg)) {
-            for (const it of runnableEnvCfg) {
-                const masked = !it.mask || new RegExp(it.mask).test(label);
-                if (masked && checkPlatform(it)) {
-                    Object.assign(env, it.env);
-                }
-            }
-        } else {
-            Object.assign(env, runnableEnvCfg);
-        }
+        Object.assign(env, runnableEnvCfg);
     }
 
     return env;
@@ -134,7 +121,11 @@ export async function createTaskFromRunnable(
         };
         options = {
             cwd: runnableArgs.workspaceRoot || ".",
-            env: prepareEnv(runnable.label, runnableArgs, config.runnablesExtraEnv),
+            env: prepareEnv(
+                true,
+                runnableArgs.environment,
+                config.runnablesExtraEnv(runnable.label),
+            ),
         };
     } else {
         const runnableArgs = runnable.args;
@@ -145,7 +136,7 @@ export async function createTaskFromRunnable(
         };
         options = {
             cwd: runnableArgs.cwd,
-            env: prepareBaseEnv(),
+            env: prepareBaseEnv(true),
         };
     }
 

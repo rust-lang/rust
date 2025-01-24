@@ -2,12 +2,12 @@
 include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 assert-attribute: ("#main-content > details.top-doc", {"open": ""})
-assert-text: ("#toggle-all-docs", "[−]")
+assert-text: ("#toggle-all-docs", "Summary")
 click: "#toggle-all-docs"
 wait-for: 50
 // This is now collapsed so there shouldn't be the "open" attribute on details.
 assert-attribute-false: ("#main-content > details.top-doc", {"open": ""})
-assert-text: ("#toggle-all-docs", "[+]")
+assert-text: ("#toggle-all-docs", "Show all")
 assert-css: (
     "#main-content > details.top-doc > summary",
     {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
@@ -15,12 +15,12 @@ assert-css: (
 click: "#toggle-all-docs"
 // Not collapsed anymore so the "open" attribute should be back.
 wait-for-attribute: ("#main-content > details.top-doc", {"open": ""})
-assert-text: ("#toggle-all-docs", "[−]")
+assert-text: ("#toggle-all-docs", "Summary")
 
 // Check that it works on non-module pages as well.
 go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 // We first check that everything is visible.
-assert-text: ("#toggle-all-docs", "[−]")
+assert-text: ("#toggle-all-docs", "Summary")
 assert-attribute: ("#implementations-list details.toggle", {"open": ""}, ALL)
 assert-attribute: ("#trait-implementations-list details.toggle", {"open": ""}, ALL)
 assert-attribute-false: (
@@ -31,7 +31,7 @@ assert-attribute-false: (
 
 // We collapse them all.
 click: "#toggle-all-docs"
-wait-for-text: ("#toggle-all-docs", "[+]")
+wait-for-text: ("#toggle-all-docs", "Show all")
 // We check that all <details> are collapsed (except for the impl block ones).
 assert-attribute-false: ("details.toggle:not(.implementors-toggle)", {"open": ""}, ALL)
 assert-attribute: ("#implementations-list > details.implementors-toggle", {"open": ""})
@@ -43,7 +43,7 @@ assert-attribute-false: (
 )
 // We open them all again.
 click: "#toggle-all-docs"
-wait-for-text: ("#toggle-all-docs", "[−]")
+wait-for-text: ("#toggle-all-docs", "Summary")
 assert-attribute: ("details.toggle", {"open": ""}, ALL)
 
 // Checking the toggles style.

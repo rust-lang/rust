@@ -1,45 +1,43 @@
 //@ run-pass
 #![feature(repr_simd)]
-#![feature(intrinsics)]
+#![feature(intrinsics, rustc_attrs)]
 #![feature(staged_api)]
 #![stable(feature = "foo", since = "1.3.37")]
 #![allow(non_camel_case_types)]
 
-#[repr(simd)] struct i8x1(i8);
-#[repr(simd)] struct u16x2(u16, u16);
-// Make some of them array types to ensure those also work.
-#[repr(simd)] struct i8x1_arr([i8; 1]);
+// repr(simd) now only supports array types
+#[repr(simd)] struct i8x1([i8; 1]);
+#[repr(simd)] struct u16x2([u16; 2]);
 #[repr(simd)] struct f32x4([f32; 4]);
 
-extern "rust-intrinsic" {
-    #[rustc_const_stable(feature = "foo", since = "1.3.37")]
-    fn simd_insert<T, U>(x: T, idx: u32, val: U) -> T;
-    #[rustc_const_stable(feature = "foo", since = "1.3.37")]
-    fn simd_extract<T, U>(x: T, idx: u32) -> U;
+#[stable(feature = "foo", since = "1.3.37")]
+#[rustc_const_stable(feature = "foo", since = "1.3.37")]
+#[rustc_intrinsic]
+const unsafe fn simd_insert<T, U>(_x: T, _idx: u32, _val: U) -> T {
+    unimplemented!()
+}
+
+#[stable(feature = "foo", since = "1.3.37")]
+#[rustc_const_stable(feature = "foo", since = "1.3.37")]
+#[rustc_intrinsic]
+const unsafe fn simd_extract<T, U>(_x: T, _idx: u32) -> U {
+    unimplemented!()
 }
 
 fn main() {
     {
-        const U: i8x1 = i8x1(13);
+        const U: i8x1 = i8x1([13]);
         const V: i8x1 = unsafe { simd_insert(U, 0_u32, 42_i8) };
-        const X0: i8 = V.0;
-        const Y0: i8 = unsafe { simd_extract(V, 0) };
-        assert_eq!(X0, 42);
-        assert_eq!(Y0, 42);
-    }
-    {
-        const U: i8x1_arr = i8x1_arr([13]);
-        const V: i8x1_arr = unsafe { simd_insert(U, 0_u32, 42_i8) };
         const X0: i8 = V.0[0];
         const Y0: i8 = unsafe { simd_extract(V, 0) };
         assert_eq!(X0, 42);
         assert_eq!(Y0, 42);
     }
     {
-        const U: u16x2 = u16x2(13, 14);
+        const U: u16x2 = u16x2([13, 14]);
         const V: u16x2 = unsafe { simd_insert(U, 1_u32, 42_u16) };
-        const X0: u16 = V.0;
-        const X1: u16 = V.1;
+        const X0: u16 = V.0[0];
+        const X1: u16 = V.0[1];
         const Y0: u16 = unsafe { simd_extract(V, 0) };
         const Y1: u16 = unsafe { simd_extract(V, 1) };
         assert_eq!(X0, 13);

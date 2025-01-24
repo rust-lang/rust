@@ -1,16 +1,17 @@
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::codes::*;
-use rustc_errors::{struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, struct_span_code_err};
 use rustc_hir as hir;
+use rustc_hir::GenericArg;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::GenericArg;
 use rustc_middle::ty::{
     self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty,
 };
 use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::{kw, sym};
 use smallvec::SmallVec;
+use tracing::{debug, instrument};
 
 use super::{HirTyLowerer, IsMethodCall};
 use crate::errors::wrong_number_of_generic_args::{GenericArgsInfo, WrongNumberOfGenericArgs};
@@ -103,7 +104,7 @@ fn generic_arg_mismatch_err(
             GenericArg::Type(hir::Ty { kind: hir::TyKind::Array(_, len), .. }),
             GenericParamDefKind::Const { .. },
         ) if tcx.type_of(param.def_id).skip_binder() == tcx.types.usize => {
-            let snippet = sess.source_map().span_to_snippet(tcx.hir().span(len.hir_id()));
+            let snippet = sess.source_map().span_to_snippet(tcx.hir().span(len.hir_id));
             if let Ok(snippet) = snippet {
                 err.span_suggestion(
                     arg.span(),
@@ -114,17 +115,22 @@ fn generic_arg_mismatch_err(
             }
         }
         (GenericArg::Const(cnst), GenericParamDefKind::Type { .. }) => {
-            // FIXME(min_generic_const_args): once ConstArgKind::Path is used for non-params too,
-            // this should match against that instead of ::Anon
-            if let hir::ConstArgKind::Anon(anon) = cnst.kind
+            if let hir::ConstArgKind::Path(qpath) = cnst.kind
+                && let rustc_hir::QPath::Resolved(_, path) = qpath
+                && let Res::Def(DefKind::Fn { .. }, id) = path.res
+            {
+                err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));
+                err.help("function item types cannot be named directly");
+            } else if let hir::ConstArgKind::Anon(anon) = cnst.kind
                 && let body = tcx.hir().body(anon.body)
                 && let rustc_hir::ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) =
                     body.value.kind
+                && let Res::Def(DefKind::Fn { .. }, id) = path.res
             {
-                if let Res::Def(DefKind::Fn { .. }, id) = path.res {
-                    err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));
-                    err.help("function item types cannot be named directly");
-                }
+                // FIXME(min_generic_const_args): this branch is dead once new const path lowering
+                // (for single-segment paths) is no longer gated
+                err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));
+                err.help("function item types cannot be named directly");
             }
         }
         _ => {}

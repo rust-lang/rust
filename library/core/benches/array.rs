@@ -1,4 +1,4 @@
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 macro_rules! map_array {
     ($func_name:ident, $start_item: expr, $map_item: expr, $arr_size: expr) => {

@@ -78,5 +78,11 @@ help: or, for conciseness
 LL |     if !x.is_infinite() {}
    |        ~~~~~~~~~~~~~~~~
 
-error: aborting due to 6 previous errors
+error: manually checking if a float is infinite
+  --> tests/ui/manual_float_methods.rs:44:12
+   |
+LL |         if x == f64::INFINITY || x == f64::NEG_INFINITY {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the dedicated method instead: `x.is_infinite()`
+
+error: aborting due to 7 previous errors
 

@@ -3,10 +3,11 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
    |
 LL | impl DefaultedTrait for (A,) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^----
-   | |                       |
-   | |                       this is not defined in the current crate because tuples are always foreign
-   | impl doesn't use only types from inside the current crate
+   |                         |
+   |                         this is not defined in the current crate because tuples are always foreign
    |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
@@ -14,10 +15,11 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
    |
 LL | impl !DefaultedTrait for (B,) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^----
-   | |                        |
-   | |                        this is not defined in the current crate because tuples are always foreign
-   | impl doesn't use only types from inside the current crate
+   |                          |
+   |                          this is not defined in the current crate because tuples are always foreign
    |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
    = note: define and implement a trait or new type instead
 
 error[E0321]: cross-crate traits with a default impl, like `DefaultedTrait`, can only be implemented for a struct/enum type defined in the current crate
@@ -31,10 +33,11 @@ error[E0117]: only traits defined in the current crate can be implemented for ty
    |
 LL | impl DefaultedTrait for lib::Something<C> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^-----------------
-   | |                       |
-   | |                       `Something` is not defined in the current crate
-   | impl doesn't use only types from inside the current crate
+   |                         |
+   |                         `Something` is not defined in the current crate
    |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
    = note: define and implement a trait or new type instead
 
 error: aborting due to 4 previous errors

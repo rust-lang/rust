@@ -25,6 +25,9 @@ git -c user.name=Dummy -c user.email=dummy@example.com -c commit.gpgSign=false \
 cat > config.toml <<EOF
 change-id = 999999
 
+[llvm]
+download-ci-llvm = true
+
 [build]
 rustc = "$(pwd)/../dist/bin/rustc-clif"
 cargo = "$(rustup which cargo)"
@@ -32,9 +35,15 @@ full-bootstrap = true
 local-rebuild = true
 
 [rust]
+download-rustc = false
 codegen-backends = ["cranelift"]
 deny-warnings = false
 verbose-tests = false
+# The cg_clif sysroot doesn't contain llvm tools and unless llvm_tools is
+# disabled bootstrap will crash trying to copy llvm tools for the bootstrap
+# compiler.
+llvm-tools = false
+
 EOF
 popd
 

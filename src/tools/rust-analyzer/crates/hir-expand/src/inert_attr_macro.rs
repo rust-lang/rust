@@ -464,6 +464,9 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Used by the `rustc::potential_query_instability` lint to warn methods which
     // might not be stable during incremental compilation.
     rustc_attr!(rustc_lint_query_instability, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
+    // Used by the `rustc::untracked_query_information` lint to warn methods which
+    // might break incremental compilation.
+    rustc_attr!(rustc_lint_untracked_query_information, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
     // Used by the `rustc::untranslatable_diagnostic` and `rustc::diagnostic_outside_of_impl` lints
     // to assist in changes to diagnostic APIs.
     rustc_attr!(rustc_lint_diagnostics, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
@@ -630,6 +633,19 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         "the `#[rustc_safe_intrinsic]` attribute is used internally to mark intrinsics as safe"
     ),
     rustc_attr!(
+        rustc_intrinsic, Normal, template!(Word), ErrorFollowing,
+        "the `#[rustc_intrinsic]` attribute is used to declare intrinsics with function bodies",
+    ),
+    rustc_attr!(
+        rustc_no_mir_inline, Normal, template!(Word), WarnFollowing,
+        "#[rustc_no_mir_inline] prevents the MIR inliner from inlining a function while not affecting codegen"
+    ),
+    rustc_attr!(
+        rustc_intrinsic_must_be_overridden, Normal, template!(Word), ErrorFollowing,
+        "the `#[rustc_intrinsic_must_be_overridden]` attribute is used to declare intrinsics without real bodies",
+    ),
+
+    rustc_attr!(
         rustc_deprecated_safe_2024, Normal, template!(Word), WarnFollowing,
         "the `#[rustc_safe_intrinsic]` marks functions as unsafe in Rust 2024",
     ),
@@ -679,7 +695,6 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: r#"cfg = "...", module = "...", kind = "...""#), DuplicatesOk,
     ),
     rustc_attr!(TEST, rustc_symbol_name, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_polymorphize_error, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_def_path, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_mir, Normal, template!(List: "arg1, arg2, ..."), DuplicatesOk),
     gated!(

@@ -6,8 +6,8 @@ LL |     <i32 as Add<u32>>::add(1, 2);
    |
    = help: the trait `Add<u32>` is not implemented for `i32`
    = help: the following other types implement trait `Add<Rhs>`:
-             `&'a i32` implements `Add<i32>`
-             `&i32` implements `Add<&i32>`
+             `&i32` implements `Add<i32>`
+             `&i32` implements `Add`
              `i32` implements `Add<&i32>`
              `i32` implements `Add`
 
@@ -63,8 +63,8 @@ LL |     <i32 as Add<u32>>::add(1, 2);
    |
    = help: the trait `Add<u32>` is not implemented for `i32`
    = help: the following other types implement trait `Add<Rhs>`:
-             `&'a i32` implements `Add<i32>`
-             `&i32` implements `Add<&i32>`
+             `&i32` implements `Add<i32>`
+             `&i32` implements `Add`
              `i32` implements `Add<&i32>`
              `i32` implements `Add`
 

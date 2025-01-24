@@ -195,5 +195,55 @@ LL |     let binary_trivial_empty = BRegex::new("^$");
    |
    = help: consider using `str::is_empty`
 
-error: aborting due to 24 previous errors
+error: compiling a regex in a loop
+  --> tests/ui/regex.rs:125:21
+   |
+LL |         let regex = Regex::new("a.b");
+   |                     ^^^^^^^^^^
+   |
+help: move the regex construction outside this loop
+  --> tests/ui/regex.rs:122:5
+   |
+LL |     loop {
+   |     ^^^^
+   = note: `-D clippy::regex-creation-in-loops` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::regex_creation_in_loops)]`
+
+error: compiling a regex in a loop
+  --> tests/ui/regex.rs:127:21
+   |
+LL |         let regex = BRegex::new("a.b");
+   |                     ^^^^^^^^^^^
+   |
+help: move the regex construction outside this loop
+  --> tests/ui/regex.rs:122:5
+   |
+LL |     loop {
+   |     ^^^^
+
+error: compiling a regex in a loop
+  --> tests/ui/regex.rs:133:25
+   |
+LL |             let regex = Regex::new("a.b");
+   |                         ^^^^^^^^^^
+   |
+help: move the regex construction outside this loop
+  --> tests/ui/regex.rs:122:5
+   |
+LL |     loop {
+   |     ^^^^
+
+error: compiling a regex in a loop
+  --> tests/ui/regex.rs:138:32
+   |
+LL |             let nested_regex = Regex::new("a.b");
+   |                                ^^^^^^^^^^
+   |
+help: move the regex construction outside this loop
+  --> tests/ui/regex.rs:137:9
+   |
+LL |         for _ in 0..10 {
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to 28 previous errors
 

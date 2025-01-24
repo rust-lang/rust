@@ -1,8 +1,8 @@
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 
-use crate::{AnalysisDomain, GenKill, GenKillAnalysis};
+use crate::{Analysis, GenKill};
 
 /// A dataflow analysis that tracks whether a pointer or reference could possibly exist that points
 /// to a given local. This analysis ignores fake borrows, so it should not be used by
@@ -11,61 +11,45 @@ use crate::{AnalysisDomain, GenKill, GenKillAnalysis};
 /// At present, this is used as a very limited form of alias analysis. For example,
 /// `MaybeBorrowedLocals` is used to compute which locals are live during a yield expression for
 /// immovable coroutines.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct MaybeBorrowedLocals;
 
 impl MaybeBorrowedLocals {
-    pub(super) fn transfer_function<'a, T>(&'a self, trans: &'a mut T) -> TransferFunction<'a, T> {
+    pub(super) fn transfer_function<'a, T>(trans: &'a mut T) -> TransferFunction<'a, T> {
         TransferFunction { trans }
     }
 }
 
-impl<'tcx> AnalysisDomain<'tcx> for MaybeBorrowedLocals {
-    type Domain = BitSet<Local>;
+impl<'tcx> Analysis<'tcx> for MaybeBorrowedLocals {
+    type Domain = DenseBitSet<Local>;
     const NAME: &'static str = "maybe_borrowed_locals";
 
     fn bottom_value(&self, body: &Body<'tcx>) -> Self::Domain {
         // bottom = unborrowed
-        BitSet::new_empty(body.local_decls().len())
+        DenseBitSet::new_empty(body.local_decls().len())
     }
 
     fn initialize_start_block(&self, _: &Body<'tcx>, _: &mut Self::Domain) {
         // No locals are aliased on function entry
     }
-}
 
-impl<'tcx> GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
-    type Idx = Local;
-
-    fn domain_size(&self, body: &Body<'tcx>) -> usize {
-        body.local_decls.len()
-    }
-
-    fn statement_effect(
+    fn apply_primary_statement_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        state: &mut Self::Domain,
         statement: &Statement<'tcx>,
         location: Location,
     ) {
-        self.transfer_function(trans).visit_statement(statement, location);
+        Self::transfer_function(state).visit_statement(statement, location);
     }
 
-    fn terminator_effect<'mir>(
+    fn apply_primary_terminator_effect<'mir>(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         terminator: &'mir Terminator<'tcx>,
         location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        self.transfer_function(trans).visit_terminator(terminator, location);
+        Self::transfer_function(state).visit_terminator(terminator, location);
         terminator.edges()
-    }
-
-    fn call_return_effect(
-        &mut self,
-        _trans: &mut Self::Domain,
-        _block: BasicBlock,
-        _return_places: CallReturnPlaces<'_, 'tcx>,
-    ) {
     }
 }
 
@@ -94,7 +78,7 @@ where
         match rvalue {
             // We ignore fake borrows as these get removed after analysis and shouldn't effect
             // the layout of generators.
-            Rvalue::AddressOf(_, borrowed_place)
+            Rvalue::RawPtr(_, borrowed_place)
             | Rvalue::Ref(_, BorrowKind::Mut { .. } | BorrowKind::Shared, borrowed_place) => {
                 if !borrowed_place.is_indirect() {
                     self.trans.gen_(borrowed_place.local);
@@ -154,8 +138,8 @@ where
 }
 
 /// The set of locals that are borrowed at some point in the MIR body.
-pub fn borrowed_locals(body: &Body<'_>) -> BitSet<Local> {
-    struct Borrowed(BitSet<Local>);
+pub fn borrowed_locals(body: &Body<'_>) -> DenseBitSet<Local> {
+    struct Borrowed(DenseBitSet<Local>);
 
     impl GenKill<Local> for Borrowed {
         #[inline]
@@ -168,7 +152,7 @@ pub fn borrowed_locals(body: &Body<'_>) -> BitSet<Local> {
         }
     }
 
-    let mut borrowed = Borrowed(BitSet::new_empty(body.local_decls.len()));
+    let mut borrowed = Borrowed(DenseBitSet::new_empty(body.local_decls.len()));
     TransferFunction { trans: &mut borrowed }.visit_body(body);
     borrowed.0
 }

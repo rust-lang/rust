@@ -20,7 +20,7 @@ fn while_loop(_1: bool) -> () {
     bb1: {
         StorageLive(_3);
         StorageLive(_2);
-        _2 = _1;
+        _2 = copy _1;
         _3 = get_bool(move _2) -> [return: bb2, unwind unreachable];
     }
 
@@ -40,7 +40,7 @@ fn while_loop(_1: bool) -> () {
         StorageDead(_2);
         StorageLive(_5);
         StorageLive(_4);
-        _4 = _1;
+        _4 = copy _1;
         _5 = get_bool(move _4) -> [return: bb5, unwind unreachable];
     }
 

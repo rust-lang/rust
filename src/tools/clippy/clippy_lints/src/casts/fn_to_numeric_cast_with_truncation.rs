@@ -5,7 +5,7 @@ use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 
-use super::{utils, FN_TO_NUMERIC_CAST_WITH_TRUNCATION};
+use super::{FN_TO_NUMERIC_CAST_WITH_TRUNCATION, utils};
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     // We only want to check casts to `ty::Uint` or `ty::Int`
@@ -14,7 +14,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
         _ => return,
     }
     match cast_from.kind() {
-        ty::FnDef(..) | ty::FnPtr(_) => {
+        ty::FnDef(..) | ty::FnPtr(..) => {
             let mut applicability = Applicability::MaybeIncorrect;
             let from_snippet = snippet_with_applicability(cx, cast_expr.span, "x", &mut applicability);
 

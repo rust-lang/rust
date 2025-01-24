@@ -1,0 +1,21 @@
+error[E0223]: ambiguous associated function
+  --> $DIR/path-non-param-qself.rs:11:5
+   |
+LL |     <()>::method(..): Send,
+   |     ^^^^^^^^^^^^^^^^
+
+error[E0223]: ambiguous associated function
+  --> $DIR/path-non-param-qself.rs:13:5
+   |
+LL |     i32::method(..): Send,
+   |     ^^^^^^^^^^^^^^^
+
+error[E0223]: ambiguous associated function
+  --> $DIR/path-non-param-qself.rs:15:5
+   |
+LL |     Adt::method(..): Send,
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0223`.

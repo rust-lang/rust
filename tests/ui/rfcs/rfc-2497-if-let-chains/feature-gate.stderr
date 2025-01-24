@@ -14,7 +14,7 @@ LL |     noop_expr!((let 0 = 1));
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
-error: no rules expected the token `let`
+error: no rules expected keyword `let`
   --> $DIR/feature-gate.rs:56:15
    |
 LL |     macro_rules! use_expr {

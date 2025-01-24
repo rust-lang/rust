@@ -1,25 +1,25 @@
 //! Manages calling a concrete function (with known MIR body) with argument passing,
 //! and returning the return value to the caller.
+use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 
 use either::{Left, Right};
+use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
 use rustc_middle::ty::layout::{FnAbiOf, IntegerExt, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, AdtDef, Instance, Ty};
+use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::sym;
-use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
-use rustc_target::abi::{self, FieldIdx, Integer};
-use rustc_target::spec::abi::Abi;
+use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 use tracing::{info, instrument, trace};
 
 use super::{
-    throw_ub, throw_ub_custom, throw_unsup_format, CtfeProvenance, FnVal, ImmTy, InterpCx,
-    InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, Projectable, Provenance, ReturnAction, Scalar,
-    StackPopCleanup, StackPopInfo,
+    CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy,
+    Projectable, Provenance, ReturnAction, Scalar, StackPopCleanup, StackPopInfo, interp_ok,
+    throw_ub, throw_ub_custom, throw_unsup_format,
 };
 use crate::fluent_generated as fluent;
 
-/// An argment passed to a function.
+/// An argument passed to a function.
 #[derive(Clone, Debug)]
 pub enum FnArg<'tcx, Prov: Provenance = CtfeProvenance> {
     /// Pass a copy of the given operand.
@@ -63,7 +63,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         arg: &FnArg<'tcx, M::Provenance>,
         field: usize,
     ) -> InterpResult<'tcx, FnArg<'tcx, M::Provenance>> {
-        Ok(match arg {
+        interp_ok(match arg {
             FnArg::Copy(op) => FnArg::Copy(self.project_field(op, field)?),
             FnArg::InPlace(mplace) => FnArg::InPlace(self.project_field(mplace, field)?),
         })
@@ -92,29 +92,46 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     /// Unwrap types that are guaranteed a null-pointer-optimization
     fn unfold_npo(&self, layout: TyAndLayout<'tcx>) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
-        // Check if this is `Option` wrapping some type or if this is `Result` wrapping a 1-ZST and
-        // another type.
+        // Check if this is an option-like type wrapping some type.
         let ty::Adt(def, args) = layout.ty.kind() else {
             // Not an ADT, so definitely no NPO.
-            return Ok(layout);
+            return interp_ok(layout);
         };
-        let inner = if self.tcx.is_diagnostic_item(sym::Option, def.did()) {
-            // The wrapped type is the only arg.
-            self.layout_of(args[0].as_type().unwrap())?
-        } else if self.tcx.is_diagnostic_item(sym::Result, def.did()) {
-            // We want to extract which (if any) of the args is not a 1-ZST.
-            let lhs = self.layout_of(args[0].as_type().unwrap())?;
-            let rhs = self.layout_of(args[1].as_type().unwrap())?;
-            if lhs.is_1zst() {
-                rhs
-            } else if rhs.is_1zst() {
-                lhs
-            } else {
-                return Ok(layout); // no NPO
+        if def.variants().len() != 2 {
+            // Not a 2-variant enum, so no NPO.
+            return interp_ok(layout);
+        }
+        assert!(def.is_enum());
+
+        let all_fields_1zst = |variant: &VariantDef| -> InterpResult<'tcx, _> {
+            for field in &variant.fields {
+                let ty = field.ty(*self.tcx, args);
+                let layout = self.layout_of(ty)?;
+                if !layout.is_1zst() {
+                    return interp_ok(false);
+                }
             }
-        } else {
-            return Ok(layout); // no NPO
+            interp_ok(true)
         };
+
+        // If one variant consists entirely of 1-ZST, then the other variant
+        // is the only "relevant" one for this check.
+        let var0 = VariantIdx::from_u32(0);
+        let var1 = VariantIdx::from_u32(1);
+        let relevant_variant = if all_fields_1zst(def.variant(var0))? {
+            def.variant(var1)
+        } else if all_fields_1zst(def.variant(var1))? {
+            def.variant(var0)
+        } else {
+            // No varant is all-1-ZST, so no NPO.
+            return interp_ok(layout);
+        };
+        // The "relevant" variant must have exactly one field, and its type is the "inner" type.
+        if relevant_variant.fields.len() != 1 {
+            return interp_ok(layout);
+        }
+        let inner = relevant_variant.fields[FieldIdx::from_u32(0)].ty(*self.tcx, args);
+        let inner = self.layout_of(inner)?;
 
         // Check if the inner type is one of the NPO-guaranteed ones.
         // For that we first unpeel transparent *structs* (but not unions).
@@ -122,10 +139,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.tcx.has_attr(def.did(), sym::rustc_nonnull_optimization_guaranteed)
         };
         let inner = self.unfold_transparent(inner, /* may_unfold */ |def| {
-            // Stop at NPO tpyes so that we don't miss that attribute in the check below!
+            // Stop at NPO types so that we don't miss that attribute in the check below!
             def.is_struct() && !is_npo(def)
         });
-        Ok(match inner.ty.kind() {
+        interp_ok(match inner.ty.kind() {
             ty::Ref(..) | ty::FnPtr(..) => {
                 // Option<&T> behaves like &T, and same for fn()
                 inner
@@ -152,11 +169,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx, bool> {
         // Fast path: equal types are definitely compatible.
         if caller.ty == callee.ty {
-            return Ok(true);
+            return interp_ok(true);
         }
         // 1-ZST are compatible with all 1-ZST (and with nothing else).
         if caller.is_1zst() || callee.is_1zst() {
-            return Ok(caller.is_1zst() && callee.is_1zst());
+            return interp_ok(caller.is_1zst() && callee.is_1zst());
         }
         // Unfold newtypes and NPO optimizations.
         let unfold = |layout: TyAndLayout<'tcx>| {
@@ -171,25 +188,25 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // must be compatible. So we just accept everything with Pointer ABI as compatible,
         // even if this will accept some code that is not stably guaranteed to work.
         // This also handles function pointers.
-        let thin_pointer = |layout: TyAndLayout<'tcx>| match layout.abi {
-            abi::Abi::Scalar(s) => match s.primitive() {
+        let thin_pointer = |layout: TyAndLayout<'tcx>| match layout.backend_repr {
+            abi::BackendRepr::Scalar(s) => match s.primitive() {
                 abi::Primitive::Pointer(addr_space) => Some(addr_space),
                 _ => None,
             },
             _ => None,
         };
         if let (Some(caller), Some(callee)) = (thin_pointer(caller), thin_pointer(callee)) {
-            return Ok(caller == callee);
+            return interp_ok(caller == callee);
         }
         // For wide pointers we have to get the pointee type.
         let pointee_ty = |ty: Ty<'tcx>| -> InterpResult<'tcx, Option<Ty<'tcx>>> {
             // We cannot use `builtin_deref` here since we need to reject `Box<T, MyAlloc>`.
-            Ok(Some(match ty.kind() {
+            interp_ok(Some(match ty.kind() {
                 ty::Ref(_, ty, _) => *ty,
                 ty::RawPtr(ty, _) => *ty,
                 // We only accept `Box` with the default allocator.
-                _ if ty.is_box_global(*self.tcx) => ty.boxed_ty(),
-                _ => return Ok(None),
+                _ if ty.is_box_global(*self.tcx) => ty.expect_boxed_ty(),
+                _ => return interp_ok(None),
             }))
         };
         if let (Some(caller), Some(callee)) = (pointee_ty(caller.ty)?, pointee_ty(callee.ty)?) {
@@ -198,10 +215,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // Even if `ty` is normalized, the search for the unsized tail will project
                 // to fields, which can yield non-normalized types. So we need to provide a
                 // normalization function.
-                let normalize = |ty| self.tcx.normalize_erasing_regions(self.param_env, ty);
+                let normalize = |ty| self.tcx.normalize_erasing_regions(self.typing_env, ty);
                 ty.ptr_metadata_ty(*self.tcx, normalize)
             };
-            return Ok(meta_ty(caller) == meta_ty(callee));
+            return interp_ok(meta_ty(caller) == meta_ty(callee));
         }
 
         // Compatible integer types (in particular, usize vs ptr-sized-u32/u64).
@@ -216,12 +233,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
         if let (Some(caller), Some(callee)) = (int_ty(caller.ty), int_ty(callee.ty)) {
             // This is okay if they are the same integer type.
-            return Ok(caller == callee);
+            return interp_ok(caller == callee);
         }
 
         // Fall back to exact equality.
-        // FIXME: We are missing the rules for "repr(C) wrapping compatible types".
-        Ok(caller == callee)
+        interp_ok(caller == callee)
     }
 
     fn check_argument_compat(
@@ -233,14 +249,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // so we implement a type-based check that reflects the guaranteed rules for ABI compatibility.
         if self.layout_compat(caller_abi.layout, callee_abi.layout)? {
             // Ensure that our checks imply actual ABI compatibility for this concrete call.
+            // (This can fail e.g. if `#[rustc_nonnull_optimization_guaranteed]` is used incorrectly.)
             assert!(caller_abi.eq_abi(callee_abi));
-            return Ok(true);
+            interp_ok(true)
         } else {
             trace!(
                 "check_argument_compat: incompatible ABIs:\ncaller: {:?}\ncallee: {:?}",
                 caller_abi, callee_abi
             );
-            return Ok(false);
+            interp_ok(false)
         }
     }
 
@@ -265,7 +282,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             if !already_live {
                 self.storage_live(callee_arg.as_local().unwrap())?;
             }
-            return Ok(());
+            return interp_ok(());
         }
         // Find next caller arg.
         let Some((caller_arg, caller_abi)) = caller_args.next() else {
@@ -307,35 +324,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if let FnArg::InPlace(mplace) = caller_arg {
             M::protect_in_place_function_argument(self, mplace)?;
         }
-        Ok(())
-    }
-
-    fn check_fn_target_features(&self, instance: ty::Instance<'tcx>) -> InterpResult<'tcx, ()> {
-        // Calling functions with `#[target_feature]` is not unsafe on WASM, see #84988
-        let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
-        if !self.tcx.sess.target.is_like_wasm
-            && attrs
-                .target_features
-                .iter()
-                .any(|feature| !self.tcx.sess.target_features.contains(&feature.name))
-        {
-            throw_ub_custom!(
-                fluent::const_eval_unavailable_target_features_for_fn,
-                unavailable_feats = attrs
-                    .target_features
-                    .iter()
-                    .filter(|&feature| !feature.implied
-                        && !self.tcx.sess.target_features.contains(&feature.name))
-                    .fold(String::new(), |mut s, feature| {
-                        if !s.is_empty() {
-                            s.push_str(", ");
-                        }
-                        s.push_str(feature.name.as_str());
-                        s
-                    }),
-            );
-        }
-        Ok(())
+        interp_ok(())
     }
 
     /// The main entry point for creating a new stack frame: performs ABI checks and initializes
@@ -359,20 +348,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             throw_unsup_format!("calling a c-variadic function is not supported");
         }
 
-        if M::enforce_abi(self) {
-            if caller_fn_abi.conv != callee_fn_abi.conv {
-                throw_ub_custom!(
-                    fluent::const_eval_incompatible_calling_conventions,
-                    callee_conv = format!("{:?}", callee_fn_abi.conv),
-                    caller_conv = format!("{:?}", caller_fn_abi.conv),
-                )
-            }
+        if caller_fn_abi.conv != callee_fn_abi.conv {
+            throw_ub_custom!(
+                fluent::const_eval_incompatible_calling_conventions,
+                callee_conv = format!("{:?}", callee_fn_abi.conv),
+                caller_conv = format!("{:?}", caller_fn_abi.conv),
+            )
         }
 
         // Check that all target features required by the callee (i.e., from
         // the attribute `#[target_feature(enable = ...)]`) are enabled at
         // compile time.
-        self.check_fn_target_features(instance)?;
+        M::check_fn_target_features(self, instance)?;
 
         if !callee_fn_abi.can_unwind {
             // The callee cannot unwind, so force the `Unreachable` unwind handling.
@@ -393,13 +380,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 "caller ABI: {:#?}, args: {:#?}",
                 caller_fn_abi,
                 args.iter()
-                    .map(|arg| (
-                        arg.layout().ty,
-                        match arg {
-                            FnArg::Copy(op) => format!("copy({op:?})"),
-                            FnArg::InPlace(mplace) => format!("in-place({mplace:?})"),
-                        }
-                    ))
+                    .map(|arg| (arg.layout().ty, match arg {
+                        FnArg::Copy(op) => format!("copy({op:?})"),
+                        FnArg::InPlace(mplace) => format!("in-place({mplace:?})"),
+                    }))
                     .collect::<Vec<_>>()
             );
             trace!(
@@ -503,7 +487,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Don't forget to mark "initially live" locals as live.
             self.storage_live_for_always_live_locals()?;
         };
-        res.inspect_err(|_| {
+        res.inspect_err_kind(|_| {
             // Don't show the incomplete stack frame in the error stacktrace.
             self.stack_mut().pop();
         })
@@ -520,7 +504,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub(super) fn init_fn_call(
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
-        (caller_abi, caller_fn_abi): (Abi, &FnAbi<'tcx, Ty<'tcx>>),
+        (caller_abi, caller_fn_abi): (ExternAbi, &FnAbi<'tcx, Ty<'tcx>>),
         args: &[FnArg<'tcx, M::Provenance>],
         with_caller_location: bool,
         destination: &MPlaceTy<'tcx, M::Provenance>,
@@ -535,7 +519,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 return M::call_extra_fn(
                     self,
                     extra,
-                    caller_abi,
+                    caller_fn_abi,
                     args,
                     destination,
                     target,
@@ -557,7 +541,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     unwind,
                 )? {
                     assert!(!self.tcx.intrinsic(fallback.def_id()).unwrap().must_be_overridden);
-                    assert!(matches!(fallback.def, ty::InstanceKind::Item(_)));
+                    assert_matches!(fallback.def, ty::InstanceKind::Item(_));
                     return self.init_fn_call(
                         FnVal::Instance(fallback),
                         (caller_abi, caller_fn_abi),
@@ -568,14 +552,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         unwind,
                     );
                 } else {
-                    Ok(())
+                    interp_ok(())
                 }
             }
             ty::InstanceKind::VTableShim(..)
             | ty::InstanceKind::ReifyShim(..)
             | ty::InstanceKind::ClosureOnceShim { .. }
             | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-            | ty::InstanceKind::CoroutineKindShim { .. }
             | ty::InstanceKind::FnPtrShim(..)
             | ty::InstanceKind::DropGlue(..)
             | ty::InstanceKind::CloneShim(..)
@@ -583,29 +566,30 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             | ty::InstanceKind::ThreadLocalShim(..)
             | ty::InstanceKind::AsyncDropGlueCtorShim(..)
             | ty::InstanceKind::Item(_) => {
-                // We need MIR for this fn
+                // We need MIR for this fn.
+                // Note that this can be an intrinsic, if we are executing its fallback body.
                 let Some((body, instance)) = M::find_mir_or_eval_fn(
                     self,
                     instance,
-                    caller_abi,
+                    caller_fn_abi,
                     args,
                     destination,
                     target,
                     unwind,
                 )?
                 else {
-                    return Ok(());
+                    return interp_ok(());
                 };
 
                 // Special handling for the closure ABI: untuple the last argument.
                 let args: Cow<'_, [FnArg<'tcx, M::Provenance>]> =
-                    if caller_abi == Abi::RustCall && !args.is_empty() {
+                    if caller_abi == ExternAbi::RustCall && !args.is_empty() {
                         // Untuple
                         let (untuple_arg, args) = args.split_last().unwrap();
                         trace!("init_fn_call: Will pass last argument by untupling");
                         Cow::from(
                             args.iter()
-                                .map(|a| Ok(a.clone()))
+                                .map(|a| interp_ok(a.clone()))
                                 .chain(
                                     (0..untuple_arg.layout().fields.count())
                                         .map(|i| self.fn_arg_field(untuple_arg, i)),
@@ -631,7 +615,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // codegen'd / interpreted as virtual calls through the vtable.
             ty::InstanceKind::Virtual(def_id, idx) => {
                 let mut args = args.to_vec();
-                // We have to implement all "object safe receivers". So we have to go search for a
+                // We have to implement all "dyn-compatible receivers". So we have to go search for a
                 // pointer or `dyn Trait` type, but it could be wrapped in newtypes. So recursively
                 // unwrap those newtypes until we are there.
                 // An `InPlace` does nothing here, we keep the original receiver intact. We can't
@@ -678,9 +662,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 } else {
                     // Doesn't have to be a `dyn Trait`, but the unsized tail must be `dyn Trait`.
                     // (For that reason we also cannot use `unpack_dyn_trait`.)
-                    let receiver_tail = self
-                        .tcx
-                        .struct_tail_erasing_lifetimes(receiver_place.layout.ty, self.param_env);
+                    let receiver_tail =
+                        self.tcx.struct_tail_for_codegen(receiver_place.layout.ty, self.typing_env);
                     let ty::Dynamic(receiver_trait, _, ty::Dyn) = receiver_tail.kind() else {
                         span_bug!(
                             self.cur_span(),
@@ -722,7 +705,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                     let concrete_method = Instance::expect_resolve_for_vtable(
                         tcx,
-                        self.param_env,
+                        self.typing_env,
                         def_id,
                         instance.args.rebase_onto(tcx, trait_def_id, concrete_trait_ref.args),
                         self.cur_span(),
@@ -766,7 +749,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub(super) fn init_fn_tail_call(
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
-        (caller_abi, caller_fn_abi): (Abi, &FnAbi<'tcx, Ty<'tcx>>),
+        (caller_abi, caller_fn_abi): (ExternAbi, &FnAbi<'tcx, Ty<'tcx>>),
         args: &[FnArg<'tcx, M::Provenance>],
         with_caller_location: bool,
     ) -> InterpResult<'tcx> {
@@ -851,10 +834,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         self.init_fn_call(
             FnVal::Instance(instance),
-            (Abi::Rust, fn_abi),
+            (ExternAbi::Rust, fn_abi),
             &[FnArg::Copy(arg.into())],
             false,
-            &ret.into(),
+            &ret,
             Some(target),
             unwind,
         )
@@ -884,13 +867,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         );
 
         // Check `unwinding`.
-        assert_eq!(
-            unwinding,
-            match self.frame().loc {
-                Left(loc) => self.body().basic_blocks[loc.block].is_cleanup,
-                Right(_) => true,
-            }
-        );
+        assert_eq!(unwinding, match self.frame().loc {
+            Left(loc) => self.body().basic_blocks[loc.block].is_cleanup,
+            Right(_) => true,
+        });
         if unwinding && self.frame_idx() == 0 {
             throw_ub_custom!(fluent::const_eval_unwind_past_top);
         }
@@ -904,46 +884,32 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 .local_to_op(mir::RETURN_PLACE, None)
                 .expect("return place should always be live");
             let dest = self.frame().return_place.clone();
-            let res = if self.stack().len() == 1 {
-                // The initializer of constants and statics will get validated separately
-                // after the constant has been fully evaluated. While we could fall back to the default
-                // code path, that will cause -Zenforce-validity to cycle on static initializers.
-                // Reading from a static's memory is not allowed during its evaluation, and will always
-                // trigger a cycle error. Validation must read from the memory of the current item.
-                // For Miri this means we do not validate the root frame return value,
-                // but Miri anyway calls `read_target_isize` on that so separate validation
-                // is not needed.
-                self.copy_op_no_dest_validation(&op, &dest)
-            } else {
-                self.copy_op_allow_transmute(&op, &dest)
-            };
+            let res = self.copy_op_allow_transmute(&op, &dest);
             trace!("return value: {:?}", self.dump_place(&dest.into()));
             // We delay actually short-circuiting on this error until *after* the stack frame is
             // popped, since we want this error to be attributed to the caller, whose type defines
             // this transmute.
             res
         } else {
-            Ok(())
+            interp_ok(())
         };
 
         // All right, now it is time to actually pop the frame.
-        let stack_pop_info = self.pop_stack_frame_raw(unwinding)?;
-
-        // Report error from return value copy, if any.
-        copy_ret_result?;
+        // An error here takes precedence over the copy error.
+        let (stack_pop_info, ()) = self.pop_stack_frame_raw(unwinding).and(copy_ret_result)?;
 
         match stack_pop_info.return_action {
             ReturnAction::Normal => {}
             ReturnAction::NoJump => {
                 // The hook already did everything.
-                return Ok(());
+                return interp_ok(());
             }
             ReturnAction::NoCleanup => {
                 // If we are not doing cleanup, also skip everything else.
                 assert!(self.stack().is_empty(), "only the topmost frame should ever be leaked");
                 assert!(!unwinding, "tried to skip cleanup during unwinding");
                 // Skip machine hook.
-                return Ok(());
+                return interp_ok(());
             }
         }
 
@@ -968,7 +934,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         self.stack().is_empty(),
                         "only the bottommost frame can have StackPopCleanup::Root"
                     );
-                    Ok(())
+                    interp_ok(())
                 }
             }
         }

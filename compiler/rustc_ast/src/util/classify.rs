@@ -152,6 +152,7 @@ pub fn leading_labeled_expr(mut expr: &ast::Expr) -> bool {
             | Underscore
             | Yeet(..)
             | Yield(..)
+            | UnsafeBinderCast(..)
             | Err(..)
             | Dummy => return false,
         }
@@ -232,6 +233,7 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
             | Paren(_)
             | Try(_)
             | Yeet(None)
+            | UnsafeBinderCast(..)
             | Err(_)
             | Dummy => break None,
         }
@@ -247,8 +249,14 @@ fn type_trailing_braced_mac_call(mut ty: &ast::Ty) -> Option<&ast::MacCall> {
                 break (mac.args.delim == Delimiter::Brace).then_some(mac);
             }
 
-            ast::TyKind::Ptr(mut_ty) | ast::TyKind::Ref(_, mut_ty) => {
+            ast::TyKind::Ptr(mut_ty)
+            | ast::TyKind::Ref(_, mut_ty)
+            | ast::TyKind::PinnedRef(_, mut_ty) => {
                 ty = &mut_ty.ty;
+            }
+
+            ast::TyKind::UnsafeBinder(binder) => {
+                ty = &binder.inner_ty;
             }
 
             ast::TyKind::BareFn(fn_ty) => match &fn_ty.decl.output {
@@ -263,7 +271,7 @@ fn type_trailing_braced_mac_call(mut ty: &ast::Ty) -> Option<&ast::MacCall> {
 
             ast::TyKind::TraitObject(bounds, _) | ast::TyKind::ImplTrait(_, bounds) => {
                 match bounds.last() {
-                    Some(ast::GenericBound::Trait(bound, _)) => {
+                    Some(ast::GenericBound::Trait(bound)) => {
                         match path_return_type(&bound.trait_ref.path) {
                             Some(trailing_ty) => ty = trailing_ty,
                             None => break None,
@@ -287,12 +295,6 @@ fn type_trailing_braced_mac_call(mut ty: &ast::Ty) -> Option<&ast::MacCall> {
             | ast::TyKind::Pat(..)
             | ast::TyKind::Dummy
             | ast::TyKind::Err(..) => break None,
-
-            // These end in brace, but cannot occur in a let-else statement.
-            // They are only parsed as fields of a data structure. For the
-            // purpose of denying trailing braces in the expression of a
-            // let-else, we can disregard these.
-            ast::TyKind::AnonStruct(..) | ast::TyKind::AnonUnion(..) => break None,
         }
     }
 }

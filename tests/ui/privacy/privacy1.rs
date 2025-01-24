@@ -1,4 +1,4 @@
-#![feature(lang_items, start, no_core)]
+#![feature(lang_items, no_core)]
 #![no_core] // makes debugging this test *a lot* easier (during resolve)
 
 #[lang="sized"]
@@ -12,14 +12,14 @@ pub trait Deref {
     type Target;
 }
 
-#[lang="receiver"]
-pub trait Receiver: Deref {}
+#[lang="legacy_receiver"]
+pub trait LegacyReceiver: Deref {}
 
 impl<'a, T> Deref for &'a T {
     type Target = T;
 }
 
-impl<'a, T> Receiver for &'a T {}
+impl<'a, T> LegacyReceiver for &'a T {}
 
 mod bar {
     // shouldn't bring in too much
@@ -173,4 +173,4 @@ pub mod mytest {
     }
 }
 
-#[start] fn main(_: isize, _: *const *const u8) -> isize { 3 }
+fn main() {}

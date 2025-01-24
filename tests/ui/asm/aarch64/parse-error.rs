@@ -1,7 +1,5 @@
 //@ only-aarch64
 
-#![feature(asm_const)]
-
 use std::arch::{asm, global_asm};
 
 fn main() {

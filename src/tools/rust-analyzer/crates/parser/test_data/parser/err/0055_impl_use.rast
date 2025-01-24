@@ -1,0 +1,27 @@
+SOURCE_FILE
+  IMPL
+    IMPL_KW "impl"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+        COLON ":"
+        WHITESPACE "\n"
+        TYPE_BOUND_LIST
+    ERROR
+      USE_KW "use"
+  WHITESPACE " "
+  ERROR
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "std"
+  ERROR
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 8: expected R_ANGLE
+error 8: expected type
+error 11: expected `{`
+error 15: expected an item
+error 15: expected an item

@@ -22,7 +22,6 @@ mod tests;
 
 pub mod fs;
 pub mod io;
-pub mod lazy_box;
 pub mod process;
 pub mod wstr;
 pub mod wtf8;
@@ -32,7 +31,8 @@ cfg_if::cfg_if! {
         all(unix, not(target_os = "l4re")),
         windows,
         target_os = "hermit",
-        target_os = "solid_asp3"
+        target_os = "solid_asp3",
+        all(target_os = "wasi", target_env = "p2")
     ))] {
         pub mod net;
     } else {
@@ -79,4 +79,12 @@ pub fn mul_div_u64(value: u64, numer: u64, denom: u64) -> u64 {
     // substitute into (value*numer)/denom and simplify.
     // r < denom, so (denom*numer) is the upper bound of (r*numer)
     q * numer + r * numer / denom
+}
+
+pub fn ignore_notfound<T>(result: crate::io::Result<T>) -> crate::io::Result<()> {
+    match result {
+        Err(err) if err.kind() == crate::io::ErrorKind::NotFound => Ok(()),
+        Ok(_) => Ok(()),
+        Err(err) => Err(err),
+    }
 }

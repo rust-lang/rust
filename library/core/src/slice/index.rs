@@ -1,6 +1,6 @@
 //! Indexing implementations for `[T]`.
 
-use crate::intrinsics::const_eval_select;
+use crate::panic::const_panic;
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{ops, range};
 
@@ -31,64 +31,37 @@ where
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
-#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 const fn slice_start_index_len_fail(index: usize, len: usize) -> ! {
-    const_eval_select((index, len), slice_start_index_len_fail_ct, slice_start_index_len_fail_rt)
-}
-
-// FIXME const-hack
-#[inline]
-#[track_caller]
-fn slice_start_index_len_fail_rt(index: usize, len: usize) -> ! {
-    panic!("range start index {index} out of range for slice of length {len}");
-}
-
-#[inline]
-#[track_caller]
-const fn slice_start_index_len_fail_ct(_: usize, _: usize) -> ! {
-    panic!("slice start index is out of range for slice");
+    const_panic!(
+        "slice start index is out of range for slice",
+        "range start index {index} out of range for slice of length {len}",
+        index: usize,
+        len: usize,
+    )
 }
 
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
-#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 const fn slice_end_index_len_fail(index: usize, len: usize) -> ! {
-    const_eval_select((index, len), slice_end_index_len_fail_ct, slice_end_index_len_fail_rt)
-}
-
-// FIXME const-hack
-#[inline]
-#[track_caller]
-fn slice_end_index_len_fail_rt(index: usize, len: usize) -> ! {
-    panic!("range end index {index} out of range for slice of length {len}");
-}
-
-#[inline]
-#[track_caller]
-const fn slice_end_index_len_fail_ct(_: usize, _: usize) -> ! {
-    panic!("slice end index is out of range for slice");
+    const_panic!(
+        "slice end index is out of range for slice",
+        "range end index {index} out of range for slice of length {len}",
+        index: usize,
+        len: usize,
+    )
 }
 
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
-#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 const fn slice_index_order_fail(index: usize, end: usize) -> ! {
-    const_eval_select((index, end), slice_index_order_fail_ct, slice_index_order_fail_rt)
-}
-
-// FIXME const-hack
-#[inline]
-#[track_caller]
-fn slice_index_order_fail_rt(index: usize, end: usize) -> ! {
-    panic!("slice index starts at {index} but ends at {end}");
-}
-
-#[inline]
-#[track_caller]
-const fn slice_index_order_fail_ct(_: usize, _: usize) -> ! {
-    panic!("slice index start is larger than end");
+    const_panic!(
+        "slice index start is larger than end",
+        "slice index starts at {index} but ends at {end}",
+        index: usize,
+        end: usize,
+    )
 }
 
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
@@ -246,7 +219,6 @@ pub unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
 
 /// The methods `index` and `index_mut` panic if the index is out of bounds.
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
-#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 unsafe impl<T> SliceIndex<[T]> for usize {
     type Output = T;
 
@@ -311,7 +283,6 @@ unsafe impl<T> SliceIndex<[T]> for usize {
 
 /// Because `IndexRange` guarantees `start <= end`, fewer checks are needed here
 /// than there are for a general `Range<usize>` (which might be `100..3`).
-#[rustc_const_unstable(feature = "const_index_range_slice_index", issue = "none")]
 unsafe impl<T> SliceIndex<[T]> for ops::IndexRange {
     type Output = [T];
 
@@ -386,7 +357,6 @@ unsafe impl<T> SliceIndex<[T]> for ops::IndexRange {
 /// - the start of the range is greater than the end of the range or
 /// - the end of the range is out of bounds.
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
-#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
     type Output = [T];
 
@@ -522,7 +492,6 @@ unsafe impl<T> SliceIndex<[T]> for range::Range<usize> {
 
 /// The methods `index` and `index_mut` panic if the end of the range is out of bounds.
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
-#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 unsafe impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
     type Output = [T];
 
@@ -561,7 +530,6 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
 
 /// The methods `index` and `index_mut` panic if the start of the range is out of bounds.
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
-#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 unsafe impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
     type Output = [T];
 
@@ -644,7 +612,6 @@ unsafe impl<T> SliceIndex<[T]> for range::RangeFrom<usize> {
 }
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
-#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 unsafe impl<T> SliceIndex<[T]> for ops::RangeFull {
     type Output = [T];
 
@@ -684,7 +651,6 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeFull {
 /// - the start of the range is greater than the end of the range or
 /// - the end of the range is out of bounds.
 #[stable(feature = "inclusive_range", since = "1.26.0")]
-#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 unsafe impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
     type Output = [T];
 
@@ -766,7 +732,6 @@ unsafe impl<T> SliceIndex<[T]> for range::RangeInclusive<usize> {
 
 /// The methods `index` and `index_mut` panic if the end of the range is out of bounds.
 #[stable(feature = "inclusive_range", since = "1.26.0")]
-#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 unsafe impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
     type Output = [T];
 

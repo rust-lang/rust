@@ -5,7 +5,7 @@
 
 #![feature(decl_macro)]
 #![cfg(FALSE)]
-#![feature(box_syntax)]
+#![feature(box_patterns)]
 
 macro mac() {} // OK
 

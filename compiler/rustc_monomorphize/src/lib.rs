@@ -1,5 +1,10 @@
 // tidy-alphabetical-start
 #![feature(array_windows)]
+#![feature(file_buffered)]
+#![feature(if_let_guard)]
+#![feature(impl_trait_in_assoc_type)]
+#![feature(let_chains)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use rustc_hir::lang_items::LangItem;
@@ -12,8 +17,8 @@ use rustc_span::ErrorGuaranteed;
 
 mod collector;
 mod errors;
+mod mono_checks;
 mod partitioning;
-mod polymorphize;
 mod util;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
@@ -29,18 +34,23 @@ fn custom_coerce_unsize_info<'tcx>(
         [source_ty, target_ty],
     );
 
-    match tcx.codegen_select_candidate((ty::ParamEnv::reveal_all(), trait_ref)) {
+    match tcx
+        .codegen_select_candidate(ty::TypingEnv::fully_monomorphized().as_query_input(trait_ref))
+    {
         Ok(traits::ImplSource::UserDefined(traits::ImplSourceUserDefinedData {
             impl_def_id,
             ..
         })) => Ok(tcx.coerce_unsized_info(impl_def_id)?.custom_kind.unwrap()),
         impl_source => {
-            bug!("invalid `CoerceUnsized` impl_source: {:?}", impl_source);
+            bug!(
+                "invalid `CoerceUnsized` from {source_ty} to {target_ty}: impl_source: {:?}",
+                impl_source
+            );
         }
     }
 }
 
 pub fn provide(providers: &mut Providers) {
     partitioning::provide(providers);
-    polymorphize::provide(providers);
+    mono_checks::provide(providers);
 }

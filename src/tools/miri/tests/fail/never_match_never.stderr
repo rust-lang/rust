@@ -1,5 +1,5 @@
 error: Undefined Behavior: entering unreachable code
-  --> $DIR/never_match_never.rs:LL:CC
+  --> tests/fail/never_match_never.rs:LL:CC
    |
 LL |     unsafe { match (*ptr).1 {} }
    |                    ^^^^^^^^ entering unreachable code
@@ -7,7 +7,7 @@ LL |     unsafe { match (*ptr).1 {} }
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/never_match_never.rs:LL:CC
+   = note: inside `main` at tests/fail/never_match_never.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

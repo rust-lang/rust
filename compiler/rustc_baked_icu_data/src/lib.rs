@@ -25,6 +25,7 @@
 #![allow(internal_features)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
+// #![warn(unreachable_pub)] // don't use because this crate is mostly generated code
 // tidy-alphabetical-end
 
 mod data {

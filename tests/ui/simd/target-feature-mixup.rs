@@ -54,17 +54,17 @@ mod test {
     // An SSE type
     #[repr(simd)]
     #[derive(PartialEq, Debug, Clone, Copy)]
-    struct __m128i(u64, u64);
+    struct __m128i([u64; 2]);
 
     // An AVX type
     #[repr(simd)]
     #[derive(PartialEq, Debug, Clone, Copy)]
-    struct __m256i(u64, u64, u64, u64);
+    struct __m256i([u64; 4]);
 
     // An AVX-512 type
     #[repr(simd)]
     #[derive(PartialEq, Debug, Clone, Copy)]
-    struct __m512i(u64, u64, u64, u64, u64, u64, u64, u64);
+    struct __m512i([u64; 8]);
 
     pub fn main(level: &str) {
         unsafe {
@@ -90,9 +90,9 @@ mod test {
         )*) => ($(
             $(#[$attr])*
             unsafe fn $main(level: &str) {
-                let m128 = __m128i(1, 2);
-                let m256 = __m256i(3, 4, 5, 6);
-                let m512 = __m512i(7, 8, 9, 10, 11, 12, 13, 14);
+                let m128 = __m128i([1, 2]);
+                let m256 = __m256i([3, 4, 5, 6]);
+                let m512 = __m512i([7, 8, 9, 10, 11, 12, 13, 14]);
                 assert_eq!(id_sse_128(m128), m128);
                 assert_eq!(id_sse_256(m256), m256);
                 assert_eq!(id_sse_512(m512), m512);
@@ -127,55 +127,55 @@ mod test {
 
     #[target_feature(enable = "sse2")]
     unsafe fn id_sse_128(a: __m128i) -> __m128i {
-        assert_eq!(a, __m128i(1, 2));
+        assert_eq!(a, __m128i([1, 2]));
         a.clone()
     }
 
     #[target_feature(enable = "sse2")]
     unsafe fn id_sse_256(a: __m256i) -> __m256i {
-        assert_eq!(a, __m256i(3, 4, 5, 6));
+        assert_eq!(a, __m256i([3, 4, 5, 6]));
         a.clone()
     }
 
     #[target_feature(enable = "sse2")]
     unsafe fn id_sse_512(a: __m512i) -> __m512i {
-        assert_eq!(a, __m512i(7, 8, 9, 10, 11, 12, 13, 14));
+        assert_eq!(a, __m512i([7, 8, 9, 10, 11, 12, 13, 14]));
         a.clone()
     }
 
     #[target_feature(enable = "avx")]
     unsafe fn id_avx_128(a: __m128i) -> __m128i {
-        assert_eq!(a, __m128i(1, 2));
+        assert_eq!(a, __m128i([1, 2]));
         a.clone()
     }
 
     #[target_feature(enable = "avx")]
     unsafe fn id_avx_256(a: __m256i) -> __m256i {
-        assert_eq!(a, __m256i(3, 4, 5, 6));
+        assert_eq!(a, __m256i([3, 4, 5, 6]));
         a.clone()
     }
 
     #[target_feature(enable = "avx")]
     unsafe fn id_avx_512(a: __m512i) -> __m512i {
-        assert_eq!(a, __m512i(7, 8, 9, 10, 11, 12, 13, 14));
+        assert_eq!(a, __m512i([7, 8, 9, 10, 11, 12, 13, 14]));
         a.clone()
     }
 
     #[target_feature(enable = "avx512bw")]
     unsafe fn id_avx512_128(a: __m128i) -> __m128i {
-        assert_eq!(a, __m128i(1, 2));
+        assert_eq!(a, __m128i([1, 2]));
         a.clone()
     }
 
     #[target_feature(enable = "avx512bw")]
     unsafe fn id_avx512_256(a: __m256i) -> __m256i {
-        assert_eq!(a, __m256i(3, 4, 5, 6));
+        assert_eq!(a, __m256i([3, 4, 5, 6]));
         a.clone()
     }
 
     #[target_feature(enable = "avx512bw")]
     unsafe fn id_avx512_512(a: __m512i) -> __m512i {
-        assert_eq!(a, __m512i(7, 8, 9, 10, 11, 12, 13, 14));
+        assert_eq!(a, __m512i([7, 8, 9, 10, 11, 12, 13, 14]));
         a.clone()
     }
 }

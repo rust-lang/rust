@@ -1,5 +1,4 @@
 //@run-pass
-#![feature(const_mut_refs)]
 #![feature(sync_unsafe_cell)]
 
 use std::cell::SyncUnsafeCell;

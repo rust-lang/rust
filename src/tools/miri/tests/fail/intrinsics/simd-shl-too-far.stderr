@@ -1,5 +1,5 @@
 error: Undefined Behavior: overflowing shift by 100 in `simd_shl` in lane 0
-  --> $DIR/simd-shl-too-far.rs:LL:CC
+  --> tests/fail/intrinsics/simd-shl-too-far.rs:LL:CC
    |
 LL |         simd_shl(x, y);
    |         ^^^^^^^^^^^^^^ overflowing shift by 100 in `simd_shl` in lane 0
@@ -7,7 +7,7 @@ LL |         simd_shl(x, y);
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/simd-shl-too-far.rs:LL:CC
+   = note: inside `main` at tests/fail/intrinsics/simd-shl-too-far.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

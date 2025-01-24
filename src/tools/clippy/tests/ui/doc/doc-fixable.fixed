@@ -3,7 +3,7 @@
 
 #![allow(dead_code, incomplete_features)]
 #![warn(clippy::doc_markdown)]
-#![feature(custom_inner_attributes, generic_const_exprs, const_option)]
+#![feature(custom_inner_attributes, generic_const_exprs)]
 #![rustfmt::skip]
 
 /// The `foo_bar` function does _nothing_. See also `foo::bar`. (note the dot there)
@@ -54,8 +54,9 @@ fn test_units() {
 
 /// This tests allowed identifiers.
 /// KiB MiB GiB TiB PiB EiB
+/// MHz GHz THz
 /// AccessKit
-/// CoreFoundation CoreGraphics CoreText
+/// CoAP CoreFoundation CoreGraphics CoreText
 /// Direct2D Direct3D DirectWrite DirectX
 /// ECMAScript
 /// GPLv2 GPLv3
@@ -239,7 +240,7 @@ fn parenthesized_word() {}
 /// UXes
 fn plural_acronym_test() {}
 
-extern {
+extern "C" {
     /// `foo()`
     fn in_extern();
 }

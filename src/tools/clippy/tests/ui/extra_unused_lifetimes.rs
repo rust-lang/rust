@@ -114,7 +114,15 @@ mod second_case {
         fn hey();
     }
 
+    // Should lint. The response to the above comment incorrectly called this a false positive. The
+    // lifetime `'a` can be removed, as demonstrated below.
     impl<'a, T: Source + ?Sized + 'a> Source for Box<T> {
+        fn hey() {}
+    }
+
+    struct OtherBox<T: ?Sized>(Box<T>);
+
+    impl<T: Source + ?Sized> Source for OtherBox<T> {
         fn hey() {}
     }
 }
@@ -124,6 +132,13 @@ mod second_case {
 struct Human<'a> {
     pub bones: i32,
     pub name: &'a str,
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/13578
+mod issue_13578 {
+    pub trait Foo {}
+
+    impl<'a, T: 'a> Foo for Option<T> where &'a T: Foo {}
 }
 
 fn main() {}

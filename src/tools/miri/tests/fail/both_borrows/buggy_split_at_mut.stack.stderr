@@ -1,5 +1,5 @@
 error: Undefined Behavior: trying to retag from <TAG> for Unique permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
-  --> $DIR/buggy_split_at_mut.rs:LL:CC
+  --> tests/fail/both_borrows/buggy_split_at_mut.rs:LL:CC
    |
 LL | /             (
 LL | |                 from_raw_parts_mut(ptr, len - mid), // BUG: should be "mid" instead of "len - mid"
@@ -14,19 +14,19 @@ LL | |             )
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
 help: <TAG> was created by a Unique retag at offsets [0x0..0x10]
-  --> $DIR/buggy_split_at_mut.rs:LL:CC
+  --> tests/fail/both_borrows/buggy_split_at_mut.rs:LL:CC
    |
 LL |                 from_raw_parts_mut(ptr, len - mid), // BUG: should be "mid" instead of "len - mid"
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: <TAG> was later invalidated at offsets [0x0..0x10] by a Unique retag
-  --> $DIR/buggy_split_at_mut.rs:LL:CC
+  --> tests/fail/both_borrows/buggy_split_at_mut.rs:LL:CC
    |
 LL |                 from_raw_parts_mut(ptr.offset(mid as isize), len - mid),
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: BACKTRACE (of the first span):
-   = note: inside `safe::split_at_mut::<i32>` at $DIR/buggy_split_at_mut.rs:LL:CC
+   = note: inside `safe::split_at_mut::<i32>` at tests/fail/both_borrows/buggy_split_at_mut.rs:LL:CC
 note: inside `main`
-  --> $DIR/buggy_split_at_mut.rs:LL:CC
+  --> tests/fail/both_borrows/buggy_split_at_mut.rs:LL:CC
    |
 LL |     let (a, b) = safe::split_at_mut(&mut array, 0);
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

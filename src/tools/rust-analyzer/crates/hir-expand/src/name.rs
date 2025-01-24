@@ -3,22 +3,24 @@
 use std::fmt;
 
 use intern::{sym, Symbol};
-use span::SyntaxContextId;
-use syntax::{ast, utils::is_raw_identifier};
+use span::{Edition, SyntaxContextId};
+use syntax::ast;
+use syntax::utils::is_raw_identifier;
 
 /// `Name` is a wrapper around string, which is used in hir for both references
 /// and declarations. In theory, names should also carry hygiene info, but we are
 /// not there yet!
 ///
-/// Note that `Name` holds and prints escaped name i.e. prefixed with "r#" when it
-/// is a raw identifier. Use [`unescaped()`][Name::unescaped] when you need the
-/// name without "r#".
+/// Note that the rawness (`r#`) of names is not preserved. Names are always stored without a `r#` prefix.
+/// This is because we want to show (in completions etc.) names as raw depending on the needs
+/// of the current crate, for example if it is edition 2021 complete `gen` even if the defining
+/// crate is in edition 2024 and wrote `r#gen`, and the opposite holds as well.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Name {
     symbol: Symbol,
+    // If you are making this carry actual hygiene, beware that the special handling for variables and labels
+    // in bodies can go.
     ctx: (),
-    // FIXME: We should probably encode rawness as a property here instead, once we have hygiene
-    // in here we've got 4 bytes of padding to fill anyways
 }
 
 impl fmt::Debug for Name {
@@ -42,6 +44,7 @@ impl PartialOrd for Name {
     }
 }
 
+// No need to strip `r#`, all comparisons are done against well-known symbols.
 impl PartialEq<Symbol> for Name {
     fn eq(&self, sym: &Symbol) -> bool {
         self.symbol == *sym
@@ -55,16 +58,16 @@ impl PartialEq<Name> for Symbol {
 }
 
 /// Wrapper of `Name` to print the name without "r#" even when it is a raw identifier.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UnescapedName<'a>(&'a Name);
 
-impl UnescapedName<'_> {
-    pub fn display(&self, db: &dyn crate::db::ExpandDatabase) -> impl fmt::Display + '_ {
+impl<'a> UnescapedName<'a> {
+    pub fn display(self, db: &dyn crate::db::ExpandDatabase) -> impl fmt::Display + 'a {
         _ = db;
         UnescapedDisplay { name: self }
     }
     #[doc(hidden)]
-    pub fn display_no_db(&self) -> impl fmt::Display + '_ {
+    pub fn display_no_db(self) -> impl fmt::Display + 'a {
         UnescapedDisplay { name: self }
     }
 }
@@ -74,46 +77,54 @@ impl Name {
     /// Hopefully, this should allow us to integrate hygiene cleaner in the
     /// future, and to switch to interned representation of names.
     fn new_text(text: &str) -> Name {
+        debug_assert!(!text.starts_with("r#"));
         Name { symbol: Symbol::intern(text), ctx: () }
     }
 
-    pub fn new(text: &str, raw: tt::IdentIsRaw, ctx: SyntaxContextId) -> Name {
+    pub fn new(text: &str, mut ctx: SyntaxContextId) -> Name {
+        // For comparisons etc. we remove the edition, because sometimes we search for some `Name`
+        // and we don't know which edition it came from.
+        // Can't do that for all `SyntaxContextId`s because it breaks Salsa.
+        ctx.remove_root_edition();
         _ = ctx;
-        Name {
-            symbol: if raw.yes() {
-                Symbol::intern(&format!("{}{text}", raw.as_str()))
-            } else {
-                Symbol::intern(text)
-            },
-            ctx: (),
-        }
+        Self::new_text(text)
+    }
+
+    pub fn new_root(text: &str) -> Name {
+        // The edition doesn't matter for hygiene.
+        Self::new(text.trim_start_matches("r#"), SyntaxContextId::root(Edition::Edition2015))
     }
 
     pub fn new_tuple_field(idx: usize) -> Name {
-        Name { symbol: Symbol::intern(&idx.to_string()), ctx: () }
+        let symbol = match idx {
+            0 => sym::INTEGER_0.clone(),
+            1 => sym::INTEGER_1.clone(),
+            2 => sym::INTEGER_2.clone(),
+            3 => sym::INTEGER_3.clone(),
+            4 => sym::INTEGER_4.clone(),
+            5 => sym::INTEGER_5.clone(),
+            6 => sym::INTEGER_6.clone(),
+            7 => sym::INTEGER_7.clone(),
+            8 => sym::INTEGER_8.clone(),
+            9 => sym::INTEGER_9.clone(),
+            10 => sym::INTEGER_10.clone(),
+            11 => sym::INTEGER_11.clone(),
+            12 => sym::INTEGER_12.clone(),
+            13 => sym::INTEGER_13.clone(),
+            14 => sym::INTEGER_14.clone(),
+            15 => sym::INTEGER_15.clone(),
+            _ => Symbol::intern(&idx.to_string()),
+        };
+        Name { symbol, ctx: () }
     }
 
     pub fn new_lifetime(lt: &ast::Lifetime) -> Name {
-        Name { symbol: Symbol::intern(lt.text().as_str()), ctx: () }
-    }
-
-    /// Shortcut to create a name from a string literal.
-    fn new_ref(text: &str) -> Name {
-        Name { symbol: Symbol::intern(text), ctx: () }
+        Self::new_text(lt.text().as_str().trim_start_matches("r#"))
     }
 
     /// Resolve a name from the text of token.
     fn resolve(raw_text: &str) -> Name {
-        match raw_text.strip_prefix("r#") {
-            // When `raw_text` starts with "r#" but the name does not coincide with any
-            // keyword, we never need the prefix so we strip it.
-            Some(text) if !is_raw_identifier(text) => Name::new_ref(text),
-            // Keywords (in the current edition) *can* be used as a name in earlier editions of
-            // Rust, e.g. "try" in Rust 2015. Even in such cases, we keep track of them in their
-            // escaped form.
-            None if is_raw_identifier(raw_text) => Name::new_text(&format!("r#{}", raw_text)),
-            _ => Name::new_text(raw_text),
-        }
+        Name::new_text(raw_text.trim_start_matches("r#"))
     }
 
     /// A fake name for things missing in the source code.
@@ -151,71 +162,81 @@ impl Name {
     }
 
     /// Returns the text this name represents if it isn't a tuple field.
+    ///
+    /// Do not use this for user-facing text, use `display` instead to handle editions properly.
     pub fn as_str(&self) -> &str {
         self.symbol.as_str()
     }
 
+    // FIXME: Remove this
     pub fn unescaped(&self) -> UnescapedName<'_> {
         UnescapedName(self)
     }
 
-    pub fn is_escaped(&self) -> bool {
-        self.symbol.as_str().starts_with("r#")
+    pub fn needs_escape(&self, edition: Edition) -> bool {
+        is_raw_identifier(self.symbol.as_str(), edition)
     }
 
-    pub fn display<'a>(&'a self, db: &dyn crate::db::ExpandDatabase) -> impl fmt::Display + 'a {
+    pub fn display<'a>(
+        &'a self,
+        db: &dyn crate::db::ExpandDatabase,
+        edition: Edition,
+    ) -> impl fmt::Display + 'a {
         _ = db;
-        Display { name: self }
+        self.display_no_db(edition)
     }
 
     // FIXME: Remove this
     #[doc(hidden)]
-    pub fn display_no_db(&self) -> impl fmt::Display + '_ {
-        Display { name: self }
+    pub fn display_no_db(&self, edition: Edition) -> impl fmt::Display + '_ {
+        Display { name: self, needs_escaping: is_raw_identifier(self.symbol.as_str(), edition) }
     }
 
     pub fn symbol(&self) -> &Symbol {
         &self.symbol
     }
 
-    pub const fn new_symbol(symbol: Symbol, ctx: SyntaxContextId) -> Self {
+    pub fn new_symbol(symbol: Symbol, ctx: SyntaxContextId) -> Self {
+        debug_assert!(!symbol.as_str().starts_with("r#"));
         _ = ctx;
         Self { symbol, ctx: () }
     }
 
-    pub fn new_symbol_maybe_raw(sym: Symbol, raw: tt::IdentIsRaw, ctx: SyntaxContextId) -> Self {
-        if raw.no() {
-            Self { symbol: sym, ctx: () }
-        } else {
-            Name::new(sym.as_str(), raw, ctx)
-        }
+    // FIXME: This needs to go once we have hygiene
+    pub fn new_symbol_root(sym: Symbol) -> Self {
+        debug_assert!(!sym.as_str().starts_with("r#"));
+        Self { symbol: sym, ctx: () }
     }
 
-    // FIXME: This needs to go once we have hygiene
-    pub const fn new_symbol_root(sym: Symbol) -> Self {
-        Self { symbol: sym, ctx: () }
+    // FIXME: Remove this
+    #[inline]
+    pub fn eq_ident(&self, ident: &str) -> bool {
+        self.as_str() == ident.trim_start_matches("r#")
     }
 }
 
 struct Display<'a> {
     name: &'a Name,
+    needs_escaping: bool,
 }
 
 impl fmt::Display for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.needs_escaping {
+            write!(f, "r#")?;
+        }
         fmt::Display::fmt(self.name.symbol.as_str(), f)
     }
 }
 
 struct UnescapedDisplay<'a> {
-    name: &'a UnescapedName<'a>,
+    name: UnescapedName<'a>,
 }
 
 impl fmt::Display for UnescapedDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let symbol = &self.name.0.symbol.as_str();
-        let text = symbol.strip_prefix("r#").unwrap_or(symbol);
-        fmt::Display::fmt(&text, f)
+        let symbol = self.name.0.symbol.as_str();
+        fmt::Display::fmt(symbol, f)
     }
 }
 

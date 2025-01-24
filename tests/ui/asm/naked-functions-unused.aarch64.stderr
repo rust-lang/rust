@@ -18,49 +18,49 @@ LL |     pub extern "C" fn function(a: usize, b: usize) -> usize {
    |                                          ^ help: if this is intentional, prefix it with an underscore: `_b`
 
 error: unused variable: `a`
-  --> $DIR/naked-functions-unused.rs:26:38
+  --> $DIR/naked-functions-unused.rs:28:38
    |
 LL |         pub extern "C" fn associated(a: usize, b: usize) -> usize {
    |                                      ^ help: if this is intentional, prefix it with an underscore: `_a`
 
 error: unused variable: `b`
-  --> $DIR/naked-functions-unused.rs:26:48
+  --> $DIR/naked-functions-unused.rs:28:48
    |
 LL |         pub extern "C" fn associated(a: usize, b: usize) -> usize {
    |                                                ^ help: if this is intentional, prefix it with an underscore: `_b`
 
 error: unused variable: `a`
-  --> $DIR/naked-functions-unused.rs:32:41
+  --> $DIR/naked-functions-unused.rs:36:41
    |
 LL |         pub extern "C" fn method(&self, a: usize, b: usize) -> usize {
    |                                         ^ help: if this is intentional, prefix it with an underscore: `_a`
 
 error: unused variable: `b`
-  --> $DIR/naked-functions-unused.rs:32:51
+  --> $DIR/naked-functions-unused.rs:36:51
    |
 LL |         pub extern "C" fn method(&self, a: usize, b: usize) -> usize {
    |                                                   ^ help: if this is intentional, prefix it with an underscore: `_b`
 
 error: unused variable: `a`
-  --> $DIR/naked-functions-unused.rs:40:40
+  --> $DIR/naked-functions-unused.rs:46:40
    |
 LL |         extern "C" fn trait_associated(a: usize, b: usize) -> usize {
    |                                        ^ help: if this is intentional, prefix it with an underscore: `_a`
 
 error: unused variable: `b`
-  --> $DIR/naked-functions-unused.rs:40:50
+  --> $DIR/naked-functions-unused.rs:46:50
    |
 LL |         extern "C" fn trait_associated(a: usize, b: usize) -> usize {
    |                                                  ^ help: if this is intentional, prefix it with an underscore: `_b`
 
 error: unused variable: `a`
-  --> $DIR/naked-functions-unused.rs:46:43
+  --> $DIR/naked-functions-unused.rs:54:43
    |
 LL |         extern "C" fn trait_method(&self, a: usize, b: usize) -> usize {
    |                                           ^ help: if this is intentional, prefix it with an underscore: `_a`
 
 error: unused variable: `b`
-  --> $DIR/naked-functions-unused.rs:46:53
+  --> $DIR/naked-functions-unused.rs:54:53
    |
 LL |         extern "C" fn trait_method(&self, a: usize, b: usize) -> usize {
    |                                                     ^ help: if this is intentional, prefix it with an underscore: `_b`

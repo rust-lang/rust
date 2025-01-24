@@ -2,16 +2,16 @@ use std::ops::Range;
 
 use gccjit::{Location, RValue};
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
-use rustc_codegen_ssa::traits::{DebugInfoBuilderMethods, DebugInfoMethods};
+use rustc_codegen_ssa::traits::{DebugInfoBuilderMethods, DebugInfoCodegenMethods};
 use rustc_data_structures::sync::Lrc;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::{self, Body, SourceScope};
 use rustc_middle::ty::{Instance, PolyExistentialTraitRef, Ty};
 use rustc_session::config::DebugInfo;
 use rustc_span::{BytePos, Pos, SourceFile, SourceFileAndLine, Span, Symbol};
-use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::Size;
+use rustc_target::abi::call::FnAbi;
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
@@ -48,10 +48,18 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
     fn set_dbg_loc(&mut self, dbg_loc: Self::DILocation) {
         self.location = Some(dbg_loc);
     }
+
+    fn clear_dbg_loc(&mut self) {
+        self.location = None;
+    }
+
+    fn get_dbg_loc(&self) -> Option<Self::DILocation> {
+        self.location
+    }
 }
 
 /// Generate the `debug_context` in an MIR Body.
-/// # Souce of Origin
+/// # Source of Origin
 /// Copied from `create_scope_map.rs` of rustc_codegen_llvm
 fn compute_mir_scopes<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
@@ -61,7 +69,7 @@ fn compute_mir_scopes<'gcc, 'tcx>(
 ) {
     // Find all scopes with variables defined in them.
     let variables = if cx.sess().opts.debuginfo == DebugInfo::Full {
-        let mut vars = BitSet::new_empty(mir.source_scopes.len());
+        let mut vars = DenseBitSet::new_empty(mir.source_scopes.len());
         // FIXME(eddyb) take into account that arguments always have debuginfo,
         // irrespective of their name (assuming full debuginfo is enabled).
         // NOTE(eddyb) actually, on second thought, those are always in the
@@ -74,7 +82,7 @@ fn compute_mir_scopes<'gcc, 'tcx>(
         // Nothing to emit, of course.
         None
     };
-    let mut instantiated = BitSet::new_empty(mir.source_scopes.len());
+    let mut instantiated = DenseBitSet::new_empty(mir.source_scopes.len());
     // Instantiate all scopes.
     for idx in 0..mir.source_scopes.len() {
         let scope = SourceScope::new(idx);
@@ -86,16 +94,16 @@ fn compute_mir_scopes<'gcc, 'tcx>(
 /// Update the `debug_context`, adding new scope to it,
 /// if it's not added as is denoted in `instantiated`.
 ///
-/// # Souce of Origin
+/// # Source of Origin
 /// Copied from `create_scope_map.rs` of rustc_codegen_llvm
 /// FIXME(tempdragon/?): Add Scope Support Here.
 fn make_mir_scope<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     _instance: Instance<'tcx>,
     mir: &Body<'tcx>,
-    variables: &Option<BitSet<SourceScope>>,
+    variables: &Option<DenseBitSet<SourceScope>>,
     debug_context: &mut FunctionDebugContext<'tcx, (), Location<'gcc>>,
-    instantiated: &mut BitSet<SourceScope>,
+    instantiated: &mut DenseBitSet<SourceScope>,
     scope: SourceScope,
 ) {
     if instantiated.contains(scope) {
@@ -202,7 +210,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 }
 
-impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
+impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn create_vtable_debuginfo(
         &self,
         _ty: Ty<'tcx>,

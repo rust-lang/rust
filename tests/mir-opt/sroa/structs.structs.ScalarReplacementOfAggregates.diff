@@ -15,15 +15,15 @@
 +         StorageLive(_5);
 +         nop;
           StorageLive(_3);
-          _3 = _1;
+          _3 = copy _1;
 -         _2 = U { _foo: const 0_usize, a: move _3 };
 +         _4 = const 0_usize;
 +         _5 = move _3;
 +         nop;
           StorageDead(_3);
--         _0 = (_2.1: f32);
+-         _0 = copy (_2.1: f32);
 -         StorageDead(_2);
-+         _0 = _5;
++         _0 = copy _5;
 +         StorageDead(_4);
 +         StorageDead(_5);
 +         nop;

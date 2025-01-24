@@ -1,7 +1,7 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 
-use std::alloc::{alloc, Layout};
+use std::alloc::{Layout, alloc};
 
 fn inner(x: *mut i32, _y: &i32) {
     // If `x` and `y` alias, retagging is fine with this... but we really

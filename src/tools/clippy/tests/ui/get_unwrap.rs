@@ -70,6 +70,7 @@ fn main() {
 mod issue9909 {
     #![allow(clippy::identity_op, clippy::unwrap_used, dead_code)]
 
+    #[allow(unconditional_panic)]
     fn reduced() {
         let f = &[1, 2, 3];
 

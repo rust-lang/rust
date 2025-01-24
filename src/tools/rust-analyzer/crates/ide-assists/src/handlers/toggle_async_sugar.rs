@@ -127,7 +127,7 @@ pub(crate) fn desugar_async_into_impl_future(
 
     let rparen = function.param_list()?.r_paren_token()?;
     let return_type = match function.ret_type() {
-        // unable to get a `ty` makes the action unapplicable
+        // unable to get a `ty` makes the action inapplicable
         Some(ret_type) => Some(ret_type.ty()?),
         // No type means `-> ()`
         None => None,
@@ -141,7 +141,8 @@ pub(crate) fn desugar_async_into_impl_future(
         ModuleDef::Trait(future_trait),
         ctx.config.import_path_config(),
     )?;
-    let trait_path = trait_path.display(ctx.db());
+    let edition = scope.krate().edition(ctx.db());
+    let trait_path = trait_path.display(ctx.db(), edition);
 
     acc.add(
         AssistId("desugar_async_into_impl_future", AssistKind::RefactorRewrite),

@@ -1,4 +1,4 @@
-use rustc_resolve::rustdoc::{unindent_doc_fragments, DocFragmentKind};
+use rustc_resolve::rustdoc::{DocFragmentKind, unindent_doc_fragments};
 use rustc_span::create_default_session_globals_then;
 
 use super::*;

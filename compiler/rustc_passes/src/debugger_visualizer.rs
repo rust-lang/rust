@@ -1,7 +1,6 @@
 //! Detecting usage of the `#[debugger_visualizer]` attribute.
 
 use rustc_ast::Attribute;
-use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::resolve_path;
 use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
 use rustc_middle::query::{LocalCrate, Providers};
@@ -19,9 +18,7 @@ impl DebuggerVisualizerCollector<'_> {
                 return;
             };
 
-            let hint = if hints.len() == 1 {
-                &hints[0]
-            } else {
+            let [hint] = hints.as_slice() else {
                 self.sess.dcx().emit_err(DebugVisualizerInvalid { span: attr.span });
                 return;
             };
@@ -51,10 +48,10 @@ impl DebuggerVisualizerCollector<'_> {
                 }
             };
 
-            match std::fs::read(&file) {
-                Ok(contents) => {
+            match self.sess.source_map().load_binary_file(&file) {
+                Ok((source, _)) => {
                     self.visualizers.push(DebuggerVisualizerFile::new(
-                        Lrc::from(contents),
+                        source,
                         visualizer_type,
                         file,
                     ));
@@ -97,6 +94,6 @@ fn debugger_visualizers(tcx: TyCtxt<'_>, _: LocalCrate) -> Vec<DebuggerVisualize
     visitor.visualizers
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.debugger_visualizers = debugger_visualizers;
 }

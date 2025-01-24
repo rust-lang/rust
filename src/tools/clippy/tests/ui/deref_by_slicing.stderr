@@ -55,5 +55,11 @@ error: slicing when dereferencing would work
 LL |     let _ = (&bytes[..]).read_to_end(&mut vec![]).unwrap(); // Err, re-borrows slice
    |             ^^^^^^^^^^^^ help: reborrow the original value instead: `(&*bytes)`
 
-error: aborting due to 9 previous errors
+error: slicing when dereferencing would work
+  --> tests/ui/deref_by_slicing.rs:31:13
+   |
+LL |     let _ = &a[..];
+   |             ^^^^^^ help: reborrow the original value instead: `&*a`
+
+error: aborting due to 10 previous errors
 

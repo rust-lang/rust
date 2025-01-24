@@ -8,7 +8,7 @@
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-struct x4<T>(pub T, pub T, pub T, pub T);
+struct x4<T>(pub [T; 4]);
 
 extern "rust-intrinsic" {
     fn simd_gather<T, U, V>(x: T, y: U, z: V) -> T;
@@ -18,19 +18,19 @@ extern "rust-intrinsic" {
 fn main() {
     let mut x = [0_f32, 1., 2., 3., 4., 5., 6., 7.];
 
-    let default = x4(-3_f32, -3., -3., -3.);
-    let s_strided = x4(0_f32, 2., -3., 6.);
-    let mask = x4(-1_i32, -1, 0, -1);
+    let default = x4([-3_f32, -3., -3., -3.]);
+    let s_strided = x4([0_f32, 2., -3., 6.]);
+    let mask = x4([-1_i32, -1, 0, -1]);
 
     // reading from *const
     unsafe {
         let pointer = x.as_ptr();
-        let pointers =  x4(
+        let pointers =  x4([
             pointer.offset(0),
             pointer.offset(2),
             pointer.offset(4),
             pointer.offset(6)
-        );
+        ]);
 
         let r_strided = simd_gather(default, pointers, mask);
 
@@ -40,12 +40,12 @@ fn main() {
     // reading from *mut
     unsafe {
         let pointer = x.as_mut_ptr();
-        let pointers = x4(
+        let pointers = x4([
             pointer.offset(0),
             pointer.offset(2),
             pointer.offset(4),
             pointer.offset(6)
-        );
+        ]);
 
         let r_strided = simd_gather(default, pointers, mask);
 
@@ -55,14 +55,14 @@ fn main() {
     // writing to *mut
     unsafe {
         let pointer = x.as_mut_ptr();
-        let pointers = x4(
+        let pointers = x4([
             pointer.offset(0),
             pointer.offset(2),
             pointer.offset(4),
             pointer.offset(6)
-        );
+        ]);
 
-        let values = x4(42_f32, 43_f32, 44_f32, 45_f32);
+        let values = x4([42_f32, 43_f32, 44_f32, 45_f32]);
         simd_scatter(values, pointers, mask);
 
         assert_eq!(x, [42., 1., 43., 3., 4., 5., 45., 7.]);
@@ -80,18 +80,18 @@ fn main() {
         &x[7] as *const f32
     ];
 
-    let default = x4(y[0], y[0], y[0], y[0]);
-    let s_strided = x4(y[0], y[2], y[0], y[6]);
+    let default = x4([y[0], y[0], y[0], y[0]]);
+    let s_strided = x4([y[0], y[2], y[0], y[6]]);
 
     // reading from *const
     unsafe {
         let pointer = y.as_ptr();
-        let pointers = x4(
+        let pointers = x4([
             pointer.offset(0),
             pointer.offset(2),
             pointer.offset(4),
             pointer.offset(6)
-        );
+        ]);
 
         let r_strided = simd_gather(default, pointers, mask);
 
@@ -101,12 +101,12 @@ fn main() {
     // reading from *mut
     unsafe {
         let pointer = y.as_mut_ptr();
-        let pointers = x4(
+        let pointers = x4([
             pointer.offset(0),
             pointer.offset(2),
             pointer.offset(4),
             pointer.offset(6)
-        );
+        ]);
 
         let r_strided = simd_gather(default, pointers, mask);
 
@@ -116,14 +116,14 @@ fn main() {
     // writing to *mut
     unsafe {
         let pointer = y.as_mut_ptr();
-        let pointers = x4(
+        let pointers = x4([
             pointer.offset(0),
             pointer.offset(2),
             pointer.offset(4),
             pointer.offset(6)
-        );
+        ]);
 
-        let values = x4(y[7], y[6], y[5], y[1]);
+        let values = x4([y[7], y[6], y[5], y[1]]);
         simd_scatter(values, pointers, mask);
 
         let s = [

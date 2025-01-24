@@ -67,3 +67,9 @@ fn foobar() {
         };
     }
 }
+
+#[allow(unused)]
+fn ignore_todo() {
+    let x: u32 = todo!();
+    println!("{x}");
+}

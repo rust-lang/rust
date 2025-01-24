@@ -1,5 +1,5 @@
 error[E0080]: could not evaluate static initializer
-  --> $DIR/mod-static-with-const-fn.rs:16:5
+  --> $DIR/mod-static-with-const-fn.rs:14:5
    |
 LL |     *FOO.0.get() = 5;
    |     ^^^^^^^^^^^^^^^^ modifying a static's initial value from another static's initializer

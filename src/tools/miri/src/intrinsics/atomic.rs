@@ -1,7 +1,8 @@
-use rustc_middle::{mir, mir::BinOp, ty};
+use rustc_middle::mir::BinOp;
+use rustc_middle::{mir, ty};
 
+use self::helpers::check_arg_count;
 use crate::*;
-use helpers::check_arg_count;
 
 pub enum AtomicOp {
     /// The `bool` indicates whether the result of the operation should be negated (`UnOp::Not`,
@@ -114,9 +115,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.atomic_rmw_op(args, dest, AtomicOp::Max, rw_ord(ord))?;
             }
 
-            _ => return Ok(EmulateItemResult::NotSupported),
+            _ => return interp_ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateItemResult::NeedsReturn)
+        interp_ok(EmulateItemResult::NeedsReturn)
     }
 }
 
@@ -137,7 +138,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         let val = this.read_scalar_atomic(&place, atomic)?;
         // Perform regular store.
         this.write_scalar(val, dest)?;
-        Ok(())
+        interp_ok(())
     }
 
     fn atomic_store(&mut self, args: &[OpTy<'tcx>], atomic: AtomicWriteOrd) -> InterpResult<'tcx> {
@@ -150,7 +151,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         let val = this.read_scalar(val)?;
         // Perform atomic store
         this.write_scalar_atomic(val, &place, atomic)?;
-        Ok(())
+        interp_ok(())
     }
 
     fn compiler_fence_intrinsic(
@@ -161,7 +162,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         let [] = check_arg_count(args)?;
         let _ = atomic;
         //FIXME: compiler fences are currently ignored
-        Ok(())
+        interp_ok(())
     }
 
     fn atomic_fence_intrinsic(
@@ -172,7 +173,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let [] = check_arg_count(args)?;
         this.atomic_fence(atomic)?;
-        Ok(())
+        interp_ok(())
     }
 
     fn atomic_rmw_op(
@@ -202,17 +203,17 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             AtomicOp::Min => {
                 let old = this.atomic_min_max_scalar(&place, rhs, true, atomic)?;
                 this.write_immediate(*old, dest)?; // old value is returned
-                Ok(())
+                interp_ok(())
             }
             AtomicOp::Max => {
                 let old = this.atomic_min_max_scalar(&place, rhs, false, atomic)?;
                 this.write_immediate(*old, dest)?; // old value is returned
-                Ok(())
+                interp_ok(())
             }
             AtomicOp::MirOp(op, not) => {
                 let old = this.atomic_rmw_op_immediate(&place, &rhs, op, not, atomic)?;
                 this.write_immediate(*old, dest)?; // old value is returned
-                Ok(())
+                interp_ok(())
             }
         }
     }
@@ -231,7 +232,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 
         let old = this.atomic_exchange_scalar(&place, new, atomic)?;
         this.write_scalar(old, dest)?; // old value is returned
-        Ok(())
+        interp_ok(())
     }
 
     fn atomic_compare_exchange_impl(
@@ -260,7 +261,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 
         // Return old value.
         this.write_immediate(old, dest)?;
-        Ok(())
+        interp_ok(())
     }
 
     fn atomic_compare_exchange(

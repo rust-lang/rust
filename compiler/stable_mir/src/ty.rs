@@ -4,10 +4,10 @@ use std::ops::Range;
 use serde::Serialize;
 
 use super::mir::{Body, Mutability, Safety};
-use super::{with, DefId, Error, Symbol};
+use super::{DefId, Error, Symbol, with};
 use crate::abi::{FnAbi, Layout};
 use crate::crate_def::{CrateDef, CrateDefType};
-use crate::mir::alloc::{read_target_int, read_target_uint, AllocId};
+use crate::mir::alloc::{AllocId, read_target_int, read_target_uint};
 use crate::mir::mono::StaticDef;
 use crate::target::MachineInfo;
 use crate::{Filename, Opaque};
@@ -61,6 +61,11 @@ impl Ty {
     /// Create a new coroutine type.
     pub fn new_coroutine(def: CoroutineDef, args: GenericArgs, mov: Movability) -> Ty {
         Ty::from_rigid_kind(RigidTy::Coroutine(def, args, mov))
+    }
+
+    /// Create a new closure type.
+    pub fn new_coroutine_closure(def: CoroutineClosureDef, args: GenericArgs) -> Ty {
+        Ty::from_rigid_kind(RigidTy::CoroutineClosure(def, args))
     }
 
     /// Create a new box type that represents `Box<T>`, for the given inner type `T`.
@@ -267,9 +272,17 @@ impl Span {
         with(|c| c.get_filename(self))
     }
 
-    /// Return lines that corespond to this `Span`
+    /// Return lines that correspond to this `Span`
     pub fn get_lines(&self) -> LineInfo {
         with(|c| c.get_lines(self))
+    }
+
+    /// Return the span location to be printed in diagnostic messages.
+    ///
+    /// This may leak local file paths and should not be used to build artifacts that may be
+    /// distributed.
+    pub fn diagnostic(&self) -> String {
+        with(|c| c.span_to_string(*self))
     }
 }
 
@@ -542,6 +555,7 @@ pub enum RigidTy {
     Closure(ClosureDef, GenericArgs),
     // FIXME(stable_mir): Movability here is redundant
     Coroutine(CoroutineDef, GenericArgs, Movability),
+    CoroutineClosure(CoroutineClosureDef, GenericArgs),
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
     Never,
     Tuple(Vec<Ty>),
@@ -730,6 +744,11 @@ crate_def! {
 crate_def! {
     #[derive(Serialize)]
     pub CoroutineDef;
+}
+
+crate_def! {
+    #[derive(Serialize)]
+    pub CoroutineClosureDef;
 }
 
 crate_def! {
@@ -1058,10 +1077,12 @@ pub enum Abi {
     PtxKernel,
     Msp430Interrupt,
     X86Interrupt,
+    GpuKernel,
     EfiApi,
     AvrInterrupt,
     AvrNonBlockingInterrupt,
     CCmseNonSecureCall,
+    CCmseNonSecureEntry,
     System { unwind: bool },
     RustIntrinsic,
     RustCall,
@@ -1392,7 +1413,6 @@ pub struct Generics {
     pub param_def_id_to_index: Vec<(GenericDef, u32)>,
     pub has_self: bool,
     pub has_late_bound_regions: Option<Span>,
-    pub host_effect_index: Option<usize>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -1419,7 +1439,7 @@ pub struct GenericPredicates {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum PredicateKind {
     Clause(ClauseKind),
-    ObjectSafe(TraitDef),
+    DynCompatible(TraitDef),
     SubType(SubtypePredicate),
     Coerce(CoercePredicate),
     ConstEquate(TyConst, TyConst),

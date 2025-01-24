@@ -3,7 +3,7 @@
 // optimizes code. This test checks that these files are generated.
 // See https://github.com/rust-lang/rust/pull/48346
 
-//@ needs-profiler-support
+//@ needs-profiler-runtime
 //@ ignore-cross-compile
 
 use run_make_support::{cwd, has_extension, has_prefix, run, rustc, shallow_find_files};

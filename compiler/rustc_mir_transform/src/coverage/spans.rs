@@ -3,28 +3,28 @@ use std::collections::VecDeque;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir;
-use rustc_span::Span;
+use rustc_span::{DesugaringKind, ExpnKind, MacroKind, Span};
+use tracing::{debug, debug_span, instrument};
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
 use crate::coverage::spans::from_mir::{
-    extract_covspans_from_mir, ExtractedCovspans, Hole, SpanFromMir,
+    ExtractedCovspans, Hole, SpanFromMir, extract_covspans_from_mir,
 };
-use crate::coverage::{mappings, ExtractedHirInfo};
+use crate::coverage::{ExtractedHirInfo, mappings};
 
 mod from_mir;
 
 pub(super) fn extract_refined_covspans(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
-    basic_coverage_blocks: &CoverageGraph,
+    graph: &CoverageGraph,
     code_mappings: &mut impl Extend<mappings::CodeMapping>,
 ) {
-    let ExtractedCovspans { mut covspans } =
-        extract_covspans_from_mir(mir_body, hir_info, basic_coverage_blocks);
+    let ExtractedCovspans { mut covspans } = extract_covspans_from_mir(mir_body, hir_info, graph);
 
     // First, perform the passes that need macro information.
-    covspans.sort_by(|a, b| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb));
-    remove_unwanted_macro_spans(&mut covspans);
+    covspans.sort_by(|a, b| graph.cmp_in_dominator_order(a.bcb, b.bcb));
+    remove_unwanted_expansion_spans(&mut covspans);
     split_visible_macro_spans(&mut covspans);
 
     // We no longer need the extra information in `SpanFromMir`, so convert to `Covspan`.
@@ -33,7 +33,7 @@ pub(super) fn extract_refined_covspans(
     let compare_covspans = |a: &Covspan, b: &Covspan| {
         compare_spans(a.span, b.span)
             // After deduplication, we want to keep only the most-dominated BCB.
-            .then_with(|| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb).reverse())
+            .then_with(|| graph.cmp_in_dominator_order(a.bcb, b.bcb).reverse())
     };
     covspans.sort_by(compare_covspans);
 
@@ -75,18 +75,24 @@ pub(super) fn extract_refined_covspans(
 /// invocation, which is unhelpful. Keeping only the first such span seems to
 /// give better mappings, so remove the others.
 ///
+/// Similarly, `await` expands to a branch on the discriminant of `Poll`, which
+/// leads to incorrect coverage if the `Future` is immediately ready (#98712).
+///
 /// (The input spans should be sorted in BCB dominator order, so that the
 /// retained "first" span is likely to dominate the others.)
-fn remove_unwanted_macro_spans(covspans: &mut Vec<SpanFromMir>) {
-    let mut seen_macro_spans = FxHashSet::default();
-    covspans.retain(|covspan| {
-        // Ignore (retain) non-macro-expansion spans.
-        if covspan.visible_macro.is_none() {
-            return true;
-        }
+fn remove_unwanted_expansion_spans(covspans: &mut Vec<SpanFromMir>) {
+    let mut deduplicated_spans = FxHashSet::default();
 
-        // Retain only the first macro-expanded covspan with this span.
-        seen_macro_spans.insert(covspan.span)
+    covspans.retain(|covspan| {
+        match covspan.expn_kind {
+            // Retain only the first await-related or macro-expanded covspan with this span.
+            Some(ExpnKind::Desugaring(DesugaringKind::Await)) => {
+                deduplicated_spans.insert(covspan.span)
+            }
+            Some(ExpnKind::Macro(MacroKind::Bang, _)) => deduplicated_spans.insert(covspan.span),
+            // Ignore (retain) other spans.
+            _ => true,
+        }
     });
 }
 
@@ -98,7 +104,9 @@ fn split_visible_macro_spans(covspans: &mut Vec<SpanFromMir>) {
     let mut extra_spans = vec![];
 
     covspans.retain(|covspan| {
-        let Some(visible_macro) = covspan.visible_macro else { return true };
+        let Some(ExpnKind::Macro(MacroKind::Bang, visible_macro)) = covspan.expn_kind else {
+            return true;
+        };
 
         let split_len = visible_macro.as_str().len() as u32 + 1;
         let (before, after) = covspan.span.split_at(split_len);
@@ -110,8 +118,8 @@ fn split_visible_macro_spans(covspans: &mut Vec<SpanFromMir>) {
             return true;
         }
 
-        extra_spans.push(SpanFromMir::new(before, covspan.visible_macro, covspan.bcb));
-        extra_spans.push(SpanFromMir::new(after, covspan.visible_macro, covspan.bcb));
+        extra_spans.push(SpanFromMir::new(before, covspan.expn_kind.clone(), covspan.bcb));
+        extra_spans.push(SpanFromMir::new(after, covspan.expn_kind.clone(), covspan.bcb));
         false // Discard the original covspan that we just split.
     });
 

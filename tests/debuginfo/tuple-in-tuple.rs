@@ -1,5 +1,3 @@
-//@ min-lldb-version: 310
-
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
@@ -7,28 +5,21 @@
 // gdb-command:run
 
 // gdb-command:print no_padding1
-// gdbg-check:$1 = {__0 = {__0 = 0, __1 = 1}, __1 = 2, __2 = 3}
-// gdbr-check:$1 = ((0, 1), 2, 3)
+// gdb-check:$1 = ((0, 1), 2, 3)
 // gdb-command:print no_padding2
-// gdbg-check:$2 = {__0 = 4, __1 = {__0 = 5, __1 = 6}, __2 = 7}
-// gdbr-check:$2 = (4, (5, 6), 7)
+// gdb-check:$2 = (4, (5, 6), 7)
 // gdb-command:print no_padding3
-// gdbg-check:$3 = {__0 = 8, __1 = 9, __2 = {__0 = 10, __1 = 11}}
-// gdbr-check:$3 = (8, 9, (10, 11))
+// gdb-check:$3 = (8, 9, (10, 11))
 
 // gdb-command:print internal_padding1
-// gdbg-check:$4 = {__0 = 12, __1 = {__0 = 13, __1 = 14}}
-// gdbr-check:$4 = (12, (13, 14))
+// gdb-check:$4 = (12, (13, 14))
 // gdb-command:print internal_padding2
-// gdbg-check:$5 = {__0 = 15, __1 = {__0 = 16, __1 = 17}}
-// gdbr-check:$5 = (15, (16, 17))
+// gdb-check:$5 = (15, (16, 17))
 
 // gdb-command:print padding_at_end1
-// gdbg-check:$6 = {__0 = 18, __1 = {__0 = 19, __1 = 20}}
-// gdbr-check:$6 = (18, (19, 20))
+// gdb-check:$6 = (18, (19, 20))
 // gdb-command:print padding_at_end2
-// gdbg-check:$7 = {__0 = {__0 = 21, __1 = 22}, __1 = 23}
-// gdbr-check:$7 = ((21, 22), 23)
+// gdb-check:$7 = ((21, 22), 23)
 
 
 // === LLDB TESTS ==================================================================================
@@ -36,28 +27,21 @@
 // lldb-command:run
 
 // lldb-command:v no_padding1
-// lldbg-check:[...] { 0 = { 0 = 0 1 = 1 } 1 = 2 2 = 3 }
-// lldbr-check:(((u32, u32), u32, u32)) no_padding1 = { 0 = { 0 = 0 1 = 1 } 1 = 2 2 = 3 }
+// lldb-check:[...] { 0 = { 0 = 0 1 = 1 } 1 = 2 2 = 3 }
 // lldb-command:v no_padding2
-// lldbg-check:[...] { 0 = 4 1 = { 0 = 5 1 = 6 } 2 = 7 }
-// lldbr-check:((u32, (u32, u32), u32)) no_padding2 = { 0 = 4 1 = { 0 = 5 1 = 6 } 2 = 7 }
+// lldb-check:[...] { 0 = 4 1 = { 0 = 5 1 = 6 } 2 = 7 }
 // lldb-command:v no_padding3
-// lldbg-check:[...] { 0 = 8 1 = 9 2 = { 0 = 10 1 = 11 } }
-// lldbr-check:((u32, u32, (u32, u32))) no_padding3 = { 0 = 8 1 = 9 2 = { 0 = 10 1 = 11 } }
+// lldb-check:[...] { 0 = 8 1 = 9 2 = { 0 = 10 1 = 11 } }
 
 // lldb-command:v internal_padding1
-// lldbg-check:[...] { 0 = 12 1 = { 0 = 13 1 = 14 } }
-// lldbr-check:((i16, (i32, i32))) internal_padding1 = { 0 = 12 1 = { 0 = 13 1 = 14 } }
+// lldb-check:[...] { 0 = 12 1 = { 0 = 13 1 = 14 } }
 // lldb-command:v internal_padding2
-// lldbg-check:[...] { 0 = 15 1 = { 0 = 16 1 = 17 } }
-// lldbr-check:((i16, (i16, i32))) internal_padding2 = { 0 = 15 1 = { 0 = 16 1 = 17 } }
+// lldb-check:[...] { 0 = 15 1 = { 0 = 16 1 = 17 } }
 
 // lldb-command:v padding_at_end1
-// lldbg-check:[...] { 0 = 18 1 = { 0 = 19 1 = 20 } }
-// lldbr-check:((i32, (i32, i16))) padding_at_end1 = { 0 = 18 1 = { 0 = 19 1 = 20 } }
+// lldb-check:[...] { 0 = 18 1 = { 0 = 19 1 = 20 } }
 // lldb-command:v padding_at_end2
-// lldbg-check:[...] { 0 = { 0 = 21 1 = 22 } 1 = 23 }
-// lldbr-check:(((i32, i16), i32)) padding_at_end2 = { 0 = { 0 = 21 1 = 22 } 1 = 23 }
+// lldb-check:[...] { 0 = { 0 = 21 1 = 22 } 1 = 23 }
 
 
 // === CDB TESTS ==================================================================================

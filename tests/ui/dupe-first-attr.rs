@@ -3,7 +3,6 @@
 // Regression test for a problem with the first mod attribute
 // being applied to every mod
 
-//@ pretty-expanded FIXME #23616
 
 #[cfg(target_os = "linux")]
 mod hello {}

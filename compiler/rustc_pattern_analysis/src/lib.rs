@@ -5,6 +5,8 @@
 // tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![cfg_attr(feature = "rustc", feature(let_chains))]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub mod constructor;
@@ -54,7 +56,6 @@ pub trait PatCx: Sized + fmt::Debug {
     type PatData: Clone;
 
     fn is_exhaustive_patterns_feature_on(&self) -> bool;
-    fn is_min_exhaustive_patterns_feature_on(&self) -> bool;
 
     /// The number of fields for this constructor.
     fn ctor_arity(&self, ctor: &Constructor<Self>, ty: &Self::Ty) -> usize;

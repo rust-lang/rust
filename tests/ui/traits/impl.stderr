@@ -1,5 +1,5 @@
 warning: method `t` is never used
-  --> $DIR/impl.rs:12:8
+  --> $DIR/impl.rs:15:8
    |
 LL | trait T {
    |       - method in this trait
