@@ -156,7 +156,6 @@ pub const fn from_mut<T>(s: &mut T) -> &mut [T; 1] {
 
 /// The error type returned when a conversion from a slice to an array fails.
 #[stable(feature = "try_from", since = "1.34.0")]
-#[rustc_allowed_through_unstable_modules]
 #[derive(Debug, Copy, Clone)]
 pub struct TryFromSliceError(());
 
