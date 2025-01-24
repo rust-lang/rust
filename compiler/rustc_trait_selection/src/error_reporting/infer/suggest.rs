@@ -167,6 +167,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             exp_span, exp_found.expected, exp_found.found,
         );
 
+        match self.tcx.coroutine_kind(cause.body_id) {
+            Some(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async | hir::CoroutineDesugaring::AsyncGen,
+                _,
+            )) => (),
+            None
+            | Some(
+                hir::CoroutineKind::Coroutine(_)
+                | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _),
+            ) => return,
+        }
+
         if let ObligationCauseCode::CompareImplItem { .. } = cause.code() {
             return;
         }

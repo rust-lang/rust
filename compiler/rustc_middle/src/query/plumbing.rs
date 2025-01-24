@@ -289,10 +289,10 @@ macro_rules! define_callbacks {
 
                 /// This type alias specifies the type returned from query providers and the type
                 /// used for decoding. For regular queries this is the declared returned type `V`,
-                /// but `arena_cache` will use `<V as Deref>::Target` instead.
+                /// but `arena_cache` will use `<V as ArenaCached>::Provided` instead.
                 pub type ProvidedValue<'tcx> = query_if_arena!(
                     [$($modifiers)*]
-                    (<$V as Deref>::Target)
+                    (<$V as $crate::query::arena_cached::ArenaCached<'tcx>>::Provided)
                     ($V)
                 );
 
@@ -307,10 +307,18 @@ macro_rules! define_callbacks {
                 ) -> Erase<Value<'tcx>> {
                     erase(query_if_arena!([$($modifiers)*]
                         {
-                            if mem::needs_drop::<ProvidedValue<'tcx>>() {
-                                &*_tcx.query_system.arenas.$name.alloc(value)
+                            use $crate::query::arena_cached::ArenaCached;
+
+                            if mem::needs_drop::<<$V as ArenaCached<'tcx>>::Allocated>() {
+                                <$V as ArenaCached>::alloc_in_arena(
+                                    |v| _tcx.query_system.arenas.$name.alloc(v),
+                                    value,
+                                )
                             } else {
-                                &*_tcx.arena.dropless.alloc(value)
+                                <$V as ArenaCached>::alloc_in_arena(
+                                    |v| _tcx.arena.dropless.alloc(v),
+                                    value,
+                                )
                             }
                         }
                         (value)
@@ -354,7 +362,7 @@ macro_rules! define_callbacks {
 
         pub struct QueryArenas<'tcx> {
             $($(#[$attr])* pub $name: query_if_arena!([$($modifiers)*]
-                (TypedArena<<$V as Deref>::Target>)
+                (TypedArena<<$V as $crate::query::arena_cached::ArenaCached<'tcx>>::Allocated>)
                 ()
             ),)*
         }

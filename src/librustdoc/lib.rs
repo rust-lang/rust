@@ -74,8 +74,6 @@ extern crate tikv_jemalloc_sys as jemalloc_sys;
 use std::env::{self, VarError};
 use std::io::{self, IsTerminal};
 use std::process;
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
 
 use rustc_errors::DiagCtxtHandle;
 use rustc_interface::interface;
@@ -159,7 +157,7 @@ pub fn main() {
 
     let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
-    let using_internal_features = rustc_driver::install_ice_hook(
+    rustc_driver::install_ice_hook(
         "https://github.com/rust-lang/rust/issues/new\
     ?labels=C-bug%2C+I-ICE%2C+T-rustdoc&template=ice.md",
         |_| (),
@@ -180,7 +178,7 @@ pub fn main() {
 
     let exit_code = rustc_driver::catch_with_exit_code(|| {
         let at_args = rustc_driver::args::raw_args(&early_dcx)?;
-        main_args(&mut early_dcx, &at_args, using_internal_features);
+        main_args(&mut early_dcx, &at_args);
         Ok(())
     });
     process::exit(exit_code);
@@ -769,11 +767,7 @@ fn run_merge_finalize(opt: config::RenderOptions) -> Result<(), error::Error> {
     Ok(())
 }
 
-fn main_args(
-    early_dcx: &mut EarlyDiagCtxt,
-    at_args: &[String],
-    using_internal_features: Arc<AtomicBool>,
-) {
+fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
     // Throw away the first argument, the name of the binary.
     // In case of at_args being empty, as might be the case by
     // passing empty argument array to execve under some platforms,
@@ -826,8 +820,7 @@ fn main_args(
         (false, Some(md_input)) => {
             let md_input = md_input.to_owned();
             let edition = options.edition;
-            let config =
-                core::create_config(input, options, &render_options, using_internal_features);
+            let config = core::create_config(input, options, &render_options);
 
             // `markdown::render` can invoke `doctest::make_test`, which
             // requires session globals and a thread pool, so we use
@@ -860,7 +853,7 @@ fn main_args(
     let scrape_examples_options = options.scrape_examples_options.clone();
     let bin_crate = options.bin_crate;
 
-    let config = core::create_config(input, options, &render_options, using_internal_features);
+    let config = core::create_config(input, options, &render_options);
 
     let registered_lints = config.register_lints.is_some();
 
