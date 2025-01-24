@@ -270,7 +270,8 @@ fn emit_malformed_attribute(
         suggestions.push(format!("#{inner}[{name}]"));
     }
     if let Some(descr) = template.list {
-        suggestions.push(format!("#{inner}[{name}({descr})]"));
+        let descr_formatted = descr.join(", ");
+        suggestions.push(format!("#{inner}[{name}({descr_formatted})]"));
     }
     suggestions.extend(template.one_of.iter().map(|&word| format!("#{inner}[{name}({word})]")));
     if let Some(descr) = template.name_value_str {

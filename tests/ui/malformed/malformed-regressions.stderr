@@ -1,4 +1,4 @@
-error: valid forms for the attribute are `#[doc(hidden|inline|...)]` and `#[doc = "string"]`
+error: valid forms for the attribute are `#[doc(hidden, inline, ...)]` and `#[doc = "string"]`
   --> $DIR/malformed-regressions.rs:1:1
    |
 LL | #[doc]
