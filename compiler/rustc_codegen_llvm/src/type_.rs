@@ -11,7 +11,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_target::callconv::{CastTarget, FnAbi, Reg};
 
 use crate::abi::{FnAbiLlvmExt, LlvmType};
-use crate::context::CodegenCx;
+use crate::context::{CodegenCx, SimpleCx};
 pub(crate) use crate::llvm::Type;
 use crate::llvm::{Bool, False, Metadata, True};
 use crate::type_of::LayoutLlvmExt;
@@ -35,7 +35,8 @@ impl fmt::Debug for Type {
     }
 }
 
-impl<'ll> CodegenCx<'ll, '_> {
+impl<'ll> CodegenCx<'ll, '_> {}
+impl<'ll> SimpleCx<'ll> {
     pub(crate) fn type_named_struct(&self, name: &str) -> &'ll Type {
         let name = SmallCStr::new(name);
         unsafe { llvm::LLVMStructCreateNamed(self.llcx, name.as_ptr()) }
@@ -44,11 +45,9 @@ impl<'ll> CodegenCx<'ll, '_> {
     pub(crate) fn set_struct_body(&self, ty: &'ll Type, els: &[&'ll Type], packed: bool) {
         unsafe { llvm::LLVMStructSetBody(ty, els.as_ptr(), els.len() as c_uint, packed as Bool) }
     }
-
     pub(crate) fn type_void(&self) -> &'ll Type {
         unsafe { llvm::LLVMVoidTypeInContext(self.llcx) }
     }
-
     pub(crate) fn type_token(&self) -> &'ll Type {
         unsafe { llvm::LLVMTokenTypeInContext(self.llcx) }
     }
@@ -75,7 +74,8 @@ impl<'ll> CodegenCx<'ll, '_> {
             args
         }
     }
-
+}
+impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     pub(crate) fn type_bool(&self) -> &'ll Type {
         self.type_i8()
     }
@@ -120,7 +120,8 @@ impl<'ll> CodegenCx<'ll, '_> {
         assert_eq!(size % unit_size, 0);
         self.type_array(self.type_from_integer(unit), size / unit_size)
     }
-
+}
+impl<'ll> SimpleCx<'ll> {
     pub(crate) fn type_variadic_func(&self, args: &[&'ll Type], ret: &'ll Type) -> &'ll Type {
         unsafe { llvm::LLVMFunctionType(ret, args.as_ptr(), args.len() as c_uint, True) }
     }

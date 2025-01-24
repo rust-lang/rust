@@ -21,26 +21,26 @@ use tracing::debug;
 
 use crate::abi::{FnAbi, FnAbiLlvmExt};
 use crate::common::AsCCharPtr;
-use crate::context::CodegenCx;
+use crate::context::{CodegenCx, SimpleCx};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::Visibility;
 use crate::type_::Type;
 use crate::value::Value;
 use crate::{attributes, llvm};
 
-/// Declare a function.
+/// Declare a function with a SimpleCx.
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing Value instead.
-pub(crate) fn declare_raw_fn<'ll>(
-    cx: &CodegenCx<'ll, '_>,
+pub(crate) fn declare_simple_fn<'ll>(
+    cx: &SimpleCx<'ll>,
     name: &str,
     callconv: llvm::CallConv,
     unnamed: llvm::UnnamedAddr,
     visibility: llvm::Visibility,
     ty: &'ll Type,
 ) -> &'ll Value {
-    debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
+    debug!("declare_simple_fn(name={:?}, ty={:?})", name, ty);
     let llfn = unsafe {
         llvm::LLVMRustGetOrInsertFunction(cx.llmod, name.as_c_char_ptr(), name.len(), ty)
     };
@@ -48,6 +48,24 @@ pub(crate) fn declare_raw_fn<'ll>(
     llvm::SetFunctionCallConv(llfn, callconv);
     llvm::SetUnnamedAddress(llfn, unnamed);
     llvm::set_visibility(llfn, visibility);
+
+    llfn
+}
+
+/// Declare a function.
+///
+/// If there’s a value with the same name already declared, the function will
+/// update the declaration and return existing Value instead.
+pub(crate) fn declare_raw_fn<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    name: &str,
+    callconv: llvm::CallConv,
+    unnamed: llvm::UnnamedAddr,
+    visibility: llvm::Visibility,
+    ty: &'ll Type,
+) -> &'ll Value {
+    debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
+    let llfn = declare_simple_fn(cx, name, callconv, unnamed, visibility, ty);
 
     let mut attrs = SmallVec::<[_; 4]>::new();
 
