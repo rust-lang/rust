@@ -122,12 +122,16 @@ To propose addition of a new target, open a pull request on [`rust-lang/rust`]:
   r? compiler
   ```
 
+See also the documentation in the `rustc-dev-guide` on [adding a new target to
+`rustc`][rustc_dev_guide_add_target].
+
 [tier3example]: https://github.com/rust-lang/rust/pull/94872
 [platform_template]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/platform-support/TEMPLATE.md
 [summary]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/SUMMARY.md
 [platformsupport]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/platform-support.md
 [rust_compiler_team]: https://www.rust-lang.org/governance/teams/compiler
 [`rust-lang/rust`]: https://github.com/rust-lang/rust
+[rustc_dev_guide_add_target]: https://rustc-dev-guide.rust-lang.org/building/new-target.html
 
 ## Tier 3 target policy
 
