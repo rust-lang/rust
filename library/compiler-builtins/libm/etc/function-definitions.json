@@ -449,6 +449,13 @@
         ],
         "type": "f32"
     },
+    "fmodf16": {
+        "sources": [
+            "src/math/fmodf16.rs",
+            "src/math/generic/fmod.rs"
+        ],
+        "type": "f16"
+    },
     "frexp": {
         "sources": [
             "src/libm_helper.rs",

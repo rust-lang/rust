@@ -348,6 +348,7 @@ cfg_if! {
         mod floorf16;
         mod fmaxf16;
         mod fminf16;
+        mod fmodf16;
         mod rintf16;
         mod roundf16;
         mod sqrtf16;
@@ -360,6 +361,7 @@ cfg_if! {
         pub use self::floorf16::floorf16;
         pub use self::fmaxf16::fmaxf16;
         pub use self::fminf16::fminf16;
+        pub use self::fmodf16::fmodf16;
         pub use self::rintf16::rintf16;
         pub use self::roundf16::roundf16;
         pub use self::sqrtf16::sqrtf16;
