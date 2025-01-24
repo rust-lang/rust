@@ -63,6 +63,7 @@ fminf128
 fminf16
 fmod
 fmodf
+fmodf128
 fmodf16
 frexp
 frexpf

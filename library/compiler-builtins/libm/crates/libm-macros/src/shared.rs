@@ -90,7 +90,7 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
         FloatTy::F128,
         Signature { args: &[Ty::F128, Ty::F128], returns: &[Ty::F128] },
         None,
-        &["copysignf128", "fdimf128", "fmaxf128", "fminf128"],
+        &["copysignf128", "fdimf128", "fmaxf128", "fminf128", "fmodf128"],
     ),
     (
         // `(f32, f32, f32) -> f32`

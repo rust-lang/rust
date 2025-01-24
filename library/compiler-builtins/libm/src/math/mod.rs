@@ -378,6 +378,7 @@ cfg_if! {
         mod floorf128;
         mod fmaxf128;
         mod fminf128;
+        mod fmodf128;
         mod rintf128;
         mod roundf128;
         mod sqrtf128;
@@ -390,6 +391,7 @@ cfg_if! {
         pub use self::floorf128::floorf128;
         pub use self::fmaxf128::fmaxf128;
         pub use self::fminf128::fminf128;
+        pub use self::fmodf128::fmodf128;
         pub use self::rintf128::rintf128;
         pub use self::roundf128::roundf128;
         pub use self::sqrtf128::sqrtf128;

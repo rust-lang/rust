@@ -22,7 +22,10 @@ static EXTENSIVE_ITER_OVERRIDE: LazyLock<Option<u64>> = LazyLock::new(|| {
 /// amount of time.
 ///
 /// Contains the itentifier+generator combo to match on, plus the factor to reduce by.
-const EXTEMELY_SLOW_TESTS: &[(Identifier, GeneratorKind, u64)] = &[];
+const EXTEMELY_SLOW_TESTS: &[(Identifier, GeneratorKind, u64)] = &[
+    (Identifier::Fmodf128, GeneratorKind::QuickSpaced, 40),
+    (Identifier::Fmodf128, GeneratorKind::Extensive, 40),
+];
 
 /// Maximum number of iterations to run for a single routine.
 ///
