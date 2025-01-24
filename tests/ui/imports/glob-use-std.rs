@@ -2,7 +2,7 @@
 
 //@ run-fail
 //@ error-pattern:panic works
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 use std::*;
 

@@ -1,8 +1,8 @@
 error[E0599]: no method named `exec` found for mutable reference `&mut Command` in the current scope
-  --> $DIR/issue-39175.rs:14:39
+  --> $DIR/import-visible-path-39175.rs:13:47
    |
-LL |     Command::new("echo").arg("hello").exec();
-   |                                       ^^^^
+LL |     let _ = Command::new("echo").arg("hello").exec();
+   |                                               ^^^^
    |
    = help: items from traits can only be used if the trait is in scope
 help: there is a method `pre_exec` with a similar name, but with different arguments

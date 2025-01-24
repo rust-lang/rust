@@ -1,7 +1,7 @@
 //@ run-fail
 //@ error-pattern:thread 'main' panicked
 //@ error-pattern:attempt to subtract with overflow
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 //@ compile-flags: -C debug-assertions
 
 #![allow(arithmetic_overflow)]
