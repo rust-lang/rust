@@ -1,7 +1,7 @@
 //@ check-pass
 //@ aux-build:external_extern_fn.rs
 #![crate_type = "lib"]
-
+#![feature(pattern_type_macro, pattern_types)]
 mod redeclared_different_signature {
     mod a {
         extern "C" {
@@ -487,6 +487,45 @@ mod hidden_niche {
             fn hidden_niche_unsafe_cell() -> Option<UnsafeCell<NonZero<usize>>>;
             //~^ WARN redeclared with a different signature
             //~| WARN block uses type `Option<UnsafeCell<NonZero<usize>>>`, which is not FFI-safe
+        }
+    }
+}
+
+mod pattern_types {
+    mod a {
+        use std::pat::pattern_type;
+        #[repr(transparent)]
+        struct NonZeroUsize(pattern_type!(usize is 1..));
+        extern "C" {
+            fn pt_non_zero_usize() -> pattern_type!(usize is 1..);
+            //~^ WARN not FFI-safe
+            fn pt_non_zero_usize_opt() -> Option<pattern_type!(usize is 1..)>;
+            //~^ WARN not FFI-safe
+            fn pt_non_zero_usize_opt_full_range() -> Option<pattern_type!(usize is 0..)>;
+            //~^ WARN not FFI-safe
+            fn pt_non_null_ptr() -> pattern_type!(usize is 1..);
+            //~^ WARN not FFI-safe
+            fn pt_non_zero_usize_wrapper() -> NonZeroUsize;
+            //~^ WARN not FFI-safe
+            fn pt_non_zero_usize_wrapper_opt() -> Option<NonZeroUsize>;
+            //~^ WARN not FFI-safe
+        }
+    }
+    mod b {
+        extern "C" {
+            // If there's a clash in either of these cases you're either gaining an incorrect
+            // invariant that the value is non-zero, or you're missing out on that invariant. Both
+            // cases are warning for, from both a caller-convenience and optimisation perspective.
+            fn pt_non_zero_usize() -> usize;
+            //~^ WARN `pt_non_zero_usize` redeclared with a different signature
+            fn pt_non_zero_usize_opt() -> usize;
+            //~^ WARN `pt_non_zero_usize_opt` redeclared with a different signature
+            fn pt_non_null_ptr() -> *const ();
+            //~^ WARN `pt_non_null_ptr` redeclared with a different signature
+            fn pt_non_zero_usize_wrapper() -> usize;
+            //~^ WARN `pt_non_zero_usize_wrapper` redeclared with a different signature
+            fn pt_non_zero_usize_wrapper_opt() -> usize;
+            //~^ WARN `pt_non_zero_usize_wrapper_opt` redeclared with a different signature
         }
     }
 }
