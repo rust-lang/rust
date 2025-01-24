@@ -1165,8 +1165,12 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
         impl Div<NonZero<$Int>> for $Int {
             type Output = $Int;
 
+            /// Same as `self / other.get()`, but because `other` is a `NonZero<_>`,
+            /// there's never a runtime check for division-by-zero.
+            ///
             /// This operation rounds towards zero, truncating any fractional
             /// part of the exact result, and cannot panic.
+            #[doc(alias = "unchecked_div")]
             #[inline]
             fn div(self, other: NonZero<$Int>) -> $Int {
                 // SAFETY: Division by zero is checked because `other` is non-zero,
@@ -1177,6 +1181,9 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
 
         #[stable(feature = "nonzero_div_assign", since = "1.79.0")]
         impl DivAssign<NonZero<$Int>> for $Int {
+            /// Same as `self /= other.get()`, but because `other` is a `NonZero<_>`,
+            /// there's never a runtime check for division-by-zero.
+            ///
             /// This operation rounds towards zero, truncating any fractional
             /// part of the exact result, and cannot panic.
             #[inline]
