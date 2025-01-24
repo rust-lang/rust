@@ -141,8 +141,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
 
-                let expect_ty = value.ty();
-                let expect = self.literal_operand(test.span, value);
+                let mut expect_ty = value.ty();
+                let mut expect = self.literal_operand(test.span, value);
 
                 let mut place = place;
                 let mut block = block;
@@ -174,6 +174,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block = eq_block;
                         place = ref_str;
                         ty = ref_str_ty;
+                    }
+                    &ty::Pat(base, _) => {
+                        assert_eq!(ty, value.ty());
+
+                        let transmuted_place = self.temp(base, test.span);
+                        self.cfg.push_assign(
+                            block,
+                            self.source_info(scrutinee_span),
+                            transmuted_place,
+                            Rvalue::Cast(CastKind::Transmute, Operand::Copy(place), base),
+                        );
+
+                        let transmuted_expect = self.temp(base, test.span);
+                        self.cfg.push_assign(
+                            block,
+                            self.source_info(test.span),
+                            transmuted_expect,
+                            Rvalue::Cast(CastKind::Transmute, expect, base),
+                        );
+
+                        place = transmuted_place;
+                        expect = Operand::Copy(transmuted_expect);
+                        ty = base;
+                        expect_ty = base;
                     }
                     _ => {}
                 }
