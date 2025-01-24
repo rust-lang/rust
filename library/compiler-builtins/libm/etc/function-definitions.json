@@ -437,13 +437,15 @@
     "fmod": {
         "sources": [
             "src/libm_helper.rs",
-            "src/math/fmod.rs"
+            "src/math/fmod.rs",
+            "src/math/generic/fmod.rs"
         ],
         "type": "f64"
     },
     "fmodf": {
         "sources": [
-            "src/math/fmodf.rs"
+            "src/math/fmodf.rs",
+            "src/math/generic/fmod.rs"
         ],
         "type": "f32"
     },
