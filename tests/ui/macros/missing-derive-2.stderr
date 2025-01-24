@@ -4,10 +4,10 @@ error: cannot find attribute `sede` in this scope
 LL |     #[sede(untagged)]
    |       ^^^^
    |
-help: the derive macros `Serialize` and `Deserialize` accept the similarly named `serde` attribute
+help: the derive macros `Deserialize` and `Serialize` accept the similarly named `serde` attribute
    |
 LL |     #[serde(untagged)]
-   |       ~~~~~
+   |         +
 
 error: cannot find attribute `serde` in this scope
   --> $DIR/missing-derive-2.rs:16:7

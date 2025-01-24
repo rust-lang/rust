@@ -20,7 +20,7 @@ enum B { //~ HELP `serde` is an attribute that can be used by the derive macros 
 enum C {
     A,
     #[sede(untagged)] //~ ERROR cannot find attribute `sede`
-    B, //~^ HELP the derive macros `Serialize` and `Deserialize` accept the similarly named `serde` attribute
+    B, //~^ HELP the derive macros `Deserialize` and `Serialize` accept the similarly named `serde` attribute
 }
 
 #[derive(Serialize, Deserialize)]
