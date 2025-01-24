@@ -1081,11 +1081,11 @@ fn codegen_emcc_try<'ll>(
 
 // Helper function to give a Block to a closure to codegen a shim function.
 // This is currently primarily used for the `try` intrinsic functions above.
-fn gen_fn<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+fn gen_fn<'a, 'll, 'tcx>(
+    cx: &'a CodegenCx<'ll, 'tcx>,
     name: &str,
     rust_fn_sig: ty::PolyFnSig<'tcx>,
-    codegen: &mut dyn FnMut(Builder<'_, 'll, 'tcx>),
+    codegen: &mut dyn FnMut(Builder<'a, 'll, 'tcx>),
 ) -> (&'ll Type, &'ll Value) {
     let fn_abi = cx.fn_abi_of_fn_ptr(rust_fn_sig, ty::List::empty());
     let llty = fn_abi.llvm_type(cx);
@@ -1104,9 +1104,9 @@ fn gen_fn<'ll, 'tcx>(
 // catch exceptions.
 //
 // This function is only generated once and is then cached.
-fn get_rust_try_fn<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
-    codegen: &mut dyn FnMut(Builder<'_, 'll, 'tcx>),
+fn get_rust_try_fn<'a, 'll, 'tcx>(
+    cx: &'a CodegenCx<'ll, 'tcx>,
+    codegen: &mut dyn FnMut(Builder<'a, 'll, 'tcx>),
 ) -> (&'ll Type, &'ll Value) {
     if let Some(llfn) = cx.rust_try_fn.get() {
         return llfn;
