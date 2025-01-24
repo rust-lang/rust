@@ -13,9 +13,6 @@ use crate::{BaseName, CheckBasis, CheckCtx, Float, Identifier, Int, TestResult};
 pub struct SpecialCase;
 
 /// ULP allowed to differ from the results returned by a test basis.
-///
-/// Note that these results were obtained using 400M rounds of random inputs, which
-/// is not a value used by default.
 pub fn default_ulp(ctx: &CheckCtx) -> u32 {
     // ULP compared to the infinite (MPFR) result.
     let mut ulp = match ctx.base_name {
