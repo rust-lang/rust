@@ -308,7 +308,7 @@ impl f32 {
     /// let abs_difference = (x.powi(2) - (x * x)).abs();
     /// assert!(abs_difference <= f32::EPSILON);
     ///
-    /// assert_eq!(f64::powi(f32::NAN, 0), 1.0);
+    /// assert_eq!(f32::powi(f32::NAN, 0), 1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
