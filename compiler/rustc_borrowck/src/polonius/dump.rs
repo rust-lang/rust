@@ -1,9 +1,9 @@
 use std::io;
 
 use rustc_middle::mir::pretty::{
-    PrettyPrintMirOptions, create_dump_file, dump_enabled, dump_mir_to_writer,
+    PassWhere, PrettyPrintMirOptions, create_dump_file, dump_enabled, dump_mir_to_writer,
 };
-use rustc_middle::mir::{Body, ClosureRegionRequirements, PassWhere};
+use rustc_middle::mir::{Body, ClosureRegionRequirements};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::MirIncludeSpans;
 
@@ -49,6 +49,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 /// The polonius dump consists of:
 /// - the NLL MIR
 /// - the list of polonius localized constraints
+/// - a mermaid graph of the CFG
 fn emit_polonius_dump<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
@@ -80,7 +81,23 @@ fn emit_polonius_dump<'tcx>(
     writeln!(out, "</pre></code>")?;
     writeln!(out, "</div>")?;
 
+    // Section 2: mermaid visualization of the CFG.
+    writeln!(out, "<div>")?;
+    writeln!(out, "Control-flow graph")?;
+    writeln!(out, "<code><pre class='mermaid'>")?;
+    emit_mermaid_cfg(body, out)?;
+    writeln!(out, "</pre></code>")?;
+    writeln!(out, "</div>")?;
+
     // Finalize the dump with the HTML epilogue.
+    writeln!(
+        out,
+        "<script src='https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js'></script>"
+    )?;
+    writeln!(out, "<script>")?;
+    writeln!(out, "mermaid.initialize({{ startOnLoad: false, maxEdges: 100 }});")?;
+    writeln!(out, "mermaid.run({{ querySelector: '.mermaid' }})")?;
+    writeln!(out, "</script>")?;
     writeln!(out, "</body>")?;
     writeln!(out, "</html>")?;
 
@@ -188,6 +205,58 @@ fn emit_polonius_mir<'tcx>(
             }
         }
         _ => {}
+    }
+
+    Ok(())
+}
+
+/// Emits a mermaid flowchart of the CFG blocks and edges, similar to the graphviz version.
+fn emit_mermaid_cfg(body: &Body<'_>, out: &mut dyn io::Write) -> io::Result<()> {
+    use rustc_middle::mir::{TerminatorEdges, TerminatorKind};
+
+    // The mermaid chart type: a top-down flowchart.
+    writeln!(out, "flowchart TD")?;
+
+    // Emit the block nodes.
+    for (block_idx, block) in body.basic_blocks.iter_enumerated() {
+        let block_idx = block_idx.as_usize();
+        let cleanup = if block.is_cleanup { " (cleanup)" } else { "" };
+        writeln!(out, "{block_idx}[\"bb{block_idx}{cleanup}\"]")?;
+    }
+
+    // Emit the edges between blocks, from the terminator edges.
+    for (block_idx, block) in body.basic_blocks.iter_enumerated() {
+        let block_idx = block_idx.as_usize();
+        let terminator = block.terminator();
+        match terminator.edges() {
+            TerminatorEdges::None => {}
+            TerminatorEdges::Single(bb) => {
+                writeln!(out, "{block_idx} --> {}", bb.as_usize())?;
+            }
+            TerminatorEdges::Double(bb1, bb2) => {
+                if matches!(terminator.kind, TerminatorKind::FalseEdge { .. }) {
+                    writeln!(out, "{block_idx} --> {}", bb1.as_usize())?;
+                    writeln!(out, "{block_idx} -- imaginary --> {}", bb2.as_usize())?;
+                } else {
+                    writeln!(out, "{block_idx} --> {}", bb1.as_usize())?;
+                    writeln!(out, "{block_idx} -- unwind --> {}", bb2.as_usize())?;
+                }
+            }
+            TerminatorEdges::AssignOnReturn { return_, cleanup, .. } => {
+                for to_idx in return_ {
+                    writeln!(out, "{block_idx} --> {}", to_idx.as_usize())?;
+                }
+
+                if let Some(to_idx) = cleanup {
+                    writeln!(out, "{block_idx} -- unwind --> {}", to_idx.as_usize())?;
+                }
+            }
+            TerminatorEdges::SwitchInt { targets, .. } => {
+                for to_idx in targets.all_targets() {
+                    writeln!(out, "{block_idx} --> {}", to_idx.as_usize())?;
+                }
+            }
+        }
     }
 
     Ok(())
