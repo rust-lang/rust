@@ -1240,11 +1240,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some(fluent::lint_improper_ctypes_char_help),
             },
 
-            ty::Pat(..) => FfiUnsafe {
-                ty,
-                reason: fluent::lint_improper_ctypes_pat_reason,
-                help: Some(fluent::lint_improper_ctypes_pat_help),
-            },
+            // It's just extra invariants on the type that you need to uphold,
+            // but only the base type is relevant for being representable in FFI.
+            ty::Pat(base, ..) => self.check_type_for_ffi(acc, base),
 
             ty::Int(ty::IntTy::I128) | ty::Uint(ty::UintTy::U128) => {
                 FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_128bit, help: None }
