@@ -57,7 +57,9 @@ fn main() {
             }
             err => {
                 drop(err);
-                if let Ok(pid) = pid {
+                // #135972: We can reach this point when the lock has been taken,
+                // but the locker has not yet written its PID to the file
+                if let Some(pid) = pid.ok().filter(|pid| !pid.is_empty()) {
                     println!("WARNING: build directory locked by process {pid}, waiting for lock");
                 } else {
                     println!("WARNING: build directory locked, waiting for lock");
