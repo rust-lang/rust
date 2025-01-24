@@ -101,6 +101,8 @@ rintf128
 rintf16
 round
 roundf
+roundf128
+roundf16
 scalbn
 scalbnf
 sin

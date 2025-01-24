@@ -697,6 +697,20 @@
         ],
         "type": "f32"
     },
+    "roundf128": {
+        "sources": [
+            "src/math/generic/round.rs",
+            "src/math/roundf128.rs"
+        ],
+        "type": "f128"
+    },
+    "roundf16": {
+        "sources": [
+            "src/math/generic/round.rs",
+            "src/math/roundf16.rs"
+        ],
+        "type": "f16"
+    },
     "scalbn": {
         "sources": [
             "src/libm_helper.rs",

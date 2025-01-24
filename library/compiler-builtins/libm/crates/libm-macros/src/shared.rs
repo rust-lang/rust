@@ -9,7 +9,7 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
         FloatTy::F16,
         Signature { args: &[Ty::F16], returns: &[Ty::F16] },
         None,
-        &["ceilf16", "fabsf16", "floorf16", "rintf16", "sqrtf16", "truncf16"],
+        &["ceilf16", "fabsf16", "floorf16", "rintf16", "roundf16", "sqrtf16", "truncf16"],
     ),
     (
         // `fn(f32) -> f32`
@@ -40,7 +40,7 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
         FloatTy::F128,
         Signature { args: &[Ty::F128], returns: &[Ty::F128] },
         None,
-        &["ceilf128", "fabsf128", "floorf128", "rintf128", "sqrtf128", "truncf128"],
+        &["ceilf128", "fabsf128", "floorf128", "rintf128", "roundf128", "sqrtf128", "truncf128"],
     ),
     (
         // `(f16, f16) -> f16`
