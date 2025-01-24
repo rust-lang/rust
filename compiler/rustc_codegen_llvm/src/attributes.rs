@@ -333,7 +333,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     let mut to_add = SmallVec::<[_; 16]>::new();
 
     match codegen_fn_attrs.optimize {
-        OptimizeAttr::None => {
+        OptimizeAttr::Default => {
             to_add.extend(default_optimisation_attrs(cx));
         }
         OptimizeAttr::DoNotOptimize => {
