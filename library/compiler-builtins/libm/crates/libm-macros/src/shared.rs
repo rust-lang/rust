@@ -47,7 +47,7 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
         FloatTy::F16,
         Signature { args: &[Ty::F16, Ty::F16], returns: &[Ty::F16] },
         None,
-        &["copysignf16", "fdimf16"],
+        &["copysignf16", "fdimf16", "fmaxf16", "fminf16"],
     ),
     (
         // `(f32, f32) -> f32`
@@ -90,7 +90,7 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
         FloatTy::F128,
         Signature { args: &[Ty::F128, Ty::F128], returns: &[Ty::F128] },
         None,
-        &["copysignf128", "fdimf128"],
+        &["copysignf128", "fdimf128", "fmaxf128", "fminf128"],
     ),
     (
         // `(f32, f32, f32) -> f32`

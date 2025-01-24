@@ -96,6 +96,10 @@ fn do_eval(basis: &str, op: &str, inputs: &[&str]) {
             | fdimf16
             | floorf128
             | floorf16
+            | fmaxf128
+            | fmaxf16
+            | fminf128
+            | fminf16
             | rintf128
             | rintf16
             | roundf128
