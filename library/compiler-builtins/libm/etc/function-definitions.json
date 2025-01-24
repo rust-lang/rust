@@ -437,15 +437,24 @@
     "fmod": {
         "sources": [
             "src/libm_helper.rs",
-            "src/math/fmod.rs"
+            "src/math/fmod.rs",
+            "src/math/generic/fmod.rs"
         ],
         "type": "f64"
     },
     "fmodf": {
         "sources": [
-            "src/math/fmodf.rs"
+            "src/math/fmodf.rs",
+            "src/math/generic/fmod.rs"
         ],
         "type": "f32"
+    },
+    "fmodf16": {
+        "sources": [
+            "src/math/fmodf16.rs",
+            "src/math/generic/fmod.rs"
+        ],
+        "type": "f16"
     },
     "frexp": {
         "sources": [

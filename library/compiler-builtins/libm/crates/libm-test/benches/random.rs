@@ -131,6 +131,7 @@ libm_macros::for_each_function! {
         | fmaxf16
         | fminf128
         | fminf16
+        | fmodf16
         | rintf128
         | rintf16
         | roundf128
