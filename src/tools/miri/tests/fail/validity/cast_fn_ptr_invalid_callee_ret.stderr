@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value at .0: encountered 0, but expected something greater or equal to 1
+error: Undefined Behavior: constructing invalid value at .0.0: encountered 0, but expected something greater or equal to 1
   --> tests/fail/validity/cast_fn_ptr_invalid_callee_ret.rs:LL:CC
    |
 LL |     f();
