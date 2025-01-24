@@ -11,7 +11,6 @@
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
-use field_offset::offset_of;
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
@@ -20,8 +19,7 @@ use rustc_middle::query::erase::{Erase, erase, restore};
 use rustc_middle::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
 use rustc_middle::query::plumbing::{DynamicQuery, QuerySystem, QuerySystemFns};
 use rustc_middle::query::{
-    AsLocalKey, DynamicQueries, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates,
-    queries,
+    AsLocalKey, DynamicQueries, ExternProviders, Providers, QueryEngine, queries,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
@@ -89,7 +87,7 @@ where
     where
         QueryCtxt<'tcx>: 'a,
     {
-        self.dynamic.query_state.apply(&qcx.tcx.query_system.states)
+        (self.dynamic.query_state)(&qcx.tcx.query_system.states)
     }
 
     #[inline(always)]
@@ -97,7 +95,7 @@ where
     where
         'tcx: 'a,
     {
-        self.dynamic.query_cache.apply(&qcx.tcx.query_system.caches)
+        (self.dynamic.query_cache)(&qcx.tcx.query_system.caches)
     }
 
     #[inline(always)]
