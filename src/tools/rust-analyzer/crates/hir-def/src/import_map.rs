@@ -167,8 +167,8 @@ impl ImportMap {
                     let attr_id = if let Some(import) = import {
                         match import {
                             ImportOrExternCrate::ExternCrate(id) => Some(id.into()),
-                            ImportOrExternCrate::Import(id) => Some(id.import.into()),
-                            ImportOrExternCrate::Glob(id) => Some(id.into()),
+                            ImportOrExternCrate::Import(id) => Some(id.use_.into()),
+                            ImportOrExternCrate::Glob(id) => Some(id.use_.into()),
                         }
                     } else {
                         match item {

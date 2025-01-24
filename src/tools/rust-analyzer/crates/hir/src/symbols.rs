@@ -160,8 +160,8 @@ impl<'a> SymbolCollector<'a> {
 
         let mut push_import = |this: &mut Self, i: ImportId, name: &Name, def: ModuleDefId| {
             let source = import_child_source_cache
-                .entry(i.import)
-                .or_insert_with(|| i.import.child_source(this.db.upcast()));
+                .entry(i.use_)
+                .or_insert_with(|| i.use_.child_source(this.db.upcast()));
             let Some(use_tree_src) = source.value.get(i.idx) else { return };
             let Some(name_ptr) = use_tree_src
                 .rename()

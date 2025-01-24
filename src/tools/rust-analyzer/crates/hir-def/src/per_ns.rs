@@ -78,7 +78,7 @@ impl PerNs {
             values: Some(Item {
                 def: values,
                 vis,
-                import: import.and_then(ImportOrExternCrate::into_import),
+                import: import.and_then(ImportOrExternCrate::import_or_glob),
             }),
             macros: None,
         }
