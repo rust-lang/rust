@@ -359,8 +359,8 @@ impl f128 {
     /// let abs_difference = (x.powf(2.0) - (x * x)).abs();
     /// assert!(abs_difference <= f128::EPSILON);
     ///
-    /// assert_eq!(f128::powf(1.0, f128::NAN), 1.0)
-    /// assert_eq!(f128::powf(f128::NAN, 0.0), 1.0)
+    /// assert_eq!(f128::powf(1.0, f128::NAN), 1.0);
+    /// assert_eq!(f128::powf(f128::NAN, 0.0), 1.0);
     /// # }
     /// ```
     #[inline]
