@@ -328,6 +328,8 @@ impl f16 {
     /// # Examples
     ///
     /// ```
+    /// #![feature(f16)]
+    ///
     /// let x = 2.0_f16;
     /// let abs_difference = (x.powi(2) - (x * x)).abs();
     /// assert!(abs_difference < f16::EPSILON);
