@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use crate::ffi::{CStr, OsString, c_char, c_int, c_void};
+use crate::ffi::{c_int, c_void};
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::sys::common::small_c_string::run_with_cstr;
@@ -213,31 +213,6 @@ impl<'a> TryFrom<(&'a str, u16)> for LookupHost {
             }
         })
     }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// gethostname
-////////////////////////////////////////////////////////////////////////////////
-
-pub fn gethostname() -> crate::io::Result<OsString> {
-    init();
-    // 255 bytes is the maximum allowable length for a hostname (as per the DNS spec),
-    // so we shouldn't ever have problems with this. I (@orowith2os) considered using a constant
-    // and letting the platform set the length, but it was determined after some discussion that
-    // this could break things if the platform changes their length. Possible alternative is to
-    // read the sysconf setting for the max hostname length, but that might be a bit too much work.
-    // The 256 byte length is to allow for the NUL terminator.
-    let mut temp_buffer: [c_char; 256] = [0; 256];
-
-    // SAFETY: should never be unsafe, as we're passing in a valid (0-initialized) buffer, and the
-    // length of said buffer.
-    unsafe {
-        cvt(c::gethostname(temp_buffer.as_mut_ptr() as _, temp_buffer.len() as _))?;
-    }
-
-    // SAFETY: we already know the pointer here is valid, we made it from safe Rust earlier.
-    let cstring = unsafe { CStr::from_ptr(temp_buffer.as_mut_ptr()) };
-    Ok(OsString::from(cstring.to_string_lossy().as_ref()))
 }
 
 ////////////////////////////////////////////////////////////////////////////////

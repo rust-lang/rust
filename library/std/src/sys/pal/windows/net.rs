@@ -2,8 +2,10 @@
 
 use core::ffi::{c_int, c_long, c_ulong, c_ushort};
 
+use crate::ffi::OsString;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut, Read};
 use crate::net::{Shutdown, SocketAddr};
+use crate::os::windows::ffi::OsStringExt;
 use crate::os::windows::io::{
     AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket, IntoRawSocket, OwnedSocket, RawSocket,
 };
@@ -31,8 +33,8 @@ pub mod netc {
         IP_DROP_MEMBERSHIP, IP_MULTICAST_LOOP, IP_MULTICAST_TTL, IP_TTL, IPPROTO_IP, IPPROTO_IPV6,
         IPV6_ADD_MEMBERSHIP, IPV6_DROP_MEMBERSHIP, IPV6_MULTICAST_LOOP, IPV6_V6ONLY, SO_BROADCAST,
         SO_RCVTIMEO, SO_SNDTIMEO, SOCK_DGRAM, SOCK_STREAM, SOCKADDR as sockaddr,
-        SOCKADDR_STORAGE as sockaddr_storage, SOL_SOCKET, bind, connect, freeaddrinfo, gethostname,
-        getpeername, getsockname, getsockopt, listen, setsockopt,
+        SOCKADDR_STORAGE as sockaddr_storage, SOL_SOCKET, bind, connect, freeaddrinfo, getpeername,
+        getsockname, getsockopt, listen, setsockopt,
     };
 
     #[allow(non_camel_case_types)]
@@ -570,5 +572,24 @@ impl IntoRawSocket for Socket {
 impl FromRawSocket for Socket {
     unsafe fn from_raw_socket(raw_socket: RawSocket) -> Self {
         unsafe { Self(FromRawSocket::from_raw_socket(raw_socket)) }
+    }
+}
+
+pub fn gethostname() -> io::Result<OsString> {
+    init();
+
+    // The documentation of GetHostNameW says that a buffer size of 256 is
+    // always enough.
+    let mut buffer = [0; 256];
+    // SAFETY: these parameters specify a valid, writable region of memory.
+    let ret = unsafe { c::GetHostNameW(buffer.as_mut_ptr(), buffer.len() as i32) };
+    if ret == 0 {
+        let len = buffer
+            .iter()
+            .position(|&w| w == 0)
+            .expect("GetHostNameW failed to return a null-terminated name");
+        Ok(OsString::from_wide(&buffer[..len]))
+    } else {
+        Err(io::Error::from_raw_os_error(unsafe { c::WSAGetLastError() }))
     }
 }

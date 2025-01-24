@@ -113,6 +113,7 @@ windows_targets::link!("ntdll.dll" "system" fn NtReadFile(filehandle : HANDLE, e
 windows_targets::link!("ntdll.dll" "system" fn NtWriteFile(filehandle : HANDLE, event : HANDLE, apcroutine : PIO_APC_ROUTINE, apccontext : *const core::ffi::c_void, iostatusblock : *mut IO_STATUS_BLOCK, buffer : *const core::ffi::c_void, length : u32, byteoffset : *const i64, key : *const u32) -> NTSTATUS);
 windows_targets::link!("ntdll.dll" "system" fn RtlNtStatusToDosError(status : NTSTATUS) -> u32);
 windows_targets::link!("userenv.dll" "system" fn GetUserProfileDirectoryW(htoken : HANDLE, lpprofiledir : PWSTR, lpcchsize : *mut u32) -> BOOL);
+windows_targets::link!("ws2_32.dll" "system" fn GetHostNameW(name : PWSTR, namelen : i32) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn WSACleanup() -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn WSADuplicateSocketW(s : SOCKET, dwprocessid : u32, lpprotocolinfo : *mut WSAPROTOCOL_INFOW) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn WSAGetLastError() -> WSA_ERROR);
@@ -126,7 +127,6 @@ windows_targets::link!("ws2_32.dll" "system" fn closesocket(s : SOCKET) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn connect(s : SOCKET, name : *const SOCKADDR, namelen : i32) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn freeaddrinfo(paddrinfo : *const ADDRINFOA));
 windows_targets::link!("ws2_32.dll" "system" fn getaddrinfo(pnodename : PCSTR, pservicename : PCSTR, phints : *const ADDRINFOA, ppresult : *mut *mut ADDRINFOA) -> i32);
-windows_targets::link!("ws2_32.dll" "system" fn gethostname(name : PSTR, namelen : i32) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn getpeername(s : SOCKET, name : *mut SOCKADDR, namelen : *mut i32) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn getsockname(s : SOCKET, name : *mut SOCKADDR, namelen : *mut i32) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn getsockopt(s : SOCKET, level : i32, optname : i32, optval : PSTR, optlen : *mut i32) -> i32);

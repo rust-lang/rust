@@ -1978,7 +1978,7 @@ Windows.Win32.Networking.WinSock.FD_SET
 Windows.Win32.Networking.WinSock.FIONBIO
 Windows.Win32.Networking.WinSock.freeaddrinfo
 Windows.Win32.Networking.WinSock.getaddrinfo
-Windows.Win32.Networking.WinSock.gethostname
+Windows.Win32.Networking.WinSock.GetHostNameW
 Windows.Win32.Networking.WinSock.getpeername
 Windows.Win32.Networking.WinSock.getsockname
 Windows.Win32.Networking.WinSock.getsockopt
