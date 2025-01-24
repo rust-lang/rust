@@ -409,7 +409,6 @@ ui/closure_context/issue-26046-fn-once.rs
 ui/closure_context/issue-42065.rs
 ui/closures/2229_closure_analysis/issue-118144.rs
 ui/closures/2229_closure_analysis/issue-87378.rs
-ui/closures/2229_closure_analysis/issue-87987.rs
 ui/closures/2229_closure_analysis/issue-88118-2.rs
 ui/closures/2229_closure_analysis/issue-88476.rs
 ui/closures/2229_closure_analysis/issue-89606.rs
