@@ -74,7 +74,7 @@ pub fn configure_f16_f128(target: &Target) {
         // Selection failure <https://github.com/llvm/llvm-project/issues/50374>
         "s390x" => false,
         // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>
-        // FIXME(llvm): loongarch fixed by <https://github.com/llvm/llvm-project/pull/107791>
+        // FIXME(llvm20): loongarch fixed by <https://github.com/llvm/llvm-project/pull/107791>
         "csky" => false,
         "hexagon" => false,
         "loongarch64" => false,
@@ -91,7 +91,7 @@ pub fn configure_f16_f128(target: &Target) {
         "amdgpu" => false,
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         "arm64ec" => false,
-        // Selection failure <https://github.com/llvm/llvm-project/issues/96432>
+        // FIXME(llvm20): fixed by <https://github.com/llvm/llvm-project/pull/117525>
         "mips64" | "mips64r6" => false,
         // Selection failure <https://github.com/llvm/llvm-project/issues/95471>
         "nvptx64" => false,
