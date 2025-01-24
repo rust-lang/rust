@@ -94,7 +94,7 @@ impl_zeroable_primitive!(
 /// # Layout
 ///
 /// `NonZero<T>` is guaranteed to have the same layout and bit validity as `T`
-/// with the exception that the all-zero bit pattern is not a valid instance.
+/// with the exception that the all-zero bit pattern is invalid.
 /// `Option<NonZero<T>>` is guaranteed to be compatible with `T`, including in
 /// FFI.
 ///
