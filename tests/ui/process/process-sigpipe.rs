@@ -15,7 +15,7 @@
 
 //@ ignore-vxworks no 'sh'
 //@ ignore-fuchsia no 'sh'
-//@ ignore-emscripten No threads
+//@ needs-threads
 //@ only-unix SIGPIPE is a unix feature
 
 use std::process;

@@ -1,6 +1,5 @@
 //@ run-pass
-//@ ignore-wasm32 can't run commands
-//@ ignore-sgx no processes
+//@ needs-subprocess
 //@ ignore-fuchsia must translate zircon signal to SIGSEGV/SIGBUS, FIXME (#58590)
 
 #![feature(rustc_private)]
