@@ -324,6 +324,7 @@ impl f16 {
     ///
     /// The precision of this function is non-deterministic. This means it varies by platform,
     /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
     /// # Examples
     ///
     /// ```
