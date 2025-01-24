@@ -1,8 +1,9 @@
 //@ run-pass
 //@ edition:2021
 
+#[expect(dead_code)]
 struct Props {
-    field_1: u32, //~ WARNING: fields `field_1` and `field_2` are never read
+    field_1: u32,
     field_2: u32,
 }
 
