@@ -35,6 +35,7 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for ty::Pattern<'tcx> {
                 let end = relation.relate(end_a, end_b)?;
                 Ok(tcx.mk_pat(ty::PatternKind::Range { start, end }))
             }
+            (ty::PatternKind::NotNull, ty::PatternKind::NotNull) => Ok(a),
             (&ty::PatternKind::Or(a), &ty::PatternKind::Or(b)) => {
                 if a.len() != b.len() {
                     return Err(TypeError::Mismatch);
@@ -43,7 +44,10 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for ty::Pattern<'tcx> {
                 let patterns = tcx.mk_patterns_from_iter(v)?;
                 Ok(tcx.mk_pat(ty::PatternKind::Or(patterns)))
             }
-            (ty::PatternKind::Range { .. } | ty::PatternKind::Or(_), _) => Err(TypeError::Mismatch),
+            (
+                ty::PatternKind::NotNull | ty::PatternKind::Range { .. } | ty::PatternKind::Or(_),
+                _,
+            ) => Err(TypeError::Mismatch),
         }
     }
 }

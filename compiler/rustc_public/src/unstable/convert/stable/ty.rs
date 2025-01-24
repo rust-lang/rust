@@ -482,6 +482,7 @@ impl<'tcx> Stable<'tcx> for ty::Pattern<'tcx> {
                 end: Some(end.stable(tables, cx)),
                 include_end: true,
             },
+            ty::PatternKind::NotNull => todo!(),
             ty::PatternKind::Or(_) => todo!(),
         }
     }

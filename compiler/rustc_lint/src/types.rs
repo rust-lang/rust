@@ -758,6 +758,7 @@ fn pat_ty_is_known_nonnull<'tcx>(
                     // to ensure we aren't wrapping over zero.
                     start > 0 && end >= start
                 }
+                ty::PatternKind::NotNull => true,
                 ty::PatternKind::Or(patterns) => {
                     patterns.iter().all(|pat| pat_ty_is_known_nonnull(tcx, typing_env, pat))
                 }
@@ -918,7 +919,9 @@ fn get_nullable_type_from_pat<'tcx>(
     pat: ty::Pattern<'tcx>,
 ) -> Option<Ty<'tcx>> {
     match *pat {
-        ty::PatternKind::Range { .. } => get_nullable_type(tcx, typing_env, base),
+        ty::PatternKind::NotNull | ty::PatternKind::Range { .. } => {
+            get_nullable_type(tcx, typing_env, base)
+        }
         ty::PatternKind::Or(patterns) => {
             let first = get_nullable_type_from_pat(tcx, typing_env, base, patterns[0])?;
             for &pat in &patterns[1..] {
