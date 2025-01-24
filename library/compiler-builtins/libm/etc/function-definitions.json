@@ -685,12 +685,14 @@
     "round": {
         "sources": [
             "src/libm_helper.rs",
+            "src/math/generic/round.rs",
             "src/math/round.rs"
         ],
         "type": "f64"
     },
     "roundf": {
         "sources": [
+            "src/math/generic/round.rs",
             "src/math/roundf.rs"
         ],
         "type": "f32"
