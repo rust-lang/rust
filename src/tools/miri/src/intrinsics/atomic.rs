@@ -189,7 +189,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         let place = this.deref_pointer(place)?;
         let rhs = this.read_immediate(rhs)?;
 
-        if !place.layout.ty.is_integral() && !place.layout.ty.is_unsafe_ptr() {
+        if !place.layout.ty.is_integral() && !place.layout.ty.is_raw_ptr() {
             span_bug!(
                 this.cur_span(),
                 "atomic arithmetic operations only work on integer and raw pointer types",
