@@ -1199,7 +1199,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn is_unsafe_ptr(self) -> bool {
+    pub fn is_raw_ptr(self) -> bool {
         matches!(self.kind(), RawPtr(_, _))
     }
 
@@ -1207,7 +1207,7 @@ impl<'tcx> Ty<'tcx> {
     /// `Box` is *not* considered a pointer here!
     #[inline]
     pub fn is_any_ptr(self) -> bool {
-        self.is_ref() || self.is_unsafe_ptr() || self.is_fn_ptr()
+        self.is_ref() || self.is_raw_ptr() || self.is_fn_ptr()
     }
 
     #[inline]

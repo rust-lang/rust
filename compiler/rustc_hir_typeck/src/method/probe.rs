@@ -598,7 +598,7 @@ fn method_autoderef_steps<'tcx>(
                     unsize: false,
                     reachable_via_deref,
                 };
-                if ty.is_unsafe_ptr() {
+                if ty.is_raw_ptr() {
                     // all the subsequent steps will be from_unsafe_deref
                     reached_raw_pointer = true;
                 }
@@ -618,7 +618,7 @@ fn method_autoderef_steps<'tcx>(
                     unsize: false,
                     reachable_via_deref: true,
                 };
-                if ty.is_unsafe_ptr() {
+                if ty.is_raw_ptr() {
                     // all the subsequent steps will be from_unsafe_deref
                     reached_raw_pointer = true;
                 }

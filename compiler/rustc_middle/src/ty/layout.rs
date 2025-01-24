@@ -369,7 +369,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
 
         match *ty.kind() {
             ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
-                let non_zero = !ty.is_unsafe_ptr();
+                let non_zero = !ty.is_raw_ptr();
 
                 let tail = tcx.struct_tail_raw(
                     pointee,
@@ -841,7 +841,7 @@ where
                     // as the `Abi` or `FieldsShape` is checked by users.
                     if i == 0 {
                         let nil = tcx.types.unit;
-                        let unit_ptr_ty = if this.ty.is_unsafe_ptr() {
+                        let unit_ptr_ty = if this.ty.is_raw_ptr() {
                             Ty::new_mut_ptr(tcx, nil)
                         } else {
                             Ty::new_mut_ref(tcx, tcx.lifetimes.re_static, nil)
