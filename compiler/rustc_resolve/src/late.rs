@@ -986,7 +986,7 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
                     self.visit_ty_pat(pat)
                 }
             }
-            TyPatKind::Err(_) => {}
+            TyPatKind::NotNull | TyPatKind::Err(_) => {}
         }
     }
 
