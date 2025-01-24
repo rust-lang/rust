@@ -52,7 +52,9 @@ exclude = [
     # 500 is returned for HEAD request
     "code\\.visualstudio\\.com/docs/editor/tasks",
 ]
-cache-timeout = 86400
+# The scheduled CI runs every day and so we need to reuse a part of the cache
+# in order to face "Server returned 429 Too Many Requests" errors for github.com.
+cache-timeout = 90000
 warning-policy = "error"
 
 [output.html.redirect]

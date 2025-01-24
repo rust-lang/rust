@@ -98,8 +98,8 @@ TODO: write this :3
 [req-depth-ck]: https://github.com/rust-lang/rust/blob/7606c13961ddc1174b70638e934df0439b7dc515/compiler/rustc_middle/src/traits/solve/cache.rs#L76-L86
 [update-depth]: https://github.com/rust-lang/rust/blob/7606c13961ddc1174b70638e934df0439b7dc515/compiler/rustc_trait_selection/src/solve/search_graph.rs#L308
 [rem-depth]: https://github.com/rust-lang/rust/blob/7606c13961ddc1174b70638e934df0439b7dc515/compiler/rustc_middle/src/traits/solve/cache.rs#L124
-[^1]: This is overly restrictive: if all nested goal return the overflow response with some
-availabledepth `n`, then their result should be the same for any depths smaller than `n`.
+[^1]: This is overly restrictive: if all nested goals return the overflow response with some
+available depth `n`, then their result should be the same for any depths smaller than `n`.
 We can implement this optimization in the future.
 
 [chapter on coinduction]: ./coinduction.md
