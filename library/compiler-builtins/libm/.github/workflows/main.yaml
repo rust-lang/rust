@@ -15,7 +15,7 @@ env:
 jobs:
   test:
     name: Build and test
-    timeout-minutes: 40
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -123,6 +123,7 @@ jobs:
   clippy:
     name: Clippy
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
     - uses: actions/checkout@master
     - name: Install Rust
@@ -138,6 +139,7 @@ jobs:
   builtins:
     name: Check use with compiler-builtins
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
     - uses: actions/checkout@master
     - name: Install Rust
@@ -194,6 +196,7 @@ jobs:
   msrv:
     name: Check MSRV
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     env:
       RUSTFLAGS: # No need to check warnings on old MSRV, unset `-Dwarnings`
     steps:
@@ -210,6 +213,7 @@ jobs:
   rustfmt:
     name: Rustfmt
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
     - uses: actions/checkout@master
     - name: Install Rust
@@ -223,6 +227,7 @@ jobs:
   calculate_extensive_matrix:
     name: Calculate job matrix
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     outputs:
       matrix: ${{ steps.script.outputs.matrix }}
     steps:
@@ -242,7 +247,7 @@ jobs:
       - clippy
       - calculate_extensive_matrix
     runs-on: ubuntu-24.04
-    timeout-minutes: 80
+    timeout-minutes: 180
     strategy:
       matrix:
         # Use the output from `calculate_extensive_matrix` to calculate the matrix
@@ -286,6 +291,7 @@ jobs:
       - rustfmt
       - extensive
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     # GitHub branch protection is exceedingly silly and treats "jobs skipped because a dependency
     # failed" as success. So we have to do some contortions to ensure the job fails if any of its
     # dependencies fails.
