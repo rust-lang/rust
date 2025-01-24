@@ -10349,3 +10349,40 @@ macro_rules! str {
         "#]],
     );
 }
+
+#[test]
+fn regression_19007() {
+    check(
+        r#"
+trait Foo {
+    type Assoc;
+
+    fn foo(&self) -> Self::Assoc;
+}
+
+trait Bar {
+    type Target;
+}
+
+trait Baz<T> {}
+
+struct Struct<T: Foo> {
+    field: T,
+}
+
+impl<T> Struct<T>
+where
+    T: Foo,
+    T::Assoc: Baz<<T::Assoc as Bar>::Target> + Bar,
+{
+    fn f(&self) {
+        let x$0 = self.field.foo();
+    }
+}
+        "#,
+        expect![
+            r#"
+        "#
+        ],
+    );
+}
