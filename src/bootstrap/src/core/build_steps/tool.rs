@@ -75,29 +75,33 @@ impl Step for ToolBuild {
     ///
     /// This will build the specified tool with the specified `host` compiler in
     /// `stage` into the normal cargo output directory.
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let compiler = self.compiler;
-        let target = self.target;
-        let mut tool = self.tool;
-        let path = self.path;
-
+    fn run(mut self, builder: &Builder<'_>) -> PathBuf {
         match self.mode {
             Mode::ToolRustc => {
-                builder.ensure(compile::Std::new(compiler, compiler.host));
-                builder.ensure(compile::Rustc::new(compiler, target));
+                assert!(
+                    self.compiler.stage > 0,
+                    "stage0 isn't supported for `Mode::ToolRustc` programs"
+                );
+                // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+                // we'd have stageN/bin/rustc and stageN/bin/$tool_name be effectively different stage
+                // compilers, which isn't what we want.
+                //
+                // Compiler tools should be linked in the same way as the compiler it's paired with,
+                // so it must be built with the previous stage compiler.
+                self.compiler.stage -= 1
             }
-            Mode::ToolStd => builder.ensure(compile::Std::new(compiler, target)),
-            Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
+            Mode::ToolStd => builder.ensure(compile::Std::new(self.compiler, self.target)),
+            Mode::ToolBootstrap => {}
             _ => panic!("unexpected Mode for tool build"),
         }
 
         let mut cargo = prepare_tool_cargo(
             builder,
-            compiler,
+            self.compiler,
             self.mode,
-            target,
+            self.target,
             Kind::Build,
-            path,
+            self.path,
             self.source_type,
             &self.extra_features,
         );
@@ -118,7 +122,7 @@ impl Step for ToolBuild {
         let build_success = compile::stream_cargo(builder, cargo, vec![], &mut |_| {});
 
         builder.save_toolstate(
-            tool,
+            self.tool,
             if build_success { ToolState::TestFail } else { ToolState::BuildFail },
         );
 
@@ -128,10 +132,10 @@ impl Step for ToolBuild {
             // HACK(#82501): on Windows, the tools directory gets added to PATH when running tests, and
             // compiletest confuses HTML tidy with the in-tree tidy. Name the in-tree tidy something
             // different so the problem doesn't come up.
-            if tool == "tidy" {
-                tool = "rust-tidy";
+            if self.tool == "tidy" {
+                self.tool = "rust-tidy";
             }
-            copy_link_tool_bin(builder, self.compiler, self.target, self.mode, tool)
+            copy_link_tool_bin(builder, self.compiler, self.target, self.mode, self.tool)
         }
     }
 }
@@ -693,9 +697,9 @@ impl Step for Rustdoc {
         );
         cargo.into_cmd().run(builder);
 
-        // Cargo adds a number of paths to the dylib search path on windows, which results in
-        // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
-        // rustdoc a different name.
+            // Cargo adds a number of paths to the dylib search path on windows, which results in
+            // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
+            // rustdoc a different name.
         let tool_rustdoc = builder
             .cargo_out(build_compiler, Mode::ToolRustc, target)
             .join(exe("rustdoc_tool_binary", target_compiler.host));
@@ -1134,7 +1138,7 @@ fn run_tool_build_step(
     path: &'static str,
     add_bins_to_sysroot: Option<&[&str]>,
 ) -> PathBuf {
-    let tool = builder.ensure(ToolBuild {
+    let bin_source = builder.ensure(ToolBuild {
         compiler,
         target,
         tool: tool_name,
@@ -1153,10 +1157,7 @@ fn run_tool_build_step(
         let bindir = builder.sysroot(compiler).join("bin");
         t!(fs::create_dir_all(&bindir));
 
-        let tools_out = builder.cargo_out(compiler, Mode::ToolRustc, target);
-
         for add_bin in add_bins_to_sysroot {
-            let bin_source = tools_out.join(exe(add_bin, target));
             let bin_destination = bindir.join(exe(add_bin, compiler.host));
             builder.copy_link(&bin_source, &bin_destination);
         }
@@ -1164,7 +1165,7 @@ fn run_tool_build_step(
         // Return a path into the bin dir.
         bindir.join(exe(tool_name, compiler.host))
     } else {
-        tool
+        bin_source
     }
 }
 
