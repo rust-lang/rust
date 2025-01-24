@@ -379,26 +379,30 @@
     "fmax": {
         "sources": [
             "src/libm_helper.rs",
-            "src/math/fmax.rs"
+            "src/math/fmax.rs",
+            "src/math/generic/fmax.rs"
         ],
         "type": "f64"
     },
     "fmaxf": {
         "sources": [
-            "src/math/fmaxf.rs"
+            "src/math/fmaxf.rs",
+            "src/math/generic/fmax.rs"
         ],
         "type": "f32"
     },
     "fmin": {
         "sources": [
             "src/libm_helper.rs",
-            "src/math/fmin.rs"
+            "src/math/fmin.rs",
+            "src/math/generic/fmin.rs"
         ],
         "type": "f64"
     },
     "fminf": {
         "sources": [
-            "src/math/fminf.rs"
+            "src/math/fminf.rs",
+            "src/math/generic/fmin.rs"
         ],
         "type": "f32"
     },
