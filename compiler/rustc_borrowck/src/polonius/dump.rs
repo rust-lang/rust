@@ -12,9 +12,6 @@ use crate::polonius::{LocalizedOutlivesConstraint, LocalizedOutlivesConstraintSe
 use crate::{BorrowckInferCtxt, RegionInferenceContext};
 
 /// `-Zdump-mir=polonius` dumps MIR annotated with NLL and polonius specific information.
-// Note: this currently duplicates most of NLL MIR, with some additions for the localized outlives
-// constraints. This is ok for now as this dump will change in the near future to an HTML file to
-// become more useful.
 pub(crate) fn dump_polonius_mir<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
@@ -36,7 +33,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
         .expect("missing localized constraints with `-Zpolonius=next`");
 
     let _: io::Result<()> = try {
-        let mut file = create_dump_file(tcx, "mir", false, "polonius", &0, body)?;
+        let mut file = create_dump_file(tcx, "html", false, "polonius", &0, body)?;
         emit_polonius_dump(
             tcx,
             body,
@@ -61,9 +58,50 @@ fn emit_polonius_dump<'tcx>(
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
-    // We want the NLL extra comments printed by default in NLL MIR dumps (they were removed in
-    // #112346). Specifying `-Z mir-include-spans` on the CLI still has priority: for example,
-    // they're always disabled in mir-opt tests to make working with blessed dumps easier.
+    // Prepare the HTML dump file prologue.
+    writeln!(out, "<!DOCTYPE html>")?;
+    writeln!(out, "<html>")?;
+    writeln!(out, "<head><title>Polonius MIR dump</title></head>")?;
+    writeln!(out, "<body>")?;
+
+    // Section 1: the NLL + Polonius MIR.
+    writeln!(out, "<div>")?;
+    writeln!(out, "Raw MIR dump")?;
+    writeln!(out, "<code><pre>")?;
+    emit_html_mir(
+        tcx,
+        body,
+        regioncx,
+        borrow_set,
+        localized_outlives_constraints,
+        closure_region_requirements,
+        out,
+    )?;
+    writeln!(out, "</pre></code>")?;
+    writeln!(out, "</div>")?;
+
+    // Finalize the dump with the HTML epilogue.
+    writeln!(out, "</body>")?;
+    writeln!(out, "</html>")?;
+
+    Ok(())
+}
+
+/// Emits the polonius MIR, as escaped HTML.
+fn emit_html_mir<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    regioncx: &RegionInferenceContext<'tcx>,
+    borrow_set: &BorrowSet<'tcx>,
+    localized_outlives_constraints: LocalizedOutlivesConstraintSet,
+    closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
+    out: &mut dyn io::Write,
+) -> io::Result<()> {
+    // Buffer the regular MIR dump to be able to escape it.
+    let mut buffer = Vec::new();
+
+    // We want the NLL extra comments printed by default in NLL MIR dumps. Specifying `-Z
+    // mir-include-spans` on the CLI still has priority.
     let options = PrettyPrintMirOptions {
         include_extra_comments: matches!(
             tcx.sess.opts.unstable_opts.mir_include_spans,
@@ -76,7 +114,7 @@ fn emit_polonius_dump<'tcx>(
         "polonius",
         &0,
         body,
-        out,
+        &mut buffer,
         |pass_where, out| {
             emit_polonius_mir(
                 tcx,
@@ -89,7 +127,27 @@ fn emit_polonius_dump<'tcx>(
             )
         },
         options,
-    )
+    )?;
+
+    // Escape the handful of characters that need it. We don't need to be particularly efficient:
+    // we're actually writing into a buffered writer already. Note that MIR dumps are valid UTF-8.
+    let buffer = String::from_utf8_lossy(&buffer);
+    for ch in buffer.chars() {
+        let escaped = match ch {
+            '>' => "&gt;",
+            '<' => "&lt;",
+            '&' => "&amp;",
+            '\'' => "&#39;",
+            '"' => "&quot;",
+            _ => {
+                // The common case, no escaping needed.
+                write!(out, "{}", ch)?;
+                continue;
+            }
+        };
+        write!(out, "{}", escaped)?;
+    }
+    Ok(())
 }
 
 /// Produces the actual NLL + Polonius MIR sections to emit during the dumping process.
