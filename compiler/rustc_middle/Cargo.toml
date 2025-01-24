@@ -7,7 +7,6 @@ edition = "2021"
 # tidy-alphabetical-start
 bitflags = "2.4.1"
 either = "1.5.0"
-field-offset = "0.3.5"
 gsgdt = "0.1.2"
 polonius-engine = "0.13.0"
 rustc-rayon-core = { version = "0.5.0" }
