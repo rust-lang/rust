@@ -55,8 +55,12 @@ fma
 fmaf
 fmax
 fmaxf
+fmaxf128
+fmaxf16
 fmin
 fminf
+fminf128
+fminf16
 fmod
 fmodf
 frexp

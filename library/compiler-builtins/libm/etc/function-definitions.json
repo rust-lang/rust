@@ -391,6 +391,20 @@
         ],
         "type": "f32"
     },
+    "fmaxf128": {
+        "sources": [
+            "src/math/fmaxf128.rs",
+            "src/math/generic/fmax.rs"
+        ],
+        "type": "f128"
+    },
+    "fmaxf16": {
+        "sources": [
+            "src/math/fmaxf16.rs",
+            "src/math/generic/fmax.rs"
+        ],
+        "type": "f16"
+    },
     "fmin": {
         "sources": [
             "src/libm_helper.rs",
@@ -405,6 +419,20 @@
             "src/math/generic/fmin.rs"
         ],
         "type": "f32"
+    },
+    "fminf128": {
+        "sources": [
+            "src/math/fminf128.rs",
+            "src/math/generic/fmin.rs"
+        ],
+        "type": "f128"
+    },
+    "fminf16": {
+        "sources": [
+            "src/math/fminf16.rs",
+            "src/math/generic/fmin.rs"
+        ],
+        "type": "f16"
     },
     "fmod": {
         "sources": [
