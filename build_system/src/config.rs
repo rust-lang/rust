@@ -320,12 +320,16 @@ impl ConfigInfo {
     ) -> Result<(), String> {
         env.insert("CARGO_INCREMENTAL".to_string(), "0".to_string());
 
-        if self.gcc_path.is_none() && !use_system_gcc {
-            self.setup_gcc_path()?;
-        }
-        let gcc_path = self.gcc_path.clone().expect(
-            "The config module should have emitted an error if the GCC path wasn't provided",
-        );
+        let gcc_path = if !use_system_gcc {
+            if self.gcc_path.is_none() {
+                self.setup_gcc_path()?;
+            }
+            self.gcc_path.clone().expect(
+                "The config module should have emitted an error if the GCC path wasn't provided",
+            )
+        } else {
+            String::new()
+        };
         env.insert("GCC_PATH".to_string(), gcc_path.clone());
 
         if self.cargo_target_dir.is_empty() {
