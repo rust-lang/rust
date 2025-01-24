@@ -28,7 +28,7 @@ pub use op::{
     Ty,
 };
 pub use precision::{MaybeOverride, SpecialCase, default_ulp};
-use run_cfg::EXTENSIVE_MAX_ITERATIONS;
+use run_cfg::extensive_max_iterations;
 pub use run_cfg::{CheckBasis, CheckCtx, EXTENSIVE_ENV, GeneratorKind, skip_extensive_test};
 pub use test_traits::{CheckOutput, Hex, TupleCall};
 
@@ -89,7 +89,7 @@ pub fn test_log(s: &str) {
         writeln!(f, "cargo features: {}", env!("CFG_CARGO_FEATURES")).unwrap();
         writeln!(f, "opt level: {}", env!("CFG_OPT_LEVEL")).unwrap();
         writeln!(f, "target features: {}", env!("CFG_TARGET_FEATURES")).unwrap();
-        writeln!(f, "extensive iterations {}", *EXTENSIVE_MAX_ITERATIONS).unwrap();
+        writeln!(f, "extensive iterations {}", extensive_max_iterations()).unwrap();
 
         Some(f)
     });
