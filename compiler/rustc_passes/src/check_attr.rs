@@ -2808,7 +2808,7 @@ fn doc_fake_variadic_is_allowed_self_ty(self_ty: &hir::Ty<'_>) -> bool {
             && let Some(&[hir::GenericArg::Type(ty)]) =
                 path.segments.last().map(|last| last.args().args)
         {
-            doc_fake_variadic_is_allowed_self_ty(ty)
+            doc_fake_variadic_is_allowed_self_ty(ty.as_unambig_ty())
         } else {
             false
         })

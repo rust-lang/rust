@@ -4,7 +4,8 @@ use std::ops::ControlFlow;
 use rustc_abi::{BackendRepr, ExternAbi, TagEncoding, VariantIdx, Variants, WrappingRange};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
-use rustc_hir::{Expr, ExprKind, LangItem};
+use rustc_hir::intravisit::VisitorExt;
+use rustc_hir::{AmbigArg, Expr, ExprKind, LangItem};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
 use rustc_middle::ty::{
@@ -1526,7 +1527,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         impl<'a, 'b, 'tcx> hir::intravisit::Visitor<'_> for FnPtrFinder<'a, 'b, 'tcx> {
-            fn visit_ty(&mut self, ty: &'_ hir::Ty<'_>) {
+            fn visit_ty(&mut self, ty: &'_ hir::Ty<'_, AmbigArg>) {
                 debug!(?ty);
                 if let hir::TyKind::BareFn(hir::BareFnTy { abi, .. }) = ty.kind
                     && !self.visitor.is_internal_abi(*abi)
@@ -1554,7 +1555,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         let mut visitor = FnPtrFinder { visitor: self, spans: Vec::new(), tys: Vec::new() };
         ty.visit_with(&mut visitor);
-        hir::intravisit::Visitor::visit_ty(&mut visitor, hir_ty);
+        visitor.visit_ty_unambig(hir_ty);
 
         iter::zip(visitor.tys.drain(..), visitor.spans.drain(..)).collect()
     }
