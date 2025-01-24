@@ -150,6 +150,8 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
         "debug"
     };
 
+    // We have a different environment variable than RUSTFLAGS to make sure those flags are only
+    // sent to rustc_codegen_gcc and not the LLVM backend.
     if let Ok(cg_rustflags) = std::env::var("CG_RUSTFLAGS") {
         rustflags.push(' ');
         rustflags.push_str(&cg_rustflags);

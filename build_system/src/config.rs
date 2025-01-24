@@ -381,6 +381,8 @@ impl ConfigInfo {
         }
 
         // This environment variable is useful in case we want to change options of rustc commands.
+        // We have a different environment variable than RUSTFLAGS to make sure those flags are
+        // only sent to rustc_codegen_gcc and not the LLVM backend.
         if let Some(cg_rustflags) = env.get("CG_RUSTFLAGS") {
             rustflags.extend_from_slice(&split_args(&cg_rustflags)?);
         }
