@@ -12,7 +12,7 @@ extern crate rustc_interface;
 use rustc_interface::interface;
 
 struct TestCalls<'a> {
-    count: &'a mut u32
+    count: &'a mut u32,
 }
 
 impl rustc_driver::Callbacks for TestCalls<'_> {
@@ -24,8 +24,9 @@ impl rustc_driver::Callbacks for TestCalls<'_> {
 fn main() {
     let mut count = 1;
     let args = vec!["compiler-calls".to_string(), "foo.rs".to_string()];
-    rustc_driver::catch_fatal_errors(|| {
-        rustc_driver::RunCompiler::new(&args, &mut TestCalls { count: &mut count }).run().ok();
+    rustc_driver::catch_fatal_errors(|| -> interface::Result<()> {
+        rustc_driver::RunCompiler::new(&args, &mut TestCalls { count: &mut count }).run();
+        Ok(())
     })
     .ok();
     assert_eq!(count, 2);

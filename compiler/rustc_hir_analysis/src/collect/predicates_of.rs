@@ -1,17 +1,18 @@
 use std::assert_matches::assert_matches;
 
-use hir::{HirId, Node};
+use hir::Node;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{self, Visitor};
-use rustc_middle::ty::{self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt, Upcast};
+use rustc_middle::ty::{
+    self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitable, TypeVisitor, Upcast,
+};
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::Ident;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span};
 use tracing::{debug, instrument, trace};
 
+use super::item_bounds::explicit_item_bounds_with_filter;
 use crate::bounds::Bounds;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
@@ -78,7 +79,6 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
 #[instrument(level = "trace", skip(tcx), ret)]
 fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::GenericPredicates<'_> {
     use rustc_hir::*;
-    use rustc_middle::ty::Ty;
 
     match tcx.opt_rpitit_info(def_id.to_def_id()) {
         Some(ImplTraitInTraitData::Trait { fn_def_id, .. }) => {
@@ -106,7 +106,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             return ty::GenericPredicates {
                 parent: Some(tcx.parent(def_id.to_def_id())),
                 predicates: tcx.arena.alloc_from_iter(predicates),
-                effects_min_tys: ty::List::empty(),
             };
         }
 
@@ -128,7 +127,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             return ty::GenericPredicates {
                 parent: Some(impl_def_id),
                 predicates: tcx.arena.alloc_from_iter(impl_predicates),
-                effects_min_tys: ty::List::empty(),
             };
         }
 
@@ -154,7 +152,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // We use an `IndexSet` to preserve order of insertion.
     // Preserving the order of insertion is important here so as not to break UI tests.
     let mut predicates: FxIndexSet<(ty::Clause<'_>, Span)> = FxIndexSet::default();
-    let mut effects_min_tys = Vec::new();
 
     let hir_generics = node.generics().unwrap_or(NO_GENERICS);
     if let Node::Item(item) = node {
@@ -189,8 +186,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             ty::List::empty(),
             PredicateFilter::All,
         );
-        predicates.extend(bounds.clauses(tcx));
-        effects_min_tys.extend(bounds.effects_min_tys());
+        predicates.extend(bounds.clauses());
     }
 
     // In default impls, we can assume that the self type implements
@@ -223,15 +219,16 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     param.span,
                 );
                 trace!(?bounds);
-                predicates.extend(bounds.clauses(tcx));
+                predicates.extend(bounds.clauses());
                 trace!(?predicates);
             }
             hir::GenericParamKind::Const { .. } => {
+                let param_def_id = param.def_id.to_def_id();
                 let ct_ty = tcx
-                    .type_of(param.def_id.to_def_id())
+                    .type_of(param_def_id)
                     .no_bound_vars()
                     .expect("const parameters cannot be generic");
-                let ct = icx.lowerer().lower_const_param(param.hir_id);
+                let ct = icx.lowerer().lower_const_param(param_def_id, param.hir_id);
                 predicates
                     .insert((ty::ClauseKind::ConstArgHasType(ct, ct_ty).upcast(tcx), param.span));
             }
@@ -241,11 +238,11 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     trace!(?predicates);
     // Add inline `<T: Foo>` bounds and bounds in the where clause.
     for predicate in hir_generics.predicates {
-        match predicate {
-            hir::WherePredicate::BoundPredicate(bound_pred) => {
+        match predicate.kind {
+            hir::WherePredicateKind::BoundPredicate(bound_pred) => {
                 let ty = icx.lowerer().lower_ty_maybe_return_type_notation(bound_pred.bounded_ty);
 
-                let bound_vars = tcx.late_bound_vars(bound_pred.hir_id);
+                let bound_vars = tcx.late_bound_vars(predicate.hir_id);
                 // Keep the type around in a dummy predicate, in case of no bounds.
                 // That way, `where Ty:` is not a complete noop (see #53696) and `Ty`
                 // is still checked for WF.
@@ -275,11 +272,10 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     bound_vars,
                     PredicateFilter::All,
                 );
-                predicates.extend(bounds.clauses(tcx));
-                effects_min_tys.extend(bounds.effects_min_tys());
+                predicates.extend(bounds.clauses());
             }
 
-            hir::WherePredicate::RegionPredicate(region_pred) => {
+            hir::WherePredicateKind::RegionPredicate(region_pred) => {
                 let r1 = icx
                     .lowerer()
                     .lower_lifetime(region_pred.lifetime, RegionInferReason::RegionPredicate);
@@ -302,14 +298,14 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 }))
             }
 
-            hir::WherePredicate::EqPredicate(..) => {
+            hir::WherePredicateKind::EqPredicate(..) => {
                 // FIXME(#20041)
             }
         }
     }
 
-    if tcx.features().generic_const_exprs {
-        predicates.extend(const_evaluatable_predicates_of(tcx, def_id));
+    if tcx.features().generic_const_exprs() {
+        predicates.extend(const_evaluatable_predicates_of(tcx, def_id, &predicates));
     }
 
     let mut predicates: Vec<_> = predicates.into_iter().collect();
@@ -334,41 +330,13 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // We create bi-directional Outlives predicates between the original
     // and the duplicated parameter, to ensure that they do not get out of sync.
     if let Node::OpaqueTy(..) = node {
-        let opaque_ty_node = tcx.parent_hir_node(hir_id);
-        let Node::Ty(&hir::Ty { kind: TyKind::OpaqueDef(_, lifetimes), .. }) = opaque_ty_node
-        else {
-            bug!("unexpected {opaque_ty_node:?}")
-        };
-        debug!(?lifetimes);
-
         compute_bidirectional_outlives_predicates(tcx, &generics.own_params, &mut predicates);
         debug!(?predicates);
-    }
-
-    // add `Self::Effects: Compat<HOST>` to ensure non-const impls don't get called
-    // in const contexts.
-    if let Node::TraitItem(&TraitItem { kind: TraitItemKind::Fn(..), .. }) = node
-        && let Some(host_effect_index) = generics.host_effect_index
-    {
-        let parent = generics.parent.unwrap();
-        let Some(assoc_def_id) = tcx.associated_type_for_effects(parent) else {
-            bug!("associated_type_for_effects returned None when there is host effect in generics");
-        };
-        let effects =
-            Ty::new_projection(tcx, assoc_def_id, ty::GenericArgs::identity_for_item(tcx, parent));
-        let param = generics.param_at(host_effect_index, tcx);
-        let span = tcx.def_span(param.def_id);
-        let host = ty::Const::new_param(tcx, ty::ParamConst::for_def(param));
-        let compat = tcx.require_lang_item(LangItem::EffectsCompat, Some(span));
-        let trait_ref =
-            ty::TraitRef::new(tcx, compat, [ty::GenericArg::from(effects), host.into()]);
-        predicates.push((ty::Binder::dummy(trait_ref).upcast(tcx), span));
     }
 
     ty::GenericPredicates {
         parent: generics.parent,
         predicates: tcx.arena.alloc_from_iter(predicates),
-        effects_min_tys: tcx.mk_type_list(&effects_min_tys),
     }
 }
 
@@ -401,32 +369,48 @@ fn compute_bidirectional_outlives_predicates<'tcx>(
     }
 }
 
-fn const_evaluatable_predicates_of(
-    tcx: TyCtxt<'_>,
+#[instrument(level = "debug", skip(tcx, predicates), ret)]
+fn const_evaluatable_predicates_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> FxIndexSet<(ty::Clause<'_>, Span)> {
+    predicates: &FxIndexSet<(ty::Clause<'tcx>, Span)>,
+) -> FxIndexSet<(ty::Clause<'tcx>, Span)> {
     struct ConstCollector<'tcx> {
         tcx: TyCtxt<'tcx>,
         preds: FxIndexSet<(ty::Clause<'tcx>, Span)>,
     }
 
-    impl<'tcx> intravisit::Visitor<'tcx> for ConstCollector<'tcx> {
-        fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
-            let ct = ty::Const::from_anon_const(self.tcx, c.def_id);
-            if let ty::ConstKind::Unevaluated(_) = ct.kind() {
-                let span = self.tcx.def_span(c.def_id);
-                self.preds.insert((ty::ClauseKind::ConstEvaluatable(ct).upcast(self.tcx), span));
-            }
-        }
+    fn is_const_param_default(tcx: TyCtxt<'_>, def: LocalDefId) -> bool {
+        let hir_id = tcx.local_def_id_to_hir_id(def);
+        let (_, parent_node) = tcx
+            .hir()
+            .parent_iter(hir_id)
+            .skip_while(|(_, n)| matches!(n, Node::ConstArg(..)))
+            .next()
+            .unwrap();
+        matches!(
+            parent_node,
+            Node::GenericParam(hir::GenericParam { kind: hir::GenericParamKind::Const { .. }, .. })
+        )
+    }
 
-        fn visit_const_param_default(&mut self, _param: HirId, _ct: &'tcx hir::ConstArg<'tcx>) {
-            // Do not look into const param defaults,
-            // these get checked when they are actually instantiated.
-            //
-            // We do not want the following to error:
-            //
-            //     struct Foo<const N: usize, const M: usize = { N + 1 }>;
-            //     struct Bar<const N: usize>(Foo<N, 3>);
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ConstCollector<'tcx> {
+        fn visit_const(&mut self, c: ty::Const<'tcx>) {
+            if let ty::ConstKind::Unevaluated(uv) = c.kind() {
+                if is_const_param_default(self.tcx, uv.def.expect_local()) {
+                    // Do not look into const param defaults,
+                    // these get checked when they are actually instantiated.
+                    //
+                    // We do not want the following to error:
+                    //
+                    //     struct Foo<const N: usize, const M: usize = { N + 1 }>;
+                    //     struct Bar<const N: usize>(Foo<N, 3>);
+                    return;
+                }
+
+                let span = self.tcx.def_span(uv.def);
+                self.preds.insert((ty::ClauseKind::ConstEvaluatable(c).upcast(self.tcx), span));
+            }
         }
     }
 
@@ -434,28 +418,31 @@ fn const_evaluatable_predicates_of(
     let node = tcx.hir_node(hir_id);
 
     let mut collector = ConstCollector { tcx, preds: FxIndexSet::default() };
+
+    for (clause, _sp) in predicates {
+        clause.visit_with(&mut collector);
+    }
+
     if let hir::Node::Item(item) = node
-        && let hir::ItemKind::Impl(impl_) = item.kind
+        && let hir::ItemKind::Impl(_) = item.kind
     {
-        if let Some(of_trait) = &impl_.of_trait {
-            debug!("const_evaluatable_predicates_of({:?}): visit impl trait_ref", def_id);
-            collector.visit_trait_ref(of_trait);
+        if let Some(of_trait) = tcx.impl_trait_ref(def_id) {
+            debug!("visit impl trait_ref");
+            of_trait.instantiate_identity().visit_with(&mut collector);
         }
 
-        debug!("const_evaluatable_predicates_of({:?}): visit_self_ty", def_id);
-        collector.visit_ty(impl_.self_ty);
+        debug!("visit self_ty");
+        let self_ty = tcx.type_of(def_id);
+        self_ty.instantiate_identity().visit_with(&mut collector);
     }
 
-    if let Some(generics) = node.generics() {
-        debug!("const_evaluatable_predicates_of({:?}): visit_generics", def_id);
-        collector.visit_generics(generics);
+    if let Some(_) = tcx.hir().fn_sig_by_hir_id(hir_id) {
+        debug!("visit fn sig");
+        let fn_sig = tcx.fn_sig(def_id);
+        let fn_sig = fn_sig.instantiate_identity();
+        debug!(?fn_sig);
+        fn_sig.visit_with(&mut collector);
     }
-
-    if let Some(fn_sig) = tcx.hir().fn_sig_by_hir_id(hir_id) {
-        debug!("const_evaluatable_predicates_of({:?}): visit_fn_decl", def_id);
-        collector.visit_fn_decl(fn_sig.decl);
-    }
-    debug!("const_evaluatable_predicates_of({:?}) = {:?}", def_id, collector.preds);
 
     collector.preds
 }
@@ -519,12 +506,11 @@ pub(super) fn explicit_predicates_of<'tcx>(
             ty::GenericPredicates {
                 parent: predicates_and_bounds.parent,
                 predicates: tcx.arena.alloc_slice(&predicates),
-                effects_min_tys: predicates_and_bounds.effects_min_tys,
             }
         }
     } else {
         if matches!(def_kind, DefKind::AnonConst)
-            && tcx.features().generic_const_exprs
+            && tcx.features().generic_const_exprs()
             && let Some(defaulted_param_def_id) =
                 tcx.hir().opt_const_param_default_param_def_id(tcx.local_def_id_to_hir_id(def_id))
         {
@@ -571,7 +557,6 @@ pub(super) fn explicit_predicates_of<'tcx>(
             return GenericPredicates {
                 parent: parent_preds.parent,
                 predicates: { tcx.arena.alloc_from_iter(filtered_predicates) },
-                effects_min_tys: parent_preds.effects_min_tys,
             };
         }
         gather_explicit_predicates_of(tcx, def_id)
@@ -592,7 +577,11 @@ pub(super) fn explicit_supertraits_containing_assoc_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     (trait_def_id, assoc_name): (DefId, Ident),
 ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
-    implied_predicates_with_filter(tcx, trait_def_id, PredicateFilter::SelfThatDefines(assoc_name))
+    implied_predicates_with_filter(
+        tcx,
+        trait_def_id,
+        PredicateFilter::SelfTraitThatDefines(assoc_name),
+    )
 }
 
 pub(super) fn explicit_implied_predicates_of<'tcx>(
@@ -621,7 +610,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
     let Some(trait_def_id) = trait_def_id.as_local() else {
         // if `assoc_name` is None, then the query should've been redirected to an
         // external provider
-        assert_matches!(filter, PredicateFilter::SelfThatDefines(_));
+        assert_matches!(filter, PredicateFilter::SelfTraitThatDefines(_));
         return tcx.explicit_super_predicates_of(trait_def_id);
     };
 
@@ -641,16 +630,12 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
     let mut bounds = Bounds::default();
     icx.lowerer().lower_bounds(self_param_ty, superbounds, &mut bounds, ty::List::empty(), filter);
 
-    let where_bounds_that_match = icx.probe_ty_param_bounds_in_generics(
-        generics,
-        item.owner_id.def_id,
-        self_param_ty,
-        filter,
-    );
+    let where_bounds_that_match =
+        icx.probe_ty_param_bounds_in_generics(generics, item.owner_id.def_id, filter);
 
     // Combine the two lists to form the complete set of superbounds:
     let implied_bounds =
-        &*tcx.arena.alloc_from_iter(bounds.clauses(tcx).chain(where_bounds_that_match));
+        &*tcx.arena.alloc_from_iter(bounds.clauses().chain(where_bounds_that_match));
     debug!(?implied_bounds);
 
     // Now require that immediate supertraits are lowered, which will, in
@@ -668,7 +653,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
                 }
             }
         }
-        PredicateFilter::SelfAndAssociatedTypeBounds => {
+        PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {
             for &(pred, span) in implied_bounds {
                 debug!("superbound: {:?}", pred);
                 if let ty::ClauseKind::Trait(bound) = pred.kind().skip_binder()
@@ -687,7 +672,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
 }
 
 // Make sure when elaborating supertraits, probing for associated types, etc.,
-// we really truly are elaborating clauses that have `Self` as their self type.
+// we really truly are elaborating clauses that have `ty` as their self type.
 // This is very important since downstream code relies on this being correct.
 pub(super) fn assert_only_contains_predicates_from<'tcx>(
     filter: PredicateFilter,
@@ -699,27 +684,38 @@ pub(super) fn assert_only_contains_predicates_from<'tcx>(
     }
 
     match filter {
-        PredicateFilter::SelfOnly | PredicateFilter::SelfThatDefines(_) => {
+        PredicateFilter::SelfOnly => {
             for (clause, _) in bounds {
                 match clause.kind().skip_binder() {
                     ty::ClauseKind::Trait(trait_predicate) => {
                         assert_eq!(
                             trait_predicate.self_ty(),
                             ty,
-                            "expected `Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                            "expected `Self` predicate when computing \
+                            `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
                     ty::ClauseKind::Projection(projection_predicate) => {
                         assert_eq!(
                             projection_predicate.self_ty(),
                             ty,
-                            "expected `Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                            "expected `Self` predicate when computing \
+                            `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
                     ty::ClauseKind::TypeOutlives(outlives_predicate) => {
                         assert_eq!(
                             outlives_predicate.0, ty,
-                            "expected `Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                            "expected `Self` predicate when computing \
+                            `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+                    ty::ClauseKind::HostEffect(host_effect_predicate) => {
+                        assert_eq!(
+                            host_effect_predicate.self_ty(),
+                            ty,
+                            "expected `Self` predicate when computing \
+                            `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
 
@@ -728,7 +724,77 @@ pub(super) fn assert_only_contains_predicates_from<'tcx>(
                     | ty::ClauseKind::WellFormed(_)
                     | ty::ClauseKind::ConstEvaluatable(_) => {
                         bug!(
-                            "unexpected non-`Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                            "unexpected non-`Self` predicate when computing \
+                            `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+                }
+            }
+        }
+        PredicateFilter::SelfTraitThatDefines(_) => {
+            for (clause, _) in bounds {
+                match clause.kind().skip_binder() {
+                    ty::ClauseKind::Trait(trait_predicate) => {
+                        assert_eq!(
+                            trait_predicate.self_ty(),
+                            ty,
+                            "expected `Self` predicate when computing \
+                            `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+
+                    ty::ClauseKind::Projection(_)
+                    | ty::ClauseKind::TypeOutlives(_)
+                    | ty::ClauseKind::RegionOutlives(_)
+                    | ty::ClauseKind::ConstArgHasType(_, _)
+                    | ty::ClauseKind::WellFormed(_)
+                    | ty::ClauseKind::ConstEvaluatable(_)
+                    | ty::ClauseKind::HostEffect(..) => {
+                        bug!(
+                            "unexpected non-`Self` predicate when computing \
+                            `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+                }
+            }
+        }
+        PredicateFilter::ConstIfConst => {
+            for (clause, _) in bounds {
+                match clause.kind().skip_binder() {
+                    ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                        trait_ref: _,
+                        constness: ty::BoundConstness::Maybe,
+                    }) => {}
+                    _ => {
+                        bug!(
+                            "unexpected non-`HostEffect` predicate when computing \
+                            `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+                }
+            }
+        }
+        PredicateFilter::SelfConstIfConst => {
+            for (clause, _) in bounds {
+                match clause.kind().skip_binder() {
+                    ty::ClauseKind::HostEffect(pred) => {
+                        assert_eq!(
+                            pred.constness,
+                            ty::BoundConstness::Maybe,
+                            "expected `~const` predicate when computing `{filter:?}` \
+                            implied bounds: {clause:?}",
+                        );
+                        assert_eq!(
+                            pred.trait_ref.self_ty(),
+                            ty,
+                            "expected `Self` predicate when computing `{filter:?}` \
+                            implied bounds: {clause:?}"
+                        );
+                    }
+                    _ => {
+                        bug!(
+                            "unexpected non-`HostEffect` predicate when computing \
+                            `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
                 }
@@ -745,8 +811,15 @@ pub(super) fn type_param_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     (item_def_id, def_id, assoc_name): (LocalDefId, LocalDefId, Ident),
 ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
-    use rustc_hir::*;
-    use rustc_middle::ty::Ty;
+    match tcx.opt_rpitit_info(item_def_id.to_def_id()) {
+        Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
+            return tcx.type_param_predicates((opaque_def_id.expect_local(), def_id, assoc_name));
+        }
+        Some(ty::ImplTraitInTraitData::Impl { .. }) => {
+            unreachable!("should not be lowering bounds on RPITIT in impl")
+        }
+        None => {}
+    }
 
     // In the HIR, bounds can derive from two places. Either
     // written inline like `<T: Foo>` or in a where-clause like
@@ -754,12 +827,10 @@ pub(super) fn type_param_predicates<'tcx>(
 
     let param_id = tcx.local_def_id_to_hir_id(def_id);
     let param_owner = tcx.hir().ty_param_owner(def_id);
-    let generics = tcx.generics_of(param_owner);
-    let index = generics.param_def_id_to_index[&def_id.to_def_id()];
-    let ty = Ty::new_param(tcx, index, tcx.hir().ty_param_name(def_id));
 
     // Don't look for bounds where the type parameter isn't in scope.
     let parent = if item_def_id == param_owner {
+        // FIXME: Shouldn't this be unreachable?
         None
     } else {
         tcx.generics_of(item_def_id).parent.map(|def_id| def_id.expect_local())
@@ -779,8 +850,9 @@ pub(super) fn type_param_predicates<'tcx>(
     let Some(hir_generics) = hir_node.generics() else {
         return result;
     };
+
     if let Node::Item(item) = hir_node
-        && let ItemKind::Trait(..) = item.kind
+        && let hir::ItemKind::Trait(..) = item.kind
         // Implied `Self: Trait` and supertrait bounds.
         && param_id == item_hir_id
     {
@@ -789,23 +861,34 @@ pub(super) fn type_param_predicates<'tcx>(
     }
 
     let icx = ItemCtxt::new(tcx, item_def_id);
-    let extra_predicates = extend.into_iter().chain(
-        icx.probe_ty_param_bounds_in_generics(
-            hir_generics,
-            def_id,
-            ty,
-            PredicateFilter::SelfThatDefines(assoc_name),
-        )
-        .into_iter()
-        .filter(|(predicate, _)| match predicate.kind().skip_binder() {
-            ty::ClauseKind::Trait(data) => data.self_ty().is_param(index),
-            _ => false,
-        }),
+    let extra_predicates = extend.into_iter().chain(icx.probe_ty_param_bounds_in_generics(
+        hir_generics,
+        def_id,
+        PredicateFilter::SelfTraitThatDefines(assoc_name),
+    ));
+
+    let bounds =
+        &*tcx.arena.alloc_from_iter(result.skip_binder().iter().copied().chain(extra_predicates));
+
+    // Double check that the bounds *only* contain `SelfTy: Trait` preds.
+    let self_ty = match tcx.def_kind(def_id) {
+        DefKind::TyParam => Ty::new_param(
+            tcx,
+            tcx.generics_of(item_def_id)
+                .param_def_id_to_index(tcx, def_id.to_def_id())
+                .expect("expected generic param to be owned by item"),
+            tcx.item_name(def_id.to_def_id()),
+        ),
+        DefKind::Trait | DefKind::TraitAlias => tcx.types.self_param,
+        _ => unreachable!(),
+    };
+    assert_only_contains_predicates_from(
+        PredicateFilter::SelfTraitThatDefines(assoc_name),
+        bounds,
+        self_ty,
     );
 
-    ty::EarlyBinder::bind(
-        tcx.arena.alloc_from_iter(result.skip_binder().iter().copied().chain(extra_predicates)),
-    )
+    ty::EarlyBinder::bind(bounds)
 }
 
 impl<'tcx> ItemCtxt<'tcx> {
@@ -819,25 +902,33 @@ impl<'tcx> ItemCtxt<'tcx> {
         &self,
         hir_generics: &'tcx hir::Generics<'tcx>,
         param_def_id: LocalDefId,
-        ty: Ty<'tcx>,
         filter: PredicateFilter,
     ) -> Vec<(ty::Clause<'tcx>, Span)> {
         let mut bounds = Bounds::default();
 
         for predicate in hir_generics.predicates {
-            let hir::WherePredicate::BoundPredicate(predicate) = predicate else {
+            let hir_id = predicate.hir_id;
+            let hir::WherePredicateKind::BoundPredicate(predicate) = predicate.kind else {
                 continue;
             };
 
-            let bound_ty = if predicate.is_param_bound(param_def_id.to_def_id()) {
-                ty
-            } else if matches!(filter, PredicateFilter::All) {
-                self.lowerer().lower_ty_maybe_return_type_notation(predicate.bounded_ty)
-            } else {
-                continue;
-            };
+            match filter {
+                _ if predicate.is_param_bound(param_def_id.to_def_id()) => {
+                    // Ok
+                }
+                PredicateFilter::All => {
+                    // Ok
+                }
+                PredicateFilter::SelfOnly
+                | PredicateFilter::SelfTraitThatDefines(_)
+                | PredicateFilter::SelfConstIfConst
+                | PredicateFilter::SelfAndAssociatedTypeBounds => continue,
+                PredicateFilter::ConstIfConst => unreachable!(),
+            }
 
-            let bound_vars = self.tcx.late_bound_vars(predicate.hir_id);
+            let bound_ty = self.lowerer().lower_ty_maybe_return_type_notation(predicate.bounded_ty);
+
+            let bound_vars = self.tcx.late_bound_vars(hir_id);
             self.lowerer().lower_bounds(
                 bound_ty,
                 predicate.bounds,
@@ -847,6 +938,173 @@ impl<'tcx> ItemCtxt<'tcx> {
             );
         }
 
-        bounds.clauses(self.tcx).collect()
+        bounds.clauses().collect()
     }
+}
+
+/// Compute the conditions that need to hold for a conditionally-const item to be const.
+/// That is, compute the set of `~const` where clauses for a given item.
+///
+/// This query also computes the `~const` where clauses for associated types, which are
+/// not "const", but which have item bounds which may be `~const`. These must hold for
+/// the `~const` item bound to hold.
+pub(super) fn const_conditions<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> ty::ConstConditions<'tcx> {
+    if !tcx.is_conditionally_const(def_id) {
+        bug!("const_conditions invoked for item that is not conditionally const: {def_id:?}");
+    }
+
+    match tcx.opt_rpitit_info(def_id.to_def_id()) {
+        // RPITITs inherit const conditions of their parent fn
+        Some(
+            ty::ImplTraitInTraitData::Impl { fn_def_id }
+            | ty::ImplTraitInTraitData::Trait { fn_def_id, .. },
+        ) => return tcx.const_conditions(fn_def_id),
+        None => {}
+    }
+
+    let (generics, trait_def_id_and_supertraits, has_parent) = match tcx.hir_node_by_def_id(def_id)
+    {
+        Node::Item(item) => match item.kind {
+            hir::ItemKind::Impl(impl_) => (impl_.generics, None, false),
+            hir::ItemKind::Fn { generics, .. } => (generics, None, false),
+            hir::ItemKind::Trait(_, _, generics, supertraits, _) => {
+                (generics, Some((item.owner_id.def_id, supertraits)), false)
+            }
+            _ => bug!("const_conditions called on wrong item: {def_id:?}"),
+        },
+        // While associated types are not really const, we do allow them to have `~const`
+        // bounds and where clauses. `const_conditions` is responsible for gathering
+        // these up so we can check them in `compare_type_predicate_entailment`, and
+        // in `HostEffect` goal computation.
+        Node::TraitItem(item) => match item.kind {
+            hir::TraitItemKind::Fn(_, _) | hir::TraitItemKind::Type(_, _) => {
+                (item.generics, None, true)
+            }
+            _ => bug!("const_conditions called on wrong item: {def_id:?}"),
+        },
+        Node::ImplItem(item) => match item.kind {
+            hir::ImplItemKind::Fn(_, _) | hir::ImplItemKind::Type(_) => {
+                (item.generics, None, tcx.is_conditionally_const(tcx.local_parent(def_id)))
+            }
+            _ => bug!("const_conditions called on wrong item: {def_id:?}"),
+        },
+        Node::ForeignItem(item) => match item.kind {
+            hir::ForeignItemKind::Fn(_, _, generics) => (generics, None, false),
+            _ => bug!("const_conditions called on wrong item: {def_id:?}"),
+        },
+        Node::OpaqueTy(opaque) => match opaque.origin {
+            hir::OpaqueTyOrigin::FnReturn { parent, .. } => return tcx.const_conditions(parent),
+            hir::OpaqueTyOrigin::AsyncFn { .. } | hir::OpaqueTyOrigin::TyAlias { .. } => {
+                unreachable!()
+            }
+        },
+        // N.B. Tuple ctors are unconditionally constant.
+        Node::Ctor(hir::VariantData::Tuple { .. }) => return Default::default(),
+        _ => bug!("const_conditions called on wrong item: {def_id:?}"),
+    };
+
+    let icx = ItemCtxt::new(tcx, def_id);
+    let mut bounds = Bounds::default();
+
+    for pred in generics.predicates {
+        match pred.kind {
+            hir::WherePredicateKind::BoundPredicate(bound_pred) => {
+                let ty = icx.lowerer().lower_ty_maybe_return_type_notation(bound_pred.bounded_ty);
+                let bound_vars = tcx.late_bound_vars(pred.hir_id);
+                icx.lowerer().lower_bounds(
+                    ty,
+                    bound_pred.bounds.iter(),
+                    &mut bounds,
+                    bound_vars,
+                    PredicateFilter::ConstIfConst,
+                );
+            }
+            _ => {}
+        }
+    }
+
+    if let Some((def_id, supertraits)) = trait_def_id_and_supertraits {
+        bounds.push_const_bound(
+            tcx,
+            ty::Binder::dummy(ty::TraitRef::identity(tcx, def_id.to_def_id())),
+            ty::BoundConstness::Maybe,
+            DUMMY_SP,
+        );
+
+        icx.lowerer().lower_bounds(
+            tcx.types.self_param,
+            supertraits,
+            &mut bounds,
+            ty::List::empty(),
+            PredicateFilter::ConstIfConst,
+        );
+    }
+
+    ty::ConstConditions {
+        parent: has_parent.then(|| tcx.local_parent(def_id).to_def_id()),
+        predicates: tcx.arena.alloc_from_iter(bounds.clauses().map(|(clause, span)| {
+            (
+                clause.kind().map_bound(|clause| match clause {
+                    ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                        trait_ref,
+                        constness: ty::BoundConstness::Maybe,
+                    }) => trait_ref,
+                    _ => bug!("converted {clause:?}"),
+                }),
+                span,
+            )
+        })),
+    }
+}
+
+pub(super) fn explicit_implied_const_bounds<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::PolyTraitRef<'tcx>, Span)]> {
+    if !tcx.is_conditionally_const(def_id) {
+        bug!("const_conditions invoked for item that is not conditionally const: {def_id:?}");
+    }
+
+    let bounds = match tcx.opt_rpitit_info(def_id.to_def_id()) {
+        // RPITIT's bounds are the same as opaque type bounds, but with
+        // a projection self type.
+        Some(ty::ImplTraitInTraitData::Trait { .. }) => {
+            explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::ConstIfConst)
+        }
+        Some(ty::ImplTraitInTraitData::Impl { .. }) => {
+            span_bug!(tcx.def_span(def_id), "RPITIT in impl should not have item bounds")
+        }
+        None => match tcx.hir_node_by_def_id(def_id) {
+            Node::Item(hir::Item { kind: hir::ItemKind::Trait(..), .. }) => {
+                implied_predicates_with_filter(
+                    tcx,
+                    def_id.to_def_id(),
+                    PredicateFilter::SelfConstIfConst,
+                )
+            }
+            Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Type(..), .. })
+            | Node::OpaqueTy(_) => {
+                explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::ConstIfConst)
+            }
+            _ => bug!("explicit_implied_const_bounds called on wrong item: {def_id:?}"),
+        },
+    };
+
+    bounds.map_bound(|bounds| {
+        &*tcx.arena.alloc_from_iter(bounds.iter().copied().map(|(clause, span)| {
+            (
+                clause.kind().map_bound(|clause| match clause {
+                    ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                        trait_ref,
+                        constness: ty::BoundConstness::Maybe,
+                    }) => trait_ref,
+                    _ => bug!("converted {clause:?}"),
+                }),
+                span,
+            )
+        }))
+    })
 }

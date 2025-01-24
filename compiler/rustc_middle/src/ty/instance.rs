@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::def::Namespace;
+use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::FiniteBitSet;
@@ -19,8 +19,8 @@ use crate::error;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer, shrunk_instance_name};
 use crate::ty::{
-    self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 
 /// An `InstanceKind` along with the args that are needed to substitute the instance.
@@ -71,7 +71,7 @@ pub enum InstanceKind<'tcx> {
     /// - coroutines
     Item(DefId),
 
-    /// An intrinsic `fn` item (with `"rust-intrinsic"` or `"platform-intrinsic"` ABI).
+    /// An intrinsic `fn` item (with `"rust-intrinsic"` ABI).
     ///
     /// Alongside `Virtual`, this is the only `InstanceKind` that does not have its own callable MIR.
     /// Instead, codegen and const eval "magically" evaluate calls to intrinsics purely in the
@@ -178,9 +178,9 @@ pub enum InstanceKind<'tcx> {
 impl<'tcx> Instance<'tcx> {
     /// Returns the `Ty` corresponding to this `Instance`, with generic instantiations applied and
     /// lifetimes erased, allowing a `ParamEnv` to be specified for use during normalization.
-    pub fn ty(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Ty<'tcx> {
+    pub fn ty(&self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Ty<'tcx> {
         let ty = tcx.type_of(self.def.def_id());
-        tcx.instantiate_and_normalize_erasing_regions(self.args, param_env, ty)
+        tcx.instantiate_and_normalize_erasing_regions(self.args, typing_env, ty)
     }
 
     /// Finds a crate that contains a monomorphization of this instance that
@@ -190,21 +190,25 @@ impl<'tcx> Instance<'tcx> {
     /// This method already takes into account the global `-Zshare-generics`
     /// setting, always returning `None` if `share-generics` is off.
     pub fn upstream_monomorphization(&self, tcx: TyCtxt<'tcx>) -> Option<CrateNum> {
-        // If we are not in share generics mode, we don't link to upstream
-        // monomorphizations but always instantiate our own internal versions
-        // instead.
-        if !tcx.sess.opts.share_generics() {
-            return None;
-        }
-
         // If this is an item that is defined in the local crate, no upstream
         // crate can know about it/provide a monomorphization.
         if self.def_id().is_local() {
             return None;
         }
 
+        // If we are not in share generics mode, we don't link to upstream
+        // monomorphizations but always instantiate our own internal versions
+        // instead.
+        if !tcx.sess.opts.share_generics()
+            // However, if the def_id is marked inline(never), then it's fine to just reuse the
+            // upstream monomorphization.
+            && tcx.codegen_fn_attrs(self.def_id()).inline != rustc_attr_parsing::InlineAttr::Never
+        {
+            return None;
+        }
+
         // If this a non-generic instance, it cannot be a shared monomorphization.
-        self.args.non_erasable_generics(tcx, self.def_id()).next()?;
+        self.args.non_erasable_generics().next()?;
 
         // compiler_builtins cannot use upstream monomorphizations.
         if tcx.is_compiler_builtins(LOCAL_CRATE) {
@@ -273,7 +277,7 @@ impl<'tcx> InstanceKind<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         attr: Symbol,
-    ) -> impl Iterator<Item = &'tcx rustc_ast::Attribute> {
+    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
         tcx.get_attrs(self.def_id(), attr)
     }
 
@@ -324,7 +328,7 @@ impl<'tcx> InstanceKind<'tcx> {
             // We include enums without destructors to allow, say, optimizing
             // drops of `Option::None` before LTO. We also respect the intent of
             // `#[inline]` on `Drop::drop` implementations.
-            return ty.ty_adt_def().map_or(true, |adt_def| {
+            return ty.ty_adt_def().is_none_or(|adt_def| {
                 match *self {
                     ty::InstanceKind::DropGlue(..) => adt_def.destructor(tcx).map(|dtor| dtor.did),
                     ty::InstanceKind::AsyncDropGlueCtorShim(..) => {
@@ -476,7 +480,6 @@ impl<'tcx> Instance<'tcx> {
     pub fn mono(tcx: TyCtxt<'tcx>, def_id: DefId) -> Instance<'tcx> {
         let args = GenericArgs::for_item(tcx, def_id, |param, _| match param.kind {
             ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-            ty::GenericParamDefKind::Const { is_host_effect: true, .. } => tcx.consts.true_.into(),
             ty::GenericParamDefKind::Type { .. } => {
                 bug!("Instance::mono: {:?} has type parameters", def_id)
             }
@@ -495,7 +498,8 @@ impl<'tcx> Instance<'tcx> {
 
     /// Resolves a `(def_id, args)` pair to an (optional) instance -- most commonly,
     /// this is used to find the precise code that will run for a trait method invocation,
-    /// if known.
+    /// if known. This should only be used for functions and consts. If you want to
+    /// resolve an associated type, use [`TyCtxt::try_normalize_erasing_regions`].
     ///
     /// Returns `Ok(None)` if we cannot resolve `Instance` to a specific instance.
     /// For example, in a context like this,
@@ -505,8 +509,8 @@ impl<'tcx> Instance<'tcx> {
     /// ```
     ///
     /// trying to resolve `Debug::fmt` applied to `T` will yield `Ok(None)`, because we do not
-    /// know what code ought to run. (Note that this setting is also affected by the
-    /// `RevealMode` in the parameter environment.)
+    /// know what code ought to run. This setting is also affected by the current `TypingMode`
+    /// of the environment.
     ///
     /// Presuming that coherence and type-check have succeeded, if this method is invoked
     /// in a monomorphic context (i.e., like during codegen), then it is guaranteed to return
@@ -520,10 +524,27 @@ impl<'tcx> Instance<'tcx> {
     #[instrument(level = "debug", skip(tcx), ret)]
     pub fn try_resolve(
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
+        assert_matches!(
+            tcx.def_kind(def_id),
+            DefKind::Fn
+                | DefKind::AssocFn
+                | DefKind::Const
+                | DefKind::AssocConst
+                | DefKind::AnonConst
+                | DefKind::InlineConst
+                | DefKind::Static { .. }
+                | DefKind::Ctor(_, CtorKind::Fn)
+                | DefKind::Closure
+                | DefKind::SyntheticCoroutineBody,
+            "`Instance::try_resolve` should only be used to resolve instances of \
+            functions, statics, and consts; to resolve associated types, use \
+            `try_normalize_erasing_regions`."
+        );
+
         // Rust code can easily create exponentially-long types using only a
         // polynomial recursion depth. Even with the default recursion
         // depth, you can easily get cases that take >2^60 steps to run,
@@ -538,17 +559,12 @@ impl<'tcx> Instance<'tcx> {
 
         // All regions in the result of this query are erased, so it's
         // fine to erase all of the input regions.
-
-        // HACK(eddyb) erase regions in `args` first, so that `param_env.and(...)`
-        // below is more likely to ignore the bounds in scope (e.g. if the only
-        // generic parameters mentioned by `args` were lifetime ones).
-        let args = tcx.erase_regions(args);
-        tcx.resolve_instance_raw(tcx.erase_regions(param_env.and((def_id, args))))
+        tcx.resolve_instance_raw(tcx.erase_regions(typing_env.as_query_input((def_id, args))))
     }
 
     pub fn expect_resolve(
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
         span: Span,
@@ -559,7 +575,7 @@ impl<'tcx> Instance<'tcx> {
         let span_or_local_def_span =
             || if span.is_dummy() && def_id.is_local() { tcx.def_span(def_id) } else { span };
 
-        match ty::Instance::try_resolve(tcx, param_env, def_id, args) {
+        match ty::Instance::try_resolve(tcx, typing_env, def_id, args) {
             Ok(Some(instance)) => instance,
             Ok(None) => {
                 let type_length = type_length(args);
@@ -601,7 +617,7 @@ impl<'tcx> Instance<'tcx> {
 
     pub fn resolve_for_fn_ptr(
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
@@ -609,7 +625,7 @@ impl<'tcx> Instance<'tcx> {
         // Use either `resolve_closure` or `resolve_for_vtable`
         assert!(!tcx.is_closure_like(def_id), "Called `resolve_for_fn_ptr` on closure: {def_id:?}");
         let reason = tcx.sess.is_sanitizer_kcfi_enabled().then_some(ReifyReason::FnPtr);
-        Instance::try_resolve(tcx, param_env, def_id, args).ok().flatten().map(|mut resolved| {
+        Instance::try_resolve(tcx, typing_env, def_id, args).ok().flatten().map(|mut resolved| {
             match resolved.def {
                 InstanceKind::Item(def) if resolved.def.requires_caller_location(tcx) => {
                     debug!(" => fn pointer created for function with #[track_caller]");
@@ -649,7 +665,7 @@ impl<'tcx> Instance<'tcx> {
 
     pub fn expect_resolve_for_vtable(
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
         span: Span,
@@ -665,7 +681,7 @@ impl<'tcx> Instance<'tcx> {
             return Instance { def: InstanceKind::VTableShim(def_id), args };
         }
 
-        let mut resolved = Instance::expect_resolve(tcx, param_env, def_id, args, span);
+        let mut resolved = Instance::expect_resolve(tcx, typing_env, def_id, args, span);
 
         let reason = tcx.sess.is_sanitizer_kcfi_enabled().then_some(ReifyReason::Vtable);
         match resolved.def {
@@ -679,23 +695,26 @@ impl<'tcx> Instance<'tcx> {
                 //
                 // 1) The underlying method expects a caller location parameter
                 // in the ABI
-                if resolved.def.requires_caller_location(tcx)
-                        // 2) The caller location parameter comes from having `#[track_caller]`
-                        // on the implementation, and *not* on the trait method.
-                        && !tcx.should_inherit_track_caller(def)
-                        // If the method implementation comes from the trait definition itself
-                        // (e.g. `trait Foo { #[track_caller] my_fn() { /* impl */ } }`),
-                        // then we don't need to generate a shim. This check is needed because
-                        // `should_inherit_track_caller` returns `false` if our method
-                        // implementation comes from the trait block, and not an impl block
-                        && !matches!(
-                            tcx.opt_associated_item(def),
-                            Some(ty::AssocItem {
-                                container: ty::AssocItemContainer::TraitContainer,
-                                ..
-                            })
-                        )
-                {
+                let needs_track_caller_shim = resolved.def.requires_caller_location(tcx)
+                    // 2) The caller location parameter comes from having `#[track_caller]`
+                    // on the implementation, and *not* on the trait method.
+                    && !tcx.should_inherit_track_caller(def)
+                    // If the method implementation comes from the trait definition itself
+                    // (e.g. `trait Foo { #[track_caller] my_fn() { /* impl */ } }`),
+                    // then we don't need to generate a shim. This check is needed because
+                    // `should_inherit_track_caller` returns `false` if our method
+                    // implementation comes from the trait block, and not an impl block
+                    && !matches!(
+                        tcx.opt_associated_item(def),
+                        Some(ty::AssocItem {
+                            container: ty::AssocItemContainer::Trait,
+                            ..
+                        })
+                    );
+                // We also need to generate a shim if this is an AFIT.
+                let needs_rpitit_shim =
+                    tcx.return_position_impl_trait_in_trait_shim_data(def).is_some();
+                if needs_track_caller_shim || needs_rpitit_shim {
                     if tcx.is_closure_like(def) {
                         debug!(
                             " => vtable fn pointer created for closure with #[track_caller]: {:?} for method {:?} {:?}",
@@ -744,7 +763,7 @@ impl<'tcx> Instance<'tcx> {
         let args = tcx.mk_args(&[ty.into()]);
         Instance::expect_resolve(
             tcx,
-            ty::ParamEnv::reveal_all(),
+            ty::TypingEnv::fully_monomorphized(),
             def_id,
             args,
             ty.ty_adt_def().and_then(|adt| tcx.hir().span_if_local(adt.did())).unwrap_or(DUMMY_SP),
@@ -756,7 +775,7 @@ impl<'tcx> Instance<'tcx> {
         let args = tcx.mk_args(&[ty.into()]);
         Instance::expect_resolve(
             tcx,
-            ty::ParamEnv::reveal_all(),
+            ty::TypingEnv::fully_monomorphized(),
             def_id,
             args,
             ty.ty_adt_def().and_then(|adt| tcx.hir().span_if_local(adt.did())).unwrap_or(DUMMY_SP),
@@ -884,16 +903,16 @@ impl<'tcx> Instance<'tcx> {
     pub fn instantiate_mir_and_normalize_erasing_regions<T>(
         &self,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         v: EarlyBinder<'tcx, T>,
     ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         if let Some(args) = self.args_for_mir_body() {
-            tcx.instantiate_and_normalize_erasing_regions(args, param_env, v)
+            tcx.instantiate_and_normalize_erasing_regions(args, typing_env, v)
         } else {
-            tcx.normalize_erasing_regions(param_env, v.instantiate_identity())
+            tcx.normalize_erasing_regions(typing_env, v.instantiate_identity())
         }
     }
 
@@ -902,133 +921,23 @@ impl<'tcx> Instance<'tcx> {
     pub fn try_instantiate_mir_and_normalize_erasing_regions<T>(
         &self,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         v: EarlyBinder<'tcx, T>,
     ) -> Result<T, NormalizationError<'tcx>>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         if let Some(args) = self.args_for_mir_body() {
-            tcx.try_instantiate_and_normalize_erasing_regions(args, param_env, v)
+            tcx.try_instantiate_and_normalize_erasing_regions(args, typing_env, v)
         } else {
             // We're using `instantiate_identity` as e.g.
             // `FnPtrShim` is separately generated for every
             // instantiation of the `FnDef`, so the MIR body
             // is already instantiated. Any generic parameters it
             // contains are generic parameters from the caller.
-            tcx.try_normalize_erasing_regions(param_env, v.instantiate_identity())
+            tcx.try_normalize_erasing_regions(typing_env, v.instantiate_identity())
         }
     }
-
-    /// Returns a new `Instance` where generic parameters in `instance.args` are replaced by
-    /// identity parameters if they are determined to be unused in `instance.def`.
-    pub fn polymorphize(self, tcx: TyCtxt<'tcx>) -> Self {
-        debug!("polymorphize: running polymorphization analysis");
-        if !tcx.sess.opts.unstable_opts.polymorphize {
-            return self;
-        }
-
-        let polymorphized_args = polymorphize(tcx, self.def, self.args);
-        debug!("polymorphize: self={:?} polymorphized_args={:?}", self, polymorphized_args);
-        Self { def: self.def, args: polymorphized_args }
-    }
-}
-
-fn polymorphize<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    instance: ty::InstanceKind<'tcx>,
-    args: GenericArgsRef<'tcx>,
-) -> GenericArgsRef<'tcx> {
-    debug!("polymorphize({:?}, {:?})", instance, args);
-    let unused = tcx.unused_generic_params(instance);
-    debug!("polymorphize: unused={:?}", unused);
-
-    // If this is a closure or coroutine then we need to handle the case where another closure
-    // from the function is captured as an upvar and hasn't been polymorphized. In this case,
-    // the unpolymorphized upvar closure would result in a polymorphized closure producing
-    // multiple mono items (and eventually symbol clashes).
-    let def_id = instance.def_id();
-    let upvars_ty = match tcx.type_of(def_id).skip_binder().kind() {
-        ty::Closure(..) => Some(args.as_closure().tupled_upvars_ty()),
-        ty::Coroutine(..) => {
-            assert_eq!(
-                args.as_coroutine().kind_ty(),
-                tcx.types.unit,
-                "polymorphization does not support coroutines from async closures"
-            );
-            Some(args.as_coroutine().tupled_upvars_ty())
-        }
-        _ => None,
-    };
-    let has_upvars = upvars_ty.is_some_and(|ty| !ty.tuple_fields().is_empty());
-    debug!("polymorphize: upvars_ty={:?} has_upvars={:?}", upvars_ty, has_upvars);
-
-    struct PolymorphizationFolder<'tcx> {
-        tcx: TyCtxt<'tcx>,
-    }
-
-    impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for PolymorphizationFolder<'tcx> {
-        fn cx(&self) -> TyCtxt<'tcx> {
-            self.tcx
-        }
-
-        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-            debug!("fold_ty: ty={:?}", ty);
-            match *ty.kind() {
-                ty::Closure(def_id, args) => {
-                    let polymorphized_args =
-                        polymorphize(self.tcx, ty::InstanceKind::Item(def_id), args);
-                    if args == polymorphized_args {
-                        ty
-                    } else {
-                        Ty::new_closure(self.tcx, def_id, polymorphized_args)
-                    }
-                }
-                ty::Coroutine(def_id, args) => {
-                    let polymorphized_args =
-                        polymorphize(self.tcx, ty::InstanceKind::Item(def_id), args);
-                    if args == polymorphized_args {
-                        ty
-                    } else {
-                        Ty::new_coroutine(self.tcx, def_id, polymorphized_args)
-                    }
-                }
-                _ => ty.super_fold_with(self),
-            }
-        }
-    }
-
-    GenericArgs::for_item(tcx, def_id, |param, _| {
-        let is_unused = unused.is_unused(param.index);
-        debug!("polymorphize: param={:?} is_unused={:?}", param, is_unused);
-        match param.kind {
-            // Upvar case: If parameter is a type parameter..
-            ty::GenericParamDefKind::Type { .. } if
-                // ..and has upvars..
-                has_upvars &&
-                // ..and this param has the same type as the tupled upvars..
-                upvars_ty == Some(args[param.index as usize].expect_ty()) => {
-                    // ..then double-check that polymorphization marked it used..
-                    debug_assert!(!is_unused);
-                    // ..and polymorphize any closures/coroutines captured as upvars.
-                    let upvars_ty = upvars_ty.unwrap();
-                    let polymorphized_upvars_ty = upvars_ty.fold_with(
-                        &mut PolymorphizationFolder { tcx });
-                    debug!("polymorphize: polymorphized_upvars_ty={:?}", polymorphized_upvars_ty);
-                    ty::GenericArg::from(polymorphized_upvars_ty)
-                },
-
-            // Simple case: If parameter is a const or type parameter..
-            ty::GenericParamDefKind::Const { .. } | ty::GenericParamDefKind::Type { .. } if
-                // ..and is within range and unused..
-                unused.is_unused(param.index) =>
-                    // ..then use the identity for this parameter.
-                    tcx.mk_param_from_def(param),
-
-            // Otherwise, use the parameter as before.
-            _ => args[param.index as usize],
-        }
-    })
 }
 
 fn needs_fn_once_adapter_shim(

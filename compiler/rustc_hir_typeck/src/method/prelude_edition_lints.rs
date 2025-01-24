@@ -8,9 +8,7 @@ use rustc_lint::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::lint::builtin::{RUST_2021_PRELUDE_COLLISIONS, RUST_2024_PRELUDE_COLLISIONS};
-use rustc_span::Span;
-use rustc_span::symbol::kw::{Empty, Underscore};
-use rustc_span::symbol::{Ident, sym};
+use rustc_span::{Ident, STDLIB_STABLE_CRATES, Span, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
 
@@ -78,7 +76,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // No need to lint if method came from std/core, as that will now be in the prelude
-        if matches!(self.tcx.crate_name(pick.item.def_id.krate), sym::std | sym::core) {
+        if STDLIB_STABLE_CRATES.contains(&self.tcx.crate_name(pick.item.def_id.krate)) {
             return;
         }
 
@@ -254,7 +252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // No need to lint if method came from std/core, as that will now be in the prelude
-        if matches!(self.tcx.crate_name(pick.item.def_id.krate), sym::std | sym::core) {
+        if STDLIB_STABLE_CRATES.contains(&self.tcx.crate_name(pick.item.def_id.krate)) {
             return;
         }
 
@@ -369,11 +367,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect();
 
         // Find an identifier with which this trait was imported (note that `_` doesn't count).
-        let any_id = import_items
-            .iter()
-            .find_map(|item| if item.ident.name != Underscore { Some(item.ident) } else { None });
+        let any_id = import_items.iter().find_map(|item| {
+            if item.ident.name != kw::Underscore { Some(item.ident) } else { None }
+        });
         if let Some(any_id) = any_id {
-            if any_id.name == Empty {
+            if any_id.name == kw::Empty {
                 // Glob import, so just use its name.
                 return None;
             } else {

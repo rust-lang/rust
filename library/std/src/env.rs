@@ -336,7 +336,10 @@ impl Error for VarError {
 ///  - [Austin Group Bugzilla](https://austingroupbugs.net/view.php?id=188)
 ///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
 ///
+/// To pass an environment variable to a child process, you can instead use [`Command::env`].
+///
 /// [`std::net::ToSocketAddrs`]: crate::net::ToSocketAddrs
+/// [`Command::env`]: crate::process::Command::env
 ///
 /// # Panics
 ///
@@ -396,7 +399,12 @@ pub unsafe fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
 ///  - [Austin Group Bugzilla](https://austingroupbugs.net/view.php?id=188)
 ///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
 ///
+/// To prevent a child process from inheriting an environment variable, you can
+/// instead use [`Command::env_remove`] or [`Command::env_clear`].
+///
 /// [`std::net::ToSocketAddrs`]: crate::net::ToSocketAddrs
+/// [`Command::env_remove`]: crate::process::Command::env_remove
+/// [`Command::env_clear`]: crate::process::Command::env_clear
 ///
 /// # Panics
 ///
@@ -597,6 +605,13 @@ impl Error for JoinPathsError {
 
 /// Returns the path of the current user's home directory if known.
 ///
+/// This may return `None` if getting the directory fails or if the platform does not have user home directories.
+///
+/// For storing user data and configuration it is often preferable to use more specific directories.
+/// For example, [XDG Base Directories] on Unix or the `LOCALAPPDATA` and `APPDATA` environment variables on Windows.
+///
+/// [XDG Base Directories]: https://specifications.freedesktop.org/basedir-spec/latest/
+///
 /// # Unix
 ///
 /// - Returns the value of the 'HOME' environment variable if it is set
@@ -608,20 +623,16 @@ impl Error for JoinPathsError {
 ///
 /// # Windows
 ///
-/// - Returns the value of the 'HOME' environment variable if it is set
-///   (including to an empty string).
-/// - Otherwise, returns the value of the 'USERPROFILE' environment variable if it is set
-///   (including to an empty string).
-/// - If both do not exist, [`GetUserProfileDirectory`][msdn] is used to return the path.
+/// - Returns the value of the 'USERPROFILE' environment variable if it is set, and is not an empty string.
+/// - Otherwise, [`GetUserProfileDirectory`][msdn] is used to return the path. This may change in the future.
 ///
 /// [msdn]: https://docs.microsoft.com/en-us/windows/win32/api/userenv/nf-userenv-getuserprofiledirectorya
 ///
-/// # Deprecation
+/// In UWP (Universal Windows Platform) targets this function is unimplemented and always returns `None`.
 ///
-/// This function is deprecated because the behaviour on Windows is not correct.
-/// The 'HOME' environment variable is not standard on Windows, and may not produce
-/// desired results; for instance, under Cygwin or Mingw it will return `/home/you`
-/// when it should return `C:\Users\you`.
+/// Before Rust 1.85.0, this function used to return the value of the 'HOME' environment variable
+/// on Windows, which in Cygwin or Mingw environments could return non-standard paths like `/home/you`
+/// instead of `C:\Users\you`.
 ///
 /// # Examples
 ///
@@ -653,19 +664,28 @@ pub fn home_dir() -> Option<PathBuf> {
 /// may result in "insecure temporary file" security vulnerabilities. Consider
 /// using a crate that securely creates temporary files or directories.
 ///
+/// Note that the returned value may be a symbolic link, not a directory.
+///
 /// # Platform-specific behavior
 ///
 /// On Unix, returns the value of the `TMPDIR` environment variable if it is
-/// set, otherwise for non-Android it returns `/tmp`. On Android, since there
-/// is no global temporary folder (it is usually allocated per-app), it returns
-/// `/data/local/tmp`.
+/// set, otherwise the value is OS-specific:
+/// - On Android, there is no global temporary folder (it is usually allocated
+///   per-app), it returns `/data/local/tmp`.
+/// - On Darwin-based OSes (macOS, iOS, etc) it returns the directory provided
+///   by `confstr(_CS_DARWIN_USER_TEMP_DIR, ...)`, as recommended by [Apple's
+///   security guidelines][appledoc].
+/// - On all other unix-based OSes, it returns `/tmp`.
+///
 /// On Windows, the behavior is equivalent to that of [`GetTempPath2`][GetTempPath2] /
 /// [`GetTempPath`][GetTempPath], which this function uses internally.
+///
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
 /// [GetTempPath2]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppath2a
 /// [GetTempPath]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppatha
+/// [appledoc]: https://developer.apple.com/library/archive/documentation/Security/Conceptual/SecureCodingGuide/Articles/RaceConditions.html#//apple_ref/doc/uid/TP40002585-SW10
 ///
 /// ```no_run
 /// use std::env;

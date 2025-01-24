@@ -23,6 +23,7 @@ fn test<'a, 'b, T, const N: usize>() where &'b (): Sized {
     let _: [u8; baz::<'b>(&())]; //[min]~ ERROR generic parameters may not
 
     let _ = [0; foo::<T>()]; //[min]~ ERROR constant expression depends on a generic parameter
+                             //[min]~^ ERROR constant expression depends on a generic parameter
     let _ = [0; bar::<N>()]; //[min]~ ERROR generic parameters may not
                              //[min]~^ ERROR unresolved item provided when a constant was expected
     let _ = [0; faz::<'a>(&())]; //[min]~ ERROR generic parameters may not

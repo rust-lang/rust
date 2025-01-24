@@ -23,6 +23,7 @@
 #![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
+#![feature(iterator_try_reduce)]
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustdoc_internals)]

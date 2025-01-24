@@ -5,7 +5,6 @@ use std::ops::Deref;
 use std::{fmt, iter, mem, ptr, slice};
 
 use rustc_data_structures::aligned::{Aligned, align_of};
-#[cfg(parallel_compiler)]
 use rustc_data_structures::sync::DynSync;
 use rustc_serialize::{Encodable, Encoder};
 
@@ -22,7 +21,7 @@ use crate::arena::Arena;
 ///   pointer.
 /// - Because of this, you cannot get a `List<T>` that is a sub-list of another
 ///   `List<T>`. You can get a sub-slice `&[T]`, however.
-/// - `List<T>` can be used with `CopyTaggedPtr`, which is useful within
+/// - `List<T>` can be used with `TaggedRef`, which is useful within
 ///   structs whose size must be minimized.
 /// - Because of the uniqueness assumption, we can use the address of a
 ///   `List<T>` for faster equality comparisons and hashing.
@@ -259,7 +258,6 @@ impl<'a, H, T: Copy> IntoIterator for &'a RawList<H, T> {
 unsafe impl<H: Sync, T: Sync> Sync for RawList<H, T> {}
 
 // We need this since `List` uses extern type `OpaqueListContents`.
-#[cfg(parallel_compiler)]
 unsafe impl<H: DynSync, T: DynSync> DynSync for RawList<H, T> {}
 
 // Safety:

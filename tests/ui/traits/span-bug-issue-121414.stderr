@@ -6,22 +6,6 @@ LL | impl<'a> Bar for Foo<'f> {
    |      |
    |      help: consider introducing lifetime `'f` here: `'f,`
 
-error[E0277]: the trait bound `for<'a> Foo<'a>: Bar` is not satisfied
-  --> $DIR/span-bug-issue-121414.rs:9:1
-   |
-LL | / fn test()
-LL | |
-LL | | where
-LL | |     for<'a> <Foo<'a> as Bar>::Type: Sized,
-   | |__________________________________________^ the trait `for<'a> Bar` is not implemented for `Foo<'a>`
+error: aborting due to 1 previous error
 
-error[E0277]: the trait bound `for<'a> Foo<'a>: Bar` is not satisfied
-  --> $DIR/span-bug-issue-121414.rs:9:4
-   |
-LL | fn test()
-   |    ^^^^ the trait `for<'a> Bar` is not implemented for `Foo<'a>`
-
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0261, E0277.
-For more information about an error, try `rustc --explain E0261`.
+For more information about this error, try `rustc --explain E0261`.

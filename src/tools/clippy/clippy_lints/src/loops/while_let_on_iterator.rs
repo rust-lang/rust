@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use super::WHILE_LET_ON_ITERATOR;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
@@ -204,35 +206,32 @@ fn uses_iter<'tcx>(cx: &LateContext<'tcx>, iter_expr: &IterExpr, container: &'tc
     struct V<'a, 'b, 'tcx> {
         cx: &'a LateContext<'tcx>,
         iter_expr: &'b IterExpr,
-        uses_iter: bool,
     }
     impl<'tcx> Visitor<'tcx> for V<'_, '_, 'tcx> {
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-            if self.uses_iter {
-                // return
-            } else if is_expr_same_child_or_parent_field(self.cx, e, &self.iter_expr.fields, self.iter_expr.path) {
-                self.uses_iter = true;
+        type Result = ControlFlow<()>;
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> Self::Result {
+            if is_expr_same_child_or_parent_field(self.cx, e, &self.iter_expr.fields, self.iter_expr.path) {
+                ControlFlow::Break(())
             } else if let (e, true) = skip_fields_and_path(e) {
                 if let Some(e) = e {
-                    self.visit_expr(e);
+                    self.visit_expr(e)
+                } else {
+                    ControlFlow::Continue(())
                 }
             } else if let ExprKind::Closure(&Closure { body: id, .. }) = e.kind {
                 if is_res_used(self.cx, self.iter_expr.path, id) {
-                    self.uses_iter = true;
+                    ControlFlow::Break(())
+                } else {
+                    ControlFlow::Continue(())
                 }
             } else {
-                walk_expr(self, e);
+                walk_expr(self, e)
             }
         }
     }
 
-    let mut v = V {
-        cx,
-        iter_expr,
-        uses_iter: false,
-    };
-    v.visit_expr(container);
-    v.uses_iter
+    let mut v = V { cx, iter_expr };
+    v.visit_expr(container).is_break()
 }
 
 #[expect(clippy::too_many_lines)]
@@ -242,34 +241,38 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
         iter_expr: &'b IterExpr,
         loop_id: HirId,
         after_loop: bool,
-        used_iter: bool,
     }
     impl<'tcx> Visitor<'tcx> for AfterLoopVisitor<'_, '_, 'tcx> {
         type NestedFilter = OnlyBodies;
+        type Result = ControlFlow<()>;
         fn nested_visit_map(&mut self) -> Self::Map {
             self.cx.tcx.hir()
         }
 
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-            if self.used_iter {
-                return;
-            }
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> Self::Result {
             if self.after_loop {
                 if is_expr_same_child_or_parent_field(self.cx, e, &self.iter_expr.fields, self.iter_expr.path) {
-                    self.used_iter = true;
+                    ControlFlow::Break(())
                 } else if let (e, true) = skip_fields_and_path(e) {
                     if let Some(e) = e {
-                        self.visit_expr(e);
+                        self.visit_expr(e)
+                    } else {
+                        ControlFlow::Continue(())
                     }
                 } else if let ExprKind::Closure(&Closure { body: id, .. }) = e.kind {
-                    self.used_iter = is_res_used(self.cx, self.iter_expr.path, id);
+                    if is_res_used(self.cx, self.iter_expr.path, id) {
+                        ControlFlow::Break(())
+                    } else {
+                        ControlFlow::Continue(())
+                    }
                 } else {
-                    walk_expr(self, e);
+                    walk_expr(self, e)
                 }
             } else if self.loop_id == e.hir_id {
                 self.after_loop = true;
+                ControlFlow::Continue(())
             } else {
-                walk_expr(self, e);
+                walk_expr(self, e)
             }
         }
     }
@@ -347,9 +350,8 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
             iter_expr,
             loop_id: loop_expr.hir_id,
             after_loop: false,
-            used_iter: false,
         };
-        v.visit_expr(cx.tcx.hir().body(cx.enclosing_body.unwrap()).value);
-        v.used_iter
+        v.visit_expr(cx.tcx.hir().body(cx.enclosing_body.unwrap()).value)
+            .is_break()
     }
 }

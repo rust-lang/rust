@@ -42,9 +42,9 @@ macro_rules! late_lint_methods {
             fn check_field_def(a: &'tcx rustc_hir::FieldDef<'tcx>);
             fn check_variant(a: &'tcx rustc_hir::Variant<'tcx>);
             fn check_path(a: &rustc_hir::Path<'tcx>, b: rustc_hir::HirId);
-            fn check_attribute(a: &'tcx rustc_ast::Attribute);
-            fn check_attributes(a: &'tcx [rustc_ast::Attribute]);
-            fn check_attributes_post(a: &'tcx [rustc_ast::Attribute]);
+            fn check_attribute(a: &'tcx rustc_hir::Attribute);
+            fn check_attributes(a: &'tcx [rustc_hir::Attribute]);
+            fn check_attributes_post(a: &'tcx [rustc_hir::Attribute]);
         ]);
     )
 }
@@ -110,7 +110,7 @@ macro_rules! declare_combined_late_lint_pass {
 
             $v fn get_lints() -> $crate::LintVec {
                 let mut lints = Vec::new();
-                $(lints.extend_from_slice(&$pass::get_lints());)*
+                $(lints.extend_from_slice(&$pass::lint_vec());)*
                 lints
             }
         }
@@ -124,6 +124,9 @@ macro_rules! declare_combined_late_lint_pass {
             fn name(&self) -> &'static str {
                 panic!()
             }
+            fn get_lints(&self) -> LintVec {
+                panic!()
+            }
         }
     )
 }
@@ -133,7 +136,7 @@ macro_rules! early_lint_methods {
     ($macro:path, $args:tt) => (
         $macro!($args, [
             fn check_param(a: &rustc_ast::Param);
-            fn check_ident(a: rustc_span::symbol::Ident);
+            fn check_ident(a: &rustc_span::Ident);
             fn check_crate(a: &rustc_ast::Crate);
             fn check_crate_post(a: &rustc_ast::Crate);
             fn check_item(a: &rustc_ast::Item);
@@ -222,7 +225,7 @@ macro_rules! declare_combined_early_lint_pass {
 
             $v fn get_lints() -> $crate::LintVec {
                 let mut lints = Vec::new();
-                $(lints.extend_from_slice(&$pass::get_lints());)*
+                $(lints.extend_from_slice(&$pass::lint_vec());)*
                 lints
             }
         }
@@ -234,6 +237,9 @@ macro_rules! declare_combined_early_lint_pass {
         #[allow(rustc::lint_pass_impl_without_macro)]
         impl $crate::LintPass for $name {
             fn name(&self) -> &'static str {
+                panic!()
+            }
+            fn get_lints(&self) -> LintVec {
                 panic!()
             }
         }

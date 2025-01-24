@@ -6,7 +6,6 @@
 //@ [e2021] run-pass
 
 //@ [e2024] edition:2024
-//@ [e2024] compile-flags: -Zunstable-options
 
 static mut FOO: (u32, u32) = (1, 2);
 

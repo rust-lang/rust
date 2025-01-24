@@ -14,7 +14,7 @@ use crate::test_db::TestDB;
 
 use super::visit_module;
 
-fn check_closure_captures(ra_fixture: &str, expect: Expect) {
+fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (db, file_id) = TestDB::with_single_file(ra_fixture);
     let module = db.module_for_file(file_id);
     let def_map = module.def_map(&db);
@@ -24,6 +24,13 @@ fn check_closure_captures(ra_fixture: &str, expect: Expect) {
 
     let mut captures_info = Vec::new();
     for def in defs {
+        let def = match def {
+            hir_def::ModuleDefId::FunctionId(it) => it.into(),
+            hir_def::ModuleDefId::EnumVariantId(it) => it.into(),
+            hir_def::ModuleDefId::ConstId(it) => it.into(),
+            hir_def::ModuleDefId::StaticId(it) => it.into(),
+            _ => continue,
+        };
         let infer = db.infer(def);
         let db = &db;
         captures_info.extend(infer.closure_info.iter().flat_map(|(closure_id, (captures, _))| {

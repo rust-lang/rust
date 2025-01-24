@@ -6,39 +6,38 @@ use AttributeDuplicates::*;
 use AttributeGate::*;
 use AttributeType::*;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 
 use crate::{Features, Stability};
 
 type GateFn = fn(&Features) -> bool;
-
-macro_rules! cfg_fn {
-    ($field: ident) => {
-        (|features| features.$field) as GateFn
-    };
-}
 
 pub type GatedCfg = (Symbol, Symbol, GateFn);
 
 /// `cfg(...)`'s that are feature gated.
 const GATED_CFGS: &[GatedCfg] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
-    (sym::overflow_checks, sym::cfg_overflow_checks, cfg_fn!(cfg_overflow_checks)),
-    (sym::ub_checks, sym::cfg_ub_checks, cfg_fn!(cfg_ub_checks)),
-    (sym::target_thread_local, sym::cfg_target_thread_local, cfg_fn!(cfg_target_thread_local)),
+    (sym::overflow_checks, sym::cfg_overflow_checks, Features::cfg_overflow_checks),
+    (sym::ub_checks, sym::cfg_ub_checks, Features::cfg_ub_checks),
+    (sym::target_thread_local, sym::cfg_target_thread_local, Features::cfg_target_thread_local),
     (
         sym::target_has_atomic_equal_alignment,
         sym::cfg_target_has_atomic_equal_alignment,
-        cfg_fn!(cfg_target_has_atomic_equal_alignment),
+        Features::cfg_target_has_atomic_equal_alignment,
     ),
-    (sym::target_has_atomic_load_store, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
-    (sym::sanitize, sym::cfg_sanitize, cfg_fn!(cfg_sanitize)),
-    (sym::version, sym::cfg_version, cfg_fn!(cfg_version)),
-    (sym::relocation_model, sym::cfg_relocation_model, cfg_fn!(cfg_relocation_model)),
-    (sym::sanitizer_cfi_generalize_pointers, sym::cfg_sanitizer_cfi, cfg_fn!(cfg_sanitizer_cfi)),
-    (sym::sanitizer_cfi_normalize_integers, sym::cfg_sanitizer_cfi, cfg_fn!(cfg_sanitizer_cfi)),
+    (
+        sym::target_has_atomic_load_store,
+        sym::cfg_target_has_atomic,
+        Features::cfg_target_has_atomic,
+    ),
+    (sym::sanitize, sym::cfg_sanitize, Features::cfg_sanitize),
+    (sym::version, sym::cfg_version, Features::cfg_version),
+    (sym::relocation_model, sym::cfg_relocation_model, Features::cfg_relocation_model),
+    (sym::sanitizer_cfi_generalize_pointers, sym::cfg_sanitizer_cfi, Features::cfg_sanitizer_cfi),
+    (sym::sanitizer_cfi_normalize_integers, sym::cfg_sanitizer_cfi, Features::cfg_sanitizer_cfi),
     // this is consistent with naming of the compiler flag it's for
-    (sym::fmt_debug, sym::fmt_debug, cfg_fn!(fmt_debug)),
+    (sym::fmt_debug, sym::fmt_debug, Features::fmt_debug),
+    (sym::emscripten_wasm_eh, sym::cfg_emscripten_wasm_eh, Features::cfg_emscripten_wasm_eh),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
@@ -220,7 +219,7 @@ macro_rules! gated {
             safety: AttributeSafety::Unsafe,
             template: $tpl,
             duplicates: $duplicates,
-            gate: Gated(Stability::Unstable, sym::$gate, $msg, cfg_fn!($gate)),
+            gate: Gated(Stability::Unstable, sym::$gate, $msg, Features::$gate),
         }
     };
     (unsafe $attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $msg:expr $(,)?) => {
@@ -231,7 +230,7 @@ macro_rules! gated {
             safety: AttributeSafety::Unsafe,
             template: $tpl,
             duplicates: $duplicates,
-            gate: Gated(Stability::Unstable, sym::$attr, $msg, cfg_fn!($attr)),
+            gate: Gated(Stability::Unstable, sym::$attr, $msg, Features::$attr),
         }
     };
     ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $gate:ident, $msg:expr $(,)?) => {
@@ -242,7 +241,7 @@ macro_rules! gated {
             safety: AttributeSafety::Normal,
             template: $tpl,
             duplicates: $duplicates,
-            gate: Gated(Stability::Unstable, sym::$gate, $msg, cfg_fn!($gate)),
+            gate: Gated(Stability::Unstable, sym::$gate, $msg, Features::$gate),
         }
     };
     ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $msg:expr $(,)?) => {
@@ -253,7 +252,7 @@ macro_rules! gated {
             safety: AttributeSafety::Normal,
             template: $tpl,
             duplicates: $duplicates,
-            gate: Gated(Stability::Unstable, sym::$attr, $msg, cfg_fn!($attr)),
+            gate: Gated(Stability::Unstable, sym::$attr, $msg, Features::$attr),
         }
     };
 }
@@ -282,7 +281,7 @@ macro_rules! rustc_attr {
             safety: AttributeSafety::Normal,
             template: $tpl,
             duplicates: $duplicates,
-            gate: Gated(Stability::Unstable, sym::rustc_attrs, $msg, cfg_fn!(rustc_attrs)),
+            gate: Gated(Stability::Unstable, sym::rustc_attrs, $msg, Features::rustc_attrs),
         }
     };
 }
@@ -449,7 +448,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Entry point:
-    ungated!(start, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(no_start, CrateLevel, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(no_main, CrateLevel, template!(Word), WarnFollowing, EncodeCrossCrate::No),
 
@@ -573,7 +571,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // `#[coroutine]` attribute to be applied to closures to make them coroutines instead
     gated!(
         coroutine, Normal, template!(Word), ErrorFollowing,
-        EncodeCrossCrate::No, coroutines, experimental!(coroutines)
+        EncodeCrossCrate::No, coroutines, experimental!(coroutine)
     ),
 
     // RFC 3543
@@ -620,16 +618,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "allow_internal_unstable side-steps feature gating and stability checks",
     ),
     gated!(
-        rustc_allow_const_fn_unstable, Normal,
-        template!(Word, List: "feat1, feat2, ..."), DuplicatesOk, EncodeCrossCrate::No,
-        "rustc_allow_const_fn_unstable side-steps feature gating and stability checks"
-    ),
-    gated!(
         allow_internal_unsafe, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, "allow_internal_unsafe side-steps the unsafe_code lint",
     ),
     rustc_attr!(
-        rustc_allowed_through_unstable_modules, Normal, template!(Word),
+        rustc_allowed_through_unstable_modules, Normal, template!(Word, NameValueStr: "deprecation message"),
         WarnFollowing, EncodeCrossCrate::No,
         "rustc_allowed_through_unstable_modules special cases accidental stabilizations of stable items \
         through unstable paths"
@@ -841,8 +834,17 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
     ),
     rustc_attr!(
-        rustc_runtime, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::No, INTERNAL_UNSTABLE
+        rustc_const_stable_indirect, Normal,
+        template!(Word), WarnFollowing, EncodeCrossCrate::No, IMPL_DETAIL,
+    ),
+    rustc_attr!(
+        rustc_intrinsic_const_stable_indirect, Normal,
+        template!(Word), WarnFollowing, EncodeCrossCrate::No, IMPL_DETAIL,
+    ),
+    gated!(
+        rustc_allow_const_fn_unstable, Normal,
+        template!(Word, List: "feat1, feat2, ..."), DuplicatesOk, EncodeCrossCrate::No,
+        "rustc_allow_const_fn_unstable side-steps feature gating and stability checks"
     ),
 
     // ==========================================================================
@@ -878,6 +880,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "lang items are subject to change",
     ),
     rustc_attr!(
+        rustc_as_ptr, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::Yes,
+        "#[rustc_as_ptr] is used to mark functions returning pointers to their inner allocations."
+    ),
+    rustc_attr!(
         rustc_pass_by_value, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::Yes,
         "#[rustc_pass_by_value] is used to mark types that must be passed by value instead of reference."
@@ -906,21 +913,25 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_deny_explicit_impl,
         AttributeType::Normal,
-        template!(List: "implement_via_object = (true|false)"),
+        template!(Word),
         ErrorFollowing,
         EncodeCrossCrate::No,
         "#[rustc_deny_explicit_impl] enforces that a trait can have no user-provided impls"
+    ),
+    rustc_attr!(
+        rustc_do_not_implement_via_object,
+        AttributeType::Normal,
+        template!(Word),
+        ErrorFollowing,
+        EncodeCrossCrate::No,
+        "#[rustc_do_not_implement_via_object] opts out of the automatic trait impl for trait objects \
+        (`impl Trait for dyn Trait`)"
     ),
     rustc_attr!(
         rustc_has_incoherent_inherent_impls, AttributeType::Normal, template!(Word),
         ErrorFollowing, EncodeCrossCrate::Yes,
         "#[rustc_has_incoherent_inherent_impls] allows the addition of incoherent inherent impls for \
          the given type by annotating all impl items with #[rustc_allow_incoherent_impl]."
-    ),
-    rustc_attr!(
-        rustc_box, AttributeType::Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
-        "#[rustc_box] allows creating boxes \
-        and it is only intended to be used in `alloc`."
     ),
 
     BuiltinAttribute {
@@ -935,7 +946,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
             Stability::Unstable,
             sym::rustc_attrs,
             "diagnostic items compiler internal support for linting",
-            cfg_fn!(rustc_attrs),
+            Features::rustc_attrs,
         ),
     },
     gated!(
@@ -995,22 +1006,21 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_doc_primitive, Normal, template!(NameValueStr: "primitive name"), ErrorFollowing,
         EncodeCrossCrate::Yes, r#"`rustc_doc_primitive` is a rustc internal attribute"#,
     ),
-    rustc_attr!(
-        rustc_safe_intrinsic, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::No,
-        "the `#[rustc_safe_intrinsic]` attribute is used internally to mark intrinsics as safe"
+    gated!(
+        rustc_intrinsic, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,
+        "the `#[rustc_intrinsic]` attribute is used to declare intrinsics as function items",
     ),
-    rustc_attr!(
-        rustc_intrinsic, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes,
-        "the `#[rustc_intrinsic]` attribute is used to declare intrinsics with function bodies",
+    gated!(
+        rustc_intrinsic_must_be_overridden, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,
+        "the `#[rustc_intrinsic_must_be_overridden]` attribute is used to declare intrinsics without real bodies",
     ),
     rustc_attr!(
         rustc_no_mir_inline, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
         "#[rustc_no_mir_inline] prevents the MIR inliner from inlining a function while not affecting codegen"
     ),
     rustc_attr!(
-        rustc_intrinsic_must_be_overridden, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes,
-        "the `#[rustc_intrinsic_must_be_overridden]` attribute is used to declare intrinsics without real bodies",
+        rustc_force_inline, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing, EncodeCrossCrate::Yes,
+        "#![rustc_force_inline] forces a free function to be inlined"
     ),
 
     // ==========================================================================
@@ -1102,10 +1112,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_polymorphize_error, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::Yes
-    ),
-    rustc_attr!(
         TEST, rustc_def_path, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
@@ -1190,10 +1196,9 @@ pub static BUILTIN_ATTRIBUTE_MAP: LazyLock<FxHashMap<Symbol, &BuiltinAttribute>>
         map
     });
 
-pub fn is_stable_diagnostic_attribute(sym: Symbol, features: &Features) -> bool {
+pub fn is_stable_diagnostic_attribute(sym: Symbol, _features: &Features) -> bool {
     match sym {
-        sym::on_unimplemented => true,
-        sym::do_not_recommend => features.do_not_recommend,
+        sym::on_unimplemented | sym::do_not_recommend => true,
         _ => false,
     }
 }

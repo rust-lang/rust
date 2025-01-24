@@ -1,7 +1,7 @@
 use std::iter;
 
+use rustc_abi::{Align, Size};
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_target::abi::{Align, Size};
 
 use crate::*;
 

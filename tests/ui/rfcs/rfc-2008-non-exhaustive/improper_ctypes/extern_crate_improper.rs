@@ -8,7 +8,7 @@ extern crate types;
 
 use types::{
     NonExhaustiveCLikeEnum, NonExhaustiveEnum, NonExhaustiveVariants,
-    NormalStruct, TupleStruct, UnitStruct,
+    NormalStruct, TupleStruct, UnitStruct, NormalStructWithNonExhaustiveCLikeEnum
 };
 
 extern "C" {
@@ -27,6 +27,9 @@ extern "C" {
 // These should pass without remark, as they're C-compatible, despite being "non-exhaustive".
 extern "C" {
     pub fn non_exhaustive_c_compat_enum(_: NonExhaustiveCLikeEnum);
+    pub fn non_exhaustive_c_compat_enum_ret() -> *mut NonExhaustiveCLikeEnum;
+    pub fn struct_w_non_exhaustive_c_like_enum(_: NormalStructWithNonExhaustiveCLikeEnum);
+    pub fn struct_w_non_exhaustive_c_like_enum_ret() -> *mut NormalStructWithNonExhaustiveCLikeEnum;
 }
 
 fn main() {}

@@ -171,12 +171,12 @@ where
 
 #[cfg(feature = "rustc")]
 pub(crate) mod rustc {
+    use rustc_abi::{
+        FieldIdx, FieldsShape, Layout, Size, TagEncoding, TyAndLayout, VariantIdx, Variants,
+    };
     use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError};
     use rustc_middle::ty::{self, AdtDef, AdtKind, List, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
     use rustc_span::ErrorGuaranteed;
-    use rustc_target::abi::{
-        FieldIdx, FieldsShape, Layout, Size, TagEncoding, TyAndLayout, VariantIdx, Variants,
-    };
 
     use super::Tree;
     use crate::layout::rustc::{Def, Ref, layout_of};
@@ -206,7 +206,7 @@ pub(crate) mod rustc {
 
     impl<'tcx> Tree<Def<'tcx>, Ref<'tcx>> {
         pub(crate) fn from_ty(ty: Ty<'tcx>, cx: LayoutCx<'tcx>) -> Result<Self, Err> {
-            use rustc_target::abi::HasDataLayout;
+            use rustc_abi::HasDataLayout;
             let layout = layout_of(cx, ty)?;
 
             if let Err(e) = ty.error_reported() {
@@ -319,36 +319,26 @@ pub(crate) mod rustc {
         ) -> Result<Self, Err> {
             assert!(def.is_enum());
 
-            // Computes the variant of a given index.
-            let layout_of_variant = |index, encoding: Option<TagEncoding<VariantIdx>>| {
-                let tag = cx.tcx().tag_for_variant((cx.tcx().erase_regions(ty), index));
-                let variant_def = Def::Variant(def.variant(index));
-                let variant_layout = ty_variant(cx, (ty, layout), index);
-                Self::from_variant(
-                    variant_def,
-                    tag.map(|tag| (tag, index, encoding.unwrap())),
-                    (ty, variant_layout),
-                    layout.size,
-                    cx,
-                )
-            };
+            // Computes the layout of a variant.
+            let layout_of_variant =
+                |index, encoding: Option<TagEncoding<VariantIdx>>| -> Result<Self, Err> {
+                    let variant_layout = ty_variant(cx, (ty, layout), index);
+                    if variant_layout.is_uninhabited() {
+                        return Ok(Self::uninhabited());
+                    }
+                    let tag = cx.tcx().tag_for_variant((cx.tcx().erase_regions(ty), index));
+                    let variant_def = Def::Variant(def.variant(index));
+                    Self::from_variant(
+                        variant_def,
+                        tag.map(|tag| (tag, index, encoding.unwrap())),
+                        (ty, variant_layout),
+                        layout.size,
+                        cx,
+                    )
+                };
 
-            // We consider three kinds of enums, each demanding a different
-            // treatment of their layout computation:
-            // 1. enums that are uninhabited ZSTs
-            // 2. enums that delegate their layout to a variant
-            // 3. enums with multiple variants
             match layout.variants() {
-                Variants::Single { .. }
-                    if layout.abi.is_uninhabited() && layout.size == Size::ZERO =>
-                {
-                    // The layout representation of uninhabited, ZST enums is
-                    // defined to be like that of the `!` type, as opposed of a
-                    // typical enum. Consequently, they cannot be descended into
-                    // as if they typical enums. We therefore special-case this
-                    // scenario and simply return an uninhabited `Tree`.
-                    Ok(Self::uninhabited())
-                }
+                Variants::Empty => Ok(Self::uninhabited()),
                 Variants::Single { index } => {
                     // `Variants::Single` on enums with variants denotes that
                     // the enum delegates its layout to the variant at `index`.
@@ -371,7 +361,7 @@ pub(crate) mod rustc {
                         },
                     )?;
 
-                    return Ok(Self::def(Def::Adt(def)).then(variants));
+                    Ok(Self::def(Def::Adt(def)).then(variants))
                 }
             }
         }
@@ -446,7 +436,7 @@ pub(crate) mod rustc {
 
         /// Constructs a `Tree` representing the value of a enum tag.
         fn from_tag(tag: ScalarInt, tcx: TyCtxt<'tcx>) -> Self {
-            use rustc_target::abi::Endian;
+            use rustc_abi::Endian;
             let size = tag.size();
             let bits = tag.to_bits(size);
             let bytes: [u8; 16];
@@ -505,6 +495,10 @@ pub(crate) mod rustc {
         (ty, layout): (Ty<'tcx>, Layout<'tcx>),
         i: FieldIdx,
     ) -> Ty<'tcx> {
+        // We cannot use `ty_and_layout_field` to retrieve the field type, since
+        // `ty_and_layout_field` erases regions in the returned type. We must
+        // not erase regions here, since we may need to ultimately emit outlives
+        // obligations as a consequence of the transmutability analysis.
         match ty.kind() {
             ty::Adt(def, args) => {
                 match layout.variants {
@@ -512,6 +506,7 @@ pub(crate) mod rustc {
                         let field = &def.variant(index).fields[i];
                         field.ty(cx.tcx(), args)
                     }
+                    Variants::Empty => panic!("there is no field in Variants::Empty types"),
                     // Discriminant field for enums (where applicable).
                     Variants::Multiple { tag, .. } => {
                         assert_eq!(i.as_usize(), 0);

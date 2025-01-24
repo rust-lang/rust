@@ -6,6 +6,8 @@ edition = "2021"
 [dependencies]
 # tidy-alphabetical-start
 rustc-hash = "2.0.0"
+
+rustc_abi = { path = "../rustc_abi", optional = true }
 rustc_apfloat = "0.2.0"
 rustc_arena = { path = "../rustc_arena", optional = true }
 rustc_data_structures = { path = "../rustc_data_structures", optional = true }
@@ -17,7 +19,6 @@ rustc_macros = { path = "../rustc_macros", optional = true }
 rustc_middle = { path = "../rustc_middle", optional = true }
 rustc_session = { path = "../rustc_session", optional = true }
 rustc_span = { path = "../rustc_span", optional = true }
-rustc_target = { path = "../rustc_target", optional = true }
 smallvec = { version = "1.8.1", features = ["union"] }
 tracing = "0.1"
 # tidy-alphabetical-end
@@ -29,6 +30,7 @@ tracing-tree = "0.3.0"
 [features]
 default = ["rustc"]
 rustc = [
+    "dep:rustc_abi",
     "dep:rustc_arena",
     "dep:rustc_data_structures",
     "dep:rustc_errors",
@@ -38,7 +40,6 @@ rustc = [
     "dep:rustc_middle",
     "dep:rustc_session",
     "dep:rustc_span",
-    "dep:rustc_target",
     "smallvec/may_dangle",
     "rustc_index/nightly",
 ]

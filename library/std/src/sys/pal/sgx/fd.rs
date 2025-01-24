@@ -12,7 +12,7 @@ pub struct FileDesc {
 
 impl FileDesc {
     pub fn new(fd: Fd) -> FileDesc {
-        FileDesc { fd: fd }
+        FileDesc { fd }
     }
 
     pub fn raw(&self) -> Fd {

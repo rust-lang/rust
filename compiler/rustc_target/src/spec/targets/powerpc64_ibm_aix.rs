@@ -19,7 +19,7 @@ pub(crate) fn target() -> Target {
             std: None, // ?
         },
         pointer_width: 64,
-        data_layout: "E-m:a-Fi64-i64:64-n32:64-S128-v256:256:256-v512:512:512".into(),
+        data_layout: "E-m:a-Fi64-i64:64-i128:128-n32:64-S128-v256:256:256-v512:512:512".into(),
         arch: "powerpc64".into(),
         options: base,
     }

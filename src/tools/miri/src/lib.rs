@@ -11,10 +11,10 @@
 #![feature(let_chains)]
 #![feature(trait_upcasting)]
 #![feature(strict_overflow_ops)]
-#![feature(strict_provenance)]
-#![feature(exposed_provenance)]
 #![feature(pointer_is_aligned_to)]
 #![feature(unqualified_local_imports)]
+#![feature(derive_coerce_pointee)]
+#![feature(arbitrary_self_types)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -57,9 +57,10 @@ extern crate either;
 extern crate tracing;
 
 // The rustc crates we need
+extern crate rustc_abi;
 extern crate rustc_apfloat;
 extern crate rustc_ast;
-extern crate rustc_attr;
+extern crate rustc_attr_parsing;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
@@ -84,6 +85,7 @@ mod eval;
 mod helpers;
 mod intrinsics;
 mod machine;
+mod math;
 mod mono_hash_map;
 mod operator;
 mod provenance_gc;
@@ -123,24 +125,24 @@ pub use crate::concurrency::data_race::{
 };
 pub use crate::concurrency::init_once::{EvalContextExt as _, InitOnceId};
 pub use crate::concurrency::sync::{
-    CondvarId, EvalContextExt as _, MutexId, RwLockId, SynchronizationObjects,
+    CondvarId, EvalContextExt as _, MutexRef, RwLockId, SynchronizationObjects,
 };
 pub use crate::concurrency::thread::{
-    BlockReason, EvalContextExt as _, StackEmptyCallback, ThreadId, ThreadManager, TimeoutAnchor,
-    TimeoutClock, UnblockCallback,
+    BlockReason, DynUnblockCallback, EvalContextExt as _, StackEmptyCallback, ThreadId,
+    ThreadManager, TimeoutAnchor, TimeoutClock, UnblockKind,
 };
 pub use crate::diagnostics::{
     EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo, report_error,
 };
 pub use crate::eval::{
-    AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, RejectOpWith, ValidationMode,
-    create_ecx, eval_entry,
+    AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, MiriEntryFnType, RejectOpWith,
+    ValidationMode, create_ecx, eval_entry,
 };
 pub use crate::helpers::{AccessKind, EvalContextExt as _};
 pub use crate::intrinsics::EvalContextExt as _;
 pub use crate::machine::{
-    AllocExtra, FrameExtra, MemoryKind, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind,
-    PrimitiveLayouts, Provenance, ProvenanceExtra,
+    AllocExtra, DynMachineCallback, FrameExtra, MachineCallback, MemoryKind, MiriInterpCx,
+    MiriInterpCxExt, MiriMachine, MiriMemoryKind, PrimitiveLayouts, Provenance, ProvenanceExtra,
 };
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as _;
@@ -149,7 +151,7 @@ pub use crate::range_map::RangeMap;
 pub use crate::shims::EmulateItemResult;
 pub use crate::shims::env::{EnvVars, EvalContextExt as _};
 pub use crate::shims::foreign_items::{DynSym, EvalContextExt as _};
-pub use crate::shims::io_error::{EvalContextExt as _, LibcError};
+pub use crate::shims::io_error::{EvalContextExt as _, IoError, LibcError};
 pub use crate::shims::os_str::EvalContextExt as _;
 pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
 pub use crate::shims::time::EvalContextExt as _;

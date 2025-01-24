@@ -1,0 +1,9 @@
+error[E0425]: cannot find function `x` in this scope
+  --> $DIR/suggestion-ice-132517.rs:2:5
+   |
+LL |     x::<_>(|_| panic!())
+   |     ^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

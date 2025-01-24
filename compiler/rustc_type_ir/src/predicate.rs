@@ -111,6 +111,13 @@ impl<I: Interner> ty::Binder<I, TraitRef<I>> {
     pub fn def_id(&self) -> I::DefId {
         self.skip_binder().def_id
     }
+
+    pub fn to_host_effect_clause(self, cx: I, constness: BoundConstness) -> I::Clause {
+        self.map_bound(|trait_ref| {
+            ty::ClauseKind::HostEffect(HostEffectPredicate { trait_ref, constness })
+        })
+        .upcast(cx)
+    }
 }
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
@@ -167,7 +174,6 @@ impl<I: Interner> UpcastFrom<I, TraitRef<I>> for TraitPredicate<I> {
 
 impl<I: Interner> fmt::Debug for TraitPredicate<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME(effects) printing?
         write!(f, "TraitPredicate({:?}, polarity:{:?})", self.trait_ref, self.polarity)
     }
 }
@@ -289,9 +295,26 @@ impl<I: Interner> ty::Binder<I, ExistentialPredicate<I>> {
 pub struct ExistentialTraitRef<I: Interner> {
     pub def_id: I::DefId,
     pub args: I::GenericArgs,
+    /// This field exists to prevent the creation of `ExistentialTraitRef` without
+    /// calling [`ExistentialTraitRef::new_from_args`].
+    _use_existential_trait_ref_new_instead: (),
 }
 
 impl<I: Interner> ExistentialTraitRef<I> {
+    pub fn new_from_args(interner: I, trait_def_id: I::DefId, args: I::GenericArgs) -> Self {
+        interner.debug_assert_existential_args_compatible(trait_def_id, args);
+        Self { def_id: trait_def_id, args, _use_existential_trait_ref_new_instead: () }
+    }
+
+    pub fn new(
+        interner: I,
+        trait_def_id: I::DefId,
+        args: impl IntoIterator<Item: Into<I::GenericArg>>,
+    ) -> Self {
+        let args = interner.mk_args_from_iter(args.into_iter().map(Into::into));
+        Self::new_from_args(interner, trait_def_id, args)
+    }
+
     pub fn erase_self_ty(interner: I, trait_ref: TraitRef<I>) -> ExistentialTraitRef<I> {
         // Assert there is a Self.
         trait_ref.args.type_at(0);
@@ -299,6 +322,7 @@ impl<I: Interner> ExistentialTraitRef<I> {
         ExistentialTraitRef {
             def_id: trait_ref.def_id,
             args: interner.mk_args(&trait_ref.args.as_slice()[1..]),
+            _use_existential_trait_ref_new_instead: (),
         }
     }
 
@@ -336,9 +360,33 @@ pub struct ExistentialProjection<I: Interner> {
     pub def_id: I::DefId,
     pub args: I::GenericArgs,
     pub term: I::Term,
+
+    /// This field exists to prevent the creation of `ExistentialProjection`
+    /// without using [`ExistentialProjection::new_from_args`].
+    use_existential_projection_new_instead: (),
 }
 
 impl<I: Interner> ExistentialProjection<I> {
+    pub fn new_from_args(
+        interner: I,
+        def_id: I::DefId,
+        args: I::GenericArgs,
+        term: I::Term,
+    ) -> ExistentialProjection<I> {
+        interner.debug_assert_existential_args_compatible(def_id, args);
+        Self { def_id, args, term, use_existential_projection_new_instead: () }
+    }
+
+    pub fn new(
+        interner: I,
+        def_id: I::DefId,
+        args: impl IntoIterator<Item: Into<I::GenericArg>>,
+        term: I::Term,
+    ) -> ExistentialProjection<I> {
+        let args = interner.mk_args_from_iter(args.into_iter().map(Into::into));
+        Self::new_from_args(interner, def_id, args, term)
+    }
+
     /// Extracts the underlying existential trait reference from this projection.
     /// For example, if this is a projection of `exists T. <T as Iterator>::Item == X`,
     /// then this function would return an `exists T. T: Iterator` existential trait
@@ -347,7 +395,7 @@ impl<I: Interner> ExistentialProjection<I> {
         let def_id = interner.parent(self.def_id);
         let args_count = interner.generics_of(def_id).count() - 1;
         let args = interner.mk_args(&self.args.as_slice()[..args_count]);
-        ExistentialTraitRef { def_id, args }
+        ExistentialTraitRef { def_id, args, _use_existential_trait_ref_new_instead: () }
     }
 
     pub fn with_self_ty(&self, interner: I, self_ty: I::Ty) -> ProjectionPredicate<I> {
@@ -372,6 +420,7 @@ impl<I: Interner> ExistentialProjection<I> {
             def_id: projection_predicate.projection_term.def_id,
             args: interner.mk_args(&projection_predicate.projection_term.args.as_slice()[1..]),
             term: projection_predicate.term,
+            use_existential_projection_new_instead: (),
         }
     }
 }
@@ -395,7 +444,7 @@ pub enum AliasTermKind {
     /// An associated type in an inherent `impl`
     InherentTy,
     /// An opaque type (usually from `impl Trait` in type aliases or function return types)
-    /// Can only be normalized away in RevealAll mode
+    /// Can only be normalized away in PostAnalysis mode or its defining scope.
     OpaqueTy,
     /// A type alias that actually checks its trait bounds.
     /// Currently only used if the type alias references opaque types.
@@ -635,19 +684,6 @@ impl<I: Interner> ty::Binder<I, ProjectionPredicate<I>> {
         self.skip_binder().projection_term.trait_def_id(cx)
     }
 
-    /// Get the trait ref required for this projection to be well formed.
-    /// Note that for generic associated types the predicates of the associated
-    /// type also need to be checked.
-    #[inline]
-    pub fn required_poly_trait_ref(&self, cx: I) -> ty::Binder<I, TraitRef<I>> {
-        // Note: unlike with `TraitRef::to_poly_trait_ref()`,
-        // `self.0.trait_ref` is permitted to have escaping regions.
-        // This is because here `self` has a `Binder` and so does our
-        // return value, so we are preserving the number of binding
-        // levels.
-        self.map_bound(|predicate| predicate.projection_term.trait_ref(cx))
-    }
-
     pub fn term(&self) -> ty::Binder<I, I::Term> {
         self.map_bound(|predicate| predicate.term)
     }
@@ -656,7 +692,7 @@ impl<I: Interner> ty::Binder<I, ProjectionPredicate<I>> {
     ///
     /// Note that this is not the `DefId` of the `TraitRef` containing this
     /// associated type, which is in `tcx.associated_item(projection_def_id()).container`.
-    pub fn projection_def_id(&self) -> I::DefId {
+    pub fn item_def_id(&self) -> I::DefId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().projection_term.def_id
     }
@@ -702,6 +738,44 @@ impl<I: Interner> fmt::Debug for NormalizesTo<I> {
     }
 }
 
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+pub struct HostEffectPredicate<I: Interner> {
+    pub trait_ref: ty::TraitRef<I>,
+    pub constness: BoundConstness,
+}
+
+impl<I: Interner> HostEffectPredicate<I> {
+    pub fn self_ty(self) -> I::Ty {
+        self.trait_ref.self_ty()
+    }
+
+    pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
+        Self { trait_ref: self.trait_ref.with_self_ty(interner, self_ty), ..self }
+    }
+
+    pub fn def_id(self) -> I::DefId {
+        self.trait_ref.def_id
+    }
+}
+
+impl<I: Interner> ty::Binder<I, HostEffectPredicate<I>> {
+    pub fn def_id(self) -> I::DefId {
+        // Ok to skip binder since trait `DefId` does not care about regions.
+        self.skip_binder().def_id()
+    }
+
+    pub fn self_ty(self) -> ty::Binder<I, I::Ty> {
+        self.map_bound(|trait_ref| trait_ref.self_ty())
+    }
+
+    #[inline]
+    pub fn constness(self) -> BoundConstness {
+        self.skip_binder().constness
+    }
+}
+
 /// Encodes that `a` must be a subtype of `b`. The `a_is_expected` flag indicates
 /// whether the `a` type is the type that we should label as "expected" when
 /// presenting user diagnostics.
@@ -723,8 +797,8 @@ pub struct CoercePredicate<I: Interner> {
     pub b: I::Ty,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext, TyEncodable, TyDecodable))]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum BoundConstness {
     /// `Type: const Trait`
     ///
@@ -733,14 +807,22 @@ pub enum BoundConstness {
     /// `Type: ~const Trait`
     ///
     /// Requires resolving to const only when we are in a const context.
-    ConstIfConst,
+    Maybe,
 }
 
 impl BoundConstness {
+    pub fn satisfies(self, goal: BoundConstness) -> bool {
+        match (self, goal) {
+            (BoundConstness::Const, BoundConstness::Const | BoundConstness::Maybe) => true,
+            (BoundConstness::Maybe, BoundConstness::Maybe) => true,
+            (BoundConstness::Maybe, BoundConstness::Const) => false,
+        }
+    }
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Const => "const",
-            Self::ConstIfConst => "~const",
+            Self::Maybe => "~const",
         }
     }
 }
@@ -749,14 +831,7 @@ impl fmt::Display for BoundConstness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Const => f.write_str("const"),
-            Self::ConstIfConst => f.write_str("~const"),
+            Self::Maybe => f.write_str("~const"),
         }
-    }
-}
-
-impl<I> Lift<I> for BoundConstness {
-    type Lifted = BoundConstness;
-    fn lift_to_interner(self, _: I) -> Option<Self::Lifted> {
-        Some(self)
     }
 }

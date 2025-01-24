@@ -204,7 +204,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
 
             // Ensure this is not the final stmt, otherwise removing it would cause a compile error
             && let OwnerNode::Item(item) = cx.tcx.hir_owner_node(cx.tcx.hir().get_parent_item(expr.hir_id))
-            && let ItemKind::Fn(_, _, body) = item.kind
+            && let ItemKind::Fn { body, .. } = item.kind
             && let block = cx.tcx.hir().body(body).value
             && let ExprKind::Block(block, _) = block.kind
             && !is_inside_let_else(cx.tcx, expr)
@@ -347,7 +347,7 @@ fn check_final_expr<'tcx>(
     let peeled_drop_expr = expr.peel_drop_temps();
     match &peeled_drop_expr.kind {
         // simple return is always "bad"
-        ExprKind::Ret(ref inner) => {
+        ExprKind::Ret(inner) => {
             // check if expr return nothing
             let ret_span = if inner.is_none() && replacement == RetReplacement::Empty {
                 extend_span_to_previous_non_ws(cx, peeled_drop_expr.span)
@@ -391,7 +391,7 @@ fn check_final_expr<'tcx>(
 
             if let Some(inner) = inner {
                 if for_each_unconsumed_temporary(cx, inner, |temporary_ty| {
-                    if temporary_ty.has_significant_drop(cx.tcx, cx.param_env)
+                    if temporary_ty.has_significant_drop(cx.tcx, cx.typing_env())
                         && temporary_ty
                             .walk()
                             .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(re) if !re.is_static()))

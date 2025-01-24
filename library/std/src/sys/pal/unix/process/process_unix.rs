@@ -61,7 +61,7 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return Err(io::const_io_error!(
+            return Err(io::const_error!(
                 ErrorKind::InvalidInput,
                 "nul byte found in provided data",
             ));
@@ -175,7 +175,7 @@ impl Command {
     // allowed to exist in dead code), but it sounds bad, so we go out of our
     // way to avoid that all-together.
     #[cfg(any(target_os = "tvos", target_os = "watchos"))]
-    const ERR_APPLE_TV_WATCH_NO_FORK_EXEC: Error = io::const_io_error!(
+    const ERR_APPLE_TV_WATCH_NO_FORK_EXEC: Error = io::const_error!(
         ErrorKind::Unsupported,
         "`fork`+`exec`-based process spawning is not supported on this target",
     );
@@ -218,7 +218,7 @@ impl Command {
                 } else if delay < MAX_FORKSPAWN_SLEEP {
                     thread::sleep(delay);
                 } else {
-                    return Err(io::const_io_error!(
+                    return Err(io::const_error!(
                         ErrorKind::WouldBlock,
                         "forking returned EBADF too often",
                     ));
@@ -235,7 +235,7 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return io::const_io_error!(ErrorKind::InvalidInput, "nul byte found in provided data",);
+            return io::const_error!(ErrorKind::InvalidInput, "nul byte found in provided data",);
         }
 
         match self.setup_io(default, true) {
@@ -448,7 +448,6 @@ impl Command {
         use core::sync::atomic::{AtomicU8, Ordering};
 
         use crate::mem::MaybeUninit;
-        use crate::sys::weak::weak;
         use crate::sys::{self, cvt_nz, on_broken_pipe_flag_used};
 
         if self.get_gid().is_some()
@@ -462,6 +461,8 @@ impl Command {
 
         cfg_if::cfg_if! {
             if #[cfg(target_os = "linux")] {
+                use crate::sys::weak::weak;
+
                 weak! {
                     fn pidfd_spawnp(
                         *mut libc::c_int,
@@ -560,7 +561,7 @@ impl Command {
                         } else if delay < MAX_FORKSPAWN_SLEEP {
                             thread::sleep(delay);
                         } else {
-                            return Err(io::const_io_error!(
+                            return Err(io::const_error!(
                                 ErrorKind::WouldBlock,
                                 "posix_spawnp returned EBADF too often",
                             ));
@@ -575,16 +576,44 @@ impl Command {
             }
         }
 
-        // Solaris, glibc 2.29+, and musl 1.24+ can set a new working directory,
-        // and maybe others will gain this non-POSIX function too. We'll check
-        // for this weak symbol as soon as it's needed, so we can return early
-        // otherwise to do a manual chdir before exec.
-        weak! {
-            fn posix_spawn_file_actions_addchdir_np(
-                *mut libc::posix_spawn_file_actions_t,
-                *const libc::c_char
-            ) -> libc::c_int
+        type PosixSpawnAddChdirFn = unsafe extern "C" fn(
+            *mut libc::posix_spawn_file_actions_t,
+            *const libc::c_char,
+        ) -> libc::c_int;
+
+        /// Get the function pointer for adding a chdir action to a
+        /// `posix_spawn_file_actions_t`, if available, assuming a dynamic libc.
+        ///
+        /// Some platforms can set a new working directory for a spawned process in the
+        /// `posix_spawn` path. This function looks up the function pointer for adding
+        /// such an action to a `posix_spawn_file_actions_t` struct.
+        #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+        fn get_posix_spawn_addchdir() -> Option<PosixSpawnAddChdirFn> {
+            use crate::sys::weak::weak;
+
+            weak! {
+                fn posix_spawn_file_actions_addchdir_np(
+                    *mut libc::posix_spawn_file_actions_t,
+                    *const libc::c_char
+                ) -> libc::c_int
+            }
+
+            posix_spawn_file_actions_addchdir_np.get()
         }
+
+        /// Get the function pointer for adding a chdir action to a
+        /// `posix_spawn_file_actions_t`, if available, on platforms where the function
+        /// is known to exist.
+        ///
+        /// Weak symbol lookup doesn't work with statically linked libcs, so in cases
+        /// where static linking is possible we need to either check for the presence
+        /// of the symbol at compile time or know about it upfront.
+        #[cfg(all(target_os = "linux", target_env = "musl"))]
+        fn get_posix_spawn_addchdir() -> Option<PosixSpawnAddChdirFn> {
+            // Our minimum required musl supports this function, so we can just use it.
+            Some(libc::posix_spawn_file_actions_addchdir_np)
+        }
+
         let addchdir = match self.get_cwd() {
             Some(cwd) => {
                 if cfg!(target_vendor = "apple") {
@@ -597,7 +626,10 @@ impl Command {
                         return Ok(None);
                     }
                 }
-                match posix_spawn_file_actions_addchdir_np.get() {
+                // Check for the availability of the posix_spawn addchdir
+                // function now. If it isn't available, bail and use the
+                // fork/exec path.
+                match get_posix_spawn_addchdir() {
                     Some(f) => Some((f, cwd)),
                     None => return Ok(None),
                 }

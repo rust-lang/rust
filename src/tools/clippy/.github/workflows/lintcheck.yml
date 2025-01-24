@@ -21,6 +21,8 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 2
+        # Unsetting this would make so that any malicious package could get our Github Token
+        persist-credentials: false
 
     # HEAD is the generated merge commit `refs/pull/N/merge` between the PR and `master`, `HEAD^`
     # being the commit from `master` that is the base of the merge
@@ -73,6 +75,9 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        # Unsetting this would make so that any malicious package could get our Github Token
+        persist-credentials: false
 
     - name: Cache lintcheck bin
       id: cache-lintcheck-bin
@@ -103,6 +108,9 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        # Unsetting this would make so that any malicious package could get our Github Token
+        persist-credentials: false
 
     - name: Restore lintcheck bin
       uses: actions/cache/restore@v4

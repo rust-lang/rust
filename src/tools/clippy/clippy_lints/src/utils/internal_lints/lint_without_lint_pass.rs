@@ -3,6 +3,7 @@ use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::{is_lint_allowed, match_def_path, paths};
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::Visitor;
@@ -13,7 +14,6 @@ use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, sym};
-use {rustc_ast as ast, rustc_hir as hir};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -21,7 +21,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// The compiler only knows lints via a `LintPass`. Without
-    /// putting a lint to a `LintPass::get_lints()`'s return, the compiler will not
+    /// putting a lint to a `LintPass::lint_vec()`'s return, the compiler will not
     /// know the name of the lint.
     ///
     /// ### Known problems
@@ -123,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                     .expect("lints must have a description field");
 
                 if let ExprKind::Lit(Spanned {
-                    node: LitKind::Str(ref sym, _),
+                    node: LitKind::Str(sym, _),
                     ..
                 }) = field.expr.kind
                 {
@@ -159,8 +159,8 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                 let body = cx.tcx.hir().body_owned_by(
                     impl_item_refs
                         .iter()
-                        .find(|iiref| iiref.ident.as_str() == "get_lints")
-                        .expect("LintPass needs to implement get_lints")
+                        .find(|iiref| iiref.ident.as_str() == "lint_vec")
+                        .expect("LintPass needs to implement lint_vec")
                         .id
                         .owner_id
                         .def_id,
@@ -218,13 +218,11 @@ pub(super) fn is_lint_ref_type(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
 
 fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'_>) {
     if let Some(value) = extract_clippy_version_value(cx, item) {
-        // The `sym!` macro doesn't work as it only expects a single token.
-        // It's better to keep it this way and have a direct `Symbol::intern` call here.
-        if value == Symbol::intern("pre 1.29.0") {
+        if value.as_str() == "pre 1.29.0" {
             return;
         }
 
-        if rustc_attr::parse_version(value).is_none() {
+        if rustc_attr_parsing::parse_version(value).is_none() {
             span_lint_and_help(
                 cx,
                 INVALID_CLIPPY_VERSION_ATTRIBUTE,
@@ -251,11 +249,11 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
 pub(super) fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<'_>) -> Option<Symbol> {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
     attrs.iter().find_map(|attr| {
-        if let ast::AttrKind::Normal(ref attr_kind) = &attr.kind
+        if let hir::AttrKind::Normal(attr_kind) = &attr.kind
             // Identify attribute
-            && let [tool_name, attr_name] = &attr_kind.item.path.segments[..]
-            && tool_name.ident.name == sym::clippy
-            && attr_name.ident.name == sym::version
+            && let [tool_name, attr_name] = &attr_kind.path.segments[..]
+            && tool_name.name == sym::clippy
+            && attr_name.name == sym::version
             && let Some(version) = attr.value_str()
         {
             Some(version)

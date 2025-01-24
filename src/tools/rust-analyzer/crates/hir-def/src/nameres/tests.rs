@@ -11,19 +11,19 @@ use triomphe::Arc;
 
 use crate::{db::DefDatabase, nameres::DefMap, test_db::TestDB};
 
-fn compute_crate_def_map(ra_fixture: &str) -> Arc<DefMap> {
+fn compute_crate_def_map(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> Arc<DefMap> {
     let db = TestDB::with_files(ra_fixture);
-    let krate = db.crate_graph().iter().next().unwrap();
+    let krate = db.fetch_test_crate();
     db.crate_def_map(krate)
 }
 
-fn render_crate_def_map(ra_fixture: &str) -> String {
+fn render_crate_def_map(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {
     let db = TestDB::with_files(ra_fixture);
-    let krate = db.crate_graph().iter().next().unwrap();
+    let krate = db.fetch_test_crate();
     db.crate_def_map(krate).dump(&db)
 }
 
-fn check(ra_fixture: &str, expect: Expect) {
+fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let actual = render_crate_def_map(ra_fixture);
     expect.assert_eq(&actual);
 }
@@ -381,6 +381,52 @@ pub struct Arc;
 
             crate::sync
             Arc: ti vi
+        "#]],
+    );
+}
+
+#[test]
+fn extern_crate_reexport() {
+    check(
+        r#"
+//- /main.rs crate:main deps:importer
+use importer::*;
+use importer::extern_crate1::exported::*;
+use importer::allowed_reexport::*;
+use importer::extern_crate2::*;
+use importer::not_allowed_reexport1;
+use importer::not_allowed_reexport2;
+
+//- /importer.rs crate:importer deps:extern_crate1,extern_crate2
+extern crate extern_crate1;
+extern crate extern_crate2;
+
+pub use extern_crate1;
+pub use extern_crate1 as allowed_reexport;
+
+pub use ::extern_crate;
+pub use self::extern_crate as not_allowed_reexport1;
+pub use crate::extern_crate as not_allowed_reexport2;
+
+//- /extern_crate1.rs crate:extern_crate1
+pub mod exported {
+    pub struct PublicItem;
+    struct PrivateItem;
+}
+
+pub struct Exported;
+
+//- /extern_crate2.rs crate:extern_crate2
+pub struct NotExported;
+"#,
+        expect![[r#"
+            crate
+            Exported: t v
+            PublicItem: t v
+            allowed_reexport: t
+            exported: t
+            not_allowed_reexport1: _
+            not_allowed_reexport2: _
         "#]],
     );
 }

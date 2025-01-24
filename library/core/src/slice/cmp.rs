@@ -257,3 +257,29 @@ impl SliceContains for i8 {
         memchr::memchr(byte, bytes).is_some()
     }
 }
+
+macro_rules! impl_slice_contains {
+    ($($t:ty),*) => {
+        $(
+            impl SliceContains for $t {
+                #[inline]
+                fn slice_contains(&self, arr: &[$t]) -> bool {
+                    // Make our LANE_COUNT 4x the normal lane count (aiming for 128 bit vectors).
+                    // The compiler will nicely unroll it.
+                    const LANE_COUNT: usize = 4 * (128 / (mem::size_of::<$t>() * 8));
+                    // SIMD
+                    let mut chunks = arr.chunks_exact(LANE_COUNT);
+                    for chunk in &mut chunks {
+                        if chunk.iter().fold(false, |acc, x| acc | (*x == *self)) {
+                            return true;
+                        }
+                    }
+                    // Scalar remainder
+                    return chunks.remainder().iter().any(|x| *x == *self);
+                }
+            }
+        )*
+    };
+}
+
+impl_slice_contains!(u16, u32, u64, i16, i32, i64, f32, f64, usize, isize);

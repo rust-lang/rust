@@ -2,13 +2,10 @@ error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
   --> $DIR/false-positive-predicate-entailment-error.rs:36:5
    |
 LL | /     fn autobatch<F>(self) -> impl Trait
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |     where
 LL | |         F: Callback<Self::CallbackArg>,
-   | |_______________________________________^ the trait `MyFn<i32>` is not implemented for `F`, which is required by `F: Callback<i32>`
+   | |_______________________________________^ the trait `MyFn<i32>` is not implemented for `F`
    |
 note: required for `F` to implement `Callback<i32>`
   --> $DIR/false-positive-predicate-entailment-error.rs:14:21
@@ -17,16 +14,16 @@ LL | impl<A, F: MyFn<A>> Callback<A> for F {
    |            -------  ^^^^^^^^^^^     ^
    |            |
    |            unsatisfied trait bound introduced here
-help: consider further restricting this bound
+help: consider further restricting type parameter `F` with trait `MyFn`
    |
 LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,
    |                                        +++++++++++
 
-error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
-  --> $DIR/false-positive-predicate-entailment-error.rs:36:30
+error[E0277]: the trait bound `F: Callback<i32>` is not satisfied
+  --> $DIR/false-positive-predicate-entailment-error.rs:42:12
    |
-LL |     fn autobatch<F>(self) -> impl Trait
-   |                              ^^^^^^^^^^ the trait `MyFn<i32>` is not implemented for `F`, which is required by `F: Callback<i32>`
+LL |         F: Callback<Self::CallbackArg>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `MyFn<i32>` is not implemented for `F`
    |
 note: required for `F` to implement `Callback<i32>`
   --> $DIR/false-positive-predicate-entailment-error.rs:14:21
@@ -35,15 +32,15 @@ LL | impl<A, F: MyFn<A>> Callback<A> for F {
    |            -------  ^^^^^^^^^^^     ^
    |            |
    |            unsatisfied trait bound introduced here
-note: required by a bound in `<Sender as ChannelSender>::autobatch`
-  --> $DIR/false-positive-predicate-entailment-error.rs:43:12
+note: the requirement `F: Callback<i32>` appears on the `impl`'s method `autobatch` but not on the corresponding trait's method
+  --> $DIR/false-positive-predicate-entailment-error.rs:25:8
    |
-LL |     fn autobatch<F>(self) -> impl Trait
-   |        --------- required by a bound in this associated function
+LL | trait ChannelSender {
+   |       ------------- in this trait
 ...
-LL |         F: Callback<Self::CallbackArg>,
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `<Sender as ChannelSender>::autobatch`
-help: consider further restricting this bound
+LL |     fn autobatch<F>(self) -> impl Trait
+   |        ^^^^^^^^^ this trait's method doesn't have the requirement `F: Callback<i32>`
+help: consider further restricting type parameter `F` with trait `MyFn`
    |
 LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,
    |                                        +++++++++++
@@ -52,13 +49,10 @@ error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
   --> $DIR/false-positive-predicate-entailment-error.rs:36:5
    |
 LL | /     fn autobatch<F>(self) -> impl Trait
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |     where
 LL | |         F: Callback<Self::CallbackArg>,
-   | |_______________________________________^ the trait `MyFn<i32>` is not implemented for `F`, which is required by `F: Callback<i32>`
+   | |_______________________________________^ the trait `MyFn<i32>` is not implemented for `F`
    |
 note: required for `F` to implement `Callback<i32>`
   --> $DIR/false-positive-predicate-entailment-error.rs:14:21
@@ -68,7 +62,7 @@ LL | impl<A, F: MyFn<A>> Callback<A> for F {
    |            |
    |            unsatisfied trait bound introduced here
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider further restricting this bound
+help: consider further restricting type parameter `F` with trait `MyFn`
    |
 LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,
    |                                        +++++++++++
@@ -77,7 +71,7 @@ error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
   --> $DIR/false-positive-predicate-entailment-error.rs:36:30
    |
 LL |     fn autobatch<F>(self) -> impl Trait
-   |                              ^^^^^^^^^^ the trait `MyFn<i32>` is not implemented for `F`, which is required by `F: Callback<i32>`
+   |                              ^^^^^^^^^^ the trait `MyFn<i32>` is not implemented for `F`
    |
 note: required for `F` to implement `Callback<i32>`
   --> $DIR/false-positive-predicate-entailment-error.rs:14:21
@@ -91,7 +85,7 @@ error[E0277]: the trait bound `F: Callback<i32>` is not satisfied
   --> $DIR/false-positive-predicate-entailment-error.rs:27:12
    |
 LL |         F: Callback<Self::CallbackArg>;
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `MyFn<i32>` is not implemented for `F`, which is required by `F: Callback<i32>`
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `MyFn<i32>` is not implemented for `F`
    |
 note: required for `F` to implement `Callback<i32>`
   --> $DIR/false-positive-predicate-entailment-error.rs:14:21
@@ -105,13 +99,10 @@ error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
   --> $DIR/false-positive-predicate-entailment-error.rs:36:5
    |
 LL | /     fn autobatch<F>(self) -> impl Trait
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |     where
 LL | |         F: Callback<Self::CallbackArg>,
-   | |_______________________________________^ the trait `MyFn<i32>` is not implemented for `F`, which is required by `F: Callback<i32>`
+   | |_______________________________________^ the trait `MyFn<i32>` is not implemented for `F`
    |
 note: required for `F` to implement `Callback<i32>`
   --> $DIR/false-positive-predicate-entailment-error.rs:14:21
@@ -121,13 +112,13 @@ LL | impl<A, F: MyFn<A>> Callback<A> for F {
    |            |
    |            unsatisfied trait bound introduced here
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider further restricting this bound
+help: consider further restricting type parameter `F` with trait `MyFn`
    |
 LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,
    |                                        +++++++++++
 
 error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
-  --> $DIR/false-positive-predicate-entailment-error.rs:43:12
+  --> $DIR/false-positive-predicate-entailment-error.rs:42:12
    |
 LL |         F: Callback<Self::CallbackArg>,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `MyFn<i32>` is not implemented for `F`
@@ -137,7 +128,7 @@ note: required by a bound in `Callback`
    |
 LL | trait Callback<A>: MyFn<A, Output = Self::Ret> {
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Callback`
-help: consider further restricting this bound
+help: consider further restricting type parameter `F` with trait `MyFn`
    |
 LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,
    |                                        +++++++++++

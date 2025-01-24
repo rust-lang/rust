@@ -31,7 +31,10 @@ fn simplify(e: ConstEvalError) -> ConstEvalError {
 }
 
 #[track_caller]
-fn check_fail(ra_fixture: &str, error: impl FnOnce(ConstEvalError) -> bool) {
+fn check_fail(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    error: impl FnOnce(ConstEvalError) -> bool,
+) {
     let (db, file_id) = TestDB::with_single_file(ra_fixture);
     match eval_goal(&db, file_id) {
         Ok(_) => panic!("Expected fail, but it succeeded"),
@@ -42,7 +45,7 @@ fn check_fail(ra_fixture: &str, error: impl FnOnce(ConstEvalError) -> bool) {
 }
 
 #[track_caller]
-fn check_number(ra_fixture: &str, answer: i128) {
+fn check_number(#[rust_analyzer::rust_fixture] ra_fixture: &str, answer: i128) {
     check_answer(ra_fixture, |b, _| {
         assert_eq!(
             b,
@@ -54,7 +57,7 @@ fn check_number(ra_fixture: &str, answer: i128) {
 }
 
 #[track_caller]
-fn check_str(ra_fixture: &str, answer: &str) {
+fn check_str(#[rust_analyzer::rust_fixture] ra_fixture: &str, answer: &str) {
     check_answer(ra_fixture, |b, mm| {
         let addr = usize::from_le_bytes(b[0..b.len() / 2].try_into().unwrap());
         let size = usize::from_le_bytes(b[b.len() / 2..].try_into().unwrap());
@@ -71,7 +74,10 @@ fn check_str(ra_fixture: &str, answer: &str) {
 }
 
 #[track_caller]
-fn check_answer(ra_fixture: &str, check: impl FnOnce(&[u8], &MemoryMap)) {
+fn check_answer(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    check: impl FnOnce(&[u8], &MemoryMap),
+) {
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
     let file_id = *file_ids.last().unwrap();
     let r = match eval_goal(&db, file_id) {
@@ -95,7 +101,8 @@ fn check_answer(ra_fixture: &str, check: impl FnOnce(&[u8], &MemoryMap)) {
 fn pretty_print_err(e: ConstEvalError, db: TestDB) -> String {
     let mut err = String::new();
     let span_formatter = |file, range| format!("{file:?} {range:?}");
-    let edition = db.crate_graph()[db.test_crate()].edition;
+    let edition =
+        db.crate_graph()[*db.crate_graph().crates_in_topological_order().last().unwrap()].edition;
     match e {
         ConstEvalError::MirLowerError(e) => e.pretty_print(&mut err, &db, span_formatter, edition),
         ConstEvalError::MirEvalError(e) => e.pretty_print(&mut err, &db, span_formatter, edition),
@@ -2896,7 +2903,7 @@ fn recursive_adt() {
                 {
                     const VARIANT_TAG_TREE: TagTree = TagTree::Choice(
                         &[
-                            TagTree::Leaf,
+                            TAG_TREE,
                         ],
                     );
                     VARIANT_TAG_TREE
@@ -2905,6 +2912,6 @@ fn recursive_adt() {
             TAG_TREE
         };
     "#,
-        |e| matches!(e, ConstEvalError::MirEvalError(MirEvalError::StackOverflow)),
+        |e| matches!(e, ConstEvalError::MirLowerError(MirLowerError::Loop)),
     );
 }

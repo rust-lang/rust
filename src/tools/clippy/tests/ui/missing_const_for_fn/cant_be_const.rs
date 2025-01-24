@@ -6,7 +6,6 @@
 //@aux-build:../auxiliary/proc_macros.rs
 
 #![warn(clippy::missing_const_for_fn)]
-#![feature(start)]
 #![feature(type_alias_impl_trait)]
 
 extern crate helper;
@@ -47,10 +46,28 @@ fn get_y() -> u32 {
     Y
 }
 
-// Don't lint entrypoint functions
-#[start]
-fn init(num: isize, something: *const *const u8) -> isize {
-    1
+#[cfg(test)]
+mod with_test_fn {
+    #[derive(Clone, Copy)]
+    pub struct Foo {
+        pub n: u32,
+    }
+
+    impl Foo {
+        #[must_use]
+        pub const fn new(n: u32) -> Foo {
+            Foo { n }
+        }
+    }
+
+    #[test]
+    fn foo_is_copy() {
+        let foo = Foo::new(42);
+        let one = foo;
+        let two = foo;
+        _ = one;
+        _ = two;
+    }
 }
 
 trait Foo {

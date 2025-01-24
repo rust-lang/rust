@@ -20,6 +20,7 @@ mod lift;
 mod query;
 mod serialize;
 mod symbols;
+mod try_from;
 mod type_foldable;
 mod type_visitable;
 
@@ -165,3 +166,12 @@ decl_derive!(
         suggestion_part,
         applicability)] => diagnostics::subdiagnostic_derive
 );
+
+decl_derive! {
+    [TryFromU32] =>
+    /// Derives `TryFrom<u32>` for the annotated `enum`, which must have no fields.
+    /// Each variant maps to the value it would produce under an `as u32` cast.
+    ///
+    /// The error type is `u32`.
+    try_from::try_from_u32
+}

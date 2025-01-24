@@ -194,6 +194,9 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                     sig_tys.skip_binder().inputs_and_output.iter().rev().map(|ty| ty.into()),
                 );
             }
+            ty::UnsafeBinder(bound_ty) => {
+                stack.push(bound_ty.skip_binder().into());
+            }
         },
         GenericArgKind::Lifetime(_) => {}
         GenericArgKind::Const(parent_ct) => match parent_ct.kind() {

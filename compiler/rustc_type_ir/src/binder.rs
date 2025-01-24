@@ -6,8 +6,6 @@ use std::ops::{ControlFlow, Deref};
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
-#[cfg(feature = "nightly")]
-use rustc_serialize::Decodable;
 use tracing::instrument;
 
 use crate::data_structures::SsoHashSet;
@@ -69,14 +67,14 @@ macro_rules! impl_binder_encode_decode {
                     self.as_ref().skip_binder().encode(e);
                 }
             }
-            impl<I: Interner, D: crate::TyDecoder<I = I>> Decodable<D> for ty::Binder<I, $t>
+            impl<I: Interner, D: crate::TyDecoder<I = I>> rustc_serialize::Decodable<D> for ty::Binder<I, $t>
             where
                 $t: TypeVisitable<I> + rustc_serialize::Decodable<D>,
                 I::BoundVarKinds: rustc_serialize::Decodable<D>,
             {
                 fn decode(decoder: &mut D) -> Self {
-                    let bound_vars = Decodable::decode(decoder);
-                    ty::Binder::bind_with_vars(<$t>::decode(decoder), bound_vars)
+                    let bound_vars = rustc_serialize::Decodable::decode(decoder);
+                    ty::Binder::bind_with_vars(rustc_serialize::Decodable::decode(decoder), bound_vars)
                 }
             }
         )*
@@ -91,6 +89,7 @@ impl_binder_encode_decode! {
     ty::ExistentialPredicate<I>,
     ty::TraitRef<I>,
     ty::ExistentialTraitRef<I>,
+    ty::HostEffectPredicate<I>,
 }
 
 impl<I: Interner, T> Binder<I, T>
@@ -496,8 +495,8 @@ where
 
     /// Similar to [`instantiate_identity`](EarlyBinder::instantiate_identity),
     /// but on an iterator of values that deref to a `TypeFoldable`.
-    pub fn iter_identity_copied(self) -> impl Iterator<Item = <Iter::Item as Deref>::Target> {
-        self.value.into_iter().map(|v| *v)
+    pub fn iter_identity_copied(self) -> IterIdentityCopied<Iter> {
+        IterIdentityCopied { it: self.value.into_iter() }
     }
 }
 
@@ -546,6 +545,44 @@ where
 {
 }
 
+pub struct IterIdentityCopied<Iter: IntoIterator> {
+    it: Iter::IntoIter,
+}
+
+impl<Iter: IntoIterator> Iterator for IterIdentityCopied<Iter>
+where
+    Iter::Item: Deref,
+    <Iter::Item as Deref>::Target: Copy,
+{
+    type Item = <Iter::Item as Deref>::Target;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.it.next().map(|i| *i)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
+    }
+}
+
+impl<Iter: IntoIterator> DoubleEndedIterator for IterIdentityCopied<Iter>
+where
+    Iter::IntoIter: DoubleEndedIterator,
+    Iter::Item: Deref,
+    <Iter::Item as Deref>::Target: Copy,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.it.next_back().map(|i| *i)
+    }
+}
+
+impl<Iter: IntoIterator> ExactSizeIterator for IterIdentityCopied<Iter>
+where
+    Iter::IntoIter: ExactSizeIterator,
+    Iter::Item: Deref,
+    <Iter::Item as Deref>::Target: Copy,
+{
+}
 pub struct EarlyBinderIter<I, T> {
     t: T,
     _tcx: PhantomData<I>,
@@ -767,7 +804,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     #[inline(never)]
     fn region_param_out_of_range(&self, ebr: I::EarlyParamRegion, r: I::Region) -> ! {
         panic!(
-            "const parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
+            "region parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
             ebr,
             r,
             ebr.index(),

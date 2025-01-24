@@ -1,7 +1,7 @@
 macro_rules! arm {
     ($pattern:pat => $block:block) => {
         $pattern => $block
-        //~^ ERROR macro expansion ignores token `=>` and any following
+        //~^ ERROR macro expansion ignores `=>` and any tokens following
         //~| NOTE the usage of `arm!` is likely invalid in pattern context
         //~| NOTE macros cannot expand to match arms
     };

@@ -1,11 +1,8 @@
 use std::iter;
 
-use rustc_hir as hir;
-use rustc_target::spec::abi;
 pub use rustc_type_ir::relate::*;
 
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{self as ty, Ty, TyCtxt};
 
 pub type RelateResult<'tcx, T> = rustc_type_ir::relate::RelateResult<TyCtxt<'tcx>, T>;
@@ -88,13 +85,10 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for &'tcx ty::List<ty::PolyExistentialPredicate<
         // in `a`.
         let mut a_v: Vec<_> = a.into_iter().collect();
         let mut b_v: Vec<_> = b.into_iter().collect();
-        // `skip_binder` here is okay because `stable_cmp` doesn't look at binders
-        a_v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
         a_v.dedup();
-        b_v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
         b_v.dedup();
         if a_v.len() != b_v.len() {
-            return Err(TypeError::ExistentialMismatch(ExpectedFound::new(true, a, b)));
+            return Err(TypeError::ExistentialMismatch(ExpectedFound::new(a, b)));
         }
 
         let v = iter::zip(a_v, b_v).map(|(ep_a, ep_b)| {
@@ -114,30 +108,10 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for &'tcx ty::List<ty::PolyExistentialPredicate<
                     ty::ExistentialPredicate::AutoTrait(a),
                     ty::ExistentialPredicate::AutoTrait(b),
                 ) if a == b => Ok(ep_a.rebind(ty::ExistentialPredicate::AutoTrait(a))),
-                _ => Err(TypeError::ExistentialMismatch(ExpectedFound::new(true, a, b))),
+                _ => Err(TypeError::ExistentialMismatch(ExpectedFound::new(a, b))),
             }
         });
         tcx.mk_poly_existential_predicates_from_iter(v)
-    }
-}
-
-impl<'tcx> Relate<TyCtxt<'tcx>> for hir::Safety {
-    fn relate<R: TypeRelation<TyCtxt<'tcx>>>(
-        _relation: &mut R,
-        a: hir::Safety,
-        b: hir::Safety,
-    ) -> RelateResult<'tcx, hir::Safety> {
-        if a != b { Err(TypeError::SafetyMismatch(ExpectedFound::new(true, a, b))) } else { Ok(a) }
-    }
-}
-
-impl<'tcx> Relate<TyCtxt<'tcx>> for abi::Abi {
-    fn relate<R: TypeRelation<TyCtxt<'tcx>>>(
-        _relation: &mut R,
-        a: abi::Abi,
-        b: abi::Abi,
-    ) -> RelateResult<'tcx, abi::Abi> {
-        if a == b { Ok(a) } else { Err(TypeError::AbiMismatch(ExpectedFound::new(true, a, b))) }
     }
 }
 

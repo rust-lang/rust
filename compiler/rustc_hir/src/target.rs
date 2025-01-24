@@ -106,7 +106,7 @@ impl Target {
             ItemKind::Use(..) => Target::Use,
             ItemKind::Static { .. } => Target::Static,
             ItemKind::Const(..) => Target::Const,
-            ItemKind::Fn(..) => Target::Fn,
+            ItemKind::Fn { .. } => Target::Fn,
             ItemKind::Macro(..) => Target::MacroDef,
             ItemKind::Mod(..) => Target::Mod,
             ItemKind::ForeignMod { .. } => Target::ForeignMod,

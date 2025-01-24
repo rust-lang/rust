@@ -4,9 +4,8 @@ use super::*;
 fn size_of() {
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn size_of<T>() -> usize;
-        }
+        #[rustc_intrinsic]
+        pub fn size_of<T>() -> usize;
 
         const GOAL: usize = size_of::<i32>();
         "#,
@@ -19,9 +18,8 @@ fn size_of_val() {
     check_number(
         r#"
         //- minicore: coerce_unsized
-        extern "rust-intrinsic" {
-            pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
-        }
+        #[rustc_intrinsic]
+        pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
 
         struct X(i32, u8);
 
@@ -32,9 +30,8 @@ fn size_of_val() {
     check_number(
         r#"
         //- minicore: coerce_unsized
-        extern "rust-intrinsic" {
-            pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
-        }
+        #[rustc_intrinsic]
+        pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
 
         const GOAL: usize = {
             let it: &[i32] = &[1, 2, 3];
@@ -48,9 +45,8 @@ fn size_of_val() {
         //- minicore: coerce_unsized, transmute
         use core::mem::transmute;
 
-        extern "rust-intrinsic" {
-            pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
-        }
+        #[rustc_intrinsic]
+        pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
 
         struct X {
             x: i64,
@@ -70,9 +66,8 @@ fn size_of_val() {
         //- minicore: coerce_unsized, transmute
         use core::mem::transmute;
 
-        extern "rust-intrinsic" {
-            pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
-        }
+        #[rustc_intrinsic]
+        pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
 
         struct X {
             x: i32,
@@ -90,9 +85,8 @@ fn size_of_val() {
     check_number(
         r#"
         //- minicore: coerce_unsized, fmt, builtin_impls, dispatch_from_dyn
-        extern "rust-intrinsic" {
-            pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
-        }
+        #[rustc_intrinsic]
+        pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
 
         const GOAL: usize = {
             let x: &i16 = &5;
@@ -106,9 +100,8 @@ fn size_of_val() {
     check_number(
         r#"
         //- minicore: coerce_unsized
-        extern "rust-intrinsic" {
-            pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
-        }
+        #[rustc_intrinsic]
+        pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
 
         const GOAL: usize = {
             size_of_val("salam")
@@ -123,9 +116,8 @@ fn min_align_of_val() {
     check_number(
         r#"
         //- minicore: coerce_unsized
-        extern "rust-intrinsic" {
-            pub fn min_align_of_val<T: ?Sized>(_: *const T) -> usize;
-        }
+        #[rustc_intrinsic]
+        pub fn min_align_of_val<T: ?Sized>(_: *const T) -> usize;
 
         struct X(i32, u8);
 
@@ -136,9 +128,8 @@ fn min_align_of_val() {
     check_number(
         r#"
         //- minicore: coerce_unsized
-        extern "rust-intrinsic" {
-            pub fn min_align_of_val<T: ?Sized>(_: *const T) -> usize;
-        }
+        #[rustc_intrinsic]
+        pub fn min_align_of_val<T: ?Sized>(_: *const T) -> usize;
 
         const GOAL: usize = {
             let x: &[i32] = &[1, 2, 3];
@@ -153,9 +144,8 @@ fn min_align_of_val() {
 fn type_name() {
     check_str(
         r#"
-        extern "rust-intrinsic" {
-            pub fn type_name<T: ?Sized>() -> &'static str;
-        }
+        #[rustc_intrinsic]
+        pub fn type_name<T: ?Sized>() -> &'static str;
 
         const GOAL: &str = type_name::<i32>();
         "#,
@@ -163,9 +153,8 @@ fn type_name() {
     );
     check_str(
         r#"
-        extern "rust-intrinsic" {
-            pub fn type_name<T: ?Sized>() -> &'static str;
-        }
+        #[rustc_intrinsic]
+        pub fn type_name<T: ?Sized>() -> &'static str;
 
         mod mod1 {
             pub mod mod2 {
@@ -183,9 +172,8 @@ fn type_name() {
 fn transmute() {
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn transmute<T, U>(e: T) -> U;
-        }
+        #[rustc_intrinsic]
+        pub fn transmute<T, U>(e: T) -> U;
 
         const GOAL: i32 = transmute((1i16, 1i16));
         "#,
@@ -197,10 +185,10 @@ fn transmute() {
 fn read_via_copy() {
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn read_via_copy<T>(e: *const T) -> T;
-            pub fn volatile_load<T>(e: *const T) -> T;
-        }
+        #[rustc_intrinsic]
+        pub fn read_via_copy<T>(e: *const T) -> T;
+        #[rustc_intrinsic]
+        pub fn volatile_load<T>(e: *const T) -> T;
 
         const GOAL: i32 = {
             let x = 2;
@@ -399,9 +387,14 @@ fn discriminant_value() {
 fn likely() {
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn likely(b: bool) -> bool;
-            pub fn unlikely(b: bool) -> bool;
+        #[rustc_intrinsic]
+        pub const fn likely(b: bool) -> bool {
+            b
+        }
+
+        #[rustc_intrinsic]
+        pub const fn unlikely(b: bool) -> bool {
+            b
         }
 
         const GOAL: bool = likely(true) && unlikely(true) && !likely(false) && !unlikely(false);
@@ -704,9 +697,8 @@ fn rotate() {
     );
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn rotate_right<T: Copy>(x: T, y: T) -> T;
-        }
+        #[rustc_intrinsic]
+        pub fn rotate_right<T: Copy>(x: T, y: T) -> T;
 
         const GOAL: i32 = rotate_right(10006016, 1020315);
         "#,
@@ -721,9 +713,8 @@ fn simd() {
         pub struct i8x16(
             i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,
         );
-        extern "platform-intrinsic" {
-            pub fn simd_bitmask<T, U>(x: T) -> U;
-        }
+        #[rustc_intrinsic]
+        pub fn simd_bitmask<T, U>(x: T) -> U;
         const GOAL: u16 = simd_bitmask(i8x16(
             0, 1, 0, 0, 2, 255, 100, 0, 50, 0, 1, 1, 0, 0, 0, 0
         ));
@@ -735,10 +726,10 @@ fn simd() {
         pub struct i8x16(
             i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,
         );
-        extern "platform-intrinsic" {
-            pub fn simd_lt<T, U>(x: T, y: T) -> U;
-            pub fn simd_bitmask<T, U>(x: T) -> U;
-        }
+        #[rustc_intrinsic]
+        pub fn simd_lt<T, U>(x: T, y: T) -> U;
+        #[rustc_intrinsic]
+        pub fn simd_bitmask<T, U>(x: T) -> U;
         const GOAL: u16 = simd_bitmask(simd_lt::<i8x16, i8x16>(
             i8x16(
                 -105, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10

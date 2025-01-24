@@ -98,7 +98,7 @@ impl VecPushSearcher {
                     needs_mut |= cx.typeck_results().expr_ty_adjusted(last_place).ref_mutability()
                         == Some(Mutability::Mut)
                         || get_parent_expr(cx, last_place)
-                            .map_or(false, |e| matches!(e.kind, ExprKind::AddrOf(_, Mutability::Mut, _)));
+                            .is_some_and(|e| matches!(e.kind, ExprKind::AddrOf(_, Mutability::Mut, _)));
                 },
                 ExprKind::MethodCall(_, recv, ..)
                     if recv.hir_id == e.hir_id
@@ -166,8 +166,8 @@ impl<'tcx> LateLintPass<'tcx> for VecInitThenPush {
                 local_id: id,
                 init,
                 lhs_is_let: true,
-                name: name.name,
                 let_ty_span: local.ty.map(|ty| ty.span),
+                name: name.name,
                 err_span: local.span,
                 found: 0,
                 last_push_expr: init_expr.hir_id,
@@ -206,8 +206,8 @@ impl<'tcx> LateLintPass<'tcx> for VecInitThenPush {
                 && name.ident.as_str() == "push"
             {
                 self.searcher = Some(VecPushSearcher {
-                    found: searcher.found + 1,
                     err_span: searcher.err_span.to(stmt.span),
+                    found: searcher.found + 1,
                     last_push_expr: expr.hir_id,
                     ..searcher
                 });

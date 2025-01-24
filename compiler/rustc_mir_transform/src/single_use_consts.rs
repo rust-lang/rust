@@ -1,5 +1,5 @@
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -28,9 +28,9 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut finder = SingleUseConstsFinder {
-            ineligible_locals: BitSet::new_empty(body.local_decls.len()),
+            ineligible_locals: DenseBitSet::new_empty(body.local_decls.len()),
             locations: IndexVec::from_elem(LocationPair::new(), &body.local_decls),
-            locals_in_debug_info: BitSet::new_empty(body.local_decls.len()),
+            locals_in_debug_info: DenseBitSet::new_empty(body.local_decls.len()),
         };
 
         finder.ineligible_locals.insert_range(..=Local::from_usize(body.arg_count));
@@ -96,9 +96,9 @@ impl LocationPair {
 }
 
 struct SingleUseConstsFinder {
-    ineligible_locals: BitSet<Local>,
+    ineligible_locals: DenseBitSet<Local>,
     locations: IndexVec<Local, LocationPair>,
-    locals_in_debug_info: BitSet<Local>,
+    locals_in_debug_info: DenseBitSet<Local>,
 }
 
 impl<'tcx> Visitor<'tcx> for SingleUseConstsFinder {

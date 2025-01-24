@@ -19,7 +19,7 @@ You can build Rust with support for the targets by adding it to the `target` lis
 
 ```toml
 [build]
-target = [ "arm64e-apple-tvos" ]
+target = ["arm64e-apple-tvos"]
 ```
 
 ## Building Rust programs

@@ -1200,6 +1200,7 @@ pub trait IsTerminal: crate::sealed::Sealed {
     ///
     /// [changes]: io#platform-specific-behavior
     /// [`Stdin`]: crate::io::Stdin
+    #[doc(alias = "isatty")]
     #[stable(feature = "is_terminal", since = "1.70.0")]
     fn is_terminal(&self) -> bool;
 }

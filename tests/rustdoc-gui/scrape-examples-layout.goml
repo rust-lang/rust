@@ -80,8 +80,8 @@ click: ".scraped-example .button-holder .expand"
 store-value: (offset_y, 4)
 
 // First with desktop
-assert-position: (".scraped-example", {"y": 252})
-assert-position: (".scraped-example .prev", {"y": 252 + |offset_y|})
+assert-position: (".scraped-example", {"y": 256})
+assert-position: (".scraped-example .prev", {"y": 256 + |offset_y|})
 
 // Gradient background should be at the top of the code block.
 assert-css: (".scraped-example .example-wrap::before", {"top": "0px"})
@@ -90,8 +90,8 @@ assert-css: (".scraped-example .example-wrap::after", {"bottom": "0px"})
 // Then with mobile
 set-window-size: (600, 600)
 store-size: (".scraped-example .scraped-example-title", {"height": title_height})
-assert-position: (".scraped-example", {"y": 287})
-assert-position: (".scraped-example .prev", {"y": 287 + |offset_y| + |title_height|})
+assert-position: (".scraped-example", {"y": 291})
+assert-position: (".scraped-example .prev", {"y": 291 + |offset_y| + |title_height|})
 
 define-function: (
     "check_title_and_code_position",

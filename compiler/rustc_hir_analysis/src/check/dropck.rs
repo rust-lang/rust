@@ -9,7 +9,7 @@ use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::util::CheckRegions;
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypingMode};
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
@@ -124,7 +124,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     adt_def_id: LocalDefId,
     adt_to_impl_args: GenericArgsRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     let impl_span = tcx.def_span(drop_impl_def_id.to_def_id());

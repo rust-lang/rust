@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'autodiff'
+error[E0658]: use of unstable library feature `autodiff`
   --> $DIR/feature-gate-autodiff-use.rs:13:3
    |
 LL | #[autodiff(dfoo, Reverse)]
@@ -8,7 +8,7 @@ LL | #[autodiff(dfoo, Reverse)]
    = help: add `#![feature(autodiff)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'autodiff'
+error[E0658]: use of unstable library feature `autodiff`
   --> $DIR/feature-gate-autodiff-use.rs:9:5
    |
 LL | use std::autodiff::autodiff;

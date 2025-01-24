@@ -1,4 +1,5 @@
 // tidy-alphabetical-start
+#![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(const_type_name)]
@@ -9,7 +10,6 @@
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
-#![feature(round_char_boundary)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
 #![warn(unreachable_pub)]
@@ -35,83 +35,168 @@ use rustc_middle::util::Providers;
 use rustc_middle::{bug, query, span_bug};
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, sym};
-use rustc_trait_selection::traits;
-use tracing::{debug, trace};
+use tracing::debug;
 
 #[macro_use]
 mod pass_manager;
 
+use std::sync::LazyLock;
+
 use pass_manager::{self as pm, Lint, MirLint, MirPass, WithMinOptLevel};
 
-mod abort_unwinding_calls;
-mod add_call_guards;
-mod add_moves_for_packed_drops;
-mod add_retag;
-mod add_subtyping_projections;
-mod check_alignment;
-mod check_const_item_mutation;
-mod check_packed_ref;
-mod check_undefined_transmutes;
-// This pass is public to allow external drivers to perform MIR cleanup
-pub mod cleanup_post_borrowck;
-mod copy_prop;
-mod coroutine;
 mod cost_checker;
-mod coverage;
 mod cross_crate_inline;
-mod ctfe_limit;
-mod dataflow_const_prop;
-mod dead_store_elimination;
 mod deduce_param_attrs;
-mod deduplicate_blocks;
-mod deref_separator;
-mod dest_prop;
-pub mod dump_mir;
-mod early_otherwise_branch;
-mod elaborate_box_derefs;
-mod elaborate_drops;
 mod errors;
 mod ffi_unwind_calls;
-mod function_item_references;
-mod gvn;
-// Made public so that `mir_drops_elaborated_and_const_checked` can be overridden
-// by custom rustc drivers, running all the steps by themselves. See #114628.
-pub mod inline;
-mod instsimplify;
-mod jump_threading;
-mod known_panics_lint;
-mod large_enums;
 mod lint;
-mod lower_intrinsics;
-mod lower_slice_len;
-mod match_branches;
-mod mentioned_items;
-mod multiple_return_terminators;
-mod nrvo;
-mod post_drop_elaboration;
-mod prettify;
-mod promote_consts;
-mod ref_prop;
-mod remove_noop_landing_pads;
-mod remove_place_mention;
-mod remove_storage_markers;
-mod remove_uninit_drops;
-mod remove_unneeded_drops;
-mod remove_zsts;
-mod required_consts;
-mod reveal_all;
-mod sanity_check;
+mod lint_tail_expr_drop_order;
 mod shim;
 mod ssa;
-// This pass is public to allow external drivers to perform MIR cleanup
-pub mod simplify;
-mod simplify_branches;
-mod simplify_comparison_integral;
-mod single_use_consts;
-mod sroa;
-mod unreachable_enum_branching;
-mod unreachable_prop;
-mod validate;
+
+/// We import passes via this macro so that we can have a static list of pass names
+/// (used to verify CLI arguments). It takes a list of modules, followed by the passes
+/// declared within them.
+/// ```ignore,macro-test
+/// declare_passes! {
+///     // Declare a single pass from the module `abort_unwinding_calls`
+///     mod abort_unwinding_calls : AbortUnwindingCalls;
+///     // When passes are grouped together as an enum, declare the two constituent passes
+///     mod add_call_guards : AddCallGuards {
+///         AllCallEdges,
+///         CriticalCallEdges
+///     };
+///     // Declares multiple pass groups, each containing their own constituent passes
+///     mod simplify : SimplifyCfg {
+///         Initial,
+///         /* omitted */
+///     }, SimplifyLocals {
+///         BeforeConstProp,
+///         /* omitted */
+///     };
+/// }
+/// ```
+macro_rules! declare_passes {
+    (
+        $(
+            $vis:vis mod $mod_name:ident : $($pass_name:ident $( { $($ident:ident),* } )?),+ $(,)?;
+        )*
+    ) => {
+        $(
+            $vis mod $mod_name;
+            $(
+                // Make sure the type name is correct
+                #[allow(unused_imports)]
+                use $mod_name::$pass_name as _;
+            )+
+        )*
+
+        static PASS_NAMES: LazyLock<FxIndexSet<&str>> = LazyLock::new(|| [
+            // Fake marker pass
+            "PreCodegen",
+            $(
+                $(
+                    stringify!($pass_name),
+                    $(
+                        $(
+                            $mod_name::$pass_name::$ident.name(),
+                        )*
+                    )?
+                )+
+            )*
+        ].into_iter().collect());
+    };
+}
+
+declare_passes! {
+    mod abort_unwinding_calls : AbortUnwindingCalls;
+    mod add_call_guards : AddCallGuards { AllCallEdges, CriticalCallEdges };
+    mod add_moves_for_packed_drops : AddMovesForPackedDrops;
+    mod add_retag : AddRetag;
+    mod add_subtyping_projections : Subtyper;
+    mod check_inline : CheckForceInline;
+    mod check_call_recursion : CheckCallRecursion, CheckDropRecursion;
+    mod check_alignment : CheckAlignment;
+    mod check_const_item_mutation : CheckConstItemMutation;
+    mod check_packed_ref : CheckPackedRef;
+    mod check_undefined_transmutes : CheckUndefinedTransmutes;
+    // This pass is public to allow external drivers to perform MIR cleanup
+    pub mod cleanup_post_borrowck : CleanupPostBorrowck;
+
+    mod copy_prop : CopyProp;
+    mod coroutine : StateTransform;
+    mod coverage : InstrumentCoverage;
+    mod ctfe_limit : CtfeLimit;
+    mod dataflow_const_prop : DataflowConstProp;
+    mod dead_store_elimination : DeadStoreElimination {
+        Initial,
+        Final
+    };
+    mod deduplicate_blocks : DeduplicateBlocks;
+    mod deref_separator : Derefer;
+    mod dest_prop : DestinationPropagation;
+    pub mod dump_mir : Marker;
+    mod early_otherwise_branch : EarlyOtherwiseBranch;
+    mod elaborate_box_derefs : ElaborateBoxDerefs;
+    mod elaborate_drops : ElaborateDrops;
+    mod function_item_references : FunctionItemReferences;
+    mod gvn : GVN;
+    // Made public so that `mir_drops_elaborated_and_const_checked` can be overridden
+    // by custom rustc drivers, running all the steps by themselves. See #114628.
+    pub mod inline : Inline, ForceInline;
+    mod impossible_predicates : ImpossiblePredicates;
+    mod instsimplify : InstSimplify { BeforeInline, AfterSimplifyCfg };
+    mod jump_threading : JumpThreading;
+    mod known_panics_lint : KnownPanicsLint;
+    mod large_enums : EnumSizeOpt;
+    mod lower_intrinsics : LowerIntrinsics;
+    mod lower_slice_len : LowerSliceLenCalls;
+    mod match_branches : MatchBranchSimplification;
+    mod mentioned_items : MentionedItems;
+    mod multiple_return_terminators : MultipleReturnTerminators;
+    mod nrvo : RenameReturnPlace;
+    mod post_drop_elaboration : CheckLiveDrops;
+    mod prettify : ReorderBasicBlocks, ReorderLocals;
+    mod promote_consts : PromoteTemps;
+    mod ref_prop : ReferencePropagation;
+    mod remove_noop_landing_pads : RemoveNoopLandingPads;
+    mod remove_place_mention : RemovePlaceMention;
+    mod remove_storage_markers : RemoveStorageMarkers;
+    mod remove_uninit_drops : RemoveUninitDrops;
+    mod remove_unneeded_drops : RemoveUnneededDrops;
+    mod remove_zsts : RemoveZsts;
+    mod required_consts : RequiredConstsVisitor;
+    mod post_analysis_normalize : PostAnalysisNormalize;
+    mod sanity_check : SanityCheck;
+    // This pass is public to allow external drivers to perform MIR cleanup
+    pub mod simplify :
+        SimplifyCfg {
+            Initial,
+            PromoteConsts,
+            RemoveFalseEdges,
+            PostAnalysis,
+            PreOptimizations,
+            Final,
+            MakeShim,
+            AfterUnreachableEnumBranching
+        },
+        SimplifyLocals {
+            BeforeConstProp,
+            AfterGVN,
+            Final
+        };
+    mod simplify_branches : SimplifyConstCondition {
+        AfterConstProp,
+        Final
+    };
+    mod simplify_comparison_integral : SimplifyComparisonIntegral;
+    mod single_use_consts : SingleUseConsts;
+    mod sroa : ScalarReplacementOfAggregates;
+    mod strip_debuginfo : StripDebugInfo;
+    mod unreachable_enum_branching : UnreachableEnumBranching;
+    mod unreachable_prop : UnreachablePropagation;
+    mod validate : Validator;
+}
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -253,10 +338,14 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
 }
 
 fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
-    let const_kind = tcx.hir().body_const_context(def);
-
+    // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
+    // cannot yet be stolen), because `mir_promoted()`, which steals
+    // from `mir_built()`, forces this query to execute before
+    // performing the steal.
+    let body = &tcx.mir_built(def).borrow();
+    let ccx = check_consts::ConstCx::new(tcx, body);
     // No need to const-check a non-const `fn`.
-    match const_kind {
+    match ccx.const_kind {
         Some(ConstContext::Const { .. } | ConstContext::Static(_) | ConstContext::ConstFn) => {}
         None => span_bug!(
             tcx.def_span(def),
@@ -264,19 +353,11 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
         ),
     }
 
-    // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
-    // cannot yet be stolen), because `mir_promoted()`, which steals
-    // from `mir_built()`, forces this query to execute before
-    // performing the steal.
-    let body = &tcx.mir_built(def).borrow();
-
     if body.return_ty().references_error() {
         // It's possible to reach here without an error being emitted (#121103).
         tcx.dcx().span_delayed_bug(body.span, "mir_const_qualif: MIR had errors");
         return Default::default();
     }
-
-    let ccx = check_consts::ConstCx { body, tcx, const_kind, param_env: tcx.param_env(def) };
 
     let mut validator = check_consts::check::Checker::new(&ccx);
     validator.check_body();
@@ -296,6 +377,8 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
         &mut body,
         &[
             // MIR-level lints.
+            &Lint(check_inline::CheckForceInline),
+            &Lint(check_call_recursion::CheckCallRecursion),
             &Lint(check_packed_ref::CheckPackedRef),
             &Lint(check_const_item_mutation::CheckConstItemMutation),
             &Lint(function_item_references::FunctionItemReferences),
@@ -359,6 +442,8 @@ fn mir_promoted(
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
     );
 
+    lint_tail_expr_drop_order::run_lint(tcx, def, &body);
+
     let promoted = promote_pass.promoted_fragments.into_inner();
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
 }
@@ -408,7 +493,9 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     let is_fn_like = tcx.def_kind(def).is_fn_like();
     if is_fn_like {
         // Do not compute the mir call graph without said call graph actually being used.
-        if pm::should_run_pass(tcx, &inline::Inline) {
+        if pm::should_run_pass(tcx, &inline::Inline)
+            || inline::ForceInline::should_run_pass_for_callee(tcx, def.to_def_id())
+        {
             tcx.ensure_with_value().mir_inliner_callees(ty::InstanceKind::Item(def.to_def_id()));
         }
     }
@@ -420,55 +507,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
         body.tainted_by_errors = Some(error_reported);
     }
 
-    // Check if it's even possible to satisfy the 'where' clauses
-    // for this item.
-    //
-    // This branch will never be taken for any normal function.
-    // However, it's possible to `#!feature(trivial_bounds)]` to write
-    // a function with impossible to satisfy clauses, e.g.:
-    // `fn foo() where String: Copy {}`
-    //
-    // We don't usually need to worry about this kind of case,
-    // since we would get a compilation error if the user tried
-    // to call it. However, since we optimize even without any
-    // calls to the function, we need to make sure that it even
-    // makes sense to try to evaluate the body.
-    //
-    // If there are unsatisfiable where clauses, then all bets are
-    // off, and we just give up.
-    //
-    // We manually filter the predicates, skipping anything that's not
-    // "global". We are in a potentially generic context
-    // (e.g. we are evaluating a function without instantiating generic
-    // parameters, so this filtering serves two purposes:
-    //
-    // 1. We skip evaluating any predicates that we would
-    // never be able prove are unsatisfiable (e.g. `<T as Foo>`
-    // 2. We avoid trying to normalize predicates involving generic
-    // parameters (e.g. `<T as Foo>::MyItem`). This can confuse
-    // the normalization code (leading to cycle errors), since
-    // it's usually never invoked in this way.
-    let predicates = tcx
-        .predicates_of(body.source.def_id())
-        .predicates
-        .iter()
-        .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
-    if traits::impossible_predicates(tcx, traits::elaborate(tcx, predicates).collect()) {
-        trace!("found unsatisfiable predicates for {:?}", body.source);
-        // Clear the body to only contain a single `unreachable` statement.
-        let bbs = body.basic_blocks.as_mut();
-        bbs.raw.truncate(1);
-        bbs[START_BLOCK].statements.clear();
-        bbs[START_BLOCK].terminator_mut().kind = TerminatorKind::Unreachable;
-        body.var_debug_info.clear();
-        body.local_decls.raw.truncate(body.arg_count + 1);
-    }
-
     run_analysis_to_runtime_passes(tcx, &mut body);
-
-    // Now that drop elaboration has been performed, we can check for
-    // unconditional drop recursion.
-    rustc_mir_build::lints::check_drop_recursion(tcx, &body);
 
     tcx.alloc_steal_mir(body)
 }
@@ -511,6 +550,7 @@ pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
 /// After this series of passes, no lifetime analysis based on borrowing can be done.
 fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
+        &impossible_predicates::ImpossiblePredicates,
         &cleanup_post_borrowck::CleanupPostBorrowck,
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &simplify::SimplifyCfg::PostAnalysis,
@@ -526,10 +566,12 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // These next passes must be executed together.
         &add_call_guards::CriticalCallEdges,
         // Must be done before drop elaboration because we need to drop opaque types, too.
-        &reveal_all::RevealAll,
-        // Calling this after reveal_all ensures that we don't deal with opaque types.
+        &post_analysis_normalize::PostAnalysisNormalize,
+        // Calling this after `PostAnalysisNormalize` ensures that we don't deal with opaque types.
         &add_subtyping_projections::Subtyper,
         &elaborate_drops::ElaborateDrops,
+        // Needs to happen after drop elaboration.
+        &Lint(check_call_recursion::CheckDropRecursion),
         // This will remove extraneous landing pads which are no longer
         // necessary as well as forcing any call in a non-unwinding
         // function calling a possibly-unwinding function to abort the process.
@@ -584,6 +626,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             // Perform instsimplify before inline to eliminate some trivial calls (like clone
             // shims).
             &instsimplify::InstSimplify::BeforeInline,
+            // Perform inlining of `#[rustc_force_inline]`-annotated callees.
+            &inline::ForceInline,
             // Perform inlining, which may add a lot of code.
             &inline::Inline,
             // Code from other crates may have storage markers, so this needs to happen after
@@ -621,6 +665,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &o1(simplify_branches::SimplifyConstCondition::Final),
             &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
             &o1(simplify::SimplifyCfg::Final),
+            // After the last SimplifyCfg, because this wants one-block functions.
+            &strip_debuginfo::StripDebugInfo,
             &copy_prop::CopyProp,
             &dead_store_elimination::DeadStoreElimination::Final,
             &nrvo::RenameReturnPlace,

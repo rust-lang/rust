@@ -1,6 +1,9 @@
 use crate::abi::call::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Reg, RegKind, Uniform};
-use crate::abi::{self, Abi, FieldsShape, HasDataLayout, Size, TyAbiInterface, TyAndLayout};
+use crate::abi::{
+    self, BackendRepr, FieldsShape, HasDataLayout, Size, TyAbiInterface, TyAndLayout,
+};
 use crate::spec::HasTargetSpec;
+use crate::spec::abi::Abi as SpecAbi;
 
 #[derive(Copy, Clone)]
 enum RegPassKind {
@@ -20,8 +23,8 @@ enum FloatConv {
 struct CannotUseFpConv;
 
 fn is_loongarch_aggregate<Ty>(arg: &ArgAbi<'_, Ty>) -> bool {
-    match arg.layout.abi {
-        Abi::Vector { .. } => true,
+    match arg.layout.backend_repr {
+        BackendRepr::Vector { .. } => true,
         _ => arg.layout.is_aggregate(),
     }
 }
@@ -37,8 +40,8 @@ fn should_use_fp_conv_helper<'a, Ty, C>(
 where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
-    match arg_layout.abi {
-        Abi::Scalar(scalar) => match scalar.primitive() {
+    match arg_layout.backend_repr {
+        BackendRepr::Scalar(scalar) => match scalar.primitive() {
             abi::Int(..) | abi::Pointer(_) => {
                 if arg_layout.size.bits() > xlen {
                     return Err(CannotUseFpConv);
@@ -76,8 +79,8 @@ where
                 }
             }
         },
-        Abi::Vector { .. } | Abi::Uninhabited => return Err(CannotUseFpConv),
-        Abi::ScalarPair(..) | Abi::Aggregate { .. } => match arg_layout.fields {
+        BackendRepr::Vector { .. } | BackendRepr::Uninhabited => return Err(CannotUseFpConv),
+        BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => match arg_layout.fields {
             FieldsShape::Primitive => {
                 unreachable!("aggregates can't have `FieldsShape::Primitive`")
             }
@@ -113,7 +116,7 @@ where
             FieldsShape::Arbitrary { .. } => {
                 match arg_layout.variants {
                     abi::Variants::Multiple { .. } => return Err(CannotUseFpConv),
-                    abi::Variants::Single { .. } => (),
+                    abi::Variants::Single { .. } | abi::Variants::Empty => (),
                 }
                 for i in arg_layout.fields.index_by_increasing_offset() {
                     let field = arg_layout.field(cx, i);
@@ -310,7 +313,7 @@ fn classify_arg<'a, Ty, C>(
 }
 
 fn extend_integer_width<Ty>(arg: &mut ArgAbi<'_, Ty>, xlen: u64) {
-    if let Abi::Scalar(scalar) = arg.layout.abi {
+    if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
         if let abi::Int(i, _) = scalar.primitive() {
             // 32-bit integers are always sign-extended
             if i.size().bits() == 32 && xlen > 32 {
@@ -357,5 +360,32 @@ where
             &mut avail_gprs,
             &mut avail_fprs,
         );
+    }
+}
+
+pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, abi: SpecAbi)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout + HasTargetSpec,
+{
+    if abi == SpecAbi::RustIntrinsic {
+        return;
+    }
+
+    let grlen = cx.data_layout().pointer_size.bits();
+
+    for arg in fn_abi.args.iter_mut() {
+        if arg.is_ignore() {
+            continue;
+        }
+
+        // LLVM integers types do not differentiate between signed or unsigned integers.
+        // Some LoongArch instructions do not have a `.w` suffix version, they use all the
+        // GRLEN bits. By explicitly setting the `signext` or `zeroext` attribute
+        // according to signedness to avoid unnecessary integer extending instructions.
+        //
+        // This is similar to the RISC-V case, see
+        // https://github.com/rust-lang/rust/issues/114508 for details.
+        extend_integer_width(arg, grlen);
     }
 }

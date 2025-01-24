@@ -25,8 +25,9 @@ use serde::Serialize;
 use crate::compiler_interface::with;
 pub use crate::crate_def::{CrateDef, CrateDefType, DefId};
 pub use crate::error::*;
+use crate::mir::mono::StaticDef;
 use crate::mir::{Body, Mutability};
-use crate::ty::{ForeignModuleDef, ImplDef, IndexedVal, Span, TraitDef, Ty};
+use crate::ty::{FnDef, ForeignModuleDef, ImplDef, IndexedVal, Span, TraitDef, Ty};
 
 pub mod abi;
 #[macro_use]
@@ -95,6 +96,16 @@ impl Crate {
     /// The list of trait implementations in this crate.
     pub fn trait_impls(&self) -> ImplTraitDecls {
         with(|cx| cx.trait_impls(self.id))
+    }
+
+    /// Return a list of function definitions from this crate independent on their visibility.
+    pub fn fn_defs(&self) -> Vec<FnDef> {
+        with(|cx| cx.crate_functions(self.id))
+    }
+
+    /// Return a list of static items defined in this crate independent on their visibility.
+    pub fn statics(&self) -> Vec<StaticDef> {
+        with(|cx| cx.crate_statics(self.id))
     }
 }
 

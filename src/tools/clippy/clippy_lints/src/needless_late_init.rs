@@ -347,7 +347,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessLateInit {
         if let LetStmt {
             init: None,
             pat:
-                &Pat {
+                Pat {
                     kind: PatKind::Binding(BindingMode::NONE, binding_id, _, None),
                     ..
                 },
@@ -357,7 +357,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessLateInit {
             && let Some((_, Node::Stmt(local_stmt))) = parents.next()
             && let Some((_, Node::Block(block))) = parents.next()
         {
-            check(cx, local, local_stmt, block, binding_id);
+            check(cx, local, local_stmt, block, *binding_id);
         }
     }
 }

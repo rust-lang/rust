@@ -428,4 +428,23 @@ fn continue_outer() {
     }
 }
 
+// don't suggest adding `-> !` to async fn/closure that already returning `-> !`
+mod issue_12338 {
+    use super::do_something;
+
+    async fn foo() -> ! {
+        loop {
+            do_something();
+        }
+    }
+
+    fn bar() {
+        let _ = async || -> ! {
+            loop {
+                do_something();
+            }
+        };
+    }
+}
+
 fn main() {}

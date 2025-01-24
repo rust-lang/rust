@@ -128,7 +128,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
 
             // If the type has a trivial Drop implementation, then it doesn't
             // matter that we drop the value immediately.
-            if !ty.needs_drop(cx.tcx, cx.param_env) {
+            if !ty.needs_drop(cx.tcx, cx.typing_env()) {
                 return;
             }
             // Lint for patterns like `mutex.lock()`, which returns `Result<MutexGuard, _>` as well.

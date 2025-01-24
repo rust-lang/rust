@@ -10,7 +10,7 @@ LL | |         let _x = x;
 LL | |     });
    | |_____^ coroutine is not `Send`
    |
-   = help: the trait `Sync` is not implemented for `*mut ()`, which is required by `{coroutine@$DIR/ref-upvar-not-send.rs:15:30: 15:37}: Send`
+   = help: the trait `Sync` is not implemented for `*mut ()`
 note: captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
   --> $DIR/ref-upvar-not-send.rs:19:18
    |
@@ -34,7 +34,7 @@ LL | |         let _y = y;
 LL | |     });
    | |_____^ coroutine is not `Send`
    |
-   = help: within `{coroutine@$DIR/ref-upvar-not-send.rs:23:30: 23:37}`, the trait `Send` is not implemented for `*mut ()`, which is required by `{coroutine@$DIR/ref-upvar-not-send.rs:23:30: 23:37}: Send`
+   = help: within `{coroutine@$DIR/ref-upvar-not-send.rs:23:30: 23:37}`, the trait `Send` is not implemented for `*mut ()`
 note: captured value is not `Send` because `&mut` references cannot be sent unless their referent is `Send`
   --> $DIR/ref-upvar-not-send.rs:27:18
    |

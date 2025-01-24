@@ -1,5 +1,6 @@
 //! Parses `format_args` input.
 
+use either::Either;
 use hir_expand::name::Name;
 use intern::Symbol;
 use rustc_parse_format as parse;
@@ -7,7 +8,7 @@ use span::SyntaxContextId;
 use stdx::TupleExt;
 use syntax::{
     ast::{self, IsString},
-    TextRange, TextSize,
+    TextRange,
 };
 
 use crate::hir::ExprId;
@@ -33,7 +34,7 @@ pub enum FormatArgsPiece {
     Placeholder(FormatPlaceholder),
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FormatPlaceholder {
     /// Index into [`FormatArgs::arguments`].
     pub argument: FormatArgPosition,
@@ -45,11 +46,11 @@ pub struct FormatPlaceholder {
     pub format_options: FormatOptions,
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FormatArgPosition {
     /// Which argument this position refers to (Ok),
     /// or would've referred to if it existed (Err).
-    pub index: Result<usize, usize>,
+    pub index: Result<usize, Either<usize, Name>>,
     /// What kind of position this is. See [`FormatArgPositionKind`].
     pub kind: FormatArgPositionKind,
     /// The span of the name or number.
@@ -88,7 +89,7 @@ pub enum FormatTrait {
     UpperHex,
 }
 
-#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct FormatOptions {
     /// The width. E.g. `{:5}` or `{:width$}`.
     pub width: Option<FormatCount>,
@@ -133,7 +134,7 @@ pub enum FormatAlignment {
     Center,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FormatCount {
     /// `{:5}` or `{:.5}`
     Literal(usize),
@@ -173,7 +174,7 @@ pub(crate) fn parse(
     fmt_snippet: Option<String>,
     mut args: FormatArgumentsCollector,
     is_direct_literal: bool,
-    mut synth: impl FnMut(Name) -> ExprId,
+    mut synth: impl FnMut(Name, Option<TextRange>) -> ExprId,
     mut record_usage: impl FnMut(Name, Option<TextRange>),
     call_ctx: SyntaxContextId,
 ) -> FormatArgs {
@@ -192,7 +193,6 @@ pub(crate) fn parse(
         }
         None => None,
     };
-
     let mut parser =
         parse::Parser::new(&text, str_style, fmt_snippet, false, parse::ParseMode::Format);
 
@@ -217,7 +217,6 @@ pub(crate) fn parse(
     let to_span = |inner_span: parse::InnerSpan| {
         is_source_literal.then(|| {
             TextRange::new(inner_span.start.try_into().unwrap(), inner_span.end.try_into().unwrap())
-                - TextSize::from(str_style.map(|it| it + 1).unwrap_or(0) as u32 + 1)
         })
     };
 
@@ -245,8 +244,8 @@ pub(crate) fn parse(
                     Ok(index)
                 } else {
                     // Doesn't exist as an explicit argument.
-                    invalid_refs.push((index, span, used_as, kind));
-                    Err(index)
+                    invalid_refs.push((Either::Left(index), span, used_as, kind));
+                    Err(Either::Left(index))
                 }
             }
             ArgRef::Name(name, span) => {
@@ -265,14 +264,17 @@ pub(crate) fn parse(
                         // For the moment capturing variables from format strings expanded from macros is
                         // disabled (see RFC #2795)
                         // FIXME: Diagnose
+                        invalid_refs.push((Either::Right(name.clone()), span, used_as, kind));
+                        Err(Either::Right(name))
+                    } else {
+                        record_usage(name.clone(), span);
+                        Ok(args.add(FormatArgument {
+                            kind: FormatArgumentKind::Captured(name.clone()),
+                            // FIXME: This is problematic, we might want to synthesize a dummy
+                            // expression proper and/or desugar these.
+                            expr: synth(name, span),
+                        }))
                     }
-                    record_usage(name.clone(), span);
-                    Ok(args.add(FormatArgument {
-                        kind: FormatArgumentKind::Captured(name.clone()),
-                        // FIXME: This is problematic, we might want to synthesize a dummy
-                        // expression proper and/or desugar these.
-                        expr: synth(name),
-                    }))
                 }
             }
         };

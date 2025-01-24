@@ -62,10 +62,10 @@ use crate::alloc::Allocator;
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
-use crate::str::{self, Chars, Utf8Error, from_utf8_unchecked_mut};
+use crate::str::{self, CharIndices, Chars, Utf8Error, from_utf8_unchecked_mut};
 #[cfg(not(no_global_oom_handling))]
 use crate::str::{FromStr, from_boxed_utf8_unchecked};
-use crate::vec::Vec;
+use crate::vec::{self, Vec};
 
 /// A UTF-8–encoded, growable string.
 ///
@@ -116,7 +116,7 @@ use crate::vec::Vec;
 /// `String`s are always valid UTF-8. If you need a non-UTF-8 string, consider
 /// [`OsString`]. It is similar, but without the UTF-8 constraint. Because UTF-8
 /// is a variable width encoding, `String`s are typically smaller than an array of
-/// the same `chars`:
+/// the same `char`s:
 ///
 /// ```
 /// use std::mem;
@@ -1952,6 +1952,61 @@ impl String {
         Drain { start, end, iter: chars_iter, string: self_ptr }
     }
 
+    /// Converts a `String` into an iterator over the [`char`]s of the string.
+    ///
+    /// As a string consists of valid UTF-8, we can iterate through a string
+    /// by [`char`]. This method returns such an iterator.
+    ///
+    /// It's important to remember that [`char`] represents a Unicode Scalar
+    /// Value, and might not match your idea of what a 'character' is. Iteration
+    /// over grapheme clusters may be what you actually want. That functionality
+    /// is not provided by Rust's standard library, check crates.io instead.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(string_into_chars)]
+    ///
+    /// let word = String::from("goodbye");
+    ///
+    /// let mut chars = word.into_chars();
+    ///
+    /// assert_eq!(Some('g'), chars.next());
+    /// assert_eq!(Some('o'), chars.next());
+    /// assert_eq!(Some('o'), chars.next());
+    /// assert_eq!(Some('d'), chars.next());
+    /// assert_eq!(Some('b'), chars.next());
+    /// assert_eq!(Some('y'), chars.next());
+    /// assert_eq!(Some('e'), chars.next());
+    ///
+    /// assert_eq!(None, chars.next());
+    /// ```
+    ///
+    /// Remember, [`char`]s might not match your intuition about characters:
+    ///
+    /// ```
+    /// #![feature(string_into_chars)]
+    ///
+    /// let y = String::from("y̆");
+    ///
+    /// let mut chars = y.into_chars();
+    ///
+    /// assert_eq!(Some('y'), chars.next()); // not 'y̆'
+    /// assert_eq!(Some('\u{0306}'), chars.next());
+    ///
+    /// assert_eq!(None, chars.next());
+    /// ```
+    ///
+    /// [`char`]: prim@char
+    #[inline]
+    #[must_use = "`self` will be dropped if the result is not used"]
+    #[unstable(feature = "string_into_chars", issue = "133125")]
+    pub fn into_chars(self) -> IntoChars {
+        IntoChars { bytes: self.into_bytes().into_iter() }
+    }
+
     /// Removes the specified range in the string,
     /// and replaces it with the given string.
     /// The given string doesn't need to be the same length as the range.
@@ -2675,14 +2730,28 @@ pub trait ToString {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display + ?Sized> ToString for T {
+    #[inline]
+    fn to_string(&self) -> String {
+        <Self as SpecToString>::spec_to_string(self)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+trait SpecToString {
+    fn spec_to_string(&self) -> String;
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T: fmt::Display + ?Sized> SpecToString for T {
     // A common guideline is to not inline generic functions. However,
     // removing `#[inline]` from this method causes non-negligible regressions.
     // See <https://github.com/rust-lang/rust/pull/74852>, the last attempt
     // to try to remove it.
     #[inline]
-    default fn to_string(&self) -> String {
+    default fn spec_to_string(&self) -> String {
         let mut buf = String::new();
-        let mut formatter = core::fmt::Formatter::new(&mut buf);
+        let mut formatter =
+            core::fmt::Formatter::new(&mut buf, core::fmt::FormattingOptions::new());
         // Bypass format_args!() to avoid write_str with zero-length strs
         fmt::Display::fmt(self, &mut formatter)
             .expect("a Display implementation returned an error unexpectedly");
@@ -2690,42 +2759,34 @@ impl<T: fmt::Display + ?Sized> ToString for T {
     }
 }
 
-#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "ascii_char", issue = "110998")]
-impl ToString for core::ascii::Char {
+impl SpecToString for core::ascii::Char {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         self.as_str().to_owned()
     }
 }
 
-#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "char_to_string_specialization", since = "1.46.0")]
-impl ToString for char {
+impl SpecToString for char {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         String::from(self.encode_utf8(&mut [0; 4]))
     }
 }
 
-#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "bool_to_string_specialization", since = "1.68.0")]
-impl ToString for bool {
+impl SpecToString for bool {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         String::from(if *self { "true" } else { "false" })
     }
 }
 
-#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "u8_to_string_specialization", since = "1.54.0")]
-impl ToString for u8 {
+impl SpecToString for u8 {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         let mut buf = String::with_capacity(3);
         let mut n = *self;
         if n >= 10 {
@@ -2741,12 +2802,10 @@ impl ToString for u8 {
     }
 }
 
-#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "i8_to_string_specialization", since = "1.54.0")]
-impl ToString for i8 {
+impl SpecToString for i8 {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         let mut buf = String::with_capacity(4);
         if self.is_negative() {
             buf.push('-');
@@ -2787,11 +2846,9 @@ macro_rules! to_string_expr_wrap_in_deref {
 macro_rules! to_string_str {
     {$($($x:ident)*),+} => {
         $(
-            #[doc(hidden)]
-            #[stable(feature = "str_to_string_specialization", since = "1.9.0")]
-            impl ToString for to_string_str_wrap_in_ref!($($x)*) {
+            impl SpecToString for to_string_str_wrap_in_ref!($($x)*) {
                 #[inline]
-                fn to_string(&self) -> String {
+                fn spec_to_string(&self) -> String {
                     String::from(to_string_expr_wrap_in_deref!(self ; $($x)*))
                 }
             }
@@ -2815,32 +2872,26 @@ to_string_str! {
     x,
 }
 
-#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "cow_str_to_string_specialization", since = "1.17.0")]
-impl ToString for Cow<'_, str> {
+impl SpecToString for Cow<'_, str> {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         self[..].to_owned()
     }
 }
 
-#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "string_to_string_specialization", since = "1.17.0")]
-impl ToString for String {
+impl SpecToString for String {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         self.to_owned()
     }
 }
 
-#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "fmt_arguments_to_string_specialization", since = "1.71.0")]
-impl ToString for fmt::Arguments<'_> {
+impl SpecToString for fmt::Arguments<'_> {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         crate::fmt::format(*self)
     }
 }
@@ -3093,6 +3144,134 @@ impl fmt::Write for String {
         Ok(())
     }
 }
+
+/// An iterator over the [`char`]s of a string.
+///
+/// This struct is created by the [`into_chars`] method on [`String`].
+/// See its documentation for more.
+///
+/// [`char`]: prim@char
+/// [`into_chars`]: String::into_chars
+#[cfg_attr(not(no_global_oom_handling), derive(Clone))]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[unstable(feature = "string_into_chars", issue = "133125")]
+pub struct IntoChars {
+    bytes: vec::IntoIter<u8>,
+}
+
+#[unstable(feature = "string_into_chars", issue = "133125")]
+impl fmt::Debug for IntoChars {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("IntoChars").field(&self.as_str()).finish()
+    }
+}
+
+impl IntoChars {
+    /// Views the underlying data as a subslice of the original data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(string_into_chars)]
+    ///
+    /// let mut chars = String::from("abc").into_chars();
+    ///
+    /// assert_eq!(chars.as_str(), "abc");
+    /// chars.next();
+    /// assert_eq!(chars.as_str(), "bc");
+    /// chars.next();
+    /// chars.next();
+    /// assert_eq!(chars.as_str(), "");
+    /// ```
+    #[unstable(feature = "string_into_chars", issue = "133125")]
+    #[must_use]
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        // SAFETY: `bytes` is a valid UTF-8 string.
+        unsafe { str::from_utf8_unchecked(self.bytes.as_slice()) }
+    }
+
+    /// Consumes the `IntoChars`, returning the remaining string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(string_into_chars)]
+    ///
+    /// let chars = String::from("abc").into_chars();
+    /// assert_eq!(chars.into_string(), "abc");
+    ///
+    /// let mut chars = String::from("def").into_chars();
+    /// chars.next();
+    /// assert_eq!(chars.into_string(), "ef");
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "string_into_chars", issue = "133125")]
+    #[inline]
+    pub fn into_string(self) -> String {
+        // Safety: `bytes` are kept in UTF-8 form, only removing whole `char`s at a time.
+        unsafe { String::from_utf8_unchecked(self.bytes.collect()) }
+    }
+
+    #[inline]
+    fn iter(&self) -> CharIndices<'_> {
+        self.as_str().char_indices()
+    }
+}
+
+#[unstable(feature = "string_into_chars", issue = "133125")]
+impl Iterator for IntoChars {
+    type Item = char;
+
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        let mut iter = self.iter();
+        match iter.next() {
+            None => None,
+            Some((_, ch)) => {
+                let offset = iter.offset();
+                // `offset` is a valid index.
+                let _ = self.bytes.advance_by(offset);
+                Some(ch)
+            }
+        }
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.iter().count()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter().size_hint()
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<char> {
+        self.next_back()
+    }
+}
+
+#[unstable(feature = "string_into_chars", issue = "133125")]
+impl DoubleEndedIterator for IntoChars {
+    #[inline]
+    fn next_back(&mut self) -> Option<char> {
+        let len = self.as_str().len();
+        let mut iter = self.iter();
+        match iter.next_back() {
+            None => None,
+            Some((idx, ch)) => {
+                // `idx` is a valid index.
+                let _ = self.bytes.advance_back_by(len - idx);
+                Some(ch)
+            }
+        }
+    }
+}
+
+#[unstable(feature = "string_into_chars", issue = "133125")]
+impl FusedIterator for IntoChars {}
 
 /// A draining iterator for `String`.
 ///

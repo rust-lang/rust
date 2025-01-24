@@ -6,12 +6,11 @@ use std::{env, iter, thread};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
-#[cfg(parallel_compiler)]
 use rustc_data_structures::sync;
 use rustc_metadata::{DylibError, load_symbol_from_dylib};
 use rustc_middle::ty::CurrentGcx;
 use rustc_parse::validate_attr;
-use rustc_session::config::{Cfg, OutFileName, OutputFilenames, OutputTypes, host_triple};
+use rustc_session::config::{Cfg, OutFileName, OutputFilenames, OutputTypes, host_tuple};
 use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::lint::{self, BuiltinLintDiag, LintBuffer};
 use rustc_session::output::{CRATE_TYPES, categorize_crate_type};
@@ -19,7 +18,7 @@ use rustc_session::{EarlyDiagCtxt, Session, filesearch};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 use rustc_target::spec::Target;
 use tracing::info;
 
@@ -36,10 +35,10 @@ pub type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
 pub fn add_configuration(cfg: &mut Cfg, sess: &mut Session, codegen_backend: &dyn CodegenBackend) {
     let tf = sym::target_feature;
 
-    let unstable_target_features = codegen_backend.target_features(sess, true);
+    let unstable_target_features = codegen_backend.target_features_cfg(sess, true);
     sess.unstable_target_features.extend(unstable_target_features.iter().cloned());
 
-    let target_features = codegen_backend.target_features(sess, false);
+    let target_features = codegen_backend.target_features_cfg(sess, false);
     sess.target_features.extend(target_features.iter().cloned());
 
     cfg.extend(target_features.into_iter().map(|feat| (tf, Some(feat))));
@@ -117,19 +116,6 @@ fn run_in_thread_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
     })
 }
 
-#[cfg(not(parallel_compiler))]
-pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
-    thread_builder_diag: &EarlyDiagCtxt,
-    edition: Edition,
-    _threads: usize,
-    sm_inputs: SourceMapInputs,
-    f: F,
-) -> R {
-    let thread_stack_size = init_stack_size(thread_builder_diag);
-    run_in_thread_with_globals(thread_stack_size, edition, sm_inputs, f)
-}
-
-#[cfg(parallel_compiler)]
 pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
     thread_builder_diag: &EarlyDiagCtxt,
     edition: Edition,
@@ -310,7 +296,7 @@ fn get_codegen_sysroot(
         "cannot load the default codegen backend twice"
     );
 
-    let target = host_triple();
+    let target = host_tuple();
     let sysroot_candidates = sysroot_candidates();
 
     let sysroot = iter::once(sysroot)
@@ -467,7 +453,7 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
         .opts
         .crate_name
         .clone()
-        .or_else(|| rustc_attr::find_crate_name(attrs).map(|n| n.to_string()));
+        .or_else(|| rustc_attr_parsing::find_crate_name(attrs).map(|n| n.to_string()));
 
     match sess.io.output_file {
         None => {

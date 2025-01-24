@@ -225,12 +225,12 @@ fn take_eof() {
 
     impl Read for R {
         fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
-            Err(io::const_io_error!(io::ErrorKind::Other, ""))
+            Err(io::const_error!(io::ErrorKind::Other, ""))
         }
     }
     impl BufRead for R {
         fn fill_buf(&mut self) -> io::Result<&[u8]> {
-            Err(io::const_io_error!(io::ErrorKind::Other, ""))
+            Err(io::const_error!(io::ErrorKind::Other, ""))
         }
         fn consume(&mut self, _amt: usize) {}
     }
@@ -531,6 +531,20 @@ fn io_slice_advance_slices_beyond_total_length() {
     assert!(bufs.is_empty());
 }
 
+#[test]
+fn io_slice_as_slice() {
+    let buf = [1; 8];
+    let slice = IoSlice::new(&buf).as_slice();
+    assert_eq!(slice, buf);
+}
+
+#[test]
+fn io_slice_into_slice() {
+    let mut buf = [1; 8];
+    let slice = IoSliceMut::new(&mut buf).into_slice();
+    assert_eq!(slice, [1; 8]);
+}
+
 /// Creates a new writer that reads from at most `n_bufs` and reads
 /// `per_call` bytes (in total) per call to write.
 fn test_writer(n_bufs: usize, per_call: usize) -> TestWriter {
@@ -808,4 +822,21 @@ fn try_oom_error() {
     let reserve_err = v.try_reserve(isize::MAX as usize - 1).unwrap_err();
     let io_err = io::Error::from(reserve_err);
     assert_eq!(io::ErrorKind::OutOfMemory, io_err.kind());
+}
+
+#[test]
+#[cfg(all(windows, unix, not(miri)))]
+fn pipe_creation_clone_and_rw() {
+    let (rx, tx) = std::io::pipe().unwrap();
+
+    tx.try_clone().unwrap().write_all(b"12345").unwrap();
+    drop(tx);
+
+    let mut rx2 = rx.try_clone().unwrap();
+    drop(rx);
+
+    let mut s = String::new();
+    rx2.read_to_string(&mut s).unwrap();
+    drop(rx2);
+    assert_eq!(s, "12345");
 }

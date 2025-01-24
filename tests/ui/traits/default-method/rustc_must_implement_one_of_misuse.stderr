@@ -23,18 +23,6 @@ LL | struct Struct {}
    | ---------------- not a trait
 
 error: function not found in this trait
-  --> $DIR/rustc_must_implement_one_of_misuse.rs:8:34
-   |
-LL | #[rustc_must_implement_one_of(a, b)]
-   |                                  ^
-
-error: the `#[rustc_must_implement_one_of]` attribute must be used with at least 2 args
-  --> $DIR/rustc_must_implement_one_of_misuse.rs:14:1
-   |
-LL | #[rustc_must_implement_one_of(a)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: function not found in this trait
   --> $DIR/rustc_must_implement_one_of_misuse.rs:3:31
    |
 LL | #[rustc_must_implement_one_of(a, b)]
@@ -45,6 +33,18 @@ error: function not found in this trait
    |
 LL | #[rustc_must_implement_one_of(a, b)]
    |                                  ^
+
+error: function not found in this trait
+  --> $DIR/rustc_must_implement_one_of_misuse.rs:8:34
+   |
+LL | #[rustc_must_implement_one_of(a, b)]
+   |                                  ^
+
+error: the `#[rustc_must_implement_one_of]` attribute must be used with at least 2 args
+  --> $DIR/rustc_must_implement_one_of_misuse.rs:14:1
+   |
+LL | #[rustc_must_implement_one_of(a)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: not a function
   --> $DIR/rustc_must_implement_one_of_misuse.rs:26:5

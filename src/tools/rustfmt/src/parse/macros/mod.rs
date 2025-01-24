@@ -4,8 +4,7 @@ use rustc_ast::{ast, ptr};
 use rustc_parse::MACRO_ARGUMENTS;
 use rustc_parse::parser::{ForceCollect, Parser, Recovery};
 use rustc_session::parse::ParseSess;
-use rustc_span::Symbol;
-use rustc_span::symbol::{self, kw};
+use rustc_span::symbol;
 
 use crate::macros::MacroArg;
 use crate::rewrite::RewriteContext;
@@ -82,18 +81,18 @@ pub(crate) struct ParsedMacroArgs {
 }
 
 fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
-    for &keyword in RUST_KW.iter() {
-        if parser.token.is_keyword(keyword)
-            && parser.look_ahead(1, |t| *t == TokenKind::Eof || *t == TokenKind::Comma)
-        {
-            parser.bump();
-            return Some(MacroArg::Keyword(
-                symbol::Ident::with_dummy_span(keyword),
-                parser.prev_token.span,
-            ));
-        }
+    if parser.token.is_any_keyword()
+        && parser.look_ahead(1, |t| *t == TokenKind::Eof || *t == TokenKind::Comma)
+    {
+        let keyword = parser.token.ident().unwrap().0.name;
+        parser.bump();
+        Some(MacroArg::Keyword(
+            symbol::Ident::with_dummy_span(keyword),
+            parser.prev_token.span,
+        ))
+    } else {
+        None
     }
-    None
 }
 
 pub(crate) fn parse_macro_args(
@@ -169,65 +168,3 @@ pub(crate) fn parse_expr(
     let mut parser = build_parser(context, tokens);
     parser.parse_expr().ok()
 }
-
-const RUST_KW: [Symbol; 59] = [
-    kw::PathRoot,
-    kw::DollarCrate,
-    kw::Underscore,
-    kw::As,
-    kw::Box,
-    kw::Break,
-    kw::Const,
-    kw::Continue,
-    kw::Crate,
-    kw::Else,
-    kw::Enum,
-    kw::Extern,
-    kw::False,
-    kw::Fn,
-    kw::For,
-    kw::If,
-    kw::Impl,
-    kw::In,
-    kw::Let,
-    kw::Loop,
-    kw::Match,
-    kw::Mod,
-    kw::Move,
-    kw::Mut,
-    kw::Pub,
-    kw::Ref,
-    kw::Return,
-    kw::SelfLower,
-    kw::SelfUpper,
-    kw::Static,
-    kw::Struct,
-    kw::Super,
-    kw::Trait,
-    kw::True,
-    kw::Type,
-    kw::Unsafe,
-    kw::Use,
-    kw::Where,
-    kw::While,
-    kw::Abstract,
-    kw::Become,
-    kw::Do,
-    kw::Final,
-    kw::Macro,
-    kw::Override,
-    kw::Priv,
-    kw::Typeof,
-    kw::Unsized,
-    kw::Virtual,
-    kw::Yield,
-    kw::Dyn,
-    kw::Async,
-    kw::Try,
-    kw::UnderscoreLifetime,
-    kw::StaticLifetime,
-    kw::Auto,
-    kw::Catch,
-    kw::Default,
-    kw::Union,
-];

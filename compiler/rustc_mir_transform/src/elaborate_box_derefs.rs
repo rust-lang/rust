@@ -2,13 +2,13 @@
 //!
 //! Box is not actually a pointer so it is incorrect to dereference it directly.
 
+use rustc_abi::FieldIdx;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_target::abi::FieldIdx;
 
 /// Constructs the types used when accessing a Box's pointer
 fn build_ptr_tys<'tcx>(
@@ -29,13 +29,8 @@ fn build_ptr_tys<'tcx>(
 pub(super) fn build_projection<'tcx>(
     unique_ty: Ty<'tcx>,
     nonnull_ty: Ty<'tcx>,
-    ptr_ty: Ty<'tcx>,
-) -> [PlaceElem<'tcx>; 3] {
-    [
-        PlaceElem::Field(FieldIdx::ZERO, unique_ty),
-        PlaceElem::Field(FieldIdx::ZERO, nonnull_ty),
-        PlaceElem::Field(FieldIdx::ZERO, ptr_ty),
-    ]
+) -> [PlaceElem<'tcx>; 2] {
+    [PlaceElem::Field(FieldIdx::ZERO, unique_ty), PlaceElem::Field(FieldIdx::ZERO, nonnull_ty)]
 }
 
 struct ElaborateBoxDerefVisitor<'a, 'tcx> {
@@ -75,10 +70,14 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'a, 'tcx> {
             self.patch.add_assign(
                 location,
                 Place::from(ptr_local),
-                Rvalue::Use(Operand::Copy(
-                    Place::from(place.local)
-                        .project_deeper(&build_projection(unique_ty, nonnull_ty, ptr_ty), tcx),
-                )),
+                Rvalue::Cast(
+                    CastKind::Transmute,
+                    Operand::Copy(
+                        Place::from(place.local)
+                            .project_deeper(&build_projection(unique_ty, nonnull_ty), tcx),
+                    ),
+                    ptr_ty,
+                ),
             );
 
             place.local = ptr_local;
@@ -133,8 +132,10 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
                         let (unique_ty, nonnull_ty, ptr_ty) =
                             build_ptr_tys(tcx, boxed_ty, unique_did, nonnull_did);
 
-                        new_projections
-                            .extend_from_slice(&build_projection(unique_ty, nonnull_ty, ptr_ty));
+                        new_projections.extend_from_slice(&build_projection(unique_ty, nonnull_ty));
+                        // While we can't project into `NonNull<_>` in a basic block
+                        // due to MCP#807, this is debug info where it's fine.
+                        new_projections.push(PlaceElem::Field(FieldIdx::ZERO, ptr_ty));
                         new_projections.push(PlaceElem::Deref);
                     } else if let Some(new_projections) = new_projections.as_mut() {
                         // Keep building up our projections list once we've started it.

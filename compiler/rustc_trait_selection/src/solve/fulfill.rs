@@ -10,9 +10,9 @@ use rustc_infer::traits::{
     self, FromSolverError, MismatchedProjectionTypes, Obligation, ObligationCause,
     ObligationCauseCode, PredicateObligation, PredicateObligations, SelectionError, TraitEngine,
 };
-use rustc_middle::bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_next_trait_solver::solve::{GenerateProofTree, HasChanged, SolverDelegateEvalExt as _};
 use tracing::{instrument, trace};
 
@@ -199,6 +199,10 @@ where
         errors
     }
 
+    fn has_pending_obligations(&self) -> bool {
+        !self.obligations.pending.is_empty() || !self.obligations.overflowed.is_empty()
+    }
+
     fn pending_obligations(&self) -> PredicateObligations<'tcx> {
         self.obligations.clone_pending()
     }
@@ -254,6 +258,24 @@ fn fulfillment_error_for_no_solution<'tcx>(
                 MismatchedProjectionTypes { err: TypeError::Mismatch },
             )
         }
+        ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, expected_ty)) => {
+            let ct_ty = match ct.kind() {
+                ty::ConstKind::Unevaluated(uv) => {
+                    infcx.tcx.type_of(uv.def).instantiate(infcx.tcx, uv.args)
+                }
+                ty::ConstKind::Param(param_ct) => param_ct.find_ty_from_env(obligation.param_env),
+                ty::ConstKind::Value(ty, _) => ty,
+                kind => span_bug!(
+                    obligation.cause.span,
+                    "ConstArgHasWrongType failed but we don't know how to compute type for {kind:?}"
+                ),
+            };
+            FulfillmentErrorCode::Select(SelectionError::ConstArgHasWrongType {
+                ct,
+                ct_ty,
+                expected_ty,
+            })
+        }
         ty::PredicateKind::NormalizesTo(..) => {
             FulfillmentErrorCode::Project(MismatchedProjectionTypes { err: TypeError::Mismatch })
         }
@@ -264,14 +286,14 @@ fn fulfillment_error_for_no_solution<'tcx>(
             let (a, b) = infcx.enter_forall_and_leak_universe(
                 obligation.predicate.kind().rebind((pred.a, pred.b)),
             );
-            let expected_found = ExpectedFound::new(true, a, b);
+            let expected_found = ExpectedFound::new(a, b);
             FulfillmentErrorCode::Subtype(expected_found, TypeError::Sorts(expected_found))
         }
         ty::PredicateKind::Coerce(pred) => {
             let (a, b) = infcx.enter_forall_and_leak_universe(
                 obligation.predicate.kind().rebind((pred.a, pred.b)),
             );
-            let expected_found = ExpectedFound::new(false, a, b);
+            let expected_found = ExpectedFound::new(b, a);
             FulfillmentErrorCode::Subtype(expected_found, TypeError::Sorts(expected_found))
         }
         ty::PredicateKind::Clause(_)
@@ -346,12 +368,21 @@ fn find_best_leaf_obligation<'tcx>(
     consider_ambiguities: bool,
 ) -> PredicateObligation<'tcx> {
     let obligation = infcx.resolve_vars_if_possible(obligation.clone());
+    // FIXME: we use a probe here as the `BestObligation` visitor does not
+    // check whether it uses candidates which get shadowed by where-bounds.
+    //
+    // We should probably fix the visitor to not do so instead, as this also
+    // means the leaf obligation may be incorrect.
     infcx
-        .visit_proof_tree(obligation.clone().into(), &mut BestObligation {
-            obligation: obligation.clone(),
-            consider_ambiguities,
+        .fudge_inference_if_ok(|| {
+            infcx
+                .visit_proof_tree(obligation.clone().into(), &mut BestObligation {
+                    obligation: obligation.clone(),
+                    consider_ambiguities,
+                })
+                .break_value()
+                .ok_or(())
         })
-        .break_value()
         .unwrap_or(obligation)
 }
 
@@ -400,6 +431,7 @@ impl<'tcx> BestObligation<'tcx> {
                                     matches!(
                                         nested_goal.source(),
                                         GoalSource::ImplWhereBound
+                                            | GoalSource::AliasBoundConstCondition
                                             | GoalSource::InstantiateHigherRanked
                                             | GoalSource::AliasWellFormed
                                     ) && match self.consider_ambiguities {
@@ -461,8 +493,11 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         // for normalizes-to.
         let pred_kind = goal.goal().predicate.kind();
         let child_mode = match pred_kind.skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(parent_trait_pred)) => {
-                ChildMode::Trait(pred_kind.rebind(parent_trait_pred))
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
+                ChildMode::Trait(pred_kind.rebind(pred))
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(pred)) => {
+                ChildMode::Host(pred_kind.rebind(pred))
             }
             ty::PredicateKind::NormalizesTo(normalizes_to)
                 if matches!(
@@ -478,8 +513,27 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             _ => ChildMode::PassThrough,
         };
 
+        let nested_goals = candidate.instantiate_nested_goals(self.span());
+
+        // If the candidate requires some `T: FnPtr` bound which does not hold should not be treated as
+        // an actual candidate, instead we should treat them as if the impl was never considered to
+        // have potentially applied. As if `impl<A, R> Trait for for<..> fn(..A) -> R` was written
+        // instead of `impl<T: FnPtr> Trait for T`.
+        //
+        // We do this as a separate loop so that we do not choose to tell the user about some nested
+        // goal before we encounter a `T: FnPtr` nested goal.
+        for nested_goal in &nested_goals {
+            if let Some(fn_ptr_trait) = tcx.lang_items().fn_ptr_trait()
+                && let Some(poly_trait_pred) = nested_goal.goal().predicate.as_trait_clause()
+                && poly_trait_pred.def_id() == fn_ptr_trait
+                && let Err(NoSolution) = nested_goal.result()
+            {
+                return ControlFlow::Break(self.obligation.clone());
+            }
+        }
+
         let mut impl_where_bound_count = 0;
-        for nested_goal in candidate.instantiate_nested_goals(self.span()) {
+        for nested_goal in nested_goals {
             trace!(nested_goal = ?(nested_goal.goal(), nested_goal.source(), nested_goal.result()));
 
             let make_obligation = |cause| Obligation {
@@ -491,7 +545,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
 
             let obligation;
             match (child_mode, nested_goal.source()) {
-                (ChildMode::Trait(_), GoalSource::Misc) => {
+                (ChildMode::Trait(_) | ChildMode::Host(_), GoalSource::Misc) => {
                     continue;
                 }
                 (ChildMode::Trait(parent_trait_pred), GoalSource::ImplWhereBound) => {
@@ -504,11 +558,25 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                     ));
                     impl_where_bound_count += 1;
                 }
+                (
+                    ChildMode::Host(parent_host_pred),
+                    GoalSource::ImplWhereBound | GoalSource::AliasBoundConstCondition,
+                ) => {
+                    obligation = make_obligation(derive_host_cause(
+                        tcx,
+                        candidate.kind(),
+                        self.obligation.cause.clone(),
+                        impl_where_bound_count,
+                        parent_host_pred,
+                    ));
+                    impl_where_bound_count += 1;
+                }
                 // Skip over a higher-ranked predicate.
                 (_, GoalSource::InstantiateHigherRanked) => {
                     obligation = self.obligation.clone();
                 }
-                (ChildMode::PassThrough, _) | (_, GoalSource::AliasWellFormed) => {
+                (ChildMode::PassThrough, _)
+                | (_, GoalSource::AliasWellFormed | GoalSource::AliasBoundConstCondition) => {
                     obligation = make_obligation(self.obligation.cause.clone());
                 }
             }
@@ -556,12 +624,16 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 enum ChildMode<'tcx> {
     // Try to derive an `ObligationCause::{ImplDerived,BuiltinDerived}`,
     // and skip all `GoalSource::Misc`, which represent useless obligations
     // such as alias-eq which may not hold.
     Trait(ty::PolyTraitPredicate<'tcx>),
+    // Try to derive an `ObligationCause::{ImplDerived,BuiltinDerived}`,
+    // and skip all `GoalSource::Misc`, which represent useless obligations
+    // such as alias-eq which may not hold.
+    Host(ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>),
     // Skip trying to derive an `ObligationCause` from this obligation, and
     // report *all* sub-obligations as if they came directly from the parent
     // obligation.
@@ -598,6 +670,55 @@ fn derive_cause<'tcx>(
             result: _,
         } => {
             cause = cause.derived_cause(parent_trait_pred, ObligationCauseCode::BuiltinDerived);
+        }
+        _ => {}
+    };
+    cause
+}
+
+fn derive_host_cause<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    candidate_kind: inspect::ProbeKind<TyCtxt<'tcx>>,
+    mut cause: ObligationCause<'tcx>,
+    idx: usize,
+    parent_host_pred: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+) -> ObligationCause<'tcx> {
+    match candidate_kind {
+        inspect::ProbeKind::TraitCandidate {
+            source: CandidateSource::Impl(impl_def_id),
+            result: _,
+        } => {
+            if let Some((_, span)) = tcx
+                .predicates_of(impl_def_id)
+                .instantiate_identity(tcx)
+                .into_iter()
+                .chain(tcx.const_conditions(impl_def_id).instantiate_identity(tcx).into_iter().map(
+                    |(trait_ref, span)| {
+                        (
+                            trait_ref.to_host_effect_clause(
+                                tcx,
+                                parent_host_pred.skip_binder().constness,
+                            ),
+                            span,
+                        )
+                    },
+                ))
+                .nth(idx)
+            {
+                cause =
+                    cause.derived_host_cause(parent_host_pred, |derived| {
+                        ObligationCauseCode::ImplDerivedHost(Box::new(
+                            traits::ImplDerivedHostCause { derived, impl_def_id, span },
+                        ))
+                    })
+            }
+        }
+        inspect::ProbeKind::TraitCandidate {
+            source: CandidateSource::BuiltinImpl(..),
+            result: _,
+        } => {
+            cause =
+                cause.derived_host_cause(parent_host_pred, ObligationCauseCode::BuiltinDerivedHost);
         }
         _ => {}
     };

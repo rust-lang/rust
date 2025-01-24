@@ -1,10 +1,11 @@
 use std::{iter::once, mem};
 
 use hir::Semantics;
+use ide_db::syntax_helpers::tree_diff::diff;
+use ide_db::text_edit::{TextEdit, TextEditBuilder};
 use ide_db::{helpers::pick_best_token, FileRange, RootDatabase};
 use itertools::Itertools;
-use syntax::{algo, ast, match_ast, AstNode, SyntaxElement, SyntaxKind, SyntaxNode, TextRange};
-use text_edit::{TextEdit, TextEditBuilder};
+use syntax::{ast, match_ast, AstNode, SyntaxElement, SyntaxKind, SyntaxNode, TextRange};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Direction {
@@ -166,7 +167,7 @@ fn replace_nodes<'a>(
 
     let mut edit = TextEditBuilder::default();
 
-    algo::diff(first, second).into_text_edit(&mut edit);
+    diff(first, second).into_text_edit(&mut edit);
     edit.replace(second.text_range(), first_with_cursor);
 
     edit.finish()
@@ -179,7 +180,11 @@ mod tests {
 
     use crate::Direction;
 
-    fn check(ra_fixture: &str, expect: Expect, direction: Direction) {
+    fn check(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+        direction: Direction,
+    ) {
         let (analysis, range) = fixture::range(ra_fixture);
         let edit = analysis.move_item(range, direction).unwrap().unwrap_or_default();
         let mut file = analysis.file_text(range.file_id).unwrap().to_string();

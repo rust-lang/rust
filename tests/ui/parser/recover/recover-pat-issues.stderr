@@ -4,7 +4,7 @@ error: expected a pattern, found an expression
 LL |         Foo("hi".to_owned()) => true,
    |             ^^^^^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         Foo(val) if val == "hi".to_owned() => true,
@@ -26,7 +26,7 @@ error: expected a pattern, found an expression
 LL |         Bar { baz: "hi".to_owned() } => true,
    |                    ^^^^^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         Bar { baz } if baz == "hi".to_owned() => true,
@@ -48,7 +48,7 @@ error: expected a pattern, found an expression
 LL |         &["foo".to_string()] => {}
    |           ^^^^^^^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         &[val] if val == "foo".to_string() => {}
@@ -70,7 +70,7 @@ error: expected a pattern, found an expression
 LL |     if let Some(MAGIC.0 as usize) = None::<usize> {}
    |                 ^^^^^^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = MAGIC.0 as usize;
@@ -87,7 +87,7 @@ error: expected a pattern, found an expression
 LL |     if let (-1.some(4)) = (0, Some(4)) {}
    |             ^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = -1.some(4);
@@ -104,7 +104,7 @@ error: expected a pattern, found an expression
 LL |     if let (-1.Some(4)) = (0, Some(4)) {}
    |             ^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = -1.Some(4);

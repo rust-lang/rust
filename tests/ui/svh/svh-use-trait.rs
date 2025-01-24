@@ -2,7 +2,7 @@
 //@ aux-build:svh-uta-base.rs
 //@ aux-build:svh-utb.rs
 //@ aux-build:svh-uta-change-use-trait.rs
-//@ normalize-stderr-test: "(crate `(\w+)`:) .*" -> "$1 $$PATH_$2"
+//@ normalize-stderr: "(crate `(\w+)`:) .*" -> "$1 $$PATH_$2"
 
 //! "svh-uta-trait.rs" is checking that we detect a
 //! change from `use foo::TraitB` to use `foo::TraitB` in the hash

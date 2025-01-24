@@ -2295,6 +2295,7 @@ Windows.Win32.Storage.FileSystem.FILE_NAME_OPENED
 Windows.Win32.Storage.FileSystem.FILE_READ_ATTRIBUTES
 Windows.Win32.Storage.FileSystem.FILE_READ_DATA
 Windows.Win32.Storage.FileSystem.FILE_READ_EA
+Windows.Win32.Storage.FileSystem.FILE_RENAME_INFO
 Windows.Win32.Storage.FileSystem.FILE_SHARE_DELETE
 Windows.Win32.Storage.FileSystem.FILE_SHARE_MODE
 Windows.Win32.Storage.FileSystem.FILE_SHARE_NONE
@@ -2351,6 +2352,9 @@ Windows.Win32.Storage.FileSystem.GetFinalPathNameByHandleW
 Windows.Win32.Storage.FileSystem.GetFullPathNameW
 Windows.Win32.Storage.FileSystem.GetTempPathW
 Windows.Win32.Storage.FileSystem.INVALID_FILE_ATTRIBUTES
+Windows.Win32.Storage.FileSystem.LOCKFILE_EXCLUSIVE_LOCK
+Windows.Win32.Storage.FileSystem.LOCKFILE_FAIL_IMMEDIATELY
+Windows.Win32.Storage.FileSystem.LockFileEx
 Windows.Win32.Storage.FileSystem.LPPROGRESS_ROUTINE
 Windows.Win32.Storage.FileSystem.LPPROGRESS_ROUTINE_CALLBACK_REASON
 Windows.Win32.Storage.FileSystem.MAXIMUM_REPARSE_DATA_BUFFER_SIZE
@@ -2396,6 +2400,7 @@ Windows.Win32.Storage.FileSystem.SYMBOLIC_LINK_FLAG_DIRECTORY
 Windows.Win32.Storage.FileSystem.SYMBOLIC_LINK_FLAGS
 Windows.Win32.Storage.FileSystem.SYNCHRONIZE
 Windows.Win32.Storage.FileSystem.TRUNCATE_EXISTING
+Windows.Win32.Storage.FileSystem.UnlockFile
 Windows.Win32.Storage.FileSystem.VOLUME_NAME_DOS
 Windows.Win32.Storage.FileSystem.VOLUME_NAME_GUID
 Windows.Win32.Storage.FileSystem.VOLUME_NAME_NONE
@@ -2421,6 +2426,7 @@ Windows.Win32.System.Console.ENABLE_VIRTUAL_TERMINAL_PROCESSING
 Windows.Win32.System.Console.ENABLE_WINDOW_INPUT
 Windows.Win32.System.Console.ENABLE_WRAP_AT_EOL_OUTPUT
 Windows.Win32.System.Console.GetConsoleMode
+Windows.Win32.System.Console.GetConsoleOutputCP
 Windows.Win32.System.Console.GetStdHandle
 Windows.Win32.System.Console.ReadConsoleW
 Windows.Win32.System.Console.STD_ERROR_HANDLE
@@ -2599,5 +2605,7 @@ Windows.Win32.System.Threading.WaitForMultipleObjects
 Windows.Win32.System.Threading.WaitForSingleObject
 Windows.Win32.System.Threading.WakeAllConditionVariable
 Windows.Win32.System.Threading.WakeConditionVariable
+Windows.Win32.System.WindowsProgramming.FILE_RENAME_FLAG_POSIX_SEMANTICS
+Windows.Win32.System.WindowsProgramming.FILE_RENAME_FLAG_REPLACE_IF_EXISTS
 Windows.Win32.System.WindowsProgramming.PROGRESS_CONTINUE
 Windows.Win32.UI.Shell.GetUserProfileDirectoryW

@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(
             if let Some((_, lang_item)) = binop_traits(op.node)
                 && let Some(trait_id) = cx.tcx.lang_items().get(lang_item)
                 && let parent_fn = cx.tcx.hir().get_parent_item(e.hir_id).def_id
-                && trait_ref_of_method(cx, parent_fn).map_or(true, |t| t.path.res.def_id() != trait_id)
+                && trait_ref_of_method(cx, parent_fn).is_none_or(|t| t.path.res.def_id() != trait_id)
                 && implements_trait(cx, ty, trait_id, &[rty.into()])
             {
                 // Primitive types execute assign-ops right-to-left. Every other type is left-to-right.
@@ -102,7 +102,7 @@ fn imm_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> HirIdSet {
     struct S(HirIdSet);
     impl Delegate<'_> for S {
         fn borrow(&mut self, place: &PlaceWithHirId<'_>, _: HirId, kind: BorrowKind) {
-            if matches!(kind, BorrowKind::ImmBorrow | BorrowKind::UniqueImmBorrow) {
+            if matches!(kind, BorrowKind::Immutable | BorrowKind::UniqueImmutable) {
                 self.0.insert(match place.place.base {
                     PlaceBase::Local(id) => id,
                     PlaceBase::Upvar(id) => id.var_path.hir_id,
@@ -127,7 +127,7 @@ fn mut_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> HirIdSet {
     struct S(HirIdSet);
     impl Delegate<'_> for S {
         fn borrow(&mut self, place: &PlaceWithHirId<'_>, _: HirId, kind: BorrowKind) {
-            if matches!(kind, BorrowKind::MutBorrow) {
+            if matches!(kind, BorrowKind::Mutable) {
                 self.0.insert(match place.place.base {
                     PlaceBase::Local(id) => id,
                     PlaceBase::Upvar(id) => id.var_path.hir_id,

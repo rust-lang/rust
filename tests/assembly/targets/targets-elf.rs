@@ -261,6 +261,9 @@
 //@ revisions: m68k_unknown_linux_gnu
 //@ [m68k_unknown_linux_gnu] compile-flags: --target m68k-unknown-linux-gnu
 //@ [m68k_unknown_linux_gnu] needs-llvm-components: m68k
+//@ revisions: m68k_unknown_none_elf
+//@ [m68k_unknown_none_elf] compile-flags: --target m68k-unknown-none-elf
+//@ [m68k_unknown_none_elf] needs-llvm-components: m68k
 //@ revisions: mips64_openwrt_linux_musl
 //@ [mips64_openwrt_linux_musl] compile-flags: --target mips64-openwrt-linux-musl
 //@ [mips64_openwrt_linux_musl] needs-llvm-components: mips
@@ -285,6 +288,12 @@
 //@ revisions: mips_unknown_linux_uclibc
 //@ [mips_unknown_linux_uclibc] compile-flags: --target mips-unknown-linux-uclibc
 //@ [mips_unknown_linux_uclibc] needs-llvm-components: mips
+//@ revisions: mips_mti_none_elf
+//@ [mips_mti_none_elf] compile-flags: --target mips-mti-none-elf
+//@ [mips_mti_none_elf] needs-llvm-components: mips
+//@ revisions: mipsel_mti_none_elf
+//@ [mipsel_mti_none_elf] compile-flags: --target mipsel-mti-none-elf
+//@ [mipsel_mti_none_elf] needs-llvm-components: mips
 //@ revisions: mipsel_sony_psp
 //@ [mipsel_sony_psp] compile-flags: --target mipsel-sony-psp
 //@ [mipsel_sony_psp] needs-llvm-components: mips
@@ -522,9 +531,9 @@
 //@ revisions: wasm32_unknown_unknown
 //@ [wasm32_unknown_unknown] compile-flags: --target wasm32-unknown-unknown
 //@ [wasm32_unknown_unknown] needs-llvm-components: webassembly
-//@ revisions: wasm32_wasi
-//@ [wasm32_wasi] compile-flags: --target wasm32-wasi
-//@ [wasm32_wasi] needs-llvm-components: webassembly
+//@ revisions: wasm32v1_none
+//@ [wasm32v1_none] compile-flags: --target wasm32v1-none
+//@ [wasm32v1_none] needs-llvm-components: webassembly
 //@ revisions: wasm32_wasip1
 //@ [wasm32_wasip1] compile-flags: --target wasm32-wasip1
 //@ [wasm32_wasip1] needs-llvm-components: webassembly
@@ -676,6 +685,8 @@
 #[lang = "sized"]
 trait Sized {}
 
+// Force linkage to ensure code is actually generated
+#[no_mangle]
 pub fn test() -> u8 {
     42
 }

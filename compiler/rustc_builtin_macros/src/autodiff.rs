@@ -20,8 +20,7 @@ mod llvm_enzyme {
         PatKind, TyKind,
     };
     use rustc_expand::base::{Annotatable, ExtCtxt};
-    use rustc_span::symbol::{Ident, kw, sym};
-    use rustc_span::{Span, Symbol};
+    use rustc_span::{Ident, Span, Symbol, kw, sym};
     use thin_vec::{ThinVec, thin_vec};
     use tracing::{debug, trace};
 
@@ -35,7 +34,7 @@ mod llvm_enzyme {
             FnRetTy::Default(_) => false,
         }
     }
-    fn first_ident(x: &MetaItemInner) -> rustc_span::symbol::Ident {
+    fn first_ident(x: &MetaItemInner) -> rustc_span::Ident {
         let segments = &x.meta_item().unwrap().path.segments;
         assert!(segments.len() == 1);
         segments[0].ident

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
-use clippy_utils::{is_res_lang_ctor, is_trait_method, match_trait_method, paths, peel_blocks};
+use clippy_utils::{is_res_lang_ctor, is_trait_method, match_def_path, match_trait_method, paths, peel_blocks};
 use hir::{ExprKind, HirId, PatKind};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -83,6 +83,28 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
     /// to consider the arms, and we want to avoid breaking the logic for situations where things
     /// get desugared to match.
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'tcx>) {
+        let fn_def_id = block.hir_id.owner.to_def_id();
+        if let Some(impl_id) = cx.tcx.impl_of_method(fn_def_id)
+            && let Some(trait_id) = cx.tcx.trait_id_of_impl(impl_id)
+        {
+            // We don't want to lint inside io::Read or io::Write implementations, as the author has more
+            // information about their trait implementation than our lint, see https://github.com/rust-lang/rust-clippy/issues/4836
+            if cx.tcx.is_diagnostic_item(sym::IoRead, trait_id) || cx.tcx.is_diagnostic_item(sym::IoWrite, trait_id) {
+                return;
+            }
+
+            let async_paths: [&[&str]; 4] = [
+                &paths::TOKIO_IO_ASYNCREADEXT,
+                &paths::TOKIO_IO_ASYNCWRITEEXT,
+                &paths::FUTURES_IO_ASYNCREADEXT,
+                &paths::FUTURES_IO_ASYNCWRITEEXT,
+            ];
+
+            if async_paths.into_iter().any(|path| match_def_path(cx, trait_id, path)) {
+                return;
+            }
+        }
+
         for stmt in block.stmts {
             if let hir::StmtKind::Semi(exp) = stmt.kind {
                 check_expr(cx, exp);
@@ -222,7 +244,7 @@ fn unpack_call_chain<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
 }
 
 fn unpack_try<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
-    while let ExprKind::Call(func, [ref arg_0]) = expr.kind
+    while let ExprKind::Call(func, [arg_0]) = expr.kind
         && matches!(
             func.kind,
             ExprKind::Path(hir::QPath::LangItem(hir::LangItem::TryTraitBranch, ..))
@@ -244,7 +266,7 @@ fn unpack_match<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
 /// waited on.  Otherwise return None.
 fn unpack_await<'a>(expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
     if let ExprKind::Match(expr, _, hir::MatchSource::AwaitDesugar) = expr.kind {
-        if let ExprKind::Call(func, [ref arg_0]) = expr.kind {
+        if let ExprKind::Call(func, [arg_0]) = expr.kind {
             if matches!(
                 func.kind,
                 ExprKind::Path(hir::QPath::LangItem(hir::LangItem::IntoFutureIntoFuture, ..))

@@ -384,7 +384,10 @@ impl<T> Trait<T> for X {
                                     | DefKind::AssocFn
                                     | DefKind::AssocConst
                             )
-                            && tcx.is_type_alias_impl_trait(opaque_ty.def_id)
+                            && matches!(
+                                tcx.opaque_ty_origin(opaque_ty.def_id),
+                                hir::OpaqueTyOrigin::TyAlias { .. }
+                            )
                             && !tcx
                                 .opaque_types_defined_by(body_owner_def_id.expect_local())
                                 .contains(&opaque_ty.def_id.expect_local())
@@ -458,9 +461,11 @@ impl<T> Trait<T> for X {
                     (ty::FnPtr(_, hdr), ty::FnDef(def_id, _))
                     | (ty::FnDef(def_id, _), ty::FnPtr(_, hdr)) => {
                         if tcx.fn_sig(def_id).skip_binder().safety() < hdr.safety {
-                            diag.note(
+                            if !tcx.codegen_fn_attrs(def_id).safe_target_features {
+                                diag.note(
                                 "unsafe functions cannot be coerced into safe function pointers",
-                            );
+                                );
+                            }
                         }
                     }
                     (ty::Adt(_, _), ty::Adt(def, args))
@@ -627,7 +632,7 @@ impl<T> Trait<T> for X {
         let callable_scope = matches!(
             body_owner,
             Some(
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { .. }, .. })
                     | hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(..), .. })
                     | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }),
             )
@@ -894,7 +899,7 @@ fn foo(&self) -> Self::T { String::new() }
         // FIXME: we would want to call `resolve_vars_if_possible` on `ty` before suggesting.
 
         let trait_bounds = bounds.iter().filter_map(|bound| match bound {
-            hir::GenericBound::Trait(ptr) if ptr.modifiers == hir::TraitBoundModifier::None => {
+            hir::GenericBound::Trait(ptr) if ptr.modifiers == hir::TraitBoundModifiers::NONE => {
                 Some(ptr)
             }
             _ => None,

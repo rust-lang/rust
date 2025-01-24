@@ -3,11 +3,11 @@ use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
 
 use itertools::Itertools;
+use rustc_abi::FIRST_VARIANT;
 use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, AllocatorKind, global_fn_name};
-use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
-use rustc_data_structures::sync::par_map;
+use rustc_data_structures::sync::{Lrc, par_map};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
@@ -20,17 +20,16 @@ use rustc_middle::middle::{exported_symbols, lang_items};
 use rustc_middle::mir::BinOp;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
-use rustc_span::symbol::sym;
-use rustc_span::{DUMMY_SP, Symbol};
-use rustc_target::abi::FIRST_VARIANT;
+use rustc_span::{DUMMY_SP, Symbol, sym};
 use rustc_trait_selection::infer::at::ToTrace;
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
+use {rustc_ast as ast, rustc_attr_parsing as attr};
 
 use crate::assert_module_sources::CguReuse;
 use crate::back::link::are_upstream_rust_objects_already_included;
@@ -119,7 +118,8 @@ pub fn validate_trivial_unsize<'tcx>(
 ) -> bool {
     match (source_data.principal(), target_data.principal()) {
         (Some(hr_source_principal), Some(hr_target_principal)) => {
-            let infcx = tcx.infer_ctxt().build();
+            let (infcx, param_env) =
+                tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv::fully_monomorphized());
             let universe = infcx.universe();
             let ocx = ObligationCtxt::new(&infcx);
             infcx.enter_forall(hr_target_principal, |target_principal| {
@@ -130,7 +130,7 @@ pub fn validate_trivial_unsize<'tcx>(
                 );
                 let Ok(()) = ocx.eq_trace(
                     &ObligationCause::dummy(),
-                    ty::ParamEnv::reveal_all(),
+                    param_env,
                     ToTrace::to_trace(
                         &ObligationCause::dummy(),
                         hr_target_principal,
@@ -165,7 +165,7 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> Bx::Value {
     let cx = bx.cx();
     let (source, target) =
-        cx.tcx().struct_lockstep_tails_for_codegen(source, target, bx.param_env());
+        cx.tcx().struct_lockstep_tails_for_codegen(source, target, bx.typing_env());
     match (source.kind(), target.kind()) {
         (&ty::Array(_, len), &ty::Slice(_)) => cx.const_usize(
             len.try_to_target_usize(cx.tcx()).expect("expected monomorphic const in codegen"),
@@ -388,7 +388,8 @@ pub(crate) fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 // exceptions. This means that the VM does the unwinding for
 // us
 pub fn wants_wasm_eh(sess: &Session) -> bool {
-    sess.target.is_like_wasm && sess.target.os != "emscripten"
+    sess.target.is_like_wasm
+        && (sess.target.os != "emscripten" || sess.opts.unstable_opts.emscripten_wasm_eh)
 }
 
 /// Returns `true` if this session's target will use SEH-based unwinding.
@@ -466,10 +467,9 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = cx.tcx().normalize_erasing_regions(
-            ty::ParamEnv::reveal_all(),
-            main_ret_ty.no_bound_vars().unwrap(),
-        );
+        let main_ret_ty = cx
+            .tcx()
+            .normalize_erasing_regions(cx.typing_env(), main_ret_ty.no_bound_vars().unwrap());
 
         let Some(llfn) = cx.declare_c_main(llfty) else {
             // FIXME: We should be smart and show a better diagnostic here.
@@ -490,12 +490,12 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let ptr_ty = cx.type_ptr();
         let (arg_argc, arg_argv) = get_argc_argv(&mut bx);
 
-        let (start_fn, start_ty, args, instance) = if let EntryFnType::Main { sigpipe } = entry_type
-        {
+        let EntryFnType::Main { sigpipe } = entry_type;
+        let (start_fn, start_ty, args, instance) = {
             let start_def_id = cx.tcx().require_lang_item(LangItem::Start, None);
             let start_instance = ty::Instance::expect_resolve(
                 cx.tcx(),
-                ty::ParamEnv::reveal_all(),
+                cx.typing_env(),
                 start_def_id,
                 cx.tcx().mk_args(&[main_ret_ty.into()]),
                 DUMMY_SP,
@@ -512,10 +512,6 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 vec![rust_main, arg_argc, arg_argv, arg_sigpipe],
                 Some(start_instance),
             )
-        } else {
-            debug!("using user-defined start fn");
-            let start_ty = cx.type_func(&[isize_ty, ptr_ty], isize_ty);
-            (rust_main, start_ty, vec![arg_argc, arg_argv], None)
         };
 
         let result = bx.call(start_ty, None, None, start_fn, &args, None, instance);
@@ -530,7 +526,8 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-/// Obtain the `argc` and `argv` values to pass to the rust start function.
+/// Obtain the `argc` and `argv` values to pass to the rust start function
+/// (i.e., the "start" lang item).
 fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(bx: &mut Bx) -> (Bx::Value, Bx::Value) {
     if bx.cx().sess().target.os.contains("uefi") {
         // Params for UEFI
@@ -873,7 +870,8 @@ impl CrateInfo {
             crate_types.iter().map(|&c| (c, crate::back::linker::linked_symbols(tcx, c))).collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
         let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
-        let subsystem = attr::first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
+        let subsystem =
+            ast::attr::first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
         let windows_subsystem = subsystem.map(|subsystem| {
             if subsystem != sym::windows && subsystem != sym::console {
                 tcx.dcx().emit_fatal(errors::InvalidWindowsSubsystem { subsystem });
@@ -888,7 +886,7 @@ impl CrateInfo {
         // below.
         //
         // In order to get this left-to-right dependency ordering, we use the reverse
-        // postorder of all crates putting the leaves at the right-most positions.
+        // postorder of all crates putting the leaves at the rightmost positions.
         let mut compiler_builtins = None;
         let mut used_crates: Vec<_> = tcx
             .postorder_cnums(())
@@ -923,7 +921,7 @@ impl CrateInfo {
             crate_name: UnordMap::with_capacity(n_crates),
             used_crates,
             used_crate_source: UnordMap::with_capacity(n_crates),
-            dependency_formats: tcx.dependency_formats(()).clone(),
+            dependency_formats: Lrc::clone(tcx.dependency_formats(())),
             windows_subsystem,
             natvis_debugger_visualizers: Default::default(),
         };
@@ -936,7 +934,7 @@ impl CrateInfo {
             info.crate_name.insert(cnum, tcx.crate_name(cnum));
 
             let used_crate_source = tcx.used_crate_source(cnum);
-            info.used_crate_source.insert(cnum, used_crate_source.clone());
+            info.used_crate_source.insert(cnum, Lrc::clone(used_crate_source));
             if tcx.is_profiler_runtime(cnum) {
                 info.profiler_runtime = Some(cnum);
             }

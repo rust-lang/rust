@@ -3,6 +3,7 @@
 mod format_like;
 
 use hir::ItemInNs;
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     documentation::{Documentation, HasDocs},
     imports::insert_use::ImportScope,
@@ -15,7 +16,6 @@ use syntax::{
     SyntaxKind::{BLOCK_EXPR, EXPR_STMT, FOR_EXPR, IF_EXPR, LOOP_EXPR, STMT_LIST, WHILE_EXPR},
     TextRange, TextSize,
 };
-use text_edit::TextEdit;
 
 use crate::{
     completions::postfix::format_like::add_format_like_completions,
@@ -303,7 +303,7 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, ast::Expr) {
 
         resulting_element = ast::Expr::from(parent_deref_element);
 
-        new_element_opt = make::expr_prefix(syntax::T![*], new_element_opt);
+        new_element_opt = make::expr_prefix(syntax::T![*], new_element_opt).into();
     }
 
     if let Some(first_ref_expr) = resulting_element.syntax().parent().and_then(ast::RefExpr::cast) {
@@ -401,17 +401,12 @@ fn add_custom_postfix_completions(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::expect;
 
     use crate::{
-        tests::{check_edit, check_edit_with_config, completion_list, TEST_CONFIG},
+        tests::{check, check_edit, check_edit_with_config, TEST_CONFIG},
         CompletionConfig, Snippet,
     };
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture);
-        expect.assert_eq(&actual)
-    }
 
     #[test]
     fn postfix_completion_works_for_trivial_path_expression() {
@@ -423,21 +418,21 @@ fn main() {
 }
 "#,
             expect![[r#"
-                sn box    Box::new(expr)
-                sn call   function(expr)
-                sn dbg    dbg!(expr)
-                sn dbgr   dbg!(&expr)
-                sn deref  *expr
-                sn if     if expr {}
-                sn let    let
-                sn letm   let mut
-                sn match  match expr {}
-                sn not    !expr
-                sn ref    &expr
-                sn refm   &mut expr
-                sn return return expr
-                sn unsafe unsafe {}
-                sn while  while expr {}
+                sn box  Box::new(expr)
+                sn call function(expr)
+                sn dbg      dbg!(expr)
+                sn dbgr    dbg!(&expr)
+                sn deref         *expr
+                sn if       if expr {}
+                sn let             let
+                sn letm        let mut
+                sn match match expr {}
+                sn not           !expr
+                sn ref           &expr
+                sn refm      &mut expr
+                sn return  return expr
+                sn unsafe    unsafe {}
+                sn while while expr {}
             "#]],
         );
     }
@@ -456,19 +451,19 @@ fn main() {
 }
 "#,
             expect![[r#"
-                sn box    Box::new(expr)
-                sn call   function(expr)
-                sn dbg    dbg!(expr)
-                sn dbgr   dbg!(&expr)
-                sn deref  *expr
-                sn if     if expr {}
-                sn match  match expr {}
-                sn not    !expr
-                sn ref    &expr
-                sn refm   &mut expr
-                sn return return expr
-                sn unsafe unsafe {}
-                sn while  while expr {}
+                sn box  Box::new(expr)
+                sn call function(expr)
+                sn dbg      dbg!(expr)
+                sn dbgr    dbg!(&expr)
+                sn deref         *expr
+                sn if       if expr {}
+                sn match match expr {}
+                sn not           !expr
+                sn ref           &expr
+                sn refm      &mut expr
+                sn return  return expr
+                sn unsafe    unsafe {}
+                sn while while expr {}
             "#]],
         );
     }
@@ -483,18 +478,18 @@ fn main() {
 }
 "#,
             expect![[r#"
-                sn box    Box::new(expr)
-                sn call   function(expr)
-                sn dbg    dbg!(expr)
-                sn dbgr   dbg!(&expr)
-                sn deref  *expr
-                sn let    let
-                sn letm   let mut
-                sn match  match expr {}
-                sn ref    &expr
-                sn refm   &mut expr
-                sn return return expr
-                sn unsafe unsafe {}
+                sn box  Box::new(expr)
+                sn call function(expr)
+                sn dbg      dbg!(expr)
+                sn dbgr    dbg!(&expr)
+                sn deref         *expr
+                sn let             let
+                sn letm        let mut
+                sn match match expr {}
+                sn ref           &expr
+                sn refm      &mut expr
+                sn return  return expr
+                sn unsafe    unsafe {}
             "#]],
         )
     }
@@ -509,21 +504,21 @@ fn main() {
 }
 "#,
             expect![[r#"
-                sn box    Box::new(expr)
-                sn call   function(expr)
-                sn dbg    dbg!(expr)
-                sn dbgr   dbg!(&expr)
-                sn deref  *expr
-                sn if     if expr {}
-                sn let    let
-                sn letm   let mut
-                sn match  match expr {}
-                sn not    !expr
-                sn ref    &expr
-                sn refm   &mut expr
-                sn return return expr
-                sn unsafe unsafe {}
-                sn while  while expr {}
+                sn box  Box::new(expr)
+                sn call function(expr)
+                sn dbg      dbg!(expr)
+                sn dbgr    dbg!(&expr)
+                sn deref         *expr
+                sn if       if expr {}
+                sn let             let
+                sn letm        let mut
+                sn match match expr {}
+                sn not           !expr
+                sn ref           &expr
+                sn refm      &mut expr
+                sn return  return expr
+                sn unsafe    unsafe {}
+                sn while while expr {}
             "#]],
         );
     }

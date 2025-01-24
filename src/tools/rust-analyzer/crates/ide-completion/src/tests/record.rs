@@ -1,13 +1,8 @@
-use expect_test::{expect, Expect};
+use expect_test::expect;
 
-use crate::tests::completion_list;
+use crate::tests::check;
 
 use super::check_edit;
-
-fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(ra_fixture);
-    expect.assert_eq(&actual);
-}
 
 #[test]
 fn without_default_impl() {
@@ -70,8 +65,8 @@ fn foo(baz: Baz) {
             ev Ok
             bn Baz::Bar Baz::Bar$0
             bn Baz::Foo Baz::Foo$0
-            bn Err(…)   Err($1)$0
-            bn Ok(…)    Ok($1)$0
+            bn Err(…)    Err($1)$0
+            bn Ok(…)      Ok($1)$0
             kw mut
             kw ref
         "#]],
@@ -91,20 +86,20 @@ fn foo(baz: Baz) {
 }
  "#,
         expect![[r#"
-         en Baz
-         en Result
-         md core
-         ev Bar
-         ev Err
-         ev Foo
-         ev Ok
-         bn Bar    Bar$0
-         bn Err(…) Err($1)$0
-         bn Foo    Foo$0
-         bn Ok(…)  Ok($1)$0
-         kw mut
-         kw ref
-         "#]],
+            en Baz
+            en Result
+            md core
+            ev Bar
+            ev Err
+            ev Foo
+            ev Ok
+            bn Bar        Bar$0
+            bn Err(…) Err($1)$0
+            bn Foo        Foo$0
+            bn Ok(…)   Ok($1)$0
+            kw mut
+            kw ref
+        "#]],
     );
 }
 
@@ -184,14 +179,14 @@ fn main() {
 "#,
         expect![[r#"
             fd ..Default::default()
-            fn main()               fn()
-            lc foo                  Foo
-            lc thing                i32
+            fn main()                          fn()
+            lc foo                              Foo
+            lc thing                            i32
             md core
-            st Foo                  Foo
-            st Foo {…}              Foo { foo1: u32, foo2: u32 }
+            st Foo                              Foo
+            st Foo {…} Foo { foo1: u32, foo2: u32 }
             tt Default
-            bt u32                  u32
+            bt u32                              u32
             kw crate::
             kw self::
             ex Foo::default()
@@ -238,8 +233,8 @@ fn main() {
 "#,
         expect![[r#"
             fd ..Default::default()
-            fd foo1                 u32
-            fd foo2                 u32
+            fd foo1             u32
+            fd foo2             u32
         "#]],
     );
 }

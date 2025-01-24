@@ -58,7 +58,7 @@ impl ModPath {
         convert_path(db, path, span_for_range)
     }
 
-    pub fn from_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModPath> {
+    pub fn from_tt(db: &dyn ExpandDatabase, tt: tt::TokenTreesView<'_>) -> Option<ModPath> {
         convert_path_tt(db, tt)
     }
 
@@ -273,10 +273,9 @@ fn convert_path(
                 res
             }
         }
-        ast::PathSegmentKind::SelfTypeKw => ModPath::from_segments(
-            PathKind::Plain,
-            Some(Name::new_symbol(sym::Self_.clone(), SyntaxContextId::ROOT)),
-        ),
+        ast::PathSegmentKind::SelfTypeKw => {
+            ModPath::from_segments(PathKind::Plain, Some(Name::new_symbol_root(sym::Self_.clone())))
+        }
         ast::PathSegmentKind::CrateKw => ModPath::from_segments(PathKind::Crate, iter::empty()),
         ast::PathSegmentKind::SelfKw => handle_super_kw(0)?,
         ast::PathSegmentKind::SuperKw => handle_super_kw(1)?,
@@ -315,10 +314,10 @@ fn convert_path(
     Some(mod_path)
 }
 
-fn convert_path_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModPath> {
+fn convert_path_tt(db: &dyn ExpandDatabase, tt: tt::TokenTreesView<'_>) -> Option<ModPath> {
     let mut leaves = tt.iter().filter_map(|tt| match tt {
-        tt::TokenTree::Leaf(leaf) => Some(leaf),
-        tt::TokenTree::Subtree(_) => None,
+        tt::TtElement::Leaf(leaf) => Some(leaf),
+        tt::TtElement::Subtree(..) => None,
     });
     let mut segments = smallvec::smallvec![];
     let kind = match leaves.next()? {
@@ -399,6 +398,9 @@ macro_rules! __known_path {
     (core::fmt::Debug) => {};
     (std::fmt::format) => {};
     (core::ops::Try) => {};
+    (core::convert::From) => {};
+    (core::convert::TryFrom) => {};
+    (core::str::FromStr) => {};
     ($path:path) => {
         compile_error!("Please register your known path in the path module")
     };
@@ -415,3 +417,14 @@ macro_rules! __path {
 }
 
 pub use crate::__path as path;
+
+#[macro_export]
+macro_rules! __tool_path {
+    ($start:ident $(:: $seg:ident)*) => ({
+        $crate::mod_path::ModPath::from_segments($crate::mod_path::PathKind::Plain, vec![
+            $crate::name::Name::new_symbol_root(intern::sym::rust_analyzer.clone()), $crate::name::Name::new_symbol_root(intern::sym::$start.clone()), $($crate::name::Name::new_symbol_root(intern::sym::$seg.clone()),)*
+        ])
+    });
+}
+
+pub use crate::__tool_path as tool_path;

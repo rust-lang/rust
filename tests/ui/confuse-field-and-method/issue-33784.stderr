@@ -4,7 +4,7 @@ error[E0599]: no method named `closure` found for reference `&Obj<{closure@$DIR/
 LL |     p.closure();
    |       ^^^^^^^ field, not a method
    |
-help: to call the function stored in `closure`, surround the field access with parentheses
+help: to call the closure stored in `closure`, surround the field access with parentheses
    |
 LL |     (p.closure)();
    |     +         +
@@ -19,7 +19,7 @@ error[E0599]: no method named `fn_ptr` found for reference `&&Obj<{closure@$DIR/
 LL |     q.fn_ptr();
    |       ^^^^^^ field, not a method
    |
-help: to call the function stored in `fn_ptr`, surround the field access with parentheses
+help: to call the function pointer stored in `fn_ptr`, surround the field access with parentheses
    |
 LL |     (q.fn_ptr)();
    |     +        +
@@ -30,7 +30,7 @@ error[E0599]: no method named `c_fn_ptr` found for reference `&D` in the current
 LL |     s.c_fn_ptr();
    |       ^^^^^^^^ field, not a method
    |
-help: to call the function stored in `c_fn_ptr`, surround the field access with parentheses
+help: to call the function pointer stored in `c_fn_ptr`, surround the field access with parentheses
    |
 LL |     (s.c_fn_ptr)();
    |     +          +

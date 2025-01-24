@@ -14,4 +14,13 @@ const EXPECTED = [
             { 'path': 'reexport', 'name': 'AnotherOne' },
         ],
     },
+    {
+        'query': 'fn:Equivalent::equivalent',
+        'others': [
+            // These results must never contain `reexport::equivalent::NotEquivalent`,
+            // since that path does not exist.
+            { 'path': 'equivalent::Equivalent', 'name': 'equivalent' },
+            { 'path': 'reexport::NotEquivalent', 'name': 'equivalent' },
+        ],
+    },
 ];

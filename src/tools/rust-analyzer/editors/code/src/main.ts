@@ -107,7 +107,14 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
         initializeDebugSessionTrackingAndRebuild(ctx);
     }
 
-    await ctx.start();
+    if (ctx.config.initializeStopped) {
+        ctx.setServerStatus({
+            health: "stopped",
+        });
+    } else {
+        await ctx.start();
+    }
+
     return ctx;
 }
 
@@ -151,7 +158,6 @@ function createCommands(): Record<string, CommandFactory> {
         matchingBrace: { enabled: commands.matchingBrace },
         joinLines: { enabled: commands.joinLines },
         parentModule: { enabled: commands.parentModule },
-        syntaxTree: { enabled: commands.syntaxTree },
         viewHir: { enabled: commands.viewHir },
         viewMir: { enabled: commands.viewMir },
         interpretFunction: { enabled: commands.interpretFunction },
@@ -192,6 +198,10 @@ function createCommands(): Record<string, CommandFactory> {
         rename: { enabled: commands.rename },
         openLogs: { enabled: commands.openLogs },
         revealDependency: { enabled: commands.revealDependency },
+        syntaxTreeReveal: { enabled: commands.syntaxTreeReveal },
+        syntaxTreeCopy: { enabled: commands.syntaxTreeCopy },
+        syntaxTreeHideWhitespace: { enabled: commands.syntaxTreeHideWhitespace },
+        syntaxTreeShowWhitespace: { enabled: commands.syntaxTreeShowWhitespace },
     };
 }
 

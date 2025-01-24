@@ -2,7 +2,7 @@ use std::fmt::Write;
 
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_middle::ty::{GenericArgs, TyCtxt};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 fn format_variances(tcx: TyCtxt<'_>, def_id: LocalDefId) -> String {
     let variances = tcx.variances_of(def_id);

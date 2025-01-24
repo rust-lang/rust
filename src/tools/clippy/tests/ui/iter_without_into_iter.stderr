@@ -13,8 +13,8 @@ help: consider implementing `IntoIterator` for `&S1`
    |
 LL + 
 LL + impl IntoIterator for &S1 {
-LL +     type IntoIter = std::slice::Iter<'_, u8>;
 LL +     type Item = &u8;
+LL +     type IntoIter = std::slice::Iter<'_, u8>;
 LL +     fn into_iter(self) -> Self::IntoIter {
 LL +         self.iter()
 LL +     }
@@ -34,8 +34,8 @@ help: consider implementing `IntoIterator` for `&mut S1`
    |
 LL + 
 LL + impl IntoIterator for &mut S1 {
-LL +     type IntoIter = std::slice::IterMut<'_, u8>;
 LL +     type Item = &mut u8;
+LL +     type IntoIter = std::slice::IterMut<'_, u8>;
 LL +     fn into_iter(self) -> Self::IntoIter {
 LL +         self.iter()
 LL +     }
@@ -55,8 +55,8 @@ help: consider implementing `IntoIterator` for `&S3<'a>`
    |
 LL + 
 LL + impl IntoIterator for &S3<'a> {
-LL +     type IntoIter = std::slice::Iter<'_, u8>;
 LL +     type Item = &u8;
+LL +     type IntoIter = std::slice::Iter<'_, u8>;
 LL +     fn into_iter(self) -> Self::IntoIter {
 LL +         self.iter()
 LL +     }
@@ -76,8 +76,8 @@ help: consider implementing `IntoIterator` for `&mut S3<'a>`
    |
 LL + 
 LL + impl IntoIterator for &mut S3<'a> {
-LL +     type IntoIter = std::slice::IterMut<'_, u8>;
 LL +     type Item = &mut u8;
+LL +     type IntoIter = std::slice::IterMut<'_, u8>;
 LL +     fn into_iter(self) -> Self::IntoIter {
 LL +         self.iter()
 LL +     }
@@ -96,8 +96,8 @@ help: consider implementing `IntoIterator` for `&S8<T>`
    |
 LL + 
 LL + impl IntoIterator for &S8<T> {
-LL +     type IntoIter = std::slice::Iter<'static, T>;
 LL +     type Item = &T;
+LL +     type IntoIter = std::slice::Iter<'static, T>;
 LL +     fn into_iter(self) -> Self::IntoIter {
 LL +         self.iter()
 LL +     }
@@ -117,8 +117,8 @@ help: consider implementing `IntoIterator` for `&S9<T>`
    |
 LL + 
 LL + impl IntoIterator for &S9<T> {
-LL +     type IntoIter = std::slice::Iter<'_, T>;
 LL +     type Item = &T;
+LL +     type IntoIter = std::slice::Iter<'_, T>;
 LL +     fn into_iter(self) -> Self::IntoIter {
 LL +         self.iter()
 LL +     }
@@ -138,8 +138,8 @@ help: consider implementing `IntoIterator` for `&mut S9<T>`
    |
 LL + 
 LL + impl IntoIterator for &mut S9<T> {
-LL +     type IntoIter = std::slice::IterMut<'_, T>;
 LL +     type Item = &mut T;
+LL +     type IntoIter = std::slice::IterMut<'_, T>;
 LL +     fn into_iter(self) -> Self::IntoIter {
 LL +         self.iter()
 LL +     }
@@ -162,8 +162,8 @@ help: consider implementing `IntoIterator` for `&Issue12037`
    |
 LL ~         
 LL + impl IntoIterator for &Issue12037 {
-LL +     type IntoIter = std::slice::Iter<'_, u8>;
 LL +     type Item = &u8;
+LL +     type IntoIter = std::slice::Iter<'_, u8>;
 LL +     fn into_iter(self) -> Self::IntoIter {
 LL +         self.iter()
 LL +     }

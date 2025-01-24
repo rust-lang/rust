@@ -1,6 +1,7 @@
 use std::iter;
 
 use hir::{db::ExpandDatabase, Adt, FileRange, HasSource, HirDisplay, InFile, Struct, Union};
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
     helpers::is_editable_crate,
@@ -16,7 +17,6 @@ use syntax::{
     ast::{edit::AstNodeEdit, Type},
     SyntaxNode,
 };
-use text_edit::TextEdit;
 
 use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
@@ -90,7 +90,9 @@ fn field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<A
         make::ty("()")
     };
 
-    if !is_editable_crate(target_module.krate(), ctx.sema.db) {
+    if !is_editable_crate(target_module.krate(), ctx.sema.db)
+        || SyntaxKind::from_keyword(field_name, ctx.edition).is_some()
+    {
         return None;
     }
 
@@ -500,5 +502,20 @@ impl Kek {
 fn main() {}
             "#,
         )
+    }
+
+    #[test]
+    fn regression_18683() {
+        check_diagnostics(
+            r#"
+struct S;
+impl S {
+    fn f(self) {
+        self.self
+          // ^^^^ error: no field `self` on type `S`
+    }
+}
+        "#,
+        );
     }
 }

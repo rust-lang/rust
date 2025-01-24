@@ -17,19 +17,6 @@ note: this opaque type is in the signature
 LL | type DummyT<T> = impl F;
    |                  ^^^^^^
 
-error: item does not constrain `DummyT::{opaque#0}`, but has it in its signature
-  --> $DIR/ice-failed-to-resolve-instance-for-110696.rs:44:8
-   |
-LL |     fn my_index(self) -> Self::O {
-   |        ^^^^^^^^
-   |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
-  --> $DIR/ice-failed-to-resolve-instance-for-110696.rs:20:18
-   |
-LL | type DummyT<T> = impl F;
-   |                  ^^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0207`.

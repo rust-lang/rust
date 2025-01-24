@@ -4,8 +4,7 @@ use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::{GenericArg, MetaItem};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 macro path_local($x:ident) {
@@ -22,12 +21,12 @@ macro path_std($($x:tt)*) {
 
 pub(crate) mod bounds;
 pub(crate) mod clone;
+pub(crate) mod coerce_pointee;
 pub(crate) mod debug;
 pub(crate) mod decodable;
 pub(crate) mod default;
 pub(crate) mod encodable;
 pub(crate) mod hash;
-pub(crate) mod smart_ptr;
 
 #[path = "cmp/eq.rs"]
 pub(crate) mod eq;

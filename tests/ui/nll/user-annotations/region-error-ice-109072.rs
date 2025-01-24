@@ -11,5 +11,4 @@ impl Lt<'missing> for () { //~ ERROR undeclared lifetime
 
 fn main() {
     let _: <() as Lt<'_>>::T = &();
-    //~^ ERROR the trait bound `(): Lt<'_>` is not satisfied
 }

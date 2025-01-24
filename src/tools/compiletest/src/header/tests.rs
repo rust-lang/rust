@@ -1,9 +1,13 @@
 use std::io::Read;
 use std::path::Path;
 
-use super::iter_header;
+use semver::Version;
+
+use super::{
+    EarlyProps, HeadersCache, extract_llvm_version, extract_version_range, iter_header,
+    parse_normalize_rule,
+};
 use crate::common::{Config, Debugger, Mode};
-use crate::header::{EarlyProps, HeadersCache, parse_normalize_rule};
 
 fn make_test_description<R: Read>(
     config: &Config,
@@ -31,11 +35,14 @@ fn make_test_description<R: Read>(
 
 #[test]
 fn test_parse_normalize_rule() {
-    let good_data = &[(
-        r#"normalize-stderr-32bit: "something (32 bits)" -> "something ($WORD bits)""#,
-        "something (32 bits)",
-        "something ($WORD bits)",
-    )];
+    let good_data = &[
+        (
+            r#""something (32 bits)" -> "something ($WORD bits)""#,
+            "something (32 bits)",
+            "something ($WORD bits)",
+        ),
+        (r#"  " with whitespace"   ->   "    replacement""#, " with whitespace", "    replacement"),
+    ];
 
     for &(input, expected_regex, expected_replacement) in good_data {
         let parsed = parse_normalize_rule(input);
@@ -45,15 +52,15 @@ fn test_parse_normalize_rule() {
     }
 
     let bad_data = &[
-        r#"normalize-stderr-32bit "something (32 bits)" -> "something ($WORD bits)""#,
-        r#"normalize-stderr-16bit: something (16 bits) -> something ($WORD bits)"#,
-        r#"normalize-stderr-32bit: something (32 bits) -> something ($WORD bits)"#,
-        r#"normalize-stderr-32bit: "something (32 bits) -> something ($WORD bits)"#,
-        r#"normalize-stderr-32bit: "something (32 bits)" -> "something ($WORD bits)"#,
-        r#"normalize-stderr-32bit: "something (32 bits)" -> "something ($WORD bits)"."#,
+        r#"something (11 bits) -> something ($WORD bits)"#,
+        r#"something (12 bits) -> something ($WORD bits)"#,
+        r#""something (13 bits) -> something ($WORD bits)"#,
+        r#""something (14 bits)" -> "something ($WORD bits)"#,
+        r#""something (15 bits)" -> "something ($WORD bits)"."#,
     ];
 
     for &input in bad_data {
+        println!("- {input:?}");
         let parsed = parse_normalize_rule(input);
         assert_eq!(parsed, None);
     }
@@ -70,6 +77,8 @@ struct ConfigBuilder {
     git_hash: bool,
     system_llvm: bool,
     profiler_runtime: bool,
+    rustc_debug_assertions: bool,
+    std_debug_assertions: bool,
 }
 
 impl ConfigBuilder {
@@ -118,6 +127,16 @@ impl ConfigBuilder {
         self
     }
 
+    fn rustc_debug_assertions(&mut self, is_enabled: bool) -> &mut Self {
+        self.rustc_debug_assertions = is_enabled;
+        self
+    }
+
+    fn std_debug_assertions(&mut self, is_enabled: bool) -> &mut Self {
+        self.std_debug_assertions = is_enabled;
+        self
+    }
+
     fn build(&mut self) -> Config {
         let args = &[
             "compiletest",
@@ -148,6 +167,7 @@ impl ConfigBuilder {
             "--git-repository=",
             "--nightly-branch=",
             "--git-merge-commit-email=",
+            "--minicore-path=",
         ];
         let mut args: Vec<String> = args.iter().map(ToString::to_string).collect();
 
@@ -164,6 +184,12 @@ impl ConfigBuilder {
         }
         if self.profiler_runtime {
             args.push("--profiler-runtime".to_owned());
+        }
+        if self.rustc_debug_assertions {
+            args.push("--with-rustc-debug-assertions".to_owned());
+        }
+        if self.std_debug_assertions {
+            args.push("--with-std-debug-assertions".to_owned());
         }
 
         args.push("--rustc-path".to_string());
@@ -261,6 +287,30 @@ fn llvm_version() {
 
     let config: Config = cfg().llvm_version("10.0.0").build();
     assert!(!check_ignore(&config, "//@ min-llvm-version: 9.0"));
+
+    let config: Config = cfg().llvm_version("10.0.0").build();
+    assert!(check_ignore(&config, "//@ exact-llvm-major-version: 9.0"));
+
+    let config: Config = cfg().llvm_version("9.0.0").build();
+    assert!(check_ignore(&config, "//@ exact-llvm-major-version: 10.0"));
+
+    let config: Config = cfg().llvm_version("10.0.0").build();
+    assert!(!check_ignore(&config, "//@ exact-llvm-major-version: 10.0"));
+
+    let config: Config = cfg().llvm_version("10.0.0").build();
+    assert!(!check_ignore(&config, "//@ exact-llvm-major-version: 10"));
+
+    let config: Config = cfg().llvm_version("10.6.2").build();
+    assert!(!check_ignore(&config, "//@ exact-llvm-major-version: 10"));
+
+    let config: Config = cfg().llvm_version("19.0.0").build();
+    assert!(!check_ignore(&config, "//@ max-llvm-major-version: 19"));
+
+    let config: Config = cfg().llvm_version("19.1.2").build();
+    assert!(!check_ignore(&config, "//@ max-llvm-major-version: 19"));
+
+    let config: Config = cfg().llvm_version("20.0.0").build();
+    assert!(check_ignore(&config, "//@ max-llvm-major-version: 19"));
 }
 
 #[test]
@@ -307,6 +357,32 @@ fn only_target() {
     assert!(!check_ignore(&config, "//@ only-windows"));
     assert!(!check_ignore(&config, "//@ only-gnu"));
     assert!(!check_ignore(&config, "//@ only-64bit"));
+}
+
+#[test]
+fn rustc_debug_assertions() {
+    let config: Config = cfg().rustc_debug_assertions(false).build();
+
+    assert!(check_ignore(&config, "//@ needs-rustc-debug-assertions"));
+    assert!(!check_ignore(&config, "//@ ignore-rustc-debug-assertions"));
+
+    let config: Config = cfg().rustc_debug_assertions(true).build();
+
+    assert!(!check_ignore(&config, "//@ needs-rustc-debug-assertions"));
+    assert!(check_ignore(&config, "//@ ignore-rustc-debug-assertions"));
+}
+
+#[test]
+fn std_debug_assertions() {
+    let config: Config = cfg().std_debug_assertions(false).build();
+
+    assert!(check_ignore(&config, "//@ needs-std-debug-assertions"));
+    assert!(!check_ignore(&config, "//@ ignore-std-debug-assertions"));
+
+    let config: Config = cfg().std_debug_assertions(true).build();
+
+    assert!(!check_ignore(&config, "//@ needs-std-debug-assertions"));
+    assert!(check_ignore(&config, "//@ ignore-std-debug-assertions"));
 }
 
 #[test]
@@ -408,18 +484,66 @@ fn channel() {
 }
 
 #[test]
-fn test_extract_version_range() {
-    use super::{extract_llvm_version, extract_version_range};
+fn test_extract_llvm_version() {
+    // Note: officially, semver *requires* that versions at the minimum have all three
+    // `major.minor.patch` numbers, though for test-writer's convenience we allow omitting the minor
+    // and patch numbers (which will be stubbed out as 0).
+    assert_eq!(extract_llvm_version("0"), Version::new(0, 0, 0));
+    assert_eq!(extract_llvm_version("0.0"), Version::new(0, 0, 0));
+    assert_eq!(extract_llvm_version("0.0.0"), Version::new(0, 0, 0));
+    assert_eq!(extract_llvm_version("1"), Version::new(1, 0, 0));
+    assert_eq!(extract_llvm_version("1.2"), Version::new(1, 2, 0));
+    assert_eq!(extract_llvm_version("1.2.3"), Version::new(1, 2, 3));
+    assert_eq!(extract_llvm_version("4.5.6git"), Version::new(4, 5, 6));
+    assert_eq!(extract_llvm_version("4.5.6-rc1"), Version::new(4, 5, 6));
+    assert_eq!(extract_llvm_version("123.456.789-rc1"), Version::new(123, 456, 789));
+    assert_eq!(extract_llvm_version("8.1.2-rust"), Version::new(8, 1, 2));
+    assert_eq!(extract_llvm_version("9.0.1-rust-1.43.0-dev"), Version::new(9, 0, 1));
+    assert_eq!(extract_llvm_version("9.3.1-rust-1.43.0-dev"), Version::new(9, 3, 1));
+    assert_eq!(extract_llvm_version("10.0.0-rust"), Version::new(10, 0, 0));
+    assert_eq!(extract_llvm_version("11.1.0"), Version::new(11, 1, 0));
+    assert_eq!(extract_llvm_version("12.0.0libcxx"), Version::new(12, 0, 0));
+    assert_eq!(extract_llvm_version("12.0.0-rc3"), Version::new(12, 0, 0));
+    assert_eq!(extract_llvm_version("13.0.0git"), Version::new(13, 0, 0));
+}
 
-    assert_eq!(extract_version_range("1.2.3 - 4.5.6", extract_llvm_version), Some((10203, 40506)));
-    assert_eq!(extract_version_range("0   - 4.5.6", extract_llvm_version), Some((0, 40506)));
-    assert_eq!(extract_version_range("1.2.3 -", extract_llvm_version), None);
-    assert_eq!(extract_version_range("1.2.3 - ", extract_llvm_version), None);
-    assert_eq!(extract_version_range("- 4.5.6", extract_llvm_version), None);
-    assert_eq!(extract_version_range("-", extract_llvm_version), None);
-    assert_eq!(extract_version_range(" - 4.5.6", extract_llvm_version), None);
-    assert_eq!(extract_version_range("   - 4.5.6", extract_llvm_version), None);
-    assert_eq!(extract_version_range("0  -", extract_llvm_version), None);
+#[test]
+#[should_panic]
+fn test_llvm_version_invalid_components() {
+    extract_llvm_version("4.x.6");
+}
+
+#[test]
+#[should_panic]
+fn test_llvm_version_invalid_prefix() {
+    extract_llvm_version("meow4.5.6");
+}
+
+#[test]
+#[should_panic]
+fn test_llvm_version_too_many_components() {
+    extract_llvm_version("4.5.6.7");
+}
+
+#[test]
+fn test_extract_version_range() {
+    let wrapped_extract = |s: &str| Some(extract_llvm_version(s));
+
+    assert_eq!(
+        extract_version_range("1.2.3 - 4.5.6", wrapped_extract),
+        Some((Version::new(1, 2, 3), Version::new(4, 5, 6)))
+    );
+    assert_eq!(
+        extract_version_range("0   - 4.5.6", wrapped_extract),
+        Some((Version::new(0, 0, 0), Version::new(4, 5, 6)))
+    );
+    assert_eq!(extract_version_range("1.2.3 -", wrapped_extract), None);
+    assert_eq!(extract_version_range("1.2.3 - ", wrapped_extract), None);
+    assert_eq!(extract_version_range("- 4.5.6", wrapped_extract), None);
+    assert_eq!(extract_version_range("-", wrapped_extract), None);
+    assert_eq!(extract_version_range(" - 4.5.6", wrapped_extract), None);
+    assert_eq!(extract_version_range("   - 4.5.6", wrapped_extract), None);
+    assert_eq!(extract_version_range("0  -", wrapped_extract), None);
 }
 
 #[test]
@@ -427,6 +551,59 @@ fn test_extract_version_range() {
 fn test_duplicate_revisions() {
     let config: Config = cfg().build();
     parse_rs(&config, "//@ revisions: rpass1 rpass1");
+}
+
+#[test]
+#[should_panic(
+    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
+)]
+fn test_assembly_mode_forbidden_revisions() {
+    let config = cfg().mode("assembly").build();
+    parse_rs(&config, "//@ revisions: CHECK");
+}
+
+#[test]
+#[should_panic(
+    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
+)]
+fn test_codegen_mode_forbidden_revisions() {
+    let config = cfg().mode("codegen").build();
+    parse_rs(&config, "//@ revisions: CHECK");
+}
+
+#[test]
+#[should_panic(
+    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
+)]
+fn test_miropt_mode_forbidden_revisions() {
+    let config = cfg().mode("mir-opt").build();
+    parse_rs(&config, "//@ revisions: CHECK");
+}
+
+#[test]
+fn test_forbidden_revisions_allowed_in_non_filecheck_dir() {
+    let revisions = ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
+    let modes = [
+        "pretty",
+        "debuginfo",
+        "rustdoc",
+        "rustdoc-json",
+        "codegen-units",
+        "incremental",
+        "ui",
+        "rustdoc-js",
+        "coverage-map",
+        "coverage-run",
+        "crashes",
+    ];
+
+    for rev in revisions {
+        let content = format!("//@ revisions: {rev}");
+        for mode in modes {
+            let config = cfg().mode(mode).build();
+            parse_rs(&config, &content);
+        }
+    }
 }
 
 #[test]
@@ -530,10 +707,6 @@ fn wasm_special() {
         ("wasm32-unknown-emscripten", "emscripten", true),
         ("wasm32-unknown-emscripten", "wasm32", true),
         ("wasm32-unknown-emscripten", "wasm32-bare", false),
-        ("wasm32-wasi", "emscripten", false),
-        ("wasm32-wasi", "wasm32", true),
-        ("wasm32-wasi", "wasm32-bare", false),
-        ("wasm32-wasi", "wasi", true),
         ("wasm32-wasip1", "emscripten", false),
         ("wasm32-wasip1", "wasm32", true),
         ("wasm32-wasip1", "wasm32-bare", false),
@@ -669,4 +842,41 @@ fn test_not_trailing_directive() {
     let mut poisoned = false;
     run_path(&mut poisoned, Path::new("a.rs"), b"//@ revisions: incremental");
     assert!(!poisoned);
+}
+
+#[test]
+fn test_needs_target_has_atomic() {
+    use std::collections::BTreeSet;
+
+    // `x86_64-unknown-linux-gnu` supports `["8", "16", "32", "64", "ptr"]` but not `128`.
+
+    let config = cfg().target("x86_64-unknown-linux-gnu").build();
+    // Expectation sanity check.
+    assert_eq!(
+        config.target_cfg().target_has_atomic,
+        BTreeSet::from([
+            "8".to_string(),
+            "16".to_string(),
+            "32".to_string(),
+            "64".to_string(),
+            "ptr".to_string()
+        ]),
+        "expected `x86_64-unknown-linux-gnu` to not have 128-bit atomic support"
+    );
+
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 8"));
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 16"));
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 32"));
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 64"));
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: ptr"));
+
+    assert!(check_ignore(&config, "//@ needs-target-has-atomic: 128"));
+
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 8,16,32,64,ptr"));
+
+    assert!(check_ignore(&config, "//@ needs-target-has-atomic: 8,16,32,64,ptr,128"));
+
+    // Check whitespace between widths is permitted.
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 8, ptr"));
+    assert!(check_ignore(&config, "//@ needs-target-has-atomic: 8, ptr, 128"));
 }

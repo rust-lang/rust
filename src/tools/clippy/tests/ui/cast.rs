@@ -1,7 +1,6 @@
 //@no-rustfix
 
 #![feature(repr128)]
-#![feature(isqrt)]
 #![allow(incomplete_features)]
 #![warn(
     clippy::cast_precision_loss,

@@ -18,7 +18,7 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return Err(io::const_io_error!(
+            return Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
                 "nul byte found in provided data",
             ));
@@ -38,7 +38,7 @@ impl Command {
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {
         if self.saw_nul() {
-            return io::const_io_error!(
+            return io::const_error!(
                 io::ErrorKind::InvalidInput,
                 "nul byte found in provided data",
             );
@@ -185,7 +185,7 @@ impl Process {
             ))?;
         }
         if actual != 1 {
-            return Err(io::const_io_error!(
+            return Err(io::const_error!(
                 io::ErrorKind::InvalidData,
                 "Failed to get exit status of process",
             ));
@@ -222,7 +222,7 @@ impl Process {
             ))?;
         }
         if actual != 1 {
-            return Err(io::const_io_error!(
+            return Err(io::const_error!(
                 io::ErrorKind::InvalidData,
                 "Failed to get exit status of process",
             ));
@@ -273,7 +273,7 @@ impl ExitStatus {
         // We don't know what someone who calls into_raw() will do with this value, but it should
         // have the conventional Unix representation. Despite the fact that this is not
         // standardised in SuS or POSIX, all Unix systems encode the signal and exit status the
-        // same way. (Ie the WIFEXITED, WEXITSTATUS etc. macros have identical behaviour on every
+        // same way. (Ie the WIFEXITED, WEXITSTATUS etc. macros have identical behavior on every
         // Unix.)
         //
         // The caller of `std::os::unix::into_raw` is probably wanting a Unix exit status, and may

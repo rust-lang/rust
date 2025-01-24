@@ -4,6 +4,7 @@
 //! ```
 use either::Either;
 use ide_db::famous_defs::FamousDefs;
+use ide_db::text_edit::TextEdit;
 use span::EditionedFileId;
 use syntax::{
     ast::{self, AstNode},
@@ -38,7 +39,9 @@ pub(super) fn hints(
                 range: t.text_range(),
                 kind: InlayKind::Lifetime,
                 label: "'static".into(),
-                text_edit: None,
+                text_edit: Some(config.lazy_text_edit(|| {
+                    TextEdit::insert(t.text_range().start(), "'static ".into())
+                })),
                 position: InlayHintPosition::After,
                 pad_left: false,
                 pad_right: true,

@@ -1,5 +1,4 @@
 //@ edition: 2024
-//@ compile-flags: -Z unstable-options
 
 // This contains a binding in edition 2024, so if matched with a reference binding mode it will end
 // up with a `mut ref mut` binding mode. We use this to test the migration lint on patterns with

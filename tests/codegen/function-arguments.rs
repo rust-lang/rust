@@ -1,5 +1,6 @@
 //@ compile-flags: -O -C no-prepopulate-passes
 #![crate_type = "lib"]
+#![feature(rustc_attrs)]
 #![feature(dyn_star)]
 #![feature(allocator_api)]
 
@@ -32,7 +33,7 @@ pub fn boolean(x: bool) -> bool {
     x
 }
 
-// CHECK: i8 @maybeuninit_boolean(i8 %x)
+// CHECK: i8 @maybeuninit_boolean(i8{{.*}} %x)
 #[no_mangle]
 pub fn maybeuninit_boolean(x: MaybeUninit<bool>) -> MaybeUninit<bool> {
     x
@@ -44,19 +45,19 @@ pub fn enum_bool(x: MyBool) -> MyBool {
     x
 }
 
-// CHECK: i8 @maybeuninit_enum_bool(i8 %x)
+// CHECK: i8 @maybeuninit_enum_bool(i8{{.*}} %x)
 #[no_mangle]
 pub fn maybeuninit_enum_bool(x: MaybeUninit<MyBool>) -> MaybeUninit<MyBool> {
     x
 }
 
-// CHECK: noundef{{( range\(i32 0, 1114112\))?}} i32 @char(i32 noundef{{( range\(i32 0, 1114112\))?}} %x)
+// CHECK: noundef{{( range\(i32 0, 1114112\))?}} i32 @char(i32{{.*}}{{( range\(i32 0, 1114112\))?}} %x)
 #[no_mangle]
 pub fn char(x: char) -> char {
     x
 }
 
-// CHECK: i32 @maybeuninit_char(i32 %x)
+// CHECK: i32 @maybeuninit_char(i32{{.*}} %x)
 #[no_mangle]
 pub fn maybeuninit_char(x: MaybeUninit<char>) -> MaybeUninit<char> {
     x
@@ -143,13 +144,28 @@ pub fn indirect_struct(_: S) {}
 #[no_mangle]
 pub fn borrowed_struct(_: &S) {}
 
-// CHECK: @option_borrow(ptr noalias noundef readonly align 4 dereferenceable_or_null(4) %x)
+// CHECK: @option_borrow(ptr noalias noundef readonly align 4 dereferenceable_or_null(4) %_x)
 #[no_mangle]
-pub fn option_borrow(x: Option<&i32>) {}
+pub fn option_borrow(_x: Option<&i32>) {}
 
-// CHECK: @option_borrow_mut(ptr noalias noundef align 4 dereferenceable_or_null(4) %x)
+// CHECK: @option_borrow_mut(ptr noalias noundef align 4 dereferenceable_or_null(4) %_x)
 #[no_mangle]
-pub fn option_borrow_mut(x: Option<&mut i32>) {}
+pub fn option_borrow_mut(_x: Option<&mut i32>) {}
+
+// Function that must NOT have `dereferenceable` or `align`.
+#[rustc_layout_scalar_valid_range_start(16)]
+pub struct RestrictedAddress(&'static i16);
+enum E {
+    A(RestrictedAddress),
+    B,
+    C,
+}
+// If the `nonnull` ever goes missing, you might have to tweak the
+// scalar_valid_range on `RestrictedAddress` to get it back. You
+// might even have to add a `rustc_layout_scalar_valid_range_end`.
+// CHECK: @nonnull_and_nondereferenceable(ptr noundef nonnull %_x)
+#[no_mangle]
+pub fn nonnull_and_nondereferenceable(_x: E) {}
 
 // CHECK: @raw_struct(ptr noundef %_1)
 #[no_mangle]

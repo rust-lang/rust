@@ -102,7 +102,7 @@ impl<K, V> Root<K, V> {
     pub fn fix_right_border_of_plentiful(&mut self) {
         let mut cur_node = self.borrow_mut();
         while let Internal(internal) = cur_node.force() {
-            // Check if right-most child is underfull.
+            // Check if rightmost child is underfull.
             let mut last_kv = internal.last_kv().consider_for_balancing();
             debug_assert!(last_kv.left_child_len() >= MIN_LEN * 2);
             let right_child_len = last_kv.right_child_len();

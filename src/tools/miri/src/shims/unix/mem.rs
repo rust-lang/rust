@@ -14,7 +14,7 @@
 //! munmap shim which would partially unmap a region of address space previously mapped by mmap will
 //! report UB.
 
-use rustc_target::abi::Size;
+use rustc_abi::Size;
 
 use crate::*;
 
@@ -57,11 +57,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // First, we do some basic argument validation as required by mmap
         if (flags & (map_private | map_shared)).count_ones() != 1 {
-            this.set_last_error(this.eval_libc("EINVAL"))?;
+            this.set_last_error(LibcError("EINVAL"))?;
             return interp_ok(this.eval_libc("MAP_FAILED"));
         }
         if length == 0 {
-            this.set_last_error(this.eval_libc("EINVAL"))?;
+            this.set_last_error(LibcError("EINVAL"))?;
             return interp_ok(this.eval_libc("MAP_FAILED"));
         }
 
@@ -103,11 +103,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let align = this.machine.page_align();
         let Some(map_length) = length.checked_next_multiple_of(this.machine.page_size) else {
-            this.set_last_error(this.eval_libc("EINVAL"))?;
+            this.set_last_error(LibcError("EINVAL"))?;
             return interp_ok(this.eval_libc("MAP_FAILED"));
         };
         if map_length > this.target_usize_max() {
-            this.set_last_error(this.eval_libc("EINVAL"))?;
+            this.set_last_error(LibcError("EINVAL"))?;
             return interp_ok(this.eval_libc("MAP_FAILED"));
         }
 
@@ -132,18 +132,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // addr must be a multiple of the page size, but apart from that munmap is just implemented
         // as a dealloc.
-        #[allow(clippy::arithmetic_side_effects)] // PAGE_SIZE is nonzero
+        #[expect(clippy::arithmetic_side_effects)] // PAGE_SIZE is nonzero
         if addr.addr().bytes() % this.machine.page_size != 0 {
-            this.set_last_error(this.eval_libc("EINVAL"))?;
-            return interp_ok(Scalar::from_i32(-1));
+            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
         }
 
         let Some(length) = length.checked_next_multiple_of(this.machine.page_size) else {
-            this.set_last_error(this.eval_libc("EINVAL"))?;
-            return interp_ok(Scalar::from_i32(-1));
+            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
         };
         if length > this.target_usize_max() {
-            this.set_last_error(this.eval_libc("EINVAL"))?;
+            this.set_last_error(LibcError("EINVAL"))?;
             return interp_ok(this.eval_libc("MAP_FAILED"));
         }
 

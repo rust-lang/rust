@@ -171,15 +171,20 @@ impl<I: Interner> Relate<I> for ty::FnSig<I> {
             return Err(TypeError::VariadicMismatch({
                 let a = a.c_variadic;
                 let b = b.c_variadic;
-                ExpectedFound::new(true, a, b)
+                ExpectedFound::new(a, b)
             }));
         }
-        let safety = relation.relate(a.safety, b.safety)?;
-        let abi = relation.relate(a.abi, b.abi)?;
+
+        if a.safety != b.safety {
+            return Err(TypeError::SafetyMismatch(ExpectedFound::new(a.safety, b.safety)));
+        }
+
+        if a.abi != b.abi {
+            return Err(TypeError::AbiMismatch(ExpectedFound::new(a.abi, b.abi)));
+        };
 
         let a_inputs = a.inputs();
         let b_inputs = b.inputs();
-
         if a_inputs.len() != b_inputs.len() {
             return Err(TypeError::ArgCount);
         }
@@ -212,23 +217,9 @@ impl<I: Interner> Relate<I> for ty::FnSig<I> {
         Ok(ty::FnSig {
             inputs_and_output: cx.mk_type_list_from_iter(inputs_and_output)?,
             c_variadic: a.c_variadic,
-            safety,
-            abi,
+            safety: a.safety,
+            abi: a.abi,
         })
-    }
-}
-
-impl<I: Interner> Relate<I> for ty::BoundConstness {
-    fn relate<R: TypeRelation<I>>(
-        _relation: &mut R,
-        a: ty::BoundConstness,
-        b: ty::BoundConstness,
-    ) -> RelateResult<I, ty::BoundConstness> {
-        if a != b {
-            Err(TypeError::ConstnessMismatch(ExpectedFound::new(true, a, b)))
-        } else {
-            Ok(a)
-        }
     }
 }
 
@@ -242,7 +233,7 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
             Err(TypeError::ProjectionMismatched({
                 let a = a.def_id;
                 let b = b.def_id;
-                ExpectedFound::new(true, a, b)
+                ExpectedFound::new(a, b)
             }))
         } else {
             let args = match a.kind(relation.cx()) {
@@ -283,7 +274,7 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
             Err(TypeError::ProjectionMismatched({
                 let a = a.def_id;
                 let b = b.def_id;
-                ExpectedFound::new(true, a, b)
+                ExpectedFound::new(a, b)
             }))
         } else {
             let args = match a.kind(relation.cx()) {
@@ -318,7 +309,7 @@ impl<I: Interner> Relate<I> for ty::ExistentialProjection<I> {
             Err(TypeError::ProjectionMismatched({
                 let a = a.def_id;
                 let b = b.def_id;
-                ExpectedFound::new(true, a, b)
+                ExpectedFound::new(a, b)
             }))
         } else {
             let term = relation.relate_with_variance(
@@ -333,7 +324,7 @@ impl<I: Interner> Relate<I> for ty::ExistentialProjection<I> {
                 a.args,
                 b.args,
             )?;
-            Ok(ty::ExistentialProjection { def_id: a.def_id, args, term })
+            Ok(ty::ExistentialProjection::new_from_args(relation.cx(), a.def_id, args, term))
         }
     }
 }
@@ -349,7 +340,7 @@ impl<I: Interner> Relate<I> for ty::TraitRef<I> {
             Err(TypeError::Traits({
                 let a = a.def_id;
                 let b = b.def_id;
-                ExpectedFound::new(true, a, b)
+                ExpectedFound::new(a, b)
             }))
         } else {
             let args = relate_args_invariantly(relation, a.args, b.args)?;
@@ -369,11 +360,11 @@ impl<I: Interner> Relate<I> for ty::ExistentialTraitRef<I> {
             Err(TypeError::Traits({
                 let a = a.def_id;
                 let b = b.def_id;
-                ExpectedFound::new(true, a, b)
+                ExpectedFound::new(a, b)
             }))
         } else {
             let args = relate_args_invariantly(relation, a.args, b.args)?;
-            Ok(ty::ExistentialTraitRef { def_id: a.def_id, args })
+            Ok(ty::ExistentialTraitRef::new_from_args(relation.cx(), a.def_id, args))
         }
     }
 }
@@ -510,19 +501,10 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             let t = relation.relate(a_t, b_t)?;
             match relation.relate(sz_a, sz_b) {
                 Ok(sz) => Ok(Ty::new_array_with_const_len(cx, t, sz)),
-                Err(err) => {
-                    // Check whether the lengths are both concrete/known values,
-                    // but are unequal, for better diagnostics.
-                    let sz_a = sz_a.try_to_target_usize(cx);
-                    let sz_b = sz_b.try_to_target_usize(cx);
-
-                    match (sz_a, sz_b) {
-                        (Some(sz_a_val), Some(sz_b_val)) if sz_a_val != sz_b_val => Err(
-                            TypeError::FixedArraySize(ExpectedFound::new(true, sz_a_val, sz_b_val)),
-                        ),
-                        _ => Err(err),
-                    }
+                Err(TypeError::ConstMismatch(_)) => {
+                    Err(TypeError::ArraySize(ExpectedFound::new(sz_a, sz_b)))
                 }
+                Err(e) => Err(e),
             }
         }
 
@@ -538,9 +520,9 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
                     iter::zip(as_.iter(), bs.iter()).map(|(a, b)| relation.relate(a, b)),
                 )?)
             } else if !(as_.is_empty() || bs.is_empty()) {
-                Err(TypeError::TupleSize(ExpectedFound::new(true, as_.len(), bs.len())))
+                Err(TypeError::TupleSize(ExpectedFound::new(as_.len(), bs.len())))
             } else {
-                Err(TypeError::Sorts(ExpectedFound::new(true, a, b)))
+                Err(TypeError::Sorts(ExpectedFound::new(a, b)))
             }
         }
 
@@ -567,7 +549,11 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             Ok(Ty::new_pat(cx, ty, pat))
         }
 
-        _ => Err(TypeError::Sorts(ExpectedFound::new(true, a, b))),
+        (ty::UnsafeBinder(a_binder), ty::UnsafeBinder(b_binder)) => {
+            Ok(Ty::new_unsafe_binder(cx, relation.binders(*a_binder, *b_binder)?))
+        }
+
+        _ => Err(TypeError::Sorts(ExpectedFound::new(a, b))),
     }
 }
 
@@ -646,7 +632,7 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
         }
         _ => false,
     };
-    if is_match { Ok(a) } else { Err(TypeError::ConstMismatch(ExpectedFound::new(true, a, b))) }
+    if is_match { Ok(a) } else { Err(TypeError::ConstMismatch(ExpectedFound::new(a, b))) }
 }
 
 impl<I: Interner, T: Relate<I>> Relate<I> for ty::Binder<I, T> {
@@ -659,29 +645,16 @@ impl<I: Interner, T: Relate<I>> Relate<I> for ty::Binder<I, T> {
     }
 }
 
-impl<I: Interner> Relate<I> for ty::PredicatePolarity {
-    fn relate<R: TypeRelation<I>>(
-        _relation: &mut R,
-        a: ty::PredicatePolarity,
-        b: ty::PredicatePolarity,
-    ) -> RelateResult<I, ty::PredicatePolarity> {
-        if a != b {
-            Err(TypeError::PolarityMismatch(ExpectedFound::new(true, a, b)))
-        } else {
-            Ok(a)
-        }
-    }
-}
-
 impl<I: Interner> Relate<I> for ty::TraitPredicate<I> {
     fn relate<R: TypeRelation<I>>(
         relation: &mut R,
         a: ty::TraitPredicate<I>,
         b: ty::TraitPredicate<I>,
     ) -> RelateResult<I, ty::TraitPredicate<I>> {
-        Ok(ty::TraitPredicate {
-            trait_ref: relation.relate(a.trait_ref, b.trait_ref)?,
-            polarity: relation.relate(a.polarity, b.polarity)?,
-        })
+        let trait_ref = relation.relate(a.trait_ref, b.trait_ref)?;
+        if a.polarity != b.polarity {
+            return Err(TypeError::PolarityMismatch(ExpectedFound::new(a.polarity, b.polarity)));
+        }
+        Ok(ty::TraitPredicate { trait_ref, polarity: a.polarity })
     }
 }

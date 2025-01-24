@@ -11,7 +11,7 @@ LL | |             e;
 LL | |         })
    | |__________- this can't be annotated with `?` because it has type `Result<_, ()>`
 LL |           .map(|()| "")?;
-   |                        ^ the trait `From<()>` is not implemented for `String`, which is required by `Result<String, String>: FromResidual<Result<Infallible, ()>>`
+   |                        ^ the trait `From<()>` is not implemented for `String`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = note: required for `Result<String, String>` to implement `FromResidual<Result<Infallible, ()>>`
@@ -25,7 +25,7 @@ LL |     let x = foo();
    |             ----- this has type `Result<_, String>`
 ...
 LL |         .map_err(|_| ())?;
-   |          ---------------^ the trait `From<()>` is not implemented for `String`, which is required by `Result<(), String>: FromResidual<Result<Infallible, ()>>`
+   |          ---------------^ the trait `From<()>` is not implemented for `String`
    |          |
    |          this can't be annotated with `?` because it has type `Result<_, ()>`
    |
@@ -50,7 +50,7 @@ LL |           .ok_or_else(|| {
 LL | |             "Couldn't split the test string";
    | |                                             - help: remove this semicolon
 LL | |         })?;
-   | |          -^ the trait `From<()>` is not implemented for `String`, which is required by `Result<String, String>: FromResidual<Result<Infallible, ()>>`
+   | |          -^ the trait `From<()>` is not implemented for `String`
    | |__________|
    |            this can't be annotated with `?` because it has type `Result<_, ()>`
    |

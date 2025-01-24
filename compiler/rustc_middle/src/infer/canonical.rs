@@ -30,7 +30,6 @@ pub use rustc_type_ir as ir;
 pub use rustc_type_ir::{CanonicalTyVarKind, CanonicalVarKind};
 use smallvec::SmallVec;
 
-use crate::infer::MemberConstraint;
 use crate::mir::ConstraintCategory;
 use crate::ty::{self, GenericArg, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
 
@@ -91,14 +90,13 @@ pub struct QueryResponse<'tcx, R> {
 #[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct QueryRegionConstraints<'tcx> {
     pub outlives: Vec<QueryOutlivesConstraint<'tcx>>,
-    pub member_constraints: Vec<MemberConstraint<'tcx>>,
 }
 
 impl QueryRegionConstraints<'_> {
     /// Represents an empty (trivially true) set of region
     /// constraints.
     pub fn is_empty(&self) -> bool {
-        self.outlives.is_empty() && self.member_constraints.is_empty()
+        self.outlives.is_empty()
     }
 }
 

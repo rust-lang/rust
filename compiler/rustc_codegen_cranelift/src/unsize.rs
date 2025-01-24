@@ -3,6 +3,7 @@
 //! [`PointerCoercion::Unsize`]: `rustc_middle::ty::adjustment::PointerCoercion::Unsize`
 
 use rustc_codegen_ssa::base::validate_trivial_unsize;
+use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 
 use crate::base::codegen_panic_nounwind;
@@ -23,7 +24,7 @@ pub(crate) fn unsized_info<'tcx>(
     old_info: Option<Value>,
 ) -> Value {
     let (source, target) =
-        fx.tcx.struct_lockstep_tails_for_codegen(source, target, ParamEnv::reveal_all());
+        fx.tcx.struct_lockstep_tails_for_codegen(source, target, fx.typing_env());
     match (&source.kind(), &target.kind()) {
         (&ty::Array(_, len), &ty::Slice(_)) => fx.bcx.ins().iconst(
             fx.pointer_type,

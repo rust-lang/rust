@@ -38,7 +38,7 @@ use crate::sys::random as sys;
 /// Vita                   | `arc4random_buf`
 /// Hermit                 | `read_entropy`
 /// Horizon                | `getrandom` shim
-/// Hurd, L4Re, QNX        | `/dev/urandom`
+/// AIX, Hurd, L4Re, QNX   | `/dev/urandom`
 /// Redox                  | `/scheme/rand`
 /// RTEMS                  | [`arc4random_buf`](https://docs.rtems.org/branches/master/bsp-howto/getentropy.html)
 /// SGX                    | [`rdrand`](https://en.wikipedia.org/wiki/RDRAND)

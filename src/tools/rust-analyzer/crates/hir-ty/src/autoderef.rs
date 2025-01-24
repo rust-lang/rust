@@ -114,7 +114,7 @@ impl<'table, 'db> Autoderef<'table, 'db, usize> {
 }
 
 #[allow(private_bounds)]
-impl<'table, 'db, T: TrackAutoderefSteps> Autoderef<'table, 'db, T> {
+impl<T: TrackAutoderefSteps> Autoderef<'_, '_, T> {
     pub(crate) fn step_count(&self) -> usize {
         self.steps.len()
     }

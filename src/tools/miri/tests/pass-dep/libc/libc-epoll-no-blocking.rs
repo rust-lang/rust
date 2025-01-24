@@ -1,6 +1,5 @@
-//@only-target: linux
+//@only-target: linux android illumos
 
-#![feature(strict_provenance)]
 use std::convert::TryInto;
 
 fn main() {

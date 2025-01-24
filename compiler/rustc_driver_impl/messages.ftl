@@ -23,3 +23,5 @@ driver_impl_rlink_rustc_version_mismatch = .rlink file was produced by rustc ver
 driver_impl_rlink_unable_to_read = failed to read rlink file: `{$err}`
 
 driver_impl_rlink_wrong_file_type = The input does not look like a .rlink file
+
+driver_impl_unstable_feature_usage = cannot dump feature usage metrics: {$error}

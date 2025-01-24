@@ -6,7 +6,7 @@ LL |     loop
 LL |         let x = 0;
    |         ^^^ expected `{`
    |
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |         { let x = 0; }
    |         +            +
@@ -21,7 +21,7 @@ LL |     while true
 LL |         let x = 0;
    |         ^^^ expected `{`
    |
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |         { let x = 0; }
    |         +            +
@@ -32,7 +32,7 @@ error: expected `{`, found keyword `let`
 LL |         let x = 0;
    |         ^^^ expected `{`
    |
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |         { let x = 0; }
    |         +            +

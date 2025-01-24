@@ -1,4 +1,4 @@
-//@ aux-build:parent-source-spans.rs
+//@ proc-macro: parent-source-spans.rs
 
 #![feature(decl_macro)]
 

@@ -1,24 +1,25 @@
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_middle::mir::{self, Body, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use tracing::trace;
 
 use crate::lint::lint_body;
-use crate::validate;
+use crate::{errors, validate};
 
 thread_local! {
-    static PASS_NAMES: RefCell<FxHashMap<&'static str, &'static str>> = {
+    /// Maps MIR pass names to a snake case form to match profiling naming style
+    static PASS_TO_PROFILER_NAMES: RefCell<FxHashMap<&'static str, &'static str>> = {
         RefCell::new(FxHashMap::default())
     };
 }
 
 /// Converts a MIR pass name into a snake case form to match the profiling naming style.
 fn to_profiler_name(type_name: &'static str) -> &'static str {
-    PASS_NAMES.with(|names| match names.borrow_mut().entry(type_name) {
+    PASS_TO_PROFILER_NAMES.with(|names| match names.borrow_mut().entry(type_name) {
         Entry::Occupied(e) => *e.get(),
         Entry::Vacant(e) => {
             let snake_case: String = type_name
@@ -75,6 +76,12 @@ pub(super) trait MirPass<'tcx> {
 
     /// Returns `true` if this pass is enabled with the current combination of compiler flags.
     fn is_enabled(&self, _sess: &Session) -> bool {
+        true
+    }
+
+    /// Returns `true` if this pass can be overridden by `-Zenable-mir-passes`. This should be
+    /// true for basically every pass other than those that are necessary for correctness.
+    fn can_be_overridden(&self) -> bool {
         true
     }
 
@@ -175,6 +182,10 @@ where
 {
     let name = pass.name();
 
+    if !pass.can_be_overridden() {
+        return pass.is_enabled(tcx.sess);
+    }
+
     let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
     let overridden =
         overridden_passes.iter().rev().find(|(s, _)| s == &*name).map(|(_name, polarity)| {
@@ -197,6 +208,31 @@ fn run_passes_inner<'tcx>(
 ) {
     let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
     trace!(?overridden_passes);
+
+    let named_passes: FxIndexSet<_> =
+        overridden_passes.iter().map(|(name, _)| name.as_str()).collect();
+
+    for &name in named_passes.difference(&*crate::PASS_NAMES) {
+        tcx.dcx().emit_warn(errors::UnknownPassName { name });
+    }
+
+    // Verify that no passes are missing from the `declare_passes` invocation
+    #[cfg(debug_assertions)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    #[allow(rustc::untranslatable_diagnostic)]
+    {
+        let used_passes: FxIndexSet<_> = passes.iter().map(|p| p.name()).collect();
+
+        let undeclared = used_passes.difference(&*crate::PASS_NAMES).collect::<Vec<_>>();
+        if let Some((name, rest)) = undeclared.split_first() {
+            let mut err =
+                tcx.dcx().struct_bug(format!("pass `{name}` is not declared in `PASS_NAMES`"));
+            for name in rest {
+                err.note(format!("pass `{name}` is also not declared in `PASS_NAMES`"));
+            }
+            err.emit();
+        }
+    }
 
     let prof_arg = tcx.sess.prof.enabled().then(|| format!("{:?}", body.source.def_id()));
 
@@ -266,7 +302,7 @@ fn run_passes_inner<'tcx>(
 }
 
 pub(super) fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when: String) {
-    validate::Validator { when, mir_phase: body.phase }.run_pass(tcx, body);
+    validate::Validator { when }.run_pass(tcx, body);
 }
 
 fn dump_mir_for_pass<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, pass_name: &str, is_after: bool) {

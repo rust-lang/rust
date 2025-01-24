@@ -1,12 +1,13 @@
 use std::iter;
 
+use rustc_abi::Integer;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
-use rustc_middle::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
-use rustc_target::abi::Integer;
+use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_type_ir::TyKind::*;
+use tracing::instrument;
 
 use super::simplify::simplify_cfg;
 
@@ -18,17 +19,11 @@ impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let def_id = body.source.def_id();
-        let param_env = tcx.param_env_reveal_all_normalized(def_id);
-
+        let typing_env = body.typing_env(tcx);
         let mut should_cleanup = false;
         for i in 0..body.basic_blocks.len() {
             let bbs = &*body.basic_blocks;
             let bb_idx = BasicBlock::from_usize(i);
-            if !tcx.consider_optimizing(|| format!("MatchBranchSimplification {def_id:?} ")) {
-                continue;
-            }
-
             match bbs[bb_idx].terminator().kind {
                 TerminatorKind::SwitchInt {
                     discr: ref _discr @ (Operand::Copy(_) | Operand::Move(_)),
@@ -40,11 +35,11 @@ impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
                 _ => continue,
             };
 
-            if SimplifyToIf.simplify(tcx, body, bb_idx, param_env).is_some() {
+            if SimplifyToIf.simplify(tcx, body, bb_idx, typing_env).is_some() {
                 should_cleanup = true;
                 continue;
             }
-            if SimplifyToExp::default().simplify(tcx, body, bb_idx, param_env).is_some() {
+            if SimplifyToExp::default().simplify(tcx, body, bb_idx, typing_env).is_some() {
                 should_cleanup = true;
                 continue;
             }
@@ -57,7 +52,7 @@ impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
 }
 
 trait SimplifyMatch<'tcx> {
-    /// Simplifies a match statement, returning true if the simplification succeeds, false
+    /// Simplifies a match statement, returning `Some` if the simplification succeeds, `None`
     /// otherwise. Generic code is written here, and we generally don't need a custom
     /// implementation.
     fn simplify(
@@ -65,7 +60,7 @@ trait SimplifyMatch<'tcx> {
         tcx: TyCtxt<'tcx>,
         body: &mut Body<'tcx>,
         switch_bb_idx: BasicBlock,
-        param_env: ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<()> {
         let bbs = &body.basic_blocks;
         let (discr, targets) = match bbs[switch_bb_idx].terminator().kind {
@@ -74,7 +69,7 @@ trait SimplifyMatch<'tcx> {
         };
 
         let discr_ty = discr.ty(body.local_decls(), tcx);
-        self.can_simplify(tcx, targets, param_env, bbs, discr_ty)?;
+        self.can_simplify(tcx, targets, typing_env, bbs, discr_ty)?;
 
         let mut patch = MirPatch::new(body);
 
@@ -90,7 +85,16 @@ trait SimplifyMatch<'tcx> {
         let parent_end = Location { block: switch_bb_idx, statement_index };
         patch.add_statement(parent_end, StatementKind::StorageLive(discr_local));
         patch.add_assign(parent_end, Place::from(discr_local), Rvalue::Use(discr));
-        self.new_stmts(tcx, targets, param_env, &mut patch, parent_end, bbs, discr_local, discr_ty);
+        self.new_stmts(
+            tcx,
+            targets,
+            typing_env,
+            &mut patch,
+            parent_end,
+            bbs,
+            discr_local,
+            discr_ty,
+        );
         patch.add_statement(parent_end, StatementKind::StorageDead(discr_local));
         patch.patch_terminator(switch_bb_idx, bbs[first].terminator().kind.clone());
         patch.apply(body);
@@ -104,7 +108,7 @@ trait SimplifyMatch<'tcx> {
         &mut self,
         tcx: TyCtxt<'tcx>,
         targets: &SwitchTargets,
-        param_env: ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
         discr_ty: Ty<'tcx>,
     ) -> Option<()>;
@@ -113,7 +117,7 @@ trait SimplifyMatch<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         targets: &SwitchTargets,
-        param_env: ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         patch: &mut MirPatch<'tcx>,
         parent_end: Location,
         bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
@@ -156,20 +160,24 @@ struct SimplifyToIf;
 /// }
 /// ```
 impl<'tcx> SimplifyMatch<'tcx> for SimplifyToIf {
+    #[instrument(level = "debug", skip(self, tcx), ret)]
     fn can_simplify(
         &mut self,
         tcx: TyCtxt<'tcx>,
         targets: &SwitchTargets,
-        param_env: ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
         _discr_ty: Ty<'tcx>,
     ) -> Option<()> {
-        if targets.iter().len() != 1 {
-            return None;
-        }
+        let (first, second) = match targets.all_targets() {
+            &[first, otherwise] => (first, otherwise),
+            &[first, second, otherwise] if bbs[otherwise].is_empty_unreachable() => (first, second),
+            _ => {
+                return None;
+            }
+        };
+
         // We require that the possible target blocks all be distinct.
-        let (_, first) = targets.iter().next().unwrap();
-        let second = targets.otherwise();
         if first == second {
             return None;
         }
@@ -197,8 +205,8 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToIf {
                 ) if lhs_f == lhs_s
                     && f_c.const_.ty().is_bool()
                     && s_c.const_.ty().is_bool()
-                    && f_c.const_.try_eval_bool(tcx, param_env).is_some()
-                    && s_c.const_.try_eval_bool(tcx, param_env).is_some() => {}
+                    && f_c.const_.try_eval_bool(tcx, typing_env).is_some()
+                    && s_c.const_.try_eval_bool(tcx, typing_env).is_some() => {}
 
                 // Otherwise we cannot optimize. Try another block.
                 _ => return None,
@@ -211,15 +219,21 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToIf {
         &self,
         tcx: TyCtxt<'tcx>,
         targets: &SwitchTargets,
-        param_env: ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         patch: &mut MirPatch<'tcx>,
         parent_end: Location,
         bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
         discr_local: Local,
         discr_ty: Ty<'tcx>,
     ) {
-        let (val, first) = targets.iter().next().unwrap();
-        let second = targets.otherwise();
+        let ((val, first), second) = match (targets.all_targets(), targets.all_values()) {
+            (&[first, otherwise], &[val]) => ((val, first), otherwise),
+            (&[first, second, otherwise], &[val, _]) if bbs[otherwise].is_empty_unreachable() => {
+                ((val, first), second)
+            }
+            _ => unreachable!(),
+        };
+
         // We already checked that first and second are different blocks,
         // and bb_idx has a different terminator from both of them.
         let first = &bbs[first];
@@ -235,15 +249,15 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToIf {
                     StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(s_c)))),
                 ) => {
                     // From earlier loop we know that we are dealing with bool constants only:
-                    let f_b = f_c.const_.try_eval_bool(tcx, param_env).unwrap();
-                    let s_b = s_c.const_.try_eval_bool(tcx, param_env).unwrap();
+                    let f_b = f_c.const_.try_eval_bool(tcx, typing_env).unwrap();
+                    let s_b = s_c.const_.try_eval_bool(tcx, typing_env).unwrap();
                     if f_b == s_b {
                         // Same value in both blocks. Use statement as is.
                         patch.add_statement(parent_end, f.kind.clone());
                     } else {
                         // Different value between blocks. Make value conditional on switch
                         // condition.
-                        let size = tcx.layout_of(param_env.and(discr_ty)).unwrap().size;
+                        let size = tcx.layout_of(typing_env.as_query_input(discr_ty)).unwrap().size;
                         let const_cmp = Operand::const_from_scalar(
                             tcx,
                             discr_ty,
@@ -294,7 +308,7 @@ struct SimplifyToExp {
     transform_kinds: Vec<TransformKind>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum ExpectedTransformKind<'a, 'tcx> {
     /// Identical statements.
     Same(&'a StatementKind<'tcx>),
@@ -359,11 +373,12 @@ impl From<ExpectedTransformKind<'_, '_>> for TransformKind {
 /// }
 /// ```
 impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
+    #[instrument(level = "debug", skip(self, tcx), ret)]
     fn can_simplify(
         &mut self,
         tcx: TyCtxt<'tcx>,
         targets: &SwitchTargets,
-        param_env: ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
         discr_ty: Ty<'tcx>,
     ) -> Option<()> {
@@ -388,7 +403,7 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
             return None;
         }
 
-        let discr_layout = tcx.layout_of(param_env.and(discr_ty)).unwrap();
+        let discr_layout = tcx.layout_of(typing_env.as_query_input(discr_ty)).unwrap();
         let first_stmts = &bbs[first_target].statements;
         let (second_case_val, second_target) = target_iter.next().unwrap();
         let second_stmts = &bbs[second_target].statements;
@@ -414,8 +429,8 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
                     && f_c.const_.ty().is_integral() =>
                 {
                     match (
-                        f_c.const_.try_eval_scalar_int(tcx, param_env),
-                        s_c.const_.try_eval_scalar_int(tcx, param_env),
+                        f_c.const_.try_eval_scalar_int(tcx, typing_env),
+                        s_c.const_.try_eval_scalar_int(tcx, typing_env),
                     ) {
                         (Some(f), Some(s)) if f == s => ExpectedTransformKind::SameByEq {
                             place: lhs_f,
@@ -467,11 +482,11 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
                         StatementKind::Assign(box (lhs_s, Rvalue::Use(Operand::Constant(s_c)))),
                     ) if lhs_f == lhs_s
                         && s_c.const_.ty() == f_ty
-                        && s_c.const_.try_eval_scalar_int(tcx, param_env) == Some(scalar) => {}
+                        && s_c.const_.try_eval_scalar_int(tcx, typing_env) == Some(scalar) => {}
                     (
                         ExpectedTransformKind::Cast { place: lhs_f, ty: f_ty },
                         StatementKind::Assign(box (lhs_s, Rvalue::Use(Operand::Constant(s_c)))),
-                    ) if let Some(f) = s_c.const_.try_eval_scalar_int(tcx, param_env)
+                    ) if let Some(f) = s_c.const_.try_eval_scalar_int(tcx, typing_env)
                         && lhs_f == lhs_s
                         && s_c.const_.ty() == f_ty
                         && can_cast(tcx, other_val, discr_layout, f_ty, f) => {}
@@ -487,7 +502,7 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
         &self,
         _tcx: TyCtxt<'tcx>,
         targets: &SwitchTargets,
-        _param_env: ParamEnv<'tcx>,
+        _typing_env: ty::TypingEnv<'tcx>,
         patch: &mut MirPatch<'tcx>,
         parent_end: Location,
         bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,

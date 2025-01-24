@@ -87,7 +87,7 @@ impl Socket {
         loop {
             let elapsed = start.elapsed();
             if elapsed >= timeout {
-                return Err(io::const_io_error!(io::ErrorKind::TimedOut, "connection timed out"));
+                return Err(io::const_error!(io::ErrorKind::TimedOut, "connection timed out"));
             }
 
             let timeout = timeout - elapsed;
@@ -114,7 +114,7 @@ impl Socket {
                     // for POLLHUP rather than read readiness
                     if pollfd.revents & netc::POLLHUP != 0 {
                         let e = self.take_error()?.unwrap_or_else(|| {
-                            io::const_io_error!(
+                            io::const_error!(
                                 io::ErrorKind::Uncategorized,
                                 "no error set after POLLHUP",
                             )

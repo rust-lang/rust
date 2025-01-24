@@ -3,15 +3,15 @@
 use base_db::{ra_salsa::Cycle, CrateId};
 use chalk_ir::{cast::Cast, BoundVar, DebruijnIndex};
 use hir_def::{
-    body::Body,
+    body::{Body, HygieneId},
     hir::{Expr, ExprId},
     path::Path,
     resolver::{Resolver, ValueNs},
     type_ref::LiteralConstRef,
-    ConstBlockLoc, EnumVariantId, GeneralConstId, StaticId,
+    ConstBlockLoc, EnumVariantId, GeneralConstId, HasModule as _, StaticId,
 };
 use hir_expand::Lookup;
-use stdx::{never, IsNoneOr};
+use stdx::never;
 use triomphe::Arc;
 
 use crate::{
@@ -56,6 +56,21 @@ pub enum ConstEvalError {
     MirEvalError(MirEvalError),
 }
 
+impl ConstEvalError {
+    pub fn pretty_print(
+        &self,
+        f: &mut String,
+        db: &dyn HirDatabase,
+        span_formatter: impl Fn(span::FileId, span::TextRange) -> String,
+        edition: span::Edition,
+    ) -> std::result::Result<(), std::fmt::Error> {
+        match self {
+            ConstEvalError::MirLowerError(e) => e.pretty_print(f, db, span_formatter, edition),
+            ConstEvalError::MirEvalError(e) => e.pretty_print(f, db, span_formatter, edition),
+        }
+    }
+}
+
 impl From<MirLowerError> for ConstEvalError {
     fn from(value: MirLowerError) -> Self {
         match value {
@@ -80,7 +95,7 @@ pub(crate) fn path_to_const<'g>(
     debruijn: DebruijnIndex,
     expected_ty: Ty,
 ) -> Option<Const> {
-    match resolver.resolve_path_in_value_ns_fully(db.upcast(), path) {
+    match resolver.resolve_path_in_value_ns_fully(db.upcast(), path, HygieneId::ROOT) {
         Some(ValueNs::GenericParam(p)) => {
             let ty = db.const_param_ty(p);
             let value = match mode {
@@ -236,6 +251,10 @@ pub(crate) fn const_eval_query(
         GeneralConstId::ConstId(c) => {
             db.monomorphized_mir_body(c.into(), subst, db.trait_environment(c.into()))?
         }
+        GeneralConstId::StaticId(s) => {
+            let krate = s.module(db.upcast()).krate();
+            db.monomorphized_mir_body(s.into(), subst, TraitEnvironment::empty(krate))?
+        }
         GeneralConstId::ConstBlockId(c) => {
             let ConstBlockLoc { parent, root } = db.lookup_intern_anonymous_const(c);
             let body = db.body(parent);
@@ -249,7 +268,7 @@ pub(crate) fn const_eval_query(
         }
         GeneralConstId::InTypeConstId(c) => db.mir_body(c.into())?,
     };
-    let c = interpret_mir(db, body, false, trait_env).0?;
+    let c = interpret_mir(db, body, false, trait_env)?.0?;
     Ok(c)
 }
 
@@ -262,7 +281,7 @@ pub(crate) fn const_eval_static_query(
         Substitution::empty(Interner),
         db.trait_environment_for_body(def.into()),
     )?;
-    let c = interpret_mir(db, body, false, None).0?;
+    let c = interpret_mir(db, body, false, None)?.0?;
     Ok(c)
 }
 
@@ -287,14 +306,14 @@ pub(crate) fn const_eval_discriminant_variant(
     }
 
     let repr = db.enum_data(loc.parent).repr;
-    let is_signed = IsNoneOr::is_none_or(repr.and_then(|repr| repr.int), |int| int.is_signed());
+    let is_signed = repr.and_then(|repr| repr.int).is_none_or(|int| int.is_signed());
 
     let mir_body = db.monomorphized_mir_body(
         def,
         Substitution::empty(Interner),
         db.trait_environment_for_body(def),
     )?;
-    let c = interpret_mir(db, mir_body, false, None).0?;
+    let c = interpret_mir(db, mir_body, false, None)?.0?;
     let c = if is_signed {
         try_const_isize(db, &c).unwrap()
     } else {
@@ -319,7 +338,7 @@ pub(crate) fn eval_to_const(
             return true;
         }
         let mut r = false;
-        body[expr].walk_child_exprs(|idx| r |= has_closure(body, idx));
+        body.walk_child_exprs(expr, |idx| r |= has_closure(body, idx));
         r
     }
     if has_closure(ctx.body, expr) {
@@ -335,7 +354,7 @@ pub(crate) fn eval_to_const(
         }
     }
     if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, ctx.body, &infer, expr) {
-        if let Ok(result) = interpret_mir(db, Arc::new(mir_body), true, None).0 {
+        if let Ok((Ok(result), _)) = interpret_mir(db, Arc::new(mir_body), true, None) {
             return result;
         }
     }

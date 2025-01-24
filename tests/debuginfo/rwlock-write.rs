@@ -9,8 +9,8 @@
 // cdb-command:g
 //
 // cdb-command:dx w
-// cdb-check:w                [Type: std::sync::rwlock::RwLockWriteGuard<i32>]
-// cdb-check:    [...] lock             : [...] [Type: std::sync::rwlock::RwLock<i32> *]
+// cdb-check:w                [Type: std::sync::poison::rwlock::RwLockWriteGuard<i32>]
+// cdb-check:    [...] lock             : [...] [Type: std::sync::poison::rwlock::RwLock<i32> *]
 // cdb-check:    [...] poison           [Type: std::sync::poison::Guard]
 
 #[allow(unused_variables)]

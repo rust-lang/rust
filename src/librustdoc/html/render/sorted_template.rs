@@ -27,7 +27,7 @@ struct Offset {
 }
 
 impl<F> SortedTemplate<F> {
-    /// Generate this template from arbitary text.
+    /// Generate this template from arbitrary text.
     /// Will insert wherever the substring `delimiter` can be found.
     /// Errors if it does not appear exactly once.
     pub(crate) fn from_template(template: &str, delimiter: &str) -> Result<Self, Error> {
@@ -84,7 +84,7 @@ impl<F: FileFormat> FromStr for SortedTemplate<F> {
         let offset = offset
             .strip_suffix(F::COMMENT_END)
             .ok_or(Error("last line expected to end with a comment"))?;
-        let offset: Offset = serde_json::from_str(&offset).map_err(|_| {
+        let offset: Offset = serde_json::from_str(offset).map_err(|_| {
             Error("could not find insertion location descriptor object on last line")
         })?;
         let (before, mut s) =

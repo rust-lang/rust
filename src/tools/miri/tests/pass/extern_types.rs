@@ -1,6 +1,6 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
-#![feature(extern_types, strict_provenance)]
+#![feature(extern_types)]
 
 use std::ptr;
 

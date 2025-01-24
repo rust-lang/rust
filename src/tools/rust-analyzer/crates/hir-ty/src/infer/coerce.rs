@@ -125,7 +125,11 @@ impl CoerceMany {
         // pointers to have a chance at getting a match. See
         // https://github.com/rust-lang/rust/blob/7b805396bf46dce972692a6846ce2ad8481c5f85/src/librustc_typeck/check/coercion.rs#L877-L916
         let sig = match (self.merged_ty().kind(Interner), expr_ty.kind(Interner)) {
-            (TyKind::FnDef(x, _), TyKind::FnDef(y, _)) if x == y => None,
+            (TyKind::FnDef(x, _), TyKind::FnDef(y, _))
+                if x == y && ctx.table.unify(&self.merged_ty(), &expr_ty) =>
+            {
+                None
+            }
             (TyKind::Closure(x, _), TyKind::Closure(y, _)) if x == y => None,
             (TyKind::FnDef(..) | TyKind::Closure(..), TyKind::FnDef(..) | TyKind::Closure(..)) => {
                 // FIXME: we're ignoring safety here. To be more correct, if we have one FnDef and one Closure,

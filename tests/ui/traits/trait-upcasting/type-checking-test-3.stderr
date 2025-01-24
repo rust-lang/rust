@@ -1,10 +1,10 @@
 error: lifetime may not live long enough
-  --> $DIR/type-checking-test-3.rs:11:18
+  --> $DIR/type-checking-test-3.rs:11:13
    |
 LL | fn test_wrong1<'a>(x: &dyn Foo<'static>, y: &'a u32) {
    |                -- lifetime `'a` defined here
 LL |     let _ = x as &dyn Bar<'a>; // Error
-   |                  ^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
+   |             ^^^^^^^^^^^^^^^^^ cast requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
   --> $DIR/type-checking-test-3.rs:16:18

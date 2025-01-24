@@ -45,8 +45,8 @@ impl RegionInferenceContext<'_> {
 
         let graph = self.constraint_sccs.reverse();
         let mut paired_scc_regions = self
-            .universal_regions
             .universal_regions()
+            .universal_regions_iter()
             .map(|region| (self.constraint_sccs.scc(region), region))
             .collect::<Vec<_>>();
         paired_scc_regions.sort();

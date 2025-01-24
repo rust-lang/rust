@@ -1,6 +1,6 @@
 //! List of the accepted feature gates.
 
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use super::{Feature, to_nonzero};
 
@@ -9,7 +9,7 @@ macro_rules! declare_features {
         $(#[doc = $doc:tt])* (accepted, $feature:ident, $ver:expr, $issue:expr),
     )+) => {
         /// Formerly unstable features that have now been accepted (stabilized).
-        pub const ACCEPTED_FEATURES: &[Feature] = &[
+        pub const ACCEPTED_LANG_FEATURES: &[Feature] = &[
             $(Feature {
                 name: sym::$feature,
                 since: $ver,
@@ -72,6 +72,8 @@ declare_features! (
     (accepted, associated_types, "1.0.0", None),
     /// Allows free and inherent `async fn`s, `async` blocks, and `<expr>.await` expressions.
     (accepted, async_await, "1.39.0", Some(50547)),
+    /// Allows `async || body` closures.
+    (accepted, async_closure, "1.85.0", Some(62290)),
     /// Allows async functions to be declared, implemented, and used in traits.
     (accepted, async_fn_in_trait, "1.75.0", Some(91611)),
     /// Allows all literals in attribute lists and values of key-value pairs.
@@ -173,6 +175,8 @@ declare_features! (
     (accepted, destructuring_assignment, "1.59.0", Some(71126)),
     /// Allows using the `#[diagnostic]` attribute tool namespace
     (accepted, diagnostic_namespace, "1.78.0", Some(111996)),
+    /// Controls errors in trait implementations.
+    (accepted, do_not_recommend, "1.85.0", Some(51992)),
     /// Allows `#[doc(alias = "...")]`.
     (accepted, doc_alias, "1.48.0", Some(50146)),
     /// Allows `..` in tuple (struct) patterns.
@@ -193,6 +197,9 @@ declare_features! (
     (accepted, expr_fragment_specifier_2024, "1.83.0", Some(123742)),
     /// Allows arbitrary expressions in key-value attributes at parse time.
     (accepted, extended_key_value_attributes, "1.54.0", Some(78835)),
+    /// Allows using `efiapi`, `aapcs`, `sysv64` and `win64` as calling
+    /// convention for functions with varargs.
+    (accepted, extended_varargs_abi_support, "1.85.0", Some(100189)),
     /// Allows resolving absolute paths as paths from other crates.
     (accepted, extern_absolute_paths, "1.30.0", Some(44660)),
     /// Allows `extern crate foo as bar;`. This puts `bar` into extern prelude.
@@ -224,6 +231,8 @@ declare_features! (
     (accepted, i128_type, "1.26.0", Some(35118)),
     /// Allows the use of `if let` expressions.
     (accepted, if_let, "1.0.0", None),
+    /// Rescoping temporaries in `if let` to align with Rust 2024.
+    (accepted, if_let_rescope, "1.84.0", Some(124085)),
     /// Allows top level or-patterns (`p | q`) in `if let` and `while let`.
     (accepted, if_while_or_patterns, "1.33.0", Some(48215)),
     /// Allows lifetime elision in `impl` headers. For example:
@@ -355,7 +364,7 @@ declare_features! (
     (accepted, repr_transparent, "1.28.0", Some(43036)),
     /// Allows enums like Result<T, E> to be used across FFI, if T's niche value can
     /// be used to describe E or vice-versa.
-    (accepted, result_ffi_guarantees, "CURRENT_RUSTC_VERSION", Some(110503)),
+    (accepted, result_ffi_guarantees, "1.84.0", Some(110503)),
     /// Allows return-position `impl Trait` in traits.
     (accepted, return_position_impl_trait_in_trait, "1.75.0", Some(91611)),
     /// Allows code like `let x: &'static u32 = &42` to work (RFC 1414).
@@ -364,6 +373,8 @@ declare_features! (
     (accepted, self_in_typedefs, "1.32.0", Some(49303)),
     /// Allows `Self` struct constructor (RFC 2302).
     (accepted, self_struct_ctor, "1.32.0", Some(51994)),
+    /// Shortern the tail expression lifetime
+    (accepted, shorter_tail_lifetimes, "1.84.0", Some(123739)),
     /// Allows using subslice patterns, `[a, .., b]` and `[a, xs @ .., b]`.
     (accepted, slice_patterns, "1.42.0", Some(62254)),
     /// Allows use of `&foo[a..b]` as a slicing syntax.

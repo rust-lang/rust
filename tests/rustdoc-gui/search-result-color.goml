@@ -140,7 +140,8 @@ define-function: (
     },
 )
 
-go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=coo"
+// Searching for the `for` keyword
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=fo"
 
 // This is needed so that the text color is computed.
 show-text: true

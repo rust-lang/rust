@@ -7,7 +7,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_lint_defs::builtin::UNCOVERED_PARAM_IN_PROJECTION;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -172,7 +172,7 @@ pub(crate) fn orphan_check_impl(
             // impl<T> AutoTrait for T {}
             // impl<T: ?Sized> AutoTrait for T {}
             ty::Param(..) => (
-                if self_ty.is_sized(tcx, tcx.param_env(impl_def_id)) {
+                if self_ty.is_sized(tcx, ty::TypingEnv::non_body_analysis(tcx, impl_def_id)) {
                     LocalImpl::Allow
                 } else {
                     LocalImpl::Disallow { problematic_kind: "generic type" }
@@ -225,7 +225,8 @@ pub(crate) fn orphan_check_impl(
             | ty::FnDef(..)
             | ty::FnPtr(..)
             | ty::Never
-            | ty::Tuple(..) => (LocalImpl::Allow, NonlocalImpl::DisallowOther),
+            | ty::Tuple(..)
+            | ty::UnsafeBinder(_) => (LocalImpl::Allow, NonlocalImpl::DisallowOther),
 
             ty::Closure(..)
             | ty::CoroutineClosure(..)
@@ -302,7 +303,7 @@ fn orphan_check<'tcx>(
     }
 
     // (1)  Instantiate all generic params with fresh inference vars.
-    let infcx = tcx.infer_ctxt().intercrate(true).build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::Coherence);
     let cause = traits::ObligationCause::dummy();
     let args = infcx.fresh_args_for_item(cause.span, impl_def_id.to_def_id());
     let trait_ref = trait_ref.instantiate(tcx, args);
@@ -319,7 +320,7 @@ fn orphan_check<'tcx>(
         }
 
         let ty = if infcx.next_trait_solver() {
-            ocx.structurally_normalize(
+            ocx.structurally_normalize_ty(
                 &cause,
                 ty::ParamEnv::empty(),
                 infcx.resolve_vars_if_possible(ty),

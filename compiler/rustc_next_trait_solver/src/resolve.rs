@@ -76,9 +76,6 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for EagerResolv
                     resolved
                 }
             }
-            ty::ConstKind::Infer(ty::InferConst::EffectVar(vid)) => {
-                self.delegate.opportunistic_resolve_effect_var(vid)
-            }
             _ => {
                 if c.has_infer() {
                     c.super_fold_with(self)

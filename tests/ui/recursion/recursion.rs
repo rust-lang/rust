@@ -1,6 +1,6 @@
 //@ build-fail
 //@ compile-flags:-C overflow-checks=off
-//@ normalize-stderr-test: ".nll/" -> "/"
+//@ normalize-stderr: ".nll/" -> "/"
 
 enum Nil {NilValue}
 struct Cons<T> {head:isize, tail:T}

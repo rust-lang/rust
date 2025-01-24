@@ -1,8 +1,8 @@
 warning: unknown lint: `must_not_suspend`
-  --> $DIR/gated.rs:4:1
+  --> $DIR/gated.rs:4:9
    |
 LL | #![deny(must_not_suspend)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^
    |
    = note: the `must_not_suspend` lint is unstable
    = note: see issue #83310 <https://github.com/rust-lang/rust/issues/83310> for more information

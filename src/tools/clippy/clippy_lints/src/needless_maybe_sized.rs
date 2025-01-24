@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::{DefId, DefIdMap};
-use rustc_hir::{GenericBound, Generics, PolyTraitRef, TraitBoundModifier, WherePredicate};
+use rustc_hir::{BoundPolarity, GenericBound, Generics, PolyTraitRef, TraitBoundModifiers, WherePredicateKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{ClauseKind, PredicatePolarity};
 use rustc_session::declare_lint_pass;
@@ -52,7 +52,7 @@ fn type_param_bounds<'tcx>(generics: &'tcx Generics<'tcx>) -> impl Iterator<Item
         .iter()
         .enumerate()
         .filter_map(|(predicate_pos, predicate)| {
-            let WherePredicate::BoundPredicate(bound_predicate) = predicate else {
+            let WherePredicateKind::BoundPredicate(bound_predicate) = &predicate.kind else {
                 return None;
             };
 
@@ -118,13 +118,13 @@ impl LateLintPass<'_> for NeedlessMaybeSized {
         let maybe_sized_params: DefIdMap<_> = type_param_bounds(generics)
             .filter(|bound| {
                 bound.trait_bound.trait_ref.trait_def_id() == Some(sized_trait)
-                    && bound.trait_bound.modifiers == TraitBoundModifier::Maybe
+                    && matches!(bound.trait_bound.modifiers.polarity, BoundPolarity::Maybe(_))
             })
             .map(|bound| (bound.param, bound))
             .collect();
 
         for bound in type_param_bounds(generics) {
-            if bound.trait_bound.modifiers == TraitBoundModifier::None
+            if bound.trait_bound.modifiers == TraitBoundModifiers::NONE
                 && let Some(sized_bound) = maybe_sized_params.get(&bound.param)
                 && let Some(path) = path_to_sized_bound(cx, bound.trait_bound)
             {

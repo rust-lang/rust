@@ -15,7 +15,9 @@ use rustc_infer::infer::{self, RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, suggest_constraining_type_params};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeVisitableExt, TypingMode, suggest_constraining_type_params,
+};
 use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::misc::{
@@ -35,22 +37,19 @@ pub(super) fn check_trait<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let lang_items = tcx.lang_items();
     let checker = Checker { tcx, trait_def_id, impl_def_id, impl_header };
-    let mut res = checker.check(lang_items.drop_trait(), visit_implementation_of_drop);
-    res = res.and(checker.check(lang_items.copy_trait(), visit_implementation_of_copy));
-    res = res.and(checker.check(lang_items.const_param_ty_trait(), |checker| {
+    checker.check(lang_items.drop_trait(), visit_implementation_of_drop)?;
+    checker.check(lang_items.copy_trait(), visit_implementation_of_copy)?;
+    checker.check(lang_items.const_param_ty_trait(), |checker| {
         visit_implementation_of_const_param_ty(checker, LangItem::ConstParamTy)
-    }));
-    res = res.and(checker.check(lang_items.unsized_const_param_ty_trait(), |checker| {
+    })?;
+    checker.check(lang_items.unsized_const_param_ty_trait(), |checker| {
         visit_implementation_of_const_param_ty(checker, LangItem::UnsizedConstParamTy)
-    }));
-
-    res = res.and(
-        checker.check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized),
-    );
-    res.and(
-        checker
-            .check(lang_items.dispatch_from_dyn_trait(), visit_implementation_of_dispatch_from_dyn),
-    )
+    })?;
+    checker.check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized)?;
+    checker
+        .check(lang_items.dispatch_from_dyn_trait(), visit_implementation_of_dispatch_from_dyn)?;
+    checker.check(lang_items.pointer_like(), visit_implementation_of_pointer_like)?;
+    Ok(())
 }
 
 struct Checker<'tcx> {
@@ -104,7 +103,7 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
     }
 
     let cause = traits::ObligationCause::misc(DUMMY_SP, impl_did);
-    match type_allowed_to_implement_copy(tcx, param_env, self_type, cause) {
+    match type_allowed_to_implement_copy(tcx, param_env, self_type, cause, impl_header.safety) {
         Ok(()) => Ok(()),
         Err(CopyImplementationError::InfringingFields(fields)) => {
             let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
@@ -123,6 +122,12 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
         Err(CopyImplementationError::HasDestructor) => {
             let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::CopyImplOnTypeWithDtor { span }))
+        }
+        Err(CopyImplementationError::HasUnsafeFields) => {
+            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            Err(tcx
+                .dcx()
+                .span_delayed_bug(span, format!("cannot implement `Copy` for `{}`", self_type)))
         }
     }
 }
@@ -213,7 +218,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
 
     let param_env = tcx.param_env(impl_did);
 
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let cause = ObligationCause::misc(span, impl_did);
 
     // Later parts of the compiler rely on all DispatchFromDyn types to be ABI-compatible with raw
@@ -254,17 +259,37 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
             let coerced_fields = fields
                 .iter()
                 .filter(|field| {
+                    // Ignore PhantomData fields
+                    let unnormalized_ty = tcx.type_of(field.did).instantiate_identity();
+                    if tcx
+                        .try_normalize_erasing_regions(
+                            ty::TypingEnv::non_body_analysis(tcx, def_a.did()),
+                            unnormalized_ty,
+                        )
+                        .unwrap_or(unnormalized_ty)
+                        .is_phantom_data()
+                    {
+                        return false;
+                    }
+
                     let ty_a = field.ty(tcx, args_a);
                     let ty_b = field.ty(tcx, args_b);
 
-                    if let Ok(layout) = tcx.layout_of(param_env.and(ty_a)) {
-                        if layout.is_1zst() {
+                    // FIXME: We could do normalization here, but is it really worth it?
+                    if ty_a == ty_b {
+                        // Allow 1-ZSTs that don't mention type params.
+                        //
+                        // Allowing type params here would allow us to possibly transmute
+                        // between ZSTs, which may be used to create library unsoundness.
+                        if let Ok(layout) =
+                            tcx.layout_of(infcx.typing_env(param_env).as_query_input(ty_a))
+                            && layout.is_1zst()
+                            && !ty_a.has_non_region_param()
+                        {
                             // ignore 1-ZST fields
                             return false;
                         }
-                    }
 
-                    if ty_a == ty_b {
                         res = Err(tcx.dcx().emit_err(errors::DispatchFromDynZST {
                             span,
                             name: field.name,
@@ -354,7 +379,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
 
     debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (free)", source, target);
 
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let cause = ObligationCause::misc(span, impl_did);
     let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>,
                        mt_b: ty::TypeAndMut<'tcx>,
@@ -364,6 +389,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
                 .err_ctxt()
                 .report_mismatched_types(
                     &cause,
+                    param_env,
                     mk_ptr(mt_b.ty),
                     target,
                     ty::error::TypeError::Mutability,
@@ -452,8 +478,16 @@ pub(crate) fn coerce_unsized_info<'tcx>(
                 .filter_map(|(i, f)| {
                     let (a, b) = (f.ty(tcx, args_a), f.ty(tcx, args_b));
 
-                    if tcx.type_of(f.did).instantiate_identity().is_phantom_data() {
-                        // Ignore PhantomData fields
+                    // Ignore PhantomData fields
+                    let unnormalized_ty = tcx.type_of(f.did).instantiate_identity();
+                    if tcx
+                        .try_normalize_erasing_regions(
+                            ty::TypingEnv::non_body_analysis(tcx, def_a.did()),
+                            unnormalized_ty,
+                        )
+                        .unwrap_or(unnormalized_ty)
+                        .is_phantom_data()
+                    {
                         return None;
                     }
 
@@ -657,4 +691,102 @@ fn infringing_fields_error<'tcx>(
     );
 
     err.emit()
+}
+
+fn visit_implementation_of_pointer_like(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
+    let tcx = checker.tcx;
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, checker.impl_def_id);
+    let impl_span = tcx.def_span(checker.impl_def_id);
+    let self_ty = tcx.impl_trait_ref(checker.impl_def_id).unwrap().instantiate_identity().self_ty();
+
+    let is_permitted_primitive = match *self_ty.kind() {
+        ty::Adt(def, _) => def.is_box(),
+        ty::Uint(..) | ty::Int(..) | ty::RawPtr(..) | ty::Ref(..) | ty::FnPtr(..) => true,
+        _ => false,
+    };
+
+    if is_permitted_primitive
+        && let Ok(layout) = tcx.layout_of(typing_env.as_query_input(self_ty))
+        && layout.layout.is_pointer_like(&tcx.data_layout)
+    {
+        return Ok(());
+    }
+
+    let why_disqualified = match *self_ty.kind() {
+        // If an ADT is repr(transparent)
+        ty::Adt(self_ty_def, args) => {
+            if self_ty_def.repr().transparent() {
+                // FIXME(compiler-errors): This should and could be deduplicated into a query.
+                // Find the nontrivial field.
+                let adt_typing_env = ty::TypingEnv::non_body_analysis(tcx, self_ty_def.did());
+                let nontrivial_field = self_ty_def.all_fields().find(|field_def| {
+                    let field_ty = tcx.type_of(field_def.did).instantiate_identity();
+                    !tcx.layout_of(adt_typing_env.as_query_input(field_ty))
+                        .is_ok_and(|layout| layout.layout.is_1zst())
+                });
+
+                if let Some(nontrivial_field) = nontrivial_field {
+                    // Check that the nontrivial field implements `PointerLike`.
+                    let nontrivial_field_ty = nontrivial_field.ty(tcx, args);
+                    let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
+                    let ocx = ObligationCtxt::new(&infcx);
+                    ocx.register_bound(
+                        ObligationCause::misc(impl_span, checker.impl_def_id),
+                        param_env,
+                        nontrivial_field_ty,
+                        tcx.lang_items().pointer_like().unwrap(),
+                    );
+                    // FIXME(dyn-star): We should regionck this implementation.
+                    if ocx.select_all_or_error().is_empty() {
+                        return Ok(());
+                    } else {
+                        format!(
+                            "the field `{field_name}` of {descr} `{self_ty}` \
+                    does not implement `PointerLike`",
+                            field_name = nontrivial_field.name,
+                            descr = self_ty_def.descr()
+                        )
+                    }
+                } else {
+                    format!(
+                        "the {descr} `{self_ty}` is `repr(transparent)`, \
+                but does not have a non-trivial field (it is zero-sized)",
+                        descr = self_ty_def.descr()
+                    )
+                }
+            } else if self_ty_def.is_box() {
+                // If we got here, then the `layout.is_pointer_like()` check failed
+                // and this box is not a thin pointer.
+
+                String::from("boxes of dynamically-sized types are too large to be `PointerLike`")
+            } else {
+                format!(
+                    "the {descr} `{self_ty}` is not `repr(transparent)`",
+                    descr = self_ty_def.descr()
+                )
+            }
+        }
+        ty::Ref(..) => {
+            // If we got here, then the `layout.is_pointer_like()` check failed
+            // and this reference is not a thin pointer.
+            String::from("references to dynamically-sized types are too large to be `PointerLike`")
+        }
+        ty::Dynamic(..) | ty::Foreign(..) => {
+            String::from("types of dynamic or unknown size may not implement `PointerLike`")
+        }
+        _ => {
+            // This is a white lie; it is true everywhere outside the standard library.
+            format!("only user-defined sized types are eligible for `impl PointerLike`")
+        }
+    };
+
+    Err(tcx
+        .dcx()
+        .struct_span_err(
+            impl_span,
+            "implementation must be applied to type that has the same ABI as a pointer, \
+            or is `repr(transparent)` and whose field is `PointerLike`",
+        )
+        .with_note(why_disqualified)
+        .emit())
 }

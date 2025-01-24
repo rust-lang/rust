@@ -258,7 +258,7 @@ impl<I: Idx> IntervalSet<I> {
             }
             current = Some(*end);
         }
-        current.map_or(true, |x| x < self.domain as u32)
+        current.is_none_or(|x| x < self.domain as u32)
     }
 }
 

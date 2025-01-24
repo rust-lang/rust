@@ -1,4 +1,6 @@
 //@ check-pass
+//@ edition: 2018
+//@ run-rustfix
 
 #![allow(unused)]
 #![warn(unreachable_pub)]
@@ -48,6 +50,46 @@ mod private_mod {
         pub fn catalyze() -> bool; //~ WARNING unreachable_pub
     }
 
+    mod private_in_private {
+        pub enum Helium {} //~ WARNING unreachable_pub
+        pub fn beryllium() {} //~ WARNING unreachable_pub
+    }
+
+    pub(crate) mod crate_in_private {
+        pub const CARBON: usize = 1; //~ WARNING unreachable_pub
+    }
+
+    pub mod pub_in_private { //~ WARNING unreachable_pub
+        pub static NITROGEN: usize = 2; //~ WARNING unreachable_pub
+    }
+
+    fn foo() {
+        const {
+            pub struct Foo; //~ WARNING unreachable_pub
+        };
+    }
+
+    enum Weird {
+        Variant = {
+            pub struct Foo; //~ WARNING unreachable_pub
+
+            mod tmp {
+                pub struct Bar; //~ WARNING unreachable_pub
+            }
+
+            let _ = tmp::Bar;
+
+            0
+        },
+    }
+
+    pub use fpu_precision::set_precision; //~ WARNING unreachable_pub
+
+    mod fpu_precision {
+        pub fn set_precision<T>() {} //~ WARNING unreachable_pub
+        pub fn set_micro_precision<T>() {} //~ WARNING unreachable_pub
+    }
+
     // items leaked through signatures (see `get_neon` below) are OK
     pub struct Neon {}
 
@@ -67,4 +109,8 @@ pub fn get_neon() -> private_mod::Neon {
 
 fn main() {
     let _ = get_neon();
+    let _ = private_mod::beryllium();
+    let _ = private_mod::crate_in_private::CARBON;
+    let _ = private_mod::pub_in_private::NITROGEN;
+    let _ = unsafe { private_mod::catalyze() };
 }

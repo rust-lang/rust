@@ -1,9 +1,8 @@
 //@ run-pass
 //@ edition:2024
-//@ compile-flags: -Z validate-mir -Zunstable-options
+//@ compile-flags: -Z validate-mir
 
 #![feature(let_chains)]
-#![feature(if_let_rescope)]
 
 use std::cell::RefCell;
 use std::convert::TryInto;

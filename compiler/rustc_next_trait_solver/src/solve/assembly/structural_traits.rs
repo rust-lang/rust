@@ -12,7 +12,7 @@ use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
-use crate::solve::{EvalCtxt, Goal, NoSolution};
+use crate::solve::{AdtDestructorKind, EvalCtxt, Goal, NoSolution};
 
 // Calculates the constituent types of a type for `auto trait` purposes.
 #[instrument(level = "trace", skip(ecx), ret)]
@@ -83,6 +83,8 @@ where
             .map(|bty| bty.instantiate(cx, args))
             .collect()),
 
+        ty::UnsafeBinder(bound_ty) => Ok(vec![bound_ty.into()]),
+
         // For `PhantomData<T>`, we pass `T`.
         ty::Adt(def, args) if def.is_phantom_data() => Ok(vec![ty::Binder::dummy(args.type_at(0))]),
 
@@ -143,6 +145,8 @@ where
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
             panic!("unexpected type `{ty:?}`")
         }
+
+        ty::UnsafeBinder(bound_ty) => Ok(vec![bound_ty.into()]),
 
         // impl Sized for ()
         // impl Sized for (T1, T2, .., Tn) where Tn: Sized if n >= 1
@@ -238,6 +242,8 @@ where
                 }
             }
         },
+
+        ty::UnsafeBinder(_) => Err(NoSolution),
 
         // impl Copy/Clone for CoroutineWitness where T: Copy/Clone forall T in coroutine_hidden_types
         ty::CoroutineWitness(def_id, args) => Ok(ecx
@@ -374,6 +380,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
         | ty::Never
         | ty::Tuple(_)
         | ty::Pat(_, _)
+        | ty::UnsafeBinder(_)
         | ty::Alias(_, _)
         | ty::Param(_)
         | ty::Placeholder(..)
@@ -544,6 +551,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
         | ty::Coroutine(_, _)
         | ty::CoroutineWitness(..)
         | ty::Never
+        | ty::UnsafeBinder(_)
         | ty::Tuple(_)
         | ty::Alias(_, _)
         | ty::Param(_)
@@ -631,6 +639,155 @@ fn coroutine_closure_to_ambiguous_coroutine<I: Interner>(
         cx.coroutine_for_closure(def_id),
         tupled_upvars_ty,
     )
+}
+
+/// This duplicates `extract_tupled_inputs_and_output_from_callable` but needs
+/// to return different information (namely, the def id and args) so that we can
+/// create const conditions.
+///
+/// Doing so on all calls to `extract_tupled_inputs_and_output_from_callable`
+/// would be wasteful.
+pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
+    cx: I,
+    self_ty: I::Ty,
+) -> Result<(ty::Binder<I, (I::FnInputTys, I::Ty)>, I::DefId, I::GenericArgs), NoSolution> {
+    match self_ty.kind() {
+        ty::FnDef(def_id, args) => {
+            let sig = cx.fn_sig(def_id);
+            if sig.skip_binder().is_fn_trait_compatible()
+                && !cx.has_target_features(def_id)
+                && cx.fn_is_const(def_id)
+            {
+                Ok((
+                    sig.instantiate(cx, args).map_bound(|sig| (sig.inputs(), sig.output())),
+                    def_id,
+                    args,
+                ))
+            } else {
+                return Err(NoSolution);
+            }
+        }
+        // `FnPtr`s are not const for now.
+        ty::FnPtr(..) => {
+            return Err(NoSolution);
+        }
+        // `Closure`s are not const for now.
+        ty::Closure(..) => {
+            return Err(NoSolution);
+        }
+        // `CoroutineClosure`s are not const for now.
+        ty::CoroutineClosure(..) => {
+            return Err(NoSolution);
+        }
+
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Adt(_, _)
+        | ty::Foreign(_)
+        | ty::Str
+        | ty::Array(_, _)
+        | ty::Slice(_)
+        | ty::RawPtr(_, _)
+        | ty::Ref(_, _, _)
+        | ty::Dynamic(_, _, _)
+        | ty::Coroutine(_, _)
+        | ty::CoroutineWitness(..)
+        | ty::Never
+        | ty::Tuple(_)
+        | ty::Pat(_, _)
+        | ty::Alias(_, _)
+        | ty::Param(_)
+        | ty::Placeholder(..)
+        | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+        | ty::Error(_)
+        | ty::UnsafeBinder(_) => return Err(NoSolution),
+
+        ty::Bound(..)
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            panic!("unexpected type `{self_ty:?}`")
+        }
+    }
+}
+
+// NOTE: Keep this in sync with `evaluate_host_effect_for_destruct_goal` in
+// the old solver, for as long as that exists.
+pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
+    cx: I,
+    self_ty: I::Ty,
+) -> Result<Vec<ty::TraitRef<I>>, NoSolution> {
+    let destruct_def_id = cx.require_lang_item(TraitSolverLangItem::Destruct);
+
+    match self_ty.kind() {
+        // An ADT is `~const Destruct` only if all of the fields are,
+        // *and* if there is a `Drop` impl, that `Drop` impl is also `~const`.
+        ty::Adt(adt_def, args) => {
+            let mut const_conditions: Vec<_> = adt_def
+                .all_field_tys(cx)
+                .iter_instantiated(cx, args)
+                .map(|field_ty| ty::TraitRef::new(cx, destruct_def_id, [field_ty]))
+                .collect();
+            match adt_def.destructor(cx) {
+                // `Drop` impl exists, but it's not const. Type cannot be `~const Destruct`.
+                Some(AdtDestructorKind::NotConst) => return Err(NoSolution),
+                // `Drop` impl exists, and it's const. Require `Ty: ~const Drop` to hold.
+                Some(AdtDestructorKind::Const) => {
+                    let drop_def_id = cx.require_lang_item(TraitSolverLangItem::Drop);
+                    let drop_trait_ref = ty::TraitRef::new(cx, drop_def_id, [self_ty]);
+                    const_conditions.push(drop_trait_ref);
+                }
+                // No `Drop` impl, no need to require anything else.
+                None => {}
+            }
+            Ok(const_conditions)
+        }
+
+        ty::Array(ty, _) | ty::Pat(ty, _) | ty::Slice(ty) => {
+            Ok(vec![ty::TraitRef::new(cx, destruct_def_id, [ty])])
+        }
+
+        ty::Tuple(tys) => Ok(tys
+            .iter()
+            .map(|field_ty| ty::TraitRef::new(cx, destruct_def_id, [field_ty]))
+            .collect()),
+
+        // Trivially implement `~const Destruct`
+        ty::Bool
+        | ty::Char
+        | ty::Int(..)
+        | ty::Uint(..)
+        | ty::Float(..)
+        | ty::Str
+        | ty::RawPtr(..)
+        | ty::Ref(..)
+        | ty::FnDef(..)
+        | ty::FnPtr(..)
+        | ty::Never
+        | ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
+        | ty::Error(_) => Ok(vec![]),
+
+        // Coroutines and closures could implement `~const Drop`,
+        // but they don't really need to right now.
+        ty::Closure(_, _)
+        | ty::CoroutineClosure(_, _)
+        | ty::Coroutine(_, _)
+        | ty::CoroutineWitness(_, _) => Err(NoSolution),
+
+        // FIXME(unsafe_binders): Unsafe binders could implement `~const Drop`
+        // if their inner type implements it.
+        ty::UnsafeBinder(_) => Err(NoSolution),
+
+        ty::Dynamic(..) | ty::Param(_) | ty::Alias(..) | ty::Placeholder(_) | ty::Foreign(_) => {
+            Err(NoSolution)
+        }
+
+        ty::Bound(..)
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            panic!("unexpected type `{self_ty:?}`")
+        }
+    }
 }
 
 /// Assemble a list of predicates that would be present on a theoretical

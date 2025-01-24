@@ -233,9 +233,6 @@ metadata_prev_alloc_error_handler =
 metadata_prev_global_alloc =
     previous global allocator defined here
 
-metadata_profiler_builtins_needs_core =
-    `profiler_builtins` crate (required by compiler options) is not compatible with crate attribute `#![no_core]`
-
 metadata_raw_dylib_no_nul =
     link name must not contain NUL characters if link kind is `raw-dylib`
 

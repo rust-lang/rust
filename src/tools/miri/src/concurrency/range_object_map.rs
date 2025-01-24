@@ -4,8 +4,8 @@
 
 use std::ops::{Index, IndexMut, Range};
 
+use rustc_abi::Size;
 use rustc_const_eval::interpret::AllocRange;
-use rustc_target::abi::Size;
 
 #[derive(Clone, Debug)]
 struct Elem<T> {

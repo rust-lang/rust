@@ -14,7 +14,7 @@ $DIR/auxiliary/used_crate.rs:
    LL|      1|    if is_true {
    LL|      1|        countdown = 10;
    LL|      1|    }
-                   ^0
+                  ^0
    LL|      1|    use_this_lib_crate();
    LL|      1|}
    LL|       |

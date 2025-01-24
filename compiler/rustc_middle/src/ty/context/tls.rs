@@ -1,5 +1,3 @@
-#[cfg(not(parallel_compiler))]
-use std::cell::Cell;
 use std::{mem, ptr};
 
 use rustc_data_structures::sync::{self, Lock};
@@ -50,15 +48,7 @@ impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
 }
 
 // Import the thread-local variable from Rayon, which is preserved for Rayon jobs.
-#[cfg(parallel_compiler)]
 use rayon_core::tlv::TLV;
-
-// Otherwise define our own
-#[cfg(not(parallel_compiler))]
-thread_local! {
-    /// A thread local variable that stores a pointer to the current `ImplicitCtxt`.
-    static TLV: Cell<*const ()> = const { Cell::new(ptr::null()) };
-}
 
 #[inline]
 fn erase(context: &ImplicitCtxt<'_, '_>) -> *const () {

@@ -13,17 +13,19 @@ impl Condvar {
     }
 
     fn get(&self) -> &SpinMutex<WaitVariable<()>> {
-        self.inner.get_or_init(|| Box::new(SpinMutex::new(WaitVariable::new(()))))
+        self.inner.get_or_init(|| Box::pin(SpinMutex::new(WaitVariable::new(())))).get_ref()
     }
 
     #[inline]
     pub fn notify_one(&self) {
-        let _ = WaitQueue::notify_one(self.get().lock());
+        let guard = self.get().lock();
+        let _ = WaitQueue::notify_one(guard);
     }
 
     #[inline]
     pub fn notify_all(&self) {
-        let _ = WaitQueue::notify_all(self.get().lock());
+        let guard = self.get().lock();
+        let _ = WaitQueue::notify_all(guard);
     }
 
     pub unsafe fn wait(&self, mutex: &Mutex) {

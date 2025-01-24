@@ -60,7 +60,6 @@ struct Value<T: 'static> {
 }
 
 impl<T: 'static> Storage<T> {
-    #[rustc_const_unstable(feature = "thread_local_internals", issue = "none")]
     pub const fn new() -> Storage<T> {
         Storage { key: LazyKey::new(Some(destroy_value::<T>)), marker: PhantomData }
     }

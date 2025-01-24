@@ -38,3 +38,9 @@ pub enum NonExhaustiveCLikeEnum {
     Four = 4,
     Five = 5,
 }
+
+#[repr(C)]
+pub struct NormalStructWithNonExhaustiveCLikeEnum {
+    one: u8,
+    two: NonExhaustiveCLikeEnum,
+}

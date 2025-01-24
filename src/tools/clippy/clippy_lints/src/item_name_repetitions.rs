@@ -309,8 +309,8 @@ fn check_enum_start(cx: &LateContext<'_>, item_name: &str, variant: &Variant<'_>
     let item_name_chars = item_name.chars().count();
 
     if count_match_start(item_name, name).char_count == item_name_chars
-        && name.chars().nth(item_name_chars).map_or(false, |c| !c.is_lowercase())
-        && name.chars().nth(item_name_chars + 1).map_or(false, |c| !c.is_numeric())
+        && name.chars().nth(item_name_chars).is_some_and(|c| !c.is_lowercase())
+        && name.chars().nth(item_name_chars + 1).is_some_and(|c| !c.is_numeric())
     {
         span_lint_hir(
             cx,

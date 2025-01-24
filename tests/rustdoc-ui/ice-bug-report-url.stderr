@@ -5,6 +5,7 @@ LL | fn wrong()
    |          ^ expected one of `->`, `where`, or `{`
 
 
+
 aborting due to `-Z treat-err-as-bug=1`
 stack backtrace:
 

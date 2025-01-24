@@ -1,5 +1,6 @@
+use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::spec::abi::Abi;
+use rustc_target::callconv::{Conv, FnAbi};
 
 use crate::*;
 
@@ -8,7 +9,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_bmi_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: Abi,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -33,7 +34,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(EmulateItemResult::NotSupported);
         }
 
-        let [left, right] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+        let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
         let left = this.read_scalar(left)?;
         let right = this.read_scalar(right)?;
 

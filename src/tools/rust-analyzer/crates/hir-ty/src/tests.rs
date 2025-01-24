@@ -18,13 +18,13 @@ use std::sync::LazyLock;
 use base_db::SourceDatabaseFileInputExt as _;
 use expect_test::Expect;
 use hir_def::{
-    body::{Body, BodySourceMap, SyntheticSyntax},
+    body::{Body, BodySourceMap},
     db::DefDatabase,
     hir::{ExprId, Pat, PatId},
     item_scope::ItemScope,
     nameres::DefMap,
     src::HasSource,
-    AssocItemId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleDefId,
+    AssocItemId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleDefId, SyntheticSyntax,
 };
 use hir_expand::{db::ExpandDatabase, FileRange, InFile};
 use itertools::Itertools;
@@ -69,27 +69,32 @@ fn setup_tracing() -> Option<tracing::subscriber::DefaultGuard> {
 }
 
 #[track_caller]
-fn check_types(ra_fixture: &str) {
+fn check_types(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     check_impl(ra_fixture, false, true, false)
 }
 
 #[track_caller]
-fn check_types_source_code(ra_fixture: &str) {
+fn check_types_source_code(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     check_impl(ra_fixture, false, true, true)
 }
 
 #[track_caller]
-fn check_no_mismatches(ra_fixture: &str) {
+fn check_no_mismatches(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     check_impl(ra_fixture, true, false, false)
 }
 
 #[track_caller]
-fn check(ra_fixture: &str) {
+fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     check_impl(ra_fixture, false, false, false)
 }
 
 #[track_caller]
-fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_source: bool) {
+fn check_impl(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    allow_none: bool,
+    only_types: bool,
+    display_source: bool,
+) {
     let _tracing = setup_tracing();
     let (db, files) = TestDB::with_many_files(ra_fixture);
 
@@ -127,7 +132,15 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             None => continue,
         };
         let def_map = module.def_map(&db);
-        visit_module(&db, &def_map, module.local_id, &mut |it| defs.push(it));
+        visit_module(&db, &def_map, module.local_id, &mut |it| {
+            defs.push(match it {
+                ModuleDefId::FunctionId(it) => it.into(),
+                ModuleDefId::EnumVariantId(it) => it.into(),
+                ModuleDefId::ConstId(it) => it.into(),
+                ModuleDefId::StaticId(it) => it.into(),
+                _ => return,
+            })
+        });
     }
     defs.sort_by_key(|def| match def {
         DefWithBodyId::FunctionId(it) => {
@@ -274,7 +287,7 @@ fn pat_node(
     })
 }
 
-fn infer(ra_fixture: &str) -> String {
+fn infer(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {
     infer_with_mismatches(ra_fixture, false)
 }
 
@@ -375,7 +388,15 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     let def_map = module.def_map(&db);
 
     let mut defs: Vec<DefWithBodyId> = Vec::new();
-    visit_module(&db, &def_map, module.local_id, &mut |it| defs.push(it));
+    visit_module(&db, &def_map, module.local_id, &mut |it| {
+        defs.push(match it {
+            ModuleDefId::FunctionId(it) => it.into(),
+            ModuleDefId::EnumVariantId(it) => it.into(),
+            ModuleDefId::ConstId(it) => it.into(),
+            ModuleDefId::StaticId(it) => it.into(),
+            _ => return,
+        })
+    });
     defs.sort_by_key(|def| match def {
         DefWithBodyId::FunctionId(it) => {
             let loc = it.lookup(&db);
@@ -405,30 +426,30 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     buf
 }
 
-fn visit_module(
+pub(crate) fn visit_module(
     db: &TestDB,
     crate_def_map: &DefMap,
     module_id: LocalModuleId,
-    cb: &mut dyn FnMut(DefWithBodyId),
+    cb: &mut dyn FnMut(ModuleDefId),
 ) {
     visit_scope(db, crate_def_map, &crate_def_map[module_id].scope, cb);
     for impl_id in crate_def_map[module_id].scope.impls() {
         let impl_data = db.impl_data(impl_id);
-        for &item in impl_data.items.iter() {
+        for &(_, item) in impl_data.items.iter() {
             match item {
                 AssocItemId::FunctionId(it) => {
-                    let def = it.into();
-                    cb(def);
-                    let body = db.body(def);
+                    let body = db.body(it.into());
+                    cb(it.into());
                     visit_body(db, &body, cb);
                 }
                 AssocItemId::ConstId(it) => {
-                    let def = it.into();
-                    cb(def);
-                    let body = db.body(def);
+                    let body = db.body(it.into());
+                    cb(it.into());
                     visit_body(db, &body, cb);
                 }
-                AssocItemId::TypeAliasId(_) => (),
+                AssocItemId::TypeAliasId(it) => {
+                    cb(it.into());
+                }
             }
         }
     }
@@ -437,33 +458,27 @@ fn visit_module(
         db: &TestDB,
         crate_def_map: &DefMap,
         scope: &ItemScope,
-        cb: &mut dyn FnMut(DefWithBodyId),
+        cb: &mut dyn FnMut(ModuleDefId),
     ) {
         for decl in scope.declarations() {
+            cb(decl);
             match decl {
                 ModuleDefId::FunctionId(it) => {
-                    let def = it.into();
-                    cb(def);
-                    let body = db.body(def);
+                    let body = db.body(it.into());
                     visit_body(db, &body, cb);
                 }
                 ModuleDefId::ConstId(it) => {
-                    let def = it.into();
-                    cb(def);
-                    let body = db.body(def);
+                    let body = db.body(it.into());
                     visit_body(db, &body, cb);
                 }
                 ModuleDefId::StaticId(it) => {
-                    let def = it.into();
-                    cb(def);
-                    let body = db.body(def);
+                    let body = db.body(it.into());
                     visit_body(db, &body, cb);
                 }
                 ModuleDefId::AdtId(hir_def::AdtId::EnumId(it)) => {
                     db.enum_data(it).variants.iter().for_each(|&(it, _)| {
-                        let def = it.into();
-                        cb(def);
-                        let body = db.body(def);
+                        let body = db.body(it.into());
+                        cb(it.into());
                         visit_body(db, &body, cb);
                     });
                 }
@@ -473,7 +488,7 @@ fn visit_module(
                         match item {
                             AssocItemId::FunctionId(it) => cb(it.into()),
                             AssocItemId::ConstId(it) => cb(it.into()),
-                            AssocItemId::TypeAliasId(_) => (),
+                            AssocItemId::TypeAliasId(it) => cb(it.into()),
                         }
                     }
                 }
@@ -483,7 +498,7 @@ fn visit_module(
         }
     }
 
-    fn visit_body(db: &TestDB, body: &Body, cb: &mut dyn FnMut(DefWithBodyId)) {
+    fn visit_body(db: &TestDB, body: &Body, cb: &mut dyn FnMut(ModuleDefId)) {
         for (_, def_map) in body.blocks(db) {
             for (mod_id, _) in def_map.modules() {
                 visit_module(db, &def_map, mod_id, cb);
@@ -510,13 +525,13 @@ fn ellipsize(mut text: String, max_len: usize) -> String {
     text
 }
 
-fn check_infer(ra_fixture: &str, expect: Expect) {
+fn check_infer(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let mut actual = infer(ra_fixture);
     actual.push('\n');
     expect.assert_eq(&actual);
 }
 
-fn check_infer_with_mismatches(ra_fixture: &str, expect: Expect) {
+fn check_infer_with_mismatches(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let mut actual = infer_with_mismatches(ra_fixture, true);
     actual.push('\n');
     expect.assert_eq(&actual);
@@ -553,7 +568,13 @@ fn salsa_bug() {
     let module = db.module_for_file(pos.file_id);
     let crate_def_map = module.def_map(&db);
     visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
-        db.infer(def);
+        db.infer(match def {
+            ModuleDefId::FunctionId(it) => it.into(),
+            ModuleDefId::EnumVariantId(it) => it.into(),
+            ModuleDefId::ConstId(it) => it.into(),
+            ModuleDefId::StaticId(it) => it.into(),
+            _ => return,
+        });
     });
 
     let new_text = "
@@ -586,6 +607,12 @@ fn salsa_bug() {
     let module = db.module_for_file(pos.file_id);
     let crate_def_map = module.def_map(&db);
     visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
-        db.infer(def);
+        db.infer(match def {
+            ModuleDefId::FunctionId(it) => it.into(),
+            ModuleDefId::EnumVariantId(it) => it.into(),
+            ModuleDefId::ConstId(it) => it.into(),
+            ModuleDefId::StaticId(it) => it.into(),
+            _ => return,
+        });
     });
 }

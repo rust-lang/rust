@@ -14,10 +14,9 @@ use std::ptr;
 use std::simd::StdFloat;
 use std::simd::prelude::*;
 
-extern "rust-intrinsic" {
-    #[rustc_nounwind]
-    pub fn simd_shuffle_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
-}
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn simd_shuffle_generic<T, U, const IDX: &'static [u32]>(_x: T, _y: T) -> U;
 
 fn simd_ops_f32() {
     let a = f32x4::splat(10.0);
@@ -40,6 +39,17 @@ fn simd_ops_f32() {
         f32x4::splat(-3.2).mul_add(b, f32x4::splat(f32::NEG_INFINITY)),
         f32x4::splat(f32::NEG_INFINITY)
     );
+
+    unsafe {
+        assert_eq!(intrinsics::simd_relaxed_fma(a, b, a), (a * b) + a);
+        assert_eq!(intrinsics::simd_relaxed_fma(b, b, a), (b * b) + a);
+        assert_eq!(intrinsics::simd_relaxed_fma(a, b, b), (a * b) + b);
+        assert_eq!(
+            intrinsics::simd_relaxed_fma(f32x4::splat(-3.2), b, f32x4::splat(f32::NEG_INFINITY)),
+            f32x4::splat(f32::NEG_INFINITY)
+        );
+    }
+
     assert_eq!((a * a).sqrt(), a);
     assert_eq!((b * b).sqrt(), b.abs());
 
@@ -94,6 +104,17 @@ fn simd_ops_f64() {
         f64x4::splat(-3.2).mul_add(b, f64x4::splat(f64::NEG_INFINITY)),
         f64x4::splat(f64::NEG_INFINITY)
     );
+
+    unsafe {
+        assert_eq!(intrinsics::simd_relaxed_fma(a, b, a), (a * b) + a);
+        assert_eq!(intrinsics::simd_relaxed_fma(b, b, a), (b * b) + a);
+        assert_eq!(intrinsics::simd_relaxed_fma(a, b, b), (a * b) + b);
+        assert_eq!(
+            intrinsics::simd_relaxed_fma(f64x4::splat(-3.2), b, f64x4::splat(f64::NEG_INFINITY)),
+            f64x4::splat(f64::NEG_INFINITY)
+        );
+    }
+
     assert_eq!((a * a).sqrt(), a);
     assert_eq!((b * b).sqrt(), b.abs());
 

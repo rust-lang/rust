@@ -2,7 +2,7 @@ error[E0277]: the trait bound `(): _Contains<&C>` is not satisfied
   --> $DIR/issue-85848.rs:24:29
    |
 LL |     writes_to_specific_path(&cap);
-   |     ----------------------- ^^^^ the trait `_Contains<&C>` is not implemented for `()`, which is required by `&C: Delegates<()>`
+   |     ----------------------- ^^^^ the trait `_Contains<&C>` is not implemented for `()`
    |     |
    |     required by a bound introduced by this call
    |

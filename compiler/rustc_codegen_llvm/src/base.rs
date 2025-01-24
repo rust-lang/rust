@@ -23,7 +23,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::mono::{Linkage, Visibility};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
 
 use super::ModuleLlvm;
@@ -145,10 +145,8 @@ pub(crate) fn compile_codegen_unit(
 
 pub(crate) fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {
     let Some(sect) = attrs.link_section else { return };
-    unsafe {
-        let buf = SmallCStr::new(sect.as_str());
-        llvm::LLVMSetSection(llval, buf.as_ptr());
-    }
+    let buf = SmallCStr::new(sect.as_str());
+    llvm::set_section(llval, &buf);
 }
 
 pub(crate) fn linkage_to_llvm(linkage: Linkage) -> llvm::Linkage {
@@ -172,5 +170,14 @@ pub(crate) fn visibility_to_llvm(linkage: Visibility) -> llvm::Visibility {
         Visibility::Default => llvm::Visibility::Default,
         Visibility::Hidden => llvm::Visibility::Hidden,
         Visibility::Protected => llvm::Visibility::Protected,
+    }
+}
+
+pub(crate) fn set_variable_sanitizer_attrs(llval: &Value, attrs: &CodegenFnAttrs) {
+    if attrs.no_sanitize.contains(SanitizerSet::ADDRESS) {
+        unsafe { llvm::LLVMRustSetNoSanitizeAddress(llval) };
+    }
+    if attrs.no_sanitize.contains(SanitizerSet::HWADDRESS) {
+        unsafe { llvm::LLVMRustSetNoSanitizeHWAddress(llval) };
     }
 }

@@ -30,7 +30,7 @@
 //! data the system has available at the time.
 //!
 //! So in conclusion, we always want the output of the non-blocking pool, but
-//! may need to wait until it is initalized. The default behaviour of `getrandom`
+//! may need to wait until it is initalized. The default behavior of `getrandom`
 //! is to wait until the non-blocking pool is initialized and then draw from there,
 //! so if `getrandom` is available, we use its default to generate the bytes. For
 //! `HashMap`, however, we need to specify the `GRND_INSECURE` flags, but that
@@ -39,7 +39,7 @@
 //! succeed if the pool is initialized. If it isn't, we fall back to the file
 //! access method.
 //!
-//! The behaviour of `/dev/urandom` is inverse to that of `getrandom`: it always
+//! The behavior of `/dev/urandom` is inverse to that of `getrandom`: it always
 //! yields data, even when the pool is not initialized. For generating `HashMap`
 //! keys, this is not important, so we can use it directly. For secure data
 //! however, we need to wait until initialization, which we can do by `poll`ing

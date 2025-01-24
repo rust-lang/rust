@@ -13,11 +13,10 @@ use ide_db::{
 use span::Edition;
 use syntax::{AstNode, SyntaxKind::*, SyntaxNode, TextRange, T};
 
-use crate::inlay_hints::InlayFieldsToResolve;
 use crate::navigation_target::UpmappingResult;
 use crate::{
-    hover::hover_for_definition,
-    inlay_hints::AdjustmentHintsMode,
+    hover::{hover_for_definition, SubstTyLen},
+    inlay_hints::{AdjustmentHintsMode, InlayFieldsToResolve},
     moniker::{def_to_kind, def_to_moniker, MonikerResult, SymbolInformationKind},
     parent_module::crates_for,
     Analysis, Fold, HoverConfig, HoverResult, InlayHint, InlayHintsConfig, TryToNav,
@@ -49,7 +48,6 @@ pub struct TokenStaticData {
     pub references: Vec<ReferenceData>,
     pub moniker: Option<MonikerResult>,
     pub display_name: Option<String>,
-    pub enclosing_moniker: Option<MonikerResult>,
     pub signature: Option<String>,
     pub kind: SymbolInformationKind,
 }
@@ -140,6 +138,7 @@ impl StaticIndex<'_> {
                     render_colons: true,
                     discriminant_hints: crate::DiscriminantHints::Fieldless,
                     type_hints: true,
+                    sized_bound: false,
                     parameter_hints: true,
                     generic_parameter_hints: crate::GenericParameterHints {
                         type_hints: false,
@@ -186,6 +185,7 @@ impl StaticIndex<'_> {
             max_trait_assoc_items_count: None,
             max_fields_count: Some(5),
             max_enum_variants_count: Some(5),
+            max_subst_ty_len: SubstTyLen::Unlimited,
         };
         let tokens = tokens.filter(|token| {
             matches!(
@@ -210,8 +210,10 @@ impl StaticIndex<'_> {
                         &sema,
                         file_id,
                         def,
+                        None,
                         &node,
                         None,
+                        false,
                         &hover_config,
                         edition,
                     )),
@@ -223,9 +225,6 @@ impl StaticIndex<'_> {
                     display_name: def
                         .name(self.db)
                         .map(|name| name.display(self.db, edition).to_string()),
-                    enclosing_moniker: current_crate
-                        .zip(def.enclosing_definition(self.db))
-                        .and_then(|(cc, enclosing_def)| def_to_moniker(self.db, enclosing_def, cc)),
                     signature: Some(def.label(self.db, edition)),
                     kind: def_to_kind(self.db, def),
                 });
@@ -292,7 +291,10 @@ mod tests {
 
     use super::VendoredLibrariesConfig;
 
-    fn check_all_ranges(ra_fixture: &str, vendored_libs_config: VendoredLibrariesConfig<'_>) {
+    fn check_all_ranges(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        vendored_libs_config: VendoredLibrariesConfig<'_>,
+    ) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
         let s = StaticIndex::compute(&analysis, vendored_libs_config);
         let mut range_set: FxHashSet<_> = ranges.iter().map(|it| it.0).collect();
@@ -311,7 +313,10 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_definitions(ra_fixture: &str, vendored_libs_config: VendoredLibrariesConfig<'_>) {
+    fn check_definitions(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        vendored_libs_config: VendoredLibrariesConfig<'_>,
+    ) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
         let s = StaticIndex::compute(&analysis, vendored_libs_config);
         let mut range_set: FxHashSet<_> = ranges.iter().map(|it| it.0).collect();

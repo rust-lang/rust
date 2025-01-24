@@ -78,13 +78,11 @@ use std::rc::Rc;
 pub(crate) use NamedMatch::*;
 pub(crate) use ParseResult::*;
 use rustc_ast::token::{self, DocComment, NonterminalKind, Token};
-use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_lint_defs::pluralize;
-use rustc_parse::parser::{ParseNtResult, Parser};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
+use rustc_parse::parser::{ParseNtResult, Parser, token_descr};
+use rustc_span::{Ident, MacroRulesNormalizedIdent, Span};
 
 use crate::mbe::macro_rules::Tracker;
 use crate::mbe::{KleeneOp, TokenTree};
@@ -150,7 +148,7 @@ impl Display for MatcherLoc {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             MatcherLoc::Token { token } | MatcherLoc::SequenceSep { separator: token } => {
-                write!(f, "`{}`", pprust::token_to_string(token))
+                write!(f, "{}", token_descr(token))
             }
             MatcherLoc::MetaVarDecl { bind, kind, .. } => {
                 write!(f, "meta-variable `${bind}")?;
@@ -622,7 +620,7 @@ impl TtParser {
         // possible next positions into `next_mps`. After some post-processing, the contents of
         // `next_mps` replenish `cur_mps` and we start over again.
         self.cur_mps.clear();
-        self.cur_mps.push(MatcherPos { idx: 0, matches: self.empty_matches.clone() });
+        self.cur_mps.push(MatcherPos { idx: 0, matches: Rc::clone(&self.empty_matches) });
 
         loop {
             self.next_mps.clear();

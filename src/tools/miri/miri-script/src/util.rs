@@ -1,9 +1,7 @@
 use std::ffi::{OsStr, OsString};
 use std::io::BufRead;
-use std::ops::Range;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::{env, iter, thread};
+use std::{env, iter};
 
 use anyhow::{Context, Result, anyhow, bail};
 use dunce::canonicalize;
@@ -29,7 +27,6 @@ pub fn flagsplit(flags: &str) -> Vec<String> {
 }
 
 /// Some extra state we track for building Miri, such as the right RUSTFLAGS.
-#[derive(Clone)]
 pub struct MiriEnv {
     /// miri_dir is the root of the miri repository checkout we are working in.
     pub miri_dir: PathBuf,
@@ -41,6 +38,8 @@ pub struct MiriEnv {
     pub sysroot: PathBuf,
     /// The shell we use.
     pub sh: Shell,
+    /// The library dir in the sysroot.
+    pub libdir: PathBuf,
 }
 
 impl MiriEnv {
@@ -96,13 +95,14 @@ impl MiriEnv {
         // so that Windows can find the DLLs.
         if cfg!(windows) {
             let old_path = sh.var("PATH")?;
-            let new_path = env::join_paths(iter::once(libdir).chain(env::split_paths(&old_path)))?;
+            let new_path =
+                env::join_paths(iter::once(libdir.clone()).chain(env::split_paths(&old_path)))?;
             sh.set_var("PATH", new_path);
         }
 
         // Get extra flags for cargo.
         let cargo_extra_flags = std::env::var("CARGO_EXTRA_FLAGS").unwrap_or_default();
-        let cargo_extra_flags = flagsplit(&cargo_extra_flags);
+        let mut cargo_extra_flags = flagsplit(&cargo_extra_flags);
         if cargo_extra_flags.iter().any(|a| a == "--release" || a.starts_with("--profile")) {
             // This makes binaries end up in different paths, let's not do that.
             eprintln!(
@@ -110,8 +110,10 @@ impl MiriEnv {
             );
             std::process::exit(1);
         }
+        // Also set `-Zroot-dir` for cargo, to print diagnostics relative to the miri dir.
+        cargo_extra_flags.push(format!("-Zroot-dir={}", miri_dir.display()));
 
-        Ok(MiriEnv { miri_dir, toolchain, sh, sysroot, cargo_extra_flags })
+        Ok(MiriEnv { miri_dir, toolchain, sh, sysroot, cargo_extra_flags, libdir })
     }
 
     pub fn cargo_cmd(&self, crate_dir: impl AsRef<OsStr>, cmd: &str) -> Cmd<'_> {
@@ -234,54 +236,5 @@ impl MiriEnv {
         }
 
         Ok(())
-    }
-
-    /// Run the given closure many times in parallel with access to the shell, once for each value in the `range`.
-    pub fn run_many_times(
-        &self,
-        range: Range<u32>,
-        run: impl Fn(&Self, u32) -> Result<()> + Sync,
-    ) -> Result<()> {
-        // `next` is atomic so threads can concurrently fetch their next value to run.
-        let next = AtomicU32::new(range.start);
-        let end = range.end; // exclusive!
-        let failed = AtomicBool::new(false);
-        thread::scope(|s| {
-            let mut handles = Vec::new();
-            // Spawn one worker per core.
-            for _ in 0..thread::available_parallelism()?.get() {
-                // Create a copy of the environment for this thread.
-                let local_miri = self.clone();
-                let handle = s.spawn(|| -> Result<()> {
-                    let local_miri = local_miri; // move the copy into this thread.
-                    // Each worker thread keeps asking for numbers until we're all done.
-                    loop {
-                        let cur = next.fetch_add(1, Ordering::Relaxed);
-                        if cur >= end {
-                            // We hit the upper limit and are done.
-                            break;
-                        }
-                        // Run the command with this seed.
-                        run(&local_miri, cur).inspect_err(|_| {
-                            // If we failed, tell everyone about this.
-                            failed.store(true, Ordering::Relaxed);
-                        })?;
-                        // Check if some other command failed (in which case we'll stop as well).
-                        if failed.load(Ordering::Relaxed) {
-                            return Ok(());
-                        }
-                    }
-                    Ok(())
-                });
-                handles.push(handle);
-            }
-            // Wait for all workers to be done.
-            for handle in handles {
-                handle.join().unwrap()?;
-            }
-            // If all workers succeeded, we can't have failed.
-            assert!(!failed.load(Ordering::Relaxed));
-            Ok(())
-        })
     }
 }

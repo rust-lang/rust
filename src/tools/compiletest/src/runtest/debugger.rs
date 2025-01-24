@@ -4,7 +4,6 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 use crate::common::Config;
-use crate::header::line_directive;
 use crate::runtest::ProcRes;
 
 /// Representation of information to invoke a debugger and check its output
@@ -20,16 +19,9 @@ pub(super) struct DebuggerCommands {
 }
 
 impl DebuggerCommands {
-    pub fn parse_from(
-        file: &Path,
-        config: &Config,
-        debugger_prefixes: &[&str],
-        rev: Option<&str>,
-    ) -> Result<Self, String> {
-        let directives = debugger_prefixes
-            .iter()
-            .map(|prefix| (format!("{prefix}-command"), format!("{prefix}-check")))
-            .collect::<Vec<_>>();
+    pub fn parse_from(file: &Path, config: &Config, debugger_prefix: &str) -> Result<Self, String> {
+        let command_directive = format!("{debugger_prefix}-command");
+        let check_directive = format!("{debugger_prefix}-check");
 
         let mut breakpoint_lines = vec![];
         let mut commands = vec![];
@@ -39,26 +31,22 @@ impl DebuggerCommands {
         for (line_no, line) in reader.lines().enumerate() {
             counter += 1;
             let line = line.map_err(|e| format!("Error while parsing debugger commands: {}", e))?;
-            let (lnrev, line) = line_directive("//", &line).unwrap_or((None, &line));
 
-            // Skip any revision specific directive that doesn't match the current
-            // revision being tested
-            if lnrev.is_some() && lnrev != rev {
+            // Breakpoints appear on lines with actual code, typically at the end of the line.
+            if line.contains("#break") {
+                breakpoint_lines.push(counter);
                 continue;
             }
 
-            if line.contains("#break") {
-                breakpoint_lines.push(counter);
+            let Some(line) = line.trim_start().strip_prefix("//").map(str::trim_start) else {
+                continue;
+            };
+
+            if let Some(command) = config.parse_name_value_directive(&line, &command_directive) {
+                commands.push(command);
             }
-
-            for &(ref command_directive, ref check_directive) in &directives {
-                config
-                    .parse_name_value_directive(&line, command_directive)
-                    .map(|cmd| commands.push(cmd));
-
-                config
-                    .parse_name_value_directive(&line, check_directive)
-                    .map(|cmd| check_lines.push((line_no, cmd)));
+            if let Some(pattern) = config.parse_name_value_directive(&line, &check_directive) {
+                check_lines.push((line_no, pattern));
             }
         }
 

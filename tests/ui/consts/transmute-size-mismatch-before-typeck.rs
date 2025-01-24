@@ -5,7 +5,7 @@
 
 fn main() {
     match &b""[..] {
-        ZST => {} //~ ERROR: could not evaluate constant pattern
+        ZST => {} // ok, `const` error already emitted
     }
 }
 

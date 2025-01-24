@@ -2,7 +2,7 @@
 use base_db::{ra_salsa, CrateId, SourceDatabase, Upcast};
 use either::Either;
 use hir_expand::{db::ExpandDatabase, HirFileId, MacroDefId};
-use intern::{sym, Interned};
+use intern::sym;
 use la_arena::ArenaMap;
 use span::{EditionedFileId, MacroCallId};
 use syntax::{ast, AstPtr};
@@ -18,9 +18,11 @@ use crate::{
     },
     generics::GenericParams,
     import_map::ImportMap,
-    item_tree::{AttrOwner, ItemTree},
+    item_tree::{AttrOwner, ItemTree, ItemTreeSourceMaps},
     lang_item::{self, LangItem, LangItemTarget, LangItems},
     nameres::{diagnostics::DefDiagnostics, DefMap},
+    tt,
+    type_ref::TypesSourceMap,
     visibility::{self, Visibility},
     AttrDefId, BlockId, BlockLoc, ConstBlockId, ConstBlockLoc, ConstId, ConstLoc, DefWithBodyId,
     EnumId, EnumLoc, EnumVariantId, EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId,
@@ -90,6 +92,18 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
 
     #[ra_salsa::invoke(ItemTree::block_item_tree_query)]
     fn block_item_tree(&self, block_id: BlockId) -> Arc<ItemTree>;
+
+    #[ra_salsa::invoke(ItemTree::file_item_tree_with_source_map_query)]
+    fn file_item_tree_with_source_map(
+        &self,
+        file_id: HirFileId,
+    ) -> (Arc<ItemTree>, Arc<ItemTreeSourceMaps>);
+
+    #[ra_salsa::invoke(ItemTree::block_item_tree_with_source_map_query)]
+    fn block_item_tree_with_source_map(
+        &self,
+        block_id: BlockId,
+    ) -> (Arc<ItemTree>, Arc<ItemTreeSourceMaps>);
 
     #[ra_salsa::invoke(DefMap::crate_def_map_query)]
     fn crate_def_map(&self, krate: CrateId) -> Arc<DefMap>;
@@ -187,7 +201,14 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     fn expr_scopes(&self, def: DefWithBodyId) -> Arc<ExprScopes>;
 
     #[ra_salsa::invoke(GenericParams::generic_params_query)]
-    fn generic_params(&self, def: GenericDefId) -> Interned<GenericParams>;
+    fn generic_params(&self, def: GenericDefId) -> Arc<GenericParams>;
+
+    /// If this returns `None` for the source map, that means it is the same as with the item tree.
+    #[ra_salsa::invoke(GenericParams::generic_params_with_source_map_query)]
+    fn generic_params_with_source_map(
+        &self,
+        def: GenericDefId,
+    ) -> (Arc<GenericParams>, Option<Arc<TypesSourceMap>>);
 
     // region:attrs
 
@@ -274,14 +295,14 @@ fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: CrateId) -> bool {
         // This is a `cfg_attr`; check if it could possibly expand to `no_std`.
         // Syntax is: `#[cfg_attr(condition(cfg, style), attr0, attr1, <...>)]`
         let tt = match attr.token_tree_value() {
-            Some(tt) => &tt.token_trees,
+            Some(tt) => tt.token_trees(),
             None => continue,
         };
 
         let segments =
-            tt.split(|tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(p)) if p.char == ','));
+            tt.split(|tt| matches!(tt, tt::TtElement::Leaf(tt::Leaf::Punct(p)) if p.char == ','));
         for output in segments.skip(1) {
-            match output {
+            match output.flat_tokens() {
                 [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.sym == sym::no_std => {
                     return true
                 }

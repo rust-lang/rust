@@ -2,7 +2,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{ExprKind, LitKind, UnOp};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_session::errors::report_lit_error;
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 
 use crate::errors;
 use crate::util::get_exprs_from_tts;

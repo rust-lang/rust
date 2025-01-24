@@ -204,6 +204,152 @@ fn file_test_io_seek_and_write() {
 }
 
 #[test]
+#[cfg(any(
+    windows,
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_vendor = "apple",
+))]
+fn file_lock_multiple_shared() {
+    let tmpdir = tmpdir();
+    let filename = &tmpdir.join("file_lock_multiple_shared_test.txt");
+    let f1 = check!(File::create(filename));
+    let f2 = check!(OpenOptions::new().write(true).open(filename));
+
+    // Check that we can acquire concurrent shared locks
+    check!(f1.lock_shared());
+    check!(f2.lock_shared());
+    check!(f1.unlock());
+    check!(f2.unlock());
+    assert!(check!(f1.try_lock_shared()));
+    assert!(check!(f2.try_lock_shared()));
+}
+
+#[test]
+#[cfg(any(
+    windows,
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_vendor = "apple",
+))]
+fn file_lock_blocking() {
+    let tmpdir = tmpdir();
+    let filename = &tmpdir.join("file_lock_blocking_test.txt");
+    let f1 = check!(File::create(filename));
+    let f2 = check!(OpenOptions::new().write(true).open(filename));
+
+    // Check that shared locks block exclusive locks
+    check!(f1.lock_shared());
+    assert!(!check!(f2.try_lock()));
+    check!(f1.unlock());
+
+    // Check that exclusive locks block shared locks
+    check!(f1.lock());
+    assert!(!check!(f2.try_lock_shared()));
+}
+
+#[test]
+#[cfg(any(
+    windows,
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_vendor = "apple",
+))]
+fn file_lock_drop() {
+    let tmpdir = tmpdir();
+    let filename = &tmpdir.join("file_lock_dup_test.txt");
+    let f1 = check!(File::create(filename));
+    let f2 = check!(OpenOptions::new().write(true).open(filename));
+
+    // Check that locks are released when the File is dropped
+    check!(f1.lock_shared());
+    assert!(!check!(f2.try_lock()));
+    drop(f1);
+    assert!(check!(f2.try_lock()));
+}
+
+#[test]
+#[cfg(any(
+    windows,
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_vendor = "apple",
+))]
+fn file_lock_dup() {
+    let tmpdir = tmpdir();
+    let filename = &tmpdir.join("file_lock_dup_test.txt");
+    let f1 = check!(File::create(filename));
+    let f2 = check!(OpenOptions::new().write(true).open(filename));
+
+    // Check that locks are not dropped if the File has been cloned
+    check!(f1.lock_shared());
+    assert!(!check!(f2.try_lock()));
+    let cloned = check!(f1.try_clone());
+    drop(f1);
+    assert!(!check!(f2.try_lock()));
+    drop(cloned)
+}
+
+#[test]
+#[cfg(windows)]
+fn file_lock_double_unlock() {
+    let tmpdir = tmpdir();
+    let filename = &tmpdir.join("file_lock_double_unlock_test.txt");
+    let f1 = check!(File::create(filename));
+    let f2 = check!(OpenOptions::new().write(true).open(filename));
+
+    // On Windows a file handle may acquire both a shared and exclusive lock.
+    // Check that both are released by unlock()
+    check!(f1.lock());
+    check!(f1.lock_shared());
+    assert!(!check!(f2.try_lock()));
+    check!(f1.unlock());
+    assert!(check!(f2.try_lock()));
+}
+
+#[test]
+#[cfg(windows)]
+fn file_lock_blocking_async() {
+    use crate::thread::{sleep, spawn};
+    const FILE_FLAG_OVERLAPPED: u32 = 0x40000000;
+
+    let tmpdir = tmpdir();
+    let filename = &tmpdir.join("file_lock_blocking_async.txt");
+    let f1 = check!(File::create(filename));
+    let f2 =
+        check!(OpenOptions::new().custom_flags(FILE_FLAG_OVERLAPPED).write(true).open(filename));
+
+    check!(f1.lock());
+
+    // Ensure that lock() is synchronous when the file is opened for asynchronous IO
+    let t = spawn(move || {
+        check!(f2.lock());
+    });
+    sleep(Duration::from_secs(1));
+    assert!(!t.is_finished());
+    check!(f1.unlock());
+    t.join().unwrap();
+
+    // Ensure that lock_shared() is synchronous when the file is opened for asynchronous IO
+    let f2 =
+        check!(OpenOptions::new().custom_flags(FILE_FLAG_OVERLAPPED).write(true).open(filename));
+    check!(f1.lock());
+
+    // Ensure that lock() is synchronous when the file is opened for asynchronous IO
+    let t = spawn(move || {
+        check!(f2.lock_shared());
+    });
+    sleep(Duration::from_secs(1));
+    assert!(!t.is_finished());
+    check!(f1.unlock());
+    t.join().unwrap();
+}
+
+#[test]
 fn file_test_io_seek_shakedown() {
     //                   01234567890123
     let initial_msg = "qwer-asdf-zxcv";
@@ -1765,4 +1911,74 @@ fn test_hidden_file_truncation() {
     let file = File::create(&path).unwrap();
     let metadata = file.metadata().unwrap();
     assert_eq!(metadata.len(), 0);
+}
+
+#[cfg(windows)]
+#[test]
+fn test_rename_file_over_open_file() {
+    // Make sure that std::fs::rename works if the target file is already opened with FILE_SHARE_DELETE. See #123985.
+    let tmpdir = tmpdir();
+
+    // Create source with test data to read.
+    let source_path = tmpdir.join("source_file.txt");
+    fs::write(&source_path, b"source hello world").unwrap();
+
+    // Create target file with test data to read;
+    let target_path = tmpdir.join("target_file.txt");
+    fs::write(&target_path, b"target hello world").unwrap();
+
+    // Open target file
+    let target_file = fs::File::open(&target_path).unwrap();
+
+    // Rename source
+    fs::rename(source_path, &target_path).unwrap();
+
+    core::mem::drop(target_file);
+    assert_eq!(fs::read(target_path).unwrap(), b"source hello world");
+}
+
+#[test]
+#[cfg(windows)]
+fn test_rename_directory_to_non_empty_directory() {
+    // Renaming a directory over a non-empty existing directory should fail on Windows.
+    let tmpdir: TempDir = tmpdir();
+
+    let source_path = tmpdir.join("source_directory");
+    let target_path = tmpdir.join("target_directory");
+
+    fs::create_dir(&source_path).unwrap();
+    fs::create_dir(&target_path).unwrap();
+
+    fs::write(target_path.join("target_file.txt"), b"target hello world").unwrap();
+
+    error!(fs::rename(source_path, target_path), 145); // ERROR_DIR_NOT_EMPTY
+}
+
+#[test]
+fn test_rename_symlink() {
+    let tmpdir = tmpdir();
+    let original = tmpdir.join("original");
+    let dest = tmpdir.join("dest");
+    let not_exist = Path::new("does not exist");
+
+    symlink_file(not_exist, &original).unwrap();
+    fs::rename(&original, &dest).unwrap();
+    // Make sure that renaming `original` to `dest` preserves the symlink.
+    assert_eq!(fs::read_link(&dest).unwrap().as_path(), not_exist);
+}
+
+#[test]
+#[cfg(windows)]
+fn test_rename_junction() {
+    let tmpdir = tmpdir();
+    let original = tmpdir.join("original");
+    let dest = tmpdir.join("dest");
+    let not_exist = Path::new("does not exist");
+
+    junction_point(&not_exist, &original).unwrap();
+    fs::rename(&original, &dest).unwrap();
+
+    // Make sure that renaming `original` to `dest` preserves the junction point.
+    // Junction links are always absolute so we just check the file name is correct.
+    assert_eq!(fs::read_link(&dest).unwrap().file_name(), Some(not_exist.as_os_str()));
 }

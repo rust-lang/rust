@@ -21,6 +21,6 @@ enum FingerTree<T:'static> {
 }
 
 fn main() {
-    let ft = //~ ERROR overflow while adding drop-check rules for FingerTree
+    let ft = //~ ERROR overflow while adding drop-check rules for `FingerTree
         FingerTree::Single(1);
 }

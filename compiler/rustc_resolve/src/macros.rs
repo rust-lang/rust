@@ -4,16 +4,16 @@
 use std::cell::Cell;
 use std::mem;
 
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::expand::StrippedCfgItem;
-use rustc_ast::{self as ast, Crate, Inline, ItemKind, ModKind, NodeId, attr};
+use rustc_ast::{self as ast, Crate, NodeId, attr};
 use rustc_ast_pretty::pprust;
-use rustc_attr::StabilityLevel;
+use rustc_attr_parsing::StabilityLevel;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, StashKey};
 use rustc_expand::base::{
-    Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
-    SyntaxExtensionKind,
+    DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension, SyntaxExtensionKind,
 };
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{
@@ -25,15 +25,14 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::{RegisteredTools, TyCtxt, Visibility};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
-    LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, SOFT_UNSTABLE,
-    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_MACRO_RULES, UNUSED_MACROS,
+    LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+    UNUSED_MACRO_RULES, UNUSED_MACROS,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 
 use crate::Namespace::*;
 use crate::errors::{
@@ -155,26 +154,6 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
         [sym::clippy, sym::rustfmt, sym::diagnostic, sym::miri, sym::rust_analyzer];
     registered_tools.extend(predefined_tools.iter().cloned().map(Ident::with_dummy_span));
     registered_tools
-}
-
-// Some feature gates for inner attributes are reported as lints for backward compatibility.
-fn soft_custom_inner_attributes_gate(path: &ast::Path, invoc: &Invocation) -> bool {
-    match &path.segments[..] {
-        // `#![test]`
-        [seg] if seg.ident.name == sym::test => return true,
-        // `#![rustfmt::skip]` on out-of-line modules
-        [seg1, seg2] if seg1.ident.name == sym::rustfmt && seg2.ident.name == sym::skip => {
-            if let InvocationKind::Attr { item, .. } = &invoc.kind {
-                if let Annotatable::Item(item) = item {
-                    if let ItemKind::Mod(_, ModKind::Loaded(_, Inline::No, _)) = item.kind {
-                        return true;
-                    }
-                }
-            }
-        }
-        _ => {}
-    }
-    false
 }
 
 impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
@@ -317,7 +296,6 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             parent_scope,
             node_id,
             force,
-            soft_custom_inner_attributes_gate(path, invoc),
             deleg_impl,
             looks_like_invoc_in_mod_inert_attr,
         )?;
@@ -549,7 +527,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         node_id: NodeId,
         force: bool,
-        soft_custom_inner_attributes_gate: bool,
         deleg_impl: Option<LocalDefId>,
         invoc_in_mod_inert_attr: Option<LocalDefId>,
     ) -> Result<(Lrc<SyntaxExtension>, Res), Indeterminate> {
@@ -661,36 +638,25 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // We are trying to avoid reporting this error if other related errors were reported.
-        if res != Res::Err && inner_attr && !self.tcx.features().custom_inner_attributes {
+        if res != Res::Err && inner_attr && !self.tcx.features().custom_inner_attributes() {
             let is_macro = match res {
                 Res::Def(..) => true,
                 Res::NonMacroAttr(..) => false,
                 _ => unreachable!(),
             };
-            if soft_custom_inner_attributes_gate {
-                self.tcx.sess.psess.buffer_lint(
-                    SOFT_UNSTABLE,
-                    path.span,
-                    node_id,
-                    BuiltinLintDiag::InnerAttributeUnstable { is_macro },
-                );
+            let msg = if is_macro {
+                "inner macro attributes are unstable"
             } else {
-                // FIXME: deduplicate with rustc_lint (`BuiltinLintDiag::InnerAttributeUnstable`)
-                let msg = if is_macro {
-                    "inner macro attributes are unstable"
-                } else {
-                    "custom inner attributes are unstable"
-                };
-                feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
-            }
+                "custom inner attributes are unstable"
+            };
+            feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
         }
 
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
             && let [namespace, attribute, ..] = &*path.segments
             && namespace.ident.name == sym::diagnostic
             && !(attribute.ident.name == sym::on_unimplemented
-                || (attribute.ident.name == sym::do_not_recommend
-                    && self.tcx.features().do_not_recommend))
+                || attribute.ident.name == sym::do_not_recommend)
         {
             let distance =
                 edit_distance(attribute.ident.name.as_str(), sym::on_unimplemented.as_str(), 5);
@@ -826,7 +792,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 _ => None,
             },
-            None => self.get_macro(res).map(|macro_data| macro_data.ext.clone()),
+            None => self.get_macro(res).map(|macro_data| Lrc::clone(&macro_data.ext)),
         };
         Ok((ext, res))
     }
@@ -1007,10 +973,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             {
                 let feature = stability.feature;
 
-                let is_allowed = |feature| {
-                    self.tcx.features().declared_features.contains(&feature)
-                        || span.allows_unstable(feature)
-                };
+                let is_allowed =
+                    |feature| self.tcx.features().enabled(feature) || span.allows_unstable(feature);
                 let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));
                 if !is_allowed(feature) && !allowed_by_implication {
                     let lint_buffer = &mut self.lint_buffer;
@@ -1034,6 +998,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         is_soft,
                         span,
                         soft_handler,
+                        stability::UnstableKind::Regular,
                     );
                 }
             }
@@ -1057,7 +1022,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         span: Span,
     ) {
         if let Some(Res::NonMacroAttr(kind)) = res {
-            if kind != NonMacroAttrKind::Tool && binding.map_or(true, |b| b.is_import()) {
+            if kind != NonMacroAttrKind::Tool && binding.is_none_or(|b| b.is_import()) {
                 let binding_span = binding.map(|binding| binding.span);
                 self.dcx().emit_err(errors::CannotUseThroughAnImport {
                     span,
@@ -1124,9 +1089,25 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Compile the macro into a `SyntaxExtension` and its rule spans.
     ///
     /// Possibly replace its expander to a pre-defined one for built-in macros.
-    pub(crate) fn compile_macro(&mut self, item: &ast::Item, edition: Edition) -> MacroData {
-        let (mut ext, mut rule_spans) =
-            compile_declarative_macro(self.tcx.sess, self.tcx.features(), item, edition);
+    pub(crate) fn compile_macro(
+        &mut self,
+        macro_def: &ast::MacroDef,
+        ident: Ident,
+        attrs: &[impl AttributeExt],
+        span: Span,
+        node_id: NodeId,
+        edition: Edition,
+    ) -> MacroData {
+        let (mut ext, mut rule_spans) = compile_declarative_macro(
+            self.tcx.sess,
+            self.tcx.features(),
+            macro_def,
+            ident,
+            attrs,
+            span,
+            node_id,
+            edition,
+        );
 
         if let Some(builtin_name) = ext.builtin_name {
             // The macro was marked with `#[rustc_builtin_macro]`.
@@ -1134,28 +1115,22 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // The macro is a built-in, replace its expander function
                 // while still taking everything else from the source code.
                 // If we already loaded this builtin macro, give a better error message than 'no such builtin macro'.
-                match mem::replace(builtin_macro, BuiltinMacroState::AlreadySeen(item.span)) {
+                match mem::replace(builtin_macro, BuiltinMacroState::AlreadySeen(span)) {
                     BuiltinMacroState::NotYetSeen(builtin_ext) => {
                         ext.kind = builtin_ext;
                         rule_spans = Vec::new();
                     }
-                    BuiltinMacroState::AlreadySeen(span) => {
-                        self.dcx().emit_err(errors::AttemptToDefineBuiltinMacroTwice {
-                            span: item.span,
-                            note_span: span,
-                        });
+                    BuiltinMacroState::AlreadySeen(note_span) => {
+                        self.dcx()
+                            .emit_err(errors::AttemptToDefineBuiltinMacroTwice { span, note_span });
                     }
                 }
             } else {
-                self.dcx().emit_err(errors::CannotFindBuiltinMacroWithName {
-                    span: item.span,
-                    ident: item.ident,
-                });
+                self.dcx().emit_err(errors::CannotFindBuiltinMacroWithName { span, ident });
             }
         }
 
-        let ItemKind::MacroDef(def) = &item.kind else { unreachable!() };
-        MacroData { ext: Lrc::new(ext), rule_spans, macro_rules: def.macro_rules }
+        MacroData { ext: Lrc::new(ext), rule_spans, macro_rules: macro_def.macro_rules }
     }
 
     fn path_accessible(

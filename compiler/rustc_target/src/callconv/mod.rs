@@ -1,12 +1,15 @@
-use std::fmt;
 use std::str::FromStr;
+use std::{fmt, iter};
 
-pub use rustc_abi::{Reg, RegKind};
+pub use rustc_abi::{ExternAbi, Reg, RegKind};
 use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 
-use crate::abi::{self, Abi, Align, HasDataLayout, Size, TyAbiInterface, TyAndLayout};
-use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt, WasmCAbi};
+use crate::abi::{
+    self, AddressSpace, Align, BackendRepr, HasDataLayout, Pointer, Size, TyAbiInterface,
+    TyAndLayout,
+};
+use crate::spec::{HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, WasmCAbi};
 
 mod aarch64;
 mod amdgpu;
@@ -139,7 +142,8 @@ pub struct ArgAttributes {
     pub regular: ArgAttribute,
     pub arg_ext: ArgExtension,
     /// The minimum size of the pointee, guaranteed to be valid for the duration of the whole call
-    /// (corresponding to LLVM's dereferenceable and dereferenceable_or_null attributes).
+    /// (corresponding to LLVM's dereferenceable_or_null attributes, i.e., it is okay for this to be
+    /// set on a null pointer, but all non-null pointers must be dereferenceable).
     pub pointee_size: Size,
     pub pointee_align: Option<Align>,
 }
@@ -347,15 +351,17 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         layout: TyAndLayout<'a, Ty>,
         scalar_attrs: impl Fn(&TyAndLayout<'a, Ty>, abi::Scalar, Size) -> ArgAttributes,
     ) -> Self {
-        let mode = match layout.abi {
-            Abi::Uninhabited => PassMode::Ignore,
-            Abi::Scalar(scalar) => PassMode::Direct(scalar_attrs(&layout, scalar, Size::ZERO)),
-            Abi::ScalarPair(a, b) => PassMode::Pair(
+        let mode = match layout.backend_repr {
+            BackendRepr::Uninhabited => PassMode::Ignore,
+            BackendRepr::Scalar(scalar) => {
+                PassMode::Direct(scalar_attrs(&layout, scalar, Size::ZERO))
+            }
+            BackendRepr::ScalarPair(a, b) => PassMode::Pair(
                 scalar_attrs(&layout, a, Size::ZERO),
                 scalar_attrs(&layout, b, a.size(cx).align_to(b.align(cx).abi)),
             ),
-            Abi::Vector { .. } => PassMode::Direct(ArgAttributes::new()),
-            Abi::Aggregate { .. } => Self::indirect_pass_mode(&layout),
+            BackendRepr::Vector { .. } => PassMode::Direct(ArgAttributes::new()),
+            BackendRepr::Memory { .. } => Self::indirect_pass_mode(&layout),
         };
         ArgAbi { layout, mode }
     }
@@ -457,7 +463,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
 
     pub fn extend_integer_width_to(&mut self, bits: u64) {
         // Only integers have signedness
-        if let Abi::Scalar(scalar) = self.layout.abi {
+        if let BackendRepr::Scalar(scalar) = self.layout.backend_repr {
             if let abi::Int(i, signed) = scalar.primitive() {
                 if i.size().bits() < bits {
                     if let PassMode::Direct(ref mut attrs) = self.mode {
@@ -509,7 +515,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             // That elevates any type difference to an ABI difference since we just use the
             // full Rust type as the LLVM argument/return type.
             if matches!(self.mode, PassMode::Direct(..))
-                && matches!(self.layout.abi, Abi::Aggregate { .. })
+                && matches!(self.layout.backend_repr, BackendRepr::Memory { .. })
             {
                 // For aggregates in `Direct` mode to be compatible, the types need to be equal.
                 self.layout.ty == other.layout.ty
@@ -539,6 +545,8 @@ pub enum Conv {
     Msp430Intr,
 
     PtxKernel,
+
+    GpuKernel,
 
     X86Fastcall,
     X86Intr,
@@ -620,20 +628,20 @@ impl<'a, Ty: fmt::Display> fmt::Debug for FnAbi<'a, Ty> {
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum AdjustForForeignAbiError {
     /// Target architecture doesn't support "foreign" (i.e. non-Rust) ABIs.
-    Unsupported { arch: Symbol, abi: spec::abi::Abi },
+    Unsupported { arch: Symbol, abi: ExternAbi },
 }
 
 impl<'a, Ty> FnAbi<'a, Ty> {
     pub fn adjust_for_foreign_abi<C>(
         &mut self,
         cx: &C,
-        abi: spec::abi::Abi,
+        abi: ExternAbi,
     ) -> Result<(), AdjustForForeignAbiError>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
-        C: HasDataLayout + HasTargetSpec + HasWasmCAbiOpt,
+        C: HasDataLayout + HasTargetSpec + HasWasmCAbiOpt + HasX86AbiOpt,
     {
-        if abi == spec::abi::Abi::X86Interrupt {
+        if abi == ExternAbi::X86Interrupt {
             if let Some(arg) = self.args.first_mut() {
                 arg.pass_by_stack_offset(None);
             }
@@ -643,18 +651,24 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         let spec = cx.target_spec();
         match &spec.arch[..] {
             "x86" => {
-                let flavor = if let spec::abi::Abi::Fastcall { .. }
-                | spec::abi::Abi::Vectorcall { .. } = abi
-                {
-                    x86::Flavor::FastcallOrVectorcall
-                } else {
-                    x86::Flavor::General
+                let (flavor, regparm) = match abi {
+                    ExternAbi::Fastcall { .. } | ExternAbi::Vectorcall { .. } => {
+                        (x86::Flavor::FastcallOrVectorcall, None)
+                    }
+                    ExternAbi::C { .. } | ExternAbi::Cdecl { .. } | ExternAbi::Stdcall { .. } => {
+                        (x86::Flavor::General, cx.x86_abi_opt().regparm)
+                    }
+                    _ => (x86::Flavor::General, None),
                 };
-                x86::compute_abi_info(cx, self, flavor);
+                let reg_struct_return = cx.x86_abi_opt().reg_struct_return;
+                let opts = x86::X86Options { flavor, regparm, reg_struct_return };
+                x86::compute_abi_info(cx, self, opts);
             }
             "x86_64" => match abi {
-                spec::abi::Abi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),
-                spec::abi::Abi::Win64 { .. } => x86_win64::compute_abi_info(cx, self),
+                ExternAbi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),
+                ExternAbi::Win64 { .. } | ExternAbi::Vectorcall { .. } => {
+                    x86_win64::compute_abi_info(cx, self)
+                }
                 _ => {
                     if cx.target_spec().is_like_windows {
                         x86_win64::compute_abi_info(cx, self)
@@ -688,7 +702,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),
             "nvptx64" => {
-                if cx.target_spec().adjust_abi(abi, self.c_variadic) == spec::abi::Abi::PtxKernel {
+                if cx.target_spec().adjust_abi(abi, self.c_variadic) == ExternAbi::PtxKernel {
                     nvptx64::compute_ptx_kernel_abi_info(cx, self)
                 } else {
                     nvptx64::compute_abi_info(self)
@@ -716,6 +730,121 @@ impl<'a, Ty> FnAbi<'a, Ty> {
 
         Ok(())
     }
+
+    pub fn adjust_for_rust_abi<C>(&mut self, cx: &C, abi: ExternAbi)
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+        C: HasDataLayout + HasTargetSpec,
+    {
+        let spec = cx.target_spec();
+        match &spec.arch[..] {
+            "x86" => x86::compute_rust_abi_info(cx, self, abi),
+            "riscv32" | "riscv64" => riscv::compute_rust_abi_info(cx, self, abi),
+            "loongarch64" => loongarch::compute_rust_abi_info(cx, self, abi),
+            "aarch64" => aarch64::compute_rust_abi_info(cx, self),
+            _ => {}
+        };
+
+        for (arg_idx, arg) in self
+            .args
+            .iter_mut()
+            .enumerate()
+            .map(|(idx, arg)| (Some(idx), arg))
+            .chain(iter::once((None, &mut self.ret)))
+        {
+            if arg.is_ignore() {
+                continue;
+            }
+
+            if arg_idx.is_none() && arg.layout.size > Pointer(AddressSpace::DATA).size(cx) * 2 {
+                // Return values larger than 2 registers using a return area
+                // pointer. LLVM and Cranelift disagree about how to return
+                // values that don't fit in the registers designated for return
+                // values. LLVM will force the entire return value to be passed
+                // by return area pointer, while Cranelift will look at each IR level
+                // return value independently and decide to pass it in a
+                // register or not, which would result in the return value
+                // being passed partially in registers and partially through a
+                // return area pointer.
+                //
+                // While Cranelift may need to be fixed as the LLVM behavior is
+                // generally more correct with respect to the surface language,
+                // forcing this behavior in rustc itself makes it easier for
+                // other backends to conform to the Rust ABI and for the C ABI
+                // rustc already handles this behavior anyway.
+                //
+                // In addition LLVM's decision to pass the return value in
+                // registers or using a return area pointer depends on how
+                // exactly the return type is lowered to an LLVM IR type. For
+                // example `Option<u128>` can be lowered as `{ i128, i128 }`
+                // in which case the x86_64 backend would use a return area
+                // pointer, or it could be passed as `{ i32, i128 }` in which
+                // case the x86_64 backend would pass it in registers by taking
+                // advantage of an LLVM ABI extension that allows using 3
+                // registers for the x86_64 sysv call conv rather than the
+                // officially specified 2 registers.
+                //
+                // FIXME: Technically we should look at the amount of available
+                // return registers rather than guessing that there are 2
+                // registers for return values. In practice only a couple of
+                // architectures have less than 2 return registers. None of
+                // which supported by Cranelift.
+                //
+                // NOTE: This adjustment is only necessary for the Rust ABI as
+                // for other ABI's the calling convention implementations in
+                // rustc_target already ensure any return value which doesn't
+                // fit in the available amount of return registers is passed in
+                // the right way for the current target.
+                arg.make_indirect();
+                continue;
+            }
+
+            match arg.layout.backend_repr {
+                BackendRepr::Memory { .. } => {}
+
+                // This is a fun case! The gist of what this is doing is
+                // that we want callers and callees to always agree on the
+                // ABI of how they pass SIMD arguments. If we were to *not*
+                // make these arguments indirect then they'd be immediates
+                // in LLVM, which means that they'd used whatever the
+                // appropriate ABI is for the callee and the caller. That
+                // means, for example, if the caller doesn't have AVX
+                // enabled but the callee does, then passing an AVX argument
+                // across this boundary would cause corrupt data to show up.
+                //
+                // This problem is fixed by unconditionally passing SIMD
+                // arguments through memory between callers and callees
+                // which should get them all to agree on ABI regardless of
+                // target feature sets. Some more information about this
+                // issue can be found in #44367.
+                //
+                // Note that the intrinsic ABI is exempt here as
+                // that's how we connect up to LLVM and it's unstable
+                // anyway, we control all calls to it in libstd.
+                BackendRepr::Vector { .. }
+                    if abi != ExternAbi::RustIntrinsic && spec.simd_types_indirect =>
+                {
+                    arg.make_indirect();
+                    continue;
+                }
+
+                _ => continue,
+            }
+            // Compute `Aggregate` ABI.
+
+            let is_indirect_not_on_stack =
+                matches!(arg.mode, PassMode::Indirect { on_stack: false, .. });
+            assert!(is_indirect_not_on_stack);
+
+            let size = arg.layout.size;
+            if !arg.layout.is_unsized() && size <= Pointer(AddressSpace::DATA).size(cx) {
+                // We want to pass small aggregates as immediates, but using
+                // an LLVM aggregate type for this leads to bad optimizations,
+                // so we pick an appropriately sized integer type instead.
+                arg.cast_to(Reg { kind: RegKind::Integer, size });
+            }
+        }
+    }
 }
 
 impl FromStr for Conv {
@@ -738,6 +867,7 @@ impl FromStr for Conv {
             "X86VectorCall" => Ok(Conv::X86VectorCall),
             "X86_64SysV" => Ok(Conv::X86_64SysV),
             "X86_64Win64" => Ok(Conv::X86_64Win64),
+            "GpuKernel" => Ok(Conv::GpuKernel),
             "AvrInterrupt" => Ok(Conv::AvrInterrupt),
             "AvrNonBlockingInterrupt" => Ok(Conv::AvrNonBlockingInterrupt),
             "RiscvInterrupt(machine)" => {

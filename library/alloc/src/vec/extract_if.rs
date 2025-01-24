@@ -1,3 +1,4 @@
+use core::ops::{Range, RangeBounds};
 use core::{ptr, slice};
 
 use super::Vec;
@@ -14,7 +15,7 @@ use crate::alloc::{Allocator, Global};
 /// #![feature(extract_if)]
 ///
 /// let mut v = vec![0, 1, 2];
-/// let iter: std::vec::ExtractIf<'_, _, _> = v.extract_if(|x| *x % 2 == 0);
+/// let iter: std::vec::ExtractIf<'_, _, _> = v.extract_if(.., |x| *x % 2 == 0);
 /// ```
 #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
 #[derive(Debug)]
@@ -24,24 +25,32 @@ pub struct ExtractIf<
     T,
     F,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
-> where
-    F: FnMut(&mut T) -> bool,
-{
-    pub(super) vec: &'a mut Vec<T, A>,
+> {
+    vec: &'a mut Vec<T, A>,
     /// The index of the item that will be inspected by the next call to `next`.
-    pub(super) idx: usize,
+    idx: usize,
+    /// Elements at and beyond this point will be retained. Must be equal or smaller than `old_len`.
+    end: usize,
     /// The number of items that have been drained (removed) thus far.
-    pub(super) del: usize,
+    del: usize,
     /// The original length of `vec` prior to draining.
-    pub(super) old_len: usize,
+    old_len: usize,
     /// The filter test predicate.
-    pub(super) pred: F,
+    pred: F,
 }
 
-impl<T, F, A: Allocator> ExtractIf<'_, T, F, A>
-where
-    F: FnMut(&mut T) -> bool,
-{
+impl<'a, T, F, A: Allocator> ExtractIf<'a, T, F, A> {
+    pub(super) fn new<R: RangeBounds<usize>>(vec: &'a mut Vec<T, A>, pred: F, range: R) -> Self {
+        let old_len = vec.len();
+        let Range { start, end } = slice::range(range, ..old_len);
+
+        // Guard against the vec getting leaked (leak amplification)
+        unsafe {
+            vec.set_len(0);
+        }
+        ExtractIf { vec, idx: start, del: 0, end, old_len, pred }
+    }
+
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
@@ -59,7 +68,7 @@ where
 
     fn next(&mut self) -> Option<T> {
         unsafe {
-            while self.idx < self.old_len {
+            while self.idx < self.end {
                 let i = self.idx;
                 let v = slice::from_raw_parts_mut(self.vec.as_mut_ptr(), self.old_len);
                 let drained = (self.pred)(&mut v[i]);
@@ -82,24 +91,15 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(self.old_len - self.idx))
+        (0, Some(self.end - self.idx))
     }
 }
 
 #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
-impl<T, F, A: Allocator> Drop for ExtractIf<'_, T, F, A>
-where
-    F: FnMut(&mut T) -> bool,
-{
+impl<T, F, A: Allocator> Drop for ExtractIf<'_, T, F, A> {
     fn drop(&mut self) {
         unsafe {
             if self.idx < self.old_len && self.del > 0 {
-                // This is a pretty messed up state, and there isn't really an
-                // obviously right thing to do. We don't want to keep trying
-                // to execute `pred`, so we just backshift all the unprocessed
-                // elements and tell the vec that they still exist. The backshift
-                // is required to prevent a double-drop of the last successfully
-                // drained item prior to a panic in the predicate.
                 let ptr = self.vec.as_mut_ptr();
                 let src = ptr.add(self.idx);
                 let dst = src.sub(self.del);

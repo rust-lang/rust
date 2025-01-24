@@ -5,15 +5,14 @@ use hir::{
 };
 use ide_db::{
     assists::Assist, famous_defs::FamousDefs, imports::import_assets::item_for_path_search,
-    source_change::SourceChange, use_trivial_constructor::use_trivial_constructor, FxHashMap,
+    source_change::SourceChange, syntax_helpers::tree_diff::diff, text_edit::TextEdit,
+    use_trivial_constructor::use_trivial_constructor, FxHashMap,
 };
 use stdx::format_to;
 use syntax::{
-    algo,
     ast::{self, make},
     AstNode, Edition, SyntaxNode, SyntaxNodePtr, ToSmolStr,
 };
-use text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
@@ -77,7 +76,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                 // FIXME: this also currently discards a lot of whitespace in the input... we really need a formatter here
                 builder.replace(old_range.range, new_syntax.to_string());
             } else {
-                algo::diff(old_syntax, new_syntax).into_text_edit(&mut builder);
+                diff(old_syntax, new_syntax).into_text_edit(&mut builder);
             }
             builder.finish()
         };
@@ -308,22 +307,27 @@ struct T(S);
 fn regular(a: S) {
     let s;
     S { s, .. } = a;
+    _ = s;
 }
 fn nested(a: S2) {
     let s;
     S2 { s: S { s, .. }, .. } = a;
+    _ = s;
 }
 fn in_tuple(a: (S,)) {
     let s;
     (S { s, .. },) = a;
+    _ = s;
 }
 fn in_array(a: [S;1]) {
     let s;
     [S { s, .. },] = a;
+    _ = s;
 }
 fn in_tuple_struct(a: T) {
     let s;
     T(S { s, .. }) = a;
+    _ = s;
 }
             ",
         );

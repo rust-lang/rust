@@ -144,17 +144,14 @@ impl Spanned for ast::GenericParam {
 
 impl Spanned for ast::FieldDef {
     fn span(&self) -> Span {
+        // FIXME(default_field_values): This needs to be adjusted.
         span_with_attrs_lo_hi!(self, self.span.lo(), self.ty.span.hi())
     }
 }
 
 impl Spanned for ast::WherePredicate {
     fn span(&self) -> Span {
-        match *self {
-            ast::WherePredicate::BoundPredicate(ref p) => p.span,
-            ast::WherePredicate::RegionPredicate(ref p) => p.span,
-            ast::WherePredicate::EqPredicate(ref p) => p.span,
-        }
+        self.span
     }
 }
 

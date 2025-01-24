@@ -7,6 +7,7 @@ use rustc_span::Span;
 use super::NEEDLESS_CHARACTER_ITERATION;
 use super::utils::get_last_chain_binding_hir_id;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::paths::CHAR_IS_ASCII;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::{match_def_path, path_to_local_id, peel_blocks};
 
@@ -77,7 +78,7 @@ fn handle_expr(
             if revert != is_all
                 && let ExprKind::Path(path) = fn_path.kind
                 && let Some(fn_def_id) = cx.qpath_res(&path, fn_path.hir_id).opt_def_id()
-                && match_def_path(cx, fn_def_id, &["core", "char", "methods", "<impl char>", "is_ascii"])
+                && match_def_path(cx, fn_def_id, &CHAR_IS_ASCII)
                 && path_to_local_id(peels_expr_ref(arg), first_param)
                 && let Some(snippet) = before_chars.get_source_text(cx)
             {

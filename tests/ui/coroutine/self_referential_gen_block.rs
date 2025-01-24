@@ -1,4 +1,4 @@
-//@ compile-flags: --edition 2024 -Zunstable-options
+//@ edition: 2024
 #![feature(gen_blocks)]
 //! This test checks that we don't allow self-referential generators
 

@@ -5,19 +5,17 @@
 
 // Same as miri's `tests/pass/async-closure-captures.rs`, keep in sync
 
-#![feature(async_closure)]
-
 extern crate block_on;
 
 fn main() {
     block_on::block_on(async_main());
 }
 
-async fn call<T>(f: &impl async Fn() -> T) -> T {
+async fn call<T>(f: &impl AsyncFn() -> T) -> T {
     f().await
 }
 
-async fn call_once<T>(f: impl async FnOnce() -> T) -> T {
+async fn call_once<T>(f: impl AsyncFnOnce() -> T) -> T {
     f().await
 }
 
@@ -80,7 +78,7 @@ async fn async_main() {
         call_once(c).await;
     }
 
-    fn force_fnonce<T>(f: impl async FnOnce() -> T) -> impl async FnOnce() -> T {
+    fn force_fnonce<T>(f: impl AsyncFnOnce() -> T) -> impl AsyncFnOnce() -> T {
         f
     }
 

@@ -1,14 +1,13 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::get_parent_expr;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, GenericArg, QPath};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
@@ -53,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualBits {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Binary(bin_op, left_expr, right_expr) = expr.kind
             && let BinOpKind::Mul = &bin_op.node
-            && !in_external_macro(cx.sess(), expr.span)
+            && !expr.span.from_expansion()
             && self.msrv.meets(msrvs::MANUAL_BITS)
             && let ctxt = expr.span.ctxt()
             && left_expr.span.ctxt() == ctxt

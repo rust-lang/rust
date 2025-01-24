@@ -45,7 +45,7 @@ impl LateLintPass<'_> for BoxDefault {
             // And that method is `new`
             && seg.ident.name == sym::new
             // And the call is that of a `Box` method
-            && path_def_id(cx, ty).map_or(false, |id| Some(id) == cx.tcx.lang_items().owned_box())
+            && path_def_id(cx, ty).is_some_and(|id| Some(id) == cx.tcx.lang_items().owned_box())
             // And the single argument to the call is another function call
             // This is the `T::default()` (or default equivalent) of `Box::new(T::default())`
             && let ExprKind::Call(arg_path, _) = arg.kind
@@ -83,9 +83,9 @@ fn is_plain_default(cx: &LateContext<'_>, arg_path: &Expr<'_>) -> bool {
 }
 
 fn is_local_vec_expn(cx: &LateContext<'_>, expr: &Expr<'_>, ref_expr: &Expr<'_>) -> bool {
-    macro_backtrace(expr.span).next().map_or(false, |call| {
-        cx.tcx.is_diagnostic_item(sym::vec_macro, call.def_id) && call.span.eq_ctxt(ref_expr.span)
-    })
+    macro_backtrace(expr.span)
+        .next()
+        .is_some_and(|call| cx.tcx.is_diagnostic_item(sym::vec_macro, call.def_id) && call.span.eq_ctxt(ref_expr.span))
 }
 
 #[derive(Default)]

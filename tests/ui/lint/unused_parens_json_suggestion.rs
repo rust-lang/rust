@@ -9,7 +9,7 @@
 // test of the JSON error format.
 
 #![deny(unused_parens)]
-#![allow(unreachable_code)]
+#![allow(unreachable_code, unused_braces)]
 
 fn main() {
     // We want to suggest the properly-balanced expression `1 / (2 + 3)`, not

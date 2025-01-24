@@ -165,7 +165,7 @@ fn signature_help_for_call(
         if let Some(callable) = ast::CallableExpr::cast(nodes.next()?) {
             let inside_callable = callable
                 .arg_list()
-                .map_or(false, |it| it.syntax().text_range().contains(token.text_range().start()));
+                .is_some_and(|it| it.syntax().text_range().contains(token.text_range().start()));
             if inside_callable {
                 break callable;
             }
@@ -650,7 +650,7 @@ fn signature_help_for_tuple_pat_ish(
 ) -> SignatureHelp {
     let rest_pat = field_pats.find(|it| matches!(it, ast::Pat::RestPat(_)));
     let is_left_of_rest_pat =
-        rest_pat.map_or(true, |it| token.text_range().start() < it.syntax().text_range().end());
+        rest_pat.is_none_or(|it| token.text_range().start() < it.syntax().text_range().end());
 
     let commas = pat
         .children_with_tokens()
@@ -692,7 +692,9 @@ mod tests {
     use crate::RootDatabase;
 
     /// Creates analysis from a multi-file fixture, returns positions marked with $0.
-    pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
+    pub(crate) fn position(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    ) -> (RootDatabase, FilePosition) {
         let change_fixture = ChangeFixture::parse(ra_fixture);
         let mut database = RootDatabase::default();
         database.apply_change(change_fixture.change);
@@ -703,7 +705,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn check(ra_fixture: &str, expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let fixture = format!(
             r#"
 //- minicore: sized, fn

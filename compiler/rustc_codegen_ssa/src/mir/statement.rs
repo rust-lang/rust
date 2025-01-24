@@ -78,7 +78,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let count = self.codegen_operand(bx, count).immediate();
                 let pointee_layout = dst_val
                     .layout
-                    .pointee_info_at(bx, rustc_target::abi::Size::ZERO)
+                    .pointee_info_at(bx, rustc_abi::Size::ZERO)
                     .expect("Expected pointer");
                 let bytes = bx.mul(count, bx.const_usize(pointee_layout.size.bytes()));
 
@@ -92,6 +92,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             | mir::StatementKind::AscribeUserType(..)
             | mir::StatementKind::ConstEvalCounter
             | mir::StatementKind::PlaceMention(..)
+            | mir::StatementKind::BackwardIncompatibleDropHint { .. }
             | mir::StatementKind::Nop => {}
         }
     }

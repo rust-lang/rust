@@ -942,3 +942,19 @@ fn main() {
 "#,
     )
 }
+
+#[test]
+fn regression_18626() {
+    check_no_mismatches(
+        r#"
+fn f() {
+    trait T {
+        fn f() {}
+    }
+    impl T for i32 {}
+    impl T for u32 {}
+    &[i32::f, u32::f] as &[fn()];
+}
+    "#,
+    );
+}

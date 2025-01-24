@@ -34,6 +34,7 @@ windows_targets::link!("kernel32.dll" "system" fn FreeEnvironmentStringsW(penv :
 windows_targets::link!("kernel32.dll" "system" fn GetActiveProcessorCount(groupnumber : u16) -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetCommandLineW() -> PCWSTR);
 windows_targets::link!("kernel32.dll" "system" fn GetConsoleMode(hconsolehandle : HANDLE, lpmode : *mut CONSOLE_MODE) -> BOOL);
+windows_targets::link!("kernel32.dll" "system" fn GetConsoleOutputCP() -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentDirectoryW(nbufferlength : u32, lpbuffer : PWSTR) -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentProcess() -> HANDLE);
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentProcessId() -> u32);
@@ -65,6 +66,7 @@ windows_targets::link!("kernel32.dll" "system" fn InitOnceBeginInitialize(lpinit
 windows_targets::link!("kernel32.dll" "system" fn InitOnceComplete(lpinitonce : *mut INIT_ONCE, dwflags : u32, lpcontext : *const core::ffi::c_void) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn InitializeProcThreadAttributeList(lpattributelist : LPPROC_THREAD_ATTRIBUTE_LIST, dwattributecount : u32, dwflags : u32, lpsize : *mut usize) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn LocalFree(hmem : HLOCAL) -> HLOCAL);
+windows_targets::link!("kernel32.dll" "system" fn LockFileEx(hfile : HANDLE, dwflags : LOCK_FILE_FLAGS, dwreserved : u32, nnumberofbytestolocklow : u32, nnumberofbytestolockhigh : u32, lpoverlapped : *mut OVERLAPPED) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn MoveFileExW(lpexistingfilename : PCWSTR, lpnewfilename : PCWSTR, dwflags : MOVE_FILE_FLAGS) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn MultiByteToWideChar(codepage : u32, dwflags : MULTI_BYTE_TO_WIDE_CHAR_FLAGS, lpmultibytestr : PCSTR, cbmultibyte : i32, lpwidecharstr : PWSTR, cchwidechar : i32) -> i32);
 windows_targets::link!("kernel32.dll" "system" fn QueryPerformanceCounter(lpperformancecount : *mut i64) -> BOOL);
@@ -96,6 +98,7 @@ windows_targets::link!("kernel32.dll" "system" fn TlsGetValue(dwtlsindex : u32) 
 windows_targets::link!("kernel32.dll" "system" fn TlsSetValue(dwtlsindex : u32, lptlsvalue : *const core::ffi::c_void) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn TryAcquireSRWLockExclusive(srwlock : *mut SRWLOCK) -> BOOLEAN);
 windows_targets::link!("kernel32.dll" "system" fn TryAcquireSRWLockShared(srwlock : *mut SRWLOCK) -> BOOLEAN);
+windows_targets::link!("kernel32.dll" "system" fn UnlockFile(hfile : HANDLE, dwfileoffsetlow : u32, dwfileoffsethigh : u32, nnumberofbytestounlocklow : u32, nnumberofbytestounlockhigh : u32) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn UpdateProcThreadAttribute(lpattributelist : LPPROC_THREAD_ATTRIBUTE_LIST, dwflags : u32, attribute : usize, lpvalue : *const core::ffi::c_void, cbsize : usize, lppreviousvalue : *mut core::ffi::c_void, lpreturnsize : *const usize) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn WaitForMultipleObjects(ncount : u32, lphandles : *const HANDLE, bwaitall : BOOL, dwmilliseconds : u32) -> WAIT_EVENT);
 windows_targets::link!("kernel32.dll" "system" fn WaitForSingleObject(hhandle : HANDLE, dwmilliseconds : u32) -> WAIT_EVENT);
@@ -2470,6 +2473,22 @@ pub const FILE_RANDOM_ACCESS: NTCREATEFILE_CREATE_OPTIONS = 2048u32;
 pub const FILE_READ_ATTRIBUTES: FILE_ACCESS_RIGHTS = 128u32;
 pub const FILE_READ_DATA: FILE_ACCESS_RIGHTS = 1u32;
 pub const FILE_READ_EA: FILE_ACCESS_RIGHTS = 8u32;
+pub const FILE_RENAME_FLAG_POSIX_SEMANTICS: u32 = 2u32;
+pub const FILE_RENAME_FLAG_REPLACE_IF_EXISTS: u32 = 1u32;
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct FILE_RENAME_INFO {
+    pub Anonymous: FILE_RENAME_INFO_0,
+    pub RootDirectory: HANDLE,
+    pub FileNameLength: u32,
+    pub FileName: [u16; 1],
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union FILE_RENAME_INFO_0 {
+    pub ReplaceIfExists: BOOLEAN,
+    pub Flags: u32,
+}
 pub const FILE_RESERVE_OPFILTER: NTCREATEFILE_CREATE_OPTIONS = 1048576u32;
 pub const FILE_SEQUENTIAL_ONLY: NTCREATEFILE_CREATE_OPTIONS = 4u32;
 pub const FILE_SESSION_AWARE: NTCREATEFILE_CREATE_OPTIONS = 262144u32;
@@ -2730,6 +2749,9 @@ pub struct LINGER {
     pub l_onoff: u16,
     pub l_linger: u16,
 }
+pub const LOCKFILE_EXCLUSIVE_LOCK: LOCK_FILE_FLAGS = 2u32;
+pub const LOCKFILE_FAIL_IMMEDIATELY: LOCK_FILE_FLAGS = 1u32;
+pub type LOCK_FILE_FLAGS = u32;
 pub type LPOVERLAPPED_COMPLETION_ROUTINE = Option<
     unsafe extern "system" fn(
         dwerrorcode: u32,
@@ -3312,6 +3334,7 @@ pub struct XSAVE_FORMAT {
     pub XmmRegisters: [M128A; 8],
     pub Reserved4: [u8; 224],
 }
+
 #[cfg(target_arch = "arm")]
 #[repr(C)]
 pub struct WSADATA {

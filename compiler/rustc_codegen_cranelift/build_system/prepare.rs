@@ -1,14 +1,14 @@
 use std::ffi::OsStr;
-use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{fs, io};
 
 use crate::path::{Dirs, RelPath};
 use crate::utils::{copy_dir_recursively, ensure_empty_dir, spawn_and_wait};
 
 pub(crate) fn prepare(dirs: &Dirs) {
-    RelPath::DOWNLOAD.ensure_exists(dirs);
+    std::fs::create_dir_all(&dirs.download_dir).unwrap();
     crate::tests::RAND_REPO.fetch(dirs);
     crate::tests::REGEX_REPO.fetch(dirs);
 }
@@ -79,13 +79,26 @@ impl GitRepo {
 
     fn download_dir(&self, dirs: &Dirs) -> PathBuf {
         match self.url {
-            GitRepoUrl::Github { user: _, repo } => RelPath::DOWNLOAD.join(repo).to_path(dirs),
+            GitRepoUrl::Github { user: _, repo } => dirs.download_dir.join(repo),
         }
     }
 
     pub(crate) const fn source_dir(&self) -> RelPath {
         match self.url {
-            GitRepoUrl::Github { user: _, repo } => RelPath::BUILD.join(repo),
+            GitRepoUrl::Github { user: _, repo } => RelPath::build(repo),
+        }
+    }
+
+    fn verify_checksum(&self, dirs: &Dirs) {
+        let download_dir = self.download_dir(dirs);
+        let actual_hash = format!("{:016x}", hash_dir(&download_dir));
+        if actual_hash != self.content_hash {
+            eprintln!(
+                "Mismatched content hash for {download_dir}: {actual_hash} != {content_hash}. Please run ./y.sh prepare again.",
+                download_dir = download_dir.display(),
+                content_hash = self.content_hash,
+            );
+            std::process::exit(1);
         }
     }
 
@@ -117,7 +130,7 @@ impl GitRepo {
         }
 
         let source_lockfile =
-            RelPath::PATCHES.to_path(dirs).join(format!("{}-lock.toml", self.patch_name));
+            dirs.source_dir.join("patches").join(format!("{}-lock.toml", self.patch_name));
         let target_lockfile = download_dir.join("Cargo.lock");
         if source_lockfile.exists() {
             assert!(!target_lockfile.exists());
@@ -126,18 +139,11 @@ impl GitRepo {
             assert!(target_lockfile.exists());
         }
 
-        let actual_hash = format!("{:016x}", hash_dir(&download_dir));
-        if actual_hash != self.content_hash {
-            eprintln!(
-                "Download of {download_dir} failed with mismatched content hash: {actual_hash} != {content_hash}",
-                download_dir = download_dir.display(),
-                content_hash = self.content_hash,
-            );
-            std::process::exit(1);
-        }
+        self.verify_checksum(dirs);
     }
 
     pub(crate) fn patch(&self, dirs: &Dirs) {
+        self.verify_checksum(dirs);
         apply_patches(
             dirs,
             self.patch_name,
@@ -149,6 +155,13 @@ impl GitRepo {
 
 fn clone_repo(download_dir: &Path, repo: &str, rev: &str) {
     eprintln!("[CLONE] {}", repo);
+
+    match fs::remove_dir_all(download_dir) {
+        Ok(()) => {}
+        Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+        Err(err) => panic!("Failed to remove {path}: {err}", path = download_dir.display()),
+    }
+
     // Ignore exit code as the repo may already have been checked out
     git_command(None, "clone").arg(repo).arg(download_dir).spawn().unwrap().wait().unwrap();
 
@@ -178,7 +191,7 @@ fn init_git_repo(repo_dir: &Path) {
 }
 
 fn get_patches(dirs: &Dirs, crate_name: &str) -> Vec<PathBuf> {
-    let mut patches: Vec<_> = fs::read_dir(RelPath::PATCHES.to_path(dirs))
+    let mut patches: Vec<_> = fs::read_dir(dirs.source_dir.join("patches"))
         .unwrap()
         .map(|entry| entry.unwrap().path())
         .filter(|path| path.extension() == Some(OsStr::new("patch")))

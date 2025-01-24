@@ -30,21 +30,13 @@ const EXPECTED = [
         'others': [
             { 'path': 'generics', 'name': 'P' },
         ],
-        'returned': [
-            { 'path': 'generics', 'name': 'alef' },
-        ],
-        'in_args': [
-            { 'path': 'generics', 'name': 'alpha' },
-        ],
+        'returned': [],
+        'in_args': [],
     },
     {
         'query': 'P',
-        'returned': [
-            { 'path': 'generics', 'name': 'alef' },
-        ],
-        'in_args': [
-            { 'path': 'generics', 'name': 'alpha' },
-        ],
+        'returned': [],
+        'in_args': [],
     },
     {
         'query': '"ExtraCreditStructMulti"<ExtraCreditInnerMulti, ExtraCreditInnerMulti>',

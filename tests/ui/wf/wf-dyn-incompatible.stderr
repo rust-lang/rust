@@ -1,14 +1,15 @@
-error[E0038]: the trait `A` cannot be made into an object
+error[E0038]: the trait `A` is not dyn compatible
   --> $DIR/wf-dyn-incompatible.rs:9:13
    |
 LL |     let _x: &dyn A;
-   |             ^^^^^^ `A` cannot be made into an object
+   |             ^^^^^^ `A` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/wf-dyn-incompatible.rs:5:23
    |
 LL | trait A {
-   |       - this trait cannot be made into an object...
+   |       - this trait is not dyn compatible...
 LL |     fn foo(&self, _x: &Self);
    |                       ^^^^^ ...because method `foo` references the `Self` type in this parameter
    = help: consider moving `foo` to another trait

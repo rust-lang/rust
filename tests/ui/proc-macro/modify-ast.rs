@@ -1,5 +1,5 @@
 //@ run-pass
-//@ aux-build:modify-ast.rs
+//@ proc-macro: modify-ast.rs
 
 extern crate modify_ast;
 

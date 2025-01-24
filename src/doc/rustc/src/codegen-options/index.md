@@ -119,17 +119,14 @@ files. It takes one of the following values:
 * `n`, `no`, `off` or `false`: omit bitcode from rlibs.
 
 LLVM bitcode is required when rustc is performing link-time optimization (LTO).
-It is also required on some targets like iOS ones where vendors look for LLVM
-bitcode. Embedded bitcode will appear in rustc-generated object files inside of
-a section whose name is defined by the target platform. Most of the time this is
-`.llvmbc`.
+Embedded bitcode will appear in rustc-generated object files inside of a section
+whose name is defined by the target platform. Most of the time this is `.llvmbc`.
 
 The use of `-C embed-bitcode=no` can significantly improve compile times and
 reduce generated file sizes if your compilation does not actually need bitcode
-(e.g. if you're not compiling for iOS or you're not performing LTO). For these
-reasons, Cargo uses `-C embed-bitcode=no` whenever possible. Likewise, if you
-are building directly with `rustc` we recommend using `-C embed-bitcode=no`
-whenever you are not using LTO.
+(e.g. if you're not performing LTO). For these reasons, Cargo uses `-C embed-bitcode=no`
+whenever possible. Likewise, if you are building directly with `rustc` we recommend
+using `-C embed-bitcode=no` whenever you are not using LTO.
 
 If combined with `-C lto`, `-C embed-bitcode=no` will cause `rustc` to abort
 at start-up, because the combination is invalid.
@@ -210,14 +207,14 @@ options should be separated by spaces.
 
 ## link-dead-code
 
-This flag controls whether the linker will keep dead code. It takes one of
-the following values:
+Tries to generate and link dead code that would otherwise not be generated or
+linked. It takes one of the following values:
 
-* `y`, `yes`, `on`, `true` or no value: keep dead code.
+* `y`, `yes`, `on`, `true` or no value: try to keep dead code.
 * `n`, `no`, `off` or `false`: remove dead code (the default).
 
-An example of when this flag might be useful is when trying to construct code coverage
-metrics.
+This flag was historically used to help improve some older forms of code
+coverage measurement. Its use is not recommended.
 
 ## link-self-contained
 

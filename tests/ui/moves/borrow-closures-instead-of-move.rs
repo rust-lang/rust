@@ -1,4 +1,4 @@
-fn takes_fn(f: impl Fn()) { //~ HELP if `impl Fn()` implemented `Clone`
+fn takes_fn(f: impl Fn()) {
     loop {
         takes_fnonce(f);
         //~^ ERROR use of moved value

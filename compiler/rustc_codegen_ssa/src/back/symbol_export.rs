@@ -282,7 +282,7 @@ fn exported_symbols_provider_local(
         }));
     }
 
-    if tcx.sess.opts.share_generics() && tcx.local_crate_exports_generics() {
+    if tcx.local_crate_exports_generics() {
         use rustc_middle::mir::mono::{Linkage, MonoItem, Visibility};
         use rustc_middle::ty::InstanceKind;
 
@@ -310,9 +310,20 @@ fn exported_symbols_provider_local(
                 continue;
             }
 
+            if !tcx.sess.opts.share_generics() {
+                if tcx.codegen_fn_attrs(mono_item.def_id()).inline
+                    == rustc_attr_parsing::InlineAttr::Never
+                {
+                    // this is OK, we explicitly allow sharing inline(never) across crates even
+                    // without share-generics.
+                } else {
+                    continue;
+                }
+            }
+
             match *mono_item {
                 MonoItem::Fn(Instance { def: InstanceKind::Item(def), args }) => {
-                    if args.non_erasable_generics(tcx, def).next().is_some() {
+                    if args.non_erasable_generics().next().is_some() {
                         let symbol = ExportedSymbol::Generic(def, args);
                         symbols.push((symbol, SymbolExportInfo {
                             level: SymbolExportLevel::Rust,
@@ -321,12 +332,9 @@ fn exported_symbols_provider_local(
                         }));
                     }
                 }
-                MonoItem::Fn(Instance { def: InstanceKind::DropGlue(def_id, Some(ty)), args }) => {
+                MonoItem::Fn(Instance { def: InstanceKind::DropGlue(_, Some(ty)), args }) => {
                     // A little sanity-check
-                    assert_eq!(
-                        args.non_erasable_generics(tcx, def_id).next(),
-                        Some(GenericArgKind::Type(ty))
-                    );
+                    assert_eq!(args.non_erasable_generics().next(), Some(GenericArgKind::Type(ty)));
                     symbols.push((ExportedSymbol::DropGlue(ty), SymbolExportInfo {
                         level: SymbolExportLevel::Rust,
                         kind: SymbolExportKind::Text,
@@ -334,14 +342,11 @@ fn exported_symbols_provider_local(
                     }));
                 }
                 MonoItem::Fn(Instance {
-                    def: InstanceKind::AsyncDropGlueCtorShim(def_id, Some(ty)),
+                    def: InstanceKind::AsyncDropGlueCtorShim(_, Some(ty)),
                     args,
                 }) => {
                     // A little sanity-check
-                    assert_eq!(
-                        args.non_erasable_generics(tcx, def_id).next(),
-                        Some(GenericArgKind::Type(ty))
-                    );
+                    assert_eq!(args.non_erasable_generics().next(), Some(GenericArgKind::Type(ty)));
                     symbols.push((ExportedSymbol::AsyncDropGlueCtorShim(ty), SymbolExportInfo {
                         level: SymbolExportLevel::Rust,
                         kind: SymbolExportKind::Text,
@@ -554,7 +559,7 @@ pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
     symbol: ExportedSymbol<'tcx>,
     instantiating_crate: CrateNum,
 ) -> String {
-    use rustc_target::abi::call::Conv;
+    use rustc_target::callconv::Conv;
 
     let mut undecorated = symbol_name_for_instance_in_crate(tcx, symbol, instantiating_crate);
 
@@ -601,8 +606,10 @@ pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
 
     let (conv, args) = instance
         .map(|i| {
-            tcx.fn_abi_of_instance(ty::ParamEnv::reveal_all().and((i, ty::List::empty())))
-                .unwrap_or_else(|_| bug!("fn_abi_of_instance({i:?}) failed"))
+            tcx.fn_abi_of_instance(
+                ty::TypingEnv::fully_monomorphized().as_query_input((i, ty::List::empty())),
+            )
+            .unwrap_or_else(|_| bug!("fn_abi_of_instance({i:?}) failed"))
         })
         .map(|fnabi| (fnabi.conv, &fnabi.args[..]))
         .unwrap_or((Conv::Rust, &[]));

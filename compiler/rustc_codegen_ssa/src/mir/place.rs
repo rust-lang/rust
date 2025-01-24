@@ -1,10 +1,10 @@
 use rustc_abi::Primitive::{Int, Pointer};
-use rustc_abi::{Align, FieldsShape, Size, TagEncoding, Variants};
+use rustc_abi::{Align, BackendRepr, FieldsShape, Size, TagEncoding, VariantIdx, Variants};
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, mir};
-use rustc_target::abi::VariantIdx;
 use tracing::{debug, instrument};
 
 use super::operand::OperandValue;
@@ -55,7 +55,7 @@ impl<V: CodegenObject> PlaceValue<V> {
     /// Creates a `PlaceRef` to this location with the given type.
     pub fn with_type<'tcx>(self, layout: TyAndLayout<'tcx>) -> PlaceRef<'tcx, V> {
         assert!(
-            layout.is_unsized() || layout.abi.is_uninhabited() || self.llextra.is_none(),
+            layout.is_unsized() || layout.is_uninhabited() || self.llextra.is_none(),
             "Had pointer metadata {:?} for sized type {layout:?}",
             self.llextra,
         );
@@ -239,10 +239,11 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         let dl = &bx.tcx().data_layout;
         let cast_to_layout = bx.cx().layout_of(cast_to);
         let cast_to = bx.cx().immediate_backend_type(cast_to_layout);
-        if self.layout.abi.is_uninhabited() {
+        if self.layout.is_uninhabited() {
             return bx.cx().const_poison(cast_to);
         }
         let (tag_scalar, tag_encoding, tag_field) = match self.layout.variants {
+            Variants::Empty => unreachable!("we already handled uninhabited types"),
             Variants::Single { index } => {
                 let discr_val = self
                     .layout
@@ -358,16 +359,16 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         variant_index: VariantIdx,
     ) {
-        if self.layout.for_variant(bx.cx(), variant_index).abi.is_uninhabited() {
+        if self.layout.for_variant(bx.cx(), variant_index).is_uninhabited() {
             // We play it safe by using a well-defined `abort`, but we could go for immediate UB
             // if that turns out to be helpful.
             bx.abort();
             return;
         }
         match self.layout.variants {
-            Variants::Single { index } => {
-                assert_eq!(index, variant_index);
-            }
+            Variants::Empty => unreachable!("we already handled uninhabited types"),
+            Variants::Single { index } => assert_eq!(index, variant_index),
+
             Variants::Multiple { tag_encoding: TagEncoding::Direct, tag_field, .. } => {
                 let ptr = self.project_field(bx, tag_field);
                 let to =
@@ -386,15 +387,22 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 if variant_index != untagged_variant {
                     let niche = self.project_field(bx, tag_field);
                     let niche_llty = bx.cx().immediate_backend_type(niche.layout);
+                    let BackendRepr::Scalar(scalar) = niche.layout.backend_repr else {
+                        bug!("expected a scalar placeref for the niche");
+                    };
+                    // We are supposed to compute `niche_value.wrapping_add(niche_start)` wrapping
+                    // around the `niche`'s type.
+                    // The easiest way to do that is to do wrapping arithmetic on `u128` and then
+                    // masking off any extra bits that occur because we did the arithmetic with too many bits.
                     let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
                     let niche_value = (niche_value as u128).wrapping_add(niche_start);
-                    // FIXME(eddyb): check the actual primitive type here.
-                    let niche_llval = if niche_value == 0 {
-                        // HACK(eddyb): using `c_null` as it works on all types.
-                        bx.cx().const_null(niche_llty)
-                    } else {
-                        bx.cx().const_uint_big(niche_llty, niche_value)
-                    };
+                    let niche_value = niche_value & niche.layout.size.unsigned_int_max();
+
+                    let niche_llval = bx.cx().scalar_to_backend(
+                        Scalar::from_uint(niche_value, niche.layout.size),
+                        scalar,
+                        niche_llty,
+                    );
                     OperandValue::Immediate(niche_llval).store(bx, niche);
                 }
             }
@@ -415,10 +423,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             layout.size
         };
 
-        let llval = bx.inbounds_gep(bx.cx().backend_type(self.layout), self.val.llval, &[
-            bx.cx().const_usize(0),
-            llindex,
-        ]);
+        let llval = bx.inbounds_gep(bx.cx().backend_type(layout), self.val.llval, &[llindex]);
         let align = self.val.align.restrict_for_offset(offset);
         PlaceValue::new_sized(llval, align).with_type(layout)
     }

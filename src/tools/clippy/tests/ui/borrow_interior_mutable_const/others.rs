@@ -47,6 +47,17 @@ impl<T> std::ops::Deref for StaticRef<T> {
     }
 }
 
+// ICE regression test
+mod issue12979 {
+    use std::cell::UnsafeCell;
+
+    const ATOMIC_TUPLE: (Vec<UnsafeCell<u8>>, ()) = (Vec::new(), ());
+
+    fn main() {
+        let _x = &ATOMIC_TUPLE.0;
+    }
+}
+
 // use a tuple to make sure referencing a field behind a pointer isn't linted.
 const CELL_REF: StaticRef<(UnsafeCell<u32>,)> = unsafe { StaticRef::new(std::ptr::null()) };
 

@@ -9,7 +9,7 @@ help: consider importing the `test` crate
 LL + extern crate test;
    |
 
-error[E0658]: use of unstable library feature 'test'
+error[E0658]: use of unstable library feature `test`
   --> $DIR/issue-37887.rs:2:5
    |
 LL |     extern crate test;

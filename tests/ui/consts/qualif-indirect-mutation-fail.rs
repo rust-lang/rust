@@ -1,6 +1,5 @@
 //@ compile-flags: --crate-type=lib
 #![feature(const_precise_live_drops)]
-#![feature(const_swap)]
 
 // Mutable borrow of a field with drop impl.
 pub const fn f() {

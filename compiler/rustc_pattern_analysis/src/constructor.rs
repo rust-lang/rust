@@ -182,7 +182,7 @@ use std::iter::once;
 
 use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, SingleS};
 use rustc_index::IndexVec;
-use rustc_index::bit_set::{BitSet, GrowableBitSet};
+use rustc_index::bit_set::{DenseBitSet, GrowableBitSet};
 use smallvec::SmallVec;
 
 use self::Constructor::*;
@@ -1072,7 +1072,7 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
                 }
             }
             ConstructorSet::Variants { variants, non_exhaustive } => {
-                let mut seen_set = BitSet::new_empty(variants.len());
+                let mut seen_set = DenseBitSet::new_empty(variants.len());
                 for idx in seen.iter().filter_map(|c| c.as_variant()) {
                     seen_set.insert(idx);
                 }

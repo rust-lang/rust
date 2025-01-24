@@ -1,0 +1,21 @@
+error: Undefined Behavior: memory access failed: expected a pointer to 16 bytes of memory, but got ALLOC which is only 15 bytes from the end of the allocation
+  --> tests/fail-dep/libc/prctl-threadname.rs:LL:CC
+   |
+LL |         libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr().cast::<libc::c_char>());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 16 bytes of memory, but got ALLOC which is only 15 bytes from the end of the allocation
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+help: ALLOC was allocated here:
+  --> tests/fail-dep/libc/prctl-threadname.rs:LL:CC
+   |
+LL |     let mut buf = vec![0u8; 15];
+   |                   ^^^^^^^^^^^^^
+   = note: BACKTRACE (of the first span):
+   = note: inside `main` at tests/fail-dep/libc/prctl-threadname.rs:LL:CC
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

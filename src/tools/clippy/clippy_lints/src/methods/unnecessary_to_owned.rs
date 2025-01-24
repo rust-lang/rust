@@ -1,7 +1,7 @@
 use super::implicit_clone::is_clone_like;
 use super::unnecessary_iter_cloned::{self, is_into_iter};
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::visitors::find_all_ret_expressions;
@@ -494,9 +494,9 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
     for (_, node) in cx.tcx.hir().parent_iter(expr.hir_id) {
         match node {
             Node::Stmt(_) => return true,
-            Node::Block(..) => continue,
+            Node::Block(..) => {},
             Node::Item(item) => {
-                if let ItemKind::Fn(_, _, body_id) = &item.kind
+                if let ItemKind::Fn { body: body_id, .. } = &item.kind
                     && let output_ty = return_ty(cx, item.owner_id)
                     && rustc_hir_typeck::can_coerce(cx.tcx, cx.param_env, item.owner_id.def_id, ty, output_ty)
                 {
@@ -568,7 +568,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                             let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
                             !cx.tcx
                                 .infer_ctxt()
-                                .build()
+                                .build(cx.typing_mode())
                                 .predicate_must_hold_modulo_regions(&obligation)
                         }) {
                             return false;
@@ -578,7 +578,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                         if output_ty.contains(param_ty) {
                             if let Ok(new_ty) = cx.tcx.try_instantiate_and_normalize_erasing_regions(
                                 new_subst,
-                                cx.param_env,
+                                cx.typing_env(),
                                 bound_fn_sig.rebind(output_ty),
                             ) {
                                 expr = parent_expr;

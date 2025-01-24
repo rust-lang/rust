@@ -1,5 +1,5 @@
 use syntax::{
-    ast::{self, edit::AstNodeEdit, make},
+    ast::{self, edit_in_place::Indent, syntax_factory::SyntaxFactory},
     AstNode,
 };
 
@@ -39,12 +39,16 @@ pub(crate) fn add_braces(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
         },
         expr.syntax().text_range(),
         |builder| {
-            let block_expr = AstNodeEdit::indent(
-                &make::block_expr(None, Some(expr.clone())),
-                AstNodeEdit::indent_level(&expr),
-            );
+            let make = SyntaxFactory::new();
+            let mut editor = builder.make_editor(expr.syntax());
 
-            builder.replace(expr.syntax().text_range(), block_expr.syntax().text());
+            let block_expr = make.block_expr(None, Some(expr.clone()));
+            block_expr.indent(expr.indent_level());
+
+            editor.replace(expr.syntax(), block_expr.syntax());
+
+            editor.add_mappings(make.finish_with_mappings());
+            builder.add_file_edits(ctx.file_id(), editor);
         },
     )
 }

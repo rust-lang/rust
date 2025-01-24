@@ -15,7 +15,7 @@ use itertools::Itertools;
 use stdx::{always, never};
 use syntax::{ast, AstNode, SyntaxKind, SyntaxNode, TextRange, TextSize};
 
-use text_edit::TextEdit;
+use ide_db::text_edit::TextEdit;
 
 use crate::{FilePosition, RangeInfo, SourceChange};
 
@@ -227,8 +227,7 @@ fn find_definitions(
                 ast::NameLike::Name(name)
                     if name
                         .syntax()
-                        .parent()
-                        .map_or(false, |it| ast::Rename::can_cast(it.kind()))
+                        .parent().is_some_and(|it| ast::Rename::can_cast(it.kind()))
                         // FIXME: uncomment this once we resolve to usages to extern crate declarations
                         // && name
                         //     .syntax()
@@ -242,7 +241,7 @@ fn find_definitions(
                 ast::NameLike::Name(name) => NameClass::classify(sema, name)
                     .map(|class| match class {
                         NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                        NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
+                        NameClass::PatFieldShorthand { local_def, field_ref: _, adt_subst: _ } => {
                             Definition::Local(local_def)
                         }
                     })
@@ -250,8 +249,8 @@ fn find_definitions(
                 ast::NameLike::NameRef(name_ref) => {
                     NameRefClass::classify(sema, name_ref)
                         .map(|class| match class {
-                            NameRefClass::Definition(def) => def,
-                            NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
+                            NameRefClass::Definition(def, _) => def,
+                            NameRefClass::FieldShorthand { local_ref, field_ref: _, adt_subst: _ } => {
                                 Definition::Local(local_ref)
                             }
                             NameRefClass::ExternCrateShorthand { decl, .. } => {
@@ -264,8 +263,7 @@ fn find_definitions(
                         .and_then(|def| {
                             // if the name differs from the definitions name it has to be an alias
                             if def
-                                .name(sema.db)
-                                .map_or(false, |it| !it.eq_ident(name_ref.text().as_str()))
+                                .name(sema.db).is_some_and(|it| !it.eq_ident(name_ref.text().as_str()))
                             {
                                 Err(format_err!("Renaming aliases is currently unsupported"))
                             } else {
@@ -276,7 +274,7 @@ fn find_definitions(
                 ast::NameLike::Lifetime(lifetime) => {
                     NameRefClass::classify_lifetime(sema, lifetime)
                         .and_then(|class| match class {
-                            NameRefClass::Definition(def) => Some(def),
+                            NameRefClass::Definition(def, _) => Some(def),
                             _ => None,
                         })
                         .or_else(|| {
@@ -449,16 +447,20 @@ fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Opt
 mod tests {
     use expect_test::{expect, Expect};
     use ide_db::source_change::SourceChange;
+    use ide_db::text_edit::TextEdit;
     use stdx::trim_indent;
     use test_utils::assert_eq_text;
-    use text_edit::TextEdit;
 
     use crate::fixture;
 
     use super::{RangeInfo, RenameError};
 
     #[track_caller]
-    fn check(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
+    fn check(
+        new_name: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+    ) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = fixture::position(ra_fixture_before);
         if !ra_fixture_after.starts_with("error: ") {
@@ -496,14 +498,22 @@ mod tests {
         };
     }
 
-    fn check_expect(new_name: &str, ra_fixture: &str, expect: Expect) {
+    fn check_expect(
+        new_name: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+    ) {
         let (analysis, position) = fixture::position(ra_fixture);
         let source_change =
             analysis.rename(position, new_name).unwrap().expect("Expect returned a RenameError");
         expect.assert_eq(&filter_expect(source_change))
     }
 
-    fn check_expect_will_rename_file(new_name: &str, ra_fixture: &str, expect: Expect) {
+    fn check_expect_will_rename_file(
+        new_name: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+    ) {
         let (analysis, position) = fixture::position(ra_fixture);
         let source_change = analysis
             .will_rename_file(position.file_id, new_name)
@@ -512,7 +522,7 @@ mod tests {
         expect.assert_eq(&filter_expect(source_change))
     }
 
-    fn check_prepare(ra_fixture: &str, expect: Expect) {
+    fn check_prepare(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
         let result = analysis
             .prepare_rename(position)
@@ -3102,6 +3112,75 @@ fn main() { let _: S; }
             r#"
 use lib::S as Baz;
 fn main() { let _: Baz; }
+"#,
+        );
+    }
+
+    #[test]
+    fn rename_type_param_ref_in_use_bound() {
+        check(
+            "U",
+            r#"
+fn foo<T>() -> impl use<T$0> Trait {}
+"#,
+            r#"
+fn foo<U>() -> impl use<U> Trait {}
+"#,
+        );
+    }
+
+    #[test]
+    fn rename_type_param_in_use_bound() {
+        check(
+            "U",
+            r#"
+fn foo<T$0>() -> impl use<T> Trait {}
+"#,
+            r#"
+fn foo<U>() -> impl use<U> Trait {}
+"#,
+        );
+    }
+
+    #[test]
+    fn rename_lifetime_param_ref_in_use_bound() {
+        check(
+            "u",
+            r#"
+fn foo<'t>() -> impl use<'t$0> Trait {}
+"#,
+            r#"
+fn foo<'u>() -> impl use<'u> Trait {}
+"#,
+        );
+    }
+
+    #[test]
+    fn rename_lifetime_param_in_use_bound() {
+        check(
+            "u",
+            r#"
+fn foo<'t$0>() -> impl use<'t> Trait {}
+"#,
+            r#"
+fn foo<'u>() -> impl use<'u> Trait {}
+"#,
+        );
+    }
+
+    #[test]
+    fn rename_parent_type_param_in_use_bound() {
+        check(
+            "U",
+            r#"
+trait Trait<T> {
+    fn foo() -> impl use<T$0> Trait {}
+}
+"#,
+            r#"
+trait Trait<U> {
+    fn foo() -> impl use<U> Trait {}
+}
 "#,
         );
     }

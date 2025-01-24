@@ -6,8 +6,7 @@ use rustc_errors::{
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
 mod pattern_types;
@@ -530,10 +529,16 @@ pub(crate) struct GenericArgsOnOverriddenImpl {
 #[diag(hir_analysis_const_impl_for_non_const_trait)]
 pub(crate) struct ConstImplForNonConstTrait {
     #[primary_span]
+    #[label]
     pub trait_ref_span: Span,
     pub trait_name: String,
-    #[suggestion(applicability = "machine-applicable", code = "#[const_trait]")]
+    #[suggestion(
+        applicability = "machine-applicable",
+        code = "#[const_trait] ",
+        style = "verbose"
+    )]
     pub local_trait_span: Option<Span>,
+    pub suggestion_pre: &'static str,
     #[note]
     pub marking: (),
     #[note(hir_analysis_adding)]
@@ -544,8 +549,19 @@ pub(crate) struct ConstImplForNonConstTrait {
 #[diag(hir_analysis_const_bound_for_non_const_trait)]
 pub(crate) struct ConstBoundForNonConstTrait {
     #[primary_span]
+    #[label]
     pub span: Span,
     pub modifier: &'static str,
+    #[note]
+    pub def_span: Option<Span>,
+    pub suggestion_pre: &'static str,
+    #[suggestion(
+        applicability = "machine-applicable",
+        code = "#[const_trait] ",
+        style = "verbose"
+    )]
+    pub suggestion: Option<Span>,
+    pub trait_name: String,
 }
 
 #[derive(Diagnostic)]
@@ -604,48 +620,6 @@ pub(crate) struct TargetFeatureOnMain {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_start_not_track_caller)]
-pub(crate) struct StartTrackCaller {
-    #[primary_span]
-    pub span: Span,
-    #[label]
-    pub start: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_start_not_target_feature)]
-pub(crate) struct StartTargetFeature {
-    #[primary_span]
-    pub span: Span,
-    #[label]
-    pub start: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_start_not_async, code = E0752)]
-pub(crate) struct StartAsync {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_start_function_where, code = E0647)]
-pub(crate) struct StartFunctionWhere {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_start_function_parameters, code = E0132)]
-pub(crate) struct StartFunctionParameters {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_main_function_return_type_generic, code = E0131)]
 pub(crate) struct MainFunctionReturnTypeGeneric {
     #[primary_span]
@@ -672,11 +646,10 @@ pub(crate) struct MainFunctionGenericParameters {
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_variadic_function_compatible_convention, code = E0045)]
-pub(crate) struct VariadicFunctionCompatibleConvention<'a> {
+pub(crate) struct VariadicFunctionCompatibleConvention {
     #[primary_span]
     #[label]
     pub span: Span,
-    pub conventions: &'a str,
 }
 
 #[derive(Diagnostic)]
@@ -735,6 +708,17 @@ pub(crate) struct InvalidUnionField {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_invalid_unsafe_field, code = E0740)]
+pub(crate) struct InvalidUnsafeField {
+    #[primary_span]
+    pub field_span: Span,
+    #[subdiagnostic]
+    pub sugg: InvalidUnsafeFieldSuggestion,
+    #[note]
+    pub note: (),
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_return_type_notation_on_non_rpitit)]
 pub(crate) struct ReturnTypeNotationOnNonRpitit<'tcx> {
     #[primary_span]
@@ -749,6 +733,18 @@ pub(crate) struct ReturnTypeNotationOnNonRpitit<'tcx> {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(hir_analysis_invalid_union_field_sugg, applicability = "machine-applicable")]
 pub(crate) struct InvalidUnionFieldSuggestion {
+    #[suggestion_part(code = "std::mem::ManuallyDrop<")]
+    pub lo: Span,
+    #[suggestion_part(code = ">")]
+    pub hi: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    hir_analysis_invalid_unsafe_field_sugg,
+    applicability = "machine-applicable"
+)]
+pub(crate) struct InvalidUnsafeFieldSuggestion {
     #[suggestion_part(code = "std::mem::ManuallyDrop<")]
     pub lo: Span,
     #[suggestion_part(code = ">")]
@@ -1058,13 +1054,6 @@ pub(crate) struct EmptySpecialization {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_const_specialize)]
-pub(crate) struct ConstSpecialize {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_static_specialize)]
 pub(crate) struct StaticSpecialize {
     #[primary_span]
@@ -1151,6 +1140,16 @@ pub(crate) struct ReturnPositionImplTraitInTraitRefined<'tcx> {
     pub pre: &'static str,
     pub post: &'static str,
     pub return_ty: Ty<'tcx>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(hir_analysis_rpitit_refined_lifetimes)]
+#[note]
+#[note(hir_analysis_feedback_note)]
+pub(crate) struct ReturnPositionImplTraitInTraitRefinedLifetimes {
+    #[suggestion(applicability = "maybe-incorrect", code = "{suggestion}")]
+    pub suggestion_span: Span,
+    pub suggestion: String,
 }
 
 #[derive(Diagnostic)]
@@ -1613,6 +1612,24 @@ pub(crate) struct NonConstRange {
     pub span: Span,
 }
 
+#[derive(Subdiagnostic)]
+pub(crate) enum InvalidReceiverTyHint {
+    #[note(hir_analysis_invalid_receiver_ty_help_weak_note)]
+    Weak,
+    #[note(hir_analysis_invalid_receiver_ty_help_nonnull_note)]
+    NonNull,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_invalid_receiver_ty_no_arbitrary_self_types, code = E0307)]
+#[note]
+#[help(hir_analysis_invalid_receiver_ty_help_no_arbitrary_self_types)]
+pub(crate) struct InvalidReceiverTyNoArbitrarySelfTypes<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub receiver_ty: Ty<'tcx>,
+}
+
 #[derive(Diagnostic)]
 #[diag(hir_analysis_invalid_receiver_ty, code = E0307)]
 #[note]
@@ -1621,13 +1638,19 @@ pub(crate) struct InvalidReceiverTy<'tcx> {
     #[primary_span]
     pub span: Span,
     pub receiver_ty: Ty<'tcx>,
+    #[subdiagnostic]
+    pub hint: Option<InvalidReceiverTyHint>,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_effects_without_next_solver)]
+#[diag(hir_analysis_invalid_generic_receiver_ty, code = E0801)]
 #[note]
-#[help]
-pub(crate) struct EffectsWithoutNextSolver;
+#[help(hir_analysis_invalid_generic_receiver_ty_help)]
+pub(crate) struct InvalidGenericReceiverTy<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub receiver_ty: Ty<'tcx>,
+}
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_cmse_inputs_stack_spill, code = E0798)]
@@ -1670,4 +1693,12 @@ pub(crate) struct BadReturnTypeNotation {
 pub(crate) struct CmseEntryGeneric {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_register_type_unstable)]
+pub(crate) struct RegisterTypeUnstable<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'a>,
 }

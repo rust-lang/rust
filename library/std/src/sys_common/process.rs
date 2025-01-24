@@ -8,17 +8,11 @@ use crate::sys::process::{EnvKey, ExitStatus, Process, StdioPipes};
 use crate::{env, fmt, io};
 
 // Stores a set of changes to an environment
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct CommandEnv {
     clear: bool,
     saw_path: bool,
     vars: BTreeMap<EnvKey, Option<OsString>>,
-}
-
-impl Default for CommandEnv {
-    fn default() -> Self {
-        CommandEnv { clear: false, saw_path: false, vars: Default::default() }
-    }
 }
 
 impl fmt::Debug for CommandEnv {

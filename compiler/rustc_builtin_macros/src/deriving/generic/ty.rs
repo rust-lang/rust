@@ -6,8 +6,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, Expr, GenericArg, GenericParamKind, Generics, SelfKind};
 use rustc_expand::base::ExtCtxt;
 use rustc_span::source_map::respan;
-use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
 use thin_vec::ThinVec;
 
 /// A path, e.g., `::std::option::Option::<i32>` (global). Has support

@@ -1,7 +1,15 @@
 //! Generates descriptor structures for unstable features from the unstable book
 //! and lints from rustc, rustdoc, and clippy.
-use std::{borrow::Cow, fs, path::Path};
+#![allow(clippy::disallowed_types)]
 
+use std::{
+    collections::{hash_map, HashMap},
+    fs,
+    path::Path,
+    str::FromStr,
+};
+
+use edition::Edition;
 use stdx::format_to;
 use xshell::{cmd, Shell};
 
@@ -36,10 +44,17 @@ pub(crate) fn generate(check: bool) {
 
     let mut contents = String::from(
         r"
+use span::Edition;
+
+use crate::Severity;
+
 #[derive(Clone)]
 pub struct Lint {
     pub label: &'static str,
     pub description: &'static str,
+    pub default_severity: Severity,
+    pub warn_since: Option<Edition>,
+    pub deny_since: Option<Edition>,
 }
 
 pub struct LintGroup {
@@ -68,7 +83,7 @@ pub struct LintGroup {
     let lints_json = project_root().join("./target/clippy_lints.json");
     cmd!(
         sh,
-        "curl https://rust-lang.github.io/rust-clippy/master/lints.json --output {lints_json}"
+        "curl https://rust-lang.github.io/rust-clippy/stable/lints.json --output {lints_json}"
     )
     .run()
     .unwrap();
@@ -83,6 +98,48 @@ pub struct LintGroup {
         &contents,
         check,
     );
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Severity {
+    Allow,
+    Warn,
+    Deny,
+}
+
+impl std::fmt::Display for Severity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Severity::{}",
+            match self {
+                Severity::Allow => "Allow",
+                Severity::Warn => "Warning",
+                Severity::Deny => "Error",
+            }
+        )
+    }
+}
+
+impl FromStr for Severity {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "allow" => Ok(Self::Allow),
+            "warn" => Ok(Self::Warn),
+            "deny" => Ok(Self::Deny),
+            _ => Err("invalid severity"),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct Lint {
+    description: String,
+    default_severity: Severity,
+    warn_since: Option<Edition>,
+    deny_since: Option<Edition>,
 }
 
 /// Parses the output of `rustdoc -Whelp` and prints `Lint` and `LintGroup` constants into `buf`.
@@ -108,52 +165,203 @@ pub struct LintGroup {
 /// `rustdoc -Whelp` (and any other custom `rustc` driver) adds another two
 /// tables after the `rustc` ones, with a different title but the same format.
 fn generate_lint_descriptor(sh: &Shell, buf: &mut String) {
-    let stdout = cmd!(sh, "rustdoc -Whelp").read().unwrap();
-    let lints_pat = "----  -------  -------\n";
-    let lint_groups_pat = "----  ---------\n";
-    let lints = find_and_slice(&stdout, lints_pat);
-    let lint_groups = find_and_slice(lints, lint_groups_pat);
-    let lints_rustdoc = find_and_slice(lint_groups, lints_pat);
-    let lint_groups_rustdoc = find_and_slice(lints_rustdoc, lint_groups_pat);
+    fn get_lints_as_text(
+        stdout: &str,
+    ) -> (
+        impl Iterator<Item = (String, &str, Severity)> + '_,
+        impl Iterator<Item = (String, Lint, impl Iterator<Item = String> + '_)> + '_,
+        impl Iterator<Item = (String, &str, Severity)> + '_,
+        impl Iterator<Item = (String, Lint, impl Iterator<Item = String> + '_)> + '_,
+    ) {
+        let lints_pat = "----  -------  -------\n";
+        let lint_groups_pat = "----  ---------\n";
+        let lints = find_and_slice(stdout, lints_pat);
+        let lint_groups = find_and_slice(lints, lint_groups_pat);
+        let lints_rustdoc = find_and_slice(lint_groups, lints_pat);
+        let lint_groups_rustdoc = find_and_slice(lints_rustdoc, lint_groups_pat);
+
+        let lints = lints.lines().take_while(|l| !l.is_empty()).map(|line| {
+            let (name, rest) = line.trim().split_once(char::is_whitespace).unwrap();
+            let (severity, description) = rest.trim().split_once(char::is_whitespace).unwrap();
+            (name.trim().replace('-', "_"), description.trim(), severity.parse().unwrap())
+        });
+        let lint_groups = lint_groups.lines().take_while(|l| !l.is_empty()).map(|line| {
+            let (name, lints) = line.trim().split_once(char::is_whitespace).unwrap();
+            let label = name.trim().replace('-', "_");
+            let lint = Lint {
+                description: format!("lint group for: {}", lints.trim()),
+                default_severity: Severity::Allow,
+                warn_since: None,
+                deny_since: None,
+            };
+            let children = lints
+                .split_ascii_whitespace()
+                .map(|s| s.trim().trim_matches(',').replace('-', "_"));
+            (label, lint, children)
+        });
+
+        let lints_rustdoc = lints_rustdoc.lines().take_while(|l| !l.is_empty()).map(|line| {
+            let (name, rest) = line.trim().split_once(char::is_whitespace).unwrap();
+            let (severity, description) = rest.trim().split_once(char::is_whitespace).unwrap();
+            (name.trim().replace('-', "_"), description.trim(), severity.parse().unwrap())
+        });
+        let lint_groups_rustdoc =
+            lint_groups_rustdoc.lines().take_while(|l| !l.is_empty()).map(|line| {
+                let (name, lints) = line.trim().split_once(char::is_whitespace).unwrap();
+                let label = name.trim().replace('-', "_");
+                let lint = Lint {
+                    description: format!("lint group for: {}", lints.trim()),
+                    default_severity: Severity::Allow,
+                    warn_since: None,
+                    deny_since: None,
+                };
+                let children = lints
+                    .split_ascii_whitespace()
+                    .map(|s| s.trim().trim_matches(',').replace('-', "_"));
+                (label, lint, children)
+            });
+
+        (lints, lint_groups, lints_rustdoc, lint_groups_rustdoc)
+    }
+
+    fn insert_lints<'a>(
+        edition: Edition,
+        lints_map: &mut HashMap<String, Lint>,
+        lint_groups_map: &mut HashMap<String, (Lint, Vec<String>)>,
+        lints: impl Iterator<Item = (String, &'a str, Severity)>,
+        lint_groups: impl Iterator<Item = (String, Lint, impl Iterator<Item = String>)>,
+    ) {
+        for (lint_name, lint_description, lint_severity) in lints {
+            let lint = lints_map.entry(lint_name).or_insert_with(|| Lint {
+                description: lint_description.to_owned(),
+                default_severity: Severity::Allow,
+                warn_since: None,
+                deny_since: None,
+            });
+            if lint_severity == Severity::Warn
+                && lint.warn_since.is_none()
+                && lint.default_severity < Severity::Warn
+            {
+                lint.warn_since = Some(edition);
+            }
+            if lint_severity == Severity::Deny
+                && lint.deny_since.is_none()
+                && lint.default_severity < Severity::Deny
+            {
+                lint.deny_since = Some(edition);
+            }
+        }
+
+        for (group_name, lint, children) in lint_groups {
+            match lint_groups_map.entry(group_name) {
+                hash_map::Entry::Vacant(entry) => {
+                    entry.insert((lint, Vec::from_iter(children)));
+                }
+                hash_map::Entry::Occupied(mut entry) => {
+                    // Overwrite, because some groups (such as edition incompatibility) are changed.
+                    *entry.get_mut() = (lint, Vec::from_iter(children));
+                }
+            }
+        }
+    }
+
+    fn get_lints(
+        sh: &Shell,
+        edition: Edition,
+        lints_map: &mut HashMap<String, Lint>,
+        lint_groups_map: &mut HashMap<String, (Lint, Vec<String>)>,
+        lints_rustdoc_map: &mut HashMap<String, Lint>,
+        lint_groups_rustdoc_map: &mut HashMap<String, (Lint, Vec<String>)>,
+    ) {
+        let edition_str = edition.to_string();
+        let stdout = cmd!(sh, "rustdoc +nightly -Whelp -Zunstable-options --edition={edition_str}")
+            .read()
+            .unwrap();
+        let (lints, lint_groups, lints_rustdoc, lint_groups_rustdoc) = get_lints_as_text(&stdout);
+
+        insert_lints(edition, lints_map, lint_groups_map, lints, lint_groups);
+        insert_lints(
+            edition,
+            lints_rustdoc_map,
+            lint_groups_rustdoc_map,
+            lints_rustdoc,
+            lint_groups_rustdoc,
+        );
+    }
+
+    let basic_lints = cmd!(sh, "rustdoc +nightly -Whelp --edition=2015").read().unwrap();
+    let (lints, lint_groups, lints_rustdoc, lint_groups_rustdoc) = get_lints_as_text(&basic_lints);
+
+    let mut lints = lints
+        .map(|(label, description, severity)| {
+            (
+                label,
+                Lint {
+                    description: description.to_owned(),
+                    default_severity: severity,
+                    warn_since: None,
+                    deny_since: None,
+                },
+            )
+        })
+        .collect::<HashMap<_, _>>();
+    let mut lint_groups = lint_groups
+        .map(|(label, lint, children)| (label, (lint, Vec::from_iter(children))))
+        .collect::<HashMap<_, _>>();
+    let mut lints_rustdoc = lints_rustdoc
+        .map(|(label, description, severity)| {
+            (
+                label,
+                Lint {
+                    description: description.to_owned(),
+                    default_severity: severity,
+                    warn_since: None,
+                    deny_since: None,
+                },
+            )
+        })
+        .collect::<HashMap<_, _>>();
+    let mut lint_groups_rustdoc = lint_groups_rustdoc
+        .map(|(label, lint, children)| (label, (lint, Vec::from_iter(children))))
+        .collect::<HashMap<_, _>>();
+
+    for edition in Edition::iter().skip(1) {
+        get_lints(
+            sh,
+            edition,
+            &mut lints,
+            &mut lint_groups,
+            &mut lints_rustdoc,
+            &mut lint_groups_rustdoc,
+        );
+    }
+
+    let mut lints = Vec::from_iter(lints);
+    lints.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+    let mut lint_groups = Vec::from_iter(lint_groups);
+    lint_groups.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+    let mut lints_rustdoc = Vec::from_iter(lints_rustdoc);
+    lints_rustdoc.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+    let mut lint_groups_rustdoc = Vec::from_iter(lint_groups_rustdoc);
+    lint_groups_rustdoc.sort_unstable_by(|a, b| a.0.cmp(&b.0));
 
     buf.push_str(r#"pub const DEFAULT_LINTS: &[Lint] = &["#);
     buf.push('\n');
 
-    let lints = lints.lines().take_while(|l| !l.is_empty()).map(|line| {
-        let (name, rest) = line.trim().split_once(char::is_whitespace).unwrap();
-        let (_default_level, description) = rest.trim().split_once(char::is_whitespace).unwrap();
-        (name.trim(), Cow::Borrowed(description.trim()), vec![])
-    });
-    let lint_groups = lint_groups.lines().take_while(|l| !l.is_empty()).map(|line| {
-        let (name, lints) = line.trim().split_once(char::is_whitespace).unwrap();
-        (
-            name.trim(),
-            format!("lint group for: {}", lints.trim()).into(),
-            lints
-                .split_ascii_whitespace()
-                .map(|s| s.trim().trim_matches(',').replace('-', "_"))
-                .collect(),
-        )
-    });
-
-    let mut lints = lints.chain(lint_groups).collect::<Vec<_>>();
-    lints.sort_by(|(ident, ..), (ident2, ..)| ident.cmp(ident2));
-
-    for (name, description, ..) in &lints {
-        push_lint_completion(buf, &name.replace('-', "_"), description);
+    for (name, lint) in &lints {
+        push_lint_completion(buf, name, lint);
+    }
+    for (name, (group, _)) in &lint_groups {
+        push_lint_completion(buf, name, group);
     }
     buf.push_str("];\n\n");
 
     buf.push_str(r#"pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &["#);
-    for (name, description, children) in &lints {
-        if !children.is_empty() {
-            // HACK: warnings is emitted with a general description, not with its members
-            if name == &"warnings" {
-                push_lint_group(buf, name, description, &Vec::new());
-                continue;
-            }
-            push_lint_group(buf, &name.replace('-', "_"), description, children);
+    for (name, (lint, children)) in &lint_groups {
+        if name == "warnings" {
+            continue;
         }
+        push_lint_group(buf, name, lint, children);
     }
     buf.push('\n');
     buf.push_str("];\n");
@@ -164,37 +372,17 @@ fn generate_lint_descriptor(sh: &Shell, buf: &mut String) {
     buf.push_str(r#"pub const RUSTDOC_LINTS: &[Lint] = &["#);
     buf.push('\n');
 
-    let lints_rustdoc = lints_rustdoc.lines().take_while(|l| !l.is_empty()).map(|line| {
-        let (name, rest) = line.trim().split_once(char::is_whitespace).unwrap();
-        let (_default_level, description) = rest.trim().split_once(char::is_whitespace).unwrap();
-        (name.trim(), Cow::Borrowed(description.trim()), vec![])
-    });
-    let lint_groups_rustdoc =
-        lint_groups_rustdoc.lines().take_while(|l| !l.is_empty()).map(|line| {
-            let (name, lints) = line.trim().split_once(char::is_whitespace).unwrap();
-            (
-                name.trim(),
-                format!("lint group for: {}", lints.trim()).into(),
-                lints
-                    .split_ascii_whitespace()
-                    .map(|s| s.trim().trim_matches(',').replace('-', "_"))
-                    .collect(),
-            )
-        });
-
-    let mut lints_rustdoc = lints_rustdoc.chain(lint_groups_rustdoc).collect::<Vec<_>>();
-    lints_rustdoc.sort_by(|(ident, ..), (ident2, ..)| ident.cmp(ident2));
-
-    for (name, description, ..) in &lints_rustdoc {
-        push_lint_completion(buf, &name.replace('-', "_"), description)
+    for (name, lint) in &lints_rustdoc {
+        push_lint_completion(buf, name, lint);
+    }
+    for (name, (group, _)) in &lint_groups_rustdoc {
+        push_lint_completion(buf, name, group);
     }
     buf.push_str("];\n\n");
 
     buf.push_str(r#"pub const RUSTDOC_LINT_GROUPS: &[LintGroup] = &["#);
-    for (name, description, children) in &lints_rustdoc {
-        if !children.is_empty() {
-            push_lint_group(buf, &name.replace('-', "_"), description, children);
-        }
+    for (name, (lint, children)) in &lint_groups_rustdoc {
+        push_lint_group(buf, name, lint, children);
     }
     buf.push('\n');
     buf.push_str("];\n");
@@ -228,13 +416,19 @@ fn generate_feature_descriptor(buf: &mut String, src_dir: &Path) {
 
     buf.push_str(r#"pub const FEATURES: &[Lint] = &["#);
     for (feature_ident, doc) in features.into_iter() {
-        push_lint_completion(buf, &feature_ident, &doc)
+        let lint = Lint {
+            description: doc,
+            default_severity: Severity::Allow,
+            warn_since: None,
+            deny_since: None,
+        };
+        push_lint_completion(buf, &feature_ident, &lint);
     }
     buf.push('\n');
     buf.push_str("];\n");
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct ClippyLint {
     help: String,
     id: String,
@@ -295,8 +489,14 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) {
     buf.push('\n');
     for clippy_lint in clippy_lints.into_iter() {
         let lint_ident = format!("clippy::{}", clippy_lint.id);
-        let doc = clippy_lint.help;
-        push_lint_completion(buf, &lint_ident, &doc);
+        let lint = Lint {
+            description: clippy_lint.help,
+            // Allow clippy lints by default, not all users want them.
+            default_severity: Severity::Allow,
+            warn_since: None,
+            deny_since: None,
+        };
+        push_lint_completion(buf, &lint_ident, &lint);
     }
     buf.push_str("];\n");
 
@@ -306,33 +506,59 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) {
         if !children.is_empty() {
             let lint_ident = format!("clippy::{id}");
             let description = format!("lint group for: {}", children.join(", "));
-            push_lint_group(buf, &lint_ident, &description, &children);
+            let lint = Lint {
+                description,
+                default_severity: Severity::Allow,
+                warn_since: None,
+                deny_since: None,
+            };
+            push_lint_group(buf, &lint_ident, &lint, &children);
         }
     }
     buf.push('\n');
     buf.push_str("];\n");
 }
 
-fn push_lint_completion(buf: &mut String, label: &str, description: &str) {
+fn push_lint_completion(buf: &mut String, name: &str, lint: &Lint) {
     format_to!(
         buf,
         r###"    Lint {{
         label: "{}",
         description: r##"{}"##,
-    }},"###,
-        label,
-        description,
+        default_severity: {},
+        warn_since: "###,
+        name,
+        lint.description,
+        lint.default_severity,
+    );
+    match lint.warn_since {
+        Some(edition) => format_to!(buf, "Some(Edition::Edition{edition})"),
+        None => buf.push_str("None"),
+    }
+    format_to!(
+        buf,
+        r###",
+        deny_since: "###
+    );
+    match lint.deny_since {
+        Some(edition) => format_to!(buf, "Some(Edition::Edition{edition})"),
+        None => buf.push_str("None"),
+    }
+    format_to!(
+        buf,
+        r###",
+    }},"###
     );
 }
 
-fn push_lint_group(buf: &mut String, label: &str, description: &str, children: &[String]) {
+fn push_lint_group(buf: &mut String, name: &str, lint: &Lint, children: &[String]) {
     buf.push_str(
         r###"    LintGroup {
         lint:
         "###,
     );
 
-    push_lint_completion(buf, label, description);
+    push_lint_completion(buf, name, lint);
 
     let children = format!(
         "&[{}]",

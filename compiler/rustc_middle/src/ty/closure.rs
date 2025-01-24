@@ -7,10 +7,8 @@ use rustc_hir::HirId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::def_id::LocalDefIdMap;
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
-use self::BorrowKind::*;
 use super::TyCtxt;
 use crate::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
@@ -334,7 +332,7 @@ pub fn place_to_string_for_capture<'tcx>(tcx: TyCtxt<'tcx>, place: &HirPlace<'tc
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
-    ImmBorrow,
+    Immutable,
 
     /// Data must be immutable but not aliasable. This kind of borrow
     /// cannot currently be expressed by the user and is used only in
@@ -382,17 +380,17 @@ pub enum BorrowKind {
     /// borrow, it's just used when translating closures.
     ///
     /// FIXME: Rename this to indicate the borrow is actually not immutable.
-    UniqueImmBorrow,
+    UniqueImmutable,
 
     /// Data is mutable and not aliasable.
-    MutBorrow,
+    Mutable,
 }
 
 impl BorrowKind {
     pub fn from_mutbl(m: hir::Mutability) -> BorrowKind {
         match m {
-            hir::Mutability::Mut => MutBorrow,
-            hir::Mutability::Not => ImmBorrow,
+            hir::Mutability::Mut => BorrowKind::Mutable,
+            hir::Mutability::Not => BorrowKind::Immutable,
         }
     }
 
@@ -402,13 +400,13 @@ impl BorrowKind {
     /// question.
     pub fn to_mutbl_lossy(self) -> hir::Mutability {
         match self {
-            MutBorrow => hir::Mutability::Mut,
-            ImmBorrow => hir::Mutability::Not,
+            BorrowKind::Mutable => hir::Mutability::Mut,
+            BorrowKind::Immutable => hir::Mutability::Not,
 
             // We have no type corresponding to a unique imm borrow, so
             // use `&mut`. It gives all the capabilities of a `&uniq`
             // and hence is a safe "over approximation".
-            UniqueImmBorrow => hir::Mutability::Mut,
+            BorrowKind::UniqueImmutable => hir::Mutability::Mut,
         }
     }
 }
@@ -435,7 +433,7 @@ pub fn analyze_coroutine_closure_captures<'a, 'tcx: 'a, T>(
                 // A parent matches a child if they share the same prefix of projections.
                 // The child may have more, if it is capturing sub-fields out of
                 // something that is captured by-move in the parent closure.
-                while child_captures.peek().map_or(false, |(_, child_capture)| {
+                while child_captures.peek().is_some_and(|(_, child_capture)| {
                     child_prefix_matches_parent_projections(parent_capture, child_capture)
                 }) {
                     let (child_field_idx, child_capture) = child_captures.next().unwrap();

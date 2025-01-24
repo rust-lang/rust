@@ -267,7 +267,7 @@ impl Socket {
                 };
 
                 match count {
-                    0 => Err(io::const_io_error!(io::ErrorKind::TimedOut, "connection timed out")),
+                    0 => Err(io::const_error!(io::ErrorKind::TimedOut, "connection timed out")),
                     _ => {
                         if writefds.fd_count != 1 {
                             if let Some(e) = self.take_error()? {

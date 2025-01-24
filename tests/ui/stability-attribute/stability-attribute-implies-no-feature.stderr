@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'foobar'
+error[E0658]: use of unstable library feature `foobar`
   --> $DIR/stability-attribute-implies-no-feature.rs:7:40
    |
 LL | use stability_attribute_implies::{foo, foobar};
@@ -8,7 +8,7 @@ LL | use stability_attribute_implies::{foo, foobar};
    = help: add `#![feature(foobar)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'foobar'
+error[E0658]: use of unstable library feature `foobar`
   --> $DIR/stability-attribute-implies-no-feature.rs:12:5
    |
 LL |     foobar();

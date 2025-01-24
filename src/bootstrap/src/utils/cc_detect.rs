@@ -44,6 +44,16 @@ fn cc2ar(cc: &Path, target: TargetSelection) -> Option<PathBuf> {
         Some(PathBuf::from("ar"))
     } else if target.contains("vxworks") {
         Some(PathBuf::from("wr-ar"))
+    } else if target.contains("-nto-") {
+        if target.starts_with("i586") {
+            Some(PathBuf::from("ntox86-ar"))
+        } else if target.starts_with("aarch64") {
+            Some(PathBuf::from("ntoaarch64-ar"))
+        } else if target.starts_with("x86_64") {
+            Some(PathBuf::from("ntox86_64-ar"))
+        } else {
+            panic!("Unknown architecture, cannot determine archiver for Neutrino QNX");
+        }
     } else if target.contains("android") || target.contains("-wasi") {
         Some(cc.parent().unwrap().join(PathBuf::from("llvm-ar")))
     } else {

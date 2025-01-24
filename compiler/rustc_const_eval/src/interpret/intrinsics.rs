@@ -4,14 +4,14 @@
 
 use std::assert_matches::assert_matches;
 
+use rustc_abi::Size;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::{LayoutOf as _, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{GenericArgsRef, Ty, TyCtxt};
 use rustc_middle::{bug, ty};
-use rustc_span::symbol::{Symbol, sym};
-use rustc_target::abi::Size;
+use rustc_span::{Symbol, sym};
 use tracing::trace;
 
 use super::memory::MemoryKind;
@@ -34,7 +34,7 @@ pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAll
 /// inside an `InterpCx` and instead have their value computed directly from rustc internal info.
 pub(crate) fn eval_nullary_intrinsic<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     def_id: DefId,
     args: GenericArgsRef<'tcx>,
 ) -> InterpResult<'tcx, ConstValue<'tcx>> {
@@ -48,11 +48,13 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
         }
         sym::needs_drop => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
-            ConstValue::from_bool(tp_ty.needs_drop(tcx, param_env))
+            ConstValue::from_bool(tp_ty.needs_drop(tcx, typing_env))
         }
         sym::pref_align_of => {
             // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
-            let layout = tcx.layout_of(param_env.and(tp_ty)).map_err(|e| err_inval!(Layout(*e)))?;
+            let layout = tcx
+                .layout_of(typing_env.as_query_input(tp_ty))
+                .map_err(|e| err_inval!(Layout(*e)))?;
             ConstValue::from_target_usize(layout.align.pref.bytes(), &tcx)
         }
         sym::type_id => {
@@ -88,6 +90,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::CoroutineClosure(_, _)
             | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
+            | ty::UnsafeBinder(_)
             | ty::Never
             | ty::Tuple(_)
             | ty::Error(_) => ConstValue::from_target_usize(0u64, &tcx),
@@ -149,8 +152,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     sym::type_name => Ty::new_static_str(self.tcx.tcx),
                     _ => bug!(),
                 };
-                let val =
-                    self.ctfe_query(|tcx| tcx.const_eval_global_id(self.param_env, gid, tcx.span))?;
+                let val = self
+                    .ctfe_query(|tcx| tcx.const_eval_global_id(self.typing_env, gid, tcx.span))?;
                 let val = self.const_val_to_op(val, ty, Some(dest.layout))?;
                 self.copy_op(&val, dest)?;
             }
@@ -355,7 +358,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 let should_panic = !self
                     .tcx
-                    .check_validity_requirement((requirement, self.param_env.and(ty)))
+                    .check_validity_requirement((requirement, self.typing_env.as_query_input(ty)))
                     .map_err(|_| err_inval!(TooGeneric))?;
 
                 if should_panic {
@@ -364,7 +367,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     let msg = match requirement {
                         // For *all* intrinsics we first check `is_uninhabited` to give a more specific
                         // error message.
-                        _ if layout.abi.is_uninhabited() => format!(
+                        _ if layout.is_uninhabited() => format!(
                             "aborted execution: attempted to instantiate uninhabited type `{ty}`"
                         ),
                         ValidityRequirement::Inhabited => bug!("handled earlier"),
@@ -421,8 +424,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let result = self.raw_eq_intrinsic(&args[0], &args[1])?;
                 self.write_scalar(result, dest)?;
             }
-            sym::typed_swap => {
-                self.typed_swap_intrinsic(&args[0], &args[1])?;
+            sym::typed_swap_nonoverlapping => {
+                self.typed_swap_nonoverlapping_intrinsic(&args[0], &args[1])?;
             }
 
             sym::vtable_size => {
@@ -563,7 +566,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.binary_op(mir_op.wrapping_to_overflowing().unwrap(), l, r)?.to_scalar_pair();
         interp_ok(if overflowed.to_bool()? {
             let size = l.layout.size;
-            if l.layout.abi.is_signed() {
+            if l.layout.backend_repr.is_signed() {
                 // For signed ints the saturated value depends on the sign of the first
                 // term since the sign of the second term can be inferred from this and
                 // the fact that the operation has overflowed (if either is 0 no
@@ -635,19 +638,35 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// Does a *typed* swap of `*left` and `*right`.
-    fn typed_swap_intrinsic(
+    fn typed_swap_nonoverlapping_intrinsic(
         &mut self,
         left: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         right: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
     ) -> InterpResult<'tcx> {
         let left = self.deref_pointer(left)?;
         let right = self.deref_pointer(right)?;
-        debug_assert_eq!(left.layout, right.layout);
+        assert_eq!(left.layout, right.layout);
+        assert!(left.layout.is_sized());
         let kind = MemoryKind::Stack;
         let temp = self.allocate(left.layout, kind)?;
-        self.copy_op(&left, &temp)?;
-        self.copy_op(&right, &left)?;
-        self.copy_op(&temp, &right)?;
+        self.copy_op(&left, &temp)?; // checks alignment of `left`
+
+        // We want to always enforce non-overlapping, even if this is a scalar type.
+        // Therefore we directly use the underlying `mem_copy` here.
+        self.mem_copy(right.ptr(), left.ptr(), left.layout.size, /*nonoverlapping*/ true)?;
+        // This means we also need to do the validation of the value that used to be in `right`
+        // ourselves. This value is now in `left.` The one that started out in `left` already got
+        // validated by the copy above.
+        if M::enforce_validity(self, left.layout) {
+            self.validate_operand(
+                &left.clone().into(),
+                M::enforce_validity_recursively(self, left.layout),
+                /*reset_provenance_and_padding*/ true,
+            )?;
+        }
+
+        self.copy_op(&temp, &right)?; // checks alignment of `right`
+
         self.deallocate_ptr(temp.ptr(), None, kind)?;
         interp_ok(())
     }

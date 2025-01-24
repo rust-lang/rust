@@ -116,7 +116,7 @@ fn should_lint<'tcx>(
 
             if path.ident.name == sym::debug_struct && is_type_diagnostic_item(cx, recv_ty, sym::Formatter) {
                 has_debug_struct = true;
-            } else if path.ident.name == sym!(finish_non_exhaustive)
+            } else if path.ident.name.as_str() == "finish_non_exhaustive"
                 && is_type_diagnostic_item(cx, recv_ty, sym::DebugStruct)
             {
                 has_finish_non_exhaustive = true;

@@ -15,8 +15,8 @@ use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use stable_mir::abi::Layout;
-use stable_mir::mir::mono::InstanceDef;
-use stable_mir::ty::{MirConstId, Span, TyConstId};
+use stable_mir::mir::mono::{InstanceDef, StaticDef};
+use stable_mir::ty::{FnDef, MirConstId, Span, TyConstId};
 use stable_mir::{CtorKind, ItemKind};
 use tracing::debug;
 
@@ -36,7 +36,7 @@ pub struct Tables<'tcx> {
     pub(crate) instances: IndexMap<ty::Instance<'tcx>, InstanceDef>,
     pub(crate) ty_consts: IndexMap<ty::Const<'tcx>, TyConstId>,
     pub(crate) mir_consts: IndexMap<mir::Const<'tcx>, MirConstId>,
-    pub(crate) layouts: IndexMap<rustc_target::abi::Layout<'tcx>, Layout>,
+    pub(crate) layouts: IndexMap<rustc_abi::Layout<'tcx>, Layout>,
 }
 
 impl<'tcx> Tables<'tcx> {
@@ -78,6 +78,36 @@ impl<'tcx> Tables<'tcx> {
             false
         };
         !must_override && self.tcx.is_mir_available(def_id)
+    }
+
+    fn to_fn_def(&mut self, def_id: DefId) -> Option<FnDef> {
+        if matches!(self.tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
+            Some(self.fn_def(def_id))
+        } else {
+            None
+        }
+    }
+
+    fn to_static(&mut self, def_id: DefId) -> Option<StaticDef> {
+        matches!(self.tcx.def_kind(def_id), DefKind::Static { .. }).then(|| self.static_def(def_id))
+    }
+}
+
+/// Iterate over the definitions of the given crate.
+pub(crate) fn filter_def_ids<F, T>(tcx: TyCtxt<'_>, krate: CrateNum, mut func: F) -> Vec<T>
+where
+    F: FnMut(DefId) -> Option<T>,
+{
+    if krate == LOCAL_CRATE {
+        tcx.iter_local_def_id().filter_map(|did| func(did.to_def_id())).collect()
+    } else {
+        let num_definitions = tcx.num_extern_def_ids(krate);
+        (0..num_definitions)
+            .filter_map(move |i| {
+                let def_id = DefId { krate, index: rustc_span::def_id::DefIndex::from_usize(i) };
+                func(def_id)
+            })
+            .collect()
     }
 }
 

@@ -43,6 +43,17 @@ pub(crate) fn fn_traits(
         .flat_map(|it| it.as_trait())
 }
 
+/// Returns an iterator over the direct super traits (including the trait itself).
+pub fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[TraitId; 4]> {
+    let mut result = smallvec![trait_];
+    direct_super_traits_cb(db, trait_, |tt| {
+        if !result.contains(&tt) {
+            result.push(tt);
+        }
+    });
+    result
+}
+
 /// Returns an iterator over the whole super trait hierarchy (including the
 /// trait itself).
 pub fn all_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[TraitId; 4]> {
@@ -54,7 +65,7 @@ pub fn all_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[Trai
     while let Some(&t) = result.get(i) {
         // yeah this is quadratic, but trait hierarchies should be flat
         // enough that this doesn't matter
-        direct_super_traits(db, t, |tt| {
+        direct_super_traits_cb(db, t, |tt| {
             if !result.contains(&tt) {
                 result.push(tt);
             }
@@ -123,7 +134,7 @@ pub(super) struct ClauseElaborator<'a> {
     seen: FxHashSet<WhereClause>,
 }
 
-impl<'a> ClauseElaborator<'a> {
+impl ClauseElaborator<'_> {
     fn extend_deduped(&mut self, clauses: impl IntoIterator<Item = WhereClause>) {
         self.stack.extend(clauses.into_iter().filter(|c| self.seen.insert(c.clone())))
     }
@@ -153,7 +164,7 @@ impl Iterator for ClauseElaborator<'_> {
     }
 }
 
-fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(TraitId)) {
+fn direct_super_traits_cb(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(TraitId)) {
     let resolver = trait_.resolver(db);
     let generic_params = db.generic_params(trait_.into());
     let trait_self = generic_params.trait_self_param();
@@ -163,16 +174,18 @@ fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(Tra
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {
                 let is_trait = match target {
-                    WherePredicateTypeTarget::TypeRef(type_ref) => match &**type_ref {
-                        TypeRef::Path(p) => p.is_self_type(),
-                        _ => false,
-                    },
+                    WherePredicateTypeTarget::TypeRef(type_ref) => {
+                        match &generic_params.types_map[*type_ref] {
+                            TypeRef::Path(p) => p.is_self_type(),
+                            _ => false,
+                        }
+                    }
                     WherePredicateTypeTarget::TypeOrConstParam(local_id) => {
                         Some(*local_id) == trait_self
                     }
                 };
                 match is_trait {
-                    true => bound.as_path(),
+                    true => bound.as_path(&generic_params.types_map),
                     false => None,
                 }
             }
@@ -257,21 +270,20 @@ pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
         return true;
     }
 
-    match func.lookup(db.upcast()).container {
+    let loc = func.lookup(db.upcast());
+    match loc.container {
         hir_def::ItemContainerId::ExternBlockId(block) => {
-            // Function in an `extern` block are always unsafe to call, except when it has
-            // `"rust-intrinsic"` ABI there are a few exceptions.
             let id = block.lookup(db.upcast()).id;
-
-            let is_intrinsic =
+            let is_intrinsic_block =
                 id.item_tree(db.upcast())[id.value].abi.as_ref() == Some(&sym::rust_dash_intrinsic);
-
-            if is_intrinsic {
-                // Intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
-                !data.attrs.by_key(&sym::rustc_safe_intrinsic).exists()
+            if is_intrinsic_block {
+                // legacy intrinsics
+                // extern "rust-intrinsic" intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
+                !db.attrs(func.into()).by_key(&sym::rustc_safe_intrinsic).exists()
             } else {
-                // Extern items are always unsafe
-                true
+                // Function in an `extern` block are always unsafe to call, except when
+                // it is marked as `safe`.
+                !data.is_safe()
             }
         }
         _ => false,
@@ -319,6 +331,7 @@ pub(crate) fn detect_variant_from_bytes<'a>(
     e: EnumId,
 ) -> Option<(EnumVariantId, &'a Layout)> {
     let (var_id, var_layout) = match &layout.variants {
+        hir_def::layout::Variants::Empty => unreachable!(),
         hir_def::layout::Variants::Single { index } => {
             (db.enum_data(e).variants[index.0].0, layout)
         }
@@ -360,7 +373,7 @@ impl OpaqueInternableThing for InTypeConstIdMetadata {
     }
 
     fn dyn_eq(&self, other: &dyn OpaqueInternableThing) -> bool {
-        other.as_any().downcast_ref::<Self>().map_or(false, |x| self == x)
+        other.as_any().downcast_ref::<Self>() == Some(self)
     }
 
     fn dyn_clone(&self) -> Box<dyn OpaqueInternableThing> {

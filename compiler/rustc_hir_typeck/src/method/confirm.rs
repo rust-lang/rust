@@ -7,7 +7,7 @@ use rustc_hir_analysis::hir_ty_lowering::generics::{
     check_generic_arg_count_for_call, lower_generic_args,
 };
 use rustc_hir_analysis::hir_ty_lowering::{
-    GenericArgsLowerer, HirTyLowerer, IsMethodCall, RegionInferReason,
+    FeedConstTy, GenericArgsLowerer, HirTyLowerer, IsMethodCall, RegionInferReason,
 };
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
@@ -17,7 +17,6 @@ use rustc_middle::ty::adjustment::{
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, UserArgs,
-    UserType,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Span};
@@ -200,10 +199,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 // for two-phase borrows.
                 let mutbl = AutoBorrowMutability::new(mutbl, AllowTwoPhase::Yes);
 
-                adjustments.push(Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
-                    target,
-                });
+                adjustments
+                    .push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)), target });
 
                 if unsize {
                     let unsized_ty = if let ty::Array(elem_ty, _) = base_ty.kind() {
@@ -250,7 +247,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     _ => bug!("Cannot adjust receiver type for reborrowing pin of {target:?}"),
                 };
 
-                adjustments.push(Adjustment { kind: Adjust::ReborrowPin(region, mutbl), target });
+                adjustments.push(Adjustment { kind: Adjust::ReborrowPin(mutbl), target });
             }
             None => {}
         }
@@ -431,7 +428,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         self.cfcx.lower_ty(ty).raw.into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.cfcx.lower_const_arg(ct, param.def_id).into()
+                        self.cfcx.lower_const_arg(ct, FeedConstTy::Param(param.def_id)).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
                         self.cfcx.ty_infer(Some(param), inf.span).into()
@@ -493,9 +490,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     user_self_ty: None, // not relevant here
                 };
 
-                self.fcx.canonicalize_user_type_annotation(UserType::TypeOf(
-                    pick.item.def_id,
-                    user_args,
+                self.fcx.canonicalize_user_type_annotation(ty::UserType::new(
+                    ty::UserTypeKind::TypeOf(pick.item.def_id, user_args),
                 ))
             });
 
@@ -533,18 +529,21 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.register_predicates(obligations);
             }
             Err(terr) => {
-                // FIXME(arbitrary_self_types): We probably should limit the
-                // situations where this can occur by adding additional restrictions
-                // to the feature, like the self type can't reference method args.
-                if self.tcx.features().arbitrary_self_types {
+                if self.tcx.features().arbitrary_self_types() {
                     self.err_ctxt()
-                        .report_mismatched_types(&cause, method_self_ty, self_ty, terr)
+                        .report_mismatched_types(
+                            &cause,
+                            self.param_env,
+                            method_self_ty,
+                            self_ty,
+                            terr,
+                        )
                         .emit();
                 } else {
                     // This has/will have errored in wfcheck, which we cannot depend on from here, as typeck on functions
                     // may run before wfcheck if the function is used in const eval.
                     self.dcx().span_delayed_bug(
-                        cause.span(),
+                        cause.span,
                         format!("{self_ty} was a subtype of {method_self_ty} but now is not?"),
                     );
                 }
@@ -602,7 +601,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     self.call_expr.hir_id,
                     idx,
                 );
-                traits::ObligationCause::new(self.span, self.body_id, code)
+                self.cause(self.span, code)
             },
             self.param_env,
             method_predicates,
@@ -612,7 +611,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         // this is a projection from a trait reference, so we have to
         // make sure that the trait reference inputs are well-formed.
-        self.add_wf_bounds(all_args, self.call_expr);
+        self.add_wf_bounds(all_args, self.call_expr.span);
 
         // the function type must also be well-formed (this is not
         // implied by the args being well-formed because of inherent

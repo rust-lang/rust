@@ -9,7 +9,7 @@ use rustc_arena::DroplessArena;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_pat};
-use rustc_hir::{Arm, Expr, ExprKind, HirId, Node, Pat, PatKind, QPath, StmtKind};
+use rustc_hir::{Arm, Expr, ExprKind, HirId, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, StmtKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, AdtDef, TyCtxt, TypeckResults, VariantDef};
 use rustc_span::{Span, sym};
@@ -114,7 +114,7 @@ fn report_single_pattern(cx: &LateContext<'_>, ex: &Expr<'_>, arm: &Arm<'_>, exp
     }
 
     let (pat, pat_ref_count) = peel_hir_pat_refs(arm.pat);
-    let (msg, sugg) = if let PatKind::Path(_) | PatKind::Lit(_) = pat.kind
+    let (msg, sugg) = if let PatKind::Path(_) | PatKind::Expr(_) = pat.kind
         && let (ty, ty_ref_count) = peel_middle_ty_refs(cx.typeck_results().expr_ty(ex))
         && let Some(spe_trait_id) = cx.tcx.lang_items().structural_peq_trait()
         && let Some(pe_trait_id) = cx.tcx.lang_items().eq_trait()
@@ -126,10 +126,10 @@ fn report_single_pattern(cx: &LateContext<'_>, ex: &Expr<'_>, arm: &Arm<'_>, exp
         // scrutinee derives PartialEq and the pattern is a constant.
         let pat_ref_count = match pat.kind {
             // string literals are already a reference.
-            PatKind::Lit(Expr {
-                kind: ExprKind::Lit(lit),
+            PatKind::Expr(PatExpr {
+                kind: PatExprKind::Lit { lit, negated: false },
                 ..
-            }) if lit.node.is_str() => pat_ref_count + 1,
+            }) if lit.node.is_str() || lit.node.is_bytestr() => pat_ref_count + 1,
             _ => pat_ref_count,
         };
         // References are only implicitly added to the pattern, so no overflow here.
@@ -175,7 +175,7 @@ impl<'tcx> Visitor<'tcx> for PatVisitor<'tcx> {
         if matches!(pat.kind, PatKind::Binding(..)) {
             ControlFlow::Break(())
         } else {
-            self.has_enum |= self.typeck.pat_ty(pat).ty_adt_def().map_or(false, AdtDef::is_enum);
+            self.has_enum |= self.typeck.pat_ty(pat).ty_adt_def().is_some_and(AdtDef::is_enum);
             walk_pat(self, pat)
         }
     }
@@ -247,7 +247,10 @@ impl<'a> PatState<'a> {
         let states = match self {
             Self::Wild => return None,
             Self::Other => {
-                *self = Self::StdEnum(cx.arena.alloc_from_iter((0..adt.variants().len()).map(|_| Self::Other)));
+                *self = Self::StdEnum(
+                    cx.arena
+                        .alloc_from_iter(std::iter::repeat_with(|| Self::Other).take(adt.variants().len())),
+                );
                 let Self::StdEnum(x) = self else {
                     unreachable!();
                 };
@@ -340,6 +343,10 @@ impl<'a> PatState<'a> {
                 matches!(self, Self::Wild)
             },
 
+            PatKind::Guard(..) => {
+                matches!(self, Self::Wild)
+            },
+
             // Patterns for things which can only contain a single sub-pattern.
             PatKind::Binding(_, _, _, Some(pat)) | PatKind::Ref(pat, _) | PatKind::Box(pat) | PatKind::Deref(pat) => {
                 self.add_pat(cx, pat)
@@ -377,7 +384,7 @@ impl<'a> PatState<'a> {
 
             PatKind::Wild
             | PatKind::Binding(_, _, _, None)
-            | PatKind::Lit(_)
+            | PatKind::Expr(_)
             | PatKind::Range(..)
             | PatKind::Path(_)
             | PatKind::Never

@@ -7,7 +7,7 @@ LL |     fn method() -> impl Sized {
 LL |     test::<DoesntWork>();
    |            ^^^^^^^^^^ `*mut ()` cannot be sent between threads safely
    |
-   = help: within `impl Sized`, the trait `Send` is not implemented for `*mut ()`, which is required by `impl Sized: Send`
+   = help: within `impl Sized`, the trait `Send` is not implemented for `*mut ()`
 note: required because it appears within the type `impl Sized`
   --> $DIR/path-unsatisfied.rs:9:20
    |

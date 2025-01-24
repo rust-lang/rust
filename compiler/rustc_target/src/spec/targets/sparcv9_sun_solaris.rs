@@ -13,13 +13,13 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target: "sparcv9-sun-solaris".into(),
         metadata: crate::spec::TargetMetadata {
-            description: Some("SPARC Solaris 11, illumos".into()),
+            description: Some("SPARC Solaris 11.4".into()),
             tier: Some(2),
             host_tools: Some(false),
             std: Some(true),
         },
         pointer_width: 64,
-        data_layout: "E-m:e-i64:64-n32:64-S128".into(),
+        data_layout: "E-m:e-i64:64-i128:128-n32:64-S128".into(),
         // Use "sparc64" instead of "sparcv9" here, since the former is already
         // used widely in the source base. If we ever needed ABI
         // differentiation from the sparc64, we could, but that would probably

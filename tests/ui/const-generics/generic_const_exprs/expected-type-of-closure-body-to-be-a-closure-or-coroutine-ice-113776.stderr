@@ -16,14 +16,6 @@ help: you might be missing a type parameter
 LL | fn f<T, F>(
    |       +++
 
-error[E0277]: `()` is not an iterator
-  --> $DIR/expected-type-of-closure-body-to-be-a-closure-or-coroutine-ice-113776.rs:16:6
-   |
-LL | ) -> impl Iterator<Item = SubAssign> {
-   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not an iterator
-   |
-   = help: the trait `Iterator` is not implemented for `()`
-
 error[E0782]: expected a type, found a trait
   --> $DIR/expected-type-of-closure-body-to-be-a-closure-or-coroutine-ice-113776.rs:16:27
    |
@@ -39,7 +31,31 @@ help: you might have meant to write a bound here
 LL | ) -> impl Iterator<Item: SubAssign> {
    |                        ~
 
-error: aborting due to 3 previous errors
+error[E0782]: expected a type, found a trait
+  --> $DIR/expected-type-of-closure-body-to-be-a-closure-or-coroutine-ice-113776.rs:16:27
+   |
+LL | ) -> impl Iterator<Item = SubAssign> {
+   |                           ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | ) -> impl Iterator<Item = dyn SubAssign> {
+   |                           +++
+help: you might have meant to write a bound here
+   |
+LL | ) -> impl Iterator<Item: SubAssign> {
+   |                        ~
+
+error[E0277]: `()` is not an iterator
+  --> $DIR/expected-type-of-closure-body-to-be-a-closure-or-coroutine-ice-113776.rs:16:6
+   |
+LL | ) -> impl Iterator<Item = SubAssign> {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `()`
+
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0277, E0412, E0782.
 For more information about an error, try `rustc --explain E0277`.

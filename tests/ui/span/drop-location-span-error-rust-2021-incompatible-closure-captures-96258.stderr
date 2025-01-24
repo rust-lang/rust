@@ -4,7 +4,7 @@ error[E0670]: `async fn` is not permitted in Rust 2015
 LL |     pub(crate) async fn new(
    |                ^^^^^ to use `async fn`, switch to Rust 2018 or later
    |
-   = help: pass `--edition 2021` to `rustc`
+   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error[E0412]: cannot find type `Duration` in this scope

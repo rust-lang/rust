@@ -1,16 +1,11 @@
 //@ run-pass
 
-#![feature(intrinsics, rustc_attrs)]
+#![feature(core_intrinsics, rustc_attrs)]
 
-mod rusti {
-    extern "rust-intrinsic" {
-        pub fn pref_align_of<T>() -> usize;
-        #[rustc_safe_intrinsic]
-        pub fn min_align_of<T>() -> usize;
-    }
-}
+use std::intrinsics as rusti;
 
 #[cfg(any(
+    target_os = "aix",
     target_os = "android",
     target_os = "dragonfly",
     target_os = "freebsd",

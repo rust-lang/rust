@@ -5,9 +5,8 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{LimitStack, get_async_fn_body, is_async_fn};
 use core::ops::ControlFlow;
-use rustc_ast::ast::Attribute;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, Expr, ExprKind, FnDecl};
+use rustc_hir::{Attribute, Body, Expr, ExprKind, FnDecl};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
@@ -30,7 +29,8 @@ declare_clippy_lint! {
     #[clippy::version = "1.35.0"]
     pub COGNITIVE_COMPLEXITY,
     nursery,
-    "functions that should be split up into multiple functions"
+    "functions that should be split up into multiple functions",
+    @eval_always = true
 }
 
 pub struct CognitiveComplexity {

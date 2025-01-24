@@ -11,10 +11,9 @@
 //!   gets popped *during unwinding*, we take the panic payload and store it according to the extra
 //!   metadata we remembered when pushing said frame.
 
-use rustc_ast::Mutability;
+use rustc_abi::ExternAbi;
 use rustc_middle::{mir, ty};
 use rustc_target::spec::PanicStrategy;
-use rustc_target::spec::abi::Abi;
 
 use self::helpers::check_arg_count;
 use crate::*;
@@ -88,7 +87,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         trace!("try_fn: {:?}", f_instance);
         this.call_function(
             f_instance,
-            Abi::Rust,
+            ExternAbi::Rust,
             &[data.clone()],
             None,
             // Directly return to caller.
@@ -139,7 +138,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             trace!("catch_fn: {:?}", f_instance);
             this.call_function(
                 f_instance,
-                Abi::Rust,
+                ExternAbi::Rust,
                 &[catch_unwind.data, payload],
                 None,
                 // Directly return to caller of `try`.
@@ -161,14 +160,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         // First arg: message.
-        let msg = this.allocate_str(msg, MiriMemoryKind::Machine.into(), Mutability::Not)?;
+        let msg = this.allocate_str_dedup(msg)?;
 
         // Call the lang item.
         let panic = this.tcx.lang_items().panic_fn().unwrap();
         let panic = ty::Instance::mono(this.tcx.tcx, panic);
         this.call_function(
             panic,
-            Abi::Rust,
+            ExternAbi::Rust,
             &[this.mplace_to_ref(&msg)?],
             None,
             StackPopCleanup::Goto { ret: None, unwind },
@@ -180,14 +179,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         // First arg: message.
-        let msg = this.allocate_str(msg, MiriMemoryKind::Machine.into(), Mutability::Not)?;
+        let msg = this.allocate_str_dedup(msg)?;
 
         // Call the lang item.
         let panic = this.tcx.lang_items().panic_nounwind().unwrap();
         let panic = ty::Instance::mono(this.tcx.tcx, panic);
         this.call_function(
             panic,
-            Abi::Rust,
+            ExternAbi::Rust,
             &[this.mplace_to_ref(&msg)?],
             None,
             StackPopCleanup::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
@@ -216,7 +215,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let panic_bounds_check = ty::Instance::mono(this.tcx.tcx, panic_bounds_check);
                 this.call_function(
                     panic_bounds_check,
-                    Abi::Rust,
+                    ExternAbi::Rust,
                     &[index, len],
                     None,
                     StackPopCleanup::Goto { ret: None, unwind },
@@ -237,7 +236,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ty::Instance::mono(this.tcx.tcx, panic_misaligned_pointer_dereference);
                 this.call_function(
                     panic_misaligned_pointer_dereference,
-                    Abi::Rust,
+                    ExternAbi::Rust,
                     &[required, found],
                     None,
                     StackPopCleanup::Goto { ret: None, unwind },
@@ -248,7 +247,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Call the lang item associated with this message.
                 let fn_item = this.tcx.require_lang_item(msg.panic_function(), None);
                 let instance = ty::Instance::mono(this.tcx.tcx, fn_item);
-                this.call_function(instance, Abi::Rust, &[], None, StackPopCleanup::Goto {
+                this.call_function(instance, ExternAbi::Rust, &[], None, StackPopCleanup::Goto {
                     ret: None,
                     unwind,
                 })?;

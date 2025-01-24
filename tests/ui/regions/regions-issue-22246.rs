@@ -3,7 +3,6 @@
 // Regression test for issue #22246 -- we should be able to deduce
 // that `&'a B::Owned` implies that `B::Owned : 'a`.
 
-//@ pretty-expanded FIXME #23616
 
 #![allow(dead_code)]
 

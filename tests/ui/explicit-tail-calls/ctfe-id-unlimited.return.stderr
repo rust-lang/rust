@@ -25,12 +25,6 @@ note: inside `ID_ED`
 LL | const ID_ED: u32 = rec_id(ORIGINAL);
    |                    ^^^^^^^^^^^^^^^^
 
-note: erroneous constant encountered
-  --> $DIR/ctfe-id-unlimited.rs:31:40
-   |
-LL | const ASSERT: () = assert!(ORIGINAL == ID_ED);
-   |                                        ^^^^^
-
 error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.

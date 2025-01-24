@@ -187,8 +187,8 @@ enum Action { Move { distance: u32 }, Stop }
 
 fn handle(action: Action) {
     match action {
-        $0Action::Move { distance } => todo!(),
-        Action::Stop => todo!(),
+        Action::Move { distance } => ${1:todo!()},
+        Action::Stop => ${2:todo!()},$0
     }
 }
 "#####,
@@ -933,6 +933,24 @@ enum TheEnum {
 }
 
 #[test]
+fn doctest_extract_constant() {
+    check_doc_test(
+        "extract_constant",
+        r#####"
+fn main() {
+    $0(1 + 2)$0 * 4;
+}
+"#####,
+        r#####"
+fn main() {
+    const $0VAR_NAME: i32 = 1 + 2;
+    VAR_NAME * 4;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_extract_expressions_from_format_string() {
     check_doc_test(
         "extract_expressions_from_format_string",
@@ -1001,6 +1019,24 @@ mod modname {
 
 fn bar(name: i32) -> i32 {
     name + 2
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_extract_static() {
+    check_doc_test(
+        "extract_static",
+        r#####"
+fn main() {
+    $0(1 + 2)$0 * 4;
+}
+"#####,
+        r#####"
+fn main() {
+    static $0VAR_NAME: i32 = 1 + 2;
+    VAR_NAME * 4;
 }
 "#####,
     )
@@ -1392,7 +1428,7 @@ pub fn add(a: i32, b: i32) -> i32 { a + b }
 /// # Examples
 ///
 /// ```
-/// use test::add;
+/// use ra_test_fixture::add;
 ///
 /// assert_eq!(add(a, b), );
 /// ```
@@ -1544,6 +1580,36 @@ enum Countries {
 fn main() {
     let country = Countries::Lesotho;
 }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_generate_fn_type_alias_named() {
+    check_doc_test(
+        "generate_fn_type_alias_named",
+        r#####"
+unsafe fn fo$0o(n: i32) -> i32 { 42i32 }
+"#####,
+        r#####"
+type ${0:FooFn} = unsafe fn(n: i32) -> i32;
+
+unsafe fn foo(n: i32) -> i32 { 42i32 }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_generate_fn_type_alias_unnamed() {
+    check_doc_test(
+        "generate_fn_type_alias_unnamed",
+        r#####"
+unsafe fn fo$0o(n: i32) -> i32 { 42i32 }
+"#####,
+        r#####"
+type ${0:FooFn} = unsafe fn(i32) -> i32;
+
+unsafe fn foo(n: i32) -> i32 { 42i32 }
 "#####,
     )
 }
@@ -2819,7 +2885,7 @@ fn main() {
         r#####"
 fn main() {
     let x = Some(1);
-    if let Some(${0:x}) = x {}
+    if let Some(${0:x1}) = x {}
 }
 "#####,
     )
@@ -3214,7 +3280,7 @@ fn doctest_unnecessary_async() {
     check_doc_test(
         "unnecessary_async",
         r#####"
-pub async f$0n foo() {}
+pub asy$0nc fn foo() {}
 pub async fn bar() { foo().await }
 "#####,
         r#####"
@@ -3265,6 +3331,20 @@ fn foo() {
 }
 
 #[test]
+fn doctest_unwrap_option_return_type() {
+    check_doc_test(
+        "unwrap_option_return_type",
+        r#####"
+//- minicore: option
+fn foo() -> Option<i32>$0 { Some(42i32) }
+"#####,
+        r#####"
+fn foo() -> i32 { 42i32 }
+"#####,
+    )
+}
+
+#[test]
 fn doctest_unwrap_result_return_type() {
     check_doc_test(
         "unwrap_result_return_type",
@@ -3293,6 +3373,20 @@ fn main() {
     let foo = "Foo";
     let bar = "Bar";
 }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_wrap_return_type_in_option() {
+    check_doc_test(
+        "wrap_return_type_in_option",
+        r#####"
+//- minicore: option
+fn foo() -> i32$0 { 42i32 }
+"#####,
+        r#####"
+fn foo() -> Option<i32> { Some(42i32) }
 "#####,
     )
 }

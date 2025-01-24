@@ -1,5 +1,5 @@
 warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/static-mut-refs.rs:39:18
+  --> $DIR/static-mut-refs.rs:38:18
    |
 LL |         let _y = &X;
    |                  ^^ shared reference to mutable static
@@ -13,7 +13,7 @@ LL |         let _y = &raw const X;
    |                  ~~~~~~~~~~
 
 warning: creating a mutable reference to mutable static is discouraged
-  --> $DIR/static-mut-refs.rs:43:18
+  --> $DIR/static-mut-refs.rs:42:18
    |
 LL |         let _y = &mut X;
    |                  ^^^^^^ mutable reference to mutable static
@@ -26,7 +26,7 @@ LL |         let _y = &raw mut X;
    |                  ~~~~~~~~
 
 warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/static-mut-refs.rs:51:22
+  --> $DIR/static-mut-refs.rs:50:22
    |
 LL |         let ref _a = X;
    |                      ^ shared reference to mutable static
@@ -35,7 +35,7 @@ LL |         let ref _a = X;
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
 
 warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/static-mut-refs.rs:55:25
+  --> $DIR/static-mut-refs.rs:54:25
    |
 LL |         let (_b, _c) = (&X, &Y);
    |                         ^^ shared reference to mutable static
@@ -48,7 +48,7 @@ LL |         let (_b, _c) = (&raw const X, &Y);
    |                         ~~~~~~~~~~
 
 warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/static-mut-refs.rs:55:29
+  --> $DIR/static-mut-refs.rs:54:29
    |
 LL |         let (_b, _c) = (&X, &Y);
    |                             ^^ shared reference to mutable static
@@ -61,7 +61,7 @@ LL |         let (_b, _c) = (&X, &raw const Y);
    |                             ~~~~~~~~~~
 
 warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/static-mut-refs.rs:61:13
+  --> $DIR/static-mut-refs.rs:60:13
    |
 LL |         foo(&X);
    |             ^^ shared reference to mutable static
@@ -74,7 +74,7 @@ LL |         foo(&raw const X);
    |             ~~~~~~~~~~
 
 warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/static-mut-refs.rs:67:17
+  --> $DIR/static-mut-refs.rs:66:17
    |
 LL |         let _ = Z.len();
    |                 ^^^^^^^ shared reference to mutable static
@@ -83,7 +83,7 @@ LL |         let _ = Z.len();
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
 
 warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/static-mut-refs.rs:73:33
+  --> $DIR/static-mut-refs.rs:72:33
    |
 LL |         let _ = format!("{:?}", Z);
    |                                 ^ shared reference to mutable static
@@ -92,7 +92,7 @@ LL |         let _ = format!("{:?}", Z);
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
 
 warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/static-mut-refs.rs:77:18
+  --> $DIR/static-mut-refs.rs:76:18
    |
 LL |         let _v = &A.value;
    |                  ^^^^^^^^ shared reference to mutable static
@@ -105,7 +105,7 @@ LL |         let _v = &raw const A.value;
    |                  ~~~~~~~~~~
 
 warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/static-mut-refs.rs:81:18
+  --> $DIR/static-mut-refs.rs:80:18
    |
 LL |         let _s = &A.s.value;
    |                  ^^^^^^^^^^ shared reference to mutable static
@@ -118,7 +118,7 @@ LL |         let _s = &raw const A.s.value;
    |                  ~~~~~~~~~~
 
 warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/static-mut-refs.rs:85:22
+  --> $DIR/static-mut-refs.rs:84:22
    |
 LL |         let ref _v = A.value;
    |                      ^^^^^^^ shared reference to mutable static
@@ -127,7 +127,7 @@ LL |         let ref _v = A.value;
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
 
 warning: creating a mutable reference to mutable static is discouraged
-  --> $DIR/static-mut-refs.rs:15:14
+  --> $DIR/static-mut-refs.rs:14:14
    |
 LL |         &mut ($x.0)
    |              ^^^^^^ mutable reference to mutable static

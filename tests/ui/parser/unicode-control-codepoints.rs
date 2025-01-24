@@ -1,3 +1,5 @@
+//@ edition: 2021
+
 fn main() {
     // if access_level != "us‫e‪r" { // Check if admin
     //~^ ERROR unicode codepoint changing visible direction of text present in comment
@@ -25,6 +27,14 @@ fn main() {
     //~| ERROR non-ASCII character in raw byte string literal
     println!("{:?}", '‮');
     //~^ ERROR unicode codepoint changing visible direction of text present in literal
+
+    let _ = c"‮";
+    //~^ ERROR unicode codepoint changing visible direction of text present in literal
+    let _ = cr#"‮"#;
+    //~^ ERROR unicode codepoint changing visible direction of text present in literal
+
+    println!("{{‮}}");
+    //~^ ERROR unicode codepoint changing visible direction of text present in format string
 }
 
 //"/*‮ } ⁦if isAdmin⁩ ⁦ begin admins only */"

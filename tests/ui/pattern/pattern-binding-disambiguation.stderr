@@ -87,7 +87,7 @@ LL |     let UnitVariant = UnitVariant;
    |         ^^^^^^^^^^^ patterns `E::TupleVariant` and `E::BracedVariant {  }` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 note: `E` defined here
   --> $DIR/pattern-binding-disambiguation.rs:5:6
    |

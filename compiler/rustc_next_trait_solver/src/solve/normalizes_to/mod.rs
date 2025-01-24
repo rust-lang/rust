@@ -15,7 +15,7 @@ use crate::solve::assembly::{self, Candidate};
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
-    NoSolution, QueryResult, Reveal,
+    NoSolution, QueryResult,
 };
 
 impl<D, I> EvalCtxt<'_, D>
@@ -71,21 +71,10 @@ where
                 Ok(())
             }
             ty::AliasTermKind::OpaqueTy => {
-                match param_env.reveal() {
-                    // In user-facing mode, paques are only rigid if we may not define it.
-                    Reveal::UserFacing => {
-                        if rigid_alias
-                            .def_id
-                            .as_local()
-                            .is_some_and(|def_id| self.can_define_opaque_ty(def_id))
-                        {
-                            Err(NoSolution)
-                        } else {
-                            Ok(())
-                        }
-                    }
-                    // Opaques are never rigid in reveal-all mode.
-                    Reveal::All => Err(NoSolution),
+                if self.opaque_type_is_rigid(rigid_alias.def_id) {
+                    Ok(())
+                } else {
+                    Err(NoSolution)
                 }
             }
             // FIXME(generic_const_exprs): we would need to support generic consts here
@@ -99,10 +88,17 @@ where
     /// returns `NoSolution`.
     #[instrument(level = "trace", skip(self), ret)]
     fn normalize_at_least_one_step(&mut self, goal: Goal<I, NormalizesTo<I>>) -> QueryResult<I> {
-        match goal.predicate.alias.kind(self.cx()) {
+        let cx = self.cx();
+        match goal.predicate.alias.kind(cx) {
             ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
                 let candidates = self.assemble_and_evaluate_candidates(goal);
-                self.merge_candidates(candidates)
+                let (_, proven_via) =
+                    self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
+                        let trait_goal: Goal<I, ty::TraitPredicate<I>> =
+                            goal.with(cx, goal.predicate.alias.trait_ref(cx));
+                        ecx.compute_trait_goal(trait_goal)
+                    })?;
+                self.merge_candidates(proven_via, candidates)
             }
             ty::AliasTermKind::InherentTy => self.normalize_inherent_associated_type(goal),
             ty::AliasTermKind::OpaqueTy => self.normalize_opaque_type(goal),
@@ -155,7 +151,7 @@ where
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
     ) -> Result<Candidate<I>, NoSolution> {
         if let Some(projection_pred) = assumption.as_projection_clause() {
-            if projection_pred.projection_def_id() == goal.predicate.def_id() {
+            if projection_pred.item_def_id() == goal.predicate.def_id() {
                 let cx = ecx.cx();
                 if !DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                     goal.predicate.alias.args,
@@ -191,6 +187,14 @@ where
         } else {
             Err(NoSolution)
         }
+    }
+
+    fn consider_additional_alias_assumptions(
+        _ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<I, Self>,
+        _alias_ty: ty::AliasTy<I>,
+    ) -> Vec<Candidate<I>> {
+        vec![]
     }
 
     fn consider_impl_candidate(
@@ -240,21 +244,7 @@ where
                     .map(|pred| goal.with(cx, pred)),
             );
 
-            // In case the associated item is hidden due to specialization, we have to
-            // return ambiguity this would otherwise be incomplete, resulting in
-            // unsoundness during coherence (#105782).
-            let Some(target_item_def_id) = ecx.fetch_eligible_assoc_item(
-                goal.param_env,
-                goal_trait_ref,
-                goal.predicate.def_id(),
-                impl_def_id,
-            )?
-            else {
-                return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
-            };
-
-            let error_response = |ecx: &mut EvalCtxt<'_, D>, msg: &str| {
-                let guar = cx.delay_bug(msg);
+            let error_response = |ecx: &mut EvalCtxt<'_, D>, guar| {
                 let error_term = match goal.predicate.alias.kind(cx) {
                     ty::AliasTermKind::ProjectionTy => Ty::new_error(cx, guar).into(),
                     ty::AliasTermKind::ProjectionConst => Const::new_error(cx, guar).into(),
@@ -264,8 +254,24 @@ where
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             };
 
+            // In case the associated item is hidden due to specialization, we have to
+            // return ambiguity this would otherwise be incomplete, resulting in
+            // unsoundness during coherence (#105782).
+            let target_item_def_id = match ecx.fetch_eligible_assoc_item(
+                goal_trait_ref,
+                goal.predicate.def_id(),
+                impl_def_id,
+            ) {
+                Ok(Some(target_item_def_id)) => target_item_def_id,
+                Ok(None) => {
+                    return ecx
+                        .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+                }
+                Err(guar) => return error_response(ecx, guar),
+            };
+
             if !cx.has_item_definition(target_item_def_id) {
-                return error_response(ecx, "missing item");
+                return error_response(ecx, cx.delay_bug("missing item"));
             }
 
             let target_container_def_id = cx.parent(target_item_def_id);
@@ -289,7 +295,10 @@ where
             )?;
 
             if !cx.check_args_compatible(target_item_def_id, target_args) {
-                return error_response(ecx, "associated item has mismatched arguments");
+                return error_response(
+                    ecx,
+                    cx.delay_bug("associated item has mismatched arguments"),
+                );
             }
 
             // Finally we construct the actual value of the associated type.
@@ -356,13 +365,6 @@ where
         panic!("`Copy`/`Clone` does not have an associated type: {:?}", goal);
     }
 
-    fn consider_builtin_pointer_like_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
-        panic!("`PointerLike` does not have an associated type: {:?}", goal);
-    }
-
     fn consider_builtin_fn_ptr_trait_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -387,6 +389,9 @@ where
                     return ecx.forced_ambiguity(MaybeCause::Ambiguity);
                 }
             };
+
+        // A built-in `Fn` impl only holds if the output is sized.
+        // (FIXME: technically we only need to check this if the type is a fn ptr...)
         let output_is_sized_pred = tupled_inputs_and_output.map_bound(|(_, output)| {
             ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [output])
         });
@@ -401,8 +406,6 @@ where
             })
             .upcast(cx);
 
-        // A built-in `Fn` impl only holds if the output is sized.
-        // (FIXME: technically we only need to check this if the type is a fn ptr...)
         Self::probe_and_consider_implied_clause(
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
@@ -431,6 +434,9 @@ where
                 goal_kind,
                 env_region,
             )?;
+
+        // A built-in `AsyncFn` impl only holds if the output is sized.
+        // (FIXME: technically we only need to check this if the type is a fn ptr...)
         let output_is_sized_pred = tupled_inputs_and_output_and_coroutine.map_bound(
             |AsyncCallableRelevantTypes { output_coroutine_ty: output_ty, .. }| {
                 ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [output_ty])
@@ -487,8 +493,6 @@ where
             )
             .upcast(cx);
 
-        // A built-in `AsyncFn` impl only holds if the output is sized.
-        // (FIXME: technically we only need to check this if the type is a fn ptr...)
         Self::probe_and_consider_implied_clause(
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
@@ -620,6 +624,11 @@ where
                     None => Ty::new_unit(cx),
                     Some(tail_ty) => Ty::new_projection(cx, metadata_def_id, [tail_ty]),
                 },
+
+                ty::UnsafeBinder(_) => {
+                    // FIXME(unsafe_binder): Figure out how to handle pointee for unsafe binders.
+                    todo!()
+                }
 
                 ty::Infer(
                     ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_),
@@ -824,6 +833,11 @@ where
             | ty::Tuple(_)
             | ty::Error(_) => self_ty.discriminant_ty(ecx.cx()),
 
+            ty::UnsafeBinder(_) => {
+                // FIXME(unsafe_binders): instantiate this with placeholders?? i guess??
+                todo!("discr subgoal...")
+            }
+
             // We do not call `Ty::discriminant_ty` on alias, param, or placeholder
             // types, which return `<self_ty as DiscriminantKind>::Discriminant`
             // (or ICE in the case of placeholders). Projecting a type to itself
@@ -871,6 +885,11 @@ where
             | ty::Tuple(_)
             | ty::Error(_) => self_ty.async_destructor_ty(ecx.cx()),
 
+            ty::UnsafeBinder(_) => {
+                // FIXME(unsafe_binders): Instantiate the binder with placeholders I guess.
+                todo!()
+            }
+
             // We do not call `Ty::async_destructor_ty` on alias, param, or placeholder
             // types, which return `<self_ty as AsyncDestruct>::AsyncDestructor`
             // (or ICE in the case of placeholders). Projecting a type to itself
@@ -910,68 +929,6 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
         panic!("`TransmuteFrom` does not have an associated type: {:?}", goal)
-    }
-
-    fn consider_builtin_effects_intersection_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
-        let ty::Tuple(types) = goal.predicate.self_ty().kind() else {
-            return Err(NoSolution);
-        };
-
-        let cx = ecx.cx();
-
-        let mut first_non_maybe = None;
-        let mut non_maybe_count = 0;
-        for ty in types.iter() {
-            if !matches!(ty::EffectKind::try_from_ty(cx, ty), Some(ty::EffectKind::Maybe)) {
-                first_non_maybe.get_or_insert(ty);
-                non_maybe_count += 1;
-            }
-        }
-
-        match non_maybe_count {
-            0 => {
-                let ty = ty::EffectKind::Maybe.to_ty(cx);
-                ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-                    ecx.instantiate_normalizes_to_term(goal, ty.into());
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                })
-            }
-            1 => {
-                let ty = first_non_maybe.unwrap();
-                ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-                    ecx.instantiate_normalizes_to_term(goal, ty.into());
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                })
-            }
-            _ => {
-                let mut min = ty::EffectKind::Maybe;
-
-                for ty in types.iter() {
-                    // We can't find the intersection if the types used are generic.
-                    //
-                    // FIXME(effects): do we want to look at where clauses to get some
-                    // clue for the case where generic types are being used?
-                    let Some(kind) = ty::EffectKind::try_from_ty(cx, ty) else {
-                        return Err(NoSolution);
-                    };
-
-                    let Some(result) = ty::EffectKind::intersection(min, kind) else {
-                        return Err(NoSolution);
-                    };
-
-                    min = result;
-                }
-
-                let ty = min.to_ty(cx);
-                ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-                    ecx.instantiate_normalizes_to_term(goal, ty.into());
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                })
-            }
-        }
     }
 }
 

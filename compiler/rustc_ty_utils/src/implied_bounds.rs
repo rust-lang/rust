@@ -6,6 +6,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
@@ -86,7 +87,8 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                         }
                     }
                     // FIXME: This could use a real folder, I guess.
-                    let remapped_wf_tys = tcx.fold_regions(
+                    let remapped_wf_tys = fold_regions(
+                        tcx,
                         tcx.assumed_wf_types(fn_def_id.expect_local()).to_vec(),
                         |region, _| {
                             // If `region` is a `ReLateParam` that is captured by the

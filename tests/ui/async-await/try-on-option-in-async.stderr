@@ -1,5 +1,5 @@
 error[E0277]: the `?` operator can only be used in an async block that returns `Result` or `Option` (or another type that implements `FromResidual`)
-  --> $DIR/try-on-option-in-async.rs:8:10
+  --> $DIR/try-on-option-in-async.rs:7:10
    |
 LL |     async {
    |     ----- this function should return `Result` or `Option` to accept `?`
@@ -10,7 +10,7 @@ LL |         x?;
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `{integer}`
 
 error[E0277]: the `?` operator can only be used in an async closure that returns `Result` or `Option` (or another type that implements `FromResidual`)
-  --> $DIR/try-on-option-in-async.rs:17:10
+  --> $DIR/try-on-option-in-async.rs:16:10
    |
 LL |       let async_closure = async || {
    |  __________________________________-
@@ -24,7 +24,7 @@ LL | |     };
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `u32`
 
 error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `FromResidual`)
-  --> $DIR/try-on-option-in-async.rs:26:6
+  --> $DIR/try-on-option-in-async.rs:25:6
    |
 LL |   async fn an_async_function() -> u32 {
    |  _____________________________________-

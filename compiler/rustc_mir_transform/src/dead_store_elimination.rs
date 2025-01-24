@@ -26,8 +26,8 @@ use crate::util::is_within_packed;
 
 /// Performs the optimization on the body
 ///
-/// The `borrowed` set must be a `BitSet` of all the locals that are ever borrowed in this body. It
-/// can be generated via the [`borrowed_locals`] function.
+/// The `borrowed` set must be a `DenseBitSet` of all the locals that are ever borrowed in this
+/// body. It can be generated via the [`borrowed_locals`] function.
 fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let borrowed_locals = borrowed_locals(body);
 
@@ -37,8 +37,7 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     always_live.union(&borrowed_locals);
 
     let mut live = MaybeTransitiveLiveLocals::new(&always_live)
-        .into_engine(tcx, body)
-        .iterate_to_fixpoint()
+        .iterate_to_fixpoint(tcx, body, None)
         .into_results_cursor(body);
 
     // For blocks with a call terminator, if an argument copy can be turned into a move,
@@ -100,7 +99,8 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                 | StatementKind::Intrinsic(_)
                 | StatementKind::ConstEvalCounter
                 | StatementKind::PlaceMention(_)
-                | StatementKind::Nop => (),
+                | StatementKind::BackwardIncompatibleDropHint { .. }
+                | StatementKind::Nop => {}
 
                 StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {
                     bug!("{:?} not found in this MIR phase!", statement.kind)

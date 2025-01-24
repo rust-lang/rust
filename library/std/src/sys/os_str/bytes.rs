@@ -352,8 +352,8 @@ impl Slice {
 unsafe impl CloneToUninit for Slice {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
-    unsafe fn clone_to_uninit(&self, dst: *mut Self) {
-        // SAFETY: we're just a wrapper around [u8]
-        unsafe { self.inner.clone_to_uninit(&raw mut (*dst).inner) }
+    unsafe fn clone_to_uninit(&self, dst: *mut u8) {
+        // SAFETY: we're just a transparent wrapper around [u8]
+        unsafe { self.inner.clone_to_uninit(dst) }
     }
 }

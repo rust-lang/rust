@@ -19,10 +19,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'
         cx,
         ids: HirIdSet::default(),
         def_ids: DefIdMap::default(),
-        skip: false,
     };
-    var_visitor.visit_expr(cond);
-    if var_visitor.skip {
+    if var_visitor.visit_expr(cond).is_break() {
         return;
     }
     let used_in_condition = &var_visitor.ids;
@@ -81,7 +79,6 @@ struct VarCollectorVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     ids: HirIdSet,
     def_ids: DefIdMap<bool>,
-    skip: bool,
 }
 
 impl<'tcx> VarCollectorVisitor<'_, 'tcx> {
@@ -104,11 +101,15 @@ impl<'tcx> VarCollectorVisitor<'_, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for VarCollectorVisitor<'_, 'tcx> {
-    fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
+    type Result = ControlFlow<()>;
+    fn visit_expr(&mut self, ex: &'tcx Expr<'_>) -> Self::Result {
         match ex.kind {
-            ExprKind::Path(_) => self.insert_def_id(ex),
+            ExprKind::Path(_) => {
+                self.insert_def_id(ex);
+                ControlFlow::Continue(())
+            },
             // If there is any function/method call… we just stop analysis
-            ExprKind::Call(..) | ExprKind::MethodCall(..) => self.skip = true,
+            ExprKind::Call(..) | ExprKind::MethodCall(..) => ControlFlow::Break(()),
 
             _ => walk_expr(self, ex),
         }

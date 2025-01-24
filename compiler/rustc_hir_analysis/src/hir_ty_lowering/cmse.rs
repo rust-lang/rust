@@ -1,9 +1,9 @@
+use rustc_abi::ExternAbi;
 use rustc_errors::{DiagCtxtHandle, E0781, struct_span_code_err};
 use rustc_hir::{self as hir, HirId};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::LayoutError;
-use rustc_middle::ty::{self, ParamEnv, TyCtxt};
-use rustc_target::spec::abi;
+use rustc_middle::ty::{self, TyCtxt};
 
 use crate::errors;
 
@@ -14,13 +14,13 @@ pub(crate) fn validate_cmse_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     dcx: DiagCtxtHandle<'_>,
     hir_id: HirId,
-    abi: abi::Abi,
+    abi: ExternAbi,
     fn_sig: ty::PolyFnSig<'tcx>,
 ) {
     let abi_name = abi.name();
 
     match abi {
-        abi::Abi::CCmseNonSecureCall => {
+        ExternAbi::CCmseNonSecureCall => {
             let hir_node = tcx.hir_node(hir_id);
             let hir::Node::Ty(hir::Ty {
                 span: bare_fn_span,
@@ -78,7 +78,7 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                 }
             };
         }
-        abi::Abi::CCmseNonSecureEntry => {
+        ExternAbi::CCmseNonSecureEntry => {
             let hir_node = tcx.hir_node(hir_id);
             let Some(hir::FnSig { decl, span: fn_sig_span, .. }) = hir_node.fn_sig() else {
                 // might happen when this ABI is used incorrectly. That will be handled elsewhere
@@ -130,7 +130,7 @@ fn is_valid_cmse_inputs<'tcx>(
     let fn_sig = tcx.instantiate_bound_regions_with_erased(fn_sig);
 
     for (index, ty) in fn_sig.inputs().iter().enumerate() {
-        let layout = tcx.layout_of(ParamEnv::reveal_all().and(*ty))?;
+        let layout = tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(*ty))?;
 
         let align = layout.layout.align().abi.bytes();
         let size = layout.layout.size().bytes();
@@ -158,8 +158,10 @@ fn is_valid_cmse_output<'tcx>(
     // this type is only used for layout computation, which does not rely on regions
     let fn_sig = tcx.instantiate_bound_regions_with_erased(fn_sig);
 
+    let typing_env = ty::TypingEnv::fully_monomorphized();
+
     let mut ret_ty = fn_sig.output();
-    let layout = tcx.layout_of(ParamEnv::reveal_all().and(ret_ty))?;
+    let layout = tcx.layout_of(typing_env.as_query_input(ret_ty))?;
     let size = layout.layout.size().bytes();
 
     if size <= 4 {
@@ -182,7 +184,7 @@ fn is_valid_cmse_output<'tcx>(
         for variant_def in adt_def.variants() {
             for field_def in variant_def.fields.iter() {
                 let ty = field_def.ty(tcx, args);
-                let layout = tcx.layout_of(ParamEnv::reveal_all().and(ty))?;
+                let layout = tcx.layout_of(typing_env.as_query_input(ty))?;
 
                 if !layout.layout.is_1zst() {
                     ret_ty = ty;
@@ -195,17 +197,17 @@ fn is_valid_cmse_output<'tcx>(
     Ok(ret_ty == tcx.types.i64 || ret_ty == tcx.types.u64 || ret_ty == tcx.types.f64)
 }
 
-fn should_emit_generic_error<'tcx>(abi: abi::Abi, layout_err: &'tcx LayoutError<'tcx>) -> bool {
+fn should_emit_generic_error<'tcx>(abi: ExternAbi, layout_err: &'tcx LayoutError<'tcx>) -> bool {
     use LayoutError::*;
 
     match layout_err {
         Unknown(ty) => {
             match abi {
-                abi::Abi::CCmseNonSecureCall => {
+                ExternAbi::CCmseNonSecureCall => {
                     // prevent double reporting of this error
                     !ty.is_impl_trait()
                 }
-                abi::Abi::CCmseNonSecureEntry => true,
+                ExternAbi::CCmseNonSecureEntry => true,
                 _ => bug!("invalid ABI: {abi}"),
             }
         }

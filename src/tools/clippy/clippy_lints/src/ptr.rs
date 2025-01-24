@@ -8,7 +8,7 @@ use rustc_hir::hir_id::{HirId, HirIdMap};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{
     self as hir, AnonConst, BinOpKind, BindingMode, Body, Expr, ExprKind, FnRetTy, FnSig, GenericArg, ImplItemKind,
-    ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, Safety, TraitFn, TraitItem, TraitItemKind, TyKind,
+    ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, TraitFn, TraitItem, TraitItemKind, TyKind,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
@@ -189,7 +189,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
         let mut parents = hir.parent_iter(body.value.hir_id);
         let (item_id, sig, is_trait_item) = match parents.next() {
             Some((_, Node::Item(i))) => {
-                if let ItemKind::Fn(sig, ..) = &i.kind {
+                if let ItemKind::Fn { sig, .. } = &i.kind {
                     (i.owner_id, sig, false)
                 } else {
                     return;
@@ -475,7 +475,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                                     .def_id,
                                             ),
                                             ty::ReBound(_, r) => r.kind.get_id(),
-                                            ty::ReLateParam(r) => r.bound_region.get_id(),
+                                            ty::ReLateParam(r) => r.kind.get_id(),
                                             ty::ReStatic
                                             | ty::ReVar(_)
                                             | ty::RePlaceholder(_)
@@ -541,9 +541,7 @@ fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Optio
             .collect();
         if let Some(args) = args
             && !args.is_empty()
-            && body.map_or(true, |body| {
-                sig.header.safety == Safety::Unsafe || contains_unsafe_block(cx, body.value)
-            })
+            && body.is_none_or(|body| sig.header.is_unsafe() || contains_unsafe_block(cx, body.value))
         {
             span_lint_and_then(
                 cx,
@@ -695,7 +693,7 @@ fn matches_preds<'tcx>(
     ty: Ty<'tcx>,
     preds: &'tcx [ty::PolyExistentialPredicate<'tcx>],
 ) -> bool {
-    let infcx = cx.tcx.infer_ctxt().build();
+    let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
     preds
         .iter()
         .all(|&p| match cx.tcx.instantiate_bound_regions_with_erased(p) {
@@ -727,9 +725,8 @@ fn get_ref_lm<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Option<(&'tcx Lifetime, Mutabili
 
 fn is_null_path(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let ExprKind::Call(pathexp, []) = expr.kind {
-        path_def_id(cx, pathexp).map_or(false, |id| {
-            matches!(cx.tcx.get_diagnostic_name(id), Some(sym::ptr_null | sym::ptr_null_mut))
-        })
+        path_def_id(cx, pathexp)
+            .is_some_and(|id| matches!(cx.tcx.get_diagnostic_name(id), Some(sym::ptr_null | sym::ptr_null_mut)))
     } else {
         false
     }

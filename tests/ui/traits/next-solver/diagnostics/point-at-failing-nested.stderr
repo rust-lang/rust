@@ -2,7 +2,7 @@ error[E0277]: the trait bound `(): Foo` is not satisfied
   --> $DIR/point-at-failing-nested.rs:22:17
    |
 LL |     needs_foo::<()>();
-   |                 ^^ the trait `Bar` is not implemented for `()`, which is required by `(): Foo`
+   |                 ^^ the trait `Bar` is not implemented for `()`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/point-at-failing-nested.rs:4:1

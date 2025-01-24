@@ -1,0 +1,37 @@
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(rustc_private)]`
+  --> $DIR/recursive_const_stab_unstable_if_unmarked.rs:15:5
+   |
+LL |     not_stably_const();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | pub const fn expose_on_stable() {
+   |
+help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
+   |
+LL + #[rustc_allow_const_fn_unstable(rustc_private)]
+LL | pub const fn expose_on_stable() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(const_async_blocks)]`
+  --> $DIR/recursive_const_stab_unstable_if_unmarked.rs:18:14
+   |
+LL |     let _x = async { 15 };
+   |              ^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | pub const fn expose_on_stable() {
+   |
+help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
+   |
+LL + #[rustc_allow_const_fn_unstable(const_async_blocks)]
+LL | pub const fn expose_on_stable() {
+   |
+
+error: aborting due to 2 previous errors
+

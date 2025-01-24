@@ -1,5 +1,5 @@
 //! The `wasm32-wasip2` target is the next evolution of the
-//! wasm32-wasi target. While the wasi specification is still under
+//! wasm32-wasip1 target. While the wasi specification is still under
 //! active development, the preview 2 iteration is considered an "island
 //! of stability" that should allow users to rely on it indefinitely.
 //!
@@ -66,7 +66,7 @@ pub(crate) fn target() -> Target {
             std: Some(true),
         },
         pointer_width: 32,
-        data_layout: "e-m:e-p:32:32-p10:8:8-p20:8:8-i64:64-n32:64-S128-ni:1:10:20".into(),
+        data_layout: "e-m:e-p:32:32-p10:8:8-p20:8:8-i64:64-i128:128-n32:64-S128-ni:1:10:20".into(),
         arch: "wasm32".into(),
         options,
     }

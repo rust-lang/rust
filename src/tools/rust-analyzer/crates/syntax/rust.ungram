@@ -37,7 +37,7 @@ Path =
 PathSegment =
   '::'? NameRef
 | NameRef GenericArgList?
-| NameRef ParamList RetType?
+| NameRef ParenthesizedArgList RetType?
 | NameRef ReturnTypeSyntax
 | '<' Type ('as' PathType)? '>'
 
@@ -48,6 +48,9 @@ ReturnTypeSyntax =
 //*************************//
 //        Generics         //
 //*************************//
+
+ParenthesizedArgList =
+  '::'? '(' (TypeArg (',' TypeArg)* ','?)? ')'
 
 GenericArgList =
   '::'? '<' (GenericArg (',' GenericArg)* ','?)? '>'
@@ -190,7 +193,7 @@ UseTreeList =
 
 Fn =
  Attr* Visibility?
- 'default'? 'const'? 'async'? 'gen'? 'unsafe'? Abi?
+ 'default'? 'const'? 'async'? 'gen'? 'unsafe'? 'safe'? Abi?
  'fn' Name GenericParamList? ParamList RetType? WhereClause?
  (body:BlockExpr | ';')
 
@@ -284,6 +287,7 @@ Const =
 
 Static =
   Attr* Visibility?
+  'unsafe'? 'safe'?
   'static' 'mut'? Name ':' Type
   ('=' body:Expr)? ';'
 
@@ -410,7 +414,7 @@ AsmClobberAbi = 'clobber_abi' '(' ('@string' (',' '@string')* ','?) ')'
 // option := "pure" / "nomem" / "readonly" / "preserves_flags" / "noreturn" / "nostack" / "att_syntax" / "raw"
 AsmOption = 'pure' | 'nomem' | 'readonly' | 'preserves_flags' | 'noreturn' | 'nostack' | 'att_syntax' | 'raw' | 'may_unwind'
 // options := "options(" option *("," option) [","] ")"
-AsmOptions = 'options' '(' AsmOption *(',' AsmOption) ','? ')'
+AsmOptions = 'options' '(' (AsmOption (',' AsmOption)*) ','? ')'
 AsmLabel = 'label' BlockExpr
 AsmSym = 'sym' Path
 AsmConst = 'const' Expr
@@ -656,7 +660,14 @@ TypeBoundList =
 TypeBound =
   Lifetime
 | ('~' 'const' | 'const')? 'async'? '?'? Type
-| 'use' GenericParamList
+| 'use' UseBoundGenericArgs
+
+UseBoundGenericArgs =
+ '<' (UseBoundGenericArg (',' UseBoundGenericArg)* ','?)? '>'
+
+UseBoundGenericArg =
+  Lifetime
+| NameRef
 
 //************************//
 //        Patterns        //
@@ -728,7 +739,7 @@ PathPat =
   Path
 
 OrPat =
-  (Pat ('|' Pat)* '|'?)
+  '|'? (Pat ('|' Pat)*)
 
 BoxPat =
   'box' Pat

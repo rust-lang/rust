@@ -15,11 +15,12 @@ pub unsafe fn setup(build: &mut crate::Build) {
 ///
 /// Most of the time when you're running a build system (e.g., make) you expect
 /// Ctrl-C or abnormal termination to actually terminate the entire tree of
-/// process in play, not just the one at the top. This currently works "by
+/// processes in play. This currently works "by
 /// default" on Unix platforms because Ctrl-C actually sends a signal to the
-/// *process group* rather than the parent process, so everything will get torn
-/// down. On Windows, however, this does not happen and Ctrl-C just kills the
-/// parent process.
+/// *process group* so everything will get torn
+/// down. On Windows, however, Ctrl-C is only sent to processes in the same console.
+/// If a process is detached or attached to another console, it won't receive the
+/// signal.
 ///
 /// To achieve the same semantics on Windows we use Job Objects to ensure that
 /// all processes die at the same time. Job objects have a mode of operation
@@ -87,15 +88,7 @@ mod for_windows {
         );
         assert!(r.is_ok(), "{}", io::Error::last_os_error());
 
-        // Assign our process to this job object. Note that if this fails, one very
-        // likely reason is that we are ourselves already in a job object! This can
-        // happen on the build bots that we've got for Windows, or if just anyone
-        // else is instrumenting the build. In this case we just bail out
-        // immediately and assume that they take care of it.
-        //
-        // Also note that nested jobs (why this might fail) are supported in recent
-        // versions of Windows, but the version of Windows that our bots are running
-        // at least don't support nested job objects.
+        // Assign our process to this job object.
         let r = AssignProcessToJobObject(job, GetCurrentProcess());
         if r.is_err() {
             CloseHandle(job).ok();
@@ -124,14 +117,19 @@ mod for_windows {
                 // (only when wrongly setting the environmental variable),
                 // it might be better to improve the experience of the second case
                 // when users have interrupted the parent process and we haven't finish
-                // duplicating the handle yet. We just need close the job object if that occurs.
-                CloseHandle(job).ok();
+                // duplicating the handle yet.
                 return;
             }
         };
 
         let mut parent_handle = HANDLE::default();
-        let r = DuplicateHandle(
+        // If this fails, well at least we tried! An example of DuplicateHandle
+        // failing in the past has been when the wrong python2 package spawned this
+        // build system (e.g., the `python2` package in MSYS instead of
+        // `mingw-w64-x86_64-python2`). Not sure why it failed, but the "failure
+        // mode" here is that we only clean everything up when the build system
+        // dies, not when the python parent does, so not too bad.
+        let _ = DuplicateHandle(
             GetCurrentProcess(),
             job,
             parent,
@@ -140,15 +138,6 @@ mod for_windows {
             false,
             DUPLICATE_SAME_ACCESS,
         );
-
-        // If this failed, well at least we tried! An example of DuplicateHandle
-        // failing in the past has been when the wrong python2 package spawned this
-        // build system (e.g., the `python2` package in MSYS instead of
-        // `mingw-w64-x86_64-python2`). Not sure why it failed, but the "failure
-        // mode" here is that we only clean everything up when the build system
-        // dies, not when the python parent does, so not too bad.
-        if r.is_err() {
-            CloseHandle(job).ok();
-        }
+        CloseHandle(parent).ok();
     }
 }

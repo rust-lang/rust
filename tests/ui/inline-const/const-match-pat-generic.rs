@@ -5,7 +5,7 @@
 fn foo<const V: usize>() {
     match 0 {
         const { V } => {},
-        //~^ ERROR constant pattern depends on a generic parameter
+        //~^ ERROR constant pattern cannot depend on generic parameters
         _ => {},
     }
 }
@@ -17,7 +17,7 @@ const fn f(x: usize) -> usize {
 fn bar<const V: usize>() {
     match 0 {
         const { f(V) } => {},
-        //~^ ERROR constant pattern depends on a generic parameter
+        //~^ ERROR constant pattern cannot depend on generic parameters
         _ => {},
     }
 }

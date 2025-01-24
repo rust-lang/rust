@@ -527,7 +527,7 @@ impl Ipv4Addr {
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// let addr = Ipv4Addr::from(0x12345678);
+    /// let addr = Ipv4Addr::from_bits(0x12345678);
     /// assert_eq!(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78), addr);
     /// ```
     #[rustc_const_stable(feature = "ip_bits", since = "1.80.0")]
@@ -1294,7 +1294,7 @@ impl Ipv6Addr {
     ///     0x1020, 0x3040, 0x5060, 0x7080,
     ///     0x90A0, 0xB0C0, 0xD0E0, 0xF00D,
     /// );
-    /// assert_eq!(0x102030405060708090A0B0C0D0E0F00D_u128, u128::from(addr));
+    /// assert_eq!(0x102030405060708090A0B0C0D0E0F00D_u128, addr.to_bits());
     /// ```
     ///
     /// ```
@@ -1330,7 +1330,7 @@ impl Ipv6Addr {
     /// ```
     /// use std::net::Ipv6Addr;
     ///
-    /// let addr = Ipv6Addr::from(0x102030405060708090A0B0C0D0E0F00D_u128);
+    /// let addr = Ipv6Addr::from_bits(0x102030405060708090A0B0C0D0E0F00D_u128);
     /// assert_eq!(
     ///     Ipv6Addr::new(
     ///         0x1020, 0x3040, 0x5060, 0x7080,
@@ -1539,8 +1539,9 @@ impl Ipv6Addr {
     /// // Addresses reserved for benchmarking (`2001:2::/48`)
     /// assert_eq!(Ipv6Addr::new(0x2001, 2, 0, 0, 0, 0, 0, 1,).is_global(), false);
     ///
-    /// // Addresses reserved for documentation (`2001:db8::/32`)
+    /// // Addresses reserved for documentation (`2001:db8::/32` and `3fff::/20`)
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1).is_global(), false);
+    /// assert_eq!(Ipv6Addr::new(0x3fff, 0, 0, 0, 0, 0, 0, 0).is_global(), false);
     ///
     /// // Unique local addresses (`fc00::/7`)
     /// assert_eq!(Ipv6Addr::new(0xfc02, 0, 0, 0, 0, 0, 0, 1).is_global(), false);
@@ -1594,16 +1595,15 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
-    ///
     /// use std::net::Ipv6Addr;
     ///
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unique_local(), false);
     /// assert_eq!(Ipv6Addr::new(0xfc02, 0, 0, 0, 0, 0, 0, 0).is_unique_local(), true);
     /// ```
-    #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
+    #[stable(feature = "ipv6_is_unique_local", since = "1.84.0")]
+    #[rustc_const_stable(feature = "ipv6_is_unique_local", since = "1.84.0")]
     pub const fn is_unique_local(&self) -> bool {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
@@ -1665,8 +1665,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
-    ///
     /// use std::net::Ipv6Addr;
     ///
     /// // The loopback address (`::1`) does not actually have link-local scope.
@@ -1680,19 +1678,21 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0).is_unicast_link_local(), true);
     /// assert_eq!(Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), true);
     /// ```
-    #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
+    #[stable(feature = "ipv6_is_unique_local", since = "1.84.0")]
+    #[rustc_const_stable(feature = "ipv6_is_unique_local", since = "1.84.0")]
     pub const fn is_unicast_link_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfe80
     }
 
     /// Returns [`true`] if this is an address reserved for documentation
-    /// (`2001:db8::/32`).
+    /// (`2001:db8::/32` and `3fff::/20`).
     ///
-    /// This property is defined in [IETF RFC 3849].
+    /// This property is defined by [IETF RFC 3849] and [IETF RFC 9637].
     ///
     /// [IETF RFC 3849]: https://tools.ietf.org/html/rfc3849
+    /// [IETF RFC 9637]: https://tools.ietf.org/html/rfc9637
     ///
     /// # Examples
     ///
@@ -1703,12 +1703,13 @@ impl Ipv6Addr {
     ///
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_documentation(), false);
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_documentation(), true);
+    /// assert_eq!(Ipv6Addr::new(0x3fff, 0, 0, 0, 0, 0, 0, 0).is_documentation(), true);
     /// ```
     #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
     pub const fn is_documentation(&self) -> bool {
-        (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
+        matches!(self.segments(), [0x2001, 0xdb8, ..] | [0x3fff, 0..=0x0fff, ..])
     }
 
     /// Returns [`true`] if this is an address reserved for benchmarking (`2001:2::/48`).

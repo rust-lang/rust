@@ -47,10 +47,9 @@ use rustc_middle::dep_graph::{
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
-use {rustc_ast as ast, rustc_graphviz as dot, rustc_hir as hir};
+use {rustc_graphviz as dot, rustc_hir as hir};
 
 use crate::errors;
 
@@ -68,7 +67,7 @@ pub(crate) fn assert_dep_graph(tcx: TyCtxt<'_>) {
         // if the `rustc_attrs` feature is not enabled, then the
         // attributes we are interested in cannot be present anyway, so
         // skip the walk.
-        if !tcx.features().rustc_attrs {
+        if !tcx.features().rustc_attrs() {
             return;
         }
 
@@ -106,7 +105,7 @@ struct IfThisChanged<'tcx> {
 }
 
 impl<'tcx> IfThisChanged<'tcx> {
-    fn argument(&self, attr: &ast::Attribute) -> Option<Symbol> {
+    fn argument(&self, attr: &hir::Attribute) -> Option<Symbol> {
         let mut value = None;
         for list_item in attr.meta_item_list().unwrap_or_default() {
             match list_item.ident() {

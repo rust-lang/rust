@@ -1,6 +1,7 @@
 use std::assert_matches::assert_matches;
 use std::cmp::Ordering;
 
+use rustc_abi::{self as abi, Align, Float, HasDataLayout, Primitive, Size};
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphization};
@@ -9,15 +10,14 @@ use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir as hir;
 use rustc_middle::mir::BinOp;
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, GenericArgsRef, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
-use rustc_target::abi::{self, Align, Float, HasDataLayout, Primitive, Size};
 use rustc_target::spec::{HasTargetSpec, PanicStrategy};
 use tracing::debug;
 
-use crate::abi::{Abi, FnAbi, FnAbiLlvmExt, LlvmType, PassMode};
+use crate::abi::{ExternAbi, FnAbi, FnAbiLlvmExt, LlvmType, PassMode};
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Metadata};
@@ -163,14 +163,14 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         span: Span,
     ) -> Result<(), ty::Instance<'tcx>> {
         let tcx = self.tcx;
-        let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
+        let callee_ty = instance.ty(tcx, self.typing_env());
 
         let ty::FnDef(def_id, fn_args) = *callee_ty.kind() else {
             bug!("expected fn item type, found {}", callee_ty);
         };
 
         let sig = callee_ty.fn_sig(tcx);
-        let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig);
+        let sig = tcx.normalize_erasing_late_bound_regions(self.typing_env(), sig);
         let arg_tys = sig.inputs();
         let ret_ty = sig.output();
         let name = tcx.item_name(def_id);
@@ -192,7 +192,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     Some(instance),
                 )
             }
-            sym::likely => self.expect(args[0].immediate(), true),
             sym::is_val_statically_known => {
                 let intrinsic_type = args[0].layout.immediate_llvm_type(self.cx);
                 let kind = self.type_kind(intrinsic_type);
@@ -213,7 +212,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     self.const_bool(false)
                 }
             }
-            sym::unlikely => self.expect(args[0].immediate(), false),
             sym::select_unpredictable => {
                 let cond = args[0].immediate();
                 assert_eq!(args[1].layout, args[2].layout);
@@ -258,8 +256,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 self.call_intrinsic("llvm.va_copy", &[args[0].immediate(), args[1].immediate()])
             }
             sym::va_arg => {
-                match fn_abi.ret.layout.abi {
-                    abi::Abi::Scalar(scalar) => {
+                match fn_abi.ret.layout.backend_repr {
+                    abi::BackendRepr::Scalar(scalar) => {
                         match scalar.primitive() {
                             Primitive::Int(..) => {
                                 if self.cx().size_of(ret_ty).bytes() < 4 {
@@ -342,6 +340,37 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     self.const_i32(cache_type),
                 ])
             }
+            sym::carrying_mul_add => {
+                let (size, signed) = fn_args.type_at(0).int_size_and_signed(self.tcx);
+
+                let wide_llty = self.type_ix(size.bits() * 2);
+                let args = args.as_array().unwrap();
+                let [a, b, c, d] = args.map(|a| self.intcast(a.immediate(), wide_llty, signed));
+
+                let wide = if signed {
+                    let prod = self.unchecked_smul(a, b);
+                    let acc = self.unchecked_sadd(prod, c);
+                    self.unchecked_sadd(acc, d)
+                } else {
+                    let prod = self.unchecked_umul(a, b);
+                    let acc = self.unchecked_uadd(prod, c);
+                    self.unchecked_uadd(acc, d)
+                };
+
+                let narrow_llty = self.type_ix(size.bits());
+                let low = self.trunc(wide, narrow_llty);
+                let bits_const = self.const_uint(wide_llty, size.bits());
+                // No need for ashr when signed; LLVM changes it to lshr anyway.
+                let high = self.lshr(wide, bits_const);
+                // FIXME: could be `trunc nuw`, even for signed.
+                let high = self.trunc(high, narrow_llty);
+
+                let pair_llty = self.type_struct(&[narrow_llty, narrow_llty], false);
+                let pair = self.const_poison(pair_llty);
+                let pair = self.insert_value(pair, low, 0);
+                let pair = self.insert_value(pair, high, 1);
+                pair
+            }
             sym::ctlz
             | sym::ctlz_nonzero
             | sym::cttz
@@ -354,95 +383,95 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::saturating_add
             | sym::saturating_sub => {
                 let ty = arg_tys[0];
-                match int_type_width_signed(ty, self) {
-                    Some((width, signed)) => match name {
-                        sym::ctlz | sym::cttz => {
-                            let y = self.const_bool(false);
-                            let ret = self.call_intrinsic(&format!("llvm.{name}.i{width}"), &[
-                                args[0].immediate(),
-                                y,
-                            ]);
+                if !ty.is_integral() {
+                    tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
+                        span,
+                        name,
+                        ty,
+                    });
+                    return Ok(());
+                }
+                let (size, signed) = ty.int_size_and_signed(self.tcx);
+                let width = size.bits();
+                match name {
+                    sym::ctlz | sym::cttz => {
+                        let y = self.const_bool(false);
+                        let ret = self.call_intrinsic(&format!("llvm.{name}.i{width}"), &[
+                            args[0].immediate(),
+                            y,
+                        ]);
 
-                            self.intcast(ret, llret_ty, false)
-                        }
-                        sym::ctlz_nonzero => {
-                            let y = self.const_bool(true);
-                            let llvm_name = &format!("llvm.ctlz.i{width}");
-                            let ret = self.call_intrinsic(llvm_name, &[args[0].immediate(), y]);
-                            self.intcast(ret, llret_ty, false)
-                        }
-                        sym::cttz_nonzero => {
-                            let y = self.const_bool(true);
-                            let llvm_name = &format!("llvm.cttz.i{width}");
-                            let ret = self.call_intrinsic(llvm_name, &[args[0].immediate(), y]);
-                            self.intcast(ret, llret_ty, false)
-                        }
-                        sym::ctpop => {
-                            let ret = self.call_intrinsic(&format!("llvm.ctpop.i{width}"), &[args
-                                [0]
-                            .immediate()]);
-                            self.intcast(ret, llret_ty, false)
-                        }
-                        sym::bswap => {
-                            if width == 8 {
-                                args[0].immediate() // byte swap a u8/i8 is just a no-op
-                            } else {
-                                self.call_intrinsic(&format!("llvm.bswap.i{width}"), &[
-                                    args[0].immediate()
-                                ])
-                            }
-                        }
-                        sym::bitreverse => self
-                            .call_intrinsic(&format!("llvm.bitreverse.i{width}"), &[
-                                args[0].immediate()
-                            ]),
-                        sym::rotate_left | sym::rotate_right => {
-                            let is_left = name == sym::rotate_left;
-                            let val = args[0].immediate();
-                            let raw_shift = args[1].immediate();
-                            // rotate = funnel shift with first two args the same
-                            let llvm_name =
-                                &format!("llvm.fsh{}.i{}", if is_left { 'l' } else { 'r' }, width);
-
-                            // llvm expects shift to be the same type as the values, but rust
-                            // always uses `u32`.
-                            let raw_shift = self.intcast(raw_shift, self.val_ty(val), false);
-
-                            self.call_intrinsic(llvm_name, &[val, val, raw_shift])
-                        }
-                        sym::saturating_add | sym::saturating_sub => {
-                            let is_add = name == sym::saturating_add;
-                            let lhs = args[0].immediate();
-                            let rhs = args[1].immediate();
-                            let llvm_name = &format!(
-                                "llvm.{}{}.sat.i{}",
-                                if signed { 's' } else { 'u' },
-                                if is_add { "add" } else { "sub" },
-                                width
-                            );
-                            self.call_intrinsic(llvm_name, &[lhs, rhs])
-                        }
-                        _ => bug!(),
-                    },
-                    None => {
-                        tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
-                            span,
-                            name,
-                            ty,
-                        });
-                        return Ok(());
+                        self.intcast(ret, llret_ty, false)
                     }
+                    sym::ctlz_nonzero => {
+                        let y = self.const_bool(true);
+                        let llvm_name = &format!("llvm.ctlz.i{width}");
+                        let ret = self.call_intrinsic(llvm_name, &[args[0].immediate(), y]);
+                        self.intcast(ret, llret_ty, false)
+                    }
+                    sym::cttz_nonzero => {
+                        let y = self.const_bool(true);
+                        let llvm_name = &format!("llvm.cttz.i{width}");
+                        let ret = self.call_intrinsic(llvm_name, &[args[0].immediate(), y]);
+                        self.intcast(ret, llret_ty, false)
+                    }
+                    sym::ctpop => {
+                        let ret = self.call_intrinsic(&format!("llvm.ctpop.i{width}"), &[
+                            args[0].immediate()
+                        ]);
+                        self.intcast(ret, llret_ty, false)
+                    }
+                    sym::bswap => {
+                        if width == 8 {
+                            args[0].immediate() // byte swap a u8/i8 is just a no-op
+                        } else {
+                            self.call_intrinsic(&format!("llvm.bswap.i{width}"), &[
+                                args[0].immediate()
+                            ])
+                        }
+                    }
+                    sym::bitreverse => self
+                        .call_intrinsic(&format!("llvm.bitreverse.i{width}"), &[
+                            args[0].immediate()
+                        ]),
+                    sym::rotate_left | sym::rotate_right => {
+                        let is_left = name == sym::rotate_left;
+                        let val = args[0].immediate();
+                        let raw_shift = args[1].immediate();
+                        // rotate = funnel shift with first two args the same
+                        let llvm_name =
+                            &format!("llvm.fsh{}.i{}", if is_left { 'l' } else { 'r' }, width);
+
+                        // llvm expects shift to be the same type as the values, but rust
+                        // always uses `u32`.
+                        let raw_shift = self.intcast(raw_shift, self.val_ty(val), false);
+
+                        self.call_intrinsic(llvm_name, &[val, val, raw_shift])
+                    }
+                    sym::saturating_add | sym::saturating_sub => {
+                        let is_add = name == sym::saturating_add;
+                        let lhs = args[0].immediate();
+                        let rhs = args[1].immediate();
+                        let llvm_name = &format!(
+                            "llvm.{}{}.sat.i{}",
+                            if signed { 's' } else { 'u' },
+                            if is_add { "add" } else { "sub" },
+                            width
+                        );
+                        self.call_intrinsic(llvm_name, &[lhs, rhs])
+                    }
+                    _ => bug!(),
                 }
             }
 
             sym::raw_eq => {
-                use abi::Abi::*;
+                use abi::BackendRepr::*;
                 let tp_ty = fn_args.type_at(0);
                 let layout = self.layout_of(tp_ty).layout;
-                let use_integer_compare = match layout.abi() {
+                let use_integer_compare = match layout.backend_repr() {
                     Scalar(_) | ScalarPair(_, _) => true,
                     Uninhabited | Vector { .. } => false,
-                    Aggregate { .. } => {
+                    Memory { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
                         // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),
                         // so we re-use that same threshold here.
@@ -549,7 +578,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
 
                 let llret_ty = if ret_ty.is_simd()
-                    && let abi::Abi::Aggregate { .. } = self.layout_of(ret_ty).layout.abi
+                    && let abi::BackendRepr::Memory { .. } =
+                        self.layout_of(ret_ty).layout.backend_repr
                 {
                     let (size, elem_ty) = ret_ty.simd_size_and_type(self.tcx());
                     let elem_ll_ty = match elem_ty.kind() {
@@ -785,13 +815,12 @@ fn codegen_msvc_try<'ll>(
         let type_info =
             bx.const_struct(&[type_info_vtable, bx.const_null(bx.type_ptr()), type_name], false);
         let tydesc = bx.declare_global("__rust_panic_type_info", bx.val_ty(type_info));
-        unsafe {
-            llvm::LLVMRustSetLinkage(tydesc, llvm::Linkage::LinkOnceODRLinkage);
-            if bx.cx.tcx.sess.target.supports_comdat() {
-                llvm::SetUniqueComdat(bx.llmod, tydesc);
-            }
-            llvm::LLVMSetInitializer(tydesc, type_info);
+
+        llvm::set_linkage(tydesc, llvm::Linkage::LinkOnceODRLinkage);
+        if bx.cx.tcx.sess.target.supports_comdat() {
+            llvm::SetUniqueComdat(bx.llmod, tydesc);
         }
+        unsafe { llvm::LLVMSetInitializer(tydesc, type_info) };
 
         // The flag value of 8 indicates that we are catching the exception by
         // reference instead of by value. We can't use catch by value because
@@ -1064,7 +1093,7 @@ fn gen_fn<'ll, 'tcx>(
     cx.set_frame_pointer_type(llfn);
     cx.apply_target_cpu_attr(llfn);
     // FIXME(eddyb) find a nicer way to do this.
-    unsafe { llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::InternalLinkage) };
+    llvm::set_linkage(llfn, llvm::Linkage::InternalLinkage);
     let llbb = Builder::append_block(cx, llfn, "entry-block");
     let bx = Builder::build(cx, llbb);
     codegen(bx);
@@ -1094,7 +1123,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
             tcx.types.unit,
             false,
             hir::Safety::Unsafe,
-            Abi::Rust,
+            ExternAbi::Rust,
         )),
     );
     // `unsafe fn(*mut i8, *mut i8) -> ()`
@@ -1105,7 +1134,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
             tcx.types.unit,
             false,
             hir::Safety::Unsafe,
-            Abi::Rust,
+            ExternAbi::Rust,
         )),
     );
     // `unsafe fn(unsafe fn(*mut i8) -> (), *mut i8, unsafe fn(*mut i8, *mut i8) -> ()) -> i32`
@@ -1114,7 +1143,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
         tcx.types.i32,
         false,
         hir::Safety::Unsafe,
-        Abi::Rust,
+        ExternAbi::Rust,
     ));
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);
     cx.rust_try_fn.set(Some(rust_try));
@@ -1154,8 +1183,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     let tcx = bx.tcx();
-    let sig =
-        tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), callee_ty.fn_sig(tcx));
+    let sig = tcx.normalize_erasing_late_bound_regions(bx.typing_env(), callee_ty.fn_sig(tcx));
     let arg_tys = sig.inputs();
 
     // Sanity-check: all vector arguments must be immediates.
@@ -1537,6 +1565,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             sym::simd_flog => ("log", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_floor => ("floor", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_fma => ("fma", bx.type_func(&[vec_ty, vec_ty, vec_ty], vec_ty)),
+            sym::simd_relaxed_fma => ("fmuladd", bx.type_func(&[vec_ty, vec_ty, vec_ty], vec_ty)),
             sym::simd_fpowi => ("powi", bx.type_func(&[vec_ty, bx.type_i32()], vec_ty)),
             sym::simd_fpow => ("pow", bx.type_func(&[vec_ty, vec_ty], vec_ty)),
             sym::simd_fsin => ("sin", bx.type_func(&[vec_ty], vec_ty)),
@@ -1575,6 +1604,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             | sym::simd_fpowi
             | sym::simd_fsin
             | sym::simd_fsqrt
+            | sym::simd_relaxed_fma
             | sym::simd_round
             | sym::simd_trunc
     ) {
@@ -2189,7 +2219,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         match in_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
+                    bx.tcx.normalize_erasing_regions(bx.typing_env(), ty)
                 });
                 require!(metadata.is_unit(), InvalidMonomorphization::CastWidePointer {
                     span,
@@ -2204,7 +2234,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         match out_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
+                    bx.tcx.normalize_erasing_regions(bx.typing_env(), ty)
                 });
                 require!(metadata.is_unit(), InvalidMonomorphization::CastWidePointer {
                     span,
@@ -2531,20 +2561,4 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     span_bug!(span, "unknown SIMD intrinsic");
-}
-
-// Returns the width of an int Ty, and if it's signed or not
-// Returns None if the type is not an integer
-// FIXME: there’s multiple of this functions, investigate using some of the already existing
-// stuffs.
-fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, bool)> {
-    match ty.kind() {
-        ty::Int(t) => {
-            Some((t.bit_width().unwrap_or(u64::from(cx.tcx.sess.target.pointer_width)), true))
-        }
-        ty::Uint(t) => {
-            Some((t.bit_width().unwrap_or(u64::from(cx.tcx.sess.target.pointer_width)), false))
-        }
-        _ => None,
-    }
 }

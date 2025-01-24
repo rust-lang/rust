@@ -3,6 +3,9 @@ error[E0277]: the trait bound `(): T` is not satisfied
    |
 LL | fn should_ret_unit() -> impl T {
    |                         ^^^^^^ the trait `T` is not implemented for `()`
+LL |
+LL |     panic!()
+   |     -------- return type was inferred to be `_` here
    |
    = help: the trait `T` is implemented for `i32`
 
@@ -11,6 +14,9 @@ error[E0277]: the trait bound `(): T` is not satisfied
    |
 LL | fn a() -> Foo {
    |           ^^^ the trait `T` is not implemented for `()`
+LL |
+LL |     panic!()
+   |     -------- return type was inferred to be `_` here
    |
    = help: the trait `T` is implemented for `i32`
 

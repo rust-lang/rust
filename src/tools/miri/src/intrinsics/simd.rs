@@ -1,9 +1,11 @@
 use either::Either;
+use rand::Rng;
+use rustc_abi::{Endian, HasDataLayout};
 use rustc_apfloat::{Float, Round};
+use rustc_middle::ty::FloatTy;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::{mir, ty, ty::FloatTy};
+use rustc_middle::{mir, ty};
 use rustc_span::{Symbol, sym};
-use rustc_target::abi::{Endian, HasDataLayout};
 
 use crate::helpers::{ToHost, ToSoft, bool_to_simd_element, check_arg_count, simd_element_to_bool};
 use crate::*;
@@ -103,42 +105,39 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             let ty::Float(float_ty) = op.layout.ty.kind() else {
                                 span_bug!(this.cur_span(), "{} operand is not a float", intrinsic_name)
                             };
-                            // Using host floats (but it's fine, these operations do not have guaranteed precision).
+                            // Using host floats except for sqrt (but it's fine, these operations do not
+                            // have guaranteed precision).
                             match float_ty {
                                 FloatTy::F16 => unimplemented!("f16_f128"),
                                 FloatTy::F32 => {
                                     let f = op.to_scalar().to_f32()?;
-                                    let f_host = f.to_host();
                                     let res = match host_op {
-                                        "fsqrt" => f_host.sqrt(), // FIXME Using host floats, this should use full-precision soft-floats
-                                        "fsin" => f_host.sin(),
-                                        "fcos" => f_host.cos(),
-                                        "fexp" => f_host.exp(),
-                                        "fexp2" => f_host.exp2(),
-                                        "flog" => f_host.ln(),
-                                        "flog2" => f_host.log2(),
-                                        "flog10" => f_host.log10(),
+                                        "fsqrt" => math::sqrt(f),
+                                        "fsin" => f.to_host().sin().to_soft(),
+                                        "fcos" => f.to_host().cos().to_soft(),
+                                        "fexp" => f.to_host().exp().to_soft(),
+                                        "fexp2" => f.to_host().exp2().to_soft(),
+                                        "flog" => f.to_host().ln().to_soft(),
+                                        "flog2" => f.to_host().log2().to_soft(),
+                                        "flog10" => f.to_host().log10().to_soft(),
                                         _ => bug!(),
                                     };
-                                    let res = res.to_soft();
                                     let res = this.adjust_nan(res, &[f]);
                                     Scalar::from(res)
                                 }
                                 FloatTy::F64 => {
                                     let f = op.to_scalar().to_f64()?;
-                                    let f_host = f.to_host();
                                     let res = match host_op {
-                                        "fsqrt" => f_host.sqrt(),
-                                        "fsin" => f_host.sin(),
-                                        "fcos" => f_host.cos(),
-                                        "fexp" => f_host.exp(),
-                                        "fexp2" => f_host.exp2(),
-                                        "flog" => f_host.ln(),
-                                        "flog2" => f_host.log2(),
-                                        "flog10" => f_host.log10(),
+                                        "fsqrt" => math::sqrt(f),
+                                        "fsin" => f.to_host().sin().to_soft(),
+                                        "fcos" => f.to_host().cos().to_soft(),
+                                        "fexp" => f.to_host().exp().to_soft(),
+                                        "fexp2" => f.to_host().exp2().to_soft(),
+                                        "flog" => f.to_host().ln().to_soft(),
+                                        "flog2" => f.to_host().log2().to_soft(),
+                                        "flog10" => f.to_host().log10().to_soft(),
                                         _ => bug!(),
                                     };
-                                    let res = res.to_soft();
                                     let res = this.adjust_nan(res, &[f]);
                                     Scalar::from(res)
                                 }
@@ -288,7 +287,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_scalar(val, &dest)?;
                 }
             }
-            "fma" => {
+            "fma" | "relaxed_fma" => {
                 let [a, b, c] = check_arg_count(args)?;
                 let (a, a_len) = this.project_to_simd(a)?;
                 let (b, b_len) = this.project_to_simd(b)?;
@@ -305,6 +304,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let c = this.read_scalar(&this.project_index(&c, i)?)?;
                     let dest = this.project_index(&dest, i)?;
 
+                    let fuse: bool = intrinsic_name == "fma" || this.machine.rng.get_mut().gen();
+
                     // Works for f32 and f64.
                     // FIXME: using host floats to work around https://github.com/rust-lang/miri/issues/2468.
                     let ty::Float(float_ty) = dest.layout.ty.kind() else {
@@ -316,7 +317,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             let a = a.to_f32()?;
                             let b = b.to_f32()?;
                             let c = c.to_f32()?;
-                            let res = a.to_host().mul_add(b.to_host(), c.to_host()).to_soft();
+                            let res = if fuse {
+                                a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()
+                            } else {
+                                ((a * b).value + c).value
+                            };
                             let res = this.adjust_nan(res, &[a, b, c]);
                             Scalar::from(res)
                         }
@@ -324,7 +329,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             let a = a.to_f64()?;
                             let b = b.to_f64()?;
                             let c = c.to_f64()?;
-                            let res = a.to_host().mul_add(b.to_host(), c.to_host()).to_soft();
+                            let res = if fuse {
+                                a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()
+                            } else {
+                                ((a * b).value + c).value
+                            };
                             let res = this.adjust_nan(res, &[a, b, c]);
                             Scalar::from(res)
                         }
@@ -630,12 +639,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let (right, right_len) = this.project_to_simd(right)?;
                 let (dest, dest_len) = this.project_to_simd(dest)?;
 
-                let index = generic_args[2]
-                    .expect_const()
-                    .try_to_valtree()
-                    .unwrap()
-                    .0
-                    .unwrap_branch();
+                let index =
+                    generic_args[2].expect_const().try_to_valtree().unwrap().0.unwrap_branch();
                 let index_len = index.len();
 
                 assert_eq!(left_len, right_len);
@@ -753,7 +758,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     let val = if simd_element_to_bool(mask)? {
                         // Size * u64 is implemented as always checked
-                        #[allow(clippy::arithmetic_side_effects)]
                         let ptr = ptr.wrapping_offset(dest.layout.size * i, this);
                         let place = this.ptr_to_mplace(ptr, dest.layout);
                         this.read_immediate(&place)?
@@ -777,7 +781,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     if simd_element_to_bool(mask)? {
                         // Size * u64 is implemented as always checked
-                        #[allow(clippy::arithmetic_side_effects)]
                         let ptr = ptr.wrapping_offset(val.layout.size * i, this);
                         let place = this.ptr_to_mplace(ptr, val.layout);
                         this.write_immediate(*val, &place)?
@@ -834,7 +837,7 @@ fn simd_bitmask_index(idx: u32, vec_len: u32, endianness: Endian) -> u32 {
     assert!(idx < vec_len);
     match endianness {
         Endian::Little => idx,
-        #[allow(clippy::arithmetic_side_effects)] // idx < vec_len
+        #[expect(clippy::arithmetic_side_effects)] // idx < vec_len
         Endian::Big => vec_len - 1 - idx, // reverse order of bits
     }
 }

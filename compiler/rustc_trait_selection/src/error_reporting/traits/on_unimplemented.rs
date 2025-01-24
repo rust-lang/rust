@@ -1,21 +1,21 @@
 use std::iter;
 use std::path::PathBuf;
 
-use rustc_ast::{AttrArgs, AttrArgsEq, AttrKind, Attribute, MetaItemInner};
+use rustc_ast::MetaItemInner;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{AttrArgs, AttrKind, Attribute};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::bug;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
-use rustc_middle::ty::{self, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, GenericParamDefKind, TyCtxt};
 use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Span, Symbol, kw, sym};
 use tracing::{debug, info};
-use {rustc_attr as attr, rustc_hir as hir};
+use {rustc_attr_parsing as attr, rustc_hir as hir};
 
 use super::{ObligationCauseCode, PredicateObligation};
 use crate::error_reporting::TypeErrCtxt;
@@ -42,18 +42,18 @@ static ALLOWED_FORMAT_SYMBOLS: &[Symbol] = &[
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn impl_similar_to(
         &self,
-        trait_ref: ty::PolyTraitRef<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) -> Option<(DefId, GenericArgsRef<'tcx>)> {
         let tcx = self.tcx;
         let param_env = obligation.param_env;
-        self.enter_forall(trait_ref, |trait_ref| {
-            let trait_self_ty = trait_ref.self_ty();
+        self.enter_forall(trait_pred, |trait_pred| {
+            let trait_self_ty = trait_pred.self_ty();
 
             let mut self_match_impls = vec![];
             let mut fuzzy_match_impls = vec![];
 
-            self.tcx.for_each_relevant_impl(trait_ref.def_id, trait_self_ty, |def_id| {
+            self.tcx.for_each_relevant_impl(trait_pred.def_id(), trait_self_ty, |def_id| {
                 let impl_args = self.fresh_args_for_item(obligation.cause.span, def_id);
                 let impl_trait_ref =
                     tcx.impl_trait_ref(def_id).unwrap().instantiate(tcx, impl_args);
@@ -64,7 +64,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     self_match_impls.push((def_id, impl_args));
 
                     if iter::zip(
-                        trait_ref.args.types().skip(1),
+                        trait_pred.trait_ref.args.types().skip(1),
                         impl_trait_ref.args.types().skip(1),
                     )
                     .all(|(u, v)| self.fuzzy_match_tys(u, v, false).is_some())
@@ -91,7 +91,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// to be the enclosing (async) block/function/closure
     fn describe_enclosure(&self, def_id: LocalDefId) -> Option<&'static str> {
         match self.tcx.hir_node_by_def_id(def_id) {
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. }) => Some("a function"),
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { .. }, .. }) => Some("a function"),
             hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(..), .. }) => {
                 Some("a trait method")
             }
@@ -117,7 +117,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         let (def_id, args) = self
-            .impl_similar_to(trait_pred.to_poly_trait_ref(), obligation)
+            .impl_similar_to(trait_pred, obligation)
             .unwrap_or_else(|| (trait_pred.def_id(), trait_pred.skip_binder().trait_ref.args));
         let trait_pred = trait_pred.skip_binder();
 
@@ -205,9 +205,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
             if self_ty.is_fn() {
                 let fn_sig = self_ty.fn_sig(self.tcx);
-                let shortname = match fn_sig.safety() {
-                    hir::Safety::Safe => "fn",
-                    hir::Safety::Unsafe => "unsafe fn",
+                let shortname = if let ty::FnDef(def_id, _) = self_ty.kind()
+                    && self.tcx.codegen_fn_attrs(def_id).safe_target_features
+                {
+                    "#[target_feature] fn"
+                } else {
+                    match fn_sig.safety() {
+                        hir::Safety::Safe => "fn",
+                        hir::Safety::Unsafe => "unsafe fn",
+                    }
                 };
                 flags.push((sym::_Self, Some(shortname.to_owned())));
             }
@@ -639,8 +645,7 @@ impl<'tcx> OnUnimplementedDirective {
                 let report_span = match &item.args {
                     AttrArgs::Empty => item.path.span,
                     AttrArgs::Delimited(args) => args.dspan.entire(),
-                    AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => eq_span.to(expr.span),
-                    AttrArgs::Eq(span, AttrArgsEq::Hir(expr)) => span.to(expr.span),
+                    AttrArgs::Eq { eq_span, expr } => eq_span.to(expr.span),
                 };
 
                 if let Some(item_def_id) = item_def_id.as_local() {
@@ -655,7 +660,7 @@ impl<'tcx> OnUnimplementedDirective {
             }
         } else if is_diagnostic_namespace_variant {
             match &attr.kind {
-                AttrKind::Normal(p) if !matches!(p.item.args, AttrArgs::Empty) => {
+                AttrKind::Normal(p) if !matches!(p.args, AttrArgs::Empty) => {
                     if let Some(item_def_id) = item_def_id.as_local() {
                         tcx.emit_node_span_lint(
                             UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,

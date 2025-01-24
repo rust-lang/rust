@@ -4,7 +4,6 @@ error: unconstrained generic constant
 LL | /     const ITEM_IS_COPY: [(); 1 - {
 LL | |         trait NotCopy {
 LL | |             const VALUE: bool = false;
-LL | |         }
 ...  |
 LL | |         <IsCopy<T>>::VALUE
 LL | |     } as usize] = [];

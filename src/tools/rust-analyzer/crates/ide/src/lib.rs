@@ -33,7 +33,7 @@ mod goto_type_definition;
 mod highlight_related;
 mod hover;
 mod inlay_hints;
-mod interpret_function;
+mod interpret;
 mod join_lines;
 mod markdown_remove;
 mod matching_brace;
@@ -48,7 +48,6 @@ mod ssr;
 mod static_index;
 mod status;
 mod syntax_highlighting;
-mod syntax_tree;
 mod test_explorer;
 mod typing;
 mod view_crate_graph;
@@ -56,6 +55,7 @@ mod view_hir;
 mod view_item_tree;
 mod view_memory_layout;
 mod view_mir;
+mod view_syntax_tree;
 
 use std::{iter, panic::UnwindSafe};
 
@@ -86,7 +86,7 @@ pub use crate::{
     highlight_related::{HighlightRelatedConfig, HighlightedRange},
     hover::{
         HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult,
-        MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind,
+        MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind, SubstTyLen,
     },
     inlay_hints::{
         AdjustmentHints, AdjustmentHintsMode, ClosureReturnTypeHints, DiscriminantHints,
@@ -96,8 +96,8 @@ pub use crate::{
     join_lines::JoinLinesConfig,
     markup::Markup,
     moniker::{
-        MonikerDescriptorKind, MonikerKind, MonikerResult, PackageInformation,
-        SymbolInformationKind,
+        Moniker, MonikerDescriptorKind, MonikerIdentifier, MonikerKind, MonikerResult,
+        PackageInformation, SymbolInformationKind,
     },
     move_item::Direction,
     navigation_target::{NavigationTarget, TryToNav, UpmappingResult},
@@ -120,8 +120,9 @@ pub use ide_assists::{
 };
 pub use ide_completion::{
     CallableSnippets, CompletionConfig, CompletionFieldsToResolve, CompletionItem,
-    CompletionItemKind, CompletionRelevance, Snippet, SnippetScope,
+    CompletionItemKind, CompletionItemRefMode, CompletionRelevance, Snippet, SnippetScope,
 };
+pub use ide_db::text_edit::{Indel, TextEdit};
 pub use ide_db::{
     base_db::{Cancelled, CrateGraph, CrateId, FileChange, SourceRoot, SourceRootId},
     documentation::Documentation,
@@ -131,15 +132,12 @@ pub use ide_db::{
     search::{ReferenceCategory, SearchScope},
     source_change::{FileSystemEdit, SnippetEdit, SourceChange},
     symbol_index::Query,
-    FileId, FilePosition, FileRange, RootDatabase, SymbolKind,
+    FileId, FilePosition, FileRange, RootDatabase, Severity, SymbolKind,
 };
-pub use ide_diagnostics::{
-    Diagnostic, DiagnosticCode, DiagnosticsConfig, ExprFillDefaultMode, Severity,
-};
+pub use ide_diagnostics::{Diagnostic, DiagnosticCode, DiagnosticsConfig, ExprFillDefaultMode};
 pub use ide_ssr::SsrError;
 pub use span::Edition;
 pub use syntax::{TextRange, TextSize};
-pub use text_edit::{Indel, TextEdit};
 
 pub type Cancellable<T> = Result<T, Cancelled>;
 
@@ -301,7 +299,7 @@ impl Analysis {
 
     /// Gets the syntax tree of the file.
     pub fn parse(&self, file_id: FileId) -> Cancellable<SourceFile> {
-        // FIXME editiojn
+        // FIXME edition
         self.with_db(|db| db.parse(EditionedFileId::current_edition(file_id)).tree())
     }
 
@@ -331,14 +329,8 @@ impl Analysis {
         })
     }
 
-    /// Returns a syntax tree represented as `String`, for debug purposes.
-    // FIXME: use a better name here.
-    pub fn syntax_tree(
-        &self,
-        file_id: FileId,
-        text_range: Option<TextRange>,
-    ) -> Cancellable<String> {
-        self.with_db(|db| syntax_tree::syntax_tree(db, file_id, text_range))
+    pub fn view_syntax_tree(&self, file_id: FileId) -> Cancellable<String> {
+        self.with_db(|db| view_syntax_tree::view_syntax_tree(db, file_id))
     }
 
     pub fn view_hir(&self, position: FilePosition) -> Cancellable<String> {
@@ -350,7 +342,7 @@ impl Analysis {
     }
 
     pub fn interpret_function(&self, position: FilePosition) -> Cancellable<String> {
-        self.with_db(|db| interpret_function::interpret_function(db, position))
+        self.with_db(|db| interpret::interpret(db, position))
     }
 
     pub fn view_item_tree(&self, file_id: FileId) -> Cancellable<String> {
@@ -402,6 +394,8 @@ impl Analysis {
         self.with_db(|db| typing::on_enter(db, position))
     }
 
+    pub const SUPPORTED_TRIGGER_CHARS: &'static str = typing::TRIGGER_CHARS;
+
     /// Returns an edit which should be applied after a character was typed.
     ///
     /// This is useful for some on-the-fly fixups, like adding `;` to `let =`
@@ -410,13 +404,9 @@ impl Analysis {
         &self,
         position: FilePosition,
         char_typed: char,
-        autoclose: bool,
     ) -> Cancellable<Option<SourceChange>> {
         // Fast path to not even parse the file.
         if !typing::TRIGGER_CHARS.contains(char_typed) {
-            return Ok(None);
-        }
-        if char_typed == '<' && !autoclose {
             return Ok(None);
         }
 
@@ -538,7 +528,7 @@ impl Analysis {
     /// Returns URL(s) for the documentation of the symbol under the cursor.
     /// # Arguments
     /// * `position` - Position in the file.
-    /// * `target_dir` - Directory where the build output is storeda.
+    /// * `target_dir` - Directory where the build output is stored.
     pub fn external_docs(
         &self,
         position: FilePosition,
@@ -586,17 +576,17 @@ impl Analysis {
         self.with_db(|db| parent_module::parent_module(db, position))
     }
 
-    /// Returns crates this file belongs too.
+    /// Returns crates that this file belongs to.
     pub fn crates_for(&self, file_id: FileId) -> Cancellable<Vec<CrateId>> {
         self.with_db(|db| parent_module::crates_for(db, file_id))
     }
 
-    /// Returns crates this file belongs too.
+    /// Returns crates that this file belongs to.
     pub fn transitive_rev_deps(&self, crate_id: CrateId) -> Cancellable<Vec<CrateId>> {
         self.with_db(|db| db.crate_graph().transitive_rev_deps(crate_id).collect())
     }
 
-    /// Returns crates this file *might* belong too.
+    /// Returns crates that this file *might* belong to.
     pub fn relevant_crates_for(&self, file_id: FileId) -> Cancellable<Vec<CrateId>> {
         self.with_db(|db| db.relevant_crates(file_id).iter().copied().collect())
     }
@@ -669,19 +659,17 @@ impl Analysis {
     /// Computes completions at the given position.
     pub fn completions(
         &self,
-        config: &CompletionConfig,
+        config: &CompletionConfig<'_>,
         position: FilePosition,
         trigger_character: Option<char>,
     ) -> Cancellable<Option<Vec<CompletionItem>>> {
-        self.with_db(|db| {
-            ide_completion::completions(db, config, position, trigger_character).map(Into::into)
-        })
+        self.with_db(|db| ide_completion::completions(db, config, position, trigger_character))
     }
 
     /// Resolves additional completion data at the position given.
     pub fn resolve_completion_edits(
         &self,
-        config: &CompletionConfig,
+        config: &CompletionConfig<'_>,
         position: FilePosition,
         imports: impl IntoIterator<Item = (String, String)> + std::panic::UnwindSafe,
     ) -> Cancellable<Vec<TextEdit>> {

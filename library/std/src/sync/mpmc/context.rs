@@ -69,7 +69,7 @@ impl Context {
             inner: Arc::new(Inner {
                 select: AtomicUsize::new(Selected::Waiting.into()),
                 packet: AtomicPtr::new(ptr::null_mut()),
-                thread: thread::current(),
+                thread: thread::current_or_unnamed(),
                 thread_id: current_thread_id(),
             }),
         }
@@ -112,8 +112,11 @@ impl Context {
     /// Waits until an operation is selected and returns it.
     ///
     /// If the deadline is reached, `Selected::Aborted` will be selected.
+    ///
+    /// # Safety
+    /// This may only be called from the thread this `Context` belongs to.
     #[inline]
-    pub fn wait_until(&self, deadline: Option<Instant>) -> Selected {
+    pub unsafe fn wait_until(&self, deadline: Option<Instant>) -> Selected {
         loop {
             // Check whether an operation has been selected.
             let sel = Selected::from(self.inner.select.load(Ordering::Acquire));
@@ -126,7 +129,8 @@ impl Context {
                 let now = Instant::now();
 
                 if now < end {
-                    thread::park_timeout(end - now);
+                    // SAFETY: guaranteed by caller.
+                    unsafe { self.inner.thread.park_timeout(end - now) };
                 } else {
                     // The deadline has been reached. Try aborting select.
                     return match self.try_select(Selected::Aborted) {
@@ -135,7 +139,8 @@ impl Context {
                     };
                 }
             } else {
-                thread::park();
+                // SAFETY: guaranteed by caller.
+                unsafe { self.inner.thread.park() };
             }
         }
     }

@@ -5,7 +5,7 @@ use crate::abi::{self, HasDataLayout, Size, TyAbiInterface};
 
 fn extend_integer_width_mips<Ty>(arg: &mut ArgAbi<'_, Ty>, bits: u64) {
     // Always sign extend u32 values on 64-bit mips
-    if let abi::Abi::Scalar(scalar) = arg.layout.abi {
+    if let abi::BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
         if let abi::Int(i, signed) = scalar.primitive() {
             if !signed && i.size().bits() == 32 {
                 if let PassMode::Direct(ref mut attrs) = arg.mode {
@@ -24,8 +24,8 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    match ret.layout.field(cx, i).abi {
-        abi::Abi::Scalar(scalar) => match scalar.primitive() {
+    match ret.layout.field(cx, i).backend_repr {
+        abi::BackendRepr::Scalar(scalar) => match scalar.primitive() {
             abi::Float(abi::F32) => Some(Reg::f32()),
             abi::Float(abi::F64) => Some(Reg::f64()),
             _ => None,
@@ -109,7 +109,7 @@ where
                 let offset = arg.layout.fields.offset(i);
 
                 // We only care about aligned doubles
-                if let abi::Abi::Scalar(scalar) = field.abi {
+                if let abi::BackendRepr::Scalar(scalar) = field.backend_repr {
                     if scalar.primitive() == abi::Float(abi::F64) {
                         if offset.is_aligned(dl.f64_align.abi) {
                             // Insert enough integers to cover [last_offset, offset)

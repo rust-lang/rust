@@ -101,6 +101,7 @@
 #![warn(multiple_supertrait_upcastable)]
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
+#![warn(unreachable_pub)]
 // Do not check link redundancy on bootstraping phase
 #![allow(rustdoc::redundant_explicit_links)]
 #![warn(rustdoc::unescaped_backticks)]
@@ -109,48 +110,14 @@
 // tidy-alphabetical-start
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
-#![feature(const_align_of_val)]
-#![feature(const_align_of_val_raw)]
-#![feature(const_align_offset)]
-#![feature(const_alloc_layout)]
-#![feature(const_arguments_as_str)]
-#![feature(const_array_into_iter_constructors)]
-#![feature(const_bigint_helper_methods)]
-#![feature(const_black_box)]
-#![feature(const_char_encode_utf16)]
+#![feature(bigint_helper_methods)]
+#![feature(const_carrying_mul_add)]
 #![feature(const_eval_select)]
-#![feature(const_exact_div)]
-#![feature(const_float_methods)]
-#![feature(const_fmt_arguments_new)]
-#![feature(const_hash)]
-#![feature(const_heap)]
-#![feature(const_index_range_slice_index)]
-#![feature(const_likely)]
-#![feature(const_nonnull_new)]
-#![feature(const_num_midpoint)]
-#![feature(const_option_ext)]
-#![feature(const_pin_2)]
-#![feature(const_pointer_is_aligned)]
-#![feature(const_ptr_is_null)]
-#![feature(const_ptr_sub_ptr)]
-#![feature(const_raw_ptr_comparison)]
-#![feature(const_size_of_val)]
-#![feature(const_size_of_val_raw)]
-#![feature(const_strict_overflow_ops)]
-#![feature(const_swap)]
-#![feature(const_try)]
-#![feature(const_type_id)]
-#![feature(const_type_name)]
-#![feature(const_typed_swap)]
-#![feature(const_ub_checks)]
-#![feature(const_unicode_case_lookup)]
+#![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
-#![feature(do_not_recommend)]
 #![feature(internal_impls_macro)]
 #![feature(ip)]
 #![feature(is_ascii_octdigit)]
-#![feature(is_val_statically_known)]
-#![feature(isqrt)]
 #![feature(lazy_get)]
 #![feature(link_cfg)]
 #![feature(non_null_from_ref)]
@@ -159,16 +126,16 @@
 #![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]
 #![feature(set_ptr_value)]
+#![feature(slice_as_array)]
+#![feature(slice_as_chunks)]
 #![feature(slice_ptr_get)]
 #![feature(str_internals)]
 #![feature(str_split_inclusive_remainder)]
 #![feature(str_split_remainder)]
-#![feature(strict_provenance)]
 #![feature(ub_checks)]
 #![feature(unchecked_neg)]
 #![feature(unchecked_shifts)]
 #![feature(utf16_extra)]
-#![feature(utf16_extra_const)]
 #![feature(variant_count)]
 // tidy-alphabetical-end
 //
@@ -183,8 +150,8 @@
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(cfg_ub_checks)]
-#![feature(const_for)]
 #![feature(const_precise_live_drops)]
+#![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]
@@ -220,6 +187,7 @@
 #![feature(simd_ffi)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
+#![feature(strict_provenance_lints)]
 #![feature(target_feature_11)]
 #![feature(trait_alias)]
 #![feature(transparent_unions)]
@@ -269,7 +237,6 @@ pub mod assert_matches {
 }
 
 // We don't export this through #[macro_export] for now, to avoid breakage.
-#[cfg(not(bootstrap))]
 #[unstable(feature = "autodiff", issue = "124509")]
 /// Unstable module containing the unstable `autodiff` macro.
 pub mod autodiff {
@@ -379,7 +346,7 @@ pub mod net;
 pub mod option;
 pub mod panic;
 pub mod panicking;
-#[unstable(feature = "core_pattern_types", issue = "123646")]
+#[unstable(feature = "pattern_type_macro", issue = "123646")]
 pub mod pat;
 pub mod pin;
 #[unstable(feature = "random", issue = "130703")]
@@ -388,6 +355,8 @@ pub mod random;
 pub mod range;
 pub mod result;
 pub mod sync;
+#[unstable(feature = "unsafe_binders", issue = "130516")]
+pub mod unsafe_binder;
 
 pub mod fmt;
 pub mod hash;
@@ -428,7 +397,8 @@ pub mod primitive;
     unused_imports,
     unsafe_op_in_unsafe_fn,
     ambiguous_glob_reexports,
-    deprecated_in_future
+    deprecated_in_future,
+    unreachable_pub
 )]
 #[allow(rustdoc::bare_urls)]
 mod core_arch;

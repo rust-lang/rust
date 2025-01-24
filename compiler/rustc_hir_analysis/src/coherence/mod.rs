@@ -13,6 +13,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_session::parse::feature_err;
 use rustc_span::{ErrorGuaranteed, sym};
+use rustc_type_ir::elaborate;
 use tracing::debug;
 
 use crate::errors;
@@ -53,7 +54,7 @@ fn enforce_trait_manually_implementable(
 ) -> Result<(), ErrorGuaranteed> {
     let impl_header_span = tcx.def_span(impl_def_id);
 
-    if tcx.is_lang_item(trait_def_id, LangItem::Freeze) && !tcx.features().freeze_impls {
+    if tcx.is_lang_item(trait_def_id, LangItem::Freeze) && !tcx.features().freeze_impls() {
         feature_err(
             &tcx.sess,
             sym::freeze_impls,
@@ -86,8 +87,8 @@ fn enforce_trait_manually_implementable(
 
     if let ty::trait_def::TraitSpecializationKind::AlwaysApplicable = trait_def.specialization_kind
     {
-        if !tcx.features().specialization
-            && !tcx.features().min_specialization
+        if !tcx.features().specialization()
+            && !tcx.features().min_specialization()
             && !impl_header_span.allows_unstable(sym::specialization)
             && !impl_header_span.allows_unstable(sym::min_specialization)
         {
@@ -184,7 +185,7 @@ fn check_object_overlap<'tcx>(
     // check for overlap with the automatic `impl Trait for dyn Trait`
     if let ty::Dynamic(data, ..) = trait_ref.self_ty().kind() {
         // This is something like `impl Trait1 for Trait2`. Illegal if
-        // Trait1 is a supertrait of Trait2 or Trait2 is not dyn-compatible.
+        // Trait1 is a supertrait of Trait2 or Trait2 is not dyn compatible.
 
         let component_def_ids = data.iter().flat_map(|predicate| {
             match predicate.skip_binder() {
@@ -205,8 +206,10 @@ fn check_object_overlap<'tcx>(
                 // With the feature enabled, the trait is not implemented automatically,
                 // so this is valid.
             } else {
-                let mut supertrait_def_ids = tcx.supertrait_def_ids(component_def_id);
-                if supertrait_def_ids.any(|d| d == trait_def_id) {
+                let mut supertrait_def_ids = elaborate::supertrait_def_ids(tcx, component_def_id);
+                if supertrait_def_ids
+                    .any(|d| d == trait_def_id && tcx.trait_def(d).implement_via_object)
+                {
                     let span = tcx.def_span(impl_def_id);
                     return Err(struct_span_code_err!(
                         tcx.dcx(),

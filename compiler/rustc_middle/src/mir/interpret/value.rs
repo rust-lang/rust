@@ -1,10 +1,10 @@
 use std::fmt;
 
 use either::{Either, Left, Right};
+use rustc_abi::{HasDataLayout, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_target::abi::{HasDataLayout, Size};
 
 use super::{
     AllocId, CtfeProvenance, InterpResult, Pointer, PointerArithmetic, Provenance,

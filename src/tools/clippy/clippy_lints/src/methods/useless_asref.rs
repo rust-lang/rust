@@ -124,7 +124,7 @@ fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
                         && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id)
                         && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
                         // We check it's the `Clone` trait.
-                        && cx.tcx.lang_items().clone_trait().map_or(false, |id| id == trait_id)
+                        && cx.tcx.lang_items().clone_trait().is_some_and(|id| id == trait_id)
                         // no autoderefs
                         && !cx.typeck_results().expr_adjustments(obj).iter()
                             .any(|a| matches!(a.kind, Adjust::Deref(Some(..))))

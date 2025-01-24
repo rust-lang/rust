@@ -3,7 +3,8 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{Pat, Ty, ast};
 use rustc_errors::PResult;
 use rustc_expand::base::{self, DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
-use rustc_span::{Span, sym};
+use rustc_parse::exp;
+use rustc_span::Span;
 
 pub(crate) fn expand<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
@@ -24,7 +25,7 @@ fn parse_pat_ty<'a>(cx: &mut ExtCtxt<'a>, stream: TokenStream) -> PResult<'a, (P
     let mut parser = cx.new_parser_from_tts(stream);
 
     let ty = parser.parse_ty()?;
-    parser.expect_keyword(sym::is)?;
+    parser.expect_keyword(exp!(Is))?;
     let pat = parser.parse_pat_no_top_alt(None, None)?;
 
     Ok((ty, pat))

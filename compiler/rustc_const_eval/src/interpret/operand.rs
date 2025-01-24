@@ -5,19 +5,19 @@ use std::assert_matches::assert_matches;
 
 use either::{Either, Left, Right};
 use rustc_abi as abi;
-use rustc_abi::{Abi, HasDataLayout, Size};
+use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_hir::def::Namespace;
 use rustc_middle::mir::interpret::ScalarSizeMismatch;
-use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug, ty};
 use tracing::trace;
 
 use super::{
-    CtfeProvenance, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, OffsetMode,
-    PlaceTy, Pointer, Projectable, Provenance, Scalar, alloc_range, err_ub, from_known_layout,
-    interp_ok, mir_assign_valid_types, throw_ub,
+    CtfeProvenance, Frame, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta,
+    OffsetMode, PlaceTy, Pointer, Projectable, Provenance, Scalar, alloc_range, err_ub,
+    from_known_layout, interp_ok, mir_assign_valid_types, throw_ub,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -114,9 +114,9 @@ impl<Prov: Provenance> Immediate<Prov> {
     }
 
     /// Assert that this immediate is a valid value for the given ABI.
-    pub fn assert_matches_abi(self, abi: Abi, msg: &str, cx: &impl HasDataLayout) {
+    pub fn assert_matches_abi(self, abi: BackendRepr, msg: &str, cx: &impl HasDataLayout) {
         match (self, abi) {
-            (Immediate::Scalar(scalar), Abi::Scalar(s)) => {
+            (Immediate::Scalar(scalar), BackendRepr::Scalar(s)) => {
                 assert_eq!(scalar.size(), s.size(cx), "{msg}: scalar value has wrong size");
                 if !matches!(s.primitive(), abi::Primitive::Pointer(..)) {
                     // This is not a pointer, it should not carry provenance.
@@ -126,7 +126,7 @@ impl<Prov: Provenance> Immediate<Prov> {
                     );
                 }
             }
-            (Immediate::ScalarPair(a_val, b_val), Abi::ScalarPair(a, b)) => {
+            (Immediate::ScalarPair(a_val, b_val), BackendRepr::ScalarPair(a, b)) => {
                 assert_eq!(
                     a_val.size(),
                     a.size(cx),
@@ -244,7 +244,7 @@ impl<'tcx, Prov: Provenance> std::ops::Deref for ImmTy<'tcx, Prov> {
 impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     #[inline]
     pub fn from_scalar(val: Scalar<Prov>, layout: TyAndLayout<'tcx>) -> Self {
-        debug_assert!(layout.abi.is_scalar(), "`ImmTy::from_scalar` on non-scalar layout");
+        debug_assert!(layout.backend_repr.is_scalar(), "`ImmTy::from_scalar` on non-scalar layout");
         debug_assert_eq!(val.size(), layout.size);
         ImmTy { imm: val.into(), layout }
     }
@@ -252,7 +252,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     #[inline]
     pub fn from_scalar_pair(a: Scalar<Prov>, b: Scalar<Prov>, layout: TyAndLayout<'tcx>) -> Self {
         debug_assert!(
-            matches!(layout.abi, Abi::ScalarPair(..)),
+            matches!(layout.backend_repr, BackendRepr::ScalarPair(..)),
             "`ImmTy::from_scalar_pair` on non-scalar-pair layout"
         );
         let imm = Immediate::ScalarPair(a, b);
@@ -263,9 +263,9 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     pub fn from_immediate(imm: Immediate<Prov>, layout: TyAndLayout<'tcx>) -> Self {
         // Without a `cx` we cannot call `assert_matches_abi`.
         debug_assert!(
-            match (imm, layout.abi) {
-                (Immediate::Scalar(..), Abi::Scalar(..)) => true,
-                (Immediate::ScalarPair(..), Abi::ScalarPair(..)) => true,
+            match (imm, layout.backend_repr) {
+                (Immediate::Scalar(..), BackendRepr::Scalar(..)) => true,
+                (Immediate::ScalarPair(..), BackendRepr::ScalarPair(..)) => true,
                 (Immediate::Uninit, _) if layout.is_sized() => true,
                 _ => false,
             },
@@ -297,21 +297,27 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
 
     #[inline]
     pub fn from_bool(b: bool, tcx: TyCtxt<'tcx>) -> Self {
-        let layout = tcx.layout_of(ty::ParamEnv::reveal_all().and(tcx.types.bool)).unwrap();
+        // Can use any typing env, since `bool` is always monomorphic.
+        let layout = tcx
+            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(tcx.types.bool))
+            .unwrap();
         Self::from_scalar(Scalar::from_bool(b), layout)
     }
 
     #[inline]
     pub fn from_ordering(c: std::cmp::Ordering, tcx: TyCtxt<'tcx>) -> Self {
+        // Can use any typing env, since `Ordering` is always monomorphic.
         let ty = tcx.ty_ordering_enum(None);
-        let layout = tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap();
+        let layout =
+            tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty)).unwrap();
         Self::from_scalar(Scalar::from_i8(c as i8), layout)
     }
 
-    pub fn from_pair(a: Self, b: Self, tcx: TyCtxt<'tcx>) -> Self {
-        let layout = tcx
+    pub fn from_pair(a: Self, b: Self, cx: &(impl HasTypingEnv<'tcx> + HasTyCtxt<'tcx>)) -> Self {
+        let layout = cx
+            .tcx()
             .layout_of(
-                ty::ParamEnv::reveal_all().and(Ty::new_tup(tcx, &[a.layout.ty, b.layout.ty])),
+                cx.typing_env().as_query_input(Ty::new_tup(cx.tcx(), &[a.layout.ty, b.layout.ty])),
             )
             .unwrap();
         Self::from_scalar_pair(a.to_scalar(), b.to_scalar(), layout)
@@ -341,7 +347,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
 
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
-    pub fn to_pair(self, cx: &(impl HasTyCtxt<'tcx> + HasParamEnv<'tcx>)) -> (Self, Self) {
+    pub fn to_pair(self, cx: &(impl HasTyCtxt<'tcx> + HasTypingEnv<'tcx>)) -> (Self, Self) {
         let layout = self.layout;
         let (val0, val1) = self.to_scalar_pair();
         (
@@ -356,7 +362,11 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     fn offset_(&self, offset: Size, layout: TyAndLayout<'tcx>, cx: &impl HasDataLayout) -> Self {
         // Verify that the input matches its type.
         if cfg!(debug_assertions) {
-            self.assert_matches_abi(self.layout.abi, "invalid input to Immediate::offset", cx);
+            self.assert_matches_abi(
+                self.layout.backend_repr,
+                "invalid input to Immediate::offset",
+                cx,
+            );
         }
         // `ImmTy` have already been checked to be in-bounds, so we can just check directly if this
         // remains in-bounds. This cannot actually be violated since projections are type-checked
@@ -370,19 +380,19 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
         );
         // This makes several assumptions about what layouts we will encounter; we match what
         // codegen does as good as we can (see `extract_field` in `rustc_codegen_ssa/src/mir/operand.rs`).
-        let inner_val: Immediate<_> = match (**self, self.layout.abi) {
+        let inner_val: Immediate<_> = match (**self, self.layout.backend_repr) {
             // If the entire value is uninit, then so is the field (can happen in ConstProp).
             (Immediate::Uninit, _) => Immediate::Uninit,
             // If the field is uninhabited, we can forget the data (can happen in ConstProp).
             // `enum S { A(!), B, C }` is an example of an enum with Scalar layout that
             // has an `Uninhabited` variant, which means this case is possible.
-            _ if layout.abi.is_uninhabited() => Immediate::Uninit,
+            _ if layout.is_uninhabited() => Immediate::Uninit,
             // the field contains no information, can be left uninit
             // (Scalar/ScalarPair can contain even aligned ZST, not just 1-ZST)
             _ if layout.is_zst() => Immediate::Uninit,
             // some fieldless enum variants can have non-zero size but still `Aggregate` ABI... try
             // to detect those here and also give them no data
-            _ if matches!(layout.abi, Abi::Aggregate { .. })
+            _ if matches!(layout.backend_repr, BackendRepr::Memory { .. })
                 && matches!(layout.variants, abi::Variants::Single { .. })
                 && matches!(&layout.fields, abi::FieldsShape::Arbitrary { offsets, .. } if offsets.len() == 0) =>
             {
@@ -394,7 +404,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
                 **self
             }
             // extract fields from types with `ScalarPair` ABI
-            (Immediate::ScalarPair(a_val, b_val), Abi::ScalarPair(a, b)) => {
+            (Immediate::ScalarPair(a_val, b_val), BackendRepr::ScalarPair(a, b)) => {
                 Immediate::from(if offset.bytes() == 0 {
                     a_val
                 } else {
@@ -411,7 +421,11 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
             ),
         };
         // Ensure the new layout matches the new value.
-        inner_val.assert_matches_abi(layout.abi, "invalid field type in Immediate::offset", cx);
+        inner_val.assert_matches_abi(
+            layout.backend_repr,
+            "invalid field type in Immediate::offset",
+            cx,
+        );
 
         ImmTy::from_immediate(inner_val, layout)
     }
@@ -567,8 +581,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // case where some of the bytes are initialized and others are not. So, we need an extra
         // check that walks over the type of `mplace` to make sure it is truly correct to treat this
         // like a `Scalar` (or `ScalarPair`).
-        interp_ok(match mplace.layout.abi {
-            Abi::Scalar(abi::Scalar::Initialized { value: s, .. }) => {
+        interp_ok(match mplace.layout.backend_repr {
+            BackendRepr::Scalar(abi::Scalar::Initialized { value: s, .. }) => {
                 let size = s.size(self);
                 assert_eq!(size, mplace.layout.size, "abi::Scalar size does not match layout size");
                 let scalar = alloc.read_scalar(
@@ -577,7 +591,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 )?;
                 Some(ImmTy::from_scalar(scalar, mplace.layout))
             }
-            Abi::ScalarPair(
+            BackendRepr::ScalarPair(
                 abi::Scalar::Initialized { value: a, .. },
                 abi::Scalar::Initialized { value: b, .. },
             ) => {
@@ -637,9 +651,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         op: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         if !matches!(
-            op.layout().abi,
-            Abi::Scalar(abi::Scalar::Initialized { .. })
-                | Abi::ScalarPair(abi::Scalar::Initialized { .. }, abi::Scalar::Initialized { .. })
+            op.layout().backend_repr,
+            BackendRepr::Scalar(abi::Scalar::Initialized { .. })
+                | BackendRepr::ScalarPair(
+                    abi::Scalar::Initialized { .. },
+                    abi::Scalar::Initialized { .. }
+                )
         ) {
             span_bug!(self.cur_span(), "primitive read not possible for type: {}", op.layout().ty);
         }
@@ -687,27 +704,36 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn read_str(&self, mplace: &MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx, &str> {
         let len = mplace.len(self)?;
         let bytes = self.read_bytes_ptr_strip_provenance(mplace.ptr(), Size::from_bytes(len))?;
-        let str = std::str::from_utf8(bytes).map_err(|err| err_ub!(InvalidStr(err)))?;
-        interp_ok(str)
+        let s = std::str::from_utf8(bytes).map_err(|err| err_ub!(InvalidStr(err)))?;
+        interp_ok(s)
     }
 
-    /// Read from a local of the current frame.
-    /// Will not access memory, instead an indirect `Operand` is returned.
-    ///
-    /// This is public because it is used by [priroda](https://github.com/oli-obk/priroda) to get an
-    /// OpTy from a local.
+    /// Read from a local of the current frame. Convenience method for [`InterpCx::local_at_frame_to_op`].
     pub fn local_to_op(
         &self,
         local: mir::Local,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let frame = self.frame();
+        self.local_at_frame_to_op(self.frame(), local, layout)
+    }
+
+    /// Read from a local of a given frame.
+    /// Will not access memory, instead an indirect `Operand` is returned.
+    ///
+    /// This is public because it is used by [Aquascope](https://github.com/cognitive-engineering-lab/aquascope/)
+    /// to get an OpTy from a local.
+    pub fn local_at_frame_to_op(
+        &self,
+        frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
+        local: mir::Local,
+        layout: Option<TyAndLayout<'tcx>>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = *frame.locals[local].access()?;
         if matches!(op, Operand::Immediate(_)) {
             assert!(!layout.is_unsized());
         }
-        M::after_local_read(self, local)?;
+        M::after_local_read(self, frame, local)?;
         interp_ok(OpTy { op, layout })
     }
 
@@ -762,7 +788,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 )?;
             if !mir_assign_valid_types(
                 *self.tcx,
-                self.param_env,
+                self.typing_env(),
                 self.layout_of(normalized_place_ty)?,
                 op.layout,
             ) {
@@ -821,7 +847,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             })
         };
         let layout =
-            from_known_layout(self.tcx, self.param_env, layout, || self.layout_of(ty).into())?;
+            from_known_layout(self.tcx, self.typing_env(), layout, || self.layout_of(ty).into())?;
         let imm = match val_val {
             mir::ConstValue::Indirect { alloc_id, offset } => {
                 // This is const data, no mutation allowed.

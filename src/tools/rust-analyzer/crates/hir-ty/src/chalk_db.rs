@@ -13,7 +13,7 @@ use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
 use base_db::CrateId;
 use hir_def::{
-    data::adt::StructFlags,
+    data::{adt::StructFlags, TraitFlags},
     hir::Movability,
     lang_item::{LangItem, LangItemTarget},
     AssocItemId, BlockId, CallableDefId, GenericDefId, HasModule, ItemContainerId, Lookup,
@@ -22,7 +22,6 @@ use hir_def::{
 
 use crate::{
     db::{HirDatabase, InternedCoroutine},
-    display::HirDisplay,
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
     generics::generics,
     make_binders, make_single_type_binders,
@@ -381,8 +380,9 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         TyKind::Error.intern(Interner)
     }
 
+    // object safety was renamed to dyn-compatibility but still remains here in chalk.
+    // This will be removed since we are going to migrate to next-gen trait solver.
     fn is_object_safe(&self, trait_id: chalk_ir::TraitId<Interner>) -> bool {
-        // FIXME: When cargo is updated, change to dyn_compatibility
         let trait_ = from_chalk_trait_id(trait_id);
         crate::dyn_compatibility::dyn_compatibility(self.db, trait_).is_none()
     }
@@ -521,7 +521,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     }
 }
 
-impl<'a> ChalkContext<'a> {
+impl ChalkContext<'_> {
     fn edition(&self) -> Edition {
         self.db.crate_graph()[self.krate].edition
     }
@@ -615,8 +615,9 @@ pub(crate) fn associated_ty_data_query(
     let type_alias_data = db.type_alias_data(type_alias);
     let generic_params = generics(db.upcast(), type_alias.into());
     let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db.upcast());
-    let ctx = crate::TyLoweringContext::new(db, &resolver, type_alias.into())
-        .with_type_param_mode(crate::lower::ParamLoweringMode::Variable);
+    let mut ctx =
+        crate::TyLoweringContext::new(db, &resolver, &type_alias_data.types_map, type_alias.into())
+            .with_type_param_mode(crate::lower::ParamLoweringMode::Variable);
 
     let trait_subst = TyBuilder::subst_for_def(db, trait_, None)
         .fill_with_bound_vars(crate::DebruijnIndex::INNERMOST, generic_params.len_self())
@@ -626,14 +627,16 @@ pub(crate) fn associated_ty_data_query(
         .build();
     let self_ty = TyKind::Alias(AliasTy::Projection(pro_ty)).intern(Interner);
 
-    let mut bounds: Vec<_> = type_alias_data
-        .bounds
-        .iter()
-        .flat_map(|bound| ctx.lower_type_bound(bound, self_ty.clone(), false))
-        .filter_map(|pred| generic_predicate_to_inline_bound(db, &pred, &self_ty))
-        .collect();
+    let mut bounds = Vec::new();
+    for bound in &type_alias_data.bounds {
+        ctx.lower_type_bound(bound, self_ty.clone(), false).for_each(|pred| {
+            if let Some(pred) = generic_predicate_to_inline_bound(db, &pred, &self_ty) {
+                bounds.push(pred);
+            }
+        });
+    }
 
-    if !ctx.unsized_types.borrow().contains(&self_ty) {
+    if !ctx.unsized_types.contains(&self_ty) {
         let sized_trait = db
             .lang_item(resolver.krate(), LangItem::Sized)
             .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
@@ -672,13 +675,13 @@ pub(crate) fn trait_datum_query(
     let generic_params = generics(db.upcast(), trait_.into());
     let bound_vars = generic_params.bound_vars_subst(db, DebruijnIndex::INNERMOST);
     let flags = rust_ir::TraitFlags {
-        auto: trait_data.is_auto,
+        auto: trait_data.flags.contains(TraitFlags::IS_AUTO),
         upstream: trait_.lookup(db.upcast()).container.krate() != krate,
         non_enumerable: true,
         coinductive: false, // only relevant for Chalk testing
         // FIXME: set these flags correctly
         marker: false,
-        fundamental: trait_data.fundamental,
+        fundamental: trait_data.flags.contains(TraitFlags::IS_FUNDAMENTAL),
     };
     let where_clauses = convert_where_clauses(db, trait_.into(), &bound_vars);
     let associated_ty_ids = trait_data.associated_types().map(to_assoc_type_id).collect();
@@ -819,13 +822,12 @@ pub(crate) fn impl_datum_query(
     let _p = tracing::info_span!("impl_datum_query").entered();
     debug!("impl_datum {:?}", impl_id);
     let impl_: hir_def::ImplId = from_chalk(db, impl_id);
-    impl_def_datum(db, krate, impl_id, impl_)
+    impl_def_datum(db, krate, impl_)
 }
 
 fn impl_def_datum(
     db: &dyn HirDatabase,
     krate: CrateId,
-    chalk_id: ImplId,
     impl_id: hir_def::ImplId,
 ) -> Arc<ImplDatum> {
     let trait_ref = db
@@ -846,13 +848,6 @@ fn impl_def_datum(
     };
     let where_clauses = convert_where_clauses(db, impl_id.into(), &bound_vars);
     let negative = impl_data.is_negative;
-    debug!(
-        "impl {:?}: {}{} where {:?}",
-        chalk_id,
-        if negative { "!" } else { "" },
-        trait_ref.display(db, db.crate_graph()[krate].edition),
-        where_clauses
-    );
 
     let polarity = if negative { rust_ir::Polarity::Negative } else { rust_ir::Polarity::Positive };
 
@@ -861,7 +856,7 @@ fn impl_def_datum(
     let associated_ty_value_ids = impl_data
         .items
         .iter()
-        .filter_map(|item| match item {
+        .filter_map(|(_, item)| match item {
             AssocItemId::TypeAliasId(type_alias) => Some(*type_alias),
             _ => None,
         })
@@ -955,11 +950,18 @@ pub(crate) fn fn_def_datum_query(db: &dyn HirDatabase, fn_def_id: FnDefId) -> Ar
 
 pub(crate) fn fn_def_variance_query(db: &dyn HirDatabase, fn_def_id: FnDefId) -> Variances {
     let callable_def: CallableDefId = from_chalk(db, fn_def_id);
-    let generic_params =
-        generics(db.upcast(), GenericDefId::from_callable(db.upcast(), callable_def));
     Variances::from_iter(
         Interner,
-        std::iter::repeat(chalk_ir::Variance::Invariant).take(generic_params.len()),
+        db.variances_of(GenericDefId::from_callable(db.upcast(), callable_def))
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .map(|v| match v {
+                crate::variance::Variance::Covariant => chalk_ir::Variance::Covariant,
+                crate::variance::Variance::Invariant => chalk_ir::Variance::Invariant,
+                crate::variance::Variance::Contravariant => chalk_ir::Variance::Contravariant,
+                crate::variance::Variance::Bivariant => chalk_ir::Variance::Invariant,
+            }),
     )
 }
 
@@ -967,10 +969,14 @@ pub(crate) fn adt_variance_query(
     db: &dyn HirDatabase,
     chalk_ir::AdtId(adt_id): AdtId,
 ) -> Variances {
-    let generic_params = generics(db.upcast(), adt_id.into());
     Variances::from_iter(
         Interner,
-        std::iter::repeat(chalk_ir::Variance::Invariant).take(generic_params.len()),
+        db.variances_of(adt_id.into()).as_deref().unwrap_or_default().iter().map(|v| match v {
+            crate::variance::Variance::Covariant => chalk_ir::Variance::Covariant,
+            crate::variance::Variance::Invariant => chalk_ir::Variance::Invariant,
+            crate::variance::Variance::Contravariant => chalk_ir::Variance::Contravariant,
+            crate::variance::Variance::Bivariant => chalk_ir::Variance::Invariant,
+        }),
     )
 }
 

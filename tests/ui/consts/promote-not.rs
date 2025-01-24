@@ -23,7 +23,7 @@ pub const fn promote_cal(b: bool) -> i32 {
     13
 }
 
-// We do not promote union field accesses in `fn.
+// We do not promote union field accesses in `fn`.
 union U { x: i32, y: i32 }
 pub const fn promote_union() {
     let _x: &'static i32 = &unsafe { U { x: 0 }.x }; //~ ERROR temporary value dropped while borrowed

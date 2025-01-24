@@ -1,6 +1,5 @@
 //@ run-pass
 #![allow(dead_code)]
-//@ pretty-expanded FIXME #23616
 
 pub mod test2 {
     // This used to generate an ICE (make sure that default functions are

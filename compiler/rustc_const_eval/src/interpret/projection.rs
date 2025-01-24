@@ -10,10 +10,10 @@
 use std::marker::PhantomData;
 use std::ops::Range;
 
+use rustc_abi::{self as abi, Size, VariantIdx};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::{bug, mir, span_bug, ty};
-use rustc_target::abi::{self, Size, VariantIdx};
 use tracing::{debug, instrument};
 
 use super::{
@@ -325,7 +325,7 @@ where
         let actual_to = if from_end {
             if from.checked_add(to).is_none_or(|to| to > len) {
                 // This can only be reached in ConstProp and non-rustc-MIR.
-                throw_ub!(BoundsCheckFailed { len: len, index: from.saturating_add(to) });
+                throw_ub!(BoundsCheckFailed { len, index: from.saturating_add(to) });
             }
             len.checked_sub(to).unwrap()
         } else {

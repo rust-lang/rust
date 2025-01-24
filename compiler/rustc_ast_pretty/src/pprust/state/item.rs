@@ -3,7 +3,7 @@ use itertools::{Itertools, Position};
 use rustc_ast as ast;
 use rustc_ast::ModKind;
 use rustc_ast::ptr::P;
-use rustc_span::symbol::Ident;
+use rustc_span::Ident;
 
 use crate::pp::Breaks::Inconsistent;
 use crate::pprust::state::fixup::FixupContext;
@@ -38,7 +38,6 @@ impl<'a> State<'a> {
                 self.print_fn_full(sig, ident, generics, vis, *defaultness, body.as_deref(), attrs);
             }
             ast::ForeignItemKind::Static(box ast::StaticItem { ty, mutability, expr, safety }) => {
-                self.print_safety(*safety);
                 self.print_item_const(
                     ident,
                     Some(*mutability),
@@ -46,6 +45,7 @@ impl<'a> State<'a> {
                     ty,
                     expr.as_deref(),
                     vis,
+                    *safety,
                     ast::Defaultness::Final,
                 )
             }
@@ -84,10 +84,12 @@ impl<'a> State<'a> {
         ty: &ast::Ty,
         body: Option<&ast::Expr>,
         vis: &ast::Visibility,
+        safety: ast::Safety,
         defaultness: ast::Defaultness,
     ) {
         self.head("");
         self.print_visibility(vis);
+        self.print_safety(safety);
         self.print_defaultness(defaultness);
         let leading = match mutbl {
             None => "const",
@@ -181,6 +183,7 @@ impl<'a> State<'a> {
                     ty,
                     body.as_deref(),
                     &item.vis,
+                    ast::Safety::Default,
                     ast::Defaultness::Final,
                 );
             }
@@ -192,6 +195,7 @@ impl<'a> State<'a> {
                     ty,
                     expr.as_deref(),
                     &item.vis,
+                    ast::Safety::Default,
                     *defaultness,
                 );
             }
@@ -549,6 +553,7 @@ impl<'a> State<'a> {
                     ty,
                     expr.as_deref(),
                     vis,
+                    ast::Safety::Default,
                     *defaultness,
                 );
             }
@@ -721,11 +726,12 @@ impl<'a> State<'a> {
     }
 
     pub fn print_where_predicate(&mut self, predicate: &ast::WherePredicate) {
-        match predicate {
-            ast::WherePredicate::BoundPredicate(where_bound_predicate) => {
+        let ast::WherePredicate { kind, id: _, span: _ } = predicate;
+        match kind {
+            ast::WherePredicateKind::BoundPredicate(where_bound_predicate) => {
                 self.print_where_bound_predicate(where_bound_predicate);
             }
-            ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
+            ast::WherePredicateKind::RegionPredicate(ast::WhereRegionPredicate {
                 lifetime,
                 bounds,
                 ..
@@ -737,7 +743,9 @@ impl<'a> State<'a> {
                     self.print_lifetime_bounds(bounds);
                 }
             }
-            ast::WherePredicate::EqPredicate(ast::WhereEqPredicate { lhs_ty, rhs_ty, .. }) => {
+            ast::WherePredicateKind::EqPredicate(ast::WhereEqPredicate {
+                lhs_ty, rhs_ty, ..
+            }) => {
                 self.print_type(lhs_ty);
                 self.space();
                 self.word_space("=");

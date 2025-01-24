@@ -2,7 +2,7 @@
 //@[tree]compile-flags: -Zmiri-tree-borrows
 //@compile-flags: -Zmiri-strict-provenance
 
-#![feature(strict_provenance, strict_provenance_atomic_ptr)]
+#![feature(strict_provenance_atomic_ptr)]
 // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
 #![allow(static_mut_refs)]
 

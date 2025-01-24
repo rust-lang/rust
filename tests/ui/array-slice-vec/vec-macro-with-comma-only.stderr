@@ -1,4 +1,4 @@
-error: no rules expected the token `,`
+error: no rules expected `,`
   --> $DIR/vec-macro-with-comma-only.rs:2:10
    |
 LL |     vec![,];

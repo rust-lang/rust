@@ -580,7 +580,7 @@ Unfortunately, it downloads an old version of `rust-analyzer`, but you can set t
 
 There is a package named `ra_ap_rust_analyzer` available on https://crates.io/crates/ra_ap_rust-analyzer[crates.io], for someone who wants to use it programmatically.
 
-For more details, see https://github.com/rust-lang/rust-analyzer/blob/master/.github/workflows/publish.yml[the publish workflow].
+For more details, see https://github.com/rust-lang/rust-analyzer/blob/master/.github/workflows/autopublish.yaml[the publish workflow].
 
 === Zed
 
@@ -769,7 +769,7 @@ interface Crate {
     /// The set of cfgs activated for a given crate, like
     /// `["unix", "feature=\"foo\"", "feature=\"bar\""]`.
     cfg: string[];
-    /// Target triple for this Crate.
+    /// Target tuple for this Crate.
     ///
     /// Used when running `rustc --print cfg`
     /// to get target-specific cfgs.

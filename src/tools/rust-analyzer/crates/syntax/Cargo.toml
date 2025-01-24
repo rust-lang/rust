@@ -27,7 +27,6 @@ ra-ap-rustc_lexer.workspace = true
 
 parser.workspace = true
 stdx.workspace = true
-text-edit.workspace = true
 
 [dev-dependencies]
 rayon.workspace = true

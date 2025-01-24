@@ -3,14 +3,19 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
 // Diagnostic: macro-error
 //
 // This diagnostic is shown for macro expansion errors.
+
+// Diagnostic: attribute-expansion-disabled
+//
+// This diagnostic is shown for attribute proc macros when attribute expansions have been disabled.
+
+// Diagnostic: proc-macro-disabled
+//
+// This diagnostic is shown for proc macros that have been specifically disabled via `rust-analyzer.procMacro.ignored`.
 pub(crate) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> Diagnostic {
     // Use more accurate position if available.
     let display_range = ctx.resolve_precise_location(&d.node, d.precise_location);
     Diagnostic::new(
-        DiagnosticCode::Ra(
-            "macro-error",
-            if d.error { Severity::Error } else { Severity::WeakWarning },
-        ),
+        DiagnosticCode::Ra(d.kind, if d.error { Severity::Error } else { Severity::WeakWarning }),
         d.message.clone(),
         display_range,
     )
@@ -284,6 +289,32 @@ include!("include-me.rs");
 //^^^^^^error: unresolved macro `err`
 mod prim_never {}
 "#,
+        );
+    }
+
+    #[test]
+    fn no_stack_overflow_for_missing_binding() {
+        check_diagnostics(
+            r#"
+#[macro_export]
+macro_rules! boom {
+    (
+        $($code:literal),+,
+        $(param: $param:expr,)?
+    ) => {{
+        let _ = $crate::boom!(@param $($param)*);
+    }};
+    (@param) => { () };
+    (@param $param:expr) => { $param };
+}
+
+fn it_works() {
+    // NOTE: there is an error, but RA crashes before showing it
+    boom!("RAND", param: c7.clone());
+               // ^^^^^ error: expected literal
+}
+
+        "#,
         );
     }
 }

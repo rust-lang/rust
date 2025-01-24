@@ -16,7 +16,7 @@ note: the derive macro import `Empty` is defined here...
 LL |     use test_macros::Empty;
    |         ^^^^^^^^^^^^^^^^^^
 note: ...and refers to the derive macro `Empty` which is defined here
-  --> $DIR/auxiliary/test-macros.rs:25:1
+  --> $DIR/auxiliary/test-macros.rs:20:1
    |
 LL | pub fn empty_derive(_: TokenStream) -> TokenStream {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ you could import this directly

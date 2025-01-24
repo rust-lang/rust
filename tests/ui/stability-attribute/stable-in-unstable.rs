@@ -13,8 +13,8 @@ extern crate stable_in_unstable_core;
 extern crate stable_in_unstable_std;
 
 mod isolated1 {
-    use stable_in_unstable_core::new_unstable_module; //~ ERROR use of unstable library feature 'unstable_test_feature'
-    use stable_in_unstable_core::new_unstable_module::OldTrait; //~ ERROR use of unstable library feature 'unstable_test_feature'
+    use stable_in_unstable_core::new_unstable_module; //~ ERROR use of unstable library feature `unstable_test_feature`
+    use stable_in_unstable_core::new_unstable_module::OldTrait; //~ ERROR use of unstable library feature `unstable_test_feature`
 }
 
 mod isolated2 {
@@ -26,7 +26,7 @@ mod isolated2 {
 }
 
 mod isolated3 {
-    use stable_in_unstable_core::new_unstable_module::OldTrait; //~ ERROR use of unstable library feature 'unstable_test_feature'
+    use stable_in_unstable_core::new_unstable_module::OldTrait; //~ ERROR use of unstable library feature `unstable_test_feature`
 
     struct LocalType;
 
@@ -36,7 +36,7 @@ mod isolated3 {
 mod isolated4 {
     struct LocalType;
 
-    impl stable_in_unstable_core::new_unstable_module::OldTrait for LocalType {} //~ ERROR use of unstable library feature 'unstable_test_feature'
+    impl stable_in_unstable_core::new_unstable_module::OldTrait for LocalType {} //~ ERROR use of unstable library feature `unstable_test_feature`
 }
 
 mod isolated5 {
@@ -46,9 +46,9 @@ mod isolated5 {
 }
 
 mod isolated6 {
-    use stable_in_unstable_core::new_unstable_module::{OldTrait}; //~ ERROR use of unstable library feature 'unstable_test_feature'
+    use stable_in_unstable_core::new_unstable_module::{OldTrait}; //~ ERROR use of unstable library feature `unstable_test_feature`
 }
 
 mod isolated7 {
-    use stable_in_unstable_core::new_unstable_module::*; //~ ERROR use of unstable library feature 'unstable_test_feature'
+    use stable_in_unstable_core::new_unstable_module::*; //~ ERROR use of unstable library feature `unstable_test_feature`
 }

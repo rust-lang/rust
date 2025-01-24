@@ -2,9 +2,9 @@ use std::iter;
 
 use rand::Rng;
 use rand::seq::IteratorRandom;
+use rustc_abi::Size;
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir;
-use rustc_target::abi::Size;
 
 use crate::*;
 
@@ -23,7 +23,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         interp_ok(match bin_op {
             Eq | Ne | Lt | Le | Gt | Ge => {
-                assert_eq!(left.layout.abi, right.layout.abi); // types can differ, e.g. fn ptrs with different `for`
+                assert_eq!(left.layout.backend_repr, right.layout.backend_repr); // types can differ, e.g. fn ptrs with different `for`
                 let size = this.pointer_size();
                 // Just compare the bits. ScalarPairs are compared lexicographically.
                 // We thus always compare pairs and simply fill scalars up with 0.

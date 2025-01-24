@@ -1,6 +1,6 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/112515>.
 // It's to ensure that this code doesn't have infinite loop in rustdoc when
-// trying to retrive type alias implementations.
+// trying to retrieve type alias implementations.
 
 // ignore-tidy-linelength
 

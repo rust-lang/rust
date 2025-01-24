@@ -146,7 +146,7 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
 
         // Wasm statics with custom link sections get special treatment as they
         // go into custom sections of the wasm executable.
-        if self.tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
+        if self.tcx.sess.target.is_like_wasm {
             if let Some(_section) = attrs.link_section {
                 unimplemented!();
             }
@@ -215,7 +215,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let gcc_type = if nested {
             self.type_i8()
         } else {
-            let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
+            let ty = instance.ty(self.tcx, ty::TypingEnv::fully_monomorphized());
             self.layout_of(ty).gcc_type(self)
         };
 
@@ -252,7 +252,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             let global = self.declare_global(
                 sym,
                 gcc_type,
-                GlobalKind::Exported,
+                GlobalKind::Imported,
                 is_tls,
                 fn_attrs.link_section,
             );
@@ -404,7 +404,6 @@ fn check_and_apply_linkage<'gcc, 'tcx>(
         // TODO(antoyo): set linkage.
         let value = cx.const_ptrcast(global1.get_address(None), gcc_type);
         global2.global_set_initializer_rvalue(value);
-        // TODO(antoyo): use global_set_initializer() when it will work.
         global2
     } else {
         // Generate an external declaration.

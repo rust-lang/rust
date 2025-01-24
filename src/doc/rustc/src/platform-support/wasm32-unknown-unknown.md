@@ -132,10 +132,20 @@ As of the time of this writing the proposals that are enabled by default (the
 
 If you're compiling WebAssembly code for an engine that does not support a
 feature in LLVM's default feature set then the feature must be disabled at
-compile time. Note, though, that enabled features may be used in the standard
-library or precompiled libraries shipped via rustup. This means that not only
-does your own code need to be compiled with the correct set of flags but the
-Rust standard library additionally must be recompiled.
+compile time. There are two approaches to choose from:
+
+  - If you are targeting a feature set no smaller than the W3C WebAssembly Core
+    1.0 recommendation -- which is equivalent to the WebAssembly MVP plus the
+    `mutable-globals` feature -- and you are building `no_std`, then you can
+    simply use the [`wasm32v1-none` target](./wasm32v1-none.md) instead of
+    `wasm32-unknown-unknown`, which uses only those minimal features and
+    includes a core and alloc library built with only those minimal features.
+
+  - Otherwise -- if you need std, or if you need to target the ultra-minimal
+    "MVP" feature set, excluding `mutable-globals` -- you will need to manually
+    specify `-Ctarget-cpu=mvp` and also rebuild the stdlib using that target to
+    ensure no features are used in the stdlib. This in turn requires use of a
+    nightly compiler.
 
 Compiling all code for the initial release of WebAssembly looks like:
 
@@ -150,9 +160,9 @@ then used to recompile the standard library in addition to your own code. This
 will produce a binary that uses only the original WebAssembly features by
 default and no proposals since its inception.
 
-To enable individual features it can be done with `-Ctarget-feature=+foo`.
-Available features for Rust code itself are documented in the [reference] and
-can also be found through:
+To enable individual features on either this target or `wasm32v1-none`, pass
+arguments of the form `-Ctarget-feature=+foo`.  Available features for Rust code
+itself are documented in the [reference] and can also be found through:
 
 ```sh
 $ rustc -Ctarget-feature=help --target wasm32-unknown-unknown

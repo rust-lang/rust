@@ -62,10 +62,10 @@ impl Ref for ! {
 pub mod rustc {
     use std::fmt::{self, Write};
 
+    use rustc_abi::Layout;
     use rustc_middle::mir::Mutability;
     use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError};
     use rustc_middle::ty::{self, Ty};
-    use rustc_target::abi::Layout;
 
     /// A reference in the layout.
     #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]

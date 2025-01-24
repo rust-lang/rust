@@ -41,4 +41,10 @@ impl RwLock {
     pub unsafe fn write_unlock(&self) {
         unsafe { self.inner.unlock() };
     }
+
+    #[inline]
+    pub unsafe fn downgrade(&self) {
+        // Since there is no difference between read-locked and write-locked on this platform, this
+        // function is simply a no-op as only 1 reader can read: the original writer.
+    }
 }

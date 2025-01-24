@@ -2068,14 +2068,12 @@ fn clone_to_uninit() {
     let a = Path::new("hello.txt");
 
     let mut storage = vec![MaybeUninit::<u8>::uninit(); size_of_val::<Path>(a)];
-    unsafe { a.clone_to_uninit(ptr::from_mut::<[_]>(storage.as_mut_slice()) as *mut Path) };
-    assert_eq!(a.as_os_str().as_encoded_bytes(), unsafe {
-        MaybeUninit::slice_assume_init_ref(&storage)
-    });
+    unsafe { a.clone_to_uninit(ptr::from_mut::<[_]>(storage.as_mut_slice()).cast()) };
+    assert_eq!(a.as_os_str().as_encoded_bytes(), unsafe { storage.assume_init_ref() });
 
     let mut b: Box<Path> = Path::new("world.exe").into();
     assert_eq!(size_of_val::<Path>(a), size_of_val::<Path>(&b));
     assert_ne!(a, &*b);
-    unsafe { a.clone_to_uninit(ptr::from_mut::<Path>(&mut b)) };
+    unsafe { a.clone_to_uninit(ptr::from_mut::<Path>(&mut b).cast()) };
     assert_eq!(a, &*b);
 }

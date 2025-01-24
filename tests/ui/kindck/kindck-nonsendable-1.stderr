@@ -8,7 +8,7 @@ LL |     bar(move|| foo(x));
    |     |   within this `{closure@$DIR/kindck-nonsendable-1.rs:9:9: 9:15}`
    |     required by a bound introduced by this call
    |
-   = help: within `{closure@$DIR/kindck-nonsendable-1.rs:9:9: 9:15}`, the trait `Send` is not implemented for `Rc<usize>`, which is required by `{closure@$DIR/kindck-nonsendable-1.rs:9:9: 9:15}: Send`
+   = help: within `{closure@$DIR/kindck-nonsendable-1.rs:9:9: 9:15}`, the trait `Send` is not implemented for `Rc<usize>`
 note: required because it's used within this closure
   --> $DIR/kindck-nonsendable-1.rs:9:9
    |

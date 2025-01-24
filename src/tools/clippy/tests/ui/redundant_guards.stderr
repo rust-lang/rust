@@ -1,11 +1,35 @@
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:34:20
+  --> tests/ui/redundant_guards.rs:22:14
+   |
+LL |         x if x == 0.0 => todo!(),
+   |              ^^^^^^^^
+   |
+   = note: `-D clippy::redundant-guards` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_guards)]`
+help: try
+   |
+LL -         x if x == 0.0 => todo!(),
+LL +         0.0 => todo!(),
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:28:14
+   |
+LL |         x if x == FloatWrapper(0.0) => todo!(),
+   |              ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         x if x == FloatWrapper(0.0) => todo!(),
+LL +         FloatWrapper(0.0) => todo!(),
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:43:20
    |
 LL |         C(x, y) if let 1 = y => ..,
    |                    ^^^^^^^^^
    |
-   = note: `-D clippy::redundant-guards` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::redundant_guards)]`
 help: try
    |
 LL -         C(x, y) if let 1 = y => ..,
@@ -13,7 +37,7 @@ LL +         C(x, 1) => ..,
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:40:20
+  --> tests/ui/redundant_guards.rs:49:20
    |
 LL |         Some(x) if matches!(x, Some(1) if true) => ..,
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +48,7 @@ LL |         Some(Some(1)) if true => ..,
    |              ~~~~~~~  ~~~~~~~
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:41:20
+  --> tests/ui/redundant_guards.rs:50:20
    |
 LL |         Some(x) if matches!(x, Some(1)) => {
    |                    ^^^^^^^^^^^^^^^^^^^^
@@ -36,7 +60,7 @@ LL +         Some(Some(1)) => {
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:45:20
+  --> tests/ui/redundant_guards.rs:54:20
    |
 LL |         Some(x) if let Some(1) = x => ..,
    |                    ^^^^^^^^^^^^^^^
@@ -48,7 +72,7 @@ LL +         Some(Some(1)) => ..,
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:46:20
+  --> tests/ui/redundant_guards.rs:55:20
    |
 LL |         Some(x) if x == Some(2) => ..,
    |                    ^^^^^^^^^^^^
@@ -60,7 +84,7 @@ LL +         Some(Some(2)) => ..,
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:47:20
+  --> tests/ui/redundant_guards.rs:56:20
    |
 LL |         Some(x) if Some(2) == x => ..,
    |                    ^^^^^^^^^^^^
@@ -72,7 +96,7 @@ LL +         Some(Some(2)) => ..,
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:72:20
+  --> tests/ui/redundant_guards.rs:81:20
    |
 LL |         B { e } if matches!(e, Some(A(2))) => ..,
    |                    ^^^^^^^^^^^^^^^^^^^^^^^
@@ -84,7 +108,7 @@ LL +         B { e: Some(A(2)) } => ..,
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:109:20
+  --> tests/ui/redundant_guards.rs:118:20
    |
 LL |         E::A(y) if y == "not from an or pattern" => {},
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -96,7 +120,7 @@ LL +         E::A("not from an or pattern") => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:116:14
+  --> tests/ui/redundant_guards.rs:125:14
    |
 LL |         x if matches!(x, Some(0)) => ..,
    |              ^^^^^^^^^^^^^^^^^^^^
@@ -108,7 +132,7 @@ LL +         Some(0) => ..,
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:123:14
+  --> tests/ui/redundant_guards.rs:132:14
    |
 LL |         i if i == -1 => {},
    |              ^^^^^^^
@@ -120,7 +144,7 @@ LL +         -1 => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:124:14
+  --> tests/ui/redundant_guards.rs:133:14
    |
 LL |         i if i == 1 => {},
    |              ^^^^^^
@@ -132,7 +156,7 @@ LL +         1 => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:186:28
+  --> tests/ui/redundant_guards.rs:195:28
    |
 LL |             Some(ref x) if x == &1 => {},
    |                            ^^^^^^^
@@ -144,7 +168,7 @@ LL +             Some(1) => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:187:28
+  --> tests/ui/redundant_guards.rs:196:28
    |
 LL |             Some(ref x) if &1 == x => {},
    |                            ^^^^^^^
@@ -156,7 +180,7 @@ LL +             Some(1) => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:188:28
+  --> tests/ui/redundant_guards.rs:197:28
    |
 LL |             Some(ref x) if let &2 = x => {},
    |                            ^^^^^^^^^^
@@ -168,7 +192,7 @@ LL +             Some(2) => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:189:28
+  --> tests/ui/redundant_guards.rs:198:28
    |
 LL |             Some(ref x) if matches!(x, &3) => {},
    |                            ^^^^^^^^^^^^^^^
@@ -180,7 +204,7 @@ LL +             Some(3) => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:209:32
+  --> tests/ui/redundant_guards.rs:218:32
    |
 LL |             B { ref c, .. } if c == &1 => {},
    |                                ^^^^^^^
@@ -192,7 +216,7 @@ LL +             B { c: 1, .. } => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:210:32
+  --> tests/ui/redundant_guards.rs:219:32
    |
 LL |             B { ref c, .. } if &1 == c => {},
    |                                ^^^^^^^
@@ -204,7 +228,7 @@ LL +             B { c: 1, .. } => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:211:32
+  --> tests/ui/redundant_guards.rs:220:32
    |
 LL |             B { ref c, .. } if let &1 = c => {},
    |                                ^^^^^^^^^^
@@ -216,7 +240,7 @@ LL +             B { c: 1, .. } => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:212:32
+  --> tests/ui/redundant_guards.rs:221:32
    |
 LL |             B { ref c, .. } if matches!(c, &1) => {},
    |                                ^^^^^^^^^^^^^^^
@@ -228,7 +252,7 @@ LL +             B { c: 1, .. } => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:222:26
+  --> tests/ui/redundant_guards.rs:231:26
    |
 LL |         Some(Some(x)) if x.is_empty() => {},
    |                          ^^^^^^^^^^^^
@@ -240,7 +264,7 @@ LL +         Some(Some("")) => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:233:26
+  --> tests/ui/redundant_guards.rs:242:26
    |
 LL |         Some(Some(x)) if x.is_empty() => {},
    |                          ^^^^^^^^^^^^
@@ -252,7 +276,7 @@ LL +         Some(Some([])) => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:238:26
+  --> tests/ui/redundant_guards.rs:247:26
    |
 LL |         Some(Some(x)) if x.is_empty() => {},
    |                          ^^^^^^^^^^^^
@@ -264,7 +288,7 @@ LL +         Some(Some([])) => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:249:26
+  --> tests/ui/redundant_guards.rs:258:26
    |
 LL |         Some(Some(x)) if x.starts_with(&[]) => {},
    |                          ^^^^^^^^^^^^^^^^^^
@@ -276,7 +300,7 @@ LL +         Some(Some([..])) => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:254:26
+  --> tests/ui/redundant_guards.rs:263:26
    |
 LL |         Some(Some(x)) if x.starts_with(&[1]) => {},
    |                          ^^^^^^^^^^^^^^^^^^^
@@ -288,7 +312,7 @@ LL +         Some(Some([1, ..])) => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:259:26
+  --> tests/ui/redundant_guards.rs:268:26
    |
 LL |         Some(Some(x)) if x.starts_with(&[1, 2]) => {},
    |                          ^^^^^^^^^^^^^^^^^^^^^^
@@ -300,7 +324,7 @@ LL +         Some(Some([1, 2, ..])) => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:264:26
+  --> tests/ui/redundant_guards.rs:273:26
    |
 LL |         Some(Some(x)) if x.ends_with(&[1, 2]) => {},
    |                          ^^^^^^^^^^^^^^^^^^^^
@@ -312,7 +336,7 @@ LL +         Some(Some([.., 1, 2])) => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:286:18
+  --> tests/ui/redundant_guards.rs:295:18
    |
 LL |             y if y.is_empty() => {},
    |                  ^^^^^^^^^^^^
@@ -324,7 +348,7 @@ LL +             "" => {},
    |
 
 error: redundant guard
-  --> tests/ui/redundant_guards.rs:305:22
+  --> tests/ui/redundant_guards.rs:314:22
    |
 LL |                 y if y.is_empty() => {},
    |                      ^^^^^^^^^^^^
@@ -335,5 +359,5 @@ LL -                 y if y.is_empty() => {},
 LL +                 "" => {},
    |
 
-error: aborting due to 28 previous errors
+error: aborting due to 30 previous errors
 

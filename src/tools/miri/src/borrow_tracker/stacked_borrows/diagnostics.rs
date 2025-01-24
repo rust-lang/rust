@@ -1,8 +1,8 @@
 use std::fmt;
 
+use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::{Span, SpanData};
-use rustc_target::abi::Size;
 use smallvec::SmallVec;
 
 use crate::borrow_tracker::{GlobalStateInner, ProtectorKind};
@@ -424,7 +424,11 @@ impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
     }
 
     #[inline(never)] // This is only called on fatal code paths
-    pub(super) fn protector_error(&self, item: &Item, kind: ProtectorKind) -> InterpErrorKind<'tcx> {
+    pub(super) fn protector_error(
+        &self,
+        item: &Item,
+        kind: ProtectorKind,
+    ) -> InterpErrorKind<'tcx> {
         let protected = match kind {
             ProtectorKind::WeakProtector => "weakly protected",
             ProtectorKind::StrongProtector => "strongly protected",

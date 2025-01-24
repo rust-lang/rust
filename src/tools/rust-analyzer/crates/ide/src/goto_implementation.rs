@@ -48,7 +48,7 @@ pub(crate) fn goto_implementation(
                     }
                     ast::NameLike::NameRef(name_ref) => NameRefClass::classify(&sema, name_ref)
                         .and_then(|class| match class {
-                            NameRefClass::Definition(def) => Some(def),
+                            NameRefClass::Definition(def, _) => Some(def),
                             NameRefClass::FieldShorthand { .. }
                             | NameRefClass::ExternCrateShorthand { .. } => None,
                         }),
@@ -129,7 +129,7 @@ mod tests {
 
     use crate::fixture;
 
-    fn check(ra_fixture: &str) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);
 
         let navs = analysis.goto_implementation(position).unwrap().unwrap().info;

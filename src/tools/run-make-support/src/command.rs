@@ -151,6 +151,61 @@ impl Command {
         self
     }
 
+    /// Set an auxiliary stream passed to the process, besides the stdio streams.
+    ///
+    /// # Notes
+    ///
+    /// Use with caution! Ideally, only set one aux fd; if there are multiple, their old `fd` may
+    /// overlap with another's `new_fd`, and may break. The caller must make sure this is not the
+    /// case. This function is only "safe" because the safety requirements are practically not
+    /// possible to uphold.
+    #[cfg(unix)]
+    pub fn set_aux_fd<F: Into<std::os::fd::OwnedFd>>(
+        &mut self,
+        new_fd: std::os::fd::RawFd,
+        fd: F,
+    ) -> &mut Self {
+        use std::mem;
+        // NOTE: If more than 1 auxiliary file descriptor is needed, this function should be
+        // rewritten.
+        use std::os::fd::AsRawFd;
+        use std::os::unix::process::CommandExt;
+
+        let cvt = |x| if x == -1 { Err(std::io::Error::last_os_error()) } else { Ok(()) };
+
+        // Ensure fd stays open until the fork.
+        let fd = mem::ManuallyDrop::new(fd.into());
+        let fd = fd.as_raw_fd();
+
+        if fd == new_fd {
+            // If the new file descriptor is already the same as fd, just turn off `FD_CLOEXEC`.
+            let fd_flags = {
+                let ret = unsafe { libc::fcntl(fd, libc::F_GETFD, 0) };
+                if ret < 0 {
+                    panic!("failed to read fd flags: {}", std::io::Error::last_os_error());
+                }
+                ret
+            };
+            // Clear `FD_CLOEXEC`.
+            let fd_flags = fd_flags & !libc::FD_CLOEXEC;
+
+            // SAFETY(io-safety): `fd` is already owned.
+            cvt(unsafe { libc::fcntl(fd, libc::F_SETFD, fd_flags as libc::c_int) })
+                .expect("disabling CLOEXEC failed");
+        }
+        let pre_exec = move || {
+            if fd.as_raw_fd() != new_fd {
+                // SAFETY(io-safety): it's the caller's responsibility that we won't override the
+                // target fd.
+                cvt(unsafe { libc::dup2(fd, new_fd) })?;
+            }
+            Ok(())
+        };
+        // SAFETY(pre-exec-safe): `dup2` is pre-exec-safe.
+        unsafe { self.cmd.pre_exec(pre_exec) };
+        self
+    }
+
     /// Run the constructed command and assert that it is successfully run.
     ///
     /// By default, std{in,out,err} are [`Stdio::piped()`].
@@ -224,6 +279,12 @@ pub struct CompletedProcess {
 impl CompletedProcess {
     #[must_use]
     #[track_caller]
+    pub fn stdout(&self) -> Vec<u8> {
+        self.output.stdout.clone()
+    }
+
+    #[must_use]
+    #[track_caller]
     pub fn stdout_utf8(&self) -> String {
         String::from_utf8(self.output.stdout.clone()).expect("stdout is not valid UTF-8")
     }
@@ -236,8 +297,20 @@ impl CompletedProcess {
 
     #[must_use]
     #[track_caller]
+    pub fn stderr(&self) -> Vec<u8> {
+        self.output.stderr.clone()
+    }
+
+    #[must_use]
+    #[track_caller]
     pub fn stderr_utf8(&self) -> String {
         String::from_utf8(self.output.stderr.clone()).expect("stderr is not valid UTF-8")
+    }
+
+    #[must_use]
+    #[track_caller]
+    pub fn invalid_stderr_utf8(&self) -> String {
+        String::from_utf8_lossy(&self.output.stderr.clone()).to_string()
     }
 
     #[must_use]
@@ -311,7 +384,7 @@ impl CompletedProcess {
     /// Checks that `stderr` does not contain the regex pattern `unexpected`.
     #[track_caller]
     pub fn assert_stderr_not_contains_regex<S: AsRef<str>>(&self, unexpected: S) -> &Self {
-        assert_not_contains_regex(&self.stdout_utf8(), unexpected);
+        assert_not_contains_regex(&self.stderr_utf8(), unexpected);
         self
     }
 

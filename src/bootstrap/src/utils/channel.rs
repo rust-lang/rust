@@ -10,7 +10,7 @@ use std::path::Path;
 
 use super::helpers;
 use crate::Build;
-use crate::utils::helpers::{output, t};
+use crate::utils::helpers::{start_process, t};
 
 #[derive(Clone, Default)]
 pub enum GitInfo {
@@ -56,7 +56,7 @@ impl GitInfo {
         }
 
         // Ok, let's scrape some info
-        let ver_date = output(
+        let ver_date = start_process(
             helpers::git(Some(dir))
                 .arg("log")
                 .arg("-1")
@@ -65,14 +65,14 @@ impl GitInfo {
                 .as_command_mut(),
         );
         let ver_hash =
-            output(helpers::git(Some(dir)).arg("rev-parse").arg("HEAD").as_command_mut());
-        let short_ver_hash = output(
+            start_process(helpers::git(Some(dir)).arg("rev-parse").arg("HEAD").as_command_mut());
+        let short_ver_hash = start_process(
             helpers::git(Some(dir)).arg("rev-parse").arg("--short=9").arg("HEAD").as_command_mut(),
         );
         GitInfo::Present(Some(Info {
-            commit_date: ver_date.trim().to_string(),
-            sha: ver_hash.trim().to_string(),
-            short_sha: short_ver_hash.trim().to_string(),
+            commit_date: ver_date().trim().to_string(),
+            sha: ver_hash().trim().to_string(),
+            short_sha: short_ver_hash().trim().to_string(),
         }))
     }
 

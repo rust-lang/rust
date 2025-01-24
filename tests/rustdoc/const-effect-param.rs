@@ -1,8 +1,7 @@
 // Check that we don't render host effect parameters & arguments.
 
 #![crate_name = "foo"]
-#![feature(effects, const_trait_impl)]
-#![allow(incomplete_features)]
+#![feature(const_trait_impl)]
 
 #[const_trait]
 pub trait Tr {

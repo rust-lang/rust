@@ -3,11 +3,11 @@
 
 use std::num::NonZero;
 
+use rustc_abi::{FieldIdx, FieldsShape, VariantIdx, Variants};
 use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::InterpResult;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::{FieldIdx, FieldsShape, VariantIdx, Variants};
 use tracing::trace;
 
 use super::{InterpCx, MPlaceTy, Machine, Projectable, interp_ok, throw_inval};
@@ -218,8 +218,8 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
                 // recurse with the inner type
                 self.visit_variant(v, idx, &inner)?;
             }
-            // For single-variant layouts, we already did anything there is to do.
-            Variants::Single { .. } => {}
+            // For single-variant layouts, we already did everything there is to do.
+            Variants::Single { .. } | Variants::Empty => {}
         }
 
         interp_ok(())

@@ -60,7 +60,7 @@ impl RawWaker {
         RawWaker { data, vtable }
     }
 
-    #[unstable(feature = "noop_waker", issue = "98286")]
+    #[stable(feature = "noop_waker", since = "1.85.0")]
     const NOOP: RawWaker = {
         const VTABLE: RawWakerVTable = RawWakerVTable::new(
             // Cloning just returns a new no-op raw waker
@@ -253,7 +253,6 @@ impl<'a> Context<'a> {
     /// Returns a reference to the [`LocalWaker`] for the current task.
     #[inline]
     #[unstable(feature = "local_waker", issue = "118959")]
-    #[rustc_const_unstable(feature = "local_waker", issue = "118959")]
     pub const fn local_waker(&self) -> &'a LocalWaker {
         &self.local_waker
     }
@@ -261,7 +260,6 @@ impl<'a> Context<'a> {
     /// Returns a reference to the extension data for the current task.
     #[inline]
     #[unstable(feature = "context_ext", issue = "123392")]
-    #[rustc_const_unstable(feature = "context_ext", issue = "123392")]
     pub const fn ext(&mut self) -> &mut dyn Any {
         // FIXME: this field makes Context extra-weird about unwind safety
         // can we justify AssertUnwindSafe if we stabilize this? do we care?
@@ -285,7 +283,6 @@ impl fmt::Debug for Context<'_> {
 /// # Examples
 /// ```
 /// #![feature(local_waker)]
-/// #![feature(noop_waker)]
 /// use std::task::{ContextBuilder, LocalWaker, Waker, Poll};
 /// use std::future::Future;
 ///
@@ -321,12 +318,11 @@ impl<'a> ContextBuilder<'a> {
     /// Creates a ContextBuilder from a Waker.
     #[inline]
     #[unstable(feature = "local_waker", issue = "118959")]
-    #[rustc_const_stable(feature = "const_waker", since = "1.82.0")]
     pub const fn from_waker(waker: &'a Waker) -> Self {
         // SAFETY: LocalWaker is just Waker without thread safety
         let local_waker = unsafe { transmute(waker) };
         Self {
-            waker: waker,
+            waker,
             local_waker,
             ext: ExtData::None(()),
             _marker: PhantomData,
@@ -337,7 +333,6 @@ impl<'a> ContextBuilder<'a> {
     /// Creates a ContextBuilder from an existing Context.
     #[inline]
     #[unstable(feature = "context_ext", issue = "123392")]
-    #[rustc_const_unstable(feature = "context_ext", issue = "123392")]
     pub const fn from(cx: &'a mut Context<'_>) -> Self {
         let ext = match &mut cx.ext.0 {
             ExtData::Some(ext) => ExtData::Some(*ext),
@@ -355,7 +350,6 @@ impl<'a> ContextBuilder<'a> {
     /// Sets the value for the waker on `Context`.
     #[inline]
     #[unstable(feature = "context_ext", issue = "123392")]
-    #[rustc_const_unstable(feature = "context_ext", issue = "123392")]
     pub const fn waker(self, waker: &'a Waker) -> Self {
         Self { waker, ..self }
     }
@@ -363,7 +357,6 @@ impl<'a> ContextBuilder<'a> {
     /// Sets the value for the local waker on `Context`.
     #[inline]
     #[unstable(feature = "local_waker", issue = "118959")]
-    #[rustc_const_unstable(feature = "local_waker", issue = "118959")]
     pub const fn local_waker(self, local_waker: &'a LocalWaker) -> Self {
         Self { local_waker, ..self }
     }
@@ -371,7 +364,6 @@ impl<'a> ContextBuilder<'a> {
     /// Sets the value for the extension data on `Context`.
     #[inline]
     #[unstable(feature = "context_ext", issue = "123392")]
-    #[rustc_const_unstable(feature = "context_ext", issue = "123392")]
     pub const fn ext(self, data: &'a mut dyn Any) -> Self {
         Self { ext: ExtData::Some(data), ..self }
     }
@@ -379,7 +371,6 @@ impl<'a> ContextBuilder<'a> {
     /// Builds the `Context`.
     #[inline]
     #[unstable(feature = "local_waker", issue = "118959")]
-    #[rustc_const_stable(feature = "const_waker", since = "1.82.0")]
     pub const fn build(self) -> Context<'a> {
         let ContextBuilder { waker, local_waker, ext, _marker, _marker2 } = self;
         Context { waker, local_waker, ext: AssertUnwindSafe(ext), _marker, _marker2 }
@@ -563,8 +554,6 @@ impl Waker {
     /// # Examples
     ///
     /// ```
-    /// #![feature(noop_waker)]
-    ///
     /// use std::future::Future;
     /// use std::task;
     ///
@@ -575,7 +564,8 @@ impl Waker {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "noop_waker", issue = "98286")]
+    #[stable(feature = "noop_waker", since = "1.85.0")]
+    #[rustc_const_stable(feature = "noop_waker", since = "1.85.0")]
     pub const fn noop() -> &'static Waker {
         const WAKER: &Waker = &Waker { waker: RawWaker::NOOP };
         WAKER
@@ -834,7 +824,6 @@ impl LocalWaker {
     #[inline]
     #[must_use]
     #[unstable(feature = "local_waker", issue = "118959")]
-    #[rustc_const_unstable(feature = "local_waker", issue = "118959")]
     pub const unsafe fn from_raw(waker: RawWaker) -> LocalWaker {
         Self { waker }
     }
@@ -859,8 +848,6 @@ impl LocalWaker {
     ///
     /// ```
     /// #![feature(local_waker)]
-    /// #![feature(noop_waker)]
-    ///
     /// use std::future::Future;
     /// use std::task::{ContextBuilder, LocalWaker, Waker, Poll};
     ///
@@ -873,7 +860,7 @@ impl LocalWaker {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "noop_waker", issue = "98286")]
+    #[unstable(feature = "local_waker", issue = "118959")]
     pub const fn noop() -> &'static LocalWaker {
         const WAKER: &LocalWaker = &LocalWaker { waker: RawWaker::NOOP };
         WAKER

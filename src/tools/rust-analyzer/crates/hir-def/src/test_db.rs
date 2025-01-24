@@ -78,6 +78,19 @@ impl FileLoader for TestDB {
 }
 
 impl TestDB {
+    pub(crate) fn fetch_test_crate(&self) -> CrateId {
+        let crate_graph = self.crate_graph();
+        let it = crate_graph
+            .iter()
+            .find(|&idx| {
+                crate_graph[idx].display_name.as_ref().map(|it| it.canonical_name().as_str())
+                    == Some("ra_test_fixture")
+            })
+            .or_else(|| crate_graph.iter().next())
+            .unwrap();
+        it
+    }
+
     pub(crate) fn module_for_file(&self, file_id: FileId) -> ModuleId {
         for &krate in self.relevant_crates(file_id).iter() {
             let crate_def_map = self.crate_def_map(krate);
@@ -198,7 +211,10 @@ impl TestDB {
             .filter_map(|node| {
                 let block = ast::BlockExpr::cast(node)?;
                 let expr = ast::Expr::from(block);
-                let expr_id = source_map.node_expr(InFile::new(position.file_id.into(), &expr))?;
+                let expr_id = source_map
+                    .node_expr(InFile::new(position.file_id.into(), &expr))?
+                    .as_expr()
+                    .unwrap();
                 let scope = scopes.scope_for(expr_id).unwrap();
                 Some(scope)
             });

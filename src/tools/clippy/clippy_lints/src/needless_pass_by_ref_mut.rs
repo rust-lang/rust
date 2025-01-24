@@ -183,7 +183,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             .iter()
             .zip(fn_sig.inputs())
             .zip(body.params)
-            .filter(|((&input, &ty), arg)| !should_skip(cx, input, ty, arg))
+            .filter(|&((&input, &ty), arg)| !should_skip(cx, input, ty, arg))
             .peekable();
         if it.peek().is_none() {
             return;
@@ -417,8 +417,8 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
             // a closure, it'll return this variant whereas if you have just an index access, it'll
             // return `ImmBorrow`. So if there is "Unique" and it's a mutable reference, we add it
             // to the mutably used variables set.
-            if borrow == ty::BorrowKind::MutBorrow
-                || (borrow == ty::BorrowKind::UniqueImmBorrow && base_ty.ref_mutability() == Some(Mutability::Mut))
+            if borrow == ty::BorrowKind::Mutable
+                || (borrow == ty::BorrowKind::UniqueImmutable && base_ty.ref_mutability() == Some(Mutability::Mut))
             {
                 self.add_mutably_used_var(*vid);
             } else if self.is_in_unsafe_block(id) {
@@ -426,7 +426,7 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
                 // upon!
                 self.add_mutably_used_var(*vid);
             }
-        } else if borrow == ty::ImmBorrow {
+        } else if borrow == ty::BorrowKind::Immutable {
             // If there is an `async block`, it'll contain a call to a closure which we need to
             // go into to ensure all "mutate" checks are found.
             if let Node::Expr(Expr {

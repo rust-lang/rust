@@ -8,7 +8,6 @@ LL | |        if n < 0 {
 LL | |         return i;
 LL | |         } else if n < 10 {
 ...  |
-LL | |
 LL | |     }
    | |_____^ expected `i32`, found `()`
    |

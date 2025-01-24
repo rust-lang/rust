@@ -8,7 +8,7 @@ use test::Bencher;
 #[test]
 fn test_new_filled() {
     for i in 0..128 {
-        let idx_buf = BitSet::new_filled(i);
+        let idx_buf = DenseBitSet::new_filled(i);
         let elems: Vec<usize> = idx_buf.iter().collect();
         let expected: Vec<usize> = (0..i).collect();
         assert_eq!(elems, expected);
@@ -17,7 +17,7 @@ fn test_new_filled() {
 
 #[test]
 fn bitset_iter_works() {
-    let mut bitset: BitSet<usize> = BitSet::new_empty(100);
+    let mut bitset: DenseBitSet<usize> = DenseBitSet::new_empty(100);
     bitset.insert(1);
     bitset.insert(10);
     bitset.insert(19);
@@ -32,7 +32,7 @@ fn bitset_iter_works() {
 
 #[test]
 fn bitset_iter_works_2() {
-    let mut bitset: BitSet<usize> = BitSet::new_empty(320);
+    let mut bitset: DenseBitSet<usize> = DenseBitSet::new_empty(320);
     bitset.insert(0);
     bitset.insert(127);
     bitset.insert(191);
@@ -43,25 +43,25 @@ fn bitset_iter_works_2() {
 
 #[test]
 fn bitset_clone_from() {
-    let mut a: BitSet<usize> = BitSet::new_empty(10);
+    let mut a: DenseBitSet<usize> = DenseBitSet::new_empty(10);
     a.insert(4);
     a.insert(7);
     a.insert(9);
 
-    let mut b = BitSet::new_empty(2);
+    let mut b = DenseBitSet::new_empty(2);
     b.clone_from(&a);
     assert_eq!(b.domain_size(), 10);
     assert_eq!(b.iter().collect::<Vec<_>>(), [4, 7, 9]);
 
-    b.clone_from(&BitSet::new_empty(40));
+    b.clone_from(&DenseBitSet::new_empty(40));
     assert_eq!(b.domain_size(), 40);
     assert_eq!(b.iter().collect::<Vec<_>>(), []);
 }
 
 #[test]
 fn union_two_sets() {
-    let mut set1: BitSet<usize> = BitSet::new_empty(65);
-    let mut set2: BitSet<usize> = BitSet::new_empty(65);
+    let mut set1: DenseBitSet<usize> = DenseBitSet::new_empty(65);
+    let mut set2: DenseBitSet<usize> = DenseBitSet::new_empty(65);
     assert!(set1.insert(3));
     assert!(!set1.insert(3));
     assert!(set2.insert(5));
@@ -76,93 +76,29 @@ fn union_two_sets() {
 }
 
 #[test]
-fn hybrid_bitset() {
-    let mut sparse038: HybridBitSet<usize> = HybridBitSet::new_empty(256);
-    assert!(sparse038.is_empty());
-    assert!(sparse038.insert(0));
-    assert!(sparse038.insert(1));
-    assert!(sparse038.insert(8));
-    assert!(sparse038.insert(3));
-    assert!(!sparse038.insert(3));
-    assert!(sparse038.remove(1));
-    assert!(!sparse038.is_empty());
-    assert_eq!(sparse038.iter().collect::<Vec<_>>(), [0, 3, 8]);
+fn union_not() {
+    let mut a = DenseBitSet::<usize>::new_empty(100);
+    let mut b = DenseBitSet::<usize>::new_empty(100);
 
-    for i in 0..256 {
-        if i == 0 || i == 3 || i == 8 {
-            assert!(sparse038.contains(i));
-        } else {
-            assert!(!sparse038.contains(i));
-        }
-    }
+    a.insert(3);
+    a.insert(5);
+    a.insert(80);
+    a.insert(81);
 
-    let mut sparse01358 = sparse038.clone();
-    assert!(sparse01358.insert(1));
-    assert!(sparse01358.insert(5));
-    assert_eq!(sparse01358.iter().collect::<Vec<_>>(), [0, 1, 3, 5, 8]);
+    b.insert(5); // Already in `a`.
+    b.insert(7);
+    b.insert(63);
+    b.insert(81); // Already in `a`.
+    b.insert(90);
 
-    let mut dense10 = HybridBitSet::new_empty(256);
-    for i in 0..10 {
-        assert!(dense10.insert(i));
-    }
-    assert!(!dense10.is_empty());
-    assert_eq!(dense10.iter().collect::<Vec<_>>(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    a.union_not(&b);
 
-    let mut dense256 = HybridBitSet::new_empty(256);
-    assert!(dense256.is_empty());
-    dense256.insert_all();
-    assert!(!dense256.is_empty());
-    for i in 0..256 {
-        assert!(dense256.contains(i));
-    }
-
-    assert!(sparse038.superset(&sparse038)); // sparse + sparse (self)
-    assert!(sparse01358.superset(&sparse038)); // sparse + sparse
-    assert!(dense10.superset(&sparse038)); // dense + sparse
-    assert!(dense10.superset(&dense10)); // dense + dense (self)
-    assert!(dense256.superset(&dense10)); // dense + dense
-
-    let mut hybrid = sparse038.clone();
-    assert!(!sparse01358.union(&hybrid)); // no change
-    assert!(hybrid.union(&sparse01358));
-    assert!(hybrid.superset(&sparse01358) && sparse01358.superset(&hybrid));
-    assert!(!dense256.union(&dense10));
-
-    // dense / sparse where dense superset sparse
-    assert!(!dense10.clone().union(&sparse01358));
-    assert!(sparse01358.clone().union(&dense10));
-    assert!(dense10.clone().intersect(&sparse01358));
-    assert!(!sparse01358.clone().intersect(&dense10));
-    assert!(dense10.clone().subtract(&sparse01358));
-    assert!(sparse01358.clone().subtract(&dense10));
-
-    // dense / sparse where sparse superset dense
-    let dense038 = sparse038.to_dense();
-    assert!(!sparse01358.clone().union(&dense038));
-    assert!(dense038.clone().union(&sparse01358));
-    assert!(sparse01358.clone().intersect(&dense038));
-    assert!(!dense038.clone().intersect(&sparse01358));
-    assert!(sparse01358.clone().subtract(&dense038));
-    assert!(dense038.clone().subtract(&sparse01358));
-
-    let mut dense = dense10.clone();
-    assert!(dense.union(&dense256));
-    assert!(dense.superset(&dense256) && dense256.superset(&dense));
-    assert!(hybrid.union(&dense256));
-    assert!(hybrid.superset(&dense256) && dense256.superset(&hybrid));
-
-    assert!(!dense10.clone().intersect(&dense256));
-    assert!(dense256.clone().intersect(&dense10));
-    assert!(dense10.clone().subtract(&dense256));
-    assert!(dense256.clone().subtract(&dense10));
-
-    assert_eq!(dense256.iter().count(), 256);
-    let mut dense0 = dense256;
-    for i in 0..256 {
-        assert!(dense0.remove(i));
-    }
-    assert!(!dense0.remove(0));
-    assert!(dense0.is_empty());
+    // After union-not, `a` should contain all values in the domain, except for
+    // the ones that are in `b` and were _not_ already in `a`.
+    assert_eq!(
+        a.iter().collect::<Vec<_>>(),
+        (0usize..100).filter(|&x| !matches!(x, 7 | 63 | 90)).collect::<Vec<_>>(),
+    );
 }
 
 #[test]
@@ -358,8 +294,8 @@ fn with_elements_chunked(elements: &[usize], domain_size: usize) -> ChunkedBitSe
     s
 }
 
-fn with_elements_standard(elements: &[usize], domain_size: usize) -> BitSet<usize> {
-    let mut s = BitSet::new_empty(domain_size);
+fn with_elements_standard(elements: &[usize], domain_size: usize) -> DenseBitSet<usize> {
+    let mut s = DenseBitSet::new_empty(domain_size);
     for &e in elements {
         assert!(s.insert(e));
     }
@@ -593,15 +529,15 @@ fn sparse_matrix_operations() {
     matrix.insert(2, 99);
     matrix.insert(4, 0);
 
-    let mut disjoint: HybridBitSet<usize> = HybridBitSet::new_empty(100);
+    let mut disjoint: DenseBitSet<usize> = DenseBitSet::new_empty(100);
     disjoint.insert(33);
 
-    let mut superset = HybridBitSet::new_empty(100);
+    let mut superset = DenseBitSet::new_empty(100);
     superset.insert(22);
     superset.insert(75);
     superset.insert(33);
 
-    let mut subset = HybridBitSet::new_empty(100);
+    let mut subset = DenseBitSet::new_empty(100);
     subset.insert(22);
 
     // SparseBitMatrix::remove
@@ -658,7 +594,7 @@ fn dense_insert_range() {
     where
         R: RangeBounds<usize> + Clone + IntoIterator<Item = usize> + std::fmt::Debug,
     {
-        let mut set = BitSet::new_empty(domain);
+        let mut set = DenseBitSet::new_empty(domain);
         set.insert_range(range.clone());
         for i in set.iter() {
             assert!(range.contains(&i));
@@ -699,7 +635,7 @@ fn dense_insert_range() {
 
 #[test]
 fn dense_last_set_before() {
-    fn easy(set: &BitSet<usize>, needle: impl RangeBounds<usize>) -> Option<usize> {
+    fn easy(set: &DenseBitSet<usize>, needle: impl RangeBounds<usize>) -> Option<usize> {
         let mut last_leq = None;
         for e in set.iter() {
             if needle.contains(&e) {
@@ -710,7 +646,7 @@ fn dense_last_set_before() {
     }
 
     #[track_caller]
-    fn cmp(set: &BitSet<usize>, needle: impl RangeBounds<usize> + Clone + std::fmt::Debug) {
+    fn cmp(set: &DenseBitSet<usize>, needle: impl RangeBounds<usize> + Clone + std::fmt::Debug) {
         assert_eq!(
             set.last_set_in(needle.clone()),
             easy(set, needle.clone()),
@@ -719,7 +655,7 @@ fn dense_last_set_before() {
             set
         );
     }
-    let mut set = BitSet::new_empty(300);
+    let mut set = DenseBitSet::new_empty(300);
     cmp(&set, 50..=50);
     set.insert(WORD_BITS);
     cmp(&set, WORD_BITS..=WORD_BITS);
@@ -735,7 +671,7 @@ fn dense_last_set_before() {
     for i in 0..=WORD_BITS * 2 {
         for j in i..=WORD_BITS * 2 {
             for k in 0..WORD_BITS * 2 {
-                let mut set = BitSet::new_empty(300);
+                let mut set = DenseBitSet::new_empty(300);
                 cmp(&set, i..j);
                 cmp(&set, i..=j);
                 set.insert(k);
@@ -746,93 +682,9 @@ fn dense_last_set_before() {
     }
 }
 
-/// Merge dense hybrid set into empty sparse hybrid set.
-#[bench]
-fn union_hybrid_sparse_empty_to_dense(b: &mut Bencher) {
-    let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(256);
-    for i in 0..10 {
-        assert!(pre_dense.insert(i));
-    }
-    let pre_sparse: HybridBitSet<usize> = HybridBitSet::new_empty(256);
-    b.iter(|| {
-        let dense = pre_dense.clone();
-        let mut sparse = pre_sparse.clone();
-        sparse.union(&dense);
-    })
-}
-
-/// Merge dense hybrid set into full hybrid set with same indices.
-#[bench]
-fn union_hybrid_sparse_full_to_dense(b: &mut Bencher) {
-    let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(256);
-    for i in 0..10 {
-        assert!(pre_dense.insert(i));
-    }
-    let mut pre_sparse: HybridBitSet<usize> = HybridBitSet::new_empty(256);
-    for i in 0..SPARSE_MAX {
-        assert!(pre_sparse.insert(i));
-    }
-    b.iter(|| {
-        let dense = pre_dense.clone();
-        let mut sparse = pre_sparse.clone();
-        sparse.union(&dense);
-    })
-}
-
-/// Merge dense hybrid set into full hybrid set with indices over the whole domain.
-#[bench]
-fn union_hybrid_sparse_domain_to_dense(b: &mut Bencher) {
-    let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX * 64);
-    for i in 0..10 {
-        assert!(pre_dense.insert(i));
-    }
-    let mut pre_sparse: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX * 64);
-    for i in 0..SPARSE_MAX {
-        assert!(pre_sparse.insert(i * 64));
-    }
-    b.iter(|| {
-        let dense = pre_dense.clone();
-        let mut sparse = pre_sparse.clone();
-        sparse.union(&dense);
-    })
-}
-
-/// Merge dense hybrid set into empty hybrid set where the domain is very small.
-#[bench]
-fn union_hybrid_sparse_empty_small_domain(b: &mut Bencher) {
-    let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX);
-    for i in 0..SPARSE_MAX {
-        assert!(pre_dense.insert(i));
-    }
-    let pre_sparse: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX);
-    b.iter(|| {
-        let dense = pre_dense.clone();
-        let mut sparse = pre_sparse.clone();
-        sparse.union(&dense);
-    })
-}
-
-/// Merge dense hybrid set into full hybrid set where the domain is very small.
-#[bench]
-fn union_hybrid_sparse_full_small_domain(b: &mut Bencher) {
-    let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX);
-    for i in 0..SPARSE_MAX {
-        assert!(pre_dense.insert(i));
-    }
-    let mut pre_sparse: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX);
-    for i in 0..SPARSE_MAX {
-        assert!(pre_sparse.insert(i));
-    }
-    b.iter(|| {
-        let dense = pre_dense.clone();
-        let mut sparse = pre_sparse.clone();
-        sparse.union(&dense);
-    })
-}
-
 #[bench]
 fn bench_insert(b: &mut Bencher) {
-    let mut bs = BitSet::new_filled(99999usize);
+    let mut bs = DenseBitSet::new_filled(99999usize);
     b.iter(|| {
         black_box(bs.insert(black_box(100u32)));
     });
@@ -840,7 +692,7 @@ fn bench_insert(b: &mut Bencher) {
 
 #[bench]
 fn bench_remove(b: &mut Bencher) {
-    let mut bs = BitSet::new_filled(99999usize);
+    let mut bs = DenseBitSet::new_filled(99999usize);
     b.iter(|| {
         black_box(bs.remove(black_box(100u32)));
     });
@@ -848,7 +700,7 @@ fn bench_remove(b: &mut Bencher) {
 
 #[bench]
 fn bench_iter(b: &mut Bencher) {
-    let bs = BitSet::new_filled(99999usize);
+    let bs = DenseBitSet::new_filled(99999usize);
     b.iter(|| {
         bs.iter().map(|b: usize| black_box(b)).for_each(drop);
     });
@@ -856,8 +708,8 @@ fn bench_iter(b: &mut Bencher) {
 
 #[bench]
 fn bench_intersect(b: &mut Bencher) {
-    let mut ba: BitSet<u32> = BitSet::new_filled(99999usize);
-    let bb = BitSet::new_filled(99999usize);
+    let mut ba: DenseBitSet<u32> = DenseBitSet::new_filled(99999usize);
+    let bb = DenseBitSet::new_filled(99999usize);
     b.iter(|| {
         ba.intersect(black_box(&bb));
     });

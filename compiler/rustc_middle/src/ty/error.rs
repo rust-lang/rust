@@ -1,5 +1,7 @@
 use std::borrow::Cow;
+use std::fs::File;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::io::{Read, Write};
 use std::path::PathBuf;
 
 use rustc_errors::pluralize;
@@ -35,9 +37,6 @@ impl<'tcx> TypeError<'tcx> {
             TypeError::CyclicTy(_) => "cyclic type of infinite size".into(),
             TypeError::CyclicConst(_) => "encountered a self-referencing constant".into(),
             TypeError::Mismatch => "types differ".into(),
-            TypeError::ConstnessMismatch(values) => {
-                format!("expected {} bound, found {} bound", values.expected, values.found).into()
-            }
             TypeError::PolarityMismatch(values) => {
                 format!("expected {} polarity, found {} polarity", values.expected, values.found)
                     .into()
@@ -59,12 +58,9 @@ impl<'tcx> TypeError<'tcx> {
                 pluralize!(values.found)
             )
             .into(),
-            TypeError::FixedArraySize(values) => format!(
-                "expected an array with a fixed size of {} element{}, found one with {} element{}",
-                values.expected,
-                pluralize!(values.expected),
-                values.found,
-                pluralize!(values.found)
+            TypeError::ArraySize(values) => format!(
+                "expected an array with a size of {}, found one with a size of {}",
+                values.expected, values.found,
             )
             .into(),
             TypeError::ArgCount => "incorrect number of function parameters".into(),
@@ -112,6 +108,9 @@ impl<'tcx> TypeError<'tcx> {
             .into(),
             TypeError::ConstMismatch(ref values) => {
                 format!("expected `{}`, found `{}`", values.expected, values.found).into()
+            }
+            TypeError::ForceInlineCast => {
+                "cannot coerce functions which must be inlined to function pointers".into()
             }
             TypeError::IntrinsicCast => "cannot coerce intrinsics to function pointers".into(),
             TypeError::TargetFeatureCast(_) => {
@@ -195,6 +194,7 @@ impl<'tcx> Ty<'tcx> {
                 _ => "fn item".into(),
             },
             ty::FnPtr(..) => "fn pointer".into(),
+            ty::UnsafeBinder(_) => "unsafe binder".into(),
             ty::Dynamic(..) => "trait object".into(),
             ty::Closure(..) | ty::CoroutineClosure(..) => "closure".into(),
             ty::Coroutine(def_id, ..) => {
@@ -253,8 +253,8 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         let width = self.sess.diagnostic_width();
-        let length_limit = width.saturating_sub(30);
-        if regular.len() <= width {
+        let length_limit = width / 2;
+        if regular.len() <= width * 2 / 3 {
             return regular;
         }
         let short = self.ty_string_with_limit(ty, length_limit);
@@ -268,7 +268,20 @@ impl<'tcx> TyCtxt<'tcx> {
         *path = Some(path.take().unwrap_or_else(|| {
             self.output_filenames(()).temp_path_ext(&format!("long-type-{hash}.txt"), None)
         }));
-        match std::fs::write(path.as_ref().unwrap(), &format!("{regular}\n")) {
+        let Ok(mut file) =
+            File::options().create(true).read(true).append(true).open(&path.as_ref().unwrap())
+        else {
+            return regular;
+        };
+
+        // Do not write the same type to the file multiple times.
+        let mut contents = String::new();
+        let _ = file.read_to_string(&mut contents);
+        if let Some(_) = contents.lines().find(|line| line == &regular) {
+            return short;
+        }
+
+        match write!(file, "{regular}\n") {
             Ok(_) => short,
             Err(_) => regular,
         }

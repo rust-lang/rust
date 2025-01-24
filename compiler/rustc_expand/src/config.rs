@@ -8,17 +8,17 @@ use rustc_ast::tokenstream::{
 use rustc_ast::{
     self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, MetaItemInner, NodeId,
 };
-use rustc_attr as attr;
+use rustc_attr_parsing as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_feature::{
-    ACCEPTED_FEATURES, AttributeSafety, Features, REMOVED_FEATURES, UNSTABLE_FEATURES,
+    ACCEPTED_LANG_FEATURES, AttributeSafety, EnabledLangFeature, EnabledLibFeature, Features,
+    REMOVED_LANG_FEATURES, UNSTABLE_LANG_FEATURES,
 };
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::validate_attr;
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use thin_vec::ThinVec;
 use tracing::instrument;
 
@@ -52,7 +52,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
 
     let mut features = Features::default();
 
-    // Process all features declared in the code.
+    // Process all features enabled in the code.
     for attr in krate_attrs {
         for mi in feature_list(attr) {
             let name = match mi.ident() {
@@ -76,8 +76,8 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
                 }
             };
 
-            // If the declared feature has been removed, issue an error.
-            if let Some(f) = REMOVED_FEATURES.iter().find(|f| name == f.feature.name) {
+            // If the enabled feature has been removed, issue an error.
+            if let Some(f) = REMOVED_LANG_FEATURES.iter().find(|f| name == f.feature.name) {
                 sess.dcx().emit_err(FeatureRemoved {
                     span: mi.span(),
                     reason: f.reason.map(|reason| FeatureRemovedReason { reason }),
@@ -85,14 +85,17 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
                 continue;
             }
 
-            // If the declared feature is stable, record it.
-            if let Some(f) = ACCEPTED_FEATURES.iter().find(|f| name == f.name) {
-                let since = Some(Symbol::intern(f.since));
-                features.set_declared_lang_feature(name, mi.span(), since);
+            // If the enabled feature is stable, record it.
+            if let Some(f) = ACCEPTED_LANG_FEATURES.iter().find(|f| name == f.name) {
+                features.set_enabled_lang_feature(EnabledLangFeature {
+                    gate_name: name,
+                    attr_sp: mi.span(),
+                    stable_since: Some(Symbol::intern(f.since)),
+                });
                 continue;
             }
 
-            // If `-Z allow-features` is used and the declared feature is
+            // If `-Z allow-features` is used and the enabled feature is
             // unstable and not also listed as one of the allowed features,
             // issue an error.
             if let Some(allowed) = sess.opts.unstable_opts.allow_features.as_ref() {
@@ -102,30 +105,32 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
                 }
             }
 
-            // If the declared feature is unstable, record it.
-            if let Some(f) = UNSTABLE_FEATURES.iter().find(|f| name == f.feature.name) {
-                (f.set_enabled)(&mut features);
-                // When the ICE comes from core, alloc or std (approximation of the standard
-                // library), there's a chance that the person hitting the ICE may be using
-                // -Zbuild-std or similar with an untested target. The bug is probably in the
-                // standard library and not the compiler in that case, but that doesn't really
-                // matter - we want a bug report.
-                if features.internal(name)
-                    && ![sym::core, sym::alloc, sym::std].contains(&crate_name)
-                {
+            // If the enabled feature is unstable, record it.
+            if UNSTABLE_LANG_FEATURES.iter().find(|f| name == f.name).is_some() {
+                // When the ICE comes a standard library crate, there's a chance that the person
+                // hitting the ICE may be using -Zbuild-std or similar with an untested target.
+                // The bug is probably in the standard library and not the compiler in that case,
+                // but that doesn't really matter - we want a bug report.
+                if features.internal(name) && !STDLIB_STABLE_CRATES.contains(&crate_name) {
                     sess.using_internal_features.store(true, std::sync::atomic::Ordering::Relaxed);
                 }
-                features.set_declared_lang_feature(name, mi.span(), None);
+
+                features.set_enabled_lang_feature(EnabledLangFeature {
+                    gate_name: name,
+                    attr_sp: mi.span(),
+                    stable_since: None,
+                });
                 continue;
             }
 
-            // Otherwise, the feature is unknown. Record it as a lib feature.
-            // It will be checked later.
-            features.set_declared_lib_feature(name, mi.span());
+            // Otherwise, the feature is unknown. Enable it as a lib feature.
+            // It will be checked later whether the feature really exists.
+            features
+                .set_enabled_lib_feature(EnabledLibFeature { gate_name: name, attr_sp: mi.span() });
 
             // Similar to above, detect internal lib features to suppress
             // the ICE message that asks for a report.
-            if features.internal(name) && ![sym::core, sym::alloc, sym::std].contains(&crate_name) {
+            if features.internal(name) && !STDLIB_STABLE_CRATES.contains(&crate_name) {
                 sess.using_internal_features.store(true, std::sync::atomic::Ordering::Relaxed);
             }
         }
@@ -353,7 +358,7 @@ impl<'a> StripUnconfigured<'a> {
         ));
 
         let tokens = Some(LazyAttrTokenStream::new(AttrTokenStream::new(trees)));
-        let attr = attr::mk_attr_from_item(
+        let attr = ast::attr::mk_attr_from_item(
             &self.sess.psess.attr_id_generator,
             item,
             tokens,
@@ -386,7 +391,7 @@ impl<'a> StripUnconfigured<'a> {
         validate_attr::deny_builtin_meta_unsafety(&self.sess.psess, &meta_item);
 
         (
-            parse_cfg(&meta_item, self.sess).map_or(true, |meta_item| {
+            parse_cfg(&meta_item, self.sess).is_none_or(|meta_item| {
                 attr::cfg_matches(meta_item, &self.sess, self.lint_node_id, self.features)
             }),
             Some(meta_item),
@@ -396,7 +401,7 @@ impl<'a> StripUnconfigured<'a> {
     /// If attributes are not allowed on expressions, emit an error for `attr`
     #[instrument(level = "trace", skip(self))]
     pub(crate) fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
-        if self.features.is_some_and(|features| !features.stmt_expr_attributes)
+        if self.features.is_some_and(|features| !features.stmt_expr_attributes())
             && !attr.span.allows_unstable(sym::stmt_expr_attributes)
         {
             let mut err = feature_err(

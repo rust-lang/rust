@@ -807,64 +807,6 @@ mod in_keyword {}
 /// [Reference]: ../reference/statements.html#let-statements
 mod let_keyword {}
 
-#[doc(keyword = "while")]
-//
-/// Loop while a condition is upheld.
-///
-/// A `while` expression is used for predicate loops. The `while` expression runs the conditional
-/// expression before running the loop body, then runs the loop body if the conditional
-/// expression evaluates to `true`, or exits the loop otherwise.
-///
-/// ```rust
-/// let mut counter = 0;
-///
-/// while counter < 10 {
-///     println!("{counter}");
-///     counter += 1;
-/// }
-/// ```
-///
-/// Like the [`for`] expression, we can use `break` and `continue`. A `while` expression
-/// cannot break with a value and always evaluates to `()` unlike [`loop`].
-///
-/// ```rust
-/// let mut i = 1;
-///
-/// while i < 100 {
-///     i *= 2;
-///     if i == 64 {
-///         break; // Exit when `i` is 64.
-///     }
-/// }
-/// ```
-///
-/// As `if` expressions have their pattern matching variant in `if let`, so too do `while`
-/// expressions with `while let`. The `while let` expression matches the pattern against the
-/// expression, then runs the loop body if pattern matching succeeds, or exits the loop otherwise.
-/// We can use `break` and `continue` in `while let` expressions just like in `while`.
-///
-/// ```rust
-/// let mut counter = Some(0);
-///
-/// while let Some(i) = counter {
-///     if i == 10 {
-///         counter = None;
-///     } else {
-///         println!("{i}");
-///         counter = Some (i + 1);
-///     }
-/// }
-/// ```
-///
-/// For more information on `while` and loops in general, see the [reference].
-///
-/// See also, [`for`], [`loop`].
-///
-/// [`for`]: keyword.for.html
-/// [`loop`]: keyword.loop.html
-/// [reference]: ../reference/expressions/loop-expr.html#predicate-loops
-mod while_keyword {}
-
 #[doc(keyword = "loop")]
 //
 /// Loop indefinitely.
@@ -1321,10 +1263,10 @@ mod return_keyword {}
 /// [Reference]: ../reference/items/associated-items.html#methods
 mod self_keyword {}
 
-// FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we can remove the
-// three next lines and put back: `#[doc(keyword = "Self")]`.
+// FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we can replace
+// these two lines with `#[doc(keyword = "Self")]` and update `is_doc_keyword` in
+// `CheckAttrVisitor`.
 #[doc(alias = "Self")]
-#[allow(rustc::existing_doc_keyword)]
 #[doc(keyword = "SelfTy")]
 //
 /// The implementing type within a [`trait`] or [`impl`] block, or the current type within a type
@@ -1448,6 +1390,9 @@ mod self_upper_keyword {}
 /// in a multithreaded context. As such, all accesses to mutable `static`s
 /// require an [`unsafe`] block.
 ///
+/// When possible, it's often better to use a non-mutable `static` with an
+/// interior mutable type such as [`Mutex`], [`OnceLock`], or an [atomic].
+///
 /// Despite their unsafety, mutable `static`s are necessary in many contexts:
 /// they can be used to represent global state shared by the whole program or in
 /// [`extern`] blocks to bind to variables from C libraries.
@@ -1468,7 +1413,10 @@ mod self_upper_keyword {}
 /// [`extern`]: keyword.extern.html
 /// [`mut`]: keyword.mut.html
 /// [`unsafe`]: keyword.unsafe.html
+/// [`Mutex`]: sync::Mutex
+/// [`OnceLock`]: sync::OnceLock
 /// [`RefCell`]: cell::RefCell
+/// [atomic]: sync::atomic
 /// [Reference]: ../reference/items/static-items.html
 mod static_keyword {}
 
@@ -2337,6 +2285,64 @@ mod use_keyword {}
 /// [RFC]: https://github.com/rust-lang/rfcs/blob/master/text/0135-where.md
 mod where_keyword {}
 
+#[doc(keyword = "while")]
+//
+/// Loop while a condition is upheld.
+///
+/// A `while` expression is used for predicate loops. The `while` expression runs the conditional
+/// expression before running the loop body, then runs the loop body if the conditional
+/// expression evaluates to `true`, or exits the loop otherwise.
+///
+/// ```rust
+/// let mut counter = 0;
+///
+/// while counter < 10 {
+///     println!("{counter}");
+///     counter += 1;
+/// }
+/// ```
+///
+/// Like the [`for`] expression, we can use `break` and `continue`. A `while` expression
+/// cannot break with a value and always evaluates to `()` unlike [`loop`].
+///
+/// ```rust
+/// let mut i = 1;
+///
+/// while i < 100 {
+///     i *= 2;
+///     if i == 64 {
+///         break; // Exit when `i` is 64.
+///     }
+/// }
+/// ```
+///
+/// As `if` expressions have their pattern matching variant in `if let`, so too do `while`
+/// expressions with `while let`. The `while let` expression matches the pattern against the
+/// expression, then runs the loop body if pattern matching succeeds, or exits the loop otherwise.
+/// We can use `break` and `continue` in `while let` expressions just like in `while`.
+///
+/// ```rust
+/// let mut counter = Some(0);
+///
+/// while let Some(i) = counter {
+///     if i == 10 {
+///         counter = None;
+///     } else {
+///         println!("{i}");
+///         counter = Some (i + 1);
+///     }
+/// }
+/// ```
+///
+/// For more information on `while` and loops in general, see the [reference].
+///
+/// See also, [`for`], [`loop`].
+///
+/// [`for`]: keyword.for.html
+/// [`loop`]: keyword.loop.html
+/// [reference]: ../reference/expressions/loop-expr.html#predicate-loops
+mod while_keyword {}
+
 // 2018 Edition keywords
 
 #[doc(alias = "promise")]
@@ -2381,13 +2387,12 @@ mod async_keyword {}
 /// [`async`]: ../std/keyword.async.html
 mod await_keyword {}
 
-// FIXME(dyn_compat_renaming): Update URL and link text.
 #[doc(keyword = "dyn")]
 //
 /// `dyn` is a prefix of a [trait object]'s type.
 ///
 /// The `dyn` keyword is used to highlight that calls to methods on the associated `Trait`
-/// are [dynamically dispatched]. To use the trait this way, it must be 'dyn-compatible'[^1].
+/// are [dynamically dispatched]. To use the trait this way, it must be *dyn compatible*[^1].
 ///
 /// Unlike generic parameters or `impl Trait`, the compiler does not know the concrete type that
 /// is being passed. That is, the type has been [erased].
@@ -2400,7 +2405,7 @@ mod await_keyword {}
 /// the function pointer and then that function pointer is called.
 ///
 /// See the Reference for more information on [trait objects][ref-trait-obj]
-/// and [object safety][ref-obj-safety].
+/// and [dyn compatibility][ref-dyn-compat].
 ///
 /// ## Trade-offs
 ///
@@ -2413,9 +2418,9 @@ mod await_keyword {}
 /// [trait object]: ../book/ch17-02-trait-objects.html
 /// [dynamically dispatched]: https://en.wikipedia.org/wiki/Dynamic_dispatch
 /// [ref-trait-obj]: ../reference/types/trait-object.html
-/// [ref-obj-safety]: ../reference/items/traits.html#object-safety
+/// [ref-dyn-compat]: ../reference/items/traits.html#dyn-compatibility
 /// [erased]: https://en.wikipedia.org/wiki/Type_erasure
-/// [^1]: Formerly known as 'object safe'.
+/// [^1]: Formerly known as *object safe*.
 mod dyn_keyword {}
 
 #[doc(keyword = "union")]

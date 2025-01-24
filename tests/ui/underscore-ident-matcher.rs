@@ -5,5 +5,5 @@ macro_rules! identity {
 }
 
 fn main() {
-    let identity!(_) = 10; //~ ERROR no rules expected the token `_`
+    let identity!(_) = 10; //~ ERROR no rules expected reserved identifier `_`
 }

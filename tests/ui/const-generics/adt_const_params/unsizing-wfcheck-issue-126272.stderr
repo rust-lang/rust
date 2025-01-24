@@ -64,7 +64,7 @@ LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
 LL |     nested: &'static Bar<dyn std::fmt::Debug>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`, which is required by `&&'static Bar<(dyn Debug + 'static)>: Debug`
+   = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
    = help: the trait `Debug` is implemented for `Bar<T>`
 note: required for `Bar<(dyn Debug + 'static)>` to implement `Debug`
   --> $DIR/unsizing-wfcheck-issue-126272.rs:20:10
@@ -96,7 +96,7 @@ LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
    |                            -- in this derive macro expansion
 ...
 LL |     nested: &'static Bar<dyn std::fmt::Debug>,
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Eq` is not implemented for `dyn Debug`, which is required by `&'static Bar<dyn Debug>: Eq`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Eq` is not implemented for `dyn Debug`
    |
    = help: the trait `Eq` is implemented for `Bar<T>`
 note: required for `Bar<dyn Debug>` to implement `Eq`

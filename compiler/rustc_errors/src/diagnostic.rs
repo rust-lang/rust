@@ -11,8 +11,7 @@ use rustc_error_messages::{FluentValue, fluent_value_from_str_list_sep_by_and};
 use rustc_lint_defs::Applicability;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Symbol;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use tracing::debug;
 
 use crate::snippet::Style;
@@ -157,9 +156,9 @@ impl IntoDiagArg for DiagArgValue {
     }
 }
 
-impl Into<FluentValue<'static>> for DiagArgValue {
-    fn into(self) -> FluentValue<'static> {
-        match self {
+impl From<DiagArgValue> for FluentValue<'static> {
+    fn from(val: DiagArgValue) -> Self {
+        match val {
             DiagArgValue::Str(s) => From::from(s),
             DiagArgValue::Number(n) => From::from(n),
             DiagArgValue::StrListSepByAnd(l) => fluent_value_from_str_list_sep_by_and(l),
@@ -881,7 +880,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         )
     } }
 
-    /// Show a suggestion that has multiple parts to it, always as it's own subdiagnostic.
+    /// Show a suggestion that has multiple parts to it, always as its own subdiagnostic.
     /// In other words, multiple changes need to be applied as part of this suggestion.
     #[rustc_lint_diagnostics]
     pub fn multipart_suggestion_verbose(

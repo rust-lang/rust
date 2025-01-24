@@ -5,8 +5,7 @@ use rustc_hir::{Body, HirId, Item, ItemKind, Node, Path, TyKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_span::symbol::kw;
-use rustc_span::{ExpnKind, MacroKind, Span, sym};
+use rustc_span::{ExpnKind, MacroKind, Span, kw, sym};
 
 use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
 use crate::{LateContext, LateLintPass, LintContext, fluent_generated as fluent};
@@ -151,9 +150,15 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 //     };
                 // };
                 // ```
+                //
+                // It isn't possible to mix a impl in a module with const-anon, but an item can
+                // be put inside a module and referenced by a impl so we also have to treat the
+                // item parent as transparent to module and for consistency we have to do the same
+                // for impl, otherwise the item-def and impl-def won't have the same parent.
                 let outermost_impl_parent = peel_parent_while(cx.tcx, parent, |tcx, did| {
-                    tcx.def_kind(did) == DefKind::Const
-                        && tcx.opt_item_name(did) == Some(kw::Underscore)
+                    tcx.def_kind(did) == DefKind::Mod
+                        || (tcx.def_kind(did) == DefKind::Const
+                            && tcx.opt_item_name(did) == Some(kw::Underscore))
                 });
 
                 // 2. We check if any of the paths reference a the `impl`-parent.

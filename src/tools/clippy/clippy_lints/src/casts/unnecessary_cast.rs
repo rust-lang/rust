@@ -159,8 +159,7 @@ pub(super) fn check<'tcx>(
         // The same is true if the expression encompassing the cast expression is a unary
         // expression or an addressof expression.
         let needs_block = matches!(cast_expr.kind, ExprKind::Unary(..) | ExprKind::AddrOf(..))
-            || get_parent_expr(cx, expr)
-                .map_or(false, |e| matches!(e.kind, ExprKind::Unary(..) | ExprKind::AddrOf(..)));
+            || get_parent_expr(cx, expr).is_some_and(|e| matches!(e.kind, ExprKind::Unary(..) | ExprKind::AddrOf(..)));
 
         span_lint_and_sugg(
             cx,
@@ -268,8 +267,7 @@ fn is_cast_from_ty_alias<'tcx>(cx: &LateContext<'tcx>, expr: impl Visitable<'tcx
                 if !snippet
                     .split("->")
                     .skip(1)
-                    .map(|s| snippet_eq_ty(s, cast_from) || s.split("where").any(|ty| snippet_eq_ty(ty, cast_from)))
-                    .any(|a| a)
+                    .any(|s| snippet_eq_ty(s, cast_from) || s.split("where").any(|ty| snippet_eq_ty(ty, cast_from)))
                 {
                     return ControlFlow::Break(());
                 }

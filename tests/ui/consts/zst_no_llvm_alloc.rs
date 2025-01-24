@@ -17,8 +17,11 @@ fn main() {
 
     // The exact addresses returned by these library functions are not necessarily stable guarantees
     // but for now we assert that we're still matching.
-    assert_eq!(<Vec<i32>>::new().as_ptr(), <&[i32]>::default().as_ptr());
-    assert_eq!(<Box<[i32]>>::default().as_ptr(), (&[]).as_ptr());
+    #[allow(dangling_pointers_from_temporaries)]
+    {
+        assert_eq!(<Vec<i32>>::new().as_ptr(), <&[i32]>::default().as_ptr());
+        assert_eq!(<Box<[i32]>>::default().as_ptr(), (&[]).as_ptr());
+    };
 
     // statics must have a unique address (see https://github.com/rust-lang/rust/issues/18297, not
     // clear whether this is a stable guarantee)

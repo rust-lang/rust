@@ -425,7 +425,9 @@ impl Module {
                         })
                     } else if let Some(name_ref) = ast::NameRef::cast(x) {
                         NameRefClass::classify(&ctx.sema, &name_ref).and_then(|nc| match nc {
-                            NameRefClass::Definition(def) => Some((name_ref.syntax().clone(), def)),
+                            NameRefClass::Definition(def, _) => {
+                                Some((name_ref.syntax().clone(), def))
+                            }
                             _ => None,
                         })
                     } else {

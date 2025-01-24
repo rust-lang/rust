@@ -180,6 +180,13 @@ impl<FileId: FileIdToSyntax, T> InFileWrapper<FileId, T> {
     }
 }
 
+#[allow(private_bounds)]
+impl<FileId: FileIdToSyntax, N: AstNode> InFileWrapper<FileId, AstPtr<N>> {
+    pub fn to_node(&self, db: &dyn ExpandDatabase) -> N {
+        self.value.to_node(&self.file_syntax(db))
+    }
+}
+
 impl<FileId: Copy, N: AstNode> InFileWrapper<FileId, N> {
     pub fn syntax(&self) -> InFileWrapper<FileId, &SyntaxNode> {
         self.with_value(self.value.syntax())
@@ -373,14 +380,14 @@ impl InFile<TextRange> {
     ) -> (FileRange, SyntaxContextId) {
         match self.file_id.repr() {
             HirFileIdRepr::FileId(file_id) => {
-                (FileRange { file_id, range: self.value }, SyntaxContextId::ROOT)
+                (FileRange { file_id, range: self.value }, SyntaxContextId::root(file_id.edition()))
             }
             HirFileIdRepr::MacroFile(mac_file) => {
                 match map_node_range_up(db, &db.expansion_span_map(mac_file), self.value) {
                     Some(it) => it,
                     None => {
                         let loc = db.lookup_intern_macro_call(mac_file.macro_call_id);
-                        (loc.kind.original_call_range(db), SyntaxContextId::ROOT)
+                        (loc.kind.original_call_range(db), SyntaxContextId::root(loc.def.edition))
                     }
                 }
             }
@@ -425,9 +432,10 @@ impl InFile<TextRange> {
         db: &dyn db::ExpandDatabase,
     ) -> Option<(FileRange, SyntaxContextId)> {
         match self.file_id.repr() {
-            HirFileIdRepr::FileId(file_id) => {
-                Some((FileRange { file_id, range: self.value }, SyntaxContextId::ROOT))
-            }
+            HirFileIdRepr::FileId(file_id) => Some((
+                FileRange { file_id, range: self.value },
+                SyntaxContextId::root(file_id.edition()),
+            )),
             HirFileIdRepr::MacroFile(mac_file) => {
                 map_node_range_up(db, &db.expansion_span_map(mac_file), self.value)
             }

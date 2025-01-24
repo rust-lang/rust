@@ -2,8 +2,7 @@ struct Project;
 struct Value;
 
 static settings_dir: String = format!("");
-//~^ ERROR cannot call non-const fn
-//~| ERROR is not yet stable as a const
+//~^ ERROR cannot call non-const function
 
 fn from_string(_: String) -> Value {
     Value

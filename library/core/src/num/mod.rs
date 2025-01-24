@@ -2,6 +2,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::panic::const_panic;
 use crate::str::FromStr;
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{ascii, intrinsics, mem};
@@ -13,13 +14,6 @@ macro_rules! try_opt {
             Some(x) => x,
             None => return None,
         }
-    };
-}
-
-#[allow_internal_unstable(const_likely)]
-macro_rules! unlikely {
-    ($e: expr) => {
-        intrinsics::unlikely($e)
     };
 }
 
@@ -57,6 +51,10 @@ mod overflow_panic;
 mod saturating;
 mod wrapping;
 
+/// 100% perma-unstable
+#[doc(hidden)]
+pub mod niche_types;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(no_fp_fmt_parse))]
 pub use dec2flt::ParseFloatError;
@@ -82,6 +80,31 @@ pub use nonzero::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, No
 pub use saturating::Saturating;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use wrapping::Wrapping;
+
+macro_rules! u8_xe_bytes_doc {
+    () => {
+        "
+
+**Note**: This function is meaningless on `u8`. Byte order does not exist as a
+concept for byte-sized integers. This function is only provided in symmetry
+with larger integer types.
+
+"
+    };
+}
+
+macro_rules! i8_xe_bytes_doc {
+    () => {
+        "
+
+**Note**: This function is meaningless on `i8`. Byte order does not exist as a
+concept for byte-sized integers. This function is only provided in symmetry
+with larger integer types. You can cast from and to `u8` using `as i8` and `as
+u8`.
+
+"
+    };
+}
 
 macro_rules! usize_isize_to_xe_bytes_doc {
     () => {
@@ -109,19 +132,18 @@ macro_rules! midpoint_impl {
     ($SelfT:ty, unsigned) => {
         /// Calculates the middle point of `self` and `rhs`.
         ///
-        /// `midpoint(a, b)` is `(a + b) >> 1` as if it were performed in a
-        /// sufficiently-large signed integral type. This implies that the result is
-        /// always rounded towards negative infinity and that no overflow will ever occur.
+        /// `midpoint(a, b)` is `(a + b) / 2` as if it were performed in a
+        /// sufficiently-large unsigned integral type. This implies that the result is
+        /// always rounded towards zero and that no overflow will ever occur.
         ///
         /// # Examples
         ///
         /// ```
-        /// #![feature(num_midpoint)]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".midpoint(4), 2);")]
         /// ```
-        #[unstable(feature = "num_midpoint", issue = "110840")]
-        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
+        #[stable(feature = "num_midpoint", since = "1.85.0")]
+        #[rustc_const_stable(feature = "num_midpoint", since = "1.85.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -131,22 +153,51 @@ macro_rules! midpoint_impl {
             ((self ^ rhs) >> 1) + (self & rhs)
         }
     };
-    ($SelfT:ty, $WideT:ty, unsigned) => {
+    ($SelfT:ty, signed) => {
         /// Calculates the middle point of `self` and `rhs`.
         ///
-        /// `midpoint(a, b)` is `(a + b) >> 1` as if it were performed in a
+        /// `midpoint(a, b)` is `(a + b) / 2` as if it were performed in a
         /// sufficiently-large signed integral type. This implies that the result is
-        /// always rounded towards negative infinity and that no overflow will ever occur.
+        /// always rounded towards zero and that no overflow will ever occur.
         ///
         /// # Examples
         ///
         /// ```
-        /// #![feature(num_midpoint)]
+        /// #![feature(num_midpoint_signed)]
+        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
+        #[doc = concat!("assert_eq!((-1", stringify!($SelfT), ").midpoint(2), 0);")]
+        #[doc = concat!("assert_eq!((-7", stringify!($SelfT), ").midpoint(0), -3);")]
+        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(-7), -3);")]
+        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(7), 3);")]
+        /// ```
+        #[unstable(feature = "num_midpoint_signed", issue = "110840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn midpoint(self, rhs: Self) -> Self {
+            // Use the well known branchless algorithm from Hacker's Delight to compute
+            // `(a + b) / 2` without overflowing: `((a ^ b) >> 1) + (a & b)`.
+            let t = ((self ^ rhs) >> 1) + (self & rhs);
+            // Except that it fails for integers whose sum is an odd negative number as
+            // their floor is one less than their average. So we adjust the result.
+            t + (if t < 0 { 1 } else { 0 } & (self ^ rhs))
+        }
+    };
+    ($SelfT:ty, $WideT:ty, unsigned) => {
+        /// Calculates the middle point of `self` and `rhs`.
+        ///
+        /// `midpoint(a, b)` is `(a + b) / 2` as if it were performed in a
+        /// sufficiently-large unsigned integral type. This implies that the result is
+        /// always rounded towards zero and that no overflow will ever occur.
+        ///
+        /// # Examples
+        ///
+        /// ```
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".midpoint(4), 2);")]
         /// ```
-        #[unstable(feature = "num_midpoint", issue = "110840")]
-        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
+        #[stable(feature = "num_midpoint", since = "1.85.0")]
+        #[rustc_const_stable(feature = "num_midpoint", since = "1.85.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -154,134 +205,29 @@ macro_rules! midpoint_impl {
             ((self as $WideT + rhs as $WideT) / 2) as $SelfT
         }
     };
-}
-
-macro_rules! widening_impl {
-    ($SelfT:ty, $WideT:ty, $BITS:literal, unsigned) => {
-        /// Calculates the complete product `self * rhs` without the possibility to overflow.
+    ($SelfT:ty, $WideT:ty, signed) => {
+        /// Calculates the middle point of `self` and `rhs`.
         ///
-        /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
-        /// of the result as two separate values, in that order.
-        ///
-        /// If you also need to add a carry to the wide result, then you want
-        /// [`Self::carrying_mul`] instead.
+        /// `midpoint(a, b)` is `(a + b) / 2` as if it were performed in a
+        /// sufficiently-large signed integral type. This implies that the result is
+        /// always rounded towards zero and that no overflow will ever occur.
         ///
         /// # Examples
         ///
-        /// Basic usage:
-        ///
-        /// Please note that this example is shared between integer types.
-        /// Which explains why `u32` is used here.
-        ///
         /// ```
-        /// #![feature(bigint_helper_methods)]
-        /// assert_eq!(5u32.widening_mul(2), (10, 0));
-        /// assert_eq!(1_000_000_000u32.widening_mul(10), (1410065408, 2));
+        /// #![feature(num_midpoint_signed)]
+        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
+        #[doc = concat!("assert_eq!((-1", stringify!($SelfT), ").midpoint(2), 0);")]
+        #[doc = concat!("assert_eq!((-7", stringify!($SelfT), ").midpoint(0), -3);")]
+        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(-7), -3);")]
+        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(7), 3);")]
         /// ```
-        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
-        #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
+        #[unstable(feature = "num_midpoint_signed", issue = "110840")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn widening_mul(self, rhs: Self) -> (Self, Self) {
-            // note: longer-term this should be done via an intrinsic,
-            //   but for now we can deal without an impl for u128/i128
-            // SAFETY: overflow will be contained within the wider types
-            let wide = unsafe { (self as $WideT).unchecked_mul(rhs as $WideT) };
-            (wide as $SelfT, (wide >> $BITS) as $SelfT)
-        }
-
-        /// Calculates the "full multiplication" `self * rhs + carry`
-        /// without the possibility to overflow.
-        ///
-        /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
-        /// of the result as two separate values, in that order.
-        ///
-        /// Performs "long multiplication" which takes in an extra amount to add, and may return an
-        /// additional amount of overflow. This allows for chaining together multiple
-        /// multiplications to create "big integers" which represent larger values.
-        ///
-        /// If you don't need the `carry`, then you can use [`Self::widening_mul`] instead.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// Please note that this example is shared between integer types.
-        /// Which explains why `u32` is used here.
-        ///
-        /// ```
-        /// #![feature(bigint_helper_methods)]
-        /// assert_eq!(5u32.carrying_mul(2, 0), (10, 0));
-        /// assert_eq!(5u32.carrying_mul(2, 10), (20, 0));
-        /// assert_eq!(1_000_000_000u32.carrying_mul(10, 0), (1410065408, 2));
-        /// assert_eq!(1_000_000_000u32.carrying_mul(10, 10), (1410065418, 2));
-        #[doc = concat!("assert_eq!(",
-            stringify!($SelfT), "::MAX.carrying_mul(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
-            "(0, ", stringify!($SelfT), "::MAX));"
-        )]
-        /// ```
-        ///
-        /// This is the core operation needed for scalar multiplication when
-        /// implementing it for wider-than-native types.
-        ///
-        /// ```
-        /// #![feature(bigint_helper_methods)]
-        /// fn scalar_mul_eq(little_endian_digits: &mut Vec<u16>, multiplicand: u16) {
-        ///     let mut carry = 0;
-        ///     for d in little_endian_digits.iter_mut() {
-        ///         (*d, carry) = d.carrying_mul(multiplicand, carry);
-        ///     }
-        ///     if carry != 0 {
-        ///         little_endian_digits.push(carry);
-        ///     }
-        /// }
-        ///
-        /// let mut v = vec![10, 20];
-        /// scalar_mul_eq(&mut v, 3);
-        /// assert_eq!(v, [30, 60]);
-        ///
-        /// assert_eq!(0x87654321_u64 * 0xFEED, 0x86D3D159E38D);
-        /// let mut v = vec![0x4321, 0x8765];
-        /// scalar_mul_eq(&mut v, 0xFEED);
-        /// assert_eq!(v, [0xE38D, 0xD159, 0x86D3]);
-        /// ```
-        ///
-        /// If `carry` is zero, this is similar to [`overflowing_mul`](Self::overflowing_mul),
-        /// except that it gives the value of the overflow instead of just whether one happened:
-        ///
-        /// ```
-        /// #![feature(bigint_helper_methods)]
-        /// let r = u8::carrying_mul(7, 13, 0);
-        /// assert_eq!((r.0, r.1 != 0), u8::overflowing_mul(7, 13));
-        /// let r = u8::carrying_mul(13, 42, 0);
-        /// assert_eq!((r.0, r.1 != 0), u8::overflowing_mul(13, 42));
-        /// ```
-        ///
-        /// The value of the first field in the returned tuple matches what you'd get
-        /// by combining the [`wrapping_mul`](Self::wrapping_mul) and
-        /// [`wrapping_add`](Self::wrapping_add) methods:
-        ///
-        /// ```
-        /// #![feature(bigint_helper_methods)]
-        /// assert_eq!(
-        ///     789_u16.carrying_mul(456, 123).0,
-        ///     789_u16.wrapping_mul(456).wrapping_add(123),
-        /// );
-        /// ```
-        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
-        #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        pub const fn carrying_mul(self, rhs: Self, carry: Self) -> (Self, Self) {
-            // note: longer-term this should be done via an intrinsic,
-            //   but for now we can deal without an impl for u128/i128
-            // SAFETY: overflow will be contained within the wider types
-            let wide = unsafe {
-                (self as $WideT).unchecked_mul(rhs as $WideT).unchecked_add(carry as $WideT)
-            };
-            (wide as $SelfT, (wide >> $BITS) as $SelfT)
+        pub const fn midpoint(self, rhs: $SelfT) -> $SelfT {
+            ((self as $WideT + rhs as $WideT) / 2) as $SelfT
         }
     };
 }
@@ -303,10 +249,11 @@ impl i8 {
         reversed = "0x48",
         le_bytes = "[0x12]",
         be_bytes = "[0x12]",
-        to_xe_bytes_doc = "",
-        from_xe_bytes_doc = "",
+        to_xe_bytes_doc = i8_xe_bytes_doc!(),
+        from_xe_bytes_doc = i8_xe_bytes_doc!(),
         bound_condition = "",
     }
+    midpoint_impl! { i8, i16, signed }
 }
 
 impl i16 {
@@ -330,6 +277,7 @@ impl i16 {
         from_xe_bytes_doc = "",
         bound_condition = "",
     }
+    midpoint_impl! { i16, i32, signed }
 }
 
 impl i32 {
@@ -353,6 +301,7 @@ impl i32 {
         from_xe_bytes_doc = "",
         bound_condition = "",
     }
+    midpoint_impl! { i32, i64, signed }
 }
 
 impl i64 {
@@ -376,6 +325,7 @@ impl i64 {
         from_xe_bytes_doc = "",
         bound_condition = "",
     }
+    midpoint_impl! { i64, signed }
 }
 
 impl i128 {
@@ -401,6 +351,7 @@ impl i128 {
         from_xe_bytes_doc = "",
         bound_condition = "",
     }
+    midpoint_impl! { i128, signed }
 }
 
 #[cfg(target_pointer_width = "16")]
@@ -425,6 +376,7 @@ impl isize {
         from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
         bound_condition = " on 16-bit targets",
     }
+    midpoint_impl! { isize, i32, signed }
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -449,6 +401,7 @@ impl isize {
         from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
         bound_condition = " on 32-bit targets",
     }
+    midpoint_impl! { isize, i64, signed }
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -473,9 +426,10 @@ impl isize {
         from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
         bound_condition = " on 64-bit targets",
     }
+    midpoint_impl! { isize, signed }
 }
 
-/// If the 6th bit is set ascii is lower case.
+/// If the bit selected by this mask is set, ascii is lower case.
 const ASCII_CASE_MASK: u8 = 0b0010_0000;
 
 impl u8 {
@@ -494,11 +448,10 @@ impl u8 {
         reversed = "0x48",
         le_bytes = "[0x12]",
         be_bytes = "[0x12]",
-        to_xe_bytes_doc = "",
-        from_xe_bytes_doc = "",
+        to_xe_bytes_doc = u8_xe_bytes_doc!(),
+        from_xe_bytes_doc = u8_xe_bytes_doc!(),
         bound_condition = "",
     }
-    widening_impl! { u8, u16, 8, unsigned }
     midpoint_impl! { u8, u16, unsigned }
 
     /// Checks if the value is within the ASCII range.
@@ -624,7 +577,7 @@ impl u8 {
     ///
     /// [`to_ascii_uppercase`]: Self::to_ascii_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_make_ascii", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_make_ascii", since = "1.84.0")]
     #[inline]
     pub const fn make_ascii_uppercase(&mut self) {
         *self = self.to_ascii_uppercase();
@@ -650,7 +603,7 @@ impl u8 {
     ///
     /// [`to_ascii_lowercase`]: Self::to_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_make_ascii", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_make_ascii", since = "1.84.0")]
     #[inline]
     pub const fn make_ascii_lowercase(&mut self) {
         *self = self.to_ascii_lowercase();
@@ -857,7 +810,6 @@ impl u8 {
     /// ```
     #[must_use]
     #[unstable(feature = "is_ascii_octdigit", issue = "101288")]
-    #[rustc_const_unstable(feature = "is_ascii_octdigit", issue = "101288")]
     #[inline]
     pub const fn is_ascii_octdigit(&self) -> bool {
         matches!(*self, b'0'..=b'7')
@@ -1115,7 +1067,6 @@ impl u16 {
         from_xe_bytes_doc = "",
         bound_condition = "",
     }
-    widening_impl! { u16, u32, 16, unsigned }
     midpoint_impl! { u16, u32, unsigned }
 
     /// Checks if the value is a Unicode surrogate code point, which are disallowed values for [`char`].
@@ -1137,7 +1088,6 @@ impl u16 {
     /// ```
     #[must_use]
     #[unstable(feature = "utf16_extra", issue = "94919")]
-    #[rustc_const_unstable(feature = "utf16_extra_const", issue = "94919")]
     #[inline]
     pub const fn is_utf16_surrogate(self) -> bool {
         matches!(self, 0xD800..=0xDFFF)
@@ -1164,7 +1114,6 @@ impl u32 {
         from_xe_bytes_doc = "",
         bound_condition = "",
     }
-    widening_impl! { u32, u64, 32, unsigned }
     midpoint_impl! { u32, u64, unsigned }
 }
 
@@ -1188,7 +1137,6 @@ impl u64 {
         from_xe_bytes_doc = "",
         bound_condition = "",
     }
-    widening_impl! { u64, u128, 64, unsigned }
     midpoint_impl! { u64, u128, unsigned }
 }
 
@@ -1238,7 +1186,6 @@ impl usize {
         from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
         bound_condition = " on 16-bit targets",
     }
-    widening_impl! { usize, u32, 16, unsigned }
     midpoint_impl! { usize, u32, unsigned }
 }
 
@@ -1263,7 +1210,6 @@ impl usize {
         from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
         bound_condition = " on 32-bit targets",
     }
-    widening_impl! { usize, u64, 32, unsigned }
     midpoint_impl! { usize, u64, unsigned }
 }
 
@@ -1288,7 +1234,6 @@ impl usize {
         from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
         bound_condition = " on 64-bit targets",
     }
-    widening_impl! { usize, u128, 64, unsigned }
     midpoint_impl! { usize, u128, unsigned }
 }
 
@@ -1382,6 +1327,7 @@ macro_rules! from_str_radix_int_impl {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl FromStr for $t {
             type Err = ParseIntError;
+            #[inline]
             fn from_str(src: &str) -> Result<Self, ParseIntError> {
                 <$t>::from_str_radix(src, 10)
             }
@@ -1397,28 +1343,20 @@ from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 #[doc(hidden)]
 #[inline(always)]
 #[unstable(issue = "none", feature = "std_internals")]
-#[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
 pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) -> bool {
     radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize
-}
-
-#[track_caller]
-const fn from_str_radix_panic_ct(_radix: u32) -> ! {
-    panic!("from_str_radix_int: must lie in the range `[2, 36]`");
-}
-
-#[track_caller]
-fn from_str_radix_panic_rt(radix: u32) -> ! {
-    panic!("from_str_radix_int: must lie in the range `[2, 36]` - found {}", radix);
 }
 
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[cold]
 #[track_caller]
-const fn from_str_radix_panic(radix: u32) {
-    // The only difference between these two functions is their panic message.
-    intrinsics::const_eval_select((radix,), from_str_radix_panic_ct, from_str_radix_panic_rt);
+const fn from_str_radix_panic(radix: u32) -> ! {
+    const_panic!(
+        "from_str_radix_int: must lie in the range `[2, 36]`",
+        "from_str_radix_int: must lie in the range `[2, 36]` - found {radix}",
+        radix: u32 = radix,
+    )
 }
 
 macro_rules! from_str_radix {
@@ -1461,6 +1399,7 @@ macro_rules! from_str_radix {
             /// ```
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
+            #[inline]
             pub const fn from_str_radix(src: &str, radix: u32) -> Result<$int_ty, ParseIntError> {
                 use self::IntErrorKind::*;
                 use self::ParseIntError as PIE;
@@ -1605,6 +1544,7 @@ macro_rules! from_str_radix_size_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
+        #[inline]
         pub const fn from_str_radix(src: &str, radix: u32) -> Result<$size, ParseIntError> {
             match <$t>::from_str_radix(src, radix) {
                 Ok(x) => Ok(x as $size),

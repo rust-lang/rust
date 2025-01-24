@@ -3,6 +3,7 @@
 use std::iter;
 use std::ops::ControlFlow;
 
+use rustc_abi::ExternAbi;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
@@ -15,7 +16,6 @@ use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::traits::ArgKind;
 use rustc_trait_selection::traits;
 use rustc_type_ir::ClosureKind;
@@ -454,20 +454,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_kind: hir::ClosureKind,
         projection: ty::PolyProjectionPredicate<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
-        let tcx = self.tcx;
-
-        let trait_def_id = projection.trait_def_id(tcx);
+        let def_id = projection.item_def_id();
 
         // For now, we only do signature deduction based off of the `Fn` and `AsyncFn` traits,
         // for closures and async closures, respectively.
         match closure_kind {
-            hir::ClosureKind::Closure
-                if self.tcx.fn_trait_kind_from_def_id(trait_def_id).is_some() =>
-            {
+            hir::ClosureKind::Closure if self.tcx.is_lang_item(def_id, LangItem::FnOnceOutput) => {
                 self.extract_sig_from_projection(cause_span, projection)
             }
             hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async)
-                if self.tcx.async_fn_trait_kind_from_def_id(trait_def_id).is_some() =>
+                if self.tcx.is_lang_item(def_id, LangItem::AsyncFnOnceOutput) =>
             {
                 self.extract_sig_from_projection(cause_span, projection)
             }
@@ -475,7 +471,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // `F: FnOnce() -> Fut, Fut: Future<Output = T>` style bound. Let's still
             // guide inference here, since it's beneficial for the user.
             hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async)
-                if self.tcx.fn_trait_kind_from_def_id(trait_def_id).is_some() =>
+                if self.tcx.is_lang_item(def_id, LangItem::FnOnceOutput) =>
             {
                 self.extract_sig_from_projection_and_future_bound(cause_span, projection)
             }
@@ -508,7 +504,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ret_param_ty,
             false,
             hir::Safety::Safe,
-            Abi::Rust,
+            ExternAbi::Rust,
         ));
 
         Some(ExpectedSig { cause_span, sig })
@@ -594,7 +590,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return_ty,
             false,
             hir::Safety::Safe,
-            Abi::Rust,
+            ExternAbi::Rust,
         ));
 
         Some(ExpectedSig { cause_span, sig })
@@ -706,7 +702,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 sig.output(),
                 sig.c_variadic,
                 hir::Safety::Safe,
-                Abi::RustCall,
+                ExternAbi::RustCall,
             )
         });
 
@@ -845,7 +841,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 supplied_output_ty,
                 expected_sigs.liberated_sig.c_variadic,
                 hir::Safety::Safe,
-                Abi::RustCall,
+                ExternAbi::RustCall,
             );
 
             Ok(InferOk { value: expected_sigs, obligations: all_obligations })
@@ -922,7 +918,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 supplied_return,
                 decl.c_variadic,
                 hir::Safety::Safe,
-                Abi::RustCall,
+                ExternAbi::RustCall,
             ),
             bound_vars,
         );
@@ -1086,7 +1082,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err_ty,
             decl.c_variadic,
             hir::Safety::Safe,
-            Abi::RustCall,
+            ExternAbi::RustCall,
         ));
 
         debug!("supplied_sig_of_closure: result={:?}", result);

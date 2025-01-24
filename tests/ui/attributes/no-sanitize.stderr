@@ -1,55 +1,63 @@
-error: attribute should be applied to a function definition
-  --> $DIR/no-sanitize.rs:7:5
+error: `#[no_sanitize(memory)]` should be applied to a function
+  --> $DIR/no-sanitize.rs:7:19
    |
 LL |       #[no_sanitize(memory)]
-   |       ^^^^^^^^^^^^^^^^^^^^^^
+   |                     ^^^^^^
 LL | /     {
 LL | |         1
 LL | |     };
-   | |_____- not a function definition
+   | |_____- not a function
 
-error: attribute should be applied to a function definition
-  --> $DIR/no-sanitize.rs:13:1
+error: `#[no_sanitize(memory)]` should be applied to a function
+  --> $DIR/no-sanitize.rs:13:15
    |
 LL | #[no_sanitize(memory)]
-   | ^^^^^^^^^^^^^^^^^^^^^^
+   |               ^^^^^^
 LL | type InvalidTy = ();
-   | -------------------- not a function definition
+   | -------------------- not a function
 
-error: attribute should be applied to a function definition
-  --> $DIR/no-sanitize.rs:16:1
+error: `#[no_sanitize(memory)]` should be applied to a function
+  --> $DIR/no-sanitize.rs:16:15
    |
 LL | #[no_sanitize(memory)]
-   | ^^^^^^^^^^^^^^^^^^^^^^
+   |               ^^^^^^
 LL | mod invalid_module {}
-   | --------------------- not a function definition
+   | --------------------- not a function
 
-error: attribute should be applied to a function definition
-  --> $DIR/no-sanitize.rs:20:13
+error: `#[no_sanitize(memory)]` should be applied to a function
+  --> $DIR/no-sanitize.rs:20:27
    |
 LL |     let _ = #[no_sanitize(memory)]
-   |             ^^^^^^^^^^^^^^^^^^^^^^
+   |                           ^^^^^^
 LL |     (|| 1);
-   |     ------ not a function definition
+   |     ------ not a function
 
-error: attribute should be applied to a function definition
-  --> $DIR/no-sanitize.rs:24:1
+error: `#[no_sanitize(memory)]` should be applied to a function
+  --> $DIR/no-sanitize.rs:24:15
    |
 LL | #[no_sanitize(memory)]
-   | ^^^^^^^^^^^^^^^^^^^^^^
+   |               ^^^^^^
 LL | struct F;
-   | --------- not a function definition
+   | --------- not a function
 
-error: attribute should be applied to a function definition
-  --> $DIR/no-sanitize.rs:27:1
+error: `#[no_sanitize(memory)]` should be applied to a function
+  --> $DIR/no-sanitize.rs:27:15
    |
 LL |   #[no_sanitize(memory)]
-   |   ^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^
 LL | / impl F {
 LL | |     #[no_sanitize(memory)]
 LL | |     fn valid(&self) {}
 LL | | }
-   | |_- not a function definition
+   | |_- not a function
 
-error: aborting due to 6 previous errors
+error: `#[no_sanitize(memory)]` should be applied to a function
+  --> $DIR/no-sanitize.rs:33:24
+   |
+LL | #[no_sanitize(address, memory)]
+   |                        ^^^^^^
+LL | static INVALID : i32 = 0;
+   | ------------------------- not a function
+
+error: aborting due to 7 previous errors
 

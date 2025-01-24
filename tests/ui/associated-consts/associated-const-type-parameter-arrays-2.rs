@@ -15,6 +15,7 @@ impl Foo for Def {
 pub fn test<A: Foo, B: Foo>() {
     let _array = [4; <A as Foo>::Y];
     //~^ ERROR constant expression depends on a generic parameter
+    //~| ERROR constant expression depends on a generic parameter
 }
 
 fn main() {

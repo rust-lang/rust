@@ -1,6 +1,6 @@
 //! Conversion of internal Rust compiler items to stable ones.
 
-use rustc_target::abi::FieldIdx;
+use rustc_abi::FieldIdx;
 
 use crate::rustc_smir::{Stable, Tables};
 

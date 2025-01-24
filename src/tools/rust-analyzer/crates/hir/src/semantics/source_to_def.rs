@@ -87,7 +87,6 @@
 
 use either::Either;
 use hir_def::{
-    child_by_source::ChildBySource,
     dyn_map::{
         keys::{self, Key},
         DynMap,
@@ -104,33 +103,63 @@ use hir_expand::{
 };
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use span::{FileId, MacroFileId};
+use span::{EditionedFileId, FileId, MacroFileId};
 use stdx::impl_from;
 use syntax::{
     ast::{self, HasName},
     AstNode, AstPtr, SyntaxNode,
 };
 
-use crate::{db::HirDatabase, InFile, InlineAsmOperand, SemanticsImpl};
+use crate::{db::HirDatabase, semantics::child_by_source::ChildBySource, InFile, InlineAsmOperand};
 
 #[derive(Default)]
 pub(super) struct SourceToDefCache {
     pub(super) dynmap_cache: FxHashMap<(ChildContainer, HirFileId), DynMap>,
     expansion_info_cache: FxHashMap<MacroFileId, ExpansionInfo>,
     pub(super) file_to_def_cache: FxHashMap<FileId, SmallVec<[ModuleId; 1]>>,
+    pub(super) included_file_cache: FxHashMap<EditionedFileId, Option<MacroFileId>>,
+    /// Rootnode to HirFileId cache
+    pub(super) root_to_file_cache: FxHashMap<SyntaxNode, HirFileId>,
 }
 
 impl SourceToDefCache {
+    pub(super) fn cache(
+        root_to_file_cache: &mut FxHashMap<SyntaxNode, HirFileId>,
+        root_node: SyntaxNode,
+        file_id: HirFileId,
+    ) {
+        assert!(root_node.parent().is_none());
+        let prev = root_to_file_cache.insert(root_node, file_id);
+        assert!(prev.is_none() || prev == Some(file_id));
+    }
+
+    pub(super) fn get_or_insert_include_for(
+        &mut self,
+        db: &dyn HirDatabase,
+        file: EditionedFileId,
+    ) -> Option<MacroFileId> {
+        if let Some(&m) = self.included_file_cache.get(&file) {
+            return m;
+        }
+        self.included_file_cache.insert(file, None);
+        for &crate_id in db.relevant_crates(file.into()).iter() {
+            db.include_macro_invoc(crate_id).iter().for_each(|&(macro_call_id, file_id)| {
+                self.included_file_cache.insert(file_id, Some(MacroFileId { macro_call_id }));
+            });
+        }
+        self.included_file_cache.get(&file).copied().flatten()
+    }
+
     pub(super) fn get_or_insert_expansion(
         &mut self,
-        sema: &SemanticsImpl<'_>,
+        db: &dyn HirDatabase,
         macro_file: MacroFileId,
     ) -> &ExpansionInfo {
         self.expansion_info_cache.entry(macro_file).or_insert_with(|| {
-            let exp_info = macro_file.expansion_info(sema.db.upcast());
+            let exp_info = macro_file.expansion_info(db.upcast());
 
             let InMacroFile { file_id, value } = exp_info.expanded();
-            sema.cache(value, file_id.into());
+            Self::cache(&mut self.root_to_file_cache, value, file_id.into());
 
             exp_info
         })
@@ -163,9 +192,13 @@ impl SourceToDefCtx<'_, '_> {
                             .include_macro_invoc(crate_id)
                             .iter()
                             .filter(|&&(_, file_id)| file_id == file)
-                            .flat_map(|(call, _)| {
+                            .flat_map(|&(macro_call_id, file_id)| {
+                                self.cache
+                                    .included_file_cache
+                                    .insert(file_id, Some(MacroFileId { macro_call_id }));
                                 modules(
-                                    call.lookup(self.db.upcast())
+                                    macro_call_id
+                                        .lookup(self.db.upcast())
                                         .kind
                                         .file_id()
                                         .original_file(self.db.upcast())
@@ -306,7 +339,7 @@ impl SourceToDefCtx<'_, '_> {
             .position(|it| it == *src.value)?;
         let container = self.find_pat_or_label_container(src.syntax_ref())?;
         let (_, source_map) = self.db.body_with_source_map(container);
-        let expr = source_map.node_expr(src.with_value(&ast::Expr::AsmExpr(asm)))?;
+        let expr = source_map.node_expr(src.with_value(&ast::Expr::AsmExpr(asm)))?.as_expr()?;
         Some(InlineAsmOperand { owner: container, expr, index })
     }
 
@@ -350,7 +383,8 @@ impl SourceToDefCtx<'_, '_> {
         let break_or_continue = ast::Expr::cast(src.value.syntax().parent()?)?;
         let container = self.find_pat_or_label_container(src.syntax_ref())?;
         let (body, source_map) = self.db.body_with_source_map(container);
-        let break_or_continue = source_map.node_expr(src.with_value(&break_or_continue))?;
+        let break_or_continue =
+            source_map.node_expr(src.with_value(&break_or_continue))?.as_expr()?;
         let (Expr::Break { label, .. } | Expr::Continue { label }) = body[break_or_continue] else {
             return None;
         };
@@ -383,7 +417,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     pub(super) fn has_derives(&mut self, adt: InFile<&ast::Adt>) -> bool {
-        self.dyn_map(adt).as_ref().map_or(false, |map| !map[keys::DERIVE_MACRO_CALL].is_empty())
+        self.dyn_map(adt).as_ref().is_some_and(|map| !map[keys::DERIVE_MACRO_CALL].is_empty())
     }
 
     fn to_def<Ast: AstNode + 'static, ID: Copy + 'static>(
@@ -495,18 +529,11 @@ impl SourceToDefCtx<'_, '_> {
         node: InFile<&SyntaxNode>,
         mut cb: impl FnMut(&mut Self, InFile<SyntaxNode>) -> Option<T>,
     ) -> Option<T> {
-        use hir_expand::MacroFileIdExt;
         let parent = |this: &mut Self, node: InFile<&SyntaxNode>| match node.value.parent() {
             Some(parent) => Some(node.with_value(parent)),
             None => {
                 let macro_file = node.file_id.macro_file()?;
-
-                let expansion_info = this
-                    .cache
-                    .expansion_info_cache
-                    .entry(macro_file)
-                    .or_insert_with(|| macro_file.expansion_info(this.db.upcast()));
-
+                let expansion_info = this.cache.get_or_insert_expansion(this.db, macro_file);
                 expansion_info.arg().map(|node| node?.parent()).transpose()
             }
         };

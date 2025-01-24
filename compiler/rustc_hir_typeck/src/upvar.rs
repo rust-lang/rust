@@ -14,7 +14,7 @@
 //! to everything owned by `x`, so the result is the same for something
 //! like `x.f = 5` and so on (presuming `x` is not a borrowed pointer to a
 //! struct). These adjustments are performed in
-//! `adjust_upvar_borrow_kind()` (you can trace backwards through the code
+//! `adjust_for_non_move_closure` (you can trace backwards through the code
 //! from there).
 //!
 //! The fact that we are inferring borrow kinds as we go results in a
@@ -32,6 +32,7 @@
 
 use std::iter;
 
+use rustc_abi::FIRST_VARIANT;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_errors::{Applicability, MultiSpan};
@@ -43,13 +44,12 @@ use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, Pro
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::{
-    self, ClosureSizeProfileData, Ty, TyCtxt, TypeVisitableExt as _, TypeckResults, UpvarArgs,
-    UpvarCapture,
+    self, BorrowKind, ClosureSizeProfileData, Ty, TyCtxt, TypeVisitableExt as _, TypeckResults,
+    UpvarArgs, UpvarCapture,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
-use rustc_target::abi::FIRST_VARIANT;
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
@@ -147,14 +147,15 @@ impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
                 self.visit_body(body);
                 self.fcx.analyze_closure(expr.hir_id, expr.span, body_id, body, capture_clause);
             }
-            hir::ExprKind::ConstBlock(anon_const) => {
-                let body = self.fcx.tcx.hir().body(anon_const.body);
-                self.visit_body(body);
-            }
             _ => {}
         }
 
         intravisit::walk_expr(self, expr);
+    }
+
+    fn visit_inline_const(&mut self, c: &'tcx hir::ConstBlock) {
+        let body = self.fcx.tcx.hir().body(c.body);
+        self.visit_body(body);
     }
 }
 
@@ -381,7 +382,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let closure_env_region: ty::Region<'_> =
                 ty::Region::new_bound(self.tcx, ty::INNERMOST, ty::BoundRegion {
                     var: ty::BoundVar::ZERO,
-                    kind: ty::BoundRegionKind::BrEnv,
+                    kind: ty::BoundRegionKind::ClosureEnv,
                 });
 
             let num_args = args
@@ -438,10 +439,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         tupled_upvars_ty_for_borrow,
                         false,
                         hir::Safety::Safe,
-                        rustc_target::spec::abi::Abi::Rust,
+                        rustc_abi::ExternAbi::Rust,
                     ),
                     self.tcx.mk_bound_variable_kinds(&[ty::BoundVariableKind::Region(
-                        ty::BoundRegionKind::BrEnv,
+                        ty::BoundRegionKind::ClosureEnv,
                     )]),
                 ),
             );
@@ -488,7 +489,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let final_upvar_tys = self.final_upvar_tys(closure_def_id);
         debug!(?closure_hir_id, ?args, ?final_upvar_tys);
 
-        if self.tcx.features().unsized_locals || self.tcx.features().unsized_fn_params {
+        if self.tcx.features().unsized_locals() || self.tcx.features().unsized_fn_params() {
             for capture in
                 self.typeck_results.borrow().closure_min_captures_flattened(closure_def_id)
             {
@@ -646,7 +647,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     },
 
                     ty::UpvarCapture::ByRef(
-                        ty::BorrowKind::MutBorrow | ty::BorrowKind::UniqueImmBorrow,
+                        ty::BorrowKind::Mutable | ty::BorrowKind::UniqueImmutable,
                     ) => {
                         match closure_kind {
                             ty::ClosureKind::Fn => {
@@ -1257,7 +1258,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<FxIndexSet<UpvarMigrationInfo>> {
         let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
-        if !ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id)) {
+        // FIXME(#132279): Using `non_body_analysis` here feels wrong.
+        if !ty.has_significant_drop(
+            self.tcx,
+            ty::TypingEnv::non_body_analysis(self.tcx, closure_def_id),
+        ) {
             debug!("does not have significant drop");
             return None;
         }
@@ -1535,8 +1540,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_path_ty: Ty<'tcx>,
         captured_by_move_projs: Vec<&[Projection<'tcx>]>,
     ) -> bool {
-        let needs_drop =
-            |ty: Ty<'tcx>| ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id));
+        // FIXME(#132279): Using `non_body_analysis` here feels wrong.
+        let needs_drop = |ty: Ty<'tcx>| {
+            ty.has_significant_drop(
+                self.tcx,
+                ty::TypingEnv::non_body_analysis(self.tcx, closure_def_id),
+            )
+        };
 
         let is_drop_defined_for_ty = |ty: Ty<'tcx>| {
             let drop_trait = self.tcx.require_lang_item(hir::LangItem::Drop, Some(closure_span));
@@ -1675,13 +1685,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // want to capture by ref to allow precise capture using reborrows.
             //
             // If the data will be moved out of this place, then the place will be truncated
-            // at the first Deref in `adjust_upvar_borrow_kind_for_consume` and then moved into
-            // the closure.
+            // at the first Deref in `adjust_for_move_closure` and then moved into the closure.
             hir::CaptureBy::Value { .. } if !place.deref_tys().any(Ty::is_ref) => {
                 ty::UpvarCapture::ByValue
             }
             hir::CaptureBy::Value { .. } | hir::CaptureBy::Ref => {
-                ty::UpvarCapture::ByRef(ty::ImmBorrow)
+                ty::UpvarCapture::ByRef(BorrowKind::Immutable)
             }
         }
     }
@@ -1793,7 +1802,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut is_mutbl = bm.1;
 
         for pointer_ty in place.deref_tys() {
-            match pointer_ty.kind() {
+            match self.structurally_resolve_type(self.tcx.hir().span(var_hir_id), pointer_ty).kind()
+            {
                 // We don't capture derefs of raw ptrs
                 ty::RawPtr(_, _) => unreachable!(),
 
@@ -1807,7 +1817,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Dereferencing a box doesn't change mutability
                 ty::Adt(def, ..) if def.is_box() => {}
 
-                unexpected_ty => bug!("deref of unexpected pointer type {:?}", unexpected_ty),
+                unexpected_ty => span_bug!(
+                    self.tcx.hir().span(var_hir_id),
+                    "deref of unexpected pointer type {:?}",
+                    unexpected_ty
+                ),
             }
         }
 
@@ -1826,7 +1840,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 /// captured by move.
 ///
 /// ```rust
-/// #![feature(async_closure)]
 /// let x = &1i32; // Let's call this lifetime `'1`.
 /// let c = async move || {
 ///     println!("{:?}", *x);
@@ -1841,7 +1854,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 /// child capture with the lifetime of the parent coroutine-closure's env.
 ///
 /// ```rust
-/// #![feature(async_closure)]
 /// let mut x = 1i32;
 /// let c = async || {
 ///     x = 1;
@@ -1869,7 +1881,7 @@ fn should_reborrow_from_env_of_parent_coroutine_closure<'tcx>(
             Some(Projection { kind: ProjectionKind::Deref, .. })
         ))
         // (2.)
-        || matches!(child_capture.info.capture_kind, UpvarCapture::ByRef(ty::BorrowKind::MutBorrow))
+        || matches!(child_capture.info.capture_kind, UpvarCapture::ByRef(ty::BorrowKind::Mutable))
 }
 
 /// Truncate the capture so that the place being borrowed is in accordance with RFC 1240,
@@ -1924,7 +1936,7 @@ fn drop_location_span(tcx: TyCtxt<'_>, hir_id: HirId) -> Span {
     let owner_node = tcx.hir_node(owner_id);
     let owner_span = match owner_node {
         hir::Node::Item(item) => match item.kind {
-            hir::ItemKind::Fn(_, _, owner_id) => tcx.hir().span(owner_id.hir_id),
+            hir::ItemKind::Fn { body: owner_id, .. } => tcx.hir().span(owner_id.hir_id),
             _ => {
                 bug!("Drop location span error: need to handle more ItemKind '{:?}'", item.kind);
             }
@@ -1984,7 +1996,7 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
 
         // We need to restrict Fake Read precision to avoid fake reading unsafe code,
         // such as deref of a raw pointer.
-        let dummy_capture_kind = ty::UpvarCapture::ByRef(ty::BorrowKind::ImmBorrow);
+        let dummy_capture_kind = ty::UpvarCapture::ByRef(ty::BorrowKind::Immutable);
 
         let (place, _) = restrict_capture_precision(place.place.clone(), dummy_capture_kind);
 
@@ -2025,7 +2037,7 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
 
         // Raw pointers don't inherit mutability
         if place_with_id.place.deref_tys().any(Ty::is_unsafe_ptr) {
-            capture_kind = ty::UpvarCapture::ByRef(ty::BorrowKind::ImmBorrow);
+            capture_kind = ty::UpvarCapture::ByRef(ty::BorrowKind::Immutable);
         }
 
         self.capture_information.push((place, ty::CaptureInfo {
@@ -2037,7 +2049,7 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
-        self.borrow(assignee_place, diag_expr_id, ty::BorrowKind::MutBorrow);
+        self.borrow(assignee_place, diag_expr_id, ty::BorrowKind::Mutable);
     }
 }
 
@@ -2331,16 +2343,16 @@ fn determine_capture_info(
             (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) => {
                 match (ref_a, ref_b) {
                     // Take LHS:
-                    (ty::UniqueImmBorrow | ty::MutBorrow, ty::ImmBorrow)
-                    | (ty::MutBorrow, ty::UniqueImmBorrow) => capture_info_a,
+                    (BorrowKind::UniqueImmutable | BorrowKind::Mutable, BorrowKind::Immutable)
+                    | (BorrowKind::Mutable, BorrowKind::UniqueImmutable) => capture_info_a,
 
                     // Take RHS:
-                    (ty::ImmBorrow, ty::UniqueImmBorrow | ty::MutBorrow)
-                    | (ty::UniqueImmBorrow, ty::MutBorrow) => capture_info_b,
+                    (BorrowKind::Immutable, BorrowKind::UniqueImmutable | BorrowKind::Mutable)
+                    | (BorrowKind::UniqueImmutable, BorrowKind::Mutable) => capture_info_b,
 
-                    (ty::ImmBorrow, ty::ImmBorrow)
-                    | (ty::UniqueImmBorrow, ty::UniqueImmBorrow)
-                    | (ty::MutBorrow, ty::MutBorrow) => {
+                    (BorrowKind::Immutable, BorrowKind::Immutable)
+                    | (BorrowKind::UniqueImmutable, BorrowKind::UniqueImmutable)
+                    | (BorrowKind::Mutable, BorrowKind::Mutable) => {
                         bug!("Expected unequal capture kinds");
                     }
                 }
@@ -2367,12 +2379,12 @@ fn truncate_place_to_len_and_update_capture_kind<'tcx>(
     // Note that if the place contained Deref of a raw pointer it would've not been MutBorrow, so
     // we don't need to worry about that case here.
     match curr_mode {
-        ty::UpvarCapture::ByRef(ty::BorrowKind::MutBorrow) => {
+        ty::UpvarCapture::ByRef(ty::BorrowKind::Mutable) => {
             for i in len..place.projections.len() {
                 if place.projections[i].kind == ProjectionKind::Deref
                     && is_mut_ref(place.ty_before_projection(i))
                 {
-                    *curr_mode = ty::UpvarCapture::ByRef(ty::BorrowKind::UniqueImmBorrow);
+                    *curr_mode = ty::UpvarCapture::ByRef(ty::BorrowKind::UniqueImmutable);
                     break;
                 }
             }
@@ -2457,7 +2469,7 @@ fn truncate_capture_for_optimization(
 ) -> (Place<'_>, ty::UpvarCapture) {
     let is_shared_ref = |ty: Ty<'_>| matches!(ty.kind(), ty::Ref(.., hir::Mutability::Not));
 
-    // Find the right-most deref (if any). All the projections that come after this
+    // Find the rightmost deref (if any). All the projections that come after this
     // are fields or other "in-place pointer adjustments"; these refer therefore to
     // data owned by whatever pointer is being dereferenced here.
     let idx = place.projections.iter().rposition(|proj| ProjectionKind::Deref == proj.kind);

@@ -23,7 +23,6 @@ struct VariableLengths {
     int_var_len: usize,
     float_var_len: usize,
     const_var_len: usize,
-    effect_var_len: usize,
 }
 
 impl<'tcx> InferCtxt<'tcx> {
@@ -35,7 +34,6 @@ impl<'tcx> InferCtxt<'tcx> {
             int_var_len: inner.int_unification_table().len(),
             float_var_len: inner.float_unification_table().len(),
             const_var_len: inner.const_unification_table().len(),
-            effect_var_len: inner.effect_unification_table().len(),
         }
     }
 

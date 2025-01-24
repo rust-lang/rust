@@ -9,5 +9,5 @@ macro_rules! accept_pat {
     ($p:pat) => {};
 }
 
-accept_pat!(p | q); //~ ERROR no rules expected the token `|`
-accept_pat!(|p| q); //~ ERROR no rules expected the token `|`
+accept_pat!(p | q); //~ ERROR no rules expected `|`
+accept_pat!(|p| q); //~ ERROR no rules expected `|`

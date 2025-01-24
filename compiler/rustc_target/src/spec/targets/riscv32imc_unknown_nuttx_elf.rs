@@ -21,6 +21,7 @@ pub(crate) fn target() -> Target {
             cpu: "generic-rv32".into(),
             max_atomic_width: Some(32),
             features: "+m,+c".into(),
+            llvm_abiname: "ilp32".into(),
             panic_strategy: PanicStrategy::Unwind,
             relocation_model: RelocModel::Static,
             ..Default::default()

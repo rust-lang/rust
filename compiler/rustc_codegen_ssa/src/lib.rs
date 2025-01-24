@@ -6,12 +6,12 @@
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(debug_closure_helpers)]
 #![feature(file_buffered)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(negative_impls)]
 #![feature(rustdoc_internals)]
-#![feature(strict_provenance)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![warn(unreachable_pub)]
@@ -42,7 +42,7 @@ use rustc_session::Session;
 use rustc_session::config::{CrateType, OutputFilenames, OutputType, RUST_CGU_EXT};
 use rustc_session::cstore::{self, CrateSource};
 use rustc_session::utils::NativeLibKind;
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 
 pub mod assert_module_sources;
 pub mod back;

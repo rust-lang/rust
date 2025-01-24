@@ -141,7 +141,7 @@ impl<'tcx> ReachableContext<'tcx> {
 
         match self.tcx.hir_node_by_def_id(def_id) {
             Node::Item(item) => match item.kind {
-                hir::ItemKind::Fn(..) => recursively_reachable(self.tcx, def_id.into()),
+                hir::ItemKind::Fn { .. } => recursively_reachable(self.tcx, def_id.into()),
                 _ => false,
             },
             Node::TraitItem(trait_method) => match trait_method.kind {
@@ -200,7 +200,7 @@ impl<'tcx> ReachableContext<'tcx> {
         match *node {
             Node::Item(item) => {
                 match item.kind {
-                    hir::ItemKind::Fn(.., body) => {
+                    hir::ItemKind::Fn { body, .. } => {
                         if recursively_reachable(self.tcx, item.owner_id.into()) {
                             self.visit_nested_body(body);
                         }
@@ -322,7 +322,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     self.visit(ty);
                     // Manually visit to actually see the trait's `DefId`. Type visitors won't see it
                     if let Some(trait_ref) = dyn_ty.principal() {
-                        let ExistentialTraitRef { def_id, args } = trait_ref.skip_binder();
+                        let ExistentialTraitRef { def_id, args, .. } = trait_ref.skip_binder();
                         self.visit_def_id(def_id, "", &"");
                         self.visit(args);
                     }

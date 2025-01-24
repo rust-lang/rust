@@ -47,7 +47,7 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
     idx: usize,
 ) -> (Pointer, Value) {
     let (ptr, vtable) = 'block: {
-        if let Abi::Scalar(_) = arg.layout().abi {
+        if let BackendRepr::Scalar(_) = arg.layout().backend_repr {
             while !arg.layout().ty.is_unsafe_ptr() && !arg.layout().ty.is_ref() {
                 let (idx, _) = arg
                     .layout()
@@ -68,7 +68,7 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
             }
         }
 
-        if let Abi::ScalarPair(_, _) = arg.layout().abi {
+        if let BackendRepr::ScalarPair(_, _) = arg.layout().backend_repr {
             let (ptr, vtable) = arg.load_scalar_pair(fx);
             (Pointer::new(ptr), vtable)
         } else {

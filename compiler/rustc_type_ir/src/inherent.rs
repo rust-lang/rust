@@ -11,7 +11,7 @@ use rustc_ast_ir::Mutability;
 use crate::elaborate::Elaboratable;
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
-use crate::solve::Reveal;
+use crate::solve::AdtDestructorKind;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{self as ty, CollectAndApply, Interner, UpcastFrom};
 
@@ -112,6 +112,8 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_pat(interner: I, ty: Self, pat: I::Pat) -> Self;
 
+    fn new_unsafe_binder(interner: I, ty: ty::Binder<I, I::Ty>) -> Self;
+
     fn tuple_fields(self) -> I::Tys;
 
     fn to_opt_closure_kind(self) -> Option<ty::ClosureKind>;
@@ -135,6 +137,9 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn is_fn_ptr(self) -> bool {
         matches!(self.kind(), ty::FnPtr(..))
     }
+
+    /// Checks whether this type is an ADT that has unsafe fields.
+    fn has_unsafe_fields(self) -> bool;
 
     fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
         match self.kind() {
@@ -182,6 +187,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
             | ty::FnPtr(..)
+            | ty::UnsafeBinder(_)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
             | ty::CoroutineClosure(_, _)
@@ -208,14 +214,14 @@ pub trait Tys<I: Interner<Tys = Self>>:
     fn output(self) -> I::Ty;
 }
 
-pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq + Relate<I> {
+pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq {
     fn rust() -> Self;
 
     /// Whether this ABI is `extern "Rust"`.
     fn is_rust(self) -> bool;
 }
 
-pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq + Relate<I> {
+pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq {
     fn safe() -> Self;
 
     fn is_safe(self) -> bool;
@@ -257,8 +263,6 @@ pub trait Const<I: Interner<Const = Self>>:
     + Relate<I>
     + Flags
 {
-    fn try_to_target_usize(self, interner: I) -> Option<u64>;
-
     fn new_infer(interner: I, var: ty::InferConst) -> Self;
 
     fn new_var(interner: I, var: ty::ConstVid) -> Self;
@@ -468,6 +472,14 @@ pub trait Clause<I: Interner<Clause = Self>>:
             .transpose()
     }
 
+    fn as_host_effect_clause(self) -> Option<ty::Binder<I, ty::HostEffectPredicate<I>>> {
+        self.kind()
+            .map_bound(
+                |clause| if let ty::ClauseKind::HostEffect(t) = clause { Some(t) } else { None },
+            )
+            .transpose()
+    }
+
     fn as_projection_clause(self) -> Option<ty::Binder<I, ty::ProjectionPredicate<I>>> {
         self.kind()
             .map_bound(
@@ -529,12 +541,12 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn sized_constraint(self, interner: I) -> Option<ty::EarlyBinder<I, I::Ty>>;
 
     fn is_fundamental(self) -> bool;
+
+    fn destructor(self, interner: I) -> Option<AdtDestructorKind>;
 }
 
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
-    fn reveal(self) -> Reveal;
-
-    fn caller_bounds(self) -> impl IntoIterator<Item = I::Clause>;
+    fn caller_bounds(self) -> impl SliceLike<Item = I::Clause>;
 }
 
 pub trait Features<I: Interner>: Copy {

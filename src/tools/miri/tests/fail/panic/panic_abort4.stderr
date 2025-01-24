@@ -1,3 +1,4 @@
+
 thread 'main' panicked at tests/fail/panic/panic_abort4.rs:LL:CC:
 42-panicking from libcore
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

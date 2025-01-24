@@ -1,5 +1,5 @@
 //@ check-pass
-//@ aux-build:issue-112831-aux.rs
+//@ proc-macro: issue-112831-aux.rs
 
 mod z {
     pub trait Zeroable {}

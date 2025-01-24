@@ -1,10 +1,10 @@
 use std::ops::Range;
 
+use rustc_abi::Size;
 use rustc_middle::mir;
 use rustc_middle::ty::{Instance, PolyExistentialTraitRef, Ty};
 use rustc_span::{SourceFile, Span, Symbol};
-use rustc_target::abi::Size;
-use rustc_target::abi::call::FnAbi;
+use rustc_target::callconv::FnAbi;
 
 use super::BackendTypes;
 use crate::mir::debuginfo::{FunctionDebugContext, VariableKind};
@@ -81,6 +81,7 @@ pub trait DebugInfoBuilderMethods: BackendTypes {
     );
     fn set_dbg_loc(&mut self, dbg_loc: Self::DILocation);
     fn clear_dbg_loc(&mut self);
+    fn get_dbg_loc(&self) -> Option<Self::DILocation>;
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self);
     fn set_var_name(&mut self, value: Self::Value, name: &str);
 }

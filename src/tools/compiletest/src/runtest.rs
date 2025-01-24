@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs::{self, File, create_dir_all};
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::prelude::*;
@@ -17,12 +17,12 @@ use tracing::*;
 
 use crate::common::{
     Assembly, Codegen, CodegenUnits, CompareMode, Config, CoverageMap, CoverageRun, Crashes,
-    DebugInfo, Debugger, FailMode, Incremental, JsDocTest, MirOpt, PassMode, Pretty, RunMake,
-    Rustdoc, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT,
+    DebugInfo, Debugger, FailMode, Incremental, MirOpt, PassMode, Pretty, RunMake, Rustdoc,
+    RustdocJs, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT,
     UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG, Ui, expected_output_path, incremental_dir,
     output_base_dir, output_base_name, output_testname_unique,
 };
-use crate::compute_diff::{write_diff, write_filtered_diff};
+use crate::compute_diff::{DiffLine, make_diff, write_diff, write_filtered_diff};
 use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
 use crate::read2::{Truncated, read2_abbreviated};
@@ -32,7 +32,7 @@ use crate::{ColorConfig, json, stamp_file_path};
 mod debugger;
 
 // Helper modules that implement test running logic for each test suite.
-// tidy-alphabet-start
+// tidy-alphabetical-start
 mod assembly;
 mod codegen;
 mod codegen_units;
@@ -47,7 +47,7 @@ mod run_make;
 mod rustdoc;
 mod rustdoc_json;
 mod ui;
-// tidy-alphabet-end
+// tidy-alphabetical-end
 
 #[cfg(test)]
 mod tests;
@@ -59,7 +59,7 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     use std::sync::Mutex;
 
     use windows::Win32::System::Diagnostics::Debug::{
-        SEM_NOGPFAULTERRORBOX, SetErrorMode, THREAD_ERROR_MODE,
+        SEM_FAILCRITICALERRORS, SEM_NOGPFAULTERRORBOX, SetErrorMode,
     };
 
     static LOCK: Mutex<()> = Mutex::new(());
@@ -67,13 +67,20 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     // Error mode is a global variable, so lock it so only one thread will change it
     let _lock = LOCK.lock().unwrap();
 
-    // Tell Windows to not show any UI on errors (such as terminating abnormally).
-    // This is important for running tests, since some of them use abnormal
-    // termination by design. This mode is inherited by all child processes.
+    // Tell Windows to not show any UI on errors (such as terminating abnormally). This is important
+    // for running tests, since some of them use abnormal termination by design. This mode is
+    // inherited by all child processes.
+    //
+    // Note that `run-make` tests require `SEM_FAILCRITICALERRORS` in addition to suppress Windows
+    // Error Reporting (WER) error dialogues that come from "critical failures" such as missing
+    // DLLs.
+    //
+    // See <https://github.com/rust-lang/rust/issues/132092> and
+    // <https://learn.microsoft.com/en-us/windows/win32/api/errhandlingapi/nf-errhandlingapi-seterrormode?redirectedfrom=MSDN>.
     unsafe {
-        let old_mode = SetErrorMode(SEM_NOGPFAULTERRORBOX); // read inherited flags
-        let old_mode = THREAD_ERROR_MODE(old_mode);
-        SetErrorMode(old_mode | SEM_NOGPFAULTERRORBOX);
+        // read inherited flags
+        let old_mode = SetErrorMode(SEM_NOGPFAULTERRORBOX | SEM_FAILCRITICALERRORS);
+        SetErrorMode(old_mode | SEM_NOGPFAULTERRORBOX | SEM_FAILCRITICALERRORS);
         let r = f();
         SetErrorMode(old_mode);
         r
@@ -94,7 +101,7 @@ fn get_lib_name(name: &str, aux_type: AuxType) -> Option<String> {
         // In this case, the only path we can pass
         // with '--extern-meta' is the '.rlib' file
         AuxType::Lib => Some(format!("lib{name}.rlib")),
-        AuxType::Dylib => Some(dylib_name(name)),
+        AuxType::Dylib | AuxType::ProcMacro => Some(dylib_name(name)),
     }
 }
 
@@ -205,7 +212,7 @@ fn remove_and_create_dir_all(path: &Path) {
     fs::create_dir_all(path).unwrap();
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct TestCx<'test> {
     config: &'test Config,
     props: &'test TestProps,
@@ -261,7 +268,7 @@ impl<'test> TestCx<'test> {
             Ui => self.run_ui_test(),
             MirOpt => self.run_mir_opt_test(),
             Assembly => self.run_assembly_test(),
-            JsDocTest => self.run_js_doc_test(),
+            RustdocJs => self.run_rustdoc_js_test(),
             CoverageMap => self.run_coverage_map_test(), // see self::coverage
             CoverageRun => self.run_coverage_run_test(), // see self::coverage
             Crashes => self.run_crash_test(),
@@ -295,7 +302,7 @@ impl<'test> TestCx<'test> {
 
     fn should_compile_successfully(&self, pm: Option<PassMode>) -> bool {
         match self.config.mode {
-            JsDocTest => true,
+            RustdocJs => true,
             Ui => pm.is_some() || self.props.fail_mode > Some(FailMode::Build),
             Crashes => false,
             Incremental => {
@@ -342,10 +349,13 @@ impl<'test> TestCx<'test> {
             }
         } else {
             if proc_res.status.success() {
-                self.fatal_proc_rec(
-                    &format!("{} test compiled successfully!", self.config.mode)[..],
-                    proc_res,
-                );
+                {
+                    self.error(&format!("{} test did not emit an error", self.config.mode));
+                    if self.config.mode == crate::common::Mode::Ui {
+                        println!("note: by default, ui tests are expected not to compile");
+                    }
+                    proc_res.fatal(None, || ());
+                };
             }
 
             if !self.props.dont_check_failure_status {
@@ -399,7 +409,12 @@ impl<'test> TestCx<'test> {
             truncated: Truncated::No,
             cmdline: format!("{cmd:?}"),
         };
-        self.dump_output(&proc_res.stdout, &proc_res.stderr);
+        self.dump_output(
+            self.config.verbose,
+            &cmd.get_program().to_string_lossy(),
+            &proc_res.stdout,
+            &proc_res.stderr,
+        );
 
         proc_res
     }
@@ -478,6 +493,9 @@ impl<'test> TestCx<'test> {
                     "error: redundant cfg argument `{normalized_revision}` is already created by the revision"
                 );
             }
+            if self.config.builtin_cfg_names().contains(&normalized_revision) {
+                panic!("error: revision `{normalized_revision}` collides with a builtin cfg");
+            }
             cmd.args(cfg_arg);
         }
 
@@ -487,8 +505,9 @@ impl<'test> TestCx<'test> {
             // Generate `cfg(FALSE, REV1, ..., REVN)` (for all possible revisions)
             //
             // For compatibility reason we consider the `FALSE` cfg to be expected
-            // since it is extensively used in the testsuite.
-            check_cfg.push_str("cfg(FALSE");
+            // since it is extensively used in the testsuite, as well as the `test`
+            // cfg since we have tests that uses it.
+            check_cfg.push_str("cfg(test,FALSE");
             for revision in &self.props.revisions {
                 check_cfg.push(',');
                 check_cfg.push_str(&normalize_revision(revision));
@@ -1085,6 +1104,12 @@ impl<'test> TestCx<'test> {
         self.config.target.contains("vxworks") && !self.is_vxworks_pure_static()
     }
 
+    fn has_aux_dir(&self) -> bool {
+        !self.props.aux.builds.is_empty()
+            || !self.props.aux.crates.is_empty()
+            || !self.props.aux.proc_macros.is_empty()
+    }
+
     fn aux_output_dir(&self) -> PathBuf {
         let aux_dir = self.aux_output_dir_name();
 
@@ -1103,31 +1128,48 @@ impl<'test> TestCx<'test> {
 
     fn build_all_auxiliary(&self, of: &TestPaths, aux_dir: &Path, rustc: &mut Command) {
         for rel_ab in &self.props.aux.builds {
-            self.build_auxiliary(of, rel_ab, &aux_dir, false /* is_bin */);
+            self.build_auxiliary(of, rel_ab, &aux_dir, None);
         }
 
         for rel_ab in &self.props.aux.bins {
-            self.build_auxiliary(of, rel_ab, &aux_dir, true /* is_bin */);
+            self.build_auxiliary(of, rel_ab, &aux_dir, Some(AuxType::Bin));
         }
 
+        let path_to_crate_name = |path: &str| -> String {
+            path.rsplit_once('/')
+                .map_or(path, |(_, tail)| tail)
+                .trim_end_matches(".rs")
+                .replace('-', "_")
+        };
+
+        let add_extern =
+            |rustc: &mut Command, aux_name: &str, aux_path: &str, aux_type: AuxType| {
+                let lib_name = get_lib_name(&path_to_crate_name(aux_path), aux_type);
+                if let Some(lib_name) = lib_name {
+                    rustc.arg("--extern").arg(format!(
+                        "{}={}/{}",
+                        aux_name,
+                        aux_dir.display(),
+                        lib_name
+                    ));
+                }
+            };
+
         for (aux_name, aux_path) in &self.props.aux.crates {
-            let aux_type = self.build_auxiliary(of, &aux_path, &aux_dir, false /* is_bin */);
-            let lib_name =
-                get_lib_name(&aux_path.trim_end_matches(".rs").replace('-', "_"), aux_type);
-            if let Some(lib_name) = lib_name {
-                rustc.arg("--extern").arg(format!(
-                    "{}={}/{}",
-                    aux_name,
-                    aux_dir.display(),
-                    lib_name
-                ));
-            }
+            let aux_type = self.build_auxiliary(of, &aux_path, &aux_dir, None);
+            add_extern(rustc, aux_name, aux_path, aux_type);
+        }
+
+        for proc_macro in &self.props.aux.proc_macros {
+            self.build_auxiliary(of, proc_macro, &aux_dir, Some(AuxType::ProcMacro));
+            let crate_name = path_to_crate_name(proc_macro);
+            add_extern(rustc, &crate_name, proc_macro, AuxType::ProcMacro);
         }
 
         // Build any `//@ aux-codegen-backend`, and pass the resulting library
         // to `-Zcodegen-backend` when compiling the test file.
         if let Some(aux_file) = &self.props.aux.codegen_backend {
-            let aux_type = self.build_auxiliary(of, aux_file, aux_dir, false);
+            let aux_type = self.build_auxiliary(of, aux_file, aux_dir, None);
             if let Some(lib_name) = get_lib_name(aux_file.trim_end_matches(".rs"), aux_type) {
                 let lib_path = aux_dir.join(&lib_name);
                 rustc.arg(format!("-Zcodegen-backend={}", lib_path.display()));
@@ -1135,14 +1177,20 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    /// `root_testpaths` refers to the path of the original test.
-    /// the auxiliary and the test with an aux-build have the same `root_testpaths`.
+    /// `root_testpaths` refers to the path of the original test. the auxiliary and the test with an
+    /// aux-build have the same `root_testpaths`.
     fn compose_and_run_compiler(
         &self,
         mut rustc: Command,
         input: Option<String>,
         root_testpaths: &TestPaths,
     ) -> ProcRes {
+        if self.props.add_core_stubs {
+            let minicore_path = self.build_minicore();
+            rustc.arg("--extern");
+            rustc.arg(&format!("minicore={}", minicore_path.to_str().unwrap()));
+        }
+
         let aux_dir = self.aux_output_dir();
         self.build_all_auxiliary(root_testpaths, &aux_dir, &mut rustc);
 
@@ -1156,18 +1204,55 @@ impl<'test> TestCx<'test> {
         )
     }
 
+    /// Builds `minicore`. Returns the path to the minicore rlib within the base test output
+    /// directory.
+    fn build_minicore(&self) -> PathBuf {
+        let output_file_path = self.output_base_dir().join("libminicore.rlib");
+        let mut rustc = self.make_compile_args(
+            &self.config.minicore_path,
+            TargetLocation::ThisFile(output_file_path.clone()),
+            Emit::None,
+            AllowUnused::Yes,
+            LinkToAux::No,
+            vec![],
+        );
+
+        rustc.args(&["--crate-type", "rlib"]);
+        rustc.arg("-Cpanic=abort");
+
+        let res =
+            self.compose_and_run(rustc, self.config.compile_lib_path.to_str().unwrap(), None, None);
+        if !res.status.success() {
+            self.fatal_proc_rec(
+                &format!(
+                    "auxiliary build of {:?} failed to compile: ",
+                    self.config.minicore_path.display()
+                ),
+                &res,
+            );
+        }
+
+        output_file_path
+    }
+
     /// Builds an aux dependency.
+    ///
+    /// If `aux_type` is `None`, then this will determine the aux-type automatically.
     fn build_auxiliary(
         &self,
         of: &TestPaths,
         source_path: &str,
         aux_dir: &Path,
-        is_bin: bool,
+        aux_type: Option<AuxType>,
     ) -> AuxType {
         let aux_testpaths = self.compute_aux_test_paths(of, source_path);
-        let aux_props = self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
+        let mut aux_props =
+            self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
+        if aux_type == Some(AuxType::ProcMacro) {
+            aux_props.force_host = true;
+        }
         let mut aux_dir = aux_dir.to_path_buf();
-        if is_bin {
+        if aux_type == Some(AuxType::Bin) {
             // On unix, the binary of `auxiliary/foo.rs` will be named
             // `auxiliary/foo` which clashes with the _dir_ `auxiliary/foo`, so
             // put bins in a `bin` subfolder.
@@ -1198,8 +1283,12 @@ impl<'test> TestCx<'test> {
             aux_rustc.env_remove(key);
         }
 
-        let (aux_type, crate_type) = if is_bin {
+        let (aux_type, crate_type) = if aux_type == Some(AuxType::Bin) {
             (AuxType::Bin, Some("bin"))
+        } else if aux_type == Some(AuxType::ProcMacro) {
+            (AuxType::ProcMacro, Some("proc-macro"))
+        } else if aux_type.is_some() {
+            panic!("aux_type {aux_type:?} not expected");
         } else if aux_props.no_prefer_dynamic {
             (AuxType::Dylib, None)
         } else if self.config.target.contains("emscripten")
@@ -1233,6 +1322,11 @@ impl<'test> TestCx<'test> {
 
         if let Some(crate_type) = crate_type {
             aux_rustc.args(&["--crate-type", crate_type]);
+        }
+
+        if aux_type == AuxType::ProcMacro {
+            // For convenience, but this only works on 2018.
+            aux_rustc.args(&["--extern", "proc_macro"]);
         }
 
         aux_rustc.arg("-L").arg(&aux_dir);
@@ -1312,7 +1406,12 @@ impl<'test> TestCx<'test> {
             cmdline,
         };
 
-        self.dump_output(&result.stdout, &result.stderr);
+        self.dump_output(
+            self.config.verbose,
+            &command.get_program().to_string_lossy(),
+            &result.stdout,
+            &result.stderr,
+        );
 
         result
     }
@@ -1527,7 +1626,7 @@ impl<'test> TestCx<'test> {
             Crashes => {
                 set_mir_dump_dir(&mut rustc);
             }
-            Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake | CodegenUnits | JsDocTest => {
+            Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake | CodegenUnits | RustdocJs => {
                 // do not use JSON output
             }
         }
@@ -1638,10 +1737,23 @@ impl<'test> TestCx<'test> {
         }
 
         if let LinkToAux::Yes = link_to_aux {
-            rustc.arg("-L").arg(self.aux_output_dir_name());
+            // if we pass an `-L` argument to a directory that doesn't exist,
+            // macOS ld emits warnings which disrupt the .stderr files
+            if self.has_aux_dir() {
+                rustc.arg("-L").arg(self.aux_output_dir_name());
+            }
         }
 
         rustc.args(&self.props.compile_flags);
+
+        // FIXME(jieyouxu): we should report a fatal error or warning if user wrote `-Cpanic=` with
+        // something that's not `abort`, however, by moving this last we should override previous
+        // `-Cpanic=`s
+        //
+        // `minicore` requires `#![no_std]` and `#![no_core]`, which means no unwinding panics.
+        if self.props.add_core_stubs {
+            rustc.arg("-Cpanic=abort");
+        }
 
         rustc
     }
@@ -1714,12 +1826,35 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn dump_output(&self, out: &str, err: &str) {
+    fn dump_output(&self, print_output: bool, proc_name: &str, out: &str, err: &str) {
         let revision = if let Some(r) = self.revision { format!("{}.", r) } else { String::new() };
 
         self.dump_output_file(out, &format!("{}out", revision));
         self.dump_output_file(err, &format!("{}err", revision));
-        self.maybe_dump_to_stdout(out, err);
+
+        if !print_output {
+            return;
+        }
+
+        let path = Path::new(proc_name);
+        let proc_name = if path.file_stem().is_some_and(|p| p == "rmake") {
+            OsString::from_iter(
+                path.parent()
+                    .unwrap()
+                    .file_name()
+                    .into_iter()
+                    .chain(Some(OsStr::new("/")))
+                    .chain(path.file_name()),
+            )
+        } else {
+            path.file_name().unwrap().into()
+        };
+        let proc_name = proc_name.to_string_lossy();
+        println!("------{proc_name} stdout------------------------------");
+        println!("{}", out);
+        println!("------{proc_name} stderr------------------------------");
+        println!("{}", err);
+        println!("------------------------------------------");
     }
 
     fn dump_output_file(&self, out: &str, extension: &str) {
@@ -1760,7 +1895,7 @@ impl<'test> TestCx<'test> {
 
     /// Gets the absolute path to the directory where all output for the given
     /// test/revision should reside.
-    /// E.g., `/path/to/build/host-triple/test/ui/relative/testname.revision.mode/`.
+    /// E.g., `/path/to/build/host-tuple/test/ui/relative/testname.revision.mode/`.
     fn output_base_dir(&self) -> PathBuf {
         output_base_dir(self.config, self.testpaths, self.safe_revision())
     }
@@ -1770,16 +1905,6 @@ impl<'test> TestCx<'test> {
     /// E.g., `/.../relative/testname.revision.mode/testname`.
     fn output_base_name(&self) -> PathBuf {
         output_base_name(self.config, self.testpaths, self.safe_revision())
-    }
-
-    fn maybe_dump_to_stdout(&self, out: &str, err: &str) {
-        if self.config.verbose {
-            println!("------stdout------------------------------");
-            println!("{}", out);
-            println!("------stderr------------------------------");
-            println!("{}", err);
-            println!("------------------------------------------");
-        }
     }
 
     fn error(&self, err: &str) {
@@ -1829,55 +1954,27 @@ impl<'test> TestCx<'test> {
         (proc_res, output_path)
     }
 
-    fn compile_test_and_save_assembly(&self) -> (ProcRes, PathBuf) {
-        // This works with both `--emit asm` (as default output name for the assembly)
-        // and `ptx-linker` because the latter can write output at requested location.
-        let output_path = self.output_base_name().with_extension("s");
-        let input_file = &self.testpaths.file;
-
-        // Use the `//@ assembly-output:` directive to determine how to emit assembly.
-        let emit = match self.props.assembly_output.as_deref() {
-            Some("emit-asm") => Emit::Asm,
-            Some("bpf-linker") => Emit::LinkArgsAsm,
-            Some("ptx-linker") => Emit::None, // No extra flags needed.
-            Some(other) => self.fatal(&format!("unknown 'assembly-output' directive: {other}")),
-            None => self.fatal("missing 'assembly-output' directive"),
-        };
-
-        let rustc = self.make_compile_args(
-            input_file,
-            TargetLocation::ThisFile(output_path.clone()),
-            emit,
-            AllowUnused::No,
-            LinkToAux::Yes,
-            Vec::new(),
-        );
-
-        let proc_res = self.compose_and_run_compiler(rustc, None, self.testpaths);
-        (proc_res, output_path)
-    }
-
     fn verify_with_filecheck(&self, output: &Path) -> ProcRes {
         let mut filecheck = Command::new(self.config.llvm_filecheck.as_ref().unwrap());
         filecheck.arg("--input-file").arg(output).arg(&self.testpaths.file);
 
-        // FIXME: Consider making some of these prefix flags opt-in per test,
-        // via `filecheck-flags` or by adding new header directives.
-
         // Because we use custom prefixes, we also have to register the default prefix.
         filecheck.arg("--check-prefix=CHECK");
 
-        // Some tests use the current revision name as a check prefix.
+        // FIXME(#134510): auto-registering revision names as check prefix is a bit sketchy, and
+        // that having to pass `--allow-unused-prefix` is an unfortunate side-effect of not knowing
+        // whether the test author actually wanted revision-specific check prefixes or not.
+        //
+        // TL;DR We may not want to conflate `compiletest` revisions and `FileCheck` prefixes.
+
+        // HACK: tests are allowed to use a revision name as a check prefix.
         if let Some(rev) = self.revision {
             filecheck.arg("--check-prefix").arg(rev);
         }
 
-        // Some tests also expect either the MSVC or NONMSVC prefix to be defined.
-        let msvc_or_not = if self.config.target.contains("msvc") { "MSVC" } else { "NONMSVC" };
-        filecheck.arg("--check-prefix").arg(msvc_or_not);
-
-        // The filecheck tool normally fails if a prefix is defined but not used.
-        // However, we define several prefixes globally for all tests.
+        // HACK: the filecheck tool normally fails if a prefix is defined but not used. However,
+        // sometimes revisions are used to specify *compiletest* directives which are not FileCheck
+        // concerns.
         filecheck.arg("--allow-unused-prefixes");
 
         // Provide more context on failures.
@@ -2221,17 +2318,46 @@ impl<'test> TestCx<'test> {
         match output_kind {
             TestOutput::Compile => {
                 if !self.props.dont_check_compiler_stdout {
-                    errors +=
-                        self.compare_output(stdout_kind, &normalized_stdout, &expected_stdout);
+                    if self
+                        .compare_output(
+                            stdout_kind,
+                            &normalized_stdout,
+                            &proc_res.stdout,
+                            &expected_stdout,
+                        )
+                        .should_error()
+                    {
+                        errors += 1;
+                    }
                 }
                 if !self.props.dont_check_compiler_stderr {
-                    errors +=
-                        self.compare_output(stderr_kind, &normalized_stderr, &expected_stderr);
+                    if self
+                        .compare_output(stderr_kind, &normalized_stderr, &stderr, &expected_stderr)
+                        .should_error()
+                    {
+                        errors += 1;
+                    }
                 }
             }
             TestOutput::Run => {
-                errors += self.compare_output(stdout_kind, &normalized_stdout, &expected_stdout);
-                errors += self.compare_output(stderr_kind, &normalized_stderr, &expected_stderr);
+                if self
+                    .compare_output(
+                        stdout_kind,
+                        &normalized_stdout,
+                        &proc_res.stdout,
+                        &expected_stdout,
+                    )
+                    .should_error()
+                {
+                    errors += 1;
+                }
+
+                if self
+                    .compare_output(stderr_kind, &normalized_stderr, &stderr, &expected_stderr)
+                    .should_error()
+                {
+                    errors += 1;
+                }
             }
         }
         errors
@@ -2449,7 +2575,7 @@ impl<'test> TestCx<'test> {
         })
     }
 
-    fn delete_file(&self, file: &PathBuf) {
+    fn delete_file(&self, file: &Path) {
         if !file.exists() {
             // Deleting a nonexistent file would error.
             return;
@@ -2459,7 +2585,20 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn compare_output(&self, kind: &str, actual: &str, expected: &str) -> usize {
+    fn compare_output(
+        &self,
+        stream: &str,
+        actual: &str,
+        actual_unnormalized: &str,
+        expected: &str,
+    ) -> CompareOutcome {
+        let expected_path =
+            expected_output_path(self.testpaths, self.revision, &self.config.compare_mode, stream);
+
+        if self.config.bless && actual.is_empty() && expected_path.exists() {
+            self.delete_file(&expected_path);
+        }
+
         let are_different = match (self.force_color_svg(), expected.find('\n'), actual.find('\n')) {
             // FIXME: We ignore the first line of SVG files
             // because the width parameter is non-deterministic.
@@ -2467,16 +2606,13 @@ impl<'test> TestCx<'test> {
             _ => expected != actual,
         };
         if !are_different {
-            return 0;
+            return CompareOutcome::Same;
         }
 
-        // If `compare-output-lines-by-subset` is not explicitly enabled then
-        // auto-enable it when a `runner` is in use since wrapper tools might
-        // provide extra output on failure, for example a WebAssembly runtime
-        // might print the stack trace of an `unreachable` instruction by
-        // default.
-        let compare_output_by_lines =
-            self.props.compare_output_lines_by_subset || self.config.runner.is_some();
+        // Wrapper tools set by `runner` might provide extra output on failure,
+        // for example a WebAssembly runtime might print the stack trace of an
+        // `unreachable` instruction by default.
+        let compare_output_by_lines = self.config.runner.is_some();
 
         let tmp;
         let (expected, actual): (&str, &str) = if compare_output_by_lines {
@@ -2486,7 +2622,7 @@ impl<'test> TestCx<'test> {
             used.retain(|line| actual_lines.contains(line));
             // check if `expected` contains a subset of the lines of `actual`
             if used.len() == expected_lines.len() && (expected.is_empty() == actual.is_empty()) {
-                return 0;
+                return CompareOutcome::Same;
             }
             if expected_lines.is_empty() {
                 // if we have no lines to check, force a full overwite
@@ -2499,57 +2635,122 @@ impl<'test> TestCx<'test> {
             (expected, actual)
         };
 
-        if !self.config.bless {
-            if expected.is_empty() {
-                println!("normalized {}:\n{}\n", kind, actual);
-            } else {
-                println!("diff of {}:\n", kind);
-                print!("{}", write_diff(expected, actual, 3));
-            }
-        }
-
-        let mode = self.config.compare_mode.as_ref().map_or("", |m| m.to_str());
-        let output_file = self
+        // Write the actual output to a file in build/
+        let test_name = self.config.compare_mode.as_ref().map_or("", |m| m.to_str());
+        let actual_path = self
             .output_base_name()
             .with_extra_extension(self.revision.unwrap_or(""))
-            .with_extra_extension(mode)
-            .with_extra_extension(kind);
+            .with_extra_extension(test_name)
+            .with_extra_extension(stream);
 
-        let mut files = vec![output_file];
-        if self.config.bless {
+        if let Err(err) = fs::write(&actual_path, &actual) {
+            self.fatal(&format!("failed to write {stream} to `{actual_path:?}`: {err}",));
+        }
+        println!("Saved the actual {stream} to {actual_path:?}");
+
+        if !self.config.bless {
+            if expected.is_empty() {
+                println!("normalized {}:\n{}\n", stream, actual);
+            } else {
+                self.show_diff(
+                    stream,
+                    &expected_path,
+                    &actual_path,
+                    expected,
+                    actual,
+                    actual_unnormalized,
+                );
+            }
+        } else {
             // Delete non-revision .stderr/.stdout file if revisions are used.
             // Without this, we'd just generate the new files and leave the old files around.
             if self.revision.is_some() {
                 let old =
-                    expected_output_path(self.testpaths, None, &self.config.compare_mode, kind);
+                    expected_output_path(self.testpaths, None, &self.config.compare_mode, stream);
                 self.delete_file(&old);
             }
-            files.push(expected_output_path(
-                self.testpaths,
-                self.revision,
-                &self.config.compare_mode,
-                kind,
-            ));
-        }
 
-        for output_file in &files {
-            if actual.is_empty() {
-                self.delete_file(output_file);
-            } else if let Err(err) = fs::write(&output_file, &actual) {
-                self.fatal(&format!(
-                    "failed to write {} to `{}`: {}",
-                    kind,
-                    output_file.display(),
-                    err,
-                ));
+            if !actual.is_empty() {
+                if let Err(err) = fs::write(&expected_path, &actual) {
+                    self.fatal(&format!("failed to write {stream} to `{expected_path:?}`: {err}"));
+                }
+                println!("Blessing the {stream} of {test_name} in {expected_path:?}");
             }
         }
 
-        println!("\nThe actual {0} differed from the expected {0}.", kind);
-        for output_file in files {
-            println!("Actual {} saved to {}", kind, output_file.display());
+        println!("\nThe actual {0} differed from the expected {0}.", stream);
+
+        if self.config.bless { CompareOutcome::Blessed } else { CompareOutcome::Differed }
+    }
+
+    /// Returns whether to show the full stderr/stdout.
+    fn show_diff(
+        &self,
+        stream: &str,
+        expected_path: &Path,
+        actual_path: &Path,
+        expected: &str,
+        actual: &str,
+        actual_unnormalized: &str,
+    ) {
+        eprintln!("diff of {stream}:\n");
+        if let Some(diff_command) = self.config.diff_command.as_deref() {
+            let mut args = diff_command.split_whitespace();
+            let name = args.next().unwrap();
+            match Command::new(name).args(args).args([expected_path, actual_path]).output() {
+                Err(err) => {
+                    self.fatal(&format!(
+                        "failed to call custom diff command `{diff_command}`: {err}"
+                    ));
+                }
+                Ok(output) => {
+                    let output = String::from_utf8_lossy(&output.stdout);
+                    eprint!("{output}");
+                }
+            }
+        } else {
+            eprint!("{}", write_diff(expected, actual, 3));
         }
-        if self.config.bless { 0 } else { 1 }
+
+        // NOTE: argument order is important, we need `actual` to be on the left so the line number match up when we compare it to `actual_unnormalized` below.
+        let diff_results = make_diff(actual, expected, 0);
+
+        let (mut mismatches_normalized, mut mismatch_line_nos) = (String::new(), vec![]);
+        for hunk in diff_results {
+            let mut line_no = hunk.line_number;
+            for line in hunk.lines {
+                // NOTE: `Expected` is actually correct here, the argument order is reversed so our line numbers match up
+                if let DiffLine::Expected(normalized) = line {
+                    mismatches_normalized += &normalized;
+                    mismatches_normalized += "\n";
+                    mismatch_line_nos.push(line_no);
+                    line_no += 1;
+                }
+            }
+        }
+        let mut mismatches_unnormalized = String::new();
+        let diff_normalized = make_diff(actual, actual_unnormalized, 0);
+        for hunk in diff_normalized {
+            if mismatch_line_nos.contains(&hunk.line_number) {
+                for line in hunk.lines {
+                    if let DiffLine::Resulting(unnormalized) = line {
+                        mismatches_unnormalized += &unnormalized;
+                        mismatches_unnormalized += "\n";
+                    }
+                }
+            }
+        }
+
+        let normalized_diff = make_diff(&mismatches_normalized, &mismatches_unnormalized, 0);
+        // HACK: instead of checking if each hunk is empty, this only checks if the whole input is empty. we should be smarter about this so we don't treat added or removed output as normalized.
+        if !normalized_diff.is_empty()
+            && !mismatches_unnormalized.is_empty()
+            && !mismatches_normalized.is_empty()
+        {
+            eprintln!("Note: some mismatched output was normalized before being compared");
+            // FIXME: respect diff_command
+            eprint!("{}", write_diff(&mismatches_unnormalized, &mismatches_normalized, 0));
+        }
     }
 
     fn check_and_prune_duplicate_outputs(
@@ -2629,29 +2830,6 @@ impl<'test> TestCx<'test> {
             println!("init_incremental_test: incremental_dir={}", incremental_dir.display());
         }
     }
-
-    fn aggressive_rm_rf(&self, path: &Path) -> io::Result<()> {
-        for e in path.read_dir()? {
-            let entry = e?;
-            let path = entry.path();
-            if entry.file_type()?.is_dir() {
-                self.aggressive_rm_rf(&path)?;
-            } else {
-                // Remove readonly files as well on windows (by default we can't)
-                fs::remove_file(&path).or_else(|e| {
-                    if cfg!(windows) && e.kind() == io::ErrorKind::PermissionDenied {
-                        let mut meta = entry.metadata()?.permissions();
-                        meta.set_readonly(false);
-                        fs::set_permissions(&path, meta)?;
-                        fs::remove_file(&path)
-                    } else {
-                        Err(e)
-                    }
-                })?;
-            }
-        }
-        fs::remove_dir(path)
-    }
 }
 
 struct ProcArgs {
@@ -2721,8 +2899,28 @@ enum LinkToAux {
     No,
 }
 
+#[derive(Debug, PartialEq)]
 enum AuxType {
     Bin,
     Lib,
     Dylib,
+    ProcMacro,
+}
+
+/// Outcome of comparing a stream to a blessed file,
+/// e.g. `.stderr` and `.fixed`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum CompareOutcome {
+    /// Expected and actual outputs are the same
+    Same,
+    /// Outputs differed but were blessed
+    Blessed,
+    /// Outputs differed and an error should be emitted
+    Differed,
+}
+
+impl CompareOutcome {
+    fn should_error(&self) -> bool {
+        matches!(self, CompareOutcome::Differed)
+    }
 }

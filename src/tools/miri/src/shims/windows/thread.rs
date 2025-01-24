@@ -1,5 +1,5 @@
+use rustc_abi::ExternAbi;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_target::spec::abi::Abi;
 
 use self::shims::windows::handle::{EvalContextExt as _, Handle, PseudoHandle};
 use crate::*;
@@ -49,7 +49,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.start_regular_thread(
             thread,
             start_routine,
-            Abi::System { unwind: false },
+            ExternAbi::System { unwind: false },
             func_arg,
             this.layout_of(this.tcx.types.u32)?,
         )
@@ -59,17 +59,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         handle_op: &OpTy<'tcx>,
         timeout_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, u32> {
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let handle = this.read_scalar(handle_op)?;
         let timeout = this.read_scalar(timeout_op)?.to_u32()?;
 
-        let thread = match Handle::from_scalar(handle, this)? {
-            Some(Handle::Thread(thread)) => thread,
+        let thread = match Handle::try_from_scalar(handle, this)? {
+            Ok(Handle::Thread(thread)) => thread,
             // Unlike on posix, the outcome of joining the current thread is not documented.
             // On current Windows, it just deadlocks.
-            Some(Handle::Pseudo(PseudoHandle::CurrentThread)) => this.active_thread(),
+            Ok(Handle::Pseudo(PseudoHandle::CurrentThread)) => this.active_thread(),
             _ => this.invalid_handle("WaitForSingleObject")?,
         };
 
@@ -79,6 +79,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         this.join_thread(thread)?;
 
-        interp_ok(0)
+        interp_ok(this.eval_windows("c", "WAIT_OBJECT_0"))
     }
 }

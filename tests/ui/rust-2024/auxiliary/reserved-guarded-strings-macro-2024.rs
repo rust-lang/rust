@@ -1,9 +1,4 @@
-//@ force-host
-//@ compile-flags: -Zunstable-options
 //@ edition:2024
-//@ no-prefer-dynamic
-
-#![crate_type = "proc-macro"]
 
 extern crate proc_macro;
 

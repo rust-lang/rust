@@ -280,4 +280,64 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Allow setting `--jobs` in config.toml with `build.jobs`.",
     },
+    ChangeInfo {
+        change_id: 131181,
+        severity: ChangeSeverity::Info,
+        summary: "New option `build.compiletest-diff-tool` that adds support for a custom differ for compiletest",
+    },
+    ChangeInfo {
+        change_id: 131513,
+        severity: ChangeSeverity::Info,
+        summary: "New option `llvm.offload` to control whether the llvm offload runtime for GPU support is built. Implicitly enables the openmp runtime as dependency.",
+    },
+    ChangeInfo {
+        change_id: 132282,
+        severity: ChangeSeverity::Warning,
+        summary: "Deprecated `rust.parallel_compiler` as the compiler now always defaults to being parallel (with 1 thread)",
+    },
+    ChangeInfo {
+        change_id: 132494,
+        severity: ChangeSeverity::Info,
+        summary: "`download-rustc='if-unchanged'` is now a default option for library profile.",
+    },
+    ChangeInfo {
+        change_id: 133207,
+        severity: ChangeSeverity::Info,
+        summary: "`rust.llvm-tools` is now enabled by default when no `config.toml` is provided.",
+    },
+    ChangeInfo {
+        change_id: 133068,
+        severity: ChangeSeverity::Warning,
+        summary: "Revert `rust.download-rustc` global default to `false` and only use `rust.download-rustc = \"if-unchanged\"` default for library and tools profile. As alt CI rustc is built without debug assertions, `rust.debug-assertions = true` will now inhibit downloading CI rustc.",
+    },
+    ChangeInfo {
+        change_id: 133853,
+        severity: ChangeSeverity::Info,
+        summary: "`build.vendor` is now enabled by default for dist/tarball sources when 'vendor' directory and '.cargo/config.toml' file are present.",
+    },
+    ChangeInfo {
+        change_id: 134809,
+        severity: ChangeSeverity::Warning,
+        summary: "compiletest now takes `--no-capture` instead of `--nocapture`; bootstrap now accepts `--no-capture` as an argument to test commands directly",
+    },
+    ChangeInfo {
+        change_id: 134650,
+        severity: ChangeSeverity::Warning,
+        summary: "Removed `rust.parallel-compiler` as it was deprecated in #132282 long time ago.",
+    },
+    ChangeInfo {
+        change_id: 135326,
+        severity: ChangeSeverity::Warning,
+        summary: "It is now possible to configure `optimized-compiler-builtins` for per target.",
+    },
+    ChangeInfo {
+        change_id: 135281,
+        severity: ChangeSeverity::Warning,
+        summary: "Some stamp names in the build artifacts may have changed slightly (e.g., from `llvm-finished-building` to `.llvm-stamp`).",
+    },
+    ChangeInfo {
+        change_id: 135729,
+        severity: ChangeSeverity::Info,
+        summary: "Change the compiler profile to default to rust.debug-assertions = true",
+    },
 ];

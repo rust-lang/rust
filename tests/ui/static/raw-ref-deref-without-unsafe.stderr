@@ -1,11 +1,3 @@
-error[E0133]: dereference of raw pointer is unsafe and requires unsafe function or block
-  --> $DIR/raw-ref-deref-without-unsafe.rs:10:56
-   |
-LL | static mut DEREF_BYTE_PTR: *mut u8 = ptr::addr_of_mut!(*BYTE_PTR);
-   |                                                        ^^^^^^^^^ dereference of raw pointer
-   |
-   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
-
 error[E0133]: use of mutable static is unsafe and requires unsafe function or block
   --> $DIR/raw-ref-deref-without-unsafe.rs:10:57
    |
@@ -14,6 +6,6 @@ LL | static mut DEREF_BYTE_PTR: *mut u8 = ptr::addr_of_mut!(*BYTE_PTR);
    |
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0133`.

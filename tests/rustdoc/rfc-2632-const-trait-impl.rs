@@ -6,10 +6,9 @@
 // stabilized when changing `@!has` to `@has`, and please do
 // not remove this test.
 //
-// FIXME(effects) add `const_trait` to `Fn` so we use `~const`
-// FIXME(effects) restore `const_trait` to `Destruct`
-#![allow(incomplete_features)]
-#![feature(const_trait_impl, effects)]
+// FIXME(const_trait_impl) add `const_trait` to `Fn` so we use `~const`
+// FIXME(const_trait_impl) restore `const_trait` to `Destruct`
+#![feature(const_trait_impl)]
 #![crate_name = "foo"]
 
 use std::marker::Destruct;

@@ -24,7 +24,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,edition2021
-    /// #![feature(if_let_rescope)]
     /// #![warn(if_let_rescope)]
     /// #![allow(unused_variables)]
     ///
@@ -85,7 +84,7 @@ declare_lint! {
     rewriting in `match` is an option to preserve the semantics up to Edition 2021",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "issue #124085 <https://github.com/rust-lang/rust/issues/124085>",
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>",
     };
 }
 
@@ -104,8 +103,11 @@ fn expr_parent_is_else(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
 }
 
 fn expr_parent_is_stmt(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
-    let Some((_, hir::Node::Stmt(stmt))) = tcx.hir().parent_iter(hir_id).next() else {
-        return false;
+    let mut parents = tcx.hir().parent_iter(hir_id);
+    let stmt = match parents.next() {
+        Some((_, hir::Node::Stmt(stmt))) => stmt,
+        Some((_, hir::Node::Block(_) | hir::Node::Arm(_))) => return true,
+        _ => return false,
     };
     let (hir::StmtKind::Semi(expr) | hir::StmtKind::Expr(expr)) = stmt.kind else { return false };
     expr.hir_id == hir_id
@@ -243,7 +245,7 @@ impl_lint_pass!(
 
 impl<'tcx> LateLintPass<'tcx> for IfLetRescope {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
-        if expr.span.edition().at_least_rust_2024() || !cx.tcx.features().if_let_rescope {
+        if expr.span.edition().at_least_rust_2024() {
             return;
         }
         if let (Level::Allow, _) = cx.tcx.lint_level_at_node(IF_LET_RESCOPE, expr.hir_id) {
@@ -369,7 +371,7 @@ impl<'tcx, 'a> Visitor<'tcx> for FindSignificantDropper<'tcx, 'a> {
             .cx
             .typeck_results()
             .expr_ty(expr)
-            .has_significant_drop(self.cx.tcx, self.cx.param_env)
+            .has_significant_drop(self.cx.tcx, self.cx.typing_env())
         {
             return ControlFlow::Break(expr.span);
         }
@@ -420,6 +422,7 @@ impl<'tcx, 'a> Visitor<'tcx> for FindSignificantDropper<'tcx, 'a> {
             hir::ExprKind::Unary(_, expr)
             | hir::ExprKind::Cast(expr, _)
             | hir::ExprKind::Type(expr, _)
+            | hir::ExprKind::UnsafeBinderCast(_, expr, _)
             | hir::ExprKind::Yield(expr, _)
             | hir::ExprKind::AddrOf(_, _, expr)
             | hir::ExprKind::Match(expr, _, _)

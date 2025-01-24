@@ -196,13 +196,13 @@ error: expected identifier or string literal
 LL |     ( $( $i:ident ),* ) => { ${ {} } };
    |                                 ^^
 
-error: `count` can not be placed inside the inner-most repetition
+error: `count` can not be placed inside the innermost repetition
   --> $DIR/syntax-errors.rs:12:24
    |
 LL |     ( $i:ident ) => { ${ count($i) } };
    |                        ^^^^^^^^^^^^^
 
-error: `count` can not be placed inside the inner-most repetition
+error: `count` can not be placed inside the innermost repetition
   --> $DIR/syntax-errors.rs:17:24
    |
 LL |     ( $i:ident ) => { ${ count($i) } };

@@ -1,7 +1,7 @@
 use rustc_hir as hir;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits;
-use rustc_middle::ty::{self, Upcast};
+use rustc_middle::ty::{self, TypingMode, Upcast};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -38,7 +38,7 @@ pub(crate) fn synthesize_blanket_impls(
             if !matches!(trait_ref.skip_binder().self_ty().kind(), ty::Param(_)) {
                 continue;
             }
-            let infcx = tcx.infer_ctxt().build();
+            let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
             let args = infcx.fresh_args_for_item(DUMMY_SP, item_def_id);
             let impl_ty = ty.instantiate(tcx, args);
             let param_env = ty::ParamEnv::empty();

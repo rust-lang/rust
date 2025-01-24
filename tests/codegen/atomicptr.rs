@@ -6,7 +6,6 @@
 
 //@ compile-flags: -O -Cno-prepopulate-passes
 #![crate_type = "lib"]
-#![feature(strict_provenance)]
 #![feature(strict_provenance_atomic_ptr)]
 
 use std::ptr::without_provenance_mut;

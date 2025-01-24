@@ -132,7 +132,7 @@
 //! [attempt 3]: https://github.com/rust-lang/rust/pull/72632
 
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry, IndexOccupiedEntry};
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
@@ -169,10 +169,7 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
 
         let borrowed = rustc_mir_dataflow::impls::borrowed_locals(body);
 
-        let live = MaybeLiveLocals
-            .into_engine(tcx, body)
-            .pass_name("MaybeLiveLocals-DestinationPropagation")
-            .iterate_to_fixpoint();
+        let live = MaybeLiveLocals.iterate_to_fixpoint(tcx, body, Some("MaybeLiveLocals-DestProp"));
         let points = DenseLocationMap::new(body);
         let mut live = save_as_intervals(&points, body, live);
 
@@ -207,7 +204,8 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
             // Because we only filter once per round, it is unsound to use a local for more than
             // one merge operation within a single round of optimizations. We store here which ones
             // we have already used.
-            let mut merged_locals: BitSet<Local> = BitSet::new_empty(body.local_decls.len());
+            let mut merged_locals: DenseBitSet<Local> =
+                DenseBitSet::new_empty(body.local_decls.len());
 
             // This is the set of merges we will apply this round. It is a subset of the candidates.
             let mut merges = FxIndexMap::default();
@@ -220,11 +218,6 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
                 else {
                     continue;
                 };
-                if !tcx.consider_optimizing(|| {
-                    format!("{} round {}", tcx.def_path_str(def_id), round_count)
-                }) {
-                    break;
-                }
 
                 // Replace `src` by `dest` everywhere.
                 merges.insert(*src, *dest);
@@ -282,7 +275,7 @@ fn apply_merges<'tcx>(
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     merges: FxIndexMap<Local, Local>,
-    merged_locals: BitSet<Local>,
+    merged_locals: DenseBitSet<Local>,
 ) {
     let mut merger = Merger { tcx, merges, merged_locals };
     merger.visit_body_preserves_cfg(body);
@@ -291,7 +284,7 @@ fn apply_merges<'tcx>(
 struct Merger<'tcx> {
     tcx: TyCtxt<'tcx>,
     merges: FxIndexMap<Local, Local>,
-    merged_locals: BitSet<Local>,
+    merged_locals: DenseBitSet<Local>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
@@ -359,7 +352,7 @@ impl Candidates {
     /// Collects the candidates for merging.
     ///
     /// This is responsible for enforcing the first and third bullet point.
-    fn reset_and_find<'tcx>(&mut self, body: &Body<'tcx>, borrowed: &BitSet<Local>) {
+    fn reset_and_find<'tcx>(&mut self, body: &Body<'tcx>, borrowed: &DenseBitSet<Local>) {
         self.c.clear();
         self.reverse.clear();
         let mut visitor = FindAssignments { body, candidates: &mut self.c, borrowed };
@@ -584,7 +577,7 @@ impl WriteInfo {
                     | Rvalue::RawPtr(_, _)
                     | Rvalue::Len(_)
                     | Rvalue::Discriminant(_)
-                    | Rvalue::CopyForDeref(_) => (),
+                    | Rvalue::CopyForDeref(_) => {}
                 }
             }
             // Retags are technically also reads, but reporting them as a write suffices
@@ -599,7 +592,8 @@ impl WriteInfo {
             | StatementKind::Coverage(_)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
-            | StatementKind::PlaceMention(_) => (),
+            | StatementKind::BackwardIncompatibleDropHint { .. }
+            | StatementKind::PlaceMention(_) => {}
             StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {
                 bug!("{:?} not found in this MIR phase", statement)
             }
@@ -743,7 +737,7 @@ fn places_to_candidate_pair<'tcx>(
 struct FindAssignments<'a, 'tcx> {
     body: &'a Body<'tcx>,
     candidates: &'a mut FxIndexMap<Local, Vec<Local>>,
-    borrowed: &'a BitSet<Local>,
+    borrowed: &'a DenseBitSet<Local>,
 }
 
 impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {

@@ -3,9 +3,6 @@
 #![allow(dead_code)]
 
 const fn f(a: &u8, b: &u8) -> bool {
-//~^ HELP: add `#![feature(const_trait_impl)]`
-//~| HELP: add `#![feature(const_trait_impl)]`
-//~| HELP: add `#![feature(const_trait_impl)]`
     a == b
     //~^ ERROR: cannot call non-const operator in constant functions [E0015]
     //~| HELP: consider dereferencing here

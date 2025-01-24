@@ -28,8 +28,8 @@ fn wild_struct() {
     //~| ERROR: Min Capture analysis includes:
         // FIXME(arora-aman): Change `_x` to `_`
         let Point { x: _x, y: _ } = p;
-        //~^ NOTE: Capturing p[(0, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture p[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Capturing p[(0, 0)] -> Immutable
+        //~| NOTE: Min Capture p[(0, 0)] -> Immutable
     };
 
     c();

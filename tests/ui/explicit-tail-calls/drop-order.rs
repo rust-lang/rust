@@ -1,7 +1,7 @@
 // FIXME(explicit_tail_calls): enable this test once rustc_codegen_ssa supports tail calls
 //@ ignore-test: tail calls are not implemented in rustc_codegen_ssa yet, so this causes 🧊
 //@ run-pass
-#![allow(incomplete_features)]
+#![expect(incomplete_features)]
 #![feature(explicit_tail_calls)]
 use std::cell::RefCell;
 

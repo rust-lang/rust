@@ -1,6 +1,9 @@
 //@ run-pass
 // We used to have a __rust_abi shim that resulted in duplicated symbols
 // whenever the item path wasn't enough to disambiguate between them.
+
+#![allow(unpredictable_function_pointer_comparisons)]
+
 fn main() {
     let a = {
         extern "C" fn good() -> i32 { return 0; }

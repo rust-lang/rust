@@ -29,6 +29,7 @@ pub(crate) fn target() -> Target {
             atomic_cas: true,
 
             features: "+m".into(),
+            llvm_abiname: "ilp32".into(),
             executables: true,
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,

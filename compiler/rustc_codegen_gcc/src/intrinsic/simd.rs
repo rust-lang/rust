@@ -55,8 +55,10 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     }
 
     let tcx = bx.tcx();
-    let sig =
-        tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), callee_ty.fn_sig(tcx));
+    let sig = tcx.normalize_erasing_late_bound_regions(
+        ty::TypingEnv::fully_monomorphized(),
+        callee_ty.fn_sig(tcx),
+    );
     let arg_tys = sig.inputs();
 
     if name == sym::simd_select_bitmask {
@@ -377,7 +379,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         // Make sure this is actually a SIMD vector.
         let idx_ty = args[2].layout.ty;
         let n: u64 = if idx_ty.is_simd()
-            && matches!(idx_ty.simd_size_and_type(bx.cx.tcx).1.kind(), ty::Uint(ty::UintTy::U32))
+            && matches!(*idx_ty.simd_size_and_type(bx.cx.tcx).1.kind(), ty::Uint(ty::UintTy::U32))
         {
             idx_ty.simd_size_and_type(bx.cx.tcx).0
         } else {
@@ -478,7 +480,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         match *in_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
+                    bx.tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), ty)
                 });
                 require!(metadata.is_unit(), InvalidMonomorphization::CastWidePointer {
                     span,
@@ -493,7 +495,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         match *out_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
+                    bx.tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), ty)
                 });
                 require!(metadata.is_unit(), InvalidMonomorphization::CastWidePointer {
                     span,
@@ -770,6 +772,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             sym::simd_flog => "log",
             sym::simd_floor => "floor",
             sym::simd_fma => "fma",
+            sym::simd_relaxed_fma => "fma", // FIXME: this should relax to non-fused multiply-add when necessary
             sym::simd_fpowi => "__builtin_powi",
             sym::simd_fpow => "pow",
             sym::simd_fsin => "sin",
@@ -826,6 +829,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             | sym::simd_flog
             | sym::simd_floor
             | sym::simd_fma
+            | sym::simd_relaxed_fma
             | sym::simd_fpow
             | sym::simd_fpowi
             | sym::simd_fsin

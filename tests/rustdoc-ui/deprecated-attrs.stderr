@@ -3,32 +3,35 @@ warning: the `passes` flag no longer functions
    = note: see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information
    = help: you may want to use --document-private-items
 
-warning: the `#![doc(no_default_passes)]` attribute is deprecated
-  --> $DIR/deprecated-attrs.rs:5:8
+error: unknown `doc` attribute `no_default_passes`
+  --> $DIR/deprecated-attrs.rs:4:8
    |
 LL | #![doc(no_default_passes)]
-   |        ^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^ no longer functions
    |
-   = note: see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information
-   = help: `#![doc(no_default_passes)]` no longer functions; you may want to use `#![doc(document_private_items)]`
+   = note: `doc` attribute `no_default_passes` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136>
+   = help: you may want to use `doc(document_private_items)`
+   = note: `doc(no_default_passes)` is now a no-op
+   = note: `#[deny(invalid_doc_attributes)]` on by default
 
-warning: the `#![doc(passes = "...")]` attribute is deprecated
-  --> $DIR/deprecated-attrs.rs:9:8
+error: unknown `doc` attribute `passes`
+  --> $DIR/deprecated-attrs.rs:11:8
    |
 LL | #![doc(passes = "collapse-docs unindent-comments")]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no longer functions
    |
-   = note: see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information
-   = help: `#![doc(passes = "...")]` no longer functions; you may want to use `#![doc(document_private_items)]`
+   = note: `doc` attribute `passes` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136>
+   = help: you may want to use `doc(document_private_items)`
+   = note: `doc(passes)` is now a no-op
 
-warning: the `#![doc(plugins = "...")]` attribute is deprecated
-  --> $DIR/deprecated-attrs.rs:13:8
+error: unknown `doc` attribute `plugins`
+  --> $DIR/deprecated-attrs.rs:17:8
    |
 LL | #![doc(plugins = "xxx")]
-   |        ^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^ no longer functions
    |
-   = note: see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information
-   = warning: `#![doc(plugins = "...")]` no longer functions; see CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>
+   = note: `doc` attribute `plugins` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136> and CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>
+   = note: `doc(plugins)` is now a no-op
 
-warning: 3 warnings emitted
+error: aborting due to 3 previous errors
 

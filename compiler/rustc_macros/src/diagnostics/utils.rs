@@ -243,7 +243,7 @@ impl<T> SetOnce<T> for SpannedOption<T> {
                 *self = Some((value, span));
             }
             Some((_, prev_span)) => {
-                span_err(span, "specified multiple times")
+                span_err(span, "attribute specified multiple times")
                     .span_note(*prev_span, "previously specified here")
                     .emit();
             }

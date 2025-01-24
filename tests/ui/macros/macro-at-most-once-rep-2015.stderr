@@ -4,7 +4,7 @@ error: the `?` macro repetition operator does not take a separator
 LL |     ($(a),?) => {};
    |          ^
 
-error: no rules expected the token `?`
+error: no rules expected `?`
   --> $DIR/macro-at-most-once-rep-2015.rs:25:11
    |
 LL | macro_rules! foo {
@@ -15,7 +15,7 @@ LL |     foo!(a?);
    |
    = note: while trying to match sequence end
 
-error: no rules expected the token `?`
+error: no rules expected `?`
   --> $DIR/macro-at-most-once-rep-2015.rs:26:11
    |
 LL | macro_rules! foo {
@@ -26,7 +26,7 @@ LL |     foo!(a?a);
    |
    = note: while trying to match sequence end
 
-error: no rules expected the token `?`
+error: no rules expected `?`
   --> $DIR/macro-at-most-once-rep-2015.rs:27:11
    |
 LL | macro_rules! foo {
@@ -67,7 +67,7 @@ note: while trying to match `+`
 LL |     ($(a)?+) => {}; // ok. matches "a+" and "+"
    |           ^
 
-error: no rules expected the token `?`
+error: no rules expected `?`
   --> $DIR/macro-at-most-once-rep-2015.rs:31:15
    |
 LL | macro_rules! barplus {
@@ -82,7 +82,7 @@ note: while trying to match `+`
 LL |     ($(a)?+) => {}; // ok. matches "a+" and "+"
    |           ^
 
-error: no rules expected the token `?`
+error: no rules expected `?`
   --> $DIR/macro-at-most-once-rep-2015.rs:32:15
    |
 LL | macro_rules! barplus {
@@ -127,7 +127,7 @@ note: while trying to match `*`
 LL |     ($(a)?*) => {}; // ok. matches "a*" and "*"
    |           ^
 
-error: no rules expected the token `?`
+error: no rules expected `?`
   --> $DIR/macro-at-most-once-rep-2015.rs:38:15
    |
 LL | macro_rules! barstar {
@@ -142,7 +142,7 @@ note: while trying to match `*`
 LL |     ($(a)?*) => {}; // ok. matches "a*" and "*"
    |           ^
 
-error: no rules expected the token `?`
+error: no rules expected `?`
   --> $DIR/macro-at-most-once-rep-2015.rs:39:15
    |
 LL | macro_rules! barstar {

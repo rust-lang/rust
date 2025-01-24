@@ -204,8 +204,8 @@ impl Wtf8Buf {
     ///
     /// Since WTF-8 is a superset of UTF-8, this always succeeds.
     #[inline]
-    pub fn from_str(str: &str) -> Wtf8Buf {
-        Wtf8Buf { bytes: <[_]>::to_vec(str.as_bytes()), is_known_utf8: true }
+    pub fn from_str(s: &str) -> Wtf8Buf {
+        Wtf8Buf { bytes: <[_]>::to_vec(s.as_bytes()), is_known_utf8: true }
     }
 
     pub fn clear(&mut self) {
@@ -1052,8 +1052,8 @@ impl Hash for Wtf8 {
 unsafe impl CloneToUninit for Wtf8 {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
-    unsafe fn clone_to_uninit(&self, dst: *mut Self) {
-        // SAFETY: we're just a wrapper around [u8]
-        unsafe { self.bytes.clone_to_uninit(&raw mut (*dst).bytes) }
+    unsafe fn clone_to_uninit(&self, dst: *mut u8) {
+        // SAFETY: we're just a transparent wrapper around [u8]
+        unsafe { self.bytes.clone_to_uninit(dst) }
     }
 }

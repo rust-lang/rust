@@ -25,7 +25,7 @@ use crate::errors;
 ///
 /// This function should only run after all queries have completed.
 /// Trying to execute a query afterwards would attempt to read the result cache we just dropped.
-pub fn save_dep_graph(tcx: TyCtxt<'_>) {
+pub(crate) fn save_dep_graph(tcx: TyCtxt<'_>) {
     debug!("save_dep_graph()");
     tcx.dep_graph.with_ignore(|| {
         let sess = tcx.sess;

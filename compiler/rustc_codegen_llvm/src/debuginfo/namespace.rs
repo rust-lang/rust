@@ -5,7 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, Instance};
 
 use super::utils::{DIB, debug_context};
-use crate::common::CodegenCx;
+use crate::common::{AsCCharPtr, CodegenCx};
 use crate::llvm;
 use crate::llvm::debuginfo::DIScope;
 
@@ -36,7 +36,7 @@ pub(crate) fn item_namespace<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'l
         llvm::LLVMRustDIBuilderCreateNameSpace(
             DIB(cx),
             parent_scope,
-            namespace_name_string.as_ptr().cast(),
+            namespace_name_string.as_c_char_ptr(),
             namespace_name_string.len(),
             false, // ExportSymbols (only relevant for C++ anonymous namespaces)
         )

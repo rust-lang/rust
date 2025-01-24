@@ -1,5 +1,4 @@
 //@ run-pass
-//@ pretty-expanded FIXME #23616
 
 fn foo(x: Option<Box<isize>>, b: bool) -> isize {
     match x {

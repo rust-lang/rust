@@ -2,12 +2,12 @@ use super::DUPLICATED_ATTRIBUTES;
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::{Attribute, MetaItem};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_lint::LateContext;
+use rustc_lint::EarlyContext;
 use rustc_span::{Span, sym};
 use std::collections::hash_map::Entry;
 
 fn emit_if_duplicated(
-    cx: &LateContext<'_>,
+    cx: &EarlyContext<'_>,
     attr: &MetaItem,
     attr_paths: &mut FxHashMap<String, Span>,
     complete_path: String,
@@ -26,7 +26,7 @@ fn emit_if_duplicated(
 }
 
 fn check_duplicated_attr(
-    cx: &LateContext<'_>,
+    cx: &EarlyContext<'_>,
     attr: &MetaItem,
     attr_paths: &mut FxHashMap<String, Span>,
     parent: &mut Vec<String>,
@@ -65,7 +65,7 @@ fn check_duplicated_attr(
     }
 }
 
-pub fn check(cx: &LateContext<'_>, attrs: &[Attribute]) {
+pub fn check(cx: &EarlyContext<'_>, attrs: &[Attribute]) {
     let mut attr_paths = FxHashMap::default();
 
     for attr in attrs {

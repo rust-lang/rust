@@ -42,7 +42,7 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
                                         tcx,
                                         op_sp,
                                         const_value,
-                                        RevealAllLayoutCx(tcx).layout_of(ty),
+                                        FullyMonomorphizedLayoutCx(tcx).layout_of(ty),
                                     );
                                     global_asm.push_str(&string);
                                 }
@@ -118,8 +118,8 @@ impl GlobalAsmConfig {
         GlobalAsmConfig {
             assembler: crate::toolchain::get_toolchain_binary(tcx.sess, "as"),
             target: match &tcx.sess.opts.target_triple {
-                rustc_target::spec::TargetTriple::TargetTriple(triple) => triple.clone(),
-                rustc_target::spec::TargetTriple::TargetJson { path_for_rustdoc, .. } => {
+                rustc_target::spec::TargetTuple::TargetTuple(triple) => triple.clone(),
+                rustc_target::spec::TargetTuple::TargetJson { path_for_rustdoc, .. } => {
                     path_for_rustdoc.to_str().unwrap().to_owned()
                 }
             },

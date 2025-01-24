@@ -1,5 +1,5 @@
 warning: method `into_iter` is never used
-  --> $DIR/associated-types-nested-projections.rs:16:8
+  --> $DIR/associated-types-nested-projections.rs:15:8
    |
 LL | trait IntoIterator {
    |       ------------ method in this trait

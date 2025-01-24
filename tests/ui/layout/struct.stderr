@@ -1,4 +1,4 @@
-error: abi: Aggregate { sized: true }
+error: abi: Memory { sized: true }
   --> $DIR/struct.rs:9:1
    |
 LL | struct AlignedZstPreventsScalar(i16, [i32; 0]);

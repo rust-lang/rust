@@ -1,6 +1,6 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{SpanlessEq, is_in_const_context, is_integer_literal};
 use rustc_errors::Applicability;
@@ -232,7 +232,7 @@ fn get_types_from_cast<'a>(
     // or `to_type::MAX as from_type`
     let call_from_cast: Option<(&Expr<'_>, &str)> = if let ExprKind::Cast(limit, from_type) = &expr.kind
         // to_type::max_value(), from_type
-        && let TyKind::Path(ref from_type_path) = &from_type.kind
+        && let TyKind::Path(from_type_path) = &from_type.kind
         && let Some(from_sym) = int_ty_to_sym(from_type_path)
     {
         Some((limit, from_sym))
@@ -245,7 +245,7 @@ fn get_types_from_cast<'a>(
         if let ExprKind::Call(from_func, [limit]) = &expr.kind
             // `from_type::from, to_type::max_value()`
             // `from_type::from`
-            && let ExprKind::Path(ref path) = &from_func.kind
+            && let ExprKind::Path(path) = &from_func.kind
             && let Some(from_sym) = get_implementing_type(path, INTS, "from")
         {
             Some((limit, from_sym))

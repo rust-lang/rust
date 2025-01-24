@@ -2,8 +2,9 @@ error[E0277]: the trait bound `<T as A>::AssocA: TransmuteFrom<(), Assume { alig
   --> $DIR/assoc-bound.rs:16:19
    |
 LL |     type AssocB = T::AssocA;
-   |                   ^^^^^^^^^ the trait `TransmuteFrom<(), Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `<T as A>::AssocA`
+   |                   ^^^^^^^^^ unsatisfied trait bound
    |
+   = help: the trait `TransmuteFrom<(), Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `<T as A>::AssocA`
 note: required by a bound in `B::AssocB`
   --> $DIR/assoc-bound.rs:9:18
    |

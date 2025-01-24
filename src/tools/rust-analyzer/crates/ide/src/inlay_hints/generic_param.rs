@@ -142,7 +142,7 @@ mod tests {
     };
 
     #[track_caller]
-    fn generic_param_name_hints_always(ra_fixture: &str) {
+    fn generic_param_name_hints_always(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(
             InlayHintsConfig {
                 generic_parameter_hints: GenericParameterHints {
@@ -157,7 +157,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn generic_param_name_hints_const_only(ra_fixture: &str) {
+    fn generic_param_name_hints_const_only(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(
             InlayHintsConfig {
                 generic_parameter_hints: GenericParameterHints {

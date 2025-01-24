@@ -54,11 +54,6 @@ fn main() {
         .run();
     rustc()
         .input("foo.rs")
-        .target("definitely-not-builtin-target")
-        .run_fail()
-        .assert_stderr_contains("may not set is_builtin");
-    rustc()
-        .input("foo.rs")
         .target("endianness-mismatch")
         .run_fail()
         .assert_stderr_contains(r#""data-layout" claims architecture is little-endian"#);

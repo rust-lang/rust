@@ -1,5 +1,4 @@
 //@compile-flags: -Zmiri-permissive-provenance
-#![feature(strict_provenance, exposed_provenance)]
 
 fn main() {
     let x: i32 = 3;

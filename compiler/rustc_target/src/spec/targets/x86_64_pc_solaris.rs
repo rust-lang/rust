@@ -13,7 +13,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target: "x86_64-pc-solaris".into(),
         metadata: crate::spec::TargetMetadata {
-            description: Some("64-bit Solaris 11, illumos".into()),
+            description: Some("64-bit Solaris 11.4".into()),
             tier: Some(2),
             host_tools: Some(false),
             std: Some(true),

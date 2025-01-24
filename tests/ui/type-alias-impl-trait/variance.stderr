@@ -122,13 +122,13 @@ error: ['a: *, 'a: o]
 LL | type CapturedEarly<'a> = impl Sized + Captures<'a>;
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: ['a: *, 'b: o, 'a: o]
+error: ['a: *, 'a: o, 'b: o]
   --> $DIR/variance.rs:14:56
    |
 LL | type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>;
    |                                                        ^^^^^^^^^^
 
-error: ['a: *, 'b: o, 'a: o]
+error: ['a: *, 'a: o, 'b: o]
   --> $DIR/variance.rs:18:49
    |
 LL | type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a>>;
@@ -140,37 +140,37 @@ error: ['a: *, 'b: *, T: o, 'a: o, 'b: o]
 LL | type Bar<'a, 'b: 'b, T> = impl Sized;
    |                           ^^^^^^^^^^
 
-error: ['i: *, 'a: *, 'a: o, 'i: o]
+error: ['i: *, 'a: *, 'i: o, 'a: o]
   --> $DIR/variance.rs:34:32
    |
 LL |     type ImplicitCapture<'a> = impl Sized;
    |                                ^^^^^^^^^^
 
-error: ['i: *, 'a: *, 'a: o, 'i: o]
+error: ['i: *, 'a: *, 'i: o, 'a: o]
   --> $DIR/variance.rs:37:42
    |
 LL |     type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>;
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: ['i: *, 'a: *, 'a: o, 'i: o]
+error: ['i: *, 'a: *, 'i: o, 'a: o]
   --> $DIR/variance.rs:40:39
    |
 LL |     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>;
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: ['i: *, 'a: *, 'a: o, 'i: o]
+error: ['i: *, 'a: *, 'i: o, 'a: o]
   --> $DIR/variance.rs:45:32
    |
 LL |     type ImplicitCapture<'a> = impl Sized;
    |                                ^^^^^^^^^^
 
-error: ['i: *, 'a: *, 'a: o, 'i: o]
+error: ['i: *, 'a: *, 'i: o, 'a: o]
   --> $DIR/variance.rs:48:42
    |
 LL |     type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>;
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: ['i: *, 'a: *, 'a: o, 'i: o]
+error: ['i: *, 'a: *, 'i: o, 'a: o]
   --> $DIR/variance.rs:51:39
    |
 LL |     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>;

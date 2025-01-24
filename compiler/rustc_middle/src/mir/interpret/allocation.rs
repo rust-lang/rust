@@ -12,10 +12,10 @@ use either::{Left, Right};
 use init_mask::*;
 pub use init_mask::{InitChunk, InitChunkIter};
 use provenance_map::*;
+use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
     AllocId, BadBytesAccess, CtfeProvenance, InterpErrorKind, InterpResult, Pointer,
@@ -222,7 +222,7 @@ impl AllocError {
 }
 
 /// The information that makes up a memory access: offset and size.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct AllocRange {
     pub start: Size,
     pub size: Size,
@@ -640,6 +640,28 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     pub fn write_uninit(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
         self.mark_init(range, false);
         self.provenance.clear(range, cx)?;
+        Ok(())
+    }
+
+    /// Initialize all previously uninitialized bytes in the entire allocation, and set
+    /// provenance of everything to `Wildcard`. Before calling this, make sure all
+    /// provenance in this allocation is exposed!
+    pub fn prepare_for_native_write(&mut self) -> AllocResult {
+        let full_range = AllocRange { start: Size::ZERO, size: Size::from_bytes(self.len()) };
+        // Overwrite uninitialized bytes with 0, to ensure we don't leak whatever their value happens to be.
+        for chunk in self.init_mask.range_as_init_chunks(full_range) {
+            if !chunk.is_init() {
+                let uninit_bytes = &mut self.bytes
+                    [chunk.range().start.bytes_usize()..chunk.range().end.bytes_usize()];
+                uninit_bytes.fill(0);
+            }
+        }
+        // Mark everything as initialized now.
+        self.mark_init(full_range, true);
+
+        // Set provenance of all bytes to wildcard.
+        self.provenance.write_wildcards(self.len());
+
         Ok(())
     }
 

@@ -4,8 +4,8 @@
 #[lang = "sized"]
 trait Sized {}
 
-#[lang = "receiver"]
-pub trait Receiver {}
+#[lang = "legacy_receiver"]
+pub trait LegacyReceiver {}
 
 pub auto trait Bar {}
 

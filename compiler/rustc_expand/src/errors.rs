@@ -4,8 +4,7 @@ use rustc_ast::ast;
 use rustc_errors::codes::*;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::Limit;
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(expand_expr_repeat_no_syntax_vars)]
@@ -275,7 +274,7 @@ pub(crate) struct UnsupportedKeyValue {
 pub(crate) struct IncompleteParse<'a> {
     #[primary_span]
     pub span: Span,
-    pub token: Cow<'a, str>,
+    pub descr: String,
     #[label]
     pub label_span: Span,
     pub macro_path: &'a ast::Path,

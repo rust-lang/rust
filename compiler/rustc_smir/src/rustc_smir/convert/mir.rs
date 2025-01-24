@@ -151,6 +151,10 @@ impl<'tcx> Stable<'tcx> for mir::StatementKind<'tcx> {
             mir::StatementKind::ConstEvalCounter => {
                 stable_mir::mir::StatementKind::ConstEvalCounter
             }
+            // BackwardIncompatibleDropHint has no semantics, so it is translated to Nop.
+            mir::StatementKind::BackwardIncompatibleDropHint { .. } => {
+                stable_mir::mir::StatementKind::Nop
+            }
             mir::StatementKind::Nop => stable_mir::mir::StatementKind::Nop,
         }
     }
@@ -561,8 +565,11 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
                     tables.tcx.coroutine_movability(*def_id).stable(tables),
                 )
             }
-            mir::AggregateKind::CoroutineClosure(..) => {
-                todo!("FIXME(async_closures): Lower these to SMIR")
+            mir::AggregateKind::CoroutineClosure(def_id, generic_args) => {
+                stable_mir::mir::AggregateKind::CoroutineClosure(
+                    tables.coroutine_closure_def(*def_id),
+                    generic_args.stable(tables),
+                )
             }
             mir::AggregateKind::RawPtr(ty, mutability) => {
                 stable_mir::mir::AggregateKind::RawPtr(ty.stable(tables), mutability.stable(tables))
@@ -691,11 +698,7 @@ impl<'tcx> Stable<'tcx> for mir::interpret::Allocation {
     type T = stable_mir::ty::Allocation;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        alloc::allocation_filter(
-            self,
-            alloc_range(rustc_target::abi::Size::ZERO, self.size()),
-            tables,
-        )
+        alloc::allocation_filter(self, alloc_range(rustc_abi::Size::ZERO, self.size()), tables)
     }
 }
 

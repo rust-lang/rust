@@ -90,11 +90,11 @@ impl Cfg {
             },
             MetaItemKind::List(ref items) => {
                 let orig_len = items.len();
-                let sub_cfgs =
+                let mut sub_cfgs =
                     items.iter().filter_map(|i| Cfg::parse_nested(i, exclude).transpose());
                 let ret = match name {
-                    sym::all => sub_cfgs.fold(Ok(Cfg::True), |x, y| Ok(x? & y?)),
-                    sym::any => sub_cfgs.fold(Ok(Cfg::False), |x, y| Ok(x? | y?)),
+                    sym::all => sub_cfgs.try_fold(Cfg::True, |x, y| Ok(x & y?)),
+                    sym::any => sub_cfgs.try_fold(Cfg::False, |x, y| Ok(x | y?)),
                     sym::not => {
                         if orig_len == 1 {
                             let mut sub_cfgs = sub_cfgs.collect::<Vec<_>>();
@@ -226,30 +226,28 @@ impl Cfg {
     /// `Cfg`.
     ///
     /// See `tests::test_simplify_with` for examples.
-    pub(crate) fn simplify_with(&self, assume: &Cfg) -> Option<Cfg> {
+    pub(crate) fn simplify_with(&self, assume: &Self) -> Option<Self> {
         if self == assume {
-            return None;
-        }
-
-        if let Cfg::All(a) = self {
+            None
+        } else if let Cfg::All(a) = self {
             let mut sub_cfgs: Vec<Cfg> = if let Cfg::All(b) = assume {
                 a.iter().filter(|a| !b.contains(a)).cloned().collect()
             } else {
                 a.iter().filter(|&a| a != assume).cloned().collect()
             };
             let len = sub_cfgs.len();
-            return match len {
+            match len {
                 0 => None,
                 1 => sub_cfgs.pop(),
                 _ => Some(Cfg::All(sub_cfgs)),
-            };
-        } else if let Cfg::All(b) = assume {
-            if b.contains(self) {
-                return None;
             }
+        } else if let Cfg::All(b) = assume
+            && b.contains(self)
+        {
+            None
+        } else {
+            Some(self.clone())
         }
-
-        Some(self.clone())
     }
 }
 
@@ -391,7 +389,50 @@ fn write_with_opt_paren<T: fmt::Display>(
     Ok(())
 }
 
-impl<'a> fmt::Display for Display<'a> {
+impl Display<'_> {
+    fn display_sub_cfgs(
+        &self,
+        fmt: &mut fmt::Formatter<'_>,
+        sub_cfgs: &[Cfg],
+        separator: &str,
+    ) -> fmt::Result {
+        let short_longhand = self.1.is_long() && {
+            let all_crate_features =
+                sub_cfgs.iter().all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::feature, Some(_))));
+            let all_target_features = sub_cfgs
+                .iter()
+                .all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::target_feature, Some(_))));
+
+            if all_crate_features {
+                fmt.write_str("crate features ")?;
+                true
+            } else if all_target_features {
+                fmt.write_str("target features ")?;
+                true
+            } else {
+                false
+            }
+        };
+
+        for (i, sub_cfg) in sub_cfgs.iter().enumerate() {
+            if i != 0 {
+                fmt.write_str(separator)?;
+            }
+            if let (true, Cfg::Cfg(_, Some(feat))) = (short_longhand, sub_cfg) {
+                if self.1.is_html() {
+                    write!(fmt, "<code>{feat}</code>")?;
+                } else {
+                    write!(fmt, "`{feat}`")?;
+                }
+            } else {
+                write_with_opt_paren(fmt, !sub_cfg.is_all(), Display(sub_cfg, self.1))?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for Display<'_> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.0 {
             Cfg::Not(ref child) => match **child {
@@ -410,79 +451,9 @@ impl<'a> fmt::Display for Display<'a> {
 
             Cfg::Any(ref sub_cfgs) => {
                 let separator = if sub_cfgs.iter().all(Cfg::is_simple) { " or " } else { ", or " };
-
-                let short_longhand = self.1.is_long() && {
-                    let all_crate_features = sub_cfgs
-                        .iter()
-                        .all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::feature, Some(_))));
-                    let all_target_features = sub_cfgs
-                        .iter()
-                        .all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::target_feature, Some(_))));
-
-                    if all_crate_features {
-                        fmt.write_str("crate features ")?;
-                        true
-                    } else if all_target_features {
-                        fmt.write_str("target features ")?;
-                        true
-                    } else {
-                        false
-                    }
-                };
-
-                for (i, sub_cfg) in sub_cfgs.iter().enumerate() {
-                    if i != 0 {
-                        fmt.write_str(separator)?;
-                    }
-                    if let (true, Cfg::Cfg(_, Some(feat))) = (short_longhand, sub_cfg) {
-                        if self.1.is_html() {
-                            write!(fmt, "<code>{feat}</code>")?;
-                        } else {
-                            write!(fmt, "`{feat}`")?;
-                        }
-                    } else {
-                        write_with_opt_paren(fmt, !sub_cfg.is_all(), Display(sub_cfg, self.1))?;
-                    }
-                }
-                Ok(())
+                self.display_sub_cfgs(fmt, sub_cfgs, separator)
             }
-
-            Cfg::All(ref sub_cfgs) => {
-                let short_longhand = self.1.is_long() && {
-                    let all_crate_features = sub_cfgs
-                        .iter()
-                        .all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::feature, Some(_))));
-                    let all_target_features = sub_cfgs
-                        .iter()
-                        .all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::target_feature, Some(_))));
-
-                    if all_crate_features {
-                        fmt.write_str("crate features ")?;
-                        true
-                    } else if all_target_features {
-                        fmt.write_str("target features ")?;
-                        true
-                    } else {
-                        false
-                    }
-                };
-
-                for (i, sub_cfg) in sub_cfgs.iter().enumerate() {
-                    if i != 0 {
-                        fmt.write_str(" and ")?;
-                    }
-                    if let (true, Cfg::Cfg(_, Some(feat))) = (short_longhand, sub_cfg) {
-                        if self.1.is_html() {
-                            write!(fmt, "<code>{feat}</code>")?;
-                        } else {
-                            write!(fmt, "`{feat}`")?;
-                        }
-                    } else {
-                        write_with_opt_paren(fmt, !sub_cfg.is_simple(), Display(sub_cfg, self.1))?;
-                    }
-                }
-                Ok(())
-            }
+            Cfg::All(ref sub_cfgs) => self.display_sub_cfgs(fmt, sub_cfgs, " and "),
 
             Cfg::True => fmt.write_str("everywhere"),
             Cfg::False => fmt.write_str("nowhere"),

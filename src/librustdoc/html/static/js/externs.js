@@ -9,12 +9,12 @@ function initSearch(searchIndex){}
 /**
  * @typedef {{
  *     name: string,
- *     id: integer|null,
+ *     id: number|null,
  *     fullPath: Array<string>,
  *     pathWithoutLast: Array<string>,
  *     pathLast: string,
  *     generics: Array<QueryElement>,
- *     bindings: Map<integer, Array<QueryElement>>,
+ *     bindings: Map<number, Array<QueryElement>>,
  * }}
  */
 let QueryElement;
@@ -92,6 +92,9 @@ let Results;
  *     parent: (Object|undefined),
  *     path: string,
  *     ty: number,
+ *     type: FunctionSearchType?,
+ *     displayType: Promise<Array<Array<string>>>|null,
+ *     displayTypeMappedNames: Promise<Array<[string, Array<string>]>>|null,
  * }}
  */
 let ResultObject;

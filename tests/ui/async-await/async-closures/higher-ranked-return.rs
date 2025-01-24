@@ -4,8 +4,6 @@
 //@ known-bug: unknown
 // Borrow checking doesn't like that higher-ranked output...
 
-#![feature(async_closure)]
-
 extern crate block_on;
 
 fn main() {

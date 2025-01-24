@@ -7,9 +7,10 @@ use clippy_utils::{
     peel_middle_ty_refs,
 };
 use core::mem;
-use rustc_ast::util::parser::{PREC_PREFIX, PREC_UNAMBIGUOUS};
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{Visitor, walk_ty};
 use rustc_hir::{
     self as hir, BindingMode, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, MatchSource, Mutability, Node, Pat,
@@ -17,7 +18,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeVisitableExt, TypeckResults};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypeckResults};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
@@ -418,7 +419,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                         let (required_refs, msg) = if can_auto_borrow {
                             (1, if deref_count == 1 { borrow_msg } else { deref_msg })
                         } else if let Some(&Adjustment {
-                            kind: Adjust::Borrow(AutoBorrow::Ref(_, mutability)),
+                            kind: Adjust::Borrow(AutoBorrow::Ref(mutability)),
                             ..
                         }) = next_adjust
                             && matches!(mutability, AutoBorrowMutability::Mut { .. })
@@ -452,7 +453,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             ));
                         } else if stability.is_deref_stable()
                             // Auto-deref doesn't combine with other adjustments
-                            && next_adjust.map_or(true, |a| matches!(a.kind, Adjust::Deref(_) | Adjust::Borrow(_)))
+                            && next_adjust.is_none_or(|a| matches!(a.kind, Adjust::Deref(_) | Adjust::Borrow(_)))
                             && iter.all(|a| matches!(a.kind, Adjust::Deref(_) | Adjust::Borrow(_)))
                         {
                             self.state = Some((State::Borrow { mutability }, StateData {
@@ -753,10 +754,10 @@ impl TyCoercionStability {
     fn for_defined_ty<'tcx>(cx: &LateContext<'tcx>, ty: DefinedTy<'tcx>, for_return: bool) -> Self {
         match ty {
             DefinedTy::Hir(ty) => Self::for_hir_ty(ty),
-            DefinedTy::Mir(ty) => Self::for_mir_ty(
+            DefinedTy::Mir { def_site_def_id, ty } => Self::for_mir_ty(
                 cx.tcx,
-                ty.param_env,
-                cx.tcx.instantiate_bound_regions_with_erased(ty.value),
+                def_site_def_id,
+                cx.tcx.instantiate_bound_regions_with_erased(ty),
                 for_return,
             ),
         }
@@ -813,22 +814,26 @@ impl TyCoercionStability {
                 | TyKind::Tup(_)
                 | TyKind::Path(_) => Self::Deref,
                 TyKind::OpaqueDef(..)
+                | TyKind::TraitAscription(..)
                 | TyKind::Infer
                 | TyKind::Typeof(..)
                 | TyKind::TraitObject(..)
                 | TyKind::InferDelegation(..)
-                | TyKind::AnonAdt(..)
                 | TyKind::Err(_) => Self::Reborrow,
+                TyKind::UnsafeBinder(..) => Self::None,
             };
         }
     }
 
-    fn for_mir_ty<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>, for_return: bool) -> Self {
+    fn for_mir_ty<'tcx>(tcx: TyCtxt<'tcx>, def_site_def_id: Option<DefId>, ty: Ty<'tcx>, for_return: bool) -> Self {
         let ty::Ref(_, mut ty, _) = *ty.kind() else {
             return Self::None;
         };
 
-        ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
+        if let Some(def_id) = def_site_def_id {
+            let typing_env = ty::TypingEnv::non_body_analysis(tcx, def_id);
+            ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+        }
         loop {
             break match *ty.kind() {
                 ty::Ref(_, ref_ty, _) => {
@@ -872,7 +877,8 @@ impl TyCoercionStability {
                 | ty::CoroutineClosure(..)
                 | ty::Never
                 | ty::Tuple(_)
-                | ty::Alias(ty::Projection, _) => Self::Deref,
+                | ty::Alias(ty::Projection, _)
+                | ty::UnsafeBinder(_) => Self::Deref,
             };
         }
     }
@@ -959,7 +965,7 @@ fn report<'tcx>(
             // expr_str (the suggestion) is never shown if is_final_ufcs is true, since it's
             // `expr.kind == ExprKind::Call`. Therefore, this is, afaik, always unnecessary.
             /*
-            expr_str = if !expr_is_macro_call && is_final_ufcs && expr.precedence().order() < PREC_PREFIX {
+            expr_str = if !expr_is_macro_call && is_final_ufcs && expr.precedence() < ExprPrecedence::Prefix {
                 Cow::Owned(format!("({expr_str})"))
             } else {
                 expr_str
@@ -995,13 +1001,16 @@ fn report<'tcx>(
                 data.first_expr.span,
                 state.msg,
                 |diag| {
-                    let (precedence, calls_field) = match cx.tcx.parent_hir_node(data.first_expr.hir_id) {
+                    let needs_paren = match cx.tcx.parent_hir_node(data.first_expr.hir_id) {
                         Node::Expr(e) => match e.kind {
-                            ExprKind::Call(callee, _) if callee.hir_id != data.first_expr.hir_id => (0, false),
-                            ExprKind::Call(..) => (PREC_UNAMBIGUOUS, matches!(expr.kind, ExprKind::Field(..))),
-                            _ => (e.precedence().order(), false),
+                            ExprKind::Call(callee, _) if callee.hir_id != data.first_expr.hir_id => false,
+                            ExprKind::Call(..) => {
+                                expr.precedence() < ExprPrecedence::Unambiguous
+                                    || matches!(expr.kind, ExprKind::Field(..))
+                            },
+                            _ => expr.precedence() < e.precedence(),
                         },
-                        _ => (0, false),
+                        _ => false,
                     };
                     let is_in_tuple = matches!(
                         get_parent_expr(cx, data.first_expr),
@@ -1011,11 +1020,7 @@ fn report<'tcx>(
                         })
                     );
 
-                    let sugg = if !snip_is_macro
-                        && (calls_field || expr.precedence().order() < precedence)
-                        && !has_enclosing_paren(&snip)
-                        && !is_in_tuple
-                    {
+                    let sugg = if !snip_is_macro && needs_paren && !has_enclosing_paren(&snip) && !is_in_tuple {
                         format!("({snip})")
                     } else {
                         snip.into()
@@ -1027,7 +1032,7 @@ fn report<'tcx>(
         State::ExplicitDeref { mutability } => {
             if is_block_like(expr)
                 && let ty::Ref(_, ty, _) = data.adjusted_ty.kind()
-                && ty.is_sized(cx.tcx, cx.param_env)
+                && ty.is_sized(cx.tcx, cx.typing_env())
             {
                 // Rustc bug: auto deref doesn't work on block expression when targeting sized types.
                 return;
@@ -1045,16 +1050,16 @@ fn report<'tcx>(
                 }
             }
 
-            let (prefix, precedence) = match mutability {
+            let (prefix, needs_paren) = match mutability {
                 Some(mutability) if !ty.is_ref() => {
                     let prefix = match mutability {
                         Mutability::Not => "&",
                         Mutability::Mut => "&mut ",
                     };
-                    (prefix, PREC_PREFIX)
+                    (prefix, expr.precedence() < ExprPrecedence::Prefix)
                 },
-                None if !ty.is_ref() && data.adjusted_ty.is_ref() => ("&", 0),
-                _ => ("", 0),
+                None if !ty.is_ref() && data.adjusted_ty.is_ref() => ("&", false),
+                _ => ("", false),
             };
             span_lint_hir_and_then(
                 cx,
@@ -1066,12 +1071,11 @@ fn report<'tcx>(
                     let mut app = Applicability::MachineApplicable;
                     let (snip, snip_is_macro) =
                         snippet_with_context(cx, expr.span, data.first_expr.span.ctxt(), "..", &mut app);
-                    let sugg =
-                        if !snip_is_macro && expr.precedence().order() < precedence && !has_enclosing_paren(&snip) {
-                            format!("{prefix}({snip})")
-                        } else {
-                            format!("{prefix}{snip}")
-                        };
+                    let sugg = if !snip_is_macro && needs_paren && !has_enclosing_paren(&snip) {
+                        format!("{prefix}({snip})")
+                    } else {
+                        format!("{prefix}{snip}")
+                    };
                     diag.span_suggestion(data.first_expr.span, "try", sugg, app);
                 },
             );
@@ -1154,7 +1158,7 @@ impl<'tcx> Dereferencing<'tcx> {
                         },
                         Some(parent) if !parent.span.from_expansion() => {
                             // Double reference might be needed at this point.
-                            if parent.precedence().order() == PREC_UNAMBIGUOUS {
+                            if parent.precedence() == ExprPrecedence::Unambiguous {
                                 // Parentheses would be needed here, don't lint.
                                 *outer_pat = None;
                             } else {

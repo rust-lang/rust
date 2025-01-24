@@ -9,7 +9,7 @@
 // cdb-command:g
 //
 // cdb-command:dx m,d
-// cdb-check:m,d              [Type: std::sync::mutex::Mutex<i32>]
+// cdb-check:m,d              [Type: std::sync::poison::mutex::Mutex<i32>]
 // cdb-check:    [...] inner            [Type: std::sys::sync::mutex::futex::Mutex]
 // cdb-check:    [...] poison           [Type: std::sync::poison::Flag]
 // cdb-check:    [...] data             : 0 [Type: core::cell::UnsafeCell<i32>]
@@ -21,8 +21,8 @@
 
 //
 // cdb-command:dx _lock,d
-// cdb-check:_lock,d          : Ok [Type: enum2$<core::result::Result<std::sync::mutex::MutexGuard<i32>,enum2$<std::sync::poison::TryLockError<std::sync::mutex::MutexGuard<i32> > > > >]
-// cdb-check:    [...] __0              [Type: std::sync::mutex::MutexGuard<i32>]
+// cdb-check:_lock,d          : Ok [Type: enum2$<core::result::Result<std::sync::poison::mutex::MutexGuard<i32>,enum2$<std::sync::poison::TryLockError<std::sync::poison::mutex::MutexGuard<i32> > > > >]
+// cdb-check:    [...] __0              [Type: std::sync::poison::mutex::MutexGuard<i32>]
 
 use std::sync::Mutex;
 

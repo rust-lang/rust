@@ -146,8 +146,6 @@ ast_passes_generic_before_constraints = generic arguments must come before the f
 
 ast_passes_generic_default_trailing = generic parameters with a default must be trailing
 
-ast_passes_impl_trait_path = `impl Trait` is not allowed in path parameters
-
 ast_passes_incompatible_features = `{$f1}` and `{$f2}` are incompatible, using them at the same time is not allowed
     .help = remove one of these features
 
@@ -208,8 +206,6 @@ ast_passes_precise_capturing_duplicated = duplicate `use<...>` precise capturing
     .label = second `use<...>` here
 
 ast_passes_precise_capturing_not_allowed_here = `use<...>` precise capturing syntax not allowed in {$loc}
-
-ast_passes_show_span = {$msg}
 
 ast_passes_stability_outside_std = stability attributes may not be used outside of the standard library
 

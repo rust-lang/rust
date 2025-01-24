@@ -1,15 +1,16 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::eq_expr_value;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use rustc_ast::ast::LitKind;
+use rustc_attr_parsing::RustcVersion;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, UnOp};
 use rustc_lint::{LateContext, LateLintPass, Level};
-use rustc_session::{RustcVersion, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
 
@@ -203,6 +204,21 @@ fn check_simplify_not(cx: &LateContext<'_>, msrv: &Msrv, expr: &Expr<'_>) {
         && let Some(suggestion) = simplify_not(cx, msrv, inner)
         && cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).0 != Level::Allow
     {
+        use clippy_utils::sugg::{Sugg, has_enclosing_paren};
+        let maybe_par = if let Some(sug) = Sugg::hir_opt(cx, inner) {
+            match sug {
+                Sugg::BinOp(..) => true,
+                Sugg::MaybeParen(sug) if !has_enclosing_paren(&sug) => true,
+                _ => false,
+            }
+        } else {
+            false
+        };
+        let suggestion = if maybe_par {
+            format!("({suggestion})")
+        } else {
+            suggestion
+        };
         span_lint_and_sugg(
             cx,
             NONMINIMAL_BOOL,
@@ -652,5 +668,5 @@ fn implements_ord(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
     cx.tcx
         .get_diagnostic_item(sym::Ord)
-        .map_or(false, |id| implements_trait(cx, ty, id, &[]))
+        .is_some_and(|id| implements_trait(cx, ty, id, &[]))
 }

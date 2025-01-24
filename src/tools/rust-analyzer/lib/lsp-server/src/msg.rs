@@ -3,7 +3,8 @@ use std::{
     io::{self, BufRead, Write},
 };
 
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::de::DeserializeOwned;
+use serde_derive::{Deserialize, Serialize};
 
 use crate::error::ExtractError;
 
@@ -180,15 +181,15 @@ impl Message {
 
         Ok(Some(msg))
     }
-    pub fn write(self, w: &mut impl Write) -> io::Result<()> {
+    pub fn write(&self, w: &mut impl Write) -> io::Result<()> {
         self._write(w)
     }
-    fn _write(self, w: &mut dyn Write) -> io::Result<()> {
+    fn _write(&self, w: &mut dyn Write) -> io::Result<()> {
         #[derive(Serialize)]
-        struct JsonRpc {
+        struct JsonRpc<'a> {
             jsonrpc: &'static str,
             #[serde(flatten)]
-            msg: Message,
+            msg: &'a Message,
         }
         let text = serde_json::to_string(&JsonRpc { jsonrpc: "2.0", msg: self })?;
         write_msg_text(w, &text)
@@ -196,7 +197,7 @@ impl Message {
 }
 
 impl Response {
-    pub fn new_ok<R: Serialize>(id: RequestId, result: R) -> Response {
+    pub fn new_ok<R: serde::Serialize>(id: RequestId, result: R) -> Response {
         Response { id, result: Some(serde_json::to_value(result).unwrap()), error: None }
     }
     pub fn new_err(id: RequestId, code: i32, message: String) -> Response {
@@ -206,7 +207,7 @@ impl Response {
 }
 
 impl Request {
-    pub fn new<P: Serialize>(id: RequestId, method: String, params: P) -> Request {
+    pub fn new<P: serde::Serialize>(id: RequestId, method: String, params: P) -> Request {
         Request { id, method, params: serde_json::to_value(params).unwrap() }
     }
     pub fn extract<P: DeserializeOwned>(
@@ -231,7 +232,7 @@ impl Request {
 }
 
 impl Notification {
-    pub fn new(method: String, params: impl Serialize) -> Notification {
+    pub fn new(method: String, params: impl serde::Serialize) -> Notification {
         Notification { method, params: serde_json::to_value(params).unwrap() }
     }
     pub fn extract<P: DeserializeOwned>(

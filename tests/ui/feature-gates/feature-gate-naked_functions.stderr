@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'naked_functions'
+error[E0658]: use of unstable library feature `naked_functions`
   --> $DIR/feature-gate-naked_functions.rs:9:5
    |
 LL |     naked_asm!("")
@@ -8,7 +8,7 @@ LL |     naked_asm!("")
    = help: add `#![feature(naked_functions)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'naked_functions'
+error[E0658]: use of unstable library feature `naked_functions`
   --> $DIR/feature-gate-naked_functions.rs:17:5
    |
 LL |     naked_asm!("")
@@ -38,7 +38,7 @@ LL | #[naked]
    = help: add `#![feature(naked_functions)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'naked_functions'
+error[E0658]: use of unstable library feature `naked_functions`
   --> $DIR/feature-gate-naked_functions.rs:3:5
    |
 LL | use std::arch::naked_asm;

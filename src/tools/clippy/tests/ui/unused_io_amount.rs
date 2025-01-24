@@ -277,4 +277,18 @@ fn allow_works<F: std::io::Read>(mut f: F) {
     f.read(&mut data).unwrap();
 }
 
+struct Reader {}
+
+impl Read for Reader {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        todo!()
+    }
+
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        // We shouldn't recommend using Read::read_exact inside Read::read_exact!
+        self.read(buf).unwrap();
+        Ok(())
+    }
+}
+
 fn main() {}

@@ -2,7 +2,6 @@
 
 mod a {
     type Foo = impl PartialEq<(Foo, i32)>;
-    //~^ ERROR: unconstrained opaque type
 
     struct Bar;
 

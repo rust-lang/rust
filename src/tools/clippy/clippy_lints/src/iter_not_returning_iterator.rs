@@ -70,12 +70,12 @@ fn check_sig(cx: &LateContext<'_>, name: Symbol, sig: &FnSig<'_>, fn_id: LocalDe
             .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(fn_id).instantiate_identity().output());
         let ret_ty = cx
             .tcx
-            .try_normalize_erasing_regions(cx.param_env, ret_ty)
+            .try_normalize_erasing_regions(cx.typing_env(), ret_ty)
             .unwrap_or(ret_ty);
         if cx
             .tcx
             .get_diagnostic_item(sym::Iterator)
-            .map_or(false, |iter_id| !implements_trait(cx, ret_ty, iter_id, &[]))
+            .is_some_and(|iter_id| !implements_trait(cx, ret_ty, iter_id, &[]))
         {
             span_lint(
                 cx,

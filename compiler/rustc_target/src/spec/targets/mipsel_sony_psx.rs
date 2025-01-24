@@ -14,8 +14,11 @@ pub(crate) fn target() -> Target {
         arch: "mips".into(),
 
         options: TargetOptions {
-            os: "none".into(),
-            env: "psx".into(),
+            // The Playstation 1 is mostly bare-metal, but the BIOS does provide some a slight bit
+            // of functionality post load, so we still declare it as `cfg!(target_os = "psx")`.
+            //
+            // See <https://github.com/rust-lang/rust/pull/131168> for details.
+            os: "psx".into(),
             vendor: "sony".into(),
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             cpu: "mips1".into(),

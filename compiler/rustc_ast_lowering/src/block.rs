@@ -1,5 +1,6 @@
 use rustc_ast::{Block, BlockCheckMode, Local, LocalKind, Stmt, StmtKind};
 use rustc_hir as hir;
+use rustc_span::sym;
 use smallvec::SmallVec;
 
 use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext};
@@ -10,17 +11,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         b: &Block,
         targeted_by_break: bool,
     ) -> &'hir hir::Block<'hir> {
-        self.arena.alloc(self.lower_block_noalloc(b, targeted_by_break))
+        let hir_id = self.lower_node_id(b.id);
+        self.arena.alloc(self.lower_block_noalloc(hir_id, b, targeted_by_break))
     }
 
     pub(super) fn lower_block_noalloc(
         &mut self,
+        hir_id: hir::HirId,
         b: &Block,
         targeted_by_break: bool,
     ) -> hir::Block<'hir> {
         let (stmts, expr) = self.lower_stmts(&b.stmts);
         let rules = self.lower_block_check_mode(&b.rules);
-        let hir_id = self.lower_node_id(b.id);
         hir::Block { hir_id, stmts, expr, rules, span: self.lower_span(b.span), targeted_by_break }
     }
 
@@ -81,11 +83,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         (self.arena.alloc_from_iter(stmts), expr)
     }
 
+    /// Return an `ImplTraitContext` that allows impl trait in bindings if
+    /// the feature gate is enabled, or issues a feature error if it is not.
+    fn impl_trait_in_bindings_ctxt(&self, position: ImplTraitPosition) -> ImplTraitContext {
+        if self.tcx.features().impl_trait_in_bindings() {
+            ImplTraitContext::InBinding
+        } else {
+            ImplTraitContext::FeatureGated(position, sym::impl_trait_in_bindings)
+        }
+    }
+
     fn lower_local(&mut self, l: &Local) -> &'hir hir::LetStmt<'hir> {
-        let ty = l
-            .ty
-            .as_ref()
-            .map(|t| self.lower_ty(t, ImplTraitContext::Disallowed(ImplTraitPosition::Variable)));
+        // Let statements are allowed to have impl trait in bindings.
+        let ty = l.ty.as_ref().map(|t| {
+            self.lower_ty(t, self.impl_trait_in_bindings_ctxt(ImplTraitPosition::Variable))
+        });
         let init = l.kind.init().map(|init| self.lower_expr(init));
         let hir_id = self.lower_node_id(l.id);
         let pat = self.lower_pat(&l.pat);

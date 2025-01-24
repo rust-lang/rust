@@ -1,6 +1,6 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_applicability};
 use clippy_utils::{SpanlessEq, SpanlessHash, is_from_proc_macro};
 use core::hash::{Hash, Hasher};
@@ -10,8 +10,8 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{
-    GenericBound, Generics, Item, ItemKind, LangItem, Node, Path, PathSegment, PredicateOrigin, QPath,
-    TraitBoundModifier, TraitItem, TraitRef, Ty, TyKind, WherePredicate,
+    BoundPolarity, GenericBound, Generics, Item, ItemKind, LangItem, Node, Path, PathSegment, PredicateOrigin, QPath,
+    TraitBoundModifiers, TraitItem, TraitRef, Ty, TyKind, WherePredicateKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -124,9 +124,9 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
         let mut self_bounds_map = FxHashMap::default();
 
         for predicate in item.generics.predicates {
-            if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate
+            if let WherePredicateKind::BoundPredicate(bound_predicate) = predicate.kind
                 && bound_predicate.origin != PredicateOrigin::ImplTrait
-                && !bound_predicate.span.from_expansion()
+                && !predicate.span.from_expansion()
                 && let TyKind::Path(QPath::Resolved(_, Path { segments, .. })) = bound_predicate.bounded_ty.kind
                 && let Some(PathSegment {
                     res: Res::SelfTyParam { trait_: def_id },
@@ -233,7 +233,7 @@ impl TraitBounds {
     fn cannot_combine_maybe_bound(&self, cx: &LateContext<'_>, bound: &GenericBound<'_>) -> bool {
         if !self.msrv.meets(msrvs::MAYBE_BOUND_IN_WHERE)
             && let GenericBound::Trait(tr) = bound
-            && let TraitBoundModifier::Maybe = tr.modifiers
+            && let BoundPolarity::Maybe(_) = tr.modifiers.polarity
         {
             cx.tcx.lang_items().get(LangItem::Sized) == tr.trait_ref.path.res.opt_def_id()
         } else {
@@ -268,10 +268,10 @@ impl TraitBounds {
         let mut map: UnhashMap<SpanlessTy<'_, '_>, Vec<&GenericBound<'_>>> = UnhashMap::default();
         let mut applicability = Applicability::MaybeIncorrect;
         for bound in generics.predicates {
-            if let WherePredicate::BoundPredicate(ref p) = bound
+            if let WherePredicateKind::BoundPredicate(p) = bound.kind
                 && p.origin != PredicateOrigin::ImplTrait
                 && p.bounds.len() as u64 <= self.max_trait_bounds
-                && !p.span.from_expansion()
+                && !bound.span.from_expansion()
                 && let bounds = p
                     .bounds
                     .iter()
@@ -295,7 +295,7 @@ impl TraitBounds {
                 span_lint_and_help(
                     cx,
                     TYPE_REPETITION_IN_BOUNDS,
-                    p.span,
+                    bound.span,
                     "this type has already been used as a bound predicate",
                     None,
                     hint_string,
@@ -322,8 +322,8 @@ fn check_trait_bound_duplication<'tcx>(cx: &LateContext<'tcx>, generics: &'_ Gen
         .predicates
         .iter()
         .filter_map(|pred| {
-            if pred.in_where_clause()
-                && let WherePredicate::BoundPredicate(bound_predicate) = pred
+            if pred.kind.in_where_clause()
+                && let WherePredicateKind::BoundPredicate(bound_predicate) = pred.kind
                 && let TyKind::Path(QPath::Resolved(_, path)) = bound_predicate.bounded_ty.kind
             {
                 return Some(
@@ -347,10 +347,10 @@ fn check_trait_bound_duplication<'tcx>(cx: &LateContext<'tcx>, generics: &'_ Gen
     //            |
     // compare trait bounds keyed by generic name and comparable trait to collected where
     // predicates eg. (T, Clone)
-    for predicate in generics.predicates.iter().filter(|pred| !pred.in_where_clause()) {
-        if let WherePredicate::BoundPredicate(bound_predicate) = predicate
+    for predicate in generics.predicates.iter().filter(|pred| !pred.kind.in_where_clause()) {
+        if let WherePredicateKind::BoundPredicate(bound_predicate) = predicate.kind
             && bound_predicate.origin != PredicateOrigin::ImplTrait
-            && !bound_predicate.span.from_expansion()
+            && !predicate.span.from_expansion()
             && let TyKind::Path(QPath::Resolved(_, path)) = bound_predicate.bounded_ty.kind
         {
             let traits = rollup_traits(cx, bound_predicate.bounds, "these bounds contain repeated elements");
@@ -374,12 +374,12 @@ fn check_trait_bound_duplication<'tcx>(cx: &LateContext<'tcx>, generics: &'_ Gen
 struct ComparableTraitRef<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     trait_ref: &'tcx TraitRef<'tcx>,
-    modifier: TraitBoundModifier,
+    modifiers: TraitBoundModifiers,
 }
 
 impl PartialEq for ComparableTraitRef<'_, '_> {
     fn eq(&self, other: &Self) -> bool {
-        self.modifier == other.modifier
+        SpanlessEq::eq_modifiers(self.modifiers, other.modifiers)
             && SpanlessEq::new(self.cx)
                 .paths_by_resolution()
                 .eq_path(self.trait_ref.path, other.trait_ref.path)
@@ -390,8 +390,8 @@ impl Hash for ComparableTraitRef<'_, '_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         let mut s = SpanlessHash::new(self.cx).paths_by_resolution();
         s.hash_path(self.trait_ref.path);
+        s.hash_modifiers(self.modifiers);
         state.write_u64(s.finish());
-        self.modifier.hash(state);
     }
 }
 
@@ -400,7 +400,7 @@ fn get_trait_info_from_bound<'a>(bound: &'a GenericBound<'_>) -> Option<(Res, &'
         let trait_path = t.trait_ref.path;
         let trait_span = {
             let path_span = trait_path.span;
-            if let TraitBoundModifier::Maybe = t.modifiers {
+            if let BoundPolarity::Maybe(_) = t.modifiers.polarity {
                 path_span.with_lo(path_span.lo() - BytePos(1)) // include the `?`
             } else {
                 path_span
@@ -427,7 +427,7 @@ fn rollup_traits<'cx, 'tcx>(
                 ComparableTraitRef {
                     cx,
                     trait_ref: &t.trait_ref,
-                    modifier: t.modifiers,
+                    modifiers: t.modifiers,
                 },
                 t.span,
             ))

@@ -47,34 +47,34 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U>> for Box<T> {}
 
-#[lang = "receiver"]
-pub trait Receiver {}
+#[lang = "legacy_receiver"]
+pub trait LegacyReceiver {}
 
-impl<T: ?Sized> Receiver for &T {}
-impl<T: ?Sized> Receiver for &mut T {}
-impl<T: ?Sized> Receiver for Box<T> {}
+impl<T: ?Sized> LegacyReceiver for &T {}
+impl<T: ?Sized> LegacyReceiver for &mut T {}
+impl<T: ?Sized> LegacyReceiver for Box<T> {}
 
 #[lang = "copy"]
-pub unsafe trait Copy {}
+pub trait Copy {}
 
-unsafe impl Copy for bool {}
-unsafe impl Copy for u8 {}
-unsafe impl Copy for u16 {}
-unsafe impl Copy for u32 {}
-unsafe impl Copy for u64 {}
-unsafe impl Copy for u128 {}
-unsafe impl Copy for usize {}
-unsafe impl Copy for i8 {}
-unsafe impl Copy for i16 {}
-unsafe impl Copy for i32 {}
-unsafe impl Copy for isize {}
-unsafe impl Copy for f32 {}
-unsafe impl Copy for f64 {}
-unsafe impl Copy for char {}
-unsafe impl<'a, T: ?Sized> Copy for &'a T {}
-unsafe impl<T: ?Sized> Copy for *const T {}
-unsafe impl<T: ?Sized> Copy for *mut T {}
-unsafe impl<T: Copy> Copy for Option<T> {}
+impl Copy for bool {}
+impl Copy for u8 {}
+impl Copy for u16 {}
+impl Copy for u32 {}
+impl Copy for u64 {}
+impl Copy for u128 {}
+impl Copy for usize {}
+impl Copy for i8 {}
+impl Copy for i16 {}
+impl Copy for i32 {}
+impl Copy for isize {}
+impl Copy for f32 {}
+impl Copy for f64 {}
+impl Copy for char {}
+impl<'a, T: ?Sized> Copy for &'a T {}
+impl<T: ?Sized> Copy for *const T {}
+impl<T: ?Sized> Copy for *mut T {}
+impl<T: Copy> Copy for Option<T> {}
 
 #[lang = "sync"]
 pub unsafe trait Sync {}
@@ -616,25 +616,70 @@ pub union MaybeUninit<T> {
 }
 
 pub mod intrinsics {
-    extern "rust-intrinsic" {
-        #[rustc_safe_intrinsic]
-        pub fn abort() -> !;
-        #[rustc_safe_intrinsic]
-        pub fn size_of<T>() -> usize;
-        pub fn size_of_val<T: ?::Sized>(val: *const T) -> usize;
-        #[rustc_safe_intrinsic]
-        pub fn min_align_of<T>() -> usize;
-        pub fn min_align_of_val<T: ?::Sized>(val: *const T) -> usize;
-        pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
-        pub fn transmute<T, U>(e: T) -> U;
-        pub fn ctlz_nonzero<T>(x: T) -> u32;
-        #[rustc_safe_intrinsic]
-        pub fn needs_drop<T: ?::Sized>() -> bool;
-        #[rustc_safe_intrinsic]
-        pub fn bitreverse<T>(x: T) -> T;
-        #[rustc_safe_intrinsic]
-        pub fn bswap<T>(x: T) -> T;
-        pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub fn abort() -> ! {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub fn size_of<T>() -> usize {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub unsafe fn size_of_val<T: ?::Sized>(_val: *const T) -> usize {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub fn min_align_of<T>() -> usize {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub unsafe fn min_align_of_val<T: ?::Sized>(_val: *const T) -> usize {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub unsafe fn copy<T>(_src: *const T, _dst: *mut T, _count: usize) {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub unsafe fn transmute<T, U>(_e: T) -> U {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub unsafe fn ctlz_nonzero<T>(_x: T) -> u32 {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub fn needs_drop<T: ?::Sized>() -> bool {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub fn bitreverse<T>(_x: T) -> T {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub fn bswap<T>(_x: T) -> T {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub unsafe fn write_bytes<T>(_dst: *mut T, _val: u8, _count: usize) {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub unsafe fn unreachable() -> ! {
+        loop {}
     }
 }
 

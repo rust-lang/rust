@@ -79,9 +79,9 @@ fn min_max<'a, 'tcx>(cx: &LateContext<'tcx>, expr: &'a Expr<'a>) -> Option<(MinM
         },
         ExprKind::MethodCall(path, receiver, args @ [_], _) => {
             if cx.typeck_results().expr_ty(receiver).is_floating_point() || is_trait_method(cx, expr, sym::Ord) {
-                if path.ident.name == sym!(max) {
+                if path.ident.name.as_str() == "max" {
                     fetch_const(cx, Some(receiver), args, MinMax::Max)
-                } else if path.ident.name == sym!(min) {
+                } else if path.ident.name.as_str() == "min" {
                     fetch_const(cx, Some(receiver), args, MinMax::Min)
                 } else {
                     None

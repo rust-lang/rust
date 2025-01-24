@@ -1,7 +1,51 @@
+use std::fs::FileType;
 use std::io;
 use std::path::{Path, PathBuf};
 
-/// Copy a directory into another.
+/// Given a symlink at `src`, read its target, then create a new symlink at `dst` also pointing to
+/// target.
+pub fn copy_symlink(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
+    let src = src.as_ref();
+    let dst = dst.as_ref();
+    let metadata = symlink_metadata(src);
+    if let Err(e) = copy_symlink_raw(metadata.file_type(), src, dst) {
+        panic!("failed to copy symlink from `{}` to `{}`: {e}", src.display(), dst.display(),);
+    }
+}
+
+fn copy_symlink_raw(ty: FileType, src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
+    // Traverse symlink once to find path of target entity.
+    let target_path = std::fs::read_link(src)?;
+
+    let new_symlink_path = dst.as_ref();
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::FileTypeExt;
+        if ty.is_symlink_dir() {
+            std::os::windows::fs::symlink_dir(&target_path, new_symlink_path)?;
+        } else {
+            // Target may be a file or another symlink, in any case we can use
+            // `symlink_file` here.
+            std::os::windows::fs::symlink_file(&target_path, new_symlink_path)?;
+        }
+    }
+    #[cfg(unix)]
+    {
+        let _ = ty;
+        std::os::unix::fs::symlink(target_path, new_symlink_path)?;
+    }
+    #[cfg(not(any(windows, unix)))]
+    {
+        let _ = ty;
+        // Technically there's also wasi, but I have no clue about wasi symlink
+        // semantics and which wasi targets / environment support symlinks.
+        unimplemented!("unsupported target");
+    }
+    Ok(())
+}
+
+/// Copy a directory into another. This will not traverse symlinks; instead, it will create new
+/// symlinks pointing at target paths that symlinks in the original directory points to.
 pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
     fn copy_dir_all_inner(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
         let dst = dst.as_ref();
@@ -14,31 +58,7 @@ pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
             if ty.is_dir() {
                 copy_dir_all_inner(entry.path(), dst.join(entry.file_name()))?;
             } else if ty.is_symlink() {
-                // Traverse symlink once to find path of target entity.
-                let target_path = std::fs::read_link(entry.path())?;
-
-                let new_symlink_path = dst.join(entry.file_name());
-                #[cfg(windows)]
-                {
-                    use std::os::windows::fs::FileTypeExt;
-                    if ty.is_symlink_dir() {
-                        std::os::windows::fs::symlink_dir(&target_path, new_symlink_path)?;
-                    } else {
-                        // Target may be a file or another symlink, in any case we can use
-                        // `symlink_file` here.
-                        std::os::windows::fs::symlink_file(&target_path, new_symlink_path)?;
-                    }
-                }
-                #[cfg(unix)]
-                {
-                    std::os::unix::fs::symlink(target_path, new_symlink_path)?;
-                }
-                #[cfg(not(any(windows, unix)))]
-                {
-                    // Technically there's also wasi, but I have no clue about wasi symlink
-                    // semantics and which wasi targets / environment support symlinks.
-                    unimplemented!("unsupported target");
-                }
+                copy_symlink_raw(ty, entry.path(), dst.join(entry.file_name()))?;
             } else {
                 std::fs::copy(entry.path(), dst.join(entry.file_name()))?;
             }
@@ -61,6 +81,21 @@ pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
 pub fn read_dir_entries<P: AsRef<Path>, F: FnMut(&Path)>(dir: P, mut callback: F) {
     for entry in read_dir(dir) {
         callback(&entry.unwrap().path());
+    }
+}
+
+/// A wrapper around [`build_helper::fs::recursive_remove`] which includes the file path in the
+/// panic message.
+///
+/// This handles removing symlinks on Windows (e.g. symlink-to-file will be removed via
+/// [`std::fs::remove_file`] while symlink-to-dir will be removed via [`std::fs::remove_dir`]).
+#[track_caller]
+pub fn recursive_remove<P: AsRef<Path>>(path: P) {
+    if let Err(e) = build_helper::fs::recursive_remove(path.as_ref()) {
+        panic!(
+            "failed to recursive remove filesystem entities at `{}`: {e}",
+            path.as_ref().display()
+        );
     }
 }
 

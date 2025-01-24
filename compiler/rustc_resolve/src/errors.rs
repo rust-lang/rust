@@ -1,8 +1,7 @@
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ElidedLifetimeInPathSubdiag, MultiSpan};
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 use crate::Res;
 use crate::late::PatternSource;
@@ -663,6 +662,22 @@ pub(crate) struct MacroSuggMovePosition {
     #[primary_span]
     pub(crate) span: Span,
     pub(crate) ident: Ident,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum MacroRulesNot {
+    #[label(resolve_macro_cannot_use_as_attr)]
+    Attr {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+    #[label(resolve_macro_cannot_use_as_derive)]
+    Derive {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
 }
 
 #[derive(Subdiagnostic)]

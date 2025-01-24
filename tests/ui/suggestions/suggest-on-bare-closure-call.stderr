@@ -1,5 +1,5 @@
 error[E0618]: expected function, found `()`
-  --> $DIR/suggest-on-bare-closure-call.rs:6:15
+  --> $DIR/suggest-on-bare-closure-call.rs:4:15
    |
 LL |     let _ = ||{}();
    |               ^^--
@@ -12,7 +12,7 @@ LL |     let _ = (||{})();
    |             +    +
 
 error[E0618]: expected function, found `()`
-  --> $DIR/suggest-on-bare-closure-call.rs:9:21
+  --> $DIR/suggest-on-bare-closure-call.rs:7:21
    |
 LL |     let _ = async ||{}();
    |                     ^^--

@@ -56,7 +56,6 @@
 #[cfg(not(no_global_oom_handling))]
 use core::cmp;
 use core::cmp::Ordering;
-use core::fmt;
 use core::hash::{Hash, Hasher};
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
@@ -65,6 +64,7 @@ use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
+use core::{fmt, intrinsics};
 
 #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
 pub use self::extract_if::ExtractIf;
@@ -427,7 +427,7 @@ impl<T> Vec<T> {
     ///
     /// The vector will be able to hold at least `capacity` elements without
     /// reallocating. This method is allowed to allocate for more elements than
-    /// `capacity`. If `capacity` is 0, the vector will not allocate.
+    /// `capacity`. If `capacity` is zero, the vector will not allocate.
     ///
     /// It is important to note that although the returned vector has the
     /// minimum *capacity* specified, the vector will have a zero *length*. For
@@ -487,7 +487,7 @@ impl<T> Vec<T> {
     ///
     /// The vector will be able to hold at least `capacity` elements without
     /// reallocating. This method is allowed to allocate for more elements than
-    /// `capacity`. If `capacity` is 0, the vector will not allocate.
+    /// `capacity`. If `capacity` is zero, the vector will not allocate.
     ///
     /// # Errors
     ///
@@ -745,7 +745,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// The vector will be able to hold at least `capacity` elements without
     /// reallocating. This method is allowed to allocate for more elements than
-    /// `capacity`. If `capacity` is 0, the vector will not allocate.
+    /// `capacity`. If `capacity` is zero, the vector will not allocate.
     ///
     /// It is important to note that although the returned vector has the
     /// minimum *capacity* specified, the vector will have a zero *length*. For
@@ -808,7 +808,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// The vector will be able to hold at least `capacity` elements without
     /// reallocating. This method is allowed to allocate for more elements than
-    /// `capacity`. If `capacity` is 0, the vector will not allocate.
+    /// `capacity`. If `capacity` is zero, the vector will not allocate.
     ///
     /// # Errors
     ///
@@ -1662,6 +1662,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
     #[rustc_never_returns_null_ptr]
+    #[rustc_as_ptr]
     #[inline]
     pub const fn as_ptr(&self) -> *const T {
         // We shadow the slice method of the same name to avoid going through
@@ -1724,6 +1725,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
     #[rustc_never_returns_null_ptr]
+    #[rustc_as_ptr]
     #[inline]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
         // We shadow the slice method of the same name to avoid going through
@@ -1822,7 +1824,10 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Examples
     ///
-    /// This method can be useful for situations in which the vector
+    /// See [`spare_capacity_mut()`] for an example with safe
+    /// initialization of capacity elements and use of this method.
+    ///
+    /// `set_len()` can be useful for situations in which the vector
     /// is serving as a buffer for other code, particularly over FFI:
     ///
     /// ```no_run
@@ -1882,6 +1887,8 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// Normally, here, one would use [`clear`] instead to correctly drop
     /// the contents and thus not leak memory.
+    ///
+    /// [`spare_capacity_mut()`]: Vec::spare_capacity_mut
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn set_len(&mut self, new_len: usize) {
@@ -1951,11 +1958,11 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// let mut vec = vec![1, 2, 3];
-    /// vec.insert(1, 4);
-    /// assert_eq!(vec, [1, 4, 2, 3]);
-    /// vec.insert(4, 5);
-    /// assert_eq!(vec, [1, 4, 2, 3, 5]);
+    /// let mut vec = vec!['a', 'b', 'c'];
+    /// vec.insert(1, 'd');
+    /// assert_eq!(vec, ['a', 'd', 'b', 'c']);
+    /// vec.insert(4, 'e');
+    /// assert_eq!(vec, ['a', 'd', 'b', 'c', 'e']);
     /// ```
     ///
     /// # Time complexity
@@ -2022,9 +2029,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// let mut v = vec![1, 2, 3];
-    /// assert_eq!(v.remove(1), 2);
-    /// assert_eq!(v, [1, 3]);
+    /// let mut v = vec!['a', 'b', 'c'];
+    /// assert_eq!(v.remove(1), 'b');
+    /// assert_eq!(v, ['a', 'c']);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
@@ -2673,7 +2680,14 @@ impl<T, A: Allocator> Vec<T, A> {
     #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
     #[rustc_confusables("length", "size")]
     pub const fn len(&self) -> usize {
-        self.len
+        let len = self.len;
+
+        // SAFETY: The maximum capacity of `Vec<T>` is `isize::MAX` bytes, so the maximum value can
+        // be returned is `usize::checked_div(mem::size_of::<T>()).unwrap_or(usize::MAX)`, which
+        // matches the definition of `T::MAX_SLICE_LEN`.
+        unsafe { intrinsics::assume(len <= T::MAX_SLICE_LEN) };
+
+        len
     }
 
     /// Returns `true` if the vector contains no elements.
@@ -2713,10 +2727,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// let mut vec = vec![1, 2, 3];
+    /// let mut vec = vec!['a', 'b', 'c'];
     /// let vec2 = vec.split_off(1);
-    /// assert_eq!(vec, [1]);
-    /// assert_eq!(vec2, [2, 3]);
+    /// assert_eq!(vec, ['a']);
+    /// assert_eq!(vec2, ['b', 'c']);
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
@@ -2980,9 +2994,9 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// vec.resize(3, "world");
     /// assert_eq!(vec, ["hello", "world", "world"]);
     ///
-    /// let mut vec = vec![1, 2, 3, 4];
-    /// vec.resize(2, 0);
-    /// assert_eq!(vec, [1, 2]);
+    /// let mut vec = vec!['a', 'b', 'c', 'd'];
+    /// vec.resize(2, '_');
+    /// assert_eq!(vec, ['a', 'b']);
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_resize", since = "1.5.0")]
@@ -3023,26 +3037,29 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
         self.spec_extend(other.iter())
     }
 
-    /// Copies elements from `src` range to the end of the vector.
+    /// Given a range `src`, clones a slice of elements in that range and appends it to the end.
+    ///
+    /// `src` must be a range that can form a valid subslice of the `Vec`.
     ///
     /// # Panics
     ///
-    /// Panics if the starting point is greater than the end point or if
-    /// the end point is greater than the length of the vector.
+    /// Panics if starting index is greater than the end index
+    /// or if the index is greater than the length of the vector.
     ///
     /// # Examples
     ///
     /// ```
-    /// let mut vec = vec![0, 1, 2, 3, 4];
+    /// let mut characters = vec!['a', 'b', 'c', 'd', 'e'];
+    /// characters.extend_from_within(2..);
+    /// assert_eq!(characters, ['a', 'b', 'c', 'd', 'e', 'c', 'd', 'e']);
     ///
-    /// vec.extend_from_within(2..);
-    /// assert_eq!(vec, [0, 1, 2, 3, 4, 2, 3, 4]);
+    /// let mut numbers = vec![0, 1, 2, 3, 4];
+    /// numbers.extend_from_within(..2);
+    /// assert_eq!(numbers, [0, 1, 2, 3, 4, 0, 1]);
     ///
-    /// vec.extend_from_within(..2);
-    /// assert_eq!(vec, [0, 1, 2, 3, 4, 2, 3, 4, 0, 1]);
-    ///
-    /// vec.extend_from_within(4..8);
-    /// assert_eq!(vec, [0, 1, 2, 3, 4, 2, 3, 4, 0, 1, 4, 2, 3, 4]);
+    /// let mut strings = vec![String::from("hello"), String::from("world"), String::from("!")];
+    /// strings.extend_from_within(1..=2);
+    /// assert_eq!(strings, ["hello", "world", "!", "world", "!"]);
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_extend_from_within", since = "1.53.0")]
@@ -3570,7 +3587,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// with the given `replace_with` iterator and yields the removed items.
     /// `replace_with` does not need to be the same length as `range`.
     ///
-    /// `range` is removed even if the iterator is not consumed until the end.
+    /// `range` is removed even if the `Splice` iterator is not consumed before it is dropped.
     ///
     /// It is unspecified how many elements are removed from the vector
     /// if the `Splice` value is leaked.
@@ -3596,8 +3613,18 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let mut v = vec![1, 2, 3, 4];
     /// let new = [7, 8, 9];
     /// let u: Vec<_> = v.splice(1..3, new).collect();
-    /// assert_eq!(v, &[1, 7, 8, 9, 4]);
-    /// assert_eq!(u, &[2, 3]);
+    /// assert_eq!(v, [1, 7, 8, 9, 4]);
+    /// assert_eq!(u, [2, 3]);
+    /// ```
+    ///
+    /// Using `splice` to insert new items into a vector efficiently at a specific position
+    /// indicated by an empty range:
+    ///
+    /// ```
+    /// let mut v = vec![1, 5];
+    /// let new = [2, 3, 4];
+    /// v.splice(1..1, new);
+    /// assert_eq!(v, [1, 2, 3, 4, 5]);
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
@@ -3610,11 +3637,14 @@ impl<T, A: Allocator> Vec<T, A> {
         Splice { drain: self.drain(range), replace_with: replace_with.into_iter() }
     }
 
-    /// Creates an iterator which uses a closure to determine if an element should be removed.
+    /// Creates an iterator which uses a closure to determine if element in the range should be removed.
     ///
     /// If the closure returns true, then the element is removed and yielded.
     /// If the closure returns false, the element will remain in the vector and will not be yielded
     /// by the iterator.
+    ///
+    /// Only elements that fall in the provided range are considered for extraction, but any elements
+    /// after the range will still have to be moved if any element has been extracted.
     ///
     /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
     /// or the iteration short-circuits, then the remaining elements will be retained.
@@ -3625,10 +3655,12 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Using this method is equivalent to the following code:
     ///
     /// ```
+    /// # use std::cmp::min;
     /// # let some_predicate = |x: &mut i32| { *x == 2 || *x == 3 || *x == 6 };
     /// # let mut vec = vec![1, 2, 3, 4, 5, 6];
-    /// let mut i = 0;
-    /// while i < vec.len() {
+    /// # let range = 1..4;
+    /// let mut i = range.start;
+    /// while i < min(vec.len(), range.end) {
     ///     if some_predicate(&mut vec[i]) {
     ///         let val = vec.remove(i);
     ///         // your code here
@@ -3643,8 +3675,12 @@ impl<T, A: Allocator> Vec<T, A> {
     /// But `extract_if` is easier to use. `extract_if` is also more efficient,
     /// because it can backshift the elements of the array in bulk.
     ///
-    /// Note that `extract_if` also lets you mutate every element in the filter closure,
-    /// regardless of whether you choose to keep or remove it.
+    /// Note that `extract_if` also lets you mutate the elements passed to the filter closure,
+    /// regardless of whether you choose to keep or remove them.
+    ///
+    /// # Panics
+    ///
+    /// If `range` is out of bounds.
     ///
     /// # Examples
     ///
@@ -3654,25 +3690,29 @@ impl<T, A: Allocator> Vec<T, A> {
     /// #![feature(extract_if)]
     /// let mut numbers = vec![1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15];
     ///
-    /// let evens = numbers.extract_if(|x| *x % 2 == 0).collect::<Vec<_>>();
+    /// let evens = numbers.extract_if(.., |x| *x % 2 == 0).collect::<Vec<_>>();
     /// let odds = numbers;
     ///
     /// assert_eq!(evens, vec![2, 4, 6, 8, 14]);
     /// assert_eq!(odds, vec![1, 3, 5, 9, 11, 13, 15]);
     /// ```
+    ///
+    /// Using the range argument to only process a part of the vector:
+    ///
+    /// ```
+    /// #![feature(extract_if)]
+    /// let mut items = vec![0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 2, 1, 2];
+    /// let ones = items.extract_if(7.., |x| *x == 1).collect::<Vec<_>>();
+    /// assert_eq!(items, vec![0, 0, 0, 0, 0, 0, 0, 2, 2, 2]);
+    /// assert_eq!(ones.len(), 3);
+    /// ```
     #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
-    pub fn extract_if<F>(&mut self, filter: F) -> ExtractIf<'_, T, F, A>
+    pub fn extract_if<F, R>(&mut self, range: R, filter: F) -> ExtractIf<'_, T, F, A>
     where
         F: FnMut(&mut T) -> bool,
+        R: RangeBounds<usize>,
     {
-        let old_len = self.len();
-
-        // Guard against us getting leaked (leak amplification)
-        unsafe {
-            self.set_len(0);
-        }
-
-        ExtractIf { vec: self, idx: 0, del: 0, old_len, pred: filter }
+        ExtractIf::new(self, filter, range)
     }
 }
 

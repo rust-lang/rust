@@ -2,7 +2,6 @@
 // Test that the lifetime of the enclosing `&` is used for the object
 // lifetime bound.
 
-//@ pretty-expanded FIXME #23616
 
 #![allow(dead_code)]
 

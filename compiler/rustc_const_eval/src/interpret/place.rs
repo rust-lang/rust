@@ -5,11 +5,10 @@
 use std::assert_matches::assert_matches;
 
 use either::{Either, Left, Right};
-use rustc_ast::Mutability;
+use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_target::abi::{Abi, Align, HasDataLayout, Size};
 use tracing::{instrument, trace};
 
 use super::{
@@ -540,7 +539,7 @@ where
                 )?;
             if !mir_assign_valid_types(
                 *self.tcx,
-                self.param_env,
+                self.typing_env,
                 self.layout_of(normalized_place_ty)?,
                 place.layout,
             ) {
@@ -659,7 +658,7 @@ where
                 // Unfortunately this is too expensive to do in release builds.
                 if cfg!(debug_assertions) {
                     src.assert_matches_abi(
-                        local_layout.abi,
+                        local_layout.backend_repr,
                         "invalid immediate for given destination place",
                         self,
                     );
@@ -683,7 +682,11 @@ where
     ) -> InterpResult<'tcx> {
         // We use the sizes from `value` below.
         // Ensure that matches the type of the place it is written to.
-        value.assert_matches_abi(layout.abi, "invalid immediate for given destination place", self);
+        value.assert_matches_abi(
+            layout.backend_repr,
+            "invalid immediate for given destination place",
+            self,
+        );
         // Note that it is really important that the type here is the right one, and matches the
         // type things are read at. In case `value` is a `ScalarPair`, we don't do any magic here
         // to handle padding properly, which is only correct if we never look at this data with the
@@ -700,7 +703,7 @@ where
                 alloc.write_scalar(alloc_range(Size::ZERO, scalar.size()), scalar)
             }
             Immediate::ScalarPair(a_val, b_val) => {
-                let Abi::ScalarPair(a, b) = layout.abi else {
+                let BackendRepr::ScalarPair(a, b) = layout.backend_repr else {
                     span_bug!(
                         self.cur_span(),
                         "write_immediate_to_mplace: invalid ScalarPair layout: {:#?}",
@@ -772,31 +775,13 @@ where
 
     /// Copies the data from an operand to a place.
     /// The layouts of the `src` and `dest` may disagree.
-    /// Does not perform validation of the destination.
-    /// The only known use case for this function is checking the return
-    /// value of a static during stack frame popping.
-    #[inline(always)]
-    pub(super) fn copy_op_no_dest_validation(
-        &mut self,
-        src: &impl Projectable<'tcx, M::Provenance>,
-        dest: &impl Writeable<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx> {
-        self.copy_op_inner(
-            src, dest, /* allow_transmute */ true, /* validate_dest */ false,
-        )
-    }
-
-    /// Copies the data from an operand to a place.
-    /// The layouts of the `src` and `dest` may disagree.
     #[inline(always)]
     pub fn copy_op_allow_transmute(
         &mut self,
         src: &impl Projectable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        self.copy_op_inner(
-            src, dest, /* allow_transmute */ true, /* validate_dest */ true,
-        )
+        self.copy_op_inner(src, dest, /* allow_transmute */ true)
     }
 
     /// Copies the data from an operand to a place.
@@ -807,9 +792,7 @@ where
         src: &impl Projectable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        self.copy_op_inner(
-            src, dest, /* allow_transmute */ false, /* validate_dest */ true,
-        )
+        self.copy_op_inner(src, dest, /* allow_transmute */ false)
     }
 
     /// Copies the data from an operand to a place.
@@ -821,22 +804,21 @@ where
         src: &impl Projectable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
         allow_transmute: bool,
-        validate_dest: bool,
     ) -> InterpResult<'tcx> {
         // These are technically *two* typed copies: `src` is a not-yet-loaded value,
-        // so we're going a typed copy at `src` type from there to some intermediate storage.
+        // so we're doing a typed copy at `src` type from there to some intermediate storage.
         // And then we're doing a second typed copy from that intermediate storage to `dest`.
         // But as an optimization, we only make a single direct copy here.
 
         // Do the actual copy.
         self.copy_op_no_validate(src, dest, allow_transmute)?;
 
-        if validate_dest && M::enforce_validity(self, dest.layout()) {
+        if M::enforce_validity(self, dest.layout()) {
             let dest = dest.to_place();
             // Given that there were two typed copies, we have to ensure this is valid at both types,
             // and we have to ensure this loses provenance and padding according to both types.
             // But if the types are identical, we only do one pass.
-            if allow_transmute && src.layout().ty != dest.layout().ty {
+            if src.layout().ty != dest.layout().ty {
                 self.validate_operand(
                     &dest.transmute(src.layout(), self)?,
                     M::enforce_validity_recursively(self, src.layout()),
@@ -867,7 +849,7 @@ where
         // We do NOT compare the types for equality, because well-typed code can
         // actually "transmute" `&mut T` to `&T` in an assignment without a cast.
         let layout_compat =
-            mir_assign_valid_types(*self.tcx, self.param_env, src.layout(), dest.layout());
+            mir_assign_valid_types(*self.tcx, self.typing_env, src.layout(), dest.layout());
         if !allow_transmute && !layout_compat {
             span_bug!(
                 self.cur_span(),
@@ -1014,29 +996,39 @@ where
         self.allocate_dyn(layout, kind, MemPlaceMeta::None)
     }
 
-    /// Returns a wide MPlace of type `str` to a new 1-aligned allocation.
-    /// Immutable strings are deduplicated and stored in global memory.
-    pub fn allocate_str(
+    /// Allocates a sequence of bytes in the interpreter's memory with alignment 1.
+    /// This is allocated in immutable global memory and deduplicated.
+    pub fn allocate_bytes_dedup(
         &mut self,
-        str: &str,
-        kind: MemoryKind<M::MemoryKind>,
-        mutbl: Mutability,
+        bytes: &[u8],
+    ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
+        let salt = M::get_global_alloc_salt(self, None);
+        let id = self.tcx.allocate_bytes_dedup(bytes, salt);
+
+        // Turn untagged "global" pointers (obtained via `tcx`) into the machine pointer to the allocation.
+        M::adjust_alloc_root_pointer(
+            &self,
+            Pointer::from(id),
+            M::GLOBAL_KIND.map(MemoryKind::Machine),
+        )
+    }
+
+    /// Allocates a string in the interpreter's memory, returning it as a (wide) place.
+    /// This is allocated in immutable global memory and deduplicated.
+    pub fn allocate_str_dedup(
+        &mut self,
+        s: &str,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        let tcx = self.tcx.tcx;
+        let bytes = s.as_bytes();
+        let ptr = self.allocate_bytes_dedup(bytes)?;
 
-        // Use cache for immutable strings.
-        let ptr = if mutbl.is_not() {
-            // Use dedup'd allocation function.
-            let salt = M::get_global_alloc_salt(self, None);
-            let id = tcx.allocate_bytes_dedup(str.as_bytes(), salt);
+        // Create length metadata for the string.
+        let meta = Scalar::from_target_usize(u64::try_from(bytes.len()).unwrap(), self);
 
-            // Turn untagged "global" pointers (obtained via `tcx`) into the machine pointer to the allocation.
-            M::adjust_alloc_root_pointer(&self, Pointer::from(id), Some(kind))?
-        } else {
-            self.allocate_bytes_ptr(str.as_bytes(), Align::ONE, kind, mutbl)?
-        };
-        let meta = Scalar::from_target_usize(u64::try_from(str.len()).unwrap(), self);
+        // Get layout for Rust's str type.
         let layout = self.layout_of(self.tcx.types.str_).unwrap();
+
+        // Combine pointer and metadata into a wide pointer.
         interp_ok(self.ptr_with_meta_to_mplace(
             ptr.into(),
             MemPlaceMeta::Meta(meta),

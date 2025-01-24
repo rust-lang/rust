@@ -15,7 +15,7 @@
 ///
 /// Types that implement `Deref` or `DerefMut` are often called "smart
 /// pointers" and the mechanism of deref coercion has been specifically designed
-/// to facilitate the pointer-like behaviour that name suggests. Often, the
+/// to facilitate the pointer-like behavior that name suggests. Often, the
 /// purpose of a "smart pointer" type is to change the ownership semantics
 /// of a contained value (for example, [`Rc`][rc] or [`Cow`][cow]) or the
 /// storage semantics of a contained value (for example, [`Box`][box]).
@@ -42,7 +42,7 @@
 /// 1. a value of the type transparently behaves like a value of the target
 ///    type;
 /// 1. the implementation of the deref function is cheap; and
-/// 1. users of the type will not be surprised by any deref coercion behaviour.
+/// 1. users of the type will not be surprised by any deref coercion behavior.
 ///
 /// In general, deref traits **should not** be implemented if:
 ///
@@ -133,6 +133,8 @@
 #[doc(alias = "&*")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Deref"]
+#[const_trait]
+#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
 pub trait Deref {
     /// The resulting type after dereferencing.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -148,7 +150,7 @@ pub trait Deref {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Deref for &T {
+impl<T: ?Sized> const Deref for &T {
     type Target = T;
 
     #[rustc_diagnostic_item = "noop_method_deref"]
@@ -161,7 +163,7 @@ impl<T: ?Sized> Deref for &T {
 impl<T: ?Sized> !DerefMut for &T {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Deref for &mut T {
+impl<T: ?Sized> const Deref for &mut T {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -185,7 +187,7 @@ impl<T: ?Sized> Deref for &mut T {
 ///
 /// Types that implement `DerefMut` or `Deref` are often called "smart
 /// pointers" and the mechanism of deref coercion has been specifically designed
-/// to facilitate the pointer-like behaviour that name suggests. Often, the
+/// to facilitate the pointer-like behavior that name suggests. Often, the
 /// purpose of a "smart pointer" type is to change the ownership semantics
 /// of a contained value (for example, [`Rc`][rc] or [`Cow`][cow]) or the
 /// storage semantics of a contained value (for example, [`Box`][box]).
@@ -261,7 +263,9 @@ impl<T: ?Sized> Deref for &mut T {
 #[lang = "deref_mut"]
 #[doc(alias = "*")]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait DerefMut: Deref {
+#[const_trait]
+#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
+pub trait DerefMut: ~const Deref {
     /// Mutably dereferences the value.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "deref_mut_method"]
@@ -269,7 +273,7 @@ pub trait DerefMut: Deref {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> DerefMut for &mut T {
+impl<T: ?Sized> const DerefMut for &mut T {
     fn deref_mut(&mut self) -> &mut T {
         *self
     }
@@ -294,18 +298,104 @@ unsafe impl<T: ?Sized> DerefPure for &T {}
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized> DerefPure for &mut T {}
 
+/// Indicates that a struct can be used as a method receiver.
+/// That is, a type can use this type as a type of `self`, like this:
+/// ```compile_fail
+/// # // This is currently compile_fail because the compiler-side parts
+/// # // of arbitrary_self_types are not implemented
+/// use std::ops::Receiver;
+///
+/// struct SmartPointer<T>(T);
+///
+/// impl<T> Receiver for SmartPointer<T> {
+///    type Target = T;
+/// }
+///
+/// struct MyContainedType;
+///
+/// impl MyContainedType {
+///   fn method(self: SmartPointer<Self>) {
+///     // ...
+///   }
+/// }
+///
+/// fn main() {
+///   let ptr = SmartPointer(MyContainedType);
+///   ptr.method();
+/// }
+/// ```
+/// This trait is blanket implemented for any type which implements
+/// [`Deref`], which includes stdlib pointer types like `Box<T>`,`Rc<T>`, `&T`,
+/// and `Pin<P>`. For that reason, it's relatively rare to need to
+/// implement this directly. You'll typically do this only if you need
+/// to implement a smart pointer type which can't implement [`Deref`]; perhaps
+/// because you're interfacing with another programming language and can't
+/// guarantee that references comply with Rust's aliasing rules.
+///
+/// When looking for method candidates, Rust will explore a chain of possible
+/// `Receiver`s, so for example each of the following methods work:
+/// ```
+/// use std::boxed::Box;
+/// use std::rc::Rc;
+///
+/// // Both `Box` and `Rc` (indirectly) implement Receiver
+///
+/// struct MyContainedType;
+///
+/// fn main() {
+///   let t = Rc::new(Box::new(MyContainedType));
+///   t.method_a();
+///   t.method_b();
+///   t.method_c();
+/// }
+///
+/// impl MyContainedType {
+///   fn method_a(&self) {
+///
+///   }
+///   fn method_b(self: &Box<Self>) {
+///
+///   }
+///   fn method_c(self: &Rc<Box<Self>>) {
+///
+///   }
+/// }
+/// ```
+#[lang = "receiver"]
+#[unstable(feature = "arbitrary_self_types", issue = "44874")]
+pub trait Receiver {
+    /// The target type on which the method may be called.
+    #[rustc_diagnostic_item = "receiver_target"]
+    #[lang = "receiver_target"]
+    #[unstable(feature = "arbitrary_self_types", issue = "44874")]
+    type Target: ?Sized;
+}
+
+#[unstable(feature = "arbitrary_self_types", issue = "44874")]
+impl<P: ?Sized, T: ?Sized> Receiver for P
+where
+    P: Deref<Target = T>,
+{
+    type Target = T;
+}
+
 /// Indicates that a struct can be used as a method receiver, without the
 /// `arbitrary_self_types` feature. This is implemented by stdlib pointer types like `Box<T>`,
 /// `Rc<T>`, `&T`, and `Pin<P>`.
-#[lang = "receiver"]
-#[unstable(feature = "receiver_trait", issue = "none")]
+///
+/// This trait will shortly be removed and replaced with a more generic
+/// facility based around the current "arbitrary self types" unstable feature.
+/// That new facility will use the replacement trait above called `Receiver`
+/// which is why this is now named `LegacyReceiver`.
+#[lang = "legacy_receiver"]
+#[unstable(feature = "legacy_receiver_trait", issue = "none")]
 #[doc(hidden)]
-pub trait Receiver {
+pub trait LegacyReceiver {
     // Empty.
 }
 
-#[unstable(feature = "receiver_trait", issue = "none")]
-impl<T: ?Sized> Receiver for &T {}
+#[unstable(feature = "legacy_receiver_trait", issue = "none")]
+impl<T: ?Sized> LegacyReceiver for &T {}
 
-#[unstable(feature = "receiver_trait", issue = "none")]
-impl<T: ?Sized> Receiver for &mut T {}
+#[unstable(feature = "legacy_receiver_trait", issue = "none")]
+impl<T: ?Sized> LegacyReceiver for &mut T {}

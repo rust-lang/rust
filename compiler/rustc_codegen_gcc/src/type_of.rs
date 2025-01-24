@@ -3,7 +3,7 @@ use std::fmt::Write;
 use gccjit::{Struct, Type};
 use rustc_abi as abi;
 use rustc_abi::Primitive::*;
-use rustc_abi::{Abi, FieldsShape, Integer, PointeeInfo, Size, Variants};
+use rustc_abi::{BackendRepr, FieldsShape, Integer, PointeeInfo, Size, Variants};
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, DerivedTypeCodegenMethods, LayoutTypeCodegenMethods,
 };
@@ -60,9 +60,9 @@ fn uncached_gcc_type<'gcc, 'tcx>(
     layout: TyAndLayout<'tcx>,
     defer: &mut Option<(Struct<'gcc>, TyAndLayout<'tcx>)>,
 ) -> Type<'gcc> {
-    match layout.abi {
-        Abi::Scalar(_) => bug!("handled elsewhere"),
-        Abi::Vector { ref element, count } => {
+    match layout.backend_repr {
+        BackendRepr::Scalar(_) => bug!("handled elsewhere"),
+        BackendRepr::Vector { ref element, count } => {
             let element = layout.scalar_gcc_type_at(cx, element, Size::ZERO);
             let element =
                 // NOTE: gcc doesn't allow pointer types in vectors.
@@ -74,7 +74,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
                 };
             return cx.context.new_vector_type(element, count);
         }
-        Abi::ScalarPair(..) => {
+        BackendRepr::ScalarPair(..) => {
             return cx.type_struct(
                 &[
                     layout.scalar_pair_element_gcc_type(cx, 0),
@@ -83,7 +83,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
                 false,
             );
         }
-        Abi::Uninhabited | Abi::Aggregate { .. } => {}
+        BackendRepr::Uninhabited | BackendRepr::Memory { .. } => {}
     }
 
     let name = match *layout.ty.kind() {
@@ -176,16 +176,21 @@ pub trait LayoutGccExt<'tcx> {
 
 impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     fn is_gcc_immediate(&self) -> bool {
-        match self.abi {
-            Abi::Scalar(_) | Abi::Vector { .. } => true,
-            Abi::ScalarPair(..) | Abi::Uninhabited | Abi::Aggregate { .. } => false,
+        match self.backend_repr {
+            BackendRepr::Scalar(_) | BackendRepr::Vector { .. } => true,
+            BackendRepr::ScalarPair(..) | BackendRepr::Uninhabited | BackendRepr::Memory { .. } => {
+                false
+            }
         }
     }
 
     fn is_gcc_scalar_pair(&self) -> bool {
-        match self.abi {
-            Abi::ScalarPair(..) => true,
-            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } | Abi::Aggregate { .. } => false,
+        match self.backend_repr {
+            BackendRepr::ScalarPair(..) => true,
+            BackendRepr::Uninhabited
+            | BackendRepr::Scalar(_)
+            | BackendRepr::Vector { .. }
+            | BackendRepr::Memory { .. } => false,
         }
     }
 
@@ -197,7 +202,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     /// `[T]` becomes `T`, while `str` and `Trait` turn into `i8` - this
     /// is useful for indexing slices, as `&[T]`'s data pointer is `T*`.
     /// If the type is an unsized struct, the regular layout is generated,
-    /// with the inner-most trailing unsized field using the "minimal unit"
+    /// with the innermost trailing unsized field using the "minimal unit"
     /// of that field's type - this is useful for taking the address of
     /// that field and ensuring the struct has the right alignment.
     fn gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc> {
@@ -205,7 +210,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
         // In other words, this should generally not look at the type at all, but only at the
         // layout.
-        if let Abi::Scalar(ref scalar) = self.abi {
+        if let BackendRepr::Scalar(ref scalar) = self.backend_repr {
             // Use a different cache for scalars because pointers to DSTs
             // can be either wide or thin (data pointers of wide pointers).
             if let Some(&ty) = cx.scalar_types.borrow().get(&self.ty) {
@@ -261,7 +266,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     }
 
     fn immediate_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc> {
-        if let Abi::Scalar(ref scalar) = self.abi {
+        if let BackendRepr::Scalar(ref scalar) = self.backend_repr {
             if scalar.is_bool() {
                 return cx.type_i1();
             }
@@ -299,8 +304,8 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
         // In other words, this should generally not look at the type at all, but only at the
         // layout.
-        let (a, b) = match self.abi {
-            Abi::ScalarPair(ref a, ref b) => (a, b),
+        let (a, b) = match self.backend_repr {
+            BackendRepr::ScalarPair(ref a, ref b) => (a, b),
             _ => bug!("TyAndLayout::scalar_pair_element_llty({:?}): not applicable", self),
         };
         let scalar = [a, b][index];

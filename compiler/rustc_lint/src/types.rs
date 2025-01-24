@@ -1,20 +1,19 @@
 use std::iter;
 use std::ops::ControlFlow;
 
+use rustc_abi::{BackendRepr, ExternAbi, TagEncoding, VariantIdx, Variants, WrappingRange};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
 use rustc_middle::ty::{
-    self, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    self, Adt, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt,
 };
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol, source_map};
-use rustc_target::abi::{Abi, TagEncoding, Variants, WrappingRange};
-use rustc_target::spec::abi::Abi as SpecAbi;
+use rustc_span::{Span, Symbol, source_map, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -24,7 +23,9 @@ use crate::lints::{
     AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
     AmbiguousWidePointerComparisonsAddrSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
     AtomicOrderingStore, ImproperCTypes, InvalidAtomicOrderingDiag, InvalidNanComparisons,
-    InvalidNanComparisonsSuggestion, UnusedComparisons, VariantSizeDifferencesDiag,
+    InvalidNanComparisonsSuggestion, UnpredictableFunctionPointerComparisons,
+    UnpredictableFunctionPointerComparisonsSuggestion, UnusedComparisons, UsesPowerAlignment,
+    VariantSizeDifferencesDiag,
 };
 use crate::{LateContext, LateLintPass, LintContext, fluent_generated as fluent};
 
@@ -167,7 +168,36 @@ declare_lint! {
     "detects ambiguous wide pointer comparisons"
 }
 
-#[derive(Copy, Clone)]
+declare_lint! {
+    /// The `unpredictable_function_pointer_comparisons` lint checks comparison
+    /// of function pointer as the operands.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// fn a() {}
+    /// fn b() {}
+    ///
+    /// let f: fn() = a;
+    /// let g: fn() = b;
+    ///
+    /// let _ = f == g;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Function pointers comparisons do not produce meaningful result since
+    /// they are never guaranteed to be unique and could vary between different
+    /// code generation units. Furthermore, different functions could have the
+    /// same address after being merged together.
+    UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS,
+    Warn,
+    "detects unpredictable function pointer comparisons"
+}
+
+#[derive(Copy, Clone, Default)]
 pub(crate) struct TypeLimits {
     /// Id of the last visited negated expression
     negated_expr_id: Option<hir::HirId>,
@@ -179,7 +209,8 @@ impl_lint_pass!(TypeLimits => [
     UNUSED_COMPARISONS,
     OVERFLOWING_LITERALS,
     INVALID_NAN_COMPARISONS,
-    AMBIGUOUS_WIDE_POINTER_COMPARISONS
+    AMBIGUOUS_WIDE_POINTER_COMPARISONS,
+    UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS
 ]);
 
 impl TypeLimits {
@@ -204,7 +235,10 @@ fn lint_nan<'tcx>(
                     return false;
                 };
 
-                matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::f32_nan | sym::f64_nan))
+                matches!(
+                    cx.tcx.get_diagnostic_name(def_id),
+                    Some(sym::f16_nan | sym::f32_nan | sym::f64_nan | sym::f128_nan)
+                )
             }
             _ => false,
         }
@@ -253,7 +287,7 @@ fn lint_nan<'tcx>(
     cx.emit_span_lint(INVALID_NAN_COMPARISONS, e.span, lint);
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 enum ComparisonOp {
     BinOp(hir::BinOpKind),
     Other,
@@ -290,7 +324,7 @@ fn lint_wide_pointer<'tcx>(
             _ => return None,
         };
 
-        (!ty.is_sized(cx.tcx, cx.param_env))
+        (!ty.is_sized(cx.tcx, cx.typing_env()))
             .then(|| (refs, modifiers, matches!(ty.kind(), ty::Dynamic(_, _, ty::Dyn))))
     };
 
@@ -381,6 +415,125 @@ fn lint_wide_pointer<'tcx>(
     );
 }
 
+fn lint_fn_pointer<'tcx>(
+    cx: &LateContext<'tcx>,
+    e: &'tcx hir::Expr<'tcx>,
+    cmpop: ComparisonOp,
+    l: &'tcx hir::Expr<'tcx>,
+    r: &'tcx hir::Expr<'tcx>,
+) {
+    let peel_refs = |mut ty: Ty<'tcx>| -> (Ty<'tcx>, usize) {
+        let mut refs = 0;
+
+        while let ty::Ref(_, inner_ty, _) = ty.kind() {
+            ty = *inner_ty;
+            refs += 1;
+        }
+
+        (ty, refs)
+    };
+
+    // Left and right operands can have borrows, remove them
+    let l = l.peel_borrows();
+    let r = r.peel_borrows();
+
+    let Some(l_ty) = cx.typeck_results().expr_ty_opt(l) else { return };
+    let Some(r_ty) = cx.typeck_results().expr_ty_opt(r) else { return };
+
+    // Remove any references as `==` will deref through them (and count the
+    // number of references removed, for latter).
+    let (l_ty, l_ty_refs) = peel_refs(l_ty);
+    let (r_ty, r_ty_refs) = peel_refs(r_ty);
+
+    if l_ty.is_fn() && r_ty.is_fn() {
+        // both operands are function pointers, fallthrough
+    } else if let ty::Adt(l_def, l_args) = l_ty.kind()
+        && let ty::Adt(r_def, r_args) = r_ty.kind()
+        && cx.tcx.is_lang_item(l_def.did(), LangItem::Option)
+        && cx.tcx.is_lang_item(r_def.did(), LangItem::Option)
+        && let Some(l_some_arg) = l_args.get(0)
+        && let Some(r_some_arg) = r_args.get(0)
+        && l_some_arg.expect_ty().is_fn()
+        && r_some_arg.expect_ty().is_fn()
+    {
+        // both operands are `Option<{function ptr}>`
+        return cx.emit_span_lint(
+            UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS,
+            e.span,
+            UnpredictableFunctionPointerComparisons::Warn,
+        );
+    } else {
+        // types are not function pointers, nothing to do
+        return;
+    }
+
+    // Let's try to suggest `ptr::fn_addr_eq` if/when possible.
+
+    let is_eq_ne = matches!(cmpop, ComparisonOp::BinOp(hir::BinOpKind::Eq | hir::BinOpKind::Ne));
+
+    if !is_eq_ne {
+        // Neither `==` nor `!=`, we can't suggest `ptr::fn_addr_eq`, just show the warning.
+        return cx.emit_span_lint(
+            UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS,
+            e.span,
+            UnpredictableFunctionPointerComparisons::Warn,
+        );
+    }
+
+    let (Some(l_span), Some(r_span)) =
+        (l.span.find_ancestor_inside(e.span), r.span.find_ancestor_inside(e.span))
+    else {
+        // No appropriate spans for the left and right operands, just show the warning.
+        return cx.emit_span_lint(
+            UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS,
+            e.span,
+            UnpredictableFunctionPointerComparisons::Warn,
+        );
+    };
+
+    let ne = if cmpop == ComparisonOp::BinOp(hir::BinOpKind::Ne) { "!" } else { "" };
+
+    // `ptr::fn_addr_eq` only works with raw pointer, deref any references.
+    let deref_left = &*"*".repeat(l_ty_refs);
+    let deref_right = &*"*".repeat(r_ty_refs);
+
+    let left = e.span.shrink_to_lo().until(l_span.shrink_to_lo());
+    let middle = l_span.shrink_to_hi().until(r_span.shrink_to_lo());
+    let right = r_span.shrink_to_hi().until(e.span.shrink_to_hi());
+
+    let sugg =
+        // We only check for a right cast as `FnDef` == `FnPtr` is not possible,
+        // only `FnPtr == FnDef` is possible.
+        if !r_ty.is_fn_ptr() {
+            let fn_sig = r_ty.fn_sig(cx.tcx);
+
+            UnpredictableFunctionPointerComparisonsSuggestion::FnAddrEqWithCast {
+                ne,
+                fn_sig,
+                deref_left,
+                deref_right,
+                left,
+                middle,
+                right,
+            }
+        } else {
+            UnpredictableFunctionPointerComparisonsSuggestion::FnAddrEq {
+                ne,
+                deref_left,
+                deref_right,
+                left,
+                middle,
+                right,
+            }
+        };
+
+    cx.emit_span_lint(
+        UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS,
+        e.span,
+        UnpredictableFunctionPointerComparisons::Suggestion { sugg },
+    );
+}
+
 impl<'tcx> LateLintPass<'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
@@ -397,7 +550,9 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                         cx.emit_span_lint(UNUSED_COMPARISONS, e.span, UnusedComparisons);
                     } else {
                         lint_nan(cx, e, binop, l, r);
-                        lint_wide_pointer(cx, e, ComparisonOp::BinOp(binop.node), l, r);
+                        let cmpop = ComparisonOp::BinOp(binop.node);
+                        lint_wide_pointer(cx, e, cmpop, l, r);
+                        lint_fn_pointer(cx, e, cmpop, l, r);
                     }
                 }
             }
@@ -409,6 +564,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                     && let Some(cmpop) = diag_item_cmpop(diag_item) =>
             {
                 lint_wide_pointer(cx, e, cmpop, l, r);
+                lint_fn_pointer(cx, e, cmpop, l, r);
             }
             hir::ExprKind::MethodCall(_, l, [r], _)
                 if let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
@@ -416,6 +572,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                     && let Some(cmpop) = diag_item_cmpop(diag_item) =>
             {
                 lint_wide_pointer(cx, e, cmpop, l, r);
+                lint_fn_pointer(cx, e, cmpop, l, r);
             }
             _ => {}
         };
@@ -571,7 +728,60 @@ declare_lint! {
     "proper use of libc types in foreign item definitions"
 }
 
-declare_lint_pass!(ImproperCTypesDefinitions => [IMPROPER_CTYPES_DEFINITIONS]);
+declare_lint! {
+    /// The `uses_power_alignment` lint detects specific `repr(C)`
+    /// aggregates on AIX.
+    /// In its platform C ABI, AIX uses the "power" (as in PowerPC) alignment
+    /// rule (detailed in https://www.ibm.com/docs/en/xl-c-and-cpp-aix/16.1?topic=data-using-alignment-modes#alignment),
+    /// which can also be set for XLC by `#pragma align(power)` or
+    /// `-qalign=power`. Aggregates with a floating-point type as the
+    /// recursively first field (as in "at offset 0") modify the layout of
+    /// *subsequent* fields of the associated structs to use an alignment value
+    /// where the floating-point type is aligned on a 4-byte boundary.
+    ///
+    /// The power alignment rule for structs needed for C compatibility is
+    /// unimplementable within `repr(C)` in the compiler without building in
+    /// handling of references to packed fields and infectious nested layouts,
+    /// so a warning is produced in these situations.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (fails on non-powerpc64-ibm-aix)
+    /// #[repr(C)]
+    /// pub struct Floats {
+    ///     a: f64,
+    ///     b: u8,
+    ///     c: f64,
+    /// }
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
+    ///  --> <source>:5:3
+    ///   |
+    /// 5 |   c: f64,
+    ///   |   ^^^^^^
+    ///   |
+    ///   = note: `#[warn(uses_power_alignment)]` on by default
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// The power alignment rule specifies that the above struct has the
+    /// following alignment:
+    ///  - offset_of!(Floats, a) == 0
+    ///  - offset_of!(Floats, b) == 8
+    ///  - offset_of!(Floats, c) == 12
+    /// However, rust currently aligns `c` at offset_of!(Floats, c) == 16.
+    /// Thus, a warning should be produced for the above struct in this case.
+    USES_POWER_ALIGNMENT,
+    Warn,
+    "Structs do not follow the power alignment rule under repr(C)"
+}
+
+declare_lint_pass!(ImproperCTypesDefinitions => [IMPROPER_CTYPES_DEFINITIONS, USES_POWER_ALIGNMENT]);
 
 #[derive(Clone, Copy)]
 pub(crate) enum CItemKind {
@@ -611,10 +821,11 @@ pub(crate) fn transparent_newtype_field<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     variant: &'a ty::VariantDef,
 ) -> Option<&'a ty::FieldDef> {
-    let param_env = tcx.param_env(variant.def_id);
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, variant.def_id);
     variant.fields.iter().find(|field| {
         let field_ty = tcx.type_of(field.did).instantiate_identity();
-        let is_1zst = tcx.layout_of(param_env.and(field_ty)).is_ok_and(|layout| layout.is_1zst());
+        let is_1zst =
+            tcx.layout_of(typing_env.as_query_input(field_ty)).is_ok_and(|layout| layout.is_1zst());
         !is_1zst
     })
 }
@@ -622,11 +833,11 @@ pub(crate) fn transparent_newtype_field<'a, 'tcx>(
 /// Is type known to be non-null?
 fn ty_is_known_nonnull<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
     mode: CItemKind,
 ) -> bool {
-    let ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
+    let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
 
     match ty.kind() {
         ty::FnPtr(..) => true,
@@ -647,7 +858,7 @@ fn ty_is_known_nonnull<'tcx>(
             def.variants()
                 .iter()
                 .filter_map(|variant| transparent_newtype_field(tcx, variant))
-                .any(|field| ty_is_known_nonnull(tcx, param_env, field.ty(tcx, args), mode))
+                .any(|field| ty_is_known_nonnull(tcx, typing_env, field.ty(tcx, args), mode))
         }
         _ => false,
     }
@@ -657,10 +868,10 @@ fn ty_is_known_nonnull<'tcx>(
 /// If the type passed in was not scalar, returns None.
 fn get_nullable_type<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<Ty<'tcx>> {
-    let ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
+    let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
 
     Some(match *ty.kind() {
         ty::Adt(field_def, field_args) => {
@@ -677,7 +888,7 @@ fn get_nullable_type<'tcx>(
                     .expect("No non-zst fields in transparent type.")
                     .ty(tcx, field_args)
             };
-            return get_nullable_type(tcx, param_env, inner_field_ty);
+            return get_nullable_type(tcx, typing_env, inner_field_ty);
         }
         ty::Int(ty) => Ty::new_int(tcx, ty),
         ty::Uint(ty) => Ty::new_uint(tcx, ty),
@@ -706,10 +917,10 @@ fn get_nullable_type<'tcx>(
 /// - Does not have the `#[non_exhaustive]` attribute.
 fn is_niche_optimization_candidate<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> bool {
-    if tcx.layout_of(param_env.and(ty)).is_ok_and(|layout| !layout.is_1zst()) {
+    if tcx.layout_of(typing_env.as_query_input(ty)).is_ok_and(|layout| !layout.is_1zst()) {
         return false;
     }
 
@@ -732,7 +943,7 @@ fn is_niche_optimization_candidate<'tcx>(
 /// `core::ptr::NonNull`, and `#[repr(transparent)]` newtypes.
 pub(crate) fn repr_nullable_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
     ckind: CItemKind,
 ) -> Option<Ty<'tcx>> {
@@ -745,9 +956,9 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
                     let ty1 = field1.ty(tcx, args);
                     let ty2 = field2.ty(tcx, args);
 
-                    if is_niche_optimization_candidate(tcx, param_env, ty1) {
+                    if is_niche_optimization_candidate(tcx, typing_env, ty1) {
                         ty2
-                    } else if is_niche_optimization_candidate(tcx, param_env, ty2) {
+                    } else if is_niche_optimization_candidate(tcx, typing_env, ty2) {
                         ty1
                     } else {
                         return None;
@@ -758,34 +969,34 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
             _ => return None,
         };
 
-        if !ty_is_known_nonnull(tcx, param_env, field_ty, ckind) {
+        if !ty_is_known_nonnull(tcx, typing_env, field_ty, ckind) {
             return None;
         }
 
         // At this point, the field's type is known to be nonnull and the parent enum is Option-like.
         // If the computed size for the field and the enum are different, the nonnull optimization isn't
         // being applied (and we've got a problem somewhere).
-        let compute_size_skeleton = |t| SizeSkeleton::compute(t, tcx, param_env).ok();
+        let compute_size_skeleton = |t| SizeSkeleton::compute(t, tcx, typing_env).ok();
         if !compute_size_skeleton(ty)?.same_size(compute_size_skeleton(field_ty)?) {
             bug!("improper_ctypes: Option nonnull optimization not applied?");
         }
 
         // Return the nullable type this Option-like enum can be safely represented with.
-        let field_ty_layout = tcx.layout_of(param_env.and(field_ty));
+        let field_ty_layout = tcx.layout_of(typing_env.as_query_input(field_ty));
         if field_ty_layout.is_err() && !field_ty.has_non_region_param() {
             bug!("should be able to compute the layout of non-polymorphic type");
         }
 
-        let field_ty_abi = &field_ty_layout.ok()?.abi;
-        if let Abi::Scalar(field_ty_scalar) = field_ty_abi {
+        let field_ty_abi = &field_ty_layout.ok()?.backend_repr;
+        if let BackendRepr::Scalar(field_ty_scalar) = field_ty_abi {
             match field_ty_scalar.valid_range(&tcx) {
                 WrappingRange { start: 0, end }
                     if end == field_ty_scalar.size(&tcx).unsigned_int_max() - 1 =>
                 {
-                    return Some(get_nullable_type(tcx, param_env, field_ty).unwrap());
+                    return Some(get_nullable_type(tcx, typing_env, field_ty).unwrap());
                 }
                 WrappingRange { start: 1, .. } => {
-                    return Some(get_nullable_type(tcx, param_env, field_ty).unwrap());
+                    return Some(get_nullable_type(tcx, typing_env, field_ty).unwrap());
                 }
                 WrappingRange { start, end } => {
                     unreachable!("Unhandled start and end range: ({}, {})", start, end)
@@ -823,7 +1034,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let field_ty = self
             .cx
             .tcx
-            .try_normalize_erasing_regions(self.cx.param_env, field_ty)
+            .try_normalize_erasing_regions(self.cx.typing_env(), field_ty)
             .unwrap_or(field_ty);
         self.check_type_for_ffi(acc, field_ty)
     }
@@ -901,7 +1112,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 if let Some(boxed) = ty.boxed_ty()
                     && matches!(self.mode, CItemKind::Definition)
                 {
-                    if boxed.is_sized(tcx, self.cx.param_env) {
+                    if boxed.is_sized(tcx, self.cx.typing_env()) {
                         return FfiSafe;
                     } else {
                         return FfiUnsafe {
@@ -986,7 +1197,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         {
                             // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
                             if let Some(ty) =
-                                repr_nullable_ptr(self.cx.tcx, self.cx.param_env, ty, self.mode)
+                                repr_nullable_ptr(self.cx.tcx, self.cx.typing_env(), ty, self.mode)
                             {
                                 return self.check_type_for_ffi(acc, ty);
                             }
@@ -1066,7 +1277,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::RawPtr(ty, _) | ty::Ref(_, ty, _)
                 if {
                     matches!(self.mode, CItemKind::Definition)
-                        && ty.is_sized(self.cx.tcx, self.cx.param_env)
+                        && ty.is_sized(self.cx.tcx, self.cx.typing_env())
                 } =>
             {
                 FfiSafe
@@ -1126,6 +1337,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             {
                 FfiSafe
             }
+
+            ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
 
             ty::Param(..)
             | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
@@ -1194,7 +1407,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         if let Some(ty) = self
             .cx
             .tcx
-            .try_normalize_erasing_regions(self.cx.param_env, ty)
+            .try_normalize_erasing_regions(self.cx.typing_env(), ty)
             .unwrap_or(ty)
             .visit_with(&mut ProhibitOpaqueTypes)
             .break_value()
@@ -1218,7 +1431,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             return;
         }
 
-        let ty = self.cx.tcx.try_normalize_erasing_regions(self.cx.param_env, ty).unwrap_or(ty);
+        let ty = self.cx.tcx.try_normalize_erasing_regions(self.cx.typing_env(), ty).unwrap_or(ty);
 
         // C doesn't really support passing arrays by value - the only way to pass an array by value
         // is through a struct. So, first test that the top level isn't an array, and then
@@ -1291,10 +1504,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         self.check_type_for_ffi_and_report_errors(span, ty, true, false);
     }
 
-    fn is_internal_abi(&self, abi: SpecAbi) -> bool {
+    fn is_internal_abi(&self, abi: ExternAbi) -> bool {
         matches!(
             abi,
-            SpecAbi::Rust | SpecAbi::RustCall | SpecAbi::RustCold | SpecAbi::RustIntrinsic
+            ExternAbi::Rust | ExternAbi::RustCall | ExternAbi::RustCold | ExternAbi::RustIntrinsic
         )
     }
 
@@ -1380,6 +1593,71 @@ impl ImproperCTypesDefinitions {
             vis.check_type_for_ffi_and_report_errors(span, fn_ptr_ty, true, false);
         }
     }
+
+    fn check_arg_for_power_alignment<'tcx>(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> bool {
+        // Structs (under repr(C)) follow the power alignment rule if:
+        //   - the first field of the struct is a floating-point type that
+        //     is greater than 4-bytes, or
+        //   - the first field of the struct is an aggregate whose
+        //     recursively first field is a floating-point type greater than
+        //     4 bytes.
+        if cx.tcx.sess.target.os != "aix" {
+            return false;
+        }
+        if ty.is_floating_point() && ty.primitive_size(cx.tcx).bytes() > 4 {
+            return true;
+        } else if let Adt(adt_def, _) = ty.kind()
+            && adt_def.is_struct()
+        {
+            let struct_variant = adt_def.variant(VariantIdx::ZERO);
+            // Within a nested struct, all fields are examined to correctly
+            // report if any fields after the nested struct within the
+            // original struct are misaligned.
+            for struct_field in &struct_variant.fields {
+                let field_ty = cx.tcx.type_of(struct_field.did).instantiate_identity();
+                if self.check_arg_for_power_alignment(cx, field_ty) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    fn check_struct_for_power_alignment<'tcx>(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        item: &'tcx hir::Item<'tcx>,
+    ) {
+        let adt_def = cx.tcx.adt_def(item.owner_id.to_def_id());
+        if adt_def.repr().c()
+            && !adt_def.repr().packed()
+            && cx.tcx.sess.target.os == "aix"
+            && !adt_def.all_fields().next().is_none()
+        {
+            let struct_variant_data = item.expect_struct().0;
+            for (index, ..) in struct_variant_data.fields().iter().enumerate() {
+                // Struct fields (after the first field) are checked for the
+                // power alignment rule, as fields after the first are likely
+                // to be the fields that are misaligned.
+                if index != 0 {
+                    let first_field_def = struct_variant_data.fields()[index];
+                    let def_id = first_field_def.def_id;
+                    let ty = cx.tcx.type_of(def_id).instantiate_identity();
+                    if self.check_arg_for_power_alignment(cx, ty) {
+                        cx.emit_span_lint(
+                            USES_POWER_ALIGNMENT,
+                            first_field_def.span,
+                            UsesPowerAlignment,
+                        );
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// `ImproperCTypesDefinitions` checks items outside of foreign items (e.g. stuff that isn't in
@@ -1402,9 +1680,14 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
                 );
             }
             // See `check_fn`..
-            hir::ItemKind::Fn(..) => {}
+            hir::ItemKind::Fn { .. } => {}
+            // Structs are checked based on if they follow the power alignment
+            // rule (under repr(C)).
+            hir::ItemKind::Struct(..) => {
+                self.check_struct_for_power_alignment(cx, item);
+            }
             // See `check_field_def`..
-            hir::ItemKind::Union(..) | hir::ItemKind::Struct(..) | hir::ItemKind::Enum(..) => {}
+            hir::ItemKind::Union(..) | hir::ItemKind::Enum(..) => {}
             // Doesn't define something that can contain a external type to be checked.
             hir::ItemKind::Impl(..)
             | hir::ItemKind::TraitAlias(..)

@@ -1,4 +1,5 @@
 #![warn(clippy::case_sensitive_file_extension_comparisons)]
+#![allow(clippy::unnecessary_map_or)]
 
 use std::string::String;
 

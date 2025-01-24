@@ -1,8 +1,7 @@
 use std::any::Any;
 use std::mem;
 
-use rustc_ast as ast;
-use rustc_attr::Deprecation;
+use rustc_attr_parsing::Deprecation;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
@@ -18,9 +17,8 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::cstore::{CrateStore, ExternCrate};
 use rustc_session::{Session, StableCrateId};
-use rustc_span::Span;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::symbol::{Symbol, kw};
+use rustc_span::{Span, Symbol, kw};
 
 use super::{Decodable, DecodeContext, DecodeIterator};
 use crate::creader::{CStore, LoadedMacro};
@@ -270,11 +268,12 @@ provide! { tcx, def_id, other, cdata,
     lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
     params_in_repr => { table }
-    unused_generic_params => { table_direct }
     def_kind => { cdata.def_kind(def_id.index) }
     impl_parent => { table }
     defaultness => { table_direct }
     constness => { table_direct }
+    const_conditions => { table }
+    explicit_implied_const_bounds => { table_defaulted_array }
     coerce_unsized_info => {
         Ok(cdata
             .root
@@ -315,10 +314,7 @@ provide! { tcx, def_id, other, cdata,
             })
             .unwrap_or_default()
     }
-    is_type_alias_impl_trait => {
-        debug_assert_eq!(tcx.def_kind(def_id), DefKind::OpaqueTy);
-        cdata.root.tables.is_type_alias_impl_trait.get(cdata, def_id.index)
-    }
+    opaque_ty_origin => { table }
     assumed_wf_types_for_rpitit => { table }
     collect_return_position_impl_trait_in_trait_tys => {
         Ok(cdata
@@ -330,7 +326,6 @@ provide! { tcx, def_id, other, cdata,
             .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
     }
 
-    associated_type_for_effects => { table }
     associated_types_for_impl_traits_in_associated_fn => { table_defaulted_array }
 
     visibility => { cdata.get_visibility(def_id.index) }
@@ -348,7 +343,7 @@ provide! { tcx, def_id, other, cdata,
     }
     associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
-    item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
+    attrs_for_def => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     is_ctfe_mir_available => { cdata.is_ctfe_mir_available(def_id.index) }
     cross_crate_inlinable => { table_direct }
@@ -387,6 +382,7 @@ provide! { tcx, def_id, other, cdata,
     crate_hash => { cdata.root.header.hash }
     crate_host_hash => { cdata.host_hash }
     crate_name => { cdata.root.header.name }
+    num_extern_def_ids => { cdata.num_def_ids() }
 
     extra_filename => { cdata.root.extra_filename.clone() }
 
@@ -591,27 +587,16 @@ impl CStore {
 
         let data = self.get_crate_data(id.krate);
         if data.root.is_proc_macro_crate() {
-            return LoadedMacro::ProcMacro(data.load_proc_macro(id.index, tcx));
-        }
-
-        let span = data.get_span(id.index, sess);
-
-        LoadedMacro::MacroDef(
-            ast::Item {
+            LoadedMacro::ProcMacro(data.load_proc_macro(id.index, tcx))
+        } else {
+            LoadedMacro::MacroDef {
+                def: data.get_macro(id.index, sess),
                 ident: data.item_ident(id.index, sess),
-                id: ast::DUMMY_NODE_ID,
-                span,
                 attrs: data.get_item_attrs(id.index, sess).collect(),
-                kind: ast::ItemKind::MacroDef(data.get_macro(id.index, sess)),
-                vis: ast::Visibility {
-                    span: span.shrink_to_lo(),
-                    kind: ast::VisibilityKind::Inherited,
-                    tokens: None,
-                },
-                tokens: None,
-            },
-            data.root.edition,
-        )
+                span: data.get_span(id.index, sess),
+                edition: data.root.edition,
+            }
+        }
     }
 
     pub fn def_span_untracked(&self, def_id: DefId, sess: &Session) -> Span {

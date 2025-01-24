@@ -2,7 +2,7 @@
 //@ compile-flags: -Znext-solver
 // Test that we can call methods from const trait impls inside of generic const items.
 
-#![feature(generic_const_items, const_trait_impl, effects)]
+#![feature(generic_const_items, const_trait_impl)]
 #![allow(incomplete_features)]
 #![crate_type = "lib"]
 

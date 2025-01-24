@@ -27,7 +27,7 @@ error[E0277]: can't compare `&{integer}` with `{integer}`
 LL |     _ = foo == &0;
    |             ^^ no implementation for `&{integer} == {integer}`
    |
-   = help: the trait `PartialEq<{integer}>` is not implemented for `&{integer}`, which is required by `&&{integer}: PartialEq<&{integer}>`
+   = help: the trait `PartialEq<{integer}>` is not implemented for `&{integer}`
    = note: required for `&&{integer}` to implement `PartialEq<&{integer}>`
 help: consider dereferencing here
    |
@@ -65,7 +65,7 @@ error[E0277]: can't compare `&&{integer}` with `{integer}`
 LL |     _ = &&foo == &&0;
    |               ^^ no implementation for `&&{integer} == {integer}`
    |
-   = help: the trait `PartialEq<{integer}>` is not implemented for `&&{integer}`, which is required by `&&&&{integer}: PartialEq<&&{integer}>`
+   = help: the trait `PartialEq<{integer}>` is not implemented for `&&{integer}`
    = note: required for `&&&{integer}` to implement `PartialEq<&{integer}>`
    = note: 1 redundant requirement hidden
    = note: required for `&&&&{integer}` to implement `PartialEq<&&{integer}>`
@@ -119,7 +119,7 @@ error[E0277]: can't compare `{integer}` with `&{integer}`
 LL |     _ = &0 == foo;
    |            ^^ no implementation for `{integer} == &{integer}`
    |
-   = help: the trait `PartialEq<&{integer}>` is not implemented for `{integer}`, which is required by `&{integer}: PartialEq<&&{integer}>`
+   = help: the trait `PartialEq<&{integer}>` is not implemented for `{integer}`
    = note: required for `&{integer}` to implement `PartialEq<&&{integer}>`
 help: consider dereferencing here
    |
@@ -157,7 +157,7 @@ error[E0277]: can't compare `{integer}` with `&&{integer}`
 LL |     _ = &&0 == &&foo;
    |             ^^ no implementation for `{integer} == &&{integer}`
    |
-   = help: the trait `PartialEq<&&{integer}>` is not implemented for `{integer}`, which is required by `&&{integer}: PartialEq<&&&&{integer}>`
+   = help: the trait `PartialEq<&&{integer}>` is not implemented for `{integer}`
    = note: required for `&{integer}` to implement `PartialEq<&&&{integer}>`
    = note: 1 redundant requirement hidden
    = note: required for `&&{integer}` to implement `PartialEq<&&&&{integer}>`
@@ -173,7 +173,7 @@ error[E0277]: can't compare `Box<Box<{integer}>>` with `&&{integer}`
 LL |     _ = &Box::new(Box::new(42)) == &foo;
    |                                 ^^ no implementation for `Box<Box<{integer}>> == &&{integer}`
    |
-   = help: the trait `PartialEq<&&{integer}>` is not implemented for `Box<Box<{integer}>>`, which is required by `&Box<Box<{integer}>>: PartialEq<&&&{integer}>`
+   = help: the trait `PartialEq<&&{integer}>` is not implemented for `Box<Box<{integer}>>`
    = note: required for `&Box<Box<{integer}>>` to implement `PartialEq<&&&{integer}>`
 help: consider dereferencing both sides of the expression
    |
@@ -187,7 +187,7 @@ error[E0277]: can't compare `Box<{integer}>` with `&&{integer}`
 LL |     _ = &Box::new(42) == &foo;
    |                       ^^ no implementation for `Box<{integer}> == &&{integer}`
    |
-   = help: the trait `PartialEq<&&{integer}>` is not implemented for `Box<{integer}>`, which is required by `&Box<{integer}>: PartialEq<&&&{integer}>`
+   = help: the trait `PartialEq<&&{integer}>` is not implemented for `Box<{integer}>`
    = note: required for `&Box<{integer}>` to implement `PartialEq<&&&{integer}>`
 help: consider dereferencing both sides of the expression
    |
@@ -201,7 +201,7 @@ error[E0277]: can't compare `Box<Box<Box<Box<{integer}>>>>` with `&&{integer}`
 LL |     _ = &Box::new(Box::new(Box::new(Box::new(42)))) == &foo;
    |                                                     ^^ no implementation for `Box<Box<Box<Box<{integer}>>>> == &&{integer}`
    |
-   = help: the trait `PartialEq<&&{integer}>` is not implemented for `Box<Box<Box<Box<{integer}>>>>`, which is required by `&Box<Box<Box<Box<{integer}>>>>: PartialEq<&&&{integer}>`
+   = help: the trait `PartialEq<&&{integer}>` is not implemented for `Box<Box<Box<Box<{integer}>>>>`
    = note: required for `&Box<Box<Box<Box<{integer}>>>>` to implement `PartialEq<&&&{integer}>`
 help: consider dereferencing both sides of the expression
    |
@@ -215,7 +215,7 @@ error[E0277]: can't compare `&&{integer}` with `Box<Box<Box<Box<{integer}>>>>`
 LL |     _ = &foo == &Box::new(Box::new(Box::new(Box::new(42))));
    |              ^^ no implementation for `&&{integer} == Box<Box<Box<Box<{integer}>>>>`
    |
-   = help: the trait `PartialEq<Box<Box<Box<Box<{integer}>>>>>` is not implemented for `&&{integer}`, which is required by `&&&{integer}: PartialEq<&Box<Box<Box<Box<{integer}>>>>>`
+   = help: the trait `PartialEq<Box<Box<Box<Box<{integer}>>>>>` is not implemented for `&&{integer}`
    = note: required for `&&&{integer}` to implement `PartialEq<&Box<Box<Box<Box<{integer}>>>>>`
 help: consider dereferencing both sides of the expression
    |

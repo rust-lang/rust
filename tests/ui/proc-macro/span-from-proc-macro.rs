@@ -1,5 +1,5 @@
-//@ aux-build:custom-quote.rs
-//@ aux-build:span-from-proc-macro.rs
+//@ proc-macro: custom-quote.rs
+//@ proc-macro: span-from-proc-macro.rs
 //@ compile-flags: -Z macro-backtrace
 
 #[macro_use]

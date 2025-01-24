@@ -6,18 +6,24 @@ use std::path::PathBuf;
 use std::task::Poll;
 use std::{iter, thread};
 
+use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::EntryFnType;
-use rustc_target::spec::abi::Abi;
 
 use crate::concurrency::thread::TlsAllocAction;
 use crate::diagnostics::report_leaks;
 use crate::shims::tls;
 use crate::*;
+
+#[derive(Copy, Clone, Debug)]
+pub enum MiriEntryFnType {
+    MiriStart,
+    Rustc(EntryFnType),
+}
 
 /// When the main thread would exit, we will yield to any other thread that is ready to execute.
 /// But we must only do that a finite number of times, or a background thread running `loop {}`
@@ -249,6 +255,13 @@ impl<'tcx> MainThreadState<'tcx> {
                 // Figure out exit code.
                 let ret_place = this.machine.main_fn_ret_place.clone().unwrap();
                 let exit_code = this.read_target_isize(&ret_place)?;
+                // Rust uses `isize` but the underlying type of an exit code is `i32`.
+                // Do a saturating cast.
+                let exit_code = i32::try_from(exit_code).unwrap_or(if exit_code >= 0 {
+                    i32::MAX
+                } else {
+                    i32::MIN
+                });
                 // Deal with our thread-local memory. We do *not* want to actually free it, instead we consider TLS
                 // to be like a global `static`, so that all memory reached by it is considered to "not leak".
                 this.terminate_active_thread(TlsAllocAction::Leak)?;
@@ -265,13 +278,13 @@ impl<'tcx> MainThreadState<'tcx> {
 pub fn create_ecx<'tcx>(
     tcx: TyCtxt<'tcx>,
     entry_id: DefId,
-    entry_type: EntryFnType,
+    entry_type: MiriEntryFnType,
     config: &MiriConfig,
 ) -> InterpResult<'tcx, InterpCx<'tcx, MiriMachine<'tcx>>> {
-    let param_env = ty::ParamEnv::reveal_all();
-    let layout_cx = LayoutCx::new(tcx, param_env);
+    let typing_env = ty::TypingEnv::fully_monomorphized();
+    let layout_cx = LayoutCx::new(tcx, typing_env);
     let mut ecx =
-        InterpCx::new(tcx, rustc_span::DUMMY_SP, param_env, MiriMachine::new(config, layout_cx));
+        InterpCx::new(tcx, rustc_span::DUMMY_SP, typing_env, MiriMachine::new(config, layout_cx));
 
     // Some parts of initialization require a full `InterpCx`.
     MiriMachine::late_init(&mut ecx, config, {
@@ -293,7 +306,7 @@ pub fn create_ecx<'tcx>(
     // Setup first stack frame.
     let entry_instance = ty::Instance::mono(tcx, entry_id);
 
-    // First argument is constructed later, because it's skipped if the entry function uses #[start].
+    // First argument is constructed later, because it's skipped for `miri_start.`
 
     // Second argument (argc): length of `config.args`.
     let argc =
@@ -366,17 +379,15 @@ pub fn create_ecx<'tcx>(
     // Call start function.
 
     match entry_type {
-        EntryFnType::Main { .. } => {
+        MiriEntryFnType::Rustc(EntryFnType::Main { .. }) => {
             let start_id = tcx.lang_items().start_fn().unwrap_or_else(|| {
-                tcx.dcx().fatal(
-                    "could not find start function. Make sure the entry point is marked with `#[start]`."
-                );
+                tcx.dcx().fatal("could not find start lang item");
             });
             let main_ret_ty = tcx.fn_sig(entry_id).no_bound_vars().unwrap().output();
             let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
             let start_instance = ty::Instance::try_resolve(
                 tcx,
-                ty::ParamEnv::reveal_all(),
+                typing_env,
                 start_id,
                 tcx.mk_args(&[ty::GenericArg::from(main_ret_ty)]),
             )
@@ -391,7 +402,7 @@ pub fn create_ecx<'tcx>(
 
             ecx.call_function(
                 start_instance,
-                Abi::Rust,
+                ExternAbi::Rust,
                 &[
                     ImmTy::from_scalar(
                         Scalar::from_pointer(main_ptr, &ecx),
@@ -406,10 +417,10 @@ pub fn create_ecx<'tcx>(
                 StackPopCleanup::Root { cleanup: true },
             )?;
         }
-        EntryFnType::Start => {
+        MiriEntryFnType::MiriStart => {
             ecx.call_function(
                 entry_instance,
-                Abi::Rust,
+                ExternAbi::Rust,
                 &[argc, argv],
                 Some(&ret_place),
                 StackPopCleanup::Root { cleanup: true },
@@ -421,15 +432,15 @@ pub fn create_ecx<'tcx>(
 }
 
 /// Evaluates the entry function specified by `entry_id`.
-/// Returns `Some(return_code)` if program executed completed.
+/// Returns `Some(return_code)` if program execution completed.
 /// Returns `None` if an evaluation error occurred.
-#[allow(clippy::needless_lifetimes)]
+#[expect(clippy::needless_lifetimes)]
 pub fn eval_entry<'tcx>(
     tcx: TyCtxt<'tcx>,
     entry_id: DefId,
-    entry_type: EntryFnType,
+    entry_type: MiriEntryFnType,
     config: MiriConfig,
-) -> Option<i64> {
+) -> Option<i32> {
     // Copy setting before we move `config`.
     let ignore_leaks = config.ignore_leaks;
 

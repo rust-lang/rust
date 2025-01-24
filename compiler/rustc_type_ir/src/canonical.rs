@@ -8,7 +8,7 @@ use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::inherent::*;
-use crate::{self as ty, Interner, UniverseIndex};
+use crate::{self as ty, Interner, TypingMode, UniverseIndex};
 
 #[derive_where(Clone; I: Interner, V: Clone)]
 #[derive_where(Hash; I: Interner, V: Hash)]
@@ -19,7 +19,7 @@ use crate::{self as ty, Interner, UniverseIndex};
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub struct CanonicalQueryInput<I: Interner, V> {
     pub canonical: Canonical<I, V>,
-    pub defining_opaque_types: I::DefiningOpaqueTypes,
+    pub typing_mode: TypingMode<I>,
 }
 
 /// A "canonicalized" type `V` is one where all free inference
@@ -108,7 +108,6 @@ impl<I: Interner> CanonicalVarInfo<I> {
             CanonicalVarKind::PlaceholderRegion(..) => false,
             CanonicalVarKind::Const(_) => true,
             CanonicalVarKind::PlaceholderConst(_) => false,
-            CanonicalVarKind::Effect => true,
         }
     }
 
@@ -118,17 +117,15 @@ impl<I: Interner> CanonicalVarInfo<I> {
             CanonicalVarKind::Ty(_)
             | CanonicalVarKind::PlaceholderTy(_)
             | CanonicalVarKind::Const(_)
-            | CanonicalVarKind::PlaceholderConst(_)
-            | CanonicalVarKind::Effect => false,
+            | CanonicalVarKind::PlaceholderConst(_) => false,
         }
     }
 
     pub fn expect_placeholder_index(self) -> usize {
         match self.kind {
-            CanonicalVarKind::Ty(_)
-            | CanonicalVarKind::Region(_)
-            | CanonicalVarKind::Const(_)
-            | CanonicalVarKind::Effect => panic!("expected placeholder: {self:?}"),
+            CanonicalVarKind::Ty(_) | CanonicalVarKind::Region(_) | CanonicalVarKind::Const(_) => {
+                panic!("expected placeholder: {self:?}")
+            }
 
             CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.var().as_usize(),
             CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.var().as_usize(),
@@ -161,9 +158,6 @@ pub enum CanonicalVarKind<I: Interner> {
     /// Some kind of const inference variable.
     Const(UniverseIndex),
 
-    /// Effect variable `'?E`.
-    Effect,
-
     /// A "placeholder" that represents "any const".
     PlaceholderConst(I::PlaceholderConst),
 }
@@ -180,7 +174,6 @@ impl<I: Interner> CanonicalVarKind<I> {
             CanonicalVarKind::Ty(CanonicalTyVarKind::Float | CanonicalTyVarKind::Int) => {
                 UniverseIndex::ROOT
             }
-            CanonicalVarKind::Effect => UniverseIndex::ROOT,
         }
     }
 
@@ -205,8 +198,7 @@ impl<I: Interner> CanonicalVarKind<I> {
             CanonicalVarKind::PlaceholderConst(placeholder) => {
                 CanonicalVarKind::PlaceholderConst(placeholder.with_updated_universe(ui))
             }
-            CanonicalVarKind::Ty(CanonicalTyVarKind::Int | CanonicalTyVarKind::Float)
-            | CanonicalVarKind::Effect => {
+            CanonicalVarKind::Ty(CanonicalTyVarKind::Int | CanonicalTyVarKind::Float) => {
                 assert_eq!(ui, UniverseIndex::ROOT);
                 self
             }
@@ -309,10 +301,6 @@ impl<I: Interner> CanonicalVarValues<I> {
                         }
                         CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => {
                             Region::new_anon_bound(cx, ty::INNERMOST, ty::BoundVar::from_usize(i))
-                                .into()
-                        }
-                        CanonicalVarKind::Effect => {
-                            Const::new_anon_bound(cx, ty::INNERMOST, ty::BoundVar::from_usize(i))
                                 .into()
                         }
                         CanonicalVarKind::Const(_) | CanonicalVarKind::PlaceholderConst(_) => {

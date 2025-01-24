@@ -25,7 +25,7 @@ expand_collapse_debuginfo_illegal =
     illegal value for attribute #[collapse_debuginfo(no|external|yes)]
 
 expand_count_repetition_misplaced =
-    `count` can not be placed inside the inner-most repetition
+    `count` can not be placed inside the innermost repetition
 
 expand_crate_name_in_cfg_attr =
     `crate_name` within an `#![cfg_attr]` attribute is forbidden
@@ -74,7 +74,7 @@ expand_helper_attribute_name_invalid =
     `{$name}` cannot be a name of derive helper attribute
 
 expand_incomplete_parse =
-    macro expansion ignores token `{$token}` and any following
+    macro expansion ignores {$descr} and any tokens following
     .label = caused by the macro expansion here
     .note = the usage of `{$macro_path}!` is likely invalid in {$kind_name} context
     .suggestion_add_semi = you might be missing a semicolon here

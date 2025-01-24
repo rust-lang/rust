@@ -58,7 +58,7 @@ rustc_index::newtype_index! {
 }
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 #[rustc_pass_by_value]
-pub struct Layout<'a>(pub Interned<'a, LayoutS<FieldIdx, VariantIdx>>);
+pub struct Layout<'a>(pub Interned<'a, LayoutData<FieldIdx, VariantIdx>>);
 
 impl<'a> fmt::Debug for Layout<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -68,8 +68,8 @@ impl<'a> fmt::Debug for Layout<'a> {
 }
 
 impl<'a> Deref for Layout<'a> {
-    type Target = &'a LayoutS<FieldIdx, VariantIdx>;
-    fn deref(&self) -> &&'a LayoutS<FieldIdx, VariantIdx> {
+    type Target = &'a LayoutData<FieldIdx, VariantIdx>;
+    fn deref(&self) -> &&'a LayoutData<FieldIdx, VariantIdx> {
         &self.0.0
     }
 }
@@ -83,8 +83,8 @@ impl<'a> Layout<'a> {
         &self.0.0.variants
     }
 
-    pub fn abi(self) -> Abi {
-        self.0.0.abi
+    pub fn backend_repr(self) -> BackendRepr {
+        self.0.0.backend_repr
     }
 
     pub fn largest_niche(self) -> Option<Niche> {
@@ -114,7 +114,7 @@ impl<'a> Layout<'a> {
     pub fn is_pointer_like(self, data_layout: &TargetDataLayout) -> bool {
         self.size() == data_layout.pointer_size
             && self.align().abi == data_layout.pointer_align.abi
-            && matches!(self.abi(), Abi::Scalar(Scalar::Initialized { .. }))
+            && matches!(self.backend_repr(), BackendRepr::Scalar(Scalar::Initialized { .. }))
     }
 }
 
@@ -142,8 +142,8 @@ impl<'a, Ty: fmt::Display> fmt::Debug for TyAndLayout<'a, Ty> {
 }
 
 impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
-    type Target = &'a LayoutS<FieldIdx, VariantIdx>;
-    fn deref(&self) -> &&'a LayoutS<FieldIdx, VariantIdx> {
+    type Target = &'a LayoutData<FieldIdx, VariantIdx>;
+    fn deref(&self) -> &&'a LayoutData<FieldIdx, VariantIdx> {
         &self.layout.0.0
     }
 }
@@ -196,11 +196,29 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty: TyAbiInterface<'a, C>,
         C: HasDataLayout,
     {
-        match self.abi {
-            Abi::Scalar(scalar) => matches!(scalar.primitive(), Float(F32 | F64)),
-            Abi::Aggregate { .. } => {
+        match self.backend_repr {
+            BackendRepr::Scalar(scalar) => matches!(scalar.primitive(), Float(F32 | F64)),
+            BackendRepr::Memory { .. } => {
                 if self.fields.count() == 1 && self.fields.offset(0).bytes() == 0 {
                     self.field(cx, 0).is_single_fp_element(cx)
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
+    }
+
+    pub fn is_single_vector_element<C>(self, cx: &C, expected_size: Size) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+        C: HasDataLayout,
+    {
+        match self.backend_repr {
+            BackendRepr::Vector { .. } => self.size == expected_size,
+            BackendRepr::Memory { .. } => {
+                if self.fields.count() == 1 && self.fields.offset(0).bytes() == 0 {
+                    self.field(cx, 0).is_single_vector_element(cx, expected_size)
                 } else {
                     false
                 }

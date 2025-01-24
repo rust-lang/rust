@@ -1,9 +1,8 @@
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use rustc_hir::LangItem;
 use rustc_middle::ty::{AssocKind, GenericArg};
-use rustc_session::config::{EntryFnType, sigpipe};
-use rustc_span::DUMMY_SP;
-use rustc_span::symbol::Ident;
+use rustc_session::config::EntryFnType;
+use rustc_span::{DUMMY_SP, Ident};
 
 use crate::prelude::*;
 
@@ -15,16 +14,15 @@ pub(crate) fn maybe_create_entry_wrapper(
     is_jit: bool,
     is_primary_cgu: bool,
 ) {
-    let (main_def_id, (is_main_fn, sigpipe)) = match tcx.entry_fn(()) {
+    let (main_def_id, sigpipe) = match tcx.entry_fn(()) {
         Some((def_id, entry_ty)) => (def_id, match entry_ty {
-            EntryFnType::Main { sigpipe } => (true, sigpipe),
-            EntryFnType::Start => (false, sigpipe::DEFAULT),
+            EntryFnType::Main { sigpipe } => sigpipe,
         }),
         None => return,
     };
 
     if main_def_id.is_local() {
-        let instance = Instance::mono(tcx, main_def_id).polymorphize(tcx);
+        let instance = Instance::mono(tcx, main_def_id);
         if module.get_name(tcx.symbol_name(instance).name).is_none() {
             return;
         }
@@ -32,14 +30,13 @@ pub(crate) fn maybe_create_entry_wrapper(
         return;
     }
 
-    create_entry_fn(tcx, module, main_def_id, is_jit, is_main_fn, sigpipe);
+    create_entry_fn(tcx, module, main_def_id, is_jit, sigpipe);
 
     fn create_entry_fn(
         tcx: TyCtxt<'_>,
         m: &mut dyn Module,
         rust_main_def_id: DefId,
         ignore_lang_start_wrapper: bool,
-        is_main_fn: bool,
         sigpipe: u8,
     ) {
         let main_ret_ty = tcx.fn_sig(rust_main_def_id).no_bound_vars().unwrap().output();
@@ -49,7 +46,7 @@ pub(crate) fn maybe_create_entry_wrapper(
         // regions must appear in the argument
         // listing.
         let main_ret_ty = tcx.normalize_erasing_regions(
-            ty::ParamEnv::reveal_all(),
+            ty::TypingEnv::fully_monomorphized(),
             main_ret_ty.no_bound_vars().unwrap(),
         );
 
@@ -75,7 +72,7 @@ pub(crate) fn maybe_create_entry_wrapper(
             }
         };
 
-        let instance = Instance::mono(tcx, rust_main_def_id).polymorphize(tcx);
+        let instance = Instance::mono(tcx, rust_main_def_id);
 
         let main_name = tcx.symbol_name(instance).name;
         let main_sig = get_function_sig(tcx, m.target_config().default_call_conv, instance);
@@ -95,8 +92,8 @@ pub(crate) fn maybe_create_entry_wrapper(
 
             let main_func_ref = m.declare_func_in_func(main_func_id, &mut bcx.func);
 
-            let result = if is_main_fn && ignore_lang_start_wrapper {
-                // regular main fn, but ignoring #[lang = "start"] as we are running in the jit
+            let result = if ignore_lang_start_wrapper {
+                // ignoring #[lang = "start"] as we are running in the jit
                 // FIXME set program arguments somehow
                 let call_inst = bcx.ins().call(main_func_ref, &[]);
                 let call_results = bcx.func.dfg.inst_results(call_inst).to_owned();
@@ -113,12 +110,11 @@ pub(crate) fn maybe_create_entry_wrapper(
                     .unwrap();
                 let report = Instance::expect_resolve(
                     tcx,
-                    ParamEnv::reveal_all(),
+                    ty::TypingEnv::fully_monomorphized(),
                     report.def_id,
                     tcx.mk_args(&[GenericArg::from(main_ret_ty)]),
                     DUMMY_SP,
-                )
-                .polymorphize(tcx);
+                );
 
                 let report_name = tcx.symbol_name(report).name;
                 let report_sig = get_function_sig(tcx, m.target_config().default_call_conv, report);
@@ -135,16 +131,16 @@ pub(crate) fn maybe_create_entry_wrapper(
                     types::I64 => bcx.ins().sextend(types::I64, res),
                     _ => unimplemented!("16bit systems are not yet supported"),
                 }
-            } else if is_main_fn {
+            } else {
+                // Regular main fn invoked via start lang item.
                 let start_def_id = tcx.require_lang_item(LangItem::Start, None);
                 let start_instance = Instance::expect_resolve(
                     tcx,
-                    ParamEnv::reveal_all(),
+                    ty::TypingEnv::fully_monomorphized(),
                     start_def_id,
                     tcx.mk_args(&[main_ret_ty.into()]),
                     DUMMY_SP,
-                )
-                .polymorphize(tcx);
+                );
                 let start_func_id = import_function(tcx, m, start_instance);
 
                 let main_val = bcx.ins().func_addr(m.target_config().pointer_type(), main_func_ref);
@@ -152,10 +148,6 @@ pub(crate) fn maybe_create_entry_wrapper(
                 let func_ref = m.declare_func_in_func(start_func_id, &mut bcx.func);
                 let call_inst =
                     bcx.ins().call(func_ref, &[main_val, arg_argc, arg_argv, arg_sigpipe]);
-                bcx.inst_results(call_inst)[0]
-            } else {
-                // using user-defined start fn
-                let call_inst = bcx.ins().call(main_func_ref, &[arg_argc, arg_argv]);
                 bcx.inst_results(call_inst)[0]
             };
 

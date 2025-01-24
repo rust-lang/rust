@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'structural_match'
+error[E0658]: use of unstable library feature `structural_match`
   --> $DIR/feature-gate.rs:29:6
    |
 LL | impl std::marker::StructuralPartialEq for Foo { }

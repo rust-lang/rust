@@ -2,7 +2,7 @@
 // scalar value.
 
 //@ compile-flags: -O -C no-prepopulate-passes
-//@ ignore-llvm-version: 19 - 99
+//@ max-llvm-major-version: 18
 
 #![crate_type = "lib"]
 

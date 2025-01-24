@@ -10,7 +10,7 @@ use ide_db::{imports::insert_use::InsertUseConfig, SnippetCap};
 use crate::{snippet::Snippet, CompletionFieldsToResolve};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CompletionConfig {
+pub struct CompletionConfig<'a> {
     pub enable_postfix_completions: bool,
     pub enable_imports_on_the_fly: bool,
     pub enable_self_on_the_fly: bool,
@@ -28,6 +28,14 @@ pub struct CompletionConfig {
     pub snippets: Vec<Snippet>,
     pub limit: Option<usize>,
     pub fields_to_resolve: CompletionFieldsToResolve,
+    pub exclude_flyimport: Vec<(String, AutoImportExclusionType)>,
+    pub exclude_traits: &'a [String],
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum AutoImportExclusionType {
+    Always,
+    Methods,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -36,7 +44,7 @@ pub enum CallableSnippets {
     AddParentheses,
 }
 
-impl CompletionConfig {
+impl CompletionConfig<'_> {
     pub fn postfix_snippets(&self) -> impl Iterator<Item = (&str, &Snippet)> {
         self.snippets
             .iter()

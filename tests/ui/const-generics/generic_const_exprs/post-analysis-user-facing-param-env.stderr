@@ -1,0 +1,46 @@
+error[E0407]: method `unimplemented` is not a member of trait `std::ops::Add`
+  --> $DIR/post-analysis-user-facing-param-env.rs:11:5
+   |
+LL | /     fn unimplemented(self, _: &Foo) -> Self::Output {
+LL | |
+LL | |
+LL | |         loop {}
+LL | |     }
+   | |_____^ not a member of trait `std::ops::Add`
+
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/post-analysis-user-facing-param-env.rs:2:12
+   |
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0207]: the const parameter `NUM` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/post-analysis-user-facing-param-env.rs:6:10
+   |
+LL | impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
+   |          ^^^^^^^^^^^^^^^^ unconstrained const parameter
+   |
+   = note: expressions using a const parameter must map each value to a distinct output value
+   = note: proving the result of expressions other than the parameter are unique is not supported
+
+error[E0284]: type annotations needed
+  --> $DIR/post-analysis-user-facing-param-env.rs:11:40
+   |
+LL |     fn unimplemented(self, _: &Foo) -> Self::Output {
+   |                                        ^^^^^^^^^^^^ cannot infer the value of const parameter `NUM`
+   |
+note: required for `Foo` to implement `Add<&'a Foo>`
+  --> $DIR/post-analysis-user-facing-param-env.rs:6:28
+   |
+LL | impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
+   |          ----------------  ^^^^^^^^^^^^^^^^^^^^^^     ^^^
+   |          |
+   |          unsatisfied trait bound introduced here
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0207, E0284, E0407.
+For more information about an error, try `rustc --explain E0207`.

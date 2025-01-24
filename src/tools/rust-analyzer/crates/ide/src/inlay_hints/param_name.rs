@@ -153,7 +153,7 @@ fn is_param_name_suffix_of_fn_name(
                     .len()
                     .checked_sub(param_name.len())
                     .and_then(|at| function.is_char_boundary(at).then(|| function.split_at(at)))
-                    .map_or(false, |(prefix, suffix)| {
+                    .is_some_and(|(prefix, suffix)| {
                         suffix.eq_ignore_ascii_case(param_name) && prefix.ends_with('_')
                     })
         }
@@ -269,7 +269,7 @@ mod tests {
     };
 
     #[track_caller]
-    fn check_params(ra_fixture: &str) {
+    fn check_params(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(
             InlayHintsConfig { parameter_hints: true, ..DISABLED_CONFIG },
             ra_fixture,

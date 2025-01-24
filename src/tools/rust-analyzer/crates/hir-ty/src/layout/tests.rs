@@ -1,7 +1,7 @@
 use chalk_ir::{AdtId, TyKind};
 use either::Either;
 use hir_def::db::DefDatabase;
-use project_model::{target_data_layout::RustcDataLayoutConfig, Sysroot};
+use project_model::{toolchain_info::QueryConfig, Sysroot};
 use rustc_hash::FxHashMap;
 use syntax::ToSmolStr;
 use test_fixture::WithFixture;
@@ -17,15 +17,18 @@ use crate::{
 mod closure;
 
 fn current_machine_data_layout() -> String {
-    project_model::target_data_layout::get(
-        RustcDataLayoutConfig::Rustc(&Sysroot::empty()),
+    project_model::toolchain_info::target_data_layout::get(
+        QueryConfig::Rustc(&Sysroot::empty(), &std::env::current_dir().unwrap()),
         None,
         &FxHashMap::default(),
     )
     .unwrap()
 }
 
-fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutError> {
+fn eval_goal(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    minicore: &str,
+) -> Result<Arc<Layout>, LayoutError> {
     let target_data_layout = current_machine_data_layout();
     let ra_fixture = format!(
         "//- target_data_layout: {target_data_layout}\n{minicore}//- /main.rs crate:test\n{ra_fixture}",
@@ -81,7 +84,10 @@ fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutErro
 }
 
 /// A version of `eval_goal` for types that can not be expressed in ADTs, like closures and `impl Trait`
-fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutError> {
+fn eval_expr(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    minicore: &str,
+) -> Result<Arc<Layout>, LayoutError> {
     let target_data_layout = current_machine_data_layout();
     let ra_fixture = format!(
         "//- target_data_layout: {target_data_layout}\n{minicore}//- /main.rs crate:test\nfn main(){{let goal = {{{ra_fixture}}};}}",
@@ -114,21 +120,31 @@ fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutErro
 }
 
 #[track_caller]
-fn check_size_and_align(ra_fixture: &str, minicore: &str, size: u64, align: u64) {
+fn check_size_and_align(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    minicore: &str,
+    size: u64,
+    align: u64,
+) {
     let l = eval_goal(ra_fixture, minicore).unwrap();
     assert_eq!(l.size.bytes(), size, "size mismatch");
     assert_eq!(l.align.abi.bytes(), align, "align mismatch");
 }
 
 #[track_caller]
-fn check_size_and_align_expr(ra_fixture: &str, minicore: &str, size: u64, align: u64) {
+fn check_size_and_align_expr(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    minicore: &str,
+    size: u64,
+    align: u64,
+) {
     let l = eval_expr(ra_fixture, minicore).unwrap();
     assert_eq!(l.size.bytes(), size, "size mismatch");
     assert_eq!(l.align.abi.bytes(), align, "align mismatch");
 }
 
 #[track_caller]
-fn check_fail(ra_fixture: &str, e: LayoutError) {
+fn check_fail(#[rust_analyzer::rust_fixture] ra_fixture: &str, e: LayoutError) {
     let r = eval_goal(ra_fixture, "");
     assert_eq!(r, Err(e));
 }
@@ -241,31 +257,31 @@ fn recursive() {
 #[test]
 fn repr_packed() {
     size_and_align! {
-        #[repr(packed)]
+        #[repr(Rust, packed)]
         struct Goal;
     }
     size_and_align! {
-        #[repr(packed(2))]
+        #[repr(Rust, packed(2))]
         struct Goal;
     }
     size_and_align! {
-        #[repr(packed(4))]
+        #[repr(Rust, packed(4))]
         struct Goal;
     }
     size_and_align! {
-        #[repr(packed)]
+        #[repr(Rust, packed)]
         struct Goal(i32);
     }
     size_and_align! {
-        #[repr(packed(2))]
+        #[repr(Rust, packed(2))]
         struct Goal(i32);
     }
     size_and_align! {
-        #[repr(packed(4))]
+        #[repr(Rust, packed(4))]
         struct Goal(i32);
     }
 
-    check_size_and_align("#[repr(packed(5))] struct Goal(i32);", "", 4, 1);
+    check_size_and_align("#[repr(Rust, packed(5))] struct Goal(i32);", "", 4, 1);
 }
 
 #[test]

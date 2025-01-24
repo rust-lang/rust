@@ -115,8 +115,7 @@ use rustc_lint_defs::BuiltinLintDiag;
 use rustc_session::lint::builtin::{META_VARIABLE_MISUSE, MISSING_FRAGMENT_SPECIFIER};
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::{MacroRulesNormalizedIdent, kw};
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, MacroRulesNormalizedIdent, Span, kw};
 use smallvec::SmallVec;
 
 use super::quoted::VALID_FRAGMENT_NAMES_MSG;

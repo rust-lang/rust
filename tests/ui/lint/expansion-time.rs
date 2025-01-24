@@ -11,7 +11,7 @@ macro_rules! m { ($i) => {} } //~ WARN missing fragment specifier
 
 #[warn(soft_unstable)]
 mod benches {
-    #[bench] //~ WARN use of unstable library feature 'test'
+    #[bench] //~ WARN use of unstable library feature `test`
              //~| WARN this was previously accepted
     fn foo() {}
 }

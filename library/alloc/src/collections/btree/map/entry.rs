@@ -269,6 +269,31 @@ impl<'a, K: Ord, V, A: Allocator + Clone> Entry<'a, K, V, A> {
             Vacant(entry) => Vacant(entry),
         }
     }
+
+    /// Sets the value of the entry, and returns an `OccupiedEntry`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_entry_insert)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map: BTreeMap<&str, String> = BTreeMap::new();
+    /// let entry = map.entry("poneyland").insert_entry("hoho".to_string());
+    ///
+    /// assert_eq!(entry.key(), &"poneyland");
+    /// ```
+    #[inline]
+    #[unstable(feature = "btree_entry_insert", issue = "65225")]
+    pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V, A> {
+        match self {
+            Occupied(mut entry) => {
+                entry.insert(value);
+                entry
+            }
+            Vacant(entry) => entry.insert_entry(value),
+        }
+    }
 }
 
 impl<'a, K: Ord, V: Default, A: Allocator + Clone> Entry<'a, K, V, A> {
@@ -348,41 +373,61 @@ impl<'a, K: Ord, V, A: Allocator + Clone> VacantEntry<'a, K, V, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("push", "put")]
-    pub fn insert(mut self, value: V) -> &'a mut V {
-        let out_ptr = match self.handle {
+    pub fn insert(self, value: V) -> &'a mut V {
+        self.insert_entry(value).into_mut()
+    }
+
+    /// Sets the value of the entry with the `VacantEntry`'s key,
+    /// and returns an `OccupiedEntry`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_entry_insert)]
+    /// use std::collections::BTreeMap;
+    /// use std::collections::btree_map::Entry;
+    ///
+    /// let mut map: BTreeMap<&str, u32> = BTreeMap::new();
+    ///
+    /// if let Entry::Vacant(o) = map.entry("poneyland") {
+    ///     let entry = o.insert_entry(37);
+    ///     assert_eq!(entry.get(), &37);
+    /// }
+    /// assert_eq!(map["poneyland"], 37);
+    /// ```
+    #[unstable(feature = "btree_entry_insert", issue = "65225")]
+    pub fn insert_entry(mut self, value: V) -> OccupiedEntry<'a, K, V, A> {
+        let handle = match self.handle {
             None => {
                 // SAFETY: There is no tree yet so no reference to it exists.
-                let map = unsafe { self.dormant_map.awaken() };
-                let mut root = NodeRef::new_leaf(self.alloc.clone());
-                let val_ptr = root.borrow_mut().push(self.key, value);
-                map.root = Some(root.forget_type());
-                map.length = 1;
-                val_ptr
+                let map = unsafe { self.dormant_map.reborrow() };
+                let root = map.root.insert(NodeRef::new_leaf(self.alloc.clone()).forget_type());
+                // SAFETY: We *just* created the root as a leaf, and we're
+                // stacking the new handle on the original borrow lifetime.
+                unsafe {
+                    let mut leaf = root.borrow_mut().cast_to_leaf_unchecked();
+                    leaf.push_with_handle(self.key, value)
+                }
             }
-            Some(handle) => {
-                let new_handle =
-                    handle.insert_recursing(self.key, value, self.alloc.clone(), |ins| {
-                        drop(ins.left);
-                        // SAFETY: Pushing a new root node doesn't invalidate
-                        // handles to existing nodes.
-                        let map = unsafe { self.dormant_map.reborrow() };
-                        let root = map.root.as_mut().unwrap(); // same as ins.left
-                        root.push_internal_level(self.alloc).push(ins.kv.0, ins.kv.1, ins.right)
-                    });
-
-                // Get the pointer to the value
-                let val_ptr = new_handle.into_val_mut();
-
-                // SAFETY: We have consumed self.handle.
-                let map = unsafe { self.dormant_map.awaken() };
-                map.length += 1;
-                val_ptr
-            }
+            Some(handle) => handle.insert_recursing(self.key, value, self.alloc.clone(), |ins| {
+                drop(ins.left);
+                // SAFETY: Pushing a new root node doesn't invalidate
+                // handles to existing nodes.
+                let map = unsafe { self.dormant_map.reborrow() };
+                let root = map.root.as_mut().unwrap(); // same as ins.left
+                root.push_internal_level(self.alloc.clone()).push(ins.kv.0, ins.kv.1, ins.right)
+            }),
         };
 
-        // Now that we have finished growing the tree using borrowed references,
-        // dereference the pointer to a part of it, that we picked up along the way.
-        unsafe { &mut *out_ptr }
+        // SAFETY: modifying the length doesn't invalidate handles to existing nodes.
+        unsafe { self.dormant_map.reborrow().length += 1 };
+
+        OccupiedEntry {
+            handle: handle.forget_node_type(),
+            dormant_map: self.dormant_map,
+            alloc: self.alloc,
+            _marker: PhantomData,
+        }
     }
 }
 
@@ -402,6 +447,11 @@ impl<'a, K: Ord, V, A: Allocator + Clone> OccupiedEntry<'a, K, V, A> {
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
     pub fn key(&self) -> &K {
         self.handle.reborrow().into_kv().0
+    }
+
+    /// Converts the entry into a reference to its key.
+    pub(crate) fn into_key(self) -> &'a K {
+        self.handle.into_kv_mut().0
     }
 
     /// Take ownership of the key and value from the map.

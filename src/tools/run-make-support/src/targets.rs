@@ -28,6 +28,12 @@ pub fn is_darwin() -> bool {
     target().contains("darwin")
 }
 
+/// Check if target uses AIX.
+#[must_use]
+pub fn is_aix() -> bool {
+    target().contains("aix")
+}
+
 /// Get the target OS on Apple operating systems.
 #[must_use]
 pub fn apple_os() -> &'static str {

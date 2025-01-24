@@ -6,9 +6,9 @@ use super::{
 };
 use crate::error::TypeError;
 use crate::inherent::*;
-use crate::solve::{Goal, SolverMode};
+use crate::solve::Goal;
 use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, InferCtxtLike, Interner, Upcast};
+use crate::{self as ty, InferCtxtLike, Interner, TypingMode, Upcast};
 
 pub trait PredicateEmittingRelation<Infcx, I = <Infcx as InferCtxtLike>::Interner>:
     TypeRelation<I>
@@ -123,24 +123,22 @@ where
         }
 
         // All other cases of inference are errors
-        (ty::Infer(_), _) | (_, ty::Infer(_)) => {
-            Err(TypeError::Sorts(ExpectedFound::new(true, a, b)))
-        }
+        (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Sorts(ExpectedFound::new(a, b))),
 
         (ty::Alias(ty::Opaque, _), _) | (_, ty::Alias(ty::Opaque, _)) => {
-            match infcx.solver_mode() {
-                SolverMode::Normal => {
-                    assert!(!infcx.next_trait_solver());
-                    structurally_relate_tys(relation, a, b)
-                }
+            assert!(!infcx.next_trait_solver());
+            match infcx.typing_mode() {
                 // During coherence, opaque types should be treated as *possibly*
-                // equal to any other type (except for possibly itinfcx). This is an
+                // equal to any other type. This is an
                 // extremely heavy hammer, but can be relaxed in a forwards-compatible
                 // way later.
-                SolverMode::Coherence => {
+                TypingMode::Coherence => {
                     relation.register_predicates([ty::Binder::dummy(ty::PredicateKind::Ambiguous)]);
                     Ok(a)
                 }
+                TypingMode::Analysis { .. }
+                | TypingMode::PostBorrowckAnalysis { .. }
+                | TypingMode::PostAnalysis => structurally_relate_tys(relation, a, b),
             }
         }
 
@@ -179,23 +177,9 @@ where
             Ok(a)
         }
 
-        (
-            ty::ConstKind::Infer(ty::InferConst::EffectVar(a_vid)),
-            ty::ConstKind::Infer(ty::InferConst::EffectVar(b_vid)),
-        ) => {
-            infcx.equate_effect_vids_raw(a_vid, b_vid);
-            Ok(a)
-        }
-
         // All other cases of inference with other variables are errors.
-        (
-            ty::ConstKind::Infer(ty::InferConst::Var(_) | ty::InferConst::EffectVar(_)),
-            ty::ConstKind::Infer(_),
-        )
-        | (
-            ty::ConstKind::Infer(_),
-            ty::ConstKind::Infer(ty::InferConst::Var(_) | ty::InferConst::EffectVar(_)),
-        ) => {
+        (ty::ConstKind::Infer(ty::InferConst::Var(_)), ty::ConstKind::Infer(_))
+        | (ty::ConstKind::Infer(_), ty::ConstKind::Infer(ty::InferConst::Var(_))) => {
             panic!(
                 "tried to combine ConstKind::Infer/ConstKind::Infer(InferConst::Var): {a:?} and {b:?}"
             )
@@ -208,16 +192,6 @@ where
 
         (_, ty::ConstKind::Infer(ty::InferConst::Var(vid))) => {
             infcx.instantiate_const_var_raw(relation, false, vid, a)?;
-            Ok(a)
-        }
-
-        (ty::ConstKind::Infer(ty::InferConst::EffectVar(vid)), _) => {
-            infcx.instantiate_effect_var_raw(vid, b);
-            Ok(b)
-        }
-
-        (_, ty::ConstKind::Infer(ty::InferConst::EffectVar(vid))) => {
-            infcx.instantiate_effect_var_raw(vid, a);
             Ok(a)
         }
 

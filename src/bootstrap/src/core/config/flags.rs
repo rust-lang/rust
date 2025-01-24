@@ -388,6 +388,9 @@ pub enum Subcommand {
         /// enable this to generate a Rustfix coverage file, which is saved in
         /// `/<build_base>/rustfix_missing_coverage.txt`
         rustfix_coverage: bool,
+        #[arg(long)]
+        /// don't capture stdout/stderr of tests
+        no_capture: bool,
     },
     /// Build and run some test suites *in Miri*
     Miri {
@@ -563,6 +566,13 @@ impl Subcommand {
         }
     }
 
+    pub fn no_capture(&self) -> bool {
+        match *self {
+            Subcommand::Test { no_capture, .. } => no_capture,
+            _ => false,
+        }
+    }
+
     pub fn rustfix_coverage(&self) -> bool {
         match *self {
             Subcommand::Test { rustfix_coverage, .. } => rustfix_coverage,
@@ -633,7 +643,14 @@ pub fn get_completion<G: clap_complete::Generator>(shell: G, path: &Path) -> Opt
         })
     };
     let mut buf = Vec::new();
-    clap_complete::generate(shell, &mut cmd, "x.py", &mut buf);
+    let (bin_name, _) = path
+        .file_name()
+        .expect("path should be a regular file")
+        .to_str()
+        .expect("file name should be UTF-8")
+        .rsplit_once('.')
+        .expect("file name should have an extension");
+    clap_complete::generate(shell, &mut cmd, bin_name, &mut buf);
     if buf == current.as_bytes() {
         return None;
     }

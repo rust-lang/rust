@@ -5,7 +5,7 @@ import * as tasks from "./tasks";
 
 import type { CtxInit } from "./ctx";
 import { makeDebugConfig } from "./debug";
-import type { Config, RunnableEnvCfg, RunnableEnvCfgItem } from "./config";
+import type { Config } from "./config";
 import type { LanguageClient } from "vscode-languageclient/node";
 import { unwrapUndefinable, type RustEditor } from "./util";
 
@@ -81,32 +81,13 @@ export function prepareBaseEnv(
 
 export function prepareEnv(
     inheritEnv: boolean,
-    label: string,
-    runnableArgs: ra.CargoRunnableArgs,
-    runnableEnvCfg?: RunnableEnvCfg,
+    runnableEnv?: Record<string, string>,
+    runnableEnvCfg?: Record<string, string>,
 ): Record<string, string> {
-    const env = prepareBaseEnv(inheritEnv, runnableArgs.environment);
-    const platform = process.platform;
-
-    const checkPlatform = (it: RunnableEnvCfgItem) => {
-        if (it.platform) {
-            const platforms = Array.isArray(it.platform) ? it.platform : [it.platform];
-            return platforms.indexOf(platform) >= 0;
-        }
-        return true;
-    };
+    const env = prepareBaseEnv(inheritEnv, runnableEnv);
 
     if (runnableEnvCfg) {
-        if (Array.isArray(runnableEnvCfg)) {
-            for (const it of runnableEnvCfg) {
-                const masked = !it.mask || new RegExp(it.mask).test(label);
-                if (masked && checkPlatform(it)) {
-                    Object.assign(env, it.env);
-                }
-            }
-        } else {
-            Object.assign(env, runnableEnvCfg);
-        }
+        Object.assign(env, runnableEnvCfg);
     }
 
     return env;
@@ -140,7 +121,11 @@ export async function createTaskFromRunnable(
         };
         options = {
             cwd: runnableArgs.workspaceRoot || ".",
-            env: prepareEnv(true, runnable.label, runnableArgs, config.runnablesExtraEnv),
+            env: prepareEnv(
+                true,
+                runnableArgs.environment,
+                config.runnablesExtraEnv(runnable.label),
+            ),
         };
     } else {
         const runnableArgs = runnable.args;

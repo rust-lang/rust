@@ -71,7 +71,7 @@ pub use self::{
 /// this can be useful for specializing [`FromIterator`] implementations or recovering the
 /// remaining elements after an iterator has been partially exhausted.
 ///
-/// Note that implementations do not necessarily have to provide access to the inner-most
+/// Note that implementations do not necessarily have to provide access to the innermost
 /// source of a pipeline. A stateful intermediate adapter might eagerly evaluate a part
 /// of the pipeline and expose its internal storage as source.
 ///

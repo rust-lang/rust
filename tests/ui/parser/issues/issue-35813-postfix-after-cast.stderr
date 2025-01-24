@@ -353,10 +353,6 @@ LL | static bar: &[i32] = &(&[1,2,3] as &[i32][0..1]);
    |
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   |
-LL + #![feature(const_trait_impl)]
-   |
 
 error: aborting due to 40 previous errors
 

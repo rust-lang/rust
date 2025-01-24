@@ -10,16 +10,17 @@ mod snippet;
 #[cfg(test)]
 mod tests;
 
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     helpers::mod_path_to_ast,
     imports::{
         import_assets::NameToImport,
         insert_use::{self, ImportScope},
     },
-    items_locator, FilePosition, RootDatabase,
+    items_locator,
+    syntax_helpers::tree_diff::diff,
+    FilePosition, FxHashSet, RootDatabase,
 };
-use syntax::algo;
-use text_edit::TextEdit;
 
 use crate::{
     completions::Completions,
@@ -30,9 +31,11 @@ use crate::{
 };
 
 pub use crate::{
-    config::{CallableSnippets, CompletionConfig},
+    config::{AutoImportExclusionType, CallableSnippets, CompletionConfig},
     item::{
-        CompletionItem, CompletionItemKind, CompletionRelevance, CompletionRelevancePostfixMatch,
+        CompletionItem, CompletionItemKind, CompletionItemRefMode, CompletionRelevance,
+        CompletionRelevancePostfixMatch, CompletionRelevanceReturnType,
+        CompletionRelevanceTypeMatch,
     },
     snippet::{Snippet, SnippetScope},
 };
@@ -49,6 +52,18 @@ pub struct CompletionFieldsToResolve {
 }
 
 impl CompletionFieldsToResolve {
+    pub fn from_client_capabilities(client_capability_fields: &FxHashSet<&str>) -> Self {
+        Self {
+            resolve_label_details: client_capability_fields.contains("labelDetails"),
+            resolve_tags: client_capability_fields.contains("tags"),
+            resolve_detail: client_capability_fields.contains("detail"),
+            resolve_documentation: client_capability_fields.contains("documentation"),
+            resolve_filter_text: client_capability_fields.contains("filterText"),
+            resolve_text_edit: client_capability_fields.contains("textEdit"),
+            resolve_command: client_capability_fields.contains("command"),
+        }
+    }
+
     pub const fn empty() -> Self {
         Self {
             resolve_label_details: false,
@@ -170,7 +185,7 @@ impl CompletionFieldsToResolve {
 /// analysis.
 pub fn completions(
     db: &RootDatabase,
-    config: &CompletionConfig,
+    config: &CompletionConfig<'_>,
     position: FilePosition,
     trigger_character: Option<char>,
 ) -> Option<Vec<CompletionItem>> {
@@ -255,7 +270,7 @@ pub fn completions(
 /// This is used for import insertion done via completions like flyimport and custom user snippets.
 pub fn resolve_completion_edits(
     db: &RootDatabase,
-    config: &CompletionConfig,
+    config: &CompletionConfig<'_>,
     FilePosition { file_id, offset }: FilePosition,
     imports: impl IntoIterator<Item = (String, String)>,
 ) -> Option<Vec<TextEdit>> {
@@ -297,6 +312,6 @@ pub fn resolve_completion_edits(
         }
     });
 
-    algo::diff(scope.as_syntax_node(), new_ast.as_syntax_node()).into_text_edit(&mut import_insert);
+    diff(scope.as_syntax_node(), new_ast.as_syntax_node()).into_text_edit(&mut import_insert);
     Some(vec![import_insert.finish()])
 }

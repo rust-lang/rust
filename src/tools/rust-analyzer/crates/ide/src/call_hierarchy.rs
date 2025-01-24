@@ -47,7 +47,7 @@ pub(crate) fn incoming_calls(
         .find_nodes_at_offset_with_descend(file, offset)
         .filter_map(move |node| match node {
             ast::NameLike::NameRef(name_ref) => match NameRefClass::classify(sema, &name_ref)? {
-                NameRefClass::Definition(def @ Definition::Function(_)) => Some(def),
+                NameRefClass::Definition(def @ Definition::Function(_), _) => Some(def),
                 _ => None,
             },
             ast::NameLike::Name(name) => match NameClass::classify(sema, &name)? {
@@ -173,7 +173,7 @@ mod tests {
 
     fn check_hierarchy(
         exclude_tests: bool,
-        ra_fixture: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
         expected_nav: Expect,
         expected_incoming: Expect,
         expected_outgoing: Expect,
@@ -510,6 +510,7 @@ fn caller$0() {
             expect![[]],
         );
     }
+
     #[test]
     fn test_call_hierarchy_in_macros_incoming_different_files() {
         check_hierarchy(
@@ -591,9 +592,9 @@ macro_rules! call {
 "#,
             expect!["callee Function FileId(0) 22..37 30..36"],
             expect![[r#"
-                callee Function FileId(0) 38..52 44..50 : FileId(0):44..50
                 caller Function FileId(0) 38..52 : FileId(0):44..50
-                caller Function FileId(1) 130..136 130..136 : FileId(0):44..50"#]],
+                caller Function FileId(1) 130..136 130..136 : FileId(0):44..50
+                callee Function FileId(0) 38..52 44..50 : FileId(0):44..50"#]],
             expect![[]],
         );
     }

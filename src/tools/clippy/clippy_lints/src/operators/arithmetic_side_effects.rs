@@ -47,6 +47,7 @@ impl ArithmeticSideEffects {
         Self {
             allowed_binary,
             allowed_unary,
+            const_span: None,
             disallowed_int_methods: [
                 sym::saturating_div,
                 sym::wrapping_div,
@@ -55,7 +56,6 @@ impl ArithmeticSideEffects {
             ]
             .into_iter()
             .collect(),
-            const_span: None,
             expr_span: None,
         }
     }
@@ -325,7 +325,7 @@ impl ArithmeticSideEffects {
     fn should_skip_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'tcx>) -> bool {
         is_lint_allowed(cx, ARITHMETIC_SIDE_EFFECTS, expr.hir_id)
             || self.expr_span.is_some()
-            || self.const_span.map_or(false, |sp| sp.contains(expr.span))
+            || self.const_span.is_some_and(|sp| sp.contains(expr.span))
     }
 }
 

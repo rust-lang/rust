@@ -37,8 +37,8 @@ use walkdir::WalkDir;
 
 use self::header::{EarlyProps, make_test_description};
 use crate::common::{
-    Config, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path, output_base_dir,
-    output_relative_path,
+    CompareMode, Config, Debugger, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path,
+    output_base_dir, output_relative_path,
 };
 use crate::header::HeadersCache;
 use crate::util::logv;
@@ -71,7 +71,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "which sort of compile tests to run",
             "pretty | debug-info | codegen | rustdoc \
             | rustdoc-json | codegen-units | incremental | run-make | ui \
-            | js-doc-test | mir-opt | assembly | crashes",
+            | rustdoc-js | mir-opt | assembly | crashes",
         )
         .reqopt(
             "",
@@ -88,7 +88,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "has-enzyme", "run tests that require enzyme")
-        .optflag("", "with-debug-assertions", "whether to run tests with `ignore-debug` header")
+        .optflag("", "with-rustc-debug-assertions", "whether rustc was built with debug assertions")
+        .optflag("", "with-std-debug-assertions", "whether std was built with debug assertions")
         .optmulti(
             "",
             "skip",
@@ -158,7 +159,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optflag("", "force-rerun", "rerun tests even if the inputs are unchanged")
         .optflag("", "only-modified", "only run tests that result been modified")
+        // FIXME: Temporarily retained so we can point users to `--no-capture`
         .optflag("", "nocapture", "")
+        .optflag("", "no-capture", "don't capture stdout/stderr of tests")
         .optflag("", "profiler-runtime", "is the profiler runtime enabled for this target")
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
@@ -175,6 +178,19 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "git-merge-commit-email",
             "email address used for finding merge commits",
             "EMAIL",
+        )
+        .optopt(
+            "",
+            "compiletest-diff-tool",
+            "What custom diff tool to use for displaying compiletest tests.",
+            "COMMAND",
+        )
+        .reqopt("", "minicore-path", "path to minicore aux library", "PATH")
+        .optopt(
+            "",
+            "debugger",
+            "only test a specific debugger in debuginfo tests",
+            "gdb | lldb | cdb",
         );
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -222,13 +238,14 @@ pub fn parse_config(args: Vec<String>) -> Config {
         Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
     };
     let llvm_version =
-        matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version).or_else(
+        matches.opt_str("llvm-version").as_deref().map(header::extract_llvm_version).or_else(
             || header::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
         );
 
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
-    let with_debug_assertions = matches.opt_present("with-debug-assertions");
+    let with_rustc_debug_assertions = matches.opt_present("with-rustc-debug-assertions");
+    let with_std_debug_assertions = matches.opt_present("with-std-debug-assertions");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
     let has_html_tidy = if mode == Mode::Rustdoc {
         Command::new("tidy")
@@ -264,6 +281,19 @@ pub fn parse_config(args: Vec<String>) -> Config {
     } else {
         matches.free.clone()
     };
+    let compare_mode = matches.opt_str("compare-mode").map(|s| {
+        s.parse().unwrap_or_else(|_| {
+            let variants: Vec<_> = CompareMode::STR_VARIANTS.iter().copied().collect();
+            panic!(
+                "`{s}` is not a valid value for `--compare-mode`, it should be one of: {}",
+                variants.join(", ")
+            );
+        })
+    });
+    if matches.opt_present("nocapture") {
+        panic!("`--nocapture` is deprecated; please use `--no-capture`");
+    }
+
     Config {
         bless: matches.opt_present("bless"),
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
@@ -284,9 +314,14 @@ pub fn parse_config(args: Vec<String>) -> Config {
         stage_id: matches.opt_str("stage-id").unwrap(),
         mode,
         suite: matches.opt_str("suite").unwrap(),
-        debugger: None,
+        debugger: matches.opt_str("debugger").map(|debugger| {
+            debugger
+                .parse::<Debugger>()
+                .unwrap_or_else(|_| panic!("unknown `--debugger` option `{debugger}` given"))
+        }),
         run_ignored,
-        with_debug_assertions,
+        with_rustc_debug_assertions,
+        with_std_debug_assertions,
         filters,
         skip: matches.opt_strs("skip"),
         filter_exact: matches.opt_present("exact"),
@@ -332,9 +367,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         only_modified: matches.opt_present("only-modified"),
         color,
         remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
-        compare_mode: matches
-            .opt_str("compare-mode")
-            .map(|s| s.parse().expect("invalid --compare-mode provided")),
+        compare_mode,
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
         has_html_tidy,
         has_enzyme,
@@ -356,14 +389,19 @@ pub fn parse_config(args: Vec<String>) -> Config {
         force_rerun: matches.opt_present("force-rerun"),
 
         target_cfgs: OnceLock::new(),
+        builtin_cfg_names: OnceLock::new(),
 
-        nocapture: matches.opt_present("nocapture"),
+        nocapture: matches.opt_present("no-capture"),
 
         git_repository: matches.opt_str("git-repository").unwrap(),
         nightly_branch: matches.opt_str("nightly-branch").unwrap(),
         git_merge_commit_email: matches.opt_str("git-merge-commit-email").unwrap(),
 
         profiler_runtime: matches.opt_present("profiler-runtime"),
+
+        diff_command: matches.opt_str("compiletest-diff-tool"),
+
+        minicore_path: opt_path(matches, "minicore-path"),
     }
 }
 
@@ -401,6 +439,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("host-linker: {:?}", config.host_linker));
     logv(c, format!("verbose: {}", config.verbose));
     logv(c, format!("format: {:?}", config.format));
+    logv(c, format!("minicore_path: {:?}", config.minicore_path.display()));
     logv(c, "\n".to_string());
 }
 
@@ -452,9 +491,16 @@ pub fn run_tests(config: Arc<Config>) {
     if let Mode::DebugInfo = config.mode {
         // Debugging emscripten code doesn't make sense today
         if !config.target.contains("emscripten") {
-            configs.extend(debuggers::configure_cdb(&config));
-            configs.extend(debuggers::configure_gdb(&config));
-            configs.extend(debuggers::configure_lldb(&config));
+            match config.debugger {
+                Some(Debugger::Cdb) => configs.extend(debuggers::configure_cdb(&config)),
+                Some(Debugger::Gdb) => configs.extend(debuggers::configure_gdb(&config)),
+                Some(Debugger::Lldb) => configs.extend(debuggers::configure_lldb(&config)),
+                None => {
+                    configs.extend(debuggers::configure_cdb(&config));
+                    configs.extend(debuggers::configure_gdb(&config));
+                    configs.extend(debuggers::configure_lldb(&config));
+                }
+            }
         }
     } else {
         configs.push(config.clone());
@@ -575,10 +621,9 @@ pub fn collect_and_make_tests(config: Arc<Config>) -> Vec<test::TestDescAndFn> {
     let mut collector =
         TestCollector { tests: vec![], found_path_stems: HashSet::new(), poisoned: false };
 
-    collect_tests_from_dir(&cx, &mut collector, &cx.config.src_base, &PathBuf::new())
-        .unwrap_or_else(|reason| {
-            panic!("Could not read tests from {}: {reason}", cx.config.src_base.display())
-        });
+    collect_tests_from_dir(&cx, &mut collector, &cx.config.src_base, Path::new("")).unwrap_or_else(
+        |reason| panic!("Could not read tests from {}: {reason}", cx.config.src_base.display()),
+    );
 
     let TestCollector { tests, found_path_stems, poisoned } = collector;
 
@@ -876,6 +921,12 @@ fn files_related_to_test(
         let path = expected_output_path(testpaths, revision, &config.compare_mode, extension);
         related.push(path);
     }
+
+    // `minicore.rs` test auxiliary: we need to make sure tests get rerun if this changes.
+    //
+    // FIXME(jieyouxu): untangle these paths, we should provide both a path to root `tests/` or
+    // `tests/auxiliary/` and the test suite in question. `src_base` is also a terrible name.
+    related.push(config.src_base.parent().unwrap().join("auxiliary").join("minicore.rs"));
 
     related
 }

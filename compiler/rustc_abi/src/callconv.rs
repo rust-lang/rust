@@ -3,18 +3,23 @@ mod abi {
     pub(crate) use crate::Variants;
 }
 
+#[cfg(feature = "nightly")]
 use rustc_macros::HashStable_Generic;
 
-use crate::{Abi, Align, FieldsShape, HasDataLayout, Size, TyAbiInterface, TyAndLayout};
+use crate::{Align, HasDataLayout, Size};
+#[cfg(feature = "nightly")]
+use crate::{BackendRepr, FieldsShape, TyAbiInterface, TyAndLayout};
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum RegKind {
     Integer,
     Float,
     Vector,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Reg {
     pub kind: RegKind,
     pub size: Size,
@@ -108,15 +113,8 @@ impl HomogeneousAggregate {
     }
 }
 
+#[cfg(feature = "nightly")]
 impl<'a, Ty> TyAndLayout<'a, Ty> {
-    /// Returns `true` if this is an aggregate type (including a ScalarPair!)
-    pub fn is_aggregate(&self) -> bool {
-        match self.abi {
-            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } => false,
-            Abi::ScalarPair(..) | Abi::Aggregate { .. } => true,
-        }
-    }
-
     /// Returns `Homogeneous` if this layout is an aggregate containing fields of
     /// only a single type (e.g., `(u32, u32)`). Such aggregates are often
     /// special-cased in ABIs.
@@ -130,11 +128,11 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
-        match self.abi {
-            Abi::Uninhabited => Err(Heterogeneous),
+        match self.backend_repr {
+            BackendRepr::Uninhabited => Err(Heterogeneous),
 
             // The primitive for this algorithm.
-            Abi::Scalar(scalar) => {
+            BackendRepr::Scalar(scalar) => {
                 let kind = match scalar.primitive() {
                     abi::Int(..) | abi::Pointer(_) => RegKind::Integer,
                     abi::Float(_) => RegKind::Float,
@@ -142,7 +140,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 Ok(HomogeneousAggregate::Homogeneous(Reg { kind, size: self.size }))
             }
 
-            Abi::Vector { .. } => {
+            BackendRepr::Vector { .. } => {
                 assert!(!self.is_zst());
                 Ok(HomogeneousAggregate::Homogeneous(Reg {
                     kind: RegKind::Vector,
@@ -150,7 +148,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 }))
             }
 
-            Abi::ScalarPair(..) | Abi::Aggregate { sized: true } => {
+            BackendRepr::ScalarPair(..) | BackendRepr::Memory { sized: true } => {
                 // Helper for computing `homogeneous_aggregate`, allowing a custom
                 // starting offset (used below for handling variants).
                 let from_fields_at =
@@ -208,7 +206,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 let (mut result, mut total) = from_fields_at(*self, Size::ZERO)?;
 
                 match &self.variants {
-                    abi::Variants::Single { .. } => {}
+                    abi::Variants::Single { .. } | abi::Variants::Empty => {}
                     abi::Variants::Multiple { variants, .. } => {
                         // Treat enum variants like union members.
                         // HACK(eddyb) pretend the `enum` field (discriminant)
@@ -248,7 +246,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                     Ok(result)
                 }
             }
-            Abi::Aggregate { sized: false } => Err(Heterogeneous),
+            BackendRepr::Memory { sized: false } => Err(Heterogeneous),
         }
     }
 }

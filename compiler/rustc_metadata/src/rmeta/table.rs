@@ -1,6 +1,5 @@
 use rustc_hir::def::CtorOf;
 use rustc_index::Idx;
-use tracing::trace;
 
 use crate::rmeta::*;
 
@@ -199,6 +198,13 @@ fixed_size_enum! {
 }
 
 fixed_size_enum! {
+    hir::Safety {
+        ( Unsafe )
+        ( Safe   )
+    }
+}
+
+fixed_size_enum! {
     ty::Asyncness {
         ( Yes )
         ( No  )
@@ -223,8 +229,8 @@ fixed_size_enum! {
 
 fixed_size_enum! {
     ty::AssocItemContainer {
-        ( TraitContainer )
-        ( ImplContainer  )
+        ( Trait )
+        ( Impl  )
     }
 }
 
@@ -523,8 +529,6 @@ where
 {
     /// Given the metadata, extract out the value at a particular index (if any).
     pub(super) fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(&self, metadata: M, i: I) -> T::Value<'tcx> {
-        trace!("LazyTable::lookup: index={:?} len={:?}", i, self.len);
-
         // Access past the end of the table returns a Default
         if i.index() >= self.len {
             return Default::default();

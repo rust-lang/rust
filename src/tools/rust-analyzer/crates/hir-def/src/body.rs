@@ -10,26 +10,53 @@ use std::ops::{Deref, Index};
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
+use either::Either;
 use hir_expand::{name::Name, ExpandError, InFile};
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use span::{Edition, MacroFileId};
+use span::{Edition, MacroFileId, SyntaxContextData};
 use syntax::{ast, AstPtr, SyntaxNodePtr};
 use triomphe::Arc;
+use tt::TextRange;
 
 use crate::{
     db::DefDatabase,
     expander::Expander,
     hir::{
-        dummy_expr_id, Binding, BindingId, Expr, ExprId, Label, LabelId, Pat, PatId, RecordFieldPat,
+        dummy_expr_id, Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, Label,
+        LabelId, Pat, PatId, RecordFieldPat, Statement,
     },
     item_tree::AttrOwner,
     nameres::DefMap,
     path::{ModPath, Path},
     src::HasSource,
-    BlockId, DefWithBodyId, HasModule, Lookup,
+    type_ref::{TypeRef, TypeRefId, TypesMap, TypesSourceMap},
+    BlockId, DefWithBodyId, HasModule, Lookup, SyntheticSyntax,
 };
+
+/// A wrapper around [`span::SyntaxContextId`] that is intended only for comparisons.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct HygieneId(span::SyntaxContextId);
+
+impl HygieneId {
+    // The edition doesn't matter here, we only use this for comparisons and to lookup the macro.
+    pub const ROOT: Self = Self(span::SyntaxContextId::root(Edition::Edition2015));
+
+    pub fn new(mut ctx: span::SyntaxContextId) -> Self {
+        // See `Name` for why we're doing that.
+        ctx.remove_root_edition();
+        Self(ctx)
+    }
+
+    pub(crate) fn lookup(self, db: &dyn DefDatabase) -> SyntaxContextData {
+        db.lookup_intern_syntax_context(self.0)
+    }
+
+    pub(crate) fn is_root(self) -> bool {
+        self.0.is_root()
+    }
+}
 
 /// The body of an item (function, const etc.).
 #[derive(Debug, Eq, PartialEq)]
@@ -51,8 +78,25 @@ pub struct Body {
     pub self_param: Option<BindingId>,
     /// The `ExprId` of the actual body expression.
     pub body_expr: ExprId,
+    pub types: TypesMap,
     /// Block expressions in this body that may contain inner items.
     block_scopes: Vec<BlockId>,
+
+    /// A map from binding to its hygiene ID.
+    ///
+    /// Bindings that don't come from macro expansion are not allocated to save space, so not all bindings appear here.
+    /// If a binding does not appear here it has `SyntaxContextId::ROOT`.
+    ///
+    /// Note that this may not be the direct `SyntaxContextId` of the binding's expansion, because transparent
+    /// expansions are attributed to their parent expansion (recursively).
+    binding_hygiene: FxHashMap<BindingId, HygieneId>,
+    /// A map from an variable usages to their hygiene ID.
+    ///
+    /// Expressions that can be recorded here are single segment path, although not all single segments path refer
+    /// to variables and have hygiene (some refer to items, we don't know at this stage).
+    expr_hygiene: FxHashMap<ExprId, HygieneId>,
+    /// A map from a destructuring assignment possible variable usages to their hygiene ID.
+    pat_hygiene: FxHashMap<PatId, HygieneId>,
 }
 
 pub type ExprPtr = AstPtr<ast::Expr>;
@@ -67,8 +111,11 @@ pub type LabelSource = InFile<LabelPtr>;
 pub type FieldPtr = AstPtr<ast::RecordExprField>;
 pub type FieldSource = InFile<FieldPtr>;
 
-pub type PatFieldPtr = AstPtr<ast::RecordPatField>;
+pub type PatFieldPtr = AstPtr<Either<ast::RecordExprField, ast::RecordPatField>>;
 pub type PatFieldSource = InFile<PatFieldPtr>;
+
+pub type ExprOrPatPtr = AstPtr<Either<ast::Expr, ast::Pat>>;
+pub type ExprOrPatSource = InFile<ExprOrPatPtr>;
 
 /// An item body together with the mapping from syntax nodes to HIR expression
 /// IDs. This is needed to go from e.g. a position in a file to the HIR
@@ -83,11 +130,13 @@ pub type PatFieldSource = InFile<PatFieldPtr>;
 /// this properly for macros.
 #[derive(Default, Debug, Eq, PartialEq)]
 pub struct BodySourceMap {
-    expr_map: FxHashMap<ExprSource, ExprId>,
+    // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
+    // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
+    expr_map: FxHashMap<ExprSource, ExprOrPatId>,
     expr_map_back: ArenaMap<ExprId, ExprSource>,
 
     pat_map: FxHashMap<PatSource, PatId>,
-    pat_map_back: ArenaMap<PatId, PatSource>,
+    pat_map_back: ArenaMap<PatId, ExprOrPatSource>,
 
     label_map: FxHashMap<LabelSource, LabelId>,
     label_map_back: ArenaMap<LabelId, LabelSource>,
@@ -100,14 +149,9 @@ pub struct BodySourceMap {
     field_map_back: FxHashMap<ExprId, FieldSource>,
     pat_field_map_back: FxHashMap<PatId, PatFieldSource>,
 
-    template_map: Option<
-        Box<(
-            // format_args!
-            FxHashMap<ExprId, Vec<(syntax::TextRange, Name)>>,
-            // asm!
-            FxHashMap<ExprId, Vec<Vec<(syntax::TextRange, usize)>>>,
-        )>,
-    >,
+    pub types: TypesSourceMap,
+
+    template_map: Option<Box<FormatTemplate>>,
 
     expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, MacroFileId>,
 
@@ -116,8 +160,19 @@ pub struct BodySourceMap {
     diagnostics: Vec<BodyDiagnostic>,
 }
 
-#[derive(Default, Debug, Eq, PartialEq, Clone, Copy)]
-pub struct SyntheticSyntax;
+#[derive(Default, Debug, Eq, PartialEq)]
+struct FormatTemplate {
+    /// A map from `format_args!()` expressions to their captures.
+    format_args_to_captures: FxHashMap<ExprId, (HygieneId, Vec<(syntax::TextRange, Name)>)>,
+    /// A map from `asm!()` expressions to their captures.
+    asm_to_captures: FxHashMap<ExprId, Vec<Vec<(syntax::TextRange, usize)>>>,
+    /// A map from desugared expressions of implicit captures to their source.
+    ///
+    /// The value stored for each capture is its template literal and offset inside it. The template literal
+    /// is from the `format_args[_nl]!()` macro and so needs to be mapped up once to go to the user-written
+    /// template.
+    implicit_capture_to_source: FxHashMap<ExprId, InFile<(AstPtr<ast::Expr>, TextRange)>>,
+}
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum BodyDiagnostic {
@@ -261,6 +316,10 @@ impl Body {
             pats,
             bindings,
             binding_owners,
+            binding_hygiene,
+            expr_hygiene,
+            pat_hygiene,
+            types,
         } = self;
         block_scopes.shrink_to_fit();
         exprs.shrink_to_fit();
@@ -268,6 +327,10 @@ impl Body {
         pats.shrink_to_fit();
         bindings.shrink_to_fit();
         binding_owners.shrink_to_fit();
+        binding_hygiene.shrink_to_fit();
+        expr_hygiene.shrink_to_fit();
+        pat_hygiene.shrink_to_fit();
+        types.shrink_to_fit();
     }
 
     pub fn walk_bindings_in_pat(&self, pat_id: PatId, mut f: impl FnMut(BindingId)) {
@@ -286,7 +349,8 @@ impl Body {
             | Pat::Path(..)
             | Pat::ConstBlock(..)
             | Pat::Wild
-            | Pat::Missing => {}
+            | Pat::Missing
+            | Pat::Expr(_) => {}
             &Pat::Bind { subpat, .. } => {
                 if let Some(subpat) = subpat {
                     f(subpat);
@@ -322,6 +386,291 @@ impl Body {
             None => true,
         }
     }
+
+    pub fn walk_child_exprs(&self, expr_id: ExprId, mut f: impl FnMut(ExprId)) {
+        let expr = &self[expr_id];
+        match expr {
+            Expr::Continue { .. }
+            | Expr::Const(_)
+            | Expr::Missing
+            | Expr::Path(_)
+            | Expr::OffsetOf(_)
+            | Expr::Literal(_)
+            | Expr::Underscore => {}
+            Expr::InlineAsm(it) => it.operands.iter().for_each(|(_, op)| match op {
+                AsmOperand::In { expr, .. }
+                | AsmOperand::Out { expr: Some(expr), .. }
+                | AsmOperand::InOut { expr, .. } => f(*expr),
+                AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                    f(*in_expr);
+                    if let Some(out_expr) = out_expr {
+                        f(*out_expr);
+                    }
+                }
+                AsmOperand::Out { expr: None, .. }
+                | AsmOperand::Const(_)
+                | AsmOperand::Label(_)
+                | AsmOperand::Sym(_) => (),
+            }),
+            Expr::If { condition, then_branch, else_branch } => {
+                f(*condition);
+                f(*then_branch);
+                if let &Some(else_branch) = else_branch {
+                    f(else_branch);
+                }
+            }
+            Expr::Let { expr, pat } => {
+                self.walk_exprs_in_pat(*pat, &mut f);
+                f(*expr);
+            }
+            Expr::Block { statements, tail, .. }
+            | Expr::Unsafe { statements, tail, .. }
+            | Expr::Async { statements, tail, .. } => {
+                for stmt in statements.iter() {
+                    match stmt {
+                        Statement::Let { initializer, else_branch, pat, .. } => {
+                            if let &Some(expr) = initializer {
+                                f(expr);
+                            }
+                            if let &Some(expr) = else_branch {
+                                f(expr);
+                            }
+                            self.walk_exprs_in_pat(*pat, &mut f);
+                        }
+                        Statement::Expr { expr: expression, .. } => f(*expression),
+                        Statement::Item(_) => (),
+                    }
+                }
+                if let &Some(expr) = tail {
+                    f(expr);
+                }
+            }
+            Expr::Loop { body, .. } => f(*body),
+            Expr::Call { callee, args, .. } => {
+                f(*callee);
+                args.iter().copied().for_each(f);
+            }
+            Expr::MethodCall { receiver, args, .. } => {
+                f(*receiver);
+                args.iter().copied().for_each(f);
+            }
+            Expr::Match { expr, arms } => {
+                f(*expr);
+                arms.iter().for_each(|arm| {
+                    f(arm.expr);
+                    self.walk_exprs_in_pat(arm.pat, &mut f);
+                });
+            }
+            Expr::Break { expr, .. }
+            | Expr::Return { expr }
+            | Expr::Yield { expr }
+            | Expr::Yeet { expr } => {
+                if let &Some(expr) = expr {
+                    f(expr);
+                }
+            }
+            Expr::Become { expr } => f(*expr),
+            Expr::RecordLit { fields, spread, .. } => {
+                for field in fields.iter() {
+                    f(field.expr);
+                }
+                if let &Some(expr) = spread {
+                    f(expr);
+                }
+            }
+            Expr::Closure { body, .. } => {
+                f(*body);
+            }
+            Expr::BinaryOp { lhs, rhs, .. } => {
+                f(*lhs);
+                f(*rhs);
+            }
+            Expr::Range { lhs, rhs, .. } => {
+                if let &Some(lhs) = rhs {
+                    f(lhs);
+                }
+                if let &Some(rhs) = lhs {
+                    f(rhs);
+                }
+            }
+            Expr::Index { base, index, .. } => {
+                f(*base);
+                f(*index);
+            }
+            Expr::Field { expr, .. }
+            | Expr::Await { expr }
+            | Expr::Cast { expr, .. }
+            | Expr::Ref { expr, .. }
+            | Expr::UnaryOp { expr, .. }
+            | Expr::Box { expr } => {
+                f(*expr);
+            }
+            Expr::Tuple { exprs, .. } => exprs.iter().copied().for_each(f),
+            Expr::Array(a) => match a {
+                Array::ElementList { elements, .. } => elements.iter().copied().for_each(f),
+                Array::Repeat { initializer, repeat } => {
+                    f(*initializer);
+                    f(*repeat)
+                }
+            },
+            &Expr::Assignment { target, value } => {
+                self.walk_exprs_in_pat(target, &mut f);
+                f(value);
+            }
+        }
+    }
+
+    pub fn walk_child_exprs_without_pats(&self, expr_id: ExprId, mut f: impl FnMut(ExprId)) {
+        let expr = &self[expr_id];
+        match expr {
+            Expr::Continue { .. }
+            | Expr::Const(_)
+            | Expr::Missing
+            | Expr::Path(_)
+            | Expr::OffsetOf(_)
+            | Expr::Literal(_)
+            | Expr::Underscore => {}
+            Expr::InlineAsm(it) => it.operands.iter().for_each(|(_, op)| match op {
+                AsmOperand::In { expr, .. }
+                | AsmOperand::Out { expr: Some(expr), .. }
+                | AsmOperand::InOut { expr, .. } => f(*expr),
+                AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                    f(*in_expr);
+                    if let Some(out_expr) = out_expr {
+                        f(*out_expr);
+                    }
+                }
+                AsmOperand::Out { expr: None, .. }
+                | AsmOperand::Const(_)
+                | AsmOperand::Label(_)
+                | AsmOperand::Sym(_) => (),
+            }),
+            Expr::If { condition, then_branch, else_branch } => {
+                f(*condition);
+                f(*then_branch);
+                if let &Some(else_branch) = else_branch {
+                    f(else_branch);
+                }
+            }
+            Expr::Let { expr, .. } => {
+                f(*expr);
+            }
+            Expr::Block { statements, tail, .. }
+            | Expr::Unsafe { statements, tail, .. }
+            | Expr::Async { statements, tail, .. } => {
+                for stmt in statements.iter() {
+                    match stmt {
+                        Statement::Let { initializer, else_branch, .. } => {
+                            if let &Some(expr) = initializer {
+                                f(expr);
+                            }
+                            if let &Some(expr) = else_branch {
+                                f(expr);
+                            }
+                        }
+                        Statement::Expr { expr: expression, .. } => f(*expression),
+                        Statement::Item(_) => (),
+                    }
+                }
+                if let &Some(expr) = tail {
+                    f(expr);
+                }
+            }
+            Expr::Loop { body, .. } => f(*body),
+            Expr::Call { callee, args, .. } => {
+                f(*callee);
+                args.iter().copied().for_each(f);
+            }
+            Expr::MethodCall { receiver, args, .. } => {
+                f(*receiver);
+                args.iter().copied().for_each(f);
+            }
+            Expr::Match { expr, arms } => {
+                f(*expr);
+                arms.iter().map(|arm| arm.expr).for_each(f);
+            }
+            Expr::Break { expr, .. }
+            | Expr::Return { expr }
+            | Expr::Yield { expr }
+            | Expr::Yeet { expr } => {
+                if let &Some(expr) = expr {
+                    f(expr);
+                }
+            }
+            Expr::Become { expr } => f(*expr),
+            Expr::RecordLit { fields, spread, .. } => {
+                for field in fields.iter() {
+                    f(field.expr);
+                }
+                if let &Some(expr) = spread {
+                    f(expr);
+                }
+            }
+            Expr::Closure { body, .. } => {
+                f(*body);
+            }
+            Expr::BinaryOp { lhs, rhs, .. } => {
+                f(*lhs);
+                f(*rhs);
+            }
+            Expr::Range { lhs, rhs, .. } => {
+                if let &Some(lhs) = rhs {
+                    f(lhs);
+                }
+                if let &Some(rhs) = lhs {
+                    f(rhs);
+                }
+            }
+            Expr::Index { base, index, .. } => {
+                f(*base);
+                f(*index);
+            }
+            Expr::Field { expr, .. }
+            | Expr::Await { expr }
+            | Expr::Cast { expr, .. }
+            | Expr::Ref { expr, .. }
+            | Expr::UnaryOp { expr, .. }
+            | Expr::Box { expr } => {
+                f(*expr);
+            }
+            Expr::Tuple { exprs, .. } => exprs.iter().copied().for_each(f),
+            Expr::Array(a) => match a {
+                Array::ElementList { elements, .. } => elements.iter().copied().for_each(f),
+                Array::Repeat { initializer, repeat } => {
+                    f(*initializer);
+                    f(*repeat)
+                }
+            },
+            &Expr::Assignment { target: _, value } => f(value),
+        }
+    }
+
+    pub fn walk_exprs_in_pat(&self, pat_id: PatId, f: &mut impl FnMut(ExprId)) {
+        self.walk_pats(pat_id, &mut |pat| {
+            if let Pat::Expr(expr) | Pat::ConstBlock(expr) = self[pat] {
+                f(expr);
+            }
+        });
+    }
+
+    fn binding_hygiene(&self, binding: BindingId) -> HygieneId {
+        self.binding_hygiene.get(&binding).copied().unwrap_or(HygieneId::ROOT)
+    }
+
+    pub fn expr_path_hygiene(&self, expr: ExprId) -> HygieneId {
+        self.expr_hygiene.get(&expr).copied().unwrap_or(HygieneId::ROOT)
+    }
+
+    pub fn pat_path_hygiene(&self, pat: PatId) -> HygieneId {
+        self.pat_hygiene.get(&pat).copied().unwrap_or(HygieneId::ROOT)
+    }
+
+    pub fn expr_or_pat_path_hygiene(&self, id: ExprOrPatId) -> HygieneId {
+        match id {
+            ExprOrPatId::ExprId(id) => self.expr_path_hygiene(id),
+            ExprOrPatId::PatId(id) => self.pat_path_hygiene(id),
+        }
+    }
 }
 
 impl Default for Body {
@@ -336,6 +685,10 @@ impl Default for Body {
             block_scopes: Default::default(),
             binding_owners: Default::default(),
             self_param: Default::default(),
+            binding_hygiene: Default::default(),
+            expr_hygiene: Default::default(),
+            pat_hygiene: Default::default(),
+            types: Default::default(),
         }
     }
 }
@@ -372,14 +725,29 @@ impl Index<BindingId> for Body {
     }
 }
 
+impl Index<TypeRefId> for Body {
+    type Output = TypeRef;
+
+    fn index(&self, b: TypeRefId) -> &TypeRef {
+        &self.types[b]
+    }
+}
+
 // FIXME: Change `node_` prefix to something more reasonable.
 // Perhaps `expr_syntax` and `expr_id`?
 impl BodySourceMap {
+    pub fn expr_or_pat_syntax(&self, id: ExprOrPatId) -> Result<ExprOrPatSource, SyntheticSyntax> {
+        match id {
+            ExprOrPatId::ExprId(id) => self.expr_syntax(id).map(|it| it.map(AstPtr::wrap_left)),
+            ExprOrPatId::PatId(id) => self.pat_syntax(id),
+        }
+    }
+
     pub fn expr_syntax(&self, expr: ExprId) -> Result<ExprSource, SyntheticSyntax> {
         self.expr_map_back.get(expr).cloned().ok_or(SyntheticSyntax)
     }
 
-    pub fn node_expr(&self, node: InFile<&ast::Expr>) -> Option<ExprId> {
+    pub fn node_expr(&self, node: InFile<&ast::Expr>) -> Option<ExprOrPatId> {
         let src = node.map(AstPtr::new);
         self.expr_map.get(&src).cloned()
     }
@@ -395,7 +763,7 @@ impl BodySourceMap {
         self.expansions.iter().map(|(&a, &b)| (a, b))
     }
 
-    pub fn pat_syntax(&self, pat: PatId) -> Result<PatSource, SyntheticSyntax> {
+    pub fn pat_syntax(&self, pat: PatId) -> Result<ExprOrPatSource, SyntheticSyntax> {
         self.pat_map_back.get(pat).cloned().ok_or(SyntheticSyntax)
     }
 
@@ -428,7 +796,7 @@ impl BodySourceMap {
         self.pat_field_map_back[&pat]
     }
 
-    pub fn macro_expansion_expr(&self, node: InFile<&ast::MacroExpr>) -> Option<ExprId> {
+    pub fn macro_expansion_expr(&self, node: InFile<&ast::MacroExpr>) -> Option<ExprOrPatId> {
         let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::MacroExpr>).map(AstPtr::upcast);
         self.expr_map.get(&src).copied()
     }
@@ -442,9 +810,21 @@ impl BodySourceMap {
     pub fn implicit_format_args(
         &self,
         node: InFile<&ast::FormatArgsExpr>,
-    ) -> Option<&[(syntax::TextRange, Name)]> {
+    ) -> Option<(HygieneId, &[(syntax::TextRange, Name)])> {
         let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::Expr>);
-        self.template_map.as_ref()?.0.get(self.expr_map.get(&src)?).map(std::ops::Deref::deref)
+        let (hygiene, names) = self
+            .template_map
+            .as_ref()?
+            .format_args_to_captures
+            .get(&self.expr_map.get(&src)?.as_expr()?)?;
+        Some((*hygiene, &**names))
+    }
+
+    pub fn format_args_implicit_capture(
+        &self,
+        capture_expr: ExprId,
+    ) -> Option<InFile<(AstPtr<ast::Expr>, TextRange)>> {
+        self.template_map.as_ref()?.implicit_capture_to_source.get(&capture_expr).copied()
     }
 
     pub fn asm_template_args(
@@ -452,8 +832,9 @@ impl BodySourceMap {
         node: InFile<&ast::AsmExpr>,
     ) -> Option<(ExprId, &[Vec<(syntax::TextRange, usize)>])> {
         let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::Expr>);
-        let expr = self.expr_map.get(&src)?;
-        Some(*expr).zip(self.template_map.as_ref()?.1.get(expr).map(std::ops::Deref::deref))
+        let expr = self.expr_map.get(&src)?.as_expr()?;
+        Some(expr)
+            .zip(self.template_map.as_ref()?.asm_to_captures.get(&expr).map(std::ops::Deref::deref))
     }
 
     /// Get a reference to the body source map's diagnostics.
@@ -476,10 +857,17 @@ impl BodySourceMap {
             template_map,
             diagnostics,
             binding_definitions,
+            types,
         } = self;
         if let Some(template_map) = template_map {
-            template_map.0.shrink_to_fit();
-            template_map.1.shrink_to_fit();
+            let FormatTemplate {
+                format_args_to_captures,
+                asm_to_captures,
+                implicit_capture_to_source,
+            } = &mut **template_map;
+            format_args_to_captures.shrink_to_fit();
+            asm_to_captures.shrink_to_fit();
+            implicit_capture_to_source.shrink_to_fit();
         }
         expr_map.shrink_to_fit();
         expr_map_back.shrink_to_fit();
@@ -492,14 +880,6 @@ impl BodySourceMap {
         expansions.shrink_to_fit();
         diagnostics.shrink_to_fit();
         binding_definitions.shrink_to_fit();
-    }
-
-    pub fn template_map(
-        &self,
-    ) -> Option<&(
-        FxHashMap<Idx<Expr>, Vec<(tt::TextRange, Name)>>,
-        FxHashMap<Idx<Expr>, Vec<Vec<(tt::TextRange, usize)>>>,
-    )> {
-        self.template_map.as_deref()
+        types.shrink_to_fit();
     }
 }

@@ -5,10 +5,12 @@ use std::{io, mem};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
+use rustc_errors::TerminalUrl;
 use rustc_errors::codes::*;
-use rustc_errors::emitter::{DynEmitter, HumanEmitter, stderr_destination};
+use rustc_errors::emitter::{
+    DynEmitter, HumanEmitter, HumanReadableErrorType, OutputTheme, stderr_destination,
+};
 use rustc_errors::json::JsonEmitter;
-use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
@@ -17,12 +19,12 @@ use rustc_hir::{HirId, Path};
 use rustc_interface::interface;
 use rustc_lint::{MissingDoc, late_lint_mod};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::{self, CrateType, ErrorOutputType, Input, ResolveDocLinks};
 pub(crate) use rustc_session::config::{Options, UnstableOptions};
 use rustc_session::{Session, lint};
+use rustc_span::source_map;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, source_map};
 use tracing::{debug, info};
 
 use crate::clean::inline::build_external_trait;
@@ -86,6 +88,13 @@ impl<'tcx> DocContext<'tcx> {
         ret
     }
 
+    pub(crate) fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        ty::TypingEnv {
+            typing_mode: ty::TypingMode::non_body_analysis(),
+            param_env: self.param_env,
+        }
+    }
+
     /// Call the closure with the given parameters set as
     /// the generic parameters for a type alias' RHS.
     pub(crate) fn enter_alias<F, R>(
@@ -121,6 +130,13 @@ impl<'tcx> DocContext<'tcx> {
             _ => None,
         }
     }
+
+    /// Returns `true` if the JSON output format is enabled for generating the crate content.
+    ///
+    /// If another option like `--show-coverage` is enabled, it will return `false`.
+    pub(crate) fn is_json_output(&self) -> bool {
+        self.output_format.is_json() && !self.show_coverage
+    }
 }
 
 /// Creates a new `DiagCtxt` that can be used to emit warnings and errors.
@@ -147,6 +163,11 @@ pub(crate) fn new_dcx(
                     .teach(unstable_opts.teach)
                     .diagnostic_width(diagnostic_width)
                     .track_diagnostics(unstable_opts.track_diagnostics)
+                    .theme(if let HumanReadableErrorType::Unicode = kind {
+                        OutputTheme::Unicode
+                    } else {
+                        OutputTheme::Ascii
+                    })
                     .ui_testing(unstable_opts.ui_testing),
             )
         }
@@ -305,7 +326,7 @@ pub(crate) fn run_global_ctxt(
     show_coverage: bool,
     render_options: RenderOptions,
     output_format: OutputFormat,
-) -> Result<(clean::Crate, RenderOptions, Cache), ErrorGuaranteed> {
+) -> (clean::Crate, RenderOptions, Cache) {
     // Certain queries assume that some checks were run elsewhere
     // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
     // so type-check everything other than function bodies in this crate before running lints.
@@ -319,9 +340,7 @@ pub(crate) fn run_global_ctxt(
         tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
     });
 
-    if let Some(guar) = tcx.dcx().has_errors() {
-        return Err(guar);
-    }
+    tcx.dcx().abort_if_errors();
 
     tcx.sess.time("missing_docs", || rustc_lint::check_crate(tcx));
     tcx.sess.time("check_mod_attrs", || {
@@ -381,45 +400,10 @@ pub(crate) fn run_global_ctxt(
         );
     }
 
-    fn report_deprecated_attr(name: &str, dcx: DiagCtxtHandle<'_>, sp: Span) {
-        let mut msg =
-            dcx.struct_span_warn(sp, format!("the `#![doc({name})]` attribute is deprecated"));
-        msg.note(
-            "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
-            for more information",
-        );
-
-        if name == "no_default_passes" {
-            msg.help("`#![doc(no_default_passes)]` no longer functions; you may want to use `#![doc(document_private_items)]`");
-        } else if name.starts_with("passes") {
-            msg.help("`#![doc(passes = \"...\")]` no longer functions; you may want to use `#![doc(document_private_items)]`");
-        } else if name.starts_with("plugins") {
-            msg.warn("`#![doc(plugins = \"...\")]` no longer functions; see CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>");
-        }
-
-        msg.emit();
-    }
-
     // Process all of the crate attributes, extracting plugin metadata along
     // with the passes which we are supposed to run.
     for attr in krate.module.attrs.lists(sym::doc) {
-        let dcx = ctxt.sess().dcx();
-
         let name = attr.name_or_empty();
-        // `plugins = "..."`, `no_default_passes`, and `passes = "..."` have no effect
-        if attr.is_word() && name == sym::no_default_passes {
-            report_deprecated_attr("no_default_passes", dcx, attr.span());
-        } else if attr.value_str().is_some() {
-            match name {
-                sym::passes => {
-                    report_deprecated_attr("passes = \"...\"", dcx, attr.span());
-                }
-                sym::plugins => {
-                    report_deprecated_attr("plugins = \"...\"", dcx, attr.span());
-                }
-                _ => (),
-            }
-        }
 
         if attr.is_word() && name == sym::document_private_items {
             ctxt.render_options.document_private = true;
@@ -460,11 +444,9 @@ pub(crate) fn run_global_ctxt(
         LinkCollector { cx: &mut ctxt, visited_links: visited, ambiguous_links: ambiguous };
     collector.resolve_ambiguities();
 
-    if let Some(guar) = tcx.dcx().has_errors() {
-        return Err(guar);
-    }
+    tcx.dcx().abort_if_errors();
 
-    Ok((krate, ctxt.render_options, ctxt.cache))
+    (krate, ctxt.render_options, ctxt.cache)
 }
 
 /// Due to <https://github.com/rust-lang/rust/pull/73566>,

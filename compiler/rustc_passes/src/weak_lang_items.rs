@@ -26,7 +26,10 @@ pub(crate) fn check_crate(
     if items.eh_personality().is_none() {
         items.missing.push(LangItem::EhPersonality);
     }
-    if tcx.sess.target.os == "emscripten" && items.eh_catch_typeinfo().is_none() {
+    if tcx.sess.target.os == "emscripten"
+        && items.eh_catch_typeinfo().is_none()
+        && !tcx.sess.opts.unstable_opts.emscripten_wasm_eh
+    {
         items.missing.push(LangItem::EhCatchTypeinfo);
     }
 

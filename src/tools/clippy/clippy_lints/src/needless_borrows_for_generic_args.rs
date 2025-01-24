@@ -1,7 +1,7 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::mir::{PossibleBorrowerMap, enclosing_mir, expr_local, local_assignments, used_exactly_once};
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::{DefinedTy, ExprUseNode, expr_use_ctxt, peel_n_hir_expr_refs};
@@ -9,7 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{Body, Expr, ExprKind, Mutability, Path, QPath};
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::{Rvalue, StatementKind};
@@ -85,8 +85,8 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
             && use_cx.same_ctxt
             && !use_cx.is_ty_unified
             && let use_node = use_cx.use_node(cx)
-            && let Some(DefinedTy::Mir(ty)) = use_node.defined_ty(cx)
-            && let ty::Param(ty) = *ty.value.skip_binder().kind()
+            && let Some(DefinedTy::Mir { def_site_def_id: _, ty }) = use_node.defined_ty(cx)
+            && let ty::Param(param_ty) = *ty.skip_binder().kind()
             && let Some((hir_id, fn_id, i)) = match use_node {
                 ExprUseNode::MethodArg(_, _, 0) => None,
                 ExprUseNode::MethodArg(hir_id, None, i) => cx
@@ -112,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
                 fn_id,
                 cx.typeck_results().node_args(hir_id),
                 i,
-                ty,
+                param_ty,
                 expr,
                 &self.msrv,
             )
@@ -134,9 +134,11 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
     }
 
     fn check_body_post(&mut self, cx: &LateContext<'tcx>, body: &Body<'_>) {
-        if self.possible_borrowers.last().map_or(false, |&(local_def_id, _)| {
-            local_def_id == cx.tcx.hir().body_owner_def_id(body.id())
-        }) {
+        if self
+            .possible_borrowers
+            .last()
+            .is_some_and(|&(local_def_id, _)| local_def_id == cx.tcx.hir().body_owner_def_id(body.id()))
+        {
             self.possible_borrowers.pop();
         }
     }
@@ -232,7 +234,7 @@ fn needless_borrow_count<'tcx>(
     let mut check_reference_and_referent = |reference: &Expr<'tcx>, referent: &Expr<'tcx>| {
         if let ExprKind::Field(base, _) = &referent.kind {
             let base_ty = cx.typeck_results().expr_ty(base);
-            if drop_trait_def_id.map_or(false, |id| implements_trait(cx, base_ty, id, &[])) {
+            if drop_trait_def_id.is_some_and(|id| implements_trait(cx, base_ty, id, &[])) {
                 return false;
             }
         }
@@ -278,7 +280,7 @@ fn needless_borrow_count<'tcx>(
 
             let predicate = EarlyBinder::bind(predicate).instantiate(cx.tcx, &args_with_referent_ty[..]);
             let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
-            let infcx = cx.tcx.infer_ctxt().build();
+            let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
             infcx.predicate_must_hold_modulo_regions(&obligation)
         })
     };
@@ -360,7 +362,7 @@ fn referent_used_exactly_once<'tcx>(
         let body_owner_local_def_id = cx.tcx.hir().enclosing_body_owner(reference.hir_id);
         if possible_borrowers
             .last()
-            .map_or(true, |&(local_def_id, _)| local_def_id != body_owner_local_def_id)
+            .is_none_or(|&(local_def_id, _)| local_def_id != body_owner_local_def_id)
         {
             possible_borrowers.push((body_owner_local_def_id, PossibleBorrowerMap::new(cx, mir)));
         }
@@ -388,7 +390,7 @@ fn replace_types<'tcx>(
     projection_predicates: &[ProjectionPredicate<'tcx>],
     args: &mut [GenericArg<'tcx>],
 ) -> bool {
-    let mut replaced = BitSet::new_empty(args.len());
+    let mut replaced = DenseBitSet::new_empty(args.len());
 
     let mut deque = VecDeque::with_capacity(args.len());
     deque.push_back((param_ty, new_ty));
@@ -419,7 +421,7 @@ fn replace_types<'tcx>(
                         .expect_ty(cx.tcx)
                         .to_ty(cx.tcx);
 
-                    if let Ok(projected_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, projection)
+                    if let Ok(projected_ty) = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), projection)
                         && args[term_param_ty.index as usize] != GenericArg::from(projected_ty)
                     {
                         deque.push_back((*term_param_ty, projected_ty));

@@ -1,6 +1,6 @@
 # `wasm32-wasip2`
 
-**Tier: 3**
+**Tier: 2**
 
 The `wasm32-wasip2` target is a new and still (as of January 2024) an
 experimental target. This target is an extension to `wasm32-wasip1` target,

@@ -2,11 +2,9 @@
 //@ edition:2021
 //@ build-pass
 
-#![feature(async_closure)]
-
 extern crate block_on;
 
-fn wrapper(f: impl Fn(String)) -> impl async Fn(String) {
+fn wrapper(f: impl Fn(String)) -> impl AsyncFn(String) {
     async move |s| f(s)
 }
 

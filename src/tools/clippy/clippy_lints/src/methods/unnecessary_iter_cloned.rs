@@ -6,6 +6,7 @@ use clippy_utils::ty::{get_iterator_item_ty, implements_trait};
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{can_mut_borrow_both, fn_def_id, get_parent_expr, path_to_local};
 use core::ops::ControlFlow;
+use itertools::Itertools;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, Expr, ExprKind, Node, PatKind};
@@ -122,14 +123,13 @@ pub fn check_for_loop_iter(
                 } else {
                     Applicability::MachineApplicable
                 };
-                diag.span_suggestion(expr.span, "use", snippet.to_owned(), applicability);
-                if !references_to_binding.is_empty() {
-                    diag.multipart_suggestion(
-                        "remove any references to the binding",
-                        references_to_binding,
-                        applicability,
-                    );
-                }
+
+                let combined = references_to_binding
+                    .into_iter()
+                    .chain(vec![(expr.span, snippet.to_owned())])
+                    .collect_vec();
+
+                diag.multipart_suggestion("remove any references to the binding", combined, applicability);
             },
         );
         return true;

@@ -110,3 +110,11 @@ pub fn char_is_negative(c: char) -> bool {
     let x: i32 = unsafe { std::mem::transmute(c) };
     x < 0
 }
+
+// CHECK-LABEL: i1 @transmute_to_char_is_negative(i32
+#[no_mangle]
+pub fn transmute_to_char_is_negative(x: i32) -> bool {
+    // CHECK: ret i1 false
+    let _c: char = unsafe { std::mem::transmute(x) };
+    x < 0
+}

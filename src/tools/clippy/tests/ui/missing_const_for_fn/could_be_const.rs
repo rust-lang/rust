@@ -1,6 +1,5 @@
 #![warn(clippy::missing_const_for_fn)]
 #![allow(incomplete_features, clippy::let_and_return, clippy::missing_transmute_annotations)]
-#![allow(unsupported_calling_conventions)]
 #![feature(const_trait_impl)]
 
 use std::mem::transmute;
@@ -104,7 +103,7 @@ fn main() {}
 
 struct D;
 
-/* FIXME(effects)
+/* FIXME(const_trait_impl)
 impl const Drop for D {
     fn drop(&mut self) {
         todo!();
@@ -113,7 +112,7 @@ impl const Drop for D {
 */
 
 // Lint this, since it can be dropped in const contexts
-// FIXME(effects)
+// FIXME(const_trait_impl)
 fn d(this: D) {}
 //~^ ERROR: this could be a `const fn`
 
@@ -150,6 +149,7 @@ mod msrv {
         //~^ ERROR: this could be a `const fn`
 
         #[rustfmt::skip]
+        #[allow(missing_abi)]
         extern fn implicit_c() {}
         //~^ ERROR: this could be a `const fn`
 
@@ -211,9 +211,5 @@ mod extern_fn {
     extern "system" fn system() {}
     //~^ ERROR: this could be a `const fn`
     extern "system-unwind" fn system_unwind() {}
-    //~^ ERROR: this could be a `const fn`
-    pub extern "stdcall" fn std_call() {}
-    //~^ ERROR: this could be a `const fn`
-    pub extern "stdcall-unwind" fn std_call_unwind() {}
     //~^ ERROR: this could be a `const fn`
 }

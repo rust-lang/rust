@@ -2,10 +2,10 @@ use std::ffi::{OsStr, OsString};
 use std::io::ErrorKind;
 use std::{env, mem};
 
+use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_target::abi::Size;
 
 use crate::*;
 

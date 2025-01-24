@@ -94,4 +94,15 @@ fn use_in_arm_ok(c: bool) {
     };
 }
 
+fn use_in_same_chain(c: bool) {
+    let x: Box<_> = Box::new(1);
+
+    let v = (1, 2);
+
+    match v {
+        (1, 2) if let y = x && c && let z = x => false, //~ ERROR use of moved value: `x`
+        _ => true,
+    };
+}
+
 fn main() {}

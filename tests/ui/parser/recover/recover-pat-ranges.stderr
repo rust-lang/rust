@@ -88,7 +88,7 @@ error: expected a pattern range bound, found an expression
 LL |         ..=1 + 2 => (),
    |            ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 + 2;
@@ -109,7 +109,7 @@ error: expected a pattern range bound, found an expression
 LL |         (-4 + 0).. => (),
    |          ^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = -4 + 0;
@@ -130,7 +130,7 @@ error: expected a pattern range bound, found an expression
 LL |         (1 + 4)...1 * 2 => (),
    |          ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 + 4;
@@ -151,7 +151,7 @@ error: expected a pattern range bound, found an expression
 LL |         (1 + 4)...1 * 2 => (),
    |                   ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 * 2;
@@ -172,7 +172,7 @@ error: expected a pattern range bound, found an expression
 LL |         0.x()..="y".z() => (),
    |         ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 0.x();
@@ -193,7 +193,7 @@ error: expected a pattern range bound, found an expression
 LL |         0.x()..="y".z() => (),
    |                 ^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = "y".z();

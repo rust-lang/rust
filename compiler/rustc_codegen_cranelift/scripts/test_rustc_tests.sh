@@ -47,9 +47,6 @@ rm tests/ui/abi/variadic-ffi.rs # requires callee side vararg support
 rm -r tests/run-make/c-link-to-rust-va-list-fn # requires callee side vararg support
 rm tests/ui/delegation/fn-header.rs
 
-# unsized locals
-rm -r tests/run-pass-valgrind/unsized-locals
-
 # misc unimplemented things
 rm tests/ui/target-feature/missing-plusminus.rs # error not implemented
 rm -r tests/run-make/repr128-dwarf # debuginfo test
@@ -60,6 +57,7 @@ rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't 
 rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
 rm tests/ui/simd/simd-bitmask-notpow2.rs # non-pow-of-2 simd vector sizes
 rm -r tests/run-make/embed-source-dwarf # embedding sources in debuginfo
+rm tests/ui/simd-abi-checks.rs # vector types >128bits not yet supported
 
 # requires LTO
 rm -r tests/run-make/cdylib
@@ -78,6 +76,8 @@ rm -r tests/ui/instrument-coverage/
 rm tests/ui/half-open-range-patterns/half-open-range-pats-semantics.rs
 rm tests/ui/asm/aarch64/type-f16.rs
 rm tests/ui/float/conv-bits-runtime-const.rs
+rm tests/ui/consts/const-eval/float_methods.rs
+rm tests/ui/match/match-float.rs
 
 # optimization tests
 # ==================
@@ -128,7 +128,11 @@ rm tests/ui/abi/large-byval-align.rs # exceeds implementation limit of Cranelift
 # should work when using ./x.py test the way it is intended
 # ============================================================
 rm -r tests/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
+rm -r tests/run-make/strip # same
 rm -r tests/run-make/compiler-builtins # Expects lib/rustlib/src/rust to contains the standard library source
+rm -r tests/run-make/missing-unstable-trait-bound # This disables support for unstable features, but running cg_clif needs some unstable features
+rm -r tests/run-make/const-trait-stable-toolchain # same
+rm -r tests/run-make/incr-add-rust-src-component
 
 # genuine bugs
 # ============
@@ -148,6 +152,7 @@ rm tests/ui/intrinsics/panic-uninitialized-zeroed.rs # same
 rm tests/ui/process/process-panic-after-fork.rs # same
 
 cp ../dist/bin/rustdoc-clif ../dist/bin/rustdoc # some tests expect bin/rustdoc to exist
+cp $(../dist/rustc-clif --print target-libdir)/libstd-*.so ../dist/lib/
 
 # prevent $(RUSTDOC) from picking up the sysroot built by x.py. It conflicts with the one used by
 # rustdoc-clif
@@ -171,101 +176,28 @@ diff --git a/src/tools/run-make-support/src/rustdoc.rs b/src/tools/run-make-supp
 index 9607ff02f96..b7d97caf9a2 100644
 --- a/src/tools/run-make-support/src/external_deps/rustdoc.rs
 +++ b/src/tools/run-make-support/src/external_deps/rustdoc.rs
-@@ -34,8 +34,6 @@ pub fn bare() -> Self {
+@@ -34,7 +34,6 @@ pub fn bare() -> Self {
      #[track_caller]
      pub fn new() -> Self {
          let mut cmd = setup_common();
--        let target_rpath_dir = env_var_os("TARGET_RPATH_DIR");
--        cmd.arg(format!("-L{}", target_rpath_dir.to_string_lossy()));
+-        cmd.arg("-L").arg(env_var_os("TARGET_RPATH_DIR"));
          Self { cmd }
      }
 
-diff --git a/src/bootstrap/src/core/build_steps/test.rs b/src/bootstrap/src/core/build_steps/test.rs
-index 2047345d78a..a7e9352bb1c 100644
---- a/src/bootstrap/src/core/build_steps/test.rs
-+++ b/src/bootstrap/src/core/build_steps/test.rs
-@@ -1733,11 +1733,6 @@ fn run(self, builder: &Builder<'_>) {
-
-         let is_rustdoc = suite.ends_with("rustdoc-ui") || suite.ends_with("rustdoc-js");
-
--        if mode == "run-make" {
--            let cargo = builder.ensure(tool::Cargo { compiler, target: compiler.host });
--            cmd.arg("--cargo-path").arg(cargo);
--        }
--
-         // Avoid depending on rustdoc when we don't need it.
-         if mode == "rustdoc"
-             || mode == "run-make"
-diff --git a/src/tools/compiletest/src/common.rs b/src/tools/compiletest/src/common.rs
-index 414f9f3a7f1..5c18179b6fe 100644
---- a/src/tools/compiletest/src/common.rs
-+++ b/src/tools/compiletest/src/common.rs
-@@ -183,9 +183,6 @@ pub struct Config {
-     /// The rustc executable.
-     pub rustc_path: PathBuf,
-
--    /// The cargo executable.
--    pub cargo_path: Option<PathBuf>,
--
-     /// The rustdoc executable.
-     pub rustdoc_path: Option<PathBuf>,
-
-diff --git a/src/tools/compiletest/src/lib.rs b/src/tools/compiletest/src/lib.rs
-index 3339116d542..250b5084d13 100644
---- a/src/tools/compiletest/src/lib.rs
-+++ b/src/tools/compiletest/src/lib.rs
-@@ -47,7 +47,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
-     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
-         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
-         .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
--        .optopt("", "cargo-path", "path to cargo to use for compiling", "PATH")
-         .optopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
-         .optopt("", "coverage-dump-path", "path to coverage-dump to use in tests", "PATH")
-         .reqopt("", "python", "path to python to use for doc tests", "PATH")
-@@ -261,7 +260,6 @@ fn make_absolute(path: PathBuf) -> PathBuf {
-         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
-         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
-         rustc_path: opt_path(matches, "rustc-path"),
--        cargo_path: matches.opt_str("cargo-path").map(PathBuf::from),
-         rustdoc_path: matches.opt_str("rustdoc-path").map(PathBuf::from),
-         coverage_dump_path: matches.opt_str("coverage-dump-path").map(PathBuf::from),
-         python: matches.opt_str("python").unwrap(),
-@@ -366,7 +364,6 @@ pub fn log_config(config: &Config) {
-     logv(c, format!("compile_lib_path: {:?}", config.compile_lib_path));
-     logv(c, format!("run_lib_path: {:?}", config.run_lib_path));
-     logv(c, format!("rustc_path: {:?}", config.rustc_path.display()));
--    logv(c, format!("cargo_path: {:?}", config.cargo_path));
-     logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path));
-     logv(c, format!("src_base: {:?}", config.src_base.display()));
-     logv(c, format!("build_base: {:?}", config.build_base.display()));
 diff --git a/src/tools/compiletest/src/runtest/run_make.rs b/src/tools/compiletest/src/runtest/run_make.rs
-index 75fe6a6baaf..852568ae925 100644
+index e7ae773ffa1d3..04bc2d7787da7 100644
 --- a/src/tools/compiletest/src/runtest/run_make.rs
 +++ b/src/tools/compiletest/src/runtest/run_make.rs
-@@ -61,10 +61,6 @@ fn run_rmake_legacy_test(&self) {
-             .env_remove("MFLAGS")
-             .env_remove("CARGO_MAKEFLAGS");
+@@ -329,7 +329,6 @@ impl TestCx<'_> {
+             .arg(format!("run_make_support={}", &support_lib_path.to_string_lossy()))
+             .arg("--edition=2021")
+             .arg(&self.testpaths.file.join("rmake.rs"))
+-            .arg("-Cprefer-dynamic")
+             // Provide necessary library search paths for rustc.
+             .env(dylib_env_var(), &env::join_paths(host_dylib_search_paths).unwrap());
 
--        if let Some(ref cargo) = self.config.cargo_path {
--            cmd.env("CARGO", cwd.join(cargo));
--        }
--
-         if let Some(ref rustdoc) = self.config.rustdoc_path {
-             cmd.env("RUSTDOC", cwd.join(rustdoc));
-         }
-@@ -413,10 +409,6 @@ fn run_rmake_v2_test(&self) {
-             // through a specific CI runner).
-             .env("LLVM_COMPONENTS", &self.config.llvm_components);
-
--        if let Some(ref cargo) = self.config.cargo_path {
--            cmd.env("CARGO", source_root.join(cargo));
--        }
--
-         if let Some(ref rustdoc) = self.config.rustdoc_path {
-             cmd.env("RUSTDOC", source_root.join(rustdoc));
-         }
 EOF
 
 echo "[TEST] rustc test suite"
-COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 --test-args=--nocapture tests/{codegen-units,run-make,run-pass-valgrind,ui,incremental}
+COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 --test-args=--no-capture tests/{codegen-units,run-make,ui,incremental}
 popd

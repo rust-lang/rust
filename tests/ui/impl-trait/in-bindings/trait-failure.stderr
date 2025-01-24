@@ -1,0 +1,24 @@
+error[E0277]: the trait bound `(): Foo` is not satisfied
+  --> $DIR/trait-failure.rs:9:17
+   |
+LL |     let x: impl Foo = W(());
+   |                 ^^^ the trait `Foo` is not implemented for `()`
+   |
+   = help: the trait `Foo` is implemented for `W<T>`
+note: required for `W<()>` to implement `Foo`
+  --> $DIR/trait-failure.rs:6:9
+   |
+LL | impl<T> Foo for W<T> where T: Foo {}
+   |         ^^^     ^^^^          --- unsatisfied trait bound introduced here
+
+error[E0277]: the trait bound `(): Foo` is not satisfied
+  --> $DIR/trait-failure.rs:11:19
+   |
+LL |     let x: W<impl Foo> = W(());
+   |                   ^^^ the trait `Foo` is not implemented for `()`
+   |
+   = help: the trait `Foo` is implemented for `W<T>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

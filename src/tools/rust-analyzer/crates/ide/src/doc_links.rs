@@ -147,8 +147,8 @@ pub(crate) fn external_docs(
     let definition = match_ast! {
         match node {
             ast::NameRef(name_ref) => match NameRefClass::classify(sema, &name_ref)? {
-                NameRefClass::Definition(def) => def,
-                NameRefClass::FieldShorthand { local_ref: _, field_ref } => {
+                NameRefClass::Definition(def, _) => def,
+                NameRefClass::FieldShorthand { local_ref: _, field_ref, adt_subst: _ } => {
                     Definition::Field(field_ref)
                 }
                 NameRefClass::ExternCrateShorthand { decl, .. } => {
@@ -157,7 +157,7 @@ pub(crate) fn external_docs(
             },
             ast::Name(name) => match NameClass::classify(sema, &name)? {
                 NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                NameClass::PatFieldShorthand { local_def: _, field_ref } => Definition::Field(field_ref),
+                NameClass::PatFieldShorthand { local_def: _, field_ref, adt_subst: _ } => Definition::Field(field_ref),
             },
             _ => return None
         }
@@ -199,6 +199,7 @@ pub(crate) fn resolve_doc_path_for_def(
 ) -> Option<Definition> {
     match def {
         Definition::Module(it) => it.resolve_doc_path(db, link, ns),
+        Definition::Crate(it) => it.resolve_doc_path(db, link, ns),
         Definition::Function(it) => it.resolve_doc_path(db, link, ns),
         Definition::Adt(it) => it.resolve_doc_path(db, link, ns),
         Definition::Variant(it) => it.resolve_doc_path(db, link, ns),
@@ -594,6 +595,7 @@ fn filename_and_frag_for_def(
             Adt::Enum(e) => format!("enum.{}.html", e.name(db).unescaped().display(db.upcast())),
             Adt::Union(u) => format!("union.{}.html", u.name(db).unescaped().display(db.upcast())),
         },
+        Definition::Crate(_) => String::from("index.html"),
         Definition::Module(m) => match m.name(db) {
             // `#[doc(keyword = "...")]` is internal used only by rust compiler
             Some(name) => {

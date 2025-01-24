@@ -1,4 +1,5 @@
-//! Codegen of intrinsics. This includes `extern "rust-intrinsic"`, `extern "platform-intrinsic"`
+//! Codegen of intrinsics. This includes `extern "rust-intrinsic"`,
+//! functions marked with the `#[rustc_intrinsic]` attribute
 //! and LLVM intrinsics that have symbol names starting with `llvm.`.
 
 macro_rules! intrinsic_args {
@@ -20,10 +21,10 @@ mod simd;
 use cranelift_codegen::ir::AtomicRmwOp;
 use rustc_middle::ty;
 use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::layout::{HasParamEnv, ValidityRequirement};
+use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 
 pub(crate) use self::llvm::codegen_llvm_intrinsic_call;
 use crate::cast::clif_intcast;
@@ -47,12 +48,12 @@ fn report_atomic_type_validation_error<'tcx>(
         ),
     );
     // Prevent verifier error
-    fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+    fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
 }
 
 pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Type {
-    let (element, count) = match layout.abi {
-        Abi::Vector { element, count } => (element, count),
+    let (element, count) = match layout.backend_repr {
+        BackendRepr::Vector { element, count } => (element, count),
         _ => unreachable!(),
     };
 
@@ -449,13 +450,9 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
     match intrinsic {
         sym::abort => {
-            fx.bcx.ins().trap(TrapCode::User(0));
+            fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
+            fx.bcx.ins().trap(TrapCode::user(2).unwrap());
             return Ok(());
-        }
-        sym::likely | sym::unlikely => {
-            intrinsic_args!(fx, args => (a); intrinsic);
-
-            ret.write_cvalue(fx, a);
         }
         sym::breakpoint => {
             intrinsic_args!(fx, args => (); intrinsic);
@@ -505,7 +502,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let layout = fx.layout_of(generic_args.type_at(0));
             // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
             // branch
-            let meta = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
+            let meta = if let BackendRepr::ScalarPair(_, _) = ptr.layout().backend_repr {
                 Some(ptr.load_scalar_pair(fx).1)
             } else {
                 None
@@ -519,7 +516,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let layout = fx.layout_of(generic_args.type_at(0));
             // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
             // branch
-            let meta = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
+            let meta = if let BackendRepr::ScalarPair(_, _) = ptr.layout().backend_repr {
                 Some(ptr.load_scalar_pair(fx).1)
             } else {
                 None
@@ -686,14 +683,17 @@ fn codegen_regular_intrinsic_call<'tcx>(
             if let Some(requirement) = requirement {
                 let do_panic = !fx
                     .tcx
-                    .check_validity_requirement((requirement, fx.param_env().and(ty)))
+                    .check_validity_requirement((
+                        requirement,
+                        ty::TypingEnv::fully_monomorphized().as_query_input(ty),
+                    ))
                     .expect("expect to have layout during codegen");
 
                 if do_panic {
                     let layout = fx.layout_of(ty);
                     let msg_str = with_no_visible_paths!({
                         with_no_trimmed_paths!({
-                            if layout.abi.is_uninhabited() {
+                            if layout.is_uninhabited() {
                                 // Use this error even for the other intrinsics as it is more precise.
                                 format!("attempted to instantiate uninhabited type `{}`", ty)
                             } else if intrinsic == sym::assert_zero_valid {
@@ -745,7 +745,11 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let const_val = fx
                 .tcx
-                .const_eval_instance(ParamEnv::reveal_all(), instance, source_info.span)
+                .const_eval_instance(
+                    ty::TypingEnv::fully_monomorphized(),
+                    instance,
+                    source_info.span,
+                )
                 .unwrap();
             let val = crate::constant::codegen_const_value(fx, const_val, ret.layout().ty);
             ret.write_cvalue(fx, val);
@@ -1264,6 +1268,10 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 source_info.span,
                 "Defining variadic functions is not yet supported by Cranelift",
             );
+        }
+
+        sym::cold_path => {
+            fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
         }
 
         // Unimplemented intrinsics must have a fallback body. The fallback body is obtained

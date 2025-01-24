@@ -23,6 +23,7 @@ extern "rust-intrinsic" {
     fn simd_fexp<T>(x: T) -> T;
     fn simd_fexp2<T>(x: T) -> T;
     fn simd_fma<T>(x: T, y: T, z: T) -> T;
+    fn simd_relaxed_fma<T>(x: T, y: T, z: T) -> T;
     fn simd_flog<T>(x: T) -> T;
     fn simd_flog10<T>(x: T) -> T;
     fn simd_flog2<T>(x: T) -> T;
@@ -75,6 +76,9 @@ fn main() {
         assert_approx_eq!(x, r);
 
         let r = simd_fma(x, h, h);
+        assert_approx_eq!(x, r);
+
+        let r = simd_relaxed_fma(x, h, h);
         assert_approx_eq!(x, r);
 
         let r = simd_fsqrt(x);

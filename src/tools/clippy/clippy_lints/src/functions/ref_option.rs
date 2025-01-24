@@ -15,9 +15,9 @@ use rustc_span::{Span, sym};
 fn check_ty<'a>(cx: &LateContext<'a>, param: &rustc_hir::Ty<'a>, param_ty: Ty<'a>, fixes: &mut Vec<(Span, String)>) {
     if let ty::Ref(_, opt_ty, Mutability::Not) = param_ty.kind()
         && is_type_diagnostic_item(cx, *opt_ty, sym::Option)
-        && let ty::Adt(_, opt_gen) = opt_ty.kind()
-        && let [gen] = opt_gen.as_slice()
-        && let GenericArgKind::Type(gen_ty) = gen.unpack()
+        && let ty::Adt(_, opt_gen_args) = opt_ty.kind()
+        && let [gen_arg] = opt_gen_args.as_slice()
+        && let GenericArgKind::Type(gen_ty) = gen_arg.unpack()
         && !gen_ty.is_ref()
         // Need to gen the original spans, so first parsing mid, and hir parsing afterward
         && let hir::TyKind::Ref(lifetime, hir::MutTy { ty, .. }) = param.kind

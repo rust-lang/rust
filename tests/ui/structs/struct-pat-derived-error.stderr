@@ -27,6 +27,10 @@ LL |         let A { x, y, b, c } = self.d;
    |                     ~~~~~~~~
 help: if you don't care about these missing fields, you can explicitly ignore them
    |
+LL |         let A { x, y, b: _, c: _ } = self.d;
+   |                     ~~~~~~~~~~~~~~
+help: or always ignore missing fields here
+   |
 LL |         let A { x, y, .. } = self.d;
    |                     ~~~~~~
 

@@ -1,3 +1,13 @@
+//! Standalone markdown rendering.
+//!
+//! For the (much more common) case of rendering markdown in doc-comments, see
+//! [crate::html::markdown].
+//!
+//! This is used when [rendering a markdown file to an html file][docs], without processing
+//! rust source code.
+//!
+//! [docs]: https://doc.rust-lang.org/stable/rustdoc/#using-standalone-markdown-files
+
 use std::fmt::Write as _;
 use std::fs::{File, create_dir_all, read_to_string};
 use std::io::prelude::*;
@@ -33,7 +43,7 @@ fn extract_leading_metadata(s: &str) -> (Vec<&str>, &str) {
 /// (e.g., output = "bar" => "bar/foo.html").
 ///
 /// Requires session globals to be available, for symbol interning.
-pub(crate) fn render<P: AsRef<Path>>(
+pub(crate) fn render_and_write<P: AsRef<Path>>(
     input: P,
     options: RenderOptions,
     edition: Edition,

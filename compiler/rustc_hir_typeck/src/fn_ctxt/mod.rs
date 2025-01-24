@@ -10,14 +10,14 @@ use std::ops::Deref;
 
 use hir::def_id::CRATE_DEF_ID;
 use rustc_errors::DiagCtxtHandle;
-use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{self as hir, HirId, ItemLocalMap};
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
 use rustc_infer::infer;
+use rustc_infer::traits::Obligation;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
-use rustc_span::symbol::Ident;
-use rustc_span::{self, DUMMY_SP, Span, sym};
+use rustc_span::{self, DUMMY_SP, Ident, Span, sym};
 use rustc_trait_selection::error_reporting::TypeErrCtxt;
 use rustc_trait_selection::error_reporting::infer::sub_relations::SubRelations;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
@@ -114,6 +114,12 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
 
     pub(super) diverging_fallback_behavior: DivergingFallbackBehavior,
     pub(super) diverging_block_behavior: DivergingBlockBehavior,
+
+    /// Clauses that we lowered as part of the `impl_trait_in_bindings` feature.
+    ///
+    /// These are stored here so we may collect them when canonicalizing user
+    /// type ascriptions later.
+    pub(super) trait_ascriptions: RefCell<ItemLocalMap<Vec<ty::Clause<'tcx>>>>,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -141,6 +147,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fallback_has_occurred: Cell::new(false),
             diverging_fallback_behavior,
             diverging_block_behavior,
+            trait_ascriptions: Default::default(),
         }
     }
 
@@ -247,14 +254,32 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
     fn ct_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
         // FIXME ideally this shouldn't use unwrap
         match param {
-            Some(
-                param @ ty::GenericParamDef {
-                    kind: ty::GenericParamDefKind::Const { is_host_effect: true, .. },
-                    ..
-                },
-            ) => self.var_for_effect(param).as_const().unwrap(),
             Some(param) => self.var_for_def(span, param).as_const().unwrap(),
             None => self.next_const_var(span),
+        }
+    }
+
+    fn register_trait_ascription_bounds(
+        &self,
+        bounds: Vec<(ty::Clause<'tcx>, Span)>,
+        hir_id: HirId,
+        _span: Span,
+    ) {
+        for (clause, span) in bounds {
+            if clause.has_escaping_bound_vars() {
+                self.dcx().span_delayed_bug(span, "clause should have no escaping bound vars");
+                continue;
+            }
+
+            self.trait_ascriptions.borrow_mut().entry(hir_id.local_id).or_default().push(clause);
+
+            let clause = self.normalize(span, clause);
+            self.register_predicate(Obligation::new(
+                self.tcx,
+                self.misc(span),
+                self.param_env,
+                clause,
+            ));
         }
     }
 
@@ -313,7 +338,11 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             ty::Alias(ty::Projection | ty::Inherent | ty::Weak, _)
                 if !ty.has_escaping_bound_vars() =>
             {
-                self.normalize(span, ty).ty_adt_def()
+                if self.next_trait_solver() {
+                    self.try_structurally_resolve_type(span, ty).ty_adt_def()
+                } else {
+                    self.normalize(span, ty).ty_adt_def()
+                }
             }
             _ => None,
         }
@@ -404,7 +433,7 @@ fn default_fallback(tcx: TyCtxt<'_>) -> DivergingFallbackBehavior {
     }
 
     // `feature(never_type_fallback)`: fallback to `!` or `()` trying to not break stuff
-    if tcx.features().never_type_fallback {
+    if tcx.features().never_type_fallback() {
         return DivergingFallbackBehavior::ContextDependent;
     }
 

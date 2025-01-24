@@ -3,7 +3,7 @@ use std::cell::LazyCell;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{Applicability, LintDiagnostic};
+use rustc_errors::{LintDiagnostic, Subdiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -22,6 +22,9 @@ use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
+use rustc_trait_selection::errors::{
+    AddPreciseCapturingForOvercapture, impl_trait_overcapture_suggestion,
+};
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt;
 
@@ -96,7 +99,7 @@ declare_lint! {
     /// To fix this, remove the `use<'a>`, since the lifetime is already captured
     /// since it is in scope.
     pub IMPL_TRAIT_REDUNDANT_CAPTURES,
-    Warn,
+    Allow,
     "redundant precise-capturing `use<...>` syntax on an `impl Trait`",
 }
 
@@ -109,7 +112,7 @@ declare_lint_pass!(
 impl<'tcx> LateLintPass<'tcx> for ImplTraitOvercaptures {
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx hir::Item<'tcx>) {
         match &it.kind {
-            hir::ItemKind::Fn(..) => check_fn(cx.tcx, it.owner_id.def_id),
+            hir::ItemKind::Fn { .. } => check_fn(cx.tcx, it.owner_id.def_id),
             _ => {}
         }
     }
@@ -154,7 +157,7 @@ fn check_fn(tcx: TyCtxt<'_>, parent_def_id: LocalDefId) {
     }
 
     for bound_var in sig.bound_vars() {
-        let ty::BoundVariableKind::Region(ty::BoundRegionKind::BrNamed(def_id, name)) = bound_var
+        let ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id, name)) = bound_var
         else {
             span_bug!(tcx.def_span(parent_def_id), "unexpected non-lifetime binder on fn sig");
         };
@@ -174,7 +177,7 @@ fn check_fn(tcx: TyCtxt<'_>, parent_def_id: LocalDefId) {
         // Lazily compute these two, since they're likely a bit expensive.
         variances: LazyCell::new(|| {
             let mut functional_variances = FunctionalVariances {
-                tcx: tcx,
+                tcx,
                 variances: FxHashMap::default(),
                 ambient_variance: ty::Covariant,
                 generics: tcx.generics_of(parent_def_id),
@@ -183,8 +186,8 @@ fn check_fn(tcx: TyCtxt<'_>, parent_def_id: LocalDefId) {
             functional_variances.variances
         }),
         outlives_env: LazyCell::new(|| {
-            let param_env = tcx.param_env(parent_def_id);
-            let infcx = tcx.infer_ctxt().build();
+            let typing_env = ty::TypingEnv::non_body_analysis(tcx, parent_def_id);
+            let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
             let ocx = ObligationCtxt::new(&infcx);
             let assumed_wf_tys = ocx.assumed_wf_types(param_env, parent_def_id).unwrap_or_default();
             let implied_bounds =
@@ -215,7 +218,7 @@ where
         for arg in t.bound_vars() {
             let arg: ty::BoundVariableKind = arg;
             match arg {
-                ty::BoundVariableKind::Region(ty::BoundRegionKind::BrNamed(def_id, ..))
+                ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id, ..))
                 | ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id, _)) => {
                     added.push(def_id);
                     let unique = self.in_scope_parameters.insert(def_id, ParamKind::Late);
@@ -259,12 +262,16 @@ where
             // If it's owned by this function
             && let opaque =
                 self.tcx.hir_node_by_def_id(opaque_def_id).expect_opaque_ty()
-            && let hir::OpaqueTyOrigin::FnReturn { parent, .. } = opaque.origin
+            // We want to recurse into RPITs and async fns, even though the latter
+            // doesn't overcapture on its own, it may mention additional RPITs
+            // in its bounds.
+            && let hir::OpaqueTyOrigin::FnReturn { parent, .. }
+                | hir::OpaqueTyOrigin::AsyncFn { parent, .. } = opaque.origin
             && parent == self.parent_def_id
         {
             let opaque_span = self.tcx.def_span(opaque_def_id);
-            let new_capture_rules =
-                opaque_span.at_least_rust_2024() || self.tcx.features().lifetime_capture_rules_2024;
+            let new_capture_rules = opaque_span.at_least_rust_2024()
+                || self.tcx.features().lifetime_capture_rules_2024();
             if !new_capture_rules
                 && !opaque.bounds.iter().any(|bound| matches!(bound, hir::GenericBound::Use(..)))
             {
@@ -318,7 +325,7 @@ where
                         ParamKind::Free(def_id, name) => ty::Region::new_late_param(
                             self.tcx,
                             self.parent_def_id.to_def_id(),
-                            ty::BoundRegionKind::BrNamed(def_id, name),
+                            ty::LateParamRegionKind::Named(def_id, name),
                         ),
                         // Totally ignore late bound args from binders.
                         ParamKind::Late => return true,
@@ -334,32 +341,12 @@ where
                 // If we have uncaptured args, and if the opaque doesn't already have
                 // `use<>` syntax on it, and we're < edition 2024, then warn the user.
                 if !uncaptured_args.is_empty() {
-                    let suggestion = if let Ok(snippet) =
-                        self.tcx.sess.source_map().span_to_snippet(opaque_span)
-                        && snippet.starts_with("impl ")
-                    {
-                        let (lifetimes, others): (Vec<_>, Vec<_>) =
-                            captured.into_iter().partition(|def_id| {
-                                self.tcx.def_kind(*def_id) == DefKind::LifetimeParam
-                            });
-                        // Take all lifetime params first, then all others (ty/ct).
-                        let generics: Vec<_> = lifetimes
-                            .into_iter()
-                            .chain(others)
-                            .map(|def_id| self.tcx.item_name(def_id).to_string())
-                            .collect();
-                        // Make sure that we're not trying to name any APITs
-                        if generics.iter().all(|name| !name.starts_with("impl ")) {
-                            Some((
-                                format!(" + use<{}>", generics.join(", ")),
-                                opaque_span.shrink_to_hi(),
-                            ))
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    };
+                    let suggestion = impl_trait_overcapture_suggestion(
+                        self.tcx,
+                        opaque_def_id,
+                        self.parent_def_id,
+                        captured,
+                    );
 
                     let uncaptured_spans: Vec<_> = uncaptured_args
                         .into_iter()
@@ -451,7 +438,7 @@ struct ImplTraitOvercapturesLint<'tcx> {
     uncaptured_spans: Vec<Span>,
     self_ty: Ty<'tcx>,
     num_captured: usize,
-    suggestion: Option<(String, Span)>,
+    suggestion: Option<AddPreciseCapturingForOvercapture>,
 }
 
 impl<'a> LintDiagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
@@ -461,13 +448,8 @@ impl<'a> LintDiagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
             .arg("num_captured", self.num_captured)
             .span_note(self.uncaptured_spans, fluent::lint_note)
             .note(fluent::lint_note2);
-        if let Some((suggestion, span)) = self.suggestion {
-            diag.span_suggestion(
-                span,
-                fluent::lint_suggestion,
-                suggestion,
-                Applicability::MachineApplicable,
-            );
+        if let Some(suggestion) = self.suggestion {
+            suggestion.add_to_diag(diag);
         }
     }
 }
@@ -489,11 +471,11 @@ fn extract_def_id_from_arg<'tcx>(
             ty::ReEarlyParam(ebr) => generics.region_param(ebr, tcx).def_id,
             ty::ReBound(
                 _,
-                ty::BoundRegion { kind: ty::BoundRegionKind::BrNamed(def_id, ..), .. },
+                ty::BoundRegion { kind: ty::BoundRegionKind::Named(def_id, ..), .. },
             )
             | ty::ReLateParam(ty::LateParamRegion {
                 scope: _,
-                bound_region: ty::BoundRegionKind::BrNamed(def_id, ..),
+                kind: ty::LateParamRegionKind::Named(def_id, ..),
             }) => def_id,
             _ => unreachable!(),
         },
@@ -558,11 +540,11 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for FunctionalVariances<'tcx> {
             ty::ReEarlyParam(ebr) => self.generics.region_param(ebr, self.tcx).def_id,
             ty::ReBound(
                 _,
-                ty::BoundRegion { kind: ty::BoundRegionKind::BrNamed(def_id, ..), .. },
+                ty::BoundRegion { kind: ty::BoundRegionKind::Named(def_id, ..), .. },
             )
             | ty::ReLateParam(ty::LateParamRegion {
                 scope: _,
-                bound_region: ty::BoundRegionKind::BrNamed(def_id, ..),
+                kind: ty::LateParamRegionKind::Named(def_id, ..),
             }) => def_id,
             _ => {
                 return Ok(a);

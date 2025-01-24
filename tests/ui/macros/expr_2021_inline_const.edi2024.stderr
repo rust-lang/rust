@@ -1,4 +1,4 @@
-error: no rules expected the token `const`
+error: no rules expected keyword `const`
   --> $DIR/expr_2021_inline_const.rs:23:12
    |
 LL | macro_rules! m2021 {

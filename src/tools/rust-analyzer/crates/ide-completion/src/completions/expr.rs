@@ -1,6 +1,9 @@
 //! Completion of names from the current scope in expression position.
 
-use hir::{sym, Name, ScopeDef};
+use std::ops::ControlFlow;
+
+use hir::{sym, Name, PathCandidateCallback, ScopeDef};
+use ide_db::FxHashSet;
 use syntax::ast;
 
 use crate::{
@@ -8,6 +11,38 @@ use crate::{
     context::{BreakableKind, PathCompletionCtx, PathExprCtx, Qualified},
     CompletionContext, Completions,
 };
+
+struct PathCallback<'a, F> {
+    ctx: &'a CompletionContext<'a>,
+    acc: &'a mut Completions,
+    add_assoc_item: F,
+    seen: FxHashSet<hir::AssocItem>,
+}
+
+impl<F> PathCandidateCallback for PathCallback<'_, F>
+where
+    F: FnMut(&mut Completions, hir::AssocItem),
+{
+    fn on_inherent_item(&mut self, item: hir::AssocItem) -> ControlFlow<()> {
+        if self.seen.insert(item) {
+            (self.add_assoc_item)(self.acc, item);
+        }
+        ControlFlow::Continue(())
+    }
+
+    fn on_trait_item(&mut self, item: hir::AssocItem) -> ControlFlow<()> {
+        // The excluded check needs to come before the `seen` test, so that if we see the same method twice,
+        // once as inherent and once not, we will include it.
+        if item
+            .container_trait(self.ctx.db)
+            .is_none_or(|trait_| !self.ctx.exclude_traits.contains(&trait_))
+            && self.seen.insert(item)
+        {
+            (self.add_assoc_item)(self.acc, item);
+        }
+        ControlFlow::Continue(())
+    }
+}
 
 pub(crate) fn complete_expr_path(
     acc: &mut Completions,
@@ -27,6 +62,7 @@ pub(crate) fn complete_expr_path(
         in_condition,
         incomplete_let,
         ref ref_expr_parent,
+        after_amp,
         ref is_func_update,
         ref innermost_ret_ty,
         ref impl_,
@@ -34,8 +70,23 @@ pub(crate) fn complete_expr_path(
         ..
     } = expr_ctx;
 
-    let wants_mut_token =
-        ref_expr_parent.as_ref().map(|it| it.mut_token().is_none()).unwrap_or(false);
+    let (has_raw_token, has_const_token, has_mut_token) = ref_expr_parent
+        .as_ref()
+        .map(|it| (it.raw_token().is_some(), it.const_token().is_some(), it.mut_token().is_some()))
+        .unwrap_or((false, false, false));
+
+    let wants_raw_token = ref_expr_parent.is_some() && !has_raw_token && after_amp;
+    let wants_const_token =
+        ref_expr_parent.is_some() && has_raw_token && !has_const_token && !has_mut_token;
+    let wants_mut_token = if ref_expr_parent.is_some() {
+        if has_raw_token {
+            !has_const_token && !has_mut_token
+        } else {
+            !has_mut_token
+        }
+    } else {
+        false
+    };
 
     let scope_def_applicable = |def| match def {
         ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) | ScopeDef::Label(_) => false,
@@ -50,12 +101,18 @@ pub(crate) fn complete_expr_path(
     };
 
     match qualified {
+        // We exclude associated types/consts of excluded traits here together with methods,
+        // even though we don't exclude them when completing in type position, because it's easier.
         Qualified::TypeAnchor { ty: None, trait_: None } => ctx
             .traits_in_scope()
             .iter()
-            .flat_map(|&it| hir::Trait::from(it).items(ctx.sema.db))
+            .copied()
+            .map(hir::Trait::from)
+            .filter(|it| !ctx.exclude_traits.contains(it))
+            .flat_map(|it| it.items(ctx.sema.db))
             .for_each(|item| add_assoc_item(acc, item)),
         Qualified::TypeAnchor { trait_: Some(trait_), .. } => {
+            // Don't filter excluded traits here, user requested this specific trait.
             trait_.items(ctx.sema.db).into_iter().for_each(|item| add_assoc_item(acc, item))
         }
         Qualified::TypeAnchor { ty: Some(ty), trait_: None } => {
@@ -64,9 +121,14 @@ pub(crate) fn complete_expr_path(
                 acc.add_enum_variants(ctx, path_ctx, e);
             }
 
-            ctx.iterate_path_candidates(ty, |item| {
-                add_assoc_item(acc, item);
-            });
+            ty.iterate_path_candidates_split_inherent(
+                ctx.db,
+                &ctx.scope,
+                &ctx.traits_in_scope(),
+                Some(ctx.module),
+                None,
+                PathCallback { ctx, acc, add_assoc_item, seen: FxHashSet::default() },
+            );
 
             // Iterate assoc types separately
             ty.iterate_assoc_items(ctx.db, ctx.krate, |item| {
@@ -121,9 +183,14 @@ pub(crate) fn complete_expr_path(
                     // XXX: For parity with Rust bug #22519, this does not complete Ty::AssocType.
                     // (where AssocType is defined on a trait, not an inherent impl)
 
-                    ctx.iterate_path_candidates(&ty, |item| {
-                        add_assoc_item(acc, item);
-                    });
+                    ty.iterate_path_candidates_split_inherent(
+                        ctx.db,
+                        &ctx.scope,
+                        &ctx.traits_in_scope(),
+                        Some(ctx.module),
+                        None,
+                        PathCallback { ctx, acc, add_assoc_item, seen: FxHashSet::default() },
+                    );
 
                     // Iterate assoc types separately
                     ty.iterate_assoc_items(ctx.db, ctx.krate, |item| {
@@ -134,6 +201,7 @@ pub(crate) fn complete_expr_path(
                     });
                 }
                 hir::PathResolution::Def(hir::ModuleDef::Trait(t)) => {
+                    // Don't filter excluded traits here, user requested this specific trait.
                     // Handles `Trait::assoc` as well as `<Ty as Trait>::assoc`.
                     for item in t.items(ctx.db) {
                         add_assoc_item(acc, item);
@@ -151,9 +219,14 @@ pub(crate) fn complete_expr_path(
                         acc.add_enum_variants(ctx, path_ctx, e);
                     }
 
-                    ctx.iterate_path_candidates(&ty, |item| {
-                        add_assoc_item(acc, item);
-                    });
+                    ty.iterate_path_candidates_split_inherent(
+                        ctx.db,
+                        &ctx.scope,
+                        &ctx.traits_in_scope(),
+                        Some(ctx.module),
+                        None,
+                        PathCallback { ctx, acc, add_assoc_item, seen: FxHashSet::default() },
+                    );
                 }
                 _ => (),
             }
@@ -236,9 +309,17 @@ pub(crate) fn complete_expr_path(
                         [..] => acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases),
                     }
                 }
+                // synthetic names currently leak out as we lack synthetic hygiene, so filter them
+                // out here
+                ScopeDef::Local(_) => {
+                    if !name.as_str().starts_with('<') {
+                        acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases)
+                    }
+                }
                 _ if scope_def_applicable(def) => {
                     acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases)
                 }
+
                 _ => (),
             });
 
@@ -289,6 +370,12 @@ pub(crate) fn complete_expr_path(
                         add_keyword("else if", "else if $1 {\n    $0\n}");
                     }
 
+                    if wants_raw_token {
+                        add_keyword("raw", "raw ");
+                    }
+                    if wants_const_token {
+                        add_keyword("const", "const ");
+                    }
                     if wants_mut_token {
                         add_keyword("mut", "mut ");
                     }

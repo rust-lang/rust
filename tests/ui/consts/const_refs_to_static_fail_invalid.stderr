@@ -31,24 +31,6 @@ LL |     const C: &i32 = unsafe { &S_MUT };
                HEX_DUMP
            }
 
-error: could not evaluate constant pattern
-  --> $DIR/const_refs_to_static_fail_invalid.rs:14:9
-   |
-LL |         C => {}
-   |         ^
-
-error: could not evaluate constant pattern
-  --> $DIR/const_refs_to_static_fail_invalid.rs:30:9
-   |
-LL |         C => {}
-   |         ^
-
-error: could not evaluate constant pattern
-  --> $DIR/const_refs_to_static_fail_invalid.rs:45:9
-   |
-LL |         C => {}
-   |         ^
-
-error: aborting due to 6 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

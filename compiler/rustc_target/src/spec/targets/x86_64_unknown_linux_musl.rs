@@ -14,6 +14,8 @@ pub(crate) fn target() -> Target {
         | SanitizerSet::MEMORY
         | SanitizerSet::THREAD;
     base.supports_xray = true;
+    // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
+    base.crt_static_default = true;
 
     Target {
         llvm_target: "x86_64-unknown-linux-musl".into(),

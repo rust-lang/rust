@@ -9,6 +9,7 @@
 #![feature(iter_partition_in_place)]
 #![feature(let_chains)]
 #![feature(never_type)]
+#![feature(round_char_boundary)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
 #![feature(unwrap_infallible)]
@@ -17,7 +18,8 @@
     clippy::missing_docs_in_private_items,
     clippy::must_use_candidate,
     rustc::diagnostic_outside_of_impl,
-    rustc::untranslatable_diagnostic
+    rustc::untranslatable_diagnostic,
+    clippy::literal_string_with_formatting_args
 )]
 #![warn(
     trivial_casts,
@@ -35,7 +37,7 @@ extern crate rustc_abi;
 extern crate rustc_arena;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
-extern crate rustc_attr;
+extern crate rustc_attr_parsing;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_errors;
@@ -49,6 +51,7 @@ extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_middle;
 extern crate rustc_parse;
+extern crate rustc_parse_format;
 extern crate rustc_resolve;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -65,6 +68,7 @@ extern crate clippy_utils;
 #[cfg_attr(feature = "internal", allow(clippy::missing_clippy_version_attribute))]
 mod utils;
 
+pub mod ctfe; // Very important lint, do not remove (rust#125116)
 pub mod declared_lints;
 pub mod deprecated_lints;
 
@@ -72,6 +76,7 @@ pub mod deprecated_lints;
 mod absolute_paths;
 mod almost_complete_range;
 mod approx_const;
+mod arbitrary_source_item_ordering;
 mod arc_with_non_send_sync;
 mod as_conversions;
 mod asm_syntax;
@@ -194,6 +199,7 @@ mod let_with_type_underscore;
 mod lifetimes;
 mod lines_filter_map_ok;
 mod literal_representation;
+mod literal_string_with_formatting_args;
 mod loops;
 mod macro_metavars_in_unsafe;
 mod macro_use;
@@ -361,7 +367,6 @@ mod uninhabited_references;
 mod uninit_vec;
 mod unit_return_expecting_ord;
 mod unit_types;
-mod unnamed_address;
 mod unnecessary_box_returns;
 mod unnecessary_literal_bound;
 mod unnecessary_map_on_constructor;
@@ -399,6 +404,7 @@ use clippy_config::{Conf, get_configuration_metadata, sanitize_explanation};
 use clippy_utils::macros::FormatArgsStorage;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{Lint, LintId};
+use utils::attr_collector::{AttrCollector, AttrStorage};
 
 /// Register all pre expansion lints
 ///
@@ -411,6 +417,8 @@ use rustc_lint::{Lint, LintId};
 pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     // NOTE: Do not add any more pre-expansion passes. These should be removed eventually.
     store.register_pre_expansion_pass(move || Box::new(attrs::EarlyAttributes::new(conf)));
+
+    store.register_early_pass(move || Box::new(attrs::PostExpansionEarlyAttributes::new(conf)));
 }
 
 #[derive(Default)]
@@ -461,6 +469,7 @@ pub(crate) enum LintCategory {
     #[cfg(feature = "internal")]
     Internal,
 }
+
 #[allow(clippy::enum_glob_use)]
 use LintCategory::*;
 
@@ -582,6 +591,10 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         ))
     });
 
+    let attr_storage = AttrStorage::default();
+    let attrs = attr_storage.clone();
+    store.register_early_pass(move || Box::new(AttrCollector::new(attrs.clone())));
+
     // all the internal lints
     #[cfg(feature = "internal")]
     {
@@ -603,7 +616,10 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         store.register_late_pass(|_| {
             Box::new(utils::internal_lints::almost_standard_lint_formulation::AlmostStandardFormulation::new())
         });
+        store.register_late_pass(|_| Box::new(utils::internal_lints::slow_symbol_comparisons::SlowSymbolComparisons));
     }
+
+    store.register_late_pass(|_| Box::new(ctfe::ClippyCtfe));
 
     store.register_late_pass(move |_| Box::new(operators::arithmetic_side_effects::ArithmeticSideEffects::new(conf)));
     store.register_late_pass(|_| Box::new(utils::dump_hir::DumpHir));
@@ -633,7 +649,11 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(implicit_return::ImplicitReturn));
     store.register_late_pass(move |_| Box::new(implicit_saturating_sub::ImplicitSaturatingSub::new(conf)));
     store.register_late_pass(|_| Box::new(default_numeric_fallback::DefaultNumericFallback));
-    store.register_late_pass(|_| Box::new(inconsistent_struct_constructor::InconsistentStructConstructor));
+    store.register_late_pass(move |_| {
+        Box::new(inconsistent_struct_constructor::InconsistentStructConstructor::new(
+            conf,
+        ))
+    });
     store.register_late_pass(|_| Box::new(non_octal_unix_permissions::NonOctalUnixPermissions));
     store.register_early_pass(|| Box::new(unnecessary_self_imports::UnnecessarySelfImports));
     store.register_late_pass(move |_| Box::new(approx_const::ApproxConstant::new(conf)));
@@ -773,7 +793,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_early_pass(|| Box::new(option_env_unwrap::OptionEnvUnwrap));
     store.register_late_pass(move |_| Box::new(wildcard_imports::WildcardImports::new(conf)));
     store.register_late_pass(|_| Box::<redundant_pub_crate::RedundantPubCrate>::default());
-    store.register_late_pass(|_| Box::new(unnamed_address::UnnamedAddress));
     store.register_late_pass(|_| Box::<dereference::Dereferencing<'_>>::default());
     store.register_late_pass(|_| Box::new(option_if_let_else::OptionIfLetElse));
     store.register_late_pass(|_| Box::new(future_not_send::FutureNotSend));
@@ -790,7 +809,8 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(unwrap_in_result::UnwrapInResult));
     store.register_late_pass(|_| Box::new(semicolon_if_nothing_returned::SemicolonIfNothingReturned));
     store.register_late_pass(|_| Box::new(async_yields_async::AsyncYieldsAsync));
-    store.register_late_pass(move |tcx| Box::new(disallowed_macros::DisallowedMacros::new(tcx, conf)));
+    let attrs = attr_storage.clone();
+    store.register_late_pass(move |tcx| Box::new(disallowed_macros::DisallowedMacros::new(tcx, conf, attrs.clone())));
     store.register_late_pass(move |tcx| Box::new(disallowed_methods::DisallowedMethods::new(tcx, conf)));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86AttSyntax));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86IntelSyntax));
@@ -945,8 +965,10 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(manual_div_ceil::ManualDivCeil::new(conf)));
     store.register_late_pass(|_| Box::new(manual_is_power_of_two::ManualIsPowerOfTwo));
     store.register_late_pass(|_| Box::new(non_zero_suggestions::NonZeroSuggestions));
+    store.register_late_pass(|_| Box::new(literal_string_with_formatting_args::LiteralStringWithFormattingArg));
     store.register_late_pass(move |_| Box::new(unused_trait_names::UnusedTraitNames::new(conf)));
     store.register_late_pass(|_| Box::new(manual_ignore_case_cmp::ManualIgnoreCaseCmp));
     store.register_late_pass(|_| Box::new(unnecessary_literal_bound::UnnecessaryLiteralBound));
+    store.register_late_pass(move |_| Box::new(arbitrary_source_item_ordering::ArbitrarySourceItemOrdering::new(conf)));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }

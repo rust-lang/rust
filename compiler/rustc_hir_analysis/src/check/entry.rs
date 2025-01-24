@@ -1,15 +1,14 @@
 use std::ops::Not;
 
+use rustc_abi::ExternAbi;
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, TypingMode};
 use rustc_session::config::EntryFnType;
-use rustc_span::Span;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
-use rustc_span::symbol::sym;
-use rustc_target::spec::abi::Abi;
+use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
@@ -19,7 +18,6 @@ use crate::errors;
 pub(crate) fn check_for_entry_fn(tcx: TyCtxt<'_>) {
     match tcx.entry_fn(()) {
         Some((def_id, EntryFnType::Main { .. })) => check_main_fn_ty(tcx, def_id),
-        Some((def_id, EntryFnType::Start)) => check_start_fn_ty(tcx, def_id),
         _ => {}
     }
 }
@@ -45,7 +43,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             return None;
         }
         match tcx.hir_node_by_def_id(def_id.expect_local()) {
-            Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. }) => {
+            Node::Item(hir::Item { kind: hir::ItemKind::Fn { generics, .. }, .. }) => {
                 generics.params.is_empty().not().then_some(generics.span)
             }
             _ => {
@@ -59,7 +57,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             return None;
         }
         match tcx.hir_node_by_def_id(def_id.expect_local()) {
-            Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. }) => {
+            Node::Item(hir::Item { kind: hir::ItemKind::Fn { generics, .. }, .. }) => {
                 Some(generics.where_clause_span)
             }
             _ => {
@@ -80,7 +78,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             return None;
         }
         match tcx.hir_node_by_def_id(def_id.expect_local()) {
-            Node::Item(hir::Item { kind: hir::ItemKind::Fn(fn_sig, _, _), .. }) => {
+            Node::Item(hir::Item { kind: hir::ItemKind::Fn { sig: fn_sig, .. }, .. }) => {
                 Some(fn_sig.decl.output.span())
             }
             _ => {
@@ -128,7 +126,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             tcx.dcx().emit_err(errors::MainFunctionReturnTypeGeneric { span: return_ty_span });
             return;
         };
-        let infcx = tcx.infer_ctxt().build();
+        let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
         let cause = traits::ObligationCause::new(
             return_ty_span,
             main_diagnostics_def_id,
@@ -158,7 +156,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         expected_return_type,
         false,
         hir::Safety::Safe,
-        Abi::Rust,
+        ExternAbi::Rust,
     ));
 
     if check_function_signature(
@@ -191,85 +189,5 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             span: generics_where_clauses_span.unwrap_or(main_span),
             generics_span: generics_where_clauses_span,
         });
-    }
-}
-
-fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
-    let start_def_id = start_def_id.expect_local();
-    let start_id = tcx.local_def_id_to_hir_id(start_def_id);
-    let start_span = tcx.def_span(start_def_id);
-    let start_t = tcx.type_of(start_def_id).instantiate_identity();
-    match start_t.kind() {
-        ty::FnDef(..) => {
-            if let Node::Item(it) = tcx.hir_node(start_id) {
-                if let hir::ItemKind::Fn(sig, generics, _) = &it.kind {
-                    let mut error = false;
-                    if !generics.params.is_empty() {
-                        tcx.dcx().emit_err(errors::StartFunctionParameters { span: generics.span });
-                        error = true;
-                    }
-                    if generics.has_where_clause_predicates {
-                        tcx.dcx().emit_err(errors::StartFunctionWhere {
-                            span: generics.where_clause_span,
-                        });
-                        error = true;
-                    }
-                    if sig.header.asyncness.is_async() {
-                        let span = tcx.def_span(it.owner_id);
-                        tcx.dcx().emit_err(errors::StartAsync { span });
-                        error = true;
-                    }
-
-                    let attrs = tcx.hir().attrs(start_id);
-                    for attr in attrs {
-                        if attr.has_name(sym::track_caller) {
-                            tcx.dcx().emit_err(errors::StartTrackCaller {
-                                span: attr.span,
-                                start: start_span,
-                            });
-                            error = true;
-                        }
-                        if attr.has_name(sym::target_feature)
-                            // Calling functions with `#[target_feature]` is
-                            // not unsafe on WASM, see #84988
-                            && !tcx.sess.target.is_like_wasm
-                            && !tcx.sess.opts.actually_rustdoc
-                        {
-                            tcx.dcx().emit_err(errors::StartTargetFeature {
-                                span: attr.span,
-                                start: start_span,
-                            });
-                            error = true;
-                        }
-                    }
-
-                    if error {
-                        return;
-                    }
-                }
-            }
-
-            let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig(
-                [tcx.types.isize, Ty::new_imm_ptr(tcx, Ty::new_imm_ptr(tcx, tcx.types.u8))],
-                tcx.types.isize,
-                false,
-                hir::Safety::Safe,
-                Abi::Rust,
-            ));
-
-            let _ = check_function_signature(
-                tcx,
-                ObligationCause::new(
-                    start_span,
-                    start_def_id,
-                    ObligationCauseCode::StartFunctionType,
-                ),
-                start_def_id.into(),
-                expected_sig,
-            );
-        }
-        _ => {
-            span_bug!(start_span, "start has a non-function type: found `{}`", start_t);
-        }
     }
 }

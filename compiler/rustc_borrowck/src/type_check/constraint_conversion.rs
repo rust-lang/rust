@@ -8,6 +8,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategory};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::Span;
 use rustc_trait_selection::traits::ScrubbedTraitError;
@@ -37,7 +38,7 @@ pub(crate) struct ConstraintConversion<'a, 'tcx> {
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
+    known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesPredicate<'tcx>],
     locations: Locations,
     span: Span,
     category: ConstraintCategory<'tcx>,
@@ -52,7 +53,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
         implicit_region_bound: ty::Region<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
+        known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesPredicate<'tcx>],
         locations: Locations,
         span: Span,
         category: ConstraintCategory<'tcx>,
@@ -76,17 +77,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     pub(super) fn convert_all(&mut self, query_constraints: &QueryRegionConstraints<'tcx>) {
-        let QueryRegionConstraints { outlives, member_constraints } = query_constraints;
-
-        // Annoying: to invoke `self.to_region_vid`, we need access to
-        // `self.constraints`, but we also want to be mutating
-        // `self.member_constraints`. For now, just swap out the value
-        // we want and replace at the end.
-        let mut tmp = std::mem::take(&mut self.constraints.member_constraints);
-        for member_constraint in member_constraints {
-            tmp.push_constraint(member_constraint, |r| self.to_region_vid(r));
-        }
-        self.constraints.member_constraints = tmp;
+        let QueryRegionConstraints { outlives } = query_constraints;
 
         for &(predicate, constraint_category) in outlives {
             self.convert(predicate, constraint_category);
@@ -216,7 +207,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     /// are dealt with during trait solving.
     fn replace_placeholders_with_nll<T: TypeFoldable<TyCtxt<'tcx>>>(&mut self, value: T) -> T {
         if value.has_placeholders() {
-            self.tcx.fold_regions(value, |r, _| match *r {
+            fold_regions(self.tcx, value, |r, _| match *r {
                 ty::RePlaceholder(placeholder) => {
                     self.constraints.placeholder_region(self.infcx, placeholder)
                 }
@@ -294,13 +285,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
         match result {
             Ok(TypeOpOutput { output: ty, constraints, .. }) => {
-                if let Some(constraints) = constraints {
-                    assert!(
-                        constraints.member_constraints.is_empty(),
-                        "no member constraints expected from normalizing: {:#?}",
-                        constraints.member_constraints
-                    );
-                    next_outlives_predicates.extend(constraints.outlives.iter().copied());
+                if let Some(QueryRegionConstraints { outlives }) = constraints {
+                    next_outlives_predicates.extend(outlives.iter().copied());
                 }
                 ty
             }

@@ -4,7 +4,7 @@
 #![feature(iter_next_chunk)]
 #![feature(repr_simd)]
 #![feature(slice_partition_dedup)]
-#![feature(strict_provenance)]
+#![feature(strict_provenance_lints)]
 #![feature(test)]
 #![deny(fuzzy_provenance_casts)]
 

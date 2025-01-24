@@ -58,8 +58,10 @@ where
 
     // The AIX ABI expect byval for aggregates
     // See https://github.com/llvm/llvm-project/blob/main/clang/lib/CodeGen/Targets/PPC.cpp.
+    // The incoming parameter is represented as a pointer in the IR,
+    // the alignment is associated with the size of the register. (align 8 for 64bit)
     if !is_ret && abi == AIX {
-        arg.pass_by_stack_offset(None);
+        arg.pass_by_stack_offset(Some(Align::from_bytes(8).unwrap()));
         return;
     }
 
@@ -99,7 +101,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    let abi = if cx.target_spec().env == "musl" {
+    let abi = if cx.target_spec().env == "musl" || cx.target_spec().os == "freebsd" {
         ELFv2
     } else if cx.target_spec().os == "aix" {
         AIX

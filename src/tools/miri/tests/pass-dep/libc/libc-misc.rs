@@ -2,7 +2,6 @@
 //@compile-flags: -Zmiri-disable-isolation
 #![feature(io_error_more)]
 #![feature(pointer_is_aligned_to)]
-#![feature(strict_provenance)]
 
 use std::mem::transmute;
 

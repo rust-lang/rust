@@ -2,7 +2,6 @@
 // printing, not how it interacts with the GC.
 //@compile-flags: -Zmiri-permissive-provenance -Zmiri-provenance-gc=0
 
-#![feature(strict_provenance)]
 use std::alloc::{self, Layout};
 use std::mem::ManuallyDrop;
 

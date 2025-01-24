@@ -1,14 +1,14 @@
 use std::{fmt, ptr};
 
 use libc::{c_char, c_uint};
+use rustc_abi::{AddressSpace, Align, Integer, Size};
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
-use rustc_target::abi::{AddressSpace, Align, Integer, Size};
+use rustc_target::callconv::{CastTarget, FnAbi, Reg};
 
 use crate::abi::{FnAbiLlvmExt, LlvmType};
 use crate::context::CodegenCx;

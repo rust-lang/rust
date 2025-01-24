@@ -7,5 +7,5 @@ trait Foo {
 
 fn main() {
     let x: &dyn Foo = todo!();
-    //~^ ERROR the trait `Foo` cannot be made into an object
+    //~^ ERROR the trait `Foo` is not dyn compatible
 }

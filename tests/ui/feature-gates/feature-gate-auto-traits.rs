@@ -7,6 +7,6 @@ auto trait AutoDummyTrait {}
 //~^ ERROR auto traits are experimental and possibly buggy
 
 impl !AutoDummyTrait for DummyStruct {}
-//~^ ERROR negative trait bounds are not yet fully implemented; use marker types for now
+//~^ ERROR negative trait bounds are not fully implemented; use marker types for now
 
 fn main() {}

@@ -9,8 +9,8 @@ use chalk_ir::{
 };
 use chalk_solve::rust_ir::InlineBound;
 use hir_def::{
-    lang_item::LangItem, AssocItemId, ConstId, FunctionId, GenericDefId, HasModule, TraitId,
-    TypeAliasId,
+    data::TraitFlags, lang_item::LangItem, AssocItemId, ConstId, FunctionId, GenericDefId,
+    HasModule, TraitId, TypeAliasId,
 };
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
@@ -266,7 +266,7 @@ fn contains_illegal_self_type_reference<T: TypeVisitable<Interner>>(
         trait_self_param_idx: usize,
         allow_self_projection: AllowSelfProjection,
     }
-    impl<'a> TypeVisitor<Interner> for IllegalSelfTypeVisitor<'a> {
+    impl TypeVisitor<Interner> for IllegalSelfTypeVisitor<'_> {
         type BreakTy = ();
 
         fn as_dyn(&mut self) -> &mut dyn TypeVisitor<Interner, BreakTy = Self::BreakTy> {
@@ -432,7 +432,7 @@ where
         // Allow `impl AutoTrait` predicates
         if let WhereClause::Implemented(TraitRef { trait_id, substitution }) = pred {
             let trait_data = db.trait_data(from_chalk_trait_id(*trait_id));
-            if trait_data.is_auto
+            if trait_data.flags.contains(TraitFlags::IS_AUTO)
                 && substitution
                     .as_slice(Interner)
                     .first()
@@ -472,7 +472,7 @@ fn receiver_is_dispatchable(
         return false;
     };
 
-    // `self: Self` can't be dispatched on, but this is already considered dyn compatible
+    // `self: Self` can't be dispatched on, but this is already considered dyn-compatible
     // See rustc's comment on https://github.com/rust-lang/rust/blob/3f121b9461cce02a703a0e7e450568849dfaa074/compiler/rustc_trait_selection/src/traits/object_safety.rs#L433-L437
     if sig
         .skip_binders()

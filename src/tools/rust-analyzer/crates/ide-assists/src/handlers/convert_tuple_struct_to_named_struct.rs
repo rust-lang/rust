@@ -104,7 +104,7 @@ fn edit_struct_def(
                 ast::make::tokens::single_newline().text(),
             );
             edit.insert(tuple_fields_text_range.start(), w.syntax().text());
-            if !w.syntax().last_token().is_some_and(|t| t.kind() == SyntaxKind::COMMA) {
+            if w.syntax().last_token().is_none_or(|t| t.kind() != SyntaxKind::COMMA) {
                 edit.insert(tuple_fields_text_range.start(), ",");
             }
             edit.insert(
@@ -163,8 +163,8 @@ fn edit_struct_references(
                     // this also includes method calls like Foo::new(42), we should skip them
                     if let Some(name_ref) = path.segment().and_then(|s| s.name_ref()) {
                         match NameRefClass::classify(&ctx.sema, &name_ref) {
-                            Some(NameRefClass::Definition(Definition::SelfType(_))) => {},
-                            Some(NameRefClass::Definition(def)) if def == strukt_def => {},
+                            Some(NameRefClass::Definition(Definition::SelfType(_), _)) => {},
+                            Some(NameRefClass::Definition(def, _)) if def == strukt_def => {},
                             _ => return None,
                         };
                     }

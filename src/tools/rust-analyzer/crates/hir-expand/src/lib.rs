@@ -28,6 +28,7 @@ use rustc_hash::FxHashMap;
 use stdx::TupleExt;
 use triomphe::Arc;
 
+use core::fmt;
 use std::hash::Hash;
 
 use base_db::{ra_salsa::InternValueTrivial, CrateId};
@@ -69,12 +70,17 @@ pub mod tt {
     pub type Delimiter = ::tt::Delimiter<Span>;
     pub type DelimSpan = ::tt::DelimSpan<Span>;
     pub type Subtree = ::tt::Subtree<Span>;
-    pub type SubtreeBuilder = ::tt::SubtreeBuilder<Span>;
     pub type Leaf = ::tt::Leaf<Span>;
     pub type Literal = ::tt::Literal<Span>;
     pub type Punct = ::tt::Punct<Span>;
     pub type Ident = ::tt::Ident<Span>;
     pub type TokenTree = ::tt::TokenTree<Span>;
+    pub type TopSubtree = ::tt::TopSubtree<Span>;
+    pub type TopSubtreeBuilder = ::tt::TopSubtreeBuilder<Span>;
+    pub type TokenTreesView<'a> = ::tt::TokenTreesView<'a, Span>;
+    pub type SubtreeView<'a> = ::tt::SubtreeView<'a, Span>;
+    pub type TtElement<'a> = ::tt::iter::TtElement<'a, Span>;
+    pub type TtIter<'a> = ::tt::iter::TtIter<'a, Span>;
 }
 
 #[macro_export]
@@ -147,6 +153,10 @@ impl ExpandError {
     pub fn span(&self) -> Span {
         self.inner.1
     }
+
+    pub fn render_to_string(&self, db: &dyn ExpandDatabase) -> RenderedExpandError {
+        self.inner.0.render_to_string(db)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -164,41 +174,76 @@ pub enum ExpandErrorKind {
     ProcMacroPanic(Box<str>),
 }
 
-impl ExpandError {
-    pub fn render_to_string(&self, db: &dyn ExpandDatabase) -> (String, bool) {
-        self.inner.0.render_to_string(db)
+pub struct RenderedExpandError {
+    pub message: String,
+    pub error: bool,
+    pub kind: &'static str,
+}
+
+impl fmt::Display for RenderedExpandError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
     }
 }
 
+impl RenderedExpandError {
+    const GENERAL_KIND: &str = "macro-error";
+    const DISABLED: &str = "proc-macro-disabled";
+    const ATTR_EXP_DISABLED: &str = "attribute-expansion-disabled";
+}
+
 impl ExpandErrorKind {
-    pub fn render_to_string(&self, db: &dyn ExpandDatabase) -> (String, bool) {
+    pub fn render_to_string(&self, db: &dyn ExpandDatabase) -> RenderedExpandError {
         match self {
-            ExpandErrorKind::ProcMacroAttrExpansionDisabled => {
-                ("procedural attribute macro expansion is disabled".to_owned(), false)
-            }
-            ExpandErrorKind::MacroDisabled => {
-                ("proc-macro is explicitly disabled".to_owned(), false)
-            }
+            ExpandErrorKind::ProcMacroAttrExpansionDisabled => RenderedExpandError {
+                message: "procedural attribute macro expansion is disabled".to_owned(),
+                error: false,
+                kind: RenderedExpandError::ATTR_EXP_DISABLED,
+            },
+            ExpandErrorKind::MacroDisabled => RenderedExpandError {
+                message: "proc-macro is explicitly disabled".to_owned(),
+                error: false,
+                kind: RenderedExpandError::DISABLED,
+            },
             &ExpandErrorKind::MissingProcMacroExpander(def_crate) => {
                 match db.proc_macros().get_error_for_crate(def_crate) {
-                    Some((e, hard_err)) => (e.to_owned(), hard_err),
-                    None => (
-                        format!(
-                            "internal error: proc-macro map is missing error entry for crate {def_crate:?}"
-                        ),
-                        true,
-                    ),
+                    Some((e, hard_err)) => RenderedExpandError {
+                        message: e.to_owned(),
+                        error: hard_err,
+                        kind: RenderedExpandError::GENERAL_KIND,
+                    },
+                    None => RenderedExpandError {
+                        message: format!("internal error: proc-macro map is missing error entry for crate {def_crate:?}"),
+                        error: true,
+                        kind: RenderedExpandError::GENERAL_KIND,
+                    },
                 }
             }
-            ExpandErrorKind::MacroDefinition => {
-                ("macro definition has parse errors".to_owned(), true)
-            }
-            ExpandErrorKind::Mbe(e) => (e.to_string(), true),
-            ExpandErrorKind::RecursionOverflow => {
-                ("overflow expanding the original macro".to_owned(), true)
-            }
-            ExpandErrorKind::Other(e) => ((**e).to_owned(), true),
-            ExpandErrorKind::ProcMacroPanic(e) => (format!("proc-macro panicked: {e}"), true),
+            ExpandErrorKind::MacroDefinition => RenderedExpandError {
+                message: "macro definition has parse errors".to_owned(),
+                error: true,
+                kind: RenderedExpandError::GENERAL_KIND,
+            },
+            ExpandErrorKind::Mbe(e) => RenderedExpandError {
+                message: e.to_string(),
+                error: true,
+                kind: RenderedExpandError::GENERAL_KIND,
+            },
+            ExpandErrorKind::RecursionOverflow => RenderedExpandError {
+                message: "overflow expanding the original macro".to_owned(),
+                error: true,
+                kind: RenderedExpandError::GENERAL_KIND,
+            },
+            ExpandErrorKind::Other(e) => RenderedExpandError {
+                message: (**e).to_owned(),
+                error: true,
+                kind: RenderedExpandError::GENERAL_KIND,
+            },
+            ExpandErrorKind::ProcMacroPanic(e) => RenderedExpandError {
+                message: format!("proc-macro panicked: {e}"),
+                error: true,
+                kind: RenderedExpandError::GENERAL_KIND,
+            },
         }
     }
 }
@@ -236,10 +281,17 @@ pub enum MacroDefKind {
     ProcMacro(AstId<ast::Fn>, CustomProcMacroExpander, ProcMacroKind),
 }
 
+impl MacroDefKind {
+    #[inline]
+    pub fn is_declarative(&self) -> bool {
+        matches!(self, MacroDefKind::Declarative(..))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EagerCallInfo {
     /// The expanded argument of the eager macro.
-    arg: Arc<tt::Subtree>,
+    arg: Arc<tt::TopSubtree>,
     /// Call id of the eager macro's input file (this is the macro file for its fully expanded input).
     arg_id: MacroCallId,
     error: Option<ExpandError>,
@@ -275,7 +327,7 @@ pub enum MacroCallKind {
         ast_id: AstId<ast::Item>,
         // FIXME: This shouldn't be here, we can derive this from `invoc_attr_index`
         // but we need to fix the `cfg_attr` handling first.
-        attr_args: Option<Arc<tt::Subtree>>,
+        attr_args: Option<Arc<tt::TopSubtree>>,
         /// Syntactical index of the invoking `#[attribute]`.
         ///
         /// Outer attributes are counted first, then inner attributes. This does not support
@@ -999,7 +1051,7 @@ impl ExpandTo {
         if parent.kind() == MACRO_EXPR
             && parent
                 .parent()
-                .map_or(false, |p| matches!(p.kind(), EXPR_STMT | STMT_LIST | MACRO_STMTS))
+                .is_some_and(|p| matches!(p.kind(), EXPR_STMT | STMT_LIST | MACRO_STMTS))
         {
             return ExpandTo::Statements;
         }

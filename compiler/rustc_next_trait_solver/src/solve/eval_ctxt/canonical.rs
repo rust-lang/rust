@@ -16,9 +16,9 @@ use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::{self as ty, Canonical, CanonicalVarValues, InferCtxtLike, Interner};
-use tracing::{instrument, trace};
+use tracing::{debug, instrument, trace};
 
-use crate::canonicalizer::{CanonicalizeMode, Canonicalizer};
+use crate::canonicalizer::Canonicalizer;
 use crate::delegate::SolverDelegate;
 use crate::resolve::EagerResolver;
 use crate::solve::eval_ctxt::NestedGoals;
@@ -60,21 +60,14 @@ where
             (goal, opaque_types).fold_with(&mut EagerResolver::new(self.delegate));
 
         let mut orig_values = Default::default();
-        let canonical = Canonicalizer::canonicalize(
-            self.delegate,
-            CanonicalizeMode::Input,
-            &mut orig_values,
-            QueryInput {
+        let canonical =
+            Canonicalizer::canonicalize_input(self.delegate, &mut orig_values, QueryInput {
                 goal,
                 predefined_opaques_in_body: self
                     .cx()
                     .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
-            },
-        );
-        let query_input = ty::CanonicalQueryInput {
-            canonical,
-            defining_opaque_types: self.delegate.defining_opaque_types(),
-        };
+            });
+        let query_input = ty::CanonicalQueryInput { canonical, typing_mode: self.typing_mode() };
         (orig_values, query_input)
     }
 
@@ -151,9 +144,9 @@ where
             .region_constraints
             .retain(|outlives| outlives.0.as_region().map_or(true, |re| re != outlives.1));
 
-        let canonical = Canonicalizer::canonicalize(
+        let canonical = Canonicalizer::canonicalize_response(
             self.delegate,
-            CanonicalizeMode::Response { max_input_universe: self.max_input_universe },
+            self.max_input_universe,
             &mut Default::default(),
             Response {
                 var_values,
@@ -165,12 +158,22 @@ where
         // HACK: We bail with overflow if the response would have too many non-region
         // inference variables. This tends to only happen if we encounter a lot of
         // ambiguous alias types which get replaced with fresh inference variables
-        // during generalization. This prevents a hang in nalgebra.
-        let num_non_region_vars = canonical.variables.iter().filter(|c| !c.is_region()).count();
-        if num_non_region_vars > self.cx().recursion_limit() {
-            return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow {
-                suggest_increasing_limit: true,
-            }));
+        // during generalization. This prevents hangs caused by an exponential blowup,
+        // see tests/ui/traits/next-solver/coherence-alias-hang.rs.
+        //
+        // We don't do so for `NormalizesTo` goals as we erased the expected term and
+        // bailing with overflow here would prevent us from detecting a type-mismatch,
+        // causing a coherence error in diesel, see #131969. We still bail with overflow
+        // when later returning from the parent AliasRelate goal.
+        if !self.is_normalizes_to_goal {
+            let num_non_region_vars =
+                canonical.variables.iter().filter(|c| !c.is_region() && c.is_existential()).count();
+            if num_non_region_vars > self.cx().recursion_limit() {
+                debug!(?num_non_region_vars, "too many inference variables -> overflow");
+                return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow {
+                    suggest_increasing_limit: true,
+                }));
+            }
         }
 
         Ok(canonical)
@@ -421,12 +424,7 @@ where
     let var_values = CanonicalVarValues { var_values: delegate.cx().mk_args(var_values) };
     let state = inspect::State { var_values, data };
     let state = state.fold_with(&mut EagerResolver::new(delegate));
-    Canonicalizer::canonicalize(
-        delegate,
-        CanonicalizeMode::Response { max_input_universe },
-        &mut vec![],
-        state,
-    )
+    Canonicalizer::canonicalize_response(delegate, max_input_universe, &mut vec![], state)
 }
 
 // FIXME: needs to be pub to be accessed by downstream

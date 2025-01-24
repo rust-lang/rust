@@ -32,6 +32,7 @@
 //! ```
 
 use hir::{db::ExpandDatabase, HasAttrs, MacroFileId, Name};
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     documentation::HasDocs, path_transform::PathTransform,
     syntax_helpers::prettify_macro_expansion, traits::get_missing_assoc_items, SymbolKind,
@@ -40,7 +41,6 @@ use syntax::{
     ast::{self, edit_in_place::AttrsOwnerEdit, make, HasGenericArgs, HasTypeBounds},
     format_smolstr, ted, AstNode, SmolStr, SyntaxElement, SyntaxKind, TextRange, ToSmolStr, T,
 };
-use text_edit::TextEdit;
 
 use crate::{
     context::PathCompletionCtx, CompletionContext, CompletionItem, CompletionItemKind,
@@ -514,18 +514,13 @@ fn function_declaration(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::expect;
 
-    use crate::tests::{check_edit, completion_list_no_kw};
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list_no_kw(ra_fixture);
-        expect.assert_eq(&actual)
-    }
+    use crate::tests::{check_edit, check_no_kw};
 
     #[test]
     fn no_completion_inside_fn() {
-        check(
+        check_no_kw(
             r"
 trait Test { fn test(); fn test2(); }
 struct T;
@@ -537,14 +532,14 @@ impl Test for T {
 }
 ",
             expect![[r#"
-                sp Self T
-                st T    T
+                sp Self  T
+                st T     T
                 tt Test
-                bt u32  u32
+                bt u32 u32
             "#]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { fn test(); fn test2(); }
 struct T;
@@ -558,7 +553,7 @@ impl Test for T {
             expect![[""]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { fn test(); fn test2(); }
 struct T;
@@ -573,7 +568,7 @@ impl Test for T {
         );
 
         // https://github.com/rust-lang/rust-analyzer/pull/5976#issuecomment-692332191
-        check(
+        check_no_kw(
             r"
 trait Test { fn test(); fn test2(); }
 struct T;
@@ -587,7 +582,7 @@ impl Test for T {
             expect![[r#""#]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { fn test(_: i32); fn test2(); }
 struct T;
@@ -606,7 +601,7 @@ impl Test for T {
             "#]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { fn test(_: fn()); fn test2(); }
 struct T;
@@ -624,7 +619,7 @@ impl Test for T {
 
     #[test]
     fn no_completion_inside_const() {
-        check(
+        check_no_kw(
             r"
 trait Test { const TEST: fn(); const TEST2: u32; type Test; fn test(); }
 struct T;
@@ -636,7 +631,7 @@ impl Test for T {
             expect![[r#""#]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { const TEST: u32; const TEST2: u32; type Test; fn test(); }
 struct T;
@@ -646,14 +641,14 @@ impl Test for T {
 }
 ",
             expect![[r#"
-                sp Self T
-                st T    T
+                sp Self  T
+                st T     T
                 tt Test
-                bt u32  u32
+                bt u32 u32
             "#]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { const TEST: u32; const TEST2: u32; type Test; fn test(); }
 struct T;
@@ -663,14 +658,14 @@ impl Test for T {
 }
 ",
             expect![[r#"
-                sp Self T
-                st T    T
+                sp Self  T
+                st T     T
                 tt Test
-                bt u32  u32
+                bt u32 u32
             "#]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { const TEST: u32; const TEST2: u32; type Test; fn test(); }
 struct T;
@@ -682,14 +677,14 @@ impl Test for T {
 }
 ",
             expect![[r#"
-                sp Self T
-                st T    T
+                sp Self  T
+                st T     T
                 tt Test
-                bt u32  u32
+                bt u32 u32
             "#]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { const TEST: u32; const TEST2: u32; type Test; fn test(); }
 struct T;
@@ -703,7 +698,7 @@ impl Test for T {
             expect![[""]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { const TEST: u32; const TEST2: u32; type Test; fn test(); }
 struct T;
@@ -720,7 +715,7 @@ impl Test for T {
 
     #[test]
     fn no_completion_inside_type() {
-        check(
+        check_no_kw(
             r"
 trait Test { type Test; type Test2; fn test(); }
 struct T;
@@ -730,14 +725,14 @@ impl Test for T {
 }
 ",
             expect![[r#"
-                sp Self T
-                st T    T
+                sp Self  T
+                st T     T
                 tt Test
-                bt u32  u32
+                bt u32 u32
             "#]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { type Test; type Test2; fn test(); }
 struct T;
@@ -1263,7 +1258,7 @@ impl Foo<u32> for Bar {
 
     #[test]
     fn works_directly_in_impl() {
-        check(
+        check_no_kw(
             r#"
 trait Tr {
     fn required();
@@ -1277,7 +1272,7 @@ impl Tr for () {
             fn fn required()
         "#]],
         );
-        check(
+        check_no_kw(
             r#"
 trait Tr {
     fn provided() {}

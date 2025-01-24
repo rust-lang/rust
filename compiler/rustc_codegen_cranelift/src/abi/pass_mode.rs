@@ -1,8 +1,9 @@
 //! Argument passing
 
 use cranelift_codegen::ir::{ArgumentExtension, ArgumentPurpose};
-use rustc_target::abi::call::{
-    ArgAbi, ArgAttributes, ArgExtension as RustcArgExtension, CastTarget, PassMode, Reg, RegKind,
+use rustc_abi::{Reg, RegKind};
+use rustc_target::callconv::{
+    ArgAbi, ArgAttributes, ArgExtension as RustcArgExtension, CastTarget, PassMode,
 };
 use smallvec::{SmallVec, smallvec};
 
@@ -78,19 +79,19 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     fn get_abi_param(&self, tcx: TyCtxt<'tcx>) -> SmallVec<[AbiParam; 2]> {
         match self.mode {
             PassMode::Ignore => smallvec![],
-            PassMode::Direct(attrs) => match self.layout.abi {
-                Abi::Scalar(scalar) => smallvec![apply_arg_attrs_to_abi_param(
+            PassMode::Direct(attrs) => match self.layout.backend_repr {
+                BackendRepr::Scalar(scalar) => smallvec![apply_arg_attrs_to_abi_param(
                     AbiParam::new(scalar_to_clif_type(tcx, scalar)),
                     attrs
                 )],
-                Abi::Vector { .. } => {
+                BackendRepr::Vector { .. } => {
                     let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout);
                     smallvec![AbiParam::new(vector_ty)]
                 }
-                _ => unreachable!("{:?}", self.layout.abi),
+                _ => unreachable!("{:?}", self.layout.backend_repr),
             },
-            PassMode::Pair(attrs_a, attrs_b) => match self.layout.abi {
-                Abi::ScalarPair(a, b) => {
+            PassMode::Pair(attrs_a, attrs_b) => match self.layout.backend_repr {
+                BackendRepr::ScalarPair(a, b) => {
                     let a = scalar_to_clif_type(tcx, a);
                     let b = scalar_to_clif_type(tcx, b);
                     smallvec![
@@ -98,7 +99,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                         apply_arg_attrs_to_abi_param(AbiParam::new(b), attrs_b),
                     ]
                 }
-                _ => unreachable!("{:?}", self.layout.abi),
+                _ => unreachable!("{:?}", self.layout.backend_repr),
             },
             PassMode::Cast { ref cast, pad_i32 } => {
                 assert!(!pad_i32, "padding support not yet implemented");
@@ -130,23 +131,23 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     fn get_abi_return(&self, tcx: TyCtxt<'tcx>) -> (Option<AbiParam>, Vec<AbiParam>) {
         match self.mode {
             PassMode::Ignore => (None, vec![]),
-            PassMode::Direct(_) => match self.layout.abi {
-                Abi::Scalar(scalar) => {
+            PassMode::Direct(_) => match self.layout.backend_repr {
+                BackendRepr::Scalar(scalar) => {
                     (None, vec![AbiParam::new(scalar_to_clif_type(tcx, scalar))])
                 }
-                Abi::Vector { .. } => {
+                BackendRepr::Vector { .. } => {
                     let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout);
                     (None, vec![AbiParam::new(vector_ty)])
                 }
-                _ => unreachable!("{:?}", self.layout.abi),
+                _ => unreachable!("{:?}", self.layout.backend_repr),
             },
-            PassMode::Pair(_, _) => match self.layout.abi {
-                Abi::ScalarPair(a, b) => {
+            PassMode::Pair(_, _) => match self.layout.backend_repr {
+                BackendRepr::ScalarPair(a, b) => {
                     let a = scalar_to_clif_type(tcx, a);
                     let b = scalar_to_clif_type(tcx, b);
                     (None, vec![AbiParam::new(a), AbiParam::new(b)])
                 }
-                _ => unreachable!("{:?}", self.layout.abi),
+                _ => unreachable!("{:?}", self.layout.backend_repr),
             },
             PassMode::Cast { ref cast, .. } => {
                 (None, cast_target_to_abi_params(cast).into_iter().collect())

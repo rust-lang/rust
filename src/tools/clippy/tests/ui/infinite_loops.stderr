@@ -20,7 +20,6 @@ error: infinite loop detected
 LL | /     loop {
 LL | |
 LL | |         loop {
-LL | |
 ...  |
 LL | |         do_something();
 LL | |     }
@@ -37,9 +36,7 @@ error: infinite loop detected
 LL | /         loop {
 LL | |
 LL | |             loop {
-LL | |
-LL | |                 do_something();
-LL | |             }
+...  |
 LL | |         }
    | |_________^
    |
@@ -79,8 +76,7 @@ error: infinite loop detected
 LL | /     loop {
 LL | |         fn inner_fn() -> ! {
 LL | |             std::process::exit(0);
-LL | |         }
-LL | |         do_something();
+...  |
 LL | |     }
    | |_____^
    |
@@ -97,7 +93,6 @@ LL | |
 LL | |         loop {
 LL | |             if cond {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |
@@ -114,7 +109,6 @@ LL | |
 LL | |         'inner: loop {
 LL | |             loop {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |
@@ -145,7 +139,6 @@ LL | |
 LL | |             'inner: loop {
 LL | |                 loop {
 ...  |
-LL | |             }
 LL | |         }
    | |_________^
    |
@@ -162,7 +155,6 @@ LL | |
 LL | |         match opt {
 LL | |             Some(v) => {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |
@@ -279,7 +271,6 @@ LL | |
 LL | |         'inner: loop {
 LL | |             loop {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |

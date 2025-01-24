@@ -58,7 +58,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, scrutine
                 let span = hygiene::walk_chain(err_arg.span, try_arg.span.ctxt());
                 let mut applicability = Applicability::MachineApplicable;
                 let origin_snippet = snippet_with_applicability(cx, span, "_", &mut applicability);
-                let ret_prefix = if get_parent_expr(cx, expr).map_or(false, |e| matches!(e.kind, ExprKind::Ret(_))) {
+                let ret_prefix = if get_parent_expr(cx, expr).is_some_and(|e| matches!(e.kind, ExprKind::Ret(_))) {
                     "" // already returns
                 } else {
                     "return "

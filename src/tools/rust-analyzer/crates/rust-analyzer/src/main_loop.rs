@@ -408,7 +408,10 @@ impl GlobalState {
         if self.is_quiescent() {
             let became_quiescent = !was_quiescent;
             if became_quiescent {
-                if self.config.check_on_save(None) {
+                if self.config.check_on_save(None)
+                    && self.config.flycheck_workspace(None)
+                    && !self.fetch_build_data_queue.op_requested()
+                {
                     // Project has loaded properly, kick off initial flycheck
                     self.flycheck.iter().for_each(|flycheck| flycheck.restart_workspace(None));
                 }
@@ -434,11 +437,21 @@ impl GlobalState {
                 if self.config.inlay_hints_refresh() {
                     self.send_request::<lsp_types::request::InlayHintRefreshRequest>((), |_, _| ());
                 }
+
+                if self.config.diagnostics_refresh() {
+                    self.send_request::<lsp_types::request::WorkspaceDiagnosticRefresh>(
+                        (),
+                        |_, _| (),
+                    );
+                }
             }
 
             let project_or_mem_docs_changed =
                 became_quiescent || state_changed || memdocs_added_or_removed;
-            if project_or_mem_docs_changed && self.config.publish_diagnostics(None) {
+            if project_or_mem_docs_changed
+                && !self.config.text_document_diagnostic()
+                && self.config.publish_diagnostics(None)
+            {
                 self.update_diagnostics();
             }
             if project_or_mem_docs_changed && self.config.test_explorer() {
@@ -646,8 +659,8 @@ impl GlobalState {
 
     fn update_status_or_notify(&mut self) {
         let status = self.current_status();
-        if self.last_reported_status.as_ref() != Some(&status) {
-            self.last_reported_status = Some(status.clone());
+        if self.last_reported_status != status {
+            self.last_reported_status = status.clone();
 
             if self.config.server_status_notification() {
                 self.send_notification::<lsp_ext::ServerStatusNotification>(status);
@@ -705,6 +718,7 @@ impl GlobalState {
                             error!("FetchWorkspaceError: {e}");
                         }
                         self.wants_to_switch = Some("fetched workspace".to_owned());
+                        self.diagnostics.clear_check_all();
                         (Progress::End, None)
                     }
                 };
@@ -730,7 +744,8 @@ impl GlobalState {
                             DiscoverProjectParam::Path(it) => DiscoverArgument::Path(it),
                         };
 
-                        let handle = discover.spawn(arg).unwrap();
+                        let handle =
+                            discover.spawn(arg, &std::env::current_dir().unwrap()).unwrap();
                         self.discover_handle = Some(handle);
                     }
                 }
@@ -799,7 +814,7 @@ impl GlobalState {
                 }
             }
             vfs::loader::Message::Progress { n_total, n_done, dir, config_version } => {
-                let _p = span!(Level::INFO, "GlobalState::handle_vfs_mgs/progress").entered();
+                let _p = span!(Level::INFO, "GlobalState::handle_vfs_msg/progress").entered();
                 always!(config_version <= self.vfs_config_version);
 
                 let (n_done, state) = match n_done {
@@ -946,7 +961,7 @@ impl GlobalState {
 
     fn handle_flycheck_msg(&mut self, message: FlycheckMessage) {
         match message {
-            FlycheckMessage::AddDiagnostic { id, workspace_root, diagnostic } => {
+            FlycheckMessage::AddDiagnostic { id, workspace_root, diagnostic, package_id } => {
                 let snap = self.snapshot();
                 let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
                     &self.config.diagnostics_map(None),
@@ -958,6 +973,7 @@ impl GlobalState {
                     match url_to_file_id(&self.vfs.read().0, &diag.url) {
                         Ok(file_id) => self.diagnostics.add_check_diagnostic(
                             id,
+                            &package_id,
                             file_id,
                             diag.diagnostic,
                             diag.fix,
@@ -971,9 +987,12 @@ impl GlobalState {
                     };
                 }
             }
-
-            FlycheckMessage::ClearDiagnostics { id } => self.diagnostics.clear_check(id),
-
+            FlycheckMessage::ClearDiagnostics { id, package_id: None } => {
+                self.diagnostics.clear_check(id)
+            }
+            FlycheckMessage::ClearDiagnostics { id, package_id: Some(package_id) } => {
+                self.diagnostics.clear_check_for_package(id, package_id)
+            }
             FlycheckMessage::Progress { id, progress } => {
                 let (state, message) = match progress {
                     flycheck::Progress::DidStart => (Progress::Begin, None),
@@ -1080,6 +1099,23 @@ impl GlobalState {
             .on_latency_sensitive::<NO_RETRY, lsp_request::SemanticTokensRangeRequest>(handlers::handle_semantic_tokens_range)
             // FIXME: Some of these NO_RETRY could be retries if the file they are interested didn't change.
             // All other request handlers
+            .on_with_vfs_default::<lsp_request::DocumentDiagnosticRequest>(handlers::handle_document_diagnostics, || lsp_types::DocumentDiagnosticReportResult::Report(
+                lsp_types::DocumentDiagnosticReport::Full(
+                    lsp_types::RelatedFullDocumentDiagnosticReport {
+                        related_documents: None,
+                        full_document_diagnostic_report: lsp_types::FullDocumentDiagnosticReport {
+                            result_id: Some("rust-analyzer".to_owned()),
+                            items: vec![],
+                        },
+                    },
+                ),
+            ), || lsp_server::ResponseError {
+                code: lsp_server::ErrorCode::ServerCancelled as i32,
+                message: "server cancelled the request".to_owned(),
+                data: serde_json::to_value(lsp_types::DiagnosticServerCancellationData {
+                    retrigger_request: true
+                }).ok(),
+            })
             .on::<RETRY, lsp_request::DocumentSymbolRequest>(handlers::handle_document_symbol)
             .on::<RETRY, lsp_request::FoldingRangeRequest>(handlers::handle_folding_range)
             .on::<NO_RETRY, lsp_request::SignatureHelpRequest>(handlers::handle_signature_help)
@@ -1109,7 +1145,7 @@ impl GlobalState {
             .on::<RETRY, lsp_ext::WorkspaceSymbol>(handlers::handle_workspace_symbol)
             .on::<NO_RETRY, lsp_ext::Ssr>(handlers::handle_ssr)
             .on::<NO_RETRY, lsp_ext::ViewRecursiveMemoryLayout>(handlers::handle_view_recursive_memory_layout)
-            .on::<NO_RETRY, lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)
+            .on::<NO_RETRY, lsp_ext::ViewSyntaxTree>(handlers::handle_view_syntax_tree)
             .on::<NO_RETRY, lsp_ext::ViewHir>(handlers::handle_view_hir)
             .on::<NO_RETRY, lsp_ext::ViewMir>(handlers::handle_view_mir)
             .on::<NO_RETRY, lsp_ext::InterpretFunction>(handlers::handle_interpret_function)

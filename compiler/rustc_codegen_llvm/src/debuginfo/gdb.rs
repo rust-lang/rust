@@ -7,7 +7,7 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerType;
 use rustc_session::config::{CrateType, DebugInfo};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use crate::builder::Builder;
 use crate::common::CodegenCx;
@@ -72,11 +72,11 @@ pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
             let section_var = cx
                 .define_global(section_var_name, llvm_type)
                 .unwrap_or_else(|| bug!("symbol `{}` is already defined", section_var_name));
-            llvm::LLVMSetSection(section_var, c".debug_gdb_scripts".as_ptr());
+            llvm::set_section(section_var, c".debug_gdb_scripts");
             llvm::LLVMSetInitializer(section_var, cx.const_bytes(section_contents));
             llvm::LLVMSetGlobalConstant(section_var, llvm::True);
             llvm::LLVMSetUnnamedAddress(section_var, llvm::UnnamedAddr::Global);
-            llvm::LLVMRustSetLinkage(section_var, llvm::Linkage::LinkOnceODRLinkage);
+            llvm::set_linkage(section_var, llvm::Linkage::LinkOnceODRLinkage);
             // This should make sure that the whole section is not larger than
             // the string it contains. Otherwise we get a warning from GDB.
             llvm::LLVMSetAlignment(section_var, 1);

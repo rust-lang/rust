@@ -1,11 +1,44 @@
 // tidy-alphabetical-start
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 #![cfg_attr(feature = "nightly", doc(rust_logo))]
+#![cfg_attr(feature = "nightly", feature(assert_matches))]
 #![cfg_attr(feature = "nightly", feature(rustc_attrs))]
 #![cfg_attr(feature = "nightly", feature(rustdoc_internals))]
 #![cfg_attr(feature = "nightly", feature(step_trait))]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
+
+/*! ABI handling for rustc
+
+## What is an "ABI"?
+
+Literally, "application binary interface", which means it is everything about how code interacts,
+at the machine level, with other code. This means it technically covers all of the following:
+- object binary format for e.g. relocations or offset tables
+- in-memory layout of types
+- procedure calling conventions
+
+When we discuss "ABI" in the context of rustc, we are probably discussing calling conventions.
+To describe those `rustc_abi` also covers type layout, as it must for values passed on the stack.
+Despite `rustc_abi` being about calling conventions, it is good to remember these usages exist.
+You will encounter all of them and more if you study target-specific codegen enough!
+Even in general conversation, when someone says "the Rust ABI is unstable", it may allude to
+either or both of
+- `repr(Rust)` types have a mostly-unspecified layout
+- `extern "Rust" fn(A) -> R` has an unspecified calling convention
+
+## Crate Goal
+
+ABI is a foundational concept, so the `rustc_abi` crate serves as an equally foundational crate.
+It cannot carry all details relevant to an ABI: those permeate code generation and linkage.
+Instead, `rustc_abi` is intended to provide the interface for reasoning about the binary interface.
+It should contain traits and types that other crates then use in their implementation.
+For example, a platform's `extern "C" fn` calling convention will be implemented in `rustc_target`
+but `rustc_abi` contains the types for calculating layout and describing register-passing.
+This makes it easier to describe things in the same way across targets, codegen backends, and
+even other Rust compilers, such as rust-analyzer!
+
+*/
 
 use std::fmt;
 #[cfg(feature = "nightly")]
@@ -28,15 +61,22 @@ mod layout;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "nightly")]
+mod extern_abi;
+
 pub use callconv::{Heterogeneous, HomogeneousAggregate, Reg, RegKind};
-pub use layout::{
-    FIRST_VARIANT, FieldIdx, Layout, LayoutCalculator, LayoutCalculatorError, TyAbiInterface,
-    TyAndLayout, VariantIdx,
+#[cfg(feature = "nightly")]
+pub use extern_abi::{
+    AbiDisabled, AbiUnsupported, ExternAbi, all_names, enabled_names, is_enabled, is_stable, lookup,
 };
+#[cfg(feature = "nightly")]
+pub use layout::{FIRST_VARIANT, FieldIdx, Layout, TyAbiInterface, TyAndLayout, VariantIdx};
+pub use layout::{LayoutCalculator, LayoutCalculatorError};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in `rustc_middle`.
+#[cfg(feature = "nightly")]
 pub trait HashStableContext {}
 
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
@@ -630,7 +670,7 @@ impl AddAssign for Size {
 #[cfg(feature = "nightly")]
 impl Step for Size {
     #[inline]
-    fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+    fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
         u64::steps_between(&start.bytes(), &end.bytes())
     }
 
@@ -1207,6 +1247,15 @@ impl Scalar {
             Scalar::Union { .. } => true,
         }
     }
+
+    /// Returns `true` if this is a signed integer scalar
+    #[inline]
+    pub fn is_signed(&self) -> bool {
+        match self.primitive() {
+            Primitive::Int(_, signed) => signed,
+            _ => false,
+        }
+    }
 }
 
 // NOTE: This struct is generic over the FieldIdx for rust-analyzer usage.
@@ -1344,11 +1393,19 @@ impl AddressSpace {
     pub const DATA: Self = AddressSpace(0);
 }
 
-/// Describes how values of the type are passed by target ABIs,
-/// in terms of categories of C types there are ABI rules for.
+/// The way we represent values to the backend
+///
+/// Previously this was conflated with the "ABI" a type is given, as in the platform-specific ABI.
+/// In reality, this implies little about that, but is mostly used to describe the syntactic form
+/// emitted for the backend, as most backends handle SSA values and blobs of memory differently.
+/// The psABI may need consideration in doing so, but this enum does not constitute a promise for
+/// how the value will be lowered to the calling convention, in itself.
+///
+/// Generally, a codegen backend will prefer to handle smaller values as a scalar or short vector,
+/// and larger values will usually prefer to be represented as memory.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-pub enum Abi {
+pub enum BackendRepr {
     Uninhabited,
     Scalar(Scalar),
     ScalarPair(Scalar, Scalar),
@@ -1356,19 +1413,23 @@ pub enum Abi {
         element: Scalar,
         count: u64,
     },
-    Aggregate {
+    // FIXME: I sometimes use memory, sometimes use an IR aggregate!
+    Memory {
         /// If true, the size is exact, otherwise it's only a lower bound.
         sized: bool,
     },
 }
 
-impl Abi {
+impl BackendRepr {
     /// Returns `true` if the layout corresponds to an unsized type.
     #[inline]
     pub fn is_unsized(&self) -> bool {
         match *self {
-            Abi::Uninhabited | Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
-            Abi::Aggregate { sized } => !sized,
+            BackendRepr::Uninhabited
+            | BackendRepr::Scalar(_)
+            | BackendRepr::ScalarPair(..)
+            | BackendRepr::Vector { .. } => false,
+            BackendRepr::Memory { sized } => !sized,
         }
     }
 
@@ -1381,10 +1442,7 @@ impl Abi {
     #[inline]
     pub fn is_signed(&self) -> bool {
         match self {
-            Abi::Scalar(scal) => match scal.primitive() {
-                Primitive::Int(_, signed) => signed,
-                _ => false,
-            },
+            BackendRepr::Scalar(scal) => scal.is_signed(),
             _ => panic!("`is_signed` on non-scalar ABI {self:?}"),
         }
     }
@@ -1392,61 +1450,67 @@ impl Abi {
     /// Returns `true` if this is an uninhabited type
     #[inline]
     pub fn is_uninhabited(&self) -> bool {
-        matches!(*self, Abi::Uninhabited)
+        matches!(*self, BackendRepr::Uninhabited)
     }
 
     /// Returns `true` if this is a scalar type
     #[inline]
     pub fn is_scalar(&self) -> bool {
-        matches!(*self, Abi::Scalar(_))
+        matches!(*self, BackendRepr::Scalar(_))
     }
 
     /// Returns `true` if this is a bool
     #[inline]
     pub fn is_bool(&self) -> bool {
-        matches!(*self, Abi::Scalar(s) if s.is_bool())
+        matches!(*self, BackendRepr::Scalar(s) if s.is_bool())
     }
 
     /// Returns the fixed alignment of this ABI, if any is mandated.
     pub fn inherent_align<C: HasDataLayout>(&self, cx: &C) -> Option<AbiAndPrefAlign> {
         Some(match *self {
-            Abi::Scalar(s) => s.align(cx),
-            Abi::ScalarPair(s1, s2) => s1.align(cx).max(s2.align(cx)),
-            Abi::Vector { element, count } => {
+            BackendRepr::Scalar(s) => s.align(cx),
+            BackendRepr::ScalarPair(s1, s2) => s1.align(cx).max(s2.align(cx)),
+            BackendRepr::Vector { element, count } => {
                 cx.data_layout().vector_align(element.size(cx) * count)
             }
-            Abi::Uninhabited | Abi::Aggregate { .. } => return None,
+            BackendRepr::Uninhabited | BackendRepr::Memory { .. } => return None,
         })
     }
 
     /// Returns the fixed size of this ABI, if any is mandated.
     pub fn inherent_size<C: HasDataLayout>(&self, cx: &C) -> Option<Size> {
         Some(match *self {
-            Abi::Scalar(s) => {
+            BackendRepr::Scalar(s) => {
                 // No padding in scalars.
                 s.size(cx)
             }
-            Abi::ScalarPair(s1, s2) => {
+            BackendRepr::ScalarPair(s1, s2) => {
                 // May have some padding between the pair.
                 let field2_offset = s1.size(cx).align_to(s2.align(cx).abi);
                 (field2_offset + s2.size(cx)).align_to(self.inherent_align(cx)?.abi)
             }
-            Abi::Vector { element, count } => {
+            BackendRepr::Vector { element, count } => {
                 // No padding in vectors, except possibly for trailing padding
                 // to make the size a multiple of align (e.g. for vectors of size 3).
                 (element.size(cx) * count).align_to(self.inherent_align(cx)?.abi)
             }
-            Abi::Uninhabited | Abi::Aggregate { .. } => return None,
+            BackendRepr::Uninhabited | BackendRepr::Memory { .. } => return None,
         })
     }
 
     /// Discard validity range information and allow undef.
     pub fn to_union(&self) -> Self {
         match *self {
-            Abi::Scalar(s) => Abi::Scalar(s.to_union()),
-            Abi::ScalarPair(s1, s2) => Abi::ScalarPair(s1.to_union(), s2.to_union()),
-            Abi::Vector { element, count } => Abi::Vector { element: element.to_union(), count },
-            Abi::Uninhabited | Abi::Aggregate { .. } => Abi::Aggregate { sized: true },
+            BackendRepr::Scalar(s) => BackendRepr::Scalar(s.to_union()),
+            BackendRepr::ScalarPair(s1, s2) => {
+                BackendRepr::ScalarPair(s1.to_union(), s2.to_union())
+            }
+            BackendRepr::Vector { element, count } => {
+                BackendRepr::Vector { element: element.to_union(), count }
+            }
+            BackendRepr::Uninhabited | BackendRepr::Memory { .. } => {
+                BackendRepr::Memory { sized: true }
+            }
         }
     }
 
@@ -1454,12 +1518,12 @@ impl Abi {
         match (self, other) {
             // Scalar, Vector, ScalarPair have `Scalar` in them where we ignore validity ranges.
             // We do *not* ignore the sign since it matters for some ABIs (e.g. s390x).
-            (Abi::Scalar(l), Abi::Scalar(r)) => l.primitive() == r.primitive(),
+            (BackendRepr::Scalar(l), BackendRepr::Scalar(r)) => l.primitive() == r.primitive(),
             (
-                Abi::Vector { element: element_l, count: count_l },
-                Abi::Vector { element: element_r, count: count_r },
+                BackendRepr::Vector { element: element_l, count: count_l },
+                BackendRepr::Vector { element: element_r, count: count_r },
             ) => element_l.primitive() == element_r.primitive() && count_l == count_r,
-            (Abi::ScalarPair(l1, l2), Abi::ScalarPair(r1, r2)) => {
+            (BackendRepr::ScalarPair(l1, l2), BackendRepr::ScalarPair(r1, r2)) => {
                 l1.primitive() == r1.primitive() && l2.primitive() == r2.primitive()
             }
             // Everything else must be strictly identical.
@@ -1472,8 +1536,14 @@ impl Abi {
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
+    /// A type with no valid variants. Must be uninhabited.
+    Empty,
+
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
-    Single { index: VariantIdx },
+    Single {
+        /// Always `0` for types that cannot have multiple variants.
+        index: VariantIdx,
+    },
 
     /// Enum-likes with more than one variant: each variant comes with
     /// a *discriminant* (usually the same as the variant index but the user can
@@ -1485,7 +1555,7 @@ pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
         tag: Scalar,
         tag_encoding: TagEncoding<VariantIdx>,
         tag_field: usize,
-        variants: IndexVec<VariantIdx, LayoutS<FieldIdx, VariantIdx>>,
+        variants: IndexVec<VariantIdx, LayoutData<FieldIdx, VariantIdx>>,
     },
 }
 
@@ -1502,14 +1572,22 @@ pub enum TagEncoding<VariantIdx: Idx> {
     /// The variant `untagged_variant` contains a niche at an arbitrary
     /// offset (field `tag_field` of the enum), which for a variant with
     /// discriminant `d` is set to
-    /// `(d - niche_variants.start).wrapping_add(niche_start)`.
+    /// `(d - niche_variants.start).wrapping_add(niche_start)`
+    /// (this is wrapping arithmetic using the type of the niche field).
     ///
     /// For example, `Option<(usize, &T)>`  is represented such that
     /// `None` has a null pointer for the second tuple field, and
     /// `Some` is the identity function (with a non-null reference).
+    ///
+    /// Other variants that are not `untagged_variant` and that are outside the `niche_variants`
+    /// range cannot be represented; they must be uninhabited.
     Niche {
         untagged_variant: VariantIdx,
+        /// This range *may* contain `untagged_variant`; that is then just a "dead value" and
+        /// not used to encode anything.
         niche_variants: RangeInclusive<VariantIdx>,
+        /// This is inbounds of the type of the niche field
+        /// (not sign-extended, i.e., all bits beyond the niche field size are 0).
         niche_start: u128,
     },
 }
@@ -1603,7 +1681,7 @@ impl Niche {
 // NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-pub struct LayoutS<FieldIdx: Idx, VariantIdx: Idx> {
+pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// Says where the fields are located within the layout.
     pub fields: FieldsShape<FieldIdx>,
 
@@ -1616,14 +1694,14 @@ pub struct LayoutS<FieldIdx: Idx, VariantIdx: Idx> {
     /// must be taken into account.
     pub variants: Variants<FieldIdx, VariantIdx>,
 
-    /// The `abi` defines how this data is passed between functions, and it defines
-    /// value restrictions via `valid_range`.
+    /// The `backend_repr` defines how this data will be represented to the codegen backend,
+    /// and encodes value restrictions via `valid_range`.
     ///
     /// Note that this is entirely orthogonal to the recursive structure defined by
     /// `variants` and `fields`; for example, `ManuallyDrop<Result<isize, isize>>` has
-    /// `Abi::ScalarPair`! So, even with non-`Aggregate` `abi`, `fields` and `variants`
+    /// `IrForm::ScalarPair`! So, even with non-`Memory` `backend_repr`, `fields` and `variants`
     /// have to be taken into account to find all fields of this layout.
-    pub abi: Abi,
+    pub backend_repr: BackendRepr,
 
     /// The leaf scalar with the largest number of invalid values
     /// (i.e. outside of its `valid_range`), if it exists.
@@ -1641,27 +1719,77 @@ pub struct LayoutS<FieldIdx: Idx, VariantIdx: Idx> {
     /// Only used on aarch64-linux, where the argument passing ABI ignores the requested alignment
     /// in some cases.
     pub unadjusted_abi_align: Align,
+
+    /// The randomization seed based on this type's own repr and its fields.
+    ///
+    /// Since randomization is toggled on a per-crate basis even crates that do not have randomization
+    /// enabled should still calculate a seed so that downstream uses can use it to distinguish different
+    /// types.
+    ///
+    /// For every T and U for which we do not guarantee that a repr(Rust) `Foo<T>` can be coerced or
+    /// transmuted to `Foo<U>` we aim to create probalistically distinct seeds so that Foo can choose
+    /// to reorder its fields based on that information. The current implementation is a conservative
+    /// approximation of this goal.
+    pub randomization_seed: u64,
 }
 
-impl<FieldIdx: Idx, VariantIdx: Idx> LayoutS<FieldIdx, VariantIdx> {
+impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
+    /// Returns `true` if this is an aggregate type (including a ScalarPair!)
+    pub fn is_aggregate(&self) -> bool {
+        match self.backend_repr {
+            BackendRepr::Uninhabited | BackendRepr::Scalar(_) | BackendRepr::Vector { .. } => false,
+            BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => true,
+        }
+    }
+
+    /// Returns `true` if this is an uninhabited type
+    pub fn is_uninhabited(&self) -> bool {
+        self.backend_repr.is_uninhabited()
+    }
+
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
         let size = scalar.size(cx);
         let align = scalar.align(cx);
-        LayoutS {
+
+        let range = scalar.valid_range(cx);
+
+        // All primitive types for which we don't have subtype coercions should get a distinct seed,
+        // so that types wrapping them can use randomization to arrive at distinct layouts.
+        //
+        // Some type information is already lost at this point, so as an approximation we derive
+        // the seed from what remains. For example on 64-bit targets usize and u64 can no longer
+        // be distinguished.
+        let randomization_seed = size
+            .bytes()
+            .wrapping_add(
+                match scalar.primitive() {
+                    Primitive::Int(_, true) => 1,
+                    Primitive::Int(_, false) => 2,
+                    Primitive::Float(_) => 3,
+                    Primitive::Pointer(_) => 4,
+                } << 32,
+            )
+            // distinguishes references from pointers
+            .wrapping_add((range.start as u64).rotate_right(16))
+            // distinguishes char from u32 and bool from u8
+            .wrapping_add((range.end as u64).rotate_right(16));
+
+        LayoutData {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Primitive,
-            abi: Abi::Scalar(scalar),
+            backend_repr: BackendRepr::Scalar(scalar),
             largest_niche,
             size,
             align,
             max_repr_align: None,
             unadjusted_abi_align: align.abi,
+            randomization_seed,
         }
     }
 }
 
-impl<FieldIdx: Idx, VariantIdx: Idx> fmt::Debug for LayoutS<FieldIdx, VariantIdx>
+impl<FieldIdx: Idx, VariantIdx: Idx> fmt::Debug for LayoutData<FieldIdx, VariantIdx>
 where
     FieldsShape<FieldIdx>: fmt::Debug,
     Variants<FieldIdx, VariantIdx>: fmt::Debug,
@@ -1670,25 +1798,27 @@ where
         // This is how `Layout` used to print before it become
         // `Interned<LayoutS>`. We print it like this to avoid having to update
         // expected output in a lot of tests.
-        let LayoutS {
+        let LayoutData {
             size,
             align,
-            abi,
+            backend_repr,
             fields,
             largest_niche,
             variants,
             max_repr_align,
             unadjusted_abi_align,
+            ref randomization_seed,
         } = self;
         f.debug_struct("Layout")
             .field("size", size)
             .field("align", align)
-            .field("abi", abi)
+            .field("abi", backend_repr)
             .field("fields", fields)
             .field("largest_niche", largest_niche)
             .field("variants", variants)
             .field("max_repr_align", max_repr_align)
             .field("unadjusted_abi_align", unadjusted_abi_align)
+            .field("randomization_seed", randomization_seed)
             .finish()
     }
 }
@@ -1704,27 +1834,35 @@ pub enum PointerKind {
     Box { unpin: bool, global: bool },
 }
 
-/// Note that this information is advisory only, and backends are free to ignore it.
-/// It can only be used to encode potential optimizations, but no critical information.
+/// Encodes extra information we have about a pointer.
+/// Note that this information is advisory only, and backends are free to ignore it:
+/// if the information is wrong, that can cause UB, but if the information is absent,
+/// that must always be okay.
 #[derive(Copy, Clone, Debug)]
 pub struct PointeeInfo {
-    pub size: Size,
-    pub align: Align,
     /// If this is `None`, then this is a raw pointer, so size and alignment are not guaranteed to
     /// be reliable.
     pub safe: Option<PointerKind>,
+    /// If `safe` is `Some`, then the pointer is either null or dereferenceable for this many bytes.
+    /// On a function argument, "dereferenceable" here means "dereferenceable for the entire duration
+    /// of this function call", i.e. it is UB for the memory that this pointer points to to be freed
+    /// while this function is still running.
+    /// The size can be zero if the pointer is not dereferenceable.
+    pub size: Size,
+    /// If `safe` is `Some`, then the pointer is aligned as indicated.
+    pub align: Align,
 }
 
-impl<FieldIdx: Idx, VariantIdx: Idx> LayoutS<FieldIdx, VariantIdx> {
+impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Returns `true` if the layout corresponds to an unsized type.
     #[inline]
     pub fn is_unsized(&self) -> bool {
-        self.abi.is_unsized()
+        self.backend_repr.is_unsized()
     }
 
     #[inline]
     pub fn is_sized(&self) -> bool {
-        self.abi.is_sized()
+        self.backend_repr.is_sized()
     }
 
     /// Returns `true` if the type is sized and a 1-ZST (meaning it has size 0 and alignment 1).
@@ -1737,10 +1875,12 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutS<FieldIdx, VariantIdx> {
     /// Note that this does *not* imply that the type is irrelevant for layout! It can still have
     /// non-trivial alignment constraints. You probably want to use `is_1zst` instead.
     pub fn is_zst(&self) -> bool {
-        match self.abi {
-            Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
-            Abi::Uninhabited => self.size.bytes() == 0,
-            Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
+        match self.backend_repr {
+            BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) | BackendRepr::Vector { .. } => {
+                false
+            }
+            BackendRepr::Uninhabited => self.size.bytes() == 0,
+            BackendRepr::Memory { sized } => sized && self.size.bytes() == 0,
         }
     }
 
@@ -1755,8 +1895,8 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutS<FieldIdx, VariantIdx> {
         // 2nd point is quite hard to check though.
         self.size == other.size
             && self.is_sized() == other.is_sized()
-            && self.abi.eq_up_to_validity(&other.abi)
-            && self.abi.is_bool() == other.abi.is_bool()
+            && self.backend_repr.eq_up_to_validity(&other.backend_repr)
+            && self.backend_repr.is_bool() == other.backend_repr.is_bool()
             && self.align.abi == other.align.abi
             && self.max_repr_align == other.max_repr_align
             && self.unadjusted_abi_align == other.unadjusted_abi_align

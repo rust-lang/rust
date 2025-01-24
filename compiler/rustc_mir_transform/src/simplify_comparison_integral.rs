@@ -37,7 +37,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
         let opts = helper.find_optimizations();
         let mut storage_deads_to_insert = vec![];
         let mut storage_deads_to_remove: Vec<(usize, BasicBlock)> = vec![];
-        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
+        let typing_env = body.typing_env(tcx);
         for opt in opts {
             trace!("SUCCESS: Applying {:?}", opt);
             // replace terminator with a switchInt that switches on the integer directly
@@ -46,7 +46,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
             let new_value = match opt.branch_value_scalar {
                 Scalar::Int(int) => {
                     let layout = tcx
-                        .layout_of(param_env.and(opt.branch_value_ty))
+                        .layout_of(typing_env.as_query_input(opt.branch_value_ty))
                         .expect("if we have an evaluated constant we must know the layout");
                     int.to_bits(layout.size)
                 }

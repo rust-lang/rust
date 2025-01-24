@@ -50,7 +50,7 @@ pub(super) fn check<'tcx>(
             .tcx
             .lang_items()
             .clone_trait()
-            .map_or(false, |id| implements_trait(cx, ty, id, &[]))
+            .is_some_and(|id| implements_trait(cx, ty, id, &[]))
     {
         // Make sure that the push does not involve possibly mutating values
         match pushed_item.kind {

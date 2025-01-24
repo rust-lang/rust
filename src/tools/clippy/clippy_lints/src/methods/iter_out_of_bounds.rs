@@ -29,10 +29,7 @@ fn get_iterator_length<'tcx>(cx: &LateContext<'tcx>, iter: &'tcx Expr<'tcx>) -> 
     if cx.tcx.is_diagnostic_item(sym::ArrayIntoIter, did) {
         // For array::IntoIter<T, const N: usize>, the length is the second generic
         // parameter.
-        substs
-            .const_at(1)
-            .try_to_target_usize(cx.tcx)
-            .map(u128::from)
+        substs.const_at(1).try_to_target_usize(cx.tcx).map(u128::from)
     } else if cx.tcx.is_diagnostic_item(sym::SliceIter, did)
         && let ExprKind::MethodCall(_, recv, ..) = iter.kind
     {

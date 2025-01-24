@@ -11,12 +11,12 @@ LL |     *ptr = 0;
    |     ^^^^^^^^ accessing memory based on pointer with alignment 1, but alignment 4 is required
 
 error[E0080]: evaluation of constant value failed
-  --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
+  --> $SRC_DIR/core/src/intrinsics/mod.rs:LL:COL
    |
    = note: accessing memory with alignment 1, but alignment 4 is required
    |
 note: inside `copy_nonoverlapping::<u32>`
-  --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
+  --> $SRC_DIR/core/src/intrinsics/mod.rs:LL:COL
 note: inside `std::ptr::const_ptr::<impl *const u32>::copy_to_nonoverlapping`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `MISALIGNED_COPY`

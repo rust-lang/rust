@@ -36,7 +36,7 @@ declare_lint_pass!(EmptyDrop => [EMPTY_DROP]);
 impl LateLintPass<'_> for EmptyDrop {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if let ItemKind::Impl(Impl {
-            of_trait: Some(ref trait_ref),
+            of_trait: Some(trait_ref),
             items: [child],
             ..
         }) = item.kind

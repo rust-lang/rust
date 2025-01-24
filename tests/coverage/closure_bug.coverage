@@ -16,7 +16,7 @@
    LL|       |
    LL|      1|    a();
    LL|      1|    if truthy { a(); }
-                                    ^0
+                                   ^0
    LL|       |
    LL|      1|    let b
    LL|       |        =
@@ -27,7 +27,7 @@
    LL|       |
    LL|      1|    b();
    LL|      1|    if truthy { b(); }
-                                    ^0
+                                   ^0
    LL|       |
    LL|      1|    let c
    LL|       |        =
@@ -38,7 +38,7 @@
    LL|       |
    LL|      1|    c();
    LL|      1|    if truthy { c(); }
-                                    ^0
+                                   ^0
    LL|       |
    LL|      1|    let d
    LL|       |        =
@@ -49,6 +49,6 @@
    LL|       |
    LL|      1|    d();
    LL|      1|    if truthy { d(); }
-                                    ^0
+                                   ^0
    LL|      1|}
 

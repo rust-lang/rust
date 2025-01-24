@@ -253,6 +253,12 @@ impl FlagComputation {
             &ty::FnPtr(sig_tys, _) => self.bound_computation(sig_tys, |computation, sig_tys| {
                 computation.add_tys(sig_tys.inputs_and_output);
             }),
+
+            &ty::UnsafeBinder(bound_ty) => {
+                self.bound_computation(bound_ty.into(), |computation, ty| {
+                    computation.add_ty(ty);
+                })
+            }
         }
     }
 
@@ -264,6 +270,12 @@ impl FlagComputation {
         match atom {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
                 self.add_args(trait_pred.trait_ref.args);
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                trait_ref,
+                constness: _,
+            })) => {
+                self.add_args(trait_ref.args);
             }
             ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(
                 a,
@@ -354,9 +366,7 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 match infer {
                     InferConst::Fresh(_) => self.add_flags(TypeFlags::HAS_CT_FRESH),
-                    InferConst::Var(_) | InferConst::EffectVar(_) => {
-                        self.add_flags(TypeFlags::HAS_CT_INFER)
-                    }
+                    InferConst::Var(_) => self.add_flags(TypeFlags::HAS_CT_INFER),
                 }
             }
             ty::ConstKind::Bound(debruijn, _) => {

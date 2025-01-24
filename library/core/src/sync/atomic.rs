@@ -86,7 +86,7 @@
 //!     // This is fine: `join` synchronizes the code in a way such that the atomic
 //!     // store happens-before the non-atomic write.
 //!     let handle = s.spawn(|| atomic.store(1, Ordering::Relaxed)); // atomic store
-//!     handle.join().unwrap(); // synchronize
+//!     handle.join().expect("thread won't panic"); // synchronize
 //!     s.spawn(|| unsafe { atomic.as_ptr().write(2) }); // non-atomic write
 //! });
 //!
@@ -103,7 +103,7 @@
 //!     // This is fine: `join` synchronizes the code in a way such that
 //!     // the 1-byte store happens-before the 2-byte store.
 //!     let handle = s.spawn(|| atomic.store(1, Ordering::Relaxed));
-//!     handle.join().unwrap();
+//!     handle.join().expect("thread won't panic");
 //!     s.spawn(|| unsafe {
 //!         let differently_sized = transmute::<&AtomicU16, &AtomicU8>(&atomic);
 //!         differently_sized.store(2, Ordering::Relaxed);
@@ -469,7 +469,7 @@ impl AtomicBool {
     /// [valid]: crate::ptr#safety
     /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
     #[stable(feature = "atomic_from_ptr", since = "1.75.0")]
-    #[rustc_const_unstable(feature = "const_atomic_from_ptr", issue = "108652")]
+    #[rustc_const_stable(feature = "const_atomic_from_ptr", since = "1.84.0")]
     pub const unsafe fn from_ptr<'a>(ptr: *mut bool) -> &'a AtomicBool {
         // SAFETY: guaranteed by the caller
         unsafe { &*ptr.cast() }
@@ -1264,7 +1264,7 @@ impl<T> AtomicPtr<T> {
     /// [valid]: crate::ptr#safety
     /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
     #[stable(feature = "atomic_from_ptr", since = "1.75.0")]
-    #[rustc_const_unstable(feature = "const_atomic_from_ptr", issue = "108652")]
+    #[rustc_const_stable(feature = "const_atomic_from_ptr", since = "1.84.0")]
     pub const unsafe fn from_ptr<'a>(ptr: *mut *mut T) -> &'a AtomicPtr<T> {
         // SAFETY: guaranteed by the caller
         unsafe { &*ptr.cast() }
@@ -1758,7 +1758,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(strict_provenance_atomic_ptr, strict_provenance)]
+    /// #![feature(strict_provenance_atomic_ptr)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
@@ -1838,7 +1838,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(strict_provenance_atomic_ptr, strict_provenance)]
+    /// #![feature(strict_provenance_atomic_ptr)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
@@ -1874,7 +1874,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(strict_provenance_atomic_ptr, strict_provenance)]
+    /// #![feature(strict_provenance_atomic_ptr)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let atom = AtomicPtr::<i64>::new(core::ptr::without_provenance_mut(1));
@@ -1919,7 +1919,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(strict_provenance_atomic_ptr, strict_provenance)]
+    /// #![feature(strict_provenance_atomic_ptr)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let pointer = &mut 3i64 as *mut i64;
@@ -1970,7 +1970,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(strict_provenance_atomic_ptr, strict_provenance)]
+    /// #![feature(strict_provenance_atomic_ptr)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let pointer = &mut 3i64 as *mut i64;
@@ -2020,7 +2020,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(strict_provenance_atomic_ptr, strict_provenance)]
+    /// #![feature(strict_provenance_atomic_ptr)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let pointer = &mut 3i64 as *mut i64;
@@ -2122,7 +2122,8 @@ macro_rules! atomic_int {
      $stable_access:meta,
      $stable_from:meta,
      $stable_nand:meta,
-     $const_stable:meta,
+     $const_stable_new:meta,
+     $const_stable_into_inner:meta,
      $diagnostic_item:meta,
      $s_int_type:literal,
      $extra_feature:expr,
@@ -2204,7 +2205,7 @@ macro_rules! atomic_int {
             /// ```
             #[inline]
             #[$stable]
-            #[$const_stable]
+            #[$const_stable_new]
             #[must_use]
             pub const fn new(v: $int_type) -> Self {
                 Self {v: UnsafeCell::new(v)}
@@ -2262,7 +2263,7 @@ macro_rules! atomic_int {
             /// [valid]: crate::ptr#safety
             /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
             #[stable(feature = "atomic_from_ptr", since = "1.75.0")]
-            #[rustc_const_unstable(feature = "const_atomic_from_ptr", issue = "108652")]
+            #[rustc_const_stable(feature = "const_atomic_from_ptr", since = "1.84.0")]
             pub const unsafe fn from_ptr<'a>(ptr: *mut $int_type) -> &'a $atomic_type {
                 // SAFETY: guaranteed by the caller
                 unsafe { &*ptr.cast() }
@@ -2406,7 +2407,7 @@ macro_rules! atomic_int {
             /// ```
             #[inline]
             #[$stable_access]
-            #[rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0")]
+            #[$const_stable_into_inner]
             pub const fn into_inner(self) -> $int_type {
                 self.v.into_inner()
             }
@@ -3054,6 +3055,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+    rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicI8"),
     "i8",
     "",
@@ -3072,6 +3074,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+    rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicU8"),
     "u8",
     "",
@@ -3090,6 +3093,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+    rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicI16"),
     "i16",
     "",
@@ -3108,6 +3112,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+    rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicU16"),
     "u16",
     "",
@@ -3126,6 +3131,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+    rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicI32"),
     "i32",
     "",
@@ -3144,6 +3150,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+    rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicU32"),
     "u32",
     "",
@@ -3162,6 +3169,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+    rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicI64"),
     "i64",
     "",
@@ -3180,6 +3188,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+    rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicU64"),
     "u64",
     "",
@@ -3197,7 +3206,8 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
-    rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+    rustc_const_unstable(feature = "integer_atomics", issue = "99069"),
+    rustc_const_unstable(feature = "integer_atomics", issue = "99069"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicI128"),
     "i128",
     "#![feature(integer_atomics)]\n\n",
@@ -3215,7 +3225,8 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
-    rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+    rustc_const_unstable(feature = "integer_atomics", issue = "99069"),
+    rustc_const_unstable(feature = "integer_atomics", issue = "99069"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicU128"),
     "u128",
     "#![feature(integer_atomics)]\n\n",
@@ -3238,6 +3249,7 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_from", since = "1.23.0"),
             stable(feature = "atomic_nand", since = "1.27.0"),
             rustc_const_stable(feature = "const_ptr_sized_atomics", since = "1.24.0"),
+            rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
             cfg_attr(not(test), rustc_diagnostic_item = "AtomicIsize"),
             "isize",
             "",
@@ -3256,6 +3268,7 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_from", since = "1.23.0"),
             stable(feature = "atomic_nand", since = "1.27.0"),
             rustc_const_stable(feature = "const_ptr_sized_atomics", since = "1.24.0"),
+            rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
             cfg_attr(not(test), rustc_diagnostic_item = "AtomicUsize"),
             "usize",
             "",

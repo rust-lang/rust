@@ -2,13 +2,13 @@
 
 mod assert {
     use std::mem::{Assume, TransmuteFrom};
-    //~^ ERROR: use of unstable library feature 'transmutability'
-    //~| ERROR: use of unstable library feature 'transmutability'
+    //~^ ERROR: use of unstable library feature `transmutability`
+    //~| ERROR: use of unstable library feature `transmutability`
 
     pub fn is_transmutable<Src, Dst>()
     where
         Dst: TransmuteFrom<Src>,
-        //~^ ERROR: use of unstable library feature 'transmutability'
+        //~^ ERROR: use of unstable library feature `transmutability`
     {
     }
 }

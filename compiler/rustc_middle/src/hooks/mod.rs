@@ -108,6 +108,19 @@ declare_hooks! {
     /// Returns `true` if we should codegen an instance in the local crate, or returns `false` if we
     /// can just link to the upstream crate and therefore don't need a mono item.
     hook should_codegen_locally(instance: crate::ty::Instance<'tcx>) -> bool;
+
+    hook alloc_self_profile_query_strings() -> ();
+
+    /// Saves and writes the DepGraph to the file system.
+    ///
+    /// This function saves both the dep-graph and the query result cache,
+    /// and drops the result cache.
+    ///
+    /// This function should only run after all queries have completed.
+    /// Trying to execute a query afterwards would attempt to read the result cache we just dropped.
+    hook save_dep_graph() -> ();
+
+    hook query_key_hash_verify_all() -> ();
 }
 
 #[cold]

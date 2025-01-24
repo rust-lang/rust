@@ -3,8 +3,11 @@ use clippy_utils::numeric_literal;
 use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{Visitor, walk_expr, walk_stmt};
-use rustc_hir::{Block, Body, ConstContext, Expr, ExprKind, FnRetTy, HirId, Lit, Stmt, StmtKind};
+use rustc_hir::intravisit::{Visitor, walk_expr, walk_pat, walk_stmt};
+use rustc_hir::{
+    Block, Body, ConstContext, Expr, ExprKind, FnRetTy, HirId, Lit, Pat, PatExpr, PatExprKind, PatKind, Stmt, StmtKind,
+    StructTailExpr,
+};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, FloatTy, IntTy, PolyFnSig, Ty};
@@ -26,7 +29,8 @@ declare_clippy_lint! {
     /// To ensure that every numeric type is chosen explicitly rather than implicitly.
     ///
     /// ### Known problems
-    /// This lint can only be allowed at the function level or above.
+    /// This lint is implemented using a custom algorithm independent of rustc's inference,
+    /// which results in many false positives and false negatives.
     ///
     /// ### Example
     /// ```no_run
@@ -36,8 +40,8 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```no_run
-    /// let i = 10i32;
-    /// let f = 1.23f64;
+    /// let i = 10_i32;
+    /// let f = 1.23_f64;
     /// ```
     #[clippy::version = "1.52.0"]
     pub DEFAULT_NUMERIC_FALLBACK,
@@ -197,7 +201,7 @@ impl<'tcx> Visitor<'tcx> for NumericFallbackVisitor<'_, 'tcx> {
                     }
 
                     // Visit base with no bound.
-                    if let Some(base) = base {
+                    if let StructTailExpr::Base(base) = base {
                         self.ty_bounds.push(ExplicitTyBound(false));
                         self.visit_expr(base);
                         self.ty_bounds.pop();
@@ -216,6 +220,22 @@ impl<'tcx> Visitor<'tcx> for NumericFallbackVisitor<'_, 'tcx> {
         }
 
         walk_expr(self, expr);
+    }
+
+    fn visit_pat(&mut self, pat: &'tcx Pat<'_>) {
+        match pat.kind {
+            PatKind::Expr(&PatExpr {
+                hir_id,
+                kind: PatExprKind::Lit { lit, .. },
+                ..
+            }) => {
+                let ty = self.cx.typeck_results().node_type(hir_id);
+                self.check_lit(lit, ty, hir_id);
+                return;
+            },
+            _ => {},
+        }
+        walk_pat(self, pat)
     }
 
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
@@ -253,6 +273,6 @@ impl<'tcx> From<Ty<'tcx>> for ExplicitTyBound {
 
 impl<'tcx> From<Option<Ty<'tcx>>> for ExplicitTyBound {
     fn from(v: Option<Ty<'tcx>>) -> Self {
-        Self(v.map_or(false, Ty::is_numeric))
+        Self(v.is_some_and(Ty::is_numeric))
     }
 }

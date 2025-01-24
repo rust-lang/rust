@@ -1,26 +1,21 @@
 use std::hash::Hash;
 use std::io::Write;
+use std::iter;
 use std::num::NonZero;
+use std::sync::Arc;
 
-use rustc_data_structures::fx::FxHashMap;
+use parking_lot::{Condvar, Mutex};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::jobserver;
 use rustc_errors::{Diag, DiagCtxtHandle};
 use rustc_hir::def::DefKind;
 use rustc_session::Session;
-use rustc_span::Span;
-#[cfg(parallel_compiler)]
-use {
-    parking_lot::{Condvar, Mutex},
-    rustc_data_structures::fx::FxHashSet,
-    rustc_data_structures::jobserver,
-    rustc_span::DUMMY_SP,
-    std::iter,
-    std::sync::Arc,
-};
+use rustc_span::{DUMMY_SP, Span};
 
 use crate::dep_graph::DepContext;
 use crate::error::CycleStack;
 use crate::query::plumbing::CycleError;
-use crate::query::{DepKind, QueryContext, QueryStackFrame};
+use crate::query::{QueryContext, QueryStackFrame};
 
 /// Represents a span and a query key.
 #[derive(Clone, Debug)]
@@ -41,17 +36,14 @@ impl QueryJobId {
         map.get(&self).unwrap().query.clone()
     }
 
-    #[cfg(parallel_compiler)]
     fn span(self, map: &QueryMap) -> Span {
         map.get(&self).unwrap().job.span
     }
 
-    #[cfg(parallel_compiler)]
     fn parent(self, map: &QueryMap) -> Option<QueryJobId> {
         map.get(&self).unwrap().job.parent
     }
 
-    #[cfg(parallel_compiler)]
     fn latch(self, map: &QueryMap) -> Option<&QueryLatch> {
         map.get(&self).unwrap().job.latch.as_ref()
     }
@@ -75,7 +67,6 @@ pub struct QueryJob {
     pub parent: Option<QueryJobId>,
 
     /// The latch that is used to wait on this job.
-    #[cfg(parallel_compiler)]
     latch: Option<QueryLatch>,
 }
 
@@ -83,16 +74,9 @@ impl QueryJob {
     /// Creates a new query job.
     #[inline]
     pub fn new(id: QueryJobId, span: Span, parent: Option<QueryJobId>) -> Self {
-        QueryJob {
-            id,
-            span,
-            parent,
-            #[cfg(parallel_compiler)]
-            latch: None,
-        }
+        QueryJob { id, span, parent, latch: None }
     }
 
-    #[cfg(parallel_compiler)]
     pub(super) fn latch(&mut self) -> QueryLatch {
         if self.latch.is_none() {
             self.latch = Some(QueryLatch::new());
@@ -106,11 +90,8 @@ impl QueryJob {
     /// as there are no concurrent jobs which could be waiting on us
     #[inline]
     pub fn signal_complete(self) {
-        #[cfg(parallel_compiler)]
-        {
-            if let Some(latch) = self.latch {
-                latch.set();
-            }
+        if let Some(latch) = self.latch {
+            latch.set();
         }
     }
 }
@@ -155,20 +136,18 @@ impl QueryJobId {
 
     #[cold]
     #[inline(never)]
-    pub fn try_find_layout_root(
-        &self,
-        query_map: QueryMap,
-        layout_of_kind: DepKind,
-    ) -> Option<(QueryJobInfo, usize)> {
-        let mut last_layout = None;
-        let mut current_id = Some(*self);
-        let mut depth = 0;
+    pub fn find_dep_kind_root(&self, query_map: QueryMap) -> (QueryJobInfo, usize) {
+        let mut depth = 1;
+        let info = query_map.get(&self).unwrap();
+        let dep_kind = info.query.dep_kind;
+        let mut current_id = info.job.parent;
+        let mut last_layout = (info.clone(), depth);
 
         while let Some(id) = current_id {
             let info = query_map.get(&id).unwrap();
-            if info.query.dep_kind == layout_of_kind {
+            if info.query.dep_kind == dep_kind {
                 depth += 1;
-                last_layout = Some((info.clone(), depth));
+                last_layout = (info.clone(), depth);
             }
             current_id = info.job.parent;
         }
@@ -176,7 +155,6 @@ impl QueryJobId {
     }
 }
 
-#[cfg(parallel_compiler)]
 #[derive(Debug)]
 struct QueryWaiter {
     query: Option<QueryJobId>,
@@ -185,7 +163,6 @@ struct QueryWaiter {
     cycle: Mutex<Option<CycleError>>,
 }
 
-#[cfg(parallel_compiler)]
 impl QueryWaiter {
     fn notify(&self, registry: &rayon_core::Registry) {
         rayon_core::mark_unblocked(registry);
@@ -193,20 +170,17 @@ impl QueryWaiter {
     }
 }
 
-#[cfg(parallel_compiler)]
 #[derive(Debug)]
 struct QueryLatchInfo {
     complete: bool,
     waiters: Vec<Arc<QueryWaiter>>,
 }
 
-#[cfg(parallel_compiler)]
 #[derive(Clone, Debug)]
 pub(super) struct QueryLatch {
     info: Arc<Mutex<QueryLatchInfo>>,
 }
 
-#[cfg(parallel_compiler)]
 impl QueryLatch {
     fn new() -> Self {
         QueryLatch {
@@ -237,7 +211,7 @@ impl QueryLatch {
             // the `wait` call below, by 1) the `set` method or 2) by deadlock detection.
             // Both of these will remove it from the `waiters` list before resuming
             // this thread.
-            info.waiters.push(waiter.clone());
+            info.waiters.push(Arc::clone(waiter));
 
             // If this detects a deadlock and the deadlock handler wants to resume this thread
             // we have to be in the `wait` call. This is ensured by the deadlock handler
@@ -273,7 +247,6 @@ impl QueryLatch {
 }
 
 /// A resumable waiter of a query. The usize is the index into waiters in the query's latch
-#[cfg(parallel_compiler)]
 type Waiter = (QueryJobId, usize);
 
 /// Visits all the non-resumable and resumable waiters of a query.
@@ -285,7 +258,6 @@ type Waiter = (QueryJobId, usize);
 /// For visits of resumable waiters it returns Some(Some(Waiter)) which has the
 /// required information to resume the waiter.
 /// If all `visit` calls returns None, this function also returns None.
-#[cfg(parallel_compiler)]
 fn visit_waiters<F>(query_map: &QueryMap, query: QueryJobId, mut visit: F) -> Option<Option<Waiter>>
 where
     F: FnMut(Span, QueryJobId) -> Option<Option<Waiter>>,
@@ -316,7 +288,6 @@ where
 /// `span` is the reason for the `query` to execute. This is initially DUMMY_SP.
 /// If a cycle is detected, this initial value is replaced with the span causing
 /// the cycle.
-#[cfg(parallel_compiler)]
 fn cycle_check(
     query_map: &QueryMap,
     query: QueryJobId,
@@ -357,7 +328,6 @@ fn cycle_check(
 /// Finds out if there's a path to the compiler root (aka. code which isn't in a query)
 /// from `query` without going through any of the queries in `visited`.
 /// This is achieved with a depth first search.
-#[cfg(parallel_compiler)]
 fn connected_to_root(
     query_map: &QueryMap,
     query: QueryJobId,
@@ -380,7 +350,6 @@ fn connected_to_root(
 }
 
 // Deterministically pick an query from a list
-#[cfg(parallel_compiler)]
 fn pick_query<'a, T, F>(query_map: &QueryMap, queries: &'a [T], f: F) -> &'a T
 where
     F: Fn(&T) -> (Span, QueryJobId),
@@ -406,7 +375,6 @@ where
 /// the function return true.
 /// If a cycle was not found, the starting query is removed from `jobs` and
 /// the function returns false.
-#[cfg(parallel_compiler)]
 fn remove_cycle(
     query_map: &QueryMap,
     jobs: &mut Vec<QueryJobId>,
@@ -511,7 +479,6 @@ fn remove_cycle(
 /// uses a query latch and then resuming that waiter.
 /// There may be multiple cycles involved in a deadlock, so this searches
 /// all active queries for cycles before finally resuming all the waiters at once.
-#[cfg(parallel_compiler)]
 pub fn break_query_cycles(query_map: QueryMap, registry: &rayon_core::Registry) {
     let mut wakelist = Vec::new();
     let mut jobs: Vec<QueryJobId> = query_map.keys().cloned().collect();
@@ -600,7 +567,7 @@ pub fn print_query_stack<Qcx: QueryContext>(
     qcx: Qcx,
     mut current_query: Option<QueryJobId>,
     dcx: DiagCtxtHandle<'_>,
-    num_frames: Option<usize>,
+    limit_frames: Option<usize>,
     mut file: Option<std::fs::File>,
 ) -> usize {
     // Be careful relying on global state here: this code is called from
@@ -617,7 +584,7 @@ pub fn print_query_stack<Qcx: QueryContext>(
         let Some(query_info) = query_map.get(&query) else {
             break;
         };
-        if Some(count_printed) < num_frames || num_frames.is_none() {
+        if Some(count_printed) < limit_frames || limit_frames.is_none() {
             // Only print to stderr as many stack frames as `num_frames` when present.
             // FIXME: needs translation
             #[allow(rustc::diagnostic_outside_of_impl)]
@@ -648,5 +615,5 @@ pub fn print_query_stack<Qcx: QueryContext>(
     if let Some(ref mut file) = file {
         let _ = writeln!(file, "end of query stack");
     }
-    count_printed
+    count_total
 }

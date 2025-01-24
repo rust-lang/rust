@@ -275,6 +275,7 @@ fn find_imported_defs(ctx: &AssistContext<'_>, star: SyntaxToken) -> Option<Vec<
                     | Definition::Static(_)
                     | Definition::Trait(_)
                     | Definition::TypeAlias(_)),
+                    _,
                 ) => Some(def),
                 _ => None,
             })

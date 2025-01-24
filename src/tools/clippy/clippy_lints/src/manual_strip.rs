@@ -1,7 +1,7 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::{eq_expr_value, higher};
@@ -162,9 +162,9 @@ fn eq_pattern_length<'tcx>(cx: &LateContext<'tcx>, pattern: &Expr<'_>, expr: &'t
         ..
     }) = expr.kind
     {
-        constant_length(cx, pattern).map_or(false, |length| *n == length)
+        constant_length(cx, pattern).is_some_and(|length| *n == length)
     } else {
-        len_arg(cx, expr).map_or(false, |arg| eq_expr_value(cx, pattern, arg))
+        len_arg(cx, expr).is_some_and(|arg| eq_expr_value(cx, pattern, arg))
     }
 }
 

@@ -1,13 +1,13 @@
 use std::iter;
 
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::{UnwindTerminateReason, traversal};
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_target::abi::call::{FnAbi, PassMode};
+use rustc_target::callconv::{FnAbi, PassMode};
 use tracing::{debug, instrument};
 
 use crate::base;
@@ -20,6 +20,7 @@ mod coverageinfo;
 pub mod debuginfo;
 mod intrinsic;
 mod locals;
+mod naked_asm;
 pub mod operand;
 pub mod place;
 mod rvalue;
@@ -91,6 +92,10 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// Cached terminate upon unwinding block and its reason
     terminate_block: Option<(Bx::BasicBlock, UnwindTerminateReason)>,
 
+    /// A bool flag for each basic block indicating whether it is a cold block.
+    /// A cold block is a block that is unlikely to be executed at runtime.
+    cold_blocks: IndexVec<mir::BasicBlock, bool>,
+
     /// The location where each MIR arg/var/tmp/ret is stored. This is
     /// usually an `PlaceRef` representing an alloca, but not always:
     /// sometimes we can skip the alloca and just store the value
@@ -124,7 +129,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         debug!("monomorphize: self.instance={:?}", self.instance);
         self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.cx.tcx(),
-            ty::ParamEnv::reveal_all(),
+            self.cx.typing_env(),
             ty::EarlyBinder::bind(value),
         )
     }
@@ -172,6 +177,11 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
 
+    if cx.tcx().codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED) {
+        crate::mir::naked_asm::codegen_naked_asm::<Bx>(cx, &mir, instance);
+        return;
+    }
+
     let debug_context = cx.create_function_debug_context(instance, fn_abi, llfn, mir);
 
     let start_llbb = Bx::append_block(cx, llfn, "start");
@@ -207,6 +217,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cleanup_kinds,
         landing_pads: IndexVec::from_elem(None, &mir.basic_blocks),
         funclets: IndexVec::from_fn_n(|_| None, mir.basic_blocks.len()),
+        cold_blocks: find_cold_blocks(cx.tcx(), mir),
         locals: locals::Locals::empty(),
         debug_context,
         per_local_var_debug_info: None,
@@ -282,7 +293,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // So drop the builder of `start_llbb` to avoid having two at the same time.
     drop(start_bx);
 
-    let mut unreached_blocks = BitSet::new_filled(mir.basic_blocks.len());
+    let mut unreached_blocks = DenseBitSet::new_filled(mir.basic_blocks.len());
     // Codegen the body of each reachable block using our reverse postorder list.
     for bb in traversal_order {
         fx.codegen_block(bb);
@@ -305,7 +316,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     fx: &mut FunctionCx<'a, 'tcx, Bx>,
-    memory_locals: &BitSet<mir::Local>,
+    memory_locals: &DenseBitSet<mir::Local>,
 ) -> Vec<LocalRef<'tcx, Bx::Value>> {
     let mir = fx.mir;
     let mut idx = 0;
@@ -476,4 +487,40 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 
     args
+}
+
+fn find_cold_blocks<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mir: &mir::Body<'tcx>,
+) -> IndexVec<mir::BasicBlock, bool> {
+    let local_decls = &mir.local_decls;
+
+    let mut cold_blocks: IndexVec<mir::BasicBlock, bool> =
+        IndexVec::from_elem(false, &mir.basic_blocks);
+
+    // Traverse all basic blocks from end of the function to the start.
+    for (bb, bb_data) in traversal::postorder(mir) {
+        let terminator = bb_data.terminator();
+
+        // If a BB ends with a call to a cold function, mark it as cold.
+        if let mir::TerminatorKind::Call { ref func, .. } = terminator.kind
+            && let ty::FnDef(def_id, ..) = *func.ty(local_decls, tcx).kind()
+            && let attrs = tcx.codegen_fn_attrs(def_id)
+            && attrs.flags.contains(CodegenFnAttrFlags::COLD)
+        {
+            cold_blocks[bb] = true;
+            continue;
+        }
+
+        // If all successors of a BB are cold and there's at least one of them, mark this BB as cold
+        let mut succ = terminator.successors();
+        if let Some(first) = succ.next()
+            && cold_blocks[first]
+            && succ.all(|s| cold_blocks[s])
+        {
+            cold_blocks[bb] = true;
+        }
+    }
+
+    cold_blocks
 }

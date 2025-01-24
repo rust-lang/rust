@@ -27,7 +27,7 @@ fn unconstrained_return<T: UnitReturn>() -> T {
 
 fn main() {
     //[nofallback]~^ warn: this function depends on never type fallback being `()`
-    //[nofallback]~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //[nofallback]~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
 
     // In Ye Olde Days, the `T` parameter of `unconstrained_return`
     // winds up "entangled" with the `!` type that results from

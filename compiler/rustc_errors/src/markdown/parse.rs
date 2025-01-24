@@ -346,7 +346,7 @@ fn parse_with_end_pat<'a>(
     None
 }
 
-/// Resturn `(match, residual)` to end of line. The EOL is returned with the
+/// Return `(match, residual)` to end of line. The EOL is returned with the
 /// residual.
 fn parse_to_newline(buf: &[u8]) -> (&[u8], &[u8]) {
     buf.iter().position(|ch| *ch == b'\n').map_or((buf, &[]), |pos| buf.split_at(pos))

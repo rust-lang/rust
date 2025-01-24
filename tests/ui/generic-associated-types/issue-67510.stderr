@@ -29,17 +29,18 @@ help: consider introducing lifetime `'a` here
 LL | fn f<'a>(x: Box<dyn X<Y<'a> = &'a ()>>) {}
    |     ++++
 
-error[E0038]: the trait `X` cannot be made into an object
+error[E0038]: the trait `X` is not dyn compatible
   --> $DIR/issue-67510.rs:5:13
    |
 LL | fn f(x: Box<dyn X<Y<'a> = &'a ()>>) {}
-   |             ^^^^^^^^^^^^^^^^^^^^^ `X` cannot be made into an object
+   |             ^^^^^^^^^^^^^^^^^^^^^ `X` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/issue-67510.rs:2:10
    |
 LL | trait X {
-   |       - this trait cannot be made into an object...
+   |       - this trait is not dyn compatible...
 LL |     type Y<'a>;
    |          ^ ...because it contains the generic associated type `Y`
    = help: consider moving `Y` to another trait

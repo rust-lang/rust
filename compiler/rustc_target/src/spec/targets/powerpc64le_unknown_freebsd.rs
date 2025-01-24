@@ -12,11 +12,11 @@ pub(crate) fn target() -> Target {
         metadata: crate::spec::TargetMetadata {
             description: Some("PPC64LE FreeBSD".into()),
             tier: Some(3),
-            host_tools: Some(false),
-            std: Some(false),
+            host_tools: Some(true),
+            std: Some(true),
         },
         pointer_width: 64,
-        data_layout: "e-m:e-Fn32-i64:64-n32:64".into(),
+        data_layout: "e-m:e-Fn32-i64:64-i128:128-n32:64".into(),
         arch: "powerpc64".into(),
         options: TargetOptions { mcount: "_mcount".into(), ..base },
     }

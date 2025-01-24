@@ -96,12 +96,14 @@ hir_analysis_coercion_between_struct_same_note = expected coercion between the s
 
 hir_analysis_coercion_between_struct_single_note = expected a single field to be coerced, none found
 
-hir_analysis_const_bound_for_non_const_trait =
-    `{$modifier}` can only be applied to `#[const_trait]` traits
+hir_analysis_const_bound_for_non_const_trait = `{$modifier}` can only be applied to `#[const_trait]` traits
+    .label = can't be applied to `{$trait_name}`
+    .note = `{$trait_name}` can't be used with `{$modifier}` because it isn't annotated with `#[const_trait]`
+    .suggestion = {$suggestion_pre}mark `{$trait_name}` as `#[const_trait]` to allow it to have `const` implementations
 
-hir_analysis_const_impl_for_non_const_trait =
-    const `impl` for trait `{$trait_name}` which is not marked with `#[const_trait]`
-    .suggestion = mark `{$trait_name}` as const
+hir_analysis_const_impl_for_non_const_trait = const `impl` for trait `{$trait_name}` which is not marked with `#[const_trait]`
+    .label = this trait is not `const`
+    .suggestion = {$suggestion_pre}mark `{$trait_name}` as `#[const_trait]` to allow it to have `const` implementations
     .note = marking a trait with `#[const_trait]` ensures all default method bodies are `const`
     .adding = adding a non-const method body in the future would be a breaking change
 
@@ -112,8 +114,6 @@ hir_analysis_const_param_ty_impl_on_non_adt =
 hir_analysis_const_param_ty_impl_on_unsized =
     the trait `ConstParamTy` may not be implemented for this type
     .label = type is not `Sized`
-
-hir_analysis_const_specialize = cannot specialize on const impl with non-const impl
 
 hir_analysis_copy_impl_on_non_adt =
     the trait `Copy` cannot be implemented for this type
@@ -135,7 +135,7 @@ hir_analysis_dispatch_from_dyn_multi = implementing the `DispatchFromDyn` trait 
 
 hir_analysis_dispatch_from_dyn_repr = structs implementing `DispatchFromDyn` may not have `#[repr(packed)]` or `#[repr(C)]`
 
-hir_analysis_dispatch_from_dyn_zst = the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment, and nothing else
+hir_analysis_dispatch_from_dyn_zst = the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment that don't mention type/const generics, and nothing else
     .note = extra field `{$name}` of type `{$ty}` is not allowed
 
 hir_analysis_drop_impl_negative = negative `Drop` impls are not supported
@@ -148,10 +148,6 @@ hir_analysis_drop_impl_reservation = reservation `Drop` impls are not supported
 
 hir_analysis_duplicate_precise_capture = cannot capture parameter `{$name}` twice
     .label = parameter captured again here
-
-hir_analysis_effects_without_next_solver = using `#![feature(effects)]` without enabling next trait solver globally
-    .note = the next trait solver must be enabled globally for the effects feature to work correctly
-    .help = use `-Znext-solver` to enable
 
 hir_analysis_empty_specialization = specialization impl does not specialize any associated items
     .note = impl is a specialization of this impl
@@ -238,17 +234,42 @@ hir_analysis_inherent_ty_outside_relevant = cannot define inherent `impl` for a 
     .help = consider moving this inherent impl into the crate defining the type if possible
     .span_help = alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items
 
+hir_analysis_invalid_generic_receiver_ty = invalid generic `self` parameter type: `{$receiver_ty}`
+    .note = type of `self` must not be a method generic parameter type
+
+hir_analysis_invalid_generic_receiver_ty_help =
+    use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
 hir_analysis_invalid_receiver_ty = invalid `self` parameter type: `{$receiver_ty}`
-    .note = type of `self` must be `Self` or a type that dereferences to it
+    .note = type of `self` must be `Self` or some type implementing `Receiver`
 
 hir_analysis_invalid_receiver_ty_help =
+    consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
+
+hir_analysis_invalid_receiver_ty_help_no_arbitrary_self_types =
     consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+hir_analysis_invalid_receiver_ty_help_nonnull_note =
+    `NonNull` does not implement `Receiver` because it has methods that may shadow the referent; consider wrapping your `NonNull` in a newtype wrapper for which you implement `Receiver`
+
+hir_analysis_invalid_receiver_ty_help_weak_note =
+    `Weak` does not implement `Receiver` because it has methods that may shadow the referent; consider wrapping your `Weak` in a newtype wrapper for which you implement `Receiver`
+
+hir_analysis_invalid_receiver_ty_no_arbitrary_self_types = invalid `self` parameter type: `{$receiver_ty}`
+    .note = type of `self` must be `Self` or a type that dereferences to it
 
 hir_analysis_invalid_union_field =
     field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
     .note = union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 
 hir_analysis_invalid_union_field_sugg =
+    wrap the field type in `ManuallyDrop<...>`
+
+hir_analysis_invalid_unsafe_field =
+    field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be unsafe
+    .note = unsafe fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+
+hir_analysis_invalid_unsafe_field_sugg =
     wrap the field type in `ManuallyDrop<...>`
 
 hir_analysis_late_bound_const_in_apit = `impl Trait` can only mention const parameters from an fn or impl
@@ -309,8 +330,8 @@ hir_analysis_missing_trait_item_suggestion = implement the missing item: `{$snip
 
 hir_analysis_missing_trait_item_unstable = not all trait items implemented, missing: `{$missing_item_name}`
     .note = default implementation of `{$missing_item_name}` is unstable
-    .some_note = use of unstable library feature '{$feature}': {$reason}
-    .none_note = use of unstable library feature '{$feature}'
+    .some_note = use of unstable library feature `{$feature}`: {$reason}
+    .none_note = use of unstable library feature `{$feature}`
 
 hir_analysis_missing_type_params =
     the type {$parameterCount ->
@@ -422,6 +443,9 @@ hir_analysis_recursive_generic_parameter = {$param_def_kind} `{$param_name}` is 
 hir_analysis_redundant_lifetime_args = unnecessary lifetime parameter `{$victim}`
     .note = you can use the `{$candidate}` lifetime directly, in place of `{$victim}`
 
+hir_analysis_register_type_unstable =
+    type `{$ty}` cannot be used with this register class in stable
+
 hir_analysis_requires_note = the `{$trait_name}` impl for `{$ty}` requires that `{$error_predicate}`
 
 hir_analysis_return_type_notation_equality_bound =
@@ -446,6 +470,11 @@ hir_analysis_rpitit_refined = impl trait in impl method signature does not match
     .note = add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
     .feedback_note = we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 
+hir_analysis_rpitit_refined_lifetimes = impl trait in impl method captures fewer lifetimes than in trait
+    .suggestion = modify the `use<..>` bound to capture the same lifetimes that the trait does
+    .note = add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+    .feedback_note = we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+
 hir_analysis_self_in_impl_self =
     `Self` is not valid in the self type of an impl block
     .note = replace `Self` with a different type
@@ -459,21 +488,6 @@ hir_analysis_simd_ffi_highly_experimental = use of SIMD type{$snip} in FFI is hi
 
 hir_analysis_specialization_trait = implementing `rustc_specialization_trait` traits is unstable
     .help = add `#![feature(min_specialization)]` to the crate attributes to enable
-
-hir_analysis_start_function_parameters = `#[start]` function is not allowed to have type parameters
-    .label = `#[start]` function cannot have type parameters
-
-hir_analysis_start_function_where = `#[start]` function is not allowed to have a `where` clause
-    .label = `#[start]` function cannot have a `where` clause
-
-hir_analysis_start_not_async = `#[start]` function is not allowed to be `async`
-    .label = `#[start]` is not allowed to be `async`
-
-hir_analysis_start_not_target_feature = `#[start]` function is not allowed to have `#[target_feature]`
-    .label = `#[start]` function is not allowed to have `#[target_feature]`
-
-hir_analysis_start_not_track_caller = `#[start]` function is not allowed to be `#[track_caller]`
-    .label = `#[start]` function is not allowed to be `#[track_caller]`
 
 hir_analysis_static_specialize = cannot specialize on `'static` lifetime
 
@@ -573,7 +587,7 @@ hir_analysis_value_of_associated_struct_already_specified =
     .label = re-bound here
     .previous_bound_label = `{$item_name}` bound here first
 
-hir_analysis_variadic_function_compatible_convention = C-variadic function must have a compatible calling convention, like {$conventions}
+hir_analysis_variadic_function_compatible_convention = C-variadic function must have a compatible calling convention, like `C`, `cdecl`, `system`, `aapcs`, `win64`, `sysv64` or `efiapi`
     .label = C-variadic function must have a compatible calling convention
 
 hir_analysis_variances_of = {$variances}

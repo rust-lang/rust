@@ -84,10 +84,10 @@ pub use crate::{errors::SsrError, from_comment::ssr_from_comment, matching::Matc
 
 use crate::{errors::bail, matching::MatchFailureReason};
 use hir::{FileRange, Semantics};
+use ide_db::text_edit::TextEdit;
 use ide_db::{base_db::SourceDatabase, EditionedFileId, FileId, FxHashMap, RootDatabase};
 use resolving::ResolvedRule;
 use syntax::{ast, AstNode, SyntaxNode, TextRange};
-use text_edit::TextEdit;
 
 // A structured search replace rule. Create by calling `parse` on a str.
 #[derive(Debug)]
@@ -286,7 +286,7 @@ impl<'db> MatchFinder<'db> {
                     });
                 }
             } else if let Some(macro_call) = ast::MacroCall::cast(node.clone()) {
-                if let Some(expanded) = self.sema.expand(&macro_call) {
+                if let Some(expanded) = self.sema.expand_macro_call(&macro_call) {
                     if let Some(tt) = macro_call.token_tree() {
                         self.output_debug_for_nodes_at_range(
                             &expanded,

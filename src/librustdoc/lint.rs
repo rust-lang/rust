@@ -31,9 +31,9 @@ where
     allowed_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
 
     let lints = || {
-        lint::builtin::HardwiredLints::get_lints()
+        lint::builtin::HardwiredLints::lint_vec()
             .into_iter()
-            .chain(rustc_lint::SoftLints::get_lints())
+            .chain(rustc_lint::SoftLints::lint_vec())
     };
 
     let lint_opts = lints()
@@ -222,7 +222,7 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
 });
 
 pub(crate) fn register_lints(_sess: &Session, lint_store: &mut LintStore) {
-    lint_store.register_lints(&**RUSTDOC_LINTS);
+    lint_store.register_lints(&RUSTDOC_LINTS);
     lint_store.register_group(
         true,
         "rustdoc::all",

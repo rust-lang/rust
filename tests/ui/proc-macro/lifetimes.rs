@@ -1,4 +1,4 @@
-//@ aux-build:lifetimes.rs
+//@ proc-macro: lifetimes.rs
 
 extern crate lifetimes;
 

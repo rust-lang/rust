@@ -1,0 +1,45 @@
+warning: lint `temporary_cstring_as_ptr` has been renamed to `dangling_pointers_from_temporaries`
+  --> $DIR/cstring-as-ptr.rs:2:9
+   |
+LL | #![deny(temporary_cstring_as_ptr)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `dangling_pointers_from_temporaries`
+   |
+   = note: `#[warn(renamed_and_removed_lints)]` on by default
+
+error: a dangling pointer will be produced because the temporary `CString` will be dropped
+  --> $DIR/cstring-as-ptr.rs:15:48
+   |
+LL |     let s = CString::new("some text").unwrap().as_ptr();
+   |             ---------------------------------- ^^^^^^ this pointer will immediately be invalid
+   |             |
+   |             this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: you must make sure that the variable you bind the `CString` to lives at least as long as the pointer returned by the call to `as_ptr`
+   = help: in particular, if this pointer is returned from the current function, binding the `CString` inside the function will not suffice
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+note: the lint level is defined here
+  --> $DIR/cstring-as-ptr.rs:2:9
+   |
+LL | #![deny(temporary_cstring_as_ptr)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a dangling pointer will be produced because the temporary `CString` will be dropped
+  --> $DIR/cstring-as-ptr.rs:9:52
+   |
+LL |         let s = CString::new("some text").unwrap().as_ptr();
+   |                 ---------------------------------- ^^^^^^ this pointer will immediately be invalid
+   |                 |
+   |                 this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+...
+LL |     mymacro!();
+   |     ---------- in this macro invocation
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: you must make sure that the variable you bind the `CString` to lives at least as long as the pointer returned by the call to `as_ptr`
+   = help: in particular, if this pointer is returned from the current function, binding the `CString` inside the function will not suffice
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+   = note: this error originates in the macro `mymacro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

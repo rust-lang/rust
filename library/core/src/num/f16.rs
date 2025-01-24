@@ -16,6 +16,7 @@ use crate::convert::FloatToInt;
 use crate::intrinsics;
 use crate::mem;
 use crate::num::FpCategory;
+use crate::panic::const_assert;
 
 /// Basic mathematical constants.
 #[unstable(feature = "f16", issue = "116909")]
@@ -278,16 +279,6 @@ impl f16 {
         self != self
     }
 
-    // FIXMxE(#50145): `abs` is publicly unavailable in core due to
-    // concerns about portability, so this implementation is for
-    // private use internally.
-    #[inline]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
-    pub(crate) const fn abs_private(self) -> f16 {
-        // SAFETY: This transmutation is fine just like in `to_bits`/`from_bits`.
-        unsafe { mem::transmute::<u16, f16>(mem::transmute::<f16, u16>(self) & !Self::SIGN_MASK) }
-    }
-
     /// Returns `true` if this value is positive infinity or negative infinity, and
     /// `false` otherwise.
     ///
@@ -310,7 +301,6 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn is_infinite(self) -> bool {
         (self == f16::INFINITY) | (self == f16::NEG_INFINITY)
     }
@@ -340,7 +330,7 @@ impl f16 {
     pub const fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
         // the comparison is not true, exactly as desired.
-        self.abs_private() < Self::INFINITY
+        self.abs() < Self::INFINITY
     }
 
     /// Returns `true` if the number is [subnormal].
@@ -368,7 +358,6 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn is_subnormal(self) -> bool {
         matches!(self.classify(), FpCategory::Subnormal)
     }
@@ -398,7 +387,6 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn is_normal(self) -> bool {
         matches!(self.classify(), FpCategory::Normal)
     }
@@ -422,7 +410,6 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn classify(self) -> FpCategory {
         let b = self.to_bits();
         match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
@@ -510,7 +497,6 @@ impl f16 {
     ///
     /// ```rust
     /// #![feature(f16)]
-    /// #![feature(float_next_up_down)]
     /// # // FIXME(f16_f128): ABI issues on MSVC
     /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
@@ -522,13 +508,15 @@ impl f16 {
     /// # }
     /// ```
     ///
+    /// This operation corresponds to IEEE-754 `nextUp`.
+    ///
     /// [`NEG_INFINITY`]: Self::NEG_INFINITY
     /// [`INFINITY`]: Self::INFINITY
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
     #[inline]
+    #[doc(alias = "nextUp")]
     #[unstable(feature = "f16", issue = "116909")]
-    // #[unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_up(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -564,7 +552,6 @@ impl f16 {
     ///
     /// ```rust
     /// #![feature(f16)]
-    /// #![feature(float_next_up_down)]
     /// # // FIXME(f16_f128): ABI issues on MSVC
     /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
@@ -576,13 +563,15 @@ impl f16 {
     /// # }
     /// ```
     ///
+    /// This operation corresponds to IEEE-754 `nextDown`.
+    ///
     /// [`NEG_INFINITY`]: Self::NEG_INFINITY
     /// [`INFINITY`]: Self::INFINITY
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
     #[inline]
+    #[doc(alias = "nextDown")]
     #[unstable(feature = "f16", issue = "116909")]
-    // #[unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_down(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -618,7 +607,6 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn recip(self) -> Self {
         1.0 / self
@@ -639,7 +627,6 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_degrees(self) -> Self {
         // Use a literal for better precision.
@@ -663,7 +650,6 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_radians(self) -> f16 {
         // Use a literal for better precision.
@@ -690,7 +676,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn max(self, other: f16) -> f16 {
         intrinsics::maxnumf16(self, other)
@@ -715,7 +701,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn min(self, other: f16) -> f16 {
         intrinsics::minnumf16(self, other)
@@ -811,7 +797,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// #![feature(num_midpoint)]
     /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
     ///
     /// assert_eq!(1f16.midpoint(4.0), 2.5);
@@ -820,14 +805,14 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    // #[unstable(feature = "num_midpoint", issue = "110840")]
-    pub fn midpoint(self, other: f16) -> f16 {
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    pub const fn midpoint(self, other: f16) -> f16 {
         const LO: f16 = f16::MIN_POSITIVE * 2.;
         const HI: f16 = f16::MAX / 2.;
 
         let (a, b) = (self, other);
-        let abs_a = a.abs_private();
-        let abs_b = b.abs_private();
+        let abs_a = a.abs();
+        let abs_b = b.abs();
 
         if abs_a <= HI && abs_b <= HI {
             // Overflow is impossible
@@ -901,7 +886,6 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_bits(self) -> u16 {
         // SAFETY: `u16` is a plain old datatype so we can always transmute to it.
@@ -949,7 +933,6 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn from_bits(v: u16) -> Self {
         // It turns out the safety issues with sNaN were overblown! Hooray!
         // SAFETY: `u16` is a plain old datatype so we can always transmute from it.
@@ -975,7 +958,6 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_be_bytes(self) -> [u8; 2] {
         self.to_bits().to_be_bytes()
@@ -1000,7 +982,6 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_le_bytes(self) -> [u8; 2] {
         self.to_bits().to_le_bytes()
@@ -1038,7 +1019,6 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_ne_bytes(self) -> [u8; 2] {
         self.to_bits().to_ne_bytes()
@@ -1062,7 +1042,6 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn from_be_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_be_bytes(bytes))
     }
@@ -1085,7 +1064,6 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn from_le_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_le_bytes(bytes))
     }
@@ -1119,7 +1097,6 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn from_ne_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_ne_bytes(bytes))
     }
@@ -1249,20 +1226,16 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn clamp(mut self, min: f16, max: f16) -> f16 {
-        #[inline] // inline to avoid LLVM crash
-        const fn assert_at_const(min: f16, max: f16) {
-            // Note that we cannot format in constant expressions.
-            assert!(min <= max, "min > max, or either was NaN");
-        }
-        #[inline] // inline to avoid codegen regression
-        fn assert_at_rt(min: f16, max: f16) {
-            assert!(min <= max, "min > max, or either was NaN. min = {min:?}, max = {max:?}");
-        }
-        // FIXME(const-hack): We would prefer to have streamlined panics when formatters become const-friendly.
-        intrinsics::const_eval_select((min, max), assert_at_const, assert_at_rt);
+        const_assert!(
+            min <= max,
+            "min > max, or either was NaN",
+            "min > max, or either was NaN. min = {min:?}, max = {max:?}",
+            min: f16,
+            max: f16,
+        );
+
         if self < min {
             self = min;
         }
@@ -1270,5 +1243,100 @@ impl f16 {
             self = max;
         }
         self
+    }
+
+    /// Computes the absolute value of `self`.
+    ///
+    /// This function always returns the precise result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    ///
+    /// let x = 3.5_f16;
+    /// let y = -3.5_f16;
+    ///
+    /// assert_eq!(x.abs(), x);
+    /// assert_eq!(y.abs(), -y);
+    ///
+    /// assert!(f16::NAN.abs().is_nan());
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    pub const fn abs(self) -> Self {
+        // FIXME(f16_f128): replace with `intrinsics::fabsf16` when available
+        Self::from_bits(self.to_bits() & !(1 << 15))
+    }
+
+    /// Returns a number that represents the sign of `self`.
+    ///
+    /// - `1.0` if the number is positive, `+0.0` or `INFINITY`
+    /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
+    /// - NaN if the number is NaN
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    ///
+    /// let f = 3.5_f16;
+    ///
+    /// assert_eq!(f.signum(), 1.0);
+    /// assert_eq!(f16::NEG_INFINITY.signum(), -1.0);
+    ///
+    /// assert!(f16::NAN.signum().is_nan());
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    pub const fn signum(self) -> f16 {
+        if self.is_nan() { Self::NAN } else { 1.0_f16.copysign(self) }
+    }
+
+    /// Returns a number composed of the magnitude of `self` and the sign of
+    /// `sign`.
+    ///
+    /// Equal to `self` if the sign of `self` and `sign` are the same, otherwise equal to `-self`.
+    /// If `self` is a NaN, then a NaN with the same payload as `self` and the sign bit of `sign` is
+    /// returned.
+    ///
+    /// If `sign` is a NaN, then this operation will still carry over its sign into the result. Note
+    /// that IEEE 754 doesn't assign any meaning to the sign bit in case of a NaN, and as Rust
+    /// doesn't guarantee that the bit pattern of NaNs are conserved over arithmetic operations, the
+    /// result of `copysign` with `sign` being a NaN might produce an unexpected or non-portable
+    /// result. See the [specification of NaN bit patterns](primitive@f32#nan-bit-patterns) for more
+    /// info.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    ///
+    /// let f = 3.5_f16;
+    ///
+    /// assert_eq!(f.copysign(0.42), 3.5_f16);
+    /// assert_eq!(f.copysign(-0.42), -3.5_f16);
+    /// assert_eq!((-f).copysign(0.42), 3.5_f16);
+    /// assert_eq!((-f).copysign(-0.42), -3.5_f16);
+    ///
+    /// assert!(f16::NAN.copysign(1.0).is_nan());
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    pub const fn copysign(self, sign: f16) -> f16 {
+        // SAFETY: this is actually a safe intrinsic
+        unsafe { intrinsics::copysignf16(self, sign) }
     }
 }

@@ -7,7 +7,6 @@ use ide_db::{
     base_db::{SourceRootDatabase, VfsPath},
     FxHashSet, RootDatabase, SymbolKind,
 };
-use stdx::IsNoneOr;
 use syntax::{ast, AstNode, SyntaxKind, ToSmolStr};
 
 use crate::{context::CompletionContext, CompletionItem, Completions};
@@ -66,7 +65,7 @@ pub(crate) fn complete_mod(
         .iter()
         .filter(|&submodule_candidate_file| submodule_candidate_file != module_definition_file)
         .filter(|&submodule_candidate_file| {
-            IsNoneOr::is_none_or(module_declaration_file, |it| it != submodule_candidate_file)
+            module_declaration_file.is_none_or(|it| it != submodule_candidate_file)
         })
         .filter_map(|submodule_file| {
             let submodule_path = source_root.path_for_file(&submodule_file)?;
@@ -160,14 +159,9 @@ fn module_chain_to_containing_module_file(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::expect;
 
-    use crate::tests::completion_list;
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture);
-        expect.assert_eq(&actual);
-    }
+    use crate::tests::check;
 
     #[test]
     fn lib_module_completion() {

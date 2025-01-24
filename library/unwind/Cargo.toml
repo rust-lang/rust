@@ -22,7 +22,7 @@ cfg-if = "1.0"
 libc = { version = "0.2.140", features = ['rustc-dep-of-std'], default-features = false }
 
 [target.'cfg(target_os = "xous")'.dependencies]
-unwinding = { version = "0.2.3", features = ['rustc-dep-of-std', 'unwinder', 'fde-custom'], default-features = false }
+unwinding = { version = "0.2.5", features = ['rustc-dep-of-std', 'unwinder', 'fde-custom'], default-features = false }
 
 [features]
 
@@ -37,7 +37,4 @@ system-llvm-libunwind = []
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = [
-    # #[cfg(bootstrap)] rtems
-    'cfg(target_os, values("rtems"))',
-]
+check-cfg = ['cfg(emscripten_wasm_eh)']

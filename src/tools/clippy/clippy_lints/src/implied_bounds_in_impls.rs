@@ -3,8 +3,8 @@ use clippy_utils::source::snippet;
 use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
-    AssocItemConstraint, GenericArg, GenericBound, GenericBounds, PredicateOrigin, TraitBoundModifier, TyKind,
-    WherePredicate,
+    AssocItemConstraint, GenericArg, GenericBound, GenericBounds, PredicateOrigin, TraitBoundModifiers, TyKind,
+    WherePredicateKind,
 };
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
@@ -234,7 +234,7 @@ fn collect_supertrait_bounds<'tcx>(cx: &LateContext<'tcx>, bounds: GenericBounds
         .iter()
         .filter_map(|bound| {
             if let GenericBound::Trait(poly_trait) = bound
-                && let TraitBoundModifier::None = poly_trait.modifiers
+                && let TraitBoundModifiers::NONE = poly_trait.modifiers
                 && let [.., path] = poly_trait.trait_ref.path.segments
                 && poly_trait.bound_generic_params.is_empty()
                 && let Some(trait_def_id) = path.res.opt_def_id()
@@ -243,11 +243,11 @@ fn collect_supertrait_bounds<'tcx>(cx: &LateContext<'tcx>, bounds: GenericBounds
                 && !predicates.is_empty()
             {
                 Some(ImplTraitBound {
+                    span: bound.span(),
                     predicates,
+                    trait_def_id,
                     args: path.args.map_or([].as_slice(), |p| p.args),
                     constraints: path.args.map_or([].as_slice(), |p| p.constraints),
-                    trait_def_id,
-                    span: bound.span(),
                 })
             } else {
                 None
@@ -300,7 +300,7 @@ fn check<'tcx>(cx: &LateContext<'tcx>, bounds: GenericBounds<'tcx>) {
     // simply comparing trait `DefId`s won't be enough. We also need to compare the generics.
     for (index, bound) in bounds.iter().enumerate() {
         if let GenericBound::Trait(poly_trait) = bound
-            && let TraitBoundModifier::None = poly_trait.modifiers
+            && let TraitBoundModifiers::NONE = poly_trait.modifiers
             && let [.., path] = poly_trait.trait_ref.path.segments
             && let implied_args = path.args.map_or([].as_slice(), |a| a.args)
             && let implied_constraints = path.args.map_or([].as_slice(), |a| a.constraints)
@@ -324,7 +324,7 @@ fn check<'tcx>(cx: &LateContext<'tcx>, bounds: GenericBounds<'tcx>) {
 impl<'tcx> LateLintPass<'tcx> for ImpliedBoundsInImpls {
     fn check_generics(&mut self, cx: &LateContext<'tcx>, generics: &rustc_hir::Generics<'tcx>) {
         for predicate in generics.predicates {
-            if let WherePredicate::BoundPredicate(predicate) = predicate
+            if let WherePredicateKind::BoundPredicate(predicate) = predicate.kind
                 // In theory, the origin doesn't really matter,
                 // we *could* also lint on explicit where clauses written out by the user,
                 // not just impl trait desugared ones, but that contradicts with the lint name...

@@ -5,7 +5,6 @@
 // successfully (and safely) invoke external, cdecl
 // functions from outside the crate.
 
-//@ pretty-expanded FIXME #23616
 
 extern crate foreign_lib;
 

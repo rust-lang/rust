@@ -105,7 +105,7 @@ fn res_has_significant_drop(res: Res, cx: &LateContext<'_>, e: &Expr<'_>) -> boo
     {
         cx.typeck_results()
             .expr_ty(e)
-            .has_significant_drop(cx.tcx, cx.param_env)
+            .has_significant_drop(cx.tcx, cx.typing_env())
     } else {
         false
     }
@@ -303,7 +303,8 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 | ExprKind::AddrOf(..)
                 | ExprKind::Repeat(..)
                 | ExprKind::Block(Block { stmts: [], .. }, _)
-                | ExprKind::OffsetOf(..) => (),
+                | ExprKind::OffsetOf(..)
+                | ExprKind::UnsafeBinderCast(..) => (),
 
                 // Assignment might be to a local defined earlier, so don't eagerly evaluate.
                 // Blocks with multiple statements might be expensive, so don't eagerly evaluate.

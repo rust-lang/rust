@@ -8,7 +8,6 @@ LL | |     impl Uto for *mut Test {}
    | |          |            |
    | |          |            `Test` is not local
    | |          `Uto` is not local
-LL | |
 ...  |
 LL | | }];
    | |_- move the `impl` block outside of this constant expression `<unnameable>`
@@ -26,7 +25,6 @@ LL | |         impl Uto for Test {}
    | |              |       |
    | |              |       `Test` is not local
    | |              `Uto` is not local
-LL | |
 ...  |
 LL | |     }
    | |_____- move the `impl` block outside of this constant expression `<unnameable>`
@@ -61,7 +59,6 @@ LL | |         impl Uto for &Test {}
    | |              |        |
    | |              |        `Test` is not local
    | |              `Uto` is not local
-LL | |
 ...  |
 LL | |     }];
    | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies
@@ -78,7 +75,6 @@ LL | |         impl Uto for &(Test,) {}
    | |              |         |
    | |              |         `Test` is not local
    | |              `Uto` is not local
-LL | |
 ...  |
 LL | |     }]) {}
    | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies
@@ -96,7 +92,6 @@ LL | |         impl Uto for &(Test,Test) {}
    | |              |         |    `Test` is not local
    | |              |         `Test` is not local
    | |              `Uto` is not local
-LL | |
 ...  |
 LL | |     }] { todo!() }
    | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies

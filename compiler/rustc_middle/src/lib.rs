@@ -56,7 +56,6 @@
 #![feature(ptr_alignment_type)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
-#![feature(strict_provenance)]
 #![feature(trait_upcasting)]
 #![feature(trusted_len)]
 #![feature(try_blocks)]

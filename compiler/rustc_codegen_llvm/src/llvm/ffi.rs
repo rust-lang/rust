@@ -1,9 +1,12 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
+use std::fmt::Debug;
 use std::marker::PhantomData;
+use std::ptr;
 
 use libc::{c_char, c_int, c_uint, c_ulonglong, c_void, size_t};
+use rustc_macros::TryFromU32;
 use rustc_target::spec::SymbolVisibility;
 
 use super::RustString;
@@ -14,10 +17,36 @@ use super::debuginfo::{
     DebugEmissionKind, DebugNameTableKind,
 };
 
-pub type Bool = c_uint;
+/// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
+/// which has a different ABI from Rust or C++ `bool`.
+pub type Bool = c_int;
 
 pub const True: Bool = 1 as Bool;
 pub const False: Bool = 0 as Bool;
+
+/// Wrapper for a raw enum value returned from LLVM's C APIs.
+///
+/// For C enums returned by LLVM, it's risky to use a Rust enum as the return
+/// type, because it would be UB if a later version of LLVM adds a new enum
+/// value and returns it. Instead, return this raw wrapper, then convert to the
+/// Rust-side enum explicitly.
+#[repr(transparent)]
+pub struct RawEnum<T> {
+    value: u32,
+    /// We don't own or consume a `T`, but we can produce one.
+    _rust_side_type: PhantomData<fn() -> T>,
+}
+
+impl<T: TryFrom<u32>> RawEnum<T> {
+    #[track_caller]
+    pub(crate) fn to_rust(self) -> T
+    where
+        T::Error: Debug,
+    {
+        // If this fails, the Rust-side enum is out of sync with LLVM's enum.
+        T::try_from(self.value).expect("enum value returned by LLVM should be known")
+    }
+}
 
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
@@ -25,25 +54,6 @@ pub const False: Bool = 0 as Bool;
 pub enum LLVMRustResult {
     Success,
     Failure,
-}
-
-// Rust version of the C struct with the same name in rustc_llvm/llvm-wrapper/RustWrapper.cpp.
-#[repr(C)]
-pub struct LLVMRustCOFFShortExport {
-    pub name: *const c_char,
-    pub ordinal_present: bool,
-    /// value of `ordinal` only important when `ordinal_present` is true
-    pub ordinal: u16,
-}
-
-impl LLVMRustCOFFShortExport {
-    pub fn new(name: *const c_char, ordinal: Option<u16>) -> LLVMRustCOFFShortExport {
-        LLVMRustCOFFShortExport {
-            name,
-            ordinal_present: ordinal.is_some(),
-            ordinal: ordinal.unwrap_or(0),
-        }
-    }
 }
 
 /// Translation of LLVM's MachineTypes enum, defined in llvm\include\llvm\BinaryFormat\COFF.h.
@@ -59,7 +69,7 @@ pub enum LLVMMachineType {
     ARM = 0x01c0,
 }
 
-/// LLVM's Module::ModFlagBehavior, defined in llvm/include/llvm/IR/Module.h.
+/// Must match the layout of `LLVMRustModuleFlagMergeBehavior`.
 ///
 /// When merging modules (e.g. during LTO), their metadata flags are combined. Conflicts are
 /// resolved according to the merge behaviors specified here. Flags differing only in merge
@@ -67,9 +77,13 @@ pub enum LLVMMachineType {
 ///
 /// In order for Rust-C LTO to work, we must specify behaviors compatible with Clang. Notably,
 /// 'Error' and 'Warning' cannot be mixed for a given flag.
+///
+/// There is a stable LLVM-C version of this enum (`LLVMModuleFlagBehavior`),
+/// but as of LLVM 19 it does not support all of the enum values in the unstable
+/// C++ API.
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
-pub enum LLVMModFlagBehavior {
+pub enum ModuleFlagMergeBehavior {
     Error = 1,
     Warning = 2,
     Require = 3,
@@ -85,7 +99,7 @@ pub enum LLVMModFlagBehavior {
 /// LLVM CallingConv::ID. Should we wrap this?
 ///
 /// See <https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/IR/CallingConv.h>
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, TryFromU32)]
 #[repr(C)]
 pub enum CallConv {
     CCallConv = 0,
@@ -106,28 +120,39 @@ pub enum CallConv {
     X86_Intr = 83,
     AvrNonBlockingInterrupt = 84,
     AvrInterrupt = 85,
+    AmdgpuKernel = 91,
 }
 
-/// LLVMRustLinkage
-#[derive(Copy, Clone, PartialEq)]
+/// Must match the layout of `LLVMLinkage`.
+#[derive(Copy, Clone, PartialEq, TryFromU32)]
 #[repr(C)]
 pub enum Linkage {
     ExternalLinkage = 0,
     AvailableExternallyLinkage = 1,
     LinkOnceAnyLinkage = 2,
     LinkOnceODRLinkage = 3,
-    WeakAnyLinkage = 4,
-    WeakODRLinkage = 5,
-    AppendingLinkage = 6,
-    InternalLinkage = 7,
-    PrivateLinkage = 8,
-    ExternalWeakLinkage = 9,
-    CommonLinkage = 10,
+    #[deprecated = "marked obsolete by LLVM"]
+    LinkOnceODRAutoHideLinkage = 4,
+    WeakAnyLinkage = 5,
+    WeakODRLinkage = 6,
+    AppendingLinkage = 7,
+    InternalLinkage = 8,
+    PrivateLinkage = 9,
+    #[deprecated = "marked obsolete by LLVM"]
+    DLLImportLinkage = 10,
+    #[deprecated = "marked obsolete by LLVM"]
+    DLLExportLinkage = 11,
+    ExternalWeakLinkage = 12,
+    #[deprecated = "marked obsolete by LLVM"]
+    GhostLinkage = 13,
+    CommonLinkage = 14,
+    LinkerPrivateLinkage = 15,
+    LinkerPrivateWeakLinkage = 16,
 }
 
-// LLVMRustVisibility
+/// Must match the layout of `LLVMVisibility`.
 #[repr(C)]
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, TryFromU32)]
 pub enum Visibility {
     Default = 0,
     Hidden = 1,
@@ -163,7 +188,7 @@ pub enum DLLStorageClass {
     DllExport = 2, // Function to be accessible from DLL.
 }
 
-/// Matches LLVMRustAttribute in LLVMWrapper.h
+/// Must match the layout of `LLVMRustAttributeKind`.
 /// Semantically a subset of the C++ enum llvm::Attribute::AttrKind,
 /// though it is not ABI compatible (since it's a C++ enum)
 #[repr(C)]
@@ -502,7 +527,7 @@ pub struct SanitizerOptions {
     pub sanitize_kernel_address_recover: bool,
 }
 
-/// LLVMRelocMode
+/// LLVMRustRelocModel
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub enum RelocModel {
@@ -512,6 +537,15 @@ pub enum RelocModel {
     ROPI,
     RWPI,
     ROPI_RWPI,
+}
+
+/// LLVMRustFloatABI
+#[derive(Copy, Clone, PartialEq)]
+#[repr(C)]
+pub enum FloatAbi {
+    Default,
+    Soft,
+    Hard,
 }
 
 /// LLVMRustCodeModel
@@ -668,8 +702,9 @@ unsafe extern "C" {
 }
 #[repr(C)]
 pub struct RustArchiveMember<'a>(InvariantOpaque<'a>);
+/// Opaque pointee of `LLVMOperandBundleRef`.
 #[repr(C)]
-pub struct OperandBundleDef<'a>(InvariantOpaque<'a>);
+pub(crate) struct OperandBundle<'a>(InvariantOpaque<'a>);
 #[repr(C)]
 pub struct Linker<'a>(InvariantOpaque<'a>);
 
@@ -706,8 +741,11 @@ pub mod debuginfo {
     pub type DIEnumerator = DIDescriptor;
     pub type DITemplateTypeParameter = DIDescriptor;
 
-    // These values **must** match with LLVMRustDIFlags!!
     bitflags! {
+        /// Must match the layout of `LLVMDIFlags` in the LLVM-C API.
+        ///
+        /// Each value declared here must also be covered by the static
+        /// assertions in `RustWrapper.cpp` used by `fromRust(LLVMDIFlags)`.
         #[repr(transparent)]
         #[derive(Clone, Copy, Default)]
         pub struct DIFlags: u32 {
@@ -717,7 +755,7 @@ pub mod debuginfo {
             const FlagPublic              = 3;
             const FlagFwdDecl             = (1 << 2);
             const FlagAppleBlock          = (1 << 3);
-            const FlagBlockByrefStruct    = (1 << 4);
+            const FlagReservedBit4        = (1 << 4);
             const FlagVirtual             = (1 << 5);
             const FlagArtificial          = (1 << 6);
             const FlagExplicit            = (1 << 7);
@@ -728,10 +766,21 @@ pub mod debuginfo {
             const FlagStaticMember        = (1 << 12);
             const FlagLValueReference     = (1 << 13);
             const FlagRValueReference     = (1 << 14);
-            const FlagExternalTypeRef     = (1 << 15);
+            const FlagReserved            = (1 << 15);
+            const FlagSingleInheritance   = (1 << 16);
+            const FlagMultipleInheritance = (2 << 16);
+            const FlagVirtualInheritance  = (3 << 16);
             const FlagIntroducedVirtual   = (1 << 18);
             const FlagBitField            = (1 << 19);
             const FlagNoReturn            = (1 << 20);
+            // The bit at (1 << 21) is unused, but was `LLVMDIFlagMainSubprogram`.
+            const FlagTypePassByValue     = (1 << 22);
+            const FlagTypePassByReference = (1 << 23);
+            const FlagEnumClass           = (1 << 24);
+            const FlagThunk               = (1 << 25);
+            const FlagNonTrivial          = (1 << 26);
+            const FlagBigEndian           = (1 << 27);
+            const FlagLittleEndian        = (1 << 28);
         }
     }
 
@@ -883,6 +932,7 @@ unsafe extern "C" {
     pub fn LLVMMetadataTypeInContext(C: &Context) -> &Type;
 
     // Operations on all values
+    pub fn LLVMIsUndef(Val: &Value) -> Bool;
     pub fn LLVMTypeOf(Val: &Value) -> &Type;
     pub fn LLVMGetValueName2(Val: &Value, Length: *mut size_t) -> *const c_char;
     pub fn LLVMSetValueName2(Val: &Value, Name: *const c_char, NameLen: size_t);
@@ -945,7 +995,11 @@ unsafe extern "C" {
 
     // Operations on global variables, functions, and aliases (globals)
     pub fn LLVMIsDeclaration(Global: &Value) -> Bool;
+    pub fn LLVMGetLinkage(Global: &Value) -> RawEnum<Linkage>;
+    pub fn LLVMSetLinkage(Global: &Value, RustLinkage: Linkage);
     pub fn LLVMSetSection(Global: &Value, Section: *const c_char);
+    pub fn LLVMGetVisibility(Global: &Value) -> RawEnum<Visibility>;
+    pub fn LLVMSetVisibility(Global: &Value, Viz: Visibility);
     pub fn LLVMGetAlignment(Global: &Value) -> c_uint;
     pub fn LLVMSetAlignment(Global: &Value, Bytes: c_uint);
     pub fn LLVMSetDLLStorageClass(V: &Value, C: DLLStorageClass);
@@ -1017,6 +1071,7 @@ unsafe extern "C" {
 
     // Metadata
     pub fn LLVMSetCurrentDebugLocation2<'a>(Builder: &Builder<'a>, Loc: *const Metadata);
+    pub fn LLVMGetCurrentDebugLocation2<'a>(Builder: &Builder<'a>) -> Option<&'a Metadata>;
 
     // Terminators
     pub fn LLVMBuildRetVoid<'a>(B: &Builder<'a>) -> &'a Value;
@@ -1494,6 +1549,50 @@ unsafe extern "C" {
 
     pub fn LLVMGetOrInsertComdat(M: &Module, Name: *const c_char) -> &Comdat;
     pub fn LLVMSetComdat(V: &Value, C: &Comdat);
+
+    pub(crate) fn LLVMCreateOperandBundle(
+        Tag: *const c_char,
+        TagLen: size_t,
+        Args: *const &'_ Value,
+        NumArgs: c_uint,
+    ) -> *mut OperandBundle<'_>;
+    pub(crate) fn LLVMDisposeOperandBundle(Bundle: ptr::NonNull<OperandBundle<'_>>);
+
+    pub(crate) fn LLVMBuildCallWithOperandBundles<'a>(
+        B: &Builder<'a>,
+        Ty: &'a Type,
+        Fn: &'a Value,
+        Args: *const &'a Value,
+        NumArgs: c_uint,
+        Bundles: *const &OperandBundle<'a>,
+        NumBundles: c_uint,
+        Name: *const c_char,
+    ) -> &'a Value;
+    pub(crate) fn LLVMBuildInvokeWithOperandBundles<'a>(
+        B: &Builder<'a>,
+        Ty: &'a Type,
+        Fn: &'a Value,
+        Args: *const &'a Value,
+        NumArgs: c_uint,
+        Then: &'a BasicBlock,
+        Catch: &'a BasicBlock,
+        Bundles: *const &OperandBundle<'a>,
+        NumBundles: c_uint,
+        Name: *const c_char,
+    ) -> &'a Value;
+    pub(crate) fn LLVMBuildCallBr<'a>(
+        B: &Builder<'a>,
+        Ty: &'a Type,
+        Fn: &'a Value,
+        DefaultDest: &'a BasicBlock,
+        IndirectDests: *const &'a BasicBlock,
+        NumIndirectDests: c_uint,
+        Args: *const &'a Value,
+        NumArgs: c_uint,
+        Bundles: *const &OperandBundle<'a>,
+        NumBundles: c_uint,
+        Name: *const c_char,
+    ) -> &'a Value;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -1521,10 +1620,6 @@ unsafe extern "C" {
     ) -> bool;
 
     // Operations on global variables, functions, and aliases (globals)
-    pub fn LLVMRustGetLinkage(Global: &Value) -> Linkage;
-    pub fn LLVMRustSetLinkage(Global: &Value, RustLinkage: Linkage);
-    pub fn LLVMRustGetVisibility(Global: &Value) -> Visibility;
-    pub fn LLVMRustSetVisibility(Global: &Value, Viz: Visibility);
     pub fn LLVMRustSetDSOLocal(Global: &Value, is_dso_local: bool);
 
     // Operations on global variables
@@ -1583,51 +1678,11 @@ unsafe extern "C" {
         AttrsLen: size_t,
     );
 
-    pub fn LLVMRustBuildInvoke<'a>(
-        B: &Builder<'a>,
-        Ty: &'a Type,
-        Fn: &'a Value,
-        Args: *const &'a Value,
-        NumArgs: c_uint,
-        Then: &'a BasicBlock,
-        Catch: &'a BasicBlock,
-        OpBundles: *const &OperandBundleDef<'a>,
-        NumOpBundles: c_uint,
-        Name: *const c_char,
-    ) -> &'a Value;
-
-    pub fn LLVMRustBuildCallBr<'a>(
-        B: &Builder<'a>,
-        Ty: &'a Type,
-        Fn: &'a Value,
-        DefaultDest: &'a BasicBlock,
-        IndirectDests: *const &'a BasicBlock,
-        NumIndirectDests: c_uint,
-        Args: *const &'a Value,
-        NumArgs: c_uint,
-        OpBundles: *const &OperandBundleDef<'a>,
-        NumOpBundles: c_uint,
-        Name: *const c_char,
-    ) -> &'a Value;
-
     pub fn LLVMRustSetFastMath(Instr: &Value);
     pub fn LLVMRustSetAlgebraicMath(Instr: &Value);
     pub fn LLVMRustSetAllowReassoc(Instr: &Value);
 
     // Miscellaneous instructions
-    pub fn LLVMRustGetInstrProfIncrementIntrinsic(M: &Module) -> &Value;
-    pub fn LLVMRustGetInstrProfMCDCParametersIntrinsic(M: &Module) -> &Value;
-    pub fn LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(M: &Module) -> &Value;
-
-    pub fn LLVMRustBuildCall<'a>(
-        B: &Builder<'a>,
-        Ty: &'a Type,
-        Fn: &'a Value,
-        Args: *const &'a Value,
-        NumArgs: c_uint,
-        OpBundles: *const &OperandBundleDef<'a>,
-        NumOpBundles: c_uint,
-    ) -> &'a Value;
     pub fn LLVMRustBuildMemCpy<'a>(
         B: &Builder<'a>,
         Dst: &'a Value,
@@ -1719,11 +1774,11 @@ unsafe extern "C" {
     /// Returns a string describing the last error caused by an LLVMRust* call.
     pub fn LLVMRustGetLastError() -> *const c_char;
 
-    /// Print the pass timings since static dtors aren't picking them up.
-    pub fn LLVMRustPrintPassTimings(size: *const size_t) -> *const c_char;
+    /// Prints the timing information collected by `-Ztime-llvm-passes`.
+    pub(crate) fn LLVMRustPrintPassTimings(OutStr: &RustString);
 
-    /// Print the statistics since static dtors aren't picking them up.
-    pub fn LLVMRustPrintStatistics(size: *const size_t) -> *const c_char;
+    /// Prints the statistics collected by `-Zprint-codegen-stats`.
+    pub(crate) fn LLVMRustPrintStatistics(OutStr: &RustString);
 
     /// Prepares inline assembly.
     pub fn LLVMRustInlineAsm(
@@ -1743,8 +1798,7 @@ unsafe extern "C" {
         ConstraintsLen: size_t,
     ) -> bool;
 
-    #[allow(improper_ctypes)]
-    pub fn LLVMRustCoverageWriteFilenamesSectionToBuffer(
+    pub(crate) fn LLVMRustCoverageWriteFilenamesToBuffer(
         Filenames: *const *const c_char,
         FilenamesLen: size_t,
         Lengths: *const size_t,
@@ -1752,34 +1806,36 @@ unsafe extern "C" {
         BufferOut: &RustString,
     );
 
-    #[allow(improper_ctypes)]
-    pub fn LLVMRustCoverageWriteMappingToBuffer(
+    pub(crate) fn LLVMRustCoverageWriteFunctionMappingsToBuffer(
         VirtualFileMappingIDs: *const c_uint,
-        NumVirtualFileMappingIDs: c_uint,
+        NumVirtualFileMappingIDs: size_t,
         Expressions: *const crate::coverageinfo::ffi::CounterExpression,
-        NumExpressions: c_uint,
-        MappingRegions: *const crate::coverageinfo::ffi::CounterMappingRegion,
-        NumMappingRegions: c_uint,
+        NumExpressions: size_t,
+        CodeRegions: *const crate::coverageinfo::ffi::CodeRegion,
+        NumCodeRegions: size_t,
+        BranchRegions: *const crate::coverageinfo::ffi::BranchRegion,
+        NumBranchRegions: size_t,
+        MCDCBranchRegions: *const crate::coverageinfo::ffi::MCDCBranchRegion,
+        NumMCDCBranchRegions: size_t,
+        MCDCDecisionRegions: *const crate::coverageinfo::ffi::MCDCDecisionRegion,
+        NumMCDCDecisionRegions: size_t,
         BufferOut: &RustString,
     );
 
-    pub fn LLVMRustCoverageCreatePGOFuncNameVar(
+    pub(crate) fn LLVMRustCoverageCreatePGOFuncNameVar(
         F: &Value,
         FuncName: *const c_char,
         FuncNameLen: size_t,
     ) -> &Value;
-    pub fn LLVMRustCoverageHashByteArray(Bytes: *const c_char, NumBytes: size_t) -> u64;
+    pub(crate) fn LLVMRustCoverageHashBytes(Bytes: *const c_char, NumBytes: size_t) -> u64;
 
-    #[allow(improper_ctypes)]
-    pub fn LLVMRustCoverageWriteMapSectionNameToString(M: &Module, Str: &RustString);
+    pub(crate) fn LLVMRustCoverageWriteCovmapSectionNameToString(M: &Module, OutStr: &RustString);
 
-    #[allow(improper_ctypes)]
-    pub fn LLVMRustCoverageWriteFuncSectionNameToString(M: &Module, Str: &RustString);
+    pub(crate) fn LLVMRustCoverageWriteCovfunSectionNameToString(M: &Module, OutStr: &RustString);
 
-    #[allow(improper_ctypes)]
-    pub fn LLVMRustCoverageWriteMappingVarNameToString(Str: &RustString);
+    pub(crate) fn LLVMRustCoverageWriteCovmapVarNameToString(OutStr: &RustString);
 
-    pub fn LLVMRustCoverageMappingVersion() -> u32;
+    pub(crate) fn LLVMRustCoverageMappingVersion() -> u32;
     pub fn LLVMRustDebugMetadataVersion() -> u32;
     pub fn LLVMRustVersionMajor() -> u32;
     pub fn LLVMRustVersionMinor() -> u32;
@@ -1791,20 +1847,20 @@ unsafe extern "C" {
     /// "compatible" means depends on the merge behaviors involved.
     pub fn LLVMRustAddModuleFlagU32(
         M: &Module,
-        merge_behavior: LLVMModFlagBehavior,
-        name: *const c_char,
-        value: u32,
+        MergeBehavior: ModuleFlagMergeBehavior,
+        Name: *const c_char,
+        NameLen: size_t,
+        Value: u32,
     );
 
     pub fn LLVMRustAddModuleFlagString(
         M: &Module,
-        merge_behavior: LLVMModFlagBehavior,
-        name: *const c_char,
-        value: *const c_char,
-        value_len: size_t,
+        MergeBehavior: ModuleFlagMergeBehavior,
+        Name: *const c_char,
+        NameLen: size_t,
+        Value: *const c_char,
+        ValueLen: size_t,
     );
-
-    pub fn LLVMRustHasModuleFlag(M: &Module, name: *const c_char, len: size_t) -> bool;
 
     pub fn LLVMRustDIBuilderCreate(M: &Module) -> &mut DIBuilder<'_>;
 
@@ -1968,6 +2024,12 @@ unsafe extern "C" {
         AlignInBits: u32,
     ) -> &'a DIDerivedType;
 
+    pub fn LLVMRustDIBuilderCreateQualifiedType<'a>(
+        Builder: &DIBuilder<'a>,
+        Tag: c_uint,
+        Type: &'a DIType,
+    ) -> &'a DIDerivedType;
+
     pub fn LLVMRustDIBuilderCreateLexicalBlock<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
@@ -2127,23 +2189,17 @@ unsafe extern "C" {
         Scope: &'a DIScope,
         InlinedAt: Option<&'a DILocation>,
     ) -> &'a DILocation;
-    pub fn LLVMRustDIBuilderCreateOpDeref() -> u64;
-    pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> u64;
-    pub fn LLVMRustDIBuilderCreateOpLLVMFragment() -> u64;
+    pub fn LLVMRustDILocationCloneWithBaseDiscriminator<'a>(
+        Location: &'a DILocation,
+        BD: c_uint,
+    ) -> Option<&'a DILocation>;
 
-    #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);
-    #[allow(improper_ctypes)]
     pub fn LLVMRustWriteValueToString(value_ref: &Value, s: &RustString);
 
     pub fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
 
-    pub fn LLVMRustPrintTargetCPUs(
-        T: &TargetMachine,
-        cpu: *const c_char,
-        print: unsafe extern "C" fn(out: *mut c_void, string: *const c_char, len: usize),
-        out: *mut c_void,
-    );
+    pub(crate) fn LLVMRustPrintTargetCPUs(TM: &TargetMachine, OutStr: &RustString);
     pub fn LLVMRustGetTargetFeaturesCount(T: &TargetMachine) -> size_t;
     pub fn LLVMRustGetTargetFeature(
         T: &TargetMachine,
@@ -2152,7 +2208,7 @@ unsafe extern "C" {
         Desc: &mut *const c_char,
     );
 
-    pub fn LLVMRustGetHostCPUName(len: *mut usize) -> *const c_char;
+    pub fn LLVMRustGetHostCPUName(LenOut: &mut size_t) -> *const u8;
 
     // This function makes copies of pointed to data, so the data's lifetime may end after this
     // function returns.
@@ -2164,7 +2220,7 @@ unsafe extern "C" {
         Model: CodeModel,
         Reloc: RelocModel,
         Level: CodeGenOptLevel,
-        UseSoftFP: bool,
+        FloatABIType: FloatAbi,
         FunctionSections: bool,
         DataSections: bool,
         UniqueSectionNames: bool,
@@ -2195,6 +2251,7 @@ unsafe extern "C" {
         Output: *const c_char,
         DwoOutput: *const c_char,
         FileType: FileType,
+        VerifyIR: bool,
     ) -> LLVMRustResult;
     pub fn LLVMRustOptimize<'a>(
         M: &'a Module,
@@ -2217,7 +2274,6 @@ unsafe extern "C" {
         PGOUsePath: *const c_char,
         InstrumentCoverage: bool,
         InstrProfileOutput: *const c_char,
-        InstrumentGCOV: bool,
         PGOSampleUsePath: *const c_char,
         DebugInfoForProfiling: bool,
         llvm_selfprofiler: *mut c_void,
@@ -2248,10 +2304,8 @@ unsafe extern "C" {
     pub fn LLVMRustArchiveIteratorFree<'a>(AIR: &'a mut ArchiveIterator<'a>);
     pub fn LLVMRustDestroyArchive(AR: &'static mut Archive);
 
-    #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);
 
-    #[allow(improper_ctypes)]
     pub fn LLVMRustUnpackOptimizationDiagnostic<'a>(
         DI: &'a DiagnosticInfo,
         pass_name_out: &RustString,
@@ -2269,16 +2323,14 @@ unsafe extern "C" {
         message_out: &mut Option<&'a Twine>,
     );
 
-    #[allow(improper_ctypes)]
     pub fn LLVMRustWriteDiagnosticInfoToString(DI: &DiagnosticInfo, s: &RustString);
     pub fn LLVMRustGetDiagInfoKind(DI: &DiagnosticInfo) -> DiagnosticKind;
 
     pub fn LLVMRustGetSMDiagnostic<'a>(
         DI: &'a DiagnosticInfo,
-        cookie_out: &mut c_uint,
+        cookie_out: &mut u64,
     ) -> &'a SMDiagnostic;
 
-    #[allow(improper_ctypes)]
     pub fn LLVMRustUnpackSMDiagnostic(
         d: &SMDiagnostic,
         message_out: &RustString,
@@ -2304,23 +2356,7 @@ unsafe extern "C" {
     ) -> &'a mut RustArchiveMember<'a>;
     pub fn LLVMRustArchiveMemberFree<'a>(Member: &'a mut RustArchiveMember<'a>);
 
-    pub fn LLVMRustWriteImportLibrary(
-        ImportName: *const c_char,
-        Path: *const c_char,
-        Exports: *const LLVMRustCOFFShortExport,
-        NumExports: usize,
-        Machine: u16,
-        MinGW: bool,
-    ) -> LLVMRustResult;
-
     pub fn LLVMRustSetDataLayoutFromTargetMachine<'a>(M: &'a Module, TM: &'a TargetMachine);
-
-    pub fn LLVMRustBuildOperandBundleDef(
-        Name: *const c_char,
-        Inputs: *const &'_ Value,
-        NumInputs: c_uint,
-    ) -> &mut OperandBundleDef<'_>;
-    pub fn LLVMRustFreeOperandBundleDef<'a>(Bundle: &'a mut OperandBundleDef<'a>);
 
     pub fn LLVMRustPositionBuilderAtStart<'a>(B: &Builder<'a>, BB: &'a BasicBlock);
 
@@ -2332,7 +2368,6 @@ unsafe extern "C" {
     pub fn LLVMRustModuleBufferLen(p: &ModuleBuffer) -> usize;
     pub fn LLVMRustModuleBufferFree(p: &'static mut ModuleBuffer);
     pub fn LLVMRustModuleCost(M: &Module) -> u64;
-    #[allow(improper_ctypes)]
     pub fn LLVMRustModuleInstructionStats(M: &Module, Str: &RustString);
 
     pub fn LLVMRustThinLTOBufferCreate(
@@ -2347,15 +2382,15 @@ unsafe extern "C" {
     pub fn LLVMRustThinLTOBufferThinLinkDataLen(M: &ThinLTOBuffer) -> size_t;
     pub fn LLVMRustCreateThinLTOData(
         Modules: *const ThinLTOModule,
-        NumModules: c_uint,
+        NumModules: size_t,
         PreservedSymbols: *const *const c_char,
-        PreservedSymbolsLen: c_uint,
+        PreservedSymbolsLen: size_t,
     ) -> Option<&'static mut ThinLTOData>;
     pub fn LLVMRustPrepareThinLTORename(
         Data: &ThinLTOData,
         Module: &Module,
         Target: &TargetMachine,
-    ) -> bool;
+    );
     pub fn LLVMRustPrepareThinLTOResolveWeak(Data: &ThinLTOData, Module: &Module) -> bool;
     pub fn LLVMRustPrepareThinLTOInternalize(Data: &ThinLTOData, Module: &Module) -> bool;
     pub fn LLVMRustPrepareThinLTOImport(
@@ -2374,6 +2409,7 @@ unsafe extern "C" {
         data: *const u8,
         len: usize,
         name: *const u8,
+        name_len: usize,
         out_len: &mut usize,
     ) -> *const u8;
 
@@ -2384,7 +2420,6 @@ unsafe extern "C" {
         bytecode_len: usize,
     ) -> bool;
     pub fn LLVMRustLinkerFree<'a>(linker: &'a mut Linker<'a>);
-    #[allow(improper_ctypes)]
     pub fn LLVMRustComputeLTOCacheKey(
         key_out: &RustString,
         mod_id: *const c_char,
@@ -2407,7 +2442,6 @@ unsafe extern "C" {
         pgo_available: bool,
     );
 
-    #[allow(improper_ctypes)]
     pub fn LLVMRustGetMangledName(V: &Value, out: &RustString);
 
     pub fn LLVMRustGetElementTypeArgIndex(CallSite: &Value) -> i32;
@@ -2429,4 +2463,7 @@ unsafe extern "C" {
     pub fn LLVMRustIs64BitSymbolicFile(buf_ptr: *const u8, buf_len: usize) -> bool;
 
     pub fn LLVMRustIsECObject(buf_ptr: *const u8, buf_len: usize) -> bool;
+
+    pub fn LLVMRustSetNoSanitizeAddress(Global: &Value);
+    pub fn LLVMRustSetNoSanitizeHWAddress(Global: &Value);
 }

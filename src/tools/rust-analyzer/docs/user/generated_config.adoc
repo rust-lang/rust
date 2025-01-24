@@ -94,10 +94,10 @@ avoid checking unnecessary things.
 --
 Default:
 ----
-{
-  "debug_assertions": null,
-  "miri": null
-}
+[
+  "debug_assertions",
+  "miri"
+]
 ----
 List of cfg options to enable with the given values.
 
@@ -146,7 +146,7 @@ This option does not take effect until rust-analyzer is restarted.
 [[rust-analyzer.cargo.target]]rust-analyzer.cargo.target (default: `null`)::
 +
 --
-Compilation target override (target triple).
+Compilation target override (target tuple).
 --
 [[rust-analyzer.cargo.targetDir]]rust-analyzer.cargo.targetDir (default: `null`)::
 +
@@ -264,7 +264,8 @@ Aliased as `"checkOnSave.targets"`.
 +
 --
 Whether `--workspace` should be passed to `cargo check`.
-If false, `-p <package>` will be passed instead.
+If false, `-p <package>` will be passed instead if applicable. In case it is not, no
+check will be performed.
 --
 [[rust-analyzer.completion.addSemicolonToUnit]]rust-analyzer.completion.addSemicolonToUnit (default: `true`)::
 +
@@ -279,6 +280,35 @@ In `match` arms it completes a comma instead.
 Toggles the additional completions that automatically add imports when completed.
 Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
 --
+[[rust-analyzer.completion.autoimport.exclude]]rust-analyzer.completion.autoimport.exclude::
++
+--
+Default:
+----
+[
+  {
+    "path": "core::borrow::Borrow",
+    "type": "methods"
+  },
+  {
+    "path": "core::borrow::BorrowMut",
+    "type": "methods"
+  }
+]
+----
+A list of full paths to items to exclude from auto-importing completions.
+
+Traits in this list won't have their methods suggested in completions unless the trait
+is in scope.
+
+You can either specify a string path which defaults to type "always" or use the more verbose
+form `{ "path": "path::to::item", type: "always" }`.
+
+For traits the type "methods" can be used to only exclude the methods but not the trait itself.
+
+This setting also inherits `#rust-analyzer.completion.excludeTraits#`.
+
+--
 [[rust-analyzer.completion.autoself.enable]]rust-analyzer.completion.autoself.enable (default: `true`)::
 +
 --
@@ -289,6 +319,15 @@ with `self` prefixed to them when inside a method.
 +
 --
 Whether to add parenthesis and argument snippets when completing function.
+--
+[[rust-analyzer.completion.excludeTraits]]rust-analyzer.completion.excludeTraits (default: `[]`)::
++
+--
+A list of full paths to traits whose methods to exclude from completion.
+
+Methods from these traits won't be completed, even if the trait is in scope. However, they will still be suggested on expressions whose type is `dyn Trait`, `impl Trait` or `T where T: Trait`.
+
+Note that the trait themselves can still be completed.
 --
 [[rust-analyzer.completion.fullFunctionSignatures.enable]]rust-analyzer.completion.fullFunctionSignatures.enable (default: `false`)::
 +
@@ -321,18 +360,10 @@ Enables completions of private items and fields that are defined in the current 
 Default:
 ----
 {
-  "Arc::new": {
-    "postfix": "arc",
-    "body": "Arc::new(${receiver})",
-    "requires": "std::sync::Arc",
-    "description": "Put the expression into an `Arc`",
-    "scope": "expr"
-  },
-  "Rc::new": {
-    "postfix": "rc",
-    "body": "Rc::new(${receiver})",
-    "requires": "std::rc::Rc",
-    "description": "Put the expression into an `Rc`",
+  "Ok": {
+    "postfix": "ok",
+    "body": "Ok(${receiver})",
+    "description": "Wrap the expression in a `Result::Ok`",
     "scope": "expr"
   },
   "Box::pin": {
@@ -342,10 +373,11 @@ Default:
     "description": "Put the expression into a pinned `Box`",
     "scope": "expr"
   },
-  "Err": {
-    "postfix": "err",
-    "body": "Err(${receiver})",
-    "description": "Wrap the expression in a `Result::Err`",
+  "Arc::new": {
+    "postfix": "arc",
+    "body": "Arc::new(${receiver})",
+    "requires": "std::sync::Arc",
+    "description": "Put the expression into an `Arc`",
     "scope": "expr"
   },
   "Some": {
@@ -354,10 +386,17 @@ Default:
     "description": "Wrap the expression in an `Option::Some`",
     "scope": "expr"
   },
-  "Ok": {
-    "postfix": "ok",
-    "body": "Ok(${receiver})",
-    "description": "Wrap the expression in a `Result::Ok`",
+  "Err": {
+    "postfix": "err",
+    "body": "Err(${receiver})",
+    "description": "Wrap the expression in a `Result::Err`",
+    "scope": "expr"
+  },
+  "Rc::new": {
+    "postfix": "rc",
+    "body": "Rc::new(${receiver})",
+    "requires": "std::rc::Rc",
+    "description": "Put the expression into an `Rc`",
     "scope": "expr"
   }
 }
@@ -490,6 +529,12 @@ Whether to show `References` action. Only applies when
 Whether to show `Run` action. Only applies when
 `#rust-analyzer.hover.actions.enable#` is set.
 --
+[[rust-analyzer.hover.actions.updateTest.enable]]rust-analyzer.hover.actions.updateTest.enable (default: `true`)::
++
+--
+Whether to show `Update Test` action. Only applies when
+`#rust-analyzer.hover.actions.enable#` and `#rust-analyzer.hover.actions.run.enable#` are set.
+--
 [[rust-analyzer.hover.documentation.enable]]rust-analyzer.hover.documentation.enable (default: `true`)::
 +
 --
@@ -505,6 +550,15 @@ Whether to show keyword hover popups. Only applies when
 +
 --
 Use markdown syntax for links on hover.
+--
+[[rust-analyzer.hover.maxSubstitutionLength]]rust-analyzer.hover.maxSubstitutionLength (default: `20`)::
++
+--
+Whether to show what types are used as generic arguments in calls etc. on hover, and what is their max length to show such types, beyond it they will be shown with ellipsis.
+
+This can take three values: `null` means "unlimited", the string `"hide"` means to not show generic substitutions at all, and a number means to limit them to X characters.
+
+The default is 20 characters.
 --
 [[rust-analyzer.hover.memoryLayout.alignment]]rust-analyzer.hover.memoryLayout.alignment (default: `"hexadecimal"`)::
 +
@@ -662,6 +716,11 @@ Whether to show generic type parameter name inlay hints.
 --
 Whether to show implicit drop hints.
 --
+[[rust-analyzer.inlayHints.implicitSizedBoundHints.enable]]rust-analyzer.inlayHints.implicitSizedBoundHints.enable (default: `false`)::
++
+--
+Whether to show inlay hints for the implied type parameter `Sized` bound.
+--
 [[rust-analyzer.inlayHints.lifetimeElisionHints.enable]]rust-analyzer.inlayHints.lifetimeElisionHints.enable (default: `"never"`)::
 +
 --
@@ -791,6 +850,12 @@ Only applies when `#rust-analyzer.lens.enable#` is set.
 --
 Whether to show `Run` lens. Only applies when
 `#rust-analyzer.lens.enable#` is set.
+--
+[[rust-analyzer.lens.updateTest.enable]]rust-analyzer.lens.updateTest.enable (default: `true`)::
++
+--
+Whether to show `Update Test` lens. Only applies when
+`#rust-analyzer.lens.enable#` and `#rust-analyzer.lens.run.enable#` are set.
 --
 [[rust-analyzer.linkedProjects]]rust-analyzer.linkedProjects (default: `[]`)::
 +
@@ -986,10 +1051,25 @@ Show full signature of the callable. Only shows parameters if disabled.
 --
 Show documentation.
 --
-[[rust-analyzer.typing.autoClosingAngleBrackets.enable]]rust-analyzer.typing.autoClosingAngleBrackets.enable (default: `false`)::
+[[rust-analyzer.typing.triggerChars]]rust-analyzer.typing.triggerChars (default: `"=."`)::
 +
 --
-Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.
+Specify the characters allowed to invoke special on typing triggers.
+- typing `=` after `let` tries to smartly add `;` if `=` is followed by an existing expression
+- typing `=` between two expressions adds `;` when in statement position
+- typing `=` to turn an assignment into an equality comparison removes `;` when in expression position
+- typing `.` in a chain method call auto-indents
+- typing `{` or `(` in front of an expression inserts a closing `}` or `)` after the expression
+- typing `{` in a use item adds a closing `}` in the right place
+- typing `>` to complete a return type `->` will insert a whitespace after it
+- typing `<` in a path or type position inserts a closing `>` after the path or type.
+--
+[[rust-analyzer.vfs.extraIncludes]]rust-analyzer.vfs.extraIncludes (default: `[]`)::
++
+--
+Additional paths to include in the VFS. Generally for code that is
+generated or otherwise managed by a build system outside of Cargo,
+though Cargo might be the eventual consumer.
 --
 [[rust-analyzer.workspace.discoverConfig]]rust-analyzer.workspace.discoverConfig (default: `null`)::
 +

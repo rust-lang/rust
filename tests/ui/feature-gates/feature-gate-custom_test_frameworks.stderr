@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'custom_test_frameworks': custom test frameworks are an unstable feature
+error[E0658]: use of unstable library feature `custom_test_frameworks`: custom test frameworks are an unstable feature
   --> $DIR/feature-gate-custom_test_frameworks.rs:3:3
    |
 LL | #[test_case]

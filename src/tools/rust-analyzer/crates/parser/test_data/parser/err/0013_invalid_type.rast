@@ -46,7 +46,7 @@ SOURCE_FILE
   ERROR
     AT "@"
   WHITESPACE " "
-  MACRO_CALL
+  ERROR
     PATH
       PATH_SEGMENT
         NAME_REF
@@ -72,9 +72,7 @@ error 67: expected R_ANGLE
 error 67: expected R_PAREN
 error 67: expected SEMICOLON
 error 67: expected an item
-error 72: expected BANG
-error 72: expected `{`, `[`, `(`
-error 72: expected SEMICOLON
+error 72: expected an item
 error 72: expected an item
 error 73: expected an item
 error 79: expected an item

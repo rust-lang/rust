@@ -25,7 +25,7 @@ pub(crate) fn write_vlqhex_to_string(n: i32, string: &mut String) {
             break;
         }
         shift = shift.wrapping_sub(4);
-        mask = mask >> 4;
+        mask >>= 4;
     }
     // now write the rest
     while shift < 32 {
@@ -33,7 +33,7 @@ pub(crate) fn write_vlqhex_to_string(n: i32, string: &mut String) {
         let hex = char::try_from(if shift == 0 { '`' } else { '@' } as u32 + hexit).unwrap();
         string.push(hex);
         shift = shift.wrapping_sub(4);
-        mask = mask >> 4;
+        mask >>= 4;
     }
 }
 
@@ -64,7 +64,7 @@ impl Container {
             Container::Array(array) => {
                 array.push(value);
                 if array.len() >= 4096 {
-                    let array = std::mem::replace(array, Vec::new());
+                    let array = std::mem::take(array);
                     *self = Container::Bits(Box::new([0; 1024]));
                     for value in array {
                         self.push(value);
@@ -123,7 +123,7 @@ impl Container {
                 if 2 + 4 * r >= 2 * array.len() + 2 {
                     return false;
                 }
-                let array = std::mem::replace(array, Vec::new());
+                let array = std::mem::take(array);
                 *self = Container::Run(Vec::new());
                 for value in array {
                     self.push(value);
@@ -145,7 +145,7 @@ pub(crate) fn write_bitmap_to_bytes(
     let mut keys = Vec::<u16>::new();
     let mut containers = Vec::<Container>::new();
     let mut key: u16;
-    let mut domain_iter = domain.into_iter().copied().peekable();
+    let mut domain_iter = domain.iter().copied().peekable();
     let mut has_run = false;
     while let Some(entry) = domain_iter.next() {
         key = (entry >> 16).try_into().expect("shifted off the top 16 bits, so it should fit");
@@ -236,7 +236,7 @@ pub(crate) fn write_bitmap_to_bytes(
 pub(crate) fn bitmap_to_string(domain: &[u32]) -> String {
     let mut buf = Vec::new();
     let mut strbuf = String::new();
-    write_bitmap_to_bytes(&domain, &mut buf).unwrap();
+    write_bitmap_to_bytes(domain, &mut buf).unwrap();
     BASE64_STANDARD.encode_string(&buf, &mut strbuf);
     strbuf
 }

@@ -1,5 +1,5 @@
 //@ revisions: e2024 none
-//@[e2024] compile-flags: --edition 2024 -Zunstable-options
+//@[e2024] edition: 2024
 
 fn test_gen() {
     gen {};

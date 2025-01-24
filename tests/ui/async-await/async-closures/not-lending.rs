@@ -1,8 +1,6 @@
 //@ aux-build:block-on.rs
 //@ edition:2021
 
-#![feature(async_closure)]
-
 extern crate block_on;
 
 // Make sure that we can't make an async closure that evaluates to a self-borrow.

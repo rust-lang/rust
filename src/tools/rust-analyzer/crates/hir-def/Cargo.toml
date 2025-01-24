@@ -29,6 +29,7 @@ smallvec.workspace = true
 hashbrown.workspace = true
 triomphe.workspace = true
 rustc_apfloat = "0.2.0"
+text-size.workspace = true
 
 ra-ap-rustc_parse_format.workspace = true
 ra-ap-rustc_abi.workspace = true

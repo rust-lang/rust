@@ -9,7 +9,7 @@
 #[repr(transparent)]
 pub struct Transparent32(u32);
 
-// CHECK: i32 @make_transparent(i32 noundef %x)
+// CHECK: i32 @make_transparent(i32{{.*}} %x)
 #[no_mangle]
 pub fn make_transparent(x: u32) -> Transparent32 {
     // CHECK-NOT: alloca
@@ -18,7 +18,7 @@ pub fn make_transparent(x: u32) -> Transparent32 {
     a
 }
 
-// CHECK: i32 @make_closure(i32 noundef %x)
+// CHECK: i32 @make_closure(i32{{.*}} %x)
 #[no_mangle]
 pub fn make_closure(x: i32) -> impl Fn(i32) -> i32 {
     // CHECK-NOT: alloca
@@ -40,7 +40,7 @@ pub fn make_transparent_pair(x: (u16, u16)) -> TransparentPair {
     a
 }
 
-// CHECK-LABEL: { i32, i32 } @make_2_tuple(i32 noundef %x)
+// CHECK-LABEL: { i32, i32 } @make_2_tuple(i32{{.*}} %x)
 #[no_mangle]
 pub fn make_2_tuple(x: u32) -> (u32, u32) {
     // CHECK-NOT: alloca
@@ -59,7 +59,7 @@ pub fn make_cell_of_bool(b: bool) -> std::cell::Cell<bool> {
     std::cell::Cell::new(b)
 }
 
-// CHECK-LABEL: { i8, i16 } @make_cell_of_bool_and_short(i1 noundef zeroext %b, i16 noundef %s)
+// CHECK-LABEL: { i8, i16 } @make_cell_of_bool_and_short(i1 noundef zeroext %b, i16{{.*}} %s)
 #[no_mangle]
 pub fn make_cell_of_bool_and_short(b: bool, s: u16) -> std::cell::Cell<(bool, u16)> {
     // CHECK-NOT: alloca
@@ -92,7 +92,7 @@ pub fn make_struct_0() -> Struct0 {
 
 pub struct Struct1(i32);
 
-// CHECK-LABEL: i32 @make_struct_1(i32 noundef %a)
+// CHECK-LABEL: i32 @make_struct_1(i32{{.*}} %a)
 #[no_mangle]
 pub fn make_struct_1(a: i32) -> Struct1 {
     // CHECK: ret i32 %a
@@ -104,7 +104,7 @@ pub struct Struct2Asc(i16, i64);
 
 // bit32-LABEL: void @make_struct_2_asc({{.*}} sret({{[^,]*}}) {{.*}} %s,
 // bit64-LABEL: { i64, i16 } @make_struct_2_asc(
-// CHECK-SAME: i16 noundef %a, i64 noundef %b)
+// CHECK-SAME: i16{{.*}} %a, i64 noundef %b)
 #[no_mangle]
 pub fn make_struct_2_asc(a: i16, b: i64) -> Struct2Asc {
     // CHECK-NOT: alloca
@@ -122,7 +122,7 @@ pub struct Struct2Desc(i64, i16);
 
 // bit32-LABEL: void @make_struct_2_desc({{.*}} sret({{[^,]*}}) {{.*}} %s,
 // bit64-LABEL: { i64, i16 } @make_struct_2_desc(
-// CHECK-SAME: i64 noundef %a, i16 noundef %b)
+// CHECK-SAME: i64 noundef %a, i16{{.*}} %b)
 #[no_mangle]
 pub fn make_struct_2_desc(a: i64, b: i16) -> Struct2Desc {
     // CHECK-NOT: alloca

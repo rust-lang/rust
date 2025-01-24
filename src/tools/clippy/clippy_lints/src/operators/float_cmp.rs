@@ -17,8 +17,7 @@ pub(crate) fn check<'tcx>(
     right: &'tcx Expr<'_>,
 ) {
     if (op == BinOpKind::Eq || op == BinOpKind::Ne) && is_float(cx, left) {
-        let typeck = cx.typeck_results();
-        let ecx = ConstEvalCtxt::with_env(cx.tcx, cx.param_env, typeck);
+        let ecx = ConstEvalCtxt::new(cx);
         let left_is_local = match ecx.eval_with_source(left) {
             Some((c, s)) if !is_allowed(&c) => s.is_local(),
             Some(_) => return,
@@ -107,7 +106,7 @@ fn is_signum(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     }
 
     if let ExprKind::MethodCall(method_name, self_arg, [], _) = expr.kind
-        && sym!(signum) == method_name.ident.name
+        && method_name.ident.name.as_str() == "signum"
     // Check that the receiver of the signum() is a float (expressions[0] is the receiver of
     // the method call)
     {

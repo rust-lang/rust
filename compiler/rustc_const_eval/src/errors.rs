@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::fmt::Write;
 
 use either::Either;
+use rustc_abi::WrappingRange;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, Level,
@@ -14,9 +15,8 @@ use rustc_middle::mir::interpret::{
     UndefinedBehaviorInfo, UnsupportedOpInfo, ValidationErrorInfo,
 };
 use rustc_middle::ty::{self, Mutability, Ty};
-use rustc_span::Span;
-use rustc_target::abi::WrappingRange;
-use rustc_target::abi::call::AdjustForForeignAbiError;
+use rustc_span::{Span, Symbol};
+use rustc_target::callconv::AdjustForForeignAbiError;
 
 use crate::interpret::InternKind;
 
@@ -44,11 +44,15 @@ pub(crate) struct MutablePtrInFinal {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unstable_in_stable)]
-pub(crate) struct UnstableInStable {
+#[diag(const_eval_unstable_in_stable_exposed)]
+pub(crate) struct UnstableInStableExposed {
     pub gate: String,
     #[primary_span]
     pub span: Span,
+    #[help(const_eval_is_function_call)]
+    pub is_function_call: bool,
+    /// Need to duplicate the field so that fluent also provides it as a variable...
+    pub is_function_call2: bool,
     #[suggestion(
         const_eval_unstable_sugg,
         code = "#[rustc_const_unstable(feature = \"...\", issue = \"...\")]\n",
@@ -118,6 +122,41 @@ pub(crate) struct UnstableConstFn {
 }
 
 #[derive(Diagnostic)]
+#[diag(const_eval_unstable_intrinsic)]
+pub(crate) struct UnstableIntrinsic {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+    pub feature: Symbol,
+    #[suggestion(
+        const_eval_unstable_intrinsic_suggestion,
+        code = "#![feature({feature})]\n",
+        applicability = "machine-applicable"
+    )]
+    pub suggestion: Option<Span>,
+    #[help(const_eval_unstable_intrinsic_suggestion)]
+    pub help: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_unmarked_const_fn_exposed)]
+#[help]
+pub(crate) struct UnmarkedConstFnExposed {
+    #[primary_span]
+    pub span: Span,
+    pub def_path: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_unmarked_intrinsic_exposed)]
+#[help]
+pub(crate) struct UnmarkedIntrinsicExposed {
+    #[primary_span]
+    pub span: Span,
+    pub def_path: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(const_eval_mutable_ref_escaping, code = E0764)]
 pub(crate) struct MutableRefEscaping {
     #[primary_span]
@@ -142,6 +181,7 @@ pub(crate) struct NonConstFmtMacroCall {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -150,6 +190,17 @@ pub(crate) struct NonConstFnCall {
     #[primary_span]
     pub span: Span,
     pub def_path_str: String,
+    pub def_descr: &'static str,
+    pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_non_const_intrinsic)]
+pub(crate) struct NonConstIntrinsic {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
     pub kind: ConstContext,
 }
 
@@ -241,68 +292,75 @@ pub struct RawBytesNote {
 // FIXME(fee1-dead) do not use stringly typed `ConstContext`
 
 #[derive(Diagnostic)]
-#[diag(const_eval_match_eq_non_const, code = E0015)]
+#[diag(const_eval_non_const_match_eq, code = E0015)]
 #[note]
 pub struct NonConstMatchEq<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_for_loop_into_iter_non_const, code = E0015)]
+#[diag(const_eval_non_const_for_loop_into_iter, code = E0015)]
 pub struct NonConstForLoopIntoIter<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_question_branch_non_const, code = E0015)]
+#[diag(const_eval_non_const_question_branch, code = E0015)]
 pub struct NonConstQuestionBranch<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_question_from_residual_non_const, code = E0015)]
+#[diag(const_eval_non_const_question_from_residual, code = E0015)]
 pub struct NonConstQuestionFromResidual<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_try_block_from_output_non_const, code = E0015)]
+#[diag(const_eval_non_const_try_block_from_output, code = E0015)]
 pub struct NonConstTryBlockFromOutput<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_await_non_const, code = E0015)]
+#[diag(const_eval_non_const_await, code = E0015)]
 pub struct NonConstAwait<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_closure_non_const, code = E0015)]
+#[diag(const_eval_non_const_closure, code = E0015)]
 pub struct NonConstClosure {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
     #[subdiagnostic]
     pub note: Option<NonConstClosureNote>,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Subdiagnostic)]
@@ -329,17 +387,18 @@ pub struct ConsiderDereferencing {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_operator_non_const, code = E0015)]
+#[diag(const_eval_non_const_operator, code = E0015)]
 pub struct NonConstOperator {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
     #[subdiagnostic]
     pub sugg: Option<ConsiderDereferencing>,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_deref_coercion_non_const, code = E0015)]
+#[diag(const_eval_non_const_deref_coercion, code = E0015)]
 #[note]
 pub struct NonConstDerefCoercion<'tcx> {
     #[primary_span]
@@ -349,6 +408,7 @@ pub struct NonConstDerefCoercion<'tcx> {
     pub target_ty: Ty<'tcx>,
     #[note(const_eval_target_note)]
     pub deref_target: Option<Span>,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -360,7 +420,7 @@ pub struct LiveDrop<'tcx> {
     pub kind: ConstContext,
     pub dropped_ty: Ty<'tcx>,
     #[label(const_eval_dropped_at_label)]
-    pub dropped_at: Option<Span>,
+    pub dropped_at: Span,
 }
 
 #[derive(Diagnostic)]

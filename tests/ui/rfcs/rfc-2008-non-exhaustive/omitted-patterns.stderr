@@ -136,7 +136,7 @@ LL |     let local_refutable @ NonExhaustiveEnum::Unit = NonExhaustiveEnum::Unit
    |         ^^^^^^^^^^^^^^^ pattern `_` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `NonExhaustiveEnum`
 help: you might want to use `let else` to handle the variant that isn't matched
    |

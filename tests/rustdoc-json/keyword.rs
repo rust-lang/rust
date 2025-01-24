@@ -13,8 +13,8 @@
 /// this is a test!
 pub mod foo {}
 
-//@ !has "$.index[*][?(@.name=='hello')]"
+//@ !has "$.index[*][?(@.name=='break')]"
 //@ !has "$.index[*][?(@.name=='bar')]"
-#[doc(keyword = "hello")]
+#[doc(keyword = "break")]
 /// hello
 mod bar {}

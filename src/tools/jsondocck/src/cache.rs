@@ -28,7 +28,8 @@ impl Cache {
         }
     }
 
-    pub fn value(&self) -> &Value {
-        &self.value
+    // FIXME: Make this failible, so jsonpath syntax error has line number.
+    pub fn select(&self, path: &str) -> Vec<&Value> {
+        jsonpath_lib::select(&self.value, path).unwrap()
     }
 }

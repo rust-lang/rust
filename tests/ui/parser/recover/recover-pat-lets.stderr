@@ -4,7 +4,7 @@ error: expected a pattern, found an expression
 LL |     let x.expect("foo");
    |         ^^^^^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-lets.rs:7:9
@@ -12,7 +12,7 @@ error: expected a pattern, found an expression
 LL |     let x.unwrap(): u32;
    |         ^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-lets.rs:10:9
@@ -20,7 +20,7 @@ error: expected a pattern, found an expression
 LL |     let x[0] = 1;
    |         ^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-lets.rs:13:14
@@ -28,7 +28,7 @@ error: expected a pattern, found an expression
 LL |     let Some(1 + 1) = x else {
    |              ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 + 1;
@@ -45,7 +45,7 @@ error: expected a pattern, found an expression
 LL |     if let Some(1 + 1) = x {
    |                 ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 + 1;

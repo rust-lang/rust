@@ -1,8 +1,7 @@
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, DiagArgFromDisplay, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(ast_lowering_generic_type_with_parentheses, code = E0214)]
@@ -36,6 +35,14 @@ pub(crate) struct InvalidAbi {
     pub explain: Option<InvalidAbiReason>,
     #[subdiagnostic]
     pub suggestion: Option<InvalidAbiSuggestion>,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_default_field_in_tuple)]
+pub(crate) struct TupleStructWithDefault {
+    #[primary_span]
+    #[label]
+    pub span: Span,
 }
 
 pub(crate) struct InvalidAbiReason(pub &'static str);
@@ -111,14 +118,6 @@ pub(crate) struct MisplacedAssocTyBinding {
 pub(crate) struct UnderscoreExprLhsAssign {
     #[primary_span]
     #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(ast_lowering_base_expression_double_dot, code = E0797)]
-pub(crate) struct BaseExpressionDoubleDot {
-    #[primary_span]
-    #[suggestion(code = "/* expr */", applicability = "has-placeholders", style = "verbose")]
     pub span: Span,
 }
 
@@ -274,6 +273,14 @@ pub(crate) struct InvalidAsmTemplateModifierLabel {
 #[derive(Diagnostic)]
 #[diag(ast_lowering_register_class_only_clobber)]
 pub(crate) struct RegisterClassOnlyClobber {
+    #[primary_span]
+    pub op_span: Span,
+    pub reg_class_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_register_class_only_clobber_stable)]
+pub(crate) struct RegisterClassOnlyClobberStable {
     #[primary_span]
     pub op_span: Span,
     pub reg_class_name: Symbol,
@@ -450,4 +457,27 @@ pub(crate) struct YieldInClosure {
     pub span: Span,
     #[suggestion(code = "#[coroutine] ", applicability = "maybe-incorrect", style = "verbose")]
     pub suggestion: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_invalid_legacy_const_generic_arg)]
+pub(crate) struct InvalidLegacyConstGenericArg {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub suggestion: UseConstGenericArg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    ast_lowering_invalid_legacy_const_generic_arg_suggestion,
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct UseConstGenericArg {
+    #[suggestion_part(code = "::<{const_args}>")]
+    pub end_of_fn: Span,
+    pub const_args: String,
+    pub other_args: String,
+    #[suggestion_part(code = "{other_args}")]
+    pub call_args: Span,
 }

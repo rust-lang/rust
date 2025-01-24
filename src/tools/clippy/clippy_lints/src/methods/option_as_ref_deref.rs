@@ -1,5 +1,5 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{path_to_local_id, peel_blocks};
@@ -45,7 +45,7 @@ pub(super) fn check(
         hir::ExprKind::Path(ref expr_qpath) => {
             cx.qpath_res(expr_qpath, map_arg.hir_id)
                 .opt_def_id()
-                .map_or(false, |fun_def_id| {
+                .is_some_and(|fun_def_id| {
                     cx.tcx.is_diagnostic_item(sym::deref_method, fun_def_id)
                         || cx.tcx.is_diagnostic_item(sym::deref_mut_method, fun_def_id)
                         || deref_aliases

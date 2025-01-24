@@ -45,21 +45,20 @@ pub struct PackageMetadata {
 
 /// Use `cargo metadata` and `cargo vendor` to get a list of dependencies and their license data.
 ///
-/// This will involve running `cargo vendor` into `${BUILD}/vendor` so we can
+/// This will involve running `cargo vendor` into `vendor_path` so we can
 /// grab the license files.
 ///
 /// Any dependency with a path beginning with `root_path` is ignored, as we
 /// assume `reuse` has covered it already.
 pub fn get_metadata_and_notices(
     cargo: &Path,
-    dest: &Path,
+    vendor_path: &Path,
     root_path: &Path,
     manifest_paths: &[&Path],
 ) -> Result<BTreeMap<Package, PackageMetadata>, Error> {
     let mut output = get_metadata(cargo, root_path, manifest_paths)?;
 
     // Now do a cargo-vendor and grab everything
-    let vendor_path = dest.join("vendor");
     println!("Vendoring deps into {}...", vendor_path.display());
     run_cargo_vendor(cargo, &vendor_path, manifest_paths)?;
 

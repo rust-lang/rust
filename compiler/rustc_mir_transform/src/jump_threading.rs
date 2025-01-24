@@ -40,7 +40,7 @@ use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::Visitor;
@@ -50,7 +50,6 @@ use rustc_middle::ty::{self, ScalarInt, TyCtxt};
 use rustc_mir_dataflow::lattice::HasBottom;
 use rustc_mir_dataflow::value_analysis::{Map, PlaceIndex, State, TrackElem};
 use rustc_span::DUMMY_SP;
-use rustc_target::abi::{TagEncoding, Variants};
 use tracing::{debug, instrument, trace};
 
 use crate::cost_checker::CostChecker;
@@ -77,13 +76,12 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
             return;
         }
 
-        let param_env = tcx.param_env_reveal_all_normalized(def_id);
-
+        let typing_env = body.typing_env(tcx);
         let arena = &DroplessArena::default();
         let mut finder = TOFinder {
             tcx,
-            param_env,
-            ecx: InterpCx::new(tcx, DUMMY_SP, param_env, DummyMachine),
+            typing_env,
+            ecx: InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine),
             body,
             arena,
             map: Map::new(tcx, body, Some(MAX_PLACES)),
@@ -119,11 +117,11 @@ struct ThreadingOpportunity {
 
 struct TOFinder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ecx: InterpCx<'tcx, DummyMachine>,
     body: &'a Body<'tcx>,
     map: Map<'tcx>,
-    loop_headers: BitSet<BasicBlock>,
+    loop_headers: DenseBitSet<BasicBlock>,
     /// We use an arena to avoid cloning the slices when cloning `state`.
     arena: &'a DroplessArena,
     opportunities: Vec<ThreadingOpportunity>,
@@ -207,7 +205,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         let Some(discr) = self.map.find(discr.as_ref()) else { return };
         debug!(?discr);
 
-        let cost = CostChecker::new(self.tcx, self.param_env, None, self.body);
+        let cost = CostChecker::new(self.tcx, self.typing_env, None, self.body);
         let mut state = State::new_reachable();
 
         let conds = if let Some((value, then, else_)) = targets.as_static_if() {
@@ -353,6 +351,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             | StatementKind::FakeRead(..)
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
+            | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::Nop => None,
         }
     }
@@ -528,7 +527,8 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                     // Avoid handling them, though this could be extended in the future.
                     return;
                 }
-                let Some(value) = value.const_.try_eval_scalar_int(self.tcx, self.param_env) else {
+                let Some(value) = value.const_.try_eval_scalar_int(self.tcx, self.typing_env)
+                else {
                     return;
                 };
                 let conds = conditions.map(self.arena, |c| Condition {
@@ -564,31 +564,15 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             StatementKind::SetDiscriminant { box place, variant_index } => {
                 let Some(discr_target) = self.map.find_discr(place.as_ref()) else { return };
                 let enum_ty = place.ty(self.body, self.tcx).ty;
-                // `SetDiscriminant` may be a no-op if the assigned variant is the untagged variant
-                // of a niche encoding. If we cannot ensure that we write to the discriminant, do
-                // nothing.
-                let Ok(enum_layout) = self.ecx.layout_of(enum_ty) else {
+                // `SetDiscriminant` guarantees that the discriminant is now `variant_index`.
+                // Even if the discriminant write does nothing due to niches, it is UB to set the
+                // discriminant when the data does not encode the desired discriminant.
+                let Some(discr) =
+                    self.ecx.discriminant_for_variant(enum_ty, *variant_index).discard_err()
+                else {
                     return;
                 };
-                let writes_discriminant = match enum_layout.variants {
-                    Variants::Single { index } => {
-                        assert_eq!(index, *variant_index);
-                        true
-                    }
-                    Variants::Multiple { tag_encoding: TagEncoding::Direct, .. } => true,
-                    Variants::Multiple {
-                        tag_encoding: TagEncoding::Niche { untagged_variant, .. },
-                        ..
-                    } => *variant_index != untagged_variant,
-                };
-                if writes_discriminant {
-                    let Some(discr) =
-                        self.ecx.discriminant_for_variant(enum_ty, *variant_index).discard_err()
-                    else {
-                        return;
-                    };
-                    self.process_immediate(bb, discr_target, discr, state);
-                }
+                self.process_immediate(bb, discr_target, discr, state);
             }
             // If we expect `lhs ?= true`, we have an opportunity if we assume `lhs == true`.
             StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(
@@ -848,8 +832,8 @@ enum Update {
 /// at least a predecessor which it dominates. This definition is only correct for reducible CFGs.
 /// But if the CFG is already irreducible, there is no point in trying much harder.
 /// is already irreducible.
-fn loop_headers(body: &Body<'_>) -> BitSet<BasicBlock> {
-    let mut loop_headers = BitSet::new_empty(body.basic_blocks.len());
+fn loop_headers(body: &Body<'_>) -> DenseBitSet<BasicBlock> {
+    let mut loop_headers = DenseBitSet::new_empty(body.basic_blocks.len());
     let dominators = body.basic_blocks.dominators();
     // Only visit reachable blocks.
     for (bb, bbdata) in traversal::preorder(body) {

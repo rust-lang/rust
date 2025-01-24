@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-use crate::{DebugContext, RevealAllLayoutCx, has_ptr_meta};
+use crate::{DebugContext, FullyMonomorphizedLayoutCx, has_ptr_meta};
 
 #[derive(Default)]
 pub(crate) struct TypeDebugContext<'tcx> {
@@ -85,7 +85,7 @@ impl DebugContext {
         type_entry.set(gimli::DW_AT_encoding, AttributeValue::Encoding(encoding));
         type_entry.set(
             gimli::DW_AT_byte_size,
-            AttributeValue::Udata(RevealAllLayoutCx(tcx).layout_of(ty).size.bytes()),
+            AttributeValue::Udata(FullyMonomorphizedLayoutCx(tcx).layout_of(ty).size.bytes()),
         );
 
         type_id
@@ -159,7 +159,7 @@ impl DebugContext {
         return_if_type_created_in_meantime!(type_dbg, tuple_type);
 
         let name = type_names::compute_debuginfo_type_name(tcx, tuple_type, false);
-        let layout = RevealAllLayoutCx(tcx).layout_of(tuple_type);
+        let layout = FullyMonomorphizedLayoutCx(tcx).layout_of(tuple_type);
 
         let tuple_type_id =
             self.dwarf.unit.add(self.dwarf.unit.root(), gimli::DW_TAG_structure_type);
@@ -178,7 +178,9 @@ impl DebugContext {
             member_entry.set(gimli::DW_AT_type, AttributeValue::UnitRef(dw_ty));
             member_entry.set(
                 gimli::DW_AT_alignment,
-                AttributeValue::Udata(RevealAllLayoutCx(tcx).layout_of(ty).align.pref.bytes()),
+                AttributeValue::Udata(
+                    FullyMonomorphizedLayoutCx(tcx).layout_of(ty).align.pref.bytes(),
+                ),
             );
             member_entry.set(
                 gimli::DW_AT_data_member_location,
@@ -198,7 +200,11 @@ impl DebugContext {
         self.debug_type(
             tcx,
             type_dbg,
-            Ty::new_array(tcx, tcx.types.u8, RevealAllLayoutCx(tcx).layout_of(ty).size.bytes()),
+            Ty::new_array(
+                tcx,
+                tcx.types.u8,
+                FullyMonomorphizedLayoutCx(tcx).layout_of(ty).size.bytes(),
+            ),
         )
     }
 }

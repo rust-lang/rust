@@ -1,14 +1,15 @@
+use itertools::Itertools as _;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_lint_defs::builtin::{REFINING_IMPL_TRAIT_INTERNAL, REFINING_IMPL_TRAIT_REACHABLE};
 use rustc_middle::span_bug;
-use rustc_middle::traits::{ObligationCause, Reveal};
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor,
+    TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use rustc_span::Span;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
@@ -16,7 +17,7 @@ use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt;
 use rustc_trait_selection::traits::{ObligationCtxt, elaborate, normalize_param_env_or_error};
 
 /// Check that an implementation does not refine an RPITIT from a trait method signature.
-pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
+pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: ty::AssocItem,
     trait_m: ty::AssocItem,
@@ -75,6 +76,8 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     let mut trait_bounds = vec![];
     // Bounds that we find on the RPITITs in the impl signature.
     let mut impl_bounds = vec![];
+    // Pairs of trait and impl opaques.
+    let mut pairs = vec![];
 
     for trait_projection in collector.types.into_iter().rev() {
         let impl_opaque_args = trait_projection.args.rebase_onto(tcx, trait_m.def_id, impl_m_args);
@@ -121,6 +124,8 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
             tcx.explicit_item_bounds(impl_opaque.def_id)
                 .iter_instantiated_copied(tcx, impl_opaque.args),
         ));
+
+        pairs.push((trait_projection, impl_opaque));
     }
 
     let hybrid_preds = tcx
@@ -129,10 +134,10 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         .into_iter()
         .chain(tcx.predicates_of(trait_m.def_id).instantiate_own(tcx, trait_m_to_impl_m_args))
         .map(|(clause, _)| clause);
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds), Reveal::UserFacing);
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds));
     let param_env = normalize_param_env_or_error(tcx, param_env, ObligationCause::dummy());
 
-    let ref infcx = tcx.infer_ctxt().build();
+    let ref infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new(infcx);
 
     // Normalize the bounds. This has two purposes:
@@ -212,6 +217,39 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
             return;
         }
     }
+
+    // Make sure that the RPITIT doesn't capture fewer regions than
+    // the trait definition. We hard-error if it captures *more*, since that
+    // is literally unrepresentable in the type system; however, we may be
+    // promising stronger outlives guarantees if we capture *fewer* regions.
+    for (trait_projection, impl_opaque) in pairs {
+        let impl_variances = tcx.variances_of(impl_opaque.def_id);
+        let impl_captures: FxIndexSet<_> = impl_opaque
+            .args
+            .iter()
+            .zip_eq(impl_variances)
+            .filter(|(_, v)| **v == ty::Invariant)
+            .map(|(arg, _)| arg)
+            .collect();
+
+        let trait_variances = tcx.variances_of(trait_projection.def_id);
+        let mut trait_captures = FxIndexSet::default();
+        for (arg, variance) in trait_projection.args.iter().zip_eq(trait_variances) {
+            if *variance != ty::Invariant {
+                continue;
+            }
+            arg.visit_with(&mut CollectParams { params: &mut trait_captures });
+        }
+
+        if !trait_captures.iter().all(|arg| impl_captures.contains(arg)) {
+            report_mismatched_rpitit_captures(
+                tcx,
+                impl_opaque.def_id.expect_local(),
+                trait_captures,
+                is_internal,
+            );
+        }
+    }
 }
 
 struct ImplTraitInTraitCollector<'tcx> {
@@ -251,11 +289,16 @@ fn report_mismatched_rpitit_signature<'tcx>(
         tcx.fn_sig(trait_m_def_id).skip_binder().bound_vars(),
         tcx.fn_sig(impl_m_def_id).skip_binder().bound_vars(),
     )
-    .filter_map(|(impl_bv, trait_bv)| {
+    .enumerate()
+    .filter_map(|(idx, (impl_bv, trait_bv))| {
         if let ty::BoundVariableKind::Region(impl_bv) = impl_bv
             && let ty::BoundVariableKind::Region(trait_bv) = trait_bv
         {
-            Some((impl_bv, trait_bv))
+            let var = ty::BoundVar::from_usize(idx);
+            Some((
+                ty::LateParamRegionKind::from_bound(var, impl_bv),
+                ty::LateParamRegionKind::from_bound(var, trait_bv),
+            ))
         } else {
             None
         }
@@ -263,7 +306,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
     .collect();
 
     let mut return_ty =
-        trait_m_sig.output().fold_with(&mut super::RemapLateBound { tcx, mapping: &mapping });
+        trait_m_sig.output().fold_with(&mut super::RemapLateParam { tcx, mapping: &mapping });
 
     if tcx.asyncness(impl_m_def_id).is_async() && tcx.asyncness(trait_m_def_id).is_async() {
         let ty::Alias(ty::Projection, future_ty) = return_ty.kind() else {
@@ -341,4 +384,66 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Anonymize<'tcx> {
     {
         self.tcx.anonymize_bound_vars(t)
     }
+}
+
+struct CollectParams<'a, 'tcx> {
+    params: &'a mut FxIndexSet<ty::GenericArg<'tcx>>,
+}
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for CollectParams<'_, 'tcx> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) {
+        if let ty::Param(_) = ty.kind() {
+            self.params.insert(ty.into());
+        } else {
+            ty.super_visit_with(self);
+        }
+    }
+    fn visit_region(&mut self, r: ty::Region<'tcx>) {
+        match r.kind() {
+            ty::ReEarlyParam(_) | ty::ReLateParam(_) => {
+                self.params.insert(r.into());
+            }
+            _ => {}
+        }
+    }
+    fn visit_const(&mut self, ct: ty::Const<'tcx>) {
+        if let ty::ConstKind::Param(_) = ct.kind() {
+            self.params.insert(ct.into());
+        } else {
+            ct.super_visit_with(self);
+        }
+    }
+}
+
+fn report_mismatched_rpitit_captures<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_opaque_def_id: LocalDefId,
+    mut trait_captured_args: FxIndexSet<ty::GenericArg<'tcx>>,
+    is_internal: bool,
+) {
+    let Some(use_bound_span) =
+        tcx.hir_node_by_def_id(impl_opaque_def_id).expect_opaque_ty().bounds.iter().find_map(
+            |bound| match *bound {
+                rustc_hir::GenericBound::Use(_, span) => Some(span),
+                hir::GenericBound::Trait(_) | hir::GenericBound::Outlives(_) => None,
+            },
+        )
+    else {
+        // I have no idea when you would ever undercapture without a `use<..>`.
+        tcx.dcx().delayed_bug("expected use<..> to undercapture in an impl opaque");
+        return;
+    };
+
+    trait_captured_args
+        .sort_by_cached_key(|arg| !matches!(arg.unpack(), ty::GenericArgKind::Lifetime(_)));
+    let suggestion = format!("use<{}>", trait_captured_args.iter().join(", "));
+
+    tcx.emit_node_span_lint(
+        if is_internal { REFINING_IMPL_TRAIT_INTERNAL } else { REFINING_IMPL_TRAIT_REACHABLE },
+        tcx.local_def_id_to_hir_id(impl_opaque_def_id),
+        use_bound_span,
+        crate::errors::ReturnPositionImplTraitInTraitRefinedLifetimes {
+            suggestion_span: use_bound_span,
+            suggestion,
+        },
+    );
 }

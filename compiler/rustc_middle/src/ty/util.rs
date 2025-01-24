@@ -2,6 +2,7 @@
 
 use std::{fmt, iter};
 
+use rustc_abi::{ExternAbi, Float, Integer, IntegerType, Size};
 use rustc_apfloat::Float as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
@@ -14,13 +15,13 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_session::Limit;
 use rustc_span::sym;
-use rustc_target::abi::{Float, Integer, IntegerType, Size};
-use rustc_target::spec::abi::Abi;
 use smallvec::{SmallVec, smallvec};
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument};
 
+use super::TypingEnv;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::query::{IntoQueryParam, Providers};
+use crate::query::Providers;
+use crate::ty::fold::fold_regions;
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
     self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
@@ -171,6 +172,24 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Checks whether `ty: Copy` holds while ignoring region constraints.
+    ///
+    /// This impacts whether values of `ty` are *moved* or *copied*
+    /// when referenced. This means that we may generate MIR which
+    /// does copies even when the type actually doesn't satisfy the
+    /// full requirements for the `Copy` trait (cc #29149) -- this
+    /// winds up being reported as an error during NLL borrow check.
+    ///
+    /// This function should not be used if there is an `InferCtxt` available.
+    /// Use `InferCtxt::type_is_copy_modulo_regions` instead.
+    pub fn type_is_copy_modulo_regions(
+        self,
+        typing_env: ty::TypingEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> bool {
+        ty.is_trivially_pure_clone_copy() || self.is_copy_raw(typing_env.as_query_input(ty))
+    }
+
     /// Returns the deeply last field of nested structures, or the same type if
     /// not a structure at all. Corresponds to the only possible unsized field,
     /// and its type can be used to determine unsizing strategy.
@@ -178,9 +197,13 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Should only be called if `ty` has no inference variables and does not
     /// need its lifetimes preserved (e.g. as part of codegen); otherwise
     /// normalization attempt may cause compiler bugs.
-    pub fn struct_tail_for_codegen(self, ty: Ty<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Ty<'tcx> {
+    pub fn struct_tail_for_codegen(
+        self,
+        ty: Ty<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+    ) -> Ty<'tcx> {
         let tcx = self;
-        tcx.struct_tail_raw(ty, |ty| tcx.normalize_erasing_regions(param_env, ty), || {})
+        tcx.struct_tail_raw(ty, |ty| tcx.normalize_erasing_regions(typing_env, ty), || {})
     }
 
     /// Returns the deeply last field of nested structures, or the same type if
@@ -272,11 +295,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         source: Ty<'tcx>,
         target: Ty<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
     ) -> (Ty<'tcx>, Ty<'tcx>) {
         let tcx = self;
         tcx.struct_lockstep_tails_raw(source, target, |ty| {
-            tcx.normalize_erasing_regions(param_env, ty)
+            tcx.normalize_erasing_regions(typing_env, ty)
         })
     }
 
@@ -366,7 +389,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     .delay_as_bug();
             }
 
-            dtor_candidate = Some((*item_id, self.constness(impl_did)));
+            dtor_candidate = Some((*item_id, self.impl_trait_header(impl_did).unwrap().constness));
         });
 
         let (did, constness) = dtor_candidate?;
@@ -419,12 +442,12 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn async_drop_glue_morphology(self, did: DefId) -> AsyncDropGlueMorphology {
         let ty: Ty<'tcx> = self.type_of(did).instantiate_identity();
 
-        // Async drop glue morphology is an internal detail, so reveal_all probably
-        // should be fine
-        let param_env = ty::ParamEnv::reveal_all();
-        if ty.needs_async_drop(self, param_env) {
+        // Async drop glue morphology is an internal detail, so
+        // using `TypingMode::PostAnalysis` probably should be fine.
+        let typing_env = ty::TypingEnv::fully_monomorphized();
+        if ty.needs_async_drop(self, typing_env) {
             AsyncDropGlueMorphology::Custom
-        } else if ty.needs_drop(self, param_env) {
+        } else if ty.needs_drop(self, typing_env) {
             AsyncDropGlueMorphology::DeferredDropInPlace
         } else {
             AsyncDropGlueMorphology::Noop
@@ -684,12 +707,10 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Get the type of the pointer to the static that we use in MIR.
-    pub fn static_ptr_ty(self, def_id: DefId) -> Ty<'tcx> {
+    pub fn static_ptr_ty(self, def_id: DefId, typing_env: ty::TypingEnv<'tcx>) -> Ty<'tcx> {
         // Make sure that any constants in the static's type are evaluated.
-        let static_ty = self.normalize_erasing_regions(
-            ty::ParamEnv::empty(),
-            self.type_of(def_id).instantiate_identity(),
-        );
+        let static_ty =
+            self.normalize_erasing_regions(typing_env, self.type_of(def_id).instantiate_identity());
 
         // Make sure that accesses to unsafe statics end up using raw pointers.
         // For thread-locals, this needs to be kept in sync with `Rvalue::ty`.
@@ -733,11 +754,14 @@ impl<'tcx> TyCtxt<'tcx> {
             .filter(|decl| !decl.ignore_for_traits)
             .map(move |decl| {
                 let mut vars = vec![];
-                let ty = self.fold_regions(decl.ty, |re, debruijn| {
+                let ty = fold_regions(self, decl.ty, |re, debruijn| {
                     assert_eq!(re, self.lifetimes.re_erased);
                     let var = ty::BoundVar::from_usize(vars.len());
-                    vars.push(ty::BoundVariableKind::Region(ty::BrAnon));
-                    ty::Region::new_bound(self, debruijn, ty::BoundRegion { var, kind: ty::BrAnon })
+                    vars.push(ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon));
+                    ty::Region::new_bound(self, debruijn, ty::BoundRegion {
+                        var,
+                        kind: ty::BoundRegionKind::Anon,
+                    })
                 });
                 ty::EarlyBinder::bind(ty::Binder::bind_with_vars(
                     ty,
@@ -852,6 +876,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// [public]: TyCtxt::is_private_dep
     /// [direct]: rustc_session::cstore::ExternCrate::is_direct
     pub fn is_user_visible_dep(self, key: CrateNum) -> bool {
+        // `#![rustc_private]` overrides defaults to make private dependencies usable.
+        if self.features().enabled(sym::rustc_private) {
+            return true;
+        }
+
         // | Private | Direct | Visible |                    |
         // |---------|--------|---------|--------------------|
         // | Yes     | Yes    | Yes     | !true || true   |
@@ -863,48 +892,6 @@ impl<'tcx> TyCtxt<'tcx> {
             // Treat that kind of crate as "indirect", since it's an implementation detail of
             // the language.
             || self.extern_crate(key).is_some_and(|e| e.is_direct())
-    }
-
-    /// Whether the item has a host effect param. This is different from `TyCtxt::is_const`,
-    /// because the item must also be "maybe const", and the crate where the item is
-    /// defined must also have the effects feature enabled.
-    pub fn has_host_param(self, def_id: impl IntoQueryParam<DefId>) -> bool {
-        self.generics_of(def_id).host_effect_index.is_some()
-    }
-
-    pub fn expected_host_effect_param_for_body(self, def_id: impl Into<DefId>) -> ty::Const<'tcx> {
-        let def_id = def_id.into();
-        // FIXME(effects): This is suspicious and should probably not be done,
-        // especially now that we enforce host effects and then properly handle
-        // effect vars during fallback.
-        let mut host_always_on =
-            !self.features().effects || self.sess.opts.unstable_opts.unleash_the_miri_inside_of_you;
-
-        // Compute the constness required by the context.
-        let const_context = self.hir().body_const_context(def_id);
-
-        let kind = self.def_kind(def_id);
-        debug_assert_ne!(kind, DefKind::ConstParam);
-
-        if self.has_attr(def_id, sym::rustc_do_not_const_check) {
-            trace!("do not const check this context");
-            host_always_on = true;
-        }
-
-        match const_context {
-            _ if host_always_on => self.consts.true_,
-            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const { .. }) => {
-                self.consts.false_
-            }
-            Some(hir::ConstContext::ConstFn) => {
-                let host_idx = self
-                    .generics_of(def_id)
-                    .host_effect_index
-                    .expect("ConstContext::Maybe must have host effect param");
-                ty::GenericArgs::identity_for_item(self, def_id).const_at(host_idx)
-            }
-            None => self.consts.true_,
-        }
     }
 
     /// Expand any [weak alias types][weak] contained within the given `value`.
@@ -1090,7 +1077,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
                     // This is because for default trait methods with RPITITs, we
                     // install a `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))`
                     // predicate, which would trivially cause a cycle when we do
-                    // anything that requires `ParamEnv::with_reveal_all_normalized`.
+                    // anything that requires `TypingEnv::with_post_analysis_normalized`.
                     term: projection_pred.term,
                 })
                 .upcast(self.tcx)
@@ -1197,26 +1184,17 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the maximum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
     pub fn numeric_max_val(self, tcx: TyCtxt<'tcx>) -> Option<ty::Const<'tcx>> {
+        let typing_env = TypingEnv::fully_monomorphized();
         self.numeric_min_and_max_as_bits(tcx)
-            .map(|(_, max)| ty::Const::from_bits(tcx, max, ty::ParamEnv::empty().and(self)))
+            .map(|(_, max)| ty::Const::from_bits(tcx, max, typing_env, self))
     }
 
     /// Returns the minimum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
     pub fn numeric_min_val(self, tcx: TyCtxt<'tcx>) -> Option<ty::Const<'tcx>> {
+        let typing_env = TypingEnv::fully_monomorphized();
         self.numeric_min_and_max_as_bits(tcx)
-            .map(|(min, _)| ty::Const::from_bits(tcx, min, ty::ParamEnv::empty().and(self)))
-    }
-
-    /// Checks whether values of this type `T` are *moved* or *copied*
-    /// when referenced -- this amounts to a check for whether `T:
-    /// Copy`, but note that we **don't** consider lifetimes when
-    /// doing this check. This means that we may generate MIR which
-    /// does copies even when the type actually doesn't satisfy the
-    /// full requirements for the `Copy` trait (cc #29149) -- this
-    /// winds up being reported as an error during NLL borrow check.
-    pub fn is_copy_modulo_regions(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
-        self.is_trivially_pure_clone_copy() || tcx.is_copy_raw(param_env.and(self))
+            .map(|(min, _)| ty::Const::from_bits(tcx, min, typing_env, self))
     }
 
     /// Checks whether values of this type `T` have a size known at
@@ -1225,8 +1203,8 @@ impl<'tcx> Ty<'tcx> {
     /// over-approximation in generic contexts, where one can have
     /// strange rules like `<T as Foo<'static>>::Bar: Sized` that
     /// actually carry lifetime requirements.
-    pub fn is_sized(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
-        self.is_trivially_sized(tcx) || tcx.is_sized_raw(param_env.and(self))
+    pub fn is_sized(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
+        self.is_trivially_sized(tcx) || tcx.is_sized_raw(typing_env.as_query_input(self))
     }
 
     /// Checks whether values of this type `T` implement the `Freeze`
@@ -1236,8 +1214,8 @@ impl<'tcx> Ty<'tcx> {
     /// optimization as well as the rules around static values. Note
     /// that the `Freeze` trait is not exposed to end users and is
     /// effectively an implementation detail.
-    pub fn is_freeze(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
-        self.is_trivially_freeze() || tcx.is_freeze_raw(param_env.and(self))
+    pub fn is_freeze(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
+        self.is_trivially_freeze() || tcx.is_freeze_raw(typing_env.as_query_input(self))
     }
 
     /// Fast path helper for testing if a type is `Freeze`.
@@ -1268,6 +1246,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Foreign(_)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
+            | ty::UnsafeBinder(_)
             | ty::Infer(_)
             | ty::Alias(..)
             | ty::Param(_)
@@ -1276,8 +1255,8 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Checks whether values of this type `T` implement the `Unpin` trait.
-    pub fn is_unpin(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
-        self.is_trivially_unpin() || tcx.is_unpin_raw(param_env.and(self))
+    pub fn is_unpin(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
+        self.is_trivially_unpin() || tcx.is_unpin_raw(typing_env.as_query_input(self))
     }
 
     /// Fast path helper for testing if a type is `Unpin`.
@@ -1308,10 +1287,20 @@ impl<'tcx> Ty<'tcx> {
             | ty::Foreign(_)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
+            | ty::UnsafeBinder(_)
             | ty::Infer(_)
             | ty::Alias(..)
             | ty::Param(_)
             | ty::Placeholder(_) => false,
+        }
+    }
+
+    /// Checks whether this type is an ADT that has unsafe fields.
+    pub fn has_unsafe_fields(self) -> bool {
+        if let ty::Adt(adt_def, ..) = self.kind() {
+            adt_def.all_fields().any(|x| x.safety.is_unsafe())
+        } else {
+            false
         }
     }
 
@@ -1339,6 +1328,9 @@ impl<'tcx> Ty<'tcx> {
             | ty::FnPtr(..)
             | ty::Infer(ty::FreshIntTy(_))
             | ty::Infer(ty::FreshFloatTy(_)) => AsyncDropGlueMorphology::Noop,
+
+            // FIXME(unsafe_binders):
+            ty::UnsafeBinder(_) => todo!(),
 
             ty::Tuple(tys) if tys.is_empty() => AsyncDropGlueMorphology::Noop,
             ty::Adt(adt_def, _) if adt_def.is_manually_drop() => AsyncDropGlueMorphology::Noop,
@@ -1385,7 +1377,7 @@ impl<'tcx> Ty<'tcx> {
     ///
     /// Note that this method is used to check eligible types in unions.
     #[inline]
-    pub fn needs_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+    pub fn needs_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
         // Avoid querying in simple cases.
         match needs_drop_components(tcx, self) {
             Err(AlwaysRequiresDrop) => true,
@@ -1399,14 +1391,13 @@ impl<'tcx> Ty<'tcx> {
                 };
 
                 // This doesn't depend on regions, so try to minimize distinct
-                // query keys used.
-                // If normalization fails, we just use `query_ty`.
-                debug_assert!(!param_env.has_infer());
+                // query keys used. If normalization fails, we just use `query_ty`.
+                debug_assert!(!typing_env.param_env.has_infer());
                 let query_ty = tcx
-                    .try_normalize_erasing_regions(param_env, query_ty)
+                    .try_normalize_erasing_regions(typing_env, query_ty)
                     .unwrap_or_else(|_| tcx.erase_regions(query_ty));
 
-                tcx.needs_drop_raw(param_env.and(query_ty))
+                tcx.needs_drop_raw(typing_env.as_query_input(query_ty))
             }
         }
     }
@@ -1425,7 +1416,7 @@ impl<'tcx> Ty<'tcx> {
     // FIXME(zetanumbers): Note that this method is used to check eligible types
     // in unions.
     #[inline]
-    pub fn needs_async_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+    pub fn needs_async_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
         // Avoid querying in simple cases.
         match needs_drop_components(tcx, self) {
             Err(AlwaysRequiresDrop) => true,
@@ -1441,12 +1432,12 @@ impl<'tcx> Ty<'tcx> {
                 // This doesn't depend on regions, so try to minimize distinct
                 // query keys used.
                 // If normalization fails, we just use `query_ty`.
-                debug_assert!(!param_env.has_infer());
+                debug_assert!(!typing_env.has_infer());
                 let query_ty = tcx
-                    .try_normalize_erasing_regions(param_env, query_ty)
+                    .try_normalize_erasing_regions(typing_env, query_ty)
                     .unwrap_or_else(|_| tcx.erase_regions(query_ty));
 
-                tcx.needs_async_drop_raw(param_env.and(query_ty))
+                tcx.needs_async_drop_raw(typing_env.as_query_input(query_ty))
             }
         }
     }
@@ -1460,7 +1451,7 @@ impl<'tcx> Ty<'tcx> {
     /// Note that this method is used to check for change in drop order for
     /// 2229 drop reorder migration analysis.
     #[inline]
-    pub fn has_significant_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+    pub fn has_significant_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
         // Avoid querying in simple cases.
         match needs_drop_components(tcx, self) {
             Err(AlwaysRequiresDrop) => true,
@@ -1483,8 +1474,8 @@ impl<'tcx> Ty<'tcx> {
 
                 // This doesn't depend on regions, so try to minimize distinct
                 // query keys used.
-                let erased = tcx.normalize_erasing_regions(param_env, query_ty);
-                tcx.has_significant_drop_raw(param_env.and(erased))
+                let erased = tcx.normalize_erasing_regions(typing_env, query_ty);
+                tcx.has_significant_drop_raw(typing_env.as_query_input(erased))
             }
         }
     }
@@ -1541,7 +1532,7 @@ impl<'tcx> Ty<'tcx> {
                 false
             }
 
-            ty::Foreign(_) | ty::CoroutineWitness(..) | ty::Error(_) => false,
+            ty::Foreign(_) | ty::CoroutineWitness(..) | ty::Error(_) | ty::UnsafeBinder(_) => false,
         }
     }
 
@@ -1700,46 +1691,8 @@ pub fn needs_drop_components_with_async<'tcx>(
         | ty::Closure(..)
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
-        | ty::CoroutineWitness(..) => Ok(smallvec![ty]),
-    }
-}
-
-pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
-    match *ty.kind() {
-        ty::Bool
-        | ty::Char
-        | ty::Int(_)
-        | ty::Uint(_)
-        | ty::Float(_)
-        | ty::Infer(ty::IntVar(_))
-        | ty::Infer(ty::FloatVar(_))
-        | ty::Str
-        | ty::RawPtr(_, _)
-        | ty::Ref(..)
-        | ty::FnDef(..)
-        | ty::FnPtr(..)
-        | ty::Never
-        | ty::Foreign(_) => true,
-
-        ty::Alias(..)
-        | ty::Dynamic(..)
-        | ty::Error(_)
-        | ty::Bound(..)
-        | ty::Param(_)
-        | ty::Placeholder(_)
-        | ty::Infer(_) => false,
-
-        // Not trivial because they have components, and instead of looking inside,
-        // we'll just perform trait selection.
-        ty::Closure(..)
-        | ty::CoroutineClosure(..)
-        | ty::Coroutine(..)
         | ty::CoroutineWitness(..)
-        | ty::Adt(..) => false,
-
-        ty::Array(ty, _) | ty::Slice(ty) | ty::Pat(ty, _) => is_trivially_const_drop(ty),
-
-        ty::Tuple(tys) => tys.iter().all(|ty| is_trivially_const_drop(ty)),
+        | ty::UnsafeBinder(_) => Ok(smallvec![ty]),
     }
 }
 
@@ -1791,6 +1744,7 @@ pub fn reveal_opaque_types_in_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     val: ty::Clauses<'tcx>,
 ) -> ty::Clauses<'tcx> {
+    assert!(!tcx.next_trait_solver_globally());
     let mut visitor = OpaqueTypeExpander {
         seen_opaque_tys: FxHashSet::default(),
         expanded_cache: FxHashMap::default(),
@@ -1825,13 +1779,21 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 /// the compiler to make some assumptions about its shape; if the user doesn't use a feature gate, they may
 /// cause an ICE that we otherwise may want to prevent.
 pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::IntrinsicDef> {
-    if (matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic)
-        && tcx.features().intrinsics)
-        || (tcx.has_attr(def_id, sym::rustc_intrinsic) && tcx.features().rustc_attrs)
+    if tcx.features().intrinsics()
+        && (matches!(tcx.fn_sig(def_id).skip_binder().abi(), ExternAbi::RustIntrinsic)
+            || tcx.has_attr(def_id, sym::rustc_intrinsic))
     {
+        let must_be_overridden = tcx.has_attr(def_id, sym::rustc_intrinsic_must_be_overridden)
+            || match tcx.hir_node_by_def_id(def_id) {
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { has_body, .. }, .. }) => {
+                    !has_body
+                }
+                _ => true,
+            };
         Some(ty::IntrinsicDef {
             name: tcx.item_name(def_id.into()),
-            must_be_overridden: tcx.has_attr(def_id, sym::rustc_intrinsic_must_be_overridden),
+            must_be_overridden,
+            const_stable: tcx.has_attr(def_id, sym::rustc_intrinsic_const_stable_indirect),
         })
     } else {
         None

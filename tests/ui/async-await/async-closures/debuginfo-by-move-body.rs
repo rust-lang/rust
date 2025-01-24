@@ -3,11 +3,9 @@
 //@ build-pass
 //@ compile-flags: -Cdebuginfo=2
 
-#![feature(async_closure)]
-
 extern crate block_on;
 
-async fn call_once(f: impl async FnOnce()) {
+async fn call_once(f: impl AsyncFnOnce()) {
     f().await;
 }
 

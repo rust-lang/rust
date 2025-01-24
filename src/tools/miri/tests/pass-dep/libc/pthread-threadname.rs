@@ -1,4 +1,5 @@
 //@ignore-target: windows # No pthreads on Windows
+//@ignore-target: android # No pthread_{get,set}_name on Android
 use std::ffi::{CStr, CString};
 use std::thread;
 
@@ -28,12 +29,13 @@ fn main() {
 
     fn set_thread_name(name: &CStr) -> i32 {
         cfg_if::cfg_if! {
-            if #[cfg(any(target_os = "linux", target_os = "illumos", target_os = "solaris"))] {
+            if #[cfg(any(
+                target_os = "linux",
+                target_os = "freebsd",
+                target_os = "illumos",
+                target_os = "solaris"
+            ))] {
                 unsafe { libc::pthread_setname_np(libc::pthread_self(), name.as_ptr().cast()) }
-            } else if #[cfg(target_os = "freebsd")] {
-                // pthread_set_name_np does not return anything
-                unsafe { libc::pthread_set_name_np(libc::pthread_self(), name.as_ptr().cast()) };
-                0
             } else if #[cfg(target_os = "macos")] {
                 unsafe { libc::pthread_setname_np(name.as_ptr().cast()) }
             } else {
@@ -46,6 +48,7 @@ fn main() {
         cfg_if::cfg_if! {
             if #[cfg(any(
                 target_os = "linux",
+                target_os = "freebsd",
                 target_os = "illumos",
                 target_os = "solaris",
                 target_os = "macos"
@@ -53,18 +56,28 @@ fn main() {
                 unsafe {
                     libc::pthread_getname_np(libc::pthread_self(), name.as_mut_ptr().cast(), name.len())
                 }
-            } else if #[cfg(target_os = "freebsd")] {
-                // pthread_get_name_np does not return anything
-                unsafe {
-                    libc::pthread_get_name_np(libc::pthread_self(), name.as_mut_ptr().cast(), name.len())
-                };
-                0
             } else {
                 compile_error!("get_thread_name not supported for this OS")
             }
         }
     }
 
+    // Set name via Rust API, get it via pthreads.
+    let long_name2 = long_name.clone();
+    thread::Builder::new()
+        .name(long_name.clone())
+        .spawn(move || {
+            let mut buf = vec![0u8; long_name2.len() + 1];
+            assert_eq!(get_thread_name(&mut buf), 0);
+            let cstr = CStr::from_bytes_until_nul(&buf).unwrap();
+            let truncated_name = &long_name2[..long_name2.len().min(MAX_THREAD_NAME_LEN - 1)];
+            assert_eq!(cstr.to_bytes(), truncated_name.as_bytes());
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+
+    // Set name via pthread and get it again (short name).
     thread::Builder::new()
         .spawn(move || {
             // Set short thread name.
@@ -130,6 +143,7 @@ fn main() {
         .join()
         .unwrap();
 
+    // Set name via pthread and get it again (long name).
     thread::Builder::new()
         .spawn(move || {
             // Set full thread name.
@@ -181,4 +195,27 @@ fn main() {
         .unwrap()
         .join()
         .unwrap();
+
+    // Now set the name for a non-existing thread and verify error codes.
+    let invalid_thread = 0xdeadbeef;
+    let error = {
+        cfg_if::cfg_if! {
+            if #[cfg(target_os = "linux")] {
+                libc::ENOENT
+            } else {
+                libc::ESRCH
+            }
+        }
+    };
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        // macOS has no `setname` function accepting a thread id as the first argument.
+        let res = unsafe { libc::pthread_setname_np(invalid_thread, [0].as_ptr()) };
+        assert_eq!(res, error);
+    }
+
+    let mut buf = [0; 64];
+    let res = unsafe { libc::pthread_getname_np(invalid_thread, buf.as_mut_ptr(), buf.len()) };
+    assert_eq!(res, error);
 }

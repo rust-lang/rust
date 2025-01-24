@@ -131,7 +131,7 @@ LL |     use_expr!((let 0 = 1));
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
-error: no rules expected the token `let`
+error: no rules expected keyword `let`
   --> $DIR/feature-gate.rs:70:15
    |
 LL |     macro_rules! use_expr {

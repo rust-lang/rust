@@ -4,7 +4,6 @@ use rustc_data_structures::{snapshot_vec as sv, unify as ut};
 use rustc_middle::infer::unify_key::{ConstVariableValue, ConstVidKey};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
-use rustc_type_ir::EffectVid;
 use rustc_type_ir::visit::TypeVisitableExt;
 use tracing::instrument;
 use ut::UnifyKey;
@@ -129,7 +128,6 @@ struct SnapshotVarData {
     int_vars: Range<IntVid>,
     float_vars: Range<FloatVid>,
     const_vars: (Range<ConstVid>, Vec<ConstVariableOrigin>),
-    effect_vars: Range<EffectVid>,
 }
 
 impl SnapshotVarData {
@@ -148,30 +146,16 @@ impl SnapshotVarData {
             &mut inner.const_unification_table(),
             vars_pre_snapshot.const_var_len,
         );
-        let effect_vars = vars_since_snapshot(
-            &inner.effect_unification_table(),
-            vars_pre_snapshot.effect_var_len,
-        );
-        let effect_vars = effect_vars.start.vid..effect_vars.end.vid;
-
-        SnapshotVarData { region_vars, type_vars, int_vars, float_vars, const_vars, effect_vars }
+        SnapshotVarData { region_vars, type_vars, int_vars, float_vars, const_vars }
     }
 
     fn is_empty(&self) -> bool {
-        let SnapshotVarData {
-            region_vars,
-            type_vars,
-            int_vars,
-            float_vars,
-            const_vars,
-            effect_vars,
-        } = self;
+        let SnapshotVarData { region_vars, type_vars, int_vars, float_vars, const_vars } = self;
         region_vars.0.is_empty()
             && type_vars.0.is_empty()
             && int_vars.is_empty()
             && float_vars.is_empty()
             && const_vars.0.is_empty()
-            && effect_vars.is_empty()
     }
 }
 
@@ -254,13 +238,6 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
                         let idx = vid.index() - self.snapshot_vars.const_vars.0.start.index();
                         let origin = self.snapshot_vars.const_vars.1[idx];
                         self.infcx.next_const_var_with_origin(origin)
-                    } else {
-                        ct
-                    }
-                }
-                ty::InferConst::EffectVar(vid) => {
-                    if self.snapshot_vars.effect_vars.contains(&vid) {
-                        self.infcx.next_effect_var()
                     } else {
                         ct
                     }

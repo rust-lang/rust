@@ -107,7 +107,7 @@ impl LangItems {
         for (_, module_data) in crate_def_map.modules() {
             for impl_def in module_data.scope.impls() {
                 lang_items.collect_lang_item(db, impl_def, LangItemTarget::ImplDef);
-                for assoc in db.impl_data(impl_def).items.iter().copied() {
+                for &(_, assoc) in db.impl_data(impl_def).items.iter() {
                     match assoc {
                         AssocItemId::FunctionId(f) => {
                             lang_items.collect_lang_item(db, f, LangItemTarget::Function)
@@ -376,6 +376,9 @@ language_item_table! {
     Fn,                      sym::fn_,                 fn_trait,                   Target::Trait,          GenericRequirement::Exact(1);
     FnMut,                   sym::fn_mut,              fn_mut_trait,               Target::Trait,          GenericRequirement::Exact(1);
     FnOnce,                  sym::fn_once,             fn_once_trait,              Target::Trait,          GenericRequirement::Exact(1);
+    AsyncFn,                 sym::async_fn,            async_fn_trait,             Target::Trait,          GenericRequirement::Exact(1);
+    AsyncFnMut,              sym::async_fn_mut,        async_fn_mut_trait,         Target::Trait,          GenericRequirement::Exact(1);
+    AsyncFnOnce,             sym::async_fn_once,       async_fn_once_trait,        Target::Trait,          GenericRequirement::Exact(1);
 
     FnOnceOutput,            sym::fn_once_output,      fn_once_output,             Target::AssocTy,        GenericRequirement::None;
 

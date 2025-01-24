@@ -1,7 +1,3 @@
-//@ force-host
-//@ no-prefer-dynamic
-
-#![crate_type = "proc-macro"]
 #![feature(proc_macro_diagnostic, proc_macro_span, proc_macro_def_site)]
 
 extern crate proc_macro;

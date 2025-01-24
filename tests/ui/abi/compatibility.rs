@@ -1,4 +1,5 @@
 //@ check-pass
+//@ add-core-stubs
 //@ revisions: host
 //@ revisions: i686
 //@[i686] compile-flags: --target i686-unknown-linux-gnu
@@ -58,8 +59,10 @@
 //@ revisions: nvptx64
 //@[nvptx64] compile-flags: --target nvptx64-nvidia-cuda
 //@[nvptx64] needs-llvm-components: nvptx
-#![feature(rustc_attrs, unsized_fn_params, transparent_unions)]
-#![cfg_attr(not(host), feature(no_core, lang_items), no_std, no_core)]
+#![feature(no_core, rustc_attrs, lang_items)]
+#![feature(unsized_fn_params, transparent_unions)]
+#![no_std]
+#![no_core]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
 
 // FIXME: some targets are broken in various ways.
@@ -67,66 +70,23 @@
 // sparc64: https://github.com/rust-lang/rust/issues/115336
 // mips64: https://github.com/rust-lang/rust/issues/115404
 
-#[cfg(host)]
-use std::{
-    any::Any, marker::PhantomData, mem::ManuallyDrop, num::NonZero, ptr::NonNull, rc::Rc, sync::Arc,
-};
+extern crate minicore;
+use minicore::*;
 
-/// To work cross-target this test must be no_core.
-/// This little prelude supplies what we need.
-#[cfg(not(host))]
+/// To work cross-target this test must be no_core. This little prelude supplies what we need.
+///
+/// Note that `minicore` provides a very minimal subset of `core` items (not yet complete). This
+/// prelude contains `alloc` and non-`core` (but in `std`) items that minicore does not stub out.
 mod prelude {
-    #[lang = "sized"]
-    pub trait Sized {}
+    use minicore::*;
 
-    #[lang = "receiver"]
-    pub trait Receiver {}
-    impl<T: ?Sized> Receiver for &T {}
-    impl<T: ?Sized> Receiver for &mut T {}
-
-    #[lang = "copy"]
-    pub trait Copy: Sized {}
-    impl Copy for i32 {}
-    impl Copy for f32 {}
-    impl<T: ?Sized> Copy for &T {}
-    impl<T: ?Sized> Copy for *const T {}
-    impl<T: ?Sized> Copy for *mut T {}
+    // Trait stub, no `type_id` method.
+    pub trait Any: 'static {}
 
     #[lang = "clone"]
     pub trait Clone: Sized {
         fn clone(&self) -> Self;
     }
-
-    #[lang = "phantom_data"]
-    pub struct PhantomData<T: ?Sized>;
-    impl<T: ?Sized> Copy for PhantomData<T> {}
-
-    #[lang = "unsafe_cell"]
-    #[repr(transparent)]
-    pub struct UnsafeCell<T: ?Sized> {
-        value: T,
-    }
-
-    pub trait Any: 'static {}
-
-    pub enum Option<T> {
-        None,
-        Some(T),
-    }
-    impl<T: Copy> Copy for Option<T> {}
-
-    pub enum Result<T, E> {
-        Ok(T),
-        Err(E),
-    }
-    impl<T: Copy, E: Copy> Copy for Result<T, E> {}
-
-    #[lang = "manually_drop"]
-    #[repr(transparent)]
-    pub struct ManuallyDrop<T: ?Sized> {
-        value: T,
-    }
-    impl<T: Copy + ?Sized> Copy for ManuallyDrop<T> {}
 
     #[repr(transparent)]
     #[rustc_layout_scalar_valid_range_start(1)]
@@ -185,7 +145,6 @@ mod prelude {
         alloc: A,
     }
 }
-#[cfg(not(host))]
 use prelude::*;
 
 macro_rules! test_abi_compatible {
@@ -209,6 +168,15 @@ impl Clone for Zst {
     fn clone(&self) -> Self {
         Zst
     }
+}
+
+enum Either<T, U> {
+    Left(T),
+    Right(U),
+}
+enum Either2<T, U> {
+    Left(T),
+    Right(U, ()),
 }
 
 #[repr(C)]
@@ -328,7 +296,8 @@ mod unsized_ {
     test_transparent_unsized!(dyn_trait, dyn Any);
 }
 
-// RFC 3391 <https://rust-lang.github.io/rfcs/3391-result_ffi_guarantees.html>.
+// RFC 3391 <https://rust-lang.github.io/rfcs/3391-result_ffi_guarantees.html>, including the
+// extension ratified at <https://github.com/rust-lang/rust/pull/130628#issuecomment-2402761599>.
 macro_rules! test_nonnull {
     ($name:ident, $t:ty) => {
         mod $name {
@@ -340,6 +309,12 @@ macro_rules! test_nonnull {
             test_abi_compatible!(result_ok_zst, Result<Zst, $t>, $t);
             test_abi_compatible!(result_err_arr, Result<$t, [i8; 0]>, $t);
             test_abi_compatible!(result_ok_arr, Result<[i8; 0], $t>, $t);
+            test_abi_compatible!(result_err_void, Result<$t, Void>, $t);
+            test_abi_compatible!(result_ok_void, Result<Void, $t>, $t);
+            test_abi_compatible!(either_err_zst, Either<$t, Zst>, $t);
+            test_abi_compatible!(either_ok_zst, Either<Zst, $t>, $t);
+            test_abi_compatible!(either2_err_zst, Either2<$t, Zst>, $t);
+            test_abi_compatible!(either2_err_arr, Either2<$t, [i8; 0]>, $t);
         }
     }
 }

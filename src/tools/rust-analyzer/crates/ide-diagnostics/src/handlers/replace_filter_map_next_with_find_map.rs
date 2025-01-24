@@ -1,10 +1,10 @@
 use hir::{db::ExpandDatabase, HirFileIdExt, InFile};
 use ide_db::source_change::SourceChange;
+use ide_db::text_edit::TextEdit;
 use syntax::{
     ast::{self, HasArgList},
     AstNode, TextRange,
 };
-use text_edit::TextEdit;
 
 use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
@@ -61,7 +61,7 @@ mod tests {
     };
 
     #[track_caller]
-    pub(crate) fn check_diagnostics(ra_fixture: &str) {
+    pub(crate) fn check_diagnostics(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let mut config = DiagnosticsConfig::test_sample();
         config.disabled.insert("inactive-code".to_owned());
         config.disabled.insert("E0599".to_owned());

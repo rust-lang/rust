@@ -56,11 +56,6 @@ jobs:
           - os: macos-latest
             env:
               TARGET_TRIPLE: x86_64-apple-darwin
-          # cross-compile from Linux to Windows using mingw
-          - os: ubuntu-latest
-            env:
-              TARGET_TRIPLE: x86_64-pc-windows-gnu
-            apt_deps: gcc-mingw-w64-x86-64 wine-stable
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: aarch64-unknown-linux-gnu
@@ -113,15 +108,6 @@ jobs:
     - name: Prepare dependencies
       run: ./y.sh prepare
 
-    # The Wine version shipped with Ubuntu 22.04 doesn't implement bcryptprimitives.dll
-    - name: Build bcryptprimitives.dll shim for Wine
-      if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
-      run: |
-        rustup target add x86_64-pc-windows-gnu
-        mkdir wine_shims
-        rustc patches/bcryptprimitives.rs -Copt-level=3 -Clto=fat --out-dir wine_shims --target x86_64-pc-windows-gnu
-        echo "WINEPATH=$(pwd)/wine_shims" >> $GITHUB_ENV
-
     - name: Build
       run: ./y.sh build --sysroot none
 
@@ -135,9 +121,6 @@ jobs:
 
     # This is roughly config rust-lang/rust uses for testing
     - name: Test with LLVM sysroot
-      # Skip native x86_64-pc-windows-gnu. It is way too slow and cross-compiled
-      # x86_64-pc-windows-gnu covers at least part of the tests.
-      if: matrix.os != 'windows-latest' || matrix.env.TARGET_TRIPLE != 'x86_64-pc-windows-gnu'
       env:
         TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
       run: ./y.sh test --sysroot llvm --no-unstable-features
@@ -215,10 +198,6 @@ jobs:
           - os: macos-latest
             env:
               TARGET_TRIPLE: aarch64-apple-darwin
-          # cross-compile from Linux to Windows using mingw
-          - os: ubuntu-latest
-            env:
-              TARGET_TRIPLE: x86_64-pc-windows-gnu
           - os: windows-latest
             env:
               TARGET_TRIPLE: x86_64-pc-windows-msvc
@@ -243,12 +222,6 @@ jobs:
       if: matrix.os == 'macos-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-apple-darwin'
       run: rustup set default-host x86_64-apple-darwin
 
-    - name: Install MinGW toolchain
-      if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-mingw-w64-x86-64
-
     - name: Prepare dependencies
       run: ./y.sh prepare
 
@@ -262,17 +235,9 @@ jobs:
       run: tar cvfJ cg_clif.tar.xz dist
 
     - name: Upload prebuilt cg_clif
-      if: matrix.os == 'windows-latest' || matrix.env.TARGET_TRIPLE != 'x86_64-pc-windows-gnu'
       uses: actions/upload-artifact@v4
       with:
         name: cg_clif-${{ matrix.env.TARGET_TRIPLE }}
-        path: cg_clif.tar.xz
-
-    - name: Upload prebuilt cg_clif (cross compile)
-      if: matrix.os != 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
-      uses: actions/upload-artifact@v4
-      with:
-        name: cg_clif-${{ runner.os }}-cross-x86_64-mingw
         path: cg_clif.tar.xz
 
   release:

@@ -2,7 +2,7 @@ error[E0277]: the trait bound `(): Foo` is not satisfied
   --> $DIR/where-clause-doesnt-apply.rs:18:15
    |
 LL |     needs_foo(());
-   |     --------- ^^ the trait `Bar` is not implemented for `()`, which is required by `(): Foo`
+   |     --------- ^^ the trait `Bar` is not implemented for `()`
    |     |
    |     required by a bound introduced by this call
    |

@@ -19,27 +19,23 @@
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Display;
-use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
 use std::time::SystemTime;
-use std::{env, io, str};
+use std::{env, fs, io, str};
 
 use build_helper::ci::gha;
 use build_helper::exit;
-use sha2::digest::Digest;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
+use utils::build_stamp::BuildStamp;
 use utils::channel::GitInfo;
-use utils::helpers::hex_encode;
 
 use crate::core::builder;
-use crate::core::builder::{Builder, Kind};
+use crate::core::builder::Kind;
 use crate::core::config::{DryRun, LldMode, LlvmLibunwind, Target, TargetSelection, flags};
 use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode, command};
-use crate::utils::helpers::{
-    self, dir_is_empty, exe, libdir, mtime, output, set_file_times, symlink_dir,
-};
+use crate::utils::helpers::{self, dir_is_empty, exe, libdir, output, set_file_times, symlink_dir};
 
 mod core;
 mod utils;
@@ -80,11 +76,8 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (Some(Mode::Rustc), "llvm_enzyme", None),
     (Some(Mode::Codegen), "llvm_enzyme", None),
     (Some(Mode::ToolRustc), "llvm_enzyme", None),
-    (Some(Mode::Rustc), "parallel_compiler", None),
-    (Some(Mode::ToolRustc), "parallel_compiler", None),
     (Some(Mode::ToolRustc), "rust_analyzer", None),
     (Some(Mode::ToolStd), "rust_analyzer", None),
-    (Some(Mode::Codegen), "parallel_compiler", None),
     // Any library specific cfgs like `target_os`, `target_arch` should be put in
     // priority the `[lints.rust.unexpected_cfgs.check-cfg]` table
     // in the appropriate `library/{std,alloc,core}/Cargo.toml`
@@ -161,7 +154,7 @@ pub struct Build {
     initial_rustc: PathBuf,
     initial_cargo: PathBuf,
     initial_lld: PathBuf,
-    initial_libdir: PathBuf,
+    initial_relative_libdir: PathBuf,
     initial_sysroot: PathBuf,
 
     // Runtime state filled in later on
@@ -315,46 +308,19 @@ impl Build {
         let in_tree_llvm_info = config.in_tree_llvm_info.clone();
         let in_tree_gcc_info = config.in_tree_gcc_info.clone();
 
-        let initial_target_libdir_str = if config.dry_run() {
-            "/dummy/lib/path/to/lib/".to_string()
-        } else {
-            output(
-                Command::new(&config.initial_rustc)
-                    .arg("--target")
-                    .arg(config.build.rustc_target_arg())
-                    .arg("--print")
-                    .arg("target-libdir"),
-            )
-        };
+        let initial_target_libdir_str =
+            config.initial_sysroot.join("lib/rustlib").join(config.build).join("lib");
+
         let initial_target_dir = Path::new(&initial_target_libdir_str).parent().unwrap();
         let initial_lld = initial_target_dir.join("bin").join("rust-lld");
 
-        let initial_sysroot = if config.dry_run() {
-            "/dummy".to_string()
-        } else {
-            output(Command::new(&config.initial_rustc).arg("--print").arg("sysroot"))
-        }
-        .trim()
-        .to_string();
-
-        // FIXME(Zalathar): Determining this path occasionally fails locally for
-        // unknown reasons, so we print some extra context to help track down why.
-        let find_initial_libdir = || {
-            let initial_libdir =
-                initial_target_dir.parent()?.parent()?.strip_prefix(&initial_sysroot).ok()?;
-            Some(initial_libdir.to_path_buf())
-        };
-        let Some(initial_libdir) = find_initial_libdir() else {
-            panic!(
-                "couldn't determine `initial_libdir`:
-- config.initial_rustc:      {rustc:?}
-- initial_target_libdir_str: {initial_target_libdir_str:?}
-- initial_target_dir:        {initial_target_dir:?}
-- initial_sysroot:           {initial_sysroot:?}
-",
-                rustc = config.initial_rustc,
-            );
-        };
+        let initial_relative_libdir = initial_target_dir
+            .ancestors()
+            .nth(2)
+            .unwrap()
+            .strip_prefix(&config.initial_sysroot)
+            .expect("Couldn’t determine initial relative libdir.")
+            .to_path_buf();
 
         let version = std::fs::read_to_string(src.join("src").join("version"))
             .expect("failed to read src/version");
@@ -383,11 +349,11 @@ impl Build {
         }
 
         let mut build = Build {
+            initial_lld,
+            initial_relative_libdir,
             initial_rustc: config.initial_rustc.clone(),
             initial_cargo: config.initial_cargo.clone(),
-            initial_lld,
-            initial_libdir,
-            initial_sysroot: initial_sysroot.into(),
+            initial_sysroot: config.initial_sysroot.clone(),
             local_rebuild: config.local_rebuild,
             fail_fast: config.cmd.fail_fast(),
             doc_tests: config.cmd.doc_tests(),
@@ -541,27 +507,32 @@ impl Build {
         }
         let output = helpers::git(Some(&self.src))
             .args(["config", "--file"])
-            .arg(self.config.src.join(".gitmodules"))
+            .arg(".gitmodules")
             .args(["--get-regexp", "path"])
             .run_capture(self)
             .stdout();
-        for line in output.lines() {
+        std::thread::scope(|s| {
             // Look for `submodule.$name.path = $path`
             // Sample output: `submodule.src/rust-installer.path src/tools/rust-installer`
-            let submodule = line.split_once(' ').unwrap().1;
-            self.update_existing_submodule(submodule);
-        }
+            for line in output.lines() {
+                let submodule = line.split_once(' ').unwrap().1;
+                let config = self.config.clone();
+                s.spawn(move || {
+                    Self::update_existing_submodule(&config, submodule);
+                });
+            }
+        });
     }
 
     /// Updates the given submodule only if it's initialized already; nothing happens otherwise.
-    pub fn update_existing_submodule(&self, submodule: &str) {
+    pub fn update_existing_submodule(config: &Config, submodule: &str) {
         // Avoid running git when there isn't a git checkout.
-        if !self.config.submodules() {
+        if !config.submodules() {
             return;
         }
 
         if GitInfo::new(false, Path::new(submodule)).is_managed_git_subrepository() {
-            self.config.update_submodule(submodule);
+            config.update_submodule(submodule);
         }
     }
 
@@ -623,24 +594,6 @@ impl Build {
         self.metrics.persist(self);
     }
 
-    /// Clear out `dir` if `input` is newer.
-    ///
-    /// After this executes, it will also ensure that `dir` exists.
-    fn clear_if_dirty(&self, dir: &Path, input: &Path) -> bool {
-        let stamp = dir.join(".stamp");
-        let mut cleared = false;
-        if mtime(&stamp) < mtime(input) {
-            self.verbose(|| println!("Dirty - {}", dir.display()));
-            let _ = fs::remove_dir_all(dir);
-            cleared = true;
-        } else if stamp.exists() {
-            return cleared;
-        }
-        t!(fs::create_dir_all(dir));
-        t!(File::create(stamp));
-        cleared
-    }
-
     fn rust_info(&self) -> &GitInfo {
         &self.config.rust_info
     }
@@ -660,11 +613,12 @@ impl Build {
         if self.config.backtrace {
             features.insert("backtrace");
         }
+
         if self.config.profiler_enabled(target) {
             features.insert("profiler");
         }
-        // Generate memcpy, etc.  FIXME: Remove this once compiler-builtins
-        // automatically detects this target.
+
+        // If zkvm target, generate memcpy, etc.
         if target.contains("zkvm") {
             features.insert("compiler-builtins-mem");
         }
@@ -690,9 +644,6 @@ impl Build {
             features.push("llvm");
         }
         // keep in sync with `bootstrap/compile.rs:rustc_cargo_env`
-        if self.config.rustc_parallel && check("rustc_use_parallel_compiler") {
-            features.push("rustc_use_parallel_compiler");
-        }
         if self.config.rust_randomize_layout {
             features.push("rustc_randomized_layouts");
         }
@@ -1649,21 +1600,21 @@ Executed at: {executed_at}"#,
         ret
     }
 
-    fn read_stamp_file(&self, stamp: &Path) -> Vec<(PathBuf, DependencyType)> {
+    fn read_stamp_file(&self, stamp: &BuildStamp) -> Vec<(PathBuf, DependencyType)> {
         if self.config.dry_run() {
             return Vec::new();
         }
 
-        if !stamp.exists() {
+        if !stamp.path().exists() {
             eprintln!(
                 "ERROR: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
-                stamp.display()
+                stamp.path().display()
             );
             crate::exit!(1);
         }
 
         let mut paths = Vec::new();
-        let contents = t!(fs::read(stamp), &stamp);
+        let contents = t!(fs::read(stamp.path()), stamp.path());
         // This is the method we use for extracting paths from the stamp file passed to us. See
         // run_cargo for more information (in compile.rs).
         for part in contents.split(|b| *b == 0) {
@@ -1680,6 +1631,14 @@ Executed at: {executed_at}"#,
             paths.push((path, dependency_type));
         }
         paths
+    }
+
+    /// Copies a file from `src` to `dst`.
+    ///
+    /// If `src` is a symlink, `src` will be resolved to the actual path
+    /// and copied to `dst` instead of the symlink itself.
+    pub fn resolve_symlink_and_copy(&self, src: &Path, dst: &Path) {
+        self.copy_link_internal(src, dst, true);
     }
 
     /// Links a file from `src` to `dst`.
@@ -1718,7 +1677,7 @@ Executed at: {executed_at}"#,
             }
         }
         if let Ok(()) = fs::hard_link(&src, dst) {
-            // Attempt to "easy copy" by creating a hard link (symlinks are priviledged on windows),
+            // Attempt to "easy copy" by creating a hard link (symlinks are privileged on windows),
             // but if that fails just fall back to a slow `copy` operation.
         } else {
             if let Err(e) = fs::copy(&src, dst) {
@@ -1947,52 +1906,6 @@ fn envify(s: &str) -> String {
         })
         .flat_map(|c| c.to_uppercase())
         .collect()
-}
-
-/// Computes a hash representing the state of a repository/submodule and additional input.
-///
-/// It uses `git diff` for the actual changes, and `git status` for including the untracked
-/// files in the specified directory. The additional input is also incorporated into the
-/// computation of the hash.
-///
-/// # Parameters
-///
-/// - `dir`: A reference to the directory path of the target repository/submodule.
-/// - `additional_input`: An additional input to be included in the hash.
-///
-/// # Panics
-///
-/// In case of errors during `git` command execution (e.g., in tarball sources), default values
-/// are used to prevent panics.
-pub fn generate_smart_stamp_hash(
-    builder: &Builder<'_>,
-    dir: &Path,
-    additional_input: &str,
-) -> String {
-    let diff = helpers::git(Some(dir))
-        .allow_failure()
-        .arg("diff")
-        .run_capture_stdout(builder)
-        .stdout_if_ok()
-        .unwrap_or_default();
-
-    let status = helpers::git(Some(dir))
-        .allow_failure()
-        .arg("status")
-        .arg("--porcelain")
-        .arg("-z")
-        .arg("--untracked-files=normal")
-        .run_capture_stdout(builder)
-        .stdout_if_ok()
-        .unwrap_or_default();
-
-    let mut hasher = sha2::Sha256::new();
-
-    hasher.update(diff);
-    hasher.update(status);
-    hasher.update(additional_input);
-
-    hex_encode(hasher.finalize().as_slice())
 }
 
 /// Ensures that the behavior dump directory is properly initialized.

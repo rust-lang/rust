@@ -1,6 +1,7 @@
 use std::assert_matches::assert_matches;
 use std::{fmt, iter};
 
+use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -8,6 +9,7 @@ use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{
     self, CoroutineArgs, CoroutineArgsExt, EarlyBinder, GenericArgs, Ty, TyCtxt,
 };
@@ -15,12 +17,10 @@ use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
-use rustc_target::spec::abi::Abi;
 use tracing::{debug, instrument};
 
 use crate::{
-    abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator,
+    abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator, inline,
     instsimplify, mentioned_items, pass_manager as pm, remove_noop_landing_pads, simplify,
 };
 
@@ -142,7 +142,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
     debug!("make_shim({:?}) = untransformed {:?}", instance, result);
 
     // We don't validate MIR here because the shims may generate code that's
-    // only valid in a reveal-all param-env. However, since we do initial
+    // only valid in a `PostAnalysis` param-env. However, since we do initial
     // validation with the MirBuilt phase, which uses a user-facing param-env.
     // This causes validation errors when TAITs are involved.
     pm::run_passes_no_validate(
@@ -155,6 +155,8 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             &remove_noop_landing_pads::RemoveNoopLandingPads,
             &simplify::SimplifyCfg::MakeShim,
             &instsimplify::InstSimplify::BeforeInline,
+            // Perform inlining of `#[rustc_force_inline]`-annotated callees.
+            &inline::ForceInline,
             &abort_unwinding_calls::AbortUnwindingCalls,
             &add_call_guards::CriticalCallEdges,
         ],
@@ -275,9 +277,9 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
 
     if ty.is_some() {
         let patch = {
-            let param_env = tcx.param_env_reveal_all_normalized(def_id);
+            let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
             let mut elaborator =
-                DropShimElaborator { body: &body, patch: MirPatch::new(&body), tcx, param_env };
+                DropShimElaborator { body: &body, patch: MirPatch::new(&body), tcx, typing_env };
             let dropee = tcx.mk_place_deref(dropee_ptr);
             let resume_block = elaborator.patch.resume_block();
             elaborate_drops::elaborate_drop(
@@ -335,7 +337,7 @@ pub(super) struct DropShimElaborator<'a, 'tcx> {
     pub body: &'a Body<'tcx>,
     pub patch: MirPatch<'tcx>,
     pub tcx: TyCtxt<'tcx>,
-    pub param_env: ty::ParamEnv<'tcx>,
+    pub typing_env: ty::TypingEnv<'tcx>,
 }
 
 impl fmt::Debug for DropShimElaborator<'_, '_> {
@@ -356,8 +358,8 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        self.typing_env
     }
 
     fn drop_style(&self, _path: Self::Path, mode: DropFlagMode) -> DropStyle {
@@ -711,6 +713,13 @@ fn build_call_shim<'tcx>(
     };
 
     let def_id = instance.def_id();
+
+    let rpitit_shim = if let ty::InstanceKind::ReifyShim(..) = instance {
+        tcx.return_position_impl_trait_in_trait_shim_data(def_id)
+    } else {
+        None
+    };
+
     let sig = tcx.fn_sig(def_id);
     let sig = sig.map_bound(|sig| tcx.instantiate_bound_regions_with_erased(sig));
 
@@ -748,8 +757,8 @@ fn build_call_shim<'tcx>(
         sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
     }
 
-    // FIXME(eddyb) avoid having this snippet both here and in
-    // `Instance::fn_sig` (introduce `InstanceKind::fn_sig`?).
+    // FIXME: Avoid having to adjust the signature both here and in
+    // `fn_sig_for_fn_abi`.
     if let ty::InstanceKind::VTableShim(..) = instance {
         // Modify fn(self, ...) to fn(self: *mut Self, ...)
         let mut inputs_and_output = sig.inputs_and_output.to_vec();
@@ -766,9 +775,34 @@ fn build_call_shim<'tcx>(
     let mut local_decls = local_decls_for_sig(&sig, span);
     let source_info = SourceInfo::outermost(span);
 
+    let mut destination = Place::return_place();
+    if let Some((rpitit_def_id, fn_args)) = rpitit_shim {
+        let rpitit_args =
+            fn_args.instantiate_identity().extend_to(tcx, rpitit_def_id, |param, _| {
+                match param.kind {
+                    ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+                    ty::GenericParamDefKind::Type { .. }
+                    | ty::GenericParamDefKind::Const { .. } => {
+                        unreachable!("rpitit should have no addition ty/ct")
+                    }
+                }
+            });
+        let dyn_star_ty = Ty::new_dynamic(
+            tcx,
+            tcx.item_bounds_to_existential_predicates(rpitit_def_id, rpitit_args),
+            tcx.lifetimes.re_erased,
+            ty::DynStar,
+        );
+        destination = local_decls.push(local_decls[RETURN_PLACE].clone()).into();
+        local_decls[RETURN_PLACE].ty = dyn_star_ty;
+        let mut inputs_and_output = sig.inputs_and_output.to_vec();
+        *inputs_and_output.last_mut().unwrap() = dyn_star_ty;
+        sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
+    }
+
     let rcvr_place = || {
         assert!(rcvr_adjustment.is_some());
-        Place::from(Local::new(1 + 0))
+        Place::from(Local::new(1))
     };
     let mut statements = vec![];
 
@@ -855,7 +889,7 @@ fn build_call_shim<'tcx>(
         TerminatorKind::Call {
             func: callee,
             args,
-            destination: Place::return_place(),
+            destination,
             target: Some(BasicBlock::new(1)),
             unwind: if let Some(Adjustment::RefMut) = rcvr_adjustment {
                 UnwindAction::Cleanup(BasicBlock::new(3))
@@ -883,7 +917,24 @@ fn build_call_shim<'tcx>(
         );
     }
     // BB #1/#2 - return
-    block(&mut blocks, vec![], TerminatorKind::Return, false);
+    // NOTE: If this is an RPITIT in dyn, we also want to coerce
+    // the return type of the function into a `dyn*`.
+    let stmts = if rpitit_shim.is_some() {
+        vec![Statement {
+            source_info,
+            kind: StatementKind::Assign(Box::new((
+                Place::return_place(),
+                Rvalue::Cast(
+                    CastKind::PointerCoercion(PointerCoercion::DynStar, CoercionSource::Implicit),
+                    Operand::Move(destination),
+                    sig.output(),
+                ),
+            ))),
+        }]
+    } else {
+        vec![]
+    };
+    block(&mut blocks, stmts, TerminatorKind::Return, false);
     if let Some(Adjustment::RefMut) = rcvr_adjustment {
         // BB #3 - drop if closure panics
         block(
@@ -905,7 +956,7 @@ fn build_call_shim<'tcx>(
     let mut body =
         new_body(MirSource::from_instance(instance), blocks, local_decls, sig.inputs().len(), span);
 
-    if let Abi::RustCall = sig.abi {
+    if let ExternAbi::RustCall = sig.abi {
         body.spread_arg = Some(Local::new(sig.inputs().len()));
     }
 
@@ -915,7 +966,7 @@ fn build_call_shim<'tcx>(
 pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     debug_assert!(tcx.is_constructor(ctor_id));
 
-    let param_env = tcx.param_env_reveal_all_normalized(ctor_id);
+    let typing_env = ty::TypingEnv::post_analysis(tcx, ctor_id);
 
     // Normalize the sig.
     let sig = tcx
@@ -923,7 +974,7 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
         .instantiate_identity()
         .no_bound_vars()
         .expect("LBR in ADT constructor signature");
-    let sig = tcx.normalize_erasing_regions(param_env, sig);
+    let sig = tcx.normalize_erasing_regions(typing_env, sig);
 
     let ty::Adt(adt_def, args) = sig.output().kind() else {
         bug!("unexpected type for ADT ctor {:?}", sig.output());

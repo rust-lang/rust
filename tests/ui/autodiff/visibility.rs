@@ -1,7 +1,7 @@
 //@ ignore-enzyme
 //@ revisions: std_autodiff no_std_autodiff
 //@[no_std_autodiff] check-pass
-//@ aux-build: my_macro.rs
+//@ proc-macro: my_macro.rs
 #![crate_type = "lib"]
 #![feature(autodiff)]
 

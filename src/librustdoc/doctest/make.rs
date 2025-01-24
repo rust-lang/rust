@@ -51,8 +51,17 @@ impl DocTestBuilder {
                 !lang_str.compile_fail && !lang_str.test_harness && !lang_str.standalone_crate
             });
 
-        let SourceInfo { crate_attrs, maybe_crate_attrs, crates, everything_else } =
-            partition_source(source, edition);
+        let Some(SourceInfo { crate_attrs, maybe_crate_attrs, crates, everything_else }) =
+            partition_source(source, edition)
+        else {
+            return Self::invalid(
+                String::new(),
+                String::new(),
+                String::new(),
+                source.to_string(),
+                test_id,
+            );
+        };
 
         // Uses librustc_ast to parse the doctest and find if there's a main fn and the extern
         // crate already is included.
@@ -77,18 +86,7 @@ impl DocTestBuilder {
         else {
             // If the parser panicked due to a fatal error, pass the test code through unchanged.
             // The error will be reported during compilation.
-            return Self {
-                supports_color: false,
-                has_main_fn: false,
-                crate_attrs,
-                maybe_crate_attrs,
-                crates,
-                everything_else,
-                already_has_extern_crate: false,
-                test_id,
-                failed_ast: true,
-                can_be_merged: false,
-            };
+            return Self::invalid(crate_attrs, maybe_crate_attrs, crates, everything_else, test_id);
         };
         // If the AST returned an error, we don't want this doctest to be merged with the
         // others. Same if it contains `#[feature]` or `#[no_std]`.
@@ -110,6 +108,27 @@ impl DocTestBuilder {
             test_id,
             failed_ast: false,
             can_be_merged,
+        }
+    }
+
+    fn invalid(
+        crate_attrs: String,
+        maybe_crate_attrs: String,
+        crates: String,
+        everything_else: String,
+        test_id: Option<String>,
+    ) -> Self {
+        Self {
+            supports_color: false,
+            has_main_fn: false,
+            crate_attrs,
+            maybe_crate_attrs,
+            crates,
+            everything_else,
+            already_has_extern_crate: false,
+            test_id,
+            failed_ast: true,
+            can_be_merged: false,
         }
     }
 
@@ -289,7 +308,12 @@ fn parse_source(
     // Recurse through functions body. It is necessary because the doctest source code is
     // wrapped in a function to limit the number of AST errors. If we don't recurse into
     // functions, we would thing all top-level items (so basically nothing).
-    fn check_item(item: &ast::Item, info: &mut ParseSourceInfo, crate_name: &Option<&str>) {
+    fn check_item(
+        item: &ast::Item,
+        info: &mut ParseSourceInfo,
+        crate_name: &Option<&str>,
+        is_top_level: bool,
+    ) {
         if !info.has_global_allocator
             && item.attrs.iter().any(|attr| attr.name_or_empty() == sym::global_allocator)
         {
@@ -297,13 +321,15 @@ fn parse_source(
         }
         match item.kind {
             ast::ItemKind::Fn(ref fn_item) if !info.has_main_fn => {
-                if item.ident.name == sym::main {
+                if item.ident.name == sym::main && is_top_level {
                     info.has_main_fn = true;
                 }
                 if let Some(ref body) = fn_item.body {
                     for stmt in &body.stmts {
                         match stmt.kind {
-                            ast::StmtKind::Item(ref item) => check_item(item, info, crate_name),
+                            ast::StmtKind::Item(ref item) => {
+                                check_item(item, info, crate_name, false)
+                            }
                             ast::StmtKind::MacCall(..) => info.found_macro = true,
                             _ => {}
                         }
@@ -329,7 +355,7 @@ fn parse_source(
     loop {
         match parser.parse_item(ForceCollect::No) {
             Ok(Some(item)) => {
-                check_item(&item, info, crate_name);
+                check_item(&item, info, crate_name, true);
 
                 if info.has_main_fn && info.found_extern_crate {
                     break;
@@ -511,8 +537,8 @@ fn handle_attr(mod_attr_pending: &mut String, source_info: &mut SourceInfo, edit
         push_to.push('\n');
         // If it's complete, then we can clear the pending content.
         mod_attr_pending.clear();
-    } else if mod_attr_pending.ends_with('\\') {
-        mod_attr_pending.push('n');
+    } else {
+        mod_attr_pending.push('\n');
     }
 }
 
@@ -524,7 +550,7 @@ struct SourceInfo {
     everything_else: String,
 }
 
-fn partition_source(s: &str, edition: Edition) -> SourceInfo {
+fn partition_source(s: &str, edition: Edition) -> Option<SourceInfo> {
     #[derive(Copy, Clone, PartialEq)]
     enum PartitionState {
         Attrs,
@@ -599,11 +625,16 @@ fn partition_source(s: &str, edition: Edition) -> SourceInfo {
         }
     }
 
+    if !mod_attr_pending.is_empty() {
+        debug!("invalid doctest code: {s:?}");
+        return None;
+    }
+
     source_info.everything_else = source_info.everything_else.trim().to_string();
 
     debug!("crate_attrs:\n{}{}", source_info.crate_attrs, source_info.maybe_crate_attrs);
     debug!("crates:\n{}", source_info.crates);
     debug!("after:\n{}", source_info.everything_else);
 
-    source_info
+    Some(source_info)
 }

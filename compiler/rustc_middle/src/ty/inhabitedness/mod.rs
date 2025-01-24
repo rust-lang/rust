@@ -181,18 +181,18 @@ impl<'tcx> Ty<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         module: DefId,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
     ) -> bool {
-        self.inhabited_predicate(tcx).apply(tcx, param_env, module)
+        self.inhabited_predicate(tcx).apply(tcx, typing_env, module)
     }
 
     /// Returns true if the type is uninhabited without regard to visibility
     pub fn is_privately_uninhabited(
         self,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
     ) -> bool {
-        !self.inhabited_predicate(tcx).apply_ignore_module(tcx, param_env)
+        !self.inhabited_predicate(tcx).apply_ignore_module(tcx, typing_env)
     }
 }
 

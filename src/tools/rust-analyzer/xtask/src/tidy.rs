@@ -135,7 +135,6 @@ Apache-2.0 WITH LLVM-exception
 Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
 Apache-2.0/MIT
 BSD-2-Clause OR Apache-2.0 OR MIT
-BSD-3-Clause
 CC0-1.0
 ISC
 MIT
@@ -223,7 +222,7 @@ struct TidyDocs {
 impl TidyDocs {
     fn visit(&mut self, path: &Path, text: &str) {
         // Tests and diagnostic fixes don't need module level comments.
-        if is_exclude_dir(path, &["tests", "test_data", "fixes", "grammar", "ra-salsa"]) {
+        if is_exclude_dir(path, &["tests", "test_data", "fixes", "grammar", "ra-salsa", "stdx"]) {
             return;
         }
 

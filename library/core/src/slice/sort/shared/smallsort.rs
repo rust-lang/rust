@@ -102,7 +102,7 @@ impl<T: FreezeMarker> UnstableSmallSortTypeImpl for T {
     }
 }
 
-/// FIXME(effects) use original ipnsort approach with choose_unstable_small_sort,
+/// FIXME(const_trait_impl) use original ipnsort approach with choose_unstable_small_sort,
 /// as found here <https://github.com/Voultapher/sort-research-rs/blob/438fad5d0495f65d4b72aa87f0b62fc96611dff3/ipnsort/src/smallsort.rs#L83C10-L83C36>.
 pub(crate) trait UnstableSmallSortFreezeTypeImpl: Sized + FreezeMarker {
     fn small_sort_threshold() -> usize;

@@ -1,33 +1,17 @@
+//@ add-core-stubs
 //@ assembly-output: emit-asm
 //@ compile-flags: --target m68k-unknown-linux-gnu
 //@ needs-llvm-components: m68k
 
-#![feature(no_core, lang_items, rustc_attrs, asm_experimental_arch)]
+#![feature(no_core, asm_experimental_arch)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(non_camel_case_types)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! concat {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 type ptr = *const u64;
-
-impl Copy for i8 {}
-impl Copy for i16 {}
-impl Copy for i32 {}
-impl Copy for i64 {}
-impl Copy for ptr {}
 
 macro_rules! check {
     ($func:ident $ty:ident $class:ident $mov:literal) => {

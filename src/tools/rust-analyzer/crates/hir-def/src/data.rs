@@ -6,14 +6,14 @@ use base_db::CrateId;
 use hir_expand::{
     name::Name, AstId, ExpandResult, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefKind,
 };
-use intern::{sym, Interned, Symbol};
+use intern::{sym, Symbol};
 use la_arena::{Idx, RawIdx};
 use smallvec::SmallVec;
 use syntax::{ast, Parse};
 use triomphe::Arc;
+use tt::iter::TtElement;
 
 use crate::{
-    attr::Attrs,
     db::DefDatabase,
     expander::{Expander, Mark},
     item_tree::{self, AssocItem, FnFlags, ItemTree, ItemTreeId, MacroCall, ModItem, TreeId},
@@ -25,7 +25,7 @@ use crate::{
         DefMap, MacroSubNs,
     },
     path::ImportAlias,
-    type_ref::{TraitRef, TypeBound, TypeRef},
+    type_ref::{TraitRef, TypeBound, TypeRefId, TypesMap},
     visibility::RawVisibility,
     AssocItemId, AstIdWithPath, ConstId, ConstLoc, ExternCrateId, FunctionId, FunctionLoc,
     HasModule, ImplId, Intern, ItemContainerId, ItemLoc, Lookup, Macro2Id, MacroRulesId, ModuleId,
@@ -35,13 +35,13 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionData {
     pub name: Name,
-    pub params: Box<[Interned<TypeRef>]>,
-    pub ret_type: Interned<TypeRef>,
-    pub attrs: Attrs,
+    pub params: Box<[TypeRefId]>,
+    pub ret_type: TypeRefId,
     pub visibility: RawVisibility,
     pub abi: Option<Symbol>,
     pub legacy_const_generics_indices: Option<Box<Box<[u32]>>>,
     pub rustc_allow_incoherent_impl: bool,
+    pub types_map: Arc<TypesMap>,
     flags: FnFlags,
 }
 
@@ -110,13 +110,13 @@ impl FunctionData {
                 .filter(|&(idx, _)| {
                     item_tree.attrs(db, krate, attr_owner(idx)).is_cfg_enabled(cfg_options)
                 })
-                .filter_map(|(_, param)| param.type_ref.clone())
+                .filter_map(|(_, param)| param.type_ref)
                 .collect(),
-            ret_type: func.ret_type.clone(),
-            attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()),
+            ret_type: func.ret_type,
             visibility,
             abi: func.abi.clone(),
             legacy_const_generics_indices,
+            types_map: func.types_map.clone(),
             flags,
             rustc_allow_incoherent_impl,
         })
@@ -148,25 +148,30 @@ impl FunctionData {
         self.flags.contains(FnFlags::HAS_UNSAFE_KW)
     }
 
+    pub fn is_safe(&self) -> bool {
+        self.flags.contains(FnFlags::HAS_SAFE_KW)
+    }
+
     pub fn is_varargs(&self) -> bool {
         self.flags.contains(FnFlags::IS_VARARGS)
     }
 }
 
-fn parse_rustc_legacy_const_generics(tt: &crate::tt::Subtree) -> Box<[u32]> {
+fn parse_rustc_legacy_const_generics(tt: &crate::tt::TopSubtree) -> Box<[u32]> {
     let mut indices = Vec::new();
-    for args in tt.token_trees.chunks(2) {
-        match &args[0] {
-            tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => match lit.symbol.as_str().parse() {
+    let mut iter = tt.iter();
+    while let (Some(first), second) = (iter.next(), iter.next()) {
+        match first {
+            TtElement::Leaf(tt::Leaf::Literal(lit)) => match lit.symbol.as_str().parse() {
                 Ok(index) => indices.push(index),
                 Err(_) => break,
             },
             _ => break,
         }
 
-        if let Some(comma) = args.get(1) {
+        if let Some(comma) = second {
             match comma {
-                tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if punct.char == ',' => {}
+                TtElement::Leaf(tt::Leaf::Punct(punct)) if punct.char == ',' => {}
                 _ => break,
             }
         }
@@ -178,13 +183,14 @@ fn parse_rustc_legacy_const_generics(tt: &crate::tt::Subtree) -> Box<[u32]> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeAliasData {
     pub name: Name,
-    pub type_ref: Option<Interned<TypeRef>>,
+    pub type_ref: Option<TypeRefId>,
     pub visibility: RawVisibility,
     pub is_extern: bool,
     pub rustc_has_incoherent_inherent_impls: bool,
     pub rustc_allow_incoherent_impl: bool,
     /// Bounds restricting the type alias itself (eg. `type Ty: Bound;` in a trait or impl).
-    pub bounds: Box<[Interned<TypeBound>]>,
+    pub bounds: Box<[TypeBound]>,
+    pub types_map: Arc<TypesMap>,
 }
 
 impl TypeAliasData {
@@ -212,30 +218,35 @@ impl TypeAliasData {
 
         Arc::new(TypeAliasData {
             name: typ.name.clone(),
-            type_ref: typ.type_ref.clone(),
+            type_ref: typ.type_ref,
             visibility,
             is_extern: matches!(loc.container, ItemContainerId::ExternBlockId(_)),
             rustc_has_incoherent_inherent_impls,
             rustc_allow_incoherent_impl,
             bounds: typ.bounds.clone(),
+            types_map: typ.types_map.clone(),
         })
+    }
+}
+
+bitflags::bitflags! {
+    #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
+    pub struct TraitFlags: u8 {
+        const IS_AUTO = 1 << 0;
+        const IS_UNSAFE = 1 << 1;
+        const IS_FUNDAMENTAL = 1 << 2;
+        const RUSTC_HAS_INCOHERENT_INHERENT_IMPLS = 1 << 3;
+        const SKIP_ARRAY_DURING_METHOD_DISPATCH = 1 << 4;
+        const SKIP_BOXED_SLICE_DURING_METHOD_DISPATCH = 1 << 5;
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraitData {
     pub name: Name,
-    pub items: Vec<(Name, AssocItemId)>,
-    pub is_auto: bool,
-    pub is_unsafe: bool,
-    pub rustc_has_incoherent_inherent_impls: bool,
-    pub skip_array_during_method_dispatch: bool,
-    pub skip_boxed_slice_during_method_dispatch: bool,
-    pub fundamental: bool,
+    pub items: Box<[(Name, AssocItemId)]>,
+    pub flags: TraitFlags,
     pub visibility: RawVisibility,
-    /// Whether the trait has `#[rust_skip_array_during_method_dispatch]`. `hir_ty` will ignore
-    /// method calls to this trait's methods when the receiver is an array and the crate edition is
-    /// 2015 or 2018.
     // box it as the vec is usually empty anyways
     pub macro_calls: Option<Box<Vec<(AstId<ast::Item>, MacroCallId)>>>,
 }
@@ -254,42 +265,50 @@ impl TraitData {
         let item_tree = tree_id.item_tree(db);
         let tr_def = &item_tree[tree_id.value];
         let name = tr_def.name.clone();
-        let is_auto = tr_def.is_auto;
-        let is_unsafe = tr_def.is_unsafe;
         let visibility = item_tree[tr_def.visibility].clone();
         let attrs = item_tree.attrs(db, module_id.krate(), ModItem::from(tree_id.value).into());
+
+        let mut flags = TraitFlags::empty();
+
+        if tr_def.is_auto {
+            flags |= TraitFlags::IS_AUTO;
+        }
+        if tr_def.is_unsafe {
+            flags |= TraitFlags::IS_UNSAFE;
+        }
+        if attrs.by_key(&sym::fundamental).exists() {
+            flags |= TraitFlags::IS_FUNDAMENTAL;
+        }
+        if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
+            flags |= TraitFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS;
+        }
+
         let mut skip_array_during_method_dispatch =
             attrs.by_key(&sym::rustc_skip_array_during_method_dispatch).exists();
         let mut skip_boxed_slice_during_method_dispatch = false;
         for tt in attrs.by_key(&sym::rustc_skip_during_method_dispatch).tt_values() {
-            for tt in tt.token_trees.iter() {
-                if let crate::tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) = tt {
+            for tt in tt.iter() {
+                if let tt::iter::TtElement::Leaf(tt::Leaf::Ident(ident)) = tt {
                     skip_array_during_method_dispatch |= ident.sym == sym::array;
                     skip_boxed_slice_during_method_dispatch |= ident.sym == sym::boxed_slice;
                 }
             }
         }
-        let rustc_has_incoherent_inherent_impls =
-            attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists();
-        let fundamental = attrs.by_key(&sym::fundamental).exists();
+
+        if skip_array_during_method_dispatch {
+            flags |= TraitFlags::SKIP_ARRAY_DURING_METHOD_DISPATCH;
+        }
+        if skip_boxed_slice_during_method_dispatch {
+            flags |= TraitFlags::SKIP_BOXED_SLICE_DURING_METHOD_DISPATCH;
+        }
+
         let mut collector =
             AssocItemCollector::new(db, module_id, tree_id.file_id(), ItemContainerId::TraitId(tr));
         collector.collect(&item_tree, tree_id.tree_id(), &tr_def.items);
         let (items, macro_calls, diagnostics) = collector.finish();
 
         (
-            Arc::new(TraitData {
-                name,
-                macro_calls,
-                items,
-                is_auto,
-                is_unsafe,
-                visibility,
-                skip_array_during_method_dispatch,
-                skip_boxed_slice_during_method_dispatch,
-                rustc_has_incoherent_inherent_impls,
-                fundamental,
-            }),
+            Arc::new(TraitData { name, macro_calls, items, visibility, flags }),
             DefDiagnostics::new(diagnostics),
         )
     }
@@ -339,13 +358,14 @@ impl TraitAliasData {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ImplData {
-    pub target_trait: Option<Interned<TraitRef>>,
-    pub self_ty: Interned<TypeRef>,
-    pub items: Box<[AssocItemId]>,
+    pub target_trait: Option<TraitRef>,
+    pub self_ty: TypeRefId,
+    pub items: Box<[(Name, AssocItemId)]>,
     pub is_negative: bool,
     pub is_unsafe: bool,
     // box it as the vec is usually empty anyways
     pub macro_calls: Option<Box<Vec<(AstId<ast::Item>, MacroCallId)>>>,
+    pub types_map: Arc<TypesMap>,
 }
 
 impl ImplData {
@@ -363,8 +383,8 @@ impl ImplData {
 
         let item_tree = tree_id.item_tree(db);
         let impl_def = &item_tree[tree_id.value];
-        let target_trait = impl_def.target_trait.clone();
-        let self_ty = impl_def.self_ty.clone();
+        let target_trait = impl_def.target_trait;
+        let self_ty = impl_def.self_ty;
         let is_negative = impl_def.is_negative;
         let is_unsafe = impl_def.is_unsafe;
 
@@ -373,7 +393,6 @@ impl ImplData {
         collector.collect(&item_tree, tree_id.tree_id(), &impl_def.items);
 
         let (items, macro_calls, diagnostics) = collector.finish();
-        let items = items.into_iter().map(|(_, item)| item).collect();
 
         (
             Arc::new(ImplData {
@@ -383,6 +402,7 @@ impl ImplData {
                 is_negative,
                 is_unsafe,
                 macro_calls,
+                types_map: impl_def.types_map.clone(),
             }),
             DefDiagnostics::new(diagnostics),
         )
@@ -414,7 +434,7 @@ impl Macro2Data {
             .by_key(&sym::rustc_builtin_macro)
             .tt_values()
             .next()
-            .and_then(|attr| parse_macro_name_and_helper_attrs(&attr.token_trees))
+            .and_then(parse_macro_name_and_helper_attrs)
             .map(|(_, helpers)| helpers);
 
         Arc::new(Macro2Data {
@@ -528,10 +548,11 @@ impl ExternCrateDeclData {
 pub struct ConstData {
     /// `None` for `const _: () = ();`
     pub name: Option<Name>,
-    pub type_ref: Interned<TypeRef>,
+    pub type_ref: TypeRefId,
     pub visibility: RawVisibility,
     pub rustc_allow_incoherent_impl: bool,
     pub has_body: bool,
+    pub types_map: Arc<TypesMap>,
 }
 
 impl ConstData {
@@ -552,10 +573,11 @@ impl ConstData {
 
         Arc::new(ConstData {
             name: konst.name.clone(),
-            type_ref: konst.type_ref.clone(),
+            type_ref: konst.type_ref,
             visibility,
             rustc_allow_incoherent_impl,
             has_body: konst.has_body,
+            types_map: konst.types_map.clone(),
         })
     }
 }
@@ -563,10 +585,13 @@ impl ConstData {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StaticData {
     pub name: Name,
-    pub type_ref: Interned<TypeRef>,
+    pub type_ref: TypeRefId,
     pub visibility: RawVisibility,
     pub mutable: bool,
     pub is_extern: bool,
+    pub has_safe_kw: bool,
+    pub has_unsafe_kw: bool,
+    pub types_map: Arc<TypesMap>,
 }
 
 impl StaticData {
@@ -577,10 +602,13 @@ impl StaticData {
 
         Arc::new(StaticData {
             name: statik.name.clone(),
-            type_ref: statik.type_ref.clone(),
+            type_ref: statik.type_ref,
             visibility: item_tree[statik.visibility].clone(),
             mutable: statik.mutable,
             is_extern: matches!(loc.container, ItemContainerId::ExternBlockId(_)),
+            has_safe_kw: statik.has_safe_kw,
+            has_unsafe_kw: statik.has_unsafe_kw,
+            types_map: statik.types_map.clone(),
         })
     }
 }
@@ -619,12 +647,12 @@ impl<'a> AssocItemCollector<'a> {
     fn finish(
         self,
     ) -> (
-        Vec<(Name, AssocItemId)>,
+        Box<[(Name, AssocItemId)]>,
         Option<Box<Vec<(AstId<ast::Item>, MacroCallId)>>>,
         Vec<DefDiagnostic>,
     ) {
         (
-            self.items,
+            self.items.into_boxed_slice(),
             if self.macro_calls.is_empty() { None } else { Some(Box::new(self.macro_calls)) },
             self.diagnostics,
         )

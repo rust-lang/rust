@@ -81,9 +81,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else if relative_clocks.contains(&clk_id) {
             this.machine.clock.now().duration_since(this.machine.clock.epoch())
         } else {
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
-            return interp_ok(Scalar::from_i32(-1));
+            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
         };
 
         let tv_sec = duration.as_secs();
@@ -109,9 +107,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Using tz is obsolete and should always be null
         let tz = this.read_pointer(tz_op)?;
         if !this.ptr_is_null(tz)? {
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
-            return interp_ok(Scalar::from_i32(-1));
+            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
         }
 
         let duration = system_time_to_duration(&SystemTime::now())?;
@@ -184,6 +180,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if !matches!(&*this.tcx.sess.target.os, "solaris" | "illumos") {
             // tm_zone represents the timezone value in the form of: +0730, +08, -0730 or -08.
             // This may not be consistent with libc::localtime_r's result.
+
             let offset_in_seconds = dt.offset().fix().local_minus_utc();
             let tm_gmtoff = offset_in_seconds;
             let mut tm_zone = String::new();
@@ -199,11 +196,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 write!(tm_zone, "{:02}", offset_min).unwrap();
             }
 
-            // FIXME: String de-duplication is needed so that we only allocate this string only once
-            // even when there are multiple calls to this function.
-            let tm_zone_ptr = this
-                .alloc_os_str_as_c_str(&OsString::from(tm_zone), MiriMemoryKind::Machine.into())?;
+            // Add null terminator for C string compatibility.
+            tm_zone.push('\0');
 
+            // Deduplicate and allocate the string.
+            let tm_zone_ptr = this.allocate_bytes_dedup(tm_zone.as_bytes())?;
+
+            // Write the timezone pointer and offset into the result structure.
             this.write_pointer(tm_zone_ptr, &this.project_field_named(&result, "tm_zone")?)?;
             this.write_int_fields_named(&[("tm_gmtoff", tm_gmtoff.into())], &result)?;
         }
@@ -323,9 +322,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let duration = match this.read_timespec(&req)? {
             Some(duration) => duration,
             None => {
-                let einval = this.eval_libc("EINVAL");
-                this.set_last_error(einval)?;
-                return interp_ok(Scalar::from_i32(-1));
+                return this.set_last_error_and_return_i32(LibcError("EINVAL"));
             }
         };
 
@@ -334,8 +331,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
             callback!(
                 @capture<'tcx> {}
-                @unblock = |_this| { panic!("sleeping thread unblocked before time is up") }
-                @timeout = |_this| { interp_ok(()) }
+                |_this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::TimedOut);
+                    interp_ok(())
+                }
             ),
         );
         interp_ok(Scalar::from_i32(0))
@@ -356,8 +355,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
             callback!(
                 @capture<'tcx> {}
-                @unblock = |_this| { panic!("sleeping thread unblocked before time is up") }
-                @timeout = |_this| { interp_ok(()) }
+                |_this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::TimedOut);
+                    interp_ok(())
+                }
             ),
         );
         interp_ok(())

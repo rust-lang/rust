@@ -9,7 +9,7 @@ use rustc_errors::{
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
-use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
+use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTuple};
 
 use crate::config::CrateType;
 use crate::parse::ParseSess;
@@ -179,13 +179,13 @@ pub(crate) struct EmbedSourceRequiresDebugInfo;
 #[diag(session_target_stack_protector_not_supported)]
 pub(crate) struct StackProtectorNotSupportedForTarget<'a> {
     pub(crate) stack_protector: StackProtector,
-    pub(crate) target_triple: &'a TargetTriple,
+    pub(crate) target_triple: &'a TargetTuple,
 }
 
 #[derive(Diagnostic)]
 #[diag(session_target_small_data_threshold_not_supported)]
 pub(crate) struct SmallDataThresholdNotSupportedForTarget<'a> {
-    pub(crate) target_triple: &'a TargetTriple,
+    pub(crate) target_triple: &'a TargetTuple,
 }
 
 #[derive(Diagnostic)]
@@ -383,7 +383,7 @@ struct BinaryFloatLiteralNotSupported {
 #[diag(session_unsupported_crate_type_for_target)]
 pub(crate) struct UnsupportedCrateTypeForTarget<'a> {
     pub(crate) crate_type: CrateType,
-    pub(crate) target_triple: &'a TargetTriple,
+    pub(crate) target_triple: &'a TargetTuple,
 }
 
 pub fn report_lit_error(
@@ -464,12 +464,6 @@ pub fn report_lit_error(
 }
 
 #[derive(Diagnostic)]
-#[diag(session_optimization_fuel_exhausted)]
-pub(crate) struct OptimisationFuelExhausted {
-    pub(crate) msg: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(session_incompatible_linker_flavor)]
 #[note]
 pub(crate) struct IncompatibleLinkerFlavor {
@@ -484,6 +478,20 @@ pub(crate) struct FunctionReturnRequiresX86OrX8664;
 #[derive(Diagnostic)]
 #[diag(session_function_return_thunk_extern_requires_non_large_code_model)]
 pub(crate) struct FunctionReturnThunkExternRequiresNonLargeCodeModel;
+
+#[derive(Diagnostic)]
+#[diag(session_unsupported_regparm)]
+pub(crate) struct UnsupportedRegparm {
+    pub(crate) regparm: u32,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_unsupported_regparm_arch)]
+pub(crate) struct UnsupportedRegparmArch;
+
+#[derive(Diagnostic)]
+#[diag(session_unsupported_reg_struct_return_arch)]
+pub(crate) struct UnsupportedRegStructReturnArch;
 
 #[derive(Diagnostic)]
 #[diag(session_failed_to_create_profiler)]

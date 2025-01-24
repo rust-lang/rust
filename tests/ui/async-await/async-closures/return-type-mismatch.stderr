@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/return-type-mismatch.rs:11:24
+  --> $DIR/return-type-mismatch.rs:9:24
    |
 LL |         let y: usize = x().await;
    |                        ^^^^^^^^^ expected `usize`, found `i32`

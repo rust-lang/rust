@@ -5,7 +5,7 @@
 //! documents linked from it.
 //! These are also good reads:
 //!  * <https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html>
-//!  * <https://monoinfinito.wordpress.com/series/exception-handling-in-c/>
+//!  * <https://nicolasbrailo.github.io/blog/projects_texts/13exceptionsunderthehood.html>
 //!  * <https://www.airs.com/blog/index.php?s=exception+frames>
 //!
 //! ## A brief summary
@@ -58,7 +58,7 @@ struct Exception {
     cause: Box<dyn Any + Send>,
 }
 
-pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
+pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     let exception = Box::new(Exception {
         _uwe: uw::_Unwind_Exception {
             exception_class: RUST_EXCEPTION_CLASS,
@@ -82,7 +82,7 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     }
 }
 
-pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
+pub(crate) unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     let exception = ptr as *mut uw::_Unwind_Exception;
     if (*exception).exception_class != RUST_EXCEPTION_CLASS {
         uw::_Unwind_DeleteException(exception);

@@ -354,3 +354,14 @@ fn test_signed_nonzero_neg() {
     assert_eq!((-NonZero::<i128>::new(1).unwrap()).get(), -1);
     assert_eq!((-NonZero::<i128>::new(-1).unwrap()).get(), 1);
 }
+
+#[test]
+fn test_nonzero_fmt() {
+    let i = format!("{0}, {0:?}, {0:x}, {0:X}, {0:#x}, {0:#X}, {0:o}, {0:b}, {0:e}, {0:E}", 42);
+    let nz = format!(
+        "{0}, {0:?}, {0:x}, {0:X}, {0:#x}, {0:#X}, {0:o}, {0:b}, {0:e}, {0:E}",
+        NonZero::new(42).unwrap()
+    );
+
+    assert_eq!(i, nz);
+}

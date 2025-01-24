@@ -1,3 +1,5 @@
+//@ compile-flags: -Zunsound-mir-opts
+// FIXME: see <https://github.com/rust-lang/rust/issues/132353.
 //@ test-mir-pass: GVN
 //@ compile-flags: -Cpanic=abort
 

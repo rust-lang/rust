@@ -2,6 +2,7 @@
 //! example.
 
 use hir::{ImportPathConfig, PathResolution, Semantics};
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     helpers::mod_path_to_ast,
     imports::insert_use::{insert_use, ImportScope},
@@ -14,7 +15,6 @@ use syntax::{
     ast::{self, make},
     Edition, SyntaxKind, SyntaxNode,
 };
-use text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsConfig, Severity};
 

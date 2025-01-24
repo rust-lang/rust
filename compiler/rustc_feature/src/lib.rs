@@ -28,7 +28,7 @@ mod tests;
 
 use std::num::NonZero;
 
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 
 #[derive(Debug, Clone)]
 pub struct Feature {
@@ -68,20 +68,35 @@ impl UnstableFeatures {
     /// If `krate` is [`Some`], then setting `RUSTC_BOOTSTRAP=krate` will enable the nightly
     /// features. Otherwise, only `RUSTC_BOOTSTRAP=1` will work.
     pub fn from_environment(krate: Option<&str>) -> Self {
+        Self::from_environment_value(krate, std::env::var("RUSTC_BOOTSTRAP"))
+    }
+
+    /// Avoid unsafe `std::env::set_var()` by allowing tests to inject
+    /// `std::env::var("RUSTC_BOOTSTRAP")` with the `env_var_rustc_bootstrap`
+    /// arg.
+    fn from_environment_value(
+        krate: Option<&str>,
+        env_var_rustc_bootstrap: Result<String, std::env::VarError>,
+    ) -> Self {
         // `true` if this is a feature-staged build, i.e., on the beta or stable channel.
         let disable_unstable_features =
             option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some_and(|s| s != "0");
         // Returns whether `krate` should be counted as unstable
         let is_unstable_crate =
             |var: &str| krate.is_some_and(|name| var.split(',').any(|new_krate| new_krate == name));
-        // `true` if we should enable unstable features for bootstrapping.
-        let bootstrap =
-            std::env::var("RUSTC_BOOTSTRAP").is_ok_and(|var| var == "1" || is_unstable_crate(&var));
-        match (disable_unstable_features, bootstrap) {
-            (_, true) => UnstableFeatures::Cheat,
-            (true, _) => UnstableFeatures::Disallow,
-            (false, _) => UnstableFeatures::Allow,
+
+        let bootstrap = env_var_rustc_bootstrap.ok();
+        if let Some(val) = bootstrap.as_deref() {
+            match val {
+                val if val == "1" || is_unstable_crate(val) => return UnstableFeatures::Cheat,
+                // Hypnotize ourselves so that we think we are a stable compiler and thus don't
+                // allow any unstable features.
+                "-1" => return UnstableFeatures::Disallow,
+                _ => {}
+            }
         }
+
+        if disable_unstable_features { UnstableFeatures::Disallow } else { UnstableFeatures::Allow }
     }
 
     pub fn is_nightly_build(&self) -> bool {
@@ -94,13 +109,13 @@ impl UnstableFeatures {
 
 fn find_lang_feature_issue(feature: Symbol) -> Option<NonZero<u32>> {
     // Search in all the feature lists.
-    if let Some(f) = UNSTABLE_FEATURES.iter().find(|f| f.feature.name == feature) {
-        return f.feature.issue;
-    }
-    if let Some(f) = ACCEPTED_FEATURES.iter().find(|f| f.name == feature) {
+    if let Some(f) = UNSTABLE_LANG_FEATURES.iter().find(|f| f.name == feature) {
         return f.issue;
     }
-    if let Some(f) = REMOVED_FEATURES.iter().find(|f| f.feature.name == feature) {
+    if let Some(f) = ACCEPTED_LANG_FEATURES.iter().find(|f| f.name == feature) {
+        return f.issue;
+    }
+    if let Some(f) = REMOVED_LANG_FEATURES.iter().find(|f| f.feature.name == feature) {
         return f.feature.issue;
     }
     panic!("feature `{feature}` is not declared anywhere");
@@ -127,12 +142,14 @@ pub fn find_feature_issue(feature: Symbol, issue: GateIssue) -> Option<NonZero<u
     }
 }
 
-pub use accepted::ACCEPTED_FEATURES;
+pub use accepted::ACCEPTED_LANG_FEATURES;
 pub use builtin_attrs::{
     AttributeDuplicates, AttributeGate, AttributeSafety, AttributeTemplate, AttributeType,
     BUILTIN_ATTRIBUTE_MAP, BUILTIN_ATTRIBUTES, BuiltinAttribute, GatedCfg, deprecated_attributes,
     encode_cross_crate, find_gated_cfg, is_builtin_attr_name, is_stable_diagnostic_attribute,
     is_valid_for_get_attr,
 };
-pub use removed::REMOVED_FEATURES;
-pub use unstable::{Features, INCOMPATIBLE_FEATURES, UNSTABLE_FEATURES};
+pub use removed::REMOVED_LANG_FEATURES;
+pub use unstable::{
+    EnabledLangFeature, EnabledLibFeature, Features, INCOMPATIBLE_FEATURES, UNSTABLE_LANG_FEATURES,
+};

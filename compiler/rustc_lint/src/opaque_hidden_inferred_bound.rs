@@ -5,8 +5,7 @@ use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::print::{PrintTraitPredicateExt as _, TraitPredPrintModifiersAndPath};
 use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::Span;
-use rustc_span::symbol::kw;
+use rustc_span::{Span, kw};
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
 use crate::{LateContext, LateLintPass, LintContext};
@@ -69,7 +68,7 @@ declare_lint_pass!(OpaqueHiddenInferredBound => [OPAQUE_HIDDEN_INFERRED_BOUND]);
 
 impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
     fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'tcx>) {
-        let hir::TyKind::OpaqueDef(opaque, _) = &ty.kind else {
+        let hir::TyKind::OpaqueDef(opaque) = &ty.kind else {
             return;
         };
 
@@ -85,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
         }
 
         let def_id = opaque.def_id.to_def_id();
-        let infcx = &cx.tcx.infer_ctxt().build();
+        let infcx = &cx.tcx.infer_ctxt().build(cx.typing_mode());
         // For every projection predicate in the opaque type's explicit bounds,
         // check that the type that we're assigning actually satisfies the bounds
         // of the associated type.

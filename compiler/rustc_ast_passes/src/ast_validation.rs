@@ -34,8 +34,7 @@ use rustc_session::lint::builtin::{
     PATTERNS_IN_FNS_WITHOUT_BODY,
 };
 use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, kw, sym};
+use rustc_span::{Ident, Span, kw, sym};
 use rustc_target::spec::abi;
 use thin_vec::thin_vec;
 
@@ -80,10 +79,6 @@ struct AstValidator<'a> {
 
     disallow_tilde_const: Option<TildeConstReason>,
 
-    /// Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
-    /// or `Foo::Bar<impl Trait>`
-    is_impl_trait_banned: bool,
-
     /// Used to ban explicit safety on foreign items when the extern block is not marked as unsafe.
     extern_mod_safety: Option<Safety>,
 
@@ -121,12 +116,6 @@ impl<'a> AstValidator<'a> {
         let old = mem::replace(&mut self.extern_mod_safety, Some(extern_mod_safety));
         f(self);
         self.extern_mod_safety = old;
-    }
-
-    fn with_banned_impl_trait(&mut self, f: impl FnOnce(&mut Self)) {
-        let old = mem::replace(&mut self.is_impl_trait_banned, true);
-        f(self);
-        self.is_impl_trait_banned = old;
     }
 
     fn with_tilde_const(
@@ -213,43 +202,12 @@ impl<'a> AstValidator<'a> {
                 .with_tilde_const(Some(TildeConstReason::TraitObject), |this| {
                     visit::walk_ty(this, t)
                 }),
-            TyKind::Path(qself, path) => {
-                // We allow these:
-                //  - `Option<impl Trait>`
-                //  - `option::Option<impl Trait>`
-                //  - `option::Option<T>::Foo<impl Trait>`
-                //
-                // But not these:
-                //  - `<impl Trait>::Foo`
-                //  - `option::Option<impl Trait>::Foo`.
-                //
-                // To implement this, we disallow `impl Trait` from `qself`
-                // (for cases like `<impl Trait>::Foo>`)
-                // but we allow `impl Trait` in `GenericArgs`
-                // iff there are no more PathSegments.
-                if let Some(qself) = qself {
-                    // `impl Trait` in `qself` is always illegal
-                    self.with_banned_impl_trait(|this| this.visit_ty(&qself.ty));
-                }
-
-                // Note that there should be a call to visit_path here,
-                // so if any logic is added to process `Path`s a call to it should be
-                // added both in visit_path and here. This code mirrors visit::walk_path.
-                for (i, segment) in path.segments.iter().enumerate() {
-                    // Allow `impl Trait` iff we're on the final path segment
-                    if i == path.segments.len() - 1 {
-                        self.visit_path_segment(segment);
-                    } else {
-                        self.with_banned_impl_trait(|this| this.visit_path_segment(segment));
-                    }
-                }
-            }
             _ => visit::walk_ty(self, t),
         }
     }
 
     fn visit_struct_field_def(&mut self, field: &'a FieldDef) {
-        if let Some(ident) = field.ident
+        if let Some(ref ident) = field.ident
             && ident.name == kw::Underscore
         {
             self.visit_vis(&field.vis);
@@ -295,7 +253,8 @@ impl<'a> AstValidator<'a> {
             return;
         };
 
-        let make_impl_const_sugg = if self.features.const_trait_impl
+        let const_trait_impl = self.features.const_trait_impl();
+        let make_impl_const_sugg = if const_trait_impl
             && let TraitOrTraitImpl::TraitImpl {
                 constness: Const::No,
                 polarity: ImplPolarity::Positive,
@@ -308,13 +267,12 @@ impl<'a> AstValidator<'a> {
             None
         };
 
-        let make_trait_const_sugg = if self.features.const_trait_impl
-            && let TraitOrTraitImpl::Trait { span, constness: None } = parent
-        {
-            Some(span.shrink_to_lo())
-        } else {
-            None
-        };
+        let make_trait_const_sugg =
+            if const_trait_impl && let TraitOrTraitImpl::Trait { span, constness: None } = parent {
+                Some(span.shrink_to_lo())
+            } else {
+                None
+            };
 
         let parent_constness = parent.constness();
         self.dcx().emit_err(errors::TraitFnConst {
@@ -383,7 +341,7 @@ impl<'a> AstValidator<'a> {
                     sym::forbid,
                     sym::warn,
                 ];
-                !arr.contains(&attr.name_or_empty()) && rustc_attr::is_builtin_attr(attr)
+                !arr.contains(&attr.name_or_empty()) && rustc_attr_parsing::is_builtin_attr(*attr)
             })
             .for_each(|attr| {
                 if attr.is_doc_comment() {
@@ -718,9 +676,8 @@ impl<'a> AstValidator<'a> {
                 Self::check_decl_no_pat(&bfty.decl, |span, _, _| {
                     self.dcx().emit_err(errors::PatternFnPointer { span });
                 });
-                if let Extern::Implicit(_) = bfty.ext {
-                    let sig_span = self.sess.source_map().next_point(ty.span.shrink_to_lo());
-                    self.maybe_lint_missing_abi(sig_span, ty.id);
+                if let Extern::Implicit(extern_span) = bfty.ext {
+                    self.maybe_lint_missing_abi(extern_span, ty.id);
                 }
             }
             TyKind::TraitObject(bounds, ..) => {
@@ -737,10 +694,6 @@ impl<'a> AstValidator<'a> {
                 }
             }
             TyKind::ImplTrait(_, bounds) => {
-                if self.is_impl_trait_banned {
-                    self.dcx().emit_err(errors::ImplTraitPath { span: ty.span });
-                }
-
                 if let Some(outer_impl_trait_sp) = self.outer_impl_trait {
                     self.dcx().emit_err(errors::NestedImplTrait {
                         span: ty.span,
@@ -899,7 +852,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
 
                     this.visit_vis(&item.vis);
-                    this.visit_ident(item.ident);
+                    this.visit_ident(&item.ident);
                     let disallowed = matches!(constness, Const::No)
                         .then(|| TildeConstReason::TraitImpl { span: item.span });
                     this.with_tilde_const(disallowed, |this| this.visit_generics(generics));
@@ -953,7 +906,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
 
                     this.visit_vis(&item.vis);
-                    this.visit_ident(item.ident);
+                    this.visit_ident(&item.ident);
                     this.with_tilde_const(
                         Some(TildeConstReason::Impl { span: item.span }),
                         |this| this.visit_generics(generics),
@@ -967,7 +920,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::Fn(box Fn { defaultness, sig, generics, body }) => {
                 self.check_defaultness(item.span, *defaultness);
 
-                if body.is_none() {
+                let is_intrinsic =
+                    item.attrs.iter().any(|a| a.name_or_empty() == sym::rustc_intrinsic);
+                if body.is_none() && !is_intrinsic {
                     self.dcx().emit_err(errors::FnWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),
@@ -991,14 +946,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
 
                 self.visit_vis(&item.vis);
-                self.visit_ident(item.ident);
-                let kind =
-                    FnKind::Fn(FnCtxt::Free, item.ident, sig, &item.vis, generics, body.as_deref());
+                self.visit_ident(&item.ident);
+                let kind = FnKind::Fn(FnCtxt::Free, &item.ident, sig, &item.vis, generics, body);
                 self.visit_fn(kind, item.span, item.id);
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
             }
-            ItemKind::ForeignMod(ForeignMod { abi, safety, .. }) => {
+            ItemKind::ForeignMod(ForeignMod { extern_span, abi, safety, .. }) => {
                 self.with_in_extern_mod(*safety, |this| {
                     let old_item = mem::replace(&mut this.extern_mod, Some(item.span));
                     this.visibility_not_permitted(
@@ -1022,7 +976,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
 
                     if abi.is_none() {
-                        this.maybe_lint_missing_abi(item.span, item.id);
+                        this.maybe_lint_missing_abi(*extern_span, item.id);
                     }
                     visit::walk_item(this, item);
                     this.extern_mod = old_item;
@@ -1058,7 +1012,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     // Equivalent of `visit::walk_item` for `ItemKind::Trait` that inserts a bound
                     // context for the supertraits.
                     this.visit_vis(&item.vis);
-                    this.visit_ident(item.ident);
+                    this.visit_ident(&item.ident);
                     let disallowed = is_const_trait
                         .is_none()
                         .then(|| TildeConstReason::Trait { span: item.span });
@@ -1076,7 +1030,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.dcx().emit_err(errors::UnsafeItem { span, kind: "module" });
                 }
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
-                if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _))
+                if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _, _))
                     && !attr::contains_name(&item.attrs, sym::path)
                 {
                     self.check_mod_file_item_asciionly(item.ident);
@@ -1085,7 +1039,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::Struct(vdata, generics) => match vdata {
                 VariantData::Struct { fields, .. } => {
                     self.visit_vis(&item.vis);
-                    self.visit_ident(item.ident);
+                    self.visit_ident(&item.ident);
                     self.visit_generics(generics);
                     // Permit `Anon{Struct,Union}` as field type.
                     walk_list!(self, visit_struct_field_def, fields);
@@ -1101,7 +1055,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 match vdata {
                     VariantData::Struct { fields, .. } => {
                         self.visit_vis(&item.vis);
-                        self.visit_ident(item.ident);
+                        self.visit_ident(&item.ident);
                         self.visit_generics(generics);
                         // Permit `Anon{Struct,Union}` as field type.
                         walk_list!(self, visit_struct_field_def, fields);
@@ -1145,7 +1099,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 self.check_type_no_bounds(bounds, "this context");
 
-                if self.features.lazy_type_alias {
+                if self.features.lazy_type_alias() {
                     if let Err(err) = self.check_type_alias_where_clause_location(ty_alias) {
                         self.dcx().emit_err(err);
                     }
@@ -1247,14 +1201,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         validate_generic_param_order(self.dcx(), &generics.params, generics.span);
 
         for predicate in &generics.where_clause.predicates {
-            if let WherePredicate::EqPredicate(predicate) = predicate {
-                deny_equality_constraints(self, predicate, generics);
+            let span = predicate.span;
+            if let WherePredicateKind::EqPredicate(predicate) = &predicate.kind {
+                deny_equality_constraints(self, predicate, span, generics);
             }
         }
         walk_list!(self, visit_generic_param, &generics.params);
         for predicate in &generics.where_clause.predicates {
-            match predicate {
-                WherePredicate::BoundPredicate(bound_pred) => {
+            match &predicate.kind {
+                WherePredicateKind::BoundPredicate(bound_pred) => {
                     // This is slightly complicated. Our representation for poly-trait-refs contains a single
                     // binder and thus we only allow a single level of quantification. However,
                     // the syntax of Rust permits quantification in two places in where clauses,
@@ -1286,7 +1241,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             GenericBound::Trait(trait_ref) => {
                 match (ctxt, trait_ref.modifiers.constness, trait_ref.modifiers.polarity) {
                     (BoundKind::SuperTraits, BoundConstness::Never, BoundPolarity::Maybe(_))
-                        if !self.features.more_maybe_bounds =>
+                        if !self.features.more_maybe_bounds() =>
                     {
                         self.sess
                             .create_feature_err(
@@ -1299,7 +1254,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             .emit();
                     }
                     (BoundKind::TraitObject, BoundConstness::Never, BoundPolarity::Maybe(_))
-                        if !self.features.more_maybe_bounds =>
+                        if !self.features.more_maybe_bounds() =>
                     {
                         self.sess
                             .create_feature_err(
@@ -1395,13 +1350,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if let FnKind::Fn(
             _,
             _,
-            FnSig { span: sig_span, header: FnHeader { ext: Extern::Implicit(_), .. }, .. },
+            FnSig { header: FnHeader { ext: Extern::Implicit(extern_span), .. }, .. },
             _,
             _,
             _,
         ) = fk
         {
-            self.maybe_lint_missing_abi(*sig_span, id);
+            self.maybe_lint_missing_abi(*extern_span, id);
         }
 
         // Functions without bodies cannot have patterns.
@@ -1521,15 +1476,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     || matches!(sig.header.constness, Const::Yes(_)) =>
             {
                 self.visit_vis(&item.vis);
-                self.visit_ident(item.ident);
-                let kind = FnKind::Fn(
-                    FnCtxt::Assoc(ctxt),
-                    item.ident,
-                    sig,
-                    &item.vis,
-                    generics,
-                    body.as_deref(),
-                );
+                self.visit_ident(&item.ident);
+                let kind =
+                    FnKind::Fn(FnCtxt::Assoc(ctxt), &item.ident, sig, &item.vis, generics, body);
                 walk_list!(self, visit_attribute, &item.attrs);
                 self.visit_fn(kind, item.span, item.id);
             }
@@ -1557,9 +1506,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 fn deny_equality_constraints(
     this: &AstValidator<'_>,
     predicate: &WhereEqPredicate,
+    predicate_span: Span,
     generics: &Generics,
 ) {
-    let mut err = errors::EqualityInWhere { span: predicate.span, assoc: None, assoc2: None };
+    let mut err = errors::EqualityInWhere { span: predicate_span, assoc: None, assoc2: None };
 
     // Given `<A as Foo>::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
     if let TyKind::Path(Some(qself), full_path) = &predicate.lhs_ty.kind
@@ -1603,7 +1553,7 @@ fn deny_equality_constraints(
                     }
                 }
                 err.assoc = Some(errors::AssociatedSuggestion {
-                    span: predicate.span,
+                    span: predicate_span,
                     ident: *ident,
                     param: param.ident,
                     path: pprust::path_to_string(&assoc_path),
@@ -1633,23 +1583,23 @@ fn deny_equality_constraints(
                     // We're removing th eonly where bound left, remove the whole thing.
                     generics.where_clause.span
                 } else {
-                    let mut span = predicate.span;
+                    let mut span = predicate_span;
                     let mut prev: Option<Span> = None;
                     let mut preds = generics.where_clause.predicates.iter().peekable();
                     // Find the predicate that shouldn't have been in the where bound list.
                     while let Some(pred) = preds.next() {
-                        if let WherePredicate::EqPredicate(pred) = pred
-                            && pred.span == predicate.span
+                        if let WherePredicateKind::EqPredicate(_) = pred.kind
+                            && pred.span == predicate_span
                         {
                             if let Some(next) = preds.peek() {
                                 // This is the first predicate, remove the trailing comma as well.
-                                span = span.with_hi(next.span().lo());
+                                span = span.with_hi(next.span.lo());
                             } else if let Some(prev) = prev {
                                 // Remove the previous comma as well.
                                 span = span.with_lo(prev.hi());
                             }
                         }
-                        prev = Some(pred.span());
+                        prev = Some(pred.span);
                     }
                     span
                 };
@@ -1666,8 +1616,8 @@ fn deny_equality_constraints(
     if let TyKind::Path(None, full_path) = &predicate.lhs_ty.kind {
         // Given `A: Foo, Foo::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
         for bounds in generics.params.iter().map(|p| &p.bounds).chain(
-            generics.where_clause.predicates.iter().filter_map(|pred| match pred {
-                WherePredicate::BoundPredicate(p) => Some(&p.bounds),
+            generics.where_clause.predicates.iter().filter_map(|pred| match &pred.kind {
+                WherePredicateKind::BoundPredicate(p) => Some(&p.bounds),
                 _ => None,
             }),
         ) {
@@ -1690,8 +1640,8 @@ fn deny_equality_constraints(
         // Given `A: Foo, A::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
         if let [potential_param, potential_assoc] = &full_path.segments[..] {
             for (ident, bounds) in generics.params.iter().map(|p| (p.ident, &p.bounds)).chain(
-                generics.where_clause.predicates.iter().filter_map(|pred| match pred {
-                    WherePredicate::BoundPredicate(p)
+                generics.where_clause.predicates.iter().filter_map(|pred| match &pred.kind {
+                    WherePredicateKind::BoundPredicate(p)
                         if let ast::TyKind::Path(None, path) = &p.bounded_ty.kind
                             && let [segment] = &path.segments[..] =>
                     {
@@ -1729,7 +1679,6 @@ pub fn check_crate(
         has_proc_macro_decls: false,
         outer_impl_trait: None,
         disallow_tilde_const: Some(TildeConstReason::Item),
-        is_impl_trait_banned: false,
         extern_mod_safety: None,
         lint_buffer: lints,
     };

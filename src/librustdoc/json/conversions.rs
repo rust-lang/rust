@@ -4,14 +4,14 @@
 
 #![allow(rustc::default_hash_types)]
 
+use rustc_abi::ExternAbi;
 use rustc_ast::ast;
-use rustc_attr::DeprecatedSince;
+use rustc_attr_parsing::DeprecatedSince;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::DefId;
 use rustc_metadata::rendered_const;
 use rustc_middle::{bug, ty};
 use rustc_span::{Pos, Symbol, sym};
-use rustc_target::spec::abi::Abi as RustcAbi;
 use rustdoc_json_types::*;
 
 use super::FullItemId;
@@ -215,8 +215,8 @@ where
     }
 }
 
-pub(crate) fn from_deprecation(deprecation: rustc_attr::Deprecation) -> Deprecation {
-    let rustc_attr::Deprecation { since, note, suggestion: _ } = deprecation;
+pub(crate) fn from_deprecation(deprecation: rustc_attr_parsing::Deprecation) -> Deprecation {
+    let rustc_attr_parsing::Deprecation { since, note, suggestion: _ } = deprecation;
     let since = match since {
         DeprecatedSince::RustcVersion(version) => Some(version.to_string()),
         DeprecatedSince::Future => Some("TBD".to_owned()),
@@ -312,17 +312,19 @@ fn from_clean_item(item: clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum {
         StructFieldItem(f) => ItemEnum::StructField(f.into_json(renderer)),
         EnumItem(e) => ItemEnum::Enum(e.into_json(renderer)),
         VariantItem(v) => ItemEnum::Variant(v.into_json(renderer)),
-        FunctionItem(f) => ItemEnum::Function(from_function(f, true, header.unwrap(), renderer)),
+        FunctionItem(f) => ItemEnum::Function(from_function(*f, true, header.unwrap(), renderer)),
         ForeignFunctionItem(f, _) => {
-            ItemEnum::Function(from_function(f, false, header.unwrap(), renderer))
+            ItemEnum::Function(from_function(*f, false, header.unwrap(), renderer))
         }
         TraitItem(t) => ItemEnum::Trait((*t).into_json(renderer)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_json(renderer)),
-        MethodItem(m, _) => ItemEnum::Function(from_function(m, true, header.unwrap(), renderer)),
-        TyMethodItem(m) => ItemEnum::Function(from_function(m, false, header.unwrap(), renderer)),
+        MethodItem(m, _) => ItemEnum::Function(from_function(*m, true, header.unwrap(), renderer)),
+        RequiredMethodItem(m) => {
+            ItemEnum::Function(from_function(*m, false, header.unwrap(), renderer))
+        }
         ImplItem(i) => ItemEnum::Impl((*i).into_json(renderer)),
-        StaticItem(s) => ItemEnum::Static(s.into_json(renderer)),
-        ForeignStaticItem(s, _) => ItemEnum::Static(s.into_json(renderer)),
+        StaticItem(s) => ItemEnum::Static(convert_static(s, rustc_hir::Safety::Safe, renderer)),
+        ForeignStaticItem(s, safety) => ItemEnum::Static(convert_static(s, safety, renderer)),
         ForeignTypeItem => ItemEnum::ExternType,
         TypeAliasItem(t) => ItemEnum::TypeAlias(t.into_json(renderer)),
         // FIXME(generic_const_items): Add support for generic free consts
@@ -339,15 +341,15 @@ fn from_clean_item(item: clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum {
             })
         }
         // FIXME(generic_const_items): Add support for generic associated consts.
-        TyAssocConstItem(_generics, ty) => {
+        RequiredAssocConstItem(_generics, ty) => {
             ItemEnum::AssocConst { type_: (*ty).into_json(renderer), value: None }
         }
         // FIXME(generic_const_items): Add support for generic associated consts.
-        AssocConstItem(ci) => ItemEnum::AssocConst {
+        ProvidedAssocConstItem(ci) | ImplAssocConstItem(ci) => ItemEnum::AssocConst {
             type_: ci.type_.into_json(renderer),
             value: Some(ci.kind.expr(renderer.tcx)),
         },
-        TyAssocTypeItem(g, b) => ItemEnum::AssocType {
+        RequiredAssocTypeItem(g, b) => ItemEnum::AssocType {
             generics: g.into_json(renderer),
             bounds: b.into_json(renderer),
             type_: None,
@@ -421,17 +423,17 @@ pub(crate) fn from_fn_header(header: &rustc_hir::FnHeader) -> FunctionHeader {
     }
 }
 
-fn convert_abi(a: RustcAbi) -> Abi {
+fn convert_abi(a: ExternAbi) -> Abi {
     match a {
-        RustcAbi::Rust => Abi::Rust,
-        RustcAbi::C { unwind } => Abi::C { unwind },
-        RustcAbi::Cdecl { unwind } => Abi::Cdecl { unwind },
-        RustcAbi::Stdcall { unwind } => Abi::Stdcall { unwind },
-        RustcAbi::Fastcall { unwind } => Abi::Fastcall { unwind },
-        RustcAbi::Aapcs { unwind } => Abi::Aapcs { unwind },
-        RustcAbi::Win64 { unwind } => Abi::Win64 { unwind },
-        RustcAbi::SysV64 { unwind } => Abi::SysV64 { unwind },
-        RustcAbi::System { unwind } => Abi::System { unwind },
+        ExternAbi::Rust => Abi::Rust,
+        ExternAbi::C { unwind } => Abi::C { unwind },
+        ExternAbi::Cdecl { unwind } => Abi::Cdecl { unwind },
+        ExternAbi::Stdcall { unwind } => Abi::Stdcall { unwind },
+        ExternAbi::Fastcall { unwind } => Abi::Fastcall { unwind },
+        ExternAbi::Aapcs { unwind } => Abi::Aapcs { unwind },
+        ExternAbi::Win64 { unwind } => Abi::Win64 { unwind },
+        ExternAbi::SysV64 { unwind } => Abi::SysV64 { unwind },
+        ExternAbi::System { unwind } => Abi::System { unwind },
         _ => Abi::Other(a.to_string()),
     }
 }
@@ -552,20 +554,18 @@ impl FromClean<clean::GenericBound> for GenericBound {
 }
 
 pub(crate) fn from_trait_bound_modifier(
-    modifier: rustc_hir::TraitBoundModifier,
+    modifiers: rustc_hir::TraitBoundModifiers,
 ) -> TraitBoundModifier {
-    use rustc_hir::TraitBoundModifier::*;
-    match modifier {
-        None => TraitBoundModifier::None,
-        Maybe => TraitBoundModifier::Maybe,
-        MaybeConst => TraitBoundModifier::MaybeConst,
-        // FIXME(const_trait_impl): Create rjt::TBM::Const and map to it once always-const bounds
-        // are less experimental.
-        Const => TraitBoundModifier::None,
-        // FIXME(negative-bounds): This bound should be rendered negative, but
-        // since that's experimental, maybe let's not add it to the rustdoc json
-        // API just now...
-        Negative => TraitBoundModifier::None,
+    use rustc_hir as hir;
+    let hir::TraitBoundModifiers { constness, polarity } = modifiers;
+    match (constness, polarity) {
+        (hir::BoundConstness::Never, hir::BoundPolarity::Positive) => TraitBoundModifier::None,
+        (hir::BoundConstness::Never, hir::BoundPolarity::Maybe(_)) => TraitBoundModifier::Maybe,
+        (hir::BoundConstness::Maybe(_), hir::BoundPolarity::Positive) => {
+            TraitBoundModifier::MaybeConst
+        }
+        // FIXME: Fill out the rest of this matrix.
+        _ => TraitBoundModifier::None,
     }
 }
 
@@ -573,7 +573,7 @@ impl FromClean<clean::Type> for Type {
     fn from_clean(ty: clean::Type, renderer: &JsonRenderer<'_>) -> Self {
         use clean::Type::{
             Array, BareFunction, BorrowedRef, Generic, ImplTrait, Infer, Primitive, QPath,
-            RawPointer, SelfTy, Slice, Tuple,
+            RawPointer, SelfTy, Slice, Tuple, UnsafeBinder,
         };
 
         match ty {
@@ -613,6 +613,8 @@ impl FromClean<clean::Type> for Type {
                 self_type: Box::new(self_type.into_json(renderer)),
                 trait_: trait_.map(|trait_| trait_.into_json(renderer)),
             },
+            // FIXME(unsafe_binder): Implement rustdoc-json.
+            UnsafeBinder(_) => todo!(),
         }
     }
 }
@@ -620,7 +622,7 @@ impl FromClean<clean::Type> for Type {
 impl FromClean<clean::Path> for Path {
     fn from_clean(path: clean::Path, renderer: &JsonRenderer<'_>) -> Path {
         Path {
-            name: path.whole_name(),
+            name: path.last_opt().map_or(String::from(""), |s| String::from(s.as_str())),
             id: renderer.id_from_item_default(path.def_id().into()),
             args: path.segments.last().map(|args| Box::new(args.clone().args.into_json(renderer))),
         }
@@ -641,7 +643,7 @@ impl FromClean<clean::BareFunctionDecl> for FunctionPointer {
         let clean::BareFunctionDecl { safety, generic_params, decl, abi } = bare_decl;
         FunctionPointer {
             header: FunctionHeader {
-                is_unsafe: matches!(safety, rustc_hir::Safety::Unsafe),
+                is_unsafe: safety.is_unsafe(),
                 is_const: false,
                 is_async: false,
                 abi: convert_abi(abi),
@@ -671,7 +673,7 @@ impl FromClean<clean::Trait> for Trait {
     fn from_clean(trait_: clean::Trait, renderer: &JsonRenderer<'_>) -> Self {
         let tcx = renderer.tcx;
         let is_auto = trait_.is_auto(tcx);
-        let is_unsafe = trait_.safety(tcx) == rustc_hir::Safety::Unsafe;
+        let is_unsafe = trait_.safety(tcx).is_unsafe();
         let is_dyn_compatible = trait_.is_dyn_compatible(tcx);
         let clean::Trait { items, generics, bounds, .. } = trait_;
         Trait {
@@ -713,7 +715,7 @@ impl FromClean<clean::Impl> for Impl {
             ty::ImplPolarity::Negative => true,
         };
         Impl {
-            is_unsafe: safety == rustc_hir::Safety::Unsafe,
+            is_unsafe: safety.is_unsafe(),
             generics: generics.into_json(renderer),
             provided_trait_methods: provided_trait_methods
                 .into_iter()
@@ -730,12 +732,11 @@ impl FromClean<clean::Impl> for Impl {
 }
 
 pub(crate) fn from_function(
-    function: Box<clean::Function>,
+    clean::Function { decl, generics }: clean::Function,
     has_body: bool,
     header: rustc_hir::FnHeader,
     renderer: &JsonRenderer<'_>,
 ) -> Function {
-    let clean::Function { decl, generics } = *function;
     Function {
         sig: decl.into_json(renderer),
         generics: generics.into_json(renderer),
@@ -833,17 +834,20 @@ impl FromClean<Box<clean::TypeAlias>> for TypeAlias {
     }
 }
 
-impl FromClean<clean::Static> for Static {
-    fn from_clean(stat: clean::Static, renderer: &JsonRenderer<'_>) -> Self {
-        let tcx = renderer.tcx;
-        Static {
-            type_: (*stat.type_).into_json(renderer),
-            is_mutable: stat.mutability == ast::Mutability::Mut,
-            expr: stat
-                .expr
-                .map(|e| rendered_const(tcx, tcx.hir().body(e), tcx.hir().body_owner_def_id(e)))
-                .unwrap_or_default(),
-        }
+fn convert_static(
+    stat: clean::Static,
+    safety: rustc_hir::Safety,
+    renderer: &JsonRenderer<'_>,
+) -> Static {
+    let tcx = renderer.tcx;
+    Static {
+        type_: (*stat.type_).into_json(renderer),
+        is_mutable: stat.mutability == ast::Mutability::Mut,
+        is_unsafe: safety.is_unsafe(),
+        expr: stat
+            .expr
+            .map(|e| rendered_const(tcx, tcx.hir().body(e), tcx.hir().body_owner_def_id(e)))
+            .unwrap_or_default(),
     }
 }
 

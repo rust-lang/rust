@@ -130,7 +130,7 @@ warning: could not parse code block as Rust code
 LL |   ///     \____/
    |  _________^
 LL | | ///
-   | |_
+   | |_^
    |
    = note: error from rustc: unknown start of token: \
 

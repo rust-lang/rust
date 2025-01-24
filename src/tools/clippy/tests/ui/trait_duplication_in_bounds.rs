@@ -1,6 +1,6 @@
 #![deny(clippy::trait_duplication_in_bounds)]
 #![allow(unused)]
-#![feature(const_trait_impl)]
+#![feature(associated_const_equality, const_trait_impl)]
 
 use std::any::Any;
 
@@ -178,4 +178,20 @@ where
 fn main() {
     let _x: fn(_) = f::<()>;
     let _x: fn(_) = f::<i32>;
+}
+
+// #13706
+fn assoc_tys_bounds<T>()
+where
+    T: Iterator<Item: Clone> + Iterator<Item: Clone>,
+{
+}
+trait AssocConstTrait {
+    const ASSOC: usize;
+}
+fn assoc_const_args<T>()
+where
+    T: AssocConstTrait<ASSOC = 0> + AssocConstTrait<ASSOC = 0>,
+    //~^ trait_duplication_in_bounds
+{
 }

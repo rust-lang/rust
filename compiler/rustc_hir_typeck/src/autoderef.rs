@@ -23,7 +23,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         base_ty: Ty<'tcx>,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        self.try_overloaded_place_op(span, base_ty, &[], PlaceOp::Deref)
+        self.try_overloaded_place_op(span, base_ty, None, PlaceOp::Deref)
     }
 
     /// Returns the adjustment steps.
@@ -50,8 +50,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.try_overloaded_deref(autoderef.span(), source).and_then(
                         |InferOk { value: method, obligations: o }| {
                             obligations.extend(o);
-                            if let ty::Ref(region, _, mutbl) = *method.sig.output().kind() {
-                                Some(OverloadedDeref { region, mutbl, span: autoderef.span() })
+                            // FIXME: we should assert the sig is &T here... there's no reason for this to be fallible.
+                            if let ty::Ref(_, _, mutbl) = *method.sig.output().kind() {
+                                Some(OverloadedDeref { mutbl, span: autoderef.span() })
                             } else {
                                 None
                             }

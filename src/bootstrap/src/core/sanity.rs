@@ -14,10 +14,10 @@ use std::path::PathBuf;
 use std::{env, fs};
 
 use crate::Build;
-#[cfg(not(feature = "bootstrap-self-test"))]
+#[cfg(not(test))]
 use crate::builder::Builder;
 use crate::builder::Kind;
-#[cfg(not(feature = "bootstrap-self-test"))]
+#[cfg(not(test))]
 use crate::core::build_steps::tool;
 use crate::core::config::Target;
 use crate::utils::exec::command;
@@ -38,7 +38,7 @@ const STAGE0_MISSING_TARGETS: &[&str] = &[
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
 /// from CI (with`llvm.download-ci-llvm` option).
-#[cfg(not(feature = "bootstrap-self-test"))]
+#[cfg(not(test))]
 const LIBSTDCXX_MIN_VERSION_THRESHOLD: usize = 8;
 
 impl Finder {
@@ -106,7 +106,7 @@ pub fn check(build: &mut Build) {
     }
 
     // Ensure that a compatible version of libstdc++ is available on the system when using `llvm.download-ci-llvm`.
-    #[cfg(not(feature = "bootstrap-self-test"))]
+    #[cfg(not(test))]
     if !build.config.dry_run() && !build.build.is_msvc() && build.config.llvm_from_ci {
         let builder = Builder::new(build);
         let libcxx_version = builder.ensure(tool::LibcxxVersionTool { target: build.build });
@@ -135,19 +135,15 @@ pub fn check(build: &mut Build) {
 
     // We need cmake, but only if we're actually building LLVM or sanitizers.
     let building_llvm = !build.config.llvm_from_ci
-        && build
-            .hosts
-            .iter()
-            .map(|host| {
-                build.config.llvm_enabled(*host)
-                    && build
-                        .config
-                        .target_config
-                        .get(host)
-                        .map(|config| config.llvm_config.is_none())
-                        .unwrap_or(true)
-            })
-            .any(|build_llvm_ourselves| build_llvm_ourselves);
+        && build.hosts.iter().any(|host| {
+            build.config.llvm_enabled(*host)
+                && build
+                    .config
+                    .target_config
+                    .get(host)
+                    .map(|config| config.llvm_config.is_none())
+                    .unwrap_or(true)
+        });
 
     let need_cmake = building_llvm || build.config.any_sanitizers_to_build();
     if need_cmake && cmd_finder.maybe_have("cmake").is_none() {
@@ -230,8 +226,7 @@ than building it.
         }
 
         // Ignore fake targets that are only used for unit tests in bootstrap.
-        if cfg!(not(feature = "bootstrap-self-test")) && !skip_target_sanity && !build.local_rebuild
-        {
+        if cfg!(not(test)) && !skip_target_sanity && !build.local_rebuild {
             let mut has_target = false;
             let target_str = target.to_string();
 

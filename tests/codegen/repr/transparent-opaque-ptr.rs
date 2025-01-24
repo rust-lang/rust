@@ -1,12 +1,12 @@
-//@ revisions: aarch64-linux aarch64-darwin wasm32-wasi
+//@ revisions: aarch64-linux aarch64-darwin wasm32-wasip1
 //@ compile-flags: -O -C no-prepopulate-passes
 
 //@[aarch64-linux] compile-flags: --target aarch64-unknown-linux-gnu
 //@[aarch64-linux] needs-llvm-components: aarch64
 //@[aarch64-darwin] compile-flags: --target aarch64-apple-darwin
 //@[aarch64-darwin] needs-llvm-components: aarch64
-//@[wasm32-wasi] compile-flags: --target wasm32-wasi
-//@[wasm32-wasi] needs-llvm-components: webassembly
+//@[wasm32-wasip1] compile-flags: --target wasm32-wasip1
+//@[wasm32-wasip1] needs-llvm-components: webassembly
 
 // See ./transparent.rs
 // Some platforms pass large aggregates using immediate arrays in LLVMIR

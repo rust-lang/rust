@@ -19,6 +19,7 @@ pub type ExistentialPredicate<'tcx> = ir::ExistentialPredicate<TyCtxt<'tcx>>;
 pub type ExistentialTraitRef<'tcx> = ir::ExistentialTraitRef<TyCtxt<'tcx>>;
 pub type ExistentialProjection<'tcx> = ir::ExistentialProjection<TyCtxt<'tcx>>;
 pub type TraitPredicate<'tcx> = ir::TraitPredicate<TyCtxt<'tcx>>;
+pub type HostEffectPredicate<'tcx> = ir::HostEffectPredicate<TyCtxt<'tcx>>;
 pub type ClauseKind<'tcx> = ir::ClauseKind<TyCtxt<'tcx>>;
 pub type PredicateKind<'tcx> = ir::PredicateKind<TyCtxt<'tcx>>;
 pub type NormalizesTo<'tcx> = ir::NormalizesTo<TyCtxt<'tcx>>;
@@ -143,6 +144,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::AliasRelate(..)
             | PredicateKind::NormalizesTo(..) => false,
             PredicateKind::Clause(ClauseKind::Trait(_))
+            | PredicateKind::Clause(ClauseKind::HostEffect(..))
             | PredicateKind::Clause(ClauseKind::RegionOutlives(_))
             | PredicateKind::Clause(ClauseKind::TypeOutlives(_))
             | PredicateKind::Clause(ClauseKind::Projection(_))
@@ -474,16 +476,6 @@ impl<'tcx> Clause<'tcx> {
     }
 }
 
-pub trait ToPolyTraitRef<'tcx> {
-    fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx>;
-}
-
-impl<'tcx> ToPolyTraitRef<'tcx> for PolyTraitPredicate<'tcx> {
-    fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
-        self.map_bound_ref(|trait_pred| trait_pred.trait_ref)
-    }
-}
-
 impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PredicateKind<'tcx>> for Predicate<'tcx> {
     fn upcast_from(from: PredicateKind<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         ty::Binder::dummy(from).upcast(tcx)
@@ -632,6 +624,28 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyProjectionPredicate<'tcx>> for Clause<'t
     }
 }
 
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>>
+    for Predicate<'tcx>
+{
+    fn upcast_from(
+        from: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+        tcx: TyCtxt<'tcx>,
+    ) -> Self {
+        from.map_bound(ty::ClauseKind::HostEffect).upcast(tcx)
+    }
+}
+
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>>
+    for Clause<'tcx>
+{
+    fn upcast_from(
+        from: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+        tcx: TyCtxt<'tcx>,
+    ) -> Self {
+        from.map_bound(ty::ClauseKind::HostEffect).upcast(tcx)
+    }
+}
+
 impl<'tcx> UpcastFrom<TyCtxt<'tcx>, NormalizesTo<'tcx>> for Predicate<'tcx> {
     fn upcast_from(from: NormalizesTo<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         PredicateKind::NormalizesTo(from).upcast(tcx)
@@ -644,6 +658,7 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::Clause(ClauseKind::Trait(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(ClauseKind::Projection(..))
+            | PredicateKind::Clause(ClauseKind::HostEffect(..))
             | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
             | PredicateKind::NormalizesTo(..)
             | PredicateKind::AliasRelate(..)
@@ -664,6 +679,7 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::Clause(ClauseKind::Projection(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(ClauseKind::Trait(..))
+            | PredicateKind::Clause(ClauseKind::HostEffect(..))
             | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
             | PredicateKind::NormalizesTo(..)
             | PredicateKind::AliasRelate(..)

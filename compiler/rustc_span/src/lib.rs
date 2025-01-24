@@ -22,9 +22,10 @@
 #![feature(array_windows)]
 #![feature(cfg_match)]
 #![feature(core_io_borrowed_buf)]
+#![feature(hash_set_entry)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(min_specialization)]
+#![feature(map_try_insert)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
 #![feature(round_char_boundary)]
@@ -50,6 +51,7 @@ pub mod source_map;
 use source_map::{SourceMap, SourceMapInputs};
 
 pub use self::caching_source_map_view::CachingSourceMapView;
+use crate::fatal_error::FatalError;
 
 pub mod edition;
 use edition::Edition;
@@ -66,7 +68,7 @@ mod span_encoding;
 pub use span_encoding::{DUMMY_SP, Span};
 
 pub mod symbol;
-pub use symbol::{Symbol, sym};
+pub use symbol::{Ident, MacroRulesNormalizedIdent, STDLIB_STABLE_CRATES, Symbol, kw, sym};
 
 mod analyze_source_file;
 pub mod fatal_error;
@@ -84,9 +86,9 @@ use std::str::FromStr;
 use std::{fmt, iter};
 
 use md5::{Digest, Md5};
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{Hash64, Hash128, HashStable, StableHasher};
 use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock, Lrc};
+use rustc_data_structures::unord::UnordMap;
 use sha1::Sha1;
 use sha2::Sha256;
 
@@ -102,7 +104,7 @@ pub struct SessionGlobals {
     span_interner: Lock<span_encoding::SpanInterner>,
     /// Maps a macro argument token into use of the corresponding metavariable in the macro body.
     /// Collisions are possible and processed in `maybe_use_metavar_location` on best effort basis.
-    metavar_spans: Lock<FxHashMap<Span, Span>>,
+    metavar_spans: MetavarSpansMap,
     hygiene_data: Lock<hygiene::HygieneData>,
 
     /// The session's source map, if there is one. This field should only be
@@ -176,9 +178,42 @@ pub fn create_default_session_globals_then<R>(f: impl FnOnce() -> R) -> R {
 // deserialization.
 scoped_tls::scoped_thread_local!(static SESSION_GLOBALS: SessionGlobals);
 
+#[derive(Default)]
+pub struct MetavarSpansMap(FreezeLock<UnordMap<Span, (Span, bool)>>);
+
+impl MetavarSpansMap {
+    pub fn insert(&self, span: Span, var_span: Span) -> bool {
+        match self.0.write().try_insert(span, (var_span, false)) {
+            Ok(_) => true,
+            Err(entry) => entry.entry.get().0 == var_span,
+        }
+    }
+
+    /// Read a span and record that it was read.
+    pub fn get(&self, span: Span) -> Option<Span> {
+        if let Some(mut mspans) = self.0.try_write() {
+            if let Some((var_span, read)) = mspans.get_mut(&span) {
+                *read = true;
+                Some(*var_span)
+            } else {
+                None
+            }
+        } else {
+            if let Some((span, true)) = self.0.read().get(&span) { Some(*span) } else { None }
+        }
+    }
+
+    /// Freeze the set, and return the spans which have been read.
+    ///
+    /// After this is frozen, no spans that have not been read can be read.
+    pub fn freeze_and_get_read_spans(&self) -> UnordMap<Span, Span> {
+        self.0.freeze().items().filter(|(_, (_, b))| *b).map(|(s1, (s2, _))| (*s1, *s2)).collect()
+    }
+}
+
 #[inline]
-pub fn with_metavar_spans<R>(f: impl FnOnce(&mut FxHashMap<Span, Span>) -> R) -> R {
-    with_session_globals(|session_globals| f(&mut session_globals.metavar_spans.lock()))
+pub fn with_metavar_spans<R>(f: impl FnOnce(&MetavarSpansMap) -> R) -> R {
+    with_session_globals(|session_globals| f(&session_globals.metavar_spans))
 }
 
 // FIXME: We should use this enum or something like it to get rid of the
@@ -304,8 +339,8 @@ impl RealFileName {
 #[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Decodable, Encodable)]
 pub enum FileName {
     Real(RealFileName),
-    /// Call to `quote!`.
-    QuoteExpansion(Hash64),
+    /// Strings provided as `--cfg [cfgspec]`.
+    CfgSpec(Hash64),
     /// Command line.
     Anon(Hash64),
     /// Hack in `src/librustc_ast/parse.rs`.
@@ -352,7 +387,7 @@ impl fmt::Display for FileNameDisplay<'_> {
             Real(ref name) => {
                 write!(fmt, "{}", name.to_string_lossy(self.display_pref))
             }
-            QuoteExpansion(_) => write!(fmt, "<quote expansion>"),
+            CfgSpec(_) => write!(fmt, "<cfgspec>"),
             MacroExpansion(_) => write!(fmt, "<macro expansion>"),
             Anon(_) => write!(fmt, "<anon>"),
             ProcMacroSourceCode(_) => write!(fmt, "<proc-macro source code>"),
@@ -383,7 +418,7 @@ impl FileName {
             | ProcMacroSourceCode(_)
             | CliCrateAttr(_)
             | Custom(_)
-            | QuoteExpansion(_)
+            | CfgSpec(_)
             | DocTest(_, _)
             | InlineAsm(_) => false,
         }
@@ -424,7 +459,7 @@ impl FileName {
     pub fn cfg_spec_source_code(src: &str) -> FileName {
         let mut hasher = StableHasher::new();
         src.hash(&mut hasher);
-        FileName::QuoteExpansion(hasher.finish())
+        FileName::CfgSpec(hasher.finish())
     }
 
     pub fn cli_crate_attr_source_code(src: &str) -> FileName {
@@ -521,13 +556,11 @@ impl SpanData {
     }
 }
 
-// The interner is pointed to by a thread local value which is only set on the main thread
-// with parallelization is disabled. So we don't allow `Span` to transfer between threads
-// to avoid panics and other errors, even though it would be memory safe to do so.
-#[cfg(not(parallel_compiler))]
-impl !Send for Span {}
-#[cfg(not(parallel_compiler))]
-impl !Sync for Span {}
+impl Default for SpanData {
+    fn default() -> Self {
+        Self { lo: BytePos(0), hi: BytePos(0), ctxt: SyntaxContext::root(), parent: None }
+    }
+}
 
 impl PartialOrd for Span {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
@@ -565,12 +598,6 @@ impl Span {
     #[inline]
     pub fn is_visible(self, sm: &SourceMap) -> bool {
         !self.is_dummy() && sm.is_span_accessible(self)
-    }
-
-    /// Returns `true` if this span comes from any kind of macro, desugaring or inlining.
-    #[inline]
-    pub fn from_expansion(self) -> bool {
-        !self.ctxt().is_root()
     }
 
     /// Returns `true` if `span` originates in a derive-macro's expansion.
@@ -879,8 +906,7 @@ impl Span {
 
     /// Check if you can select metavar spans for the given spans to get matching contexts.
     fn try_metavars(a: SpanData, b: SpanData, a_orig: Span, b_orig: Span) -> (SpanData, SpanData) {
-        let get = |mspans: &FxHashMap<_, _>, s| mspans.get(&s).copied();
-        match with_metavar_spans(|mspans| (get(mspans, a_orig), get(mspans, b_orig))) {
+        match with_metavar_spans(|mspans| (mspans.get(a_orig), mspans.get(b_orig))) {
             (None, None) => {}
             (Some(meta_a), None) => {
                 let meta_a = meta_a.data();
@@ -1843,6 +1869,8 @@ impl StableSourceFileId {
 }
 
 impl SourceFile {
+    const MAX_FILE_SIZE: u32 = u32::MAX - 1;
+
     pub fn new(
         name: FileName,
         mut src: String,
@@ -1863,6 +1891,9 @@ impl SourceFile {
         let stable_id = StableSourceFileId::from_filename_in_current_crate(&name);
         let source_len = src.len();
         let source_len = u32::try_from(source_len).map_err(|_| OffsetOverflowError)?;
+        if source_len > Self::MAX_FILE_SIZE {
+            return Err(OffsetOverflowError);
+        }
 
         let (lines, multibyte_chars) = analyze_source_file::analyze_source_file(&src);
 
@@ -2221,6 +2252,10 @@ pub fn char_width(ch: char) -> usize {
         | '\u{2067}' | '\u{2068}' | '\u{202C}' | '\u{2069}' => 1,
         _ => unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1),
     }
+}
+
+pub fn str_width(s: &str) -> usize {
+    s.chars().map(char_width).sum()
 }
 
 /// Normalizes the source code and records the normalizations.
@@ -2617,6 +2652,10 @@ impl ErrorGuaranteed {
     #[deprecated = "should only be used in `DiagCtxtInner::emit_diagnostic`"]
     pub fn unchecked_error_guaranteed() -> Self {
         ErrorGuaranteed(())
+    }
+
+    pub fn raise_fatal(self) -> ! {
+        FatalError.raise()
     }
 }
 

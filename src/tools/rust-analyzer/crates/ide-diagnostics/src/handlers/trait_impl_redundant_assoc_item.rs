@@ -1,11 +1,11 @@
 use hir::{db::ExpandDatabase, HasSource, HirDisplay};
+use ide_db::text_edit::TextRange;
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
     label::Label,
     source_change::SourceChangeBuilder,
 };
 use syntax::ToSmolStr;
-use text_edit::TextRange;
 
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 

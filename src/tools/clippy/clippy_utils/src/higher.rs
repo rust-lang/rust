@@ -8,7 +8,7 @@ use crate::ty::is_type_diagnostic_item;
 
 use rustc_ast::ast;
 use rustc_hir as hir;
-use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath};
+use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath, StructTailExpr};
 use rustc_lint::LateContext;
 use rustc_span::{Span, sym, symbol};
 
@@ -103,7 +103,7 @@ impl<'hir> IfLet<'hir> {
     /// Parses an `if let` expression
     pub fn hir(cx: &LateContext<'_>, expr: &Expr<'hir>) -> Option<Self> {
         if let ExprKind::If(
-            Expr {
+            &Expr {
                 kind:
                     ExprKind::Let(&hir::LetExpr {
                         pat: let_pat,
@@ -196,8 +196,8 @@ impl<'hir> IfOrIfLet<'hir> {
             if let ExprKind::DropTemps(new_cond) = cond.kind {
                 return Some(Self {
                     cond: new_cond,
-                    r#else,
                     then,
+                    r#else,
                 });
             }
             if let ExprKind::Let(..) = cond.kind {
@@ -236,7 +236,7 @@ impl<'a> Range<'a> {
                     limits: ast::RangeLimits::Closed,
                 })
             },
-            ExprKind::Struct(path, fields, None) => match (path, fields) {
+            ExprKind::Struct(path, fields, StructTailExpr::None) => match (path, fields) {
                 (QPath::LangItem(hir::LangItem::RangeFull, ..), []) => Some(Range {
                     start: None,
                     end: None,
@@ -381,12 +381,12 @@ impl<'hir> WhileLet<'hir> {
     /// Parses a desugared `while let` loop
     pub const fn hir(expr: &Expr<'hir>) -> Option<Self> {
         if let ExprKind::Loop(
-            Block {
+            &Block {
                 expr:
-                    Some(Expr {
+                    Some(&Expr {
                         kind:
                             ExprKind::If(
-                                Expr {
+                                &Expr {
                                     kind:
                                         ExprKind::Let(&hir::LetExpr {
                                             pat: let_pat,

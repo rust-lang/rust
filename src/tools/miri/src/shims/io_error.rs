@@ -7,6 +7,7 @@ use crate::*;
 #[derive(Debug)]
 pub enum IoError {
     LibcError(&'static str),
+    WindowsError(&'static str),
     HostError(io::Error),
     Raw(Scalar),
 }
@@ -43,7 +44,7 @@ const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
         ("ECONNREFUSED", ConnectionRefused),
         ("ECONNRESET", ConnectionReset),
         ("EDEADLK", Deadlock),
-        ("EDQUOT", FilesystemQuotaExceeded),
+        ("EDQUOT", QuotaExceeded),
         ("EEXIST", AlreadyExists),
         ("EFBIG", FileTooLarge),
         ("EHOSTUNREACH", HostUnreachable),
@@ -81,11 +82,72 @@ const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
 // <https://github.com/rust-lang/rust/blob/master/library/std/src/sys/pal/windows/mod.rs>.
 const WINDOWS_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
     use std::io::ErrorKind::*;
-    // FIXME: this is still incomplete.
+    // It's common for multiple error codes to map to the same io::ErrorKind. We have all for the
+    // forwards mapping; only the first one will be used for the backwards mapping.
+    // Slightly arbitrarily, we prefer non-WSA and the most generic sounding variant for backwards
+    // mapping.
     &[
-        ("ERROR_ACCESS_DENIED", PermissionDenied),
-        ("ERROR_FILE_NOT_FOUND", NotFound),
+        ("WSAEADDRINUSE", AddrInUse),
+        ("WSAEADDRNOTAVAIL", AddrNotAvailable),
+        ("ERROR_ALREADY_EXISTS", AlreadyExists),
+        ("ERROR_FILE_EXISTS", AlreadyExists),
+        ("ERROR_NO_DATA", BrokenPipe),
+        ("WSAECONNABORTED", ConnectionAborted),
+        ("WSAECONNREFUSED", ConnectionRefused),
+        ("WSAECONNRESET", ConnectionReset),
+        ("ERROR_NOT_SAME_DEVICE", CrossesDevices),
+        ("ERROR_POSSIBLE_DEADLOCK", Deadlock),
+        ("ERROR_DIR_NOT_EMPTY", DirectoryNotEmpty),
+        ("ERROR_CANT_RESOLVE_FILENAME", FilesystemLoop),
+        ("ERROR_DISK_QUOTA_EXCEEDED", QuotaExceeded),
+        ("WSAEDQUOT", QuotaExceeded),
+        ("ERROR_FILE_TOO_LARGE", FileTooLarge),
+        ("ERROR_HOST_UNREACHABLE", HostUnreachable),
+        ("WSAEHOSTUNREACH", HostUnreachable),
+        ("ERROR_INVALID_NAME", InvalidFilename),
+        ("ERROR_BAD_PATHNAME", InvalidFilename),
+        ("ERROR_FILENAME_EXCED_RANGE", InvalidFilename),
         ("ERROR_INVALID_PARAMETER", InvalidInput),
+        ("WSAEINVAL", InvalidInput),
+        ("ERROR_DIRECTORY_NOT_SUPPORTED", IsADirectory),
+        ("WSAENETDOWN", NetworkDown),
+        ("ERROR_NETWORK_UNREACHABLE", NetworkUnreachable),
+        ("WSAENETUNREACH", NetworkUnreachable),
+        ("ERROR_DIRECTORY", NotADirectory),
+        ("WSAENOTCONN", NotConnected),
+        ("ERROR_FILE_NOT_FOUND", NotFound),
+        ("ERROR_PATH_NOT_FOUND", NotFound),
+        ("ERROR_INVALID_DRIVE", NotFound),
+        ("ERROR_BAD_NETPATH", NotFound),
+        ("ERROR_BAD_NET_NAME", NotFound),
+        ("ERROR_SEEK_ON_DEVICE", NotSeekable),
+        ("ERROR_NOT_ENOUGH_MEMORY", OutOfMemory),
+        ("ERROR_OUTOFMEMORY", OutOfMemory),
+        ("ERROR_ACCESS_DENIED", PermissionDenied),
+        ("WSAEACCES", PermissionDenied),
+        ("ERROR_WRITE_PROTECT", ReadOnlyFilesystem),
+        ("ERROR_BUSY", ResourceBusy),
+        ("ERROR_DISK_FULL", StorageFull),
+        ("ERROR_HANDLE_DISK_FULL", StorageFull),
+        ("WAIT_TIMEOUT", TimedOut),
+        ("WSAETIMEDOUT", TimedOut),
+        ("ERROR_DRIVER_CANCEL_TIMEOUT", TimedOut),
+        ("ERROR_OPERATION_ABORTED", TimedOut),
+        ("ERROR_SERVICE_REQUEST_TIMEOUT", TimedOut),
+        ("ERROR_COUNTER_TIMEOUT", TimedOut),
+        ("ERROR_TIMEOUT", TimedOut),
+        ("ERROR_RESOURCE_CALL_TIMED_OUT", TimedOut),
+        ("ERROR_CTX_MODEM_RESPONSE_TIMEOUT", TimedOut),
+        ("ERROR_CTX_CLIENT_QUERY_TIMEOUT", TimedOut),
+        ("FRS_ERR_SYSVOL_POPULATE_TIMEOUT", TimedOut),
+        ("ERROR_DS_TIMELIMIT_EXCEEDED", TimedOut),
+        ("DNS_ERROR_RECORD_TIMED_OUT", TimedOut),
+        ("ERROR_IPSEC_IKE_TIMED_OUT", TimedOut),
+        ("ERROR_RUNLEVEL_SWITCH_TIMEOUT", TimedOut),
+        ("ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT", TimedOut),
+        ("ERROR_TOO_MANY_LINKS", TooManyLinks),
+        ("ERROR_CALL_NOT_IMPLEMENTED", Unsupported),
+        ("WSAEWOULDBLOCK", WouldBlock),
     ]
 };
 
@@ -113,6 +175,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let errno = match err.into() {
             HostError(err) => this.io_error_to_errnum(err)?,
             LibcError(name) => this.eval_libc(name),
+            WindowsError(name) => this.eval_windows("c", name),
             Raw(val) => val,
         };
         let errno_place = this.last_error_place()?;
@@ -139,6 +202,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         this.set_last_error(err)?;
         interp_ok(Scalar::from_i32(-1))
+    }
+
+    /// Sets the last OS error and return `-1` as a `i64`-typed Scalar
+    fn set_last_error_and_return_i64(
+        &mut self,
+        err: impl Into<IoError>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+        this.set_last_error(err)?;
+        interp_ok(Scalar::from_i64(-1))
     }
 
     /// Gets the last error variable.
@@ -176,7 +249,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// The inverse of `io_error_to_errnum`.
-    #[allow(clippy::needless_return)]
+    #[expect(clippy::needless_return)]
     fn try_errnum_to_io_error(
         &self,
         errnum: Scalar,

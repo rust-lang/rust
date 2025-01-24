@@ -2,12 +2,8 @@
 
 ## Introduction
 
-The Rust compiler includes two code coverage implementations:
-
--   A GCC-compatible, gcov-based coverage implementation, enabled with `-Z profile`, which derives coverage data based on DebugInfo.
--   A source-based code coverage implementation, enabled with `-C instrument-coverage`, which uses LLVM's native, efficient coverage instrumentation to generate very precise coverage data.
-
-This document describes how to enable and use the LLVM instrumentation-based coverage, via the `-C instrument-coverage` compiler flag.
+This document describes how to enable and use LLVM instrumentation-based coverage,
+via the `-C instrument-coverage` compiler flag.
 
 ## How it works
 

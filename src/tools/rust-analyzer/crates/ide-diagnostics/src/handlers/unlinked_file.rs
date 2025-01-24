@@ -3,6 +3,7 @@
 use std::iter;
 
 use hir::{db::DefDatabase, DefMap, InFile, ModuleSource};
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     base_db::{FileLoader, SourceDatabase, SourceRootDatabase},
     source_change::SourceChange,
@@ -13,7 +14,6 @@ use syntax::{
     ast::{self, edit::IndentLevel, HasModuleItem, HasName},
     AstNode, TextRange,
 };
-use text_edit::TextEdit;
 
 use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
 

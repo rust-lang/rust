@@ -1,9 +1,0 @@
-error[E0284]: type annotations needed: cannot satisfy `Foo == _`
-  --> $DIR/norm-before-method-resolution-opaque-type.rs:16:19
-   |
-LL | fn weird_bound<X>(x: &<X as Trait<'static>>::Out<Foo>) -> X
-   |                   ^ cannot satisfy `Foo == _`
-
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0284`.

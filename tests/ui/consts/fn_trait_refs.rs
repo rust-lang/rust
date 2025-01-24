@@ -5,6 +5,7 @@
 #![feature(unboxed_closures)]
 #![feature(const_trait_impl)]
 #![feature(const_cmp)]
+#![feature(const_destruct)]
 
 use std::marker::Destruct;
 

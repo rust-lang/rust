@@ -13,7 +13,7 @@ fn unconstrained_arg<T: Test>(_: T) {}
 
 fn main() {
     //[nofallback]~^ warn: this function depends on never type fallback being `()`
-    //[nofallback]~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //[nofallback]~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
 
     // Here the type variable falls back to `!`,
     // and hence we get a type error.

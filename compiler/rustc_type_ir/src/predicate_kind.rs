@@ -37,6 +37,12 @@ pub enum ClauseKind<I: Interner> {
 
     /// Constant initializer must evaluate successfully.
     ConstEvaluatable(I::Const),
+
+    /// Enforces the constness of the predicate we're calling. Like a projection
+    /// goal from a where clause, it's always going to be paired with a
+    /// corresponding trait clause; this just enforces the *constness* of that
+    /// implementation.
+    HostEffect(ty::HostEffectPredicate<I>),
 }
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
@@ -110,6 +116,7 @@ impl<I: Interner> fmt::Debug for ClauseKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ClauseKind::ConstArgHasType(ct, ty) => write!(f, "ConstArgHasType({ct:?}, {ty:?})"),
+            ClauseKind::HostEffect(data) => data.fmt(f),
             ClauseKind::Trait(a) => a.fmt(f),
             ClauseKind::RegionOutlives(pair) => pair.fmt(f),
             ClauseKind::TypeOutlives(pair) => pair.fmt(f),

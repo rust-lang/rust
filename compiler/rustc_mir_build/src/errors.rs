@@ -1,26 +1,15 @@
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
-    MultiSpan, SubdiagMessageOp, Subdiagnostic,
+    MultiSpan, SubdiagMessageOp, Subdiagnostic, pluralize,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_pattern_analysis::errors::Uncovered;
 use rustc_pattern_analysis::rustc::RustcPatCtxt;
-use rustc_span::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::{Span, Symbol};
 
 use crate::fluent_generated as fluent;
-
-#[derive(LintDiagnostic)]
-#[diag(mir_build_unconditional_recursion)]
-#[help]
-pub(crate) struct UnconditionalRecursion {
-    #[label]
-    pub(crate) span: Span,
-    #[label(mir_build_unconditional_recursion_call_site_label)]
-    pub(crate) call_sites: Vec<Span>,
-}
 
 #[derive(LintDiagnostic)]
 #[diag(mir_build_call_to_deprecated_safe_fn_requires_unsafe)]
@@ -87,6 +76,16 @@ pub(crate) struct UnsafeOpInUnsafeFnInitializingTypeWithRequiresUnsafe {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(mir_build_unsafe_op_in_unsafe_fn_initializing_type_with_unsafe_field_requires_unsafe, code = E0133)]
+#[note]
+pub(crate) struct UnsafeOpInUnsafeFnInitializingTypeWithUnsafeFieldRequiresUnsafe {
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(mir_build_unsafe_op_in_unsafe_fn_mutable_static_requires_unsafe, code = E0133)]
 #[note]
 pub(crate) struct UnsafeOpInUnsafeFnUseOfMutableStaticRequiresUnsafe {
@@ -100,6 +99,16 @@ pub(crate) struct UnsafeOpInUnsafeFnUseOfMutableStaticRequiresUnsafe {
 #[diag(mir_build_unsafe_op_in_unsafe_fn_extern_static_requires_unsafe, code = E0133)]
 #[note]
 pub(crate) struct UnsafeOpInUnsafeFnUseOfExternStaticRequiresUnsafe {
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build_unsafe_op_in_unsafe_fn_unsafe_field_requires_unsafe, code = E0133)]
+#[note]
+pub(crate) struct UnsafeOpInUnsafeFnUseOfUnsafeFieldRequiresUnsafe {
     #[label]
     pub(crate) span: Span,
     #[subdiagnostic]
@@ -251,12 +260,37 @@ pub(crate) struct InitializingTypeWithRequiresUnsafe {
 }
 
 #[derive(Diagnostic)]
+#[diag(mir_build_initializing_type_with_unsafe_field_requires_unsafe, code = E0133)]
+#[note]
+pub(crate) struct InitializingTypeWithUnsafeFieldRequiresUnsafe {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
+}
+
+#[derive(Diagnostic)]
 #[diag(
     mir_build_initializing_type_with_requires_unsafe_unsafe_op_in_unsafe_fn_allowed,
     code = E0133
 )]
 #[note]
 pub(crate) struct InitializingTypeWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    mir_build_initializing_type_with_unsafe_field_requires_unsafe_unsafe_op_in_unsafe_fn_allowed,
+    code = E0133
+)]
+#[note]
+pub(crate) struct InitializingTypeWithUnsafeFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
@@ -301,6 +335,28 @@ pub(crate) struct UseOfExternStaticRequiresUnsafe {
 #[diag(mir_build_extern_static_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = E0133)]
 #[note]
 pub(crate) struct UseOfExternStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_unsafe_field_requires_unsafe, code = E0133)]
+#[note]
+pub(crate) struct UseOfUnsafeFieldRequiresUnsafe {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_unsafe_field_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = E0133)]
+#[note]
+pub(crate) struct UseOfUnsafeFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
@@ -528,7 +584,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNo
         }
 
         if let ty::Ref(_, sub_ty, _) = self.ty.kind() {
-            if !sub_ty.is_inhabited_from(self.cx.tcx, self.cx.module, self.cx.param_env) {
+            if !sub_ty.is_inhabited_from(self.cx.tcx, self.cx.module, self.cx.typing_env) {
                 diag.note(fluent::mir_build_reference_note);
             }
         }
@@ -564,20 +620,27 @@ pub(crate) struct NonExhaustiveMatchAllArmsGuarded;
 #[diag(mir_build_static_in_pattern, code = E0158)]
 pub(crate) struct StaticInPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
+    #[label(mir_build_static_in_pattern_def)]
+    pub(crate) static_span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_const_param_in_pattern, code = E0158)]
 pub(crate) struct ConstParamInPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
+    #[label(mir_build_const_param_in_pattern_def)]
+    pub(crate) const_span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_non_const_path, code = E0080)]
 pub(crate) struct NonConstPath {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
@@ -593,6 +656,14 @@ pub(crate) struct UnreachablePattern<'tcx> {
     pub(crate) uninhabited_note: Option<()>,
     #[label(mir_build_unreachable_covered_by_catchall)]
     pub(crate) covered_by_catchall: Option<Span>,
+    #[subdiagnostic]
+    pub(crate) wanted_constant: Option<WantedConstant>,
+    #[note(mir_build_unreachable_pattern_const_reexport_accessible)]
+    pub(crate) accessible_constant: Option<Span>,
+    #[note(mir_build_unreachable_pattern_const_inaccessible)]
+    pub(crate) inaccessible_constant: Option<Span>,
+    #[note(mir_build_unreachable_pattern_let_binding)]
+    pub(crate) pattern_let_binding: Option<Span>,
     #[label(mir_build_unreachable_covered_by_one)]
     pub(crate) covered_by_one: Option<Span>,
     #[note(mir_build_unreachable_covered_by_many)]
@@ -602,10 +673,25 @@ pub(crate) struct UnreachablePattern<'tcx> {
     pub(crate) suggest_remove: Option<Span>,
 }
 
+#[derive(Subdiagnostic)]
+#[suggestion(
+    mir_build_unreachable_pattern_wanted_const,
+    code = "{const_path}",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct WantedConstant {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) is_typo: bool,
+    pub(crate) const_name: String,
+    pub(crate) const_path: String,
+}
+
 #[derive(Diagnostic)]
 #[diag(mir_build_const_pattern_depends_on_generic_parameter, code = E0158)]
 pub(crate) struct ConstPatternDependsOnGenericParameter {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
@@ -613,6 +699,7 @@ pub(crate) struct ConstPatternDependsOnGenericParameter {
 #[diag(mir_build_could_not_eval_const_pattern)]
 pub(crate) struct CouldNotEvalConstPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
@@ -778,33 +865,43 @@ pub(crate) enum Conflict {
 #[diag(mir_build_union_pattern)]
 pub(crate) struct UnionPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_type_not_structural)]
-#[note(mir_build_type_not_structural_tip)]
-#[note(mir_build_type_not_structural_more_info)]
 pub(crate) struct TypeNotStructural<'tcx> {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
-    pub(crate) non_sm_ty: Ty<'tcx>,
+    #[label(mir_build_type_not_structural_def)]
+    pub(crate) ty_def_span: Span,
+    pub(crate) ty: Ty<'tcx>,
+    #[note(mir_build_type_not_structural_tip)]
+    pub(crate) manual_partialeq_impl_span: Option<Span>,
+    #[note(mir_build_type_not_structural_more_info)]
+    pub(crate) manual_partialeq_impl_note: bool,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_non_partial_eq_match)]
+#[note(mir_build_type_not_structural_more_info)]
 pub(crate) struct TypeNotPartialEq<'tcx> {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
-    pub(crate) non_peq_ty: Ty<'tcx>,
+    pub(crate) ty: Ty<'tcx>,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_invalid_pattern)]
 pub(crate) struct InvalidPattern<'tcx> {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
     pub(crate) non_sm_ty: Ty<'tcx>,
+    pub(crate) prefix: String,
 }
 
 #[derive(Diagnostic)]
@@ -821,13 +918,16 @@ pub(crate) struct UnsizedPattern<'tcx> {
 #[help]
 pub(crate) struct NaNPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_pointer_pattern)]
+#[note]
 pub(crate) struct PointerPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
@@ -860,8 +960,10 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     pub(crate) uncovered: Uncovered,
     #[subdiagnostic]
     pub(crate) inform: Option<Inform>,
+    #[label(mir_build_confused)]
+    pub(crate) interpreted_as_const: Option<Span>,
     #[subdiagnostic]
-    pub(crate) interpreted_as_const: Option<InterpretedAsConst>,
+    pub(crate) interpreted_as_const_sugg: Option<InterpretedAsConst>,
     #[subdiagnostic]
     pub(crate) adt_defined_here: Option<AdtDefinedHere<'tcx>>,
     #[note(mir_build_privately_uninhabited)]
@@ -911,9 +1013,9 @@ impl<'tcx> Subdiagnostic for AdtDefinedHere<'tcx> {
 #[suggestion(
     mir_build_interpreted_as_const,
     code = "{variable}_var",
-    applicability = "maybe-incorrect"
+    applicability = "maybe-incorrect",
+    style = "verbose"
 )]
-#[label(mir_build_confused)]
 pub(crate) struct InterpretedAsConst {
     #[primary_span]
     pub(crate) span: Span,
@@ -955,39 +1057,22 @@ pub(crate) enum MiscPatternSuggestion {
     },
 }
 
-#[derive(Diagnostic)]
-#[diag(mir_build_rustc_box_attribute_error)]
-pub(crate) struct RustcBoxAttributeError {
-    #[primary_span]
-    pub(crate) span: Span,
-    #[subdiagnostic]
-    pub(crate) reason: RustcBoxAttrReason,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum RustcBoxAttrReason {
-    #[note(mir_build_attributes)]
-    Attributes,
-    #[note(mir_build_not_box)]
-    NotBoxNew,
-    #[note(mir_build_missing_box)]
-    MissingBox,
-}
-
 #[derive(LintDiagnostic)]
 #[diag(mir_build_rust_2024_incompatible_pat)]
-pub(crate) struct Rust2024IncompatiblePat {
+pub(crate) struct Rust2024IncompatiblePat<'a> {
     #[subdiagnostic]
-    pub(crate) sugg: Rust2024IncompatiblePatSugg,
+    pub(crate) sugg: Rust2024IncompatiblePatSugg<'a>,
 }
 
-pub(crate) struct Rust2024IncompatiblePatSugg {
+pub(crate) struct Rust2024IncompatiblePatSugg<'a> {
     pub(crate) suggestion: Vec<(Span, String)>,
-    /// Whether the incompatibility is a hard error because a relevant span is in edition 2024.
-    pub(crate) is_hard_error: bool,
+    pub(crate) ref_pattern_count: usize,
+    pub(crate) binding_mode_count: usize,
+    /// Labeled spans for subpatterns invalid in Rust 2024.
+    pub(crate) labels: &'a [(Span, String)],
 }
 
-impl Subdiagnostic for Rust2024IncompatiblePatSugg {
+impl<'a> Subdiagnostic for Rust2024IncompatiblePatSugg<'a> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
@@ -999,6 +1084,16 @@ impl Subdiagnostic for Rust2024IncompatiblePatSugg {
             } else {
                 Applicability::MaybeIncorrect
             };
-        diag.multipart_suggestion("desugar the match ergonomics", self.suggestion, applicability);
+        let plural_derefs = pluralize!(self.ref_pattern_count);
+        let and_modes = if self.binding_mode_count > 0 {
+            format!(" and variable binding mode{}", pluralize!(self.binding_mode_count))
+        } else {
+            String::new()
+        };
+        diag.multipart_suggestion_verbose(
+            format!("make the implied reference pattern{plural_derefs}{and_modes} explicit"),
+            self.suggestion,
+            applicability,
+        );
     }
 }

@@ -218,7 +218,7 @@ pub mod rustc {
     pub fn with_options() {}
 
     /// Subtracts `set from `row`. `set` can be either `BitSet` or
-    /// `HybridBitSet`. Has no effect if `row` does not exist.
+    /// `ChunkedBitSet`. Has no effect if `row` does not exist.
     //~^ ERROR unescaped backtick
     ///
     /// Returns true if the row was changed.

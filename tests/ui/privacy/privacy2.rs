@@ -1,6 +1,6 @@
 //@ compile-flags: -Zdeduplicate-diagnostics=yes
 
-#![feature(start, no_core)]
+#![feature(no_core)]
 #![no_core] // makes debugging this test *a lot* easier (during resolve)
 
 // Test to make sure that globs don't leak in regular `use` statements.
@@ -26,4 +26,4 @@ fn test2() {
     //~^ ERROR `foo` is private
 }
 
-#[start] fn main(_: isize, _: *const *const u8) -> isize { 3 }
+fn main() {}

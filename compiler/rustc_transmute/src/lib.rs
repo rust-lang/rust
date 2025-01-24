@@ -131,7 +131,7 @@ mod rustc {
             c: Const<'tcx>,
         ) -> Option<Self> {
             use rustc_middle::ty::ScalarInt;
-            use rustc_span::symbol::sym;
+            use rustc_span::sym;
 
             let Some((cv, ty)) = c.try_to_valtree() else {
                 return None;

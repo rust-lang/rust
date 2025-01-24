@@ -10,7 +10,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use rustc_type_ir::{self as ty, CanonicalVarValues, InferCtxtLike, Interner};
+use rustc_type_ir::{self as ty, CanonicalVarValues, InferCtxtLike, Interner, TypingMode};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::{instrument, trace};
 
@@ -21,7 +21,6 @@ use crate::solve::search_graph::SearchGraph;
 use crate::solve::{
     CanonicalInput, Certainty, FIXPOINT_STEP_LIMIT, Goal, GoalEvaluationKind, GoalSource,
     HasChanged, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryResult,
-    SolverMode,
 };
 
 pub(super) mod canonical;
@@ -215,8 +214,8 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    pub(super) fn solver_mode(&self) -> SolverMode {
-        self.search_graph.solver_mode()
+    pub(super) fn typing_mode(&self) -> TypingMode<I> {
+        self.delegate.typing_mode()
     }
 
     pub(super) fn set_is_normalizes_to_goal(&mut self) {
@@ -232,7 +231,7 @@ where
         generate_proof_tree: GenerateProofTree,
         f: impl FnOnce(&mut EvalCtxt<'_, D>) -> R,
     ) -> (R, Option<inspect::GoalEvaluation<I>>) {
-        let mut search_graph = SearchGraph::new(delegate.solver_mode(), root_depth);
+        let mut search_graph = SearchGraph::new(root_depth);
 
         let mut ecx = EvalCtxt {
             delegate,
@@ -279,7 +278,7 @@ where
         f: impl FnOnce(&mut EvalCtxt<'_, D>, Goal<I, I::Predicate>) -> R,
     ) -> R {
         let (ref delegate, input, var_values) =
-            SolverDelegate::build_with_canonical(cx, search_graph.solver_mode(), &canonical_input);
+            SolverDelegate::build_with_canonical(cx, &canonical_input);
 
         let mut ecx = EvalCtxt {
             delegate,
@@ -291,7 +290,7 @@ where
             search_graph,
             nested_goals: NestedGoals::new(),
             tainted: Ok(()),
-            inspect: canonical_goal_evaluation.new_goal_evaluation_step(var_values, input),
+            inspect: canonical_goal_evaluation.new_goal_evaluation_step(var_values),
         };
 
         for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
@@ -441,7 +440,10 @@ where
         if let Some(kind) = kind.no_bound_vars() {
             match kind {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
-                    self.compute_trait_goal(Goal { param_env, predicate })
+                    self.compute_trait_goal(Goal { param_env, predicate }).map(|(r, _via)| r)
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
+                    self.compute_host_effect_goal(Goal { param_env, predicate })
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(predicate)) => {
                     self.compute_projection_goal(Goal { param_env, predicate })
@@ -640,6 +642,12 @@ where
         for goal in goals {
             self.add_goal(source, goal);
         }
+    }
+
+    pub(super) fn next_region_var(&mut self) -> I::Region {
+        let region = self.delegate.next_region_infer();
+        self.inspect.add_var_value(region);
+        region
     }
 
     pub(super) fn next_ty_infer(&mut self) -> I::Ty {
@@ -939,21 +947,11 @@ where
 
     pub(super) fn fetch_eligible_assoc_item(
         &self,
-        param_env: I::ParamEnv,
         goal_trait_ref: ty::TraitRef<I>,
         trait_assoc_def_id: I::DefId,
         impl_def_id: I::DefId,
-    ) -> Result<Option<I::DefId>, NoSolution> {
-        self.delegate.fetch_eligible_assoc_item(
-            param_env,
-            goal_trait_ref,
-            trait_assoc_def_id,
-            impl_def_id,
-        )
-    }
-
-    pub(super) fn can_define_opaque_ty(&self, def_id: I::LocalDefId) -> bool {
-        self.delegate.defining_opaque_types().contains(&def_id)
+    ) -> Result<Option<I::DefId>, I::ErrorGuaranteed> {
+        self.delegate.fetch_eligible_assoc_item(goal_trait_ref, trait_assoc_def_id, impl_def_id)
     }
 
     pub(super) fn insert_hidden_type(
@@ -1009,12 +1007,12 @@ where
     // Try to evaluate a const, or return `None` if the const is too generic.
     // This doesn't mean the const isn't evaluatable, though, and should be treated
     // as an ambiguity rather than no-solution.
-    pub(super) fn try_const_eval_resolve(
+    pub(super) fn evaluate_const(
         &self,
         param_env: I::ParamEnv,
-        unevaluated: ty::UnevaluatedConst<I>,
+        uv: ty::UnevaluatedConst<I>,
     ) -> Option<I::Const> {
-        self.delegate.try_const_eval_resolve(param_env, unevaluated)
+        self.delegate.evaluate_const(param_env, uv)
     }
 
     pub(super) fn is_transmutable(

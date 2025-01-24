@@ -4,7 +4,7 @@ error[E0277]: the trait bound `String: Copy` is not satisfied
 LL | static _MAYBE_STRINGS: [Option<String>; 5] = [None; 5];
    |                                               ^^^^
    |                                               |
-   |                                               the trait `Copy` is not implemented for `String`, which is required by `Option<String>: Copy`
+   |                                               the trait `Copy` is not implemented for `String`
    |                                               help: create an inline `const` block: `const { None }`
    |
    = note: required for `Option<String>` to implement `Copy`
@@ -27,7 +27,7 @@ error[E0277]: the trait bound `String: Copy` is not satisfied
 LL |     let _maybe_strings: [Option<String>; 5] = [None; 5];
    |                                                ^^^^
    |                                                |
-   |                                                the trait `Copy` is not implemented for `String`, which is required by `Option<String>: Copy`
+   |                                                the trait `Copy` is not implemented for `String`
    |                                                help: create an inline `const` block: `const { None }`
    |
    = note: required for `Option<String>` to implement `Copy`

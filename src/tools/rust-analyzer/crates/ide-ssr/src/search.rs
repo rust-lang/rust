@@ -189,7 +189,7 @@ impl MatchFinder<'_> {
         // If we've got a macro call, we already tried matching it pre-expansion, which is the only
         // way to match the whole macro, now try expanding it and matching the expansion.
         if let Some(macro_call) = ast::MacroCall::cast(code.clone()) {
-            if let Some(expanded) = self.sema.expand(&macro_call) {
+            if let Some(expanded) = self.sema.expand_macro_call(&macro_call) {
                 if let Some(tt) = macro_call.token_tree() {
                     // When matching within a macro expansion, we only want to allow matches of
                     // nodes that originated entirely from within the token tree of the macro call.

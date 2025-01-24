@@ -1,5 +1,5 @@
 error[E0658]: SIMD types are experimental and possibly buggy
-  --> $DIR/feature-gate-simd.rs:3:1
+  --> $DIR/feature-gate-simd.rs:1:1
    |
 LL | #[repr(simd)]
    | ^^^^^^^^^^^^^

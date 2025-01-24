@@ -10,6 +10,7 @@ use std::{iter, mem};
 pub use basic_blocks::BasicBlocks;
 use either::Either;
 use polonius_engine::Atom;
+use rustc_abi::{FieldIdx, VariantIdx};
 pub use rustc_ast::Mutability;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -20,14 +21,12 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{
     self as hir, BindingMode, ByRef, CoroutineDesugaring, CoroutineKind, HirId, ImplicitSelfKind,
 };
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Symbol;
-use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{FieldIdx, VariantIdx};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use tracing::trace;
 
 pub use self::query::*;
@@ -39,7 +38,7 @@ use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{
-    self, AdtDef, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt,
+    self, AdtDef, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt, TypingEnv,
     UserTypeAnnotationIndex,
 };
 
@@ -452,6 +451,17 @@ impl<'tcx> Body<'tcx> {
         self.basic_blocks.as_mut()
     }
 
+    pub fn typing_env(&self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
+        match self.phase {
+            // FIXME(#132279): we should reveal the opaques defined in the body during analysis.
+            MirPhase::Built | MirPhase::Analysis(_) => TypingEnv {
+                typing_mode: ty::TypingMode::non_body_analysis(),
+                param_env: tcx.param_env(self.source.def_id()),
+            },
+            MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
+        }
+    }
+
     #[inline]
     pub fn local_kind(&self, local: Local) -> LocalKind {
         let index = local.as_usize();
@@ -609,7 +619,7 @@ impl<'tcx> Body<'tcx> {
     }
 
     /// If this basic block ends with a [`TerminatorKind::SwitchInt`] for which we can evaluate the
-    /// dimscriminant in monomorphization, we return the discriminant bits and the
+    /// discriminant in monomorphization, we return the discriminant bits and the
     /// [`SwitchTargets`], just so the caller doesn't also have to match on the terminator.
     fn try_const_mono_switchint<'a>(
         tcx: TyCtxt<'tcx>,
@@ -618,13 +628,14 @@ impl<'tcx> Body<'tcx> {
     ) -> Option<(u128, &'a SwitchTargets)> {
         // There are two places here we need to evaluate a constant.
         let eval_mono_const = |constant: &ConstOperand<'tcx>| {
-            let env = ty::ParamEnv::reveal_all();
+            // FIXME(#132279): what is this, why are we using an empty environment here.
+            let typing_env = ty::TypingEnv::fully_monomorphized();
             let mono_literal = instance.instantiate_mir_and_normalize_erasing_regions(
                 tcx,
-                env,
+                typing_env,
                 crate::ty::EarlyBinder::bind(constant.const_),
             );
-            mono_literal.try_eval_bits(tcx, env)
+            mono_literal.try_eval_bits(tcx, typing_env)
         };
 
         let TerminatorKind::SwitchInt { discr, targets } = &block.terminator().kind else {
@@ -1337,8 +1348,8 @@ pub struct BasicBlockData<'tcx> {
 }
 
 impl<'tcx> BasicBlockData<'tcx> {
-    pub fn new(terminator: Option<Terminator<'tcx>>) -> BasicBlockData<'tcx> {
-        BasicBlockData { statements: vec![], terminator, is_cleanup: false }
+    pub fn new(terminator: Option<Terminator<'tcx>>, is_cleanup: bool) -> BasicBlockData<'tcx> {
+        BasicBlockData { statements: vec![], terminator, is_cleanup }
     }
 
     /// Accessor for terminator.

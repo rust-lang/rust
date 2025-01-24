@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::{snapshot_vec as sv, unify as ut};
-use rustc_middle::infer::unify_key::{ConstVidKey, EffectVidKey, RegionVidKey};
+use rustc_middle::infer::unify_key::{ConstVidKey, RegionVidKey};
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey};
 use tracing::debug;
 
@@ -22,7 +22,6 @@ pub(crate) enum UndoLog<'tcx> {
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ConstVidKey<'tcx>>>),
     IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
     FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
-    EffectUnificationTable(sv::UndoLog<ut::Delegate<EffectVidKey<'tcx>>>),
     RegionConstraintCollector(region_constraints::UndoLog<'tcx>),
     RegionUnificationTable(sv::UndoLog<ut::Delegate<RegionVidKey<'tcx>>>),
     ProjectionCache(traits::UndoLog<'tcx>),
@@ -50,7 +49,6 @@ impl_from! {
     FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
 
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ConstVidKey<'tcx>>>),
-    EffectUnificationTable(sv::UndoLog<ut::Delegate<EffectVidKey<'tcx>>>),
 
     RegionUnificationTable(sv::UndoLog<ut::Delegate<RegionVidKey<'tcx>>>),
     ProjectionCache(traits::UndoLog<'tcx>),
@@ -65,7 +63,6 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
             UndoLog::ConstUnificationTable(undo) => self.const_unification_storage.reverse(undo),
             UndoLog::IntUnificationTable(undo) => self.int_unification_storage.reverse(undo),
             UndoLog::FloatUnificationTable(undo) => self.float_unification_storage.reverse(undo),
-            UndoLog::EffectUnificationTable(undo) => self.effect_unification_storage.reverse(undo),
             UndoLog::RegionConstraintCollector(undo) => {
                 self.region_constraint_storage.as_mut().unwrap().reverse(undo)
             }

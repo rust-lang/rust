@@ -115,6 +115,12 @@ impl FileLoader for RealFileLoader {
     }
 
     fn read_file(&self, path: &Path) -> io::Result<String> {
+        if path.metadata().is_ok_and(|metadata| metadata.len() > SourceFile::MAX_FILE_SIZE.into()) {
+            return Err(io::Error::other(format!(
+                "text files larger than {} bytes are unsupported",
+                SourceFile::MAX_FILE_SIZE
+            )));
+        }
         fs::read_to_string(path)
     }
 
@@ -286,8 +292,8 @@ impl SourceMap {
         });
 
         let file = Lrc::new(file);
-        files.source_files.push(file.clone());
-        files.stable_id_to_source_file.insert(file_id, file.clone());
+        files.source_files.push(Lrc::clone(&file));
+        files.stable_id_to_source_file.insert(file_id, Lrc::clone(&file));
 
         Ok(file)
     }
@@ -297,7 +303,10 @@ impl SourceMap {
     /// unmodified.
     pub fn new_source_file(&self, filename: FileName, src: String) -> Lrc<SourceFile> {
         self.try_new_source_file(filename, src).unwrap_or_else(|OffsetOverflowError| {
-            eprintln!("fatal error: rustc does not support files larger than 4GB");
+            eprintln!(
+                "fatal error: rustc does not support text files larger than {} bytes",
+                SourceFile::MAX_FILE_SIZE
+            );
             crate::fatal_error::FatalError.raise()
         })
     }
@@ -386,7 +395,7 @@ impl SourceMap {
     /// Return the SourceFile that contains the given `BytePos`
     pub fn lookup_source_file(&self, pos: BytePos) -> Lrc<SourceFile> {
         let idx = self.lookup_source_file_idx(pos);
-        (*self.files.borrow().source_files)[idx].clone()
+        Lrc::clone(&(*self.files.borrow().source_files)[idx])
     }
 
     /// Looks up source information about a `BytePos`.
@@ -468,7 +477,7 @@ impl SourceMap {
         if lo != hi {
             return true;
         }
-        let f = (*self.files.borrow().source_files)[lo].clone();
+        let f = Lrc::clone(&(*self.files.borrow().source_files)[lo]);
         let lo = f.relative_position(sp.lo());
         let hi = f.relative_position(sp.hi());
         f.lookup_line(lo) != f.lookup_line(hi)
@@ -534,7 +543,7 @@ impl SourceMap {
     /// Extracts the source surrounding the given `Span` using the `extract_source` function. The
     /// extract function takes three arguments: a string slice containing the source, an index in
     /// the slice for the beginning of the span and an index in the slice for the end of the span.
-    fn span_to_source<F, T>(&self, sp: Span, extract_source: F) -> Result<T, SpanSnippetError>
+    pub fn span_to_source<F, T>(&self, sp: Span, extract_source: F) -> Result<T, SpanSnippetError>
     where
         F: Fn(&str, usize, usize) -> Result<T, SpanSnippetError>,
     {
@@ -994,7 +1003,7 @@ impl SourceMap {
         let filename = self.path_mapping().map_filename_prefix(filename).0;
         for sf in self.files.borrow().source_files.iter() {
             if filename == sf.name {
-                return Some(sf.clone());
+                return Some(Lrc::clone(&sf));
             }
         }
         None
@@ -1003,7 +1012,7 @@ impl SourceMap {
     /// For a global `BytePos`, computes the local offset within the containing `SourceFile`.
     pub fn lookup_byte_offset(&self, bpos: BytePos) -> SourceFileAndBytePos {
         let idx = self.lookup_source_file_idx(bpos);
-        let sf = (*self.files.borrow().source_files)[idx].clone();
+        let sf = Lrc::clone(&(*self.files.borrow().source_files)[idx]);
         let offset = bpos - sf.start_pos;
         SourceFileAndBytePos { sf, pos: offset }
     }

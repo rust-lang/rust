@@ -1,3 +1,4 @@
+
 thread 'main' panicked at tests/panic/panic1.rs:LL:CC:
 panicking from libstd
 stack backtrace:

@@ -7,12 +7,14 @@ use std::collections::VecDeque;
 use std::io;
 use std::io::{ErrorKind, Read};
 
-use rustc_target::abi::Size;
+use rustc_abi::Size;
 
 use crate::concurrency::VClock;
-use crate::shims::unix::fd::{FileDescriptionRef, WeakFileDescriptionRef};
-use crate::shims::unix::linux::epoll::{EpollReadyEvents, EvalContextExt as _};
-use crate::shims::unix::*;
+use crate::shims::files::{
+    EvalContextExt as _, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
+};
+use crate::shims::unix::UnixFileDescription;
+use crate::shims::unix::linux_like::epoll::{EpollReadyEvents, EvalContextExt as _};
 use crate::*;
 
 /// The maximum capacity of the socketpair buffer in bytes.
@@ -29,11 +31,17 @@ struct AnonSocket {
     /// The `AnonSocket` file descriptor that is our "peer", and that holds the buffer we are
     /// writing to. This is a weak reference because the other side may be closed before us; all
     /// future writes will then trigger EPIPE.
-    peer_fd: OnceCell<WeakFileDescriptionRef>,
+    peer_fd: OnceCell<WeakFileDescriptionRef<AnonSocket>>,
     /// Indicates whether the peer has lost data when the file description is closed.
     /// This flag is set to `true` if the peer's `readbuf` is non-empty at the time
     /// of closure.
     peer_lost_data: Cell<bool>,
+    /// A list of thread ids blocked because the buffer was empty.
+    /// Once another thread writes some bytes, these threads will be unblocked.
+    blocked_read_tid: RefCell<Vec<ThreadId>>,
+    /// A list of thread ids blocked because the buffer was full.
+    /// Once another thread reads some bytes, these threads will be unblocked.
+    blocked_write_tid: RefCell<Vec<ThreadId>>,
     is_nonblock: bool,
 }
 
@@ -50,7 +58,7 @@ impl Buffer {
 }
 
 impl AnonSocket {
-    fn peer_fd(&self) -> &WeakFileDescriptionRef {
+    fn peer_fd(&self) -> &WeakFileDescriptionRef<AnonSocket> {
         self.peer_fd.get().unwrap()
     }
 }
@@ -60,6 +68,237 @@ impl FileDescription for AnonSocket {
         "socketpair"
     }
 
+    fn close<'tcx>(
+        self,
+        _communicate_allowed: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<()>> {
+        if let Some(peer_fd) = self.peer_fd().upgrade() {
+            // If the current readbuf is non-empty when the file description is closed,
+            // notify the peer that data lost has happened in current file description.
+            if let Some(readbuf) = &self.readbuf {
+                if !readbuf.borrow().buf.is_empty() {
+                    peer_fd.peer_lost_data.set(true);
+                }
+            }
+            // Notify peer fd that close has happened, since that can unblock reads and writes.
+            ecx.check_and_update_readiness(peer_fd)?;
+        }
+        interp_ok(Ok(()))
+    }
+
+    fn read<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _communicate_allowed: bool,
+        ptr: Pointer,
+        len: usize,
+        dest: &MPlaceTy<'tcx>,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx> {
+        anonsocket_read(self, len, ptr, dest, ecx)
+    }
+
+    fn write<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _communicate_allowed: bool,
+        ptr: Pointer,
+        len: usize,
+        dest: &MPlaceTy<'tcx>,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx> {
+        anonsocket_write(self, ptr, len, dest, ecx)
+    }
+
+    fn as_unix(&self) -> &dyn UnixFileDescription {
+        self
+    }
+}
+
+/// Write to AnonSocket based on the space available and return the written byte size.
+fn anonsocket_write<'tcx>(
+    self_ref: FileDescriptionRef<AnonSocket>,
+    ptr: Pointer,
+    len: usize,
+    dest: &MPlaceTy<'tcx>,
+    ecx: &mut MiriInterpCx<'tcx>,
+) -> InterpResult<'tcx> {
+    // Always succeed on write size 0.
+    // ("If count is zero and fd refers to a file other than a regular file, the results are not specified.")
+    if len == 0 {
+        return ecx.return_write_success(0, dest);
+    }
+
+    // We are writing to our peer's readbuf.
+    let Some(peer_fd) = self_ref.peer_fd().upgrade() else {
+        // If the upgrade from Weak to Rc fails, it indicates that all read ends have been
+        // closed. It is an error to write even if there would be space.
+        return ecx.set_last_error_and_return(ErrorKind::BrokenPipe, dest);
+    };
+
+    let Some(writebuf) = &peer_fd.readbuf else {
+        // Writing to the read end of a pipe.
+        return ecx.set_last_error_and_return(IoError::LibcError("EBADF"), dest);
+    };
+
+    // Let's see if we can write.
+    let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(writebuf.borrow().buf.len());
+    if available_space == 0 {
+        if self_ref.is_nonblock {
+            // Non-blocking socketpair with a full buffer.
+            return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
+        } else {
+            self_ref.blocked_write_tid.borrow_mut().push(ecx.active_thread());
+            // Blocking socketpair with a full buffer.
+            // Block the current thread; only keep a weak ref for this.
+            let weak_self_ref = FileDescriptionRef::downgrade(&self_ref);
+            let dest = dest.clone();
+            ecx.block_thread(
+                BlockReason::UnnamedSocket,
+                None,
+                callback!(
+                    @capture<'tcx> {
+                        weak_self_ref: WeakFileDescriptionRef<AnonSocket>,
+                        ptr: Pointer,
+                        len: usize,
+                        dest: MPlaceTy<'tcx>,
+                    }
+                    |this, unblock: UnblockKind| {
+                        assert_eq!(unblock, UnblockKind::Ready);
+                        // If we got unblocked, then our peer successfully upgraded its weak
+                        // ref to us. That means we can also upgrade our weak ref.
+                        let self_ref = weak_self_ref.upgrade().unwrap();
+                        anonsocket_write(self_ref, ptr, len, &dest, this)
+                    }
+                ),
+            );
+        }
+    } else {
+        // There is space to write!
+        let mut writebuf = writebuf.borrow_mut();
+        // Remember this clock so `read` can synchronize with us.
+        ecx.release_clock(|clock| {
+            writebuf.clock.join(clock);
+        });
+        // Do full write / partial write based on the space available.
+        let actual_write_size = len.min(available_space);
+        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
+        writebuf.buf.extend(&bytes[..actual_write_size]);
+
+        // Need to stop accessing peer_fd so that it can be notified.
+        drop(writebuf);
+
+        // Unblock all threads that are currently blocked on peer_fd's read.
+        let waiting_threads = std::mem::take(&mut *peer_fd.blocked_read_tid.borrow_mut());
+        // FIXME: We can randomize the order of unblocking.
+        for thread_id in waiting_threads {
+            ecx.unblock_thread(thread_id, BlockReason::UnnamedSocket)?;
+        }
+        // Notification should be provided for peer fd as it became readable.
+        // The kernel does this even if the fd was already readable before, so we follow suit.
+        ecx.check_and_update_readiness(peer_fd)?;
+
+        return ecx.return_write_success(actual_write_size, dest);
+    }
+    interp_ok(())
+}
+
+/// Read from AnonSocket and return the number of bytes read.
+fn anonsocket_read<'tcx>(
+    self_ref: FileDescriptionRef<AnonSocket>,
+    len: usize,
+    ptr: Pointer,
+    dest: &MPlaceTy<'tcx>,
+    ecx: &mut MiriInterpCx<'tcx>,
+) -> InterpResult<'tcx> {
+    // Always succeed on read size 0.
+    if len == 0 {
+        return ecx.return_read_success(ptr, &[], 0, dest);
+    }
+
+    let Some(readbuf) = &self_ref.readbuf else {
+        // FIXME: This should return EBADF, but there's no nice way to do that as there's no
+        // corresponding ErrorKind variant.
+        throw_unsup_format!("reading from the write end of a pipe")
+    };
+
+    if readbuf.borrow_mut().buf.is_empty() {
+        if self_ref.peer_fd().upgrade().is_none() {
+            // Socketpair with no peer and empty buffer.
+            // 0 bytes successfully read indicates end-of-file.
+            return ecx.return_read_success(ptr, &[], 0, dest);
+        } else if self_ref.is_nonblock {
+            // Non-blocking socketpair with writer and empty buffer.
+            // https://linux.die.net/man/2/read
+            // EAGAIN or EWOULDBLOCK can be returned for socket,
+            // POSIX.1-2001 allows either error to be returned for this case.
+            // Since there is no ErrorKind for EAGAIN, WouldBlock is used.
+            return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
+        } else {
+            self_ref.blocked_read_tid.borrow_mut().push(ecx.active_thread());
+            // Blocking socketpair with writer and empty buffer.
+            // Block the current thread; only keep a weak ref for this.
+            let weak_self_ref = FileDescriptionRef::downgrade(&self_ref);
+            let dest = dest.clone();
+            ecx.block_thread(
+                BlockReason::UnnamedSocket,
+                None,
+                callback!(
+                    @capture<'tcx> {
+                        weak_self_ref: WeakFileDescriptionRef<AnonSocket>,
+                        len: usize,
+                        ptr: Pointer,
+                        dest: MPlaceTy<'tcx>,
+                    }
+                    |this, unblock: UnblockKind| {
+                        assert_eq!(unblock, UnblockKind::Ready);
+                        // If we got unblocked, then our peer successfully upgraded its weak
+                        // ref to us. That means we can also upgrade our weak ref.
+                        let self_ref = weak_self_ref.upgrade().unwrap();
+                        anonsocket_read(self_ref, len, ptr, &dest, this)
+                    }
+                ),
+            );
+        }
+    } else {
+        // There's data to be read!
+        let mut bytes = vec![0; len];
+        let mut readbuf = readbuf.borrow_mut();
+        // Synchronize with all previous writes to this buffer.
+        // FIXME: this over-synchronizes; a more precise approach would be to
+        // only sync with the writes whose data we will read.
+        ecx.acquire_clock(&readbuf.clock);
+
+        // Do full read / partial read based on the space available.
+        // Conveniently, `read` exists on `VecDeque` and has exactly the desired behavior.
+        let actual_read_size = readbuf.buf.read(&mut bytes[..]).unwrap();
+
+        // Need to drop before others can access the readbuf again.
+        drop(readbuf);
+
+        // A notification should be provided for the peer file description even when it can
+        // only write 1 byte. This implementation is not compliant with the actual Linux kernel
+        // implementation. For optimization reasons, the kernel will only mark the file description
+        // as "writable" when it can write more than a certain number of bytes. Since we
+        // don't know what that *certain number* is, we will provide a notification every time
+        // a read is successful. This might result in our epoll emulation providing more
+        // notifications than the real system.
+        if let Some(peer_fd) = self_ref.peer_fd().upgrade() {
+            // Unblock all threads that are currently blocked on peer_fd's write.
+            let waiting_threads = std::mem::take(&mut *peer_fd.blocked_write_tid.borrow_mut());
+            // FIXME: We can randomize the order of unblocking.
+            for thread_id in waiting_threads {
+                ecx.unblock_thread(thread_id, BlockReason::UnnamedSocket)?;
+            }
+            // Notify epoll waiters.
+            ecx.check_and_update_readiness(peer_fd)?;
+        };
+
+        return ecx.return_read_success(ptr, &bytes, actual_read_size, dest);
+    }
+    interp_ok(())
+}
+
+impl UnixFileDescription for AnonSocket {
     fn get_epoll_ready_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadyEvents> {
         // We only check the status of EPOLLIN, EPOLLOUT, EPOLLHUP and EPOLLRDHUP flags.
         // If other event flags need to be supported in the future, the check should be added here.
@@ -78,7 +317,7 @@ impl FileDescription for AnonSocket {
 
         // Check if is writable.
         if let Some(peer_fd) = self.peer_fd().upgrade() {
-            if let Some(writebuf) = &peer_fd.downcast::<AnonSocket>().unwrap().readbuf {
+            if let Some(writebuf) = &peer_fd.readbuf {
                 let data_size = writebuf.borrow().buf.len();
                 let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(data_size);
                 if available_space != 0 {
@@ -104,152 +343,6 @@ impl FileDescription for AnonSocket {
             }
         }
         interp_ok(epoll_ready_events)
-    }
-
-    fn close<'tcx>(
-        self: Box<Self>,
-        _communicate_allowed: bool,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        if let Some(peer_fd) = self.peer_fd().upgrade() {
-            // If the current readbuf is non-empty when the file description is closed,
-            // notify the peer that data lost has happened in current file description.
-            if let Some(readbuf) = &self.readbuf {
-                if !readbuf.borrow().buf.is_empty() {
-                    peer_fd.downcast::<AnonSocket>().unwrap().peer_lost_data.set(true);
-                }
-            }
-            // Notify peer fd that close has happened, since that can unblock reads and writes.
-            ecx.check_and_update_readiness(&peer_fd)?;
-        }
-        interp_ok(Ok(()))
-    }
-
-    fn read<'tcx>(
-        &self,
-        _self_ref: &FileDescriptionRef,
-        _communicate_allowed: bool,
-        ptr: Pointer,
-        len: usize,
-        dest: &MPlaceTy<'tcx>,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx> {
-        let mut bytes = vec![0; len];
-
-        // Always succeed on read size 0.
-        if len == 0 {
-            return ecx.return_read_success(ptr, &bytes, 0, dest);
-        }
-
-        let Some(readbuf) = &self.readbuf else {
-            // FIXME: This should return EBADF, but there's no nice way to do that as there's no
-            // corresponding ErrorKind variant.
-            throw_unsup_format!("reading from the write end of a pipe");
-        };
-        let mut readbuf = readbuf.borrow_mut();
-        if readbuf.buf.is_empty() {
-            if self.peer_fd().upgrade().is_none() {
-                // Socketpair with no peer and empty buffer.
-                // 0 bytes successfully read indicates end-of-file.
-                return ecx.return_read_success(ptr, &bytes, 0, dest);
-            } else {
-                if self.is_nonblock {
-                    // Non-blocking socketpair with writer and empty buffer.
-                    // https://linux.die.net/man/2/read
-                    // EAGAIN or EWOULDBLOCK can be returned for socket,
-                    // POSIX.1-2001 allows either error to be returned for this case.
-                    // Since there is no ErrorKind for EAGAIN, WouldBlock is used.
-                    return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
-                } else {
-                    // Blocking socketpair with writer and empty buffer.
-                    // FIXME: blocking is currently not supported
-                    throw_unsup_format!("socketpair/pipe/pipe2 read: blocking isn't supported yet");
-                }
-            }
-        }
-
-        // Synchronize with all previous writes to this buffer.
-        // FIXME: this over-synchronizes; a more precise approach would be to
-        // only sync with the writes whose data we will read.
-        ecx.acquire_clock(&readbuf.clock);
-
-        // Do full read / partial read based on the space available.
-        // Conveniently, `read` exists on `VecDeque` and has exactly the desired behavior.
-        let actual_read_size = readbuf.buf.read(&mut bytes).unwrap();
-
-        // Need to drop before others can access the readbuf again.
-        drop(readbuf);
-
-        // A notification should be provided for the peer file description even when it can
-        // only write 1 byte. This implementation is not compliant with the actual Linux kernel
-        // implementation. For optimization reasons, the kernel will only mark the file description
-        // as "writable" when it can write more than a certain number of bytes. Since we
-        // don't know what that *certain number* is, we will provide a notification every time
-        // a read is successful. This might result in our epoll emulation providing more
-        // notifications than the real system.
-        if let Some(peer_fd) = self.peer_fd().upgrade() {
-            ecx.check_and_update_readiness(&peer_fd)?;
-        }
-
-        ecx.return_read_success(ptr, &bytes, actual_read_size, dest)
-    }
-
-    fn write<'tcx>(
-        &self,
-        _self_ref: &FileDescriptionRef,
-        _communicate_allowed: bool,
-        ptr: Pointer,
-        len: usize,
-        dest: &MPlaceTy<'tcx>,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx> {
-        // Always succeed on write size 0.
-        // ("If count is zero and fd refers to a file other than a regular file, the results are not specified.")
-        if len == 0 {
-            return ecx.return_write_success(0, dest);
-        }
-
-        // We are writing to our peer's readbuf.
-        let Some(peer_fd) = self.peer_fd().upgrade() else {
-            // If the upgrade from Weak to Rc fails, it indicates that all read ends have been
-            // closed.
-            return ecx.set_last_error_and_return(ErrorKind::BrokenPipe, dest);
-        };
-
-        let Some(writebuf) = &peer_fd.downcast::<AnonSocket>().unwrap().readbuf else {
-            // FIXME: This should return EBADF, but there's no nice way to do that as there's no
-            // corresponding ErrorKind variant.
-            throw_unsup_format!("writing to the reading end of a pipe");
-        };
-        let mut writebuf = writebuf.borrow_mut();
-        let data_size = writebuf.buf.len();
-        let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(data_size);
-        if available_space == 0 {
-            if self.is_nonblock {
-                // Non-blocking socketpair with a full buffer.
-                return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
-            } else {
-                // Blocking socketpair with a full buffer.
-                throw_unsup_format!("socketpair/pipe/pipe2 write: blocking isn't supported yet");
-            }
-        }
-        // Remember this clock so `read` can synchronize with us.
-        ecx.release_clock(|clock| {
-            writebuf.clock.join(clock);
-        });
-        // Do full write / partial write based on the space available.
-        let actual_write_size = len.min(available_space);
-        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
-        writebuf.buf.extend(&bytes[..actual_write_size]);
-
-        // Need to stop accessing peer_fd so that it can be notified.
-        drop(writebuf);
-
-        // Notification should be provided for peer fd as it became readable.
-        // The kernel does this even if the fd was already readable before, so we follow suit.
-        ecx.check_and_update_readiness(&peer_fd)?;
-
-        ecx.return_write_success(actual_write_size, dest)
     }
 }
 
@@ -316,18 +409,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             readbuf: Some(RefCell::new(Buffer::new())),
             peer_fd: OnceCell::new(),
             peer_lost_data: Cell::new(false),
+            blocked_read_tid: RefCell::new(Vec::new()),
+            blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: is_sock_nonblock,
         });
         let fd1 = fds.new_ref(AnonSocket {
             readbuf: Some(RefCell::new(Buffer::new())),
             peer_fd: OnceCell::new(),
             peer_lost_data: Cell::new(false),
+            blocked_read_tid: RefCell::new(Vec::new()),
+            blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: is_sock_nonblock,
         });
 
         // Make the file descriptions point to each other.
-        fd0.downcast::<AnonSocket>().unwrap().peer_fd.set(fd1.downgrade()).unwrap();
-        fd1.downcast::<AnonSocket>().unwrap().peer_fd.set(fd0.downgrade()).unwrap();
+        fd0.peer_fd.set(FileDescriptionRef::downgrade(&fd1)).unwrap();
+        fd1.peer_fd.set(FileDescriptionRef::downgrade(&fd0)).unwrap();
 
         // Insert the file description to the fd table, generating the file descriptors.
         let sv0 = fds.insert(fd0);
@@ -380,18 +477,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             readbuf: Some(RefCell::new(Buffer::new())),
             peer_fd: OnceCell::new(),
             peer_lost_data: Cell::new(false),
+            blocked_read_tid: RefCell::new(Vec::new()),
+            blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock,
         });
         let fd1 = fds.new_ref(AnonSocket {
             readbuf: None,
             peer_fd: OnceCell::new(),
             peer_lost_data: Cell::new(false),
+            blocked_read_tid: RefCell::new(Vec::new()),
+            blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock,
         });
 
         // Make the file descriptions point to each other.
-        fd0.downcast::<AnonSocket>().unwrap().peer_fd.set(fd1.downgrade()).unwrap();
-        fd1.downcast::<AnonSocket>().unwrap().peer_fd.set(fd0.downgrade()).unwrap();
+        fd0.peer_fd.set(FileDescriptionRef::downgrade(&fd1)).unwrap();
+        fd1.peer_fd.set(FileDescriptionRef::downgrade(&fd0)).unwrap();
 
         // Insert the file description to the fd table, generating the file descriptors.
         let pipefd0 = fds.insert(fd0);

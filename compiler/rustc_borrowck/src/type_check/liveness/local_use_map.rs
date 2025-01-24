@@ -82,7 +82,7 @@ impl<'a> Iterator for AppearancesIter<'a> {
 impl LocalUseMap {
     pub(crate) fn build(
         live_locals: &[Local],
-        elements: &DenseLocationMap,
+        location_map: &DenseLocationMap,
         body: &Body<'_>,
     ) -> Self {
         let nones = IndexVec::from_elem(None, &body.local_decls);
@@ -101,7 +101,7 @@ impl LocalUseMap {
             IndexVec::from_elem(false, &body.local_decls);
         live_locals.iter().for_each(|&local| locals_with_use_data[local] = true);
 
-        LocalUseMapBuild { local_use_map: &mut local_use_map, elements, locals_with_use_data }
+        LocalUseMapBuild { local_use_map: &mut local_use_map, location_map, locals_with_use_data }
             .visit_body(body);
 
         local_use_map
@@ -125,7 +125,7 @@ impl LocalUseMap {
 
 struct LocalUseMapBuild<'me> {
     local_use_map: &'me mut LocalUseMap,
-    elements: &'me DenseLocationMap,
+    location_map: &'me DenseLocationMap,
 
     // Vector used in `visit_local` to signal which `Local`s do we need
     // def/use/drop information on, constructed from `live_locals` (that
@@ -137,56 +137,22 @@ struct LocalUseMapBuild<'me> {
     locals_with_use_data: IndexVec<Local, bool>,
 }
 
-impl LocalUseMapBuild<'_> {
-    fn insert_def(&mut self, local: Local, location: Location) {
-        Self::insert(
-            self.elements,
-            &mut self.local_use_map.first_def_at[local],
-            &mut self.local_use_map.appearances,
-            location,
-        );
-    }
-
-    fn insert_use(&mut self, local: Local, location: Location) {
-        Self::insert(
-            self.elements,
-            &mut self.local_use_map.first_use_at[local],
-            &mut self.local_use_map.appearances,
-            location,
-        );
-    }
-
-    fn insert_drop(&mut self, local: Local, location: Location) {
-        Self::insert(
-            self.elements,
-            &mut self.local_use_map.first_drop_at[local],
-            &mut self.local_use_map.appearances,
-            location,
-        );
-    }
-
-    fn insert(
-        elements: &DenseLocationMap,
-        first_appearance: &mut Option<AppearanceIndex>,
-        appearances: &mut Appearances,
-        location: Location,
-    ) {
-        let point_index = elements.point_from_location(location);
-        let appearance_index =
-            appearances.push(Appearance { point_index, next: *first_appearance });
-        *first_appearance = Some(appearance_index);
-    }
-}
-
 impl Visitor<'_> for LocalUseMapBuild<'_> {
     fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
-        if self.locals_with_use_data[local] {
-            match def_use::categorize(context) {
-                Some(DefUse::Def) => self.insert_def(local, location),
-                Some(DefUse::Use) => self.insert_use(local, location),
-                Some(DefUse::Drop) => self.insert_drop(local, location),
-                _ => (),
-            }
+        if self.locals_with_use_data[local]
+            && let Some(def_use) = def_use::categorize(context)
+        {
+            let first_appearance = match def_use {
+                DefUse::Def => &mut self.local_use_map.first_def_at[local],
+                DefUse::Use => &mut self.local_use_map.first_use_at[local],
+                DefUse::Drop => &mut self.local_use_map.first_drop_at[local],
+            };
+            let point_index = self.location_map.point_from_location(location);
+            let appearance_index = self
+                .local_use_map
+                .appearances
+                .push(Appearance { point_index, next: *first_appearance });
+            *first_appearance = Some(appearance_index);
         }
     }
 }

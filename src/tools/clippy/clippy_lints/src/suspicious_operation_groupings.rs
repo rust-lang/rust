@@ -334,7 +334,7 @@ fn strip_non_ident_wrappers(expr: &Expr) -> &Expr {
     let mut output = expr;
     loop {
         output = match &output.kind {
-            ExprKind::Paren(ref inner) | ExprKind::Unary(_, ref inner) => inner,
+            ExprKind::Paren(inner) | ExprKind::Unary(_, inner) => inner,
             _ => {
                 return output;
             },
@@ -348,13 +348,13 @@ fn extract_related_binops(kind: &ExprKind) -> Option<Vec<BinaryOp<'_>>> {
 
 fn if_statement_binops(kind: &ExprKind) -> Option<Vec<BinaryOp<'_>>> {
     match kind {
-        ExprKind::If(ref condition, _, _) => chained_binops(&condition.kind),
-        ExprKind::Paren(ref e) => if_statement_binops(&e.kind),
-        ExprKind::Block(ref block, _) => {
+        ExprKind::If(condition, _, _) => chained_binops(&condition.kind),
+        ExprKind::Paren(e) => if_statement_binops(&e.kind),
+        ExprKind::Block(block, _) => {
             let mut output = None;
             for stmt in &block.stmts {
-                match stmt.kind {
-                    StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => {
+                match &stmt.kind {
+                    StmtKind::Expr(e) | StmtKind::Semi(e) => {
                         output = append_opt_vecs(output, if_statement_binops(&e.kind));
                     },
                     _ => {},
@@ -383,7 +383,7 @@ fn append_opt_vecs<A>(target_opt: Option<Vec<A>>, source_opt: Option<Vec<A>>) ->
 fn chained_binops(kind: &ExprKind) -> Option<Vec<BinaryOp<'_>>> {
     match kind {
         ExprKind::Binary(_, left_outer, right_outer) => chained_binops_helper(left_outer, right_outer),
-        ExprKind::Paren(ref e) | ExprKind::Unary(_, ref e) => chained_binops(&e.kind),
+        ExprKind::Paren(e) | ExprKind::Unary(_, e) => chained_binops(&e.kind),
         _ => None,
     }
 }
@@ -391,16 +391,14 @@ fn chained_binops(kind: &ExprKind) -> Option<Vec<BinaryOp<'_>>> {
 fn chained_binops_helper<'expr>(left_outer: &'expr Expr, right_outer: &'expr Expr) -> Option<Vec<BinaryOp<'expr>>> {
     match (&left_outer.kind, &right_outer.kind) {
         (
-            ExprKind::Paren(ref left_e) | ExprKind::Unary(_, ref left_e),
-            ExprKind::Paren(ref right_e) | ExprKind::Unary(_, ref right_e),
+            ExprKind::Paren(left_e) | ExprKind::Unary(_, left_e),
+            ExprKind::Paren(right_e) | ExprKind::Unary(_, right_e),
         ) => chained_binops_helper(left_e, right_e),
-        (ExprKind::Paren(ref left_e) | ExprKind::Unary(_, ref left_e), _) => chained_binops_helper(left_e, right_outer),
-        (_, ExprKind::Paren(ref right_e) | ExprKind::Unary(_, ref right_e)) => {
-            chained_binops_helper(left_outer, right_e)
-        },
+        (ExprKind::Paren(left_e) | ExprKind::Unary(_, left_e), _) => chained_binops_helper(left_e, right_outer),
+        (_, ExprKind::Paren(right_e) | ExprKind::Unary(_, right_e)) => chained_binops_helper(left_outer, right_e),
         (
-            ExprKind::Binary(Spanned { node: left_op, .. }, ref left_left, ref left_right),
-            ExprKind::Binary(Spanned { node: right_op, .. }, ref right_left, ref right_right),
+            ExprKind::Binary(Spanned { node: left_op, .. }, left_left, left_right),
+            ExprKind::Binary(Spanned { node: right_op, .. }, right_left, right_right),
         ) => match (
             chained_binops_helper(left_left, left_right),
             chained_binops_helper(right_left, right_right),

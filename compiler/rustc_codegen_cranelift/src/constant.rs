@@ -78,7 +78,7 @@ pub(crate) fn eval_mir_constant<'tcx>(
     let cv = fx.monomorphize(constant.const_);
     // This cannot fail because we checked all required_consts in advance.
     let val = cv
-        .eval(fx.tcx, ty::ParamEnv::reveal_all(), constant.span)
+        .eval(fx.tcx, ty::TypingEnv::fully_monomorphized(), constant.span)
         .expect("erroneous constant missed by mono item collection");
     (val, cv.ty())
 }
@@ -265,8 +265,13 @@ fn data_id_for_static(
         assert!(!definition);
         assert!(!tcx.is_mutable_static(def_id));
 
-        let ty = instance.ty(tcx, ParamEnv::reveal_all());
-        let align = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().align.pref.bytes();
+        let ty = instance.ty(tcx, ty::TypingEnv::fully_monomorphized());
+        let align = tcx
+            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+            .unwrap()
+            .align
+            .pref
+            .bytes();
 
         let linkage = if import_linkage == rustc_middle::mir::mono::Linkage::ExternalWeak
             || import_linkage == rustc_middle::mir::mono::Linkage::WeakAny
@@ -447,8 +452,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             let data_id = match reloc_target_alloc {
                 GlobalAlloc::Function { instance, .. } => {
                     assert_eq!(addend, 0);
-                    let func_id =
-                        crate::abi::import_function(tcx, module, instance.polymorphize(tcx));
+                    let func_id = crate::abi::import_function(tcx, module, instance);
                     let local_func_id = module.declare_func_in_data(func_id, &mut data);
                     data.write_function_addr(offset.bytes() as u32, local_func_id);
                     continue;
@@ -578,6 +582,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                         | StatementKind::PlaceMention(..)
                         | StatementKind::Coverage(_)
                         | StatementKind::ConstEvalCounter
+                        | StatementKind::BackwardIncompatibleDropHint { .. }
                         | StatementKind::Nop => {}
                     }
                 }

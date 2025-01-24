@@ -2,12 +2,12 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{
-    self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
-    TypeVisitor, Upcast,
+    self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Upcast,
 };
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
@@ -36,6 +36,8 @@ fn sized_constraint_for_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'
         | CoroutineWitness(..)
         | Never
         | Dynamic(_, _, ty::DynStar) => None,
+
+        UnsafeBinder(_) => todo!(),
 
         // these are never sized
         Str | Slice(..) | Dynamic(_, _, ty::Dyn) | Foreign(..) => Some(ty),
@@ -95,9 +97,6 @@ fn adt_sized_constraint<'tcx>(
     let tail_ty = tcx.type_of(tail_def.did).instantiate_identity();
 
     let constraint_ty = sized_constraint_for_ty(tcx, tail_ty)?;
-    if let Err(guar) = constraint_ty.error_reported() {
-        return Some(ty::EarlyBinder::bind(Ty::new_error(tcx, guar)));
-    }
 
     // perf hack: if there is a `constraint_ty: Sized` bound, then we know
     // that the type is sized and do not need to check it on the impl.
@@ -135,7 +134,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
 
     if tcx.def_kind(def_id) == DefKind::AssocFn
         && let assoc_item = tcx.associated_item(def_id)
-        && assoc_item.container == ty::AssocItemContainer::TraitContainer
+        && assoc_item.container == ty::AssocItemContainer::Trait
         && assoc_item.defaultness(tcx).has_value()
     {
         let sig = tcx.fn_sig(def_id).instantiate_identity();
@@ -150,10 +149,19 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         });
     }
 
+    // We extend the param-env of our item with the const conditions of the item,
+    // since we're allowed to assume `~const` bounds hold within the item itself.
+    if tcx.is_conditionally_const(def_id) {
+        predicates.extend(
+            tcx.const_conditions(def_id).instantiate_identity(tcx).into_iter().map(
+                |(trait_ref, _)| trait_ref.to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
+            ),
+        );
+    }
+
     let local_did = def_id.as_local();
 
-    let unnormalized_env =
-        ty::ParamEnv::new(tcx.mk_clauses(&predicates), traits::Reveal::UserFacing);
+    let unnormalized_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates));
 
     let body_id = local_did.unwrap_or(CRATE_DEF_ID);
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
@@ -192,7 +200,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             // We have entered some binders as we've walked into the
             // bounds of the RPITIT. Shift these binders back out when
             // constructing the top-level projection predicate.
-            let shifted_alias_ty = self.tcx.fold_regions(unshifted_alias_ty, |re, depth| {
+            let shifted_alias_ty = fold_regions(self.tcx, unshifted_alias_ty, |re, depth| {
                 if let ty::ReBound(index, bv) = re.kind() {
                     if depth != ty::INNERMOST {
                         return ty::Region::new_error_with_message(
@@ -243,8 +251,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
     }
 }
 
-fn param_env_reveal_all_normalized(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
-    tcx.param_env(def_id).with_reveal_all_normalized(tcx)
+fn param_env_normalized_for_post_analysis(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
+    // This is a bit ugly but the easiest way to avoid code duplication.
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, def_id);
+    typing_env.with_post_analysis_normalized(tcx).param_env
 }
 
 /// If the given trait impl enables exploiting the former order dependence of trait objects,
@@ -307,7 +317,7 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Asyncness {
     })
 }
 
-fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32> {
+fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> DenseBitSet<u32> {
     let def = tcx.adt_def(def_id);
     let num_params = tcx.generics_of(def_id).count();
 
@@ -328,10 +338,10 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32
 
     // The last field of the structure has to exist and contain type/const parameters.
     let Some((tail_field, prefix_fields)) = def.non_enum_variant().fields.raw.split_last() else {
-        return BitSet::new_empty(num_params);
+        return DenseBitSet::new_empty(num_params);
     };
 
-    let mut unsizing_params = BitSet::new_empty(num_params);
+    let mut unsizing_params = DenseBitSet::new_empty(num_params);
     for arg in tcx.type_of(tail_field.did).instantiate_identity().walk() {
         if let Some(i) = maybe_unsizing_param_idx(arg) {
             unsizing_params.insert(i);
@@ -356,7 +366,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         asyncness,
         adt_sized_constraint,
         param_env,
-        param_env_reveal_all_normalized,
+        param_env_normalized_for_post_analysis,
         self_ty_of_trait_impl_enabling_order_dep_trait_object_hack,
         defaultness,
         unsizing_params_for_adt,

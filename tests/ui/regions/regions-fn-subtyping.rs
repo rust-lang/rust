@@ -3,7 +3,6 @@
 #![allow(unused_assignments)]
 // Issue #2263.
 
-//@ pretty-expanded FIXME #23616
 
 #![allow(unused_variables)]
 

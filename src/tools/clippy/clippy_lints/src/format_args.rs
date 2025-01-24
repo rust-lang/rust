@@ -1,6 +1,5 @@
 use arrayvec::ArrayVec;
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::is_diag_trait_item;
 use clippy_utils::macros::{
@@ -8,6 +7,7 @@ use clippy_utils::macros::{
     format_placeholder_format_span, is_assert_macro, is_format_macro, is_panic, matching_root_macro_call,
     root_macro_call_first_node,
 };
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
 use itertools::Itertools;
