@@ -2103,7 +2103,7 @@ fn restrict_precision_for_unsafe(
 
     for (i, proj) in place.projections.iter().enumerate() {
         if proj.ty.is_raw_ptr() {
-            // Don't apply any projections on top of an unsafe ptr.
+            // Don't apply any projections on top of a raw ptr.
             truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, i + 1);
             break;
         }
