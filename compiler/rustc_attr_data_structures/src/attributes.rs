@@ -1,12 +1,12 @@
 use rustc_abi::Align;
 use rustc_ast::token::CommentKind;
 use rustc_ast::{self as ast, AttrStyle};
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
 use rustc_span::hygiene::Transparency;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
 
-use crate::{DefaultBodyStability, PartialConstStability, RustcVersion, Stability};
+use crate::{DefaultBodyStability, PartialConstStability, PrintAttribute, RustcVersion, Stability};
 
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum InlineAttr {
@@ -45,7 +45,7 @@ pub enum OptimizeAttr {
     Size,
 }
 
-#[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic, PrintAttribute)]
 pub enum DiagnosticAttribute {
     // tidy-alphabetical-start
     DoNotRecommend,
@@ -53,7 +53,7 @@ pub enum DiagnosticAttribute {
     // tidy-alphabetical-end
 }
 
-#[derive(PartialEq, Debug, Encodable, Decodable, Copy, Clone, HashStable_Generic)]
+#[derive(PartialEq, Debug, Encodable, Decodable, Copy, Clone, HashStable_Generic, PrintAttribute)]
 pub enum ReprAttr {
     ReprInt(IntType),
     ReprRust,
@@ -73,13 +73,13 @@ pub enum TransparencyError {
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
-#[derive(Encodable, Decodable, HashStable_Generic)]
+#[derive(Encodable, Decodable, HashStable_Generic, PrintAttribute)]
 pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy),
 }
 
-#[derive(Copy, Debug, Encodable, Decodable, Clone, HashStable_Generic)]
+#[derive(Copy, Debug, Encodable, Decodable, Clone, HashStable_Generic, PrintAttribute)]
 pub struct Deprecation {
     pub since: DeprecatedSince,
     /// The note to issue a reason.
@@ -91,7 +91,7 @@ pub struct Deprecation {
 }
 
 /// Release in which an API is deprecated.
-#[derive(Copy, Debug, Encodable, Decodable, Clone, HashStable_Generic)]
+#[derive(Copy, Debug, Encodable, Decodable, Clone, HashStable_Generic, PrintAttribute)]
 pub enum DeprecatedSince {
     RustcVersion(RustcVersion),
     /// Deprecated in the future ("to be determined").
@@ -142,7 +142,7 @@ impl Deprecation {
 /// happen.
 ///
 /// For more docs, look in [`rustc_attr`](https://doc.rust-lang.org/stable/nightly-rustc/rustc_attr/index.html)
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub enum AttributeKind {
     // tidy-alphabetical-start
     AllowConstFnUnstable(ThinVec<Symbol>),
