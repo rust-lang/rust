@@ -333,7 +333,6 @@ LL |         let _val: (NonZero<u32>, i32) = mem::uninitialized();
    |
    = note: `std::num::NonZero<u32>` must be non-null
    = note: because `core::num::niche_types::NonZeroU32Inner` must be non-null
-   = note: integers must be initialized
 
 error: the type `*const dyn Send` does not permit zero-initialization
   --> $DIR/invalid_value.rs:97:37
@@ -430,7 +429,6 @@ note: because `std::num::NonZero<u32>` must be non-null (in this field of the on
 LL |     Banana(NonZero<u32>),
    |            ^^^^^^^^^^^^
    = note: because `core::num::niche_types::NonZeroU32Inner` must be non-null
-   = note: integers must be initialized
 
 error: the type `bool` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:111:26
