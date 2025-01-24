@@ -45,7 +45,7 @@
           StorageLive(_4);
           StorageLive(_5);
           StorageLive(_6);
-          _6 = const NonZero::<usize>(core::num::niche_types::NonZeroUsizeInner(1_usize));
+          _6 = const NonZero::<usize>(core::num::niche_types::NonZeroUsizeInner(1_usize is 1..));
           StorageLive(_7);
           _7 = const {0x1 as *const [bool; 0]};
           _5 = const NonNull::<[bool; 0]> {{ pointer: {0x1 as *const [bool; 0]} }};
