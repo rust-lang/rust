@@ -285,20 +285,8 @@ LL |             fn hidden_niche_unsafe_cell() -> Option<UnsafeCell<NonZero<usiz
    = note: expected `unsafe extern "C" fn() -> usize`
               found `unsafe extern "C" fn() -> Option<UnsafeCell<NonZero<usize>>>`
 
-warning: `pt_non_zero_usize` redeclared with a different signature
-  --> $DIR/clashing-extern-fn.rs:516:13
-   |
-LL |             fn pt_non_zero_usize() -> pattern_type!(usize is 1..);
-   |             ------------------------------------------------------ `pt_non_zero_usize` previously declared here
-...
-LL |             fn pt_non_zero_usize() -> usize;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
-   |
-   = note: expected `unsafe extern "C" fn() -> (usize) is 1..=`
-              found `unsafe extern "C" fn() -> usize`
-
 warning: `pt_non_zero_usize_opt` redeclared with a different signature
-  --> $DIR/clashing-extern-fn.rs:518:13
+  --> $DIR/clashing-extern-fn.rs:517:13
    |
 LL |             fn pt_non_zero_usize_opt() -> Option<pattern_type!(usize is 1..)>;
    |             ------------------------------------------------------------------ `pt_non_zero_usize_opt` previously declared here
@@ -310,7 +298,7 @@ LL |             fn pt_non_zero_usize_opt() -> usize;
               found `unsafe extern "C" fn() -> usize`
 
 warning: `pt_non_null_ptr` redeclared with a different signature
-  --> $DIR/clashing-extern-fn.rs:520:13
+  --> $DIR/clashing-extern-fn.rs:519:13
    |
 LL |             fn pt_non_null_ptr() -> pattern_type!(usize is 1..);
    |             ---------------------------------------------------- `pt_non_null_ptr` previously declared here
@@ -321,20 +309,8 @@ LL |             fn pt_non_null_ptr() -> *const ();
    = note: expected `unsafe extern "C" fn() -> (usize) is 1..=`
               found `unsafe extern "C" fn() -> *const ()`
 
-warning: `pt_non_zero_usize_wrapper` redeclared with a different signature
-  --> $DIR/clashing-extern-fn.rs:522:13
-   |
-LL |             fn pt_non_zero_usize_wrapper() -> NonZeroUsize;
-   |             ----------------------------------------------- `pt_non_zero_usize_wrapper` previously declared here
-...
-LL |             fn pt_non_zero_usize_wrapper() -> usize;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
-   |
-   = note: expected `unsafe extern "C" fn() -> NonZeroUsize`
-              found `unsafe extern "C" fn() -> usize`
-
 warning: `pt_non_zero_usize_wrapper_opt` redeclared with a different signature
-  --> $DIR/clashing-extern-fn.rs:524:13
+  --> $DIR/clashing-extern-fn.rs:522:13
    |
 LL |             fn pt_non_zero_usize_wrapper_opt() -> Option<NonZeroUsize>;
    |             ----------------------------------------------------------- `pt_non_zero_usize_wrapper_opt` previously declared here
@@ -345,5 +321,5 @@ LL |             fn pt_non_zero_usize_wrapper_opt() -> usize;
    = note: expected `unsafe extern "C" fn() -> Option<NonZeroUsize>`
               found `unsafe extern "C" fn() -> usize`
 
-warning: 30 warnings emitted
+warning: 28 warnings emitted
 
