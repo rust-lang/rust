@@ -186,8 +186,12 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
 fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     let mut env = HashMap::new();
 
-    env.insert("LD_LIBRARY_PATH".to_string(), args.config_info.gcc_path.clone());
-    env.insert("LIBRARY_PATH".to_string(), args.config_info.gcc_path.clone());
+    let gcc_path =
+        args.config_info.gcc_path.clone().expect(
+            "The config module should have emitted an error if the GCC path wasn't provided",
+        );
+    env.insert("LD_LIBRARY_PATH".to_string(), gcc_path.clone());
+    env.insert("LIBRARY_PATH".to_string(), gcc_path);
 
     if args.config_info.no_default_features {
         env.insert("RUSTFLAGS".to_string(), "-Csymbol-mangling-version=v0".to_string());
