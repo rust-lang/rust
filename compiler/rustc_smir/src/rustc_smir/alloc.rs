@@ -1,6 +1,6 @@
 use rustc_abi::{Align, Size};
 use rustc_middle::mir::ConstValue;
-use rustc_middle::mir::interpret::{AllocRange, Pointer, alloc_range};
+use rustc_middle::mir::interpret::{AllocInit, AllocRange, Pointer, alloc_range};
 use stable_mir::Error;
 use stable_mir::mir::Mutability;
 use stable_mir::ty::{Allocation, ProvenanceMap};
@@ -44,7 +44,8 @@ pub(crate) fn try_new_allocation<'tcx>(
                 .layout_of(rustc_middle::ty::TypingEnv::fully_monomorphized().as_query_input(ty))
                 .map_err(|e| e.stable(tables))?
                 .align;
-            let mut allocation = rustc_middle::mir::interpret::Allocation::uninit(size, align.abi);
+            let mut allocation =
+                rustc_middle::mir::interpret::Allocation::new(size, align.abi, AllocInit::Uninit);
             allocation
                 .write_scalar(&tables.tcx, alloc_range(Size::ZERO, size), scalar)
                 .map_err(|e| e.stable(tables))?;
@@ -68,8 +69,11 @@ pub(crate) fn try_new_allocation<'tcx>(
                 .tcx
                 .layout_of(rustc_middle::ty::TypingEnv::fully_monomorphized().as_query_input(ty))
                 .map_err(|e| e.stable(tables))?;
-            let mut allocation =
-                rustc_middle::mir::interpret::Allocation::uninit(layout.size, layout.align.abi);
+            let mut allocation = rustc_middle::mir::interpret::Allocation::new(
+                layout.size,
+                layout.align.abi,
+                AllocInit::Uninit,
+            );
             allocation
                 .write_scalar(
                     &tables.tcx,

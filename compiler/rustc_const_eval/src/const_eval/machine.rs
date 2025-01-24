@@ -21,9 +21,10 @@ use super::error::*;
 use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
 use crate::interpret::{
-    self, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame, GlobalAlloc, ImmTy,
-    InterpCx, InterpResult, MPlaceTy, OpTy, RangeSet, Scalar, compile_time_machine, interp_ok,
-    throw_exhaust, throw_inval, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
+    self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
+    GlobalAlloc, ImmTy, InterpCx, InterpResult, MPlaceTy, OpTy, RangeSet, Scalar,
+    compile_time_machine, interp_ok, throw_exhaust, throw_inval, throw_ub, throw_ub_custom,
+    throw_unsup, throw_unsup_format,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -420,6 +421,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     Size::from_bytes(size),
                     align,
                     interpret::MemoryKind::Machine(MemoryKind::Heap),
+                    AllocInit::Uninit,
                 )?;
                 ecx.write_pointer(ptr, dest)?;
             }

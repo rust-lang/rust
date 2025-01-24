@@ -20,10 +20,10 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use tracing::{debug, instrument, trace};
 
 use super::{
-    AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckAlignMsg, CheckInAllocMsg,
-    CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Misalignment, Pointer,
-    PointerArithmetic, Provenance, Scalar, alloc_range, err_ub, err_ub_custom, interp_ok, throw_ub,
-    throw_ub_custom, throw_unsup, throw_unsup_format,
+    AllocBytes, AllocId, AllocInit, AllocMap, AllocRange, Allocation, CheckAlignMsg,
+    CheckInAllocMsg, CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak,
+    Misalignment, Pointer, PointerArithmetic, Provenance, Scalar, alloc_range, err_ub,
+    err_ub_custom, interp_ok, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
 };
 use crate::fluent_generated as fluent;
 
@@ -230,11 +230,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         size: Size,
         align: Align,
         kind: MemoryKind<M::MemoryKind>,
+        init: AllocInit,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
         let alloc = if M::PANIC_ON_ALLOC_FAIL {
-            Allocation::uninit(size, align)
+            Allocation::new(size, align, init)
         } else {
-            Allocation::try_uninit(size, align)?
+            Allocation::try_new(size, align, init)?
         };
         self.insert_allocation(alloc, kind)
     }
@@ -270,6 +271,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         M::adjust_alloc_root_pointer(self, Pointer::from(id), Some(kind))
     }
 
+    /// If this grows the allocation, `init_growth` determines
+    /// whether the additional space will be initialized.
     pub fn reallocate_ptr(
         &mut self,
         ptr: Pointer<Option<M::Provenance>>,
@@ -277,6 +280,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         new_size: Size,
         new_align: Align,
         kind: MemoryKind<M::MemoryKind>,
+        init_growth: AllocInit,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
         let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr, 0)?;
         if offset.bytes() != 0 {
@@ -289,7 +293,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc".
         // This happens so rarely, the perf advantage is outweighed by the maintenance cost.
-        let new_ptr = self.allocate_ptr(new_size, new_align, kind)?;
+        // If requested, we zero-init the entire allocation, to ensure that a growing
+        // allocation has its new bytes properly set. For the part that is copied,
+        // `mem_copy` below will de-initialize things as necessary.
+        let new_ptr = self.allocate_ptr(new_size, new_align, kind, init_growth)?;
         let old_size = match old_size_and_align {
             Some((size, _align)) => size,
             None => self.get_alloc_raw(alloc_id)?.size(),

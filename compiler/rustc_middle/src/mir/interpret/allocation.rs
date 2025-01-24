@@ -270,6 +270,12 @@ impl AllocRange {
     }
 }
 
+/// Whether a new allocation should be initialized with zero-bytes.
+pub enum AllocInit {
+    Uninit,
+    Zero,
+}
+
 // The constructors are all without extra; the extra gets added by a machine hook later.
 impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     /// Creates an allocation initialized by the given bytes
@@ -294,7 +300,12 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         Allocation::from_bytes(slice, Align::ONE, Mutability::Not)
     }
 
-    fn uninit_inner<R>(size: Size, align: Align, fail: impl FnOnce() -> R) -> Result<Self, R> {
+    fn new_inner<R>(
+        size: Size,
+        align: Align,
+        init: AllocInit,
+        fail: impl FnOnce() -> R,
+    ) -> Result<Self, R> {
         // We raise an error if we cannot create the allocation on the host.
         // This results in an error that can happen non-deterministically, since the memory
         // available to the compiler can change between runs. Normally queries are always
@@ -306,7 +317,10 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         Ok(Allocation {
             bytes,
             provenance: ProvenanceMap::new(),
-            init_mask: InitMask::new(size, false),
+            init_mask: InitMask::new(size, match init {
+                AllocInit::Uninit => false,
+                AllocInit::Zero => true,
+            }),
             align,
             mutability: Mutability::Mut,
             extra: (),
@@ -315,8 +329,8 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
 
     /// Try to create an Allocation of `size` bytes, failing if there is not enough memory
     /// available to the compiler to do so.
-    pub fn try_uninit<'tcx>(size: Size, align: Align) -> InterpResult<'tcx, Self> {
-        Self::uninit_inner(size, align, || {
+    pub fn try_new<'tcx>(size: Size, align: Align, init: AllocInit) -> InterpResult<'tcx, Self> {
+        Self::new_inner(size, align, init, || {
             ty::tls::with(|tcx| tcx.dcx().delayed_bug("exhausted memory during interpretation"));
             InterpErrorKind::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })
@@ -328,8 +342,8 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     ///
     /// Example use case: To obtain an Allocation filled with specific data,
     /// first call this function and then call write_scalar to fill in the right data.
-    pub fn uninit(size: Size, align: Align) -> Self {
-        match Self::uninit_inner(size, align, || {
+    pub fn new(size: Size, align: Align, init: AllocInit) -> Self {
+        match Self::new_inner(size, align, init, || {
             panic!(
                 "interpreter ran out of memory: cannot create allocation of {} bytes",
                 size.bytes()
