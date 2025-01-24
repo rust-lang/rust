@@ -180,7 +180,12 @@ fn create_mappings(
     ));
 
     for (decision, branches) in mcdc_mappings {
-        let num_conditions = branches.len() as u16;
+        // FIXME(#134497): Previously it was possible for some of these branch
+        // conversions to fail, in which case the remaining branches in the
+        // decision would be degraded to plain `MappingKind::Branch`.
+        // The changes in #134497 made that failure impossible, because the
+        // fallible step was deferred to codegen. But the corresponding code
+        // in codegen wasn't updated to detect the need for a degrade step.
         let conditions = branches
             .into_iter()
             .map(
@@ -206,24 +211,13 @@ fn create_mappings(
             )
             .collect::<Vec<_>>();
 
-        if conditions.len() == num_conditions as usize {
-            // LLVM requires end index for counter mapping regions.
-            let kind = MappingKind::MCDCDecision(DecisionInfo {
-                bitmap_idx: (decision.bitmap_idx + decision.num_test_vectors) as u32,
-                num_conditions,
-            });
-            let span = decision.span;
-            mappings.extend(std::iter::once(Mapping { kind, span }).chain(conditions.into_iter()));
-        } else {
-            mappings.extend(conditions.into_iter().map(|mapping| {
-                let MappingKind::MCDCBranch { true_term, false_term, mcdc_params: _ } =
-                    mapping.kind
-                else {
-                    unreachable!("all mappings here are MCDCBranch as shown above");
-                };
-                Mapping { kind: MappingKind::Branch { true_term, false_term }, span: mapping.span }
-            }))
-        }
+        // LLVM requires end index for counter mapping regions.
+        let kind = MappingKind::MCDCDecision(DecisionInfo {
+            bitmap_idx: (decision.bitmap_idx + decision.num_test_vectors) as u32,
+            num_conditions: u16::try_from(conditions.len()).unwrap(),
+        });
+        let span = decision.span;
+        mappings.extend(std::iter::once(Mapping { kind, span }).chain(conditions.into_iter()));
     }
 
     mappings

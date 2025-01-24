@@ -2511,9 +2511,9 @@ impl<T, A: Allocator> Vec<T, A> {
         }
     }
 
-    /// Removes and returns the last element in a vector if the predicate
+    /// Removes and returns the last element from a vector if the predicate
     /// returns `true`, or [`None`] if the predicate returns false or the vector
-    /// is empty.
+    /// is empty (the predicate will not be called in that case).
     ///
     /// # Examples
     ///
@@ -2528,12 +2528,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec.pop_if(pred), None);
     /// ```
     #[unstable(feature = "vec_pop_if", issue = "122741")]
-    pub fn pop_if<F>(&mut self, f: F) -> Option<T>
-    where
-        F: FnOnce(&mut T) -> bool,
-    {
+    pub fn pop_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
         let last = self.last_mut()?;
-        if f(last) { self.pop() } else { None }
+        if predicate(last) { self.pop() } else { None }
     }
 
     /// Moves all the elements of `other` into `self`, leaving `other` empty.
@@ -3016,10 +3013,9 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// Iterates over the slice `other`, clones each element, and then appends
     /// it to this `Vec`. The `other` slice is traversed in-order.
     ///
-    /// Note that this function is same as [`extend`] except that it is
-    /// specialized to work with slices instead. If and when Rust gets
-    /// specialization this function will likely be deprecated (but still
-    /// available).
+    /// Note that this function is the same as [`extend`],
+    /// except that it also works with slice elements that are Clone but not Copy.
+    /// If Rust gets specialization this function may be deprecated.
     ///
     /// # Examples
     ///

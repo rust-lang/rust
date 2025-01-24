@@ -8,18 +8,17 @@
 
 use rustc_data_structures::graph;
 use rustc_index::bit_set::DenseBitSet;
-use rustc_index::{Idx, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::coverage::Op;
-use smallvec::SmallVec;
 
 use crate::coverage::counters::iter_nodes::IterNodes;
-use crate::coverage::counters::union_find::{FrozenUnionFind, UnionFind};
+use crate::coverage::counters::union_find::UnionFind;
 
 #[cfg(test)]
 mod tests;
 
-/// View of some underlying graph, in which each node's successors have been
-/// merged into a single "supernode".
+/// Data representing a view of some underlying graph, in which each node's
+/// successors have been merged into a single "supernode".
 ///
 /// The resulting supernodes have no obvious meaning on their own.
 /// However, merging successor nodes means that a node's out-edges can all
@@ -30,10 +29,10 @@ mod tests;
 /// in the merged graph, it becomes possible to analyze the original node flows
 /// using techniques for analyzing edge flows.
 #[derive(Debug)]
-pub(crate) struct MergedNodeFlowGraph<Node: Idx> {
+pub(crate) struct NodeFlowData<Node: Idx> {
     /// Maps each node to the supernode that contains it, indicated by some
     /// arbitrary "root" node that is part of that supernode.
-    supernodes: FrozenUnionFind<Node>,
+    supernodes: IndexVec<Node, Node>,
     /// For each node, stores the single supernode that all of its successors
     /// have been merged into.
     ///
@@ -42,84 +41,71 @@ pub(crate) struct MergedNodeFlowGraph<Node: Idx> {
     succ_supernodes: IndexVec<Node, Node>,
 }
 
-impl<Node: Idx> MergedNodeFlowGraph<Node> {
-    /// Creates a "merged" view of an underlying graph.
-    ///
-    /// The given graph is assumed to have [“balanced flow”](balanced-flow),
-    /// though it does not necessarily have to be a `BalancedFlowGraph`.
-    ///
-    /// [balanced-flow]: `crate::coverage::counters::balanced_flow::BalancedFlowGraph`.
-    pub(crate) fn for_balanced_graph<G>(graph: G) -> Self
-    where
-        G: graph::DirectedGraph<Node = Node> + graph::Successors,
-    {
-        let mut supernodes = UnionFind::<G::Node>::new(graph.num_nodes());
+/// Creates a "merged" view of an underlying graph.
+///
+/// The given graph is assumed to have [“balanced flow”](balanced-flow),
+/// though it does not necessarily have to be a `BalancedFlowGraph`.
+///
+/// [balanced-flow]: `crate::coverage::counters::balanced_flow::BalancedFlowGraph`.
+pub(crate) fn node_flow_data_for_balanced_graph<G>(graph: G) -> NodeFlowData<G::Node>
+where
+    G: graph::Successors,
+{
+    let mut supernodes = UnionFind::<G::Node>::new(graph.num_nodes());
 
-        // For each node, merge its successors into a single supernode, and
-        // arbitrarily choose one of those successors to represent all of them.
-        let successors = graph
-            .iter_nodes()
-            .map(|node| {
-                graph
-                    .successors(node)
-                    .reduce(|a, b| supernodes.unify(a, b))
-                    .expect("each node in a balanced graph must have at least one out-edge")
-            })
-            .collect::<IndexVec<G::Node, G::Node>>();
+    // For each node, merge its successors into a single supernode, and
+    // arbitrarily choose one of those successors to represent all of them.
+    let successors = graph
+        .iter_nodes()
+        .map(|node| {
+            graph
+                .successors(node)
+                .reduce(|a, b| supernodes.unify(a, b))
+                .expect("each node in a balanced graph must have at least one out-edge")
+        })
+        .collect::<IndexVec<G::Node, G::Node>>();
 
-        // Now that unification is complete, freeze the supernode forest,
-        // and resolve each arbitrarily-chosen successor to its canonical root.
-        // (This avoids having to explicitly resolve them later.)
-        let supernodes = supernodes.freeze();
-        let succ_supernodes = successors.into_iter().map(|succ| supernodes.find(succ)).collect();
+    // Now that unification is complete, take a snapshot of the supernode forest,
+    // and resolve each arbitrarily-chosen successor to its canonical root.
+    // (This avoids having to explicitly resolve them later.)
+    let supernodes = supernodes.snapshot();
+    let succ_supernodes = successors.into_iter().map(|succ| supernodes[succ]).collect();
 
-        Self { supernodes, succ_supernodes }
+    NodeFlowData { supernodes, succ_supernodes }
+}
+
+/// Uses the graph information in `node_flow_data`, together with a given
+/// permutation of all nodes in the graph, to create physical counters and
+/// counter expressions for each node in the underlying graph.
+///
+/// The given list must contain exactly one copy of each node in the
+/// underlying balanced-flow graph. The order of nodes is used as a hint to
+/// influence counter allocation:
+/// - Earlier nodes are more likely to receive counter expressions.
+/// - Later nodes are more likely to receive physical counters.
+pub(crate) fn make_node_counters<Node: Idx>(
+    node_flow_data: &NodeFlowData<Node>,
+    priority_list: &[Node],
+) -> NodeCounters<Node> {
+    let mut builder = SpantreeBuilder::new(node_flow_data);
+
+    for &node in priority_list {
+        builder.visit_node(node);
     }
 
-    fn num_nodes(&self) -> usize {
-        self.succ_supernodes.len()
-    }
-
-    fn is_supernode(&self, node: Node) -> bool {
-        self.supernodes.find(node) == node
-    }
-
-    /// Using the information in this merged graph, together with a given
-    /// permutation of all nodes in the graph, to create physical counters and
-    /// counter expressions for each node in the underlying graph.
-    ///
-    /// The given list must contain exactly one copy of each node in the
-    /// underlying balanced-flow graph. The order of nodes is used as a hint to
-    /// influence counter allocation:
-    /// - Earlier nodes are more likely to receive counter expressions.
-    /// - Later nodes are more likely to receive physical counters.
-    pub(crate) fn make_node_counters(&self, all_nodes_permutation: &[Node]) -> NodeCounters<Node> {
-        let mut builder = SpantreeBuilder::new(self);
-
-        for &node in all_nodes_permutation {
-            builder.visit_node(node);
-        }
-
-        NodeCounters { counter_exprs: builder.finish() }
-    }
+    NodeCounters { counter_terms: builder.finish() }
 }
 
 /// End result of allocating physical counters and counter expressions for the
 /// nodes of a graph.
 #[derive(Debug)]
 pub(crate) struct NodeCounters<Node: Idx> {
-    counter_exprs: IndexVec<Node, CounterExprVec<Node>>,
-}
-
-impl<Node: Idx> NodeCounters<Node> {
     /// For the given node, returns the finished list of terms that represent
     /// its physical counter or counter expression. Always non-empty.
     ///
-    /// If a node was given a physical counter, its "expression" will contain
+    /// If a node was given a physical counter, the term list will contain
     /// that counter as its sole element.
-    pub(crate) fn counter_expr(&self, this: Node) -> &[CounterTerm<Node>] {
-        self.counter_exprs[this].as_slice()
-    }
+    pub(crate) counter_terms: IndexVec<Node, Vec<CounterTerm<Node>>>,
 }
 
 #[derive(Debug)]
@@ -146,12 +132,11 @@ pub(crate) struct CounterTerm<Node> {
     pub(crate) node: Node,
 }
 
-/// Stores the list of counter terms that make up a node's counter expression.
-type CounterExprVec<Node> = SmallVec<[CounterTerm<Node>; 2]>;
-
 #[derive(Debug)]
 struct SpantreeBuilder<'a, Node: Idx> {
-    graph: &'a MergedNodeFlowGraph<Node>,
+    supernodes: &'a IndexSlice<Node, Node>,
+    succ_supernodes: &'a IndexSlice<Node, Node>,
+
     is_unvisited: DenseBitSet<Node>,
     /// Links supernodes to each other, gradually forming a spanning tree of
     /// the merged-flow graph.
@@ -163,26 +148,32 @@ struct SpantreeBuilder<'a, Node: Idx> {
     yank_buffer: Vec<Node>,
     /// An in-progress counter expression for each node. Each expression is
     /// initially empty, and will be filled in as relevant nodes are visited.
-    counter_exprs: IndexVec<Node, CounterExprVec<Node>>,
+    counter_terms: IndexVec<Node, Vec<CounterTerm<Node>>>,
 }
 
 impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
-    fn new(graph: &'a MergedNodeFlowGraph<Node>) -> Self {
-        let num_nodes = graph.num_nodes();
+    fn new(node_flow_data: &'a NodeFlowData<Node>) -> Self {
+        let NodeFlowData { supernodes, succ_supernodes } = node_flow_data;
+        let num_nodes = supernodes.len();
         Self {
-            graph,
+            supernodes,
+            succ_supernodes,
             is_unvisited: DenseBitSet::new_filled(num_nodes),
             span_edges: IndexVec::from_fn_n(|_| None, num_nodes),
             yank_buffer: vec![],
-            counter_exprs: IndexVec::from_fn_n(|_| SmallVec::new(), num_nodes),
+            counter_terms: IndexVec::from_fn_n(|_| vec![], num_nodes),
         }
+    }
+
+    fn is_supernode(&self, node: Node) -> bool {
+        self.supernodes[node] == node
     }
 
     /// Given a supernode, finds the supernode that is the "root" of its
     /// spantree component. Two nodes that have the same spantree root are
     /// connected in the spantree.
     fn spantree_root(&self, this: Node) -> Node {
-        debug_assert!(self.graph.is_supernode(this));
+        debug_assert!(self.is_supernode(this));
 
         match self.span_edges[this] {
             None => this,
@@ -193,7 +184,7 @@ impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
     /// Rotates edges in the spantree so that `this` is the root of its
     /// spantree component.
     fn yank_to_spantree_root(&mut self, this: Node) {
-        debug_assert!(self.graph.is_supernode(this));
+        debug_assert!(self.is_supernode(this));
 
         // The rotation is done iteratively, by first traversing from `this` to
         // its root and storing the path in a buffer, and then traversing the
@@ -235,12 +226,12 @@ impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
 
         // Get the supernode containing `this`, and make it the root of its
         // component of the spantree.
-        let this_supernode = self.graph.supernodes.find(this);
+        let this_supernode = self.supernodes[this];
         self.yank_to_spantree_root(this_supernode);
 
         // Get the supernode containing all of this's successors.
-        let succ_supernode = self.graph.succ_supernodes[this];
-        debug_assert!(self.graph.is_supernode(succ_supernode));
+        let succ_supernode = self.succ_supernodes[this];
+        debug_assert!(self.is_supernode(succ_supernode));
 
         // If two supernodes are already connected in the spantree, they will
         // have the same spantree root. (Each supernode is connected to itself.)
@@ -268,8 +259,8 @@ impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
             // `this_supernode`.
 
             // Instead of setting `this.measure = true` as in the original paper,
-            // we just add the node's ID to its own "expression".
-            self.counter_exprs[this].push(CounterTerm { node: this, op: Op::Add });
+            // we just add the node's ID to its own list of terms.
+            self.counter_terms[this].push(CounterTerm { node: this, op: Op::Add });
 
             // Walk the spantree from `this.successor` back to `this`. For each
             // spantree edge along the way, add this node's physical counter to
@@ -279,7 +270,7 @@ impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
                 let &SpantreeEdge { is_reversed, claiming_node, span_parent } =
                     self.span_edges[curr].as_ref().unwrap();
                 let op = if is_reversed { Op::Subtract } else { Op::Add };
-                self.counter_exprs[claiming_node].push(CounterTerm { node: this, op });
+                self.counter_terms[claiming_node].push(CounterTerm { node: this, op });
 
                 curr = span_parent;
             }
@@ -288,19 +279,20 @@ impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
 
     /// Asserts that all nodes have been visited, and returns the computed
     /// counter expressions (made up of physical counters) for each node.
-    fn finish(self) -> IndexVec<Node, CounterExprVec<Node>> {
-        let Self { graph, is_unvisited, span_edges, yank_buffer: _, counter_exprs } = self;
+    fn finish(self) -> IndexVec<Node, Vec<CounterTerm<Node>>> {
+        let Self { ref span_edges, ref is_unvisited, ref counter_terms, .. } = self;
         assert!(is_unvisited.is_empty(), "some nodes were never visited: {is_unvisited:?}");
         debug_assert!(
             span_edges
                 .iter_enumerated()
-                .all(|(node, span_edge)| { span_edge.is_some() <= graph.is_supernode(node) }),
+                .all(|(node, span_edge)| { span_edge.is_some() <= self.is_supernode(node) }),
             "only supernodes can have a span edge",
         );
         debug_assert!(
-            counter_exprs.iter().all(|expr| !expr.is_empty()),
-            "after visiting all nodes, every node should have a non-empty expression",
+            counter_terms.iter().all(|terms| !terms.is_empty()),
+            "after visiting all nodes, every node should have at least one term",
         );
-        counter_exprs
+
+        self.counter_terms
     }
 }
