@@ -46,7 +46,7 @@
           StorageLive(_5);
           StorageLive(_6);
 -         _6 = const std::ptr::Alignment::of::<[bool; 0]>::{constant#0} as std::num::NonZero<usize> (Transmute);
-+         _6 = const NonZero::<usize>(core::num::niche_types::NonZeroUsizeInner(1_usize));
++         _6 = const NonZero::<usize>(core::num::niche_types::NonZeroUsizeInner(1_usize is 1..));
           StorageLive(_7);
 -         _7 = copy _6 as *const [bool; 0] (Transmute);
 -         _5 = NonNull::<[bool; 0]> { pointer: copy _7 };

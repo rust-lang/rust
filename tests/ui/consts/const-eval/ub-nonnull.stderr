@@ -15,7 +15,7 @@ error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer 
 LL |     let out_of_bounds_ptr = &ptr[255];
    |                             ^^^^^^^^^ evaluation of `OUT_OF_BOUNDS_PTR` failed here
 
-error[E0080]: constructing invalid value at .0: encountered 0, but expected something greater or equal to 1
+error[E0080]: constructing invalid value at .0.0: encountered 0, but expected something greater or equal to 1
   --> $DIR/ub-nonnull.rs:26:1
    |
 LL | const NULL_U8: NonZero<u8> = unsafe { mem::transmute(0u8) };
@@ -26,7 +26,7 @@ LL | const NULL_U8: NonZero<u8> = unsafe { mem::transmute(0u8) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value at .0: encountered 0, but expected something greater or equal to 1
+error[E0080]: constructing invalid value at .0.0: encountered 0, but expected something greater or equal to 1
   --> $DIR/ub-nonnull.rs:28:1
    |
 LL | const NULL_USIZE: NonZero<usize> = unsafe { mem::transmute(0usize) };
