@@ -2484,7 +2484,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// offset by the *capacity* *O*(1) insertions it allows.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "push_mut", issue = "none")]
+    #[unstable(feature = "push_mut", issue = "135974")]
     #[track_caller]
     #[must_use = "if you don't need a reference to the value, use Vec::push instead"]
     pub fn push_mut(&mut self, value: T) -> &mut T {
@@ -2518,9 +2518,9 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// Takes *O*(1) time.
     #[inline]
-    #[unstable(feature = "push_mut", issue = "none")]
-    #[must_use = "if you don't need a reference to the value, use Vec::push_within_capacity instead"]
+    #[unstable(feature = "push_mut", issue = "135974")]
     // #[unstable(feature = "vec_push_within_capacity", issue = "100486")]
+    #[must_use = "if you don't need a reference to the value, use Vec::push_within_capacity instead"]
     pub fn push_mut_within_capacity(&mut self, value: T) -> Result<&mut T, T> {
         if self.len == self.buf.capacity() {
             return Err(value);
