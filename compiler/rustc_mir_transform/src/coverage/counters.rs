@@ -11,7 +11,9 @@ use rustc_middle::mir::coverage::{CounterId, CovTerm, Expression, ExpressionId, 
 
 use crate::coverage::counters::balanced_flow::BalancedFlowGraph;
 use crate::coverage::counters::iter_nodes::IterNodes;
-use crate::coverage::counters::node_flow::{CounterTerm, MergedNodeFlowGraph, NodeCounters};
+use crate::coverage::counters::node_flow::{
+    CounterTerm, NodeCounters, make_node_counters, node_flow_data_for_balanced_graph,
+};
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
 
 mod balanced_flow;
@@ -27,12 +29,12 @@ pub(super) fn make_bcb_counters(
 ) -> CoverageCounters {
     // Create the derived graphs that are necessary for subsequent steps.
     let balanced_graph = BalancedFlowGraph::for_graph(graph, |n| !graph[n].is_out_summable);
-    let merged_graph = MergedNodeFlowGraph::for_balanced_graph(&balanced_graph);
+    let node_flow_data = node_flow_data_for_balanced_graph(&balanced_graph);
 
     // Use those graphs to determine which nodes get physical counters, and how
     // to compute the execution counts of other nodes from those counters.
-    let nodes = make_node_counter_priority_list(graph, balanced_graph);
-    let node_counters = merged_graph.make_node_counters(&nodes);
+    let priority_list = make_node_flow_priority_list(graph, balanced_graph);
+    let node_counters = make_node_counters(&node_flow_data, &priority_list);
 
     // Convert the counters into a form suitable for embedding into MIR.
     transcribe_counters(&node_counters, bcb_needs_counter)
@@ -40,7 +42,7 @@ pub(super) fn make_bcb_counters(
 
 /// Arranges the nodes in `balanced_graph` into a list, such that earlier nodes
 /// take priority in being given a counter expression instead of a physical counter.
-fn make_node_counter_priority_list(
+fn make_node_flow_priority_list(
     graph: &CoverageGraph,
     balanced_graph: BalancedFlowGraph<&CoverageGraph>,
 ) -> Vec<BasicCoverageBlock> {
@@ -81,11 +83,11 @@ fn transcribe_counters(
     let mut new = CoverageCounters::with_num_bcbs(bcb_needs_counter.domain_size());
 
     for bcb in bcb_needs_counter.iter() {
-        // Our counter-creation algorithm doesn't guarantee that a counter
-        // expression starts or ends with a positive term, so partition the
+        // Our counter-creation algorithm doesn't guarantee that a node's list
+        // of terms starts or ends with a positive term, so partition the
         // counters into "positive" and "negative" lists for easier handling.
         let (mut pos, mut neg): (Vec<_>, Vec<_>) =
-            old.counter_expr(bcb).iter().partition_map(|&CounterTerm { node, op }| match op {
+            old.counter_terms[bcb].iter().partition_map(|&CounterTerm { node, op }| match op {
                 Op::Add => Either::Left(node),
                 Op::Subtract => Either::Right(node),
             });
