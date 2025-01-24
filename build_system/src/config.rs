@@ -284,7 +284,11 @@ impl ConfigInfo {
     pub fn setup_gcc_path(&mut self) -> Result<(), String> {
         // If the user used the `--gcc-path` option, no need to look at `config.toml` content
         // since we already have everything we need.
-        if self.gcc_path.is_some() {
+        if let Some(gcc_path) = &self.gcc_path {
+            println!(
+                "`--gcc-path` was provided, ignoring config file. Using `{}` as path for libgccjit",
+                gcc_path
+            );
             return Ok(());
         }
         let config_file = match self.config_file.as_deref() {
@@ -297,10 +301,15 @@ impl ConfigInfo {
             self.download_gccjit_if_needed()?;
             return Ok(());
         }
-        if gcc_path.is_none() {
+        let Some(gcc_path) = gcc_path else {
             return Err(format!("missing `gcc-path` value from `{}`", config_file.display()));
-        }
-        self.gcc_path = gcc_path;
+        };
+        println!(
+            "GCC path retrieved from `{}`. Using `{}` as path for libgccjit",
+            config_file.display(),
+            gcc_path
+        );
+        self.gcc_path = Some(gcc_path);
         Ok(())
     }
 
