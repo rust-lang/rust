@@ -8,18 +8,27 @@ use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::marker::StructuralPartialEq;
+#[cfg(not(bootstrap))]
+use crate::pattern_type;
 
 macro_rules! define_valid_range_type {
     ($(
         $(#[$m:meta])*
         $vis:vis struct $name:ident($int:ident as $uint:ident in $low:literal..=$high:literal);
     )+) => {$(
-        #[derive(Clone, Copy, Eq)]
+        #[derive(Clone, Copy)]
         #[repr(transparent)]
-        #[rustc_layout_scalar_valid_range_start($low)]
-        #[rustc_layout_scalar_valid_range_end($high)]
+        #[cfg_attr(bootstrap, rustc_layout_scalar_valid_range_start($low))]
+        #[cfg_attr(bootstrap, rustc_layout_scalar_valid_range_end($high))]
         $(#[$m])*
+        #[cfg(bootstrap)]
         $vis struct $name($int);
+
+        #[derive(Clone, Copy)]
+        #[repr(transparent)]
+        $(#[$m])*
+        #[cfg(not(bootstrap))]
+        $vis struct $name(pattern_type!($int is $low..=$high));
 
         const _: () = {
             // With the `valid_range` attributes, it's always specified as unsigned
@@ -41,7 +50,7 @@ macro_rules! define_valid_range_type {
             #[inline]
             pub const unsafe fn new_unchecked(val: $int) -> Self {
                 // SAFETY: Caller promised that `val` is non-zero.
-                unsafe { $name(val) }
+                unsafe { $name(crate::mem::transmute(val)) }
             }
 
             #[inline]
@@ -56,6 +65,8 @@ macro_rules! define_valid_range_type {
         // because the derived `PartialEq` would do a field projection, which is banned
         // by <https://github.com/rust-lang/compiler-team/issues/807>.
         impl StructuralPartialEq for $name {}
+
+        impl Eq for $name {}
 
         impl PartialEq for $name {
             #[inline]

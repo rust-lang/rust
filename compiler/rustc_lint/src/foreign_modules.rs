@@ -241,10 +241,7 @@ fn structurally_same_type_impl<'tcx>(
             if let ty::Adt(def, args) = *ty.kind() {
                 let is_transparent = def.repr().transparent();
                 let is_non_null = types::nonnull_optimization_guaranteed(tcx, def);
-                debug!(
-                    "non_transparent_ty({:?}) -- type is transparent? {}, type is non-null? {}",
-                    ty, is_transparent, is_non_null
-                );
+                debug!(?ty, is_transparent, is_non_null);
                 if is_transparent && !is_non_null {
                     debug_assert_eq!(def.variants().len(), 1);
                     let v = &def.variant(FIRST_VARIANT);
