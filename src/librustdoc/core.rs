@@ -1,10 +1,10 @@
-use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, LazyLock};
+use std::sync::LazyLock;
 use std::{io, mem};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
+use rustc_driver::USING_INTERNAL_FEATURES;
 use rustc_errors::TerminalUrl;
 use rustc_errors::codes::*;
 use rustc_errors::emitter::{
@@ -221,7 +221,6 @@ pub(crate) fn create_config(
         ..
     }: RustdocOptions,
     RenderOptions { document_private, .. }: &RenderOptions,
-    using_internal_features: Arc<AtomicBool>,
 ) -> rustc_interface::Config {
     // Add the doc cfg into the doc build.
     cfgs.push("doc".to_string());
@@ -316,7 +315,7 @@ pub(crate) fn create_config(
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
         ice_file: None,
-        using_internal_features,
+        using_internal_features: &USING_INTERNAL_FEATURES,
         expanded_args,
     }
 }

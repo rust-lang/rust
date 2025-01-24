@@ -311,6 +311,16 @@ unsafe impl CloneToUninit for crate::ffi::CStr {
     }
 }
 
+#[unstable(feature = "bstr", issue = "134915")]
+unsafe impl CloneToUninit for crate::bstr::ByteStr {
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    unsafe fn clone_to_uninit(&self, dst: *mut u8) {
+        // SAFETY: ByteStr is a `#[repr(transparent)]` wrapper around `[u8]`
+        unsafe { self.as_bytes().clone_to_uninit(dst) }
+    }
+}
+
 /// Implementations of `Clone` for primitive types.
 ///
 /// Implementations that cannot be described in Rust

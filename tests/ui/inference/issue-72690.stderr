@@ -15,6 +15,7 @@ LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
@@ -41,6 +42,7 @@ LL |     |x| String::from("x".as_ref());
    |                          ^^^^^^
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
@@ -57,6 +59,7 @@ LL |     let _ = "x".as_ref();
    |         ^       ------ type must be known at this point
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
@@ -83,6 +86,7 @@ LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
@@ -109,6 +113,7 @@ LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
@@ -135,6 +140,7 @@ LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
@@ -161,6 +167,7 @@ LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
@@ -187,6 +194,7 @@ LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
@@ -213,6 +221,7 @@ LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
