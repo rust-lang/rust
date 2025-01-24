@@ -459,9 +459,9 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     fn eq_generic_arg(&mut self, left: &GenericArg<'_>, right: &GenericArg<'_>) -> bool {
         match (left, right) {
-            (GenericArg::Const(l), GenericArg::Const(r)) => self.eq_const_arg(l, r),
+            (GenericArg::Const(l), GenericArg::Const(r)) => self.eq_const_arg(l.as_unambig_ct(), r.as_unambig_ct()),
             (GenericArg::Lifetime(l_lt), GenericArg::Lifetime(r_lt)) => Self::eq_lifetime(l_lt, r_lt),
-            (GenericArg::Type(l_ty), GenericArg::Type(r_ty)) => self.eq_ty(l_ty, r_ty),
+            (GenericArg::Type(l_ty), GenericArg::Type(r_ty)) => self.eq_ty(l_ty.as_unambig_ty(), r_ty.as_unambig_ty()),
             (GenericArg::Infer(l_inf), GenericArg::Infer(r_inf)) => self.eq_ty(&l_inf.to_ty(), &r_inf.to_ty()),
             _ => false,
         }
@@ -618,7 +618,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             },
             (TyKind::Path(l), TyKind::Path(r)) => self.eq_qpath(l, r),
             (&TyKind::Tup(l), &TyKind::Tup(r)) => over(l, r, |l, r| self.eq_ty(l, r)),
-            (&TyKind::Infer, &TyKind::Infer) => true,
+            (&TyKind::Infer(()), &TyKind::Infer(())) => true,
             _ => false,
         }
     }
@@ -1281,7 +1281,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
             },
             TyKind::Path(qpath) => self.hash_qpath(qpath),
-            TyKind::TraitObject(_, lifetime, _) => {
+            TyKind::TraitObject(_, lifetime) => {
                 self.hash_lifetime(lifetime);
             },
             TyKind::Typeof(anon_const) => {
@@ -1291,7 +1291,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_ty(binder.inner_ty);
             },
             TyKind::Err(_)
-            | TyKind::Infer
+            | TyKind::Infer(())
             | TyKind::Never
             | TyKind::InferDelegation(..)
             | TyKind::OpaqueDef(_)
@@ -1318,8 +1318,8 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         for arg in arg_list {
             match *arg {
                 GenericArg::Lifetime(l) => self.hash_lifetime(l),
-                GenericArg::Type(ty) => self.hash_ty(ty),
-                GenericArg::Const(ca) => self.hash_const_arg(ca),
+                GenericArg::Type(ty) => self.hash_ty(ty.as_unambig_ty()),
+                GenericArg::Const(ca) => self.hash_const_arg(ca.as_unambig_ct()),
                 GenericArg::Infer(ref inf) => self.hash_ty(&inf.to_ty()),
             }
         }

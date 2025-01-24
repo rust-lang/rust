@@ -14,8 +14,8 @@
 use crate::def_path_res;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{Visitor, walk_qpath, walk_ty};
-use rustc_hir::{self as hir, Expr, ExprKind, GenericArgs, HirId, Node, PathSegment, QPath, TyKind};
+use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_qpath, walk_ty};
+use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, GenericArgs, HirId, Node, PathSegment, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, AdtDef, GenericArgKind, Ty};
 use rustc_span::{Span, Symbol};
@@ -116,13 +116,14 @@ impl<'cx> Visitor<'cx> for CertaintyVisitor<'cx, '_> {
         }
     }
 
-    fn visit_ty(&mut self, ty: &'cx hir::Ty<'_>) {
-        if matches!(ty.kind, TyKind::Infer) {
-            self.certainty = Certainty::Uncertain;
-        }
+    fn visit_ty(&mut self, ty: &'cx hir::Ty<'_, AmbigArg>) {
         if self.certainty != Certainty::Uncertain {
             walk_ty(self, ty);
         }
+    }
+
+    fn visit_infer(&mut self, _inf_id: HirId, _inf_span: Span, _kind: InferKind<'cx>) -> Self::Result {
+        self.certainty = Certainty::Uncertain;
     }
 }
 
@@ -139,7 +140,7 @@ fn type_certainty(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Certainty {
     }
 
     let mut visitor = CertaintyVisitor::new(cx);
-    visitor.visit_ty(ty);
+    visitor.visit_ty_unambig(ty);
     visitor.certainty
 }
 

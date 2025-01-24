@@ -43,7 +43,7 @@ pub(super) fn check<'tcx>(
                 }
             },
             // Ignore `p as *const _`
-            TyKind::Infer => return false,
+            TyKind::Infer(()) => return false,
             _ => {},
         }
 
