@@ -152,6 +152,7 @@ libm_macros::for_each_function! {
         floorf16,
         fmod,
         fmodf,
+        fmodf128,
         fmodf16,
         frexp,
         frexpf,
@@ -297,21 +298,6 @@ macro_rules! impl_op_for_ty {
                     this.0.assign(input.0);
                     this.1.assign(input.1);
                     let ord = this.0.pow_assign_round(&this.1, Nearest);
-                    prep_retval::<Self::RustRet>(&mut this.0, ord)
-                }
-            }
-
-            impl MpOp for crate::op::[<fmod $suffix>]::Routine {
-                type MpTy = (MpFloat, MpFloat);
-
-                fn new_mp() -> Self::MpTy {
-                    (new_mpfloat::<Self::FTy>(), new_mpfloat::<Self::FTy>())
-                }
-
-                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
-                    this.0.assign(input.0);
-                    this.1.assign(input.1);
-                    let ord = this.0.rem_assign_round(&this.1, Nearest);
                     prep_retval::<Self::RustRet>(&mut this.0, ord)
                 }
             }
@@ -481,6 +467,21 @@ macro_rules! impl_op_for_ty_all {
                     prep_retval::<Self::RustRet>(&mut this.0, Ordering::Equal)
                 }
             }
+
+            impl MpOp for crate::op::[<fmod $suffix>]::Routine {
+                type MpTy = (MpFloat, MpFloat);
+
+                fn new_mp() -> Self::MpTy {
+                    (new_mpfloat::<Self::FTy>(), new_mpfloat::<Self::FTy>())
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.0.assign(input.0);
+                    this.1.assign(input.1);
+                    let ord = this.0.rem_assign_round(&this.1, Nearest);
+                    prep_retval::<Self::RustRet>(&mut this.0, ord)
+                }
+            }
         }
     };
 }
@@ -523,22 +524,6 @@ impl MpOp for crate::op::lgammaf_r::Routine {
         let (sign, ord) = this.ln_abs_gamma_round(Nearest);
         let ret = prep_retval::<Self::FTy>(this, ord);
         (ret, sign as i32)
-    }
-}
-
-// No fmodf128 yet
-impl MpOp for crate::op::fmodf16::Routine {
-    type MpTy = (MpFloat, MpFloat);
-
-    fn new_mp() -> Self::MpTy {
-        (new_mpfloat::<Self::FTy>(), new_mpfloat::<Self::FTy>())
-    }
-
-    fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
-        this.0.assign(input.0);
-        this.1.assign(input.1);
-        let ord = this.0.rem_assign_round(&this.1, Nearest);
-        prep_retval::<Self::RustRet>(&mut this.0, ord)
     }
 }
 

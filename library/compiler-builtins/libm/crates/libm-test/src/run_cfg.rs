@@ -13,18 +13,30 @@ pub const EXTENSIVE_ENV: &str = "LIBM_EXTENSIVE_TESTS";
 /// Specify the number of iterations via this environment variable, rather than using the default.
 pub const EXTENSIVE_ITER_ENV: &str = "LIBM_EXTENSIVE_ITERATIONS";
 
+/// The override value, if set by the above environment.
+static EXTENSIVE_ITER_OVERRIDE: LazyLock<Option<u64>> = LazyLock::new(|| {
+    env::var(EXTENSIVE_ITER_ENV).map(|v| v.parse().expect("failed to parse iteration count")).ok()
+});
+
+/// Specific tests that need to have a reduced amount of iterations to complete in a reasonable
+/// amount of time.
+///
+/// Contains the itentifier+generator combo to match on, plus the factor to reduce by.
+const EXTEMELY_SLOW_TESTS: &[(Identifier, GeneratorKind, u64)] = &[
+    (Identifier::Fmodf128, GeneratorKind::QuickSpaced, 40),
+    (Identifier::Fmodf128, GeneratorKind::Extensive, 40),
+];
+
 /// Maximum number of iterations to run for a single routine.
 ///
 /// The default value of one greater than `u32::MAX` allows testing single-argument `f32` routines
 /// and single- or double-argument `f16` routines exhaustively. `f64` and `f128` can't feasibly
 /// be tested exhaustively; however, [`EXTENSIVE_ITER_ENV`] can be set to run tests for multiple
 /// hours.
-pub static EXTENSIVE_MAX_ITERATIONS: LazyLock<u64> = LazyLock::new(|| {
-    let default = 1 << 32;
-    env::var(EXTENSIVE_ITER_ENV)
-        .map(|v| v.parse().expect("failed to parse iteration count"))
-        .unwrap_or(default)
-});
+pub fn extensive_max_iterations() -> u64 {
+    let default = 1 << 32; // default value
+    EXTENSIVE_ITER_OVERRIDE.unwrap_or(default)
+}
 
 /// Context passed to [`CheckOutput`].
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -206,11 +218,22 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
     let mut total_iterations = match ctx.gen_kind {
         GeneratorKind::QuickSpaced => domain_iter_count,
         GeneratorKind::Random => random_iter_count,
-        GeneratorKind::Extensive => *EXTENSIVE_MAX_ITERATIONS,
+        GeneratorKind::Extensive => extensive_max_iterations(),
         GeneratorKind::EdgeCases => {
             unimplemented!("edge case tests shoudn't need `iteration_count`")
         }
     };
+
+    // Some tests are significantly slower than others and need to be further reduced.
+    if let Some((_id, _gen, scale)) = EXTEMELY_SLOW_TESTS
+        .iter()
+        .find(|(id, gen, _scale)| *id == ctx.fn_ident && *gen == ctx.gen_kind)
+    {
+        // However, do not override if the extensive iteration count has been manually set.
+        if !(ctx.gen_kind == GeneratorKind::Extensive && EXTENSIVE_ITER_OVERRIDE.is_some()) {
+            total_iterations /= scale;
+        }
+    }
 
     // FMA has a huge domain but is reasonably fast to run, so increase iterations.
     if ctx.base_name == BaseName::Fma {

@@ -111,6 +111,7 @@ main!(
     icount_bench_fmin_group,
     icount_bench_fminf_group,
     icount_bench_fmod_group,
+    icount_bench_fmodf128_group,
     icount_bench_fmodf16_group,
     icount_bench_fmodf_group,
     icount_bench_frexp_group,

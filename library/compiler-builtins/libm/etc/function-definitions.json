@@ -449,6 +449,13 @@
         ],
         "type": "f32"
     },
+    "fmodf128": {
+        "sources": [
+            "src/math/fmodf128.rs",
+            "src/math/generic/fmod.rs"
+        ],
+        "type": "f128"
+    },
     "fmodf16": {
         "sources": [
             "src/math/fmodf16.rs",
