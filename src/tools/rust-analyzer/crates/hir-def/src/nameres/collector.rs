@@ -28,7 +28,7 @@ use triomphe::Arc;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    item_scope::{ImportId, ImportOrExternCrate, ImportType, PerNsGlobImports},
+    item_scope::{ImportId, ImportOrExternCrate, ImportOrGlob, ImportType, PerNsGlobImports},
     item_tree::{
         self, AttrOwner, FieldsShape, FileItemTreeId, ImportKind, ItemTree, ItemTreeId,
         ItemTreeNode, Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId, UseTreeKind,
@@ -527,7 +527,10 @@ impl DefCollector<'_> {
                 // FIXME: This should specifically look for a glob import somehow and record that here
                 self.def_map.prelude = Some((
                     m,
-                    import.and_then(ImportOrExternCrate::into_import).map(|it| it.import),
+                    import
+                        .and_then(ImportOrExternCrate::into_import)
+                        .and_then(ImportOrGlob::into_import)
+                        .map(|it| it.import),
                 ));
             }
             types => {

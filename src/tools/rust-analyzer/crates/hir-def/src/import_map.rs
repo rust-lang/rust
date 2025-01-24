@@ -169,6 +169,7 @@ impl ImportMap {
                         match import {
                             ImportOrExternCrate::ExternCrate(id) => Some(id.into()),
                             ImportOrExternCrate::Import(id) => Some(id.import.into()),
+                            ImportOrExternCrate::Glob(id) => Some(id.into()),
                         }
                     } else {
                         match item {
