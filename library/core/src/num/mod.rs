@@ -53,6 +53,7 @@ mod wrapping;
 
 /// 100% perma-unstable
 #[doc(hidden)]
+#[cfg_attr(bootstrap, path = "niche_types_bootstrap.rs")]
 pub mod niche_types;
 
 #[stable(feature = "rust1", since = "1.0.0")]
