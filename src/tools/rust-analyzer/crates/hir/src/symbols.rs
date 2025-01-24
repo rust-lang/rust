@@ -3,7 +3,7 @@
 use either::Either;
 use hir_def::{
     db::DefDatabase,
-    item_scope::{ImportId, ImportOrExternCrate},
+    item_scope::{ImportId, ImportOrExternCrate, ImportOrGlob},
     per_ns::Item,
     src::{HasChildSource, HasSource},
     visibility::{Visibility, VisibilityExplicitness},
@@ -55,9 +55,10 @@ impl DeclarationLocation {
 }
 
 /// Represents an outstanding module that the symbol collector must collect symbols from.
+#[derive(Debug)]
 struct SymbolCollectorWork {
     module_id: ModuleId,
-    parent: Option<DefWithBodyId>,
+    parent: Option<Name>,
 }
 
 pub struct SymbolCollector<'a> {
@@ -81,7 +82,15 @@ impl<'a> SymbolCollector<'a> {
         }
     }
 
+    pub fn new_module(db: &dyn HirDatabase, module: Module) -> Box<[FileSymbol]> {
+        let mut symbol_collector = SymbolCollector::new(db);
+        symbol_collector.collect(module);
+        symbol_collector.finish()
+    }
+
     pub fn collect(&mut self, module: Module) {
+        let _p = tracing::info_span!("SymbolCollector::collect", ?module).entered();
+        tracing::info!(?module, "SymbolCollector::collect",);
         self.edition = module.krate().edition(self.db);
 
         // The initial work is the root module we're collecting, additional work will
@@ -97,16 +106,12 @@ impl<'a> SymbolCollector<'a> {
         self.symbols.into_iter().collect()
     }
 
-    pub fn collect_module(db: &dyn HirDatabase, module: Module) -> Box<[FileSymbol]> {
-        let mut symbol_collector = SymbolCollector::new(db);
-        symbol_collector.collect(module);
-        symbol_collector.finish()
-    }
-
     fn do_work(&mut self, work: SymbolCollectorWork) {
+        let _p = tracing::info_span!("SymbolCollector::do_work", ?work).entered();
+        tracing::info!(?work, "SymbolCollector::do_work");
         self.db.unwind_if_cancelled();
 
-        let parent_name = work.parent.and_then(|id| self.def_with_body_id_name(id));
+        let parent_name = work.parent.map(|name| name.as_str().to_smolstr());
         self.with_container_name(parent_name, |s| s.collect_from_module(work.module_id));
     }
 
@@ -116,18 +121,18 @@ impl<'a> SymbolCollector<'a> {
                 ModuleDefId::ModuleId(id) => this.push_module(id, name),
                 ModuleDefId::FunctionId(id) => {
                     this.push_decl(id, name, false);
-                    this.collect_from_body(id);
+                    this.collect_from_body(id, Some(name.clone()));
                 }
                 ModuleDefId::AdtId(AdtId::StructId(id)) => this.push_decl(id, name, false),
                 ModuleDefId::AdtId(AdtId::EnumId(id)) => this.push_decl(id, name, false),
                 ModuleDefId::AdtId(AdtId::UnionId(id)) => this.push_decl(id, name, false),
                 ModuleDefId::ConstId(id) => {
                     this.push_decl(id, name, false);
-                    this.collect_from_body(id);
+                    this.collect_from_body(id, Some(name.clone()));
                 }
                 ModuleDefId::StaticId(id) => {
                     this.push_decl(id, name, false);
-                    this.collect_from_body(id);
+                    this.collect_from_body(id, Some(name.clone()));
                 }
                 ModuleDefId::TraitId(id) => {
                     this.push_decl(id, name, false);
@@ -235,6 +240,7 @@ impl<'a> SymbolCollector<'a> {
                 if is_explicit_import(vis) {
                     match i {
                         ImportOrExternCrate::Import(i) => push_import(self, i, name, def),
+                        ImportOrExternCrate::Glob(_) => (),
                         ImportOrExternCrate::ExternCrate(i) => {
                             push_extern_crate(self, i, name, def)
                         }
@@ -249,7 +255,10 @@ impl<'a> SymbolCollector<'a> {
         for (name, Item { def, vis, import }) in scope.macros() {
             if let Some(i) = import {
                 if is_explicit_import(vis) {
-                    push_import(self, i, name, def.into());
+                    match i {
+                        ImportOrGlob::Import(i) => push_import(self, i, name, def.into()),
+                        ImportOrGlob::Glob(_) => (),
+                    }
                 }
                 continue;
             }
@@ -260,7 +269,10 @@ impl<'a> SymbolCollector<'a> {
         for (name, Item { def, vis, import }) in scope.values() {
             if let Some(i) = import {
                 if is_explicit_import(vis) {
-                    push_import(self, i, name, def);
+                    match i {
+                        ImportOrGlob::Import(i) => push_import(self, i, name, def),
+                        ImportOrGlob::Glob(_) => (),
+                    }
                 }
                 continue;
             }
@@ -269,7 +281,7 @@ impl<'a> SymbolCollector<'a> {
         }
 
         for const_id in scope.unnamed_consts() {
-            self.collect_from_body(const_id);
+            self.collect_from_body(const_id, None);
         }
 
         for (name, id) in scope.legacy_macros() {
@@ -285,7 +297,7 @@ impl<'a> SymbolCollector<'a> {
         }
     }
 
-    fn collect_from_body(&mut self, body_id: impl Into<DefWithBodyId>) {
+    fn collect_from_body(&mut self, body_id: impl Into<DefWithBodyId>, name: Option<Name>) {
         let body_id = body_id.into();
         let body = self.db.body(body_id);
 
@@ -294,7 +306,7 @@ impl<'a> SymbolCollector<'a> {
             for (id, _) in def_map.modules() {
                 self.work.push(SymbolCollectorWork {
                     module_id: def_map.module_id(id),
-                    parent: Some(body_id),
+                    parent: name.clone(),
                 });
             }
         }
@@ -330,24 +342,6 @@ impl<'a> SymbolCollector<'a> {
             self.current_container_name = prev;
         } else {
             f(self);
-        }
-    }
-
-    fn def_with_body_id_name(&self, body_id: DefWithBodyId) -> Option<SmolStr> {
-        match body_id {
-            DefWithBodyId::FunctionId(id) => {
-                Some(self.db.function_data(id).name.display_no_db(self.edition).to_smolstr())
-            }
-            DefWithBodyId::StaticId(id) => {
-                Some(self.db.static_data(id).name.display_no_db(self.edition).to_smolstr())
-            }
-            DefWithBodyId::ConstId(id) => {
-                Some(self.db.const_data(id).name.as_ref()?.display_no_db(self.edition).to_smolstr())
-            }
-            DefWithBodyId::VariantId(id) => {
-                Some(self.db.enum_variant_data(id).name.display_no_db(self.edition).to_smolstr())
-            }
-            DefWithBodyId::InTypeConstId(_) => Some("in type const".into()),
         }
     }
 

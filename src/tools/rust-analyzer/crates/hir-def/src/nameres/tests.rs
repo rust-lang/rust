@@ -103,8 +103,8 @@ mod a {
             c: t
 
             crate::a::b::c
-            A: v
-            b: t
+            A: vg
+            b: tg
         "#]],
     );
 }
@@ -256,8 +256,8 @@ pub enum Foo { Bar, Baz }
 "#,
         expect![[r#"
             crate
-            Bar: t v
-            Baz: t v
+            Bar: tg vg
+            Baz: tg vg
         "#]],
     );
 }
@@ -421,10 +421,10 @@ pub struct NotExported;
 "#,
         expect![[r#"
             crate
-            Exported: t v
-            PublicItem: t v
-            allowed_reexport: t
-            exported: t
+            Exported: tg vg
+            PublicItem: tg vg
+            allowed_reexport: tg
+            exported: tg
             not_allowed_reexport1: _
             not_allowed_reexport2: _
         "#]],
@@ -692,7 +692,7 @@ mod b {
             b: t
 
             crate::a
-            T: t v
+            T: t vg
 
             crate::b
             T: v
