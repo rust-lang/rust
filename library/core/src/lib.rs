@@ -183,6 +183,8 @@
 #![feature(no_core)]
 #![feature(no_sanitize)]
 #![feature(optimize_attribute)]
+#![feature(pattern_type_macro)]
+#![feature(pattern_types)]
 #![feature(prelude_import)]
 #![feature(repr_simd)]
 #![feature(rustc_allow_const_fn_unstable)]
