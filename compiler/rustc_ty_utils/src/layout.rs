@@ -206,9 +206,7 @@ fn layout_of_uncached<'tcx>(
             let mut layout = LayoutData::clone(&layout.0);
             match *pat {
                 ty::PatternKind::Range { start, end } => {
-                    if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
-                        &mut layout.backend_repr
-                    {
+                    if let BackendRepr::Scalar(scalar) = &mut layout.backend_repr {
                         scalar.valid_range_mut().start = extract_const_value(cx, ty, start)?
                             .try_to_bits(tcx, cx.typing_env)
                             .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
@@ -252,13 +250,30 @@ fn layout_of_uncached<'tcx>(
                         };
 
                         layout.largest_niche = Some(niche);
-
-                        tcx.mk_layout(layout)
                     } else {
                         bug!("pattern type with range but not scalar layout: {ty:?}, {layout:?}")
                     }
                 }
+                ty::PatternKind::NotNull => {
+                    if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
+                        &mut layout.backend_repr
+                    {
+                        scalar.valid_range_mut().start = 1;
+                        let niche = Niche {
+                            offset: Size::ZERO,
+                            value: scalar.primitive(),
+                            valid_range: scalar.valid_range(cx),
+                        };
+
+                        layout.largest_niche = Some(niche);
+                    } else {
+                        bug!(
+                            "pattern type with `!null` pattern but not scalar/pair layout: {ty:?}, {layout:?}"
+                        )
+                    }
+                }
             }
+            tcx.mk_layout(layout)
         }
 
         // Basic scalars.
