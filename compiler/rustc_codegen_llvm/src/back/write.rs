@@ -769,12 +769,9 @@ pub(crate) unsafe fn codegen(
             }
         }
 
-        // Two things to note:
-        // - If object files are just LLVM bitcode we write bitcode, copy it to
-        //   the .o file, and delete the bitcode if it wasn't otherwise
-        //   requested.
-        // - If we don't have the integrated assembler then we need to emit
-        //   asm from LLVM and use `gcc` to create the object file.
+        // Note that if object files are just LLVM bitcode we write bitcode,
+        // copy it to the .o file, and delete the bitcode if it wasn't
+        // otherwise requested.
 
         let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
         let bc_summary_out =

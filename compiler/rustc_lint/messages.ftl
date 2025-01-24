@@ -972,6 +972,8 @@ lint_unused_result = unused result of type `{$ty}`
 
 lint_use_let_underscore_ignore_suggestion = use `let _ = ...` to ignore the expression or result
 
+lint_uses_power_alignment = repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
+
 lint_variant_size_differences =
     enum variant is more than three times larger ({$largest} bytes) than the next largest
 

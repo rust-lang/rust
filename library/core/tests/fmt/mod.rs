@@ -52,6 +52,12 @@ fn test_maybe_uninit_short() {
 }
 
 #[test]
+fn formatting_options_ctor() {
+    use core::fmt::FormattingOptions;
+    assert_eq!(FormattingOptions::new(), FormattingOptions::default());
+}
+
+#[test]
 fn formatting_options_flags() {
     use core::fmt::*;
     for sign in [None, Some(Sign::Plus), Some(Sign::Minus)] {

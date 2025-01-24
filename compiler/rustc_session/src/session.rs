@@ -189,7 +189,7 @@ pub struct Session {
     /// enabled. Makes it so that "please report a bug" is hidden, as ICEs with
     /// internal features are wontfix, and they are usually the cause of the ICEs.
     /// None signifies that this is not tracked.
-    pub using_internal_features: Arc<AtomicBool>,
+    pub using_internal_features: &'static AtomicBool,
 
     /// All commandline args used to invoke the compiler, with @file args fully expanded.
     /// This will only be used within debug info, e.g. in the pdb file on windows
@@ -966,7 +966,7 @@ pub fn build_session(
     sysroot: PathBuf,
     cfg_version: &'static str,
     ice_file: Option<PathBuf>,
-    using_internal_features: Arc<AtomicBool>,
+    using_internal_features: &'static AtomicBool,
     expanded_args: Vec<String>,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override

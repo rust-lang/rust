@@ -1099,8 +1099,7 @@ pub struct Trait {
     pub is_auto: bool,
     /// Whether the trait is marked as `unsafe`.
     pub is_unsafe: bool,
-    // FIXME(dyn_compat_renaming): Update the URL once the Reference is updated and hits stable.
-    /// Whether the trait is [dyn compatible](https://doc.rust-lang.org/reference/items/traits.html#object-safety)[^1].
+    /// Whether the trait is [dyn compatible](https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility)[^1].
     ///
     /// [^1]: Formerly known as "object safe".
     pub is_dyn_compatible: bool,

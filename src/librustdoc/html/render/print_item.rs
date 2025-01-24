@@ -30,7 +30,7 @@ use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::{Escape, EscapeBodyTextWithWbr};
 use crate::html::format::{
-    Buffer, Ending, PrintWithSpace, display_fn, join_with_double_colon, print_abi_with_space,
+    Buffer, Ending, PrintWithSpace, join_with_double_colon, print_abi_with_space,
     print_constness_with_space, print_where_clause, visibility_print_with_space,
 };
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
@@ -92,7 +92,7 @@ macro_rules! item_template_methods {
     () => {};
     (document $($rest:tt)*) => {
         fn document<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
+            fmt::from_fn(move |f| {
                 let (item, cx) = self.item_and_cx();
                 let v = document(cx, item, None, HeadingOffset::H2);
                 write!(f, "{v}")
@@ -102,7 +102,7 @@ macro_rules! item_template_methods {
     };
     (document_type_layout $($rest:tt)*) => {
         fn document_type_layout<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
+            fmt::from_fn(move |f| {
                 let (item, cx) = self.item_and_cx();
                 let def_id = item.item_id.expect_def_id();
                 let v = document_type_layout(cx, def_id);
@@ -113,7 +113,7 @@ macro_rules! item_template_methods {
     };
     (render_attributes_in_pre $($rest:tt)*) => {
         fn render_attributes_in_pre<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
+            fmt::from_fn(move |f| {
                 let (item, cx) = self.item_and_cx();
                 let v = render_attributes_in_pre(item, "", cx);
                 write!(f, "{v}")
@@ -123,7 +123,7 @@ macro_rules! item_template_methods {
     };
     (render_assoc_items $($rest:tt)*) => {
         fn render_assoc_items<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
+            fmt::from_fn(move |f| {
                 let (item, cx) = self.item_and_cx();
                 let def_id = item.item_id.expect_def_id();
                 let v = render_assoc_items(cx, item, def_id, AssocItemRender::All);
@@ -520,13 +520,13 @@ fn extra_info_tags<'a, 'tcx: 'a>(
     parent: &'a clean::Item,
     import_def_id: Option<DefId>,
 ) -> impl fmt::Display + 'a + Captures<'tcx> {
-    display_fn(move |f| {
+    fmt::from_fn(move |f| {
         fn tag_html<'a>(
             class: &'a str,
             title: &'a str,
             contents: &'a str,
         ) -> impl fmt::Display + 'a {
-            display_fn(move |f| {
+            fmt::from_fn(move |f| {
                 write!(
                     f,
                     r#"<wbr><span class="stab {class}" title="{title}">{contents}</span>"#,
@@ -1375,7 +1375,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
 
     impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
         fn render_union<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
+            fmt::from_fn(move |f| {
                 let v = render_union(self.it, Some(&self.s.generics), &self.s.fields, self.cx);
                 write!(f, "{v}")
             })
@@ -1385,7 +1385,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
             &'b self,
             field: &'a clean::Item,
         ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
+            fmt::from_fn(move |f| {
                 let v = document(self.cx, field, Some(self.it), HeadingOffset::H3);
                 write!(f, "{v}")
             })
@@ -1399,7 +1399,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
             &'b self,
             ty: &'a clean::Type,
         ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
+            fmt::from_fn(move |f| {
                 let v = ty.print(self.cx);
                 write!(f, "{v}")
             })
@@ -1426,7 +1426,7 @@ fn print_tuple_struct_fields<'a, 'cx: 'a>(
     cx: &'a Context<'cx>,
     s: &'a [clean::Item],
 ) -> impl fmt::Display + 'a + Captures<'cx> {
-    display_fn(|f| {
+    fmt::from_fn(|f| {
         if !s.is_empty()
             && s.iter().all(|field| {
                 matches!(field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
@@ -2151,7 +2151,7 @@ fn render_union<'a, 'cx: 'a>(
     fields: &'a [clean::Item],
     cx: &'a Context<'cx>,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
-    display_fn(move |mut f| {
+    fmt::from_fn(move |mut f| {
         write!(f, "{}union {}", visibility_print_with_space(it, cx), it.name.unwrap(),)?;
 
         let where_displayed = g
@@ -2331,7 +2331,7 @@ fn document_non_exhaustive_header(item: &clean::Item) -> &str {
 }
 
 fn document_non_exhaustive(item: &clean::Item) -> impl fmt::Display + '_ {
-    display_fn(|f| {
+    fmt::from_fn(|f| {
         if item.is_non_exhaustive() {
             write!(
                 f,
