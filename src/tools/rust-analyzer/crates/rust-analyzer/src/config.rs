@@ -453,6 +453,10 @@ config_data! {
         ///
         /// In `match` arms it completes a comma instead.
         completion_addSemicolonToUnit: bool = true,
+        /// Toggles the additional completions that automatically show method calls and field accesses with `await` prefixed to them when completing on a future.
+        completion_autoAwait_enable: bool        = true,
+        /// Toggles the additional completions that automatically show method calls with `iter()` or `into_iter()` prefixed to them when completing on a type that has them.
+        completion_autoIter_enable: bool        = true,
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
         completion_autoimport_enable: bool       = true,
@@ -1484,6 +1488,8 @@ impl Config {
             enable_imports_on_the_fly: self.completion_autoimport_enable(source_root).to_owned()
                 && self.caps.completion_item_edit_resolve(),
             enable_self_on_the_fly: self.completion_autoself_enable(source_root).to_owned(),
+            enable_auto_iter: *self.completion_autoIter_enable(source_root),
+            enable_auto_await: *self.completion_autoAwait_enable(source_root),
             enable_private_editable: self.completion_privateEditable_enable(source_root).to_owned(),
             full_function_signatures: self
                 .completion_fullFunctionSignatures_enable(source_root)

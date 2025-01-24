@@ -14,6 +14,8 @@ pub struct CompletionConfig<'a> {
     pub enable_postfix_completions: bool,
     pub enable_imports_on_the_fly: bool,
     pub enable_self_on_the_fly: bool,
+    pub enable_auto_iter: bool,
+    pub enable_auto_await: bool,
     pub enable_private_editable: bool,
     pub enable_term_search: bool,
     pub term_search_fuel: u64,
