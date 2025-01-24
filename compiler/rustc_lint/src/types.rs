@@ -890,6 +890,7 @@ fn ty_is_known_nonnull<'tcx>(
                                 // to ensure we aren't wrapping over zero.
                                 start > 0 && end >= start
                             }
+                            ty::PatternKind::NotNull => true,
                         }
                     },
                 )
@@ -1040,7 +1041,9 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
             None
         }
         ty::Pat(base, pat) => match **pat {
-            ty::PatternKind::Range { .. } => get_nullable_type(tcx, typing_env, *base),
+            ty::PatternKind::NotNull | ty::PatternKind::Range { .. } => {
+                get_nullable_type(tcx, typing_env, *base)
+            }
         },
         _ => None,
     }

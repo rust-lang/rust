@@ -934,7 +934,7 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
                     self.resolve_anon_const(end, AnonConstKind::ConstArg(IsRepeatExpr::No));
                 }
             }
-            TyPatKind::Err(_) => {}
+            TyPatKind::NotNull | TyPatKind::Err(_) => {}
         }
     }
 

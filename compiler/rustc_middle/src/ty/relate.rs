@@ -58,6 +58,10 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for ty::Pattern<'tcx> {
                 let end = relation.relate(end_a, end_b)?;
                 Ok(relation.cx().mk_pat(ty::PatternKind::Range { start, end }))
             }
+            (ty::PatternKind::NotNull, ty::PatternKind::NotNull) => Ok(a),
+            (ty::PatternKind::NotNull | ty::PatternKind::Range { .. }, _) => {
+                Err(TypeError::Mismatch)
+            }
         }
     }
 }
