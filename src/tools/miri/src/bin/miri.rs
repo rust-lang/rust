@@ -29,8 +29,8 @@ use std::num::NonZero;
 use std::ops::Range;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::Once;
+use std::sync::atomic::{AtomicI32, Ordering};
 
 use miri::{
     BacktraceStyle, BorrowTrackerMethod, MiriConfig, MiriEntryFnType, ProvenanceMode, RetagFields,
