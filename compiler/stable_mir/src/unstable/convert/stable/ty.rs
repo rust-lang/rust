@@ -497,6 +497,7 @@ impl<'tcx> Stable<'tcx> for ty::Pattern<'tcx> {
                 include_end: true,
             },
             ty::PatternKind::Or(_) => todo!(),
+            ty::PatternKind::NotNull => todo!(),
         }
     }
 }
