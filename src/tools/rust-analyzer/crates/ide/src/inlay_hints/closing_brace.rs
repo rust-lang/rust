@@ -12,7 +12,8 @@ use syntax::{
 };
 
 use crate::{
-    inlay_hints::LazyProperty, InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind,
+    inlay_hints::LazyProperty, InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig,
+    InlayKind,
 };
 
 pub(super) fn hints(

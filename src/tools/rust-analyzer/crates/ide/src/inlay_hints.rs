@@ -650,7 +650,8 @@ struct InlayHintLabelBuilder<'a> {
     db: &'a RootDatabase,
     result: InlayHintLabel,
     last_part: String,
-    location: Option<FileRange>,
+    resolve: bool,
+    location: Option<LazyProperty<FileRange>>,
 }
 
 impl fmt::Write for InlayHintLabelBuilder<'_> {
@@ -663,11 +664,16 @@ impl HirWrite for InlayHintLabelBuilder<'_> {
     fn start_location_link(&mut self, def: ModuleDefId) {
         never!(self.location.is_some(), "location link is already started");
         self.make_new_part();
-        let Some(location) = ModuleDef::from(def).try_to_nav(self.db) else { return };
-        let location = location.call_site();
-        let location =
-            FileRange { file_id: location.file_id, range: location.focus_or_full_range() };
-        self.location = Some(location);
+
+        self.location = Some(if self.resolve {
+            LazyProperty::Lazy
+        } else {
+            LazyProperty::Computed({
+                let Some(location) = ModuleDef::from(def).try_to_nav(self.db) else { return };
+                let location = location.call_site();
+                FileRange { file_id: location.file_id, range: location.focus_or_full_range() }
+            })
+        });
     }
 
     fn end_location_link(&mut self) {
@@ -681,7 +687,7 @@ impl InlayHintLabelBuilder<'_> {
         if !text.is_empty() {
             self.result.parts.push(InlayHintLabelPart {
                 text,
-                linked_location: self.location.take().map(LazyProperty::Computed),
+                linked_location: self.location.take(),
                 tooltip: None,
             });
         }
@@ -753,6 +759,7 @@ fn label_of_ty(
         last_part: String::new(),
         location: None,
         result: InlayHintLabel::default(),
+        resolve: config.fields_to_resolve.resolve_label_location,
     };
     let _ = rec(sema, famous_defs, config.max_length, ty, &mut label_builder, config, edition);
     let r = label_builder.finish();
