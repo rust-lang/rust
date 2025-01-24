@@ -41,7 +41,7 @@ requirements of impls and functions as explicit predicates.
 
 These bounds are not added to the `ParamEnv` of the affected item itself. For lexical
 region resolution they are added using [`fn OutlivesEnvironment::with_bounds`].
-Similarly,during MIR borrowck we add them using
+Similarly, during MIR borrowck we add them using
 [`fn UniversalRegionRelationsBuilder::add_implied_bounds`].
 
 [We add implied bounds for the function signature and impl header in MIR borrowck][mir].

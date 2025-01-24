@@ -2166,7 +2166,8 @@ details.toggle > summary:not(.hideme)::before {
 	top: 4px;
 }
 
-.impl-items > details.toggle > summary:not(.hideme)::before {
+.impl-items > details.toggle > summary:not(.hideme)::before,
+#main-content > .methods > details.toggle > summary:not(.hideme)::before {
 	position: absolute;
 	left: -24px;
 }
@@ -2176,7 +2177,9 @@ details.toggle > summary:not(.hideme)::before {
 .impl-items > *:not(.item-info),
 /* We also indent the first top doc comment the same to still keep an indent on the
 	doc block while aligning it with the impl block items. */
-.implementors-toggle > .docblock {
+.implementors-toggle > .docblock,
+/* We indent trait items as well. */
+#main-content > .methods > :not(.item-info) {
 	margin-left: var(--impl-items-indent);
 }
 
@@ -2508,7 +2511,8 @@ in src-script.js and main.js
 		margin-left: 10px;
 	}
 
-	.impl-items > details.toggle > summary:not(.hideme)::before {
+	.impl-items > details.toggle > summary:not(.hideme)::before,
+	#main-content > .methods > details.toggle > summary:not(.hideme)::before {
 		left: -20px;
 	}
 

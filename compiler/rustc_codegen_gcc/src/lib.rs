@@ -444,7 +444,6 @@ impl WriteBackendMethods for GccCodegenBackend {
     }
     fn autodiff(
         _cgcx: &CodegenContext<Self>,
-        _tcx: TyCtxt<'_>,
         _module: &ModuleCodegen<Self::Module>,
         _diff_fncs: Vec<AutoDiffItem>,
         _config: &ModuleConfig,

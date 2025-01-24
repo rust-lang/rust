@@ -2529,6 +2529,7 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 /// limited to just these cases:
 ///
 /// * The `original` path is not a file or doesn't exist.
+/// * The 'link' path already exists.
 ///
 /// # Examples
 ///

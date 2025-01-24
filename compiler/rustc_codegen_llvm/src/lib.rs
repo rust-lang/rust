@@ -237,7 +237,6 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     /// Generate autodiff rules
     fn autodiff(
         cgcx: &CodegenContext<Self>,
-        tcx: TyCtxt<'_>,
         module: &ModuleCodegen<Self::Module>,
         diff_fncs: Vec<AutoDiffItem>,
         config: &ModuleConfig,
@@ -246,7 +245,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
             let dcx = cgcx.create_dcx();
             return Err(dcx.handle().emit_almost_fatal(AutoDiffWithoutLTO));
         }
-        builder::autodiff::differentiate(module, cgcx, tcx, diff_fncs, config)
+        builder::autodiff::differentiate(module, cgcx, diff_fncs, config)
     }
 }
 
