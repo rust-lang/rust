@@ -577,6 +577,9 @@ pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
     }
 
     let prefix = match &target.arch[..] {
+        "x86" | "x86_64" if target.is_like_msvc && undecorated.starts_with("?") => {
+            return undecorated;
+        }
         "x86" => Some('_'),
         "x86_64" => None,
         "arm64ec" => Some('#'),
