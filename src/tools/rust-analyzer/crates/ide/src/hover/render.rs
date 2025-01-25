@@ -1082,7 +1082,19 @@ fn render_memory_layout(
 
     if config.niches {
         if let Some(niches) = layout.niches() {
-            format_to!(label, "niches = {niches}, ");
+            if niches > 1024 {
+                if niches.is_power_of_two() {
+                    format_to!(label, "niches = 2{}, ", pwr2_to_exponent(niches));
+                } else if is_pwr2plus1(niches) {
+                    format_to!(label, "niches = 2{} + 1, ", pwr2_to_exponent(niches - 1));
+                } else if is_pwr2minus1(niches) {
+                    format_to!(label, "niches = 2{} - 1, ", pwr2_to_exponent(niches + 1));
+                } else {
+                    format_to!(label, "niches = a lot, ");
+                }
+            } else {
+                format_to!(label, "niches = {niches}, ");
+            }
         }
     }
     label.pop(); // ' '
@@ -1207,6 +1219,77 @@ fn render_dyn_compatibility(
         DynCompatibilityViolation::HasNonCompatibleSuperTrait(super_trait) => {
             let name = hir::Trait::from(super_trait).name(db);
             format_to!(buf, "having a dyn-incompatible supertrait `{}`", name.as_str());
+        }
+    }
+}
+
+fn is_pwr2minus1(val: u128) -> bool {
+    val == u128::MAX || (val + 1).is_power_of_two()
+}
+
+fn is_pwr2plus1(val: u128) -> bool {
+    val != 0 && (val - 1).is_power_of_two()
+}
+
+/// Formats a power of two as an exponent of two, i.e. 16 => ⁴. Note that `num` MUST be a power
+/// of 2, or this function will panic.
+fn pwr2_to_exponent(num: u128) -> String {
+    const DIGITS: [char; 10] = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
+    assert_eq!(num.count_ones(), 1);
+    num.trailing_zeros()
+        .to_string()
+        .chars()
+        .map(|c| c.to_digit(10).unwrap() as usize)
+        .map(|idx| DIGITS[idx])
+        .collect::<String>()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TESTERS: [u128; 10] = [0, 1, 2, 3, 4, 255, 256, 257, u128::MAX - 1, u128::MAX];
+
+    #[test]
+    fn test_is_pwr2minus1() {
+        const OUTCOMES: [bool; 10] =
+            [true, true, false, true, false, true, false, false, false, true];
+        for (test, expected) in TESTERS.iter().zip(OUTCOMES) {
+            let actual = is_pwr2minus1(*test);
+            assert_eq!(actual, expected, "is_pwr2minu1({test}) gave {actual}, expected {expected}");
+        }
+    }
+
+    #[test]
+    fn test_is_pwr2plus1() {
+        const OUTCOMES: [bool; 10] =
+            [false, false, true, true, false, false, false, true, false, false];
+        for (test, expected) in TESTERS.iter().zip(OUTCOMES) {
+            let actual = is_pwr2plus1(*test);
+            assert_eq!(actual, expected, "is_pwr2plus1({test}) gave {actual}, expected {expected}");
+        }
+    }
+
+    #[test]
+    fn test_pwr2_to_exponent() {
+        const TESTERS: [u128; 9] = [
+            1,
+            2,
+            4,
+            8,
+            16,
+            9223372036854775808,
+            18446744073709551616,
+            36893488147419103232,
+            170141183460469231731687303715884105728,
+        ];
+        const OUTCOMES: [&str; 9] = ["⁰", "¹", "²", "³", "⁴", "⁶³", "⁶⁴", "⁶⁵", "¹²⁷"];
+        for (test, expected) in TESTERS.iter().zip(OUTCOMES) {
+            let actual = pwr2_to_exponent(*test);
+            assert_eq!(
+                actual, expected,
+                "pwr2_to_exponent({test}) returned {actual}, expected {expected}",
+            );
         }
     }
 }
