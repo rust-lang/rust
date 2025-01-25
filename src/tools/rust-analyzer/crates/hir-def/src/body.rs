@@ -25,8 +25,8 @@ use crate::{
     db::DefDatabase,
     expander::Expander,
     hir::{
-        dummy_expr_id, Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, Label,
-        LabelId, Pat, PatId, RecordFieldPat, Statement,
+        Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, Label, LabelId, Pat,
+        PatId, RecordFieldPat, Statement,
     },
     item_tree::AttrOwner,
     nameres::DefMap,
@@ -81,7 +81,7 @@ pub struct Body {
     pub body_expr: ExprId,
     pub types: TypesMap,
     /// Block expressions in this body that may contain inner items.
-    block_scopes: Vec<BlockId>,
+    block_scopes: Box<[BlockId]>,
 
     /// A map from binding to its hygiene ID.
     ///
@@ -96,6 +96,64 @@ pub struct Body {
     /// Expressions (and destructuing patterns) that can be recorded here are single segment path, although not all single segments path refer
     /// to variables and have hygiene (some refer to items, we don't know at this stage).
     ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
+}
+
+/// The body of an item (function, const etc.).
+#[derive(Debug, Eq, PartialEq, Default)]
+pub struct BodyCollector {
+    pub exprs: Arena<Expr>,
+    pub pats: Arena<Pat>,
+    pub bindings: Arena<Binding>,
+    pub labels: Arena<Label>,
+    pub binding_owners: FxHashMap<BindingId, ExprId>,
+    pub types: TypesMap,
+    block_scopes: Vec<BlockId>,
+    binding_hygiene: FxHashMap<BindingId, HygieneId>,
+    ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
+}
+
+impl BodyCollector {
+    fn finish(
+        self,
+        body_expr: ExprId,
+        self_param: Option<BindingId>,
+        params: Box<[PatId]>,
+    ) -> Body {
+        let Self {
+            block_scopes,
+            mut exprs,
+            mut labels,
+            mut pats,
+            mut bindings,
+            mut binding_owners,
+            mut binding_hygiene,
+            mut ident_hygiene,
+            mut types,
+        } = self;
+        exprs.shrink_to_fit();
+        labels.shrink_to_fit();
+        pats.shrink_to_fit();
+        bindings.shrink_to_fit();
+        binding_owners.shrink_to_fit();
+        binding_hygiene.shrink_to_fit();
+        ident_hygiene.shrink_to_fit();
+        types.shrink_to_fit();
+
+        Body {
+            exprs,
+            pats,
+            bindings,
+            labels,
+            binding_owners,
+            params,
+            self_param,
+            body_expr,
+            types,
+            block_scopes: block_scopes.into_boxed_slice(),
+            binding_hygiene,
+            ident_hygiene,
+        }
+    }
 }
 
 pub type ExprPtr = AstPtr<ast::Expr>;
@@ -242,9 +300,8 @@ impl Body {
         };
         let module = def.module(db);
         let expander = Expander::new(db, file_id, module);
-        let (mut body, mut source_map) =
+        let (body, mut source_map) =
             Body::new(db, def, expander, params, body, module.krate, is_async_fn);
-        body.shrink_to_fit();
         source_map.shrink_to_fit();
 
         (Arc::new(body), Arc::new(source_map))
@@ -302,32 +359,6 @@ impl Body {
         is_async_fn: bool,
     ) -> (Body, BodySourceMap) {
         lower::lower(db, owner, expander, params, body, krate, is_async_fn)
-    }
-
-    fn shrink_to_fit(&mut self) {
-        let Self {
-            body_expr: _,
-            params: _,
-            self_param: _,
-            block_scopes,
-            exprs,
-            labels,
-            pats,
-            bindings,
-            binding_owners,
-            binding_hygiene,
-            ident_hygiene,
-            types,
-        } = self;
-        block_scopes.shrink_to_fit();
-        exprs.shrink_to_fit();
-        labels.shrink_to_fit();
-        pats.shrink_to_fit();
-        bindings.shrink_to_fit();
-        binding_owners.shrink_to_fit();
-        binding_hygiene.shrink_to_fit();
-        ident_hygiene.shrink_to_fit();
-        types.shrink_to_fit();
     }
 
     pub fn walk_bindings_in_pat(&self, pat_id: PatId, mut f: impl FnMut(BindingId)) {
@@ -666,25 +697,6 @@ impl Body {
         match id {
             ExprOrPatId::ExprId(id) => self.expr_path_hygiene(id),
             ExprOrPatId::PatId(id) => self.pat_path_hygiene(id),
-        }
-    }
-}
-
-impl Default for Body {
-    fn default() -> Self {
-        Self {
-            body_expr: dummy_expr_id(),
-            exprs: Default::default(),
-            pats: Default::default(),
-            bindings: Default::default(),
-            labels: Default::default(),
-            params: Default::default(),
-            block_scopes: Default::default(),
-            binding_owners: Default::default(),
-            self_param: Default::default(),
-            binding_hygiene: Default::default(),
-            ident_hygiene: Default::default(),
-            types: Default::default(),
         }
     }
 }

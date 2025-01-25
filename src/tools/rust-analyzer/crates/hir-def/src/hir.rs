@@ -19,7 +19,7 @@ use std::fmt;
 
 use hir_expand::{name::Name, MacroDefId};
 use intern::Symbol;
-use la_arena::{Idx, RawIdx};
+use la_arena::Idx;
 use rustc_apfloat::ieee::{Half as f16, Quad as f128};
 use syntax::ast;
 use type_ref::TypeRefId;
@@ -36,11 +36,6 @@ pub use syntax::ast::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, Unar
 pub type BindingId = Idx<Binding>;
 
 pub type ExprId = Idx<Expr>;
-
-/// FIXME: this is a hacky function which should be removed
-pub(crate) fn dummy_expr_id() -> ExprId {
-    ExprId::from_raw(RawIdx::from(u32::MAX))
-}
 
 pub type PatId = Idx<Pat>;
 
