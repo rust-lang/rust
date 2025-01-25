@@ -8,9 +8,9 @@ pub(crate) fn target() -> Target {
         data_layout: "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128".into(),
         metadata: crate::spec::TargetMetadata {
             description: None,
-            tier: None,
+            tier: Some(3),
             host_tools: None,
-            std: None,
+            std: Some(true),
         },
         llvm_target: "riscv64".into(),
         pointer_width: 64,
