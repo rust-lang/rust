@@ -7,13 +7,12 @@ publish = false
 [features]
 default = ["build-musl", "build-mpfr", "unstable-float"]
 build-musl = ["libm-test/build-musl", "dep:musl-math-sys"]
-build-mpfr = ["libm-test/build-mpfr", "dep:az", "dep:rug"]
+build-mpfr = ["libm-test/build-mpfr", "dep:rug"]
 unstable-float = ["libm/unstable-float", "libm-test/unstable-float", "rug?/nightly-float"]
 
 [dependencies]
-az = { version = "1.2.1", optional = true }
 libm = { path = "../..", default-features = false }
 libm-macros = { path = "../libm-macros" }
 libm-test = { path = "../libm-test", default-features = false }
 musl-math-sys = { path = "../musl-math-sys", optional = true }
-rug = { version = "1.26.1", optional = true, default-features = false, features = ["float", "std"] }
+rug = { version = "1.27.0", optional = true, default-features = false, features = ["float", "std"] }
