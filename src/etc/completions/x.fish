@@ -1,6 +1,6 @@
 # Print an optspec for argparse to handle cmd's options that are independent of any subcommand.
 function __fish_x_global_optspecs
-	string join \n v/verbose i/incremental config= build-dir= build= host= target= exclude= skip= include-default-paths rustc-error-format= on-fail= dry-run dump-bootstrap-shims stage= keep-stage= keep-stage-std= src= j/jobs= warnings= error-format= json-output color= bypass-bootstrap-lock rust-profile-generate= rust-profile-use= llvm-profile-use= llvm-profile-generate enable-bolt-settings skip-stage0-validation reproducible-artifact= set= h/help
+	string join \n v/verbose i/incremental config= build-dir= build= host= target= exclude= skip= include-default-paths rustc-error-format= on-fail= dry-run dump-bootstrap-shims stage= keep-stage= keep-stage-std= src= j/jobs= warnings= error-format= json-output color= bypass-bootstrap-lock release rust-profile-generate= rust-profile-use= llvm-profile-use= llvm-profile-generate enable-bolt-settings skip-stage0-validation reproducible-artifact= set= h/help
 end
 
 function __fish_x_needs_command
@@ -53,6 +53,7 @@ complete -c x -n "__fish_x_needs_command" -l dry-run -d 'dry run; don\'t build a
 complete -c x -n "__fish_x_needs_command" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_needs_command" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_needs_command" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_needs_command" -l release
 complete -c x -n "__fish_x_needs_command" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_needs_command" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_needs_command" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
@@ -103,6 +104,7 @@ complete -c x -n "__fish_x_using_subcommand build" -l dry-run -d 'dry run; don\'
 complete -c x -n "__fish_x_using_subcommand build" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_using_subcommand build" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_using_subcommand build" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_using_subcommand build" -l release
 complete -c x -n "__fish_x_using_subcommand build" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_using_subcommand build" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_using_subcommand build" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
@@ -137,6 +139,7 @@ complete -c x -n "__fish_x_using_subcommand check" -l dry-run -d 'dry run; don\'
 complete -c x -n "__fish_x_using_subcommand check" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_using_subcommand check" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_using_subcommand check" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_using_subcommand check" -l release
 complete -c x -n "__fish_x_using_subcommand check" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_using_subcommand check" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_using_subcommand check" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
@@ -177,6 +180,7 @@ complete -c x -n "__fish_x_using_subcommand clippy" -l dry-run -d 'dry run; don\
 complete -c x -n "__fish_x_using_subcommand clippy" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_using_subcommand clippy" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_using_subcommand clippy" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_using_subcommand clippy" -l release
 complete -c x -n "__fish_x_using_subcommand clippy" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_using_subcommand clippy" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_using_subcommand clippy" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
@@ -210,6 +214,7 @@ complete -c x -n "__fish_x_using_subcommand fix" -l dry-run -d 'dry run; don\'t 
 complete -c x -n "__fish_x_using_subcommand fix" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_using_subcommand fix" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_using_subcommand fix" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_using_subcommand fix" -l release
 complete -c x -n "__fish_x_using_subcommand fix" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_using_subcommand fix" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_using_subcommand fix" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
@@ -245,6 +250,7 @@ complete -c x -n "__fish_x_using_subcommand fmt" -l dry-run -d 'dry run; don\'t 
 complete -c x -n "__fish_x_using_subcommand fmt" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_using_subcommand fmt" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_using_subcommand fmt" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_using_subcommand fmt" -l release
 complete -c x -n "__fish_x_using_subcommand fmt" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_using_subcommand fmt" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_using_subcommand fmt" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
@@ -280,6 +286,7 @@ complete -c x -n "__fish_x_using_subcommand doc" -l dry-run -d 'dry run; don\'t 
 complete -c x -n "__fish_x_using_subcommand doc" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_using_subcommand doc" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_using_subcommand doc" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_using_subcommand doc" -l release
 complete -c x -n "__fish_x_using_subcommand doc" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_using_subcommand doc" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_using_subcommand doc" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
@@ -327,6 +334,7 @@ complete -c x -n "__fish_x_using_subcommand test" -l dry-run -d 'dry run; don\'t
 complete -c x -n "__fish_x_using_subcommand test" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_using_subcommand test" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_using_subcommand test" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_using_subcommand test" -l release
 complete -c x -n "__fish_x_using_subcommand test" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_using_subcommand test" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_using_subcommand test" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
@@ -364,6 +372,7 @@ complete -c x -n "__fish_x_using_subcommand miri" -l dry-run -d 'dry run; don\'t
 complete -c x -n "__fish_x_using_subcommand miri" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_using_subcommand miri" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_using_subcommand miri" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_using_subcommand miri" -l release
 complete -c x -n "__fish_x_using_subcommand miri" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_using_subcommand miri" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_using_subcommand miri" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
@@ -398,6 +407,7 @@ complete -c x -n "__fish_x_using_subcommand bench" -l dry-run -d 'dry run; don\'
 complete -c x -n "__fish_x_using_subcommand bench" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_using_subcommand bench" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_using_subcommand bench" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_using_subcommand bench" -l release
 complete -c x -n "__fish_x_using_subcommand bench" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_using_subcommand bench" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_using_subcommand bench" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
@@ -432,6 +442,7 @@ complete -c x -n "__fish_x_using_subcommand clean" -l dry-run -d 'dry run; don\'
 complete -c x -n "__fish_x_using_subcommand clean" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_using_subcommand clean" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_using_subcommand clean" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_using_subcommand clean" -l release
 complete -c x -n "__fish_x_using_subcommand clean" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_using_subcommand clean" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_using_subcommand clean" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
@@ -465,6 +476,7 @@ complete -c x -n "__fish_x_using_subcommand dist" -l dry-run -d 'dry run; don\'t
 complete -c x -n "__fish_x_using_subcommand dist" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_using_subcommand dist" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_using_subcommand dist" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_using_subcommand dist" -l release
 complete -c x -n "__fish_x_using_subcommand dist" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_using_subcommand dist" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_using_subcommand dist" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
@@ -498,6 +510,7 @@ complete -c x -n "__fish_x_using_subcommand install" -l dry-run -d 'dry run; don
 complete -c x -n "__fish_x_using_subcommand install" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_using_subcommand install" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_using_subcommand install" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_using_subcommand install" -l release
 complete -c x -n "__fish_x_using_subcommand install" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_using_subcommand install" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_using_subcommand install" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
@@ -532,6 +545,7 @@ complete -c x -n "__fish_x_using_subcommand run" -l dry-run -d 'dry run; don\'t 
 complete -c x -n "__fish_x_using_subcommand run" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_using_subcommand run" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_using_subcommand run" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_using_subcommand run" -l release
 complete -c x -n "__fish_x_using_subcommand run" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_using_subcommand run" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_using_subcommand run" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
@@ -565,6 +579,7 @@ complete -c x -n "__fish_x_using_subcommand setup" -l dry-run -d 'dry run; don\'
 complete -c x -n "__fish_x_using_subcommand setup" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_using_subcommand setup" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_using_subcommand setup" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_using_subcommand setup" -l release
 complete -c x -n "__fish_x_using_subcommand setup" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_using_subcommand setup" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_using_subcommand setup" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
@@ -599,6 +614,7 @@ complete -c x -n "__fish_x_using_subcommand suggest" -l dry-run -d 'dry run; don
 complete -c x -n "__fish_x_using_subcommand suggest" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_using_subcommand suggest" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_using_subcommand suggest" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_using_subcommand suggest" -l release
 complete -c x -n "__fish_x_using_subcommand suggest" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_using_subcommand suggest" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_using_subcommand suggest" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
@@ -634,6 +650,7 @@ complete -c x -n "__fish_x_using_subcommand vendor" -l dry-run -d 'dry run; don\
 complete -c x -n "__fish_x_using_subcommand vendor" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_using_subcommand vendor" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_using_subcommand vendor" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_using_subcommand vendor" -l release
 complete -c x -n "__fish_x_using_subcommand vendor" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_using_subcommand vendor" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_using_subcommand vendor" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
@@ -667,6 +684,7 @@ complete -c x -n "__fish_x_using_subcommand perf" -l dry-run -d 'dry run; don\'t
 complete -c x -n "__fish_x_using_subcommand perf" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
 complete -c x -n "__fish_x_using_subcommand perf" -l json-output -d 'use message-format=json'
 complete -c x -n "__fish_x_using_subcommand perf" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x -n "__fish_x_using_subcommand perf" -l release
 complete -c x -n "__fish_x_using_subcommand perf" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x -n "__fish_x_using_subcommand perf" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x -n "__fish_x_using_subcommand perf" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
