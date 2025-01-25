@@ -394,10 +394,7 @@ fn completion_item(
             item.import_to_add
                 .clone()
                 .into_iter()
-                .map(|(import_path, import_name)| lsp_ext::CompletionImport {
-                    full_import_path: import_path,
-                    imported_name: import_name,
-                })
+                .map(|import_path| lsp_ext::CompletionImport { full_import_path: import_path })
                 .collect()
         } else {
             Vec::new()
