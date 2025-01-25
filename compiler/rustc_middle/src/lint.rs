@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::{Diag, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
-use rustc_macros::HashStable;
+use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_session::Session;
 use rustc_session::lint::builtin::{self, FORBIDDEN_LINT_GROUPS};
 use rustc_session::lint::{FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId};
@@ -15,7 +15,7 @@ use tracing::instrument;
 use crate::ty::TyCtxt;
 
 /// How a lint level was set.
-#[derive(Clone, Copy, PartialEq, Eq, HashStable, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, HashStable, Debug)]
 pub enum LintLevelSource {
     /// Lint is at the default level as declared in rustc.
     Default,
@@ -173,7 +173,7 @@ impl TyCtxt<'_> {
 /// This struct represents a lint expectation and holds all required information
 /// to emit the `unfulfilled_lint_expectations` lint if it is unfulfilled after
 /// the `LateLintPass` has completed.
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, Encodable, Decodable, HashStable)]
 pub struct LintExpectation {
     /// The reason for this expectation that can optionally be added as part of
     /// the attribute. It will be displayed as part of the lint message.

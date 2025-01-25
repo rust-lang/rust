@@ -21,7 +21,7 @@ use rustc_error_messages::FluentArgs;
 use rustc_lint_defs::Applicability;
 use rustc_span::Span;
 use rustc_span::hygiene::ExpnData;
-use rustc_span::source_map::SourceMap;
+use rustc_span::source_map::{FilePathMapping, SourceMap};
 use serde::Serialize;
 use termcolor::{ColorSpec, WriteColor};
 
@@ -45,7 +45,7 @@ pub struct JsonEmitter {
     #[setters(skip)]
     dst: IntoDynSyncSend<Box<dyn Write + Send>>,
     #[setters(skip)]
-    sm: Lrc<SourceMap>,
+    sm: Option<Lrc<SourceMap>>,
     fluent_bundle: Option<Lrc<FluentBundle>>,
     #[setters(skip)]
     fallback_bundle: LazyFallbackBundle,
@@ -65,7 +65,7 @@ pub struct JsonEmitter {
 impl JsonEmitter {
     pub fn new(
         dst: Box<dyn Write + Send>,
-        sm: Lrc<SourceMap>,
+        sm: Option<Lrc<SourceMap>>,
         fallback_bundle: LazyFallbackBundle,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
@@ -171,7 +171,7 @@ impl Emitter for JsonEmitter {
     }
 
     fn source_map(&self) -> Option<&SourceMap> {
-        Some(&self.sm)
+        self.sm.as_deref()
     }
 
     fn should_show_explain(&self) -> bool {
@@ -371,7 +371,7 @@ impl Diagnostic {
         }
         HumanEmitter::new(dst, Lrc::clone(&je.fallback_bundle))
             .short_message(short)
-            .sm(Some(Lrc::clone(&je.sm)))
+            .sm(je.sm.clone())
             .fluent_bundle(je.fluent_bundle.clone())
             .diagnostic_width(je.diagnostic_width)
             .macro_backtrace(je.macro_backtrace)
@@ -458,23 +458,34 @@ impl DiagnosticSpan {
         mut backtrace: impl Iterator<Item = ExpnData>,
         je: &JsonEmitter,
     ) -> DiagnosticSpan {
-        let start = je.sm.lookup_char_pos(span.lo());
+        let empty_source_map;
+        let sm = match &je.sm {
+            Some(s) => s,
+            None => {
+                span = rustc_span::DUMMY_SP;
+                empty_source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
+                empty_source_map
+                    .new_source_file(std::path::PathBuf::from("empty.rs").into(), String::new());
+                &empty_source_map
+            }
+        };
+        let start = sm.lookup_char_pos(span.lo());
         // If this goes from the start of a line to the end and the replacement
         // is an empty string, increase the length to include the newline so we don't
         // leave an empty line
         if start.col.0 == 0
             && let Some((suggestion, _)) = suggestion
             && suggestion.is_empty()
-            && let Ok(after) = je.sm.span_to_next_source(span)
+            && let Ok(after) = sm.span_to_next_source(span)
             && after.starts_with('\n')
         {
             span = span.with_hi(span.hi() + rustc_span::BytePos(1));
         }
-        let end = je.sm.lookup_char_pos(span.hi());
+        let end = sm.lookup_char_pos(span.hi());
         let backtrace_step = backtrace.next().map(|bt| {
             let call_site = Self::from_span_full(bt.call_site, false, None, None, backtrace, je);
             let def_site_span = Self::from_span_full(
-                je.sm.guess_head_span(bt.def_site),
+                sm.guess_head_span(bt.def_site),
                 false,
                 None,
                 None,
@@ -489,7 +500,7 @@ impl DiagnosticSpan {
         });
 
         DiagnosticSpan {
-            file_name: je.sm.filename_for_diagnostics(&start.file.name).to_string(),
+            file_name: sm.filename_for_diagnostics(&start.file.name).to_string(),
             byte_start: start.file.original_relative_byte_pos(span.lo()).0,
             byte_end: start.file.original_relative_byte_pos(span.hi()).0,
             line_start: start.line,
@@ -559,19 +570,20 @@ impl DiagnosticSpanLine {
     /// `span` within the line.
     fn from_span(span: Span, je: &JsonEmitter) -> Vec<DiagnosticSpanLine> {
         je.sm
-            .span_to_lines(span)
-            .map(|lines| {
+            .as_ref()
+            .and_then(|sm| {
+                let lines = sm.span_to_lines(span).ok()?;
                 // We can't get any lines if the source is unavailable.
                 if !should_show_source_code(
                     &je.ignored_directories_in_source_blocks,
-                    &je.sm,
+                    &sm,
                     &lines.file,
                 ) {
-                    return vec![];
+                    return None;
                 }
 
                 let sf = &*lines.file;
-                lines
+                let span_lines = lines
                     .lines
                     .iter()
                     .map(|line| {
@@ -582,8 +594,9 @@ impl DiagnosticSpanLine {
                             line.end_col.0 + 1,
                         )
                     })
-                    .collect()
+                    .collect();
+                Some(span_lines)
             })
-            .unwrap_or_else(|_| vec![])
+            .unwrap_or_default()
     }
 }
