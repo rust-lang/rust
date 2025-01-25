@@ -9,6 +9,46 @@ use rustc_middle::ty::{self, Ty};
 use crate::traits::ScrubbedTraitError;
 use crate::traits::outlives_bounds::InferCtxtExt;
 
+#[extension(pub trait OutlivesEnvironmentBuildExt<'tcx>)]
+impl<'tcx> OutlivesEnvironment<'tcx> {
+    fn new(
+        infcx: &InferCtxt<'tcx>,
+        body_id: LocalDefId,
+        param_env: ty::ParamEnv<'tcx>,
+        assumed_wf_tys: impl IntoIterator<Item = Ty<'tcx>>,
+    ) -> Self {
+        Self::new_with_implied_bounds_compat(
+            infcx,
+            body_id,
+            param_env,
+            assumed_wf_tys,
+            !infcx.tcx.sess.opts.unstable_opts.no_implied_bounds_compat,
+        )
+    }
+
+    fn new_with_implied_bounds_compat(
+        infcx: &InferCtxt<'tcx>,
+        body_id: LocalDefId,
+        param_env: ty::ParamEnv<'tcx>,
+        assumed_wf_tys: impl IntoIterator<Item = Ty<'tcx>>,
+        implied_bounds_compat: bool,
+    ) -> Self {
+        // FIXME: This needs to be modified so that we normalize the known type
+        // outlives obligations then elaborate them into their region/type components.
+        // Otherwise, `<W<'a> as Mirror>::Assoc: 'b` will not imply `'a: 'b` even
+        // if we can normalize `'a`.
+        OutlivesEnvironment::with_bounds(
+            param_env,
+            infcx.implied_bounds_tys_with_compat(
+                body_id,
+                param_env,
+                assumed_wf_tys,
+                implied_bounds_compat,
+            ),
+        )
+    }
+}
+
 #[extension(pub trait InferCtxtRegionExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
     /// Resolve regions, using the deep normalizer to normalize any type-outlives
@@ -23,9 +63,11 @@ impl<'tcx> InferCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         assumed_wf_tys: impl IntoIterator<Item = Ty<'tcx>>,
     ) -> Vec<RegionResolutionError<'tcx>> {
-        self.resolve_regions_with_outlives_env(&OutlivesEnvironment::with_bounds(
+        self.resolve_regions_with_outlives_env(&OutlivesEnvironment::new(
+            self,
+            body_id,
             param_env,
-            self.implied_bounds_tys(body_id, param_env, assumed_wf_tys),
+            assumed_wf_tys,
         ))
     }
 

@@ -59,12 +59,6 @@ pub struct OutlivesEnvironment<'tcx> {
 pub type RegionBoundPairs<'tcx> = FxIndexSet<ty::OutlivesPredicate<'tcx, GenericKind<'tcx>>>;
 
 impl<'tcx> OutlivesEnvironment<'tcx> {
-    /// Create a new `OutlivesEnvironment` without extra outlives bounds.
-    #[inline]
-    pub fn new(param_env: ty::ParamEnv<'tcx>) -> Self {
-        Self::with_bounds(param_env, vec![])
-    }
-
     /// Create a new `OutlivesEnvironment` with extra outlives bounds.
     pub fn with_bounds(
         param_env: ty::ParamEnv<'tcx>,

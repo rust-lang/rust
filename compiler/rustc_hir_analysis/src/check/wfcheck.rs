@@ -25,11 +25,10 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
 use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
-use rustc_trait_selection::regions::InferCtxtRegionExt;
+use rustc_trait_selection::regions::{InferCtxtRegionExt, OutlivesEnvironmentBuildExt};
 use rustc_trait_selection::traits::misc::{
     ConstParamTyImplementationError, type_allowed_to_implement_const_param_ty,
 };
-use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, FulfillmentError, Obligation, ObligationCause, ObligationCauseCode, ObligationCtxt,
@@ -128,13 +127,13 @@ where
     let infcx_compat = infcx.fork();
 
     // We specifically want to call the non-compat version of `implied_bounds_tys`; we do this always.
-    let implied_bounds = infcx.implied_bounds_tys_compat(
+    let outlives_env = OutlivesEnvironment::new_with_implied_bounds_compat(
+        &infcx,
         body_def_id,
         param_env,
         assumed_wf_types.iter().copied(),
         false,
     );
-    let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
 
     lint_redundant_lifetimes(tcx, body_def_id, &outlives_env);
 
@@ -176,9 +175,13 @@ where
     // but that does result in slightly more work when this option is set and
     // just obscures what we mean here anyways. Let's just be explicit.
     if is_bevy && !infcx.tcx.sess.opts.unstable_opts.no_implied_bounds_compat {
-        let implied_bounds =
-            infcx_compat.implied_bounds_tys_compat(body_def_id, param_env, assumed_wf_types, true);
-        let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
+        let outlives_env = OutlivesEnvironment::new_with_implied_bounds_compat(
+            &infcx,
+            body_def_id,
+            param_env,
+            assumed_wf_types,
+            true,
+        );
         let errors_compat = infcx_compat.resolve_regions_with_outlives_env(&outlives_env);
         if errors_compat.is_empty() {
             Ok(())

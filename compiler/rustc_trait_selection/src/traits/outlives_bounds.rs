@@ -108,8 +108,9 @@ fn implied_outlives_bounds<'a, 'tcx>(
 
 #[extension(pub trait InferCtxtExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
-    /// Do *NOT* call this directly.
-    fn implied_bounds_tys_compat<Tys: IntoIterator<Item = Ty<'tcx>>>(
+    /// Do *NOT* call this directly. You probably want to construct a `OutlivesEnvironment`
+    /// instead if you're interested in the implied bounds for a given signature.
+    fn implied_bounds_tys_with_compat<Tys: IntoIterator<Item = Ty<'tcx>>>(
         &self,
         body_id: LocalDefId,
         param_env: ParamEnv<'tcx>,
@@ -118,21 +119,5 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> impl Iterator<Item = OutlivesBound<'tcx>> {
         tys.into_iter()
             .flat_map(move |ty| implied_outlives_bounds(self, param_env, body_id, ty, compat))
-    }
-
-    /// If `-Z no-implied-bounds-compat` is set, calls `implied_bounds_tys_compat`
-    /// with `compat` set to `true`, otherwise `false`.
-    fn implied_bounds_tys(
-        &self,
-        body_id: LocalDefId,
-        param_env: ParamEnv<'tcx>,
-        tys: impl IntoIterator<Item = Ty<'tcx>>,
-    ) -> impl Iterator<Item = OutlivesBound<'tcx>> {
-        self.implied_bounds_tys_compat(
-            body_id,
-            param_env,
-            tys,
-            !self.tcx.sess.opts.unstable_opts.no_implied_bounds_compat,
-        )
     }
 }
