@@ -166,7 +166,7 @@ pub fn layout_of_ty_query(
     let result = match kind {
         TyKind::Adt(AdtId(def), subst) => {
             if let hir_def::AdtId::StructId(s) = def {
-                let data = db.struct_data(*s);
+                let data = db.struct_signature(*s);
                 let repr = data.repr.unwrap_or_default();
                 if repr.simd() {
                     return layout_of_simd_ty(db, *s, repr.packed(), subst, trait_env, &target);
@@ -378,7 +378,7 @@ pub(crate) fn layout_of_ty_recover(
 fn struct_tail_erasing_lifetimes(db: &dyn HirDatabase, pointee: Ty) -> Ty {
     match pointee.kind(Interner) {
         &TyKind::Adt(AdtId(hir_def::AdtId::StructId(i)), ref subst) => {
-            let data = db.variant_data(i.into());
+            let data = db.variant_fields(i.into());
             let mut it = data.fields().iter().rev();
             match it.next() {
                 Some((f, _)) => {

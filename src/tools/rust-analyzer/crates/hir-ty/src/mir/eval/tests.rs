@@ -16,7 +16,8 @@ fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), 
         .declarations()
         .find_map(|x| match x {
             hir_def::ModuleDefId::FunctionId(x) => {
-                if db.function_data(x).name.display(db, Edition::CURRENT).to_string() == "main" {
+                if db.function_signature(x).name.display(db, Edition::CURRENT).to_string() == "main"
+                {
                     Some(x)
                 } else {
                     None

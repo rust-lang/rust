@@ -16,7 +16,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4401,
+                                4001,
                             ),
                         },
                     ),
@@ -50,7 +50,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4400,
+                                4000,
                             ),
                         },
                     ),
@@ -84,7 +84,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4400,
+                                4000,
                             ),
                         },
                     ),
@@ -118,7 +118,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4400,
+                                4000,
                             ),
                         },
                     ),
@@ -152,7 +152,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4400,
+                                4000,
                             ),
                         },
                     ),
@@ -186,7 +186,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4401,
+                                4001,
                             ),
                         },
                     ),
@@ -220,7 +220,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4400,
+                                4000,
                             ),
                         },
                     ),

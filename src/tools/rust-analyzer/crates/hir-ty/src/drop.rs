@@ -2,8 +2,8 @@
 
 use chalk_ir::cast::Cast;
 use hir_def::AdtId;
-use hir_def::data::adt::StructFlags;
 use hir_def::lang_item::LangItem;
+use hir_def::signatures::StructFlags;
 use stdx::never;
 use triomphe::Arc;
 
@@ -32,7 +32,6 @@ fn has_destructor(db: &dyn HirDatabase, adt: AdtId) -> bool {
         },
         None => db.trait_impls_in_crate(module.krate()),
     };
-
     impls.for_trait_and_self_ty(drop_trait, TyFingerprint::Adt(adt)).next().is_some()
 }
 
@@ -55,7 +54,7 @@ pub(crate) fn has_drop_glue(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironm
             }
             match adt.0 {
                 AdtId::StructId(id) => {
-                    if db.struct_data(id).flags.contains(StructFlags::IS_MANUALLY_DROP) {
+                    if db.struct_signature(id).flags.contains(StructFlags::IS_MANUALLY_DROP) {
                         return DropGlue::None;
                     }
                     db.field_types(id.into())

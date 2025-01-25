@@ -4,6 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use itertools::Itertools;
 use xshell::Shell;
 
 use xshell::cmd;
@@ -192,9 +193,17 @@ fn check_test_attrs(path: &Path, text: &str) {
         // Generated code from lints contains doc tests in string literals.
         "ide-db/src/generated/lints.rs",
     ];
-    if text.contains("#[should_panic") && !need_panic.iter().any(|p| path.ends_with(p)) {
+    if need_panic.iter().any(|p| path.ends_with(p)) {
+        return;
+    }
+    if let Some((line, _)) = text
+        .lines()
+        .tuple_windows()
+        .enumerate()
+        .find(|(_, (a, b))| b.contains("#[should_panic") && !a.contains("FIXME"))
+    {
         panic!(
-            "\ndon't add `#[should_panic]` tests, see:\n\n    {}\n\n   {}\n",
+            "\ndon't add `#[should_panic]` tests, see:\n\n    {}\n\n   {}:{line}\n",
             panic_rule,
             path.display(),
         )

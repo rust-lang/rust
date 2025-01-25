@@ -21,7 +21,7 @@ use crate::{
 };
 use base_db::salsa::Cycle;
 use chalk_ir::Mutability;
-use hir_def::data::adt::StructFlags;
+use hir_def::signatures::StructFlags;
 use hir_def::{AdtId, GenericDefId, GenericParamId, VariantId};
 use std::fmt;
 use std::ops::Not;
@@ -34,7 +34,7 @@ pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> Option<Ar
         GenericDefId::FunctionId(_) => (),
         GenericDefId::AdtId(adt) => {
             if let AdtId::StructId(id) = adt {
-                let flags = &db.struct_data(id).flags;
+                let flags = &db.struct_signature(id).flags;
                 if flags.contains(StructFlags::IS_UNSAFE_CELL) {
                     return Some(Arc::from_iter(vec![Variance::Invariant; 1]));
                 } else if flags.contains(StructFlags::IS_PHANTOM_DATA) {
@@ -489,7 +489,7 @@ impl Context<'_> {
 mod tests {
     use expect_test::{Expect, expect};
     use hir_def::{
-        AdtId, GenericDefId, ModuleDefId, generics::GenericParamDataRef, src::HasSource,
+        AdtId, GenericDefId, ModuleDefId, hir::generics::GenericParamDataRef, src::HasSource,
     };
     use itertools::Itertools;
     use stdx::format_to;

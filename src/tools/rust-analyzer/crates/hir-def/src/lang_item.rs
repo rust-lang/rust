@@ -9,7 +9,7 @@ use triomphe::Arc;
 
 use crate::{
     AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId, FunctionId, ImplId, ModuleDefId,
-    StaticId, StructId, TraitId, TypeAliasId, UnionId, db::DefDatabase, path::Path,
+    StaticId, StructId, TraitId, TypeAliasId, UnionId, db::DefDatabase, expr_store::path::Path,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -140,7 +140,7 @@ impl LangItems {
                     }
                     ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                         lang_items.collect_lang_item(db, e, LangItemTarget::EnumId);
-                        crate_def_map.enum_definitions[&e].iter().for_each(|&id| {
+                        db.enum_variants(e).variants.iter().for_each(|&(id, _)| {
                             lang_items.collect_lang_item(db, id, LangItemTarget::EnumVariant);
                         });
                     }

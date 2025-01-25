@@ -76,7 +76,6 @@ impl Attrs {
         let _p = tracing::info_span!("fields_attrs_query").entered();
         // FIXME: There should be some proper form of mapping between item tree field ids and hir field ids
         let mut res = ArenaMap::default();
-
         let item_tree;
         let (parent, fields, krate) = match v {
             VariantId::EnumVariantId(it) => {

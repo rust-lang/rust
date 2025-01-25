@@ -7,16 +7,14 @@ use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
 use hir_def::{
     AdtId, DefWithBodyId, EnumVariantId, GeneralConstId, HasModule, ItemContainerId, LocalFieldId,
     Lookup, TraitId, TupleId, TypeOrConstParamId,
-    data::adt::{StructKind, VariantData},
-    expr_store::{Body, HygieneId},
+    expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{
         ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ExprId, LabelId, Literal, MatchArm,
         Pat, PatId, RecordFieldPat, RecordLitField,
     },
+    item_tree::FieldsShape,
     lang_item::{LangItem, LangItemTarget},
-    path::Path,
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
-    type_ref::TypesMap,
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
@@ -30,7 +28,7 @@ use crate::{
     Adjust, Adjustment, AutoBorrow, CallableDefId, TyBuilder, TyExt,
     consteval::ConstEvalError,
     db::{HirDatabase, InternedClosure, InternedClosureId},
-    display::{DisplayTarget, HirDisplay, hir_display_with_types_map},
+    display::{DisplayTarget, HirDisplay, hir_display_with_store},
     error_lifetime,
     generics::generics,
     infer::{CaptureKind, CapturedItem, TypeMismatch, cast::CastTy, unify::InferenceTable},
@@ -255,10 +253,10 @@ impl MirLowerError {
         db: &dyn HirDatabase,
         p: &Path,
         display_target: DisplayTarget,
-        types_map: &TypesMap,
+        store: &ExpressionStore,
     ) -> Self {
         Self::UnresolvedName(
-            hir_display_with_types_map(p, types_map).display(db, display_target).to_string(),
+            hir_display_with_store(p, store).display(db, display_target).to_string(),
         )
     }
 }
@@ -417,7 +415,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 if let DefWithBodyId::FunctionId(f) = self.owner {
                     let assoc = f.lookup(self.db.upcast());
                     if let ItemContainerId::TraitId(t) = assoc.container {
-                        let name = &self.db.function_data(f).name;
+                        let name = &self.db.function_signature(f).name;
                         return Err(MirLowerError::TraitFunctionDefinition(t, name.clone()));
                     }
                 }
@@ -466,7 +464,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                 self.db,
                                 p,
                                 DisplayTarget::from_crate(self.db, self.krate()),
-                                &self.body.types,
+                                self.body,
                             )
                         })?;
                     self.resolver.reset_to_guard(resolver_guard);
@@ -499,8 +497,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         Ok(Some(current))
                     }
                     ValueNs::EnumVariantId(variant_id) => {
-                        let variant_data = &self.db.variant_data(variant_id.into());
-                        if variant_data.kind() == StructKind::Unit {
+                        let variant_fields = &self.db.variant_fields(variant_id.into());
+                        if variant_fields.shape == FieldsShape::Unit {
                             let ty = self.infer.type_of_expr[expr_id].clone();
                             current = self.lower_enum_variant(
                                 variant_id,
@@ -840,7 +838,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 let variant_id =
                     self.infer.variant_resolution_for_expr(expr_id).ok_or_else(|| match path {
                         Some(p) => MirLowerError::UnresolvedName(
-                            hir_display_with_types_map(&**p, &self.body.types)
+                            hir_display_with_store(&**p, self.body)
                                 .display(self.db, self.display_target())
                                 .to_string(),
                         ),
@@ -850,13 +848,13 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     TyKind::Adt(_, s) => s.clone(),
                     _ => not_supported!("Non ADT record literal"),
                 };
-                let variant_data = variant_id.variant_data(self.db.upcast());
+                let variant_fields = self.db.variant_fields(variant_id);
                 match variant_id {
                     VariantId::EnumVariantId(_) | VariantId::StructId(_) => {
-                        let mut operands = vec![None; variant_data.fields().len()];
+                        let mut operands = vec![None; variant_fields.fields().len()];
                         for RecordLitField { name, expr } in fields.iter() {
                             let field_id =
-                                variant_data.field(name).ok_or(MirLowerError::UnresolvedField)?;
+                                variant_fields.field(name).ok_or(MirLowerError::UnresolvedField)?;
                             let Some((op, c)) = self.lower_expr_to_some_operand(*expr, current)?
                             else {
                                 return Ok(None);
@@ -899,7 +897,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                             not_supported!("Union record literal with more than one field");
                         };
                         let local_id =
-                            variant_data.field(name).ok_or(MirLowerError::UnresolvedField)?;
+                            variant_fields.field(name).ok_or(MirLowerError::UnresolvedField)?;
                         let place = place.project(
                             PlaceElem::Field(Either::Left(FieldId {
                                 parent: union_id.into(),
@@ -914,17 +912,18 @@ impl<'ctx> MirLowerCtx<'ctx> {
             Expr::Await { .. } => not_supported!("await"),
             Expr::Yeet { .. } => not_supported!("yeet"),
             Expr::Async { .. } => not_supported!("async block"),
-            &Expr::Const(id) => {
-                let subst = self.placeholder_subst();
-                self.lower_const(
-                    id.into(),
-                    current,
-                    place,
-                    subst,
-                    expr_id.into(),
-                    self.expr_ty_without_adjust(expr_id),
-                )?;
-                Ok(Some(current))
+            &Expr::Const(_) => {
+                // let subst = self.placeholder_subst();
+                // self.lower_const(
+                //     id.into(),
+                //     current,
+                //     place,
+                //     subst,
+                //     expr_id.into(),
+                //     self.expr_ty_without_adjust(expr_id),
+                // )?;
+                // Ok(Some(current))
+                not_supported!("const block")
             }
             Expr::Cast { expr, type_ref: _ } => {
                 let Some((it, current)) = self.lower_expr_to_some_operand(*expr, current)? else {
@@ -1165,7 +1164,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     Rvalue::Aggregate(
                         AggregateKind::Adt(st.into(), subst.clone()),
                         self.db
-                            .variant_data(st.into())
+                            .variant_fields(st.into())
                             .fields()
                             .iter()
                             .map(|it| {
@@ -1371,7 +1370,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         self.db,
                         c,
                         DisplayTarget::from_crate(db, owner.krate(db.upcast())),
-                        &self.body.types,
+                        self.body,
                     )
                 };
                 let pr = self
@@ -2125,22 +2124,25 @@ pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<Mi
     let edition = krate.data(db).edition;
     let detail = match def {
         DefWithBodyId::FunctionId(it) => {
-            db.function_data(it).name.display(db.upcast(), edition).to_string()
+            db.function_signature(it).name.display(db.upcast(), edition).to_string()
         }
         DefWithBodyId::StaticId(it) => {
-            db.static_data(it).name.display(db.upcast(), edition).to_string()
+            db.static_signature(it).name.display(db.upcast(), edition).to_string()
         }
         DefWithBodyId::ConstId(it) => db
-            .const_data(it)
+            .const_signature(it)
             .name
             .clone()
             .unwrap_or_else(Name::missing)
             .display(db.upcast(), edition)
             .to_string(),
         DefWithBodyId::VariantId(it) => {
-            db.enum_variant_data(it).name.display(db.upcast(), edition).to_string()
+            let loc = it.lookup(db.upcast());
+            db.enum_variants(loc.parent).variants[loc.index as usize]
+                .1
+                .display(db.upcast(), edition)
+                .to_string()
         }
-        DefWithBodyId::InTypeConstId(it) => format!("in type const {it:?}"),
     };
     let _p = tracing::info_span!("mir_body_query", ?detail).entered();
     let body = db.body(def);

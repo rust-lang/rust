@@ -1,53 +1,16 @@
 //! A desugared representation of paths like `crate::foo` or `<Type as Trait>::bar`.
-mod lower;
-#[cfg(test)]
-mod tests;
 
-use std::{
-    fmt::{self, Display},
-    iter,
-};
+use std::iter;
 
 use crate::{
     lang_item::LangItemTarget,
-    lower::LowerCtx,
     type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRefId},
 };
-use hir_expand::name::Name;
+use hir_expand::{
+    mod_path::{ModPath, PathKind},
+    name::Name,
+};
 use intern::Interned;
-use span::Edition;
-use syntax::ast;
-
-pub use hir_expand::mod_path::{ModPath, PathKind, path};
-
-pub use lower::hir_segment_to_ast_segment;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ImportAlias {
-    /// Unnamed alias, as in `use Foo as _;`
-    Underscore,
-    /// Named alias
-    Alias(Name),
-}
-
-impl ImportAlias {
-    pub fn display(&self, edition: Edition) -> impl Display + '_ {
-        ImportAliasDisplay { value: self, edition }
-    }
-}
-
-struct ImportAliasDisplay<'a> {
-    value: &'a ImportAlias,
-    edition: Edition,
-}
-impl Display for ImportAliasDisplay<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.value {
-            ImportAlias::Underscore => f.write_str("_"),
-            ImportAlias::Alias(name) => Display::fmt(&name.display_no_db(self.edition), f),
-        }
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Path {
@@ -133,12 +96,6 @@ pub enum GenericArg {
 }
 
 impl Path {
-    /// Converts an `ast::Path` to `Path`. Works with use trees.
-    /// It correctly handles `$crate` based path from macro call.
-    pub fn from_src(ctx: &mut LowerCtx<'_>, path: ast::Path) -> Option<Path> {
-        lower::lower_path(ctx, path)
-    }
-
     /// Converts a known mod path to `Path`.
     pub fn from_known_path(path: ModPath, generic_args: Vec<Option<GenericArgs>>) -> Path {
         Path::Normal(Box::new(NormalPath {
@@ -328,13 +285,6 @@ impl<'a> PathSegments<'a> {
 }
 
 impl GenericArgs {
-    pub(crate) fn from_ast(
-        lower_ctx: &mut LowerCtx<'_>,
-        node: ast::GenericArgList,
-    ) -> Option<GenericArgs> {
-        lower::lower_generic_args(lower_ctx, node)
-    }
-
     pub(crate) fn empty() -> GenericArgs {
         GenericArgs {
             args: Box::default(),

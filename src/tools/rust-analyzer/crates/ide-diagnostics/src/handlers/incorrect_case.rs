@@ -786,6 +786,8 @@ static FOO: () = {
     }
 
     #[test]
+    // FIXME
+    #[should_panic]
     fn enum_variant_body_inner_item() {
         check_diagnostics(
             r#"

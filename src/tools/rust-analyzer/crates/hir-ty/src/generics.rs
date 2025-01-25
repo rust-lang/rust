@@ -11,14 +11,14 @@ use std::ops;
 
 use chalk_ir::{BoundVar, DebruijnIndex, cast::Cast as _};
 use hir_def::{
-    ConstParamId, GenericDefId, GenericParamId, ItemContainerId, LifetimeParamId,
-    LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
+    ConstParamId, GenericDefId, GenericParamId, ItemContainerId, LifetimeParamId, Lookup,
+    TypeOrConstParamId, TypeParamId,
     db::DefDatabase,
-    generics::{
-        GenericParamDataRef, GenericParams, LifetimeParamData, TypeOrConstParamData,
-        TypeParamProvenance,
+    expr_store::ExpressionStore,
+    hir::generics::{
+        GenericParamDataRef, GenericParams, LifetimeParamData, LocalLifetimeParamId,
+        LocalTypeOrConstParamId, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
     },
-    type_ref::TypesMap,
 };
 use itertools::chain;
 use stdx::TupleExt;
@@ -28,14 +28,15 @@ use crate::{Interner, Substitution, db::HirDatabase, lt_to_placeholder_idx, to_p
 
 pub fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
     let parent_generics = parent_generic_def(db, def).map(|def| Box::new(generics(db, def)));
-    let params = db.generic_params(def);
+    let (params, store) = db.generic_params_and_store(def);
     let has_trait_self_param = params.trait_self_param().is_some();
-    Generics { def, params, parent_generics, has_trait_self_param }
+    Generics { def, params, parent_generics, has_trait_self_param, store }
 }
 #[derive(Clone, Debug)]
 pub struct Generics {
     def: GenericDefId,
     params: Arc<GenericParams>,
+    store: Arc<ExpressionStore>,
     parent_generics: Option<Box<Generics>>,
     has_trait_self_param: bool,
 }
@@ -55,8 +56,12 @@ impl Generics {
         self.def
     }
 
-    pub(crate) fn self_types_map(&self) -> &TypesMap {
-        &self.params.types_map
+    pub(crate) fn store(&self) -> &ExpressionStore {
+        &self.store
+    }
+
+    pub(crate) fn where_predicates(&self) -> impl Iterator<Item = &WherePredicate> {
+        self.params.where_predicates()
     }
 
     pub(crate) fn iter_id(&self) -> impl Iterator<Item = GenericParamId> + '_ {
@@ -69,12 +74,6 @@ impl Generics {
 
     pub(crate) fn iter_parent_id(&self) -> impl Iterator<Item = GenericParamId> + '_ {
         self.iter_parent().map(|(id, _)| id)
-    }
-
-    pub(crate) fn iter_self_type_or_consts(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = (LocalTypeOrConstParamId, &TypeOrConstParamData)> {
-        self.params.iter_type_or_consts()
     }
 
     pub(crate) fn iter_self_type_or_consts_id(
@@ -90,14 +89,12 @@ impl Generics {
         self.iter_self().chain(self.iter_parent())
     }
 
-    pub(crate) fn iter_parents_with_types_map(
+    pub(crate) fn iter_parents_with_store(
         &self,
-    ) -> impl Iterator<Item = ((GenericParamId, GenericParamDataRef<'_>), &TypesMap)> + '_ {
-        self.iter_parent().zip(
-            self.parent_generics()
-                .into_iter()
-                .flat_map(|it| std::iter::repeat(&it.params.types_map)),
-        )
+    ) -> impl Iterator<Item = ((GenericParamId, GenericParamDataRef<'_>), &ExpressionStore)> + '_
+    {
+        self.iter_parent()
+            .zip(self.parent_generics().into_iter().flat_map(|it| std::iter::repeat(&*it.store)))
     }
 
     /// Iterate over the params without parent params.
@@ -160,7 +157,12 @@ impl Generics {
     fn find_type_or_const_param(&self, param: TypeOrConstParamId) -> Option<usize> {
         if param.parent == self.def {
             let idx = param.local_id.into_raw().into_u32() as usize;
-            debug_assert!(idx <= self.params.len_type_or_consts());
+            debug_assert!(
+                idx <= self.params.len_type_or_consts(),
+                "idx: {} len: {}",
+                idx,
+                self.params.len_type_or_consts()
+            );
             if self.params.trait_self_param() == Some(param.local_id) {
                 return Some(idx);
             }

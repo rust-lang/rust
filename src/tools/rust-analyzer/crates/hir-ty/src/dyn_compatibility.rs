@@ -10,7 +10,7 @@ use chalk_ir::{
 use chalk_solve::rust_ir::InlineBound;
 use hir_def::{
     AssocItemId, ConstId, FunctionId, GenericDefId, HasModule, TraitId, TypeAliasId,
-    data::TraitFlags, lang_item::LangItem,
+    lang_item::LangItem, signatures::TraitFlags,
 };
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
@@ -369,7 +369,7 @@ fn virtual_call_violations_for_method<F>(
 where
     F: FnMut(MethodViolationCode) -> ControlFlow<()>,
 {
-    let func_data = db.function_data(func);
+    let func_data = db.function_signature(func);
     if !func_data.has_self_param() {
         cb(MethodViolationCode::StaticMethod)?;
     }
@@ -429,7 +429,7 @@ where
 
         // Allow `impl AutoTrait` predicates
         if let WhereClause::Implemented(TraitRef { trait_id, substitution }) = pred {
-            let trait_data = db.trait_data(from_chalk_trait_id(*trait_id));
+            let trait_data = db.trait_signature(from_chalk_trait_id(*trait_id));
             if trait_data.flags.contains(TraitFlags::IS_AUTO)
                 && substitution
                     .as_slice(Interner)

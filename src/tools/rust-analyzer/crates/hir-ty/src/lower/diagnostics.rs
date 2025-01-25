@@ -1,13 +1,10 @@
 //! This files contains the declaration of diagnostics kinds for ty and path lowering.
 
-use either::Either;
 use hir_def::type_ref::TypeRefId;
-
-type TypeSource = Either<TypeRefId, hir_def::type_ref::TypeSource>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TyLoweringDiagnostic {
-    pub source: TypeSource,
+    pub source: TypeRefId,
     pub kind: TyLoweringDiagnosticKind,
 }
 

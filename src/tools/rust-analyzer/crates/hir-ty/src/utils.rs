@@ -1,7 +1,7 @@
 //! Helper functions for working with def, which don't need to be a separate
 //! query, but can't be computed directly from `*Data` (ie, which need a `db`).
 
-use std::{hash::Hash, iter};
+use std::iter;
 
 use base_db::Crate;
 use chalk_ir::{
@@ -9,10 +9,9 @@ use chalk_ir::{
     fold::{FallibleTypeFolder, Shift},
 };
 use hir_def::{
-    EnumId, EnumVariantId, FunctionId, Lookup, OpaqueInternableThing, TraitId, TypeAliasId,
-    TypeOrConstParamId,
+    EnumId, EnumVariantId, FunctionId, Lookup, TraitId, TypeAliasId, TypeOrConstParamId,
     db::DefDatabase,
-    generics::{WherePredicate, WherePredicateTypeTarget},
+    hir::generics::{WherePredicate, WherePredicateTypeTarget},
     lang_item::LangItem,
     resolver::{HasResolver, TypeNs},
     type_ref::{TraitBoundModifier, TypeRef},
@@ -164,26 +163,25 @@ impl Iterator for ClauseElaborator<'_> {
 
 fn direct_super_traits_cb(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(TraitId)) {
     let resolver = trait_.resolver(db);
-    let generic_params = db.generic_params(trait_.into());
+    let (generic_params, store) = db.generic_params_and_store(trait_.into());
     let trait_self = generic_params.trait_self_param();
     generic_params
         .where_predicates()
         .filter_map(|pred| match pred {
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {
-                let is_trait = match target {
-                    WherePredicateTypeTarget::TypeRef(type_ref) => {
-                        match &generic_params.types_map[*type_ref] {
-                            TypeRef::Path(p) => p.is_self_type(),
-                            _ => false,
-                        }
-                    }
+                let is_trait = match *target {
+                    WherePredicateTypeTarget::TypeRef(type_ref) => match &store[type_ref] {
+                        TypeRef::Path(p) => p.is_self_type(),
+                        TypeRef::TypeParam(p) => Some(p.local_id()) == trait_self,
+                        _ => false,
+                    },
                     WherePredicateTypeTarget::TypeOrConstParam(local_id) => {
-                        Some(*local_id) == trait_self
+                        Some(local_id) == trait_self
                     }
                 };
                 match is_trait {
-                    true => bound.as_path(&generic_params.types_map),
+                    true => bound.as_path(&store),
                     false => None,
                 }
             }
@@ -276,7 +274,7 @@ pub fn is_fn_unsafe_to_call(
     caller_target_features: &TargetFeatures,
     call_edition: Edition,
 ) -> Unsafety {
-    let data = db.function_data(func);
+    let data = db.function_signature(func);
     if data.is_unsafe() {
         return Unsafety::Unsafe;
     }
@@ -394,29 +392,4 @@ pub(crate) fn detect_variant_from_bytes<'a>(
         }
     };
     Some((var_id, var_layout))
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct InTypeConstIdMetadata(pub(crate) Ty);
-
-impl OpaqueInternableThing for InTypeConstIdMetadata {
-    fn dyn_hash(&self, mut state: &mut dyn std::hash::Hasher) {
-        self.hash(&mut state);
-    }
-
-    fn dyn_eq(&self, other: &dyn OpaqueInternableThing) -> bool {
-        other.as_any().downcast_ref::<Self>() == Some(self)
-    }
-
-    fn dyn_clone(&self) -> Box<dyn OpaqueInternableThing> {
-        Box::new(self.clone())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn box_any(&self) -> Box<dyn std::any::Any> {
-        Box::new(self.clone())
-    }
 }

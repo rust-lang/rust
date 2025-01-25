@@ -12,7 +12,9 @@ use queries::{
 use quote::{ToTokens, format_ident, quote};
 use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
-use syn::{Attribute, FnArg, ItemTrait, Path, TraitItem, TraitItemFn, parse_quote};
+use syn::{
+    Attribute, FnArg, ItemTrait, Path, TraitItem, TraitItemFn, parse_quote, parse_quote_spanned,
+};
 
 mod queries;
 
@@ -127,12 +129,12 @@ pub(crate) fn query_group_impl(
     let mut lookup_signatures = vec![];
     let mut lookup_methods = vec![];
 
-    for item in item_trait.clone().items {
+    for item in &mut item_trait.items {
         if let syn::TraitItem::Fn(method) = item {
             let method_name = &method.sig.ident;
-            let signature = &method.sig.clone();
+            let signature = &method.sig;
 
-            let (_attrs, salsa_attrs) = filter_attrs(method.attrs);
+            let (_attrs, salsa_attrs) = filter_attrs(method.attrs.clone());
 
             let mut query_kind = QueryKind::Tracked;
             let mut invoke = None;
@@ -190,6 +192,9 @@ pub(crate) fn query_group_impl(
                         invoke = Some(path.0.clone());
                         query_kind = QueryKind::TrackedWithSalsaStruct;
                     }
+                    "tracked" if method.default.is_some() => {
+                        query_kind = QueryKind::TrackedWithSalsaStruct;
+                    }
                     "lru" => {
                         let lru_count = syn::parse::<Parenthesized<syn::LitInt>>(tts)?;
                         let lru_count = lru_count.0.base10_parse::<u32>()?;
@@ -216,6 +221,10 @@ pub(crate) fn query_group_impl(
 
                     input_struct_fields.push(field);
                 }
+            }
+
+            if let Some(block) = &mut method.default {
+                SelfToDbRewriter.visit_block_mut(block);
             }
 
             match (query_kind, invoke) {
@@ -277,31 +286,35 @@ pub(crate) fn query_group_impl(
                         invoke,
                         cycle,
                         lru,
+                        default: method.default.take(),
                     };
 
                     trait_methods.push(Queries::TrackedQuery(method));
                 }
-                (QueryKind::TrackedWithSalsaStruct, Some(invoke)) => {
+                (QueryKind::TrackedWithSalsaStruct, invoke) => {
+                    // while it is possible to make this reachable, it's not really worthwhile for a migration aid.
+                    // doing this would require attaching an attribute to the salsa struct parameter
+                    // in the query.
+                    assert_ne!(invoke.is_none(), method.default.is_none());
                     let method = TrackedQuery {
                         trait_name: trait_name_ident.clone(),
                         generated_struct: None,
                         signature: signature.clone(),
                         pat_and_tys: pat_and_tys.clone(),
-                        invoke: Some(invoke),
+                        invoke,
                         cycle,
                         lru,
+                        default: method.default.take(),
                     };
 
                     trait_methods.push(Queries::TrackedQuery(method))
                 }
-                // while it is possible to make this reachable, it's not really worthwhile for a migration aid.
-                // doing this would require attaching an attribute to the salsa struct parameter in the query.
-                (QueryKind::TrackedWithSalsaStruct, None) => unreachable!(),
                 (QueryKind::Transparent, invoke) => {
                     let method = Transparent {
                         signature: method.sig.clone(),
                         pat_and_tys: pat_and_tys.clone(),
                         invoke,
+                        default: method.default.take(),
                     };
                     trait_methods.push(Queries::Transparent(method));
                 }
@@ -434,4 +447,14 @@ impl VisitMut for RemoveAttrsFromTraitMethods {
 pub(crate) fn token_stream_with_error(mut tokens: TokenStream, error: syn::Error) -> TokenStream {
     tokens.extend(TokenStream::from(error.into_compile_error()));
     tokens
+}
+
+struct SelfToDbRewriter;
+
+impl VisitMut for SelfToDbRewriter {
+    fn visit_expr_path_mut(&mut self, i: &mut syn::ExprPath) {
+        if i.path.is_ident("self") {
+            i.path = parse_quote_spanned!(i.path.span() => db);
+        }
+    }
 }

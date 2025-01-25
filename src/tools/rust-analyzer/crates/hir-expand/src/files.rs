@@ -77,6 +77,9 @@ impl<N: AstIdNode> AstId<N> {
     pub fn to_ptr(&self, db: &dyn ExpandDatabase) -> AstPtr<N> {
         db.ast_id_map(self.file_id).get(self.value)
     }
+    pub fn erase(&self) -> ErasedAstId {
+        crate::InFile::new(self.file_id, self.value.erase())
+    }
 }
 
 pub type ErasedAstId = crate::InFile<ErasedFileAstId>;

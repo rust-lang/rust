@@ -924,7 +924,7 @@ impl<'a> InferenceTable<'a> {
             // Must use a loop here and not recursion because otherwise users will conduct completely
             // artificial examples of structs that have themselves as the tail field and complain r-a crashes.
             while let Some((AdtId::StructId(id), subst)) = ty.as_adt() {
-                let struct_data = self.db.variant_data(id.into());
+                let struct_data = self.db.variant_fields(id.into());
                 if let Some((last_field, _)) = struct_data.fields().iter().next_back() {
                     let last_field_ty = self.db.field_types(id.into())[last_field]
                         .clone()
@@ -1027,7 +1027,6 @@ mod resolve {
                     .assert_ty_ref(Interner)
                     .clone();
             }
-
             if let Some(known_ty) = self.table.var_unification_table.probe_var(var) {
                 // known_ty may contain other variables that are known by now
                 self.var_stack.push(var);

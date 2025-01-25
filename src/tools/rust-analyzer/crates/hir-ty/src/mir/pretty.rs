@@ -43,11 +43,11 @@ impl MirBody {
         let mut ctx = MirPrettyCtx::new(self, &hir_body, db, display_target);
         ctx.for_body(|this| match ctx.body.owner {
             hir_def::DefWithBodyId::FunctionId(id) => {
-                let data = db.function_data(id);
+                let data = db.function_signature(id);
                 w!(this, "fn {}() ", data.name.display(db.upcast(), this.display_target.edition));
             }
             hir_def::DefWithBodyId::StaticId(id) => {
-                let data = db.static_data(id);
+                let data = db.static_signature(id);
                 w!(
                     this,
                     "static {}: _ = ",
@@ -55,7 +55,7 @@ impl MirBody {
                 );
             }
             hir_def::DefWithBodyId::ConstId(id) => {
-                let data = db.const_data(id);
+                let data = db.const_signature(id);
                 w!(
                     this,
                     "const {}: _ = ",
@@ -78,9 +78,6 @@ impl MirBody {
                         .name
                         .display(db.upcast(), this.display_target.edition),
                 )
-            }
-            hir_def::DefWithBodyId::InTypeConstId(id) => {
-                w!(this, "in type const {id:?} = ");
             }
         });
         ctx.result
@@ -333,17 +330,19 @@ impl<'a> MirPrettyCtx<'a> {
                     w!(this, ")");
                 }
                 ProjectionElem::Field(Either::Left(field)) => {
-                    let variant_data = field.parent.variant_data(this.db.upcast());
-                    let name = &variant_data.fields()[field.local_id].name;
+                    let variant_fields = this.db.variant_fields(field.parent);
+                    let name = &variant_fields.fields()[field.local_id].name;
                     match field.parent {
                         hir_def::VariantId::EnumVariantId(e) => {
                             w!(this, "(");
                             f(this, local, head);
-                            let variant_name = &this.db.enum_variant_data(e).name;
+                            let loc = e.lookup(this.db.upcast());
                             w!(
                                 this,
                                 " as {}).{}",
-                                variant_name.display(this.db.upcast(), this.display_target.edition),
+                                this.db.enum_variants(loc.parent).variants[loc.index as usize]
+                                    .1
+                                    .display(this.db.upcast(), this.display_target.edition),
                                 name.display(this.db.upcast(), this.display_target.edition)
                             );
                         }

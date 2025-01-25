@@ -5,6 +5,7 @@ use std::{cell::Cell, cmp::Ordering, iter};
 use base_db::{Crate, CrateOrigin, LangCrateOrigin};
 use hir_expand::{
     Lookup,
+    mod_path::{ModPath, PathKind},
     name::{AsName, Name},
 };
 use intern::sym;
@@ -15,7 +16,6 @@ use crate::{
     db::DefDatabase,
     item_scope::ItemInNs,
     nameres::DefMap,
-    path::{ModPath, PathKind},
     visibility::{Visibility, VisibilityExplicitness},
 };
 
@@ -134,10 +134,11 @@ fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Opt
 
     if let Some(ModuleDefId::EnumVariantId(variant)) = item.as_module_def_id() {
         // - if the item is an enum variant, refer to it via the enum
-        if let Some(mut path) =
-            find_path_inner(ctx, ItemInNs::Types(variant.lookup(ctx.db).parent.into()), max_len)
-        {
-            path.push_segment(ctx.db.enum_variant_data(variant).name.clone());
+        let loc = variant.lookup(ctx.db);
+        if let Some(mut path) = find_path_inner(ctx, ItemInNs::Types(loc.parent.into()), max_len) {
+            path.push_segment(
+                ctx.db.enum_variants(loc.parent).variants[loc.index as usize].1.clone(),
+            );
             return Some(path);
         }
         // If this doesn't work, it seems we have no way of referring to the

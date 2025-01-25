@@ -6,7 +6,7 @@ use chalk_ir::{
 use hir_def::{
     DefWithBodyId, FunctionId, GenericDefId, HasModule, ItemContainerId, Lookup, TraitId,
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinType, BuiltinUint},
-    generics::TypeOrConstParamData,
+    hir::generics::{TypeOrConstParamData, TypeParamProvenance},
     lang_item::LangItem,
     type_ref::Rawness,
 };
@@ -314,7 +314,7 @@ impl TyExt for Ty {
                 let param_data = &generic_params[id.local_id];
                 match param_data {
                     TypeOrConstParamData::TypeParamData(p) => match p.provenance {
-                        hir_def::generics::TypeParamProvenance::ArgumentImplTrait => {
+                        TypeParamProvenance::ArgumentImplTrait => {
                             let substs = TyBuilder::placeholder_subst(db, id.parent);
                             let predicates = db
                                 .generic_predicates(id.parent)

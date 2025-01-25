@@ -117,7 +117,7 @@ impl UninhabitedFrom<'_> {
         variant: VariantId,
         subst: &Substitution,
     ) -> ControlFlow<VisiblyUninhabited> {
-        let variant_data = self.db.variant_data(variant);
+        let variant_data = self.db.variant_fields(variant);
         let fields = variant_data.fields();
         if fields.is_empty() {
             return CONTINUE_OPAQUELY_INHABITED;

@@ -131,11 +131,16 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
     for macro_call in source_file.syntax().descendants().filter_map(ast::MacroCall::cast) {
         let macro_call = InFile::new(source.file_id, &macro_call);
         let res = macro_call
-            .as_call_id_with_errors(&db, krate, |path| {
-                resolver
-                    .resolve_path_as_macro(&db, path, Some(MacroSubNs::Bang))
-                    .map(|(it, _)| db.macro_def(it))
-            })
+            .as_call_id_with_errors(
+                &db,
+                krate,
+                |path| {
+                    resolver
+                        .resolve_path_as_macro(&db, path, Some(MacroSubNs::Bang))
+                        .map(|(it, _)| db.macro_def(it))
+                },
+                &mut |_, _| (),
+            )
             .unwrap();
         let macro_call_id = res.value.unwrap();
         let macro_file = MacroFileId { macro_call_id };

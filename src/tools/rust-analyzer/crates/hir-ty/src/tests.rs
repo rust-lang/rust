@@ -160,7 +160,6 @@ fn check_impl(
             let loc = it.lookup(&db);
             loc.source(&db).value.syntax().text_range().start()
         }
-        DefWithBodyId::InTypeConstId(it) => it.source(&db).syntax().text_range().start(),
     });
     let mut unexpected_type_mismatches = String::new();
     for (def, krate) in defs {
@@ -419,7 +418,6 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             let loc = it.lookup(&db);
             loc.source(&db).value.syntax().text_range().start()
         }
-        DefWithBodyId::InTypeConstId(it) => it.source(&db).syntax().text_range().start(),
     });
     for (def, krate) in defs {
         let (body, source_map) = db.body_with_source_map(def);

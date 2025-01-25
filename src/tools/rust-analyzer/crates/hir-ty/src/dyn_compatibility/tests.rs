@@ -40,8 +40,11 @@ fn check_dyn_compatibility<'a>(
             .declarations()
             .filter_map(|def| {
                 if let hir_def::ModuleDefId::TraitId(trait_id) = def {
-                    let name =
-                        db.trait_data(trait_id).name.display_no_db(file_id.edition()).to_smolstr();
+                    let name = db
+                        .trait_signature(trait_id)
+                        .name
+                        .display_no_db(file_id.edition())
+                        .to_smolstr();
                     Some((trait_id, name))
                 } else {
                     None

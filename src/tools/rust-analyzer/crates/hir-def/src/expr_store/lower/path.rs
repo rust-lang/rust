@@ -1,23 +1,26 @@
 //! Transforms syntax into `Path` objects, ideally with accounting for hygiene
 
+#[cfg(test)]
+mod tests;
+
 use std::iter;
 
-use crate::{lower::LowerCtx, path::NormalPath, type_ref::ConstRef};
+use crate::expr_store::{lower::ExprCollector, path::NormalPath};
 
 use hir_expand::{
-    mod_path::resolve_crate_root,
+    mod_path::{ModPath, PathKind, resolve_crate_root},
     name::{AsName, Name},
 };
 use intern::{Interned, sym};
-use syntax::ast::{self, AstNode, HasGenericArgs, HasTypeBounds};
+use syntax::{
+    AstPtr,
+    ast::{self, AstNode, HasGenericArgs},
+};
 use thin_vec::ThinVec;
 
 use crate::{
-    path::{
-        AssociatedTypeBinding, GenericArg, GenericArgs, GenericArgsParentheses, ModPath, Path,
-        PathKind,
-    },
-    type_ref::{LifetimeRef, TypeBound, TypeRef},
+    expr_store::path::{GenericArg, GenericArgs, Path},
+    type_ref::{TypeBound, TypeRef},
 };
 
 #[cfg(test)]
@@ -30,7 +33,11 @@ thread_local! {
 /// It correctly handles `$crate` based path from macro call.
 // If you modify the logic of the lowering, make sure to check if `hir_segment_to_ast_segment()`
 // also needs an update.
-pub(super) fn lower_path(ctx: &mut LowerCtx<'_>, mut path: ast::Path) -> Option<Path> {
+pub(super) fn lower_path(
+    collector: &mut ExprCollector<'_>,
+    mut path: ast::Path,
+    impl_trait_lower_fn: &mut impl FnMut(ThinVec<TypeBound>) -> TypeRef,
+) -> Option<Path> {
     let mut kind = PathKind::Plain;
     let mut type_anchor = None;
     let mut segments = Vec::new();
@@ -46,9 +53,20 @@ pub(super) fn lower_path(ctx: &mut LowerCtx<'_>, mut path: ast::Path) -> Option<
         segments.push(name);
     };
     loop {
-        let segment = path.segment()?;
+        let Some(segment) = path.segment() else {
+            segments.push(Name::missing());
+            // We can end up here if for `path::`
+            match qualifier(&path) {
+                Some(it) => {
+                    path = it;
+                    continue;
+                }
+                None => break,
+            }
+        };
 
         if segment.coloncolon_token().is_some() {
+            debug_assert!(path.qualifier().is_none()); // this can only occur at the first segment
             kind = PathKind::Abs;
         }
 
@@ -60,8 +78,8 @@ pub(super) fn lower_path(ctx: &mut LowerCtx<'_>, mut path: ast::Path) -> Option<
                         return None;
                     }
                     break kind = resolve_crate_root(
-                        ctx.db.upcast(),
-                        ctx.span_map().span_for_range(name_ref.syntax().text_range()).ctx,
+                        collector.db.upcast(),
+                        collector.expander.ctx_for_range(name_ref.syntax().text_range()),
                     )
                     .map(PathKind::DollarCrate)
                     .unwrap_or(PathKind::Crate);
@@ -69,12 +87,12 @@ pub(super) fn lower_path(ctx: &mut LowerCtx<'_>, mut path: ast::Path) -> Option<
                 let name = name_ref.as_name();
                 let args = segment
                     .generic_arg_list()
-                    .and_then(|it| lower_generic_args(ctx, it))
+                    .and_then(|it| collector.lower_generic_args(it, impl_trait_lower_fn))
                     .or_else(|| {
-                        lower_generic_args_from_fn_path(
-                            ctx,
+                        collector.lower_generic_args_from_fn_path(
                             segment.parenthesized_arg_list(),
                             segment.ret_type(),
+                            impl_trait_lower_fn,
                         )
                     })
                     .or_else(|| {
@@ -90,9 +108,9 @@ pub(super) fn lower_path(ctx: &mut LowerCtx<'_>, mut path: ast::Path) -> Option<
                 push_segment(&segment, &mut segments, Name::new_symbol_root(sym::Self_.clone()));
             }
             ast::PathSegmentKind::Type { type_ref, trait_ref } => {
-                assert!(path.qualifier().is_none()); // this can only occur at the first segment
+                debug_assert!(path.qualifier().is_none()); // this can only occur at the first segment
 
-                let self_type = TypeRef::from_ast(ctx, type_ref?);
+                let self_type = collector.lower_type_ref(type_ref?, impl_trait_lower_fn);
 
                 match trait_ref {
                     // <T>::foo
@@ -102,7 +120,12 @@ pub(super) fn lower_path(ctx: &mut LowerCtx<'_>, mut path: ast::Path) -> Option<
                     }
                     // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
                     Some(trait_ref) => {
-                        let path = Path::from_src(ctx, trait_ref.path()?)?;
+                        let path = collector.lower_path(trait_ref.path()?, impl_trait_lower_fn)?;
+                        // FIXME: Unnecessary clone
+                        collector.alloc_type_ref(
+                            TypeRef::Path(path.clone()),
+                            AstPtr::new(&trait_ref).upcast(),
+                        );
                         let mod_path = path.mod_path()?;
                         let path_generic_args = path.generic_args();
                         let num_segments = mod_path.segments().len();
@@ -190,10 +213,10 @@ pub(super) fn lower_path(ctx: &mut LowerCtx<'_>, mut path: ast::Path) -> Option<
     // We follow what it did anyway :)
     if segments.len() == 1 && kind == PathKind::Plain {
         if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-            let syn_ctxt = ctx.span_map().span_for_range(path.segment()?.syntax().text_range()).ctx;
-            if let Some(macro_call_id) = syn_ctxt.outer_expn(ctx.db) {
-                if ctx.db.lookup_intern_macro_call(macro_call_id).def.local_inner {
-                    kind = match resolve_crate_root(ctx.db.upcast(), syn_ctxt) {
+            let syn_ctxt = collector.expander.ctx_for_range(path.segment()?.syntax().text_range());
+            if let Some(macro_call_id) = syn_ctxt.outer_expn(collector.db) {
+                if collector.db.lookup_intern_macro_call(macro_call_id).def.local_inner {
+                    kind = match resolve_crate_root(collector.db.upcast(), syn_ctxt) {
                         Some(crate_root) => PathKind::DollarCrate(crate_root),
                         None => PathKind::Crate,
                     }
@@ -214,9 +237,9 @@ pub(super) fn lower_path(ctx: &mut LowerCtx<'_>, mut path: ast::Path) -> Option<
         return Some(Path::BarePath(mod_path));
     } else {
         return Some(Path::Normal(Box::new(NormalPath {
-            generic_args: generic_args.into_boxed_slice(),
             type_anchor,
             mod_path,
+            generic_args: generic_args.into_boxed_slice(),
         })));
     }
 
@@ -265,113 +288,4 @@ pub fn hir_segment_to_ast_segment(path: &ast::Path, segment_idx: u32) -> Option<
             })
             .nth(segment_idx as usize)
     }
-}
-
-pub(super) fn lower_generic_args(
-    lower_ctx: &mut LowerCtx<'_>,
-    node: ast::GenericArgList,
-) -> Option<GenericArgs> {
-    let mut args = Vec::new();
-    let mut bindings = Vec::new();
-    for generic_arg in node.generic_args() {
-        match generic_arg {
-            ast::GenericArg::TypeArg(type_arg) => {
-                let type_ref = TypeRef::from_ast_opt(lower_ctx, type_arg.ty());
-                lower_ctx.update_impl_traits_bounds_from_type_ref(type_ref);
-                args.push(GenericArg::Type(type_ref));
-            }
-            ast::GenericArg::AssocTypeArg(assoc_type_arg) => {
-                if assoc_type_arg.param_list().is_some() {
-                    // We currently ignore associated return type bounds.
-                    continue;
-                }
-                if let Some(name_ref) = assoc_type_arg.name_ref() {
-                    // Nested impl traits like `impl Foo<Assoc = impl Bar>` are allowed
-                    lower_ctx.with_outer_impl_trait_scope(false, |lower_ctx| {
-                        let name = name_ref.as_name();
-                        let args = assoc_type_arg
-                            .generic_arg_list()
-                            .and_then(|args| lower_generic_args(lower_ctx, args))
-                            .or_else(|| {
-                                assoc_type_arg
-                                    .return_type_syntax()
-                                    .map(|_| GenericArgs::return_type_notation())
-                            });
-                        let type_ref =
-                            assoc_type_arg.ty().map(|it| TypeRef::from_ast(lower_ctx, it));
-                        let type_ref = type_ref
-                            .inspect(|&tr| lower_ctx.update_impl_traits_bounds_from_type_ref(tr));
-                        let bounds = if let Some(l) = assoc_type_arg.type_bound_list() {
-                            l.bounds().map(|it| TypeBound::from_ast(lower_ctx, it)).collect()
-                        } else {
-                            Box::default()
-                        };
-                        bindings.push(AssociatedTypeBinding { name, args, type_ref, bounds });
-                    });
-                }
-            }
-            ast::GenericArg::LifetimeArg(lifetime_arg) => {
-                if let Some(lifetime) = lifetime_arg.lifetime() {
-                    let lifetime_ref = LifetimeRef::new(&lifetime);
-                    args.push(GenericArg::Lifetime(lifetime_ref))
-                }
-            }
-            ast::GenericArg::ConstArg(arg) => {
-                let arg = ConstRef::from_const_arg(lower_ctx, Some(arg));
-                args.push(GenericArg::Const(arg))
-            }
-        }
-    }
-
-    if args.is_empty() && bindings.is_empty() {
-        return None;
-    }
-    Some(GenericArgs {
-        args: args.into_boxed_slice(),
-        has_self_type: false,
-        bindings: bindings.into_boxed_slice(),
-        parenthesized: GenericArgsParentheses::No,
-    })
-}
-
-/// Collect `GenericArgs` from the parts of a fn-like path, i.e. `Fn(X, Y)
-/// -> Z` (which desugars to `Fn<(X, Y), Output=Z>`).
-fn lower_generic_args_from_fn_path(
-    ctx: &mut LowerCtx<'_>,
-    args: Option<ast::ParenthesizedArgList>,
-    ret_type: Option<ast::RetType>,
-) -> Option<GenericArgs> {
-    let params = args?;
-    let mut param_types = Vec::new();
-    for param in params.type_args() {
-        let type_ref = TypeRef::from_ast_opt(ctx, param.ty());
-        param_types.push(type_ref);
-    }
-    let args = Box::new([GenericArg::Type(
-        ctx.alloc_type_ref_desugared(TypeRef::Tuple(ThinVec::from_iter(param_types))),
-    )]);
-    let bindings = if let Some(ret_type) = ret_type {
-        let type_ref = TypeRef::from_ast_opt(ctx, ret_type.ty());
-        Box::new([AssociatedTypeBinding {
-            name: Name::new_symbol_root(sym::Output.clone()),
-            args: None,
-            type_ref: Some(type_ref),
-            bounds: Box::default(),
-        }])
-    } else {
-        // -> ()
-        let type_ref = ctx.alloc_type_ref_desugared(TypeRef::unit());
-        Box::new([AssociatedTypeBinding {
-            name: Name::new_symbol_root(sym::Output.clone()),
-            args: None,
-            type_ref: Some(type_ref),
-            bounds: Box::default(),
-        }])
-    };
-    Some(GenericArgs {
-        args,
-        has_self_type: false,
-        bindings,
-        parenthesized: GenericArgsParentheses::ParenSugar,
-    })
 }

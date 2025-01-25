@@ -113,15 +113,16 @@ pub(crate) fn trait_solve_query(
     block: Option<BlockId>,
     goal: Canonical<InEnvironment<Goal>>,
 ) -> Option<Solution> {
-    let detail = match &goal.value.goal.data(Interner) {
-        GoalData::DomainGoal(DomainGoal::Holds(WhereClause::Implemented(it))) => {
-            db.trait_data(it.hir_trait_id()).name.display(db.upcast(), Edition::LATEST).to_string()
-        }
+    let _p = tracing::info_span!("trait_solve_query", detail = ?match &goal.value.goal.data(Interner) {
+        GoalData::DomainGoal(DomainGoal::Holds(WhereClause::Implemented(it))) => db
+            .trait_signature(it.hir_trait_id())
+            .name
+            .display(db.upcast(), Edition::LATEST)
+            .to_string(),
         GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(_))) => "alias_eq".to_owned(),
         _ => "??".to_owned(),
-    };
-    let _p = tracing::info_span!("trait_solve_query", ?detail).entered();
-    tracing::info!("trait_solve_query({:?})", goal.value.goal);
+    })
+    .entered();
 
     if let GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(AliasEq {
         alias: AliasTy::Projection(projection_ty),

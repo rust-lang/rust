@@ -21,9 +21,9 @@ impl DebugContext<'_> {
         f: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
         let name = match id.0 {
-            AdtId::StructId(it) => self.0.struct_data(it).name.clone(),
-            AdtId::UnionId(it) => self.0.union_data(it).name.clone(),
-            AdtId::EnumId(it) => self.0.enum_data(it).name.clone(),
+            AdtId::StructId(it) => self.0.struct_signature(it).name.clone(),
+            AdtId::UnionId(it) => self.0.union_signature(it).name.clone(),
+            AdtId::EnumId(it) => self.0.enum_signature(it).name.clone(),
         };
         name.display(self.0.upcast(), Edition::LATEST).fmt(f)?;
         Ok(())
@@ -35,7 +35,7 @@ impl DebugContext<'_> {
         f: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
         let trait_: hir_def::TraitId = from_chalk_trait_id(id);
-        let trait_data = self.0.trait_data(trait_);
+        let trait_data = self.0.trait_signature(trait_);
         trait_data.name.display(self.0.upcast(), Edition::LATEST).fmt(f)?;
         Ok(())
     }
@@ -46,12 +46,12 @@ impl DebugContext<'_> {
         fmt: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
         let type_alias: TypeAliasId = from_assoc_type_id(id);
-        let type_alias_data = self.0.type_alias_data(type_alias);
+        let type_alias_data = self.0.type_alias_signature(type_alias);
         let trait_ = match type_alias.lookup(self.0.upcast()).container {
             ItemContainerId::TraitId(t) => t,
             _ => panic!("associated type not in trait"),
         };
-        let trait_data = self.0.trait_data(trait_);
+        let trait_data = self.0.trait_signature(trait_);
         write!(
             fmt,
             "{}::{}",
@@ -67,12 +67,12 @@ impl DebugContext<'_> {
         fmt: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
         let type_alias = from_assoc_type_id(projection_ty.associated_ty_id);
-        let type_alias_data = self.0.type_alias_data(type_alias);
+        let type_alias_data = self.0.type_alias_signature(type_alias);
         let trait_ = match type_alias.lookup(self.0.upcast()).container {
             ItemContainerId::TraitId(t) => t,
             _ => panic!("associated type not in trait"),
         };
-        let trait_name = &self.0.trait_data(trait_).name;
+        let trait_name = &self.0.trait_signature(trait_).name;
         let trait_ref = projection_ty.trait_ref(self.0);
         let trait_params = trait_ref.substitution.as_slice(Interner);
         let self_ty = trait_ref.self_type_parameter(Interner);
@@ -106,9 +106,12 @@ impl DebugContext<'_> {
     ) -> Result<(), fmt::Error> {
         let def: CallableDefId = from_chalk(self.0, fn_def_id);
         let name = match def {
-            CallableDefId::FunctionId(ff) => self.0.function_data(ff).name.clone(),
-            CallableDefId::StructId(s) => self.0.struct_data(s).name.clone(),
-            CallableDefId::EnumVariantId(e) => self.0.enum_variant_data(e).name.clone(),
+            CallableDefId::FunctionId(ff) => self.0.function_signature(ff).name.clone(),
+            CallableDefId::StructId(s) => self.0.struct_signature(s).name.clone(),
+            CallableDefId::EnumVariantId(e) => {
+                let loc = e.lookup(self.0.upcast());
+                self.0.enum_variants(loc.parent).variants[loc.index as usize].1.clone()
+            }
         };
         match def {
             CallableDefId::FunctionId(_) => {

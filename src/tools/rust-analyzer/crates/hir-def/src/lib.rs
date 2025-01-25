@@ -26,18 +26,14 @@ pub mod db;
 pub mod attr;
 pub mod builtin_type;
 pub mod item_scope;
-pub mod path;
 pub mod per_ns;
 
-pub mod expander;
-pub mod lower;
+pub mod signatures;
 
 pub mod dyn_map;
 
 pub mod item_tree;
 
-pub mod data;
-pub mod generics;
 pub mod lang_item;
 
 pub mod hir;
@@ -57,9 +53,10 @@ use intern::{Interned, sym};
 pub use rustc_abi as layout;
 use triomphe::Arc;
 
+pub use crate::signatures::LocalFieldId;
+
 #[cfg(test)]
 mod macro_expansion_tests;
-mod pretty;
 #[cfg(test)]
 mod test_db;
 
@@ -73,6 +70,7 @@ use hir_expand::{
     db::ExpandDatabase,
     eager::expand_eager_macro_input,
     impl_intern_lookup,
+    mod_path::ModPath,
     name::Name,
     proc_macro::{CustomProcMacroExpander, ProcMacroKind},
 };
@@ -88,13 +86,14 @@ pub use hir_expand::{Intern, Lookup, tt};
 use crate::{
     attr::Attrs,
     builtin_type::BuiltinType,
-    data::adt::VariantData,
     db::DefDatabase,
+    hir::generics::{LocalLifetimeParamId, LocalTypeOrConstParamId},
     item_tree::{
         Const, Enum, ExternCrate, Function, Impl, ItemTreeId, ItemTreeNode, Macro2, MacroRules,
         Static, Struct, Trait, TraitAlias, TypeAlias, Union, Use, Variant,
     },
     nameres::LocalDefMap,
+    signatures::VariantFields,
 };
 
 type FxIndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
@@ -318,18 +317,6 @@ pub struct BlockLoc {
 }
 impl_intern!(BlockId, BlockLoc, intern_block, lookup_intern_block);
 
-// Id of the anonymous const block expression and patterns. This is very similar to `ClosureId` and
-// shouldn't be a `DefWithBodyId` since its type inference is dependent on its parent.
-impl_intern!(ConstBlockId, ConstBlockLoc, intern_anonymous_const, lookup_intern_anonymous_const);
-
-#[derive(Debug, Hash, PartialEq, Eq, Clone)]
-pub struct ConstBlockLoc {
-    /// The parent of the anonymous const block.
-    pub parent: DefWithBodyId,
-    /// The root expression of this const block in the parent body.
-    pub root: hir::ExprId,
-}
-
 /// A `ModuleId` that is always a crate's root module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CrateRootModuleId {
@@ -484,8 +471,6 @@ pub struct FieldId {
     pub local_id: LocalFieldId,
 }
 
-pub type LocalFieldId = Idx<data::adt::FieldData>;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TupleId(pub u32);
 
@@ -553,14 +538,11 @@ impl From<ConstParamId> for TypeOrConstParamId {
     }
 }
 
-pub type LocalTypeOrConstParamId = Idx<generics::TypeOrConstParamData>;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LifetimeParamId {
     pub parent: GenericDefId,
     pub local_id: LocalLifetimeParamId,
 }
-pub type LocalLifetimeParamId = Idx<generics::LifetimeParamData>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ItemContainerId {
@@ -635,217 +617,59 @@ impl_from!(
     for ModuleDefId
 );
 
-/// Something that holds types, required for the current const arg lowering implementation as they
-/// need to be able to query where they are defined.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub enum TypeOwnerId {
-    FunctionId(FunctionId),
-    StaticId(StaticId),
-    ConstId(ConstId),
-    InTypeConstId(InTypeConstId),
-    AdtId(AdtId),
-    TraitId(TraitId),
-    TraitAliasId(TraitAliasId),
-    TypeAliasId(TypeAliasId),
-    ImplId(ImplId),
-    EnumVariantId(EnumVariantId),
-}
-
-impl TypeOwnerId {
-    fn as_generic_def_id(self, db: &dyn DefDatabase) -> Option<GenericDefId> {
-        Some(match self {
-            TypeOwnerId::FunctionId(it) => GenericDefId::FunctionId(it),
-            TypeOwnerId::ConstId(it) => GenericDefId::ConstId(it),
-            TypeOwnerId::StaticId(it) => GenericDefId::StaticId(it),
-            TypeOwnerId::AdtId(it) => GenericDefId::AdtId(it),
-            TypeOwnerId::TraitId(it) => GenericDefId::TraitId(it),
-            TypeOwnerId::TraitAliasId(it) => GenericDefId::TraitAliasId(it),
-            TypeOwnerId::TypeAliasId(it) => GenericDefId::TypeAliasId(it),
-            TypeOwnerId::ImplId(it) => GenericDefId::ImplId(it),
-            TypeOwnerId::EnumVariantId(it) => {
-                GenericDefId::AdtId(AdtId::EnumId(it.lookup(db).parent))
-            }
-            TypeOwnerId::InTypeConstId(_) => return None,
-        })
-    }
-}
-
-impl_from!(
-    FunctionId,
-    StaticId,
-    ConstId,
-    InTypeConstId,
-    AdtId,
-    TraitId,
-    TraitAliasId,
-    TypeAliasId,
-    ImplId,
-    EnumVariantId
-    for TypeOwnerId
-);
-
-// Every `DefWithBodyId` is a type owner, since bodies can contain type (e.g. `{ let it: Type = _; }`)
-impl From<DefWithBodyId> for TypeOwnerId {
-    fn from(value: DefWithBodyId) -> Self {
-        match value {
-            DefWithBodyId::FunctionId(it) => it.into(),
-            DefWithBodyId::StaticId(it) => it.into(),
-            DefWithBodyId::ConstId(it) => it.into(),
-            DefWithBodyId::InTypeConstId(it) => it.into(),
-            DefWithBodyId::VariantId(it) => it.into(),
-        }
-    }
-}
-
-impl From<GenericDefId> for TypeOwnerId {
-    fn from(value: GenericDefId) -> Self {
-        match value {
-            GenericDefId::FunctionId(it) => it.into(),
-            GenericDefId::AdtId(it) => it.into(),
-            GenericDefId::TraitId(it) => it.into(),
-            GenericDefId::TraitAliasId(it) => it.into(),
-            GenericDefId::TypeAliasId(it) => it.into(),
-            GenericDefId::ImplId(it) => it.into(),
-            GenericDefId::ConstId(it) => it.into(),
-            GenericDefId::StaticId(it) => it.into(),
-        }
-    }
-}
-
-// FIXME: This should not be a thing
-/// A thing that we want to store in interned ids, but we don't know its type in `hir-def`. This is
-/// currently only used in `InTypeConstId` for storing the type (which has type `Ty` defined in
-/// the `hir-ty` crate) of the constant in its id, which is a temporary hack so we may want
-/// to remove this after removing that.
-pub trait OpaqueInternableThing: std::any::Any + std::fmt::Debug + Sync + Send {
-    fn as_any(&self) -> &dyn std::any::Any;
-    fn box_any(&self) -> Box<dyn std::any::Any>;
-    fn dyn_hash(&self, state: &mut dyn Hasher);
-    fn dyn_eq(&self, other: &dyn OpaqueInternableThing) -> bool;
-    fn dyn_clone(&self) -> Box<dyn OpaqueInternableThing>;
-}
-
-impl Hash for dyn OpaqueInternableThing {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.dyn_hash(state);
-    }
-}
-
-impl PartialEq for dyn OpaqueInternableThing {
-    fn eq(&self, other: &Self) -> bool {
-        self.dyn_eq(other)
-    }
-}
-
-impl Eq for dyn OpaqueInternableThing {}
-
-impl Clone for Box<dyn OpaqueInternableThing> {
-    fn clone(&self) -> Self {
-        self.dyn_clone()
-    }
-}
-
-// FIXME(const-generic-body): Use an stable id for in type consts.
-//
-// The current id uses `AstId<ast::ConstArg>` which will be changed by every change in the code. Ideally
-// we should use an id which is relative to the type owner, so that every change will only invalidate the
-// id if it happens inside of the type owner.
-//
-// The solution probably is to have some query on `TypeOwnerId` to traverse its constant children and store
-// their `AstId` in a list (vector or arena), and use the index of that list in the id here. That query probably
-// needs name resolution, and might go far and handles the whole path lowering or type lowering for a `TypeOwnerId`.
-//
-// Whatever path the solution takes, it should answer 3 questions at the same time:
-// * Is the id stable enough?
-// * How to find a constant id using an ast node / position in the source code? This is needed when we want to
-//   provide ide functionalities inside an in type const (which we currently don't support) e.g. go to definition
-//   for a local defined there. A complex id might have some trouble in this reverse mapping.
-// * How to find the return type of a constant using its id? We have this data when we are doing type lowering
-//   and the name of the struct that contains this constant is resolved, so a query that only traverses the
-//   type owner by its syntax tree might have a hard time here.
-
-// A constant in a type as a substitution for const generics (like `Foo<{ 2 + 2 }>`) or as an array
-// length (like `[u8; 2 + 2]`). These constants are body owner and are a variant of `DefWithBodyId`. These
-// are not called `AnonymousConstId` to prevent confusion with [`ConstBlockId`].
-impl_intern!(InTypeConstId, InTypeConstLoc, intern_in_type_const, lookup_intern_in_type_const);
-
-// We would like to set `derive(PartialEq)`
-// but the compiler complains about that `.expected_ty` does not implement the `Copy` trait.
-#[allow(clippy::derived_hash_with_manual_eq)]
-#[derive(Debug, Hash, Eq, Clone)]
-pub struct InTypeConstLoc {
-    pub id: AstId<ast::ConstArg>,
-    /// The thing this const arg appears in
-    pub owner: TypeOwnerId,
-    // FIXME(const-generic-body): The expected type should not be
-    pub expected_ty: Box<dyn OpaqueInternableThing>,
-}
-
-impl PartialEq for InTypeConstLoc {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.owner == other.owner && *self.expected_ty == *other.expected_ty
-    }
-}
-
-impl InTypeConstId {
-    pub fn source(&self, db: &dyn DefDatabase) -> ast::ConstArg {
-        let src = self.lookup(db).id;
-        let file_id = src.file_id;
-        let root = db.parse_or_expand(file_id);
-        db.ast_id_map(file_id).get(src.value).to_node(&root)
-    }
-}
-
 /// A constant, which might appears as a const item, an anonymous const block in expressions
 /// or patterns, or as a constant in types with const generics.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GeneralConstId {
     ConstId(ConstId),
     StaticId(StaticId),
-    ConstBlockId(ConstBlockId),
-    InTypeConstId(InTypeConstId),
 }
 
-impl_from!(ConstId, StaticId, ConstBlockId, InTypeConstId for GeneralConstId);
+impl_from!(ConstId, StaticId for GeneralConstId);
 
 impl GeneralConstId {
-    pub fn generic_def(self, db: &dyn DefDatabase) -> Option<GenericDefId> {
+    pub fn generic_def(self, _db: &dyn DefDatabase) -> Option<GenericDefId> {
         match self {
             GeneralConstId::ConstId(it) => Some(it.into()),
             GeneralConstId::StaticId(it) => Some(it.into()),
-            GeneralConstId::ConstBlockId(it) => it.lookup(db).parent.as_generic_def_id(db),
-            GeneralConstId::InTypeConstId(it) => it.lookup(db).owner.as_generic_def_id(db),
         }
     }
 
     pub fn name(self, db: &dyn DefDatabase) -> String {
         match self {
             GeneralConstId::StaticId(it) => {
-                db.static_data(it).name.display(db.upcast(), Edition::CURRENT).to_string()
+                let loc = it.lookup(db);
+                let tree = loc.item_tree_id().item_tree(db);
+                let name = tree[loc.id.value].name.display(db.upcast(), Edition::CURRENT);
+                name.to_string()
             }
-            GeneralConstId::ConstId(const_id) => db
-                .const_data(const_id)
-                .name
-                .as_ref()
-                .map(|it| it.as_str())
-                .unwrap_or("_")
-                .to_owned(),
-            GeneralConstId::ConstBlockId(id) => format!("{{anonymous const {id:?}}}"),
-            GeneralConstId::InTypeConstId(id) => format!("{{in type const {id:?}}}"),
+            GeneralConstId::ConstId(const_id) => {
+                let loc = const_id.lookup(db);
+                let tree = loc.item_tree_id().item_tree(db);
+                tree[loc.id.value].name.as_ref().map_or_else(
+                    || "_".to_owned(),
+                    |name| name.display(db.upcast(), Edition::CURRENT).to_string(),
+                )
+            }
         }
     }
 }
 
-/// The defs which have a body.
+/// The defs which have a body (have root expressions for type inference).
 #[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum DefWithBodyId {
     FunctionId(FunctionId),
     StaticId(StaticId),
     ConstId(ConstId),
-    InTypeConstId(InTypeConstId),
     VariantId(EnumVariantId),
+    // /// All fields of a variant are inference roots
+    // VariantId(VariantId),
+    // /// The signature can contain inference roots in a bunch of places
+    // /// like const parameters or const arguments in paths
+    // This should likely be kept on its own with a separate query
+    // GenericDefId(GenericDefId),
 }
-impl_from!(FunctionId, ConstId, StaticId, InTypeConstId for DefWithBodyId);
+impl_from!(FunctionId, ConstId, StaticId for DefWithBodyId);
 
 impl From<EnumVariantId> for DefWithBodyId {
     fn from(id: EnumVariantId) -> Self {
@@ -860,9 +684,6 @@ impl DefWithBodyId {
             DefWithBodyId::StaticId(s) => Some(s.into()),
             DefWithBodyId::ConstId(c) => Some(c.into()),
             DefWithBodyId::VariantId(c) => Some(c.lookup(db).parent.into()),
-            // FIXME: stable rust doesn't allow generics in constants, but we should
-            // use `TypeOwnerId::as_generic_def_id` when it does.
-            DefWithBodyId::InTypeConstId(_) => None,
         }
     }
 }
@@ -1094,8 +915,8 @@ pub enum VariantId {
 impl_from!(EnumVariantId, StructId, UnionId for VariantId);
 
 impl VariantId {
-    pub fn variant_data(self, db: &dyn DefDatabase) -> Arc<VariantData> {
-        db.variant_data(self)
+    pub fn variant_data(self, db: &dyn DefDatabase) -> Arc<VariantFields> {
+        db.variant_fields(self)
     }
 
     pub fn file_id(self, db: &dyn DefDatabase) -> HirFileId {
@@ -1271,23 +1092,6 @@ impl HasModule for MacroId {
     }
 }
 
-impl HasModule for TypeOwnerId {
-    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
-        match *self {
-            TypeOwnerId::FunctionId(it) => it.module(db),
-            TypeOwnerId::StaticId(it) => it.module(db),
-            TypeOwnerId::ConstId(it) => it.module(db),
-            TypeOwnerId::AdtId(it) => it.module(db),
-            TypeOwnerId::TraitId(it) => it.module(db),
-            TypeOwnerId::TraitAliasId(it) => it.module(db),
-            TypeOwnerId::TypeAliasId(it) => it.module(db),
-            TypeOwnerId::ImplId(it) => it.module(db),
-            TypeOwnerId::EnumVariantId(it) => it.module(db),
-            TypeOwnerId::InTypeConstId(it) => it.lookup(db).owner.module(db),
-        }
-    }
-}
-
 impl HasModule for DefWithBodyId {
     fn module(&self, db: &dyn DefDatabase) -> ModuleId {
         match self {
@@ -1295,7 +1099,6 @@ impl HasModule for DefWithBodyId {
             DefWithBodyId::StaticId(it) => it.module(db),
             DefWithBodyId::ConstId(it) => it.module(db),
             DefWithBodyId::VariantId(it) => it.module(db),
-            DefWithBodyId::InTypeConstId(it) => it.lookup(db).owner.module(db),
         }
     }
 }
@@ -1364,22 +1167,18 @@ impl ModuleDefId {
     }
 }
 
+// FIXME: Replace this with a plain function, it only has one impl
 /// A helper trait for converting to MacroCallId
-pub trait AsMacroCall {
-    fn as_call_id(
-        &self,
-        db: &dyn ExpandDatabase,
-        krate: Crate,
-        resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
-    ) -> Option<MacroCallId> {
-        self.as_call_id_with_errors(db, krate, resolver).ok()?.value
-    }
-
+trait AsMacroCall {
     fn as_call_id_with_errors(
         &self,
         db: &dyn ExpandDatabase,
         krate: Crate,
-        resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
+        resolver: impl Fn(&ModPath) -> Option<MacroDefId> + Copy,
+        eager_callback: &mut dyn FnMut(
+            InFile<(syntax::AstPtr<ast::MacroCall>, span::FileAstId<ast::MacroCall>)>,
+            MacroCallId,
+        ),
     ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro>;
 }
 
@@ -1388,14 +1187,18 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
         &self,
         db: &dyn ExpandDatabase,
         krate: Crate,
-        resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
+        resolver: impl Fn(&ModPath) -> Option<MacroDefId> + Copy,
+        eager_callback: &mut dyn FnMut(
+            InFile<(syntax::AstPtr<ast::MacroCall>, span::FileAstId<ast::MacroCall>)>,
+            MacroCallId,
+        ),
     ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
         let expands_to = hir_expand::ExpandTo::from_call_site(self.value);
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
         let span_map = db.span_map(self.file_id);
         let path = self.value.path().and_then(|path| {
             let range = path.syntax().text_range();
-            let mod_path = path::ModPath::from_src(db, path, &mut |range| {
+            let mod_path = ModPath::from_src(db, path, &mut |range| {
                 span_map.as_ref().span_for_range(range).ctx
             })?;
             let call_site = span_map.span_for_range(range);
@@ -1418,6 +1221,7 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
             krate,
             resolver,
             resolver,
+            eager_callback,
         )
     }
 }
@@ -1426,15 +1230,11 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct AstIdWithPath<T: AstIdNode> {
     ast_id: AstId<T>,
-    path: Interned<path::ModPath>,
+    path: Interned<ModPath>,
 }
 
 impl<T: AstIdNode> AstIdWithPath<T> {
-    fn new(
-        file_id: HirFileId,
-        ast_id: FileAstId<T>,
-        path: Interned<path::ModPath>,
-    ) -> AstIdWithPath<T> {
+    fn new(file_id: HirFileId, ast_id: FileAstId<T>, path: Interned<ModPath>) -> AstIdWithPath<T> {
         AstIdWithPath { ast_id: AstId::new(file_id, ast_id), path }
     }
 }
@@ -1445,7 +1245,11 @@ fn macro_call_as_call_id(
     call_site: SyntaxContext,
     expand_to: ExpandTo,
     krate: Crate,
-    resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
+    resolver: impl Fn(&ModPath) -> Option<MacroDefId> + Copy,
+    eager_callback: &mut dyn FnMut(
+        InFile<(syntax::AstPtr<ast::MacroCall>, span::FileAstId<ast::MacroCall>)>,
+        MacroCallId,
+    ),
 ) -> Result<Option<MacroCallId>, UnresolvedMacro> {
     macro_call_as_call_id_with_eager(
         db,
@@ -1456,6 +1260,7 @@ fn macro_call_as_call_id(
         krate,
         resolver,
         resolver,
+        eager_callback,
     )
     .map(|res| res.value)
 }
@@ -1463,12 +1268,16 @@ fn macro_call_as_call_id(
 fn macro_call_as_call_id_with_eager(
     db: &dyn ExpandDatabase,
     ast_id: AstId<ast::MacroCall>,
-    path: &path::ModPath,
+    path: &ModPath,
     call_site: SyntaxContext,
     expand_to: ExpandTo,
     krate: Crate,
-    resolver: impl FnOnce(&path::ModPath) -> Option<MacroDefId>,
-    eager_resolver: impl Fn(&path::ModPath) -> Option<MacroDefId>,
+    resolver: impl FnOnce(&ModPath) -> Option<MacroDefId>,
+    eager_resolver: impl Fn(&ModPath) -> Option<MacroDefId>,
+    eager_callback: &mut dyn FnMut(
+        InFile<(syntax::AstPtr<ast::MacroCall>, span::FileAstId<ast::MacroCall>)>,
+        MacroCallId,
+    ),
 ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
     let def = resolver(path).ok_or_else(|| UnresolvedMacro { path: path.clone() })?;
 
@@ -1481,6 +1290,7 @@ fn macro_call_as_call_id_with_eager(
             def,
             call_site,
             &|path| eager_resolver(path).filter(MacroDefId::is_fn_like),
+            eager_callback,
         ),
         _ if def.is_fn_like() => ExpandResult {
             value: Some(def.make_call(
@@ -1498,7 +1308,7 @@ fn macro_call_as_call_id_with_eager(
 
 #[derive(Debug)]
 pub struct UnresolvedMacro {
-    pub path: hir_expand::mod_path::ModPath,
+    pub path: ModPath,
 }
 
 #[derive(Default, Debug, Eq, PartialEq, Clone, Copy)]

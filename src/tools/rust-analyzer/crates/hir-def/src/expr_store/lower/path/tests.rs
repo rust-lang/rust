@@ -4,23 +4,27 @@ use syntax::ast::{self, make};
 use test_fixture::WithFixture;
 
 use crate::{
-    lower::LowerCtx,
-    path::{
-        Path,
-        lower::{SEGMENT_LOWERING_MAP, hir_segment_to_ast_segment},
+    db::DefDatabase,
+    expr_store::{
+        ExpressionStore,
+        lower::{
+            ExprCollector,
+            path::{SEGMENT_LOWERING_MAP, hir_segment_to_ast_segment},
+        },
+        path::Path,
+        pretty,
     },
-    pretty,
     test_db::TestDB,
-    type_ref::{TypesMap, TypesSourceMap},
+    type_ref::TypeRef,
 };
 
-fn lower_path(path: ast::Path) -> (TestDB, TypesMap, Option<Path>) {
+fn lower_path(path: ast::Path) -> (TestDB, ExpressionStore, Option<Path>) {
     let (db, file_id) = TestDB::with_single_file("");
-    let mut types_map = TypesMap::default();
-    let mut types_source_map = TypesSourceMap::default();
-    let mut ctx = LowerCtx::new(&db, file_id.into(), &mut types_map, &mut types_source_map);
-    let lowered_path = ctx.lower_path(path);
-    (db, types_map, lowered_path)
+    let krate = db.fetch_test_crate();
+    let mut ctx = ExprCollector::new(&db, db.crate_def_map(krate).root_module_id(), file_id.into());
+    let lowered_path = ctx.lower_path(path, &mut TypeRef::ImplTrait);
+    let store = ctx.store.finish();
+    (db, store, lowered_path)
 }
 
 #[track_caller]
@@ -111,11 +115,9 @@ fn keywords_in_middle_fail_lowering3() {
 
 #[track_caller]
 fn check_path_lowering(path: &str, expected: Expect) {
-    let (db, types_map, lowered_path) = lower_path(make::path_from_text(path));
+    let (db, store, lowered_path) = lower_path(make::path_from_text(path));
     let lowered_path = lowered_path.expect("failed to lower path");
-    let mut buf = String::new();
-    pretty::print_path(&db, &lowered_path, &types_map, &mut buf, Edition::CURRENT)
-        .expect("failed to pretty-print path");
+    let buf = pretty::print_path(&db, &store, &lowered_path, Edition::CURRENT);
     expected.assert_eq(&buf);
 }
 

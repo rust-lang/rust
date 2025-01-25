@@ -6,34 +6,35 @@ use intern::sym;
 use la_arena::ArenaMap;
 use span::{EditionedFileId, MacroCallId};
 use syntax::{AstPtr, ast};
+use thin_vec::ThinVec;
 use triomphe::Arc;
 
 use crate::{
-    AttrDefId, BlockId, BlockLoc, ConstBlockId, ConstBlockLoc, ConstId, ConstLoc, DefWithBodyId,
-    EnumId, EnumLoc, EnumVariantId, EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId,
-    ExternCrateLoc, FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc, InTypeConstId,
-    InTypeConstLoc, LocalFieldId, Macro2Id, Macro2Loc, MacroId, MacroRulesId, MacroRulesLoc,
-    MacroRulesLocFlags, ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc,
-    TraitAliasId, TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc,
-    UseId, UseLoc, VariantId,
+    AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, EnumVariantId,
+    EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId,
+    FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalFieldId, Macro2Id, Macro2Loc, MacroId,
+    MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId, ProcMacroLoc, StaticId,
+    StaticLoc, StructId, StructLoc, TraitAliasId, TraitAliasLoc, TraitId, TraitLoc, TypeAliasId,
+    TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
     attr::{Attrs, AttrsWithOwner},
-    data::{
-        ConstData, ExternCrateDeclData, FunctionData, ImplData, Macro2Data, MacroRulesData,
-        ProcMacroData, StaticData, TraitAliasData, TraitData, TypeAliasData,
-        adt::{EnumData, EnumVariantData, EnumVariants, StructData, VariantData},
+    expr_store::{
+        Body, BodySourceMap, ExpressionStore, ExpressionStoreSourceMap, scope::ExprScopes,
     },
-    expr_store::{Body, BodySourceMap, scope::ExprScopes},
-    generics::GenericParams,
+    hir::generics::GenericParams,
     import_map::ImportMap,
-    item_tree::{AttrOwner, ItemTree, ItemTreeSourceMaps},
+    item_tree::{AttrOwner, ItemTree},
     lang_item::{self, LangItem, LangItemTarget, LangItems},
     nameres::{
         DefMap, LocalDefMap,
         assoc::{ImplItems, TraitItems},
         diagnostics::DefDiagnostics,
     },
+    signatures::{
+        ConstSignature, EnumSignature, EnumVariants, FunctionSignature, ImplSignature,
+        InactiveEnumVariantCode, StaticSignature, StructSignature, TraitAliasSignature,
+        TraitSignature, TypeAliasSignature, UnionSignature, VariantFields,
+    },
     tt,
-    type_ref::TypesSourceMap,
     visibility::{self, Visibility},
 };
 
@@ -96,11 +97,6 @@ pub trait InternDatabase: RootQueryDb {
 
     #[salsa::interned]
     fn intern_block(&self, loc: BlockLoc) -> BlockId;
-    #[salsa::interned]
-    fn intern_anonymous_const(&self, id: ConstBlockLoc) -> ConstBlockId;
-
-    #[salsa::interned]
-    fn intern_in_type_const(&self, id: InTypeConstLoc) -> InTypeConstId;
 }
 
 #[query_group::query_group]
@@ -122,18 +118,6 @@ pub trait DefDatabase:
     #[salsa::invoke_actual(ItemTree::block_item_tree_query)]
     fn block_item_tree(&self, block_id: BlockId) -> Arc<ItemTree>;
 
-    #[salsa::invoke(ItemTree::file_item_tree_with_source_map_query)]
-    fn file_item_tree_with_source_map(
-        &self,
-        file_id: HirFileId,
-    ) -> (Arc<ItemTree>, Arc<ItemTreeSourceMaps>);
-
-    #[salsa::invoke_actual(ItemTree::block_item_tree_with_source_map_query)]
-    fn block_item_tree_with_source_map(
-        &self,
-        block_id: BlockId,
-    ) -> (Arc<ItemTree>, Arc<ItemTreeSourceMaps>);
-
     #[salsa::invoke_actual(DefMap::crate_local_def_map_query)]
     fn crate_local_def_map(&self, krate: Crate) -> (Arc<DefMap>, Arc<LocalDefMap>);
 
@@ -150,30 +134,22 @@ pub trait DefDatabase:
 
     // region:data
 
-    #[salsa::transparent]
-    #[salsa::invoke_actual(VariantData::variant_data_query)]
-    fn variant_data(&self, id: VariantId) -> Arc<VariantData>;
+    #[salsa::invoke_actual(VariantFields::query)]
+    fn variant_fields_with_source_map(
+        &self,
+        id: VariantId,
+    ) -> (Arc<VariantFields>, Arc<ExpressionStoreSourceMap>);
 
-    #[salsa::invoke_actual(VariantData::variant_data_with_diagnostics_query)]
-    fn variant_data_with_diagnostics(&self, id: VariantId) -> (Arc<VariantData>, DefDiagnostics);
-
-    #[salsa::invoke_actual(StructData::struct_data_query)]
-    fn struct_data(&self, id: StructId) -> Arc<StructData>;
-
-    #[salsa::invoke_actual(StructData::union_data_query)]
-    fn union_data(&self, id: UnionId) -> Arc<StructData>;
-
-    #[salsa::invoke_actual(EnumData::enum_data_query)]
-    fn enum_data(&self, e: EnumId) -> Arc<EnumData>;
+    #[salsa::tracked]
+    fn enum_variants(&self, id: EnumId) -> Arc<EnumVariants> {
+        self.enum_variants_with_diagnostics(id).0
+    }
 
     #[salsa::invoke_actual(EnumVariants::enum_variants_query)]
-    fn enum_variants(&self, e: EnumId) -> Arc<EnumVariants>;
-
-    #[salsa::invoke_actual(EnumVariantData::enum_variant_data_query)]
-    fn enum_variant_data(&self, id: EnumVariantId) -> Arc<EnumVariantData>;
-
-    #[salsa::invoke_actual(ImplData::impl_data_query)]
-    fn impl_data(&self, e: ImplId) -> Arc<ImplData>;
+    fn enum_variants_with_diagnostics(
+        &self,
+        id: EnumId,
+    ) -> (Arc<EnumVariants>, Option<Arc<ThinVec<InactiveEnumVariantCode>>>);
 
     #[salsa::transparent]
     #[salsa::invoke_actual(ImplItems::impl_items_query)]
@@ -182,9 +158,6 @@ pub trait DefDatabase:
     #[salsa::invoke_actual(ImplItems::impl_items_with_diagnostics_query)]
     fn impl_items_with_diagnostics(&self, e: ImplId) -> (Arc<ImplItems>, DefDiagnostics);
 
-    #[salsa::invoke_actual(TraitData::trait_data_query)]
-    fn trait_data(&self, e: TraitId) -> Arc<TraitData>;
-
     #[salsa::transparent]
     #[salsa::invoke_actual(TraitItems::trait_items_query)]
     fn trait_items(&self, e: TraitId) -> Arc<TraitItems>;
@@ -192,32 +165,120 @@ pub trait DefDatabase:
     #[salsa::invoke_actual(TraitItems::trait_items_with_diagnostics_query)]
     fn trait_items_with_diagnostics(&self, tr: TraitId) -> (Arc<TraitItems>, DefDiagnostics);
 
-    #[salsa::invoke_actual(TraitAliasData::trait_alias_query)]
-    fn trait_alias_data(&self, e: TraitAliasId) -> Arc<TraitAliasData>;
+    #[salsa::tracked]
+    fn variant_fields(&self, id: VariantId) -> Arc<VariantFields> {
+        self.variant_fields_with_source_map(id).0
+    }
 
-    #[salsa::invoke_actual(TypeAliasData::type_alias_data_query)]
-    fn type_alias_data(&self, e: TypeAliasId) -> Arc<TypeAliasData>;
+    #[salsa::tracked]
+    fn trait_signature(&self, trait_: TraitId) -> Arc<TraitSignature> {
+        self.trait_signature_with_source_map(trait_).0
+    }
 
-    #[salsa::invoke_actual(FunctionData::fn_data_query)]
-    fn function_data(&self, func: FunctionId) -> Arc<FunctionData>;
+    #[salsa::tracked]
+    fn impl_signature(&self, impl_: ImplId) -> Arc<ImplSignature> {
+        self.impl_signature_with_source_map(impl_).0
+    }
 
-    #[salsa::invoke_actual(ConstData::const_data_query)]
-    fn const_data(&self, konst: ConstId) -> Arc<ConstData>;
+    #[salsa::tracked]
+    fn struct_signature(&self, struct_: StructId) -> Arc<StructSignature> {
+        self.struct_signature_with_source_map(struct_).0
+    }
 
-    #[salsa::invoke_actual(StaticData::static_data_query)]
-    fn static_data(&self, statik: StaticId) -> Arc<StaticData>;
+    #[salsa::tracked]
+    fn union_signature(&self, union_: UnionId) -> Arc<UnionSignature> {
+        self.union_signature_with_source_map(union_).0
+    }
 
-    #[salsa::invoke_actual(Macro2Data::macro2_data_query)]
-    fn macro2_data(&self, makro: Macro2Id) -> Arc<Macro2Data>;
+    #[salsa::tracked]
+    fn enum_signature(&self, e: EnumId) -> Arc<EnumSignature> {
+        self.enum_signature_with_source_map(e).0
+    }
 
-    #[salsa::invoke_actual(MacroRulesData::macro_rules_data_query)]
-    fn macro_rules_data(&self, makro: MacroRulesId) -> Arc<MacroRulesData>;
+    #[salsa::tracked]
+    fn const_signature(&self, e: ConstId) -> Arc<ConstSignature> {
+        self.const_signature_with_source_map(e).0
+    }
 
-    #[salsa::invoke_actual(ProcMacroData::proc_macro_data_query)]
-    fn proc_macro_data(&self, makro: ProcMacroId) -> Arc<ProcMacroData>;
+    #[salsa::tracked]
+    fn static_signature(&self, e: StaticId) -> Arc<StaticSignature> {
+        self.static_signature_with_source_map(e).0
+    }
 
-    #[salsa::invoke_actual(ExternCrateDeclData::extern_crate_decl_data_query)]
-    fn extern_crate_decl_data(&self, extern_crate: ExternCrateId) -> Arc<ExternCrateDeclData>;
+    #[salsa::tracked]
+    fn function_signature(&self, e: FunctionId) -> Arc<FunctionSignature> {
+        self.function_signature_with_source_map(e).0
+    }
+
+    #[salsa::tracked]
+    fn trait_alias_signature(&self, e: TraitAliasId) -> Arc<TraitAliasSignature> {
+        self.trait_alias_signature_with_source_map(e).0
+    }
+
+    #[salsa::tracked]
+    fn type_alias_signature(&self, e: TypeAliasId) -> Arc<TypeAliasSignature> {
+        self.type_alias_signature_with_source_map(e).0
+    }
+
+    #[salsa::invoke_actual(TraitSignature::query)]
+    fn trait_signature_with_source_map(
+        &self,
+        trait_: TraitId,
+    ) -> (Arc<TraitSignature>, Arc<ExpressionStoreSourceMap>);
+
+    #[salsa::invoke_actual(ImplSignature::query)]
+    fn impl_signature_with_source_map(
+        &self,
+        impl_: ImplId,
+    ) -> (Arc<ImplSignature>, Arc<ExpressionStoreSourceMap>);
+
+    #[salsa::invoke_actual(StructSignature::query)]
+    fn struct_signature_with_source_map(
+        &self,
+        struct_: StructId,
+    ) -> (Arc<StructSignature>, Arc<ExpressionStoreSourceMap>);
+
+    #[salsa::invoke_actual(UnionSignature::query)]
+    fn union_signature_with_source_map(
+        &self,
+        union_: UnionId,
+    ) -> (Arc<UnionSignature>, Arc<ExpressionStoreSourceMap>);
+
+    #[salsa::invoke_actual(EnumSignature::query)]
+    fn enum_signature_with_source_map(
+        &self,
+        e: EnumId,
+    ) -> (Arc<EnumSignature>, Arc<ExpressionStoreSourceMap>);
+
+    #[salsa::invoke_actual(ConstSignature::query)]
+    fn const_signature_with_source_map(
+        &self,
+        e: ConstId,
+    ) -> (Arc<ConstSignature>, Arc<ExpressionStoreSourceMap>);
+
+    #[salsa::invoke_actual(StaticSignature::query)]
+    fn static_signature_with_source_map(
+        &self,
+        e: StaticId,
+    ) -> (Arc<StaticSignature>, Arc<ExpressionStoreSourceMap>);
+
+    #[salsa::invoke_actual(FunctionSignature::query)]
+    fn function_signature_with_source_map(
+        &self,
+        e: FunctionId,
+    ) -> (Arc<FunctionSignature>, Arc<ExpressionStoreSourceMap>);
+
+    #[salsa::invoke_actual(TraitAliasSignature::query)]
+    fn trait_alias_signature_with_source_map(
+        &self,
+        e: TraitAliasId,
+    ) -> (Arc<TraitAliasSignature>, Arc<ExpressionStoreSourceMap>);
+
+    #[salsa::invoke_actual(TypeAliasSignature::query)]
+    fn type_alias_signature_with_source_map(
+        &self,
+        e: TypeAliasId,
+    ) -> (Arc<TypeAliasSignature>, Arc<ExpressionStoreSourceMap>);
 
     // endregion:data
 
@@ -231,15 +292,23 @@ pub trait DefDatabase:
     #[salsa::invoke_actual(ExprScopes::expr_scopes_query)]
     fn expr_scopes(&self, def: DefWithBodyId) -> Arc<ExprScopes>;
 
-    #[salsa::invoke_actual(GenericParams::generic_params_query)]
+    #[salsa::transparent]
+    #[salsa::invoke(GenericParams::new)]
     fn generic_params(&self, def: GenericDefId) -> Arc<GenericParams>;
 
-    /// If this returns `None` for the source map, that means it is the same as with the item tree.
-    #[salsa::invoke_actual(GenericParams::generic_params_with_source_map_query)]
-    fn generic_params_with_source_map(
+    #[salsa::transparent]
+    #[salsa::invoke(GenericParams::generic_params_and_store)]
+    fn generic_params_and_store(
         &self,
         def: GenericDefId,
-    ) -> (Arc<GenericParams>, Option<Arc<TypesSourceMap>>);
+    ) -> (Arc<GenericParams>, Arc<ExpressionStore>);
+
+    #[salsa::transparent]
+    #[salsa::invoke(GenericParams::generic_params_and_store_and_source_map)]
+    fn generic_params_and_store_and_source_map(
+        &self,
+        def: GenericDefId,
+    ) -> (Arc<GenericParams>, Arc<ExpressionStore>, Arc<ExpressionStoreSourceMap>);
 
     // region:attrs
 
@@ -270,15 +339,19 @@ pub trait DefDatabase:
 
     // region:visibilities
 
-    #[salsa::invoke(visibility::field_visibilities_query)]
+    #[salsa::invoke_actual(visibility::field_visibilities_query)]
     fn field_visibilities(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Visibility>>;
 
     // FIXME: unify function_visibility and const_visibility?
+
     #[salsa::invoke_actual(visibility::function_visibility_query)]
     fn function_visibility(&self, def: FunctionId) -> Visibility;
 
     #[salsa::invoke_actual(visibility::const_visibility_query)]
     fn const_visibility(&self, def: ConstId) -> Visibility;
+
+    #[salsa::invoke_actual(visibility::type_alias_visibility_query)]
+    fn type_alias_visibility(&self, def: TypeAliasId) -> Visibility;
 
     // endregion:visibilities
 

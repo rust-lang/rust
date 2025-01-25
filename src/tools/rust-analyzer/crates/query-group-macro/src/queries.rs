@@ -1,13 +1,14 @@
 //! The IR of the `#[query_group]` macro.
 
-use quote::{ToTokens, format_ident, quote};
-use syn::{FnArg, Ident, PatType, Path, Receiver, ReturnType, Type, parse_quote};
+use quote::{ToTokens, format_ident, quote, quote_spanned};
+use syn::{FnArg, Ident, PatType, Path, Receiver, ReturnType, Type, parse_quote, spanned::Spanned};
 
 pub(crate) struct TrackedQuery {
     pub(crate) trait_name: Ident,
     pub(crate) signature: syn::Signature,
     pub(crate) pat_and_tys: Vec<PatType>,
     pub(crate) invoke: Option<Path>,
+    pub(crate) default: Option<syn::Block>,
     pub(crate) cycle: Option<Path>,
     pub(crate) lru: Option<u32>,
     pub(crate) generated_struct: Option<GeneratedInputStruct>,
@@ -47,6 +48,14 @@ impl ToTokens for TrackedQuery {
             .map(|pat_type| pat_type.pat.clone())
             .collect::<Vec<Box<syn::Pat>>>();
 
+        let invoke_block = match &self.default {
+            Some(default) => quote! { #default },
+            None => {
+                let invoke_params: proc_macro2::TokenStream = quote! {db, #(#params),*};
+                quote_spanned! { invoke.span() =>  {#invoke(#invoke_params)}}
+            }
+        };
+
         let method = match &self.generated_struct {
             Some(generated_struct) => {
                 let input_struct_name = &generated_struct.input_struct_name;
@@ -59,9 +68,8 @@ impl ToTokens for TrackedQuery {
                             db: &dyn #trait_name,
                             _input: #input_struct_name,
                             #(#pat_and_tys),*
-                        ) #ret {
-                            #invoke(db, #(#params),*)
-                        }
+                        ) #ret
+                            #invoke_block
                         #shim(self, #create_data_ident(self), #(#params),*)
                     }
                 }
@@ -73,9 +81,9 @@ impl ToTokens for TrackedQuery {
                         fn #shim(
                             db: &dyn #trait_name,
                             #(#pat_and_tys),*
-                        ) #ret {
-                            #invoke(db, #(#params),*)
-                        }
+                        ) #ret
+                            #invoke_block
+
                         #shim(self, #(#params),*)
                     }
                 }
@@ -216,6 +224,7 @@ pub(crate) struct Transparent {
     pub(crate) signature: syn::Signature,
     pub(crate) pat_and_tys: Vec<PatType>,
     pub(crate) invoke: Option<Path>,
+    pub(crate) default: Option<syn::Block>,
 }
 
 impl ToTokens for Transparent {
@@ -233,10 +242,15 @@ impl ToTokens for Transparent {
             None => sig.ident.to_token_stream(),
         };
 
-        let method = quote! {
-            #sig {
-                #invoke(self, #(#ty),*)
-            }
+        let method = match &self.default {
+            Some(default) => quote! {
+                #sig { let db = self; #default }
+            },
+            None => quote! {
+                #sig {
+                    #invoke(self, #(#ty),*)
+                }
+            },
         };
 
         method.to_tokens(tokens);

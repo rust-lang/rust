@@ -453,7 +453,7 @@ impl ItemScope {
         )
     }
 
-    pub(crate) fn macro_invoc(&self, call: AstId<ast::MacroCall>) -> Option<MacroCallId> {
+    pub fn macro_invoc(&self, call: AstId<ast::MacroCall>) -> Option<MacroCallId> {
         self.macro_invocations.get(&call).copied()
     }
 

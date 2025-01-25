@@ -550,12 +550,30 @@ macro_rules! foo {
 }
 
 fn main() {
-    let res = fo$0o!();
+    fo$0o!()
 }
 "#,
             expect![[r#"
                 foo!
                 fn f<T>(_: &dyn ::std::marker::Copy){}"#]],
+        );
+    }
+
+    #[test]
+    fn macro_expand_item_expansion_in_expression_call() {
+        check(
+            r#"
+macro_rules! foo {
+    () => {fn f<T>() {}};
+}
+
+fn main() {
+    let res = fo$0o!();
+}
+"#,
+            expect![[r#"
+                foo!
+                fn f<T>(){}"#]],
         );
     }
 

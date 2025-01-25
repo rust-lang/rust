@@ -784,13 +784,13 @@ fn include_str_expand(
     db: &dyn ExpandDatabase,
     arg_id: MacroCallId,
     tt: &tt::TopSubtree,
-    span: Span,
+    call_site: Span,
 ) -> ExpandResult<tt::TopSubtree> {
-    let (path, span) = match parse_string(tt) {
+    let (path, input_span) = match parse_string(tt) {
         Ok(it) => it,
         Err(e) => {
             return ExpandResult::new(
-                tt::TopSubtree::empty(DelimSpan { open: span, close: span }),
+                tt::TopSubtree::empty(DelimSpan { open: call_site, close: call_site }),
                 e,
             );
         }
@@ -800,17 +800,17 @@ fn include_str_expand(
     // it's unusual to `include_str!` a Rust file), but we can return an empty string.
     // Ideally, we'd be able to offer a precise expansion if the user asks for macro
     // expansion.
-    let file_id = match relative_file(db, arg_id, path.as_str(), true, span) {
+    let file_id = match relative_file(db, arg_id, path.as_str(), true, input_span) {
         Ok(file_id) => file_id,
         Err(_) => {
-            return ExpandResult::ok(quote!(span =>""));
+            return ExpandResult::ok(quote!(call_site =>""));
         }
     };
 
     let text = db.file_text(file_id.file_id());
     let text = &*text.text(db);
 
-    ExpandResult::ok(quote!(span =>#text))
+    ExpandResult::ok(quote!(call_site =>#text))
 }
 
 fn get_env_inner(db: &dyn ExpandDatabase, arg_id: MacroCallId, key: &Symbol) -> Option<String> {

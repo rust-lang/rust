@@ -10,8 +10,8 @@ use chalk_ir::{UniverseIndex, WithKind, cast::Cast};
 use hir_def::{
     AssocItemId, BlockId, ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup,
     ModuleId, TraitId,
-    data::{TraitFlags, adt::StructFlags},
     nameres::{DefMap, assoc::ImplItems},
+    signatures::{ConstFlags, EnumFlags, FnFlags, StructFlags, TraitFlags, TypeAliasFlags},
 };
 use hir_expand::name::Name;
 use intern::sym;
@@ -313,7 +313,7 @@ impl InherentImpls {
     fn collect_def_map(&mut self, db: &dyn HirDatabase, def_map: &DefMap) {
         for (_module_id, module_data) in def_map.modules() {
             for impl_id in module_data.scope.impls() {
-                let data = db.impl_data(impl_id);
+                let data = db.impl_signature(impl_id);
                 if data.target_trait.is_some() {
                     continue;
                 }
@@ -384,14 +384,17 @@ pub fn def_crates(db: &dyn HirDatabase, ty: &Ty, cur_crate: Crate) -> Option<Sma
         &TyKind::Adt(AdtId(def_id), _) => {
             let rustc_has_incoherent_inherent_impls = match def_id {
                 hir_def::AdtId::StructId(id) => db
-                    .struct_data(id)
+                    .struct_signature(id)
                     .flags
-                    .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL),
+                    .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
                 hir_def::AdtId::UnionId(id) => db
-                    .union_data(id)
+                    .union_signature(id)
                     .flags
-                    .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL),
-                hir_def::AdtId::EnumId(id) => db.enum_data(id).rustc_has_incoherent_inherent_impls,
+                    .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
+                hir_def::AdtId::EnumId(id) => db
+                    .enum_signature(id)
+                    .flags
+                    .contains(EnumFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
             };
             Some(if rustc_has_incoherent_inherent_impls {
                 db.incoherent_inherent_impl_crates(cur_crate, TyFingerprint::Adt(def_id))
@@ -401,17 +404,23 @@ pub fn def_crates(db: &dyn HirDatabase, ty: &Ty, cur_crate: Crate) -> Option<Sma
         }
         &TyKind::Foreign(id) => {
             let alias = from_foreign_def_id(id);
-            Some(if db.type_alias_data(alias).rustc_has_incoherent_inherent_impls() {
-                db.incoherent_inherent_impl_crates(cur_crate, TyFingerprint::ForeignType(id))
-            } else {
-                smallvec![alias.module(db.upcast()).krate()]
-            })
+            Some(
+                if db
+                    .type_alias_signature(alias)
+                    .flags
+                    .contains(TypeAliasFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS)
+                {
+                    db.incoherent_inherent_impl_crates(cur_crate, TyFingerprint::ForeignType(id))
+                } else {
+                    smallvec![alias.module(db.upcast()).krate()]
+                },
+            )
         }
         TyKind::Dyn(_) => {
             let trait_id = ty.dyn_trait()?;
             Some(
                 if db
-                    .trait_data(trait_id)
+                    .trait_signature(trait_id)
                     .flags
                     .contains(TraitFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS)
                 {
@@ -618,8 +627,8 @@ pub fn lookup_impl_const(
     let substitution = Substitution::from_iter(Interner, subs.iter(Interner));
     let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_id), substitution };
 
-    let const_data = db.const_data(const_id);
-    let name = match const_data.name.as_ref() {
+    let const_signature = db.const_signature(const_id);
+    let name = match const_signature.name.as_ref() {
         Some(name) => name,
         None => return (const_id, subs),
     };
@@ -691,7 +700,7 @@ pub(crate) fn lookup_impl_method_query(
         substitution: Substitution::from_iter(Interner, fn_subst.iter(Interner).skip(fn_params)),
     };
 
-    let name = &db.function_data(func).name;
+    let name = &db.function_signature(func).name;
     let Some((impl_fn, impl_subst)) =
         lookup_impl_assoc_item_for_trait_ref(trait_ref, db, env, name).and_then(|assoc| {
             if let (AssocItemId::FunctionId(id), subst) = assoc { Some((id, subst)) } else { None }
@@ -822,17 +831,20 @@ fn is_inherent_impl_coherent(
 
             &TyKind::Adt(AdtId(adt), _) => match adt {
                 hir_def::AdtId::StructId(id) => db
-                    .struct_data(id)
+                    .struct_signature(id)
                     .flags
-                    .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL),
+                    .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
                 hir_def::AdtId::UnionId(id) => db
-                    .union_data(id)
+                    .union_signature(id)
                     .flags
-                    .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL),
-                hir_def::AdtId::EnumId(it) => db.enum_data(it).rustc_has_incoherent_inherent_impls,
+                    .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
+                hir_def::AdtId::EnumId(it) => db
+                    .enum_signature(it)
+                    .flags
+                    .contains(EnumFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
             },
             TyKind::Dyn(it) => it.principal_id().is_some_and(|trait_id| {
-                db.trait_data(from_chalk_trait_id(trait_id))
+                db.trait_signature(from_chalk_trait_id(trait_id))
                     .flags
                     .contains(TraitFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS)
             }),
@@ -843,11 +855,16 @@ fn is_inherent_impl_coherent(
         rustc_has_incoherent_inherent_impls
             && !items.items.is_empty()
             && items.items.iter().all(|&(_, assoc)| match assoc {
-                AssocItemId::FunctionId(it) => db.function_data(it).rustc_allow_incoherent_impl(),
-                AssocItemId::ConstId(it) => db.const_data(it).rustc_allow_incoherent_impl(),
-                AssocItemId::TypeAliasId(it) => {
-                    db.type_alias_data(it).rustc_allow_incoherent_impl()
+                AssocItemId::FunctionId(it) => {
+                    db.function_signature(it).flags.contains(FnFlags::RUSTC_ALLOW_INCOHERENT_IMPLS)
                 }
+                AssocItemId::ConstId(it) => {
+                    db.const_signature(it).flags.contains(ConstFlags::RUSTC_ALLOW_INCOHERENT_IMPL)
+                }
+                AssocItemId::TypeAliasId(it) => db
+                    .type_alias_signature(it)
+                    .flags
+                    .contains(TypeAliasFlags::RUSTC_ALLOW_INCOHERENT_IMPLS),
             })
     }
 }
@@ -882,8 +899,8 @@ pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
             match ty.kind(Interner) {
                 TyKind::Ref(_, _, referenced) => ty = referenced.clone(),
                 &TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), ref subs) => {
-                    let struct_data = db.struct_data(s);
-                    if struct_data.flags.contains(StructFlags::IS_FUNDAMENTAL) {
+                    let struct_signature = db.struct_signature(s);
+                    if struct_signature.flags.contains(StructFlags::IS_FUNDAMENTAL) {
                         let next = subs.type_parameters(Interner).next();
                         match next {
                             Some(it) => ty = it,
@@ -901,7 +918,7 @@ pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
 
     // FIXME: param coverage
     //   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti`` (excluding `Ti`)
-    trait_ref.substitution.type_parameters(Interner).any(|ty| {
+    let is_not_orphan = trait_ref.substitution.type_parameters(Interner).any(|ty| {
         match unwrap_fundamental(ty).kind(Interner) {
             &TyKind::Adt(AdtId(id), _) => is_local(id.module(db.upcast()).krate()),
             TyKind::Error => true,
@@ -910,7 +927,9 @@ pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
             }),
             _ => false,
         }
-    })
+    });
+    #[allow(clippy::let_and_return)]
+    is_not_orphan
 }
 
 pub fn iterate_path_candidates(
@@ -1206,7 +1225,7 @@ fn iterate_trait_method_candidates(
     let TraitEnvironment { krate, block, .. } = *table.trait_env;
 
     'traits: for &t in traits_in_scope {
-        let data = db.trait_data(t);
+        let data = db.trait_signature(t);
 
         // Traits annotated with `#[rustc_skip_during_method_dispatch]` are skipped during
         // method resolution, if the receiver is an array, and we're compiling for editions before
@@ -1521,7 +1540,7 @@ fn is_valid_trait_method_candidate(
     let db = table.db;
     match item {
         AssocItemId::FunctionId(fn_id) => {
-            let data = db.function_data(fn_id);
+            let data = db.function_signature(fn_id);
 
             check_that!(name.is_none_or(|n| n == &data.name));
 
@@ -1552,7 +1571,7 @@ fn is_valid_trait_method_candidate(
         }
         AssocItemId::ConstId(c) => {
             check_that!(receiver_ty.is_none());
-            check_that!(name.is_none_or(|n| db.const_data(c).name.as_ref() == Some(n)));
+            check_that!(name.is_none_or(|n| db.const_signature(c).name.as_ref() == Some(n)));
 
             IsValidCandidate::Yes
         }
@@ -1574,7 +1593,7 @@ fn is_valid_impl_fn_candidate(
     check_that!(name.is_none_or(|n| n == item_name));
 
     let db = table.db;
-    let data = db.function_data(fn_id);
+    let data = db.function_signature(fn_id);
 
     if let Some(from_module) = visible_from_module {
         if !db.function_visibility(fn_id).is_visible_from(db.upcast(), from_module) {
