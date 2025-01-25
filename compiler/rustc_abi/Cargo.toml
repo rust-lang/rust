@@ -20,7 +20,7 @@ tracing = "0.1"
 [features]
 # tidy-alphabetical-start
 default = ["nightly", "randomize"]
-# rust-analyzer depends on this crate and we therefore require it to built on a stable toolchain
+# rust-analyzer depends on this crate and we therefore require it to be built on a stable toolchain
 # without depending on rustc_data_structures, rustc_macros and rustc_serialize
 nightly = [
     "dep:rustc_data_structures",
