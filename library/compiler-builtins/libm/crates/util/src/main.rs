@@ -8,12 +8,12 @@ use std::env;
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-#[cfg(feature = "build-mpfr")]
-use az::Az;
 use libm::support::{hf32, hf64};
 #[cfg(feature = "build-mpfr")]
 use libm_test::mpfloat::MpOp;
 use libm_test::{MathOp, TupleCall};
+#[cfg(feature = "build-mpfr")]
+use rug::az::{self, Az};
 
 const USAGE: &str = "\
 usage:

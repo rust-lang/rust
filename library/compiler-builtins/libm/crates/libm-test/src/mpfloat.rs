@@ -6,10 +6,10 @@
 use std::cmp::Ordering;
 use std::ffi::{c_int, c_long};
 
-use az::Az;
 use gmp_mpfr_sys::mpfr::rnd_t;
 use rug::Assign;
 pub use rug::Float as MpFloat;
+use rug::az::{self, Az};
 use rug::float::Round;
 use rug::float::Round::Nearest;
 use rug::ops::{PowAssignRound, RemAssignRound};
