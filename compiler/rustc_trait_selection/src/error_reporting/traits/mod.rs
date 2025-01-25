@@ -11,7 +11,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, E0038, E0276, MultiSpan, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir::{self as hir, AmbigArg, LangItem};
 use rustc_infer::traits::{
     DynCompatibilityViolation, Obligation, ObligationCause, ObligationCauseCode,
     PredicateObligation, SelectionError,
@@ -87,9 +87,9 @@ impl<'v> Visitor<'v> for FindExprBySpan<'v> {
         }
     }
 
-    fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+    fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
         if self.span == ty.span {
-            self.ty_result = Some(ty);
+            self.ty_result = Some(ty.as_unambig_ty());
         } else {
             hir::intravisit::walk_ty(self, ty);
         }

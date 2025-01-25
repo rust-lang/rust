@@ -21,10 +21,10 @@ pub struct MyError {}
 //@ is    "$.index[*][?(@.name=='MyResult')].inner.type_alias.generics.params[0].kind.type.default" null
 //@ has    "$.index[*][?(@.name=='MyResult')].inner.type_alias.generics.params[1].kind.type.default.resolved_path"
 //@ is    "$.index[*][?(@.name=='MyResult')].inner.type_alias.generics.params[1].kind.type.default.resolved_path.id" $my_error
-//@ is    "$.index[*][?(@.name=='MyResult')].inner.type_alias.generics.params[1].kind.type.default.resolved_path.name" \"MyError\"
+//@ is    "$.index[*][?(@.name=='MyResult')].inner.type_alias.generics.params[1].kind.type.default.resolved_path.path" \"MyError\"
 //@ has    "$.index[*][?(@.name=='MyResult')].inner.type_alias.type.resolved_path"
 //@ is    "$.index[*][?(@.name=='MyResult')].inner.type_alias.type.resolved_path.id" $result
-//@ is    "$.index[*][?(@.name=='MyResult')].inner.type_alias.type.resolved_path.name" \"Result\"
+//@ is    "$.index[*][?(@.name=='MyResult')].inner.type_alias.type.resolved_path.path" \"Result\"
 //@ is    "$.index[*][?(@.name=='MyResult')].inner.type_alias.type.resolved_path.args.angle_bracketed.constraints" []
 //@ has    "$.index[*][?(@.name=='MyResult')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.generic"
 //@ has    "$.index[*][?(@.name=='MyResult')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[1].type.generic"

@@ -63,7 +63,6 @@ fn f() -> () {
 
     bb6: {
         StorageDead(_4);
-        StorageDead(_3);
         drop(_2) -> [return: bb7, unwind: bb17];
     }
 

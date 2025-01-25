@@ -252,7 +252,7 @@ Consider writing the test as a proper incremental test instead.
 
 | Directive   | Explanation                                                  | Supported test suites                    | Possible values           |
 |-------------|--------------------------------------------------------------|------------------------------------------|---------------------------|
-| `doc-flags` | Flags passed to `rustdoc` when building the test or aux file | `rustdoc`, `js-doc-test`, `rustdoc-json` | Any valid `rustdoc` flags |
+| `doc-flags` | Flags passed to `rustdoc` when building the test or aux file | `rustdoc`, `rustdoc-js`, `rustdoc-json` | Any valid `rustdoc` flags |
 
 <!--
 **FIXME(rustdoc)**: what does `check-test-line-numbers-match` do?

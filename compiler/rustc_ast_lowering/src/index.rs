@@ -1,3 +1,4 @@
+use intravisit::InferKind;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap};
@@ -265,14 +266,6 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_const_arg(&mut self, const_arg: &'hir ConstArg<'hir>) {
-        self.insert(const_arg.span(), const_arg.hir_id, Node::ConstArg(const_arg));
-
-        self.with_parent(const_arg.hir_id, |this| {
-            intravisit::walk_const_arg(this, const_arg);
-        });
-    }
-
     fn visit_expr(&mut self, expr: &'hir Expr<'hir>) {
         self.insert(expr.span, expr.hir_id, Node::Expr(expr));
 
@@ -302,20 +295,39 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         intravisit::walk_path_segment(self, path_segment);
     }
 
-    fn visit_ty(&mut self, ty: &'hir Ty<'hir>) {
-        self.insert(ty.span, ty.hir_id, Node::Ty(ty));
+    fn visit_ty(&mut self, ty: &'hir Ty<'hir, AmbigArg>) {
+        self.insert(ty.span, ty.hir_id, Node::Ty(ty.as_unambig_ty()));
 
         self.with_parent(ty.hir_id, |this| {
             intravisit::walk_ty(this, ty);
         });
     }
 
-    fn visit_infer(&mut self, inf: &'hir InferArg) {
-        self.insert(inf.span, inf.hir_id, Node::Infer(inf));
+    fn visit_const_arg(&mut self, const_arg: &'hir ConstArg<'hir, AmbigArg>) {
+        self.insert(
+            const_arg.as_unambig_ct().span(),
+            const_arg.hir_id,
+            Node::ConstArg(const_arg.as_unambig_ct()),
+        );
 
-        self.with_parent(inf.hir_id, |this| {
-            intravisit::walk_inf(this, inf);
+        self.with_parent(const_arg.hir_id, |this| {
+            intravisit::walk_ambig_const_arg(this, const_arg);
         });
+    }
+
+    fn visit_infer(
+        &mut self,
+        inf_id: HirId,
+        inf_span: Span,
+        kind: InferKind<'hir>,
+    ) -> Self::Result {
+        match kind {
+            InferKind::Ty(ty) => self.insert(inf_span, inf_id, Node::Ty(ty)),
+            InferKind::Const(ct) => self.insert(inf_span, inf_id, Node::ConstArg(ct)),
+            InferKind::Ambig(inf) => self.insert(inf_span, inf_id, Node::Infer(inf)),
+        }
+
+        self.visit_id(inf_id);
     }
 
     fn visit_trait_ref(&mut self, tr: &'hir TraitRef<'hir>) {

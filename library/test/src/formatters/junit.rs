@@ -8,13 +8,13 @@ use crate::test_result::TestResult;
 use crate::time;
 use crate::types::{TestDesc, TestType};
 
-pub struct JunitFormatter<T> {
+pub(crate) struct JunitFormatter<T> {
     out: OutputLocation<T>,
     results: Vec<(TestDesc, TestResult, Duration, Vec<u8>)>,
 }
 
 impl<T: Write> JunitFormatter<T> {
-    pub fn new(out: OutputLocation<T>) -> Self {
+    pub(crate) fn new(out: OutputLocation<T>) -> Self {
         Self { out, results: Vec::new() }
     }
 

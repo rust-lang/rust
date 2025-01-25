@@ -7,10 +7,10 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{Visitor, walk_inf, walk_ty};
+use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
 use rustc_hir::{
-    self as hir, Expr, ExprKind, FnRetTy, FnSig, GenericArgsParentheses, GenericParam, GenericParamKind, HirId, Impl,
-    ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath, Ty, TyKind,
+    self as hir, AmbigArg, Expr, ExprKind, FnRetTy, FnSig, GenericArgsParentheses, GenericParam, GenericParamKind,
+    HirId, Impl, ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath, Ty, TyKind,
 };
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
@@ -179,7 +179,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             for (impl_hir_ty, trait_sem_ty) in impl_inputs_outputs.zip(trait_method_sig.inputs_and_output) {
                 if trait_sem_ty.walk().any(|inner| inner == self_ty.into()) {
                     let mut visitor = SkipTyCollector::default();
-                    visitor.visit_ty(impl_hir_ty);
+                    visitor.visit_ty_unambig(impl_hir_ty);
                     types_to_skip.extend(visitor.types_to_skip);
                 }
             }
@@ -201,7 +201,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         }
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'tcx>, hir_ty: &Ty<'tcx>) {
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, hir_ty: &Ty<'tcx, AmbigArg>) {
         if !hir_ty.span.from_expansion()
             && self.msrv.meets(msrvs::TYPE_ALIAS_ENUM_VARIANTS)
             && let Some(&StackItem::Check {
@@ -218,7 +218,8 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             && let ty = if in_body > 0 {
                 cx.typeck_results().node_type(hir_ty.hir_id)
             } else {
-                lower_ty(cx.tcx, hir_ty)
+                // We don't care about ignoring infer vars here
+                lower_ty(cx.tcx, hir_ty.as_unambig_ty())
             }
             && let impl_ty = cx.tcx.type_of(impl_id).instantiate_identity()
             && same_type_and_consts(ty, impl_ty)
@@ -275,12 +276,14 @@ struct SkipTyCollector {
 }
 
 impl Visitor<'_> for SkipTyCollector {
-    fn visit_infer(&mut self, inf: &hir::InferArg) {
-        self.types_to_skip.push(inf.hir_id);
-
-        walk_inf(self, inf);
+    fn visit_infer(&mut self, inf_id: HirId, _inf_span: Span, kind: InferKind<'_>) -> Self::Result {
+        // Conservatively assume ambiguously kinded inferred arguments are type arguments
+        if let InferKind::Ambig(_) | InferKind::Ty(_) = kind {
+            self.types_to_skip.push(inf_id);
+        }
+        self.visit_id(inf_id);
     }
-    fn visit_ty(&mut self, hir_ty: &Ty<'_>) {
+    fn visit_ty(&mut self, hir_ty: &Ty<'_, AmbigArg>) {
         self.types_to_skip.push(hir_ty.hir_id);
 
         walk_ty(self, hir_ty);

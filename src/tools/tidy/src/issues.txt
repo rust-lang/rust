@@ -3856,7 +3856,6 @@ ui/suggestions/issue-106443-sugg-clone-for-arg.rs
 ui/suggestions/issue-106443-sugg-clone-for-bound.rs
 ui/suggestions/issue-107860.rs
 ui/suggestions/issue-108470.rs
-ui/suggestions/issue-109195.rs
 ui/suggestions/issue-109291.rs
 ui/suggestions/issue-109396.rs
 ui/suggestions/issue-109436.rs

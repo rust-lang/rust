@@ -4,7 +4,7 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::intravisit::Visitor;
+use rustc_hir::intravisit::VisitorExt;
 use rustc_middle::bug;
 use rustc_middle::ty::TypeVisitor;
 use tracing::debug;
@@ -87,7 +87,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             for matching_def_id in v.0 {
                 let mut hir_v =
                     super::static_impl_trait::HirTraitObjectVisitor(&mut traits, matching_def_id);
-                hir_v.visit_ty(impl_self_ty);
+                hir_v.visit_ty_unambig(impl_self_ty);
             }
 
             if traits.is_empty() {

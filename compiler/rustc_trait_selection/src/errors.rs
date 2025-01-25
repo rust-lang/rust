@@ -6,11 +6,10 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
     EmissionGuarantee, IntoDiagArg, Level, MultiSpan, SubdiagMessageOp, Subdiagnostic,
 };
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{Visitor, walk_ty};
-use rustc_hir::{FnRetTy, GenericParamKind, Node};
+use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
+use rustc_hir::{self as hir, AmbigArg, FnRetTy, GenericParamKind, Node};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, TraitRefPrintOnlyTraitPath};
 use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, PolyTraitRef, Region, Ty, TyCtxt};
@@ -579,7 +578,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
             }
 
             impl<'v> Visitor<'v> for ImplicitLifetimeFinder {
-                fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+                fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
                     let make_suggestion = |ident: Ident| {
                         if ident.name == kw::Empty && ident.span.is_empty() {
                             format!("{}, ", self.suggestion_param_name)
@@ -642,16 +641,16 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
             if let Some(fn_decl) = node.fn_decl()
                 && let hir::FnRetTy::Return(ty) = fn_decl.output
             {
-                visitor.visit_ty(ty);
+                visitor.visit_ty_unambig(ty);
             }
             if visitor.suggestions.is_empty() {
                 // Do not suggest constraining the `&self` param, but rather the return type.
                 // If that is wrong (because it is not sufficient), a follow up error will tell the
                 // user to fix it. This way we lower the chances of *over* constraining, but still
                 // get the cake of "correctly" contrained in two steps.
-                visitor.visit_ty(self.ty_sup);
+                visitor.visit_ty_unambig(self.ty_sup);
             }
-            visitor.visit_ty(self.ty_sub);
+            visitor.visit_ty_unambig(self.ty_sub);
             if visitor.suggestions.is_empty() {
                 return false;
             }

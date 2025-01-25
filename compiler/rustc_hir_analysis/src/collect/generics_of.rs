@@ -3,9 +3,10 @@ use std::ops::ControlFlow;
 
 use hir::intravisit::{self, Visitor};
 use hir::{GenericParamKind, HirId, Node};
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_hir::intravisit::VisitorExt;
+use rustc_hir::{self as hir, AmbigArg};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
 use rustc_span::{Span, Symbol, kw};
@@ -461,7 +462,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
 
     impl<'tcx> Visitor<'tcx> for LateBoundRegionsDetector<'tcx> {
         type Result = ControlFlow<Span>;
-        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) -> ControlFlow<Span> {
+        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) -> ControlFlow<Span> {
             match ty.kind {
                 hir::TyKind::BareFn(..) => {
                     self.outer_index.shift_in(1);
@@ -539,7 +540,7 @@ impl<'v> Visitor<'v> for AnonConstInParamTyDetector {
         if let GenericParamKind::Const { ty, default: _, synthetic: _ } = p.kind {
             let prev = self.in_param_ty;
             self.in_param_ty = true;
-            let res = self.visit_ty(ty);
+            let res = self.visit_ty_unambig(ty);
             self.in_param_ty = prev;
             res
         } else {

@@ -6,9 +6,9 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::Visitor;
+use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{self as hir, ExprKind, GenericArg, HirId, Node, QPath, intravisit};
+use rustc_hir::{self as hir, AmbigArg, ExprKind, GenericArg, HirId, Node, QPath, intravisit};
 use rustc_hir_analysis::hir_ty_lowering::errors::GenericsArgsErrExtend;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
     check_generic_arg_count_for_call, lower_generic_args,
@@ -470,7 +470,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         impl<'tcx> intravisit::Visitor<'tcx> for CollectClauses<'_, 'tcx> {
-            fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
+            fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
                 if let Some(clauses) = self.fcx.trait_ascriptions.borrow().get(&ty.hir_id.local_id)
                 {
                     self.clauses.extend(clauses.iter().cloned());
@@ -480,7 +480,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut clauses = CollectClauses { clauses: vec![], fcx: self };
-        clauses.visit_ty(hir_ty);
+        clauses.visit_ty_unambig(hir_ty);
         self.tcx.mk_clauses(&clauses.clauses)
     }
 
@@ -1272,14 +1272,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .lower_lifetime(lt, RegionInferReason::Param(param))
                         .into(),
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
-                        self.fcx.lower_ty(ty).raw.into()
-                    }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.fcx.lower_const_arg(ct, FeedConstTy::Param(param.def_id)).into()
+                        // We handle the ambig portions of `Ty` in match arm below
+                        self.fcx.lower_ty(ty.as_unambig_ty()).raw.into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
-                        self.fcx.ty_infer(Some(param), inf.span).into()
+                        self.fcx.lower_ty(&inf.to_ty()).raw.into()
                     }
+                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => self
+                        .fcx
+                        // Ambiguous parts of `ConstArg` are handled in the match arms below
+                        .lower_const_arg(ct.as_unambig_ct(), FeedConstTy::Param(param.def_id))
+                        .into(),
                     (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         self.fcx.ct_infer(Some(param), inf.span).into()
                     }
