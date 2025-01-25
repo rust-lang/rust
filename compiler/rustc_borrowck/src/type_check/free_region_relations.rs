@@ -264,7 +264,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             }
             let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } =
                 param_env
-                    .and(type_op::normalize::Normalize { value: ty })
+                    .and(DeeplyNormalize { value: ty })
                     .fully_perform(self.infcx, span)
                     .unwrap_or_else(|guar| TypeOpOutput {
                         output: Ty::new_error(self.infcx.tcx, guar),
