@@ -36,7 +36,7 @@ use crate::{
 };
 
 pub(crate) use hir_def::{
-    body::Body,
+    expr_store::Body,
     hir::{Expr, ExprId, MatchArm, Pat, PatId, Statement},
     LocalFieldId, VariantId,
 };

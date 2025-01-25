@@ -1,5 +1,6 @@
-//! Defines `Body`: a lowered representation of bodies of functions, statics and
+//! Defines `ExpressionStore`: a lowered representation of functions, statics and
 //! consts.
+mod body;
 mod lower;
 mod pretty;
 pub mod scope;
@@ -9,11 +10,10 @@ mod tests;
 
 use std::ops::{Deref, Index};
 
-use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{name::Name, ExpandError, InFile};
-use la_arena::{Arena, ArenaMap, Idx, RawIdx};
+use la_arena::{Arena, ArenaMap};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::{Edition, MacroFileId, SyntaxContextData};
@@ -23,18 +23,17 @@ use tt::TextRange;
 
 use crate::{
     db::DefDatabase,
-    expander::Expander,
     hir::{
         Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, Label, LabelId, Pat,
         PatId, RecordFieldPat, Statement,
     },
-    item_tree::AttrOwner,
     nameres::DefMap,
     path::{ModPath, Path},
-    src::HasSource,
     type_ref::{TypeRef, TypeRefId, TypesMap, TypesSourceMap},
-    BlockId, DefWithBodyId, HasModule, Lookup, SyntheticSyntax,
+    BlockId, DefWithBodyId, Lookup, SyntheticSyntax,
 };
+
+pub use self::body::{Body, BodySourceMap};
 
 /// A wrapper around [`span::SyntaxContextId`] that is intended only for comparisons.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -80,9 +79,8 @@ pub type ExprOrPatSource = InFile<ExprOrPatPtr>;
 pub type SelfParamPtr = AstPtr<ast::SelfParam>;
 pub type MacroCallPtr = AstPtr<ast::MacroCall>;
 
-/// The body of an item (function, const etc.).
 #[derive(Debug, Eq, PartialEq)]
-pub struct Body {
+pub struct ExpressionStore {
     pub exprs: Arena<Expr>,
     pub pats: Arena<Pat>,
     pub bindings: Arena<Binding>,
@@ -90,18 +88,8 @@ pub struct Body {
     /// Id of the closure/coroutine that owns the corresponding binding. If a binding is owned by the
     /// top level expression, it will not be listed in here.
     pub binding_owners: FxHashMap<BindingId, ExprId>,
-    /// The patterns for the function's parameters. While the parameter types are
-    /// part of the function signature, the patterns are not (they don't change
-    /// the external type of the function).
-    ///
-    /// If this `Body` is for the body of a constant, this will just be
-    /// empty.
-    pub params: Box<[PatId]>,
-    pub self_param: Option<BindingId>,
-    /// The `ExprId` of the actual body expression.
-    pub body_expr: ExprId,
     pub types: TypesMap,
-    /// Block expressions in this body that may contain inner items.
+    /// Block expressions in this store that may contain inner items.
     block_scopes: Box<[BlockId]>,
 
     /// A map from binding to its hygiene ID.
@@ -119,33 +107,8 @@ pub struct Body {
     ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
 }
 
-/// The body of an item (function, const etc.).
 #[derive(Debug, Eq, PartialEq, Default)]
-pub struct BodyCollector {
-    pub exprs: Arena<Expr>,
-    pub pats: Arena<Pat>,
-    pub bindings: Arena<Binding>,
-    pub labels: Arena<Label>,
-    pub binding_owners: FxHashMap<BindingId, ExprId>,
-    pub types: TypesMap,
-    block_scopes: Vec<BlockId>,
-    binding_hygiene: FxHashMap<BindingId, HygieneId>,
-    ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
-}
-
-/// An item body together with the mapping from syntax nodes to HIR expression
-/// IDs. This is needed to go from e.g. a position in a file to the HIR
-/// expression containing it; but for type inference etc., we want to operate on
-/// a structure that is agnostic to the actual positions of expressions in the
-/// file, so that we don't recompute types whenever some whitespace is typed.
-///
-/// One complication here is that, due to macro expansion, a single `Body` might
-/// be spread across several files. So, for each ExprId and PatId, we record
-/// both the HirFileId and the position inside the file. However, we only store
-/// AST -> ExprId mapping for non-macro files, as it is not clear how to handle
-/// this properly for macros.
-#[derive(Default, Debug, Eq, PartialEq)]
-pub struct BodySourceMap {
+pub struct ExpressionStoreSourceMap {
     // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
     // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
     expr_map: FxHashMap<ExprSource, ExprOrPatId>,
@@ -157,7 +120,6 @@ pub struct BodySourceMap {
     label_map: FxHashMap<LabelSource, LabelId>,
     label_map_back: ArenaMap<LabelId, LabelSource>,
 
-    self_param: Option<InFile<SelfParamPtr>>,
     binding_definitions: FxHashMap<BindingId, SmallVec<[PatId; 4]>>,
 
     /// We don't create explicit nodes for record fields (`S { record_field: 92 }`).
@@ -171,9 +133,23 @@ pub struct BodySourceMap {
 
     expansions: FxHashMap<InFile<MacroCallPtr>, MacroFileId>,
 
-    /// Diagnostics accumulated during body lowering. These contain `AstPtr`s and so are stored in
+    /// Diagnostics accumulated during lowering. These contain `AstPtr`s and so are stored in
     /// the source map (since they're just as volatile).
-    diagnostics: Vec<BodyDiagnostic>,
+    diagnostics: Vec<ExpressionStoreDiagnostics>,
+}
+
+/// The body of an item (function, const etc.).
+#[derive(Debug, Eq, PartialEq, Default)]
+pub struct ExpressionStoreBuilder {
+    pub exprs: Arena<Expr>,
+    pub pats: Arena<Pat>,
+    pub bindings: Arena<Binding>,
+    pub labels: Arena<Label>,
+    pub binding_owners: FxHashMap<BindingId, ExprId>,
+    pub types: TypesMap,
+    block_scopes: Vec<BlockId>,
+    binding_hygiene: FxHashMap<BindingId, HygieneId>,
+    ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
 }
 
 #[derive(Default, Debug, Eq, PartialEq)]
@@ -191,7 +167,7 @@ struct FormatTemplate {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum BodyDiagnostic {
+pub enum ExpressionStoreDiagnostics {
     InactiveCode { node: InFile<SyntaxNodePtr>, cfg: CfgExpr, opts: CfgOptions },
     MacroError { node: InFile<MacroCallPtr>, err: ExpandError },
     UnresolvedMacroCall { node: InFile<MacroCallPtr>, path: ModPath },
@@ -200,13 +176,8 @@ pub enum BodyDiagnostic {
     UndeclaredLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
 }
 
-impl BodyCollector {
-    fn finish(
-        self,
-        body_expr: ExprId,
-        self_param: Option<BindingId>,
-        params: Box<[PatId]>,
-    ) -> Body {
+impl ExpressionStoreBuilder {
+    fn finish(self) -> ExpressionStore {
         let Self {
             block_scopes,
             mut exprs,
@@ -227,15 +198,12 @@ impl BodyCollector {
         ident_hygiene.shrink_to_fit();
         types.shrink_to_fit();
 
-        Body {
+        ExpressionStore {
             exprs,
             pats,
             bindings,
             labels,
             binding_owners,
-            params,
-            self_param,
-            body_expr,
             types,
             block_scopes: block_scopes.into_boxed_slice(),
             binding_hygiene,
@@ -244,124 +212,13 @@ impl BodyCollector {
     }
 }
 
-impl Body {
-    pub(crate) fn body_with_source_map_query(
-        db: &dyn DefDatabase,
-        def: DefWithBodyId,
-    ) -> (Arc<Body>, Arc<BodySourceMap>) {
-        let _p = tracing::info_span!("body_with_source_map_query").entered();
-        let mut params = None;
-
-        let mut is_async_fn = false;
-        let InFile { file_id, value: body } = {
-            match def {
-                DefWithBodyId::FunctionId(f) => {
-                    let data = db.function_data(f);
-                    let f = f.lookup(db);
-                    let src = f.source(db);
-                    params = src.value.param_list().map(move |param_list| {
-                        let item_tree = f.id.item_tree(db);
-                        let func = &item_tree[f.id.value];
-                        let krate = f.container.module(db).krate;
-                        let crate_graph = db.crate_graph();
-                        (
-                            param_list,
-                            (0..func.params.len()).map(move |idx| {
-                                item_tree
-                                    .attrs(
-                                        db,
-                                        krate,
-                                        AttrOwner::Param(
-                                            f.id.value,
-                                            Idx::from_raw(RawIdx::from(idx as u32)),
-                                        ),
-                                    )
-                                    .is_cfg_enabled(&crate_graph[krate].cfg_options)
-                            }),
-                        )
-                    });
-                    is_async_fn = data.is_async();
-                    src.map(|it| it.body().map(ast::Expr::from))
-                }
-                DefWithBodyId::ConstId(c) => {
-                    let c = c.lookup(db);
-                    let src = c.source(db);
-                    src.map(|it| it.body())
-                }
-                DefWithBodyId::StaticId(s) => {
-                    let s = s.lookup(db);
-                    let src = s.source(db);
-                    src.map(|it| it.body())
-                }
-                DefWithBodyId::VariantId(v) => {
-                    let s = v.lookup(db);
-                    let src = s.source(db);
-                    src.map(|it| it.expr())
-                }
-                DefWithBodyId::InTypeConstId(c) => c.lookup(db).id.map(|_| c.source(db).expr()),
-            }
-        };
-        let module = def.module(db);
-        let expander = Expander::new(db, file_id, module);
-        let (body, mut source_map) =
-            Body::new(db, def, expander, params, body, module.krate, is_async_fn);
-        source_map.shrink_to_fit();
-
-        (Arc::new(body), Arc::new(source_map))
-    }
-
-    pub(crate) fn body_query(db: &dyn DefDatabase, def: DefWithBodyId) -> Arc<Body> {
-        db.body_with_source_map(def).0
-    }
-
-    /// Returns an iterator over all block expressions in this body that define inner items.
+impl ExpressionStore {
+    /// Returns an iterator over all block expressions in this store that define inner items.
     pub fn blocks<'a>(
         &'a self,
         db: &'a dyn DefDatabase,
     ) -> impl Iterator<Item = (BlockId, Arc<DefMap>)> + 'a {
         self.block_scopes.iter().map(move |&block| (block, db.block_def_map(block)))
-    }
-
-    pub fn pretty_print(
-        &self,
-        db: &dyn DefDatabase,
-        owner: DefWithBodyId,
-        edition: Edition,
-    ) -> String {
-        pretty::print_body_hir(db, self, owner, edition)
-    }
-
-    pub fn pretty_print_expr(
-        &self,
-        db: &dyn DefDatabase,
-        owner: DefWithBodyId,
-        expr: ExprId,
-        edition: Edition,
-    ) -> String {
-        pretty::print_expr_hir(db, self, owner, expr, edition)
-    }
-
-    pub fn pretty_print_pat(
-        &self,
-        db: &dyn DefDatabase,
-        owner: DefWithBodyId,
-        pat: PatId,
-        oneline: bool,
-        edition: Edition,
-    ) -> String {
-        pretty::print_pat_hir(db, self, owner, pat, oneline, edition)
-    }
-
-    fn new(
-        db: &dyn DefDatabase,
-        owner: DefWithBodyId,
-        expander: Expander,
-        params: Option<(ast::ParamList, impl Iterator<Item = bool>)>,
-        body: Option<ast::Expr>,
-        krate: CrateId,
-        is_async_fn: bool,
-    ) -> (Body, BodySourceMap) {
-        lower::lower(db, owner, expander, params, body, krate, is_async_fn)
     }
 
     pub fn walk_bindings_in_pat(&self, pat_id: PatId, mut f: impl FnMut(BindingId)) {
@@ -704,7 +561,7 @@ impl Body {
     }
 }
 
-impl Index<ExprId> for Body {
+impl Index<ExprId> for ExpressionStore {
     type Output = Expr;
 
     fn index(&self, expr: ExprId) -> &Expr {
@@ -712,7 +569,7 @@ impl Index<ExprId> for Body {
     }
 }
 
-impl Index<PatId> for Body {
+impl Index<PatId> for ExpressionStore {
     type Output = Pat;
 
     fn index(&self, pat: PatId) -> &Pat {
@@ -720,7 +577,7 @@ impl Index<PatId> for Body {
     }
 }
 
-impl Index<LabelId> for Body {
+impl Index<LabelId> for ExpressionStore {
     type Output = Label;
 
     fn index(&self, label: LabelId) -> &Label {
@@ -728,7 +585,7 @@ impl Index<LabelId> for Body {
     }
 }
 
-impl Index<BindingId> for Body {
+impl Index<BindingId> for ExpressionStore {
     type Output = Binding;
 
     fn index(&self, b: BindingId) -> &Binding {
@@ -736,7 +593,7 @@ impl Index<BindingId> for Body {
     }
 }
 
-impl Index<TypeRefId> for Body {
+impl Index<TypeRefId> for ExpressionStore {
     type Output = TypeRef;
 
     fn index(&self, b: TypeRefId) -> &TypeRef {
@@ -746,7 +603,7 @@ impl Index<TypeRefId> for Body {
 
 // FIXME: Change `node_` prefix to something more reasonable.
 // Perhaps `expr_syntax` and `expr_id`?
-impl BodySourceMap {
+impl ExpressionStoreSourceMap {
     pub fn expr_or_pat_syntax(&self, id: ExprOrPatId) -> Result<ExprOrPatSource, SyntheticSyntax> {
         match id {
             ExprOrPatId::ExprId(id) => self.expr_syntax(id).map(|it| it.map(AstPtr::wrap_left)),
@@ -774,10 +631,6 @@ impl BodySourceMap {
 
     pub fn pat_syntax(&self, pat: PatId) -> Result<ExprOrPatSource, SyntheticSyntax> {
         self.pat_map_back.get(pat).cloned().ok_or(SyntheticSyntax)
-    }
-
-    pub fn self_param_syntax(&self) -> Option<InFile<SelfParamPtr>> {
-        self.self_param
     }
 
     pub fn node_pat(&self, node: InFile<&ast::Pat>) -> Option<PatId> {
@@ -844,14 +697,13 @@ impl BodySourceMap {
             .zip(self.template_map.as_ref()?.asm_to_captures.get(&expr).map(std::ops::Deref::deref))
     }
 
-    /// Get a reference to the body source map's diagnostics.
-    pub fn diagnostics(&self) -> &[BodyDiagnostic] {
+    /// Get a reference to the source map's diagnostics.
+    pub fn diagnostics(&self) -> &[ExpressionStoreDiagnostics] {
         &self.diagnostics
     }
 
     fn shrink_to_fit(&mut self) {
         let Self {
-            self_param: _,
             expr_map,
             expr_map_back,
             pat_map,

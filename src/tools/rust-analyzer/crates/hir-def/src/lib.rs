@@ -42,7 +42,7 @@ pub mod lang_item;
 
 pub mod hir;
 pub use self::hir::type_ref;
-pub mod body;
+pub mod expr_store;
 pub mod resolver;
 
 pub mod nameres;
@@ -922,14 +922,14 @@ impl_from!(FunctionId, ConstId, TypeAliasId for AssocItemId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum GenericDefId {
-    FunctionId(FunctionId),
     AdtId(AdtId),
-    TraitId(TraitId),
-    TraitAliasId(TraitAliasId),
-    TypeAliasId(TypeAliasId),
-    ImplId(ImplId),
     // consts can have type parameters from their parents (i.e. associated consts of traits)
     ConstId(ConstId),
+    FunctionId(FunctionId),
+    ImplId(ImplId),
+    TraitAliasId(TraitAliasId),
+    TraitId(TraitId),
+    TypeAliasId(TypeAliasId),
 }
 impl_from!(
     FunctionId,

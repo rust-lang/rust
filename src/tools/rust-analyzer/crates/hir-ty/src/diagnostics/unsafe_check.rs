@@ -5,7 +5,7 @@ use std::mem;
 
 use either::Either;
 use hir_def::{
-    body::Body,
+    expr_store::Body,
     hir::{Expr, ExprId, ExprOrPatId, Pat, PatId, Statement, UnaryOp},
     path::Path,
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},

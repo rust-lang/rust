@@ -3,7 +3,7 @@
 use std::iter::repeat_with;
 
 use hir_def::{
-    body::Body,
+    expr_store::Body,
     hir::{Binding, BindingAnnotation, BindingId, Expr, ExprId, Literal, Pat, PatId},
     path::Path,
 };
@@ -528,7 +528,7 @@ impl InferenceContext<'_> {
         self.infer_expr(expr, &Expectation::has_type(expected.clone()), ExprIsRead::Yes)
     }
 
-    fn is_non_ref_pat(&mut self, body: &hir_def::body::Body, pat: PatId) -> bool {
+    fn is_non_ref_pat(&mut self, body: &hir_def::expr_store::Body, pat: PatId) -> bool {
         match &body[pat] {
             Pat::Tuple { .. }
             | Pat::TupleStruct { .. }

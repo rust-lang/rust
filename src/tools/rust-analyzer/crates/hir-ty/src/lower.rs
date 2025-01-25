@@ -23,10 +23,10 @@ use chalk_ir::{
 
 use either::Either;
 use hir_def::{
-    body::HygieneId,
     builtin_type::BuiltinType,
     data::{adt::StructKind, TraitFlags},
     expander::Expander,
+    expr_store::HygieneId,
     generics::{
         GenericParamDataRef, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
         WherePredicateTypeTarget,
