@@ -80,27 +80,29 @@ fn make_node_flow_priority_list(
 pub(crate) fn transcribe_counters(
     old: &NodeCounters<BasicCoverageBlock>,
     bcb_needs_counter: &DenseBitSet<BasicCoverageBlock>,
+    bcbs_seen: &DenseBitSet<BasicCoverageBlock>,
 ) -> CoverageCounters {
     let mut new = CoverageCounters::with_num_bcbs(bcb_needs_counter.domain_size());
 
     for bcb in bcb_needs_counter.iter() {
+        if !bcbs_seen.contains(bcb) {
+            // This BCB's code was removed by MIR opts, so its counter is always zero.
+            new.set_node_counter(bcb, CovTerm::Zero);
+            continue;
+        }
+
         // Our counter-creation algorithm doesn't guarantee that a node's list
         // of terms starts or ends with a positive term, so partition the
         // counters into "positive" and "negative" lists for easier handling.
-        let (mut pos, mut neg): (Vec<_>, Vec<_>) =
-            old.counter_terms[bcb].iter().partition_map(|&CounterTerm { node, op }| match op {
+        let (mut pos, mut neg): (Vec<_>, Vec<_>) = old.counter_terms[bcb]
+            .iter()
+            // Filter out any BCBs that were removed by MIR opts;
+            // this treats them as having an execution count of 0.
+            .filter(|term| bcbs_seen.contains(term.node))
+            .partition_map(|&CounterTerm { node, op }| match op {
                 Op::Add => Either::Left(node),
                 Op::Subtract => Either::Right(node),
             });
-
-        if pos.is_empty() {
-            // If we somehow end up with no positive terms, fall back to
-            // creating a physical counter. There's no known way for this
-            // to happen, but we can avoid an ICE if it does.
-            debug_assert!(false, "{bcb:?} has no positive counter terms");
-            pos = vec![bcb];
-            neg = vec![];
-        }
 
         // These intermediate sorts are not strictly necessary, but were helpful
         // in reducing churn when switching to the current counter-creation scheme.
@@ -119,7 +121,7 @@ pub(crate) fn transcribe_counters(
         pos.sort();
         neg.sort();
 
-        let pos_counter = new.make_sum(&pos).expect("`pos` should not be empty");
+        let pos_counter = new.make_sum(&pos).unwrap_or(CovTerm::Zero);
         let new_counter = new.make_subtracted_sum(pos_counter, &neg);
         new.set_node_counter(bcb, new_counter);
     }
