@@ -82,8 +82,7 @@ pub struct CompletionItem {
     pub ref_match: Option<(CompletionItemRefMode, TextSize)>,
 
     /// The import data to add to completion's edits.
-    /// (ImportPath, LastSegment)
-    pub import_to_add: SmallVec<[(String, String); 1]>,
+    pub import_to_add: SmallVec<[String; 1]>,
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -570,12 +569,7 @@ impl Builder {
         let import_to_add = self
             .imports_to_add
             .into_iter()
-            .filter_map(|import| {
-                Some((
-                    import.import_path.display(db, self.edition).to_string(),
-                    import.import_path.segments().last()?.display(db, self.edition).to_string(),
-                ))
-            })
+            .map(|import| import.import_path.display(db, self.edition).to_string())
             .collect();
 
         CompletionItem {
