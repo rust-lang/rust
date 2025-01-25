@@ -6,6 +6,7 @@
 //@ no-auto-check-cfg
 //@ revisions: some none
 //@ rustc-env:CARGO_CRATE_NAME=foo
+//@ compile-flags: --check-cfg=cfg(docsrs,test)
 //@ [none]compile-flags: --check-cfg=cfg(feature,values())
 //@ [some]compile-flags: --check-cfg=cfg(feature,values("bitcode"))
 //@ [some]compile-flags: --check-cfg=cfg(CONFIG_NVME,values("y"))
