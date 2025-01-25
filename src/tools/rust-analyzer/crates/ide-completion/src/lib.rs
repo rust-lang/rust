@@ -289,7 +289,7 @@ pub fn resolve_completion_edits(
     let new_ast = scope.clone_for_update();
     let mut import_insert = TextEdit::builder();
 
-    let cfg = config.import_path_config();
+    let cfg = config.import_path_config(true);
 
     imports.into_iter().for_each(|(full_import_path, imported_name)| {
         let items_with_name = items_locator::items_with_name(

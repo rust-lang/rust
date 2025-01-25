@@ -1159,6 +1159,7 @@ impl HirDisplay for Ty {
                                 prefer_no_std: false,
                                 prefer_prelude: true,
                                 prefer_absolute: false,
+                                allow_unstable: true,
                             },
                         ) {
                             write!(f, "{}", path.display(f.db.upcast(), f.edition()))?;

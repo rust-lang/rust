@@ -465,6 +465,7 @@ impl flags::AnalysisStats {
                                 prefer_no_std: false,
                                 prefer_prelude: true,
                                 prefer_absolute: false,
+                                allow_unstable: true,
                             },
                             Edition::LATEST,
                         )

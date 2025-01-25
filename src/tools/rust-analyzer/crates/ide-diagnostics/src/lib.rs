@@ -83,7 +83,7 @@ use either::Either;
 use hir::{db::ExpandDatabase, diagnostics::AnyDiagnostic, Crate, HirFileId, InFile, Semantics};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, AssistResolveStrategy},
-    base_db::SourceDatabase,
+    base_db::{ReleaseChannel, SourceDatabase},
     generated::lints::{Lint, LintGroup, CLIPPY_LINT_GROUPS, DEFAULT_LINTS, DEFAULT_LINT_GROUPS},
     imports::insert_use::InsertUseConfig,
     label::Label,
@@ -276,6 +276,7 @@ struct DiagnosticsContext<'a> {
     sema: Semantics<'a, RootDatabase>,
     resolve: &'a AssistResolveStrategy,
     edition: Edition,
+    is_nightly: bool,
 }
 
 impl DiagnosticsContext<'_> {
@@ -368,7 +369,11 @@ pub fn semantic_diagnostics(
 
     let module = sema.file_to_module_def(file_id);
 
-    let ctx = DiagnosticsContext { config, sema, resolve, edition: file_id.edition() };
+    let is_nightly = matches!(
+        module.and_then(|m| db.toolchain_channel(m.krate().into())),
+        Some(ReleaseChannel::Nightly) | None
+    );
+    let ctx = DiagnosticsContext { config, sema, resolve, edition: file_id.edition(), is_nightly };
 
     let mut diags = Vec::new();
     match module {

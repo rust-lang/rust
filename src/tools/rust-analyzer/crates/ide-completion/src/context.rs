@@ -443,7 +443,9 @@ pub(crate) struct CompletionContext<'a> {
     /// The module of the `scope`.
     pub(crate) module: hir::Module,
     /// Whether nightly toolchain is used. Cached since this is looked up a lot.
-    is_nightly: bool,
+    pub(crate) is_nightly: bool,
+    /// The edition of the current crate
+    // FIXME: This should probably be the crate of the current token?
     pub(crate) edition: Edition,
 
     /// The expected name of what we are completing.
