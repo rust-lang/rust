@@ -1,5 +1,6 @@
 #![feature(supertrait_item_shadowing)]
 #![warn(supertrait_item_shadowing_usage)]
+#![warn(supertrait_item_shadowing_definition)]
 
 struct W<T>(T);
 
@@ -10,6 +11,7 @@ impl<T> Upstream for T {}
 
 trait Downstream: Upstream {
     fn hello(&self) {}
+    //~^ WARN trait item `hello` from `Downstream` shadows identically named item
 }
 impl<T> Downstream for W<T> where T: Foo {}
 

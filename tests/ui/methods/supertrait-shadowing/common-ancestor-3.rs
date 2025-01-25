@@ -3,6 +3,7 @@
 
 #![feature(supertrait_item_shadowing)]
 #![warn(supertrait_item_shadowing_usage)]
+#![warn(supertrait_item_shadowing_definition)]
 #![allow(dead_code)]
 
 trait A {
@@ -21,6 +22,7 @@ impl<T> B for T {}
 
 trait C: A + B {
     fn hello(&self) {
+        //~^ WARN trait item `hello` from `C` shadows identically named item
         println!("C");
     }
 }
@@ -30,6 +32,7 @@ impl<T> C for T {}
 
 trait D: C {
     fn hello(&self) {
+        //~^ WARN trait item `hello` from `D` shadows identically named item
         println!("D");
     }
 }
