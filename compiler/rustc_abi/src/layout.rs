@@ -156,7 +156,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         // run and bias niches to the right and then check which one is closer to one of the
         // struct's edges.
         if let Ok(layout) = &layout {
-            // Don't try to calculate an end-biased layout for unsizable structs,
+            // Don't try to calculate an end-biased layout for unseizable structs,
             // otherwise we could end up with different layouts for
             // Foo<Type> and Foo<dyn Trait> which would break unsizing.
             if !matches!(kind, StructKind::MaybeUnsized) {
