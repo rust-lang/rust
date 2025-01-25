@@ -59,6 +59,27 @@ impl HygieneId {
     }
 }
 
+pub type ExprPtr = AstPtr<ast::Expr>;
+pub type ExprSource = InFile<ExprPtr>;
+
+pub type PatPtr = AstPtr<ast::Pat>;
+pub type PatSource = InFile<PatPtr>;
+
+pub type LabelPtr = AstPtr<ast::Label>;
+pub type LabelSource = InFile<LabelPtr>;
+
+pub type FieldPtr = AstPtr<ast::RecordExprField>;
+pub type FieldSource = InFile<FieldPtr>;
+
+pub type PatFieldPtr = AstPtr<Either<ast::RecordExprField, ast::RecordPatField>>;
+pub type PatFieldSource = InFile<PatFieldPtr>;
+
+pub type ExprOrPatPtr = AstPtr<Either<ast::Expr, ast::Pat>>;
+pub type ExprOrPatSource = InFile<ExprOrPatPtr>;
+
+pub type SelfParamPtr = AstPtr<ast::SelfParam>;
+pub type MacroCallPtr = AstPtr<ast::MacroCall>;
+
 /// The body of an item (function, const etc.).
 #[derive(Debug, Eq, PartialEq)]
 pub struct Body {
@@ -112,6 +133,73 @@ pub struct BodyCollector {
     ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
 }
 
+/// An item body together with the mapping from syntax nodes to HIR expression
+/// IDs. This is needed to go from e.g. a position in a file to the HIR
+/// expression containing it; but for type inference etc., we want to operate on
+/// a structure that is agnostic to the actual positions of expressions in the
+/// file, so that we don't recompute types whenever some whitespace is typed.
+///
+/// One complication here is that, due to macro expansion, a single `Body` might
+/// be spread across several files. So, for each ExprId and PatId, we record
+/// both the HirFileId and the position inside the file. However, we only store
+/// AST -> ExprId mapping for non-macro files, as it is not clear how to handle
+/// this properly for macros.
+#[derive(Default, Debug, Eq, PartialEq)]
+pub struct BodySourceMap {
+    // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
+    // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
+    expr_map: FxHashMap<ExprSource, ExprOrPatId>,
+    expr_map_back: ArenaMap<ExprId, ExprSource>,
+
+    pat_map: FxHashMap<PatSource, PatId>,
+    pat_map_back: ArenaMap<PatId, ExprOrPatSource>,
+
+    label_map: FxHashMap<LabelSource, LabelId>,
+    label_map_back: ArenaMap<LabelId, LabelSource>,
+
+    self_param: Option<InFile<SelfParamPtr>>,
+    binding_definitions: FxHashMap<BindingId, SmallVec<[PatId; 4]>>,
+
+    /// We don't create explicit nodes for record fields (`S { record_field: 92 }`).
+    /// Instead, we use id of expression (`92`) to identify the field.
+    field_map_back: FxHashMap<ExprId, FieldSource>,
+    pat_field_map_back: FxHashMap<PatId, PatFieldSource>,
+
+    pub types: TypesSourceMap,
+
+    template_map: Option<Box<FormatTemplate>>,
+
+    expansions: FxHashMap<InFile<MacroCallPtr>, MacroFileId>,
+
+    /// Diagnostics accumulated during body lowering. These contain `AstPtr`s and so are stored in
+    /// the source map (since they're just as volatile).
+    diagnostics: Vec<BodyDiagnostic>,
+}
+
+#[derive(Default, Debug, Eq, PartialEq)]
+struct FormatTemplate {
+    /// A map from `format_args!()` expressions to their captures.
+    format_args_to_captures: FxHashMap<ExprId, (HygieneId, Vec<(syntax::TextRange, Name)>)>,
+    /// A map from `asm!()` expressions to their captures.
+    asm_to_captures: FxHashMap<ExprId, Vec<Vec<(syntax::TextRange, usize)>>>,
+    /// A map from desugared expressions of implicit captures to their source.
+    ///
+    /// The value stored for each capture is its template literal and offset inside it. The template literal
+    /// is from the `format_args[_nl]!()` macro and so needs to be mapped up once to go to the user-written
+    /// template.
+    implicit_capture_to_source: FxHashMap<ExprId, InFile<(ExprPtr, TextRange)>>,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum BodyDiagnostic {
+    InactiveCode { node: InFile<SyntaxNodePtr>, cfg: CfgExpr, opts: CfgOptions },
+    MacroError { node: InFile<MacroCallPtr>, err: ExpandError },
+    UnresolvedMacroCall { node: InFile<MacroCallPtr>, path: ModPath },
+    UnreachableLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
+    AwaitOutsideOfAsync { node: InFile<AstPtr<ast::AwaitExpr>>, location: String },
+    UndeclaredLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
+}
+
 impl BodyCollector {
     fn finish(
         self,
@@ -154,91 +242,6 @@ impl BodyCollector {
             ident_hygiene,
         }
     }
-}
-
-pub type ExprPtr = AstPtr<ast::Expr>;
-pub type ExprSource = InFile<ExprPtr>;
-
-pub type PatPtr = AstPtr<ast::Pat>;
-pub type PatSource = InFile<PatPtr>;
-
-pub type LabelPtr = AstPtr<ast::Label>;
-pub type LabelSource = InFile<LabelPtr>;
-
-pub type FieldPtr = AstPtr<ast::RecordExprField>;
-pub type FieldSource = InFile<FieldPtr>;
-
-pub type PatFieldPtr = AstPtr<Either<ast::RecordExprField, ast::RecordPatField>>;
-pub type PatFieldSource = InFile<PatFieldPtr>;
-
-pub type ExprOrPatPtr = AstPtr<Either<ast::Expr, ast::Pat>>;
-pub type ExprOrPatSource = InFile<ExprOrPatPtr>;
-
-/// An item body together with the mapping from syntax nodes to HIR expression
-/// IDs. This is needed to go from e.g. a position in a file to the HIR
-/// expression containing it; but for type inference etc., we want to operate on
-/// a structure that is agnostic to the actual positions of expressions in the
-/// file, so that we don't recompute types whenever some whitespace is typed.
-///
-/// One complication here is that, due to macro expansion, a single `Body` might
-/// be spread across several files. So, for each ExprId and PatId, we record
-/// both the HirFileId and the position inside the file. However, we only store
-/// AST -> ExprId mapping for non-macro files, as it is not clear how to handle
-/// this properly for macros.
-#[derive(Default, Debug, Eq, PartialEq)]
-pub struct BodySourceMap {
-    // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
-    // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
-    expr_map: FxHashMap<ExprSource, ExprOrPatId>,
-    expr_map_back: ArenaMap<ExprId, ExprSource>,
-
-    pat_map: FxHashMap<PatSource, PatId>,
-    pat_map_back: ArenaMap<PatId, ExprOrPatSource>,
-
-    label_map: FxHashMap<LabelSource, LabelId>,
-    label_map_back: ArenaMap<LabelId, LabelSource>,
-
-    self_param: Option<InFile<AstPtr<ast::SelfParam>>>,
-    binding_definitions: FxHashMap<BindingId, SmallVec<[PatId; 4]>>,
-
-    /// We don't create explicit nodes for record fields (`S { record_field: 92 }`).
-    /// Instead, we use id of expression (`92`) to identify the field.
-    field_map_back: FxHashMap<ExprId, FieldSource>,
-    pat_field_map_back: FxHashMap<PatId, PatFieldSource>,
-
-    pub types: TypesSourceMap,
-
-    template_map: Option<Box<FormatTemplate>>,
-
-    expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, MacroFileId>,
-
-    /// Diagnostics accumulated during body lowering. These contain `AstPtr`s and so are stored in
-    /// the source map (since they're just as volatile).
-    diagnostics: Vec<BodyDiagnostic>,
-}
-
-#[derive(Default, Debug, Eq, PartialEq)]
-struct FormatTemplate {
-    /// A map from `format_args!()` expressions to their captures.
-    format_args_to_captures: FxHashMap<ExprId, (HygieneId, Vec<(syntax::TextRange, Name)>)>,
-    /// A map from `asm!()` expressions to their captures.
-    asm_to_captures: FxHashMap<ExprId, Vec<Vec<(syntax::TextRange, usize)>>>,
-    /// A map from desugared expressions of implicit captures to their source.
-    ///
-    /// The value stored for each capture is its template literal and offset inside it. The template literal
-    /// is from the `format_args[_nl]!()` macro and so needs to be mapped up once to go to the user-written
-    /// template.
-    implicit_capture_to_source: FxHashMap<ExprId, InFile<(AstPtr<ast::Expr>, TextRange)>>,
-}
-
-#[derive(Debug, Eq, PartialEq)]
-pub enum BodyDiagnostic {
-    InactiveCode { node: InFile<SyntaxNodePtr>, cfg: CfgExpr, opts: CfgOptions },
-    MacroError { node: InFile<AstPtr<ast::MacroCall>>, err: ExpandError },
-    UnresolvedMacroCall { node: InFile<AstPtr<ast::MacroCall>>, path: ModPath },
-    UnreachableLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
-    AwaitOutsideOfAsync { node: InFile<AstPtr<ast::AwaitExpr>>, location: String },
-    UndeclaredLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
 }
 
 impl Body {
@@ -765,9 +768,7 @@ impl BodySourceMap {
         self.expansions.get(&src).cloned()
     }
 
-    pub fn macro_calls(
-        &self,
-    ) -> impl Iterator<Item = (InFile<AstPtr<ast::MacroCall>>, MacroFileId)> + '_ {
+    pub fn macro_calls(&self) -> impl Iterator<Item = (InFile<MacroCallPtr>, MacroFileId)> + '_ {
         self.expansions.iter().map(|(&a, &b)| (a, b))
     }
 
@@ -775,7 +776,7 @@ impl BodySourceMap {
         self.pat_map_back.get(pat).cloned().ok_or(SyntheticSyntax)
     }
 
-    pub fn self_param_syntax(&self) -> Option<InFile<AstPtr<ast::SelfParam>>> {
+    pub fn self_param_syntax(&self) -> Option<InFile<SelfParamPtr>> {
         self.self_param
     }
 
@@ -809,9 +810,7 @@ impl BodySourceMap {
         self.expr_map.get(&src).copied()
     }
 
-    pub fn expansions(
-        &self,
-    ) -> impl Iterator<Item = (&InFile<AstPtr<ast::MacroCall>>, &MacroFileId)> {
+    pub fn expansions(&self) -> impl Iterator<Item = (&InFile<MacroCallPtr>, &MacroFileId)> {
         self.expansions.iter()
     }
 
@@ -831,7 +830,7 @@ impl BodySourceMap {
     pub fn format_args_implicit_capture(
         &self,
         capture_expr: ExprId,
-    ) -> Option<InFile<(AstPtr<ast::Expr>, TextRange)>> {
+    ) -> Option<InFile<(ExprPtr, TextRange)>> {
         self.template_map.as_ref()?.implicit_capture_to_source.get(&capture_expr).copied()
     }
 
