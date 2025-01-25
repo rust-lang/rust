@@ -3,6 +3,7 @@
 mod lower;
 mod pretty;
 pub mod scope;
+
 #[cfg(test)]
 mod tests;
 
@@ -92,11 +93,9 @@ pub struct Body {
     binding_hygiene: FxHashMap<BindingId, HygieneId>,
     /// A map from an variable usages to their hygiene ID.
     ///
-    /// Expressions that can be recorded here are single segment path, although not all single segments path refer
+    /// Expressions (and destructuing patterns) that can be recorded here are single segment path, although not all single segments path refer
     /// to variables and have hygiene (some refer to items, we don't know at this stage).
-    expr_hygiene: FxHashMap<ExprId, HygieneId>,
-    /// A map from a destructuring assignment possible variable usages to their hygiene ID.
-    pat_hygiene: FxHashMap<PatId, HygieneId>,
+    ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
 }
 
 pub type ExprPtr = AstPtr<ast::Expr>;
@@ -317,8 +316,7 @@ impl Body {
             bindings,
             binding_owners,
             binding_hygiene,
-            expr_hygiene,
-            pat_hygiene,
+            ident_hygiene,
             types,
         } = self;
         block_scopes.shrink_to_fit();
@@ -328,8 +326,7 @@ impl Body {
         bindings.shrink_to_fit();
         binding_owners.shrink_to_fit();
         binding_hygiene.shrink_to_fit();
-        expr_hygiene.shrink_to_fit();
-        pat_hygiene.shrink_to_fit();
+        ident_hygiene.shrink_to_fit();
         types.shrink_to_fit();
     }
 
@@ -658,11 +655,11 @@ impl Body {
     }
 
     pub fn expr_path_hygiene(&self, expr: ExprId) -> HygieneId {
-        self.expr_hygiene.get(&expr).copied().unwrap_or(HygieneId::ROOT)
+        self.ident_hygiene.get(&expr.into()).copied().unwrap_or(HygieneId::ROOT)
     }
 
     pub fn pat_path_hygiene(&self, pat: PatId) -> HygieneId {
-        self.pat_hygiene.get(&pat).copied().unwrap_or(HygieneId::ROOT)
+        self.ident_hygiene.get(&pat.into()).copied().unwrap_or(HygieneId::ROOT)
     }
 
     pub fn expr_or_pat_path_hygiene(&self, id: ExprOrPatId) -> HygieneId {
@@ -686,8 +683,7 @@ impl Default for Body {
             binding_owners: Default::default(),
             self_param: Default::default(),
             binding_hygiene: Default::default(),
-            expr_hygiene: Default::default(),
-            pat_hygiene: Default::default(),
+            ident_hygiene: Default::default(),
             types: Default::default(),
         }
     }

@@ -480,7 +480,7 @@ impl ExprCollector<'_> {
                     .unwrap_or((Expr::Missing, HygieneId::ROOT));
                 let expr_id = self.alloc_expr(path, syntax_ptr);
                 if !hygiene.is_root() {
-                    self.body.expr_hygiene.insert(expr_id, hygiene);
+                    self.body.ident_hygiene.insert(expr_id.into(), hygiene);
                 }
                 expr_id
             }
@@ -835,7 +835,7 @@ impl ExprCollector<'_> {
                     .unwrap_or((Pat::Missing, HygieneId::ROOT));
                 let pat_id = self.alloc_pat_from_expr(path, syntax_ptr);
                 if !hygiene.is_root() {
-                    self.body.pat_hygiene.insert(pat_id, hygiene);
+                    self.body.ident_hygiene.insert(pat_id.into(), hygiene);
                 }
                 pat_id
             }
@@ -2023,7 +2023,7 @@ impl ExprCollector<'_> {
                                 );
                         }
                         if !hygiene.is_root() {
-                            self.body.expr_hygiene.insert(expr_id, hygiene);
+                            self.body.ident_hygiene.insert(expr_id.into(), hygiene);
                         }
                         expr_id
                     },
