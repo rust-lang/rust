@@ -288,7 +288,7 @@ pub enum DebugAsHex {
 ///
 /// `FormattingOptions` is a [`Formatter`] without an attached [`Write`] trait.
 /// It is mainly used to construct `Formatter` instances.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[unstable(feature = "formatting_options", issue = "118117")]
 pub struct FormattingOptions {
     flags: u32,
@@ -505,6 +505,15 @@ impl FormattingOptions {
     /// Flags for formatting
     pub fn get_flags(&self) -> u32 {
         self.flags
+    }
+}
+
+#[unstable(feature = "formatting_options", issue = "118117")]
+impl Default for FormattingOptions {
+    /// Same as [`FormattingOptions::new()`].
+    fn default() -> Self {
+        // The `#[derive(Default)]` implementation would set `fill` to `\0` instead of space.
+        Self::new()
     }
 }
 

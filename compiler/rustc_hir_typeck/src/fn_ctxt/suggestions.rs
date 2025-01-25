@@ -185,6 +185,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs_ty: Ty<'tcx>,
         can_satisfy: impl FnOnce(Ty<'tcx>, Ty<'tcx>) -> bool,
     ) -> bool {
+        if lhs_expr.span.in_derive_expansion() || rhs_expr.span.in_derive_expansion() {
+            return false;
+        }
         let Some((_, lhs_output_ty, lhs_inputs)) = self.extract_callable_info(lhs_ty) else {
             return false;
         };
