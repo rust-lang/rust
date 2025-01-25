@@ -340,4 +340,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Change the compiler profile to default to rust.debug-assertions = true",
     },
+    ChangeInfo {
+        change_id: 136048,
+        severity: ChangeSeverity::Info,
+        summary: "Added new flag support `--release`.",
+    },
 ];
