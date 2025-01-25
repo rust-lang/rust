@@ -227,6 +227,7 @@ pub struct Config {
     pub incremental: bool,
     pub dry_run: DryRun,
     pub dump_bootstrap_shims: bool,
+    pub enable_release_build: bool,
     /// Arguments appearing after `--` to be forwarded to tools,
     /// e.g. `--fix-broken` or test arguments.
     pub free_args: Vec<String>,
@@ -1355,6 +1356,7 @@ impl Config {
         config.llvm_profile_generate = flags.llvm_profile_generate;
         config.enable_bolt_settings = flags.enable_bolt_settings;
         config.bypass_bootstrap_lock = flags.bypass_bootstrap_lock;
+        config.enable_release_build = flags.release || CiEnv::is_ci();
 
         // Infer the rest of the configuration.
 
@@ -2182,7 +2184,14 @@ impl Config {
         config.llvm_enzyme = llvm_enzyme.unwrap_or(false);
         config.llvm_offload = llvm_offload.unwrap_or(false);
         config.llvm_plugins = llvm_plugins.unwrap_or(false);
-        config.rust_optimize = optimize.unwrap_or(RustOptimize::Bool(true));
+
+        config.rust_optimize = match optimize {
+            Some(inner) => match inner {
+                RustOptimize::Bool(false) => RustOptimize::Bool(config.enable_release_build),
+                t => t,
+            },
+            None => RustOptimize::Bool(true),
+        };
 
         // We make `x86_64-unknown-linux-gnu` use the self-contained linker by default, so we will
         // build our internal lld and use it as the default linker, by setting the `rust.lld` config
