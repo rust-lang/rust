@@ -211,15 +211,10 @@ fn setup_tracing() {
     use tracing_subscriber::layer::SubscriberExt;
 
     let filter = EnvFilter::from_env("BOOTSTRAP_TRACING");
-    let layer = tracing_tree::HierarchicalLayer::default()
-        .with_writer(std::io::stderr)
-        .with_ansi(true)
-        .with_targets(true)
-        .with_bracketed_fields(true)
-        .with_indent_amount(2)
-        .with_indent_lines(true);
-    let subscriber = tracing_subscriber::registry().with(filter).with(layer);
+    // cf. <https://docs.rs/tracing-tree/latest/tracing_tree/struct.HierarchicalLayer.html>.
+    let layer = tracing_tree::HierarchicalLayer::default().with_targets(true).with_indent_amount(2);
 
-    tracing::subscriber::set_global_default(subscriber).unwrap();
-    trace!("tracing subscriber setup");
+    let registry = tracing_subscriber::registry().with(filter).with(layer);
+
+    tracing::subscriber::set_global_default(registry).unwrap();
 }
