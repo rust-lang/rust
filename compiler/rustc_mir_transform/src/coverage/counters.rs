@@ -135,7 +135,7 @@ pub(super) struct CoverageCounters {
     /// List of places where a counter-increment statement should be injected
     /// into MIR, each with its corresponding counter ID.
     pub(crate) phys_counter_for_node: FxIndexMap<BasicCoverageBlock, CounterId>,
-    next_counter_id: CounterId,
+    pub(crate) next_counter_id: CounterId,
 
     /// Coverage counters/expressions that are associated with individual BCBs.
     pub(crate) node_counters: IndexVec<BasicCoverageBlock, Option<CovTerm>>,

@@ -54,7 +54,7 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     let fn_cov_info = tcx.instance_mir(instance.def).function_coverage_info.as_deref()?;
     let ids_info = tcx.coverage_ids_info(instance.def)?;
 
-    let expressions = prepare_expressions(ids_info, is_used);
+    let expressions = prepare_expressions(ids_info);
 
     let mut covfun = CovfunRecord {
         mangled_function_name: tcx.symbol_name(instance).name,
@@ -76,16 +76,8 @@ pub(crate) fn prepare_covfun_record<'tcx>(
 }
 
 /// Convert the function's coverage-counter expressions into a form suitable for FFI.
-fn prepare_expressions(ids_info: &CoverageIdsInfo, is_used: bool) -> Vec<ffi::CounterExpression> {
-    // If any counters or expressions were removed by MIR opts, replace their
-    // terms with zero.
-    let counter_for_term = |term| {
-        if !is_used || ids_info.is_zero_term(term) {
-            ffi::Counter::ZERO
-        } else {
-            ffi::Counter::from_term(term)
-        }
-    };
+fn prepare_expressions(ids_info: &CoverageIdsInfo) -> Vec<ffi::CounterExpression> {
+    let counter_for_term = ffi::Counter::from_term;
 
     // We know that LLVM will optimize out any unused expressions before
     // producing the final coverage map, so there's no need to do the same
@@ -133,13 +125,14 @@ fn fill_region_tables<'tcx>(
 
     // For each counter/region pair in this function+file, convert it to a
     // form suitable for FFI.
-    let is_zero_term = |term| !covfun.is_used || ids_info.is_zero_term(term);
     for &Mapping { ref kind, span } in &fn_cov_info.mappings {
-        // If the mapping refers to counters/expressions that were removed by
-        // MIR opts, replace those occurrences with zero.
+        // If this function is unused, replace all counters with zero.
         let counter_for_bcb = |bcb: BasicCoverageBlock| -> ffi::Counter {
-            let term = ids_info.term_for_bcb[bcb].expect("every BCB in a mapping was given a term");
-            let term = if is_zero_term(term) { CovTerm::Zero } else { term };
+            let term = if covfun.is_used {
+                ids_info.term_for_bcb[bcb].expect("every BCB in a mapping was given a term")
+            } else {
+                CovTerm::Zero
+            };
             ffi::Counter::from_term(term)
         };
 

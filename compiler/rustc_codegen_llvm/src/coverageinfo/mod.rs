@@ -163,11 +163,9 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             CoverageKind::VirtualCounter { bcb }
                 if let Some(&id) = ids_info.phys_counter_for_node.get(&bcb) =>
             {
-                let num_counters = ids_info.num_counters_after_mir_opts();
-
                 let fn_name = bx.get_pgo_func_name_var(instance);
                 let hash = bx.const_u64(function_coverage_info.function_source_hash);
-                let num_counters = bx.const_u32(num_counters);
+                let num_counters = bx.const_u32(ids_info.num_counters);
                 let index = bx.const_u32(id.as_u32());
                 debug!(
                     "codegen intrinsic instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?}, index={:?})",
