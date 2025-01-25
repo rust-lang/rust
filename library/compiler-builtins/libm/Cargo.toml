@@ -59,7 +59,7 @@ exclude = [
 ]
 
 [dev-dependencies]
-no-panic = "0.1.30"
+no-panic = "0.1.33"
 
 [profile.release]
 # Options for no-panic to correctly detect the lack of panics
