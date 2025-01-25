@@ -16,7 +16,7 @@ use bootstrap::{
 };
 use build_helper::ci::CiEnv;
 #[cfg(feature = "tracing")]
-use tracing::{instrument, trace};
+use tracing::{debug, instrument};
 
 #[cfg_attr(feature = "tracing", instrument(level = "trace", name = "main"))]
 fn main() {
@@ -29,7 +29,11 @@ fn main() {
         return;
     }
 
+    #[cfg(feature = "tracing")]
+    debug!("parsing flags");
     let flags = Flags::parse(&args);
+    #[cfg(feature = "tracing")]
+    debug!("parsing config based on flags");
     let config = Config::parse(flags);
 
     let mut build_lock;
@@ -91,6 +95,8 @@ fn main() {
     let dump_bootstrap_shims = config.dump_bootstrap_shims;
     let out_dir = config.out.clone();
 
+    #[cfg(feature = "tracing")]
+    debug!("creating new build based on config");
     Build::new(config).build();
 
     if suggest_setup {
