@@ -310,13 +310,8 @@ macro_rules! impl_op_for_ty {
                 }
 
                 fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
-                    // Implementation taken from `rug::Float::to_f32_exp`.
                     this.assign(input.0);
-                    let exp = this.get_exp().unwrap_or(0);
-                    if exp != 0 {
-                        *this >>= exp;
-                    }
-
+                    let exp = this.frexp_mut();
                     (prep_retval::<Self::FTy>(this, Ordering::Equal), exp)
                 }
             }
