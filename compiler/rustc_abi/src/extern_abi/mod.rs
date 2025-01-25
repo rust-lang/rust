@@ -62,7 +62,7 @@ pub enum ExternAbi {
     /// normally ABI-compatible Rust types can become ABI-incompatible with this ABI!
     Unadjusted,
     /// For things unlikely to be called, where reducing register pressure in
-    /// `extern "Rust"` callers is worth paying extra cost in the callee.
+    /// `extern "Rust"` callers are worth paying an extra cost in the callee.
     /// Stronger than just `#[cold]` because `fn` pointers might be incompatible.
     RustCold,
     RiscvInterruptM,
