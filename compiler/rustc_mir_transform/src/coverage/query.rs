@@ -127,8 +127,12 @@ fn coverage_ids_info<'tcx>(
         }
     }
 
+    // FIXME(Zalathar): It should be possible to sort `priority_list[1..]` by
+    // `!bcbs_seen.contains(bcb)` to simplify the mappings even further, at the
+    // expense of some churn in the tests. When doing so, also consider removing
+    // the sorts in `transcribe_counters`.
     let node_counters = make_node_counters(&fn_cov_info.node_flow_data, &fn_cov_info.priority_list);
-    let coverage_counters = transcribe_counters(&node_counters, &bcb_needs_counter);
+    let coverage_counters = transcribe_counters(&node_counters, &bcb_needs_counter, &bcbs_seen);
 
     let mut counters_seen = DenseBitSet::new_empty(coverage_counters.node_counters.len());
     let mut expressions_seen = DenseBitSet::new_filled(coverage_counters.expressions.len());
