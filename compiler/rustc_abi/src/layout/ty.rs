@@ -110,7 +110,7 @@ impl<'a> Layout<'a> {
     /// Whether the layout is from a type that implements [`std::marker::PointerLike`].
     ///
     /// Currently, that means that the type is pointer-sized, pointer-aligned,
-    /// and has a initialized (non-union), scalar ABI.
+    /// and has an initialized (non-union), scalar ABI.
     pub fn is_pointer_like(self, data_layout: &TargetDataLayout) -> bool {
         self.size() == data_layout.pointer_size
             && self.align().abi == data_layout.pointer_align.abi
@@ -119,7 +119,7 @@ impl<'a> Layout<'a> {
 }
 
 /// The layout of a type, alongside the type itself.
-/// Provides various type traversal APIs (e.g., recursing into fields).
+/// Provides various types of traversal APIs (e.g., recursing into fields).
 ///
 /// Note that the layout is NOT guaranteed to always be identical
 /// to that obtained from `layout_of(ty)`, as we need to produce
