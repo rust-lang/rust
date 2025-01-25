@@ -4388,7 +4388,7 @@ declare_clippy_lint! {
     /// ```
      #[clippy::version = "1.86.0"]
      pub SLICED_STRING_AS_BYTES,
-     pedantic,
+     perf,
      "slicing a string and immediately calling as_bytes is less efficient and can lead to panics"
 }
 
