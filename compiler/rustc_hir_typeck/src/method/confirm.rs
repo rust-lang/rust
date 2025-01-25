@@ -143,9 +143,10 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let method_sig = ty::Binder::dummy(method_sig);
 
         // Make sure nobody calls `drop()` explicitly.
-        self.enforce_illegal_method_limitations(pick);
+        self.check_for_illegal_method_calls(pick);
 
-        self.enforce_shadowed_supertrait_items(pick, segment);
+        // Lint when an item is shadowing a supertrait item.
+        self.lint_shadowed_supertrait_items(pick, segment);
 
         // Add any trait/regions obligations specified on the method's type parameters.
         // We won't add these if we encountered an illegal sized bound, so that we can use
@@ -660,7 +661,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             })
     }
 
-    fn enforce_illegal_method_limitations(&self, pick: &probe::Pick<'_>) {
+    fn check_for_illegal_method_calls(&self, pick: &probe::Pick<'_>) {
         // Disallow calls to the method `drop` defined in the `Drop` trait.
         if let Some(trait_def_id) = pick.item.trait_container(self.tcx) {
             if let Err(e) = callee::check_legal_trait_for_method_call(
@@ -676,7 +677,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         }
     }
 
-    fn enforce_shadowed_supertrait_items(
+    fn lint_shadowed_supertrait_items(
         &self,
         pick: &probe::Pick<'_>,
         segment: &hir::PathSegment<'tcx>,
