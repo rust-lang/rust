@@ -16,11 +16,7 @@ use bootstrap::{
 };
 use build_helper::ci::CiEnv;
 #[cfg(feature = "tracing")]
-use tracing::*;
-#[cfg(feature = "tracing")]
-use tracing_subscriber::EnvFilter;
-#[cfg(feature = "tracing")]
-use tracing_subscriber::prelude::*;
+use tracing::{instrument, trace};
 
 #[cfg_attr(feature = "tracing", instrument(level = "trace", name = "main"))]
 fn main() {
@@ -211,6 +207,9 @@ fn check_version(config: &Config) -> Option<String> {
 //   "tracing", instrument(..))]`.
 #[cfg(feature = "tracing")]
 fn setup_tracing() {
+    use tracing_subscriber::EnvFilter;
+    use tracing_subscriber::layer::SubscriberExt;
+
     let filter = EnvFilter::from_env("BOOTSTRAP_TRACING");
     let layer = tracing_tree::HierarchicalLayer::default()
         .with_writer(std::io::stderr)
