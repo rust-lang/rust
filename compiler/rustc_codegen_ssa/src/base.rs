@@ -1053,10 +1053,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 
         let any_for_speed = defids.items().any(|id| {
             let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
-            match optimize {
-                attr::OptimizeAttr::None | attr::OptimizeAttr::Size => false,
-                attr::OptimizeAttr::Speed => true,
-            }
+            matches!(optimize, attr::OptimizeAttr::Speed)
         });
 
         if any_for_speed {

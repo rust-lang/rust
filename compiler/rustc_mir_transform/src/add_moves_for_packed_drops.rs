@@ -68,6 +68,10 @@ impl<'tcx> crate::MirPass<'tcx> for AddMovesForPackedDrops {
 
         patch.apply(body);
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
 fn add_move_for_packed_drop<'tcx>(

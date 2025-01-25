@@ -119,6 +119,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
                         &add_call_guards::CriticalCallEdges,
                     ],
                     Some(MirPhase::Runtime(RuntimePhase::Optimized)),
+                    pm::Optimizations::Allowed,
                 );
 
                 return body;

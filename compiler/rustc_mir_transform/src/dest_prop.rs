@@ -240,6 +240,10 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
 
         trace!(round_count);
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 #[derive(Debug, Default)]

@@ -1688,6 +1688,10 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         // Run derefer to fix Derefs that are not in the first place
         deref_finder(tcx, body);
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
 /// Looks for any assignments between locals (e.g., `_4 = _5`) that will both be converted to fields

@@ -227,6 +227,10 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
             simplify_cfg(body);
         }
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 #[derive(Debug)]

@@ -200,6 +200,10 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
             });
         }
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 impl EnumSizeOpt {

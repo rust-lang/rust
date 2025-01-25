@@ -105,6 +105,10 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
         }
         OpportunitySet::new(body, opportunities).apply(body);
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 #[derive(Debug)]

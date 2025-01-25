@@ -91,6 +91,10 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
             }
         }
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
 struct CfgChecker<'a, 'tcx> {
