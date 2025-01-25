@@ -2567,10 +2567,6 @@ pub(crate) struct UnusedCrateDependency {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_wasm_c_abi)]
-pub(crate) struct WasmCAbi;
-
-#[derive(LintDiagnostic)]
 #[diag(lint_ill_formed_attribute_input)]
 pub(crate) struct IllFormedAttributeInput {
     pub num_suggestions: usize,
