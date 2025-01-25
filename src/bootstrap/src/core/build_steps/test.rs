@@ -742,10 +742,11 @@ impl Step for Clippy {
         let compiler = builder.compiler(stage, host);
 
         builder.ensure(tool::Clippy { compiler, target: self.host });
+        let mode = Mode::ToolRustc;
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
-            Mode::ToolRustc,
+            mode,
             host,
             Kind::Test,
             "src/tools/clippy",
@@ -755,7 +756,7 @@ impl Step for Clippy {
 
         cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
         cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
-        let host_libs = builder.stage_out(compiler, Mode::ToolRustc).join(builder.cargo_dir());
+        let host_libs = builder.stage_out(compiler, mode).join(builder.cargo_dir(&mode));
         cargo.env("HOST_LIBS", host_libs);
 
         cargo.add_rustc_lib_path(builder);

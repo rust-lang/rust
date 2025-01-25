@@ -422,9 +422,9 @@ impl Builder<'_> {
             assert_eq!(target, compiler.host);
         }
 
-        if self.config.rust_optimize.is_release() &&
-        // cargo bench/install do not accept `--release` and miri doesn't want it
-        !matches!(cmd_kind, Kind::Bench | Kind::Install | Kind::Miri | Kind::MiriSetup | Kind::MiriTest)
+        if self.is_release_build(&mode) &&
+            // cargo bench/install do not accept `--release` and miri doesn't want it
+            !matches!(cmd_kind, Kind::Bench | Kind::Install | Kind::Miri | Kind::MiriSetup | Kind::MiriTest)
         {
             cargo.arg("--release");
         }

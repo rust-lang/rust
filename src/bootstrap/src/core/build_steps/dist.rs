@@ -790,10 +790,11 @@ impl Step for Analysis {
             return None;
         }
 
+        let mode = Mode::Std;
         let src = builder
-            .stage_out(compiler, Mode::Std)
+            .stage_out(compiler, mode)
             .join(target)
-            .join(builder.cargo_dir())
+            .join(builder.cargo_dir(&mode))
             .join("deps")
             .join("save-analysis");
 
