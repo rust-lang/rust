@@ -1356,7 +1356,7 @@ impl Config {
         config.llvm_profile_generate = flags.llvm_profile_generate;
         config.enable_bolt_settings = flags.enable_bolt_settings;
         config.bypass_bootstrap_lock = flags.bypass_bootstrap_lock;
-        config.enable_release_build = flags.release || CiEnv::is_ci();
+        config.enable_release_build = flags.release || (CiEnv::is_ci() && !cfg!(test));
 
         // Infer the rest of the configuration.
 

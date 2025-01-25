@@ -454,3 +454,36 @@ fn check_rustc_if_unchanged_paths() {
         assert!(config.src.join(p).exists(), "{p} doesn't exist.");
     }
 }
+
+#[test]
+fn test_release_options() {
+    let config = Config::parse_inner(
+        Flags::parse(&["check".into(), "--config=/does/not/exist".into()]),
+        |&_| {
+            toml::from_str(
+                r#"
+            [rust]
+            optimize = false
+        "#,
+            )
+        },
+    );
+
+    assert!(!config.enable_release_build);
+    assert!(!config.rust_optimize.is_release());
+
+    let config = Config::parse_inner(
+        Flags::parse(&["check".into(), "--config=/does/not/exist".into(), "--release".into()]),
+        |&_| {
+            toml::from_str(
+                r#"
+            [rust]
+            optimize = false
+        "#,
+            )
+        },
+    );
+
+    assert!(config.enable_release_build);
+    assert!(config.rust_optimize.is_release());
+}

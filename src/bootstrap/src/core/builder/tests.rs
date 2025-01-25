@@ -1,9 +1,9 @@
 use std::thread;
 
 use super::*;
-use crate::Flags;
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::config::Config;
+use crate::{Flags, Mode};
 
 static TEST_TRIPLE_1: &str = "i686-unknown-haiku";
 static TEST_TRIPLE_2: &str = "i686-unknown-hurd-gnu";
@@ -860,4 +860,51 @@ fn test_test_coverage() {
             cache.all::<test::Coverage>().iter().map(|(step, ())| step.mode).collect::<Vec<_>>();
         assert_eq!(modes, expected);
     }
+}
+
+#[test]
+fn test_release_directory() {
+    let config = Config::parse_inner(
+        Flags::parse(&["check".into(), "--config=/does/not/exist".into()]),
+        |&_| toml::from_str(""),
+    );
+    let build = Build::new(config.clone());
+    let builder = Builder::new(&build);
+
+    assert_eq!(builder.cargo_dir(&Mode::Rustc), "release");
+    assert_eq!(builder.cargo_dir(&Mode::ToolStd), "debug");
+
+    let config = Config::parse_inner(
+        Flags::parse(&["check".into(), "--config=/does/not/exist".into(), "--release".into()]),
+        |&_| {
+            toml::from_str(
+                r#"
+            [rust]
+            optimize = false
+        "#,
+            )
+        },
+    );
+    let build = Build::new(config.clone());
+    let builder = Builder::new(&build);
+
+    assert_eq!(builder.cargo_dir(&Mode::Std), "release");
+    assert_eq!(builder.cargo_dir(&Mode::ToolBootstrap), "release");
+
+    let config = Config::parse_inner(
+        Flags::parse(&["check".into(), "--config=/does/not/exist".into()]),
+        |&_| {
+            toml::from_str(
+                r#"
+            [rust]
+            optimize = false
+        "#,
+            )
+        },
+    );
+    let build = Build::new(config.clone());
+    let builder = Builder::new(&build);
+
+    assert_eq!(builder.cargo_dir(&Mode::Rustc), "debug");
+    assert_eq!(builder.cargo_dir(&Mode::Codegen), "debug");
 }
