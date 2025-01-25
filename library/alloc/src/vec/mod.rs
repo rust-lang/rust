@@ -2468,7 +2468,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// ```
     /// #![feature(push_mut)]
-    /// 
+    ///
     /// let mut vec = vec![];
     /// // Polonius moment.
     /// let last = if let Some(v) = vec.last_mut() { v } else { vec.push_mut(0) };
