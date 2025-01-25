@@ -19,7 +19,7 @@ at the machine level, with other code. This means it technically covers all of t
 - procedure calling conventions
 
 When we discuss "ABI" in the context of rustc, we are probably discussing calling conventions.
-To describe those `rustc_abi` also covers type layout, as it must for values passed on the stack.
+To describe those `rustc_abi` also covers type layout, as it must be for values passed on the stack.
 Despite `rustc_abi` being about calling conventions, it is good to remember these usages exist.
 You will encounter all of them and more if you study target-specific codegen enough!
 Even in general conversation, when someone says "the Rust ABI is unstable", it may allude to
@@ -95,7 +95,7 @@ bitflags! {
         // Other flags can still inhibit reordering and thus randomization.
         // The seed stored in `ReprOptions.field_shuffle_seed`.
         const RANDOMIZE_LAYOUT   = 1 << 4;
-        // Any of these flags being set prevent field reordering optimisation.
+        // Any of these flags being set to prevent field reordering optimisation.
         const FIELD_ORDER_UNOPTIMIZABLE   = ReprFlags::IS_C.bits()
                                  | ReprFlags::IS_SIMD.bits()
                                  | ReprFlags::IS_LINEAR.bits();
