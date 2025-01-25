@@ -179,6 +179,18 @@ pub trait HirTyLowerer<'tcx> {
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Const<'tcx>;
 
+    /// Helper function; use [`Self::lower_assoc_ty`] or [`Self::lower_assoc_const`] instead.
+    ///
+    /// The logic for lowering associated items that is the same between types and consts.
+    fn lower_assoc_shared(
+        &self,
+        span: Span,
+        item_def_id: DefId,
+        item_segment: &hir::PathSegment<'tcx>,
+        poly_trait_ref: ty::PolyTraitRef<'tcx>,
+        kind: ty::AssocKind,
+    ) -> Result<(DefId, GenericArgsRef<'tcx>), ErrorGuaranteed>;
+
     fn lower_fn_sig(
         &self,
         decl: &hir::FnDecl<'tcx>,

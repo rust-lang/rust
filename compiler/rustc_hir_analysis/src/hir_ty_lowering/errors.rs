@@ -1590,7 +1590,7 @@ fn generics_args_err_extend<'a>(
     }
 }
 
-pub(super) fn assoc_kind_str(kind: ty::AssocKind) -> &'static str {
+pub(crate) fn assoc_kind_str(kind: ty::AssocKind) -> &'static str {
     match kind {
         ty::AssocKind::Fn => "function",
         ty::AssocKind::Const => "constant",

@@ -17,7 +17,7 @@ use rustc_infer::infer;
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
-use rustc_span::{self, DUMMY_SP, Ident, Span, sym};
+use rustc_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span, sym};
 use rustc_trait_selection::error_reporting::TypeErrCtxt;
 use rustc_trait_selection::error_reporting::infer::sub_relations::SubRelations;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
@@ -315,20 +315,16 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         item_segment: &hir::PathSegment<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx> {
-        let trait_ref = self.instantiate_binder_with_fresh_vars(
-            span,
-            infer::BoundRegionConversionTime::AssocTypeProjection(item_def_id),
-            poly_trait_ref,
-        );
-
-        let item_args = self.lowerer().lower_generic_args_of_assoc_item(
+        match self.lower_assoc_shared(
             span,
             item_def_id,
             item_segment,
-            trait_ref.args,
-        );
-
-        Ty::new_projection_from_args(self.tcx(), item_def_id, item_args)
+            poly_trait_ref,
+            ty::AssocKind::Type,
+        ) {
+            Ok((def_id, args)) => Ty::new_projection_from_args(self.tcx(), def_id, args),
+            Err(witness) => Ty::new_error(self.tcx(), witness),
+        }
     }
 
     fn lower_assoc_const(
@@ -338,9 +334,32 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         item_segment: &hir::PathSegment<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Const<'tcx> {
+        match self.lower_assoc_shared(
+            span,
+            item_def_id,
+            item_segment,
+            poly_trait_ref,
+            ty::AssocKind::Const,
+        ) {
+            Ok((def_id, args)) => {
+                let uv = ty::UnevaluatedConst::new(def_id, args);
+                Const::new_unevaluated(self.tcx(), uv)
+            }
+            Err(witness) => Const::new_error(self.tcx(), witness),
+        }
+    }
+
+    fn lower_assoc_shared(
+        &self,
+        span: Span,
+        item_def_id: DefId,
+        item_segment: &rustc_hir::PathSegment<'tcx>,
+        poly_trait_ref: ty::PolyTraitRef<'tcx>,
+        _kind: ty::AssocKind,
+    ) -> Result<(DefId, ty::GenericArgsRef<'tcx>), ErrorGuaranteed> {
         let trait_ref = self.instantiate_binder_with_fresh_vars(
             span,
-            // FIXME(mgca): this should be assoc const not assoc type
+            // FIXME(mgca): this should be assoc const if that is the `kind`
             infer::BoundRegionConversionTime::AssocTypeProjection(item_def_id),
             poly_trait_ref,
         );
@@ -352,7 +371,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             trait_ref.args,
         );
 
-        Const::new_unevaluated(self.tcx(), ty::UnevaluatedConst::new(item_def_id, item_args))
+        Ok((item_def_id, item_args))
     }
 
     fn probe_adt(&self, span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>> {
