@@ -2418,14 +2418,14 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `.then_some(..).unwrap_or(..)`
+    /// Checks for unnecessary method chains that can be simplified into `if .. else ..`.
     ///
     /// ### Why is this bad?
     /// This can be written more clearly with `if .. else ..`
     ///
     /// ### Limitations
     /// This lint currently only looks for usages of
-    /// `.then_some(..).unwrap_or(..)`, but will be expanded
+    /// `.then_some(..).unwrap_or(..)` and `.then(..).unwrap_or(..)`, but will be expanded
     /// to account for similar patterns.
     ///
     /// ### Example
@@ -5276,8 +5276,8 @@ impl Methods {
                         Some(("map", m_recv, [m_arg], span, _)) => {
                             option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, &self.msrv);
                         },
-                        Some(("then_some", t_recv, [t_arg], _, _)) => {
-                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg);
+                        Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
+                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg, then_method);
                         },
                         _ => {},
                     }
