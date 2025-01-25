@@ -59,11 +59,12 @@ impl CompletionConfig<'_> {
             .flat_map(|snip| snip.prefix_triggers.iter().map(move |trigger| (&**trigger, snip)))
     }
 
-    pub fn import_path_config(&self) -> ImportPathConfig {
+    pub fn import_path_config(&self, allow_unstable: bool) -> ImportPathConfig {
         ImportPathConfig {
             prefer_no_std: self.prefer_no_std,
             prefer_prelude: self.prefer_prelude,
             prefer_absolute: self.prefer_absolute,
+            allow_unstable,
         }
     }
 }

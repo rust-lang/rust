@@ -257,7 +257,7 @@ fn import_on_the_fly(
     };
     let user_input_lowercased = potential_import_name.to_lowercase();
 
-    let import_cfg = ctx.config.import_path_config();
+    let import_cfg = ctx.config.import_path_config(ctx.is_nightly);
 
     import_assets
         .search_for_imports(&ctx.sema, import_cfg, ctx.config.insert_use.prefix_kind)
@@ -316,7 +316,7 @@ fn import_on_the_fly_pat_(
         ItemInNs::Values(def) => matches!(def, hir::ModuleDef::Const(_)),
     };
     let user_input_lowercased = potential_import_name.to_lowercase();
-    let cfg = ctx.config.import_path_config();
+    let cfg = ctx.config.import_path_config(ctx.is_nightly);
 
     import_assets
         .search_for_imports(&ctx.sema, cfg, ctx.config.insert_use.prefix_kind)
@@ -358,7 +358,7 @@ fn import_on_the_fly_method(
 
     let user_input_lowercased = potential_import_name.to_lowercase();
 
-    let cfg = ctx.config.import_path_config();
+    let cfg = ctx.config.import_path_config(ctx.is_nightly);
 
     import_assets
         .search_for_imports(&ctx.sema, cfg, ctx.config.insert_use.prefix_kind)
