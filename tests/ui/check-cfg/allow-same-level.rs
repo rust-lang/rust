@@ -10,7 +10,6 @@
 //@ check-pass
 //@ no-auto-check-cfg
 //@ compile-flags: --check-cfg=cfg() --cfg=unknown_but_active_cfg
-//@ normalize-stderr: "expected names are: .*" -> "..."
 
 #[allow(unexpected_cfgs)]
 #[cfg(FALSE)]
