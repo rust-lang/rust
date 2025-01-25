@@ -6,6 +6,7 @@
 #![allow(internal_features)]
 #![feature(associated_type_defaults)]
 #![feature(closure_track_caller)]
+#![feature(exhaustive_patterns)]
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]

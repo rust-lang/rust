@@ -16,7 +16,7 @@ Usages of these parameters is represented by the `RegionKind::Bound` (or `TyKind
 - A [`BoundVar`] which specifies which of the parameters the `Binder` introduces we are referring to.
 - We also sometimes store some extra information for diagnostics reasons via the [`BoundTyKind`]/[`BoundRegionKind`] but this is not important for type equality or more generally the semantics of `Ty`. (omitted from the above example)
 
-In debug output (and also informally when talking to eachother) we tend to write these bound variables in the format of `^DebruijnIndex_BoundVar`. The above example would instead be written as `Binder(fn(&'^0_0), &[BoundVariableKind::Region])`. Sometimes when the `DebruijnIndex` is `0` we just omit it and would write `^0`.
+In debug output (and also informally when talking to each other) we tend to write these bound variables in the format of `^DebruijnIndex_BoundVar`. The above example would instead be written as `Binder(fn(&'^0_0), &[BoundVariableKind::Region])`. Sometimes when the `DebruijnIndex` is `0` we just omit it and would write `^0`.
 
 Another concrete example, this time a mixture of `for<'a>` in a where clause and a type:
 ```

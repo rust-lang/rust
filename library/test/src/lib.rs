@@ -27,6 +27,7 @@
 #![feature(thread_spawn_hook)]
 #![allow(internal_features)]
 #![warn(rustdoc::unescaped_backticks)]
+#![warn(unreachable_pub)]
 
 pub use cli::TestOpts;
 

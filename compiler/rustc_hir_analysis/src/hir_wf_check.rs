@@ -1,6 +1,5 @@
-use rustc_hir as hir;
-use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{ForeignItem, ForeignItemKind};
+use rustc_hir::intravisit::{self, Visitor, VisitorExt};
+use rustc_hir::{self as hir, AmbigArg, ForeignItem, ForeignItemKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ObligationCause, WellFormedLoc};
 use rustc_middle::bug;
@@ -68,11 +67,13 @@ fn diagnostic_hir_wf_check<'tcx>(
     }
 
     impl<'tcx> Visitor<'tcx> for HirWfCheck<'tcx> {
-        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
+        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
             let infcx = self.tcx.infer_ctxt().build(TypingMode::non_body_analysis());
             let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
-            let tcx_ty = self.icx.lower_ty(ty);
+            // We don't handle infer vars but we wouldn't handle them anyway as we're creating a
+            // fresh `InferCtxt` in this function.
+            let tcx_ty = self.icx.lower_ty(ty.as_unambig_ty());
             // This visitor can walk into binders, resulting in the `tcx_ty` to
             // potentially reference escaping bound variables. We simply erase
             // those here.
@@ -149,7 +150,11 @@ fn diagnostic_hir_wf_check<'tcx>(
                         .iter()
                         .flat_map(|seg| seg.args().args)
                         .filter_map(|arg| {
-                            if let hir::GenericArg::Type(ty) = arg { Some(*ty) } else { None }
+                            if let hir::GenericArg::Type(ty) = arg {
+                                Some(ty.as_unambig_ty())
+                            } else {
+                                None
+                            }
                         })
                         .chain([impl_.self_ty])
                         .collect(),
@@ -196,7 +201,7 @@ fn diagnostic_hir_wf_check<'tcx>(
         }
     };
     for ty in tys {
-        visitor.visit_ty(ty);
+        visitor.visit_ty_unambig(ty);
     }
     visitor.cause
 }

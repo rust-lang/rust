@@ -374,7 +374,13 @@ fn find_item_ty_spans(
                         if let hir::GenericArg::Type(ty) = arg
                             && params_in_repr.contains(i as u32)
                         {
-                            find_item_ty_spans(tcx, ty, needle, spans, seen_representable);
+                            find_item_ty_spans(
+                                tcx,
+                                ty.as_unambig_ty(),
+                                needle,
+                                spans,
+                                seen_representable,
+                            );
                         }
                     }
                 }

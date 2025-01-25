@@ -51,7 +51,7 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     is_used: bool,
 ) -> Option<CovfunRecord<'tcx>> {
     let fn_cov_info = tcx.instance_mir(instance.def).function_coverage_info.as_deref()?;
-    let ids_info = tcx.coverage_ids_info(instance.def);
+    let ids_info = tcx.coverage_ids_info(instance.def)?;
 
     let expressions = prepare_expressions(fn_cov_info, ids_info, is_used);
 

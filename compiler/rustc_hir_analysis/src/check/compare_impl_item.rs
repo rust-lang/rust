@@ -6,9 +6,9 @@ use hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{GenericParamKind, ImplItemKind, intravisit};
+use rustc_hir::intravisit::VisitorExt;
+use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, intravisit};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
@@ -1610,7 +1610,7 @@ fn compare_synthetic_generics<'tcx>(
                     struct Visitor(hir::def_id::LocalDefId);
                     impl<'v> intravisit::Visitor<'v> for Visitor {
                         type Result = ControlFlow<Span>;
-                        fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) -> Self::Result {
+                        fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) -> Self::Result {
                             if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = ty.kind
                                 && let Res::Def(DefKind::TyParam, def_id) = path.res
                                 && def_id == self.0.to_def_id()
@@ -1622,9 +1622,9 @@ fn compare_synthetic_generics<'tcx>(
                         }
                     }
 
-                    let span = input_tys.iter().find_map(|ty| {
-                        intravisit::Visitor::visit_ty(&mut Visitor(impl_def_id), ty).break_value()
-                    })?;
+                    let span = input_tys
+                        .iter()
+                        .find_map(|ty| Visitor(impl_def_id).visit_ty_unambig(ty).break_value())?;
 
                     let bounds = impl_m.generics.bounds_for_param(impl_def_id).next()?.bounds;
                     let bounds = bounds.first()?.span().to(bounds.last()?.span());

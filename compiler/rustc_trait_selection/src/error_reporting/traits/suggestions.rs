@@ -14,14 +14,13 @@ use rustc_errors::{
     Applicability, Diag, EmissionGuarantee, MultiSpan, Style, SuggestionStyle, pluralize,
     struct_span_code_err,
 };
-use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::Visitor;
+use rustc_hir::intravisit::{Visitor, VisitorExt};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
-    CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node, expr_needs_parens,
-    is_range_literal,
+    self as hir, AmbigArg, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node,
+    expr_needs_parens, is_range_literal,
 };
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_middle::hir::map;
@@ -179,7 +178,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
         let mut ty_spans = vec![];
         for input in fn_sig.decl.inputs {
             ReplaceImplTraitVisitor { ty_spans: &mut ty_spans, param_did: param.def_id }
-                .visit_ty(input);
+                .visit_ty_unambig(input);
         }
         // The type param `T: Trait` we will suggest to introduce.
         let type_param = format!("{type_param_name}: {bound_str}");
@@ -3074,7 +3073,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 if let Some(ty) = ty {
                     match ty.kind {
-                        hir::TyKind::TraitObject(traits, _, _) => {
+                        hir::TyKind::TraitObject(traits, _) => {
                             let (span, kw) = match traits {
                                 [first, ..] if first.span.lo() == ty.span.lo() => {
                                     // Missing `dyn` in front of trait object.
@@ -5065,7 +5064,7 @@ pub struct SelfVisitor<'v> {
 }
 
 impl<'v> Visitor<'v> for SelfVisitor<'v> {
-    fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+    fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
         if let hir::TyKind::Path(path) = ty.kind
             && let hir::QPath::TypeRelative(inner_ty, segment) = path
             && (Some(segment.ident.name) == self.name || self.name.is_none())
@@ -5073,7 +5072,7 @@ impl<'v> Visitor<'v> for SelfVisitor<'v> {
             && let hir::QPath::Resolved(None, inner_path) = inner_path
             && let Res::SelfTyAlias { .. } = inner_path.res
         {
-            self.paths.push(ty);
+            self.paths.push(ty.as_unambig_ty());
         }
         hir::intravisit::walk_ty(self, ty);
     }
@@ -5187,7 +5186,7 @@ struct ReplaceImplTraitVisitor<'a> {
 }
 
 impl<'a, 'hir> hir::intravisit::Visitor<'hir> for ReplaceImplTraitVisitor<'a> {
-    fn visit_ty(&mut self, t: &'hir hir::Ty<'hir>) {
+    fn visit_ty(&mut self, t: &'hir hir::Ty<'hir, AmbigArg>) {
         if let hir::TyKind::Path(hir::QPath::Resolved(
             None,
             hir::Path { res: Res::Def(_, segment_did), .. },
@@ -5480,7 +5479,7 @@ impl<'v> Visitor<'v> for FindTypeParam {
         // Skip where-clauses, to avoid suggesting indirection for type parameters found there.
     }
 
-    fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
+    fn visit_ty(&mut self, ty: &hir::Ty<'_, AmbigArg>) {
         // We collect the spans of all uses of the "bare" type param, like in `field: T` or
         // `field: (T, T)` where we could make `T: ?Sized` while skipping cases that are known to be
         // valid like `field: &'a T` or `field: *mut T` and cases that *might* have further `Sized`

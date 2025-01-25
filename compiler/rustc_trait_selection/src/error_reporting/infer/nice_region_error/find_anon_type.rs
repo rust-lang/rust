@@ -1,8 +1,8 @@
 use core::ops::ControlFlow;
 
-use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::intravisit::{self, Visitor, VisitorExt};
+use rustc_hir::{self as hir, AmbigArg};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars as rbv;
@@ -48,7 +48,7 @@ fn find_component_for_bound_region<'tcx>(
     region_def_id: DefId,
 ) -> Option<&'tcx hir::Ty<'tcx>> {
     FindNestedTypeVisitor { tcx, region_def_id, current_index: ty::INNERMOST }
-        .visit_ty(arg)
+        .visit_ty_unambig(arg)
         .break_value()
 }
 
@@ -74,7 +74,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) -> Self::Result {
+    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx, AmbigArg>) -> Self::Result {
         match arg.kind {
             hir::TyKind::BareFn(_) => {
                 self.current_index.shift_in(1);
@@ -101,7 +101,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                     Some(rbv::ResolvedArg::EarlyBound(id)) => {
                         debug!("EarlyBound id={:?}", id);
                         if id.to_def_id() == self.region_def_id {
-                            return ControlFlow::Break(arg);
+                            return ControlFlow::Break(arg.as_unambig_ty());
                         }
                     }
 
@@ -117,7 +117,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                         if debruijn_index == self.current_index
                             && id.to_def_id() == self.region_def_id
                         {
-                            return ControlFlow::Break(arg);
+                            return ControlFlow::Break(arg.as_unambig_ty());
                         }
                     }
 
@@ -147,7 +147,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                 )
                 .is_break()
                 {
-                    ControlFlow::Break(arg)
+                    ControlFlow::Break(arg.as_unambig_ty())
                 } else {
                     ControlFlow::Continue(())
                 };
@@ -210,7 +210,7 @@ impl<'tcx> Visitor<'tcx> for TyPathVisitor<'tcx> {
         ControlFlow::Continue(())
     }
 
-    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) -> Self::Result {
+    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx, AmbigArg>) -> Self::Result {
         // ignore nested types
         //
         // If you have a type like `Foo<'a, &Ty>` we

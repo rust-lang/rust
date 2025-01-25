@@ -9,6 +9,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, MissingLifetimeKind};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::inhabitedness::InhabitedPredicate;
@@ -293,7 +294,7 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
         // avoid doing throwaway work in case the lint ends up getting suppressed.
         let mut collector = ShorthandAssocTyCollector { qselves: Vec::new() };
         if let Some(ty) = self.ty {
-            hir::intravisit::Visitor::visit_ty(&mut collector, ty);
+            collector.visit_ty_unambig(ty);
         }
 
         let affect_object_lifetime_defaults = self
