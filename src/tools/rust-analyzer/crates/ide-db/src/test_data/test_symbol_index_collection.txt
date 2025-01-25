@@ -1007,6 +1007,39 @@
                 is_alias: false,
                 is_assoc: false,
             },
+            FileSymbol {
+                name: "ThisStruct",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                4,
+                            ),
+                        },
+                    ),
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: EditionedFileId(
+                        FileId(
+                            1,
+                        ),
+                        Edition2021,
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: USE_TREE,
+                        range: 85..125,
+                    },
+                    name_ptr: AstPtr(
+                        SyntaxNodePtr {
+                            kind: NAME,
+                            range: 115..125,
+                        },
+                    ),
+                },
+                container_name: None,
+                is_alias: false,
+                is_assoc: false,
+            },
         ],
     ),
 ]

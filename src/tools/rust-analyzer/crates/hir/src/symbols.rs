@@ -158,24 +158,32 @@ impl<'a> SymbolCollector<'a> {
         // Nested trees are very common, so a cache here will hit a lot.
         let import_child_source_cache = &mut FxHashMap::default();
 
-        let mut push_import = |this: &mut Self, i: ImportId, name: &Name, def: ModuleDefId| {
+        let is_explicit_import = |vis| match vis {
+            Visibility::Public => true,
+            Visibility::Module(_, VisibilityExplicitness::Explicit) => true,
+            Visibility::Module(_, VisibilityExplicitness::Implicit) => false,
+        };
+
+        let mut push_import = |this: &mut Self, i: ImportId, name: &Name, def: ModuleDefId, vis| {
             let source = import_child_source_cache
                 .entry(i.use_)
                 .or_insert_with(|| i.use_.child_source(this.db.upcast()));
             let Some(use_tree_src) = source.value.get(i.idx) else { return };
-            let Some(name_ptr) = use_tree_src
-                .rename()
-                .and_then(|rename| rename.name())
-                .map(Either::Left)
-                .or_else(|| use_tree_src.path()?.segment()?.name_ref().map(Either::Right))
-                .map(|it| AstPtr::new(&it))
-            else {
+            let rename = use_tree_src.rename().and_then(|rename| rename.name());
+            let name_syntax = match rename {
+                Some(name) => Some(Either::Left(name)),
+                None if is_explicit_import(vis) => {
+                    (|| use_tree_src.path()?.segment()?.name_ref().map(Either::Right))()
+                }
+                None => None,
+            };
+            let Some(name_syntax) = name_syntax else {
                 return;
             };
             let dec_loc = DeclarationLocation {
                 hir_file_id: source.file_id,
                 ptr: SyntaxNodePtr::new(use_tree_src.syntax()),
-                name_ptr,
+                name_ptr: AstPtr::new(&name_syntax),
             };
             this.symbols.insert(FileSymbol {
                 name: name.symbol().clone(),
@@ -188,23 +196,23 @@ impl<'a> SymbolCollector<'a> {
         };
 
         let push_extern_crate =
-            |this: &mut Self, i: ExternCrateId, name: &Name, def: ModuleDefId| {
+            |this: &mut Self, i: ExternCrateId, name: &Name, def: ModuleDefId, vis| {
                 let loc = i.lookup(this.db.upcast());
                 let source = loc.source(this.db.upcast());
-                let Some(name_ptr) = source
-                    .value
-                    .rename()
-                    .and_then(|rename| rename.name())
-                    .map(Either::Left)
-                    .or_else(|| source.value.name_ref().map(Either::Right))
-                    .map(|it| AstPtr::new(&it))
-                else {
+                let rename = source.value.rename().and_then(|rename| rename.name());
+
+                let name_syntax = match rename {
+                    Some(name) => Some(Either::Left(name)),
+                    None if is_explicit_import(vis) => None,
+                    None => source.value.name_ref().map(Either::Right),
+                };
+                let Some(name_syntax) = name_syntax else {
                     return;
                 };
                 let dec_loc = DeclarationLocation {
                     hir_file_id: source.file_id,
                     ptr: SyntaxNodePtr::new(source.value.syntax()),
-                    name_ptr,
+                    name_ptr: AstPtr::new(&name_syntax),
                 };
                 this.symbols.insert(FileSymbol {
                     name: name.symbol().clone(),
@@ -216,18 +224,6 @@ impl<'a> SymbolCollector<'a> {
                 });
             };
 
-        let is_explicit_import = |vis| {
-            match vis {
-                Visibility::Module(_, VisibilityExplicitness::Explicit) => true,
-                Visibility::Module(_, VisibilityExplicitness::Implicit) => {
-                    // consider imports in the crate root explicit, as these are visibly
-                    // crate-wide anyways
-                    module_id.is_crate_root()
-                }
-                Visibility::Public => true,
-            }
-        };
-
         let def_map = module_id.def_map(self.db.upcast());
         let scope = &def_map[module_id.local_id].scope;
 
@@ -237,15 +233,14 @@ impl<'a> SymbolCollector<'a> {
 
         for (name, Item { def, vis, import }) in scope.types() {
             if let Some(i) = import {
-                if is_explicit_import(vis) {
-                    match i {
-                        ImportOrExternCrate::Import(i) => push_import(self, i, name, def),
-                        ImportOrExternCrate::Glob(_) => (),
-                        ImportOrExternCrate::ExternCrate(i) => {
-                            push_extern_crate(self, i, name, def)
-                        }
+                match i {
+                    ImportOrExternCrate::Import(i) => push_import(self, i, name, def, vis),
+                    ImportOrExternCrate::Glob(_) => (),
+                    ImportOrExternCrate::ExternCrate(i) => {
+                        push_extern_crate(self, i, name, def, vis)
                     }
                 }
+
                 continue;
             }
             // self is a declaration
@@ -254,11 +249,9 @@ impl<'a> SymbolCollector<'a> {
 
         for (name, Item { def, vis, import }) in scope.macros() {
             if let Some(i) = import {
-                if is_explicit_import(vis) {
-                    match i {
-                        ImportOrGlob::Import(i) => push_import(self, i, name, def.into()),
-                        ImportOrGlob::Glob(_) => (),
-                    }
+                match i {
+                    ImportOrGlob::Import(i) => push_import(self, i, name, def.into(), vis),
+                    ImportOrGlob::Glob(_) => (),
                 }
                 continue;
             }
@@ -268,11 +261,9 @@ impl<'a> SymbolCollector<'a> {
 
         for (name, Item { def, vis, import }) in scope.values() {
             if let Some(i) = import {
-                if is_explicit_import(vis) {
-                    match i {
-                        ImportOrGlob::Import(i) => push_import(self, i, name, def),
-                        ImportOrGlob::Glob(_) => (),
-                    }
+                match i {
+                    ImportOrGlob::Import(i) => push_import(self, i, name, def, vis),
+                    ImportOrGlob::Glob(_) => (),
                 }
                 continue;
             }
