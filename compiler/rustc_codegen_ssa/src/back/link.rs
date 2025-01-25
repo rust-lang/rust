@@ -1007,6 +1007,7 @@ fn link_natively(
                     command: cmd,
                     escaped_output,
                     verbose: sess.opts.verbose,
+                    sysroot_dir: sess.sysroot.clone(),
                 };
                 sess.dcx().emit_err(err);
                 // If MSVC's `link.exe` was expected but the return code

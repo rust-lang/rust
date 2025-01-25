@@ -351,6 +351,7 @@ pub(crate) struct LinkingFailed<'a> {
     pub command: Command,
     pub escaped_output: String,
     pub verbose: bool,
+    pub sysroot_dir: PathBuf,
 }
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
@@ -364,6 +365,8 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
         if self.verbose {
             diag.note(format!("{:?}", self.command));
         } else {
+            self.command.env_clear();
+
             enum ArgGroup {
                 Regular(OsString),
                 Objects(usize),
@@ -398,26 +401,55 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
                     args.push(ArgGroup::Regular(arg));
                 }
             }
-            self.command.args(args.into_iter().map(|arg_group| match arg_group {
-                ArgGroup::Regular(arg) => arg,
-                ArgGroup::Objects(n) => OsString::from(format!("<{n} object files omitted>")),
-                ArgGroup::Rlibs(dir, rlibs) => {
-                    let mut arg = dir.into_os_string();
-                    arg.push("/{");
-                    let mut first = true;
-                    for rlib in rlibs {
-                        if !first {
-                            arg.push(",");
+            let crate_hash = regex::bytes::Regex::new(r"-[0-9a-f]+\.rlib$").unwrap();
+            self.command.args(args.into_iter().map(|arg_group| {
+                match arg_group {
+                    // SAFETY: we are only matching on ASCII, not any surrogate pairs, so any replacements we do will still be valid.
+                    ArgGroup::Regular(arg) => unsafe {
+                        use bstr::ByteSlice;
+                        OsString::from_encoded_bytes_unchecked(
+                            arg.as_encoded_bytes().replace(
+                                self.sysroot_dir.as_os_str().as_encoded_bytes(),
+                                b"<sysroot>",
+                            ),
+                        )
+                    },
+                    ArgGroup::Objects(n) => OsString::from(format!("<{n} object files omitted>")),
+                    ArgGroup::Rlibs(mut dir, rlibs) => {
+                        let is_sysroot_dir = match dir.strip_prefix(&self.sysroot_dir) {
+                            Ok(short) => {
+                                dir = Path::new("<sysroot>").join(short);
+                                true
+                            }
+                            Err(_) => false,
+                        };
+                        let mut arg = dir.into_os_string();
+                        arg.push("/{");
+                        let mut first = true;
+                        for mut rlib in rlibs {
+                            if !first {
+                                arg.push(",");
+                            }
+                            first = false;
+                            if is_sysroot_dir {
+                                // SAFETY: Regex works one byte at a type, and our regex will not match surrogate pairs (because it only matches ascii).
+                                rlib = unsafe {
+                                    OsString::from_encoded_bytes_unchecked(
+                                        crate_hash
+                                            .replace(rlib.as_encoded_bytes(), b"-*")
+                                            .into_owned(),
+                                    )
+                                };
+                            }
+                            arg.push(rlib);
                         }
-                        first = false;
-                        arg.push(rlib);
+                        arg.push("}.rlib");
+                        arg
                     }
-                    arg.push("}");
-                    arg
                 }
             }));
 
-            diag.note(format!("{:?}", self.command));
+            diag.note(format!("{:?}", self.command).trim_start_matches("env -i").to_owned());
             diag.note("some arguments are omitted. use `--verbose` to show all linker arguments");
         }
 
