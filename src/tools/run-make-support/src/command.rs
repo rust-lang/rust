@@ -388,9 +388,15 @@ impl CompletedProcess {
         self
     }
 
+    /// Check the **exit status** of the process. On Unix, this is *not* the **wait status**.
+    ///
+    /// See [`std::process::ExitStatus::code`]. This is not to be confused with
+    /// [`std::process::ExitCode`].
     #[track_caller]
     pub fn assert_exit_code(&self, code: i32) -> &Self {
-        assert!(self.output.status.code() == Some(code));
+        // FIXME(jieyouxu): this should really be named `exit_status`, because std has an `ExitCode`
+        // that means a different thing.
+        assert_eq!(self.output.status.code(), Some(code));
         self
     }
 }

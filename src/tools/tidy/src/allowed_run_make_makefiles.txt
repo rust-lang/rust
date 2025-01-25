@@ -1,3 +1,2 @@
 run-make/split-debuginfo/Makefile
 run-make/symbol-mangling-hashed/Makefile
-run-make/translation/Makefile
