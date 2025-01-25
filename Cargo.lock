@@ -3537,6 +3537,7 @@ dependencies = [
  "ar_archive_writer",
  "arrayvec",
  "bitflags",
+ "bstr",
  "cc",
  "either",
  "itertools",
