@@ -56,8 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for ErrorImplError {
                     && let Some(error_def_id) = cx.tcx.get_diagnostic_item(sym::Error)
                     && error_def_id == trait_def_id
                     && let Some(def_id) = path_res(cx, imp.self_ty).opt_def_id().and_then(DefId::as_local)
-                    && let Some(ident) = cx.tcx.opt_item_ident(def_id.to_def_id())
-                    && ident.name == sym::Error
+                    && let Some(sym::Error) = cx.tcx.opt_item_name(def_id.to_def_id())
                     && is_visible_outside_module(cx, def_id) =>
             {
                 span_lint_hir_and_then(

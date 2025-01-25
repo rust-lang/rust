@@ -1585,17 +1585,6 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    /// Look up the name and span of a definition.
-    ///
-    /// See [`item_name`][Self::item_name] for more information.
-    pub fn opt_item_ident(self, def_id: DefId) -> Option<Ident> {
-        let def = self.opt_item_name(def_id)?;
-        let span = self
-            .def_ident_span(def_id)
-            .unwrap_or_else(|| bug!("missing ident span for {def_id:?}"));
-        Some(Ident::new(def, span))
-    }
-
     pub fn opt_associated_item(self, def_id: DefId) -> Option<AssocItem> {
         if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
             Some(self.associated_item(def_id))

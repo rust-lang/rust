@@ -999,8 +999,8 @@ impl<'a> CrateMetadataRef<'a> {
         self.opt_item_name(item_index).expect("no encoded ident for item")
     }
 
-    fn opt_item_ident(self, item_index: DefIndex, sess: &Session) -> Option<Ident> {
-        let name = self.opt_item_name(item_index)?;
+    fn item_ident(self, item_index: DefIndex, sess: &Session) -> Ident {
+        let name = self.opt_item_name(item_index).expect("no encoded ident for item");
         let span = self
             .root
             .tables
@@ -1008,11 +1008,7 @@ impl<'a> CrateMetadataRef<'a> {
             .get(self, item_index)
             .unwrap_or_else(|| self.missing("def_ident_span", item_index))
             .decode((self, sess));
-        Some(Ident::new(name, span))
-    }
-
-    fn item_ident(self, item_index: DefIndex, sess: &Session) -> Ident {
-        self.opt_item_ident(item_index, sess).expect("no encoded ident for item")
+        Ident::new(name, span)
     }
 
     #[inline]

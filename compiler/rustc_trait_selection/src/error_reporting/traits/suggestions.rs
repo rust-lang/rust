@@ -2795,15 +2795,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let short_item_name = with_forced_trimmed_paths!(tcx.def_path_str(item_def_id));
                 let mut multispan = MultiSpan::from(span);
                 let sm = tcx.sess.source_map();
-                if let Some(ident) = tcx.opt_item_ident(item_def_id) {
+                if let Some(ident_span) = tcx.def_ident_span(item_def_id) {
                     let same_line =
-                        match (sm.lookup_line(ident.span.hi()), sm.lookup_line(span.lo())) {
+                        match (sm.lookup_line(ident_span.hi()), sm.lookup_line(span.lo())) {
                             (Ok(l), Ok(r)) => l.line == r.line,
                             _ => true,
                         };
-                    if ident.span.is_visible(sm) && !ident.span.overlaps(span) && !same_line {
+                    if ident_span.is_visible(sm) && !ident_span.overlaps(span) && !same_line {
                         multispan.push_span_label(
-                            ident.span,
+                            ident_span,
                             format!(
                                 "required by a bound in this {}",
                                 tcx.def_kind(item_def_id).descr(item_def_id)
@@ -3253,9 +3253,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let ty_str = tcx.short_ty_string(ty, long_ty_file);
                     let msg = format!("required because it appears within the type `{ty_str}`");
                     match ty.kind() {
-                        ty::Adt(def, _) => match tcx.opt_item_ident(def.did()) {
-                            Some(ident) => {
-                                err.span_note(ident.span, msg);
+                        ty::Adt(def, _) => match tcx.def_ident_span(def.did()) {
+                            Some(ident_span) => {
+                                err.span_note(ident_span, msg);
                             }
                             None => {
                                 err.note(msg);
@@ -3595,19 +3595,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                      `{item_name}` but not on the corresponding trait's {kind}",
                 );
                 let sp = tcx
-                    .opt_item_ident(trait_item_def_id)
-                    .map(|i| i.span)
+                    .def_ident_span(trait_item_def_id)
                     .unwrap_or_else(|| tcx.def_span(trait_item_def_id));
                 let mut assoc_span: MultiSpan = sp.into();
                 assoc_span.push_span_label(
                     sp,
                     format!("this trait's {kind} doesn't have the requirement `{predicate}`"),
                 );
-                if let Some(ident) = tcx
+                if let Some(ident_span) = tcx
                     .opt_associated_item(trait_item_def_id)
-                    .and_then(|i| tcx.opt_item_ident(i.container_id(tcx)))
+                    .and_then(|i| tcx.def_ident_span(i.container_id(tcx)))
                 {
-                    assoc_span.push_span_label(ident.span, "in this trait");
+                    assoc_span.push_span_label(ident_span, "in this trait");
                 }
                 err.span_note(assoc_span, msg);
             }
