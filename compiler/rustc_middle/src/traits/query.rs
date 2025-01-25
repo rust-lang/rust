@@ -41,8 +41,15 @@ pub mod type_op {
         pub predicate: Predicate<'tcx>,
     }
 
+    /// Normalizes, but not in the new solver.
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, TypeVisitable)]
     pub struct Normalize<T> {
+        pub value: T,
+    }
+
+    /// Normalizes, and deeply normalizes in the new solver.
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, TypeVisitable)]
+    pub struct DeeplyNormalize<T> {
         pub value: T,
     }
 
