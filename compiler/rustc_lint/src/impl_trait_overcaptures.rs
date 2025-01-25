@@ -191,7 +191,7 @@ fn check_fn(tcx: TyCtxt<'_>, parent_def_id: LocalDefId) {
             let ocx = ObligationCtxt::new(&infcx);
             let assumed_wf_tys = ocx.assumed_wf_types(param_env, parent_def_id).unwrap_or_default();
             let implied_bounds =
-                infcx.implied_bounds_tys_compat(param_env, parent_def_id, &assumed_wf_tys, false);
+                infcx.implied_bounds_tys_compat(parent_def_id, param_env, assumed_wf_tys, false);
             OutlivesEnvironment::with_bounds(param_env, implied_bounds)
         }),
     });

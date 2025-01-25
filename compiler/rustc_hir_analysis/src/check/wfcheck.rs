@@ -128,13 +128,17 @@ where
     let infcx_compat = infcx.fork();
 
     // We specifically want to call the non-compat version of `implied_bounds_tys`; we do this always.
-    let implied_bounds =
-        infcx.implied_bounds_tys_compat(param_env, body_def_id, &assumed_wf_types, false);
+    let implied_bounds = infcx.implied_bounds_tys_compat(
+        body_def_id,
+        param_env,
+        assumed_wf_types.iter().copied(),
+        false,
+    );
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
 
     lint_redundant_lifetimes(tcx, body_def_id, &outlives_env);
 
-    let errors = infcx.resolve_regions(&outlives_env);
+    let errors = infcx.resolve_regions_with_outlives_env(&outlives_env);
     if errors.is_empty() {
         return Ok(());
     }
@@ -173,9 +177,9 @@ where
     // just obscures what we mean here anyways. Let's just be explicit.
     if is_bevy && !infcx.tcx.sess.opts.unstable_opts.no_implied_bounds_compat {
         let implied_bounds =
-            infcx_compat.implied_bounds_tys_compat(param_env, body_def_id, &assumed_wf_types, true);
+            infcx_compat.implied_bounds_tys_compat(body_def_id, param_env, assumed_wf_types, true);
         let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
-        let errors_compat = infcx_compat.resolve_regions(&outlives_env);
+        let errors_compat = infcx_compat.resolve_regions_with_outlives_env(&outlives_env);
         if errors_compat.is_empty() {
             Ok(())
         } else {
@@ -769,12 +773,7 @@ fn test_region_obligations<'tcx>(
 
     add_constraints(&infcx);
 
-    let outlives_environment = OutlivesEnvironment::with_bounds(
-        param_env,
-        infcx.implied_bounds_tys(param_env, id, wf_tys),
-    );
-
-    let errors = infcx.resolve_regions(&outlives_environment);
+    let errors = infcx.resolve_regions(id, param_env, wf_tys.iter().copied());
     debug!(?errors, "errors");
 
     // If we were able to prove that the type outlives the region without

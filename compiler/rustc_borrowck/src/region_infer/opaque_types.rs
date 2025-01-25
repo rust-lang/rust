@@ -439,7 +439,7 @@ impl<'tcx> LazyOpaqueTyEnv<'tcx> {
             tcx.dcx().span_delayed_bug(tcx.def_span(def_id), "error getting implied bounds");
             Default::default()
         });
-        let implied_bounds = infcx.implied_bounds_tys(param_env, parent, &wf_tys);
+        let implied_bounds = infcx.implied_bounds_tys(parent, param_env, wf_tys);
         let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
 
         let mut seen = vec![tcx.lifetimes.re_static];

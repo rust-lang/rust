@@ -1,10 +1,13 @@
+use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferCtxt, RegionResolutionError};
 use rustc_macros::extension;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
+use rustc_middle::ty::{self, Ty};
 
 use crate::traits::ScrubbedTraitError;
+use crate::traits::outlives_bounds::InferCtxtExt;
 
 #[extension(pub trait InferCtxtRegionExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
@@ -16,9 +19,22 @@ impl<'tcx> InferCtxt<'tcx> {
     /// doing something specific for normalization.
     fn resolve_regions(
         &self,
+        body_id: LocalDefId,
+        param_env: ty::ParamEnv<'tcx>,
+        assumed_wf_tys: impl IntoIterator<Item = Ty<'tcx>>,
+    ) -> Vec<RegionResolutionError<'tcx>> {
+        self.resolve_regions_with_outlives_env(&OutlivesEnvironment::with_bounds(
+            param_env,
+            self.implied_bounds_tys(body_id, param_env, assumed_wf_tys),
+        ))
+    }
+
+    /// Don't call this directly unless you know what you're doing.
+    fn resolve_regions_with_outlives_env(
+        &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) -> Vec<RegionResolutionError<'tcx>> {
-        self.resolve_regions_with_normalize(outlives_env, |ty, origin| {
+        self.resolve_regions_with_normalize(&outlives_env, |ty, origin| {
             let ty = self.resolve_vars_if_possible(ty);
 
             if self.next_trait_solver() {
