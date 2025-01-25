@@ -196,80 +196,100 @@ fn have_no_extra_prefix(prefixes: &[&str]) -> bool {
     prefixes.iter().all(|p| p == &"" || p == &"_")
 }
 
-fn check_fields(cx: &LateContext<'_>, threshold: u64, item: &Item<'_>, fields: &[FieldDef<'_>]) {
-    if (fields.len() as u64) < threshold {
-        return;
-    }
-
-    check_struct_name_repetition(cx, item, fields);
-
-    // if the SyntaxContext of the identifiers of the fields and struct differ dont lint them.
-    // this prevents linting in macros in which the location of the field identifier names differ
-    if !fields.iter().all(|field| item.ident.span.eq_ctxt(field.ident.span)) {
-        return;
-    }
-
-    let mut pre: Vec<&str> = match fields.first() {
-        Some(first_field) => first_field.ident.name.as_str().split('_').collect(),
-        None => return,
-    };
-    let mut post = pre.clone();
-    post.reverse();
-    for field in fields {
-        let field_split: Vec<&str> = field.ident.name.as_str().split('_').collect();
-        if field_split.len() == 1 {
+impl ItemNameRepetitions {
+    /// Lint the names of struct fields against the name of the struct.
+    fn check_fields(&self, cx: &LateContext<'_>, item: &Item<'_>, fields: &[FieldDef<'_>]) {
+        if (fields.len() as u64) < self.struct_threshold {
             return;
         }
 
-        pre = pre
-            .into_iter()
-            .zip(field_split.iter())
-            .take_while(|(a, b)| &a == b)
-            .map(|e| e.0)
-            .collect();
-        post = post
-            .into_iter()
-            .zip(field_split.iter().rev())
-            .take_while(|(a, b)| &a == b)
-            .map(|e| e.0)
-            .collect();
+        self.check_struct_name_repetition(cx, item, fields);
+        self.check_common_affix(cx, item, fields);
     }
-    let prefix = pre.join("_");
-    post.reverse();
-    let postfix = match post.last() {
-        Some(&"") => post.join("_") + "_",
-        Some(_) | None => post.join("_"),
-    };
-    if fields.len() > 1 {
-        let (what, value) = match (
-            prefix.is_empty() || prefix.chars().all(|c| c == '_'),
-            postfix.is_empty(),
-        ) {
-            (true, true) => return,
-            (false, _) => ("pre", prefix),
-            (true, false) => ("post", postfix),
+
+    fn check_common_affix(&self, cx: &LateContext<'_>, item: &Item<'_>, fields: &[FieldDef<'_>]) {
+        // if the SyntaxContext of the identifiers of the fields and struct differ dont lint them.
+        // this prevents linting in macros in which the location of the field identifier names differ
+        if !fields.iter().all(|field| item.ident.span.eq_ctxt(field.ident.span)) {
+            return;
+        }
+
+        if self.avoid_breaking_exported_api
+            && fields
+                .iter()
+                .any(|field| cx.effective_visibilities.is_exported(field.def_id))
+        {
+            return;
+        }
+
+        let mut pre: Vec<&str> = match fields.first() {
+            Some(first_field) => first_field.ident.name.as_str().split('_').collect(),
+            None => return,
         };
-        if fields.iter().all(|field| is_bool(field.ty)) {
-            // If all fields are booleans, we don't want to emit this lint.
-            return;
-        }
-        span_lint_and_help(
-            cx,
-            STRUCT_FIELD_NAMES,
-            item.span,
-            format!("all fields have the same {what}fix: `{value}`"),
-            None,
-            format!("remove the {what}fixes"),
-        );
-    }
-}
+        let mut post = pre.clone();
+        post.reverse();
+        for field in fields {
+            let field_split: Vec<&str> = field.ident.name.as_str().split('_').collect();
+            if field_split.len() == 1 {
+                return;
+            }
 
-fn check_struct_name_repetition(cx: &LateContext<'_>, item: &Item<'_>, fields: &[FieldDef<'_>]) {
-    let snake_name = to_snake_case(item.ident.name.as_str());
-    let item_name_words: Vec<&str> = snake_name.split('_').collect();
-    for field in fields {
-        if field.ident.span.eq_ctxt(item.ident.span) {
-            //consider linting only if the field identifier has the same SyntaxContext as the item(struct)
+            pre = pre
+                .into_iter()
+                .zip(field_split.iter())
+                .take_while(|(a, b)| &a == b)
+                .map(|e| e.0)
+                .collect();
+            post = post
+                .into_iter()
+                .zip(field_split.iter().rev())
+                .take_while(|(a, b)| &a == b)
+                .map(|e| e.0)
+                .collect();
+        }
+        let prefix = pre.join("_");
+        post.reverse();
+        let postfix = match post.last() {
+            Some(&"") => post.join("_") + "_",
+            Some(_) | None => post.join("_"),
+        };
+        if fields.len() > 1 {
+            let (what, value) = match (
+                prefix.is_empty() || prefix.chars().all(|c| c == '_'),
+                postfix.is_empty(),
+            ) {
+                (true, true) => return,
+                (false, _) => ("pre", prefix),
+                (true, false) => ("post", postfix),
+            };
+            if fields.iter().all(|field| is_bool(field.ty)) {
+                // If all fields are booleans, we don't want to emit this lint.
+                return;
+            }
+            span_lint_and_help(
+                cx,
+                STRUCT_FIELD_NAMES,
+                item.span,
+                format!("all fields have the same {what}fix: `{value}`"),
+                None,
+                format!("remove the {what}fixes"),
+            );
+        }
+    }
+
+    fn check_struct_name_repetition(&self, cx: &LateContext<'_>, item: &Item<'_>, fields: &[FieldDef<'_>]) {
+        let snake_name = to_snake_case(item.ident.name.as_str());
+        let item_name_words: Vec<&str> = snake_name.split('_').collect();
+        for field in fields {
+            if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(field.def_id) {
+                continue;
+            }
+
+            if !field.ident.span.eq_ctxt(item.ident.span) {
+                // consider linting only if the field identifier has the same SyntaxContext as the item(struct)
+                continue;
+            }
+
             let field_words: Vec<&str> = field.ident.name.as_str().split('_').collect();
             if field_words.len() >= item_name_words.len() {
                 // if the field name is shorter than the struct name it cannot contain it
@@ -458,17 +478,23 @@ impl LateLintPass<'_> for ItemNameRepetitions {
                 }
             }
         }
-        if !(self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(item.owner_id.def_id))
-            && span_is_local(item.span)
-        {
+
+        if span_is_local(item.span) {
             match item.kind {
-                ItemKind::Enum(def, _) => check_variant(cx, self.enum_threshold, &def, item_name, item.span),
+                ItemKind::Enum(def, _) => {
+                    if !(self.avoid_breaking_exported_api
+                        && cx.effective_visibilities.is_exported(item.owner_id.def_id))
+                    {
+                        check_variant(cx, self.enum_threshold, &def, item_name, item.span);
+                    }
+                },
                 ItemKind::Struct(VariantData::Struct { fields, .. }, _) => {
-                    check_fields(cx, self.struct_threshold, item, fields);
+                    self.check_fields(cx, item, fields);
                 },
                 _ => (),
             }
         }
+
         self.modules.push((item.ident.name, item_camel, item.owner_id));
     }
 }
