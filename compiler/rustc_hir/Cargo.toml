@@ -9,6 +9,7 @@ odht = { version = "0.3.1", features = ["nightly"] }
 rustc_abi = { path = "../rustc_abi" }
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
+rustc_attr_data_structures = { path = "../rustc_attr_data_structures" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }

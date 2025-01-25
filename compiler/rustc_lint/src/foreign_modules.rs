@@ -182,7 +182,7 @@ fn name_of_extern_decl(tcx: TyCtxt<'_>, fi: hir::OwnerId) -> SymbolName {
             // information, we could have codegen_fn_attrs also give span information back for
             // where the attribute was defined. However, until this is found to be a
             // bottleneck, this does just fine.
-            (overridden_link_name, tcx.get_attr(fi, sym::link_name).unwrap().span)
+            (overridden_link_name, tcx.get_attr(fi, sym::link_name).unwrap().span())
         })
     {
         SymbolName::Link(overridden_link_name, overridden_link_name_span)

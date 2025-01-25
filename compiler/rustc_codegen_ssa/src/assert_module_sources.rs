@@ -90,7 +90,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
                 other => {
                     self.tcx
                         .dcx()
-                        .emit_fatal(errors::UnknownReuseKind { span: attr.span, kind: other });
+                        .emit_fatal(errors::UnknownReuseKind { span: attr.span(), kind: other });
                 }
             }
         } else {
@@ -98,7 +98,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
         };
 
         if !self.tcx.sess.opts.unstable_opts.query_dep_graph {
-            self.tcx.dcx().emit_fatal(errors::MissingQueryDepGraph { span: attr.span });
+            self.tcx.dcx().emit_fatal(errors::MissingQueryDepGraph { span: attr.span() });
         }
 
         if !self.check_config(attr) {
@@ -111,7 +111,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
 
         if !user_path.starts_with(&crate_name) {
             self.tcx.dcx().emit_fatal(errors::MalformedCguName {
-                span: attr.span,
+                span: attr.span(),
                 user_path,
                 crate_name,
             });
@@ -141,7 +141,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
             let cgu_names: Vec<&str> =
                 self.available_cgus.items().map(|cgu| cgu.as_str()).into_sorted_stable_ord();
             self.tcx.dcx().emit_err(errors::NoModuleNamed {
-                span: attr.span,
+                span: attr.span(),
                 user_path,
                 cgu_name,
                 cgu_names: cgu_names.join(", "),
@@ -151,7 +151,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
         self.cgu_reuse_tracker.set_expectation(
             cgu_name,
             user_path,
-            attr.span,
+            attr.span(),
             expected_reuse,
             comp_kind,
         );
@@ -171,7 +171,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
             }
         }
 
-        self.tcx.dcx().emit_fatal(errors::NoField { span: attr.span, name });
+        self.tcx.dcx().emit_fatal(errors::NoField { span: attr.span(), name });
     }
 
     /// Scan for a `cfg="foo"` attribute and check whether we have a

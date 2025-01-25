@@ -1654,7 +1654,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_expr_unsafe_binder_cast(
         &self,
         span: Span,
-        kind: hir::UnsafeBinderCastKind,
+        kind: ast::UnsafeBinderCastKind,
         inner_expr: &'tcx hir::Expr<'tcx>,
         hir_ty: Option<&'tcx hir::Ty<'tcx>>,
         expected: Expectation<'tcx>,
@@ -1662,7 +1662,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.dcx().span_err(inner_expr.span, "unsafe binder casts are not fully implemented");
 
         match kind {
-            hir::UnsafeBinderCastKind::Wrap => {
+            ast::UnsafeBinderCastKind::Wrap => {
                 let ascribed_ty =
                     hir_ty.map(|hir_ty| self.lower_ty_saving_user_provided_ty(hir_ty));
                 let expected_ty = expected.only_has_type(self);
@@ -1706,7 +1706,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 binder_ty
             }
-            hir::UnsafeBinderCastKind::Unwrap => {
+            ast::UnsafeBinderCastKind::Unwrap => {
                 let ascribed_ty =
                     hir_ty.map(|hir_ty| self.lower_ty_saving_user_provided_ty(hir_ty));
                 let hint_ty = ascribed_ty.unwrap_or_else(|| self.next_ty_var(inner_expr.span));

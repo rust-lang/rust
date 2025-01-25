@@ -4,7 +4,7 @@
 //! but are not declared in one single location (unlike lang features), which means we need to
 //! collect them instead.
 
-use rustc_attr_parsing::VERSION_PLACEHOLDER;
+use rustc_attr_parsing::{AttributeKind, StabilityLevel, StableSince};
 use rustc_hir::Attribute;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
@@ -26,62 +26,29 @@ impl<'tcx> LibFeatureCollector<'tcx> {
     }
 
     fn extract(&self, attr: &Attribute) -> Option<(Symbol, FeatureStability, Span)> {
-        let stab_attrs = [
-            sym::stable,
-            sym::unstable,
-            sym::rustc_const_stable,
-            sym::rustc_const_unstable,
-            sym::rustc_default_body_unstable,
-        ];
-
-        // Find a stability attribute: one of #[stable(…)], #[unstable(…)],
-        // #[rustc_const_stable(…)], #[rustc_const_unstable(…)] or #[rustc_default_body_unstable].
-        if let Some(stab_attr) = stab_attrs.iter().find(|stab_attr| attr.has_name(**stab_attr)) {
-            if let Some(metas) = attr.meta_item_list() {
-                let mut feature = None;
-                let mut since = None;
-                for meta in metas {
-                    if let Some(mi) = meta.meta_item() {
-                        // Find the `feature = ".."` meta-item.
-                        match (mi.name_or_empty(), mi.value_str()) {
-                            (sym::feature, val) => feature = val,
-                            (sym::since, val) => since = val,
-                            _ => {}
-                        }
-                    }
-                }
-
-                if let Some(s) = since
-                    && s.as_str() == VERSION_PLACEHOLDER
-                {
-                    since = Some(sym::env_CFG_RELEASE);
-                }
-
-                if let Some(feature) = feature {
-                    // This additional check for stability is to make sure we
-                    // don't emit additional, irrelevant errors for malformed
-                    // attributes.
-                    let is_unstable = matches!(
-                        *stab_attr,
-                        sym::unstable
-                            | sym::rustc_const_unstable
-                            | sym::rustc_default_body_unstable
-                    );
-                    if is_unstable {
-                        return Some((feature, FeatureStability::Unstable, attr.span));
-                    }
-                    if let Some(since) = since {
-                        return Some((feature, FeatureStability::AcceptedSince(since), attr.span));
-                    }
-                }
-                // We need to iterate over the other attributes, because
-                // `rustc_const_unstable` is not mutually exclusive with
-                // the other stability attributes, so we can't just `break`
-                // here.
+        let (feature, level, span) = match attr {
+            Attribute::Parsed(AttributeKind::Stability { stability, span }) => {
+                (stability.feature, stability.level, *span)
             }
-        }
+            Attribute::Parsed(AttributeKind::ConstStability { stability, span }) => {
+                (stability.feature, stability.level, *span)
+            }
+            Attribute::Parsed(AttributeKind::BodyStability { stability, span }) => {
+                (stability.feature, stability.level, *span)
+            }
+            _ => return None,
+        };
 
-        None
+        let feature_stability = match level {
+            StabilityLevel::Unstable { .. } => FeatureStability::Unstable,
+            StabilityLevel::Stable { since, .. } => FeatureStability::AcceptedSince(match since {
+                StableSince::Version(v) => Symbol::intern(&v.to_string()),
+                StableSince::Current => sym::env_CFG_RELEASE,
+                StableSince::Err => return None,
+            }),
+        };
+
+        Some((feature, feature_stability, span))
     }
 
     fn collect_feature(&mut self, feature: Symbol, stability: FeatureStability, span: Span) {
