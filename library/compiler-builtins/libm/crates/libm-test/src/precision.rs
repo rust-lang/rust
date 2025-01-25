@@ -405,15 +405,6 @@ impl MaybeOverride<(f32, f32)> for SpecialCase {
     ) -> CheckAction {
         binop_common(input, actual, expected, ctx)
     }
-
-    fn check_int<I: Int>(
-        _input: (f32, f32),
-        actual: I,
-        expected: I,
-        ctx: &CheckCtx,
-    ) -> CheckAction {
-        remquo_common(actual, expected, ctx)
-    }
 }
 
 impl MaybeOverride<(f64, f64)> for SpecialCase {
@@ -424,15 +415,6 @@ impl MaybeOverride<(f64, f64)> for SpecialCase {
         ctx: &CheckCtx,
     ) -> CheckAction {
         binop_common(input, actual, expected, ctx)
-    }
-
-    fn check_int<I: Int>(
-        _input: (f64, f64),
-        actual: I,
-        expected: I,
-        ctx: &CheckCtx,
-    ) -> CheckAction {
-        remquo_common(actual, expected, ctx)
     }
 }
 
@@ -491,19 +473,6 @@ fn binop_common<F1: Float, F2: Float>(
         && expected.is_nan()
     {
         return XFAIL("fmax/fmin musl NaN");
-    }
-
-    DEFAULT
-}
-
-fn remquo_common<I: Int>(actual: I, expected: I, ctx: &CheckCtx) -> CheckAction {
-    // FIXME: Our MPFR implementation disagrees with musl and may need to be updated.
-    if ctx.basis == CheckBasis::Mpfr
-        && ctx.base_name == BaseName::Remquo
-        && expected == I::MIN
-        && actual == I::ZERO
-    {
-        return XFAIL("remquo integer mismatch");
     }
 
     DEFAULT
