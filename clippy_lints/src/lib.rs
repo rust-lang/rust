@@ -279,6 +279,7 @@ mod non_copy_const;
 mod non_expressive_names;
 mod non_octal_unix_permissions;
 mod non_send_fields_in_send_ty;
+mod non_std_lazy_statics;
 mod non_zero_suggestions;
 mod nonstandard_macro_braces;
 mod octal_escapes;
@@ -974,5 +975,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(arbitrary_source_item_ordering::ArbitrarySourceItemOrdering::new(conf)));
     store.register_late_pass(|_| Box::new(unneeded_struct_pattern::UnneededStructPattern));
     store.register_late_pass(|_| Box::<unnecessary_semicolon::UnnecessarySemicolon>::default());
+    store.register_late_pass(move |_| Box::new(non_std_lazy_statics::NonStdLazyStatic::new(conf)));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }

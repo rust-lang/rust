@@ -631,6 +631,7 @@ define_Conf! {
         mem_replace_with_default,
         missing_const_for_fn,
         needless_borrow,
+        non_std_lazy_statics,
         option_as_ref_deref,
         option_map_unwrap_or,
         ptr_as_ptr,
