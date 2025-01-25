@@ -14,3 +14,8 @@ try:
     gdb_lookup.register_printers(gdb.current_objfile())
 except Exception:
     gdb_lookup.register_printers(gdb.selected_inferior().progspace)
+
+try:
+    gdb_lookup.register_type_printers(gdb.current_objfile())
+except Exception:
+    gdb_lookup.register_type_printers(gdb.selected_inferior().progspace)

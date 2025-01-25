@@ -16,6 +16,10 @@ def register_printers(objfile):
     objfile.pretty_printers.append(printer)
 
 
+def register_type_printers(objfile):
+    gdb.types.register_type_printer(objfile, PtrTypePrinter("PtrOrRef"))
+
+
 # BACKCOMPAT: rust 1.35
 def is_hashbrown_hashmap(hash_map):
     return len(hash_map.type.fields()) == 1

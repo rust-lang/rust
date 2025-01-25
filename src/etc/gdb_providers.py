@@ -480,3 +480,68 @@ class StdHashMapProvider(printer_base):
 
     def display_hint(self):
         return "map" if self._show_values else "array"
+
+
+class NestedRefProvider(printer_base):
+    def __init__(self, valobj):
+        self._valobj = valobj
+        self._ptr = self._valobj["ptr"]
+
+    def to_string(self):
+        return str(self._valobj.cast(self._ptr.type))
+
+    def children(self):
+        yield ("*ptr", self._ptr.referenced_value())
+
+    def num_children(self):
+        return 1
+
+    def display_hint(self):
+        return "array"
+
+
+PTR_CODES = (
+    gdb.TYPE_CODE_PTR,
+    gdb.TYPE_CODE_REF,
+    gdb.TYPE_CODE_RVALUE_REF,
+    gdb.TYPE_CODE_MEMBERPTR,
+)
+
+
+class PtrTypeRecognizer:
+    def recognize(self, type: gdb.Type) -> str:
+        if type.code not in PTR_CODES:
+            return None
+
+        name_parts = []
+
+        ptr_type: gdb.Type = type
+        ptee_type: gdb.Type = type.target()
+
+        while ptr_type.code in PTR_CODES:
+            is_ref: bool = ptr_type.code == gdb.TYPE_CODE_REF
+
+            if ptee_type.const() == ptee_type:
+                if is_ref:
+                    name_parts.append("&")
+                else:
+                    name_parts.append("*const ")
+            else:
+                if is_ref:
+                    name_parts.append("&mut ")
+                else:
+                    name_parts.append("*mut ")
+
+            ptr_type = ptee_type
+            try:
+                ptee_type = ptee_type.target()
+            except RuntimeError:
+                break
+
+        name_parts.append(ptr_type.unqualified().name)
+        return "".join(name_parts)
+
+
+class PtrTypePrinter(gdb.types.TypePrinter):
+    def instantiate(self):
+        return PtrTypeRecognizer()
