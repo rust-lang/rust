@@ -81,11 +81,13 @@ LL |     type Type;
 LL | impl Trait for S {
    | ^^^^^^^^^^^^^^^^ missing `Type` in implementation
 
-error[E0433]: failed to resolve: use of undeclared crate or module `unresolved_prefix`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `unresolved_prefix`
   --> $DIR/bad-resolve.rs:43:7
    |
 LL | reuse unresolved_prefix::{a, b, c};
-   |       ^^^^^^^^^^^^^^^^^ use of undeclared crate or module `unresolved_prefix`
+   |       ^^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `unresolved_prefix`
+   |
+   = help: you might be missing a crate named `unresolved_prefix`
 
 error[E0433]: failed to resolve: `crate` in paths can only be used in start position
   --> $DIR/bad-resolve.rs:44:29
