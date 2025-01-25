@@ -3326,23 +3326,24 @@ macro_rules! atomic_int {
                 unsafe { atomic_xor(self.v.get(), val, order) }
             }
 
-            /// Fetches the value, and applies a function to it that returns an optional
-            /// new value. Returns a `Result` of `Ok(previous_value)` if the function returned `Some(_)`, else
-            /// `Err(previous_value)`.
+            /// Loads the current value, applies a closure to it, and optionally tries to store a new value.
             ///
-            /// Note: This may call the function multiple times if the value has been changed from other threads in
-            /// the meantime, as long as the function returns `Some(_)`, but the function will have been applied
-            /// only once to the stored value.
+            /// If the closure ever returns `None`, this method immediately returns `Err(current value)`.
+            /// Whenever the closure returns `Some(new value)`, this method calls
+            #[doc = concat!("[`", stringify!($atomic_type), "::compare_exchange_weak`]")]
+            /// to try to store the new value.
             ///
-            /// `fetch_update` takes two [`Ordering`] arguments to describe the memory ordering of this operation.
-            /// The first describes the required ordering for when the operation finally succeeds while the second
-            /// describes the required ordering for loads. These correspond to the success and failure orderings of
-            #[doc = concat!("[`", stringify!($atomic_type), "::compare_exchange`]")]
-            /// respectively.
+            /// If storing a new value fails (due to another thread changing the current value),
+            /// then the closure will be called again on the new current value
+            /// (returned by `compare_exchange_weak`).
+            /// This process repeats until either the closure returns None,
+            /// or `compare_exchange_weak` succeeds in storing a new value.
             ///
-            /// Using [`Acquire`] as success ordering makes the store part
-            /// of this operation [`Relaxed`], and using [`Release`] makes the final successful load
-            /// [`Relaxed`]. The (failed) load ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`].
+            /// Returns `Ok(previous value)` if it ever succeeds in storing a new value,
+            /// otherwise returns `Err(current value)`.
+            ///
+            /// Takes a `set_order` and a `fetch_order` [`Ordering`] to pass on to `compare_exchange_weak`.
+            /// Also uses the `fetch_order` for the initial load.
             ///
             /// **Note**: This method is only available on platforms that support atomic operations on
             #[doc = concat!("[`", $s_int_type, "`].")]
