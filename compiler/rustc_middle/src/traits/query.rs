@@ -87,6 +87,9 @@ pub type CanonicalTypeOpProvePredicateGoal<'tcx> =
 pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<T>>>;
 
+pub type CanonicalTypeOpDeeplyNormalizeGoal<'tcx, T> =
+    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::DeeplyNormalize<T>>>;
+
 pub type CanonicalImpliedOutlivesBoundsGoal<'tcx> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::ImpliedOutlivesBounds<'tcx>>>;
 
