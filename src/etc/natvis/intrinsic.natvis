@@ -33,6 +33,10 @@
       </ArrayItems>
     </Expand>
   </Type>
+  <Type Name="ref$&lt;*&gt;">
+    <AlternativeType Name="ref_mut$&lt;*&gt;" />
+    <DisplayString>{*ptr}</DisplayString>
+  </Type>
   <Type Name="f16">
     <Intrinsic Name="sign_mask" Expression="(unsigned __int16) 0x8000" />
     <Intrinsic Name="exponent_mask" Expression="(unsigned __int16) 0x7c00" />
@@ -231,6 +235,91 @@
       <Parameter Name="end_lo" Type="unsigned __int64" />
     </Intrinsic>
 
+    <DisplayString Condition="tag == variant0.DISCR_EXACT" Optional="true">{variant0.NAME,en} ({variant0.value.__0}, {variant0.value.__1}, {variant0.value.__2}, {variant0.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="tag == variant1.DISCR_EXACT" Optional="true">{variant1.NAME,en} ({variant1.value.__0}, {variant1.value.__1}, {variant1.value.__2}, {variant1.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="tag == variant2.DISCR_EXACT" Optional="true">{variant2.NAME,en} ({variant2.value.__0}, {variant2.value.__1}, {variant2.value.__2}, {variant2.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="tag == variant3.DISCR_EXACT" Optional="true">{variant3.NAME,en} ({variant3.value.__0}, {variant3.value.__1}, {variant3.value.__2}, {variant3.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="tag == variant4.DISCR_EXACT" Optional="true">{variant4.NAME,en} ({variant4.value.__0}, {variant4.value.__1}, {variant4.value.__2}, {variant4.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="tag == variant5.DISCR_EXACT" Optional="true">{variant5.NAME,en} ({variant5.value.__0}, {variant5.value.__1}, {variant5.value.__2}, {variant5.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="tag == variant6.DISCR_EXACT" Optional="true">{variant6.NAME,en} ({variant6.value.__0}, {variant6.value.__1}, {variant6.value.__2}, {variant6.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="tag == variant7.DISCR_EXACT" Optional="true">{variant7.NAME,en} ({variant7.value.__0}, {variant7.value.__1}, {variant7.value.__2}, {variant7.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="tag == variant8.DISCR_EXACT" Optional="true">{variant8.NAME,en} ({variant8.value.__0}, {variant8.value.__1}, {variant8.value.__2}, {variant8.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="tag == variant9.DISCR_EXACT" Optional="true">{variant9.NAME,en} ({variant9.value.__0}, {variant9.value.__1}, {variant9.value.__2}, {variant9.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="tag == variant10.DISCR_EXACT" Optional="true">{variant10.NAME,en} ({variant10.value.__0}, {variant10.value.__1}, {variant10.value.__2}, {variant10.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="tag == variant11.DISCR_EXACT" Optional="true">{variant11.NAME,en} ({variant11.value.__0}, {variant11.value.__1}, {variant11.value.__2}, {variant11.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="tag == variant12.DISCR_EXACT" Optional="true">{variant12.NAME,en} ({variant12.value.__0}, {variant12.value.__1}, {variant12.value.__2}, {variant12.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="tag == variant13.DISCR_EXACT" Optional="true">{variant13.NAME,en} ({variant13.value.__0}, {variant13.value.__1}, {variant13.value.__2}, {variant13.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="tag == variant14.DISCR_EXACT" Optional="true">{variant14.NAME,en} ({variant14.value.__0}, {variant14.value.__1}, {variant14.value.__2}, {variant14.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="tag == variant15.DISCR_EXACT" Optional="true">{variant15.NAME,en} ({variant15.value.__0}, {variant15.value.__1}, {variant15.value.__2}, {variant15.value.__3}, ...)</DisplayString>
+
+    <DisplayString Condition="tag == variant0.DISCR_EXACT" Optional="true">{variant0.NAME,en} ({variant0.value.__0}, {variant0.value.__1}, {variant0.value.__2})</DisplayString>
+    <DisplayString Condition="tag == variant1.DISCR_EXACT" Optional="true">{variant1.NAME,en} ({variant1.value.__0}, {variant1.value.__1}, {variant1.value.__2})</DisplayString>
+    <DisplayString Condition="tag == variant2.DISCR_EXACT" Optional="true">{variant2.NAME,en} ({variant2.value.__0}, {variant2.value.__1}, {variant2.value.__2})</DisplayString>
+    <DisplayString Condition="tag == variant3.DISCR_EXACT" Optional="true">{variant3.NAME,en} ({variant3.value.__0}, {variant3.value.__1}, {variant3.value.__2})</DisplayString>
+    <DisplayString Condition="tag == variant4.DISCR_EXACT" Optional="true">{variant4.NAME,en} ({variant4.value.__0}, {variant4.value.__1}, {variant4.value.__2})</DisplayString>
+    <DisplayString Condition="tag == variant5.DISCR_EXACT" Optional="true">{variant5.NAME,en} ({variant5.value.__0}, {variant5.value.__1}, {variant5.value.__2})</DisplayString>
+    <DisplayString Condition="tag == variant6.DISCR_EXACT" Optional="true">{variant6.NAME,en} ({variant6.value.__0}, {variant6.value.__1}, {variant6.value.__2})</DisplayString>
+    <DisplayString Condition="tag == variant7.DISCR_EXACT" Optional="true">{variant7.NAME,en} ({variant7.value.__0}, {variant7.value.__1}, {variant7.value.__2})</DisplayString>
+    <DisplayString Condition="tag == variant8.DISCR_EXACT" Optional="true">{variant8.NAME,en} ({variant8.value.__0}, {variant8.value.__1}, {variant8.value.__2})</DisplayString>
+    <DisplayString Condition="tag == variant9.DISCR_EXACT" Optional="true">{variant9.NAME,en} ({variant9.value.__0}, {variant9.value.__1}, {variant9.value.__2})</DisplayString>
+    <DisplayString Condition="tag == variant10.DISCR_EXACT" Optional="true">{variant10.NAME,en} ({variant10.value.__0}, {variant10.value.__1}, {variant10.value.__2})</DisplayString>
+    <DisplayString Condition="tag == variant11.DISCR_EXACT" Optional="true">{variant11.NAME,en} ({variant11.value.__0}, {variant11.value.__1}, {variant11.value.__2})</DisplayString>
+    <DisplayString Condition="tag == variant12.DISCR_EXACT" Optional="true">{variant12.NAME,en} ({variant12.value.__0}, {variant12.value.__1}, {variant12.value.__2})</DisplayString>
+    <DisplayString Condition="tag == variant13.DISCR_EXACT" Optional="true">{variant13.NAME,en} ({variant13.value.__0}, {variant13.value.__1}, {variant13.value.__2})</DisplayString>
+    <DisplayString Condition="tag == variant14.DISCR_EXACT" Optional="true">{variant14.NAME,en} ({variant14.value.__0}, {variant14.value.__1}, {variant14.value.__2})</DisplayString>
+    <DisplayString Condition="tag == variant15.DISCR_EXACT" Optional="true">{variant15.NAME,en} ({variant15.value.__0}, {variant15.value.__1}, {variant15.value.__2})</DisplayString>
+
+    <DisplayString Condition="tag == variant0.DISCR_EXACT" Optional="true">{variant0.NAME,en} ({variant0.value.__0}, {variant0.value.__1})</DisplayString>
+    <DisplayString Condition="tag == variant1.DISCR_EXACT" Optional="true">{variant1.NAME,en} ({variant1.value.__0}, {variant1.value.__1})</DisplayString>
+    <DisplayString Condition="tag == variant2.DISCR_EXACT" Optional="true">{variant2.NAME,en} ({variant2.value.__0}, {variant2.value.__1})</DisplayString>
+    <DisplayString Condition="tag == variant3.DISCR_EXACT" Optional="true">{variant3.NAME,en} ({variant3.value.__0}, {variant3.value.__1})</DisplayString>
+    <DisplayString Condition="tag == variant4.DISCR_EXACT" Optional="true">{variant4.NAME,en} ({variant4.value.__0}, {variant4.value.__1})</DisplayString>
+    <DisplayString Condition="tag == variant5.DISCR_EXACT" Optional="true">{variant5.NAME,en} ({variant5.value.__0}, {variant5.value.__1})</DisplayString>
+    <DisplayString Condition="tag == variant6.DISCR_EXACT" Optional="true">{variant6.NAME,en} ({variant6.value.__0}, {variant6.value.__1})</DisplayString>
+    <DisplayString Condition="tag == variant7.DISCR_EXACT" Optional="true">{variant7.NAME,en} ({variant7.value.__0}, {variant7.value.__1})</DisplayString>
+    <DisplayString Condition="tag == variant8.DISCR_EXACT" Optional="true">{variant8.NAME,en} ({variant8.value.__0}, {variant8.value.__1})</DisplayString>
+    <DisplayString Condition="tag == variant9.DISCR_EXACT" Optional="true">{variant9.NAME,en} ({variant9.value.__0}, {variant9.value.__1})</DisplayString>
+    <DisplayString Condition="tag == variant10.DISCR_EXACT" Optional="true">{variant10.NAME,en} ({variant10.value.__0}, {variant10.value.__1})</DisplayString>
+    <DisplayString Condition="tag == variant11.DISCR_EXACT" Optional="true">{variant11.NAME,en} ({variant11.value.__0}, {variant11.value.__1})</DisplayString>
+    <DisplayString Condition="tag == variant12.DISCR_EXACT" Optional="true">{variant12.NAME,en} ({variant12.value.__0}, {variant12.value.__1})</DisplayString>
+    <DisplayString Condition="tag == variant13.DISCR_EXACT" Optional="true">{variant13.NAME,en} ({variant13.value.__0}, {variant13.value.__1})</DisplayString>
+    <DisplayString Condition="tag == variant14.DISCR_EXACT" Optional="true">{variant14.NAME,en} ({variant14.value.__0}, {variant14.value.__1})</DisplayString>
+    <DisplayString Condition="tag == variant15.DISCR_EXACT" Optional="true">{variant15.NAME,en} ({variant15.value.__0}, {variant15.value.__1})</DisplayString>
+
+    <DisplayString Condition="tag == variant0.DISCR_EXACT" Optional="true">{variant0.NAME,en} ({variant0.value.__0})</DisplayString>
+    <DisplayString Condition="tag == variant1.DISCR_EXACT" Optional="true">{variant1.NAME,en} ({variant1.value.__0})</DisplayString>
+    <DisplayString Condition="tag == variant2.DISCR_EXACT" Optional="true">{variant2.NAME,en} ({variant2.value.__0})</DisplayString>
+    <DisplayString Condition="tag == variant3.DISCR_EXACT" Optional="true">{variant3.NAME,en} ({variant3.value.__0})</DisplayString>
+    <DisplayString Condition="tag == variant4.DISCR_EXACT" Optional="true">{variant4.NAME,en} ({variant4.value.__0})</DisplayString>
+    <DisplayString Condition="tag == variant5.DISCR_EXACT" Optional="true">{variant5.NAME,en} ({variant5.value.__0})</DisplayString>
+    <DisplayString Condition="tag == variant6.DISCR_EXACT" Optional="true">{variant6.NAME,en} ({variant6.value.__0})</DisplayString>
+    <DisplayString Condition="tag == variant7.DISCR_EXACT" Optional="true">{variant7.NAME,en} ({variant7.value.__0})</DisplayString>
+    <DisplayString Condition="tag == variant8.DISCR_EXACT" Optional="true">{variant8.NAME,en} ({variant8.value.__0})</DisplayString>
+    <DisplayString Condition="tag == variant9.DISCR_EXACT" Optional="true">{variant9.NAME,en} ({variant9.value.__0})</DisplayString>
+    <DisplayString Condition="tag == variant10.DISCR_EXACT" Optional="true">{variant10.NAME,en} ({variant10.value.__0})</DisplayString>
+    <DisplayString Condition="tag == variant11.DISCR_EXACT" Optional="true">{variant11.NAME,en} ({variant11.value.__0})</DisplayString>
+    <DisplayString Condition="tag == variant12.DISCR_EXACT" Optional="true">{variant12.NAME,en} ({variant12.value.__0})</DisplayString>
+    <DisplayString Condition="tag == variant13.DISCR_EXACT" Optional="true">{variant13.NAME,en} ({variant13.value.__0})</DisplayString>
+    <DisplayString Condition="tag == variant14.DISCR_EXACT" Optional="true">{variant14.NAME,en} ({variant14.value.__0})</DisplayString>
+    <DisplayString Condition="tag == variant15.DISCR_EXACT" Optional="true">{variant15.NAME,en} ({variant15.value.__0})</DisplayString>
+
+    <DisplayString Condition="tag == variant0.DISCR_EXACT" Optional="true">{variant0.NAME,en} {variant0.value}</DisplayString>
+    <DisplayString Condition="tag == variant1.DISCR_EXACT" Optional="true">{variant1.NAME,en} {variant1.value}</DisplayString>
+    <DisplayString Condition="tag == variant2.DISCR_EXACT" Optional="true">{variant2.NAME,en} {variant2.value}</DisplayString>
+    <DisplayString Condition="tag == variant3.DISCR_EXACT" Optional="true">{variant3.NAME,en} {variant3.value}</DisplayString>
+    <DisplayString Condition="tag == variant4.DISCR_EXACT" Optional="true">{variant4.NAME,en} {variant4.value}</DisplayString>
+    <DisplayString Condition="tag == variant5.DISCR_EXACT" Optional="true">{variant5.NAME,en} {variant5.value}</DisplayString>
+    <DisplayString Condition="tag == variant6.DISCR_EXACT" Optional="true">{variant6.NAME,en} {variant6.value}</DisplayString>
+    <DisplayString Condition="tag == variant7.DISCR_EXACT" Optional="true">{variant7.NAME,en} {variant7.value}</DisplayString>
+    <DisplayString Condition="tag == variant8.DISCR_EXACT" Optional="true">{variant8.NAME,en} {variant8.value}</DisplayString>
+    <DisplayString Condition="tag == variant9.DISCR_EXACT" Optional="true">{variant9.NAME,en} {variant9.value}</DisplayString>
+    <DisplayString Condition="tag == variant10.DISCR_EXACT" Optional="true">{variant10.NAME,en} {variant10.value}</DisplayString>
+    <DisplayString Condition="tag == variant11.DISCR_EXACT" Optional="true">{variant11.NAME,en} {variant11.value}</DisplayString>
+    <DisplayString Condition="tag == variant12.DISCR_EXACT" Optional="true">{variant12.NAME,en} {variant12.value}</DisplayString>
+    <DisplayString Condition="tag == variant13.DISCR_EXACT" Optional="true">{variant13.NAME,en} {variant13.value}</DisplayString>
+    <DisplayString Condition="tag == variant14.DISCR_EXACT" Optional="true">{variant14.NAME,en} {variant14.value}</DisplayString>
+    <DisplayString Condition="tag == variant15.DISCR_EXACT" Optional="true">{variant15.NAME,en} {variant15.value}</DisplayString>
+
     <DisplayString Condition="tag == variant0.DISCR_EXACT" Optional="true">{variant0.NAME,en}</DisplayString>
     <DisplayString Condition="tag == variant1.DISCR_EXACT" Optional="true">{variant1.NAME,en}</DisplayString>
     <DisplayString Condition="tag == variant2.DISCR_EXACT" Optional="true">{variant2.NAME,en}</DisplayString>
@@ -247,6 +336,91 @@
     <DisplayString Condition="tag == variant13.DISCR_EXACT" Optional="true">{variant13.NAME,en}</DisplayString>
     <DisplayString Condition="tag == variant14.DISCR_EXACT" Optional="true">{variant14.NAME,en}</DisplayString>
     <DisplayString Condition="tag == variant15.DISCR_EXACT" Optional="true">{variant15.NAME,en}</DisplayString>
+
+    <DisplayString Condition="in_range(tag, variant0.DISCR_BEGIN, variant0.DISCR_END)" Optional="true">{variant0.NAME,en} ({variant0.value.__0}, {variant0.value.__1}, {variant0.value.__2}, {variant0.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range(tag, variant1.DISCR_BEGIN, variant1.DISCR_END)" Optional="true">{variant1.NAME,en} ({variant1.value.__0}, {variant1.value.__1}, {variant1.value.__2}, {variant1.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range(tag, variant2.DISCR_BEGIN, variant2.DISCR_END)" Optional="true">{variant2.NAME,en} ({variant2.value.__0}, {variant2.value.__1}, {variant2.value.__2}, {variant2.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range(tag, variant3.DISCR_BEGIN, variant3.DISCR_END)" Optional="true">{variant3.NAME,en} ({variant3.value.__0}, {variant3.value.__1}, {variant3.value.__2}, {variant3.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range(tag, variant4.DISCR_BEGIN, variant4.DISCR_END)" Optional="true">{variant4.NAME,en} ({variant4.value.__0}, {variant4.value.__1}, {variant4.value.__2}, {variant4.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range(tag, variant5.DISCR_BEGIN, variant5.DISCR_END)" Optional="true">{variant5.NAME,en} ({variant5.value.__0}, {variant5.value.__1}, {variant5.value.__2}, {variant5.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range(tag, variant6.DISCR_BEGIN, variant6.DISCR_END)" Optional="true">{variant6.NAME,en} ({variant6.value.__0}, {variant6.value.__1}, {variant6.value.__2}, {variant6.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range(tag, variant7.DISCR_BEGIN, variant7.DISCR_END)" Optional="true">{variant7.NAME,en} ({variant7.value.__0}, {variant7.value.__1}, {variant7.value.__2}, {variant7.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range(tag, variant8.DISCR_BEGIN, variant8.DISCR_END)" Optional="true">{variant8.NAME,en} ({variant8.value.__0}, {variant8.value.__1}, {variant8.value.__2}, {variant8.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range(tag, variant9.DISCR_BEGIN, variant9.DISCR_END)" Optional="true">{variant9.NAME,en} ({variant9.value.__0}, {variant9.value.__1}, {variant9.value.__2}, {variant9.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range(tag, variant10.DISCR_BEGIN, variant10.DISCR_END)" Optional="true">{variant10.NAME,en} ({variant10.value.__0}, {variant10.value.__1}, {variant10.value.__2}, {variant10.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range(tag, variant11.DISCR_BEGIN, variant11.DISCR_END)" Optional="true">{variant11.NAME,en} ({variant11.value.__0}, {variant11.value.__1}, {variant11.value.__2}, {variant11.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range(tag, variant12.DISCR_BEGIN, variant12.DISCR_END)" Optional="true">{variant12.NAME,en} ({variant12.value.__0}, {variant12.value.__1}, {variant12.value.__2}, {variant12.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range(tag, variant13.DISCR_BEGIN, variant13.DISCR_END)" Optional="true">{variant13.NAME,en} ({variant13.value.__0}, {variant13.value.__1}, {variant13.value.__2}, {variant13.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range(tag, variant14.DISCR_BEGIN, variant14.DISCR_END)" Optional="true">{variant14.NAME,en} ({variant14.value.__0}, {variant14.value.__1}, {variant14.value.__2}, {variant14.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range(tag, variant15.DISCR_BEGIN, variant15.DISCR_END)" Optional="true">{variant15.NAME,en} ({variant15.value.__0}, {variant15.value.__1}, {variant15.value.__2}, {variant15.value.__3}, ...)</DisplayString>
+
+    <DisplayString Condition="in_range(tag, variant0.DISCR_BEGIN, variant0.DISCR_END)" Optional="true">{variant0.NAME,en} ({variant0.value.__0}, {variant0.value.__1}, {variant0.value.__2})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant1.DISCR_BEGIN, variant1.DISCR_END)" Optional="true">{variant1.NAME,en} ({variant1.value.__0}, {variant1.value.__1}, {variant1.value.__2})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant2.DISCR_BEGIN, variant2.DISCR_END)" Optional="true">{variant2.NAME,en} ({variant2.value.__0}, {variant2.value.__1}, {variant2.value.__2})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant3.DISCR_BEGIN, variant3.DISCR_END)" Optional="true">{variant3.NAME,en} ({variant3.value.__0}, {variant3.value.__1}, {variant3.value.__2})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant4.DISCR_BEGIN, variant4.DISCR_END)" Optional="true">{variant4.NAME,en} ({variant4.value.__0}, {variant4.value.__1}, {variant4.value.__2})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant5.DISCR_BEGIN, variant5.DISCR_END)" Optional="true">{variant5.NAME,en} ({variant5.value.__0}, {variant5.value.__1}, {variant5.value.__2})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant6.DISCR_BEGIN, variant6.DISCR_END)" Optional="true">{variant6.NAME,en} ({variant6.value.__0}, {variant6.value.__1}, {variant6.value.__2})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant7.DISCR_BEGIN, variant7.DISCR_END)" Optional="true">{variant7.NAME,en} ({variant7.value.__0}, {variant7.value.__1}, {variant7.value.__2})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant8.DISCR_BEGIN, variant8.DISCR_END)" Optional="true">{variant8.NAME,en} ({variant8.value.__0}, {variant8.value.__1}, {variant8.value.__2})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant9.DISCR_BEGIN, variant9.DISCR_END)" Optional="true">{variant9.NAME,en} ({variant9.value.__0}, {variant9.value.__1}, {variant9.value.__2})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant10.DISCR_BEGIN, variant10.DISCR_END)" Optional="true">{variant10.NAME,en} ({variant10.value.__0}, {variant10.value.__1}, {variant10.value.__2})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant11.DISCR_BEGIN, variant11.DISCR_END)" Optional="true">{variant11.NAME,en} ({variant11.value.__0}, {variant11.value.__1}, {variant11.value.__2})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant12.DISCR_BEGIN, variant12.DISCR_END)" Optional="true">{variant12.NAME,en} ({variant12.value.__0}, {variant12.value.__1}, {variant12.value.__2})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant13.DISCR_BEGIN, variant13.DISCR_END)" Optional="true">{variant13.NAME,en} ({variant13.value.__0}, {variant13.value.__1}, {variant13.value.__2})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant14.DISCR_BEGIN, variant14.DISCR_END)" Optional="true">{variant14.NAME,en} ({variant14.value.__0}, {variant14.value.__1}, {variant14.value.__2})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant15.DISCR_BEGIN, variant15.DISCR_END)" Optional="true">{variant15.NAME,en} ({variant15.value.__0}, {variant15.value.__1}, {variant15.value.__2})</DisplayString>
+
+    <DisplayString Condition="in_range(tag, variant0.DISCR_BEGIN, variant0.DISCR_END)" Optional="true">{variant0.NAME,en} ({variant0.value.__0}, {variant0.value.__1})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant1.DISCR_BEGIN, variant1.DISCR_END)" Optional="true">{variant1.NAME,en} ({variant1.value.__0}, {variant1.value.__1})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant2.DISCR_BEGIN, variant2.DISCR_END)" Optional="true">{variant2.NAME,en} ({variant2.value.__0}, {variant2.value.__1})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant3.DISCR_BEGIN, variant3.DISCR_END)" Optional="true">{variant3.NAME,en} ({variant3.value.__0}, {variant3.value.__1})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant4.DISCR_BEGIN, variant4.DISCR_END)" Optional="true">{variant4.NAME,en} ({variant4.value.__0}, {variant4.value.__1})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant5.DISCR_BEGIN, variant5.DISCR_END)" Optional="true">{variant5.NAME,en} ({variant5.value.__0}, {variant5.value.__1})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant6.DISCR_BEGIN, variant6.DISCR_END)" Optional="true">{variant6.NAME,en} ({variant6.value.__0}, {variant6.value.__1})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant7.DISCR_BEGIN, variant7.DISCR_END)" Optional="true">{variant7.NAME,en} ({variant7.value.__0}, {variant7.value.__1})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant8.DISCR_BEGIN, variant8.DISCR_END)" Optional="true">{variant8.NAME,en} ({variant8.value.__0}, {variant8.value.__1})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant9.DISCR_BEGIN, variant9.DISCR_END)" Optional="true">{variant9.NAME,en} ({variant9.value.__0}, {variant9.value.__1})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant10.DISCR_BEGIN, variant10.DISCR_END)" Optional="true">{variant10.NAME,en} ({variant10.value.__0}, {variant10.value.__1})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant11.DISCR_BEGIN, variant11.DISCR_END)" Optional="true">{variant11.NAME,en} ({variant11.value.__0}, {variant11.value.__1})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant12.DISCR_BEGIN, variant12.DISCR_END)" Optional="true">{variant12.NAME,en} ({variant12.value.__0}, {variant12.value.__1})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant13.DISCR_BEGIN, variant13.DISCR_END)" Optional="true">{variant13.NAME,en} ({variant13.value.__0}, {variant13.value.__1})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant14.DISCR_BEGIN, variant14.DISCR_END)" Optional="true">{variant14.NAME,en} ({variant14.value.__0}, {variant14.value.__1})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant15.DISCR_BEGIN, variant15.DISCR_END)" Optional="true">{variant15.NAME,en} ({variant15.value.__0}, {variant15.value.__1})</DisplayString>
+
+    <DisplayString Condition="in_range(tag, variant0.DISCR_BEGIN, variant0.DISCR_END)" Optional="true">{variant0.NAME,en} ({variant0.value.__0})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant1.DISCR_BEGIN, variant1.DISCR_END)" Optional="true">{variant1.NAME,en} ({variant1.value.__0})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant2.DISCR_BEGIN, variant2.DISCR_END)" Optional="true">{variant2.NAME,en} ({variant2.value.__0})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant3.DISCR_BEGIN, variant3.DISCR_END)" Optional="true">{variant3.NAME,en} ({variant3.value.__0})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant4.DISCR_BEGIN, variant4.DISCR_END)" Optional="true">{variant4.NAME,en} ({variant4.value.__0})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant5.DISCR_BEGIN, variant5.DISCR_END)" Optional="true">{variant5.NAME,en} ({variant5.value.__0})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant6.DISCR_BEGIN, variant6.DISCR_END)" Optional="true">{variant6.NAME,en} ({variant6.value.__0})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant7.DISCR_BEGIN, variant7.DISCR_END)" Optional="true">{variant7.NAME,en} ({variant7.value.__0})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant8.DISCR_BEGIN, variant8.DISCR_END)" Optional="true">{variant8.NAME,en} ({variant8.value.__0})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant9.DISCR_BEGIN, variant9.DISCR_END)" Optional="true">{variant9.NAME,en} ({variant9.value.__0})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant10.DISCR_BEGIN, variant10.DISCR_END)" Optional="true">{variant10.NAME,en} ({variant10.value.__0})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant11.DISCR_BEGIN, variant11.DISCR_END)" Optional="true">{variant11.NAME,en} ({variant11.value.__0})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant12.DISCR_BEGIN, variant12.DISCR_END)" Optional="true">{variant12.NAME,en} ({variant12.value.__0})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant13.DISCR_BEGIN, variant13.DISCR_END)" Optional="true">{variant13.NAME,en} ({variant13.value.__0})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant14.DISCR_BEGIN, variant14.DISCR_END)" Optional="true">{variant14.NAME,en} ({variant14.value.__0})</DisplayString>
+    <DisplayString Condition="in_range(tag, variant15.DISCR_BEGIN, variant15.DISCR_END)" Optional="true">{variant15.NAME,en} ({variant15.value.__0})</DisplayString>
+
+    <DisplayString Condition="in_range(tag, variant0.DISCR_BEGIN, variant0.DISCR_END)" Optional="true">{variant0.NAME,en} {variant0.value}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant1.DISCR_BEGIN, variant1.DISCR_END)" Optional="true">{variant1.NAME,en} {variant1.value}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant2.DISCR_BEGIN, variant2.DISCR_END)" Optional="true">{variant2.NAME,en} {variant2.value}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant3.DISCR_BEGIN, variant3.DISCR_END)" Optional="true">{variant3.NAME,en} {variant3.value}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant4.DISCR_BEGIN, variant4.DISCR_END)" Optional="true">{variant4.NAME,en} {variant4.value}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant5.DISCR_BEGIN, variant5.DISCR_END)" Optional="true">{variant5.NAME,en} {variant5.value}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant6.DISCR_BEGIN, variant6.DISCR_END)" Optional="true">{variant6.NAME,en} {variant6.value}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant7.DISCR_BEGIN, variant7.DISCR_END)" Optional="true">{variant7.NAME,en} {variant7.value}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant8.DISCR_BEGIN, variant8.DISCR_END)" Optional="true">{variant8.NAME,en} {variant8.value}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant9.DISCR_BEGIN, variant9.DISCR_END)" Optional="true">{variant9.NAME,en} {variant9.value}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant10.DISCR_BEGIN, variant10.DISCR_END)" Optional="true">{variant10.NAME,en} {variant10.value}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant11.DISCR_BEGIN, variant11.DISCR_END)" Optional="true">{variant11.NAME,en} {variant11.value}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant12.DISCR_BEGIN, variant12.DISCR_END)" Optional="true">{variant12.NAME,en} {variant12.value}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant13.DISCR_BEGIN, variant13.DISCR_END)" Optional="true">{variant13.NAME,en} {variant13.value}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant14.DISCR_BEGIN, variant14.DISCR_END)" Optional="true">{variant14.NAME,en} {variant14.value}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant15.DISCR_BEGIN, variant15.DISCR_END)" Optional="true">{variant15.NAME,en} {variant15.value}</DisplayString>
 
     <DisplayString Condition="in_range(tag, variant0.DISCR_BEGIN, variant0.DISCR_END)" Optional="true">{variant0.NAME,en}</DisplayString>
     <DisplayString Condition="in_range(tag, variant1.DISCR_BEGIN, variant1.DISCR_END)" Optional="true">{variant1.NAME,en}</DisplayString>
@@ -265,6 +439,91 @@
     <DisplayString Condition="in_range(tag, variant14.DISCR_BEGIN, variant14.DISCR_END)" Optional="true">{variant14.NAME,en}</DisplayString>
     <DisplayString Condition="in_range(tag, variant15.DISCR_BEGIN, variant15.DISCR_END)" Optional="true">{variant15.NAME,en}</DisplayString>
 
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant0.DISCR128_EXACT_HI, variant0.DISCR128_EXACT_LO)" Optional="true">{variant0.NAME,en} ({variant0.value.__0}, {variant0.value.__1}, {variant0.value.__2}, {variant0.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant1.DISCR128_EXACT_HI, variant1.DISCR128_EXACT_LO)" Optional="true">{variant1.NAME,en} ({variant1.value.__0}, {variant1.value.__1}, {variant1.value.__2}, {variant1.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant2.DISCR128_EXACT_HI, variant2.DISCR128_EXACT_LO)" Optional="true">{variant2.NAME,en} ({variant2.value.__0}, {variant2.value.__1}, {variant2.value.__2}, {variant2.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant3.DISCR128_EXACT_HI, variant3.DISCR128_EXACT_LO)" Optional="true">{variant3.NAME,en} ({variant3.value.__0}, {variant3.value.__1}, {variant3.value.__2}, {variant3.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant4.DISCR128_EXACT_HI, variant4.DISCR128_EXACT_LO)" Optional="true">{variant4.NAME,en} ({variant4.value.__0}, {variant4.value.__1}, {variant4.value.__2}, {variant4.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant5.DISCR128_EXACT_HI, variant5.DISCR128_EXACT_LO)" Optional="true">{variant5.NAME,en} ({variant5.value.__0}, {variant5.value.__1}, {variant5.value.__2}, {variant5.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant6.DISCR128_EXACT_HI, variant6.DISCR128_EXACT_LO)" Optional="true">{variant6.NAME,en} ({variant6.value.__0}, {variant6.value.__1}, {variant6.value.__2}, {variant6.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant7.DISCR128_EXACT_HI, variant7.DISCR128_EXACT_LO)" Optional="true">{variant7.NAME,en} ({variant7.value.__0}, {variant7.value.__1}, {variant7.value.__2}, {variant7.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant8.DISCR128_EXACT_HI, variant8.DISCR128_EXACT_LO)" Optional="true">{variant8.NAME,en} ({variant8.value.__0}, {variant8.value.__1}, {variant8.value.__2}, {variant8.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant9.DISCR128_EXACT_HI, variant9.DISCR128_EXACT_LO)" Optional="true">{variant9.NAME,en} ({variant9.value.__0}, {variant9.value.__1}, {variant9.value.__2}, {variant9.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant10.DISCR128_EXACT_HI, variant10.DISCR128_EXACT_LO)" Optional="true">{variant10.NAME,en} ({variant10.value.__0}, {variant10.value.__1}, {variant10.value.__2}, {variant10.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant11.DISCR128_EXACT_HI, variant11.DISCR128_EXACT_LO)" Optional="true">{variant11.NAME,en} ({variant11.value.__0}, {variant11.value.__1}, {variant11.value.__2}, {variant11.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant12.DISCR128_EXACT_HI, variant12.DISCR128_EXACT_LO)" Optional="true">{variant12.NAME,en} ({variant12.value.__0}, {variant12.value.__1}, {variant12.value.__2}, {variant12.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant13.DISCR128_EXACT_HI, variant13.DISCR128_EXACT_LO)" Optional="true">{variant13.NAME,en} ({variant13.value.__0}, {variant13.value.__1}, {variant13.value.__2}, {variant13.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant14.DISCR128_EXACT_HI, variant14.DISCR128_EXACT_LO)" Optional="true">{variant14.NAME,en} ({variant14.value.__0}, {variant14.value.__1}, {variant14.value.__2}, {variant14.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant15.DISCR128_EXACT_HI, variant15.DISCR128_EXACT_LO)" Optional="true">{variant15.NAME,en} ({variant15.value.__0}, {variant15.value.__1}, {variant15.value.__2}, {variant15.value.__3}, ...)</DisplayString>
+
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant0.DISCR128_EXACT_HI, variant0.DISCR128_EXACT_LO)" Optional="true">{variant0.NAME,en} ({variant0.value.__0}, {variant0.value.__1}, {variant0.value.__2})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant1.DISCR128_EXACT_HI, variant1.DISCR128_EXACT_LO)" Optional="true">{variant1.NAME,en} ({variant1.value.__0}, {variant1.value.__1}, {variant1.value.__2})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant2.DISCR128_EXACT_HI, variant2.DISCR128_EXACT_LO)" Optional="true">{variant2.NAME,en} ({variant2.value.__0}, {variant2.value.__1}, {variant2.value.__2})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant3.DISCR128_EXACT_HI, variant3.DISCR128_EXACT_LO)" Optional="true">{variant3.NAME,en} ({variant3.value.__0}, {variant3.value.__1}, {variant3.value.__2})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant4.DISCR128_EXACT_HI, variant4.DISCR128_EXACT_LO)" Optional="true">{variant4.NAME,en} ({variant4.value.__0}, {variant4.value.__1}, {variant4.value.__2})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant5.DISCR128_EXACT_HI, variant5.DISCR128_EXACT_LO)" Optional="true">{variant5.NAME,en} ({variant5.value.__0}, {variant5.value.__1}, {variant5.value.__2})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant6.DISCR128_EXACT_HI, variant6.DISCR128_EXACT_LO)" Optional="true">{variant6.NAME,en} ({variant6.value.__0}, {variant6.value.__1}, {variant6.value.__2})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant7.DISCR128_EXACT_HI, variant7.DISCR128_EXACT_LO)" Optional="true">{variant7.NAME,en} ({variant7.value.__0}, {variant7.value.__1}, {variant7.value.__2})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant8.DISCR128_EXACT_HI, variant8.DISCR128_EXACT_LO)" Optional="true">{variant8.NAME,en} ({variant8.value.__0}, {variant8.value.__1}, {variant8.value.__2})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant9.DISCR128_EXACT_HI, variant9.DISCR128_EXACT_LO)" Optional="true">{variant9.NAME,en} ({variant9.value.__0}, {variant9.value.__1}, {variant9.value.__2})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant10.DISCR128_EXACT_HI, variant10.DISCR128_EXACT_LO)" Optional="true">{variant10.NAME,en} ({variant10.value.__0}, {variant10.value.__1}, {variant10.value.__2})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant11.DISCR128_EXACT_HI, variant11.DISCR128_EXACT_LO)" Optional="true">{variant11.NAME,en} ({variant11.value.__0}, {variant11.value.__1}, {variant11.value.__2})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant12.DISCR128_EXACT_HI, variant12.DISCR128_EXACT_LO)" Optional="true">{variant12.NAME,en} ({variant12.value.__0}, {variant12.value.__1}, {variant12.value.__2})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant13.DISCR128_EXACT_HI, variant13.DISCR128_EXACT_LO)" Optional="true">{variant13.NAME,en} ({variant13.value.__0}, {variant13.value.__1}, {variant13.value.__2})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant14.DISCR128_EXACT_HI, variant14.DISCR128_EXACT_LO)" Optional="true">{variant14.NAME,en} ({variant14.value.__0}, {variant14.value.__1}, {variant14.value.__2})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant15.DISCR128_EXACT_HI, variant15.DISCR128_EXACT_LO)" Optional="true">{variant15.NAME,en} ({variant15.value.__0}, {variant15.value.__1}, {variant15.value.__2})</DisplayString>
+
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant0.DISCR128_EXACT_HI, variant0.DISCR128_EXACT_LO)" Optional="true">{variant0.NAME,en} ({variant0.value.__0}, {variant0.value.__1})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant1.DISCR128_EXACT_HI, variant1.DISCR128_EXACT_LO)" Optional="true">{variant1.NAME,en} ({variant1.value.__0}, {variant1.value.__1})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant2.DISCR128_EXACT_HI, variant2.DISCR128_EXACT_LO)" Optional="true">{variant2.NAME,en} ({variant2.value.__0}, {variant2.value.__1})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant3.DISCR128_EXACT_HI, variant3.DISCR128_EXACT_LO)" Optional="true">{variant3.NAME,en} ({variant3.value.__0}, {variant3.value.__1})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant4.DISCR128_EXACT_HI, variant4.DISCR128_EXACT_LO)" Optional="true">{variant4.NAME,en} ({variant4.value.__0}, {variant4.value.__1})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant5.DISCR128_EXACT_HI, variant5.DISCR128_EXACT_LO)" Optional="true">{variant5.NAME,en} ({variant5.value.__0}, {variant5.value.__1})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant6.DISCR128_EXACT_HI, variant6.DISCR128_EXACT_LO)" Optional="true">{variant6.NAME,en} ({variant6.value.__0}, {variant6.value.__1})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant7.DISCR128_EXACT_HI, variant7.DISCR128_EXACT_LO)" Optional="true">{variant7.NAME,en} ({variant7.value.__0}, {variant7.value.__1})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant8.DISCR128_EXACT_HI, variant8.DISCR128_EXACT_LO)" Optional="true">{variant8.NAME,en} ({variant8.value.__0}, {variant8.value.__1})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant9.DISCR128_EXACT_HI, variant9.DISCR128_EXACT_LO)" Optional="true">{variant9.NAME,en} ({variant9.value.__0}, {variant9.value.__1})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant10.DISCR128_EXACT_HI, variant10.DISCR128_EXACT_LO)" Optional="true">{variant10.NAME,en} ({variant10.value.__0}, {variant10.value.__1})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant11.DISCR128_EXACT_HI, variant11.DISCR128_EXACT_LO)" Optional="true">{variant11.NAME,en} ({variant11.value.__0}, {variant11.value.__1})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant12.DISCR128_EXACT_HI, variant12.DISCR128_EXACT_LO)" Optional="true">{variant12.NAME,en} ({variant12.value.__0}, {variant12.value.__1})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant13.DISCR128_EXACT_HI, variant13.DISCR128_EXACT_LO)" Optional="true">{variant13.NAME,en} ({variant13.value.__0}, {variant13.value.__1})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant14.DISCR128_EXACT_HI, variant14.DISCR128_EXACT_LO)" Optional="true">{variant14.NAME,en} ({variant14.value.__0}, {variant14.value.__1})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant15.DISCR128_EXACT_HI, variant15.DISCR128_EXACT_LO)" Optional="true">{variant15.NAME,en} ({variant15.value.__0}, {variant15.value.__1})</DisplayString>
+
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant0.DISCR128_EXACT_HI, variant0.DISCR128_EXACT_LO)" Optional="true">{variant0.NAME,en} ({variant0.value.__0})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant1.DISCR128_EXACT_HI, variant1.DISCR128_EXACT_LO)" Optional="true">{variant1.NAME,en} ({variant1.value.__0})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant2.DISCR128_EXACT_HI, variant2.DISCR128_EXACT_LO)" Optional="true">{variant2.NAME,en} ({variant2.value.__0})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant3.DISCR128_EXACT_HI, variant3.DISCR128_EXACT_LO)" Optional="true">{variant3.NAME,en} ({variant3.value.__0})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant4.DISCR128_EXACT_HI, variant4.DISCR128_EXACT_LO)" Optional="true">{variant4.NAME,en} ({variant4.value.__0})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant5.DISCR128_EXACT_HI, variant5.DISCR128_EXACT_LO)" Optional="true">{variant5.NAME,en} ({variant5.value.__0})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant6.DISCR128_EXACT_HI, variant6.DISCR128_EXACT_LO)" Optional="true">{variant6.NAME,en} ({variant6.value.__0})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant7.DISCR128_EXACT_HI, variant7.DISCR128_EXACT_LO)" Optional="true">{variant7.NAME,en} ({variant7.value.__0})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant8.DISCR128_EXACT_HI, variant8.DISCR128_EXACT_LO)" Optional="true">{variant8.NAME,en} ({variant8.value.__0})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant9.DISCR128_EXACT_HI, variant9.DISCR128_EXACT_LO)" Optional="true">{variant9.NAME,en} ({variant9.value.__0})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant10.DISCR128_EXACT_HI, variant10.DISCR128_EXACT_LO)" Optional="true">{variant10.NAME,en} ({variant10.value.__0})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant11.DISCR128_EXACT_HI, variant11.DISCR128_EXACT_LO)" Optional="true">{variant11.NAME,en} ({variant11.value.__0})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant12.DISCR128_EXACT_HI, variant12.DISCR128_EXACT_LO)" Optional="true">{variant12.NAME,en} ({variant12.value.__0})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant13.DISCR128_EXACT_HI, variant13.DISCR128_EXACT_LO)" Optional="true">{variant13.NAME,en} ({variant13.value.__0})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant14.DISCR128_EXACT_HI, variant14.DISCR128_EXACT_LO)" Optional="true">{variant14.NAME,en} ({variant14.value.__0})</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant15.DISCR128_EXACT_HI, variant15.DISCR128_EXACT_LO)" Optional="true">{variant15.NAME,en} ({variant15.value.__0})</DisplayString>
+
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant0.DISCR128_EXACT_HI, variant0.DISCR128_EXACT_LO)" Optional="true">{variant0.NAME,en} {variant0.value}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant1.DISCR128_EXACT_HI, variant1.DISCR128_EXACT_LO)" Optional="true">{variant1.NAME,en} {variant1.value}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant2.DISCR128_EXACT_HI, variant2.DISCR128_EXACT_LO)" Optional="true">{variant2.NAME,en} {variant2.value}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant3.DISCR128_EXACT_HI, variant3.DISCR128_EXACT_LO)" Optional="true">{variant3.NAME,en} {variant3.value}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant4.DISCR128_EXACT_HI, variant4.DISCR128_EXACT_LO)" Optional="true">{variant4.NAME,en} {variant4.value}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant5.DISCR128_EXACT_HI, variant5.DISCR128_EXACT_LO)" Optional="true">{variant5.NAME,en} {variant5.value}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant6.DISCR128_EXACT_HI, variant6.DISCR128_EXACT_LO)" Optional="true">{variant6.NAME,en} {variant6.value}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant7.DISCR128_EXACT_HI, variant7.DISCR128_EXACT_LO)" Optional="true">{variant7.NAME,en} {variant7.value}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant8.DISCR128_EXACT_HI, variant8.DISCR128_EXACT_LO)" Optional="true">{variant8.NAME,en} {variant8.value}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant9.DISCR128_EXACT_HI, variant9.DISCR128_EXACT_LO)" Optional="true">{variant9.NAME,en} {variant9.value}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant10.DISCR128_EXACT_HI, variant10.DISCR128_EXACT_LO)" Optional="true">{variant10.NAME,en} {variant10.value}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant11.DISCR128_EXACT_HI, variant11.DISCR128_EXACT_LO)" Optional="true">{variant11.NAME,en} {variant11.value}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant12.DISCR128_EXACT_HI, variant12.DISCR128_EXACT_LO)" Optional="true">{variant12.NAME,en} {variant12.value}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant13.DISCR128_EXACT_HI, variant13.DISCR128_EXACT_LO)" Optional="true">{variant13.NAME,en} {variant13.value}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant14.DISCR128_EXACT_HI, variant14.DISCR128_EXACT_LO)" Optional="true">{variant14.NAME,en} {variant14.value}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant15.DISCR128_EXACT_HI, variant15.DISCR128_EXACT_LO)" Optional="true">{variant15.NAME,en} {variant15.value}</DisplayString>
+
     <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant0.DISCR128_EXACT_HI, variant0.DISCR128_EXACT_LO)" Optional="true">{variant0.NAME,en}</DisplayString>
     <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant1.DISCR128_EXACT_HI, variant1.DISCR128_EXACT_LO)" Optional="true">{variant1.NAME,en}</DisplayString>
     <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant2.DISCR128_EXACT_HI, variant2.DISCR128_EXACT_LO)" Optional="true">{variant2.NAME,en}</DisplayString>
@@ -281,6 +540,91 @@
     <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant13.DISCR128_EXACT_HI, variant13.DISCR128_EXACT_LO)" Optional="true">{variant13.NAME,en}</DisplayString>
     <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant14.DISCR128_EXACT_HI, variant14.DISCR128_EXACT_LO)" Optional="true">{variant14.NAME,en}</DisplayString>
     <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant15.DISCR128_EXACT_HI, variant15.DISCR128_EXACT_LO)" Optional="true">{variant15.NAME,en}</DisplayString>
+
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant0.DISCR128_BEGIN_HI, variant0.DISCR128_BEGIN_LO, variant0.DISCR128_END_HI, variant0.DISCR128_END_LO)" Optional="true">{variant0.NAME,en} ({variant0.value.__0}, {variant0.value.__1}, {variant0.value.__2}, {variant0.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant1.DISCR128_BEGIN_HI, variant1.DISCR128_BEGIN_LO, variant1.DISCR128_END_HI, variant1.DISCR128_END_LO)" Optional="true">{variant1.NAME,en} ({variant1.value.__0}, {variant1.value.__1}, {variant1.value.__2}, {variant1.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant2.DISCR128_BEGIN_HI, variant2.DISCR128_BEGIN_LO, variant2.DISCR128_END_HI, variant2.DISCR128_END_LO)" Optional="true">{variant2.NAME,en} ({variant2.value.__0}, {variant2.value.__1}, {variant2.value.__2}, {variant2.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant3.DISCR128_BEGIN_HI, variant3.DISCR128_BEGIN_LO, variant3.DISCR128_END_HI, variant3.DISCR128_END_LO)" Optional="true">{variant3.NAME,en} ({variant3.value.__0}, {variant3.value.__1}, {variant3.value.__2}, {variant3.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant4.DISCR128_BEGIN_HI, variant4.DISCR128_BEGIN_LO, variant4.DISCR128_END_HI, variant4.DISCR128_END_LO)" Optional="true">{variant4.NAME,en} ({variant4.value.__0}, {variant4.value.__1}, {variant4.value.__2}, {variant4.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant5.DISCR128_BEGIN_HI, variant5.DISCR128_BEGIN_LO, variant5.DISCR128_END_HI, variant5.DISCR128_END_LO)" Optional="true">{variant5.NAME,en} ({variant5.value.__0}, {variant5.value.__1}, {variant5.value.__2}, {variant5.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant6.DISCR128_BEGIN_HI, variant6.DISCR128_BEGIN_LO, variant6.DISCR128_END_HI, variant6.DISCR128_END_LO)" Optional="true">{variant6.NAME,en} ({variant6.value.__0}, {variant6.value.__1}, {variant6.value.__2}, {variant6.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant7.DISCR128_BEGIN_HI, variant7.DISCR128_BEGIN_LO, variant7.DISCR128_END_HI, variant7.DISCR128_END_LO)" Optional="true">{variant7.NAME,en} ({variant7.value.__0}, {variant7.value.__1}, {variant7.value.__2}, {variant7.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant8.DISCR128_BEGIN_HI, variant8.DISCR128_BEGIN_LO, variant8.DISCR128_END_HI, variant8.DISCR128_END_LO)" Optional="true">{variant8.NAME,en} ({variant8.value.__0}, {variant8.value.__1}, {variant8.value.__2}, {variant8.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant9.DISCR128_BEGIN_HI, variant9.DISCR128_BEGIN_LO, variant9.DISCR128_END_HI, variant9.DISCR128_END_LO)" Optional="true">{variant9.NAME,en} ({variant9.value.__0}, {variant9.value.__1}, {variant9.value.__2}, {variant9.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant10.DISCR128_BEGIN_HI, variant10.DISCR128_BEGIN_LO, variant10.DISCR128_END_HI, variant10.DISCR128_END_LO)" Optional="true">{variant10.NAME,en} ({variant10.value.__0}, {variant10.value.__1}, {variant10.value.__2}, {variant10.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant11.DISCR128_BEGIN_HI, variant11.DISCR128_BEGIN_LO, variant11.DISCR128_END_HI, variant11.DISCR128_END_LO)" Optional="true">{variant11.NAME,en} ({variant11.value.__0}, {variant11.value.__1}, {variant11.value.__2}, {variant11.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant12.DISCR128_BEGIN_HI, variant12.DISCR128_BEGIN_LO, variant12.DISCR128_END_HI, variant12.DISCR128_END_LO)" Optional="true">{variant12.NAME,en} ({variant12.value.__0}, {variant12.value.__1}, {variant12.value.__2}, {variant12.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant13.DISCR128_BEGIN_HI, variant13.DISCR128_BEGIN_LO, variant13.DISCR128_END_HI, variant13.DISCR128_END_LO)" Optional="true">{variant13.NAME,en} ({variant13.value.__0}, {variant13.value.__1}, {variant13.value.__2}, {variant13.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant14.DISCR128_BEGIN_HI, variant14.DISCR128_BEGIN_LO, variant14.DISCR128_END_HI, variant14.DISCR128_END_LO)" Optional="true">{variant14.NAME,en} ({variant14.value.__0}, {variant14.value.__1}, {variant14.value.__2}, {variant14.value.__3}, ...)</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant15.DISCR128_BEGIN_HI, variant15.DISCR128_BEGIN_LO, variant15.DISCR128_END_HI, variant15.DISCR128_END_LO)" Optional="true">{variant15.NAME,en} ({variant15.value.__0}, {variant15.value.__1}, {variant15.value.__2}, {variant15.value.__3}, ...)</DisplayString>
+
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant0.DISCR128_BEGIN_HI, variant0.DISCR128_BEGIN_LO, variant0.DISCR128_END_HI, variant0.DISCR128_END_LO)" Optional="true">{variant0.NAME,en} ({variant0.value.__0}, {variant0.value.__1}, {variant0.value.__2})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant1.DISCR128_BEGIN_HI, variant1.DISCR128_BEGIN_LO, variant1.DISCR128_END_HI, variant1.DISCR128_END_LO)" Optional="true">{variant1.NAME,en} ({variant1.value.__0}, {variant1.value.__1}, {variant1.value.__2})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant2.DISCR128_BEGIN_HI, variant2.DISCR128_BEGIN_LO, variant2.DISCR128_END_HI, variant2.DISCR128_END_LO)" Optional="true">{variant2.NAME,en} ({variant2.value.__0}, {variant2.value.__1}, {variant2.value.__2})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant3.DISCR128_BEGIN_HI, variant3.DISCR128_BEGIN_LO, variant3.DISCR128_END_HI, variant3.DISCR128_END_LO)" Optional="true">{variant3.NAME,en} ({variant3.value.__0}, {variant3.value.__1}, {variant3.value.__2})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant4.DISCR128_BEGIN_HI, variant4.DISCR128_BEGIN_LO, variant4.DISCR128_END_HI, variant4.DISCR128_END_LO)" Optional="true">{variant4.NAME,en} ({variant4.value.__0}, {variant4.value.__1}, {variant4.value.__2})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant5.DISCR128_BEGIN_HI, variant5.DISCR128_BEGIN_LO, variant5.DISCR128_END_HI, variant5.DISCR128_END_LO)" Optional="true">{variant5.NAME,en} ({variant5.value.__0}, {variant5.value.__1}, {variant5.value.__2})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant6.DISCR128_BEGIN_HI, variant6.DISCR128_BEGIN_LO, variant6.DISCR128_END_HI, variant6.DISCR128_END_LO)" Optional="true">{variant6.NAME,en} ({variant6.value.__0}, {variant6.value.__1}, {variant6.value.__2})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant7.DISCR128_BEGIN_HI, variant7.DISCR128_BEGIN_LO, variant7.DISCR128_END_HI, variant7.DISCR128_END_LO)" Optional="true">{variant7.NAME,en} ({variant7.value.__0}, {variant7.value.__1}, {variant7.value.__2})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant8.DISCR128_BEGIN_HI, variant8.DISCR128_BEGIN_LO, variant8.DISCR128_END_HI, variant8.DISCR128_END_LO)" Optional="true">{variant8.NAME,en} ({variant8.value.__0}, {variant8.value.__1}, {variant8.value.__2})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant9.DISCR128_BEGIN_HI, variant9.DISCR128_BEGIN_LO, variant9.DISCR128_END_HI, variant9.DISCR128_END_LO)" Optional="true">{variant9.NAME,en} ({variant9.value.__0}, {variant9.value.__1}, {variant9.value.__2})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant10.DISCR128_BEGIN_HI, variant10.DISCR128_BEGIN_LO, variant10.DISCR128_END_HI, variant10.DISCR128_END_LO)" Optional="true">{variant10.NAME,en} ({variant10.value.__0}, {variant10.value.__1}, {variant10.value.__2})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant11.DISCR128_BEGIN_HI, variant11.DISCR128_BEGIN_LO, variant11.DISCR128_END_HI, variant11.DISCR128_END_LO)" Optional="true">{variant11.NAME,en} ({variant11.value.__0}, {variant11.value.__1}, {variant11.value.__2})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant12.DISCR128_BEGIN_HI, variant12.DISCR128_BEGIN_LO, variant12.DISCR128_END_HI, variant12.DISCR128_END_LO)" Optional="true">{variant12.NAME,en} ({variant12.value.__0}, {variant12.value.__1}, {variant12.value.__2})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant13.DISCR128_BEGIN_HI, variant13.DISCR128_BEGIN_LO, variant13.DISCR128_END_HI, variant13.DISCR128_END_LO)" Optional="true">{variant13.NAME,en} ({variant13.value.__0}, {variant13.value.__1}, {variant13.value.__2})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant14.DISCR128_BEGIN_HI, variant14.DISCR128_BEGIN_LO, variant14.DISCR128_END_HI, variant14.DISCR128_END_LO)" Optional="true">{variant14.NAME,en} ({variant14.value.__0}, {variant14.value.__1}, {variant14.value.__2})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant15.DISCR128_BEGIN_HI, variant15.DISCR128_BEGIN_LO, variant15.DISCR128_END_HI, variant15.DISCR128_END_LO)" Optional="true">{variant15.NAME,en} ({variant15.value.__0}, {variant15.value.__1}, {variant15.value.__2})</DisplayString>
+
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant0.DISCR128_BEGIN_HI, variant0.DISCR128_BEGIN_LO, variant0.DISCR128_END_HI, variant0.DISCR128_END_LO)" Optional="true">{variant0.NAME,en} ({variant0.value.__0}, {variant0.value.__1})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant1.DISCR128_BEGIN_HI, variant1.DISCR128_BEGIN_LO, variant1.DISCR128_END_HI, variant1.DISCR128_END_LO)" Optional="true">{variant1.NAME,en} ({variant1.value.__0}, {variant1.value.__1})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant2.DISCR128_BEGIN_HI, variant2.DISCR128_BEGIN_LO, variant2.DISCR128_END_HI, variant2.DISCR128_END_LO)" Optional="true">{variant2.NAME,en} ({variant2.value.__0}, {variant2.value.__1})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant3.DISCR128_BEGIN_HI, variant3.DISCR128_BEGIN_LO, variant3.DISCR128_END_HI, variant3.DISCR128_END_LO)" Optional="true">{variant3.NAME,en} ({variant3.value.__0}, {variant3.value.__1})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant4.DISCR128_BEGIN_HI, variant4.DISCR128_BEGIN_LO, variant4.DISCR128_END_HI, variant4.DISCR128_END_LO)" Optional="true">{variant4.NAME,en} ({variant4.value.__0}, {variant4.value.__1})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant5.DISCR128_BEGIN_HI, variant5.DISCR128_BEGIN_LO, variant5.DISCR128_END_HI, variant5.DISCR128_END_LO)" Optional="true">{variant5.NAME,en} ({variant5.value.__0}, {variant5.value.__1})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant6.DISCR128_BEGIN_HI, variant6.DISCR128_BEGIN_LO, variant6.DISCR128_END_HI, variant6.DISCR128_END_LO)" Optional="true">{variant6.NAME,en} ({variant6.value.__0}, {variant6.value.__1})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant7.DISCR128_BEGIN_HI, variant7.DISCR128_BEGIN_LO, variant7.DISCR128_END_HI, variant7.DISCR128_END_LO)" Optional="true">{variant7.NAME,en} ({variant7.value.__0}, {variant7.value.__1})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant8.DISCR128_BEGIN_HI, variant8.DISCR128_BEGIN_LO, variant8.DISCR128_END_HI, variant8.DISCR128_END_LO)" Optional="true">{variant8.NAME,en} ({variant8.value.__0}, {variant8.value.__1})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant9.DISCR128_BEGIN_HI, variant9.DISCR128_BEGIN_LO, variant9.DISCR128_END_HI, variant9.DISCR128_END_LO)" Optional="true">{variant9.NAME,en} ({variant9.value.__0}, {variant9.value.__1})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant10.DISCR128_BEGIN_HI, variant10.DISCR128_BEGIN_LO, variant10.DISCR128_END_HI, variant10.DISCR128_END_LO)" Optional="true">{variant10.NAME,en} ({variant10.value.__0}, {variant10.value.__1})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant11.DISCR128_BEGIN_HI, variant11.DISCR128_BEGIN_LO, variant11.DISCR128_END_HI, variant11.DISCR128_END_LO)" Optional="true">{variant11.NAME,en} ({variant11.value.__0}, {variant11.value.__1})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant12.DISCR128_BEGIN_HI, variant12.DISCR128_BEGIN_LO, variant12.DISCR128_END_HI, variant12.DISCR128_END_LO)" Optional="true">{variant12.NAME,en} ({variant12.value.__0}, {variant12.value.__1})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant13.DISCR128_BEGIN_HI, variant13.DISCR128_BEGIN_LO, variant13.DISCR128_END_HI, variant13.DISCR128_END_LO)" Optional="true">{variant13.NAME,en} ({variant13.value.__0}, {variant13.value.__1})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant14.DISCR128_BEGIN_HI, variant14.DISCR128_BEGIN_LO, variant14.DISCR128_END_HI, variant14.DISCR128_END_LO)" Optional="true">{variant14.NAME,en} ({variant14.value.__0}, {variant14.value.__1})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant15.DISCR128_BEGIN_HI, variant15.DISCR128_BEGIN_LO, variant15.DISCR128_END_HI, variant15.DISCR128_END_LO)" Optional="true">{variant15.NAME,en} ({variant15.value.__0}, {variant15.value.__1})</DisplayString>
+
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant0.DISCR128_BEGIN_HI, variant0.DISCR128_BEGIN_LO, variant0.DISCR128_END_HI, variant0.DISCR128_END_LO)" Optional="true">{variant0.NAME,en} ({variant0.value.__0})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant1.DISCR128_BEGIN_HI, variant1.DISCR128_BEGIN_LO, variant1.DISCR128_END_HI, variant1.DISCR128_END_LO)" Optional="true">{variant1.NAME,en} ({variant1.value.__0})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant2.DISCR128_BEGIN_HI, variant2.DISCR128_BEGIN_LO, variant2.DISCR128_END_HI, variant2.DISCR128_END_LO)" Optional="true">{variant2.NAME,en} ({variant2.value.__0})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant3.DISCR128_BEGIN_HI, variant3.DISCR128_BEGIN_LO, variant3.DISCR128_END_HI, variant3.DISCR128_END_LO)" Optional="true">{variant3.NAME,en} ({variant3.value.__0})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant4.DISCR128_BEGIN_HI, variant4.DISCR128_BEGIN_LO, variant4.DISCR128_END_HI, variant4.DISCR128_END_LO)" Optional="true">{variant4.NAME,en} ({variant4.value.__0})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant5.DISCR128_BEGIN_HI, variant5.DISCR128_BEGIN_LO, variant5.DISCR128_END_HI, variant5.DISCR128_END_LO)" Optional="true">{variant5.NAME,en} ({variant5.value.__0})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant6.DISCR128_BEGIN_HI, variant6.DISCR128_BEGIN_LO, variant6.DISCR128_END_HI, variant6.DISCR128_END_LO)" Optional="true">{variant6.NAME,en} ({variant6.value.__0})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant7.DISCR128_BEGIN_HI, variant7.DISCR128_BEGIN_LO, variant7.DISCR128_END_HI, variant7.DISCR128_END_LO)" Optional="true">{variant7.NAME,en} ({variant7.value.__0})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant8.DISCR128_BEGIN_HI, variant8.DISCR128_BEGIN_LO, variant8.DISCR128_END_HI, variant8.DISCR128_END_LO)" Optional="true">{variant8.NAME,en} ({variant8.value.__0})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant9.DISCR128_BEGIN_HI, variant9.DISCR128_BEGIN_LO, variant9.DISCR128_END_HI, variant9.DISCR128_END_LO)" Optional="true">{variant9.NAME,en} ({variant9.value.__0})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant10.DISCR128_BEGIN_HI, variant10.DISCR128_BEGIN_LO, variant10.DISCR128_END_HI, variant10.DISCR128_END_LO)" Optional="true">{variant10.NAME,en} ({variant10.value.__0})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant11.DISCR128_BEGIN_HI, variant11.DISCR128_BEGIN_LO, variant11.DISCR128_END_HI, variant11.DISCR128_END_LO)" Optional="true">{variant11.NAME,en} ({variant11.value.__0})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant12.DISCR128_BEGIN_HI, variant12.DISCR128_BEGIN_LO, variant12.DISCR128_END_HI, variant12.DISCR128_END_LO)" Optional="true">{variant12.NAME,en} ({variant12.value.__0})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant13.DISCR128_BEGIN_HI, variant13.DISCR128_BEGIN_LO, variant13.DISCR128_END_HI, variant13.DISCR128_END_LO)" Optional="true">{variant13.NAME,en} ({variant13.value.__0})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant14.DISCR128_BEGIN_HI, variant14.DISCR128_BEGIN_LO, variant14.DISCR128_END_HI, variant14.DISCR128_END_LO)" Optional="true">{variant14.NAME,en} ({variant14.value.__0})</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant15.DISCR128_BEGIN_HI, variant15.DISCR128_BEGIN_LO, variant15.DISCR128_END_HI, variant15.DISCR128_END_LO)" Optional="true">{variant15.NAME,en} ({variant15.value.__0})</DisplayString>
+
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant0.DISCR128_BEGIN_HI, variant0.DISCR128_BEGIN_LO, variant0.DISCR128_END_HI, variant0.DISCR128_END_LO)" Optional="true">{variant0.NAME,en} {variant0.value}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant1.DISCR128_BEGIN_HI, variant1.DISCR128_BEGIN_LO, variant1.DISCR128_END_HI, variant1.DISCR128_END_LO)" Optional="true">{variant1.NAME,en} {variant1.value}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant2.DISCR128_BEGIN_HI, variant2.DISCR128_BEGIN_LO, variant2.DISCR128_END_HI, variant2.DISCR128_END_LO)" Optional="true">{variant2.NAME,en} {variant2.value}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant3.DISCR128_BEGIN_HI, variant3.DISCR128_BEGIN_LO, variant3.DISCR128_END_HI, variant3.DISCR128_END_LO)" Optional="true">{variant3.NAME,en} {variant3.value}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant4.DISCR128_BEGIN_HI, variant4.DISCR128_BEGIN_LO, variant4.DISCR128_END_HI, variant4.DISCR128_END_LO)" Optional="true">{variant4.NAME,en} {variant4.value}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant5.DISCR128_BEGIN_HI, variant5.DISCR128_BEGIN_LO, variant5.DISCR128_END_HI, variant5.DISCR128_END_LO)" Optional="true">{variant5.NAME,en} {variant5.value}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant6.DISCR128_BEGIN_HI, variant6.DISCR128_BEGIN_LO, variant6.DISCR128_END_HI, variant6.DISCR128_END_LO)" Optional="true">{variant6.NAME,en} {variant6.value}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant7.DISCR128_BEGIN_HI, variant7.DISCR128_BEGIN_LO, variant7.DISCR128_END_HI, variant7.DISCR128_END_LO)" Optional="true">{variant7.NAME,en} {variant7.value}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant8.DISCR128_BEGIN_HI, variant8.DISCR128_BEGIN_LO, variant8.DISCR128_END_HI, variant8.DISCR128_END_LO)" Optional="true">{variant8.NAME,en} {variant8.value}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant9.DISCR128_BEGIN_HI, variant9.DISCR128_BEGIN_LO, variant9.DISCR128_END_HI, variant9.DISCR128_END_LO)" Optional="true">{variant9.NAME,en} {variant9.value}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant10.DISCR128_BEGIN_HI, variant10.DISCR128_BEGIN_LO, variant10.DISCR128_END_HI, variant10.DISCR128_END_LO)" Optional="true">{variant10.NAME,en} {variant10.value}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant11.DISCR128_BEGIN_HI, variant11.DISCR128_BEGIN_LO, variant11.DISCR128_END_HI, variant11.DISCR128_END_LO)" Optional="true">{variant11.NAME,en} {variant11.value}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant12.DISCR128_BEGIN_HI, variant12.DISCR128_BEGIN_LO, variant12.DISCR128_END_HI, variant12.DISCR128_END_LO)" Optional="true">{variant12.NAME,en} {variant12.value}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant13.DISCR128_BEGIN_HI, variant13.DISCR128_BEGIN_LO, variant13.DISCR128_END_HI, variant13.DISCR128_END_LO)" Optional="true">{variant13.NAME,en} {variant13.value}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant14.DISCR128_BEGIN_HI, variant14.DISCR128_BEGIN_LO, variant14.DISCR128_END_HI, variant14.DISCR128_END_LO)" Optional="true">{variant14.NAME,en} {variant14.value}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant15.DISCR128_BEGIN_HI, variant15.DISCR128_BEGIN_LO, variant15.DISCR128_END_HI, variant15.DISCR128_END_LO)" Optional="true">{variant15.NAME,en} {variant15.value}</DisplayString>
 
     <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant0.DISCR128_BEGIN_HI, variant0.DISCR128_BEGIN_LO, variant0.DISCR128_END_HI, variant0.DISCR128_END_LO)" Optional="true">{variant0.NAME,en}</DisplayString>
     <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant1.DISCR128_BEGIN_HI, variant1.DISCR128_BEGIN_LO, variant1.DISCR128_END_HI, variant1.DISCR128_END_LO)" Optional="true">{variant1.NAME,en}</DisplayString>
