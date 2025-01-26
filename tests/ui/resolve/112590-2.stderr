@@ -14,12 +14,13 @@ LL -         let _: Vec<i32> = super::foo::baf::baz::MyVec::new();
 LL +         let _: Vec<i32> = MyVec::new();
    |
 
-error[E0433]: failed to resolve: use of undeclared crate or module `fox`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `fox`
   --> $DIR/112590-2.rs:18:27
    |
 LL |         let _: Vec<i32> = fox::bar::baz::MyVec::new();
-   |                           ^^^ use of undeclared crate or module `fox`
+   |                           ^^^ use of unresolved module or unlinked crate `fox`
    |
+   = help: you might be missing a crate named `fox`
 help: consider importing this struct through its public re-export
    |
 LL +     use foo::bar::baz::MyVec;
@@ -30,12 +31,13 @@ LL -         let _: Vec<i32> = fox::bar::baz::MyVec::new();
 LL +         let _: Vec<i32> = MyVec::new();
    |
 
-error[E0433]: failed to resolve: use of undeclared crate or module `vec`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `vec`
   --> $DIR/112590-2.rs:24:15
    |
 LL |     type _B = vec::Vec::<u8>;
-   |               ^^^ use of undeclared crate or module `vec`
+   |               ^^^ use of unresolved module or unlinked crate `vec`
    |
+   = help: you might be missing a crate named `vec`
 help: consider importing this module
    |
 LL + use std::vec;
@@ -57,14 +59,16 @@ LL -     let _t = std::sync_error::atomic::AtomicBool::new(true);
 LL +     let _t = AtomicBool::new(true);
    |
 
-error[E0433]: failed to resolve: use of undeclared crate or module `vec`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `vec`
   --> $DIR/112590-2.rs:23:24
    |
 LL |     let _t: Vec<i32> = vec::new();
    |                        ^^^
    |                        |
-   |                        use of undeclared crate or module `vec`
+   |                        use of unresolved module or unlinked crate `vec`
    |                        help: a struct with a similar name exists (notice the capitalization): `Vec`
+   |
+   = help: you might be missing a crate named `vec`
 
 error: aborting due to 5 previous errors
 

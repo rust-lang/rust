@@ -81,4 +81,8 @@ impl<'tcx> crate::MirPass<'tcx> for Derefer {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         deref_finder(tcx, body);
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }

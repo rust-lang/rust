@@ -150,4 +150,8 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
             }
         }
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }

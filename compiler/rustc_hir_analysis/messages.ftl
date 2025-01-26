@@ -353,7 +353,13 @@ hir_analysis_missing_type_params =
         [one] reference
         *[other] references
     } to {$parameters}
-    .note = because of the default `Self` reference, type parameters must be specified on object types
+    .note = because the parameter {$parameterCount ->
+        [one] default references
+        *[other] defaults reference
+    } `Self`, the {$parameterCount ->
+        [one] parameter
+        *[other] parameters
+    } must be specified on the object type
 
 hir_analysis_multiple_relaxed_default_bounds =
     type parameter has more than one relaxed default bound, only one is supported

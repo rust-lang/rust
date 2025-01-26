@@ -1,8 +1,10 @@
-error[E0433]: failed to resolve: use of undeclared crate or module `xyz`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `xyz`
   --> $DIR/stashed-diag-issue-121504.rs:7:18
    |
 LL | impl MyTrait for xyz::T {
-   |                  ^^^ use of undeclared crate or module `xyz`
+   |                  ^^^ use of unresolved module or unlinked crate `xyz`
+   |
+   = help: you might be missing a crate named `xyz`
 
 error: aborting due to 1 previous error
 

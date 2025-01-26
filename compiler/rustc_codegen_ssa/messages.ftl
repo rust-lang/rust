@@ -183,6 +183,8 @@ codegen_ssa_linker_file_stem = couldn't extract file stem from specified linker
 codegen_ssa_linker_not_found = linker `{$linker_path}` not found
     .note = {$error}
 
+codegen_ssa_linker_output = {$inner}
+
 codegen_ssa_linker_unsupported_modifier = `as-needed` modifier not supported for current linker
 
 codegen_ssa_linking_failed = linking with `{$linker_path}` failed: {$exit_status}

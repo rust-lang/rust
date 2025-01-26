@@ -48,6 +48,10 @@ impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
             }
         }
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 /// Identify all locals that are not eligible for SROA.

@@ -66,6 +66,10 @@ impl<'tcx> crate::MirPass<'tcx> for Inline {
             deref_finder(tcx, body);
         }
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 pub struct ForceInline;
@@ -83,6 +87,10 @@ impl<'tcx> crate::MirPass<'tcx> for ForceInline {
 
     fn can_be_overridden(&self) -> bool {
         false
+    }
+
+    fn is_required(&self) -> bool {
+        true
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
