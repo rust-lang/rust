@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::intravisit::{self, Visitor, VisitorExt};
 use rustc_hir::{ExprKind, HirId, Item, ItemKind, Mod, Node, QPath};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
@@ -234,16 +234,13 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
                     self.infer_id(path.hir_id, Some(id), path.ident.span);
                 }
 
-                if let Some(qself) = qself.try_as_ambig_ty() {
-                    rustc_ast::visit::try_visit!(self.visit_ty(qself));
-                }
+                rustc_ast::visit::try_visit!(self.visit_ty_unambig(qself));
                 self.visit_path_segment(path);
             }
             QPath::Resolved(maybe_qself, path) => {
                 self.handle_path(path, true);
 
-                let maybe_qself = maybe_qself.and_then(|maybe_qself| maybe_qself.try_as_ambig_ty());
-                rustc_ast::visit::visit_opt!(self, visit_ty, maybe_qself);
+                rustc_ast::visit::visit_opt!(self, visit_ty_unambig, maybe_qself);
                 if !self.handle_macro(path.span) {
                     intravisit::walk_path(self, path);
                 }
