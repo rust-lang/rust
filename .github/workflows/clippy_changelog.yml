@@ -26,11 +26,13 @@ jobs:
       run: |
         body=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -s "https://api.github.com/repos/rust-lang/rust-clippy/pulls/$PR_NUMBER" | \
           python -c "import sys, json; print(json.load(sys.stdin)['body'])")
-        output=$(grep "^changelog:\s*\S" <<< "$body" | sed "s/changelog:\s*//g") || {
-          echo "ERROR: pull request message must contain 'changelog: ...'. Please add it."
+        output=$(awk '/^changelog:\s*\S/ && !/changelog: \[.*\]: your change/' <<< "$body" | sed "s/changelog:\s*//g")
+        if [ -z "$output" ]; then
+          echo "ERROR: pull request message must contain 'changelog: ...' with your changelog. Please add it."
           exit 1
-        }
-        echo "changelog: $output"
+        else
+          echo "changelog: $output"
+        fi
       env:
         PYTHONIOENCODING: 'utf-8'
         PR_NUMBER: '${{ github.event.number }}'
