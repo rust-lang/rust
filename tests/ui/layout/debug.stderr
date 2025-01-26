@@ -71,7 +71,9 @@ error: layout_of(E) = Layout {
                            abi: Align(4 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Uninhabited,
+                       abi: Memory {
+                           sized: true,
+                       },
                        fields: Arbitrary {
                            offsets: [
                                Size(4 bytes),
@@ -85,6 +87,7 @@ error: layout_of(E) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: true,
                        variants: Single {
                            index: 1,
                        },
