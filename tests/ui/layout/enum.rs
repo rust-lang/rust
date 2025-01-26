@@ -12,7 +12,7 @@ enum UninhabitedVariantAlign { //~ERROR: abi: Align(2 bytes)
 }
 
 #[rustc_layout(size)]
-enum UninhabitedVariantSpace { //~ERROR: size: Size(16 bytes)
+enum UninhabitedVariantSpace { //~ERROR: size: Size(15 bytes)
     A,
     B([u8; 15], !), // make sure there is space being reserved for this field.
 }
