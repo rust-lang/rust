@@ -48,7 +48,7 @@ pub(super) fn check<'a>(
         return;
     };
 
-    let recv_ty = cx.typeck_results().expr_ty(recv);
+    let recv_ty = cx.typeck_results().expr_ty_adjusted(recv);
 
     let Bool(def_bool) = def_kind.node else {
         return;

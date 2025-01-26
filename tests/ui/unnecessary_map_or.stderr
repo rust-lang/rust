@@ -251,5 +251,41 @@ help: use a standard comparison instead
 LL |     let _ = r == Ok(8);
    |             ~~~~~~~~~~
 
-error: aborting due to 21 previous errors
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or.rs:90:5
+   |
+LL |     o.map_or(true, |n| n > 5) || (o as &Option<u32>).map_or(true, |n| n < 5)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use is_none_or instead
+   |
+LL -     o.map_or(true, |n| n > 5) || (o as &Option<u32>).map_or(true, |n| n < 5)
+LL +     o.is_none_or(|n| n > 5) || (o as &Option<u32>).map_or(true, |n| n < 5)
+   |
+
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or.rs:90:34
+   |
+LL |     o.map_or(true, |n| n > 5) || (o as &Option<u32>).map_or(true, |n| n < 5)
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use is_none_or instead
+   |
+LL -     o.map_or(true, |n| n > 5) || (o as &Option<u32>).map_or(true, |n| n < 5)
+LL +     o.map_or(true, |n| n > 5) || (o as &Option<u32>).is_none_or(|n| n < 5)
+   |
+
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or.rs:103:5
+   |
+LL |     o.map_or(true, |n| n > 5)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use is_none_or instead
+   |
+LL -     o.map_or(true, |n| n > 5)
+LL +     o.is_none_or(|n| n > 5)
+   |
+
+error: aborting due to 24 previous errors
 
