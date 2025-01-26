@@ -74,7 +74,7 @@ fn emit_polonius_dump<'tcx>(
     // Section 1: the NLL + Polonius MIR.
     writeln!(out, "<div>")?;
     writeln!(out, "Raw MIR dump")?;
-    writeln!(out, "<code><pre>")?;
+    writeln!(out, "<pre><code>")?;
     emit_html_mir(
         tcx,
         body,
@@ -84,15 +84,15 @@ fn emit_polonius_dump<'tcx>(
         closure_region_requirements,
         out,
     )?;
-    writeln!(out, "</pre></code>")?;
+    writeln!(out, "</code></pre>")?;
     writeln!(out, "</div>")?;
 
     // Section 2: mermaid visualization of the CFG.
     writeln!(out, "<div>")?;
     writeln!(out, "Control-flow graph")?;
-    writeln!(out, "<code><pre class='mermaid'>")?;
+    writeln!(out, "<pre class='mermaid'>")?;
     emit_mermaid_cfg(body, out)?;
-    writeln!(out, "</pre></code>")?;
+    writeln!(out, "</pre>")?;
     writeln!(out, "</div>")?;
 
     // Section 3: mermaid visualization of the NLL region graph.
