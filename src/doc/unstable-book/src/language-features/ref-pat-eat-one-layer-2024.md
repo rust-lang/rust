@@ -16,5 +16,5 @@ For more information, see the corresponding typing rules for [Editions 2021 and 
 For alternative experimental match ergonomics, see the feature
 [`ref_pat_eat_one_layer_2024_structural`](./ref-pat-eat-one-layer-2024-structural.md).
 
-[Editions 2021 and earlier]: https://nadrieril.github.io/typing-rust-patterns/?compare=false&opts1=AQEBAQABAQABAAAAAQEBAAEBAAABAAA%3D&mode=rules&do_cmp=false
+[Editions 2021 and earlier]: https://nadrieril.github.io/typing-rust-patterns/?compare=false&opts1=AQEBAQIBAQABAAAAAQEBAAEBAAABAAA%3D&mode=rules&do_cmp=false
 [Editions 2024 and later]: https://nadrieril.github.io/typing-rust-patterns/?compare=false&opts1=AQEBAAABAQABAgIAAQEBAAEBAAABAAA%3D&mode=rules&do_cmp=false
