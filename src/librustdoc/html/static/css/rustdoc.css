@@ -192,15 +192,12 @@ h1, h2, h3, h4 {
 .rustdoc-breadcrumbs {
 	grid-area: main-heading-breadcrumbs;
 	line-height: 1.25;
-	display: flex;
-	flex-wrap: wrap;
-	align-items: end;
 	padding-top: 5px;
+	position: relative;
+	z-index: 1;
 }
 .rustdoc-breadcrumbs a {
-	padding: 4px 0;
-	margin: -4px 0;
-	z-index: 1;
+	padding: 5px 0 7px;
 }
 /* The only headings that get underlines are:
 	 Markdown-generated headings within the top-doc
