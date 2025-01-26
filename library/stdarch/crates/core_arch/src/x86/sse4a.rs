@@ -36,8 +36,8 @@ unsafe extern "C" {
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(extrq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_extract_si64(x: __m128i, y: __m128i) -> __m128i {
-    transmute(extrq(x.as_i64x2(), y.as_i8x16()))
+pub fn _mm_extract_si64(x: __m128i, y: __m128i) -> __m128i {
+    unsafe { transmute(extrq(x.as_i64x2(), y.as_i8x16())) }
 }
 
 /// Extracts the specified bits from the lower 64 bits of the 128-bit integer vector operand at the
@@ -53,12 +53,12 @@ pub unsafe fn _mm_extract_si64(x: __m128i, y: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(extrq, LEN = 5, IDX = 5))]
 #[rustc_legacy_const_generics(1, 2)]
 #[stable(feature = "simd_x86_updates", since = "1.82.0")]
-pub unsafe fn _mm_extracti_si64<const LEN: i32, const IDX: i32>(x: __m128i) -> __m128i {
+pub fn _mm_extracti_si64<const LEN: i32, const IDX: i32>(x: __m128i) -> __m128i {
     // LLVM mentions that it is UB if these are not satisfied
     static_assert_uimm_bits!(LEN, 6);
     static_assert_uimm_bits!(IDX, 6);
     static_assert!((LEN == 0 && IDX == 0) || (LEN != 0 && LEN + IDX <= 64));
-    transmute(extrqi(x.as_i64x2(), LEN as u8, IDX as u8))
+    unsafe { transmute(extrqi(x.as_i64x2(), LEN as u8, IDX as u8)) }
 }
 
 /// Inserts the `[length:0]` bits of `y` into `x` at `index`.
@@ -74,8 +74,8 @@ pub unsafe fn _mm_extracti_si64<const LEN: i32, const IDX: i32>(x: __m128i) -> _
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(insertq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_insert_si64(x: __m128i, y: __m128i) -> __m128i {
-    transmute(insertq(x.as_i64x2(), y.as_i64x2()))
+pub fn _mm_insert_si64(x: __m128i, y: __m128i) -> __m128i {
+    unsafe { transmute(insertq(x.as_i64x2(), y.as_i64x2())) }
 }
 
 /// Inserts the `len` least-significant bits from the lower 64 bits of the 128-bit integer vector operand `y` into
@@ -89,12 +89,12 @@ pub unsafe fn _mm_insert_si64(x: __m128i, y: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(insertq, LEN = 5, IDX = 5))]
 #[rustc_legacy_const_generics(2, 3)]
 #[stable(feature = "simd_x86_updates", since = "1.82.0")]
-pub unsafe fn _mm_inserti_si64<const LEN: i32, const IDX: i32>(x: __m128i, y: __m128i) -> __m128i {
+pub fn _mm_inserti_si64<const LEN: i32, const IDX: i32>(x: __m128i, y: __m128i) -> __m128i {
     // LLVM mentions that it is UB if these are not satisfied
     static_assert_uimm_bits!(LEN, 6);
     static_assert_uimm_bits!(IDX, 6);
     static_assert!((LEN == 0 && IDX == 0) || (LEN != 0 && LEN + IDX <= 64));
-    transmute(insertqi(x.as_i64x2(), y.as_i64x2(), LEN as u8, IDX as u8))
+    unsafe { transmute(insertqi(x.as_i64x2(), y.as_i64x2(), LEN as u8, IDX as u8)) }
 }
 
 /// Non-temporal store of `a.0` into `p`.
