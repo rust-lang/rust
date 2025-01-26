@@ -42,6 +42,8 @@ mir_transform_must_not_suspend = {$pre}`{$def_path}`{$post} held across a suspen
     .help = consider using a block (`{"{ ... }"}`) to shrink the value's scope, ending before the suspend point
 mir_transform_operation_will_panic = this operation will panic at runtime
 
+mir_transform_redundant_transmute = this transmute could be performed safely
+
 mir_transform_tail_expr_drop_order = relative drop order changing in Rust 2024
     .temporaries = in Rust 2024, this temporary value will be dropped first
     .observers = in Rust 2024, this local variable or temporary value will be dropped second
@@ -82,7 +84,5 @@ mir_transform_undefined_transmute = pointers cannot be transmuted to integers du
     .note = at compile-time, pointers do not have an integer value
     .note2 = avoiding this restriction via `union` or raw pointers leads to compile-time undefined behavior
     .help = for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html
-
-mir_transform_redundant_transmute = this transmute could be performed safely
 
 mir_transform_unknown_pass_name = MIR pass `{$name}` is unknown and will be ignored
