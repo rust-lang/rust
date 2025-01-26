@@ -9,7 +9,7 @@ use rustc_middle::mir::{Body, SourceScope};
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv};
 use rustc_middle::ty::{self, Instance};
 use rustc_session::config::DebugInfo;
-use rustc_span::{BytePos, hygiene};
+use rustc_span::{BytePos, DUMMY_SP, hygiene};
 
 use super::metadata::file_metadata;
 use super::utils::DIB;
@@ -85,23 +85,15 @@ fn make_mir_scope<'ll, 'tcx>(
             discriminators,
             parent,
         );
-        if let Some(parent_scope) = debug_context.scopes[parent] {
-            parent_scope
-        } else {
-            // If the parent scope could not be represented then no children
-            // can be either.
-            debug_context.scopes[scope] = None;
-            instantiated.insert(scope);
-            return;
-        }
+        debug_context.scopes[parent]
     } else {
         // The root is the function itself.
         let file = cx.sess().source_map().lookup_source_file(mir.span.lo());
-        debug_context.scopes[scope] = Some(DebugScope {
+        debug_context.scopes[scope] = DebugScope {
             file_start_pos: file.start_pos,
             file_end_pos: file.end_position(),
-            ..debug_context.scopes[scope].unwrap()
-        });
+            ..debug_context.scopes[scope]
+        };
         instantiated.insert(scope);
         return;
     };
@@ -112,7 +104,7 @@ fn make_mir_scope<'ll, 'tcx>(
     {
         // Do not create a DIScope if there are no variables defined in this
         // MIR `SourceScope`, and it's not `inlined`, to avoid debuginfo bloat.
-        debug_context.scopes[scope] = Some(parent_scope);
+        debug_context.scopes[scope] = parent_scope;
         instantiated.insert(scope);
         return;
     }
@@ -145,14 +137,7 @@ fn make_mir_scope<'ll, 'tcx>(
         },
     };
 
-    let mut debug_scope = Some(DebugScope {
-        dbg_scope,
-        inlined_at: parent_scope.inlined_at,
-        file_start_pos: loc.file.start_pos,
-        file_end_pos: loc.file.end_position(),
-    });
-
-    if let Some((_, callsite_span)) = scope_data.inlined {
+    let inlined_at = scope_data.inlined.map(|(_, callsite_span)| {
         let callsite_span = hygiene::walk_chain_collapsed(callsite_span, mir.span);
         let callsite_scope = parent_scope.adjust_dbg_scope_for_span(cx, callsite_span);
         let loc = cx.dbg_loc(callsite_scope, parent_scope.inlined_at, callsite_span);
@@ -175,29 +160,29 @@ fn make_mir_scope<'ll, 'tcx>(
         // Note further that we can't key this hashtable on the span itself,
         // because these spans could have distinct SyntaxContexts. We have
         // to key on exactly what we're giving to LLVM.
-        let inlined_at = match discriminators.entry(callsite_span.lo()) {
+        match discriminators.entry(callsite_span.lo()) {
             Entry::Occupied(mut o) => {
                 *o.get_mut() += 1;
+                // NB: We have to emit *something* here or we'll fail LLVM IR verification
+                // in at least some circumstances (see issue #135322) so if the required
+                // discriminant cannot be encoded fall back to the dummy location.
                 unsafe { llvm::LLVMRustDILocationCloneWithBaseDiscriminator(loc, *o.get()) }
+                    .unwrap_or_else(|| {
+                        cx.dbg_loc(callsite_scope, parent_scope.inlined_at, DUMMY_SP)
+                    })
             }
             Entry::Vacant(v) => {
                 v.insert(0);
-                Some(loc)
-            }
-        };
-        match inlined_at {
-            Some(inlined_at) => {
-                debug_scope.as_mut().unwrap().inlined_at = Some(inlined_at);
-            }
-            None => {
-                // LLVM has a maximum discriminator that it can encode (currently
-                // it uses 12 bits for 4096 possible values). If we exceed that
-                // there is little we can do but drop the debug info.
-                debug_scope = None;
+                loc
             }
         }
-    }
+    });
 
-    debug_context.scopes[scope] = debug_scope;
+    debug_context.scopes[scope] = DebugScope {
+        dbg_scope,
+        inlined_at: inlined_at.or(parent_scope.inlined_at),
+        file_start_pos: loc.file.start_pos,
+        file_end_pos: loc.file.end_position(),
+    };
     instantiated.insert(scope);
 }
