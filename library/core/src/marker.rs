@@ -1289,3 +1289,9 @@ pub trait FnPtr: Copy + Clone {
 pub macro CoercePointee($item:item) {
     /* compiler built-in */
 }
+
+#[cfg(not(bootstrap))]
+#[lang = "coerce_pointee_wellformed"]
+#[unstable(feature = "derive_coerce_pointee", issue = "123430")]
+#[doc(hidden)]
+pub trait CoercePointeeWellformed {}

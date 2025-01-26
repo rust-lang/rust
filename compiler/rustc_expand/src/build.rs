@@ -1,7 +1,8 @@
 use rustc_ast::ptr::P;
 use rustc_ast::util::literal;
 use rustc_ast::{
-    self as ast, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind, UnOp, attr, token,
+    self as ast, AnonConst, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind, UnOp,
+    attr, token,
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
@@ -134,6 +135,42 @@ impl<'a> ExtCtxt<'a> {
             bounds,
             kind: ast::GenericParamKind::Type { default },
             is_placeholder: false,
+            colon_span: None,
+        }
+    }
+
+    pub fn lifetime_param(
+        &self,
+        span: Span,
+        ident: Ident,
+        bounds: ast::GenericBounds,
+    ) -> ast::GenericParam {
+        ast::GenericParam {
+            id: ast::DUMMY_NODE_ID,
+            ident: ident.with_span_pos(span),
+            attrs: AttrVec::new(),
+            bounds,
+            is_placeholder: false,
+            kind: ast::GenericParamKind::Lifetime,
+            colon_span: None,
+        }
+    }
+
+    pub fn const_param(
+        &self,
+        span: Span,
+        ident: Ident,
+        bounds: ast::GenericBounds,
+        ty: P<ast::Ty>,
+        default: Option<AnonConst>,
+    ) -> ast::GenericParam {
+        ast::GenericParam {
+            id: ast::DUMMY_NODE_ID,
+            ident: ident.with_span_pos(span),
+            attrs: AttrVec::new(),
+            bounds,
+            is_placeholder: false,
+            kind: ast::GenericParamKind::Const { ty, kw_span: DUMMY_SP, default },
             colon_span: None,
         }
     }
