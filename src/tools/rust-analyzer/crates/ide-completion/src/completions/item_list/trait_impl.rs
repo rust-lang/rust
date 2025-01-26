@@ -31,7 +31,7 @@
 //! }
 //! ```
 
-use hir::{db::ExpandDatabase, HasAttrs, MacroFileId, Name};
+use hir::{db::ExpandDatabase, MacroFileId, Name};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
     documentation::HasDocs, path_transform::PathTransform,
@@ -155,7 +155,7 @@ fn complete_trait_impl(
     if let Some(hir_impl) = ctx.sema.to_def(impl_def) {
         get_missing_assoc_items(&ctx.sema, impl_def)
             .into_iter()
-            .filter(|item| ctx.check_stability(Some(&item.attrs(ctx.db))))
+            .filter(|item| ctx.check_stability_and_hidden(*item))
             .for_each(|item| {
                 use self::ImplCompletionKind::*;
                 match (item, kind) {

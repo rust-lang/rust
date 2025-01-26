@@ -451,3 +451,20 @@ marco_rules! m { () => {} }
         "#]],
     );
 }
+
+#[test]
+fn use_tree_doc_hidden() {
+    check(
+        r#"
+//- /foo.rs crate:foo
+#[doc(hidden)] pub struct Hidden;
+pub struct Visible;
+
+//- /lib.rs crate:lib deps:foo
+use foo::$0;
+    "#,
+        expect![[r#"
+            st Visible Visible
+        "#]],
+    );
+}
