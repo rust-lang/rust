@@ -80,7 +80,7 @@ where
                 }
             }
         },
-        BackendRepr::Vector { .. } | BackendRepr::Uninhabited => return Err(CannotUseFpConv),
+        BackendRepr::Vector { .. } => return Err(CannotUseFpConv),
         BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => match arg_layout.fields {
             FieldsShape::Primitive => {
                 unreachable!("aggregates can't have `FieldsShape::Primitive`")

@@ -130,6 +130,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             },
             backend_repr: BackendRepr::ScalarPair(a, b),
             largest_niche,
+            uninhabited: false,
             align,
             size,
             max_repr_align: None,
@@ -221,8 +222,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         LayoutData {
             variants: Variants::Empty,
             fields: FieldsShape::Primitive,
-            backend_repr: BackendRepr::Uninhabited,
+            backend_repr: BackendRepr::Memory { sized: true },
             largest_niche: None,
+            uninhabited: true,
             align: dl.i8_align,
             size: Size::ZERO,
             max_repr_align: None,
@@ -400,6 +402,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             fields: FieldsShape::Union(union_field_count),
             backend_repr: abi,
             largest_niche: None,
+            uninhabited: false,
             align,
             size: size.align_to(align.abi),
             max_repr_align,
@@ -447,7 +450,6 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 Scalar::Union { .. } => {}
             };
             match &mut st.backend_repr {
-                BackendRepr::Uninhabited => {}
                 BackendRepr::Scalar(scalar) => hide_niches(scalar),
                 BackendRepr::ScalarPair(a, b) => {
                     hide_niches(a);
@@ -639,9 +641,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let same_size = size == variant_layouts[largest_variant_index].size;
             let same_align = align == variant_layouts[largest_variant_index].align;
 
-            let abi = if variant_layouts.iter().all(|v| v.is_uninhabited()) {
-                BackendRepr::Uninhabited
-            } else if same_size && same_align && others_zst {
+            let uninhabited = variant_layouts.iter().all(|v| v.is_uninhabited());
+            let abi = if same_size && same_align && others_zst {
                 match variant_layouts[largest_variant_index].backend_repr {
                     // When the total alignment and size match, we can use the
                     // same ABI as the scalar variant with the reserved niche.
@@ -683,6 +684,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 },
                 backend_repr: abi,
                 largest_niche,
+                uninhabited,
                 size,
                 align,
                 max_repr_align,
@@ -853,9 +855,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         };
         let mut abi = BackendRepr::Memory { sized: true };
 
-        if layout_variants.iter().all(|v| v.is_uninhabited()) {
-            abi = BackendRepr::Uninhabited;
-        } else if tag.size(dl) == size {
+        let uninhabited = layout_variants.iter().all(|v| v.is_uninhabited());
+        if tag.size(dl) == size {
             // Make sure we only use scalar layout when the enum is entirely its
             // own tag (i.e. it has no padding nor any non-ZST variant fields).
             abi = BackendRepr::Scalar(tag);
@@ -995,6 +996,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 memory_index: [0].into(),
             },
             largest_niche,
+            uninhabited,
             backend_repr: abi,
             align,
             size,
@@ -1355,9 +1357,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 _ => {}
             }
         }
-        if fields.iter().any(|f| f.is_uninhabited()) {
-            abi = BackendRepr::Uninhabited;
-        }
+        let uninhabited = fields.iter().any(|f| f.is_uninhabited());
 
         let unadjusted_abi_align = if repr.transparent() {
             match layout_of_single_non_zst_field {
@@ -1378,6 +1378,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             fields: FieldsShape::Arbitrary { offsets, memory_index },
             backend_repr: abi,
             largest_niche,
+            uninhabited,
             align,
             size,
             max_repr_align,

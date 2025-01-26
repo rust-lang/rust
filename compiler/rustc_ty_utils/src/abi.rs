@@ -472,9 +472,7 @@ fn fn_abi_sanity_check<'tcx>(
                 // `layout.backend_repr` and ignore everything else. We should just reject
                 //`Aggregate` entirely here, but some targets need to be fixed first.
                 match arg.layout.backend_repr {
-                    BackendRepr::Uninhabited
-                    | BackendRepr::Scalar(_)
-                    | BackendRepr::Vector { .. } => {}
+                    BackendRepr::Scalar(_) | BackendRepr::Vector { .. } => {}
                     BackendRepr::ScalarPair(..) => {
                         panic!("`PassMode::Direct` used for ScalarPair type {}", arg.layout.ty)
                     }
