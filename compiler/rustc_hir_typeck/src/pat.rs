@@ -232,12 +232,13 @@ enum InheritedRefMatchRule {
     /// When the underlying type is a reference type, reference patterns consume both layers of
     /// reference, i.e. they both reset the binding mode and consume the reference type.
     EatBoth {
-        /// Whether to allow reference patterns to consume only an inherited reference when matching
-        /// against a non-reference type. This is `false` for stable Rust.
-        eat_inherited_ref_alone: bool,
-        /// Whether to allow a `&mut` reference pattern to eat a `&` reference type if it's also
-        /// able to consume a mutable inherited reference. This is `false` for stable Rust.
-        fallback_to_outer: bool,
+        /// This represents two behaviors implemented by both the `ref_pat_eat_one_layer_2024` and
+        /// `ref_pat_eat_one_layer_2024_structural` feature gates, and is false for stable Rust.
+        /// - Whether to allow reference patterns to consume only an inherited reference when
+        ///   matching against a non-reference type.
+        /// - Whether to allow a `&mut` reference pattern to eat a `&` reference type if it's also
+        ///   able to consume a mutable inherited reference.
+        consider_inherited_ref_first: bool,
     },
 }
 
@@ -264,17 +265,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 // Currently, matching against an inherited ref on edition 2024 is an error.
                 // Use `EatBoth` as a fallback to be similar to stable Rust.
-                InheritedRefMatchRule::EatBoth {
-                    eat_inherited_ref_alone: false,
-                    fallback_to_outer: false,
-                }
+                InheritedRefMatchRule::EatBoth { consider_inherited_ref_first: false }
             }
         } else {
-            let has_structural_gate = self.tcx.features().ref_pat_eat_one_layer_2024_structural();
             InheritedRefMatchRule::EatBoth {
-                eat_inherited_ref_alone: has_structural_gate
-                    || self.tcx.features().ref_pat_eat_one_layer_2024(),
-                fallback_to_outer: has_structural_gate,
+                consider_inherited_ref_first: self.tcx.features().ref_pat_eat_one_layer_2024()
+                    || self.tcx.features().ref_pat_eat_one_layer_2024_structural(),
             }
         }
     }
@@ -2398,20 +2394,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return expected;
                     }
                 }
-                InheritedRefMatchRule::EatBoth {
-                    eat_inherited_ref_alone: true,
-                    fallback_to_outer,
-                } => {
+                InheritedRefMatchRule::EatBoth { consider_inherited_ref_first: true } => {
                     // Reset binding mode on old editions
                     pat_info.binding_mode = ByRef::No;
 
                     if let ty::Ref(_, inner_ty, _) = *expected.kind() {
                         // Consume both the inherited and inner references.
-                        if fallback_to_outer && inh_mut.is_mut() {
-                            // If we can fall back to matching the inherited reference, the expected
-                            // type is a reference type (of any mutability), and the inherited
-                            // reference is mutable, we'll always be able to match. We handle that
-                            // here to avoid adding fallback-to-outer to the common logic below.
+                        if inh_mut.is_mut() {
+                            // If the expected type is a reference type (of any mutability) and the
+                            // inherited ref is mutable, we'll be able to match, since we can fall
+                            // back to matching the inherited ref if the real reference isn't
+                            // mutable enough for our pattern. We handle that here to avoid adding
+                            // fallback-to-outer to the common logic below.
                             // NB: This way of phrasing the logic will catch more cases than those
                             // that need to fall back to matching the inherited reference. However,
                             // as long as `&` patterns can match mutable (inherited) references
@@ -2440,13 +2434,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return expected;
                     }
                 }
-                rule @ InheritedRefMatchRule::EatBoth {
-                    eat_inherited_ref_alone: false,
-                    fallback_to_outer,
-                } => {
+                InheritedRefMatchRule::EatBoth { consider_inherited_ref_first: false } => {
                     // Reset binding mode on stable Rust. This will be a type error below if
                     // `expected` is not a reference type.
-                    debug_assert!(!fallback_to_outer, "typing rule `{rule:?}` is unimplemented.");
                     pat_info.binding_mode = ByRef::No;
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
