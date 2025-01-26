@@ -732,3 +732,10 @@ pub struct ImportNameTypeRaw {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(metadata_wasm_c_abi)]
+pub(crate) struct WasmCAbi {
+    #[primary_span]
+    pub span: Span,
+}
