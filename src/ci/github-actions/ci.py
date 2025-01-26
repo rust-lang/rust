@@ -249,7 +249,7 @@ def run_workflow_locally(job_data: Dict[str, Any], job_name: str, pr_jobs: bool)
     env = os.environ.copy()
     env.update(custom_env)
 
-    subprocess.run(args, env=env)
+    subprocess.run(args, env=env, check=True)
 
 
 def calculate_job_matrix(job_data: Dict[str, Any]):
