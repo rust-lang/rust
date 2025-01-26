@@ -235,6 +235,9 @@ enum InheritedRefMatchRule {
         /// Whether to allow reference patterns to consume only an inherited reference when matching
         /// against a non-reference type. This is `false` for stable Rust.
         eat_inherited_ref_alone: bool,
+        /// Whether to allow a `&mut` reference pattern to eat a `&` reference type if it's also
+        /// able to consume a mutable inherited reference. This is `false` for stable Rust.
+        fallback_to_outer: bool,
     },
 }
 
@@ -261,12 +264,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 // Currently, matching against an inherited ref on edition 2024 is an error.
                 // Use `EatBoth` as a fallback to be similar to stable Rust.
-                InheritedRefMatchRule::EatBoth { eat_inherited_ref_alone: false }
+                InheritedRefMatchRule::EatBoth {
+                    eat_inherited_ref_alone: false,
+                    fallback_to_outer: false,
+                }
             }
         } else {
+            let has_structural_gate = self.tcx.features().ref_pat_eat_one_layer_2024_structural();
             InheritedRefMatchRule::EatBoth {
-                eat_inherited_ref_alone: self.tcx.features().ref_pat_eat_one_layer_2024()
-                    || self.tcx.features().ref_pat_eat_one_layer_2024_structural(),
+                eat_inherited_ref_alone: has_structural_gate
+                    || self.tcx.features().ref_pat_eat_one_layer_2024(),
+                fallback_to_outer: has_structural_gate,
             }
         }
     }
@@ -2386,12 +2394,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return expected;
                     }
                 }
-                InheritedRefMatchRule::EatBoth { eat_inherited_ref_alone: true } => {
+                InheritedRefMatchRule::EatBoth {
+                    eat_inherited_ref_alone: true,
+                    fallback_to_outer,
+                } => {
                     // Reset binding mode on old editions
                     pat_info.binding_mode = ByRef::No;
 
-                    if let ty::Ref(_, _, _) = *expected.kind() {
+                    if let ty::Ref(_, inner_ty, _) = *expected.kind() {
                         // Consume both the inherited and inner references.
+                        if fallback_to_outer && inh_mut.is_mut() {
+                            // If we can fall back to matching the inherited reference, the expected
+                            // type is a reference type (of any mutability), and the inherited
+                            // reference is mutable, we'll always be able to match. We handle that
+                            // here to avoid adding fallback-to-outer to the common logic below.
+                            // NB: This way of phrasing the logic will catch more cases than those
+                            // that need to fall back to matching the inherited reference. However,
+                            // as long as `&` patterns can match mutable (inherited) references
+                            // (RFC 3627, Rule 5) this should be sound.
+                            debug_assert!(ref_pat_matches_mut_ref);
+                            self.check_pat(inner, inner_ty, pat_info);
+                            return expected;
+                        } else {
+                            // Otherwise, use the common logic below for matching the inner
+                            // reference type.
+                        }
                     } else {
                         // The expected type isn't a reference type, so only match against the
                         // inherited reference.
@@ -2405,9 +2432,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return expected;
                     }
                 }
-                InheritedRefMatchRule::EatBoth { eat_inherited_ref_alone: false } => {
+                rule @ InheritedRefMatchRule::EatBoth {
+                    eat_inherited_ref_alone: false,
+                    fallback_to_outer,
+                } => {
                     // Reset binding mode on stable Rust. This will be a type error below if
                     // `expected` is not a reference type.
+                    debug_assert!(!fallback_to_outer, "typing rule `{rule:?}` is unimplemented.");
                     pat_info.binding_mode = ByRef::No;
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,

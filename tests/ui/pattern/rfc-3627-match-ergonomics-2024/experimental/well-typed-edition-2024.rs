@@ -91,47 +91,50 @@ pub fn main() {
         #[cfg(any(classic2024, structural2024))] let _: u32 = x;
     }
 
-    // Tests for eat-inner rulesets matching on the outer reference if matching on the inner
-    // reference causes a mutability mismatch, i.e. `Deref(EatInner, FallbackToOuter)`:
+    // Tests for eat-inner and eat-both rulesets matching on the outer reference if matching on the
+    // inner reference causes a mutability mismatch. i.e. tests for "fallback-to-outer" deref rules.
     let [&mut x] = &mut [&0];
-    //[stable2021,classic2021,structural2021]~^ mismatched types
-    //[stable2021,classic2021,structural2021]~| types differ in mutability
-    // TODO: on `structural2021` `x` should have type `u32`
+    //[stable2021,classic2021]~^ mismatched types
+    //[stable2021,classic2021]~| types differ in mutability
+    #[cfg(structural2021)] let _: u32 = x;
     #[cfg(any(classic2024, structural2024))] let _: &u32 = x;
 
     let [&mut ref x] = &mut [&0];
-    //[stable2021,classic2021,structural2021]~^ mismatched types
-    //[stable2021,classic2021,structural2021]~| types differ in mutability
-    // TODO: on `structural2021` `x` should have type `&u32`
+    //[stable2021,classic2021]~^ mismatched types
+    //[stable2021,classic2021]~| types differ in mutability
+    #[cfg(structural2021)] let _: &u32 = x;
     #[cfg(any(classic2024, structural2024))] let _: &&u32 = x;
 
-    let [&mut ref mut x] = &mut [&0];
-    //[stable2021,classic2021,structural2021]~^ mismatched types
-    //[stable2021,classic2021,structural2021]~| types differ in mutability
-    // TODO: this should be a mut borrow behind shared borrow error on `structural2021`
-    #[cfg(any(classic2024, structural2024))] let _: &mut &u32 = x;
+    fn borrowck_error_on_structural2021() {
+        let [&mut ref mut x] = &mut [&0];
+        //[stable2021,classic2021]~^ mismatched types
+        //[stable2021,classic2021]~| types differ in mutability
+        //[structural2021]~^^^ cannot borrow data in a `&` reference as mutable
+        #[cfg(any(classic2024, structural2024))] let _: &mut &u32 = x;
+    }
+    borrowck_error_on_structural2021();
 
     let [&mut mut x] = &mut [&0];
-    //[stable2021,classic2021,structural2021]~^ mismatched types
-    //[stable2021,classic2021,structural2021]~| types differ in mutability
-    // TODO: on `structural2021` `x` should have type `u32`
+    //[stable2021,classic2021]~^ mismatched types
+    //[stable2021,classic2021]~| types differ in mutability
+    #[cfg(structural2021)] let _: u32 = x;
     #[cfg(any(classic2024, structural2024))] let _: &u32 = x;
 
     let [&mut &x] = &mut [&0];
     //[stable2021,classic2021,structural2021]~^ mismatched types
-    //[stable2021,classic2021,structural2021]~| types differ in mutability
-    // TODO: [structural2021]~| expected integer, found `&_`
+    //[stable2021,classic2021]~| types differ in mutability
+    //[structural2021]~| expected integer, found `&_`
     #[cfg(any(classic2024, structural2024))] let _: u32 = x;
 
     let [&mut &ref x] = &mut [&0];
     //[stable2021,classic2021,structural2021]~^ mismatched types
-    //[stable2021,classic2021,structural2021]~| types differ in mutability
-    // TODO: [structural2021]~| expected integer, found `&_`
+    //[stable2021,classic2021]~| types differ in mutability
+    //[structural2021]~| expected integer, found `&_`
     #[cfg(any(classic2024, structural2024))] let _: &u32 = x;
 
     let [&mut &(mut x)] = &mut [&0];
     //[stable2021,classic2021,structural2021]~^ mismatched types
-    //[stable2021,classic2021,structural2021]~| types differ in mutability
-    // TODO: [structural2021]~| expected integer, found `&_`
+    //[stable2021,classic2021]~| types differ in mutability
+    //[structural2021]~| expected integer, found `&_`
     #[cfg(any(classic2024, structural2024))] let _: u32 = x;
 }
