@@ -463,6 +463,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::methods::REPEAT_ONCE_INFO,
     crate::methods::RESULT_FILTER_MAP_INFO,
     crate::methods::RESULT_MAP_OR_INTO_OPTION_INFO,
+    crate::methods::RETURN_AND_THEN_INFO,
     crate::methods::SEARCH_IS_SOME_INFO,
     crate::methods::SEEK_FROM_CURRENT_INFO,
     crate::methods::SEEK_TO_START_INSTEAD_OF_REWIND_INFO,
