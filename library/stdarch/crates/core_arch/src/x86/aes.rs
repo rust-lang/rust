@@ -35,8 +35,8 @@ unsafe extern "C" {
 #[target_feature(enable = "aes")]
 #[cfg_attr(test, assert_instr(aesdec))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_aesdec_si128(a: __m128i, round_key: __m128i) -> __m128i {
-    aesdec(a, round_key)
+pub fn _mm_aesdec_si128(a: __m128i, round_key: __m128i) -> __m128i {
+    unsafe { aesdec(a, round_key) }
 }
 
 /// Performs the last round of an AES decryption flow on data (state) in `a`.
@@ -46,8 +46,8 @@ pub unsafe fn _mm_aesdec_si128(a: __m128i, round_key: __m128i) -> __m128i {
 #[target_feature(enable = "aes")]
 #[cfg_attr(test, assert_instr(aesdeclast))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_aesdeclast_si128(a: __m128i, round_key: __m128i) -> __m128i {
-    aesdeclast(a, round_key)
+pub fn _mm_aesdeclast_si128(a: __m128i, round_key: __m128i) -> __m128i {
+    unsafe { aesdeclast(a, round_key) }
 }
 
 /// Performs one round of an AES encryption flow on data (state) in `a`.
@@ -57,8 +57,8 @@ pub unsafe fn _mm_aesdeclast_si128(a: __m128i, round_key: __m128i) -> __m128i {
 #[target_feature(enable = "aes")]
 #[cfg_attr(test, assert_instr(aesenc))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_aesenc_si128(a: __m128i, round_key: __m128i) -> __m128i {
-    aesenc(a, round_key)
+pub fn _mm_aesenc_si128(a: __m128i, round_key: __m128i) -> __m128i {
+    unsafe { aesenc(a, round_key) }
 }
 
 /// Performs the last round of an AES encryption flow on data (state) in `a`.
@@ -68,8 +68,8 @@ pub unsafe fn _mm_aesenc_si128(a: __m128i, round_key: __m128i) -> __m128i {
 #[target_feature(enable = "aes")]
 #[cfg_attr(test, assert_instr(aesenclast))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_aesenclast_si128(a: __m128i, round_key: __m128i) -> __m128i {
-    aesenclast(a, round_key)
+pub fn _mm_aesenclast_si128(a: __m128i, round_key: __m128i) -> __m128i {
+    unsafe { aesenclast(a, round_key) }
 }
 
 /// Performs the `InvMixColumns` transformation on `a`.
@@ -79,8 +79,8 @@ pub unsafe fn _mm_aesenclast_si128(a: __m128i, round_key: __m128i) -> __m128i {
 #[target_feature(enable = "aes")]
 #[cfg_attr(test, assert_instr(aesimc))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_aesimc_si128(a: __m128i) -> __m128i {
-    aesimc(a)
+pub fn _mm_aesimc_si128(a: __m128i) -> __m128i {
+    unsafe { aesimc(a) }
 }
 
 /// Assist in expanding the AES cipher key.
@@ -95,9 +95,9 @@ pub unsafe fn _mm_aesimc_si128(a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(aeskeygenassist, IMM8 = 0))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_aeskeygenassist_si128<const IMM8: i32>(a: __m128i) -> __m128i {
+pub fn _mm_aeskeygenassist_si128<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
-    aeskeygenassist(a, IMM8 as u8)
+    unsafe { aeskeygenassist(a, IMM8 as u8) }
 }
 
 #[cfg(test)]
