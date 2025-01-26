@@ -2,6 +2,9 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -O -C target-cpu=x86-64-v4
 //@ compile-flags: -C llvm-args=-x86-asm-syntax=intel
+//@ revisions: llvm-pre-20 llvm-20
+//@ [llvm-20] min-llvm-version: 20
+//@ [llvm-pre-20] max-llvm-major-version: 19
 
 #![no_std]
 #![feature(bigint_helper_methods)]
@@ -20,12 +23,16 @@ pub unsafe extern "sysv64" fn bigint_chain_carrying_add(
     n: usize,
     mut carry: bool,
 ) -> bool {
-    // CHECK: mov [[TEMP:r..]], qword ptr [rsi + 8*[[IND:r..]] + 8]
-    // CHECK: adc [[TEMP]], qword ptr [rdx + 8*[[IND]] + 8]
-    // CHECK: mov qword ptr [rdi + 8*[[IND]] + 8], [[TEMP]]
-    // CHECK: mov [[TEMP]], qword ptr [rsi + 8*[[IND]] + 16]
-    // CHECK: adc [[TEMP]], qword ptr [rdx + 8*[[IND]] + 16]
-    // CHECK: mov qword ptr [rdi + 8*[[IND]] + 16], [[TEMP]]
+    // llvm-pre-20: mov [[TEMP:r..]], qword ptr [rsi + 8*[[IND:r..]] + 8]
+    // llvm-pre-20: adc [[TEMP]], qword ptr [rdx + 8*[[IND]] + 8]
+    // llvm-pre-20: mov qword ptr [rdi + 8*[[IND]] + 8], [[TEMP]]
+    // llvm-pre-20: mov [[TEMP]], qword ptr [rsi + 8*[[IND]] + 16]
+    // llvm-pre-20: adc [[TEMP]], qword ptr [rdx + 8*[[IND]] + 16]
+    // llvm-pre-20: mov qword ptr [rdi + 8*[[IND]] + 16], [[TEMP]]
+    // llvm-20: adc [[TEMP:r..]], qword ptr [rdx + 8*[[IND:r..]]]
+    // llvm-20: mov qword ptr [rdi + 8*[[IND]]], [[TEMP]]
+    // llvm-20: mov [[TEMP]], qword ptr [rsi + 8*[[IND]] + 8]
+    // llvm-20: adc [[TEMP]], qword ptr [rdx + 8*[[IND]] + 8]
     for i in 0..n {
         (*dest.add(i), carry) = u64::carrying_add(*src1.add(i), *src2.add(i), carry);
     }
