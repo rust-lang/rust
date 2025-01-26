@@ -333,8 +333,8 @@ where
             to_annotation,
         };
 
-        let scc_indices = (0..num_nodes)
-            .map(G::Node::new)
+        let scc_indices = graph
+            .iter_nodes()
             .map(|node| match this.start_walk_from(node) {
                 WalkReturn::Complete { scc_index, .. } => scc_index,
                 WalkReturn::Cycle { min_depth, .. } => {
