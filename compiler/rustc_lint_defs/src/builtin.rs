@@ -83,6 +83,7 @@ declare_lint_pass! {
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         PTR_CAST_ADD_AUTO_TO_OBJECT,
         PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
+        REDUNDANT_TRANSMUTATION,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
         REDUNDANT_IMPORTS,
         REDUNDANT_LIFETIMES,
@@ -5032,6 +5033,13 @@ declare_lint! {
     pub PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
     Warn,
     "detects pointer to integer transmutes in const functions and associated constants",
+}
+
+declare_lint! {
+    /// Wow such docs.
+    pub REDUNDANT_TRANSMUTATION,
+    Warn,
+    "detects transmutes that are shadowed by std methods"
 }
 
 declare_lint! {

@@ -158,6 +158,26 @@ pub(crate) struct MustNotSuspendReason {
     pub reason: String,
 }
 
+pub(crate) struct RedundantTransmute {
+    pub span: Span,
+    pub sugg: String,
+    pub help: Option<&'static str>,
+}
+
+// Needed for def_path_str
+impl<'a> LintDiagnostic<'a, ()> for RedundantTransmute {
+    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::Diag<'a, ()>) {
+        diag.primary_message(fluent::mir_transform_redundant_transmute);
+        diag.span_suggestion(
+            self.span,
+            "replace `transmute`",
+            self.sugg,
+            lint::Applicability::MachineApplicable,
+        );
+        self.help.map(|help| diag.help(help));
+    }
+}
+
 #[derive(LintDiagnostic)]
 #[diag(mir_transform_undefined_transmute)]
 #[note]
