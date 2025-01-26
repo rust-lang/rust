@@ -494,6 +494,18 @@ impl From<AnonPipe> for Stdio {
     }
 }
 
+impl From<io::PipeReader> for Stdio {
+    fn from(pipe: io::PipeReader) -> Stdio {
+        pipe.into_inner().into()
+    }
+}
+
+impl From<io::PipeWriter> for Stdio {
+    fn from(pipe: io::PipeWriter) -> Stdio {
+        pipe.into_inner().into()
+    }
+}
+
 impl From<File> for Stdio {
     fn from(file: File) -> Stdio {
         Stdio::Fd(file.into_inner())

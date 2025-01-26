@@ -3,6 +3,10 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 
 pub struct AnonPipe(!);
 
+pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
+    Err(io::Error::UNSUPPORTED_PLATFORM)
+}
+
 impl fmt::Debug for AnonPipe {
     fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0

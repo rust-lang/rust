@@ -584,7 +584,7 @@ impl Stdio {
 
             Stdio::MakePipe => {
                 let ours_readable = stdio_id != c::STD_INPUT_HANDLE;
-                let pipes = pipe::anon_pipe(ours_readable, true)?;
+                let pipes = pipe::anon_pipe_relay(ours_readable, true)?;
                 *pipe = Some(pipes.ours);
                 Ok(pipes.theirs.into_handle())
             }
@@ -619,6 +619,18 @@ impl Stdio {
 impl From<AnonPipe> for Stdio {
     fn from(pipe: AnonPipe) -> Stdio {
         Stdio::Pipe(pipe)
+    }
+}
+
+impl From<io::PipeReader> for Stdio {
+    fn from(pipe: io::PipeReader) -> Stdio {
+        pipe.into_inner().into()
+    }
+}
+
+impl From<io::PipeWriter> for Stdio {
+    fn from(pipe: io::PipeWriter) -> Stdio {
+        pipe.into_inner().into()
     }
 }
 

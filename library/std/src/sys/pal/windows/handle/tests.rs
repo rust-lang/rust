@@ -1,11 +1,11 @@
-use crate::sys::pipe::{Pipes, anon_pipe};
+use crate::sys::pipe::{Pipes, anon_pipe_relay};
 use crate::{thread, time};
 
 /// Test the synchronous fallback for overlapped I/O.
 #[test]
 fn overlapped_handle_fallback() {
     // Create some pipes. `ours` will be asynchronous.
-    let Pipes { ours, theirs } = anon_pipe(true, false).unwrap();
+    let Pipes { ours, theirs } = anon_pipe_relay(true, false).unwrap();
 
     let async_readable = ours.into_handle();
     let sync_writeable = theirs.into_handle();
