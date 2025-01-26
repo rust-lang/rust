@@ -45,7 +45,7 @@ use crate::{
         },
         Array, Binding, BindingAnnotation, BindingId, BindingProblems, CaptureBy, ClosureKind,
         Expr, ExprId, Item, Label, LabelId, Literal, LiteralOrConst, MatchArm, Movability,
-        OffsetOf, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
+        OffsetOf, Pat, PatId, RecordFieldPat, RecordLitField, Spread, Statement,
     },
     item_scope::BuiltinShadowMode,
     lang_item::LangItem,
@@ -602,11 +602,13 @@ impl ExprCollector<'_> {
                             Some(RecordLitField { name, expr })
                         })
                         .collect();
-                    let spread = nfl.spread().map(|s| self.collect_expr(s));
-                    let ellipsis = nfl.dotdot_token().is_some();
-                    Expr::RecordLit { path, fields, spread, ellipsis }
+                    let spread = nfl.spread().map(|s| self.collect_expr(s)).map_or_else(
+                        || if nfl.dotdot_token().is_some() { Spread::Yes } else { Spread::No },
+                        Spread::Base,
+                    );
+                    Expr::RecordLit { path, fields, spread }
                 } else {
-                    Expr::RecordLit { path, fields: Box::default(), spread: None, ellipsis: false }
+                    Expr::RecordLit { path, fields: Box::default(), spread: Spread::No }
                 };
 
                 self.alloc_expr(record_lit, syntax_ptr)

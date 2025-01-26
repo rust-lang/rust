@@ -12,7 +12,7 @@ use hir_def::{
     data::adt::VariantData,
     hir::{
         Array, AsmOperand, BinaryOp, BindingId, CaptureBy, Expr, ExprId, ExprOrPatId, Pat, PatId,
-        Statement, UnaryOp,
+        Spread, Statement, UnaryOp,
     },
     lang_item::LangItem,
     path::Path,
@@ -796,7 +796,7 @@ impl InferenceContext<'_> {
                 self.consume_expr(expr);
             }
             Expr::RecordLit { fields, spread, .. } => {
-                if let &Some(expr) = spread {
+                if let &Spread::Base(expr) = spread {
                     self.consume_expr(expr);
                 }
                 self.consume_exprs(fields.iter().map(|it| it.expr));
