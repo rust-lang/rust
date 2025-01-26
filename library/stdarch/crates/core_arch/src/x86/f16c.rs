@@ -28,8 +28,8 @@ unsafe extern "unadjusted" {
 #[target_feature(enable = "f16c")]
 #[cfg_attr(test, assert_instr("vcvtph2ps"))]
 #[stable(feature = "x86_f16c_intrinsics", since = "1.68.0")]
-pub unsafe fn _mm_cvtph_ps(a: __m128i) -> __m128 {
-    transmute(llvm_vcvtph2ps_128(transmute(a)))
+pub fn _mm_cvtph_ps(a: __m128i) -> __m128 {
+    unsafe { transmute(llvm_vcvtph2ps_128(transmute(a))) }
 }
 
 /// Converts the 8 x 16-bit half-precision float values in the 128-bit vector
@@ -40,8 +40,8 @@ pub unsafe fn _mm_cvtph_ps(a: __m128i) -> __m128 {
 #[target_feature(enable = "f16c")]
 #[cfg_attr(test, assert_instr("vcvtph2ps"))]
 #[stable(feature = "x86_f16c_intrinsics", since = "1.68.0")]
-pub unsafe fn _mm256_cvtph_ps(a: __m128i) -> __m256 {
-    transmute(llvm_vcvtph2ps_256(transmute(a)))
+pub fn _mm256_cvtph_ps(a: __m128i) -> __m256 {
+    unsafe { transmute(llvm_vcvtph2ps_256(transmute(a))) }
 }
 
 /// Converts the 4 x 32-bit float values in the 128-bit vector `a` into 4 x
@@ -62,11 +62,13 @@ pub unsafe fn _mm256_cvtph_ps(a: __m128i) -> __m256 {
 #[cfg_attr(test, assert_instr("vcvtps2ph", IMM_ROUNDING = 0))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "x86_f16c_intrinsics", since = "1.68.0")]
-pub unsafe fn _mm_cvtps_ph<const IMM_ROUNDING: i32>(a: __m128) -> __m128i {
+pub fn _mm_cvtps_ph<const IMM_ROUNDING: i32>(a: __m128) -> __m128i {
     static_assert_uimm_bits!(IMM_ROUNDING, 3);
-    let a = a.as_f32x4();
-    let r = llvm_vcvtps2ph_128(a, IMM_ROUNDING);
-    transmute(r)
+    unsafe {
+        let a = a.as_f32x4();
+        let r = llvm_vcvtps2ph_128(a, IMM_ROUNDING);
+        transmute(r)
+    }
 }
 
 /// Converts the 8 x 32-bit float values in the 256-bit vector `a` into 8 x
@@ -86,11 +88,13 @@ pub unsafe fn _mm_cvtps_ph<const IMM_ROUNDING: i32>(a: __m128) -> __m128i {
 #[cfg_attr(test, assert_instr("vcvtps2ph", IMM_ROUNDING = 0))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "x86_f16c_intrinsics", since = "1.68.0")]
-pub unsafe fn _mm256_cvtps_ph<const IMM_ROUNDING: i32>(a: __m256) -> __m128i {
+pub fn _mm256_cvtps_ph<const IMM_ROUNDING: i32>(a: __m256) -> __m128i {
     static_assert_uimm_bits!(IMM_ROUNDING, 3);
-    let a = a.as_f32x8();
-    let r = llvm_vcvtps2ph_256(a, IMM_ROUNDING);
-    transmute(r)
+    unsafe {
+        let a = a.as_f32x8();
+        let r = llvm_vcvtps2ph_256(a, IMM_ROUNDING);
+        transmute(r)
+    }
 }
 
 #[cfg(test)]
