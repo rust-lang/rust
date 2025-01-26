@@ -59,6 +59,9 @@ pub use vec::{AppendOnlyIndexVec, AppendOnlyVec};
 
 mod vec;
 
+mod once_vec;
+pub use once_vec::OnceVec;
+
 mod freeze;
 pub use freeze::{FreezeLock, FreezeReadGuard, FreezeWriteGuard};
 

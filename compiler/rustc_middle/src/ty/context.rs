@@ -1348,7 +1348,7 @@ pub struct GlobalCtxt<'tcx> {
     pub data_layout: TargetDataLayout,
 
     /// Stores memory for globals (statics/consts).
-    pub(crate) alloc_map: Lock<interpret::AllocMap<'tcx>>,
+    pub(crate) alloc_map: interpret::AllocMap<'tcx>,
 }
 
 /// This is used to get a reference to a `GlobalCtxt` if one is available.
@@ -1538,7 +1538,7 @@ impl<'tcx> TyCtxt<'tcx> {
             new_solver_evaluation_cache: Default::default(),
             canonical_param_env_cache: Default::default(),
             data_layout,
-            alloc_map: Lock::new(interpret::AllocMap::new()),
+            alloc_map: interpret::AllocMap::new(),
         });
 
         let icx = tls::ImplicitCtxt::new(&gcx);
