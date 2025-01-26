@@ -202,7 +202,6 @@ fn check_impl(
     for def in defs {
         let (body, body_source_map) = db.body_with_source_map(def);
         let inference_result = db.infer(def);
-        dbg!(&inference_result);
 
         for (pat, mut ty) in inference_result.type_of_pat.iter() {
             if let Pat::Bind { id, .. } = body.pats[pat] {
