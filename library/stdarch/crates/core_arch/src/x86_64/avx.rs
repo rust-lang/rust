@@ -24,9 +24,9 @@ use crate::{core_arch::x86::*, mem::transmute};
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_insert_epi64<const INDEX: i32>(a: __m256i, i: i64) -> __m256i {
+pub fn _mm256_insert_epi64<const INDEX: i32>(a: __m256i, i: i64) -> __m256i {
     static_assert_uimm_bits!(INDEX, 2);
-    transmute(simd_insert!(a.as_i64x4(), INDEX as u32, i))
+    unsafe { transmute(simd_insert!(a.as_i64x4(), INDEX as u32, i)) }
 }
 
 /// Extracts a 64-bit integer from `a`, selected with `INDEX`.
@@ -37,9 +37,9 @@ pub unsafe fn _mm256_insert_epi64<const INDEX: i32>(a: __m256i, i: i64) -> __m25
 #[rustc_legacy_const_generics(1)]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_extract_epi64<const INDEX: i32>(a: __m256i) -> i64 {
+pub fn _mm256_extract_epi64<const INDEX: i32>(a: __m256i) -> i64 {
     static_assert_uimm_bits!(INDEX, 2);
-    simd_extract!(a.as_i64x4(), INDEX as u32)
+    unsafe { simd_extract!(a.as_i64x4(), INDEX as u32) }
 }
 
 #[cfg(test)]
