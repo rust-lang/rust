@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
-rustc-hash = "2.0.0"
+rustc-hash = { git = "https://github.com/Zoxc/rustc-hash/", branch = "new-hash" }
 
 rustc_abi = { path = "../rustc_abi", optional = true }
 rustc_apfloat = "0.2.0"
