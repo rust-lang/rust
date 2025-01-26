@@ -13,7 +13,7 @@ ena = "0.14.3"
 indexmap = { version = "2.4.0", features = ["rustc-rayon"] }
 jobserver_crate = { version = "0.1.28", package = "jobserver" }
 measureme = "11"
-rustc-hash = { git = "https://github.com/orlp/rustc-hash", rev = "3a89863922cb4ba5237a5bef65a9535b3d598663" }
+rustc-hash = { git = "https://github.com/orlp/rustc-hash", rev = "2ccde1ec8a948b5463011d3c7363c273fc2bb80e" }
 rustc-rayon = "0.5.0"
 rustc-stable-hash = { version = "0.1.0", features = ["nightly"] }
 rustc_arena = { path = "../rustc_arena" }
