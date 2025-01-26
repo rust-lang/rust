@@ -40,11 +40,13 @@ error[E0412]: cannot find type `dyn` in this scope
 LL | type A3 = dyn<<dyn as dyn>::dyn>;
    |                ^^^ not found in this scope
 
-error[E0433]: failed to resolve: use of undeclared crate or module `dyn`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `dyn`
   --> $DIR/dyn-trait-compatibility.rs:3:11
    |
 LL | type A1 = dyn::dyn;
-   |           ^^^ use of undeclared crate or module `dyn`
+   |           ^^^ use of unresolved module or unlinked crate `dyn`
+   |
+   = help: you might be missing a crate named `dyn`
 
 error: aborting due to 8 previous errors
 

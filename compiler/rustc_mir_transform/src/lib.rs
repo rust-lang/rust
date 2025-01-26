@@ -388,6 +388,7 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
             &Lint(sanity_check::SanityCheck),
         ],
         None,
+        pm::Optimizations::Allowed,
     );
     tcx.alloc_steal_mir(body)
 }
@@ -440,6 +441,7 @@ fn mir_promoted(
         &mut body,
         &[&promote_pass, &simplify::SimplifyCfg::PromoteConsts, &coverage::InstrumentCoverage],
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
+        pm::Optimizations::Allowed,
     );
 
     lint_tail_expr_drop_order::run_lint(tcx, def, &body);
@@ -473,7 +475,7 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     };
 
     let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::Const);
-    pm::run_passes(tcx, &mut body, &[&ctfe_limit::CtfeLimit], None);
+    pm::run_passes(tcx, &mut body, &[&ctfe_limit::CtfeLimit], None, pm::Optimizations::Allowed);
 
     body
 }
@@ -493,7 +495,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     let is_fn_like = tcx.def_kind(def).is_fn_like();
     if is_fn_like {
         // Do not compute the mir call graph without said call graph actually being used.
-        if pm::should_run_pass(tcx, &inline::Inline)
+        if pm::should_run_pass(tcx, &inline::Inline, pm::Optimizations::Allowed)
             || inline::ForceInline::should_run_pass_for_callee(tcx, def.to_def_id())
         {
             tcx.ensure_with_value().mir_inliner_callees(ty::InstanceKind::Item(def.to_def_id()));
@@ -533,6 +535,7 @@ pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
                 &Lint(post_drop_elaboration::CheckLiveDrops),
             ],
             None,
+            pm::Optimizations::Allowed,
         );
     }
 
@@ -557,7 +560,13 @@ fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &deref_separator::Derefer,
     ];
 
-    pm::run_passes(tcx, body, passes, Some(MirPhase::Analysis(AnalysisPhase::PostCleanup)));
+    pm::run_passes(
+        tcx,
+        body,
+        passes,
+        Some(MirPhase::Analysis(AnalysisPhase::PostCleanup)),
+        pm::Optimizations::Allowed,
+    );
 }
 
 /// Returns the sequence of passes that lowers analysis to runtime MIR.
@@ -597,7 +606,13 @@ fn run_runtime_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &simplify::SimplifyCfg::PreOptimizations,
     ];
 
-    pm::run_passes(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::PostCleanup)));
+    pm::run_passes(
+        tcx,
+        body,
+        passes,
+        Some(MirPhase::Runtime(RuntimePhase::PostCleanup)),
+        pm::Optimizations::Allowed,
+    );
 
     // Clear this by anticipation. Optimizations and runtime MIR have no reason to look
     // into this information, which is meant for borrowck diagnostics.
@@ -610,6 +625,15 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     fn o1<T>(x: T) -> WithMinOptLevel<T> {
         WithMinOptLevel(1, x)
     }
+
+    let def_id = body.source.def_id();
+    let optimizations = if tcx.def_kind(def_id).has_codegen_attrs()
+        && tcx.codegen_fn_attrs(def_id).optimize.do_not_optimize()
+    {
+        pm::Optimizations::Suppressed
+    } else {
+        pm::Optimizations::Allowed
+    };
 
     // The main optimizations that we do on MIR.
     pm::run_passes(
@@ -683,6 +707,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &dump_mir::Marker("PreCodegen"),
         ],
         Some(MirPhase::Runtime(RuntimePhase::Optimized)),
+        optimizations,
     );
 }
 

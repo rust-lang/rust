@@ -20,7 +20,7 @@ use rustc_abi::BackendRepr;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
-use rustc_ast_pretty::pprust::{self, expr_to_string};
+use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_errors::{Applicability, LintDiagnostic};
 use rustc_feature::{AttributeGate, BuiltinAttribute, GateIssue, Stability, deprecated_attributes};
 use rustc_hir as hir;
@@ -49,7 +49,7 @@ use rustc_trait_selection::traits::{self};
 use crate::errors::BuiltinEllipsisInclusiveRangePatterns;
 use crate::lints::{
     BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDeprecatedAttrLink,
-    BuiltinDeprecatedAttrLinkSuggestion, BuiltinDeprecatedAttrUsed, BuiltinDerefNullptr,
+    BuiltinDeprecatedAttrLinkSuggestion, BuiltinDerefNullptr,
     BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
     BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
     BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
@@ -847,12 +847,6 @@ impl EarlyLintPass for DeprecatedAttr {
                 }
                 return;
             }
-        }
-        if attr.has_name(sym::no_start) || attr.has_name(sym::crate_id) {
-            cx.emit_span_lint(DEPRECATED, attr.span, BuiltinDeprecatedAttrUsed {
-                name: pprust::path_to_string(&attr.get_normal_item().path),
-                suggestion: attr.span,
-            });
         }
     }
 }

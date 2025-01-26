@@ -10,19 +10,35 @@ use crate::lints;
 
 const MAX_CHECK_CFG_NAMES_OR_VALUES: usize = 35;
 
+enum FilterWellKnownNames {
+    Yes,
+    No,
+}
+
 fn sort_and_truncate_possibilities(
     sess: &Session,
     mut possibilities: Vec<Symbol>,
+    filter_well_known_names: FilterWellKnownNames,
 ) -> (Vec<Symbol>, usize) {
+    let possibilities_len = possibilities.len();
+
     let n_possibilities = if sess.opts.unstable_opts.check_cfg_all_expected {
         possibilities.len()
     } else {
+        match filter_well_known_names {
+            FilterWellKnownNames::Yes => {
+                possibilities.retain(|cfg_name| {
+                    !sess.psess.check_config.well_known_names.contains(cfg_name)
+                });
+            }
+            FilterWellKnownNames::No => {}
+        };
         std::cmp::min(possibilities.len(), MAX_CHECK_CFG_NAMES_OR_VALUES)
     };
 
     possibilities.sort_by(|s1, s2| s1.as_str().cmp(s2.as_str()));
 
-    let and_more = possibilities.len().saturating_sub(n_possibilities);
+    let and_more = possibilities_len.saturating_sub(n_possibilities);
     possibilities.truncate(n_possibilities);
     (possibilities, and_more)
 }
@@ -198,8 +214,10 @@ pub(super) fn unexpected_cfg_name(
         } else {
             vec![]
         };
+
+        let (possibilities, and_more) =
+            sort_and_truncate_possibilities(sess, possibilities, FilterWellKnownNames::Yes);
         let expected_names = if !possibilities.is_empty() {
-            let (possibilities, and_more) = sort_and_truncate_possibilities(sess, possibilities);
             let possibilities: Vec<_> =
                 possibilities.into_iter().map(|s| Ident::new(s, name_span)).collect();
             Some(lints::unexpected_cfg_name::ExpectedNames {
@@ -269,8 +287,11 @@ pub(super) fn unexpected_cfg_value(
     // for names as the possibilities could be very long
     let code_sugg = if !possibilities.is_empty() {
         let expected_values = {
-            let (possibilities, and_more) =
-                sort_and_truncate_possibilities(sess, possibilities.clone());
+            let (possibilities, and_more) = sort_and_truncate_possibilities(
+                sess,
+                possibilities.clone(),
+                FilterWellKnownNames::No,
+            );
             lints::unexpected_cfg_value::ExpectedValues {
                 name,
                 have_none_possibility,

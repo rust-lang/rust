@@ -273,6 +273,13 @@ impl Cargo {
             self.rustflags.arg("-Clink-arg=-gz");
         }
 
+        // Ignore linker warnings for now. These are complicated to fix and don't affect the build.
+        // FIXME: we should really investigate these...
+        // cfg(bootstrap)
+        if compiler.stage != 0 {
+            self.rustflags.arg("-Alinker-messages");
+        }
+
         // Throughout the build Cargo can execute a number of build scripts
         // compiling C/C++ code and we need to pass compilers, archivers, flags, etc
         // obtained previously to those build scripts.

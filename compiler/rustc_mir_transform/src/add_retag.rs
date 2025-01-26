@@ -176,4 +176,8 @@ impl<'tcx> crate::MirPass<'tcx> for AddRetag {
             }
         }
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }

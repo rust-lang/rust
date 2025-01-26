@@ -42,9 +42,9 @@ pub unsafe fn setup(build: &mut crate::Build) {
 #[cfg(windows)]
 mod for_windows {
     use std::ffi::c_void;
-    use std::{env, io, mem};
+    use std::{io, mem};
 
-    use windows::Win32::Foundation::{CloseHandle, DUPLICATE_SAME_ACCESS, DuplicateHandle, HANDLE};
+    use windows::Win32::Foundation::CloseHandle;
     use windows::Win32::System::Diagnostics::Debug::{
         SEM_NOGPFAULTERRORBOX, SetErrorMode, THREAD_ERROR_MODE,
     };
@@ -53,9 +53,7 @@ mod for_windows {
         JOB_OBJECT_LIMIT_PRIORITY_CLASS, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
         JobObjectExtendedLimitInformation, SetInformationJobObject,
     };
-    use windows::Win32::System::Threading::{
-        BELOW_NORMAL_PRIORITY_CLASS, GetCurrentProcess, OpenProcess, PROCESS_DUP_HANDLE,
-    };
+    use windows::Win32::System::Threading::{BELOW_NORMAL_PRIORITY_CLASS, GetCurrentProcess};
     use windows::core::PCWSTR;
 
     use crate::Build;
@@ -95,49 +93,8 @@ mod for_windows {
             return;
         }
 
-        // If we've got a parent process (e.g., the python script that called us)
-        // then move ownership of this job object up to them. That way if the python
-        // script is killed (e.g., via ctrl-c) then we'll all be torn down.
-        //
-        // If we don't have a parent (e.g., this was run directly) then we
-        // intentionally leak the job object handle. When our process exits
+        // Note: we intentionally leak the job object handle. When our process exits
         // (normally or abnormally) it will close the handle implicitly, causing all
         // processes in the job to be cleaned up.
-        let pid = match env::var("BOOTSTRAP_PARENT_ID") {
-            Ok(s) => s,
-            Err(..) => return,
-        };
-
-        let parent = match OpenProcess(PROCESS_DUP_HANDLE, false, pid.parse().unwrap()).ok() {
-            Some(parent) => parent,
-            _ => {
-                // If we get a null parent pointer here, it is possible that either
-                // we have an invalid pid or the parent process has been closed.
-                // Since the first case rarely happens
-                // (only when wrongly setting the environmental variable),
-                // it might be better to improve the experience of the second case
-                // when users have interrupted the parent process and we haven't finish
-                // duplicating the handle yet.
-                return;
-            }
-        };
-
-        let mut parent_handle = HANDLE::default();
-        // If this fails, well at least we tried! An example of DuplicateHandle
-        // failing in the past has been when the wrong python2 package spawned this
-        // build system (e.g., the `python2` package in MSYS instead of
-        // `mingw-w64-x86_64-python2`). Not sure why it failed, but the "failure
-        // mode" here is that we only clean everything up when the build system
-        // dies, not when the python parent does, so not too bad.
-        let _ = DuplicateHandle(
-            GetCurrentProcess(),
-            job,
-            parent,
-            &mut parent_handle,
-            0,
-            false,
-            DUPLICATE_SAME_ACCESS,
-        );
-        CloseHandle(parent).ok();
     }
 }

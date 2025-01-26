@@ -14,7 +14,9 @@ function endgroup {
 begingroup "Building Miri"
 
 # Global configuration
-export RUSTFLAGS="-D warnings"
+# We are getting some odd linker warnings on macOS, make sure they do not fail the build.
+# (See <https://github.com/rust-lang/rust/issues/136086>.)
+export RUSTFLAGS="-D warnings -A linker-messages"
 export CARGO_INCREMENTAL=0
 export CARGO_EXTRA_FLAGS="--locked"
 

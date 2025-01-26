@@ -13,6 +13,7 @@ pub(crate) struct Command {
     args: Vec<OsString>,
     env: Vec<(OsString, OsString)>,
     env_remove: Vec<OsString>,
+    env_clear: bool,
 }
 
 #[derive(Clone)]
@@ -36,7 +37,13 @@ impl Command {
     }
 
     fn _new(program: Program) -> Command {
-        Command { program, args: Vec::new(), env: Vec::new(), env_remove: Vec::new() }
+        Command {
+            program,
+            args: Vec::new(),
+            env: Vec::new(),
+            env_remove: Vec::new(),
+            env_clear: false,
+        }
     }
 
     pub(crate) fn arg<P: AsRef<OsStr>>(&mut self, arg: P) -> &mut Command {
@@ -79,6 +86,11 @@ impl Command {
         self
     }
 
+    pub(crate) fn env_clear(&mut self) -> &mut Command {
+        self.env_clear = true;
+        self
+    }
+
     fn _env_remove(&mut self, key: &OsStr) {
         self.env_remove.push(key.to_owned());
     }
@@ -105,6 +117,9 @@ impl Command {
         ret.envs(self.env.clone());
         for k in &self.env_remove {
             ret.env_remove(k);
+        }
+        if self.env_clear {
+            ret.env_clear();
         }
         ret
     }

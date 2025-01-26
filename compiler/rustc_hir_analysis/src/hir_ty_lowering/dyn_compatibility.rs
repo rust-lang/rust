@@ -237,16 +237,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     // Skip `Self`
                     .skip(1)
                     .map(|(index, arg)| {
-                        if arg == dummy_self.into() {
+                        if arg.walk().any(|arg| arg == dummy_self.into()) {
                             let param = &generics.own_params[index];
                             missing_type_params.push(param.name);
                             Ty::new_misc_error(tcx).into()
-                        } else if arg.walk().any(|arg| arg == dummy_self.into()) {
-                            let guar = self.dcx().span_delayed_bug(
-                                span,
-                                "trait object trait bounds reference `Self`",
-                            );
-                            replace_dummy_self_with_error(tcx, arg, guar)
                         } else {
                             arg
                         }
