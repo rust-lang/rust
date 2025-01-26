@@ -12,7 +12,7 @@ enum UninhabitedVariantAlign { //~ERROR: abi: Align(2 bytes)
 }
 
 #[rustc_layout(size)]
-enum UninhabitedVariantSpace { //~ERROR: size: Size(16 bytes)
+enum UninhabitedVariantSpace { //~ERROR: size: Size(15 bytes)
     A,
     B([u8; 15], !), // make sure there is space being reserved for this field.
 }
@@ -47,7 +47,7 @@ enum UninhabitedVariantUntagged { //~ERROR: size: Size(8 bytes)
 // the same size, but without a niche.
 #[rustc_layout(size, abi)]
 enum UninhabitedVariantUntaggedBigger { //~ERROR: size: Size(8 bytes)
-    //~^ ERROR: abi: Memory
+    //~^ ERROR: abi: ScalarPair
     A(i32),
     B([u8; 5], !),
 }
@@ -74,7 +74,7 @@ enum UninhabitedVariantLargeWithNiche {
 // This uses the tagged layout, but since all variants are uninhabited, none of them store the tag,
 // so we only need space for the fields, and the abi is Memory.
 #[rustc_layout(size, abi)]
-enum AllUninhabitedVariants { //~ERROR: size: Size(3 bytes)
+enum AllUninhabitedVariants { //~ERROR: size: Size(2 bytes)
     //~^ERROR: abi: Memory
     A(i8, bool, !),
     B(u8, u8, !),
@@ -103,15 +103,15 @@ enum TaggedI8 { //~ERROR: size: Size(4 bytes)
 // Tagged `(u16, i16)`
 #[rustc_layout(size, abi)]
 enum TaggedI16 { //~ERROR: size: Size(4 bytes)
-    //~^ERROR: abi: Memory
+    //~^ERROR: abi: ScalarPair
     A(i16),
     B(i8, i8, i8, AlignedNever)
 }
 
 // This must not use tagged representation, since it's zero-sized.
 #[rustc_layout(size, abi)]
-enum AllUninhabitedVariantsAlignedZst { //~ERROR: size: Size(2 bytes)
-    //~^ERROR: abi: Scalar
+enum AllUninhabitedVariantsAlignedZst { //~ERROR: size: Size(0 bytes)
+    //~^ERROR: abi: Memory
     A(AlignedNever),
     B(AlignedNever),
 }
