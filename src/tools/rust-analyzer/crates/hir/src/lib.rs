@@ -3455,6 +3455,7 @@ pub enum GenericDef {
     Impl(Impl),
     // consts can have type parameters from their parents (i.e. associated consts of traits)
     Const(Const),
+    Static(Static),
 }
 impl_from!(
     Function,
@@ -3463,7 +3464,8 @@ impl_from!(
     TraitAlias,
     TypeAlias,
     Impl,
-    Const
+    Const,
+    Static
     for GenericDef
 );
 
@@ -3513,6 +3515,7 @@ impl GenericDef {
             GenericDef::TypeAlias(it) => it.id.into(),
             GenericDef::Impl(it) => it.id.into(),
             GenericDef::Const(it) => it.id.into(),
+            GenericDef::Static(it) => it.id.into(),
         }
     }
 
@@ -3570,6 +3573,7 @@ impl GenericDef {
                     item_tree_source_maps.impl_(id.value).generics()
                 }
                 GenericDefId::ConstId(_) => return,
+                GenericDefId::StaticId(_) => return,
             },
         };
 
