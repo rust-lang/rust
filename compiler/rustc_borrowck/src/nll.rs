@@ -11,8 +11,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::pretty::{PrettyPrintMirOptions, dump_mir_with_options};
 use rustc_middle::mir::{
-    Body, ClosureOutlivesSubject, ClosureRegionRequirements, PassWhere, Promoted, create_dump_file,
-    dump_enabled, dump_mir,
+    Body, ClosureRequirements, PassWhere, Promoted, create_dump_file, dump_enabled, dump_mir,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, OpaqueHiddenType, TyCtxt};
@@ -43,7 +42,7 @@ pub(crate) struct NllOutput<'tcx> {
     pub opaque_type_values: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
     pub polonius_input: Option<Box<PoloniusFacts>>,
     pub polonius_output: Option<Box<PoloniusOutput>>,
-    pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
+    pub opt_closure_req: Option<ClosureRequirements<'tcx>>,
     pub nll_errors: RegionErrors<'tcx>,
 
     /// When using `-Zpolonius=next`: the localized typeck and liveness constraints.
@@ -171,7 +170,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     });
 
     // Solve the region constraints.
-    let (closure_region_requirements, nll_errors) =
+    let (closure_outlives_requirements, nll_errors) =
         regioncx.solve(infcx, body, polonius_output.clone());
 
     if let Some(guar) = nll_errors.has_errors() {
@@ -179,14 +178,36 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         infcx.set_tainted_by_errors(guar);
     }
 
-    let remapped_opaque_tys = regioncx.infer_opaque_types(infcx, opaque_type_values);
+    let (opaque_type_values, opt_closure_req) = if infcx.tcx.is_typeck_child(body.source.def_id()) {
+        let opaque_types = regioncx.propagate_opaque_types(infcx, opaque_type_values);
+        let num_external_vids = regioncx.universal_regions().num_global_and_external_regions();
+        let closure_requirements = ClosureRequirements {
+            num_external_vids,
+            num_existential_external_regions: regioncx
+                .universal_regions()
+                .existential_external_regions
+                .len(),
+            outlives_requirements: closure_outlives_requirements.unwrap(),
+            opaque_types,
+        };
+        if closure_requirements.outlives_requirements.is_empty()
+            && closure_requirements.opaque_types.is_empty()
+        {
+            (Default::default(), None)
+        } else {
+            (Default::default(), Some(closure_requirements))
+        }
+    } else {
+        assert!(closure_outlives_requirements.is_none());
+        (regioncx.infer_opaque_types(infcx, opaque_type_values), None)
+    };
 
     NllOutput {
         regioncx,
-        opaque_type_values: remapped_opaque_tys,
+        opaque_type_values,
         polonius_input: polonius_facts.map(Box::new),
         polonius_output,
-        opt_closure_req: closure_region_requirements,
+        opt_closure_req,
         nll_errors,
         localized_outlives_constraints,
     }
@@ -205,7 +226,7 @@ pub(super) fn dump_nll_mir<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
-    closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
+    closure_requirements: &Option<ClosureRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
     let tcx = infcx.tcx;
@@ -229,7 +250,7 @@ pub(super) fn dump_nll_mir<'tcx>(
         &0,
         body,
         |pass_where, out| {
-            emit_nll_mir(tcx, regioncx, closure_region_requirements, borrow_set, pass_where, out)
+            emit_nll_mir(tcx, regioncx, closure_requirements, borrow_set, pass_where, out)
         },
         options,
     );
@@ -251,7 +272,7 @@ pub(super) fn dump_nll_mir<'tcx>(
 pub(crate) fn emit_nll_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
-    closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
+    closure_requirements: &Option<ClosureRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
     pass_where: PassWhere,
     out: &mut dyn io::Write,
@@ -262,9 +283,9 @@ pub(crate) fn emit_nll_mir<'tcx>(
             regioncx.dump_mir(tcx, out)?;
             writeln!(out, "|")?;
 
-            if let Some(closure_region_requirements) = closure_region_requirements {
+            if let Some(closure_requirements) = closure_requirements {
                 writeln!(out, "| Free Region Constraints")?;
-                for_each_region_constraint(tcx, closure_region_requirements, &mut |msg| {
+                for_each_region_constraint(tcx, closure_requirements, &mut |msg| {
                     writeln!(out, "| {msg}")
                 })?;
                 writeln!(out, "|")?;
@@ -298,7 +319,7 @@ pub(super) fn dump_annotation<'tcx, 'infcx>(
     infcx: &'infcx BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
-    closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
+    closure_requirements: &Option<ClosureRequirements<'tcx>>,
     opaque_type_values: &FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
     diagnostics_buffer: &mut BorrowckDiagnosticsBuffer<'infcx, 'tcx>,
 ) {
@@ -316,19 +337,16 @@ pub(super) fn dump_annotation<'tcx, 'infcx>(
     // better.
 
     let def_span = tcx.def_span(body.source.def_id());
-    let mut err = if let Some(closure_region_requirements) = closure_region_requirements {
+    let mut err = if let Some(closure_requirements) = closure_requirements {
         let mut err = infcx.dcx().struct_span_note(def_span, "external requirements");
 
         regioncx.annotate(tcx, &mut err);
 
-        err.note(format!(
-            "number of external vids: {}",
-            closure_region_requirements.num_external_vids
-        ));
+        err.note(format!("number of external vids: {}", closure_requirements.num_external_vids));
 
         // Dump the region constraints we are imposing *between* those
         // newly created variables.
-        for_each_region_constraint(tcx, closure_region_requirements, &mut |msg| {
+        for_each_region_constraint(tcx, closure_requirements, &mut |msg| {
             err.note(msg);
             Ok(())
         })
@@ -351,20 +369,26 @@ pub(super) fn dump_annotation<'tcx, 'infcx>(
 
 fn for_each_region_constraint<'tcx>(
     tcx: TyCtxt<'tcx>,
-    closure_region_requirements: &ClosureRegionRequirements<'tcx>,
+    closure_requirements: &ClosureRequirements<'tcx>,
     with_msg: &mut dyn FnMut(String) -> io::Result<()>,
 ) -> io::Result<()> {
-    for req in &closure_region_requirements.outlives_requirements {
-        let subject = match req.subject {
-            ClosureOutlivesSubject::Region(subject) => format!("{subject:?}"),
-            ClosureOutlivesSubject::Ty(ty) => {
-                with_no_trimmed_paths!(format!(
-                    "{}",
-                    ty.instantiate(tcx, |vid| ty::Region::new_var(tcx, vid))
-                ))
-            }
-        };
-        with_msg(format!("where {}: {:?}", subject, req.outlived_free_region,))?;
+    for req in &closure_requirements.outlives_requirements {
+        let subject = with_no_trimmed_paths!(format!(
+            "{:?}",
+            req.subject.instantiate(tcx, |vid| ty::Region::new_var(tcx, vid))
+        ));
+        // TODO
+        with_msg(format!(
+            "where {}: {:?}",
+            subject,
+            req.outlived_free_region.instantiate(tcx, |vid| ty::Region::new_var(tcx, vid))
+        ))?;
+    }
+
+    for data in &closure_requirements.opaque_types {
+        // TODO
+        let (key, hidden_ty) = data.instantiate(tcx, |vid| ty::Region::new_var(tcx, vid));
+        with_msg(format!("where {key:?} = {hidden_ty:?}"))?;
     }
     Ok(())
 }

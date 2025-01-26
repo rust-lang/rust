@@ -243,7 +243,10 @@ pub(crate) struct RegionValues<N: Idx> {
     location_map: Rc<DenseLocationMap>,
     placeholder_indices: PlaceholderIndices,
     points: SparseIntervalMatrix<N, PointIndex>,
-    free_regions: SparseBitMatrix<N, RegionVid>,
+    free_regions: SparseBitMatrix<N, usize>,
+    // TODO
+    num_universal_regions: usize,
+    existential_external_regions: FxIndexSet<RegionVid>,
 
     /// Placeholders represent bound regions -- so something like `'a`
     /// in `for<'a> fn(&'a u32)`.
@@ -257,6 +260,7 @@ impl<N: Idx> RegionValues<N> {
     pub(crate) fn new(
         location_map: Rc<DenseLocationMap>,
         num_universal_regions: usize,
+        existential_external_regions: &FxIndexSet<RegionVid>,
         placeholder_indices: PlaceholderIndices,
     ) -> Self {
         let num_points = location_map.num_points();
@@ -265,7 +269,11 @@ impl<N: Idx> RegionValues<N> {
             location_map,
             points: SparseIntervalMatrix::new(num_points),
             placeholder_indices,
-            free_regions: SparseBitMatrix::new(num_universal_regions),
+            free_regions: SparseBitMatrix::new(
+                num_universal_regions + existential_external_regions.len(),
+            ),
+            num_universal_regions,
+            existential_external_regions: existential_external_regions.clone(),
             placeholders: SparseBitMatrix::new(num_placeholders),
         }
     }
@@ -353,7 +361,16 @@ impl<N: Idx> RegionValues<N> {
         &'a self,
         r: N,
     ) -> impl Iterator<Item = RegionVid> + 'a {
-        self.free_regions.row(r).into_iter().flat_map(|set| set.iter())
+        self.free_regions.row(r).into_iter().flat_map(|set| set.iter()).map(|idx| {
+            if idx < self.num_universal_regions {
+                RegionVid::from_usize(idx)
+            } else {
+                *self
+                    .existential_external_regions
+                    .get_index(idx - self.num_universal_regions)
+                    .unwrap()
+            }
+        })
     }
 
     /// Returns all the elements contained in a given region's value.
@@ -410,11 +427,25 @@ impl ToElementIndex for Location {
 
 impl ToElementIndex for RegionVid {
     fn add_to_row<N: Idx>(self, values: &mut RegionValues<N>, row: N) -> bool {
-        values.free_regions.insert(row, self)
+        let idx = if self.as_usize() < values.num_universal_regions {
+            self.as_usize()
+        } else {
+            values.num_universal_regions
+                + values.existential_external_regions.get_index_of(&self).unwrap()
+        };
+
+        values.free_regions.insert(row, idx)
     }
 
     fn contained_in_row<N: Idx>(self, values: &RegionValues<N>, row: N) -> bool {
-        values.free_regions.contains(row, self)
+        let idx = if self.as_usize() < values.num_universal_regions {
+            self.as_usize()
+        } else {
+            values.num_universal_regions
+                + values.existential_external_regions.get_index_of(&self).unwrap()
+        };
+
+        values.free_regions.contains(row, idx)
     }
 }
 
