@@ -11,7 +11,7 @@ default = ["rustc-hash"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
-rustc-hash = { version = "2.0", optional = true }
+rustc-hash = { git = "https://github.com/orlp/rustc-hash", rev = "3a89863922cb4ba5237a5bef65a9535b3d598663", features = ["nightly"], optional=true }
 
 [dev-dependencies]
 serde_json = "1.0"
