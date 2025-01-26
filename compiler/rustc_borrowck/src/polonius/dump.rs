@@ -1,6 +1,7 @@
 use std::io;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_index::IndexVec;
 use rustc_middle::mir::pretty::{
     PassWhere, PrettyPrintMirOptions, create_dump_file, dump_enabled, dump_mir_to_writer,
 };
@@ -54,6 +55,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 /// - the list of polonius localized constraints
 /// - a mermaid graph of the CFG
 /// - a mermaid graph of the NLL regions and the constraints between them
+/// - a mermaid graph of the NLL SCCs and the constraints between them
 fn emit_polonius_dump<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
@@ -98,6 +100,14 @@ fn emit_polonius_dump<'tcx>(
     writeln!(out, "NLL regions")?;
     writeln!(out, "<pre class='mermaid'>")?;
     emit_mermaid_nll_regions(regioncx, out)?;
+    writeln!(out, "</pre>")?;
+    writeln!(out, "</div>")?;
+
+    // Section 4: mermaid visualization of the NLL SCC graph.
+    writeln!(out, "<div>")?;
+    writeln!(out, "NLL SCCs")?;
+    writeln!(out, "<pre class='mermaid'>")?;
+    emit_mermaid_nll_sccs(regioncx, out)?;
     writeln!(out, "</pre>")?;
     writeln!(out, "</div>")?;
 
@@ -341,5 +351,44 @@ fn emit_mermaid_nll_regions<'tcx>(
         // Target node.
         writeln!(out, " --> {}", outlives.sub.as_usize())?;
     }
+    Ok(())
+}
+
+/// Emits a mermaid flowchart of the NLL SCCs and the outlives constraints between them, similar
+/// to the graphviz version.
+fn emit_mermaid_nll_sccs<'tcx>(
+    regioncx: &RegionInferenceContext<'tcx>,
+    out: &mut dyn io::Write,
+) -> io::Result<()> {
+    // The mermaid chart type: a top-down flowchart.
+    writeln!(out, "flowchart TD")?;
+
+    // Gather and emit the SCC nodes.
+    let mut nodes_per_scc: IndexVec<_, _> =
+        regioncx.constraint_sccs().all_sccs().map(|_| Vec::new()).collect();
+    for region in regioncx.var_infos.indices() {
+        let scc = regioncx.constraint_sccs().scc(region);
+        nodes_per_scc[scc].push(region);
+    }
+    for (scc, regions) in nodes_per_scc.iter_enumerated() {
+        // The node label: the regions contained in the SCC.
+        write!(out, "{scc}[\"SCC({scc}) = {{", scc = scc.as_usize())?;
+        for (idx, &region) in regions.iter().enumerate() {
+            render_region(region, regioncx, out)?;
+            if idx < regions.len() - 1 {
+                write!(out, ",")?;
+            }
+        }
+        writeln!(out, "}}\"]")?;
+    }
+
+    // Emit the edges between SCCs.
+    let edges = regioncx.constraint_sccs().all_sccs().flat_map(|source| {
+        regioncx.constraint_sccs().successors(source).iter().map(move |&target| (source, target))
+    });
+    for (source, target) in edges {
+        writeln!(out, "{} --> {}", source.as_usize(), target.as_usize())?;
+    }
+
     Ok(())
 }
