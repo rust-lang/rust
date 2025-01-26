@@ -11,6 +11,7 @@
 #![feature(async_iter_from_iter)]
 #![feature(async_iterator)]
 #![feature(bigint_helper_methods)]
+#![feature(bstr)]
 #![feature(cell_update)]
 #![feature(clone_to_uninit)]
 #![feature(const_black_box)]
@@ -139,6 +140,7 @@ mod asserting;
 mod async_iter;
 mod atomic;
 mod bool;
+mod bstr;
 mod cell;
 mod char;
 mod clone;

@@ -1,6 +1,4 @@
-#![feature(bstr)]
-
-use core::ByteStr;
+use core::bstr::ByteStr;
 
 #[test]
 fn test_debug() {
