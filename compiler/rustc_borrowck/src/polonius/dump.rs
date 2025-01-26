@@ -1,14 +1,17 @@
 use std::io;
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::pretty::{
     PassWhere, PrettyPrintMirOptions, create_dump_file, dump_enabled, dump_mir_to_writer,
 };
 use rustc_middle::mir::{Body, ClosureRegionRequirements};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_session::config::MirIncludeSpans;
 
 use crate::borrow_set::BorrowSet;
+use crate::constraints::OutlivesConstraint;
 use crate::polonius::{LocalizedOutlivesConstraint, LocalizedOutlivesConstraintSet};
+use crate::type_check::Locations;
 use crate::{BorrowckInferCtxt, RegionInferenceContext};
 
 /// `-Zdump-mir=polonius` dumps MIR annotated with NLL and polonius specific information.
@@ -50,6 +53,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 /// - the NLL MIR
 /// - the list of polonius localized constraints
 /// - a mermaid graph of the CFG
+/// - a mermaid graph of the NLL regions and the constraints between them
 fn emit_polonius_dump<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
@@ -87,6 +91,14 @@ fn emit_polonius_dump<'tcx>(
     writeln!(out, "<code><pre class='mermaid'>")?;
     emit_mermaid_cfg(body, out)?;
     writeln!(out, "</pre></code>")?;
+    writeln!(out, "</div>")?;
+
+    // Section 3: mermaid visualization of the NLL region graph.
+    writeln!(out, "<div>")?;
+    writeln!(out, "NLL regions")?;
+    writeln!(out, "<pre class='mermaid'>")?;
+    emit_mermaid_nll_regions(regioncx, out)?;
+    writeln!(out, "</pre>")?;
     writeln!(out, "</div>")?;
 
     // Finalize the dump with the HTML epilogue.
@@ -259,5 +271,75 @@ fn emit_mermaid_cfg(body: &Body<'_>, out: &mut dyn io::Write) -> io::Result<()> 
         }
     }
 
+    Ok(())
+}
+
+/// Emits a region's label: index, universe, external name.
+fn render_region(
+    region: RegionVid,
+    regioncx: &RegionInferenceContext<'_>,
+    out: &mut dyn io::Write,
+) -> io::Result<()> {
+    let def = regioncx.region_definition(region);
+    let universe = def.universe;
+
+    write!(out, "'{}", region.as_usize())?;
+    if !universe.is_root() {
+        write!(out, "/{universe:?}")?;
+    }
+    if let Some(name) = def.external_name.and_then(|e| e.get_name()) {
+        write!(out, " ({name})")?;
+    }
+    Ok(())
+}
+
+/// Emits a mermaid flowchart of the NLL regions and the outlives constraints between them, similar
+/// to the graphviz version.
+fn emit_mermaid_nll_regions<'tcx>(
+    regioncx: &RegionInferenceContext<'tcx>,
+    out: &mut dyn io::Write,
+) -> io::Result<()> {
+    // The mermaid chart type: a top-down flowchart.
+    writeln!(out, "flowchart TD")?;
+
+    // Emit the region nodes.
+    for region in regioncx.var_infos.indices() {
+        write!(out, "{}[\"", region.as_usize())?;
+        render_region(region, regioncx, out)?;
+        writeln!(out, "\"]")?;
+    }
+
+    // Get a set of edges to check for the reverse edge being present.
+    let edges: FxHashSet<_> = regioncx.outlives_constraints().map(|c| (c.sup, c.sub)).collect();
+
+    // Order (and deduplicate) edges for traversal, to display them in a generally increasing order.
+    let constraint_key = |c: &OutlivesConstraint<'_>| {
+        let min = c.sup.min(c.sub);
+        let max = c.sup.max(c.sub);
+        (min, max)
+    };
+    let mut ordered_edges: Vec<_> = regioncx.outlives_constraints().collect();
+    ordered_edges.sort_by_key(|c| constraint_key(c));
+    ordered_edges.dedup_by_key(|c| constraint_key(c));
+
+    for outlives in ordered_edges {
+        // Source node.
+        write!(out, "{} ", outlives.sup.as_usize())?;
+
+        // The kind of arrow: bidirectional if the opposite edge exists in the set.
+        if edges.contains(&(outlives.sub, outlives.sup)) {
+            write!(out, "&lt;")?;
+        }
+        write!(out, "-- ")?;
+
+        // Edge label from its `Locations`.
+        match outlives.locations {
+            Locations::All(_) => write!(out, "All")?,
+            Locations::Single(location) => write!(out, "{:?}", location)?,
+        }
+
+        // Target node.
+        writeln!(out, " --> {}", outlives.sub.as_usize())?;
+    }
     Ok(())
 }
