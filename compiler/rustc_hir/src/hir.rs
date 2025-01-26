@@ -1285,13 +1285,13 @@ impl fmt::Debug for OwnerNodes<'_> {
             .field("node", &self.nodes[ItemLocalId::ZERO])
             .field(
                 "parents",
-                &self
-                    .nodes
-                    .iter_enumerated()
-                    .map(|(id, parented_node)| {
-                        debug_fn(move |f| write!(f, "({id:?}, {:?})", parented_node.parent))
-                    })
-                    .collect::<Vec<_>>(),
+                &fmt::from_fn(|f| {
+                    f.debug_list()
+                        .entries(self.nodes.iter_enumerated().map(|(id, parented_node)| {
+                            fmt::from_fn(move |f| write!(f, "({id:?}, {:?})", parented_node.parent))
+                        }))
+                        .finish()
+                }),
             )
             .field("bodies", &self.bodies)
             .field("opt_hash_including_bodies", &self.opt_hash_including_bodies)
@@ -4636,16 +4636,6 @@ mod size_asserts {
     static_assert_size!(Ty<'_>, 48);
     static_assert_size!(TyKind<'_>, 32);
     // tidy-alphabetical-end
-}
-
-fn debug_fn(f: impl Fn(&mut fmt::Formatter<'_>) -> fmt::Result) -> impl fmt::Debug {
-    struct DebugFn<F>(F);
-    impl<F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result> fmt::Debug for DebugFn<F> {
-        fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-            (self.0)(fmt)
-        }
-    }
-    DebugFn(f)
 }
 
 #[cfg(test)]
