@@ -1730,7 +1730,20 @@ impl<T: Default> Default for Box<T> {
     /// Creates a `Box<T>`, with the `Default` value for T.
     #[inline]
     fn default() -> Self {
-        Box::write(Box::new_uninit(), T::default())
+        let mut x: Box<mem::MaybeUninit<T>> = Box::new_uninit();
+        unsafe {
+            // SAFETY: `x` is valid for writing and has the same layout as `T`.
+            // If `T::default()` panics, dropping `x` will just deallocate the Box as `MaybeUninit<T>`
+            // does not have a destructor.
+            //
+            // We use `ptr::write` as `MaybeUninit::write` creates
+            // extra stack copies of `T` in debug mode.
+            //
+            // See https://github.com/rust-lang/rust/issues/136043 for more context.
+            ptr::write(&raw mut *x as *mut T, T::default());
+            // SAFETY: `x` was just initialized above.
+            x.assume_init()
+        }
     }
 }
 

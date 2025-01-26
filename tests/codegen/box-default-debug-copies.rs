@@ -5,6 +5,9 @@
 // four `T` allocas.
 //
 // See https://github.com/rust-lang/rust/issues/136043 for more context.
+//
+// FIXME: This test only wants to ensure that there are at most two allocas of `T` created, instead
+// of checking for exactly two.
 
 #![crate_type = "lib"]
 
@@ -17,7 +20,7 @@ impl Default for Thing {
     }
 }
 
-// CHECK-COUNT-4: %{{.*}} = alloca {{.*}}1000000
+// CHECK-COUNT-2: %{{.*}} = alloca {{.*}}1000000
 // CHECK-NOT: %{{.*}} = alloca {{.*}}1000000
 #[no_mangle]
 pub fn box_default_single_copy() -> Box<Thing> {
