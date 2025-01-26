@@ -30,8 +30,8 @@ unsafe extern "C" {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvtss2si))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cvtss_si64(a: __m128) -> i64 {
-    cvtss2si64(a)
+pub fn _mm_cvtss_si64(a: __m128) -> i64 {
+    unsafe { cvtss2si64(a) }
 }
 
 /// Converts the lowest 32 bit float in the input vector to a 64 bit integer
@@ -49,8 +49,8 @@ pub unsafe fn _mm_cvtss_si64(a: __m128) -> i64 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvttss2si))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cvttss_si64(a: __m128) -> i64 {
-    cvttss2si64(a)
+pub fn _mm_cvttss_si64(a: __m128) -> i64 {
+    unsafe { cvttss2si64(a) }
 }
 
 /// Converts a 64 bit integer to a 32 bit float. The result vector is the input
@@ -64,8 +64,8 @@ pub unsafe fn _mm_cvttss_si64(a: __m128) -> i64 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvtsi2ss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cvtsi64_ss(a: __m128, b: i64) -> __m128 {
-    cvtsi642ss(a, b)
+pub fn _mm_cvtsi64_ss(a: __m128, b: i64) -> __m128 {
+    unsafe { cvtsi642ss(a, b) }
 }
 
 #[cfg(test)]
