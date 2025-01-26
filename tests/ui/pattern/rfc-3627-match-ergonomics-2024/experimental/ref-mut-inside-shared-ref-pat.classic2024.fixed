@@ -13,8 +13,8 @@
 #![cfg_attr(any(structural2021, structural2024), feature(ref_pat_eat_one_layer_2024_structural))]
 
 pub fn main() {
-    if let Some(&mut Some(ref mut x)) = &mut Some(Some(0)) { // TODO: `classic2021` and `structural2021` shouldn't have mismatched types
-        //[stable2021,classic2021,structural2021]~^ ERROR: mismatched types
+    if let Some(&mut Some(ref mut x)) = &mut Some(Some(0)) {
+        //[stable2021]~^ ERROR: mismatched types
         //[classic2021,structural2021,classic2024,structural2024]~^^ ERROR: cannot borrow as mutable inside an `&` pattern
         let _: &mut u8 = x;
     }

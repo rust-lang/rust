@@ -58,7 +58,7 @@ LL |     if let Some(&Some(Some(&mut x))) = &Some(Some(&mut Some(0))) {
            found reference `&_`
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:57:17
+  --> $DIR/pattern-errors.rs:56:17
    |
 LL |     if let Some(&mut Some(x)) = &Some(Some(0)) {
    |                 ^^^^^^^^^^^^    -------------- this expression has type `&Option<Option<{integer}>>`
@@ -69,7 +69,7 @@ LL |     if let Some(&mut Some(x)) = &Some(Some(0)) {
            found mutable reference `&mut _`
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:66:11
+  --> $DIR/pattern-errors.rs:64:11
    |
 LL |     let &[&mut x] = &&mut [0];
    |           ^^^^^^    --------- this expression has type `&&mut [{integer}; 1]`
@@ -79,7 +79,7 @@ LL |     let &[&mut x] = &&mut [0];
    = note:           expected type `{integer}`
            found mutable reference `&mut _`
 note: to declare a mutable binding use: `mut x`
-  --> $DIR/pattern-errors.rs:66:11
+  --> $DIR/pattern-errors.rs:64:11
    |
 LL |     let &[&mut x] = &&mut [0];
    |           ^^^^^^
@@ -90,7 +90,7 @@ LL +     let &[x] = &&mut [0];
    |
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:73:9
+  --> $DIR/pattern-errors.rs:70:9
    |
 LL |     let &[&mut x] = &mut &mut [0];
    |         ^^^^^^^^^   ------------- this expression has type `&mut &mut [{integer}; 1]`
@@ -101,7 +101,7 @@ LL |     let &[&mut x] = &mut &mut [0];
                       found reference `&_`
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:80:11
+  --> $DIR/pattern-errors.rs:76:11
    |
 LL |     let &[&mut ref x] = &&mut [0];
    |           ^^^^^^^^^^    --------- this expression has type `&&mut [{integer}; 1]`
@@ -111,7 +111,7 @@ LL |     let &[&mut ref x] = &&mut [0];
    = note:           expected type `{integer}`
            found mutable reference `&mut _`
 note: to declare a mutable binding use: `mut x`
-  --> $DIR/pattern-errors.rs:80:11
+  --> $DIR/pattern-errors.rs:76:11
    |
 LL |     let &[&mut ref x] = &&mut [0];
    |           ^^^^^^^^^^
@@ -122,7 +122,7 @@ LL +     let &[ref x] = &&mut [0];
    |
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:87:9
+  --> $DIR/pattern-errors.rs:82:9
    |
 LL |     let &[&mut ref x] = &mut &mut [0];
    |         ^^^^^^^^^^^^^   ------------- this expression has type `&mut &mut [{integer}; 1]`
@@ -133,7 +133,7 @@ LL |     let &[&mut ref x] = &mut &mut [0];
                       found reference `&_`
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:94:11
+  --> $DIR/pattern-errors.rs:88:11
    |
 LL |     let &[&mut mut x] = &&mut [0];
    |           ^^^^^^^^^^    --------- this expression has type `&&mut [{integer}; 1]`
@@ -143,7 +143,7 @@ LL |     let &[&mut mut x] = &&mut [0];
    = note:           expected type `{integer}`
            found mutable reference `&mut _`
 note: to declare a mutable binding use: `mut x`
-  --> $DIR/pattern-errors.rs:94:11
+  --> $DIR/pattern-errors.rs:88:11
    |
 LL |     let &[&mut mut x] = &&mut [0];
    |           ^^^^^^^^^^
@@ -154,7 +154,7 @@ LL +     let &[mut x] = &&mut [0];
    |
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:101:9
+  --> $DIR/pattern-errors.rs:94:9
    |
 LL |     let &[&mut mut x] = &mut &mut [0];
    |         ^^^^^^^^^^^^^   ------------- this expression has type `&mut &mut [{integer}; 1]`
@@ -165,7 +165,7 @@ LL |     let &[&mut mut x] = &mut &mut [0];
                       found reference `&_`
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:122:10
+  --> $DIR/pattern-errors.rs:114:10
    |
 LL |     let [&&mut x] = &[&mut 0];
    |          ^^^^^^^    --------- this expression has type `&[&mut {integer}; 1]`
@@ -176,7 +176,7 @@ LL |     let [&&mut x] = &[&mut 0];
                       found reference `&_`
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:129:10
+  --> $DIR/pattern-errors.rs:121:10
    |
 LL |     let [&&mut x] = &mut [&mut 0];
    |          ^^^^^^^    ------------- this expression has type `&mut [&mut {integer}; 1]`
@@ -187,7 +187,7 @@ LL |     let [&&mut x] = &mut [&mut 0];
                       found reference `&_`
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:136:10
+  --> $DIR/pattern-errors.rs:128:10
    |
 LL |     let [&&mut ref x] = &[&mut 0];
    |          ^^^^^^^^^^^    --------- this expression has type `&[&mut {integer}; 1]`
@@ -198,7 +198,7 @@ LL |     let [&&mut ref x] = &[&mut 0];
                       found reference `&_`
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:143:10
+  --> $DIR/pattern-errors.rs:135:10
    |
 LL |     let [&&mut ref x] = &mut [&mut 0];
    |          ^^^^^^^^^^^    ------------- this expression has type `&mut [&mut {integer}; 1]`
@@ -209,7 +209,7 @@ LL |     let [&&mut ref x] = &mut [&mut 0];
                       found reference `&_`
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:150:10
+  --> $DIR/pattern-errors.rs:142:10
    |
 LL |     let [&&mut mut x] = &[&mut 0];
    |          ^^^^^^^^^^^    --------- this expression has type `&[&mut {integer}; 1]`
@@ -220,7 +220,7 @@ LL |     let [&&mut mut x] = &[&mut 0];
                       found reference `&_`
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:157:10
+  --> $DIR/pattern-errors.rs:149:10
    |
 LL |     let [&&mut mut x] = &mut [&mut 0];
    |          ^^^^^^^^^^^    ------------- this expression has type `&mut [&mut {integer}; 1]`
@@ -231,7 +231,7 @@ LL |     let [&&mut mut x] = &mut [&mut 0];
                       found reference `&_`
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:172:15
+  --> $DIR/pattern-errors.rs:164:15
    |
 LL |     let [&mut &x] = &[&mut 0];
    |               ^^    --------- this expression has type `&[&mut {integer}; 1]`
@@ -247,7 +247,7 @@ LL +     let [&mut x] = &[&mut 0];
    |
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:178:15
+  --> $DIR/pattern-errors.rs:170:15
    |
 LL |     let [&mut &ref x] = &[&mut 0];
    |               ^^^^^^    --------- this expression has type `&[&mut {integer}; 1]`
@@ -263,7 +263,7 @@ LL +     let [&mut ref x] = &[&mut 0];
    |
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:184:15
+  --> $DIR/pattern-errors.rs:176:15
    |
 LL |     let [&mut &(mut x)] = &[&mut 0];
    |               ^^^^^^^^    --------- this expression has type `&[&mut {integer}; 1]`
