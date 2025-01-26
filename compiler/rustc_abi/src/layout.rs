@@ -818,11 +818,15 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let mut layout_variants = variants
             .iter_enumerated()
             .map(|(i, field_layouts)| {
-                let mut st = self.univariant(
-                    field_layouts,
-                    repr,
-                    StructKind::Prefixed(min_ity.size(), prefix_align),
-                )?;
+                let uninhabited = field_layouts.iter().any(|f| f.is_uninhabited());
+                // We don't need to encode the tag in uninhabited variants in repr(Rust) enums
+                let struct_kind = if uninhabited && !repr.inhibit_enum_layout_opt() {
+                    StructKind::AlwaysSized
+                } else {
+                    StructKind::Prefixed(min_ity.size(), prefix_align)
+                };
+                let mut st = self.univariant(field_layouts, repr, struct_kind)?;
+
                 st.variants = Variants::Single { index: i, variants: None };
                 // Find the first field we can't move later
                 // to make room for a larger discriminant.
@@ -892,6 +896,11 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let old_ity_size = min_ity.size();
             let new_ity_size = ity.size();
             for variant in &mut layout_variants {
+                // Don't change field offsets of uninhabited variants in repr(Rust) enums,
+                // they don't encode the tag and their fields may overlap with the tag.
+                if variant.is_uninhabited() && !repr.inhibit_enum_layout_opt() {
+                    continue;
+                }
                 match variant.fields {
                     FieldsShape::Arbitrary { ref mut offsets, .. } => {
                         for i in offsets {
@@ -936,6 +945,12 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 let FieldsShape::Arbitrary { ref offsets, .. } = layout_variant.fields else {
                     panic!("encountered a non-arbitrary layout during enum layout");
                 };
+                // Don't look in uninhabited variants for repr(Rust) enums, they will never be
+                // passed over an ABI so they don't matter for the purpose of determining
+                // BackendRepr.
+                if layout_variant.is_uninhabited() && !repr.inhibit_enum_layout_opt() {
+                    continue;
+                }
                 // We skip *all* ZST here and later check if we are good in terms of alignment.
                 // This lets us handle some cases involving aligned ZST.
                 let mut fields = iter::zip(field_layouts, offsets).filter(|p| !p.0.is_zst());
@@ -1051,6 +1066,43 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             .iter()
             .map(|v| v.randomization_seed)
             .fold(repr.field_shuffle_seed, |acc, seed| acc.wrapping_add(seed));
+
+        // If all variants are uninhabited, the repr does not inhibit layout optimizations,
+        // and all fields are ZSTs, then the tagged layout will not have room for the tag.
+        // So in this case, we return an uninhabited layout that is big enough and aligned
+        // enough for all variant fields, but do not say it has any fields itself.
+        // Doing this only when the layout is too small to fit the tag gives better error
+        // messages during const-eval in some cases, "constructing invalid value at .<enum-tag>:
+        // encountered an uninhabited enum variant" instead of "constructing invalid value:
+        // encountered a value of uninhabited type".
+        // Note the we only reach this case when there is at least one non-1-aligned ZST field,
+        // since the all-1-ZST case is handled by the "present_variants" check in
+        // `layout_of_struct_or_enum`.
+        if uninhabited && size < tag.size(&self.cx) {
+            // The only way for the size to be less than the tag's size is for it to be zero,
+            // which can only occur when the repr does not inhibit layout optimization.
+            debug_assert!(
+                size == Size::ZERO,
+                "size was non-zero but less than tag size: 0 < {size:?} < {:?}",
+                tag.size(&self.cx)
+            );
+            debug_assert!(
+                !repr.inhibit_enum_layout_opt(),
+                "enum size was zero with layout optimizations disabled"
+            );
+            return Ok(LayoutData {
+                fields: FieldsShape::Arbitrary { offsets: [].into(), in_memory_order: [].into() },
+                variants: Variants::Empty { variants: Some(layout_variants) },
+                backend_repr: BackendRepr::Memory { sized: true },
+                largest_niche: None,
+                uninhabited: true,
+                align: AbiAlign::new(align),
+                size,
+                max_repr_align,
+                unadjusted_abi_align,
+                randomization_seed: combined_seed,
+            });
+        }
 
         let tagged_layout = LayoutData {
             variants: Variants::Multiple {

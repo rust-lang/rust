@@ -4,7 +4,7 @@ error: align: AbiAlign { abi: Align(2 bytes) }
 LL | enum UninhabitedVariantAlign {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: size: Size(16 bytes)
+error: size: Size(15 bytes)
   --> $DIR/enum.rs:15:1
    |
 LL | enum UninhabitedVariantSpace {
@@ -46,7 +46,7 @@ error: size: Size(8 bytes)
 LL | enum UninhabitedVariantUntaggedBigger {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: abi: Memory { sized: true }
+error: abi: ScalarPair(Initialized { value: Int(I8, false), valid_range: 0..=0 }, Initialized { value: Int(I32, true), valid_range: 0..=4294967295 })
   --> $DIR/enum.rs:49:1
    |
 LL | enum UninhabitedVariantUntaggedBigger {
@@ -65,7 +65,7 @@ LL | enum UninhabitedVariantWithNiche {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(UninhabitedVariantLargeWithNiche) = Layout {
-           size: Size(4 bytes),
+           size: Size(3 bytes),
            align: AbiAlign {
                abi: Align(1 bytes),
            },
@@ -140,7 +140,7 @@ error: layout_of(UninhabitedVariantLargeWithNiche) = Layout {
                        randomization_seed: 17394913183323368564,
                    },
                    Layout {
-                       size: Size(4 bytes),
+                       size: Size(3 bytes),
                        align: AbiAlign {
                            abi: Align(1 bytes),
                        },
@@ -149,10 +149,10 @@ error: layout_of(UninhabitedVariantLargeWithNiche) = Layout {
                        },
                        fields: Arbitrary {
                            offsets: [
+                               Size(0 bytes),
                                Size(1 bytes),
                                Size(2 bytes),
                                Size(3 bytes),
-                               Size(4 bytes),
                            ],
                            in_memory_order: [
                                0,
@@ -182,7 +182,7 @@ error: layout_of(UninhabitedVariantLargeWithNiche) = Layout {
 LL | enum UninhabitedVariantLargeWithNiche {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: size: Size(3 bytes)
+error: size: Size(2 bytes)
   --> $DIR/enum.rs:77:1
    |
 LL | enum AllUninhabitedVariants {
@@ -224,19 +224,19 @@ error: size: Size(4 bytes)
 LL | enum TaggedI16 {
    | ^^^^^^^^^^^^^^
 
-error: abi: Memory { sized: true }
+error: abi: ScalarPair(Initialized { value: Int(I16, false), valid_range: 0..=0 }, Initialized { value: Int(I16, true), valid_range: 0..=65535 })
   --> $DIR/enum.rs:105:1
    |
 LL | enum TaggedI16 {
    | ^^^^^^^^^^^^^^
 
-error: size: Size(2 bytes)
+error: size: Size(0 bytes)
   --> $DIR/enum.rs:113:1
    |
 LL | enum AllUninhabitedVariantsAlignedZst {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: abi: Scalar(Initialized { value: Int(I16, false), valid_range: 0..=0 })
+error: abi: Memory { sized: true }
   --> $DIR/enum.rs:113:1
    |
 LL | enum AllUninhabitedVariantsAlignedZst {
