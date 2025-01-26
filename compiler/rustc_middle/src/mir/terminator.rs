@@ -581,9 +581,11 @@ impl<'tcx> TerminatorKind<'tcx> {
 pub enum TerminatorEdges<'mir, 'tcx> {
     /// For terminators that have no successor, like `return`.
     None,
-    /// For terminators that a single successor, like `goto`, and `assert` without cleanup block.
+    /// For terminators that have a single successor, like `goto`, and `assert` without a cleanup
+    /// block.
     Single(BasicBlock),
-    /// For terminators that two successors, `assert` with cleanup block and `falseEdge`.
+    /// For terminators that have two successors, like `assert` with a cleanup block, and
+    /// `falseEdge`.
     Double(BasicBlock, BasicBlock),
     /// Special action for `Yield`, `Call` and `InlineAsm` terminators.
     AssignOnReturn {
