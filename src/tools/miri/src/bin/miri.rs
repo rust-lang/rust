@@ -723,10 +723,9 @@ fn main() {
 
     // Ensure we have parallelism for many-seeds mode.
     if many_seeds.is_some() && !rustc_args.iter().any(|arg| arg.starts_with("-Zthreads=")) {
-        rustc_args.push(format!(
-            "-Zthreads={}",
-            std::thread::available_parallelism().map_or(1, |n| n.get())
-        ));
+        // Clamp to 8 threads; things get a lot less efficient beyond that due to lock contention.
+        let threads = std::thread::available_parallelism().map_or(1, |n| n.get()).min(8);
+        rustc_args.push(format!("-Zthreads={threads}"));
     }
     let many_seeds =
         many_seeds.map(|seeds| ManySeedsConfig { seeds, keep_going: many_seeds_keep_going });
