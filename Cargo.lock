@@ -3222,7 +3222,7 @@ checksum = "c7fb8039b3032c191086b10f11f319a6e99e1e82889c5cc6046f515c9db1d497"
 [[package]]
 name = "rustc-hash"
 version = "2.2.0"
-source = "git+https://github.com/orlp/rustc-hash?rev=2ccde1ec8a948b5463011d3c7363c273fc2bb80e#2ccde1ec8a948b5463011d3c7363c273fc2bb80e"
+source = "git+https://github.com/steffahn/rustc-hash?rev=1028035a81ec84e9fe25e39daeccb9d9ff7245d8#1028035a81ec84e9fe25e39daeccb9d9ff7245d8"
 
 [[package]]
 name = "rustc-main"

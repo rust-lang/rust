@@ -13,7 +13,7 @@ walkdir = "2"
 ignore = "0.4.18"
 semver = "1.0"
 termcolor = "1.1.3"
-rustc-hash = { git = "https://github.com/orlp/rustc-hash", rev = "2ccde1ec8a948b5463011d3c7363c273fc2bb80e" }
+rustc-hash = { git = "https://github.com/steffahn/rustc-hash", rev = "1028035a81ec84e9fe25e39daeccb9d9ff7245d8" }
 fluent-syntax = "0.11.1"
 similar = "2.5.0"
 
