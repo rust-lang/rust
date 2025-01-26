@@ -42,6 +42,8 @@ mir_transform_must_not_suspend = {$pre}`{$def_path}`{$post} held across a suspen
     .help = consider using a block (`{"{ ... }"}`) to shrink the value's scope, ending before the suspend point
 mir_transform_operation_will_panic = this operation will panic at runtime
 
+mir_transform_redundant_transmute = this transmute could be performed safely
+
 mir_transform_tail_expr_drop_order = relative drop order changing in Rust 2024
     .temporaries = in Rust 2024, this temporary value will be dropped first
     .observers = in Rust 2024, this local variable or temporary value will be dropped second
