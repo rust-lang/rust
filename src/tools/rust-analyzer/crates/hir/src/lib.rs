@@ -2361,8 +2361,11 @@ impl Function {
         db.attrs(self.id.into()).is_unstable()
     }
 
-    pub fn is_unsafe_to_call(self, db: &dyn HirDatabase) -> bool {
-        hir_ty::is_fn_unsafe_to_call(db, self.id)
+    pub fn is_unsafe_to_call(self, db: &dyn HirDatabase, caller: Option<Function>) -> bool {
+        let target_features = caller
+            .map(|caller| hir_ty::TargetFeatures::from_attrs(&db.attrs(caller.id.into())))
+            .unwrap_or_default();
+        hir_ty::is_fn_unsafe_to_call(db, self.id, &target_features)
     }
 
     /// Whether this function declaration has a definition.

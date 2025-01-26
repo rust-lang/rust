@@ -457,6 +457,8 @@ define_symbols! {
     system,
     sysv64,
     Target,
+    target_feature,
+    enable,
     termination,
     test_case,
     test,

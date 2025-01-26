@@ -101,6 +101,10 @@ impl FunctionData {
             flags.remove(FnFlags::HAS_UNSAFE_KW);
         }
 
+        if attrs.by_key(&sym::target_feature).exists() {
+            flags.insert(FnFlags::HAS_TARGET_FEATURE);
+        }
+
         Arc::new(FunctionData {
             name: func.name.clone(),
             params: func
@@ -154,6 +158,10 @@ impl FunctionData {
 
     pub fn is_varargs(&self) -> bool {
         self.flags.contains(FnFlags::IS_VARARGS)
+    }
+
+    pub fn has_target_feature(&self) -> bool {
+        self.flags.contains(FnFlags::HAS_TARGET_FEATURE)
     }
 }
 

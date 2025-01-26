@@ -2040,6 +2040,13 @@ impl SemanticsScope<'_> {
         Crate { id: self.resolver.krate() }
     }
 
+    pub fn containing_function(&self) -> Option<Function> {
+        self.resolver.body_owner().and_then(|owner| match owner {
+            DefWithBodyId::FunctionId(id) => Some(id.into()),
+            _ => None,
+        })
+    }
+
     pub(crate) fn resolver(&self) -> &Resolver {
         &self.resolver
     }

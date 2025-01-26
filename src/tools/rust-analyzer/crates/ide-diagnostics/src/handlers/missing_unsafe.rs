@@ -812,4 +812,24 @@ fn main() {
 "#,
         )
     }
+
+    #[test]
+    fn target_feature() {
+        check_diagnostics(
+            r#"
+#[target_feature(enable = "avx")]
+fn foo() {}
+
+#[target_feature(enable = "avx,avx2")]
+fn bar() {
+    foo();
+}
+
+fn baz() {
+    foo();
+ // ^^^^^ 💡 error: call to unsafe function is unsafe and requires an unsafe function or block
+}
+        "#,
+        );
+    }
 }
