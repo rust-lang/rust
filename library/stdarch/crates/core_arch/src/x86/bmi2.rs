@@ -25,7 +25,7 @@ use stdarch_test::assert_instr;
 #[cfg_attr(all(test, target_arch = "x86"), assert_instr(mul))]
 #[target_feature(enable = "bmi2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mulx_u32(a: u32, b: u32, hi: &mut u32) -> u32 {
+pub fn _mulx_u32(a: u32, b: u32, hi: &mut u32) -> u32 {
     let result: u64 = (a as u64) * (b as u64);
     *hi = (result >> 32) as u32;
     result as u32
@@ -38,8 +38,8 @@ pub unsafe fn _mulx_u32(a: u32, b: u32, hi: &mut u32) -> u32 {
 #[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(bzhi))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _bzhi_u32(a: u32, index: u32) -> u32 {
-    x86_bmi2_bzhi_32(a, index)
+pub fn _bzhi_u32(a: u32, index: u32) -> u32 {
+    unsafe { x86_bmi2_bzhi_32(a, index) }
 }
 
 /// Scatter contiguous low order bits of `a` to the result at the positions
@@ -50,8 +50,8 @@ pub unsafe fn _bzhi_u32(a: u32, index: u32) -> u32 {
 #[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(pdep))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _pdep_u32(a: u32, mask: u32) -> u32 {
-    x86_bmi2_pdep_32(a, mask)
+pub fn _pdep_u32(a: u32, mask: u32) -> u32 {
+    unsafe { x86_bmi2_pdep_32(a, mask) }
 }
 
 /// Gathers the bits of `x` specified by the `mask` into the contiguous low
@@ -62,8 +62,8 @@ pub unsafe fn _pdep_u32(a: u32, mask: u32) -> u32 {
 #[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(pext))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _pext_u32(a: u32, mask: u32) -> u32 {
-    x86_bmi2_pext_32(a, mask)
+pub fn _pext_u32(a: u32, mask: u32) -> u32 {
+    unsafe { x86_bmi2_pext_32(a, mask) }
 }
 
 unsafe extern "C" {
