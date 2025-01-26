@@ -1,6 +1,9 @@
+//@ proc-macro: malicious-macro.rs
 #![feature(derive_coerce_pointee, arbitrary_self_types)]
 
 extern crate core;
+extern crate malicious_macro;
+
 use std::marker::CoercePointee;
 
 #[derive(CoercePointee)]
@@ -128,6 +131,14 @@ struct GlobalStdSized<'a, #[pointee] T: ?::std::marker::Sized> {
 #[derive(CoercePointee)]
 #[repr(transparent)]
 struct GlobalCoreSized<'a, #[pointee] T: ?::core::marker::Sized> {
+    ptr: &'a T,
+}
+
+#[derive(CoercePointee)]
+#[malicious_macro::norepr]
+#[repr(transparent)]
+struct TryToWipeRepr<'a, #[pointee] T: ?Sized> {
+    //~^ ERROR: `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout [E0802]
     ptr: &'a T,
 }
 
