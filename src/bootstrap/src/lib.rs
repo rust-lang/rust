@@ -617,8 +617,9 @@ impl Build {
         if self.config.profiler_enabled(target) {
             features.insert("profiler");
         }
-        // Generate memcpy, etc.  FIXME: Remove this once compiler-builtins
-        // automatically detects this target.
+        // Generate memcpy, etc.
+        // FIXME: Remove this once compiler-builtins automatically detects this target,
+        // see <https://github.com/rust-lang/rust/issues/136076>
         if target.contains("zkvm") || target.contains("vex") {
             features.insert("compiler-builtins-mem");
         }

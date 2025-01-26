@@ -98,5 +98,6 @@ debug = 0
 bootstrap.debug = 1
 
 [patch.crates-io]
-# FIXME: remove this once the `armv7a-vex-v5` target is available on nightly and cc-rs is updated with it
+# FIXME: Remove this once a nightly is published with `armv7a-vex-v5` support,
+# see https://github.com/rust-lang/rust/issues/136075
 cc = { git = "https://github.com/rust-lang/cc-rs", rev = "6fe995c675dc1178f570752fa8f6de82913a91dc" }

@@ -9,6 +9,8 @@ const ALLOWED_SOURCES: &[&str] = &[
     // This is `rust_team_data` used by `site` in src/tools/rustc-perf,
     r#""git+https://github.com/rust-lang/team#a5260e76d3aa894c64c56e6ddc8545b9a98043ec""#,
     // This is temporarily used to bootstrap the `armv7a_vex_v5` target until cc-rs has it in its generated target list.
+    // FIXME: Remove this once a nightly is published with `armv7a-vex-v5` support,
+    // see <https://github.com/rust-lang/rust/issues/136075>
     r#""git+https://github.com/rust-lang/cc-rs?rev=6fe995c675dc1178f570752fa8f6de82913a91dc#6fe995c675dc1178f570752fa8f6de82913a91dc""#,
 ];
 
