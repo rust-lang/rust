@@ -8,10 +8,10 @@
       let mut _3: fn(u8) -> u8;
       let _5: ();
       let mut _6: fn(u8) -> u8;
-      let mut _9: {closure@$DIR/gvn.rs:615:19: 615:21};
+      let mut _9: {closure@$DIR/gvn.rs:620:19: 620:21};
       let _10: ();
       let mut _11: fn();
-      let mut _13: {closure@$DIR/gvn.rs:615:19: 615:21};
+      let mut _13: {closure@$DIR/gvn.rs:620:19: 620:21};
       let _14: ();
       let mut _15: fn();
       scope 1 {
@@ -19,7 +19,7 @@
           let _4: fn(u8) -> u8;
           scope 2 {
               debug g => _4;
-              let _7: {closure@$DIR/gvn.rs:615:19: 615:21};
+              let _7: {closure@$DIR/gvn.rs:620:19: 620:21};
               scope 3 {
                   debug closure => _7;
                   let _8: fn();
@@ -62,16 +62,16 @@
           StorageDead(_6);
           StorageDead(_5);
 -         StorageLive(_7);
--         _7 = {closure@$DIR/gvn.rs:615:19: 615:21};
+-         _7 = {closure@$DIR/gvn.rs:620:19: 620:21};
 -         StorageLive(_8);
 +         nop;
-+         _7 = const ZeroSized: {closure@$DIR/gvn.rs:615:19: 615:21};
++         _7 = const ZeroSized: {closure@$DIR/gvn.rs:620:19: 620:21};
 +         nop;
           StorageLive(_9);
 -         _9 = copy _7;
 -         _8 = move _9 as fn() (PointerCoercion(ClosureFnPointer(Safe), AsCast));
-+         _9 = const ZeroSized: {closure@$DIR/gvn.rs:615:19: 615:21};
-+         _8 = const ZeroSized: {closure@$DIR/gvn.rs:615:19: 615:21} as fn() (PointerCoercion(ClosureFnPointer(Safe), AsCast));
++         _9 = const ZeroSized: {closure@$DIR/gvn.rs:620:19: 620:21};
++         _8 = const ZeroSized: {closure@$DIR/gvn.rs:620:19: 620:21} as fn() (PointerCoercion(ClosureFnPointer(Safe), AsCast));
           StorageDead(_9);
           StorageLive(_10);
           StorageLive(_11);
@@ -88,8 +88,8 @@
           StorageLive(_13);
 -         _13 = copy _7;
 -         _12 = move _13 as fn() (PointerCoercion(ClosureFnPointer(Safe), AsCast));
-+         _13 = const ZeroSized: {closure@$DIR/gvn.rs:615:19: 615:21};
-+         _12 = const ZeroSized: {closure@$DIR/gvn.rs:615:19: 615:21} as fn() (PointerCoercion(ClosureFnPointer(Safe), AsCast));
++         _13 = const ZeroSized: {closure@$DIR/gvn.rs:620:19: 620:21};
++         _12 = const ZeroSized: {closure@$DIR/gvn.rs:620:19: 620:21} as fn() (PointerCoercion(ClosureFnPointer(Safe), AsCast));
           StorageDead(_13);
           StorageLive(_14);
           StorageLive(_15);

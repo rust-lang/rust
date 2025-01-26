@@ -16,12 +16,17 @@ use std::ptr::NonNull;
 #[no_mangle]
 pub fn option_nop_match_32(x: Option<u32>) -> Option<u32> {
     // CHECK: start:
-    // TWENTY-NEXT: %trunc = trunc nuw i32 %0 to i1
-    // TWENTY-NEXT: %.2 = select i1 %trunc, i32 %1, i32 undef
-    // CHECK-NEXT: [[REG1:%.*]] = insertvalue { i32, i32 } poison, i32 %0, 0
-    // NINETEEN-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } [[REG1]], i32 %1, 1
-    // TWENTY-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } [[REG1]], i32 %.2, 1
-    // CHECK-NEXT: ret { i32, i32 } [[REG2]]
+    // CHECK-NEXT: [[TRUNC:%.*]] = trunc nuw i32 %0 to i1
+
+    // NINETEEN-NEXT: [[SELECT:%.*]] = select i1 [[TRUNC]], i32 %0, i32 0
+    // NINETEEN-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } poison, i32 [[SELECT]], 0
+    // NINETEEN-NEXT: [[REG3:%.*]] = insertvalue { i32, i32 } [[REG2]], i32 %1, 1
+
+    // TWENTY-NEXT: [[SELECT:%.*]] = select i1 [[TRUNC]], i32 %1, i32 undef
+    // TWENTY-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } poison, i32 %0, 0
+    // TWENTY-NEXT: [[REG3:%.*]] = insertvalue { i32, i32 } [[REG2]], i32 [[SELECT]], 1
+
+    // CHECK-NEXT: ret { i32, i32 } [[REG3]]
     match x {
         Some(x) => Some(x),
         None => None,

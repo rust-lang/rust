@@ -18,7 +18,8 @@
       }
   
       bb2: {
-          _0 = opaque::<T>(copy (*_3)) -> [return: bb3, unwind unreachable];
+-         _0 = opaque::<T>(copy (*_3)) -> [return: bb3, unwind unreachable];
++         _0 = opaque::<T>(copy _1) -> [return: bb3, unwind unreachable];
       }
   
       bb3: {
