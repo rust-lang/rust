@@ -21,8 +21,8 @@ unsafe extern "C" {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvtsd2si))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cvtsd_si64(a: __m128d) -> i64 {
-    cvtsd2si64(a)
+pub fn _mm_cvtsd_si64(a: __m128d) -> i64 {
+    unsafe { cvtsd2si64(a) }
 }
 
 /// Alias for `_mm_cvtsd_si64`
@@ -32,7 +32,7 @@ pub unsafe fn _mm_cvtsd_si64(a: __m128d) -> i64 {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvtsd2si))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cvtsd_si64x(a: __m128d) -> i64 {
+pub fn _mm_cvtsd_si64x(a: __m128d) -> i64 {
     _mm_cvtsd_si64(a)
 }
 
@@ -44,8 +44,8 @@ pub unsafe fn _mm_cvtsd_si64x(a: __m128d) -> i64 {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvttsd2si))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cvttsd_si64(a: __m128d) -> i64 {
-    cvttsd2si64(a)
+pub fn _mm_cvttsd_si64(a: __m128d) -> i64 {
+    unsafe { cvttsd2si64(a) }
 }
 
 /// Alias for `_mm_cvttsd_si64`
@@ -55,7 +55,7 @@ pub unsafe fn _mm_cvttsd_si64(a: __m128d) -> i64 {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvttsd2si))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cvttsd_si64x(a: __m128d) -> i64 {
+pub fn _mm_cvttsd_si64x(a: __m128d) -> i64 {
     _mm_cvttsd_si64(a)
 }
 
@@ -94,7 +94,7 @@ pub unsafe fn _mm_stream_si64(mem_addr: *mut i64, a: i64) {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(movq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cvtsi64_si128(a: i64) -> __m128i {
+pub fn _mm_cvtsi64_si128(a: i64) -> __m128i {
     _mm_set_epi64x(0, a)
 }
 
@@ -106,7 +106,7 @@ pub unsafe fn _mm_cvtsi64_si128(a: i64) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(movq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cvtsi64x_si128(a: i64) -> __m128i {
+pub fn _mm_cvtsi64x_si128(a: i64) -> __m128i {
     _mm_cvtsi64_si128(a)
 }
 
@@ -117,8 +117,8 @@ pub unsafe fn _mm_cvtsi64x_si128(a: i64) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(movq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cvtsi128_si64(a: __m128i) -> i64 {
-    simd_extract!(a.as_i64x2(), 0)
+pub fn _mm_cvtsi128_si64(a: __m128i) -> i64 {
+    unsafe { simd_extract!(a.as_i64x2(), 0) }
 }
 
 /// Returns the lowest element of `a`.
@@ -128,7 +128,7 @@ pub unsafe fn _mm_cvtsi128_si64(a: __m128i) -> i64 {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(movq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cvtsi128_si64x(a: __m128i) -> i64 {
+pub fn _mm_cvtsi128_si64x(a: __m128i) -> i64 {
     _mm_cvtsi128_si64(a)
 }
 
@@ -140,8 +140,8 @@ pub unsafe fn _mm_cvtsi128_si64x(a: __m128i) -> i64 {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvtsi2sd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cvtsi64_sd(a: __m128d, b: i64) -> __m128d {
-    simd_insert!(a, 0, b as f64)
+pub fn _mm_cvtsi64_sd(a: __m128d, b: i64) -> __m128d {
+    unsafe { simd_insert!(a, 0, b as f64) }
 }
 
 /// Returns `a` with its lower element replaced by `b` after converting it to
@@ -152,7 +152,7 @@ pub unsafe fn _mm_cvtsi64_sd(a: __m128d, b: i64) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvtsi2sd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cvtsi64x_sd(a: __m128d, b: i64) -> __m128d {
+pub fn _mm_cvtsi64x_sd(a: __m128d, b: i64) -> __m128d {
     _mm_cvtsi64_sd(a, b)
 }
 
