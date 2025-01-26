@@ -9,7 +9,7 @@ edition = "2021"
 anyhow = "1.0.62"
 clap = { version = "4.0.15", features = ["derive"] }
 fs-err = "2.8.1"
-rustc-hash = { git = "https://github.com/orlp/rustc-hash", rev = "3a89863922cb4ba5237a5bef65a9535b3d598663", features = ["nightly"] }
+rustc-hash = { git = "https://github.com/orlp/rustc-hash", rev = "3a89863922cb4ba5237a5bef65a9535b3d598663" }
 rustdoc-json-types = { version = "0.1.0", path = "../../rustdoc-json-types" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.85"

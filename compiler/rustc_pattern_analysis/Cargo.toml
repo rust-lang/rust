@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
-rustc-hash = { git = "https://github.com/orlp/rustc-hash", rev = "3a89863922cb4ba5237a5bef65a9535b3d598663", features = ["nightly"] }
+rustc-hash = { git = "https://github.com/orlp/rustc-hash", rev = "3a89863922cb4ba5237a5bef65a9535b3d598663" }
 
 rustc_abi = { path = "../rustc_abi", optional = true }
 rustc_apfloat = "0.2.0"

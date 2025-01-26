@@ -136,7 +136,7 @@ process-wrap = { version = "8.0.2", features = ["std"] }
 pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.0", default-features = false }
 rayon = "1.8.0"
-rustc-hash = { git = "https://github.com/orlp/rustc-hash", rev = "3a89863922cb4ba5237a5bef65a9535b3d598663", features = ["nightly"] }
+rustc-hash = { git = "https://github.com/orlp/rustc-hash", rev = "3a89863922cb4ba5237a5bef65a9535b3d598663" }
 semver = "1.0.14"
 serde = { version = "1.0.192" }
 serde_derive = { version = "1.0.192" }
