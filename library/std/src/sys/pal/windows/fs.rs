@@ -1239,8 +1239,10 @@ pub fn unlink(p: &Path) -> io::Result<()> {
             let mut opts = OpenOptions::new();
             opts.access_mode(c::DELETE);
             opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT);
-            if File::open_native(&p_u16s, &opts).map(|f| f.posix_delete()).is_ok() {
-                return Ok(());
+            if let Ok(f) = File::open_native(&p_u16s, &opts) {
+                if f.posix_delete().is_ok() {
+                    return Ok(());
+                }
             }
         }
         // return the original error if any of the above fails.
