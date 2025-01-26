@@ -38,7 +38,7 @@ mod xtensa;
 pub enum PassMode {
     /// Ignore the argument.
     ///
-    /// The argument is either uninhabited or a ZST.
+    /// The argument is a ZST.
     Ignore,
     /// Pass the argument directly.
     ///
@@ -350,7 +350,6 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         scalar_attrs: impl Fn(&TyAndLayout<'a, Ty>, Scalar, Size) -> ArgAttributes,
     ) -> Self {
         let mode = match layout.backend_repr {
-            BackendRepr::Uninhabited => PassMode::Ignore,
             BackendRepr::Scalar(scalar) => {
                 PassMode::Direct(scalar_attrs(&layout, scalar, Size::ZERO))
             }

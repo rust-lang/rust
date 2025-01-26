@@ -1403,7 +1403,6 @@ impl AddressSpace {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub enum BackendRepr {
-    Uninhabited,
     Scalar(Scalar),
     ScalarPair(Scalar, Scalar),
     Vector {
@@ -1422,10 +1421,9 @@ impl BackendRepr {
     #[inline]
     pub fn is_unsized(&self) -> bool {
         match *self {
-            BackendRepr::Uninhabited
-            | BackendRepr::Scalar(_)
-            | BackendRepr::ScalarPair(..)
-            | BackendRepr::Vector { .. } => false,
+            BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) | BackendRepr::Vector { .. } => {
+                false
+            }
             BackendRepr::Memory { sized } => !sized,
         }
     }
@@ -1442,12 +1440,6 @@ impl BackendRepr {
             BackendRepr::Scalar(scal) => scal.is_signed(),
             _ => panic!("`is_signed` on non-scalar ABI {self:?}"),
         }
-    }
-
-    /// Returns `true` if this is an uninhabited type
-    #[inline]
-    pub fn is_uninhabited(&self) -> bool {
-        matches!(*self, BackendRepr::Uninhabited)
     }
 
     /// Returns `true` if this is a scalar type
@@ -1470,7 +1462,7 @@ impl BackendRepr {
             BackendRepr::Vector { element, count } => {
                 cx.data_layout().vector_align(element.size(cx) * count)
             }
-            BackendRepr::Uninhabited | BackendRepr::Memory { .. } => return None,
+            BackendRepr::Memory { .. } => return None,
         })
     }
 
@@ -1491,7 +1483,7 @@ impl BackendRepr {
                 // to make the size a multiple of align (e.g. for vectors of size 3).
                 (element.size(cx) * count).align_to(self.inherent_align(cx)?.abi)
             }
-            BackendRepr::Uninhabited | BackendRepr::Memory { .. } => return None,
+            BackendRepr::Memory { .. } => return None,
         })
     }
 
@@ -1505,9 +1497,7 @@ impl BackendRepr {
             BackendRepr::Vector { element, count } => {
                 BackendRepr::Vector { element: element.to_union(), count }
             }
-            BackendRepr::Uninhabited | BackendRepr::Memory { .. } => {
-                BackendRepr::Memory { sized: true }
-            }
+            BackendRepr::Memory { .. } => BackendRepr::Memory { sized: true },
         }
     }
 
@@ -1703,6 +1693,11 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// The leaf scalar with the largest number of invalid values
     /// (i.e. outside of its `valid_range`), if it exists.
     pub largest_niche: Option<Niche>,
+    /// Is this type known to be uninhabted?
+    ///
+    /// This is separate from BackendRepr, because an uninhabited return type may require special
+    /// consideration based on its size or other attributes.
+    pub uninhabited: bool,
 
     pub align: AbiAndPrefAlign,
     pub size: Size,
@@ -1734,14 +1729,14 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Returns `true` if this is an aggregate type (including a ScalarPair!)
     pub fn is_aggregate(&self) -> bool {
         match self.backend_repr {
-            BackendRepr::Uninhabited | BackendRepr::Scalar(_) | BackendRepr::Vector { .. } => false,
+            BackendRepr::Scalar(_) | BackendRepr::Vector { .. } => false,
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => true,
         }
     }
 
     /// Returns `true` if this is an uninhabited type
     pub fn is_uninhabited(&self) -> bool {
-        self.backend_repr.is_uninhabited()
+        self.uninhabited
     }
 
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
@@ -1777,6 +1772,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             fields: FieldsShape::Primitive,
             backend_repr: BackendRepr::Scalar(scalar),
             largest_niche,
+            uninhabited: false,
             size,
             align,
             max_repr_align: None,
@@ -1801,6 +1797,7 @@ where
             backend_repr,
             fields,
             largest_niche,
+            uninhabited,
             variants,
             max_repr_align,
             unadjusted_abi_align,
@@ -1812,6 +1809,7 @@ where
             .field("abi", backend_repr)
             .field("fields", fields)
             .field("largest_niche", largest_niche)
+            .field("uninhabited", uninhabited)
             .field("variants", variants)
             .field("max_repr_align", max_repr_align)
             .field("unadjusted_abi_align", unadjusted_abi_align)
@@ -1876,7 +1874,6 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) | BackendRepr::Vector { .. } => {
                 false
             }
-            BackendRepr::Uninhabited => self.size.bytes() == 0,
             BackendRepr::Memory { sized } => sized && self.size.bytes() == 0,
         }
     }

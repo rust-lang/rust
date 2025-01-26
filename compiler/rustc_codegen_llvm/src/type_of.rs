@@ -23,7 +23,7 @@ fn uncached_llvm_type<'a, 'tcx>(
             let element = layout.scalar_llvm_type_at(cx, element);
             return cx.type_vector(element, count);
         }
-        BackendRepr::Uninhabited | BackendRepr::Memory { .. } | BackendRepr::ScalarPair(..) => {}
+        BackendRepr::Memory { .. } | BackendRepr::ScalarPair(..) => {}
     }
 
     let name = match layout.ty.kind() {
@@ -172,19 +172,16 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     fn is_llvm_immediate(&self) -> bool {
         match self.backend_repr {
             BackendRepr::Scalar(_) | BackendRepr::Vector { .. } => true,
-            BackendRepr::ScalarPair(..) | BackendRepr::Uninhabited | BackendRepr::Memory { .. } => {
-                false
-            }
+            BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => false,
         }
     }
 
     fn is_llvm_scalar_pair(&self) -> bool {
         match self.backend_repr {
             BackendRepr::ScalarPair(..) => true,
-            BackendRepr::Uninhabited
-            | BackendRepr::Scalar(_)
-            | BackendRepr::Vector { .. }
-            | BackendRepr::Memory { .. } => false,
+            BackendRepr::Scalar(_) | BackendRepr::Vector { .. } | BackendRepr::Memory { .. } => {
+                false
+            }
         }
     }
 
