@@ -944,58 +944,14 @@ fn string<T: Display>(
     }
 }
 
-/// This function writes `text` into `out` with some modifications depending on `klass`:
-///
-/// * If `klass` is `None`, `text` is written into `out` with no modification.
-/// * If `klass` is `Some` but `klass.get_span()` is `None`, it writes the text wrapped in a
-///   `<span>` with the provided `klass`.
-/// * If `klass` is `Some` and has a [`rustc_span::Span`], it then tries to generate a link (`<a>`
-///   element) by retrieving the link information from the `span_correspondence_map` that was filled
-///   in `span_map.rs::collect_spans_and_sources`. If it cannot retrieve the information, then it's
-///   the same as the second point (`klass` is `Some` but doesn't have a [`rustc_span::Span`]).
-fn string_without_closing_tag<T: Display>(
+fn generate_link_to_def(
     out: &mut impl Write,
-    text: T,
-    klass: Option<Class>,
+    text_s: &str,
+    klass: Class,
     href_context: &Option<HrefContext<'_, '_>>,
+    def_span: Span,
     open_tag: bool,
-) -> Option<&'static str> {
-    let Some(klass) = klass else {
-        write!(out, "{text}").unwrap();
-        return None;
-    };
-    let Some(def_span) = klass.get_span() else {
-        if !open_tag {
-            write!(out, "{text}").unwrap();
-            return None;
-        }
-        write!(out, "<span class=\"{klass}\">{text}", klass = klass.as_html()).unwrap();
-        return Some("</span>");
-    };
-
-    let mut text_s = text.to_string();
-    if text_s.contains("::") {
-        text_s = text_s.split("::").intersperse("::").fold(String::new(), |mut path, t| {
-            match t {
-                "self" | "Self" => write!(
-                    &mut path,
-                    "<span class=\"{klass}\">{t}</span>",
-                    klass = Class::Self_(DUMMY_SP).as_html(),
-                ),
-                "crate" | "super" => {
-                    write!(
-                        &mut path,
-                        "<span class=\"{klass}\">{t}</span>",
-                        klass = Class::KeyWord.as_html(),
-                    )
-                }
-                t => write!(&mut path, "{t}"),
-            }
-            .expect("Failed to build source HTML path");
-            path
-        });
-    }
-
+) -> bool {
     if let Some(href_context) = href_context {
         if let Some(href) =
             href_context.context.shared.span_correspondence_map.get(&def_span).and_then(|href| {
@@ -1041,8 +997,80 @@ fn string_without_closing_tag<T: Display>(
                     write!(out, "<a class=\"{klass_s}\" href=\"{href}\">{text_s}").unwrap();
                 }
             }
-            return Some("</a>");
+            return true;
         }
+    }
+    false
+}
+
+/// This function writes `text` into `out` with some modifications depending on `klass`:
+///
+/// * If `klass` is `None`, `text` is written into `out` with no modification.
+/// * If `klass` is `Some` but `klass.get_span()` is `None`, it writes the text wrapped in a
+///   `<span>` with the provided `klass`.
+/// * If `klass` is `Some` and has a [`rustc_span::Span`], it then tries to generate a link (`<a>`
+///   element) by retrieving the link information from the `span_correspondence_map` that was filled
+///   in `span_map.rs::collect_spans_and_sources`. If it cannot retrieve the information, then it's
+///   the same as the second point (`klass` is `Some` but doesn't have a [`rustc_span::Span`]).
+fn string_without_closing_tag<T: Display>(
+    out: &mut impl Write,
+    text: T,
+    klass: Option<Class>,
+    href_context: &Option<HrefContext<'_, '_>>,
+    open_tag: bool,
+) -> Option<&'static str> {
+    let Some(klass) = klass else {
+        write!(out, "{text}").unwrap();
+        return None;
+    };
+    let Some(def_span) = klass.get_span() else {
+        if !open_tag {
+            write!(out, "{text}").unwrap();
+            return None;
+        }
+        write!(out, "<span class=\"{klass}\">{text}", klass = klass.as_html()).unwrap();
+        return Some("</span>");
+    };
+
+    let mut added_links = false;
+    let mut text_s = text.to_string();
+    if text_s.contains("::") {
+        let mut span = def_span.with_hi(def_span.lo());
+        text_s = text_s.split("::").intersperse("::").fold(String::new(), |mut path, t| {
+            span = span.with_hi(span.hi() + BytePos(t.len() as _));
+            match t {
+                "::" => write!(&mut path, "::"),
+                "self" | "Self" => write!(
+                    &mut path,
+                    "<span class=\"{klass}\">{t}</span>",
+                    klass = Class::Self_(DUMMY_SP).as_html(),
+                ),
+                "crate" | "super" => {
+                    write!(
+                        &mut path,
+                        "<span class=\"{klass}\">{t}</span>",
+                        klass = Class::KeyWord.as_html(),
+                    )
+                }
+                t => {
+                    if !t.is_empty()
+                        && generate_link_to_def(&mut path, t, klass, href_context, span, open_tag)
+                    {
+                        added_links = true;
+                        write!(&mut path, "</a>")
+                    } else {
+                        write!(&mut path, "{t}")
+                    }
+                }
+            }
+            .expect("Failed to build source HTML path");
+            span = span.with_lo(span.lo() + BytePos(t.len() as _));
+            path
+        });
+    }
+
+    if !added_links && generate_link_to_def(out, &text_s, klass, href_context, def_span, open_tag) {
+        return Some("</a>");
     }
     if !open_tag {
         write!(out, "{}", text_s).unwrap();
