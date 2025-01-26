@@ -17,8 +17,8 @@ unsafe extern "C" {
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(crc32))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_crc32_u64(crc: u64, v: u64) -> u64 {
-    crc32_64_64(crc, v)
+pub fn _mm_crc32_u64(crc: u64, v: u64) -> u64 {
+    unsafe { crc32_64_64(crc, v) }
 }
 
 #[cfg(test)]
