@@ -1746,13 +1746,17 @@ impl InferenceContext<'_> {
                     });
                 }
                 TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), parameters) => {
-                    let local_id = self.db.struct_data(*s).variant_data.field(name)?;
-                    let field = FieldId { parent: (*s).into(), local_id };
+                    let vd = &self.db.struct_data(*s).variant_data;
+                    let local_id = vd.field(name)?;
+                    let has_default = vd.fields()[local_id].has_default;
+                    let field = FieldId { parent: (*s).into(), local_id, has_default };
                     (field, parameters.clone())
                 }
                 TyKind::Adt(AdtId(hir_def::AdtId::UnionId(u)), parameters) => {
-                    let local_id = self.db.union_data(*u).variant_data.field(name)?;
-                    let field = FieldId { parent: (*u).into(), local_id };
+                    let vd = &self.db.union_data(*u).variant_data;
+                    let local_id = vd.field(name)?;
+                    let has_default = vd.fields()[local_id].has_default;
+                    let field = FieldId { parent: (*u).into(), local_id, has_default };
                     (field, parameters.clone())
                 }
                 _ => return None,
