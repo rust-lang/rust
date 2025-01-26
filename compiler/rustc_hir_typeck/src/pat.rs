@@ -230,10 +230,12 @@ enum InheritedRefMatchRule {
     /// underlying type is not a reference type, the inherited reference will be consumed.
     EatInner,
     /// When the underlying type is a reference type, reference patterns consume both layers of
-    /// reference, i.e. they both reset the binding mode and consume the reference type. Reference
-    /// patterns are not permitted when there is no underlying reference type, i.e. they can't eat
-    /// only an inherited reference. This is the current stable Rust behavior.
-    EatBoth,
+    /// reference, i.e. they both reset the binding mode and consume the reference type.
+    EatBoth {
+        /// Whether to allow reference patterns to consume only an inherited reference when matching
+        /// against a non-reference type. This is `false` for stable Rust.
+        eat_inherited_ref_alone: bool,
+    },
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -259,10 +261,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 // Currently, matching against an inherited ref on edition 2024 is an error.
                 // Use `EatBoth` as a fallback to be similar to stable Rust.
-                InheritedRefMatchRule::EatBoth
+                InheritedRefMatchRule::EatBoth { eat_inherited_ref_alone: false }
             }
         } else {
-            InheritedRefMatchRule::EatBoth
+            InheritedRefMatchRule::EatBoth {
+                eat_inherited_ref_alone: self.tcx.features().ref_pat_eat_one_layer_2024()
+                    || self.tcx.features().ref_pat_eat_one_layer_2024_structural(),
+            }
         }
     }
 
@@ -2381,8 +2386,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return expected;
                     }
                 }
-                InheritedRefMatchRule::EatBoth => {
+                InheritedRefMatchRule::EatBoth { eat_inherited_ref_alone: true } => {
                     // Reset binding mode on old editions
+                    pat_info.binding_mode = ByRef::No;
+
+                    if let ty::Ref(_, _, _) = *expected.kind() {
+                        // Consume both the inherited and inner references.
+                    } else {
+                        // The expected type isn't a reference type, so only match against the
+                        // inherited reference.
+                        if pat_mutbl > inh_mut {
+                            // We can't match a lone inherited shared reference with `&mut`.
+                            self.error_inherited_ref_mutability_mismatch(pat, pat_prefix_span);
+                        }
+
+                        self.typeck_results.borrow_mut().skipped_ref_pats_mut().insert(pat.hir_id);
+                        self.check_pat(inner, expected, pat_info);
+                        return expected;
+                    }
+                }
+                InheritedRefMatchRule::EatBoth { eat_inherited_ref_alone: false } => {
+                    // Reset binding mode on stable Rust. This will be a type error below if
+                    // `expected` is not a reference type.
                     pat_info.binding_mode = ByRef::No;
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,

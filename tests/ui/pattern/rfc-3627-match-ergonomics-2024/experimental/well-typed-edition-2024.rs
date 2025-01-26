@@ -37,19 +37,19 @@ pub fn main() {
 
     // Tests for eating a lone inherited reference
     if let Some(Some(&x)) = &Some(&Some(0)) {
-        //[stable2021,classic2021,structural2021]~^ mismatched types
-        //[stable2021,classic2021,structural2021]~| expected integer, found `&_`
-        #[cfg(any(classic2024, structural2024))] let _: u32 = x; // TODO: this should hold on `classic2021` and `structural2021`
+        //[stable2021]~^ mismatched types
+        //[stable2021]~| expected integer, found `&_`
+        #[cfg(any(classic2021, structural2021, classic2024, structural2024))] let _: u32 = x;
     }
     if let Some(&Some(x)) = &Some(Some(0)) {
-        //[stable2021,classic2021,structural2021]~^ mismatched types
-        //[stable2021,classic2021,structural2021]~| expected `Option<{integer}>`, found `&_`
-        #[cfg(any(classic2024, structural2024))] let _: u32 = x; // TODO: this should hold on `classic2021` and `structural2021`
+        //[stable2021]~^ mismatched types
+        //[stable2021]~| expected `Option<{integer}>`, found `&_`
+        #[cfg(any(classic2021, structural2021, classic2024, structural2024))] let _: u32 = x;
     }
     if let Some(Some(&mut x)) = &mut Some(&mut Some(0)) {
-        //[stable2021,classic2021,structural2021]~^ mismatched types
-        //[stable2021,classic2021,structural2021]~| expected integer, found `&mut _`
-        #[cfg(any(classic2024, structural2024))] let _: u32 = x; // TODO: this should hold on `classic2021` and `structural2021`
+        //[stable2021]~^ mismatched types
+        //[stable2021]~| expected integer, found `&mut _`
+        #[cfg(any(classic2021, structural2021, classic2024, structural2024))] let _: u32 = x;
     }
 
     // Tests for `&` patterns matching real `&mut` reference types
@@ -68,14 +68,14 @@ pub fn main() {
 
     // Tests for `&` matching a lone inherited possibly-`&mut` reference
     if let Some(&Some(Some(&x))) = &Some(Some(&mut Some(0))) {
-        //[stable2021,classic2021,structural2021]~^ mismatched types
+        //[stable2021]~^ mismatched types
         //[stable2021]~| expected `Option<&mut Option<{integer}>>`, found `&_`
-        #[cfg(any(classic2024, structural2024))] let _: u32 = x; // TODO: this should hold on `classic2021` and `structural2021`
+        #[cfg(any(classic2021, structural2021, classic2024, structural2024))] let _: u32 = x;
     }
     if let Some(&Some(x)) = &mut Some(Some(0)) {
-        //[stable2021,classic2021,structural2021]~^ mismatched types
+        //[stable2021]~^ mismatched types
         //[stable2021]~| expected `Option<{integer}>`, found `&_`
-        #[cfg(any(classic2024, structural2024))] let _: u32 = x; // TODO: this should hold on `classic2021` and `structural2021`
+        #[cfg(any(classic2021, structural2021, classic2024, structural2024))] let _: u32 = x;
     }
 
     // Tests eating one layer, eating a lone inherited ref, and `&` eating `&mut` (realness varies)
