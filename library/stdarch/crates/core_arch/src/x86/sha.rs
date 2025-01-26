@@ -30,8 +30,8 @@ use stdarch_test::assert_instr;
 #[target_feature(enable = "sha")]
 #[cfg_attr(test, assert_instr(sha1msg1))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_sha1msg1_epu32(a: __m128i, b: __m128i) -> __m128i {
-    transmute(sha1msg1(a.as_i32x4(), b.as_i32x4()))
+pub fn _mm_sha1msg1_epu32(a: __m128i, b: __m128i) -> __m128i {
+    unsafe { transmute(sha1msg1(a.as_i32x4(), b.as_i32x4())) }
 }
 
 /// Performs the final calculation for the next four SHA1 message values
@@ -43,8 +43,8 @@ pub unsafe fn _mm_sha1msg1_epu32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sha")]
 #[cfg_attr(test, assert_instr(sha1msg2))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_sha1msg2_epu32(a: __m128i, b: __m128i) -> __m128i {
-    transmute(sha1msg2(a.as_i32x4(), b.as_i32x4()))
+pub fn _mm_sha1msg2_epu32(a: __m128i, b: __m128i) -> __m128i {
+    unsafe { transmute(sha1msg2(a.as_i32x4(), b.as_i32x4())) }
 }
 
 /// Calculate SHA1 state variable E after four rounds of operation from the
@@ -56,8 +56,8 @@ pub unsafe fn _mm_sha1msg2_epu32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sha")]
 #[cfg_attr(test, assert_instr(sha1nexte))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_sha1nexte_epu32(a: __m128i, b: __m128i) -> __m128i {
-    transmute(sha1nexte(a.as_i32x4(), b.as_i32x4()))
+pub fn _mm_sha1nexte_epu32(a: __m128i, b: __m128i) -> __m128i {
+    unsafe { transmute(sha1nexte(a.as_i32x4(), b.as_i32x4())) }
 }
 
 /// Performs four rounds of SHA1 operation using an initial SHA1 state (A,B,C,D)
@@ -72,9 +72,9 @@ pub unsafe fn _mm_sha1nexte_epu32(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(sha1rnds4, FUNC = 0))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_sha1rnds4_epu32<const FUNC: i32>(a: __m128i, b: __m128i) -> __m128i {
+pub fn _mm_sha1rnds4_epu32<const FUNC: i32>(a: __m128i, b: __m128i) -> __m128i {
     static_assert_uimm_bits!(FUNC, 2);
-    transmute(sha1rnds4(a.as_i32x4(), b.as_i32x4(), FUNC as i8))
+    unsafe { transmute(sha1rnds4(a.as_i32x4(), b.as_i32x4(), FUNC as i8)) }
 }
 
 /// Performs an intermediate calculation for the next four SHA256 message values
@@ -86,8 +86,8 @@ pub unsafe fn _mm_sha1rnds4_epu32<const FUNC: i32>(a: __m128i, b: __m128i) -> __
 #[target_feature(enable = "sha")]
 #[cfg_attr(test, assert_instr(sha256msg1))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_sha256msg1_epu32(a: __m128i, b: __m128i) -> __m128i {
-    transmute(sha256msg1(a.as_i32x4(), b.as_i32x4()))
+pub fn _mm_sha256msg1_epu32(a: __m128i, b: __m128i) -> __m128i {
+    unsafe { transmute(sha256msg1(a.as_i32x4(), b.as_i32x4())) }
 }
 
 /// Performs the final calculation for the next four SHA256 message values
@@ -99,8 +99,8 @@ pub unsafe fn _mm_sha256msg1_epu32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sha")]
 #[cfg_attr(test, assert_instr(sha256msg2))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_sha256msg2_epu32(a: __m128i, b: __m128i) -> __m128i {
-    transmute(sha256msg2(a.as_i32x4(), b.as_i32x4()))
+pub fn _mm_sha256msg2_epu32(a: __m128i, b: __m128i) -> __m128i {
+    unsafe { transmute(sha256msg2(a.as_i32x4(), b.as_i32x4())) }
 }
 
 /// Performs 2 rounds of SHA256 operation using an initial SHA256 state
@@ -114,8 +114,8 @@ pub unsafe fn _mm_sha256msg2_epu32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sha")]
 #[cfg_attr(test, assert_instr(sha256rnds2))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_sha256rnds2_epu32(a: __m128i, b: __m128i, k: __m128i) -> __m128i {
-    transmute(sha256rnds2(a.as_i32x4(), b.as_i32x4(), k.as_i32x4()))
+pub fn _mm_sha256rnds2_epu32(a: __m128i, b: __m128i, k: __m128i) -> __m128i {
+    unsafe { transmute(sha256rnds2(a.as_i32x4(), b.as_i32x4(), k.as_i32x4())) }
 }
 
 #[cfg(test)]
