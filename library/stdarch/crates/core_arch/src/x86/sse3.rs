@@ -14,12 +14,14 @@ use stdarch_test::assert_instr;
 #[target_feature(enable = "sse3")]
 #[cfg_attr(test, assert_instr(addsubps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_addsub_ps(a: __m128, b: __m128) -> __m128 {
-    let a = a.as_f32x4();
-    let b = b.as_f32x4();
-    let add = simd_add(a, b);
-    let sub = simd_sub(a, b);
-    simd_shuffle!(add, sub, [4, 1, 6, 3])
+pub fn _mm_addsub_ps(a: __m128, b: __m128) -> __m128 {
+    unsafe {
+        let a = a.as_f32x4();
+        let b = b.as_f32x4();
+        let add = simd_add(a, b);
+        let sub = simd_sub(a, b);
+        simd_shuffle!(add, sub, [4, 1, 6, 3])
+    }
 }
 
 /// Alternatively add and subtract packed double-precision (64-bit)
@@ -30,12 +32,14 @@ pub unsafe fn _mm_addsub_ps(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse3")]
 #[cfg_attr(test, assert_instr(addsubpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_addsub_pd(a: __m128d, b: __m128d) -> __m128d {
-    let a = a.as_f64x2();
-    let b = b.as_f64x2();
-    let add = simd_add(a, b);
-    let sub = simd_sub(a, b);
-    simd_shuffle!(add, sub, [2, 1])
+pub fn _mm_addsub_pd(a: __m128d, b: __m128d) -> __m128d {
+    unsafe {
+        let a = a.as_f64x2();
+        let b = b.as_f64x2();
+        let add = simd_add(a, b);
+        let sub = simd_sub(a, b);
+        simd_shuffle!(add, sub, [2, 1])
+    }
 }
 
 /// Horizontally adds adjacent pairs of double-precision (64-bit)
@@ -46,8 +50,8 @@ pub unsafe fn _mm_addsub_pd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse3")]
 #[cfg_attr(test, assert_instr(haddpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_hadd_pd(a: __m128d, b: __m128d) -> __m128d {
-    haddpd(a, b)
+pub fn _mm_hadd_pd(a: __m128d, b: __m128d) -> __m128d {
+    unsafe { haddpd(a, b) }
 }
 
 /// Horizontally adds adjacent pairs of single-precision (32-bit)
@@ -58,8 +62,8 @@ pub unsafe fn _mm_hadd_pd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse3")]
 #[cfg_attr(test, assert_instr(haddps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_hadd_ps(a: __m128, b: __m128) -> __m128 {
-    haddps(a, b)
+pub fn _mm_hadd_ps(a: __m128, b: __m128) -> __m128 {
+    unsafe { haddps(a, b) }
 }
 
 /// Horizontally subtract adjacent pairs of double-precision (64-bit)
@@ -70,8 +74,8 @@ pub unsafe fn _mm_hadd_ps(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse3")]
 #[cfg_attr(test, assert_instr(hsubpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_hsub_pd(a: __m128d, b: __m128d) -> __m128d {
-    hsubpd(a, b)
+pub fn _mm_hsub_pd(a: __m128d, b: __m128d) -> __m128d {
+    unsafe { hsubpd(a, b) }
 }
 
 /// Horizontally adds adjacent pairs of single-precision (32-bit)
@@ -82,8 +86,8 @@ pub unsafe fn _mm_hsub_pd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse3")]
 #[cfg_attr(test, assert_instr(hsubps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_hsub_ps(a: __m128, b: __m128) -> __m128 {
-    hsubps(a, b)
+pub fn _mm_hsub_ps(a: __m128, b: __m128) -> __m128 {
+    unsafe { hsubps(a, b) }
 }
 
 /// Loads 128-bits of integer data from unaligned memory.
@@ -107,8 +111,8 @@ pub unsafe fn _mm_lddqu_si128(mem_addr: *const __m128i) -> __m128i {
 #[target_feature(enable = "sse3")]
 #[cfg_attr(test, assert_instr(movddup))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_movedup_pd(a: __m128d) -> __m128d {
-    simd_shuffle!(a, a, [0, 0])
+pub fn _mm_movedup_pd(a: __m128d) -> __m128d {
+    unsafe { simd_shuffle!(a, a, [0, 0]) }
 }
 
 /// Loads a double-precision (64-bit) floating-point element from memory
@@ -131,8 +135,8 @@ pub unsafe fn _mm_loaddup_pd(mem_addr: *const f64) -> __m128d {
 #[target_feature(enable = "sse3")]
 #[cfg_attr(test, assert_instr(movshdup))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_movehdup_ps(a: __m128) -> __m128 {
-    simd_shuffle!(a, a, [1, 1, 3, 3])
+pub fn _mm_movehdup_ps(a: __m128) -> __m128 {
+    unsafe { simd_shuffle!(a, a, [1, 1, 3, 3]) }
 }
 
 /// Duplicate even-indexed single-precision (32-bit) floating-point elements
@@ -143,8 +147,8 @@ pub unsafe fn _mm_movehdup_ps(a: __m128) -> __m128 {
 #[target_feature(enable = "sse3")]
 #[cfg_attr(test, assert_instr(movsldup))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_moveldup_ps(a: __m128) -> __m128 {
-    simd_shuffle!(a, a, [0, 0, 2, 2])
+pub fn _mm_moveldup_ps(a: __m128) -> __m128 {
+    unsafe { simd_shuffle!(a, a, [0, 0, 2, 2]) }
 }
 
 #[allow(improper_ctypes)]
