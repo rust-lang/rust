@@ -1418,7 +1418,11 @@ impl Config {
 
         config.stage0_metadata = build_helper::stage0_parser::parse_stage0_file();
 
-        // Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`, then `config.toml` in the root directory.
+        // Find configuration file, with the following cascading fallback (first match wins):
+        // - `--config <path>`
+        // - `RUST_BOOTSTRAP_CONFIG`
+        // - `./config.toml`
+        // - `config.toml` in the root directory.
         let toml_path = flags
             .config
             .clone()
