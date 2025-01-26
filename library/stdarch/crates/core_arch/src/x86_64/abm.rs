@@ -40,7 +40,7 @@ pub unsafe fn _lzcnt_u64(x: u64) -> u64 {
 #[target_feature(enable = "popcnt")]
 #[cfg_attr(test, assert_instr(popcnt))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _popcnt64(x: i64) -> i32 {
+pub fn _popcnt64(x: i64) -> i32 {
     x.count_ones() as i32
 }
 
