@@ -17,6 +17,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                                memory_index: [],
                            },
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -56,6 +57,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
