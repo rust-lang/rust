@@ -1791,7 +1791,7 @@ pub(crate) struct UnusedAssign {
 pub(crate) struct UnusedAssignSuggestion {
     pub pre: &'static str,
     #[suggestion_part(code = "{pre}mut ")]
-    pub ty_span: Span,
+    pub ty_span: Option<Span>,
     #[suggestion_part(code = "")]
     pub ty_ref_span: Span,
     #[suggestion_part(code = "*")]
