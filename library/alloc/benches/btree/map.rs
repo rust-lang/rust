@@ -353,6 +353,7 @@ pub fn iter_10k(b: &mut Bencher) {
 }
 
 #[bench]
+#[cfg_attr(target_os = "emscripten", ignore)] // hits an OOM
 pub fn iter_1m(b: &mut Bencher) {
     bench_iter(b, 1_000, 1_000_000);
 }
