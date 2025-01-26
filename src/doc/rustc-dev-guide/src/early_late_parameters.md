@@ -128,7 +128,7 @@ If the lifetime parameter on `foo` was late bound this would be able to compile 
 ```rust
 # fn foo<'a: 'a>(b: &'a String) -> &'a String { b }
 # fn bar<'a>(b: &'a String) -> &'a String { b }
-
+#
 // Early bound parameters are instantiated here, however as `'a` is
 // late bound it is not provided here.
 let b = bar;
