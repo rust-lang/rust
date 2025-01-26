@@ -37,6 +37,7 @@ error: layout_of(MissingPayloadField) = Layout {
                    valid_range: 0..=1,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -78,6 +79,7 @@ error: layout_of(MissingPayloadField) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -99,6 +101,7 @@ error: layout_of(MissingPayloadField) = Layout {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
@@ -157,6 +160,7 @@ error: layout_of(CommonPayloadField) = Layout {
                    valid_range: 0..=1,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -199,6 +203,7 @@ error: layout_of(CommonPayloadField) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -237,6 +242,7 @@ error: layout_of(CommonPayloadField) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
@@ -294,6 +300,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                    valid_range: 0..=1,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -335,6 +342,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -372,6 +380,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
@@ -429,6 +438,7 @@ error: layout_of(NicheFirst) = Layout {
                    valid_range: 0..=4,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -486,6 +496,7 @@ error: layout_of(NicheFirst) = Layout {
                                valid_range: 0..=2,
                            },
                        ),
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -507,6 +518,7 @@ error: layout_of(NicheFirst) = Layout {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
@@ -528,6 +540,7 @@ error: layout_of(NicheFirst) = Layout {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 2,
                        },
@@ -585,6 +598,7 @@ error: layout_of(NicheSecond) = Layout {
                    valid_range: 0..=4,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -642,6 +656,7 @@ error: layout_of(NicheSecond) = Layout {
                                valid_range: 0..=2,
                            },
                        ),
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -663,6 +678,7 @@ error: layout_of(NicheSecond) = Layout {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
@@ -684,6 +700,7 @@ error: layout_of(NicheSecond) = Layout {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 2,
                        },

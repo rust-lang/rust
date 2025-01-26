@@ -31,6 +31,7 @@ error: layout_of(E) = Layout {
                    valid_range: 0..=0,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -56,6 +57,7 @@ error: layout_of(E) = Layout {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -136,6 +138,7 @@ error: layout_of(S) = Layout {
                ],
            },
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
@@ -161,6 +164,7 @@ error: layout_of(U) = Layout {
                2,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
@@ -213,6 +217,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                    valid_range: 0..=1,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -255,6 +260,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -293,6 +299,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
@@ -328,6 +335,7 @@ error: layout_of(i32) = Layout {
            ),
            fields: Primitive,
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
@@ -353,6 +361,7 @@ error: layout_of(V) = Layout {
                2,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
@@ -378,6 +387,7 @@ error: layout_of(W) = Layout {
                2,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
@@ -403,6 +413,7 @@ error: layout_of(Y) = Layout {
                2,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
@@ -428,6 +439,7 @@ error: layout_of(P1) = Layout {
                1,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
@@ -453,6 +465,7 @@ error: layout_of(P2) = Layout {
                1,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
@@ -478,6 +491,7 @@ error: layout_of(P3) = Layout {
                1,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
@@ -503,6 +517,7 @@ error: layout_of(P4) = Layout {
                1,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
@@ -533,6 +548,7 @@ error: layout_of(P5) = Layout {
                2,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
@@ -563,6 +579,7 @@ error: layout_of(MaybeUninit<u8>) = Layout {
                2,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },

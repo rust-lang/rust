@@ -31,6 +31,7 @@ error: layout_of(NonZero<u32>) = Layout {
                    valid_range: 1..=4294967295,
                },
            ),
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
@@ -69,6 +70,7 @@ error: layout_of((u32) is 1..=) = Layout {
                    valid_range: 1..=4294967295,
                },
            ),
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
@@ -105,6 +107,7 @@ error: layout_of(Option<(u32) is 1..=>) = Layout {
                ],
            },
            largest_niche: None,
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -134,6 +137,7 @@ error: layout_of(Option<(u32) is 1..=>) = Layout {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -174,6 +178,7 @@ error: layout_of(Option<(u32) is 1..=>) = Layout {
                                valid_range: 1..=4294967295,
                            },
                        ),
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
@@ -216,6 +221,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                ],
            },
            largest_niche: None,
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -245,6 +251,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -285,6 +292,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                                valid_range: 1..=4294967295,
                            },
                        ),
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
@@ -336,6 +344,7 @@ error: layout_of(NonZeroU32New) = Layout {
                    valid_range: 1..=4294967295,
                },
            ),
+           uninhabited: false,
            variants: Single {
                index: 0,
            },

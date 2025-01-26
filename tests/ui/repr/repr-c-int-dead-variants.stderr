@@ -107,6 +107,7 @@ error: layout_of(TwoVariantsU8) = Layout {
                    valid_range: 0..=1,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -171,6 +172,7 @@ error: layout_of(TwoVariantsU8) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
@@ -216,6 +218,7 @@ error: layout_of(DeadBranchHasOtherFieldU8) = Layout {
                    valid_range: 0..=1,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -272,6 +275,7 @@ error: layout_of(DeadBranchHasOtherFieldU8) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
