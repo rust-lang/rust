@@ -620,6 +620,7 @@ define_Conf! {
         manual_range_contains,
         manual_rem_euclid,
         manual_retain,
+        manual_slice_fill,
         manual_split_once,
         manual_str_repeat,
         manual_strip,
