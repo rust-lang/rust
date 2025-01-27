@@ -2782,10 +2782,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
     where
         P: FnMut(&T) -> bool,
     {
-        let (front, back) = self.as_slices();
+        let (front, mut back) = self.as_slices();
 
         if let Some(true) = back.first().map(|v| pred(v)) {
-            back.partition_point(pred) + front.len()
+            back = unsafe {
+                // SAFETY: if clause has proven a first element to skip exists
+                back.get_unchecked(1..)
+            };
+            back.partition_point(pred) + front.len() + 1
         } else {
             front.partition_point(pred)
         }
