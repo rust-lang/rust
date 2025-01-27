@@ -13,7 +13,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: false
@@ -37,11 +37,11 @@ jobs:
       run: sudo apt-get install ninja-build ripgrep
 
     - name: Download artifact
-      run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/gcc-13.deb
+      run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/gcc-15.deb
 
     - name: Setup path to libgccjit
       run: |
-          sudo dpkg --force-overwrite -i gcc-13.deb
+          sudo dpkg --force-overwrite -i gcc-15.deb
           echo 'gcc-path = "/usr/lib/"' > config.toml
 
     - name: Set env
@@ -76,4 +76,9 @@ jobs:
     - name: Run y.sh cargo build
       run: |
         EMBED_LTO_BITCODE=1 CHANNEL="release" ./y.sh cargo build --release --manifest-path tests/hello-world/Cargo.toml
-        # TODO: grep the asm output for "call my_func" and fail if it is found.
+        call_found=$(objdump -dj .text tests/hello-world/target/release/hello_world | grep -c "call .*mylib.*my_func" ) ||:
+        if [ $call_found -gt 0 ]; then
+          echo "ERROR: call my_func found in asm"
+          echo "Test is done with LTO enabled, hence inlining should occur across crates"
+          exit 1
+        fi
