@@ -145,6 +145,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let tcx = self.tcx;
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
+
+                let expect_ty = value.ty();
+                let expect = self.literal_operand(test.span, value);
                 if let ty::Adt(def, _) = ty.kind()
                     && tcx.is_lang_item(def.did(), LangItem::String)
                 {
@@ -173,7 +176,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         success_block,
                         fail_block,
                         source_info,
-                        value,
+                        expect,
+                        expect_ty,
                         ref_str,
                         ref_str_ty,
                     );
@@ -185,13 +189,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         success_block,
                         fail_block,
                         source_info,
-                        value,
+                        expect,
+                        expect_ty,
                         place,
                         ty,
                     );
                 } else {
-                    assert_eq!(value.ty(), ty);
-                    let expect = self.literal_operand(test.span, value);
+                    assert_eq!(expect_ty, ty);
                     let val = Operand::Copy(place);
                     self.compare(
                         block,
@@ -371,12 +375,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         success_block: BasicBlock,
         fail_block: BasicBlock,
         source_info: SourceInfo,
-        value: Const<'tcx>,
+        mut expect: Operand<'tcx>,
+        expect_ty: Ty<'tcx>,
         mut val: Place<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
-        let mut expect = self.literal_operand(source_info.span, value);
-
         // If we're using `b"..."` as a pattern, we need to insert an
         // unsizing coercion, as the byte string has the type `&[u8; N]`.
         //
@@ -391,7 +394,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ => None,
         };
         let opt_ref_ty = unsize(ty);
-        let opt_ref_test_ty = unsize(value.ty());
+        let opt_ref_test_ty = unsize(expect_ty);
         match (opt_ref_ty, opt_ref_test_ty) {
             // nothing to do, neither is an array
             (None, None) => {}
