@@ -69,6 +69,11 @@ execAndMeasureSpaceChange() {
 # Remove large packages
 # REF: https://github.com/apache/flink/blob/master/tools/azure-pipelines/free_disk_space.sh
 cleanPackages() {
+    # Prevent npm from being removed.
+    # This command unfortunately also prevents npm from being updated,
+    # but it should be fine because we don't run `apt upgrade`.
+    sudo apt-mark hold npm
+
     sudo apt-get -qq purge -y --autoremove --fix-missing \
         '^aspnetcore-.*'          \
         '^dotnet-.*'              \
