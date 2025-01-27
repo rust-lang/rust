@@ -676,17 +676,15 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
         ty::ConstKind::Value(ty, valtree) => {
             match ty.kind() {
                 ty::Int(ity) => {
-                    // FIXME: directly extract the bits from a valtree instead of evaluating an
-                    // already evaluated `Const` in order to get the bits.
-                    let bits = ct
-                        .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
+                    let bits = valtree
+                        .try_to_bits(tcx, ty, ty::TypingEnv::fully_monomorphized())
                         .expect("expected monomorphic const in codegen");
                     let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
                     write!(output, "{val}")
                 }
                 ty::Uint(_) => {
-                    let val = ct
-                        .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
+                    let val = valtree
+                        .try_to_bits(tcx, ty, ty::TypingEnv::fully_monomorphized())
                         .expect("expected monomorphic const in codegen");
                     write!(output, "{val}")
                 }

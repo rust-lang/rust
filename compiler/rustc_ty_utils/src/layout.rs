@@ -33,6 +33,12 @@ use crate::errors::{
 
 mod invariant;
 
+/// The `ValTree` alongside its type.
+struct ValTreeAndTy<'tcx> {
+    valtree: ty::ValTree<'tcx>,
+    ty: Ty<'tcx>,
+}
+
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { layout_of, ..*providers };
 }
@@ -144,13 +150,13 @@ fn univariant_uninterned<'tcx>(
     cx.calc.univariant(fields, repr, kind).map_err(|err| map_error(cx, ty, err))
 }
 
-fn validate_const_with_value<'tcx>(
+fn extract_valtree_and_ty<'tcx>(
     const_: ty::Const<'tcx>,
     ty: Ty<'tcx>,
     cx: &LayoutCx<'tcx>,
-) -> Result<ty::Const<'tcx>, &'tcx LayoutError<'tcx>> {
+) -> Result<ValTreeAndTy<'tcx>, &'tcx LayoutError<'tcx>> {
     match const_.kind() {
-        ty::ConstKind::Value(..) => Ok(const_),
+        ty::ConstKind::Value(ty, valtree) => Ok(ValTreeAndTy { valtree, ty }),
         ty::ConstKind::Error(guar) => {
             return Err(error(cx, LayoutError::ReferencesError(guar)));
         }
@@ -209,14 +215,16 @@ fn layout_of_uncached<'tcx>(
                         &mut layout.backend_repr
                     {
                         if let Some(start) = start {
-                            scalar.valid_range_mut().start =
-                                validate_const_with_value(start, ty, cx)?
-                                    .try_to_bits(tcx, cx.typing_env)
-                                    .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
+                            let ValTreeAndTy { valtree, ty } =
+                                extract_valtree_and_ty(start, ty, cx)?;
+                            scalar.valid_range_mut().start = valtree
+                                .try_to_bits(tcx, ty, cx.typing_env)
+                                .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                         }
                         if let Some(end) = end {
-                            let mut end = validate_const_with_value(end, ty, cx)?
-                                .try_to_bits(tcx, cx.typing_env)
+                            let ValTreeAndTy { valtree, ty } = extract_valtree_and_ty(end, ty, cx)?;
+                            let mut end = valtree
+                                .try_to_bits(tcx, ty, cx.typing_env)
                                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                             if !include_end {
                                 end = end.wrapping_sub(1);
@@ -348,9 +356,8 @@ fn layout_of_uncached<'tcx>(
 
         // Arrays and slices.
         ty::Array(element, count) => {
-            let count = validate_const_with_value(count, ty, cx)?
-                .to_valtree()
-                .0
+            let count = extract_valtree_and_ty(count, ty, cx)?
+                .valtree
                 .try_to_target_usize(tcx)
                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
 

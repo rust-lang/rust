@@ -625,8 +625,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => {
                 ct_ty.print(self)?;
 
-                let mut bits = ct
-                    .try_to_bits(self.tcx, ty::TypingEnv::fully_monomorphized())
+                let mut bits = valtree
+                    .try_to_bits(self.tcx, ct_ty, ty::TypingEnv::fully_monomorphized())
                     .expect("expected const to be monomorphic");
 
                 // Negative integer values are mangled using `n` as a "sign prefix".

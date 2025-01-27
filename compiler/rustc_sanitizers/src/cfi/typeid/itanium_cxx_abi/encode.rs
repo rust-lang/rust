@@ -121,7 +121,7 @@ fn encode_const<'tcx>(
         }
 
         // Literal arguments
-        ty::ConstKind::Value(ct_ty, ..) => {
+        ty::ConstKind::Value(ct_ty, valtree) => {
             // L<element-type>[n]<element-value>E as literal argument
 
             // Element type
@@ -132,8 +132,8 @@ fn encode_const<'tcx>(
             // bool value false is encoded as 0 and true as 1.
             match ct_ty.kind() {
                 ty::Int(ity) => {
-                    let bits = c
-                        .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
+                    let bits = valtree
+                        .try_to_bits(tcx, ct_ty, ty::TypingEnv::fully_monomorphized())
                         .expect("expected monomorphic const in cfi");
                     let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
                     if val < 0 {
@@ -142,8 +142,8 @@ fn encode_const<'tcx>(
                     let _ = write!(s, "{val}");
                 }
                 ty::Uint(_) => {
-                    let val = c
-                        .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
+                    let val = valtree
+                        .try_to_bits(tcx, ct_ty, ty::TypingEnv::fully_monomorphized())
                         .expect("expected monomorphic const in cfi");
                     let _ = write!(s, "{val}");
                 }

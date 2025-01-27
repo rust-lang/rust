@@ -245,18 +245,6 @@ impl<'tcx> Const<'tcx> {
         self.try_to_valtree()?.0.try_to_target_usize(tcx)
     }
 
-    /// Attempts to evaluate the given constant to bits. Can fail to evaluate in the presence of
-    /// generics (or erroneous code) or if the value can't be represented as bits (e.g. because it
-    /// contains const generic parameters or pointers).
-    #[inline]
-    pub fn try_to_bits(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Option<u128> {
-        let (scalar, ty) = self.try_to_scalar()?;
-        let scalar = scalar.try_to_scalar_int().ok()?;
-        let input = typing_env.with_post_analysis_normalized(tcx).as_query_input(ty);
-        let size = tcx.layout_of(input).ok()?.size;
-        Some(scalar.to_bits(size))
-    }
-
     pub fn is_ct_infer(self) -> bool {
         matches!(self.kind(), ty::ConstKind::Infer(_))
     }

@@ -83,6 +83,21 @@ impl<'tcx> ValTree<'tcx> {
         self.try_to_scalar_int().map(|s| s.to_target_usize(tcx))
     }
 
+    /// Attempts to extract the raw bits of the valtree.
+    ///
+    /// Can fail if the value can't be represented as bits (e.g. because it is an aggregate).
+    pub fn try_to_bits(
+        self,
+        tcx: TyCtxt<'tcx>,
+        ty: Ty<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+    ) -> Option<u128> {
+        let input = typing_env.with_post_analysis_normalized(tcx).as_query_input(ty);
+        let size = tcx.layout_of(input).ok()?.size;
+        let scalar = self.try_to_scalar_int()?;
+        Some(scalar.to_bits(size))
+    }
+
     /// Get the values inside the ValTree as a slice of bytes. This only works for
     /// constants with types &str, &[u8], or [u8; _].
     pub fn try_to_raw_bytes(self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<&'tcx [u8]> {
