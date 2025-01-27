@@ -5,7 +5,6 @@ use rustc_error_messages::MultiSpan;
 use rustc_macros::HashStable;
 use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
 
-use crate::mir::interpret::Scalar;
 use crate::ty::{self, Ty, TyCtxt};
 
 mod int;
@@ -228,12 +227,6 @@ impl<'tcx> Const<'tcx> {
             ty::ConstKind::Value(cv) => Some(cv),
             _ => None,
         }
-    }
-
-    #[inline]
-    pub fn try_to_scalar(self) -> Option<(Scalar, Ty<'tcx>)> {
-        let cv = self.try_to_value()?;
-        Some((cv.valtree.try_to_scalar()?, cv.ty))
     }
 
     #[inline]

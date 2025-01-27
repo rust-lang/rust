@@ -117,9 +117,13 @@ pub struct Value<'tcx> {
 impl<'tcx> Value<'tcx> {
     /// Attempts to extract the raw bits from the constant.
     ///
-    /// Fails if the value can't be represented as bits (e.g. because it is an aggregate).
+    /// Fails if the value can't be represented as bits (e.g. because it is a reference
+    /// or an aggregate).
     #[inline]
     pub fn try_to_bits(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Option<u128> {
+        let (ty::Bool | ty::Char | ty::Uint(_) | ty::Int(_) | ty::Float(_)) = self.ty.kind() else {
+            return None;
+        };
         let scalar = self.valtree.try_to_scalar_int()?;
         let input = typing_env.with_post_analysis_normalized(tcx).as_query_input(self.ty);
         let size = tcx.layout_of(input).ok()?.size;
@@ -127,10 +131,16 @@ impl<'tcx> Value<'tcx> {
     }
 
     pub fn try_to_bool(self) -> Option<bool> {
+        if !self.ty.is_bool() {
+            return None;
+        }
         self.valtree.try_to_scalar_int()?.try_to_bool().ok()
     }
 
     pub fn try_to_target_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+        if !self.ty.is_usize() {
+            return None;
+        }
         self.valtree.try_to_scalar_int().map(|s| s.to_target_usize(tcx))
     }
 }
