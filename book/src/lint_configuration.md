@@ -743,6 +743,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`manual_bits`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_bits)
 * [`manual_c_str_literals`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_c_str_literals)
 * [`manual_clamp`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_clamp)
+* [`manual_flatten`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_flatten)
 * [`manual_hash_one`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_hash_one)
 * [`manual_is_ascii_check`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_ascii_check)
 * [`manual_let_else`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else)
