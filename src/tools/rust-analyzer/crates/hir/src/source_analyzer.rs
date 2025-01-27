@@ -1107,16 +1107,9 @@ impl SourceAnalyzer {
             if let Some(expanded_expr) = sm.macro_expansion_expr(macro_expr) {
                 let mut is_unsafe = false;
                 let mut walk_expr = |expr_id| {
-                    unsafe_expressions(
-                        db,
-                        infer,
-                        *def,
-                        body,
-                        expr_id,
-                        &mut |_, inside_unsafe_block, _| {
-                            is_unsafe |= inside_unsafe_block == InsideUnsafeBlock::No
-                        },
-                    )
+                    unsafe_expressions(db, infer, *def, body, expr_id, &mut |inside_unsafe_block| {
+                        is_unsafe |= inside_unsafe_block == InsideUnsafeBlock::No
+                    })
                 };
                 match expanded_expr {
                     ExprOrPatId::ExprId(expanded_expr) => walk_expr(expanded_expr),

@@ -2238,17 +2238,27 @@ impl ExprCollector<'_> {
         let unsafe_arg_new = self.alloc_expr_desugared(Expr::Path(unsafe_arg_new));
         let unsafe_arg_new =
             self.alloc_expr_desugared(Expr::Call { callee: unsafe_arg_new, args: Box::default() });
-        let unsafe_arg_new = self.alloc_expr_desugared(Expr::Unsafe {
+        let mut unsafe_arg_new = self.alloc_expr_desugared(Expr::Unsafe {
             id: None,
-            // We collect the unused expressions here so that we still infer them instead of
-            // dropping them out of the expression tree
-            statements: fmt
-                .orphans
-                .into_iter()
-                .map(|expr| Statement::Expr { expr, has_semi: true })
-                .collect(),
+            statements: Box::new([]),
             tail: Some(unsafe_arg_new),
         });
+        if !fmt.orphans.is_empty() {
+            unsafe_arg_new = self.alloc_expr_desugared(Expr::Block {
+                id: None,
+                // We collect the unused expressions here so that we still infer them instead of
+                // dropping them out of the expression tree. We cannot store them in the `Unsafe`
+                // block because then unsafe blocks within them will get a false "unused unsafe"
+                // diagnostic (rustc has a notion of builtin unsafe blocks, but we don't).
+                statements: fmt
+                    .orphans
+                    .into_iter()
+                    .map(|expr| Statement::Expr { expr, has_semi: true })
+                    .collect(),
+                tail: Some(unsafe_arg_new),
+                label: None,
+            });
+        }
 
         let idx = self.alloc_expr(
             Expr::Call {

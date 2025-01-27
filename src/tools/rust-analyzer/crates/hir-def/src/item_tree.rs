@@ -951,6 +951,7 @@ bitflags::bitflags! {
         /// only very few functions with it. So we only encode its existence here, and lookup
         /// it if needed.
         const HAS_TARGET_FEATURE = 1 << 8;
+        const DEPRECATED_SAFE_2024 = 1 << 9;
     }
 }
 

@@ -478,7 +478,15 @@ fn traverse(
                     {
                         continue;
                     }
-                    highlight_format_string(hl, sema, krate, &string, &expanded_string, range);
+                    highlight_format_string(
+                        hl,
+                        sema,
+                        krate,
+                        &string,
+                        &expanded_string,
+                        range,
+                        file_id.edition(),
+                    );
 
                     if !string.is_raw() {
                         highlight_escape_string(hl, &string, range.start());
@@ -526,6 +534,7 @@ fn traverse(
                 &mut bindings_shadow_count,
                 config.syntactic_name_ref_highlighting,
                 name_like,
+                file_id.edition(),
             ),
             NodeOrToken::Token(token) => {
                 highlight::token(sema, token, file_id.edition()).zip(Some(None))
