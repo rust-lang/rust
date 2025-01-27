@@ -455,6 +455,8 @@ impl Options {
         {
             let extra = if format == "json" {
                 " (see https://github.com/rust-lang/rust/issues/76578)"
+            } else if format == "doctest" {
+                " (see https://github.com/rust-lang/rust/issues/134529)"
             } else {
                 ""
             };
