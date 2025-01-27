@@ -102,6 +102,7 @@ mod single_char_add_str;
 mod single_char_insert_string;
 mod single_char_push_string;
 mod skip_while_next;
+mod sliced_string_as_bytes;
 mod stable_sort_primitive;
 mod str_split;
 mod str_splitn;
@@ -4363,6 +4364,34 @@ declare_clippy_lint! {
     "detect `repeat().take()` that can be replaced with `repeat_n()`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for string slices immediantly followed by `as_bytes`.
+    ///
+    /// ### Why is this bad?
+    /// It involves doing an unnecessary UTF-8 alignment check which is less efficient, and can cause a panic.
+    ///
+    /// ### Known problems
+    /// In some cases, the UTF-8 validation and potential panic from string slicing may be required for
+    /// the code's correctness. If you need to ensure the slice boundaries fall on valid UTF-8 character
+    /// boundaries, the original form (`s[1..5].as_bytes()`) should be preferred.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let s = "Lorem ipsum";
+    /// s[1..5].as_bytes();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let s = "Lorem ipsum";
+    /// &s.as_bytes()[1..5];
+    /// ```
+     #[clippy::version = "1.86.0"]
+     pub SLICED_STRING_AS_BYTES,
+     perf,
+     "slicing a string and immediately calling as_bytes is less efficient and can lead to panics"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -4531,6 +4560,7 @@ impl_lint_pass!(Methods => [
     DOUBLE_ENDED_ITERATOR_LAST,
     USELESS_NONZERO_NEW_UNCHECKED,
     MANUAL_REPEAT_N,
+    SLICED_STRING_AS_BYTES,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4798,6 +4828,7 @@ impl Methods {
                     if let Some(("as_str", recv, [], as_str_span, _)) = method_call(recv) {
                         redundant_as_str::check(cx, expr, recv, as_str_span, span);
                     }
+                    sliced_string_as_bytes::check(cx, expr, recv);
                 },
                 ("as_mut", []) => useless_asref::check(cx, expr, "as_mut", recv),
                 ("as_ptr", []) => manual_c_str_literals::check_as_ptr(cx, expr, recv, &self.msrv),
