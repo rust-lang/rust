@@ -121,7 +121,7 @@ impl InferenceContext<'_> {
             Expr::Become { expr } => {
                 self.infer_mut_expr(*expr, Mutability::Not);
             }
-            Expr::RecordLit { path: _, fields, spread, ellipsis: _ } => {
+            Expr::RecordLit { path: _, fields, spread } => {
                 self.infer_mut_not_expr_iter(fields.iter().map(|it| it.expr).chain(*spread))
             }
             &Expr::Index { base, index } => {

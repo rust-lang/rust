@@ -252,7 +252,6 @@ pub enum Expr {
         path: Option<Box<Path>>,
         fields: Box<[RecordLitField]>,
         spread: Option<ExprId>,
-        ellipsis: bool,
     },
     Field {
         expr: ExprId,

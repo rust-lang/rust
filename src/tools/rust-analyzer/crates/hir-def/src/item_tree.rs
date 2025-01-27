@@ -1007,7 +1007,6 @@ pub struct Field {
     pub name: Name,
     pub type_ref: TypeRefId,
     pub visibility: RawVisibilityId,
-    pub has_default: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

@@ -823,7 +823,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
             }
             Expr::Become { .. } => not_supported!("tail-calls"),
             Expr::Yield { .. } => not_supported!("yield"),
-            Expr::RecordLit { fields, path, spread, ellipsis: _ } => {
+            Expr::RecordLit { fields, path, spread } => {
                 let spread_place = match spread {
                     &Some(it) => {
                         let Some((p, c)) = self.lower_expr_as_place(current, it, true)? else {
