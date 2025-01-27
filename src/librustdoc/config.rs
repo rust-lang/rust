@@ -33,6 +33,7 @@ pub(crate) enum OutputFormat {
     Json,
     #[default]
     Html,
+    Doctest,
 }
 
 impl OutputFormat {
@@ -48,6 +49,7 @@ impl TryFrom<&str> for OutputFormat {
         match value {
             "json" => Ok(OutputFormat::Json),
             "html" => Ok(OutputFormat::Html),
+            "doctest" => Ok(OutputFormat::Doctest),
             _ => Err(format!("unknown output format `{value}`")),
         }
     }
@@ -446,12 +448,20 @@ impl Options {
         }
 
         // check for `--output-format=json`
-        if !matches!(matches.opt_str("output-format").as_deref(), None | Some("html"))
+        if let Some(format) = matches.opt_str("output-format").as_deref()
+            && format != "html"
             && !matches.opt_present("show-coverage")
             && !nightly_options::is_unstable_enabled(matches)
         {
+            let extra = if format == "json" {
+                " (see https://github.com/rust-lang/rust/issues/76578)"
+            } else {
+                ""
+            };
             dcx.fatal(
-                "the -Z unstable-options flag must be passed to enable --output-format for documentation generation (see https://github.com/rust-lang/rust/issues/76578)",
+                format!(
+                    "the -Z unstable-options flag must be passed to enable --output-format for documentation generation{extra}",
+                ),
             );
         }
 

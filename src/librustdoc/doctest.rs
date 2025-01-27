@@ -26,11 +26,12 @@ use rustc_span::FileName;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
 use rustc_target::spec::{Target, TargetTuple};
+use serde::{Serialize, Serializer};
 use tempfile::{Builder as TempFileBuilder, TempDir};
 use tracing::debug;
 
 use self::rust::HirCollector;
-use crate::config::Options as RustdocOptions;
+use crate::config::{Options as RustdocOptions, OutputFormat};
 use crate::html::markdown::{ErrorCodes, Ignore, LangString, MdRelLine};
 use crate::lint::init_lints;
 
@@ -133,6 +134,14 @@ fn get_doctest_dir() -> io::Result<TempDir> {
     TempFileBuilder::new().prefix("rustdoctest").tempdir()
 }
 
+#[derive(Serialize)]
+struct ExtractedDoctest {
+    /// `None` if the code syntax is invalid.
+    doctest_code: Option<String>,
+    #[serde(flatten)] // We make all `ScrapedDocTest` fields at the same level as `doctest_code`.
+    scraped_test: ScrapedDocTest,
+}
+
 pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions) {
     let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
@@ -209,6 +218,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
     let args_path = temp_dir.path().join("rustdoc-cfgs");
     crate::wrap_return(dcx, generate_args_file(&args_path, &options));
 
+    let extract_doctests = options.output_format == OutputFormat::Doctest;
     let CreateRunnableDocTests {
         standalone_tests,
         mergeable_tests,
@@ -217,7 +227,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         unused_extern_reports,
         compiling_test_count,
         ..
-    } = interface::run_compiler(config, |compiler| {
+    } = match interface::run_compiler(config, |compiler| {
         let krate = rustc_interface::passes::parse(&compiler.sess);
 
         let collector = rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
@@ -226,21 +236,64 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
             let opts = scrape_test_config(crate_name, crate_attrs, args_path);
             let enable_per_target_ignores = options.enable_per_target_ignores;
 
-            let mut collector = CreateRunnableDocTests::new(options, opts);
             let hir_collector = HirCollector::new(
                 ErrorCodes::from(compiler.sess.opts.unstable_features.is_nightly_build()),
                 enable_per_target_ignores,
                 tcx,
             );
             let tests = hir_collector.collect_crate();
-            tests.into_iter().for_each(|t| collector.add_test(t));
+            if extract_doctests {
+                let extracted = tests
+                    .into_iter()
+                    .map(|scraped_test| {
+                        let edition = scraped_test.edition(&options);
+                        let doctest = DocTestBuilder::new(
+                            &scraped_test.text,
+                            Some(&opts.crate_name),
+                            edition,
+                            false,
+                            None,
+                            Some(&scraped_test.langstr),
+                        );
+                        let (full_test_code, size) = doctest.generate_unique_doctest(
+                            &scraped_test.text,
+                            scraped_test.langstr.test_harness,
+                            &opts,
+                            Some(&opts.crate_name),
+                        );
+                        ExtractedDoctest {
+                            doctest_code: if size != 0 { Some(full_test_code) } else { None },
+                            scraped_test,
+                        }
+                    })
+                    .collect::<Vec<_>>();
 
-            collector
+                let stdout = std::io::stdout();
+                let mut stdout = stdout.lock();
+                if let Err(error) = serde_json::ser::to_writer(&mut stdout, &extracted) {
+                    eprintln!();
+                    Err(format!("Failed to generate JSON output for doctests: {error:?}"))
+                } else {
+                    Ok(None)
+                }
+            } else {
+                let mut collector = CreateRunnableDocTests::new(options, opts);
+                tests.into_iter().for_each(|t| collector.add_test(t));
+
+                Ok(Some(collector))
+            }
         });
         compiler.sess.dcx().abort_if_errors();
 
         collector
-    });
+    }) {
+        Ok(Some(collector)) => collector,
+        Ok(None) => return,
+        Err(error) => {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
+    };
 
     run_tests(opts, &rustdoc_options, &unused_extern_reports, standalone_tests, mergeable_tests);
 
@@ -752,6 +805,14 @@ impl IndividualTestOptions {
     }
 }
 
+fn filename_to_string<S: Serializer>(
+    filename: &FileName,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    let filename = filename.prefer_remapped_unconditionaly().to_string();
+    serializer.serialize_str(&filename)
+}
+
 /// A doctest scraped from the code, ready to be turned into a runnable test.
 ///
 /// The pipeline goes: [`clean`] AST -> `ScrapedDoctest` -> `RunnableDoctest`.
@@ -761,10 +822,14 @@ impl IndividualTestOptions {
 /// [`clean`]: crate::clean
 /// [`run_merged_tests`]: crate::doctest::runner::DocTestRunner::run_merged_tests
 /// [`generate_unique_doctest`]: crate::doctest::make::DocTestBuilder::generate_unique_doctest
+#[derive(Serialize)]
 pub(crate) struct ScrapedDocTest {
+    #[serde(serialize_with = "filename_to_string")]
     filename: FileName,
     line: usize,
+    #[serde(rename = "doctest_attributes")]
     langstr: LangString,
+    #[serde(rename = "original_code")]
     text: String,
     name: String,
 }
