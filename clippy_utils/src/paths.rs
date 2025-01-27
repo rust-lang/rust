@@ -29,6 +29,7 @@ pub const SYNTAX_CONTEXT: [&str; 3] = ["rustc_span", "hygiene", "SyntaxContext"]
 
 // Paths in `core`/`alloc`/`std`. This should be avoided and cleaned up by adding diagnostic items.
 pub const ABORT: [&str; 3] = ["std", "process", "abort"];
+pub const BUF_READ: [&str; 3] = ["std", "io", "BufRead"];
 pub const CHILD: [&str; 3] = ["std", "process", "Child"];
 pub const CHILD_ID: [&str; 4] = ["std", "process", "Child", "id"];
 pub const CHILD_KILL: [&str; 4] = ["std", "process", "Child", "kill"];

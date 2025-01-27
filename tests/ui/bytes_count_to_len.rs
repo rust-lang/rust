@@ -1,6 +1,6 @@
 #![warn(clippy::bytes_count_to_len)]
 use std::fs::File;
-use std::io::Read;
+use std::io::{BufReader, Read};
 
 fn main() {
     // should fix, because type is String
@@ -26,8 +26,8 @@ fn main() {
     bytes.bytes().count();
 
     // The type is File, so should not fix
-    let _ = File::open("foobar").unwrap().bytes().count();
+    let _ = BufReader::new(File::open("foobar").unwrap()).bytes().count();
 
-    let f = File::open("foobar").unwrap();
+    let f = BufReader::new(File::open("foobar").unwrap());
     let _ = f.bytes().count();
 }
