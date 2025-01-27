@@ -100,7 +100,7 @@ pub use mapping::{
 };
 pub use method_resolution::check_orphan_rules;
 pub use traits::TraitEnvironment;
-pub use utils::{all_super_traits, direct_super_traits, is_fn_unsafe_to_call};
+pub use utils::{all_super_traits, direct_super_traits, is_fn_unsafe_to_call, TargetFeatures};
 pub use variance::Variance;
 
 pub use chalk_ir::{

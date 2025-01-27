@@ -427,7 +427,11 @@ pub(super) fn highlight_def(
                 }
             }
 
-            if func.is_unsafe_to_call(db) {
+            // FIXME: Passing `None` here means not-unsafe functions with `#[target_feature]` will be
+            // highlighted as unsafe, even when the current target features set is a superset (RFC 2396).
+            // We probably should consider checking the current function, but I found no easy way to do
+            // that (also I'm worried about perf). There's also an instance below.
+            if func.is_unsafe_to_call(db, None) {
                 h |= HlMod::Unsafe;
             }
             if func.is_async(db) {
@@ -589,7 +593,7 @@ fn highlight_method_call(
 
     let mut h = SymbolKind::Method.into();
 
-    if func.is_unsafe_to_call(sema.db) || sema.is_unsafe_method_call(method_call) {
+    if func.is_unsafe_to_call(sema.db, None) || sema.is_unsafe_method_call(method_call) {
         h |= HlMod::Unsafe;
     }
     if func.is_async(sema.db) {

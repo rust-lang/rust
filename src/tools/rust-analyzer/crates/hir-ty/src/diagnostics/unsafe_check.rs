@@ -14,7 +14,8 @@ use hir_def::{
 };
 
 use crate::{
-    db::HirDatabase, utils::is_fn_unsafe_to_call, InferenceResult, Interner, TyExt, TyKind,
+    db::HirDatabase, utils::is_fn_unsafe_to_call, InferenceResult, Interner, TargetFeatures, TyExt,
+    TyKind,
 };
 
 /// Returns `(unsafe_exprs, fn_is_unsafe)`.
@@ -96,6 +97,7 @@ struct UnsafeVisitor<'a> {
     inside_assignment: bool,
     inside_union_destructure: bool,
     unsafe_expr_cb: &'a mut dyn FnMut(ExprOrPatId, InsideUnsafeBlock, UnsafetyReason),
+    def_target_features: TargetFeatures,
 }
 
 impl<'a> UnsafeVisitor<'a> {
@@ -107,6 +109,10 @@ impl<'a> UnsafeVisitor<'a> {
         unsafe_expr_cb: &'a mut dyn FnMut(ExprOrPatId, InsideUnsafeBlock, UnsafetyReason),
     ) -> Self {
         let resolver = def.resolver(db.upcast());
+        let def_target_features = match def {
+            DefWithBodyId::FunctionId(func) => TargetFeatures::from_attrs(&db.attrs(func.into())),
+            _ => TargetFeatures::default(),
+        };
         Self {
             db,
             infer,
@@ -117,6 +123,7 @@ impl<'a> UnsafeVisitor<'a> {
             inside_assignment: false,
             inside_union_destructure: false,
             unsafe_expr_cb,
+            def_target_features,
         }
     }
 
@@ -181,7 +188,7 @@ impl<'a> UnsafeVisitor<'a> {
         match expr {
             &Expr::Call { callee, .. } => {
                 if let Some(func) = self.infer[callee].as_fn_def(self.db) {
-                    if is_fn_unsafe_to_call(self.db, func) {
+                    if is_fn_unsafe_to_call(self.db, func, &self.def_target_features) {
                         self.call_cb(current.into(), UnsafetyReason::UnsafeFnCall);
                     }
                 }
@@ -212,7 +219,7 @@ impl<'a> UnsafeVisitor<'a> {
                 if self
                     .infer
                     .method_resolution(current)
-                    .map(|(func, _)| is_fn_unsafe_to_call(self.db, func))
+                    .map(|(func, _)| is_fn_unsafe_to_call(self.db, func, &self.def_target_features))
                     .unwrap_or(false)
                 {
                     self.call_cb(current.into(), UnsafetyReason::UnsafeFnCall);
