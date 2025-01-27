@@ -872,13 +872,10 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                         None => {
                                             let local_id =
                                                 LocalFieldId::from_raw(RawIdx::from(i as u32));
-                                            let has_default =
-                                                variant_data.fields()[local_id].has_default;
                                             let p = sp.project(
                                                 ProjectionElem::Field(Either::Left(FieldId {
                                                     parent: variant_id,
                                                     local_id,
-                                                    has_default,
                                                 })),
                                                 &mut self.result.projection_store,
                                             );
@@ -900,12 +897,10 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         };
                         let local_id =
                             variant_data.field(name).ok_or(MirLowerError::UnresolvedField)?;
-                        let has_default = variant_data.fields()[local_id].has_default;
                         let place = place.project(
                             PlaceElem::Field(Either::Left(FieldId {
                                 parent: union_id.into(),
                                 local_id,
-                                has_default,
                             })),
                             &mut self.result.projection_store,
                         );

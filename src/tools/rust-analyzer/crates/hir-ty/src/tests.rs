@@ -143,7 +143,7 @@ fn check_impl(
                 let vd = db.variant_data(variant_id);
                 defs.extend(vd.fields().iter().filter_map(|(local_id, fd)| {
                     if fd.has_default {
-                        let field = FieldId { parent: variant_id, local_id, has_default: true };
+                        let field = FieldId { parent: variant_id, local_id };
                         Some(DefWithBodyId::FieldId(field))
                     } else {
                         None
@@ -161,7 +161,7 @@ fn check_impl(
                 let vd = db.variant_data(variant_id);
                 defs.extend(vd.fields().iter().filter_map(|(local_id, fd)| {
                     if fd.has_default {
-                        let field = FieldId { parent: variant_id, local_id, has_default: true };
+                        let field = FieldId { parent: variant_id, local_id };
                         Some(DefWithBodyId::FieldId(field))
                     } else {
                         None
@@ -433,7 +433,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             let vd = db.variant_data(variant_id);
             defs.extend(vd.fields().iter().filter_map(|(local_id, fd)| {
                 if fd.has_default {
-                    let field = FieldId { parent: variant_id, local_id, has_default: true };
+                    let field = FieldId { parent: variant_id, local_id };
                     Some(DefWithBodyId::FieldId(field))
                 } else {
                     None
@@ -451,7 +451,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             let vd = db.variant_data(variant_id);
             defs.extend(vd.fields().iter().filter_map(|(local_id, fd)| {
                 if fd.has_default {
-                    let field = FieldId { parent: variant_id, local_id, has_default: true };
+                    let field = FieldId { parent: variant_id, local_id };
                     Some(DefWithBodyId::FieldId(field))
                 } else {
                     None
