@@ -448,6 +448,8 @@ pub use self::traits::FusedIterator;
 pub use self::traits::InPlaceIterable;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::Iterator;
+#[unstable(feature = "peekable_iterator", issue = "132973")]
+pub use self::traits::PeekableIterator;
 #[unstable(issue = "none", feature = "trusted_fused")]
 pub use self::traits::TrustedFused;
 #[unstable(feature = "trusted_len", issue = "37572")]
