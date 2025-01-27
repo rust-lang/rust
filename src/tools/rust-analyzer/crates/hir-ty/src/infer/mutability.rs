@@ -4,8 +4,8 @@
 use chalk_ir::{cast::Cast, Mutability};
 use hir_def::{
     hir::{
-        Array, AsmOperand, BinaryOp, BindingAnnotation, Expr, ExprId, Pat, PatId, Statement,
-        UnaryOp,
+        Array, AsmOperand, BinaryOp, BindingAnnotation, Expr, ExprId, Pat, PatId, Spread,
+        Statement, UnaryOp,
     },
     lang_item::LangItem,
 };
@@ -122,7 +122,11 @@ impl InferenceContext<'_> {
                 self.infer_mut_expr(*expr, Mutability::Not);
             }
             Expr::RecordLit { path: _, fields, spread } => {
-                self.infer_mut_not_expr_iter(fields.iter().map(|it| it.expr).chain(*spread))
+                let spread_expr = match spread {
+                    Spread::Base(expr) => Some(*expr),
+                    _ => None,
+                };
+                self.infer_mut_not_expr_iter(fields.iter().map(|it| it.expr).chain(spread_expr))
             }
             &Expr::Index { base, index } => {
                 if mutability == Mutability::Mut {

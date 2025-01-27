@@ -25,7 +25,7 @@ use crate::{
     db::DefDatabase,
     hir::{
         Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, Label, LabelId, Pat,
-        PatId, RecordFieldPat, Statement,
+        PatId, RecordFieldPat, Spread, Statement,
     },
     nameres::DefMap,
     path::{ModPath, Path},
@@ -362,7 +362,7 @@ impl ExpressionStore {
                 for field in fields.iter() {
                     f(field.expr);
                 }
-                if let &Some(expr) = spread {
+                if let &Spread::Base(expr) = spread {
                     f(expr);
                 }
             }
@@ -490,7 +490,7 @@ impl ExpressionStore {
                 for field in fields.iter() {
                     f(field.expr);
                 }
-                if let &Some(expr) = spread {
+                if let &Spread::Base(expr) = spread {
                     f(expr);
                 }
             }

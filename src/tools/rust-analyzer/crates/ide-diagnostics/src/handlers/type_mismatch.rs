@@ -1235,4 +1235,19 @@ fn f() {
 "#,
         );
     }
+
+    #[test]
+    fn diagnostics_inside_field_default_expr() {
+        check_diagnostics(
+            r#"
+struct Foo {
+    foo: i32 = {
+        let x = false;
+        x
+     // ^ error: expected i32, found bool
+    },
+}
+"#,
+        );
+    }
 }

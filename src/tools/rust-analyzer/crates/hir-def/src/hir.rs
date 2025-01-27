@@ -251,7 +251,7 @@ pub enum Expr {
     RecordLit {
         path: Option<Box<Path>>,
         fields: Box<[RecordLitField]>,
-        spread: Option<ExprId>,
+        spread: Spread,
     },
     Field {
         expr: ExprId,
@@ -476,6 +476,13 @@ pub struct MatchArm {
 pub struct RecordLitField {
     pub name: Name,
     pub expr: ExprId,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum Spread {
+    No,
+    Yes,
+    Base(ExprId),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

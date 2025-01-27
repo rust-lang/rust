@@ -135,7 +135,9 @@ impl Printer<'_> {
                 self.whitespace();
                 w!(self, "{{");
                 self.indented(|this| {
-                    for (idx, Field { name, type_ref, visibility }) in fields.iter().enumerate() {
+                    for (idx, Field { name, type_ref, visibility, has_default: _ }) in
+                        fields.iter().enumerate()
+                    {
                         this.print_attrs_of(
                             AttrOwner::Field(parent, Idx::from_raw(RawIdx::from(idx as u32))),
                             "\n",
@@ -151,7 +153,9 @@ impl Printer<'_> {
             FieldsShape::Tuple => {
                 w!(self, "(");
                 self.indented(|this| {
-                    for (idx, Field { name, type_ref, visibility }) in fields.iter().enumerate() {
+                    for (idx, Field { name, type_ref, visibility, has_default: _ }) in
+                        fields.iter().enumerate()
+                    {
                         this.print_attrs_of(
                             AttrOwner::Field(parent, Idx::from_raw(RawIdx::from(idx as u32))),
                             "\n",

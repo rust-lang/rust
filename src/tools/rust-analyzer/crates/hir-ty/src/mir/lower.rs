@@ -9,7 +9,7 @@ use hir_def::{
     expr_store::{Body, HygieneId},
     hir::{
         ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ExprId, LabelId, Literal,
-        LiteralOrConst, MatchArm, Pat, PatId, RecordFieldPat, RecordLitField,
+        LiteralOrConst, MatchArm, Pat, PatId, RecordFieldPat, RecordLitField, Spread,
     },
     lang_item::{LangItem, LangItemTarget},
     path::Path,
@@ -825,14 +825,14 @@ impl<'ctx> MirLowerCtx<'ctx> {
             Expr::Yield { .. } => not_supported!("yield"),
             Expr::RecordLit { fields, path, spread } => {
                 let spread_place = match spread {
-                    &Some(it) => {
+                    &Spread::Base(it) => {
                         let Some((p, c)) = self.lower_expr_as_place(current, it, true)? else {
                             return Ok(None);
                         };
                         current = c;
                         Some(p)
                     }
-                    None => None,
+                    _ => None,
                 };
                 let variant_id =
                     self.infer.variant_resolution_for_expr(expr_id).ok_or_else(|| match path {
@@ -870,12 +870,12 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                     .map(|(i, it)| match it {
                                         Some(it) => it,
                                         None => {
+                                            let local_id =
+                                                LocalFieldId::from_raw(RawIdx::from(i as u32));
                                             let p = sp.project(
                                                 ProjectionElem::Field(Either::Left(FieldId {
                                                     parent: variant_id,
-                                                    local_id: LocalFieldId::from_raw(RawIdx::from(
-                                                        i as u32,
-                                                    )),
+                                                    local_id,
                                                 })),
                                                 &mut self.result.projection_store,
                                             );
@@ -2130,6 +2130,10 @@ pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<Mi
             db.enum_variant_data(it).name.display(db.upcast(), edition).to_string()
         }
         DefWithBodyId::InTypeConstId(it) => format!("in type const {it:?}"),
+        DefWithBodyId::FieldId(it) => it.parent.variant_data(db.upcast()).fields()[it.local_id]
+            .name
+            .display(db.upcast(), edition)
+            .to_string(),
     };
     let _p = tracing::info_span!("mir_body_query", ?detail).entered();
     let body = db.body(def);

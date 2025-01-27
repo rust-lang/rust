@@ -27,10 +27,11 @@ use crate::{
     type_ref::{LifetimeRef, TypesMap},
     visibility::{RawVisibility, Visibility},
     AdtId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId,
-    ExternBlockId, ExternCrateId, FunctionId, FxIndexMap, GenericDefId, GenericParamId, HasModule,
-    ImplId, ItemContainerId, ItemTreeLoc, LifetimeParamId, LocalModuleId, Lookup, Macro2Id,
-    MacroId, MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId,
-    TraitId, TypeAliasId, TypeOrConstParamId, TypeOwnerId, TypeParamId, UseId, VariantId,
+    ExternBlockId, ExternCrateId, FieldId, FunctionId, FxIndexMap, GenericDefId, GenericParamId,
+    HasModule, ImplId, ItemContainerId, ItemTreeLoc, LifetimeParamId, LocalModuleId, Lookup,
+    Macro2Id, MacroId, MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId,
+    TraitAliasId, TraitId, TypeAliasId, TypeOrConstParamId, TypeOwnerId, TypeParamId, UseId,
+    VariantId,
 };
 
 #[derive(Debug, Clone)]
@@ -1227,6 +1228,7 @@ impl HasResolver for TypeOwnerId {
             TypeOwnerId::TypeAliasId(it) => it.resolver(db),
             TypeOwnerId::ImplId(it) => it.resolver(db),
             TypeOwnerId::EnumVariantId(it) => it.resolver(db),
+            TypeOwnerId::FieldId(it) => it.resolver(db),
         }
     }
 }
@@ -1239,6 +1241,7 @@ impl HasResolver for DefWithBodyId {
             DefWithBodyId::StaticId(s) => s.resolver(db),
             DefWithBodyId::VariantId(v) => v.resolver(db),
             DefWithBodyId::InTypeConstId(c) => c.lookup(db).owner.resolver(db),
+            DefWithBodyId::FieldId(f) => f.resolver(db),
         }
     }
 }
@@ -1282,6 +1285,12 @@ impl HasResolver for VariantId {
             VariantId::StructId(it) => it.resolver(db),
             VariantId::UnionId(it) => it.resolver(db),
         }
+    }
+}
+
+impl HasResolver for FieldId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        self.parent.resolver(db)
     }
 }
 

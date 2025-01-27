@@ -85,6 +85,7 @@ pub struct FieldData {
     pub name: Name,
     pub type_ref: TypeRefId,
     pub visibility: RawVisibility,
+    pub has_default: bool,
 }
 
 fn repr_from_value(
@@ -478,5 +479,6 @@ fn lower_field(
         name: field.name.clone(),
         type_ref: field.type_ref,
         visibility: item_tree[override_visibility.unwrap_or(field.visibility)].clone(),
+        has_default: field.has_default,
     }
 }
