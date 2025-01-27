@@ -3,6 +3,15 @@
 //! The [`Random`] trait allows generating a random value for a type using a
 //! given [`RandomSource`].
 
+mod deterministic;
+
+#[unstable(feature = "deterministic_random_chacha8", issue = "131606")]
+pub use deterministic::DeterministicRandomSource;
+#[doc(hidden)]
+#[unstable(feature = "deterministic_random_internals", issue = "none")]
+// Used for testing only.
+pub use deterministic::chacha;
+
 /// A source of randomness.
 #[unstable(feature = "random", issue = "130703")]
 pub trait RandomSource {
@@ -42,7 +51,9 @@ macro_rules! impl_primitive {
             fn random(source: &mut (impl RandomSource + ?Sized)) -> Self {
                 let mut bytes = (0 as Self).to_ne_bytes();
                 source.fill_bytes(&mut bytes);
-                Self::from_ne_bytes(bytes)
+                // Use LE-ordering to guarantee that the number is the same,
+                // irrespective of the platform.
+                Self::from_le_bytes(bytes)
             }
         }
     };
