@@ -453,7 +453,7 @@ fn report_unexpected_variant_res(
                 );
                 let fields = fields
                     .iter()
-                    .map(|field| format!("{}: _", field.name.to_ident_string()))
+                    .map(|field| format!("{}: _", field.ident(tcx)))
                     .collect::<Vec<_>>()
                     .join(", ");
                 let sugg = format!(" {{ {} }}", fields);

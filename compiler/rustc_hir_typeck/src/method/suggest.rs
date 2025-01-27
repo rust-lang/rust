@@ -2714,7 +2714,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .map(|field_path| {
                         field_path
                             .iter()
-                            .map(|id| id.name.to_ident_string())
+                            .map(|id| id.to_string())
                             .collect::<Vec<String>>()
                             .join(".")
                     })
