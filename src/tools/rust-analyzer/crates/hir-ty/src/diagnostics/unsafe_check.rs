@@ -240,8 +240,14 @@ impl<'a> UnsafeVisitor<'a> {
         let inside_assignment = mem::replace(&mut self.inside_assignment, false);
         match expr {
             &Expr::Call { callee, .. } => {
-                if let Some(func) = self.infer[callee].as_fn_def(self.db) {
+                let callee = &self.infer[callee];
+                if let Some(func) = callee.as_fn_def(self.db) {
                     self.check_call(current, func);
+                }
+                if let TyKind::Function(fn_ptr) = callee.kind(Interner) {
+                    if fn_ptr.sig.safety == chalk_ir::Safety::Unsafe {
+                        self.on_unsafe_op(current.into(), UnsafetyReason::UnsafeFnCall);
+                    }
                 }
             }
             Expr::Path(path) => {
