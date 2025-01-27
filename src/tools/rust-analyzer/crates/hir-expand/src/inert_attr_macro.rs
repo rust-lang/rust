@@ -23,7 +23,7 @@ pub struct BuiltinAttribute {
 #[derive(Clone, Copy)]
 pub struct AttributeTemplate {
     pub word: bool,
-    pub list: Option<&'static [&'static str]>,
+    pub list: Option<&'static str>,
     pub name_value_str: Option<&'static str>,
 }
 
