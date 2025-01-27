@@ -1,4 +1,3 @@
-//@ needs-force-clang-based-tests
 // This test checks that the clang defines for each target allign with the core ffi types defined in
 // mod.rs. Therefore each rust target is queried and the clang defines for each target are read and
 // compared to the core sizes to verify all types and sizes allign at buildtime.
@@ -101,6 +100,8 @@ fn main() {
             const CLANG_C_LONGLONG_SIZE: usize = {};
             const CLANG_C_FLOAT_SIZE: usize = {};
             const CLANG_C_DOUBLE_SIZE: usize = {};
+            const CLANG_C_SIZE_T_SIZE: usize = {};
+            const CLANG_C_PTRDIFF_T_SIZE: usize = {};
             ",
             parse_size(&defines, "CHAR"),
             char_is_signed(&defines),
@@ -110,6 +111,8 @@ fn main() {
             parse_size(&defines, "LONG_LONG"),
             parse_size(&defines, "FLOAT"),
             parse_size(&defines, "DOUBLE"),
+            parse_size(&defines, "SIZE_T"),
+            parse_size(&defines, "PTRDIFF_T"),
         ));
 
         // Generate a target-specific rmake file.
