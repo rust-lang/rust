@@ -1,3 +1,4 @@
+//@ needs-force-clang-based-tests
 // This test checks that the clang defines for each target allign with the core ffi types defined in
 // mod.rs. Therefore each rust target is queried and the clang defines for each target are read and
 // compared to the core sizes to verify all types and sizes allign at buildtime.
@@ -205,6 +206,5 @@ fn regex_mod() {
 
     let file_name = "processed_mod.rs";
 
-    rfs::create_file(&file_name);
     rfs::write(&file_name, content);
 }
