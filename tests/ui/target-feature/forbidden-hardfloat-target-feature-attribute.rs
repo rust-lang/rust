@@ -1,3 +1,4 @@
+//! Ensure ABI-incompatible features cannot be enabled via `#[target_feature]`.
 //@ compile-flags: --target=riscv32e-unknown-none-elf --crate-type=lib
 //@ needs-llvm-components: riscv
 #![feature(no_core, lang_items, riscv_target_feature)]
