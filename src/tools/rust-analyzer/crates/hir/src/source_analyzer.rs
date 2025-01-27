@@ -630,8 +630,10 @@ impl SourceAnalyzer {
         let (adt, subst) = self.infer.as_ref()?.type_of_expr_or_pat(expr_id)?.as_adt()?;
         let variant = self.infer.as_ref()?.variant_resolution_for_expr_or_pat(expr_id)?;
         let variant_data = variant.variant_data(db.upcast());
+        let fields = variant_data.fields();
         let local_id = variant_data.field(&local_name)?;
-        let field = FieldId { parent: variant, local_id };
+        let field =
+            FieldId { parent: variant, local_id, has_default: fields[local_id].has_default };
         let field_ty =
             db.field_types(variant).get(field.local_id)?.clone().substitute(Interner, subst);
         Some((
@@ -652,8 +654,10 @@ impl SourceAnalyzer {
         let pat_id = self.pat_id(&record_pat.into())?;
         let variant = self.infer.as_ref()?.variant_resolution_for_pat(pat_id)?;
         let variant_data = variant.variant_data(db.upcast());
+        let fields = variant_data.fields();
         let local_id = variant_data.field(&field_name)?;
-        let field = FieldId { parent: variant, local_id };
+        let field =
+            FieldId { parent: variant, local_id, has_default: fields[local_id].has_default };
         let (adt, subst) = self.infer.as_ref()?.type_of_pat.get(pat_id)?.as_adt()?;
         let field_ty =
             db.field_types(variant).get(field.local_id)?.clone().substitute(Interner, subst);
@@ -1062,11 +1066,17 @@ impl SourceAnalyzer {
         missing_fields: Vec<LocalFieldId>,
     ) -> Vec<(Field, Type)> {
         let field_types = db.field_types(variant);
+        let var_data = db.variant_data(variant);
+        let fields = var_data.fields();
 
         missing_fields
             .into_iter()
             .map(|local_id| {
-                let field = FieldId { parent: variant, local_id };
+                let field = FieldId {
+                    parent: variant,
+                    local_id,
+                    has_default: fields[local_id].has_default,
+                };
                 let ty = field_types[local_id].clone().substitute(Interner, substs);
                 (field.into(), Type::new_with_resolver_inner(db, &self.resolver, ty))
             })

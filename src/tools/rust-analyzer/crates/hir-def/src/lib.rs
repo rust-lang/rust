@@ -519,6 +519,7 @@ pub type LocalModuleId = Idx<nameres::ModuleData>;
 pub struct FieldId {
     pub parent: VariantId,
     pub local_id: LocalFieldId,
+    pub has_default: bool,
 }
 
 impl FieldId {

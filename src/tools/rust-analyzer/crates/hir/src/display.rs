@@ -252,8 +252,8 @@ impl HirDisplay for Struct {
                 f.write_char('(')?;
                 let mut it = variant_data.fields().iter().peekable();
 
-                while let Some((id, _)) = it.next() {
-                    let field = Field { parent: (*self).into(), id };
+                while let Some((id, d)) = it.next() {
+                    let field = Field { parent: (*self).into(), id, has_default: d.has_default };
                     write_visibility(module_id, field.visibility(f.db), f)?;
                     field.ty(f.db).hir_fmt(f)?;
                     if it.peek().is_some() {

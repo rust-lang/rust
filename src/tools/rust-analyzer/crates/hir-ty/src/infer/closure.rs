@@ -1167,9 +1167,11 @@ impl InferenceContext<'_> {
                                 };
                                 let mut p = place.clone();
                                 self.current_capture_span_stack.push(MirSpan::PatId(arg));
+                                let has_default = vd.fields()[local_id].has_default;
                                 p.projections.push(ProjectionElem::Field(Either::Left(FieldId {
                                     parent: variant,
                                     local_id,
+                                    has_default,
                                 })));
                                 self.consume_with_pat(p, arg);
                                 self.current_capture_span_stack.pop();
@@ -1219,12 +1221,13 @@ impl InferenceContext<'_> {
                                 .iter()
                                 .zip(fields.clone())
                                 .chain(ar.iter().rev().zip(fields.rev()));
-                            for (&arg, (i, _)) in it {
+                            for (&arg, (i, d)) in it {
                                 let mut p = place.clone();
                                 self.current_capture_span_stack.push(MirSpan::PatId(arg));
                                 p.projections.push(ProjectionElem::Field(Either::Left(FieldId {
                                     parent: variant,
                                     local_id: i,
+                                    has_default: d.has_default,
                                 })));
                                 self.consume_with_pat(p, arg);
                                 self.current_capture_span_stack.pop();

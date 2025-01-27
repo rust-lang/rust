@@ -160,7 +160,11 @@ impl ChildBySource for VariantId {
         let arena_map = arena_map.as_ref();
         let parent = *self;
         for (local_id, source) in arena_map.value.iter() {
-            let id = FieldId { parent, local_id };
+            let has_default = match source {
+                Either::Left(_) => false,
+                Either::Right(rec) => rec.expr().is_some(),
+            };
+            let id = FieldId { parent, local_id, has_default };
             match source.clone() {
                 Either::Left(source) => res[keys::TUPLE_FIELD].insert(AstPtr::new(&source), id),
                 Either::Right(source) => res[keys::RECORD_FIELD].insert(AstPtr::new(&source), id),
