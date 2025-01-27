@@ -2835,7 +2835,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 match seen_bindings.entry(ident) {
                     Entry::Occupied(entry) => {
                         let span = *entry.get();
-                        let err = ResolutionError::NameAlreadyUsedInParameterList(ident.name, span);
+                        let err = ResolutionError::NameAlreadyUsedInParameterList(ident, span);
                         self.report_error(param.ident.span, err);
                         let rib = match param.kind {
                             GenericParamKind::Lifetime => {
@@ -3422,7 +3422,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         match seen_trait_items.entry(id_in_trait) {
             Entry::Occupied(entry) => {
                 self.report_error(span, ResolutionError::TraitImplDuplicate {
-                    name: ident.name,
+                    name: ident,
                     old_span: *entry.get(),
                     trait_item_span: binding.span,
                 });
@@ -3457,7 +3457,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         };
         let trait_path = path_names_to_string(path);
         self.report_error(span, ResolutionError::TraitImplMismatch {
-            name: ident.name,
+            name: ident,
             kind,
             code,
             trait_path,
@@ -3640,9 +3640,8 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 .filter(|(_, pat)| pat.id != pat_outer.id)
                 .flat_map(|(map, _)| map);
 
-            for (key, binding_inner) in inners {
-                let name = key.name;
-                match map_outer.get(key) {
+            for (&name, binding_inner) in inners {
+                match map_outer.get(&name) {
                     None => {
                         // The inner binding is missing in the outer.
                         let binding_error =
@@ -3880,7 +3879,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 // `Variant(a, a)`:
                 _ => IdentifierBoundMoreThanOnceInSamePattern,
             };
-            self.report_error(ident.span, error(ident.name));
+            self.report_error(ident.span, error(ident));
         }
 
         // Record as bound if it's valid:

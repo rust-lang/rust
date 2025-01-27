@@ -465,8 +465,8 @@ fn emit_orphan_check_error<'tcx>(
         traits::OrphanCheckErr::UncoveredTyParams(UncoveredTyParams { uncovered, local_ty }) => {
             let mut reported = None;
             for param_def_id in uncovered {
-                let span = tcx.def_ident_span(param_def_id).unwrap();
-                let name = tcx.item_name(param_def_id);
+                let name = tcx.item_ident(param_def_id);
+                let span = name.span;
 
                 reported.get_or_insert(match local_ty {
                     Some(local_type) => tcx.dcx().emit_err(errors::TyParamFirstLocal {
@@ -492,7 +492,7 @@ fn lint_uncovered_ty_params<'tcx>(
 
     for param_def_id in uncovered {
         let span = tcx.def_ident_span(param_def_id).unwrap();
-        let name = tcx.item_name(param_def_id);
+        let name = tcx.item_ident(param_def_id);
 
         match local_ty {
             Some(local_type) => tcx.emit_node_span_lint(

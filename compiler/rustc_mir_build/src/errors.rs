@@ -7,7 +7,7 @@ use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_pattern_analysis::errors::Uncovered;
 use rustc_pattern_analysis::rustc::RustcPatCtxt;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
 
@@ -753,7 +753,7 @@ pub(crate) struct BindingsWithVariantName {
     #[suggestion(code = "{ty_path}::{name}", applicability = "machine-applicable")]
     pub(crate) suggestion: Option<Span>,
     pub(crate) ty_path: String,
-    pub(crate) name: Symbol,
+    pub(crate) name: Ident,
 }
 
 #[derive(LintDiagnostic)]
@@ -797,7 +797,7 @@ pub(crate) struct BorrowOfMovedValue {
     pub(crate) binding_span: Span,
     #[label(mir_build_value_borrowed_label)]
     pub(crate) conflicts_ref: Vec<Span>,
-    pub(crate) name: Symbol,
+    pub(crate) name: Ident,
     pub(crate) ty: String,
     #[suggestion(code = "ref ", applicability = "machine-applicable")]
     pub(crate) suggest_borrowing: Option<Span>,

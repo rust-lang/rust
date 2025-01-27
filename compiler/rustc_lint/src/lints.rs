@@ -1150,7 +1150,7 @@ pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
 #[help(lint_help_visit)]
 // FIXME: put #[primary_span] on `ptr_span` once it does not cause conflicts
 pub(crate) struct DanglingPointersFromTemporaries<'tcx> {
-    pub callee: Symbol,
+    pub callee: Ident,
     pub ty: Ty<'tcx>,
     #[label(lint_label_ptr)]
     pub ptr_span: Span,
@@ -1351,7 +1351,7 @@ pub(crate) enum NonUpperCaseGlobalSub {
 #[diag(lint_noop_method_call)]
 #[note]
 pub(crate) struct NoopMethodCallDiag<'a> {
-    pub method: Symbol,
+    pub method: Ident,
     pub orig_ty: Ty<'a>,
     pub trait_: Symbol,
     #[suggestion(code = "", applicability = "machine-applicable")]

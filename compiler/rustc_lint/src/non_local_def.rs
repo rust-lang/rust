@@ -343,5 +343,5 @@ fn path_span_without_args(path: &Path<'_>) -> Span {
 
 /// Return a "error message-able" ident for the last segment of the `Path`
 fn path_name_to_string(path: &Path<'_>) -> String {
-    path.segments.last().unwrap().ident.name.to_ident_string()
+    path.segments.last().unwrap().ident.to_string()
 }

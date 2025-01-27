@@ -11,7 +11,6 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::coverage::Op;
 
-use crate::coverage::counters::iter_nodes::IterNodes;
 use crate::coverage::counters::union_find::UnionFind;
 
 #[cfg(test)]

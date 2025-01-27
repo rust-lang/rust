@@ -214,7 +214,7 @@ enum Used {
 
 #[derive(Debug)]
 struct BindingError {
-    name: Symbol,
+    name: Ident,
     origin: BTreeSet<Span>,
     target: BTreeSet<Span>,
     could_be_path: bool,
@@ -226,7 +226,7 @@ enum ResolutionError<'ra> {
     GenericParamsFromOuterItem(Res, HasGenericParams, DefKind),
     /// Error E0403: the name is already used for a type or const parameter in this generic
     /// parameter list.
-    NameAlreadyUsedInParameterList(Symbol, Span),
+    NameAlreadyUsedInParameterList(Ident, Span),
     /// Error E0407: method is not a member of trait.
     MethodNotMemberOfTrait(Ident, String, Option<Symbol>),
     /// Error E0437: type is not a member of trait.
@@ -236,11 +236,11 @@ enum ResolutionError<'ra> {
     /// Error E0408: variable `{}` is not bound in all patterns.
     VariableNotBoundInPattern(BindingError, ParentScope<'ra>),
     /// Error E0409: variable `{}` is bound in inconsistent ways within the same match arm.
-    VariableBoundWithDifferentMode(Symbol, Span),
+    VariableBoundWithDifferentMode(Ident, Span),
     /// Error E0415: identifier is bound more than once in this parameter list.
-    IdentifierBoundMoreThanOnceInParameterList(Symbol),
+    IdentifierBoundMoreThanOnceInParameterList(Ident),
     /// Error E0416: identifier is bound more than once in the same pattern.
-    IdentifierBoundMoreThanOnceInSamePattern(Symbol),
+    IdentifierBoundMoreThanOnceInSamePattern(Ident),
     /// Error E0426: use of undeclared label.
     UndeclaredLabel { name: Symbol, suggestion: Option<LabelSuggestion> },
     /// Error E0429: `self` imports are only allowed within a `{ }` list.
@@ -292,14 +292,14 @@ enum ResolutionError<'ra> {
     UnreachableLabel { name: Symbol, definition_span: Span, suggestion: Option<LabelSuggestion> },
     /// Error E0323, E0324, E0325: mismatch between trait item and impl item.
     TraitImplMismatch {
-        name: Symbol,
+        name: Ident,
         kind: &'static str,
         trait_path: String,
         trait_item_span: Span,
         code: ErrCode,
     },
     /// Error E0201: multiple impl items for the same trait item.
-    TraitImplDuplicate { name: Symbol, trait_item_span: Span, old_span: Span },
+    TraitImplDuplicate { name: Ident, trait_item_span: Span, old_span: Span },
     /// Inline asm `sym` operand must refer to a `fn` or `static`.
     InvalidAsmSym,
     /// `self` used instead of `Self` in a generic parameter
