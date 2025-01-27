@@ -51,3 +51,35 @@ pub fn swap_simd(x: &mut __m128, y: &mut __m128) {
     // CHECK: retq
     swap(x, y)
 }
+
+// CHECK-LABEL: swap_string:
+#[no_mangle]
+pub fn swap_string(x: &mut String, y: &mut String) {
+    // CHECK: movups (%[[ARG1]]), %[[T1a:xmm.]]
+    // CHECK: movups (%[[ARG2]]), %[[T2a:xmm.]]
+    // CHECK: movups %[[T2a]], (%[[ARG1]])
+    // CHECK: movups %[[T1a]], (%[[ARG2]])
+    // CHECK: movq   16(%[[ARG1]]), %[[T1b:r.+]]
+    // CHECK: movq   16(%[[ARG2]]), %[[T2b:r.+]]
+    // CHECK: movq   %[[T2b]], 16(%[[ARG1]])
+    // CHECK: movq   %[[T1b]], 16(%[[ARG2]])
+    // CHECK: retq
+    swap(x, y)
+}
+
+// CHECK-LABEL: swap_44_bytes:
+#[no_mangle]
+pub fn swap_44_bytes(x: &mut [u8; 44], y: &mut [u8; 44]) {
+    // Ensure we do better than a long run of byte copies,
+    // see <https://github.com/rust-lang/rust/issues/134946>
+
+    // CHECK-NOT: movb
+    // CHECK-COUNT-8: movups{{.+}}xmm
+    // CHECK-NOT: movb
+    // CHECK-COUNT-4: movq
+    // CHECK-NOT: movb
+    // CHECK-COUNT-4: movl
+    // CHECK-NOT: movb
+    // CHECK: retq
+    swap(x, y)
+}

@@ -498,6 +498,23 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
             }
 
+            sym::untyped_swap_nonoverlapping => {
+                // The fallback impl uses memcpy, which leaves around allocas
+                // that don't optimize out for certain widths, so force it to
+                // use SSA registers instead.
+
+                let chunk_ty = fn_args.type_at(0);
+                let layout = self.layout_of(chunk_ty).layout;
+                let integer_ty = self.type_ix(layout.size().bits());
+                let a = args[0].immediate();
+                let b = args[1].immediate();
+                let a_val = self.load(integer_ty, a, layout.align().abi);
+                let b_val = self.load(integer_ty, b, layout.align().abi);
+                self.store(b_val, a, layout.align().abi);
+                self.store(a_val, b, layout.align().abi);
+                return Ok(());
+            }
+
             sym::compare_bytes => {
                 // Here we assume that the `memcmp` provided by the target is a NOP for size 0.
                 let cmp = self.call_intrinsic("memcmp", &[

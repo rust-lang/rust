@@ -23,8 +23,19 @@ pub fn swap_single_m256(x: &mut __m256, y: &mut __m256) {
 #[no_mangle]
 pub fn swap_m256_slice(x: &mut [__m256], y: &mut [__m256]) {
     // CHECK-NOT: alloca
-    // CHECK: load <8 x float>{{.+}}align 32
-    // CHECK: store <8 x float>{{.+}}align 32
+
+    // CHECK-NOT: load i128
+    // CHECK-NOT: load i64
+    // CHECK-NOT: load i32
+
+    // CHECK: [[A:%.+]] = load i256{{.+}}align 32
+    // CHECK: [[B:%.+]] = load i256{{.+}}align 32
+    // CHECK: store i256 [[B]]{{.+}}align 32
+    // CHECK: store i256 [[A]]{{.+}}align 32
+
+    // CHECK-NOT: load i128
+    // CHECK-NOT: load i64
+    // CHECK-NOT: load i32
     if x.len() == y.len() {
         x.swap_with_slice(y);
     }
@@ -34,7 +45,18 @@ pub fn swap_m256_slice(x: &mut [__m256], y: &mut [__m256]) {
 #[no_mangle]
 pub fn swap_bytes32(x: &mut [u8; 32], y: &mut [u8; 32]) {
     // CHECK-NOT: alloca
-    // CHECK: load <32 x i8>{{.+}}align 1
-    // CHECK: store <32 x i8>{{.+}}align 1
+
+    // CHECK-NOT: load i128
+    // CHECK-NOT: load i64
+    // CHECK-NOT: load i32
+
+    // CHECK: [[A:%.+]] = load i256{{.+}}align 1
+    // CHECK: [[B:%.+]] = load i256{{.+}}align 1
+    // CHECK: store i256 [[B]]{{.+}}align 1
+    // CHECK: store i256 [[A]]{{.+}}align 1
+
+    // CHECK-NOT: load i128
+    // CHECK-NOT: load i64
+    // CHECK-NOT: load i32
     swap(x, y)
 }

@@ -27,13 +27,19 @@ pub fn swap_rgb48_manually(x: &mut RGB48, y: &mut RGB48) {
 pub fn swap_rgb48(x: &mut RGB48, y: &mut RGB48) {
     // CHECK-NOT: alloca
 
-    // Whether `i8` is the best for this is unclear, but
-    // might as well record what's actually happening right now.
+    // Swapping `i48` might be cleaner in LLVM-IR here, but `i32`+`i16` isn't bad,
+    // and is closer to the assembly it generates anyway.
 
-    // CHECK: load i8
-    // CHECK: load i8
-    // CHECK: store i8
-    // CHECK: store i8
+    // CHECK-NOT: load
+    // CHECK: load i32{{.+}}align 2
+    // CHECK-NEXT: load i32{{.+}}align 2
+    // CHECK-NEXT: store i32{{.+}}align 2
+    // CHECK-NEXT: store i32{{.+}}align 2
+    // CHECK: load i16{{.+}}align 2
+    // CHECK-NEXT: load i16{{.+}}align 2
+    // CHECK-NEXT: store i16{{.+}}align 2
+    // CHECK-NEXT: store i16{{.+}}align 2
+    // CHECK-NOT: store
     swap(x, y)
 }
 
@@ -54,19 +60,27 @@ pub fn swap_rgba64(x: &mut RGBA64, y: &mut RGBA64) {
 #[no_mangle]
 pub fn swap_vecs(x: &mut Vec<u32>, y: &mut Vec<u32>) {
     // CHECK-NOT: alloca
-    // There are plenty more loads and stores than just these,
-    // but at least one sure better be 64-bit (for size or capacity).
+
+    // CHECK-NOT: load
+    // CHECK: load i128
+    // CHECK-NEXT: load i128
+    // CHECK-NEXT: store i128
+    // CHECK-NEXT: store i128
     // CHECK: load i64
-    // CHECK: load i64
-    // CHECK: store i64
-    // CHECK: store i64
-    // CHECK: ret void
+    // CHECK-NEXT: load i64
+    // CHECK-NEXT: store i64
+    // CHECK-NEXT: store i64
+    // CHECK-NOT: store
     swap(x, y)
 }
 
 // CHECK-LABEL: @swap_slices
 #[no_mangle]
 pub fn swap_slices<'a>(x: &mut &'a [u32], y: &mut &'a [u32]) {
+    // Note that separate loads here is fine, as they merge to `movups` anyway
+    // at the assembly level, so staying more obviously typed and as a scalar
+    // pair -- like they're used elsewhere -- is ok, no need to force `i128`.
+
     // CHECK-NOT: alloca
     // CHECK: load ptr
     // CHECK: load i64
@@ -76,45 +90,84 @@ pub fn swap_slices<'a>(x: &mut &'a [u32], y: &mut &'a [u32]) {
     swap(x, y)
 }
 
-// LLVM doesn't vectorize a loop over 3-byte elements,
-// so we chunk it down to bytes and loop over those instead.
 type RGB24 = [u8; 3];
 
 // CHECK-LABEL: @swap_rgb24_slices
 #[no_mangle]
 pub fn swap_rgb24_slices(x: &mut [RGB24], y: &mut [RGB24]) {
     // CHECK-NOT: alloca
-    // CHECK: load <{{[0-9]+}} x i8>
-    // CHECK: store <{{[0-9]+}} x i8>
+
+    // The odd size means we need the full set.
+
+    // CHECK-COUNT-2: load i512{{.+}}align 1
+    // CHECK-NEXT: store i512{{.+}}align 1
+    // CHECK-COUNT-2: load i256{{.+}}align 1
+    // CHECK-NEXT: store i256{{.+}}align 1
+    // CHECK-COUNT-2: load i128{{.+}}align 1
+    // CHECK-NEXT: store i128{{.+}}align 1
+    // CHECK-COUNT-2: load i64{{.+}}align 1
+    // CHECK-NEXT: store i64{{.+}}align 1
+    // CHECK-COUNT-2: load i32{{.+}}align 1
+    // CHECK-NEXT: store i32{{.+}}align 1
+    // CHECK-COUNT-2: load i16{{.+}}align 1
+    // CHECK-NEXT: store i16{{.+}}align 1
+    // CHECK-COUNT-2: load i8{{.+}}align 1
+    // CHECK-NEXT: store i8{{.+}}align 1
     if x.len() == y.len() {
         x.swap_with_slice(y);
     }
 }
 
-// This one has a power-of-two size, so we iterate over it directly
 type RGBA32 = [u8; 4];
 
 // CHECK-LABEL: @swap_rgba32_slices
 #[no_mangle]
 pub fn swap_rgba32_slices(x: &mut [RGBA32], y: &mut [RGBA32]) {
     // CHECK-NOT: alloca
-    // CHECK: load <{{[0-9]+}} x i32>
-    // CHECK: store <{{[0-9]+}} x i32>
+
+    // Because the size in bytes in a multiple of 4, we can skip the smallest sizes.
+
+    // CHECK-COUNT-2: load i512{{.+}}align 1
+    // CHECK-NEXT: store i512{{.+}}align 1
+    // CHECK-COUNT-2: load i256{{.+}}align 1
+    // CHECK-NEXT: store i256{{.+}}align 1
+    // CHECK-COUNT-2: load i128{{.+}}align 1
+    // CHECK-NEXT: store i128{{.+}}align 1
+    // CHECK-COUNT-2: load i64{{.+}}align 1
+    // CHECK-NEXT: store i64{{.+}}align 1
+    // CHECK-COUNT-2: load i32{{.+}}align 1
+    // CHECK-NEXT: store i32{{.+}}align 1
+    // CHECK-NOT: load i16
+    // CHECK-NOT: store i16
+    // CHECK-NOT: load i8
+    // CHECK-NOT: store i8
     if x.len() == y.len() {
         x.swap_with_slice(y);
     }
 }
 
-// Strings have a non-power-of-two size, but have pointer alignment,
-// so we swap usizes instead of dropping all the way down to bytes.
+// Strings have a non-power-of-two size, but have pointer alignment.
 const _: () = assert!(!std::mem::size_of::<String>().is_power_of_two());
 
 // CHECK-LABEL: @swap_string_slices
 #[no_mangle]
 pub fn swap_string_slices(x: &mut [String], y: &mut [String]) {
     // CHECK-NOT: alloca
-    // CHECK: load <{{[0-9]+}} x i64>
-    // CHECK: store <{{[0-9]+}} x i64>
+
+    // CHECK-COUNT-2: load i512{{.+}}align 8
+    // CHECK-NEXT: store i512{{.+}}align 8
+    // CHECK-COUNT-2: load i256{{.+}}align 8
+    // CHECK-NEXT: store i256{{.+}}align 8
+    // CHECK-COUNT-2: load i128{{.+}}align 8
+    // CHECK-NEXT: store i128{{.+}}align 8
+    // CHECK-COUNT-2: load i64{{.+}}align 8
+    // CHECK-NEXT: store i64{{.+}}align 8
+    // CHECK-NOT: load i32
+    // CHECK-NOT: store i32
+    // CHECK-NOT: load i16
+    // CHECK-NOT: store i16
+    // CHECK-NOT: load i8
+    // CHECK-NOT: store i8
     if x.len() == y.len() {
         x.swap_with_slice(y);
     }
@@ -130,6 +183,9 @@ pub struct Packed {
 #[no_mangle]
 pub fn swap_packed_structs(x: &mut Packed, y: &mut Packed) {
     // CHECK-NOT: alloca
-    // CHECK: ret void
+    // CHECK-COUNT-2: load i64{{.+}}align 1
+    // CHECK-COUNT-2: store i64{{.+}}align 1
+    // CHECK-COUNT-2: load i8{{.+}}align 1
+    // CHECK-COUNT-2: store i8{{.+}}align 1
     swap(x, y)
 }
