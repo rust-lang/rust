@@ -1539,13 +1539,9 @@ impl ast::HasName for RecordField {}
 impl ast::HasVisibility for RecordField {}
 impl RecordField {
     #[inline]
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-    #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     #[inline]
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
-    #[inline]
-    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

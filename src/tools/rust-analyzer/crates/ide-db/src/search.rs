@@ -310,9 +310,6 @@ impl Definition {
                 DefWithBody::Variant(v) => v.source(db).map(|src| src.syntax().cloned()),
                 // FIXME: implement
                 DefWithBody::InTypeConst(_) => return SearchScope::empty(),
-                DefWithBody::Field(f) => {
-                    f.default_value_source(db).map(|src| src.syntax().cloned())
-                }
             };
             return match def {
                 Some(def) => SearchScope::file_range(
@@ -330,9 +327,6 @@ impl Definition {
                 DefWithBody::Variant(v) => v.source(db).map(|src| src.syntax().cloned()),
                 // FIXME: implement
                 DefWithBody::InTypeConst(_) => return SearchScope::empty(),
-                DefWithBody::Field(f) => {
-                    f.default_value_source(db).map(|src| src.syntax().cloned())
-                }
             };
             return match def {
                 Some(def) => SearchScope::file_range(

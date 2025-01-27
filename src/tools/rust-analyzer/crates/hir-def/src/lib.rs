@@ -55,7 +55,6 @@ pub mod visibility;
 
 use intern::Interned;
 pub use rustc_abi as layout;
-use src::HasSource;
 use triomphe::Arc;
 
 #[cfg(test)]
@@ -78,7 +77,6 @@ use hir_expand::{
     builtin::{BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     eager::expand_eager_macro_input,
-    files::InFileWrapper,
     impl_intern_lookup,
     name::Name,
     proc_macro::{CustomProcMacroExpander, ProcMacroKind},
@@ -521,41 +519,6 @@ pub struct FieldId {
     pub local_id: LocalFieldId,
 }
 
-impl FieldId {
-    pub fn record_field_source(
-        &self,
-        db: &dyn DefDatabase,
-    ) -> InFileWrapper<HirFileId, Option<ast::RecordField>> {
-        let field_list = match self.parent {
-            crate::VariantId::EnumVariantId(it) => {
-                let s = it.lookup(db);
-                s.source(db).map(|it| {
-                    it.field_list().and_then(|it| match it {
-                        ast::FieldList::RecordFieldList(it) => Some(it),
-                        _ => None,
-                    })
-                })
-            }
-            crate::VariantId::StructId(it) => {
-                let s = it.lookup(db);
-                s.source(db).map(|it| {
-                    it.field_list().and_then(|it| match it {
-                        ast::FieldList::RecordFieldList(it) => Some(it),
-                        _ => None,
-                    })
-                })
-            }
-            crate::VariantId::UnionId(it) => {
-                let s = it.lookup(db);
-                s.source(db).map(|it| it.record_field_list())
-            }
-        };
-        field_list.map(|it| {
-            it.and_then(|it| it.fields().nth(self.local_id.into_raw().into_u32() as usize))
-        })
-    }
-}
-
 pub type LocalFieldId = Idx<data::adt::FieldData>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -723,7 +686,6 @@ pub enum TypeOwnerId {
     TypeAliasId(TypeAliasId),
     ImplId(ImplId),
     EnumVariantId(EnumVariantId),
-    FieldId(FieldId),
 }
 
 impl TypeOwnerId {
@@ -741,11 +703,6 @@ impl TypeOwnerId {
                 GenericDefId::AdtId(AdtId::EnumId(it.lookup(db).parent))
             }
             TypeOwnerId::InTypeConstId(_) => return None,
-            TypeOwnerId::FieldId(it) => GenericDefId::AdtId(match it.parent {
-                VariantId::EnumVariantId(it) => AdtId::EnumId(it.lookup(db).parent),
-                VariantId::StructId(it) => it.into(),
-                VariantId::UnionId(it) => it.into(),
-            }),
         })
     }
 }
@@ -760,8 +717,7 @@ impl_from!(
     TraitAliasId,
     TypeAliasId,
     ImplId,
-    EnumVariantId,
-    FieldId
+    EnumVariantId
     for TypeOwnerId
 );
 
@@ -774,7 +730,6 @@ impl From<DefWithBodyId> for TypeOwnerId {
             DefWithBodyId::ConstId(it) => it.into(),
             DefWithBodyId::InTypeConstId(it) => it.into(),
             DefWithBodyId::VariantId(it) => it.into(),
-            DefWithBodyId::FieldId(it) => it.into(),
         }
     }
 }
@@ -930,7 +885,6 @@ pub enum DefWithBodyId {
     ConstId(ConstId),
     InTypeConstId(InTypeConstId),
     VariantId(EnumVariantId),
-    FieldId(FieldId),
 }
 
 impl_from!(FunctionId, ConstId, StaticId, InTypeConstId for DefWithBodyId);
@@ -951,7 +905,6 @@ impl DefWithBodyId {
             // FIXME: stable rust doesn't allow generics in constants, but we should
             // use `TypeOwnerId::as_generic_def_id` when it does.
             DefWithBodyId::InTypeConstId(_) => None,
-            DefWithBodyId::FieldId(_) => None,
         }
     }
 }
@@ -1379,11 +1332,6 @@ impl HasModule for TypeOwnerId {
             TypeOwnerId::ImplId(it) => it.module(db),
             TypeOwnerId::EnumVariantId(it) => it.module(db),
             TypeOwnerId::InTypeConstId(it) => it.lookup(db).owner.module(db),
-            TypeOwnerId::FieldId(it) => match it.parent {
-                VariantId::EnumVariantId(it) => it.module(db),
-                VariantId::StructId(it) => it.module(db),
-                VariantId::UnionId(it) => it.module(db),
-            },
         }
     }
 }
@@ -1396,11 +1344,6 @@ impl HasModule for DefWithBodyId {
             DefWithBodyId::ConstId(it) => it.module(db),
             DefWithBodyId::VariantId(it) => it.module(db),
             DefWithBodyId::InTypeConstId(it) => it.lookup(db).owner.module(db),
-            DefWithBodyId::FieldId(it) => match it.parent {
-                VariantId::EnumVariantId(it) => it.module(db),
-                VariantId::StructId(it) => it.module(db),
-                VariantId::UnionId(it) => it.module(db),
-            },
         }
     }
 }

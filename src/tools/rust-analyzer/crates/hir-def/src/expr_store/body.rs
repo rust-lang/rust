@@ -122,9 +122,6 @@ impl Body {
                     src.map(|it| it.expr())
                 }
                 DefWithBodyId::InTypeConstId(c) => c.lookup(db).id.map(|_| c.source(db).expr()),
-                DefWithBodyId::FieldId(f) => {
-                    f.record_field_source(db).map(|it| it.and_then(|it| it.expr()))
-                }
             }
         };
         let module = def.module(db);
