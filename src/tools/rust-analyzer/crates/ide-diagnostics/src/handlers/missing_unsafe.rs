@@ -866,4 +866,16 @@ fn baz() {
         "#,
         );
     }
+
+    #[test]
+    fn unsafe_fn_ptr_call() {
+        check_diagnostics(
+            r#"
+fn f(it: unsafe fn()){
+    it();
+ // ^^^^ 💡 error: call to unsafe function is unsafe and requires an unsafe function or block
+}
+        "#,
+        );
+    }
 }
