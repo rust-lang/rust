@@ -29,11 +29,12 @@ use std::num::NonZero;
 use std::ops::Range;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::Once;
+use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
 
 use miri::{
-    BacktraceStyle, BorrowTrackerMethod, MiriConfig, MiriEntryFnType,ProvenanceMode, RetagFields, ValidationMode,
+    BacktraceStyle, BorrowTrackerMethod, MiriConfig, MiriEntryFnType, ProvenanceMode, RetagFields,
+    ValidationMode,
 };
 use rustc_abi::ExternAbi;
 use rustc_data_structures::sync;
@@ -182,7 +183,8 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         if let Some(many_seeds) = self.many_seeds.take() {
             assert!(config.seed.is_none());
             let exit_code = sync::IntoDynSyncSend(AtomicI32::new(rustc_driver::EXIT_SUCCESS));
-            sync::par_for_each_in(many_seeds.seeds, |seed| {
+            let num_failed = sync::IntoDynSyncSend(AtomicU32::new(0));
+            sync::par_for_each_in(many_seeds.seeds.clone(), |seed| {
                 let mut config = config.clone();
                 config.seed = Some(seed.into());
                 eprintln!("Trying seed: {seed}");
@@ -196,8 +198,13 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                         std::process::exit(return_code);
                     }
                     exit_code.store(return_code, Ordering::Relaxed);
+                    num_failed.fetch_add(1, Ordering::Relaxed);
                 }
             });
+            let num_failed = num_failed.0.into_inner();
+            if num_failed > 0 {
+                eprintln!("{num_failed}/{total} SEEDS FAILED", total = many_seeds.seeds.count());
+            }
             std::process::exit(exit_code.0.into_inner());
         } else {
             let return_code = miri::eval_entry(tcx, entry_def_id, entry_type, config)
@@ -716,10 +723,9 @@ fn main() {
 
     // Ensure we have parallelism for many-seeds mode.
     if many_seeds.is_some() && !rustc_args.iter().any(|arg| arg.starts_with("-Zthreads=")) {
-        rustc_args.push(format!(
-            "-Zthreads={}",
-            std::thread::available_parallelism().map_or(1, |n| n.get())
-        ));
+        // Clamp to 8 threads; things get a lot less efficient beyond that due to lock contention.
+        let threads = std::thread::available_parallelism().map_or(1, |n| n.get()).min(8);
+        rustc_args.push(format!("-Zthreads={threads}"));
     }
     let many_seeds =
         many_seeds.map(|seeds| ManySeedsConfig { seeds, keep_going: many_seeds_keep_going });
