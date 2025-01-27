@@ -4961,6 +4961,17 @@ impl Type {
         self.normalize_trait_assoc_type(db, &[], iterator_item.into())
     }
 
+    pub fn impls_iterator(self, db: &dyn HirDatabase) -> bool {
+        let Some(iterator_trait) =
+            db.lang_item(self.env.krate, LangItem::Iterator).and_then(|it| it.as_trait())
+        else {
+            return false;
+        };
+        let canonical_ty =
+            Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(Interner) };
+        method_resolution::implements_trait_unique(&canonical_ty, db, &self.env, iterator_trait)
+    }
+
     /// Resolves the projection `<Self as IntoIterator>::IntoIter` and returns the resulting type
     pub fn into_iterator_iter(self, db: &dyn HirDatabase) -> Option<Type> {
         let trait_ = db.lang_item(self.env.krate, LangItem::IntoIterIntoIter).and_then(|it| {
