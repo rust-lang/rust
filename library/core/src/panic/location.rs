@@ -126,7 +126,7 @@ impl<'a> Location<'a> {
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     #[rustc_const_stable(feature = "const_location_fields", since = "1.79.0")]
     #[inline]
-    pub const fn file(&self) -> &str {
+    pub const fn file(&self) -> &'a str {
         self.file
     }
 
