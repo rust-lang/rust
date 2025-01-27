@@ -178,7 +178,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         source_info,
                         expect,
                         expect_ty,
-                        ref_str,
+                        Operand::Copy(ref_str),
                         ref_str_ty,
                     );
                 } else if !ty.is_scalar() {
@@ -191,12 +191,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         source_info,
                         expect,
                         expect_ty,
-                        place,
+                        Operand::Copy(place),
                         ty,
                     );
                 } else {
                     assert_eq!(expect_ty, ty);
-                    let val = Operand::Copy(place);
                     self.compare(
                         block,
                         success_block,
@@ -204,7 +203,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         source_info,
                         BinOp::Eq,
                         expect,
-                        val,
+                        Operand::Copy(place),
                     );
                 }
             }
@@ -377,7 +376,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         source_info: SourceInfo,
         mut expect: Operand<'tcx>,
         expect_ty: Ty<'tcx>,
-        mut val: Place<'tcx>,
+        mut val: Operand<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
         // If we're using `b"..."` as a pattern, we need to insert an
@@ -413,11 +412,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 PointerCoercion::Unsize,
                                 CoercionSource::Implicit,
                             ),
-                            Operand::Copy(val),
+                            val,
                             ty,
                         ),
                     );
-                    val = temp;
+                    val = Operand::Copy(temp);
                 }
                 if opt_ref_test_ty.is_some() {
                     let slice = self.temp(ty, source_info.span);
@@ -473,11 +472,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 const_: method,
             })),
-            args: [Spanned { node: Operand::Copy(val), span: DUMMY_SP }, Spanned {
-                node: expect,
-                span: DUMMY_SP,
-            }]
-            .into(),
+            args: [Spanned { node: val, span: DUMMY_SP }, Spanned { node: expect, span: DUMMY_SP }]
+                .into(),
             destination: eq_result,
             target: Some(eq_block),
             unwind: UnwindAction::Continue,
