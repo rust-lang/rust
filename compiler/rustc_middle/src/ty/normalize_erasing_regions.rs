@@ -11,7 +11,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use tracing::{debug, instrument};
 
 use crate::traits::query::NoSolution;
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 
 #[derive(Debug, Copy, Clone, HashStable, TyEncodable, TyDecodable)]
@@ -222,16 +222,27 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for TryNormalizeAfterErasingRegionsF
     }
 
     fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
-        match self.try_normalize_generic_arg_after_erasing_regions(ty.into()) {
-            Ok(t) => Ok(t.expect_ty()),
-            Err(_) => Err(NormalizationError::Type(ty)),
+        // HACKY HACK: dont walk into binders
+        if let ty::Alias(..) | ty::Dynamic(..) | ty::FnPtr(..) = ty.kind() {
+            self.try_normalize_generic_arg_after_erasing_regions(ty.into())
+                .map(|arg| arg.expect_ty())
+                .map_err(|_| NormalizationError::Type(ty))
+        } else if ty.has_aliases() {
+            ty.try_super_fold_with(self)
+        } else {
+            Ok(ty)
         }
     }
 
-    fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
-        match self.try_normalize_generic_arg_after_erasing_regions(c.into()) {
-            Ok(t) => Ok(t.expect_const()),
-            Err(_) => Err(NormalizationError::Const(c)),
+    fn try_fold_const(&mut self, ct: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
+        if let ty::ConstKind::Unevaluated(..) = ct.kind() {
+            self.try_normalize_generic_arg_after_erasing_regions(ct.into())
+                .map(|arg| arg.expect_const())
+                .map_err(|_| NormalizationError::Const(ct))
+        } else if ct.has_aliases() {
+            ct.try_super_fold_with(self)
+        } else {
+            Ok(ct)
         }
     }
 }
