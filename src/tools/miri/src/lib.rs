@@ -1,5 +1,4 @@
 #![feature(rustc_private)]
-#![feature(cell_update)]
 #![feature(float_gamma)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
