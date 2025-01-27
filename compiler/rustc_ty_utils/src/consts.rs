@@ -22,16 +22,16 @@ fn destructure_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     const_: ty::Const<'tcx>,
 ) -> ty::DestructuredConst<'tcx> {
-    let ty::ConstKind::Value(ct_ty, valtree) = const_.kind() else {
+    let ty::ConstKind::Value(cv) = const_.kind() else {
         bug!("cannot destructure constant {:?}", const_)
     };
 
-    let branches = match valtree {
+    let branches = match cv.valtree {
         ty::ValTree::Branch(b) => b,
         _ => bug!("cannot destructure constant {:?}", const_),
     };
 
-    let (fields, variant) = match ct_ty.kind() {
+    let (fields, variant) = match cv.ty.kind() {
         ty::Array(inner_ty, _) | ty::Slice(inner_ty) => {
             // construct the consts for the elements of the array/slice
             let field_consts = branches

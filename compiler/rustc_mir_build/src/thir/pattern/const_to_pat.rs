@@ -46,7 +46,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         match c.kind() {
             ty::ConstKind::Unevaluated(uv) => convert.unevaluated_to_pat(uv, ty),
-            ty::ConstKind::Value(_, val) => convert.valtree_to_pat(val, ty),
+            ty::ConstKind::Value(cv) => convert.valtree_to_pat(cv.valtree, cv.ty),
             _ => span_bug!(span, "Invalid `ConstKind` for `const_to_pat`: {:?}", c),
         }
     }

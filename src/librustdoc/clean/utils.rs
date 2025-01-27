@@ -344,10 +344,8 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
             s
         }
         // array lengths are obviously usize
-        ty::ConstKind::Value(ty, ty::ValTree::Leaf(scalar))
-            if *ty.kind() == ty::Uint(ty::UintTy::Usize) =>
-        {
-            scalar.to_string()
+        ty::ConstKind::Value(cv) if *cv.ty.kind() == ty::Uint(ty::UintTy::Usize) => {
+            cv.valtree.unwrap_leaf().to_string()
         }
         _ => n.to_string(),
     }
