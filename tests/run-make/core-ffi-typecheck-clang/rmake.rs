@@ -113,12 +113,12 @@ fn main() {
         ));
 
         // Generate a target-specific rmake file.
-        // If type misalignments occur, use the generated rmake file name to identify the failing target.
-        // Replace dots (.) and hyphens (-) in the target name with underscores to ensure valid filenames.
+        // If type misalignments occur,
+        // generated rmake file name used to identify the failing target.
         let file_name = format!("{}_rmake.rs", target.replace("-", "_").replace(".", "_"));
 
-        // Attempt to build the test file for the relevant target. Tests use constant evaluation,
-        // so running is not necessary.
+        // Attempt to build the test file for the relevant target.
+        // Tests use constant evaluation, so running is not necessary.
         rfs::write(&file_name, rmake_content);
         let rustc_output = rustc()
             .arg("-Zunstable-options")
