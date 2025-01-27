@@ -249,6 +249,9 @@
 //@ revisions: i686_unknown_netbsd
 //@ [i686_unknown_netbsd] compile-flags: --target i686-unknown-netbsd
 //@ [i686_unknown_netbsd] needs-llvm-components: x86
+//@ revisions: i686_unknown_nuttx
+//@ [i686_unknown_nuttx] compile-flags: --target i686-unknown-nuttx
+//@ [i686_unknown_nuttx] needs-llvm-components: x86
 //@ revisions: i686_unknown_openbsd
 //@ [i686_unknown_openbsd] compile-flags: --target i686-unknown-openbsd
 //@ [i686_unknown_openbsd] needs-llvm-components: x86
@@ -627,6 +630,9 @@
 //@ revisions: x86_64_unknown_none
 //@ [x86_64_unknown_none] compile-flags: --target x86_64-unknown-none
 //@ [x86_64_unknown_none] needs-llvm-components: x86
+//@ revisions: x86_64_unknown_nuttx
+//@ [x86_64_unknown_nuttx] compile-flags: --target x86_64-unknown-nuttx
+//@ [x86_64_unknown_nuttx] needs-llvm-components: x86
 //@ revisions: x86_64_unknown_openbsd
 //@ [x86_64_unknown_openbsd] compile-flags: --target x86_64-unknown-openbsd
 //@ [x86_64_unknown_openbsd] needs-llvm-components: x86

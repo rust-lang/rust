@@ -20,6 +20,8 @@ The target name follow this format: `ARCH[-VENDOR]-nuttx-ABI`, where `ARCH` is t
 
 The following target names are defined:
 
+- `i686-unknown-nuttx`
+- `x86_64-unknown-nuttx`
 - `aarch64-unknown-nuttx`
 - `armv7a-nuttx-eabi`
 - `armv7a-nuttx-eabihf`
