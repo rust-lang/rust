@@ -1308,11 +1308,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         self.probe_traits_that_match_assoc_ty(qself_ty, assoc_ident);
 
                     // Don't print `ty::Error` to the user.
-                    self.report_ambiguous_assoc_ty(
+                    self.report_ambiguous_assoc(
                         span,
                         &[qself_ty.to_string()],
                         &traits,
                         assoc_ident.name,
+                        ty::AssocKind::Type,
                     )
                 };
                 return Err(reported);
@@ -1393,13 +1394,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         // In contexts that have no inference context, just make a new one.
         // We do need a local variable to store it, though.
-        let infcx_;
         let infcx = match self.infcx() {
             Some(infcx) => infcx,
             None => {
                 assert!(!self_ty.has_infer());
-                infcx_ = tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
-                &infcx_
+                &tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis())
             }
         };
 
@@ -1650,7 +1649,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         debug!(?trait_def_id);
 
         let Some(self_ty) = opt_self_ty else {
-            return self.error_missing_qpath_self_ty(trait_def_id, span, item_segment);
+            let guar = self.error_missing_qpath_self_ty(
+                trait_def_id,
+                span,
+                item_segment,
+                ty::AssocKind::Type,
+            );
+            return Ty::new_error(tcx, guar);
         };
         debug!(?self_ty);
 
@@ -1670,7 +1675,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn lower_qpath_const(
         &self,
         span: Span,
-        self_ty: Ty<'tcx>,
+        opt_self_ty: Option<Ty<'tcx>>,
         item_def_id: DefId,
         trait_segment: &hir::PathSegment<'tcx>,
         item_segment: &hir::PathSegment<'tcx>,
@@ -1680,6 +1685,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let trait_def_id = tcx.parent(item_def_id);
         debug!(?trait_def_id);
 
+        let Some(self_ty) = opt_self_ty else {
+            let guar = self.error_missing_qpath_self_ty(
+                trait_def_id,
+                span,
+                item_segment,
+                ty::AssocKind::Const,
+            );
+            return Const::new_error(tcx, guar);
+        };
         debug!(?self_ty);
 
         let (item_def_id, item_args) = self.lower_qpath_shared(
@@ -1719,7 +1733,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         trait_def_id: DefId,
         span: Span,
         item_segment: &hir::PathSegment<'tcx>,
-    ) -> Ty<'tcx> {
+        kind: ty::AssocKind,
+    ) -> ErrorGuaranteed {
         let tcx = self.tcx();
         let path_str = tcx.def_path_str(trait_def_id);
 
@@ -1756,9 +1771,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // FIXME: also look at `tcx.generics_of(self.item_def_id()).params` any that
         // references the trait. Relevant for the first case in
         // `src/test/ui/associated-types/associated-types-in-ambiguous-context.rs`
-        let reported =
-            self.report_ambiguous_assoc_ty(span, &type_names, &[path_str], item_segment.ident.name);
-        Ty::new_error(tcx, reported)
+        self.report_ambiguous_assoc(span, &type_names, &[path_str], item_segment.ident.name, kind)
     }
 
     pub fn prohibit_generic_args<'a>(
@@ -2233,11 +2246,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     path.segments[..path.segments.len() - 2].iter(),
                     GenericsArgsErrExtend::None,
                 );
-                // FIXME(mgca): maybe needs proper error reported
-                let Some(self_ty) = opt_self_ty else { span_bug!(span, "{path:?}") };
                 self.lower_qpath_const(
                     span,
-                    self_ty,
+                    opt_self_ty,
                     did,
                     &path.segments[path.segments.len() - 2],
                     path.segments.last().unwrap(),

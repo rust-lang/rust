@@ -385,14 +385,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         })
     }
 
-    pub(super) fn report_ambiguous_assoc_ty(
+    pub(super) fn report_ambiguous_assoc(
         &self,
         span: Span,
         types: &[String],
         traits: &[String],
         name: Symbol,
+        kind: ty::AssocKind,
     ) -> ErrorGuaranteed {
-        let mut err = struct_span_code_err!(self.dcx(), span, E0223, "ambiguous associated type");
+        let kind_str = assoc_kind_str(kind);
+        let mut err =
+            struct_span_code_err!(self.dcx(), span, E0223, "ambiguous associated {kind_str}");
         if self
             .tcx()
             .resolutions(())
@@ -417,7 +420,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         span,
                         format!(
                             "if there were a type named `Type` that implements a trait named \
-                             `Trait` with associated type `{name}`, you could use the \
+                             `Trait` with associated {kind_str} `{name}`, you could use the \
                              fully-qualified path",
                         ),
                         format!("<Type as Trait>::{name}"),
@@ -440,7 +443,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         span,
                         format!(
                             "if there were a type named `Example` that implemented one of the \
-                             traits with associated type `{name}`, you could use the \
+                             traits with associated {kind_str} `{name}`, you could use the \
                              fully-qualified path",
                         ),
                         traits.iter().map(|trait_str| format!("<Example as {trait_str}>::{name}")),
@@ -451,7 +454,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     err.span_suggestion_verbose(
                         span,
                         format!(
-                            "if there were a trait named `Example` with associated type `{name}` \
+                            "if there were a trait named `Example` with associated {kind_str} `{name}` \
                              implemented for `{type_str}`, you could use the fully-qualified path",
                         ),
                         format!("<{type_str} as Example>::{name}"),
@@ -462,7 +465,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     err.span_suggestions(
                         span,
                         format!(
-                            "if there were a trait named `Example` with associated type `{name}` \
+                            "if there were a trait named `Example` with associated {kind_str} `{name}` \
                              implemented for one of the types, you could use the fully-qualified \
                              path",
                         ),
