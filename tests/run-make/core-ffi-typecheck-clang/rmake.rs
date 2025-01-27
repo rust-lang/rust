@@ -49,6 +49,15 @@ const SKIPPED_TARGETS: &[&str] = &[
     "xtensa-esp32s3-none-elf",
 ];
 
+/// Map from a Rust target to the Clang target if they are not the same.
+const MAPPED_TARGETS: &[(&str, &str)] = &[
+    ("aarch64-apple-ios-sim", "aarch64-apple-ios"),
+    ("aarch64-apple-tvos-sim", "aarch64-apple-tvos"),
+    ("aarch64-apple-visionos-sim", "aarch64-apple-visionos"),
+    ("aarch64-apple-watchos-sim", "aarch64-apple-watchos"),
+    ("x86_64-apple-watchos-sim", "x86_64-apple-watchos"),
+];
+
 fn main() {
     let targets = get_target_list();
 
@@ -61,13 +70,15 @@ fn main() {
             continue;
         }
 
+        // Map the Rust target string to a Clang target string if needed.
+        let ctarget = match MAPPED_TARGETS.iter().find(|(rtarget, _ctarget)| rtarget == &target) {
+            Some((_rtarget, ctarget)) => ctarget,
+            None => target,
+        };
+
         // Run Clang's preprocessor for the relevant target, printing default macro definitions.
         let clang_output =
-            clang().args(&["-E", "-dM", "-x", "c", "/dev/null", "-target", target]).run();
-
-        if !clang_output.status().success() {
-            continue;
-        }
+            clang().args(&["-E", "-dM", "-x", "c", "/dev/null", "-target", ctarget]).run();
 
         let defines = String::from_utf8(clang_output.stdout()).expect("Invalid UTF-8");
 
