@@ -1813,10 +1813,10 @@ pub fn walk_flat_map_stmt<T: MutVisitor>(
         .into_iter()
         .map(|kind| Stmt { id, kind, span })
         .collect();
-    match stmts.len() {
-        0 => {}
-        1 => vis.visit_span(&mut stmts[0].span),
-        2.. => panic!(
+    match &mut stmts[..] {
+        [] => {}
+        [stmt] => vis.visit_span(&mut stmt.span),
+        _ => panic!(
             "cloning statement `NodeId`s is prohibited by default, \
              the visitor should implement custom statement visiting"
         ),
