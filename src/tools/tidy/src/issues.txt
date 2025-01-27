@@ -1385,7 +1385,6 @@ ui/issue-18502.rs
 ui/issue-24106.rs
 ui/issue-76387-llvm-miscompile.rs
 ui/issues-71798.rs
-ui/issues/auxiliary/issue-111011.rs
 ui/issues/auxiliary/issue-11224.rs
 ui/issues/auxiliary/issue-11508.rs
 ui/issues/auxiliary/issue-11529.rs
