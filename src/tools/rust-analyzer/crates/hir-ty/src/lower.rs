@@ -23,10 +23,10 @@ use chalk_ir::{
 
 use either::Either;
 use hir_def::{
-    body::HygieneId,
     builtin_type::BuiltinType,
     data::{adt::StructKind, TraitFlags},
     expander::Expander,
+    expr_store::HygieneId,
     generics::{
         GenericParamDataRef, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
         WherePredicateTypeTarget,
@@ -2471,14 +2471,14 @@ pub enum ValueTyDefId {
 impl_from!(FunctionId, StructId, UnionId, EnumVariantId, ConstId, StaticId for ValueTyDefId);
 
 impl ValueTyDefId {
-    pub(crate) fn to_generic_def_id(self, db: &dyn HirDatabase) -> Option<GenericDefId> {
+    pub(crate) fn to_generic_def_id(self, db: &dyn HirDatabase) -> GenericDefId {
         match self {
-            Self::FunctionId(id) => Some(id.into()),
-            Self::StructId(id) => Some(id.into()),
-            Self::UnionId(id) => Some(id.into()),
-            Self::EnumVariantId(var) => Some(var.lookup(db.upcast()).parent.into()),
-            Self::ConstId(id) => Some(id.into()),
-            Self::StaticId(_) => None,
+            Self::FunctionId(id) => id.into(),
+            Self::StructId(id) => id.into(),
+            Self::UnionId(id) => id.into(),
+            Self::EnumVariantId(var) => var.lookup(db.upcast()).parent.into(),
+            Self::ConstId(id) => id.into(),
+            Self::StaticId(id) => id.into(),
         }
     }
 }

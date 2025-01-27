@@ -1,6 +1,7 @@
 mod block;
 
 use expect_test::{expect, Expect};
+use la_arena::RawIdx;
 use test_fixture::WithFixture;
 
 use crate::{test_db::TestDB, ModuleDefId};

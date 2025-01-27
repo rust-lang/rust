@@ -34,9 +34,9 @@ use chalk_ir::{
 };
 use either::Either;
 use hir_def::{
-    body::{Body, HygieneId},
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     data::{ConstData, StaticData},
+    expr_store::{Body, HygieneId},
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, PatId},
     lang_item::{LangItem, LangItemTarget},
     layout::Integer,

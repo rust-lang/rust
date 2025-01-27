@@ -5,8 +5,8 @@ use std::{fmt::Write, iter, mem};
 use base_db::ra_salsa::Cycle;
 use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
 use hir_def::{
-    body::{Body, HygieneId},
     data::adt::{StructKind, VariantData},
+    expr_store::{Body, HygieneId},
     hir::{
         ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ExprId, LabelId, Literal,
         LiteralOrConst, MatchArm, Pat, PatId, RecordFieldPat, RecordLitField,

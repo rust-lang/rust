@@ -6,9 +6,9 @@ use base_db::CrateId;
 use chalk_ir::{cast::Cast, Mutability};
 use either::Either;
 use hir_def::{
-    body::HygieneId,
     builtin_type::BuiltinType,
     data::adt::{StructFlags, VariantData},
+    expr_store::HygieneId,
     lang_item::LangItem,
     layout::{TagEncoding, Variants},
     resolver::{HasResolver, TypeNs, ValueNs},

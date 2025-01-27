@@ -3,7 +3,7 @@
 use base_db::{ra_salsa::Cycle, CrateId};
 use chalk_ir::{cast::Cast, BoundVar, DebruijnIndex};
 use hir_def::{
-    body::{Body, HygieneId},
+    expr_store::{Body, HygieneId},
     hir::{Expr, ExprId},
     path::Path,
     resolver::{Resolver, ValueNs},

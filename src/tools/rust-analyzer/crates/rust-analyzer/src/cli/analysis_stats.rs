@@ -13,7 +13,7 @@ use hir::{
     ModuleDef, Name,
 };
 use hir_def::{
-    body::BodySourceMap,
+    expr_store::BodySourceMap,
     hir::{ExprId, PatId},
     SyntheticSyntax,
 };

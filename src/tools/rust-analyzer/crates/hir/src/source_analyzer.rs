@@ -14,7 +14,7 @@ use crate::{
 };
 use either::Either;
 use hir_def::{
-    body::{
+    expr_store::{
         scope::{ExprScopes, ScopeId},
         Body, BodySourceMap, HygieneId,
     },

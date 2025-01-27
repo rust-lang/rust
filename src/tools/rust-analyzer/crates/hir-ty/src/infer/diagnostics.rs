@@ -5,7 +5,7 @@
 use std::cell::RefCell;
 use std::ops::{Deref, DerefMut};
 
-use hir_def::body::HygieneId;
+use hir_def::expr_store::HygieneId;
 use hir_def::hir::ExprOrPatId;
 use hir_def::path::{Path, PathSegment, PathSegments};
 use hir_def::resolver::{ResolveValueResult, Resolver, TypeNs};

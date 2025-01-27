@@ -42,8 +42,8 @@ use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, CrateOrigin};
 use either::Either;
 use hir_def::{
-    body::BodyDiagnostic,
     data::{adt::VariantData, TraitFlags},
+    expr_store::ExpressionStoreDiagnostics,
     generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     hir::{BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, LabelId, Pat},
     item_tree::{AttrOwner, FieldParent, ItemTreeFieldId, ItemTreeNode},
@@ -1892,10 +1892,10 @@ impl DefWithBody {
 
         for diag in source_map.diagnostics() {
             acc.push(match diag {
-                BodyDiagnostic::InactiveCode { node, cfg, opts } => {
+                ExpressionStoreDiagnostics::InactiveCode { node, cfg, opts } => {
                     InactiveCode { node: *node, cfg: cfg.clone(), opts: opts.clone() }.into()
                 }
-                BodyDiagnostic::MacroError { node, err } => {
+                ExpressionStoreDiagnostics::MacroError { node, err } => {
                     let RenderedExpandError { message, error, kind } =
                         err.render_to_string(db.upcast());
 
@@ -1919,20 +1919,22 @@ impl DefWithBody {
                     }
                     .into()
                 }
-                BodyDiagnostic::UnresolvedMacroCall { node, path } => UnresolvedMacroCall {
-                    macro_call: (*node).map(|ast_ptr| ast_ptr.into()),
-                    precise_location: None,
-                    path: path.clone(),
-                    is_bang: true,
+                ExpressionStoreDiagnostics::UnresolvedMacroCall { node, path } => {
+                    UnresolvedMacroCall {
+                        macro_call: (*node).map(|ast_ptr| ast_ptr.into()),
+                        precise_location: None,
+                        path: path.clone(),
+                        is_bang: true,
+                    }
+                    .into()
                 }
-                .into(),
-                BodyDiagnostic::AwaitOutsideOfAsync { node, location } => {
+                ExpressionStoreDiagnostics::AwaitOutsideOfAsync { node, location } => {
                     AwaitOutsideOfAsync { node: *node, location: location.clone() }.into()
                 }
-                BodyDiagnostic::UnreachableLabel { node, name } => {
+                ExpressionStoreDiagnostics::UnreachableLabel { node, name } => {
                     UnreachableLabel { node: *node, name: name.clone() }.into()
                 }
-                BodyDiagnostic::UndeclaredLabel { node, name } => {
+                ExpressionStoreDiagnostics::UndeclaredLabel { node, name } => {
                     UndeclaredLabel { node: *node, name: name.clone() }.into()
                 }
             });
@@ -3456,6 +3458,7 @@ pub enum GenericDef {
     Impl(Impl),
     // consts can have type parameters from their parents (i.e. associated consts of traits)
     Const(Const),
+    Static(Static),
 }
 impl_from!(
     Function,
@@ -3464,7 +3467,8 @@ impl_from!(
     TraitAlias,
     TypeAlias,
     Impl,
-    Const
+    Const,
+    Static
     for GenericDef
 );
 
@@ -3514,6 +3518,7 @@ impl GenericDef {
             GenericDef::TypeAlias(it) => it.id.into(),
             GenericDef::Impl(it) => it.id.into(),
             GenericDef::Const(it) => it.id.into(),
+            GenericDef::Static(it) => it.id.into(),
         }
     }
 
@@ -3571,6 +3576,7 @@ impl GenericDef {
                     item_tree_source_maps.impl_(id.value).generics()
                 }
                 GenericDefId::ConstId(_) => return,
+                GenericDefId::StaticId(_) => return,
             },
         };
 

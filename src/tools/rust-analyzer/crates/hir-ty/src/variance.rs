@@ -1028,6 +1028,7 @@ struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
                         }
                         GenericDefId::ImplId(_) => return None,
                         GenericDefId::ConstId(_) => return None,
+                        GenericDefId::StaticId(_) => return None,
                     },
                 ))
             })

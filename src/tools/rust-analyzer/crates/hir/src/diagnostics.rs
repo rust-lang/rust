@@ -411,7 +411,7 @@ impl AnyDiagnostic {
     pub(crate) fn body_validation_diagnostic(
         db: &dyn HirDatabase,
         diagnostic: BodyValidationDiagnostic,
-        source_map: &hir_def::body::BodySourceMap,
+        source_map: &hir_def::expr_store::BodySourceMap,
     ) -> Option<AnyDiagnostic> {
         match diagnostic {
             BodyValidationDiagnostic::RecordMissingFields { record, variant, missed_fields } => {
@@ -547,7 +547,7 @@ impl AnyDiagnostic {
         def: DefWithBodyId,
         d: &InferenceDiagnostic,
         outer_types_source_map: &TypesSourceMap,
-        source_map: &hir_def::body::BodySourceMap,
+        source_map: &hir_def::expr_store::BodySourceMap,
     ) -> Option<AnyDiagnostic> {
         let expr_syntax = |expr| {
             source_map.expr_syntax(expr).inspect_err(|_| stdx::never!("synthetic syntax")).ok()
